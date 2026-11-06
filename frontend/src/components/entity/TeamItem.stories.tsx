@@ -40,6 +40,18 @@ export const EveryTeamType: Story = {
   ),
 };
 
+// THE SMALL ONE — a small avatar and the name alone, no type badge: for a dense list of facts (Terima's Restok card).
+export const Small: Story = {
+  args: { size: "xs", team: { teamName: "Toko Melati", teamType: TeamType.SELLING, teamId: 12n } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByText("Toko Melati")).toBeInTheDocument();
+    await expect(canvas.queryByText("Selling")).toBeNull();
+    await expect(canvasElement.querySelector(".chakra-avatar__root")!.getBoundingClientRect().height).toBeLessThanOrEqual(24);
+  },
+};
+
 // `imageUrl` is only present on shapes that carry it — a Team has one, a TeamAccessItem does not.
 // The component takes a structural type rather than a concrete message for exactly that reason, so
 // the initials fallback is a supported case, not a degraded one.

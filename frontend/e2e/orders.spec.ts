@@ -1139,10 +1139,9 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   const line = page.getByTestId(`accept-line-${pid}`);
   await expect(line).toBeVisible();
 
-  // The vendor is named, not numbered. This is the whole point of SupplierByIds: the supplier belongs to a selling
-  // team and we are reading as the WAREHOUSE — by id, which still names a vendor deleted since the restock was raised.
-  // If this regresses to "Supplier #<id>", the crew at the door is back to matching a carton against a number.
-  await expect(page.getByTestId(`accept-supplier-${pid}`)).toContainText(seeded.supplierName);
+  // No supplier at the door (the-line-reads-ordered-then-what-it-came-to): where it was bought is the selling team's
+  // purchase, so the warehouse's Terima names none.
+  await expect(page.getByTestId(`accept-supplier-${pid}`)).toHaveCount(0);
 
   // Nothing counted yet, so nothing can be accepted.
   await expect(page.getByTestId("accept-submit")).toBeDisabled();
@@ -1171,14 +1170,16 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(page.getByTestId(`accept-placement-qty-${pid}-0`)).toHaveValue("5");
   await expect(page.getByTestId(`accept-balanced-${pid}`)).toBeVisible();
 
-  // The courier's charge changes what every unit cost, and the HPP must move as it is typed
-  // (the-couriers-ask-is-in-the-unit-price).
-  const hpp = page.getByTestId(`accept-hpp-${pid}`);
-  const before = await hpp.innerText();
-  // Asked first (the-charge-is-asked-for-before-it-is-filled) — Ada reveals the charge.
+  // The courier's charge changes what every unit cost, so what the 2 broken units were worth must move as it is typed
+  // (the-couriers-ask-is-in-the-unit-price). The line shows no price per piece (the-accept-line-shows-no-price).
+  const worth = page.getByTestId(`accept-broken-value-${pid}`);
+  const before = await worth.innerText();
+  // Said as text, changed on Ubah (the-cod-paid-is-said-in-its-own-section); then asked first
+  // (the-charge-is-asked-for-before-it-is-filled) — Ada reveals the charge.
+  await page.getByTestId("accept-courier-edit").click();
   await page.getByTestId("accept-courier-asked-yes").click();
   await page.getByTestId("accept-courier-charge").fill("8000");
-  await expect(hpp).not.toHaveText(before);
+  await expect(worth).not.toHaveText(before);
 
   // ⚠ THE NOTE IS REQUIRED once there is a charge (the-courier-is-paid-once-per-restock), and without it Accept stays
   // disabled.

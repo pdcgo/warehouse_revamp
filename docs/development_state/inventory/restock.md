@@ -87,6 +87,48 @@ The warehouse's restock page follows the screen rules and the selling page's sha
 as its title ([the-warehouse-restock-detail-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-warehouse-restock-detail-follows-the-screen-rules)); the box, not the purchase — pictures, no
 supplier, price, total or Pembayaran ([the-warehouse-reads-the-box-not-the-purchase](../../technical/frontend/restock_decision.md#the-warehouse-reads-the-box-not-the-purchase)); the warehouse
 writes its own note there, dropped ([the-warehouse-writes-its-own-note](../../technical/frontend/restock_decision.md#the-warehouse-writes-its-own-note)).
+Terima follows the screen rules ([the-restock-accept-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-accept-follows-the-screen-rules)):
+`ReadyLine` by its button (the charge, then each unfinished line by product and first blocker), its icon on a phone's
+header row, Back and Terima to where it was opened (`WarehouseRestockActions` records the opener; by a link, the
+restock's page), a problem's note labelled with an example and 0/200, `formatUnixDate`, `ListSkeleton`; stories in
+folders (Accept, Charge, Count, PutAway, States) behind Default and Mobile. No proto change, the marks unchanged.
+Then the box left, the info right from `xl` — the lines first when narrower; a line card arranges its parts by the
+lines column's width (three, two, stacked); back is an icon; the marks renumbered to the page's order
+([the-accept-page-puts-the-box-left-and-the-info-right](../../technical/frontend/restock_decision.md#the-accept-page-puts-the-box-left-and-the-info-right)).
+Then the info is who (one line each, small pictures — `TeamItem size="xs"`) and the parcel, ending with the COD charge
+the warehouse pays; no goods, shipping or total
+([the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid](../../technical/frontend/restock_decision.md#the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid));
+no price per piece on a line, the worth of a broken or missing unit kept
+([the-accept-line-shows-no-price](../../technical/frontend/restock_decision.md#the-accept-line-shows-no-price)); *n dari n pcs*
+a badge in its state's tone ([the-box-count-says-its-state-in-colour](../../technical/frontend/restock_decision.md#the-box-count-says-its-state-in-colour));
+a problem's note two rows ([a-problem-note-is-a-two-row-textarea](../../technical/frontend/restock_decision.md#a-problem-note-is-a-two-row-textarea)).
+Fixed: the broken units' rack picker stood 12rem tall in its column (`PlacementSelect alone`).
+Then a line's placement rows never share a rack — taken racks disabled in each picker (`RackSelect takenRackIds`,
+[one-rack-once-per-line](../../technical/frontend/restock_decision.md#one-rack-once-per-line)); *Dipesan 12 pcs* highlighted — only the *n pcs*, a small badge, there and in the header's count
+([the-pcs-alone-is-highlighted](../../technical/frontend/restock_decision.md#the-pcs-alone-is-highlighted));
+Paket carries no ongkir; the courier-charge section says as text what the warehouse paid, and Ubah opens its form with
+Tiba's values (`ChargeSection`); Terima waits for nothing about it
+([the-cod-paid-is-said-in-its-own-section](../../technical/frontend/restock_decision.md#the-cod-paid-is-said-in-its-own-section));
+every empty `QuantityInput` shows its minimum as placeholder
+([a-quantity-field-shows-its-minimum-until-typed](../../technical/frontend/context_decision.md#a-quantity-field-shows-its-minimum-until-typed)).
+Then a line names no supplier (the page reads none), its good/broken/missing sit under *Dipesan*, and broken and missing
+are each a block of their own
+([the-line-reads-ordered-then-what-it-came-to](../../technical/frontend/restock_decision.md#the-line-reads-ordered-then-what-it-came-to),
+[the-broken-and-the-missing-are-blocks-of-their-own](../../technical/frontend/restock_decision.md#the-broken-and-the-missing-are-blocks-of-their-own)).
+The put-away panel is off until Diterima is set, a good row holds at most Diterima − Rusak, and broken units on a rack
+get their rack as a row of that panel, marked Rusak
+([putaway-waits-for-the-count](../../technical/frontend/restock_decision.md#putaway-waits-for-the-count),
+[the-broken-units-rack-is-a-marked-placement](../../technical/frontend/restock_decision.md#the-broken-units-rack-is-a-marked-placement));
+Rusak is off while Diterima is blank or 0, and empties when it goes back to 0
+([broken-waits-for-something-received](../../technical/frontend/restock_decision.md#broken-waits-for-something-received)).
+Terima keeps the store's reference in Paket, named *Order ID*, not *Invoice* — unlike the warehouse's restock page
+([terima-keeps-the-order-id](../../technical/frontend/restock_decision.md#terima-keeps-the-order-id)). No open
+difference with the warehouse page is left. The ready line's names jump to their line or the charge and blink
+(`ReadyLine onSelect`, `jumpTo` in `lib/useScrollSpy`); the confirm shows the box in figures
+([the-ready-line-jumps-to-what-it-names](../../technical/frontend/restock_decision.md#the-ready-line-jumps-to-what-it-names),
+[the-confirm-says-the-count](../../technical/frontend/restock_decision.md#the-confirm-says-the-count)).
+Reviewed complete for this stage on 2026-11-06: every screen rule applied, desktop and phone checked; only the four
+pending marks remain.
 
 🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass
 ([the-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-list-follows-the-screen-rules)).

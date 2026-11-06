@@ -73,6 +73,24 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-restock-page-leads-with-the-box](#the-restock-page-leads-with-the-box) | both restock pages lead with the box — Produk first, opened by five cards of what the box is — and the info on the right: Kiriman over the money (Pembayaran, Ongkir COD) |
 | [the-warehouse-sees-the-ongkir-it-paid](#the-warehouse-sees-the-ongkir-it-paid) | on the warehouse's restock page the ongkir shown is the one **it paid** — the COD charge — a fact in Kiriman after the courier, not a section; the selling team's own ongkir is not shown |
 | [a-door-photo-is-a-thumbnail-that-opens-whole](#a-door-photo-is-a-thumbnail-that-opens-whole) | a photo from the door is a small thumbnail everywhere it is read back — the selling page's Penyesuaian dialog too — and opens whole in a dialog of its own; never drawn wide and cut to fit |
+| [the-restock-accept-follows-the-screen-rules](#the-restock-accept-follows-the-screen-rules) | Terima follows the screen rules: one ready line by its button, its icon on a phone's header row, every way out to where it was opened, a problem's note labelled with an example and its count, the app's dates, a skeleton, and its stories in folders |
+| [the-accept-page-puts-the-box-left-and-the-info-right](#the-accept-page-puts-the-box-left-and-the-info-right) | Terima's lines are the main column and the restock's record with the courier's charge a 20rem column on the right from `xl`; narrower, the lines first; a line card arranges its three parts by its column's width; back is its icon alone |
+| [the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid](#the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid) | Terima's info is two cards: who (restock, team, person — one line each, small pictures) and the parcel, which ends with the COD charge this warehouse pays; no goods, shipping or total |
+| [the-accept-line-shows-no-price](#the-accept-line-shows-no-price) | a Terima line shows no price per piece and no HPP — only what a broken or missing unit was worth |
+| [the-box-count-says-its-state-in-colour](#the-box-count-says-its-state-in-colour) | Terima's *n dari n pcs* is a badge in the tone of where the count stands — info while counting, success whole, warning short, error over |
+| [a-problem-note-is-a-two-row-textarea](#a-problem-note-is-a-two-row-textarea) | a broken or missing unit's note is a two-row textarea, as the charge's note is |
+| [one-rack-once-per-line](#one-rack-once-per-line) | a Terima line's placement rows never share a rack — each row's picker shows the racks the others hold, disabled, with no words beside them |
+| [the-ordered-count-is-highlighted-in-pcs](#the-ordered-count-is-highlighted-in-pcs) | a Terima line's ordered count reads *Dipesan 12 pcs*, highlighted in the primary tone, found at a glance |
+| [the-pcs-alone-is-highlighted](#the-pcs-alone-is-highlighted) | on Terima only the *n pcs* is highlighted — a small badge at the text's size, the words around it plain — on a line's *Dipesan* and in the header's *dari … di dalam paket* |
+| [the-cod-paid-is-said-in-its-own-section](#the-cod-paid-is-said-in-its-own-section) | Paket carries no ongkir; Terima's courier-charge section says as text what the warehouse paid — *Dibayar gudang Rp 15.000 · Biaya COD · diganti oleh …* — and Ubah opens its form, Tiba's values in it |
+| [the-line-reads-ordered-then-what-it-came-to](#the-line-reads-ordered-then-what-it-came-to) | a Terima line names no supplier; its good, broken and missing sit under *Dipesan* in the product's column, each in its tone |
+| [the-broken-and-the-missing-are-blocks-of-their-own](#the-broken-and-the-missing-are-blocks-of-their-own) | on Terima the broken units' details and the missing units' note are each a block with an edge and a heading in its tone — never one running list |
+| [putaway-waits-for-the-count](#putaway-waits-for-the-count) | Terima's put-away panel is off until Diterima is set; a good row then holds at most what Diterima leaves good |
+| [the-broken-units-rack-is-a-marked-placement](#the-broken-units-rack-is-a-marked-placement) | broken units put on a rack get their rack as a row of the put-away panel, marked Rusak with their pcs; the Rusak block only chooses |
+| [broken-waits-for-something-received](#broken-waits-for-something-received) | Terima's Rusak is off while Diterima is blank or 0, and empties when Diterima goes back to 0 |
+| [terima-keeps-the-order-id](#terima-keeps-the-order-id) | Terima's Paket card keeps the store's reference, named *Order ID* — never *Invoice* |
+| [the-ready-line-jumps-to-what-it-names](#the-ready-line-jumps-to-what-it-names) | each thing Terima's ready line names is a link — the page scrolls to that line or the charge, clear of the header, and it blinks |
+| [the-confirm-says-the-count](#the-confirm-says-the-count) | Terima's confirm shows the box in figures — good, broken, missing in pcs and the COD charge — before its sentence |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -1586,3 +1604,417 @@ NOW                          Rusak 2 · senilai … · Karung sobek
 | pinned by | `TheBrokenRowShowsItsPhoto` (the thumbnail at most 48px wide, opened whole, shut in order) |
 
 What it replaces: the photo at the dialog's width in [the-detail-pages-show-the-broken-photo](#the-detail-pages-show-the-broken-photo).
+
+## the-restock-accept-follows-the-screen-rules
+
+> Owner, in chat (2026-11-05): *"sekarang inisiasi restock accept"* — start Terima from the rules every screen follows.
+
+```
+desktop   ←  Terima Kiriman  [Tiba]                      12 dari 17 pcs di dalam paket
+                                          ⓘ Belum diisi: penempatan · Kopi Arabika 250g  +1 lainnya   [⊡ Terima Kiriman]
+phone     ←  Terima Kiriman  [Tiba]                                                                   [⊡]
+          12 dari 17 pcs di dalam paket
+          ⓘ Belum diisi: jumlah diterima · Kopi Arabika 250g  +1 lainnya
+```
+
+| rule | applied |
+| --- | --- |
+| [a-save-button-says-what-it-waits-for](context_decision.md#a-save-button-says-what-it-waits-for) | the line by Terima is `ReadyLine` — the first thing missing, in the page's order: the charge's amount, its note, then each unfinished line by its product and its first blocker (*jumlah diterima*, *hitungan yang pas*, *rak barang rusak*, *penempatan*); the rest under *+n lainnya*; ✓ *Siap diterima*. It was *2 baris belum selesai*, then the charge's own sentences, one at a time |
+| [a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon) | on a phone Terima is its icon on the header's row (`CompactActions`), not a ⋯ holding one item |
+| [an-action-button-carries-its-icon](context_decision.md#an-action-button-carries-its-icon) | Terima carries the icon of the act that opens it (`PackageCheck`, as in `WarehouseRestockActions`); *Semua Tiba* and *Buka Restok* carry theirs |
+| [a-form-returns-where-it-was-opened](context_decision.md#a-form-returns-where-it-was-opened) | Back and Terima go where the page was opened — the list with its filters, or the restock's page (*"kalau detail ke detail, kalau list ke list"*, said on the restock form). `WarehouseRestockActions` records the opener. **Reached by a link, the restock's page**, not the list: it is what Terima was about, and it was where both went before |
+| [every-form-field-shows-an-example](context_decision.md#every-form-field-shows-an-example) · [a-limited-field-shows-its-count](context_decision.md#a-limited-field-shows-its-count) | a problem's note is a labelled field — *Catatan barang rusak (opsional)* — with an example in it (*Contoh: karung sobek, isi tumpah*) and *0/200* under it; a textarea, as the charge's note is. Its label was its placeholder, gone once typed. The charge's example reads *Contoh: …* (it was *mis. …*) |
+| counts keep their blank | *Diterima*, *Rusak* and a placement's quantity show no example: a blank count is **not counted yet**, never 0, and a number in the box would read as one |
+| [a-date-speaks-the-apps-language](context_decision.md#a-date-speaks-the-apps-language) · [a-table-date-is-short-and-every-time-is-wib](context_decision.md#a-table-date-is-short-and-every-time-is-wib) | *Dibuat* and *Diterima di pintu* in the summary are `formatUnixDate` — the app's language, Jakarta time. They were the browser's |
+| [motion-is-small-quick-and-shared](context_decision.md#motion-is-small-quick-and-shared) | the page rises in; a first load is the page's shape (`ListSkeleton`), not a spinner |
+| [every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story) · [nothing-runs-past-a-phones-edge](context_decision.md#nothing-runs-past-a-phones-edge) · [stories-are-grouped-by-the-part-of-the-screen](context_decision.md#stories-are-grouped-by-the-part-of-the-screen) | **Default** and **Mobile** lead; the rest are folders — Accept, Charge, Count, PutAway, States — each story a short name. The Mobile story checks Terima sits on the back arrow's row and the edge |
+| kept as it was | the three columns ([a-counted-line-is-three-columns](context_decision.md#a-counted-line-is-three-columns) — this page is where that frame came from); the sticky header ([sticky-sticks-to-the-window](context_decision.md#sticky-sticks-to-the-window)); the summary's cap at the left ([a-narrowed-page-stays-at-the-left](context_decision.md#a-narrowed-page-stays-at-the-left)); the money field's 0 |
+| ⚠ pending | unchanged — the charge from Tiba (missing), the slip (dropped), the broken photo (dropped), the broken rack (dropped, against a business decision) |
+| pinned by | `Default`, `Mobile`, and every story of the page's folders — `What it waits for`, `From the list · back`, `From the list · Terima`, `Broken note` are new |
+
+What it replaces: the header's *n baris belum selesai* line, the phone's ⋯ for one item, the problem notes' label as their
+placeholder, the browser's dates, the spinner, and Back and Terima always landing on the restock's page.
+
+## the-accept-page-puts-the-box-left-and-the-info-right
+
+> Owner, in chat (2026-11-05): *"kemabli ke restok di accept icon saja, produk semua di kiri, info lain di kanan"*.
+
+```
+from xl   ←  Terima Kiriman [Tiba]                         12 dari 17 pcs · ⓘ Belum diisi: …   [⊡ Terima Kiriman]
+          ┌ Kopi Arabika 250g ─────────────────────────────────┐   ┌ Restok · Tim · Orang ┐
+          │ what it is │ what arrived │ where it goes          │   ┌ Paket                ┐
+          └────────────────────────────────────────────────────┘   ┌ Nilai                ┐
+          ┌ Beras Pandan Wangi 5kg ────────────────────────────┐   ┌ Ongkir COD dari kurir┐
+          └────────────────────────────────────────────────────┘        20rem
+
+a line card, by ITS column's width:
+  ≥ 52rem   what it is │ what arrived │ where it goes            three, as before
+  ≥ 34rem   what it is                                          the typed two side by side under it
+            what arrived │ where it goes
+  narrower  what it is / what arrived / where it goes           stacked — a phone
+```
+
+| | |
+| --- | --- |
+| the columns | every line in the **main column**; the restock's record (`AcceptSummary`, its three cards one under another) and the courier's charge, now in a card of its own, in a **20rem column on the right** — from `xl`, the warehouse restock page's breakpoint and width ([the-restock-page-leads-with-the-box](#the-restock-page-leads-with-the-box)). A JS branch, so no card exists twice |
+| narrower | one column, **the lines first**, then the info — as the warehouse's page leads with the box on a phone. It was the info first, the lines under it |
+| a line card | arranges [a-counted-line-is-three-columns](context_decision.md#a-counted-line-is-three-columns)'s three parts by the **width of the lines' column**, not the window's — beside the info column a card is ~650px wide on a 1280px screen with the sidebar, too narrow for three. Between 34rem and 52rem a middle arrangement: what it is on top, what arrived and where it goes side by side under it. The column is measured (`lib/useElementWidth`): the app's stylis passes no `@container` |
+| back | **its icon alone** on every width — as on the restock's own page (`RestockTitleRow`); its words are its name and its hover. It was *← Kembali ke Restok* on a desktop |
+| what Terima waits for | the ready line follows the new page order: each unfinished line first, then the charge |
+| ⚠ pending | renumbered to the page's order: **1** the broken photo, **2** the broken rack, **3** the charge from Tiba, **4** the slip |
+| pinned by | `Default` (back has no words; the lines come before the info, the charge in it). The wide columns and the three arrangements are read off screenshots — the story runner's canvas is phone-width |
+
+What it replaces: Terima's info above its lines across the page's width, the courier's charge bare on the page, the line
+card's three columns from the window's `xl`, and the labelled back button.
+
+## the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid
+
+> Owner, in chat (2026-11-05), on Terima's info column: *"id restok, tim dan usernya simpel saja, gambarnya kecil"*, then
+> *"nilai tidak perlu, kecuali ongkir yang dibayar gudang"*.
+
+```
+BEFORE  ┌ Restok                       ┐   ┌ Paket                ┐   ┌ Nilai                        ┐
+        │ #502                         │   │ Resi · Kurir         │   │ Barang · Ongkir · Total      │
+        │ Tim                          │   │ Order ID · Dibuat    │   │ Biaya kurir — utang penjual  │
+        │ [TM] Toko Melati  [Selling]  │   │ Diterima di pintu    │   └──────────────────────────────┘
+        │ Orang                        │   └──────────────────────┘
+        │ [AR] Ani Rahayu  @ani        │
+        └──────────────────────────────┘
+
+NOW     ┌ Restok  #502              ┐   ┌ Paket                       ┐
+        │ Tim     ▪ Toko Melati     │   │ Resi · Kurir · Order ID     │
+        │ Orang   ● Ani Rahayu      │   │ Dibuat · Diterima di pintu  │
+        └───────────────────────────┘   │ ─────────────────────────── │
+                                        │ Ongkir COD dibayar gudang   │
+                                        │ Rp 5.000                    │
+                                        │ Diganti oleh Toko Melati    │
+                                        └─────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| who | one line each — *Restok #502*, *Tim*, *Orang* — labels in a narrow column, values beside; the team and the person at the smallest avatar with their name alone: no type badge, no username. `TeamItem` gained `size="xs"`, as `UserItem` has (story `Small`) |
+| no value | the goods, the shipping and the total are gone — the selling team's purchase, as on the warehouse's restock page ([the-warehouse-reads-the-box-not-the-purchase](#the-warehouse-reads-the-box-not-the-purchase)) |
+| the ongkir it paid | the one figure of money left: **Ongkir COD dibayar gudang**, *Diganti oleh {team}*, at the foot of the parcel card — live, it follows the charge typed below; as the warehouse page's Kiriman carries it ([the-warehouse-sees-the-ongkir-it-paid](#the-warehouse-sees-the-ongkir-it-paid)) |
+| kept | the parcel's facts, the Order ID among them, and the selling team's note |
+| pinned by | `Default` (the team and the person by name, no badge, no username), `Ongkir it paid` (no total, the owed line following the charge) |
+
+What it replaces: the Nilai card and the who card's large avatars in
+[the-accept-page-puts-the-box-left-and-the-info-right](#the-accept-page-puts-the-box-left-and-the-info-right).
+
+## the-accept-line-shows-no-price
+
+> Owner, in chat (2026-11-05): *"harga per pcs tidak perlu, kita tidak wajib tahu harga"*.
+
+```
+BEFORE  Kopi Arabika 250g · CV Cahaya Abadi · Dipesan 12        NOW   Kopi Arabika 250g · CV Cahaya Abadi · Dipesan 12
+        ───────────────
+        Harga / pcs        Rp 33.333 / pcs
+        Biaya / pcs (HPP)  Rp 34.216 / pcs
+                                       …                               …
+        Rusak   senilai Rp 34.216   1                                  Rusak   senilai Rp 34.216   1   ← kept
+```
+
+| | |
+| --- | --- |
+| gone | the line's price per piece and its HPP — the warehouse need not know what the selling team paid |
+| kept | what a broken or missing unit was worth (*senilai …*), filled by the system from the landed price — as the warehouse's restock page keeps it. The courier's charge still moves it |
+| pinned by | `Worth, at the landed price` (no price per piece), `Ongkir it paid` (the worth moves with the charge); the e2e reads the worth for the same |
+
+What it replaces: the two prices per line asked for when the accept page was first built.
+
+## the-box-count-says-its-state-in-colour
+
+> Owner, in chat (2026-11-05): *"keterangan n dari n pcs di atas buat lebih kelihatan secara warna"*.
+
+| the box | the badge |
+| --- | --- |
+| a line still uncounted | **info** — *0 dari 17 pcs di dalam paket* |
+| every line counted, the box whole | **success** |
+| every line counted, short | **warning** — the missing units |
+| more than ordered | **error** — the selling team edits the line first |
+
+A `Badge` with the box icon, beside Terima on a desktop and under the header on a phone; the ready line stays under it.
+Pinned by `Default` (info), `Counts the box in` (warning, 16 of 17), `What it waits for` (success).
+
+What it replaces: the count as plain text.
+
+## a-problem-note-is-a-two-row-textarea
+
+> Owner, in chat (2026-11-05): *"sama catatan pakai textarea"*.
+
+A broken or missing unit's note is a **two-row** textarea that grows, as the courier's charge's note is — it was one row,
+which read as an input. Pinned by `Broken note`.
+
+What it replaces: the one-row textarea in [the-restock-accept-follows-the-screen-rules](#the-restock-accept-follows-the-screen-rules).
+
+## one-rack-once-per-line
+
+> Owner, in chat (2026-11-06): *"1 produk penempatan tidak boleh rak sama, disabled yang sudah dipilih"*, then — to a
+> *sudah dipilih* beside the taken rack — *"rak sudah dipilih tidak perlu keterangan sudah di pilih, disabled saja"*.
+
+```
+Taruh ke penempatan
+[ A-01-1 — Aisle A bawah   ⌄ ]  [−][ 6 ][+]
+[ Pilih penempatan         ⌄ ]  [−][ 4 ][+]
+  ┌──────────────────────────────┐
+  │ A-01-1 — Aisle A bawah       │   ← disabled, greyed — no words beside it
+  │ A-01-2 — Aisle A tengah      │
+  │ B-02-1 — Aisle B bawah       │
+  └──────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the rule | within one line, a rack is named once: each placement row's picker shows the racks the line's OTHER rows hold **disabled** — greyed and unpickable, with no words beside it; listed, not hidden; freeing the other row frees it |
+| a chip | a *Pernah ditaruh di sini* chip for a rack a row already holds is off — it must not make the duplicate the picker refuses |
+| the picker | `RackSelect` gained `takenRackIds` (story `TakenRacksAreDisabled`); its own value is never taken from itself |
+| kept | the line's `duplicate` check (`draft.ts`) — the accept handler refuses a rack twice too |
+| the broken rack | covered too, since it became a row of the same panel ([the-broken-units-rack-is-a-marked-placement](#the-broken-units-rack-is-a-marked-placement)) — the broken units' rack and the good units' racks are disabled for each other |
+| pinned by | `Every good unit placed, a rack once` |
+
+What it replaces: a rack picked twice and then flagged *Penempatan dipakai dua kali*.
+
+## the-ordered-count-is-highlighted-in-pcs
+
+> Owner, in chat (2026-11-06): *"jumlah di produk kasih pcs, dan highlight biar langsung ketahuan"*.
+
+```
+BEFORE  Dipesan 12                      NOW  ┌─────────────────────┐
+        Tim penjual: extra stock             │ Dipesan   12 pcs    │   primary.subtle, the number 20px bold
+                                             └─────────────────────┘
+                                             Tim penjual: extra stock
+```
+
+The number the box is checked against, in **pcs**, on a pale primary (indigo) ground with the figure large — found at a
+glance down a long delivery. Pinned by `Default`.
+
+What it replaces: *Dipesan 12* as a bold line.
+
+## the-cod-paid-is-said-in-its-own-section
+
+> Owner, in chat (2026-11-06), on Terima's courier charge: *"harusnya tidak perlu set lagi"*, *"kalau sudah paid, tidak
+> perlu set lagi"*, then — after two tries — *"bukan, gini, di paket ongkir hilangkan, di section ongkir cod dari kurir kasih
+> teks keterangan berapa yang dibayarkan, nanti ada interaksi untuk bisa mengubahnya"*.
+
+```
+Paket                                   ← no ongkir here any more
+Resi · Kurir · Order ID · Dibuat · Diterima di pintu
+
+Ongkir COD dari kurir ⚠3                                   [✎ Ubah]
+Dibayar gudang  Rp 15.000                                  ← the text: what the warehouse paid
+Biaya COD · diganti oleh Toko Melati
+
+  — with none —  Tidak ada ongkir COD yang dibayar gudang.
+
+after Ubah:   the charge's form — (Tidak ada) (Ada), Jumlah, Untuk apa, Foto nota — with what is there   [✓ Selesai]
+```
+
+| | |
+| --- | --- |
+| Paket | carries **no ongkir** — the *Ongkir COD dibayar gudang* fact at its foot is gone |
+| the section | says, as **text**, what the warehouse paid: *Dibayar gudang* **Rp 15.000**, then *its note · diganti oleh {team}*; with none, *Tidak ada ongkir COD yang dibayar gudang.* — under the title and its mark, with no hint: the text says who paid and who owes it (owner: *"teksnya kepanjangan"*). The form's hint is one short sentence — *Diminta kurir saat paket diserahkan.* (`ChargeSection`, the page's own) |
+| Ubah | the one interaction: it turns the text into the charge's form (`CourierCharge` — asked first, then filled) holding what is there, so a charge set at Tiba is never typed again ([terima-starts-from-the-charge-noted-at-tiba](#terima-starts-from-the-charge-noted-at-tiba)). **Selesai** folds it back, once Ada has an amount and its note (or Tidak ada); Terima sends what is in it either way |
+| what Terima waits for | the box only while the text shows — a charge in the form still being filled is named in the ready line, as before |
+| the stories | under *RestockAccept / Charge*: `Ongkir it paid` (none; Ubah, 5.000 and its note, Selesai — the text says it; the worth moves), `Opens with Tiba's charge` (the page as it opens — the text, no fields), `Tiba's charge, accepted` (counts the box, accepts — 15.000 and *Biaya COD* sent untouched), `Tiba's charge, changed` (Ubah opens Tiba's values; 20.000, Selesai). The e2e presses Ubah before Ada |
+| ⚠ still | Tandai Tiba keeps no charge yet, so in the app the text opens on *Tidak ada* — the page's mark **3** (`codFromArrival`, missing) |
+
+What it replaces: the same day's tries, none committed — a ✓ over the filled form, then the charge read behind an Ubah,
+then an info box over the filled form; the *Ongkir COD dibayar gudang* fact in Paket of
+[the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid](#the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid); the
+charge's form always open on the page; and the form's hint sentence *"Kalau sudah dicatat saat Tandai Tiba, sudah terisi di
+sini — ubah kalau berbeda"* of [terima-starts-from-the-charge-noted-at-tiba](#terima-starts-from-the-charge-noted-at-tiba).
+
+## the-pcs-alone-is-highlighted
+
+> Owner, in chat (2026-11-06): *"pcsnya kebesaran, highlightnya n pcs saja entah di produk dan di atas"*.
+
+```
+a line      BEFORE  ┌ Dipesan   12 pcs ┐          NOW  Dipesan [12 pcs]
+                    └──────────────────┘ 20px
+the header  BEFORE  [▣ 0 dari 17 pcs di dalam paket]         NOW  [0 dari 17 pcs] di dalam paket
+```
+
+| | |
+| --- | --- |
+| the mark | only the count in pcs is highlighted — a small subtle `Badge` at the text's size (`PcsMark`, the page's own) — and the words around it are plain text |
+| a line | *Dipesan* in bold, then **[12 pcs]** in the primary tone. It was a 20px figure on a box of its own ([the-ordered-count-is-highlighted-in-pcs](#the-ordered-count-is-highlighted-in-pcs)) |
+| the header | **[0 dari 17 pcs]** in the box's tone ([the-box-count-says-its-state-in-colour](#the-box-count-says-its-state-in-colour), unchanged), then *di dalam paket*. It was the whole sentence in a large badge with an icon |
+| pinned by | `Default` (the line's pcs badge at most 14px, the header's pcs and its words), `Counts the box in` (16 dari 17 pcs) |
+
+What it replaces: the 20px ordered figure on its box, and the header's whole sentence in a badge.
+
+## the-line-reads-ordered-then-what-it-came-to
+
+> Owner, in chat (2026-11-06), on a Terima line: *"supplier tidak perlu, keterangan baik, rusak, kurang taruh di bawah
+> dipesan pcs produk"*.
+
+```
+BEFORE  [▣] Kopi Arabika 250g        │ Yang tiba                         NOW  [▣] Kopi Arabika 250g        │ Yang tiba
+            SKU-KOPI-250             │ Diterima * [12]  Rusak [1]                  SKU-KOPI-250             │ Diterima * [11]  Rusak [1]
+        CV Cahaya Abadi · Other      │ ───────────                              Dipesan [12 pcs]             │ ▌ Rusak [1 pcs] …
+        Dipesan [12 pcs]             │ Baik — masuk stok     11                 Tim penjual: extra stock     │ ▌ Kurang [1 pcs] …
+        Tim penjual: extra stock     │ Rusak  senilai …       1                 ───────────
+                                     │ Kurang                 0                 Baik — masuk stok      10    ← success
+                                                                                 Rusak  senilai …        1    ← error
+                                                                                 Kurang senilai …        1    ← warning
+```
+
+| | |
+| --- | --- |
+| no supplier | where it was bought is gone from the line — the selling team's purchase, as on the warehouse's restock page ([the-warehouse-reads-the-box-not-the-purchase](#the-warehouse-reads-the-box-not-the-purchase)). The page no longer reads the suppliers at all |
+| what it came to | *Baik — masuk stok*, *Rusak* and *Kurang* — worked out, never typed — sit in the **product's column, under *Dipesan* and the selling team's note**: what was ordered, then what the box came to. Each problem keeps what it was worth; each row takes its tone once it is above 0 (good success, broken error, missing warning) |
+| the count column | holds only what is typed: *Diterima*, *Rusak*, and the two problem blocks ([the-broken-and-the-missing-are-blocks-of-their-own](#the-broken-and-the-missing-are-blocks-of-their-own)) |
+| pinned by | `Default` (no supplier; the outcome under *Dipesan*, dashes before counting); the e2e checks no supplier on the line |
+
+What it replaces: the supplier on a Terima line, and the worked-out figures at the foot of *Yang tiba*.
+
+## the-broken-and-the-missing-are-blocks-of-their-own
+
+> Owner, in chat (2026-11-06): *"pembagian rusak dan kurang perjelas, yang sekarang terasa menyatu"*.
+
+```
+Yang tiba
+Diterima * [−][11][+]   Rusak [−][1][+]
+┃ ⊠ Rusak [1 pcs]                          ← an error edge and heading
+┃ Catatan barang rusak (opsional) [ … ]
+┃ [📷 Tambah Foto] ⚠1
+┃ Barang rusak (• Dibuang) ( Ditaruh di rak ⚠2 )
+
+┃ ⊟ Kurang [1 pcs]                         ← a warning edge and heading
+┃ Catatan barang kurang (opsional) [ … ]
+```
+
+| | |
+| --- | --- |
+| a block each | broken and missing are each a **bordered block** with a 3px edge and a heading in its tone — *Rusak* error, *Kurang* warning — its icon and its count in pcs (`PcsMark`). Under the heading, only what that problem asks: broken its note, photo and where the units go; missing its note |
+| when | a block shows once its problem is there — broken above 0 and not above received; missing above 0 — as the fields under them did |
+| why | the broken note, photo and rack choice ran straight into the missing row and its note in one list, so where one ended and the other began was not plain |
+| pinned by | `Missing, worked out` (the missing block, in warning, with no broken block beside it); `Broken note`, `Broken photo`, `Broken onto a rack` work inside the broken block |
+
+What it replaces: the broken and missing details as one running list under the worked-out figures.
+
+## putaway-waits-for-the-count
+
+> Owner, in chat (2026-11-06): *"disabled penempatan jika diterima belum di set, masimalnya ikut ke diterima"*.
+
+```
+before Diterima       Taruh ke penempatan              [Hitung dulu]
+                      [ Pilih penempatan  ⌄ ]  [−][ 0 ][+] 🗑      ← all greyed, nothing pickable
+                      [+ Pisah ke Penempatan Lain]
+
+Diterima 12, Rusak 2  [ A-01-1             ⌄ ]  [−][ 10][+]       ← open; a row holds at most 10
+```
+
+| | |
+| --- | --- |
+| locked | until *Diterima* is set the put-away panel is **off** — its pickers, counts, *Pernah ditaruh di sini* chips, Split and the bin; the corner badge says *Hitung dulu*. There is nothing to place before the box is counted |
+| the most | once counted, a good units' row holds **at most what Diterima leaves good** — Diterima − Rusak — and a larger number settles back to it as the box is left. Not Diterima itself: the broken units have their own row when they go onto a rack ([the-broken-units-rack-is-a-marked-placement](#the-broken-units-rack-is-a-marked-placement)) |
+| pinned by | `Locked until counted` (off before, open after; 20 settles on 10) |
+
+What it replaces: a put-away panel open before anything was counted, and a row's count with no ceiling.
+
+## the-broken-units-rack-is-a-marked-placement
+
+> Owner, in chat (2026-11-06): *"rusak kalau ditaruh di rak kasih ke penempatan dan tanda penempatan rusak"*.
+
+```
+Yang tiba                                    Taruh ke penempatan
+┃ ⊠ Rusak [1 pcs]                            [ A-01-1             ⌄ ]  [−][ 11][+]
+┃ …                                          [+ Pisah ke Penempatan Lain]
+┃ Barang rusak (  Dibuang) (• Ditaruh di rak)  ─────────────────────────────
+┃ Raknya dipilih di Taruh ke penempatan.     [⊠ Rusak] [1 pcs]  [ Pilih penempatan ⌄ ]
+                                             ⚠ Pilih rak untuk barang rusak.
+```
+
+| | |
+| --- | --- |
+| where | *Ditaruh di rak* is still chosen in the Rusak block; the **rack** is picked in *Taruh ke penempatan*, as a row of its own under the good units' rows, **marked Rusak** (an error-tone tag) with all the broken units in pcs — not typed |
+| the block | says where to pick it — *Raknya dipilih di Taruh ke penempatan.* |
+| one rack once | the broken row's rack and the good rows' racks are disabled for each other ([one-rack-once-per-line](#one-rack-once-per-line)): a rack holds this product's good units or its broken ones, never both |
+| required | until a rack is picked the row says *Pilih rak untuk barang rusak.*, the corner badge says *Pilih penempatan*, and the ready line names it — as before |
+| ⚠ still | the rack is not kept ([a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack)) — the mark **2** stays on *Ditaruh di rak* |
+| pinned by | `Broken onto a rack` (the marked row, 1 pcs, A-01-1 off for it, then B-02-1) |
+
+What it replaces: the broken units' rack picker inside the Rusak block in
+[a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack), and the *not covered* row of
+[one-rack-once-per-line](#one-rack-once-per-line) — the broken rack now shares the line's one-rack rule.
+
+## broken-waits-for-something-received
+
+> Owner, in chat (2026-11-06): *"rusak disabled kalau diterima 0"*.
+
+```
+Diterima *  [−][  0 ][+]   Rusak  [−][  0 ][+]     ← blank or 0 received: Rusak greyed, nothing to type
+Diterima *  [−][  3 ][+]   Rusak  [−][  1 ][+]     ← something received: Rusak opens
+Diterima *  [−][  0 ][+]   Rusak  [−][  0 ][+]     ← back to 0: Rusak empties and shuts
+```
+
+| | |
+| --- | --- |
+| the rule | *Rusak* is off while *Diterima* is blank or 0 — broken units are among those in the box, so with nothing received nothing can be broken |
+| back to 0 | when Diterima goes back to blank or 0, Rusak **empties** as it shuts — a number left in a field nobody can reach would hold the line up as *Rusak lebih dari Diterima* |
+| pinned by | `Broken off at 0` |
+
+What it replaces: a Rusak field open before anything was received.
+
+## terima-keeps-the-order-id
+
+> Owner, in chat (2026-11-06), asked whether Terima should drop the store's reference as the warehouse's restock page
+> did, or keep it named *Order ID*: *"order id"*.
+
+```
+Paket
+Nomor resi   JNT9988776655        Kurir     [J&T]
+Order ID     INV/2026/10/0987     Dibuat    2 Nov 2026          ← was labelled "Invoice"
+Diterima di pintu  5 Nov 2026
+```
+
+| | |
+| --- | --- |
+| kept | Terima's Paket card keeps the store's reference — unlike the warehouse's restock page, which shows none ([the-warehouse-reads-the-box-not-the-purchase](#the-warehouse-reads-the-box-not-the-purchase)). The owner's pick for the counting page |
+| its name | **Order ID**, the word every restock page uses ([the-store-reference-is-the-order-id](#the-store-reference-is-the-order-id)) — never *Invoice*. The i18n key is `restock.accept.summary.orderId` |
+| pinned by | `Default` (the value under *Order ID*; no *Invoice* in the info) |
+
+What it replaces: the label *Invoice* on Terima, and the open question of whether Terima drops it.
+
+## the-ready-line-jumps-to-what-it-names
+
+> Owner, in chat (2026-11-06), to the suggestion that the ready line's *Belum diisi: …* be clickable on a long delivery:
+> *"usulan 1 oke"*.
+
+```
+ⓘ Belum diisi: jumlah diterima · Kopi Arabika 250g  +1 lainnya        ← each name a dotted link
+                └── click ──► the Kopi card scrolls under the sticky header, and blinks once
+                                       +1 lainnya ► popover ► · jumlah diterima · Beras … ← a link too; the popover shuts
+```
+
+| | |
+| --- | --- |
+| the jump | every missing thing the ready line names is a **link**: a line's goes to its card, the courier's charge to its section. The page scrolls it into view **clear of the sticky header** (whose height it publishes as `--accept-header-h`) and the card **blinks** once, as a section nav's jump does ([a-nav-jump-blinks-where-it-lands](context_decision.md#a-nav-jump-blinks-where-it-lands)) |
+| the popover | its entries are links too, and it shuts once one is picked |
+| shared | `ReadyLine` gained `onSelect` (story `JumpsToWhatItNames`) — left out, its labels stay plain text, so the forms using it are unchanged. `lib/useScrollSpy` exports `jumpTo` and `FLASH_ON_LANDING`, the nav's own scroll-and-blink |
+| pinned by | `Jumps to the line` (the rice, from the popover: it blinks, and lands clear of the header) |
+
+What it replaces: a ready line whose names had to be found by scrolling.
+
+## the-confirm-says-the-count
+
+> Owner, in chat (2026-11-06), to the suggestion that Terima's confirm show the figures rather than a general sentence:
+> *"2 oke"*.
+
+```
+Terima Kiriman Ini
+Baik [15 pcs]   Rusak [1 pcs]   Kurang [1 pcs]          ← each in its tone above 0, grey at 0
+Ongkir COD dibayar gudang  Rp 5.000                     ← or "Tidak ada ongkir COD yang dibayar gudang."
+Barang baik masuk ke penempatan yang Anda pilih, … Ini tidak dapat dibatalkan.     ← the sentence, under them, quieter
+                                                                   [Batal] [Terima]
+```
+
+| | |
+| --- | --- |
+| the figures | the whole box's good, broken and missing in pcs — the same tones as a line's own (success, error, warning; grey at 0) — then the COD charge the warehouse paid, or that there is none (`ConfirmSummary`, the page's own) |
+| the sentence | what happens to them, under the figures and quieter: the last thing read before a count that cannot be undone is its numbers |
+| pinned by | `Confirm says the count` (Baik 16, Rusak grey, Kurang 1, no charge; Escape leaves the page as it was) |
+
+What it replaces: the confirm's general sentence alone.

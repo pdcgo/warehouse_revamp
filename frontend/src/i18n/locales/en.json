@@ -1829,11 +1829,9 @@
       "warehouseOnly": "Only the warehouse a restock was sent to can accept it.",
       "notFound": "That restock is not for this warehouse.",
       "action": "Accept Delivery",
-      "goodsPrice": "Price / pc",
-      "hpp": "Cost / pc (HPP)",
-      "perPiece": "{{price}} / pc",
       "putaway": "Put away to placements",
-      "ordered": "Ordered {{n}}",
+      "ordered": "Ordered",
+      "pcs": "{{n}} pcs",
       "toPlace": "{{count}} to place",
       "placedBefore": "Placed here before",
       "hereCount": "{{count}} here",
@@ -1843,25 +1841,20 @@
         "restock": "Restock",
         "team": "Team",
         "raisedBy": "Person",
-        "shipping": "Shipping",
         "courier": "Courier",
         "parcel": "Parcel",
         "tracking": "Tracking number",
-        "invoice": "Invoice",
+        "orderId": "Order ID",
         "raised": "Raised",
         "signedFor": "Signed for",
-        "note": "Selling team's note",
-        "value": "Value",
-        "goods": "Goods",
-        "total": "Total",
-        "totalHint": "Goods + shipping — what the selling team paid",
-        "courierOwed": "Courier's charge — owed by the selling team",
-        "courierOwedHint": "Not part of the total"
+        "note": "Selling team's note"
       },
       "confirm": {
         "title": "Accept This Delivery",
         "message": "The good units go onto the placements you named, and the broken and missing units are recorded against the selling team. This cannot be undone.",
-        "label": "Accept"
+        "label": "Accept",
+        "good": "Good",
+        "charge": "COD charge paid by the warehouse"
       },
       "toast": {
         "accepted": "Delivery accepted",
@@ -1874,10 +1867,17 @@
         "description": "Only an ongoing or arrived restock can be counted in, so there is nothing to accept here."
       },
       "openRestock": "Open the Restock",
-      "countSummary": "{{received}} of {{ordered}} pcs in the box",
-      "progress_one": "{{count}} line to finish",
-      "progress_other": "{{count}} lines to finish",
-      "ready": "Every line counted and placed",
+      "countPcs": "{{received}} of {{ordered}} pcs",
+      "countInBox": "in the box",
+      "readyToAccept": "Ready to accept",
+      "missing": {
+        "chargeAmount": "the courier's charge",
+        "chargeNote": "what the courier's charge was for",
+        "received": "received · {{name}}",
+        "count": "a count that fits · {{name}}",
+        "brokenRack": "rack for the broken units · {{name}}",
+        "placement": "placement · {{name}}"
+      },
       "lineNote": "Selling team:",
       "count": "What arrived",
       "received": "Received",
@@ -1888,8 +1888,10 @@
       "brokenOverReceived": "Broken can't be more than received ({{n}}).",
       "good": "Good — goes into stock",
       "worth": "worth {{value}}",
-      "brokenNote": "Note on the broken units (optional)",
-      "missingNote": "Note on the missing units (optional)",
+      "brokenNote": "Note on the broken units",
+      "brokenNotePlaceholder": "e.g. torn sack, spilled inside",
+      "missingNote": "Note on the missing units",
+      "missingNotePlaceholder": "e.g. one carton short when the courier handed it over",
       "countFirst": "Count first",
       "nothingToPlace": "Nothing to place",
       "nothingToPlaceHint": "No good units on this line — nothing goes onto a placement.",
@@ -1901,7 +1903,7 @@
       "placementQty": "Units on this placement",
       "courier": {
         "title": "Courier's COD charge",
-        "hint": "What the courier asked when handing the parcel over. The warehouse pays it and the selling team owes it back — it is not part of the restock's total. Noted at Mark Arrived, it is filled in here — change it if it differs.",
+        "hint": "Asked by the courier when the parcel is handed over.",
         "amount": "Amount",
         "note": "What it was for",
         "notePlaceholder": "e.g. COD handling fee",
@@ -1909,9 +1911,14 @@
         "photo": "Courier's slip photo",
         "photoAlt": "Photo of the courier's slip",
         "optional": "(optional)",
-        "amountRequired": "Enter the courier's charge.",
         "askedNone": "None",
-        "askedYes": "Yes"
+        "askedYes": "Yes",
+        "edit": "Change",
+        "done": "Done",
+        "paidBy": "Paid by the warehouse",
+        "paidLine": "{{note}} · owed back by {{team}}",
+        "owedBy": "Owed back by {{team}}",
+        "none": "No COD charge paid by the warehouse."
       },
       "brokenPhoto": {
         "alt": "Photo of the broken products"
@@ -1939,7 +1946,8 @@
         "label": "Broken units",
         "discard": "Thrown away",
         "rack": "Put on a rack",
-        "rackRequired": "Pick a rack for the broken units."
+        "rackRequired": "Pick a rack for the broken units.",
+        "pickInPutaway": "Its rack is picked under Put away to placements."
       },
       "notKept": {
         "courierPhoto": "the courier's slip photo",

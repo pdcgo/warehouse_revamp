@@ -56,7 +56,9 @@ export function RestockTitleRow({
   const lead = orderId !== "" ? "orderId" : receipt !== "" ? "receipt" : "number";
 
   return (
-    <Flex ref={stuck ? undefined : titleRef} align="center" gap={stuck ? "2" : "card"} minW="0">
+    // On a phone the row is as tight as the bar's — every pixel beside the back arrow and the actions is the title's
+    // (every-phone-title-is-20px).
+    <Flex ref={stuck ? undefined : titleRef} align="center" gap={stuck ? "2" : { base: "2", md: "card" }} minW="0">
       <IconButton
         size="sm"
         variant="ghost"

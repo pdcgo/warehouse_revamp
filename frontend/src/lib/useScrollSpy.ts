@@ -74,6 +74,23 @@ function flashWhenLanded(el: HTMLElement) {
   window.setTimeout(land, LOCK_MS + 200);
 }
 
+/** The style a jump's target needs to blink — `section-flash` (theme.ts) while `data-flash` is on it. */
+export const FLASH_ON_LANDING = {
+  "&[data-flash]": { animationName: "section-flash", animationDuration: "1.2s", animationTimingFunction: "ease-out" },
+} as const;
+
+/**
+ * Scroll to `el` and blink it once it lands — the nav's jump, for any page that sends somebody to a part of itself
+ * (a-nav-jump-blinks-where-it-lands): Terima's ready line jumping to the line it names. `el` carries its own
+ * `scrollMarginTop` to clear a sticky header, and animates `section-flash` on `data-flash`.
+ */
+export function jumpTo(el: HTMLElement) {
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+  el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  flashWhenLanded(el);
+}
+
 /** The element whose scrolling moves `el` — the nearest scrollable ancestor, else the document. */
 export function scrollerOf(el: Element): Element {
   for (let node = el.parentElement; node; node = node.parentElement) {

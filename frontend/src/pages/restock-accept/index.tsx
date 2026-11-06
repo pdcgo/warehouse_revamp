@@ -1,42 +1,51 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
   Box,
   Button,
+  Card,
   Flex,
+  Grid,
   Heading,
   Icon,
   IconButton,
-  Menu,
-  Portal,
   Spacer,
-  Spinner,
   Stack,
   Text,
+  useBreakpointValue,
 } from "@chakra-ui/react";
-import { ArrowLeft, CheckCheck, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, PackageCheck } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { CompactActions } from "../../components/chrome/CompactActions";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { ReadyLine } from "../../components/feedback/ReadyLine";
+import type { ReadyLineItem } from "../../components/feedback/ReadyLine";
 import { toaster } from "../../components/feedback/Toaster";
+import { cameFrom } from "../../lib/cameFrom";
+import { useElementSize, useElementWidth } from "../../lib/useElementWidth";
+import { FLASH_ON_LANDING, jumpTo } from "../../lib/useScrollSpy";
+import { useTeamDetail } from "../../features/teams/queries";
 import { useProductsByIds } from "../../features/products/queries";
 import { useProductPlaces } from "../../features/inventory/queries";
-import { useLineSuppliers } from "../../features/restock/LineSupplier";
-import { toRupiah, unitGoods, unitHpp } from "../../features/restock/counting";
+import { toRupiah, unitHpp } from "../../features/restock/counting";
 import { useAcceptRestockRequest, useRestockRequest } from "../../features/restock/queries";
 import { RESTOCK_STATUS_TABS } from "../../features/restock/statusTabs";
 import { useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
 import { AcceptSummary } from "./components/AcceptSummary";
-import { CourierCharge } from "../../features/restock/CourierCharge";
-import { LineCard } from "./components/LineCard";
-import type { LineDraft } from "./draft";
+import { ChargeSection } from "./components/ChargeSection";
+import { ConfirmSummary } from "./components/ConfirmSummary";
+import { LineCard, lineLayout } from "./components/LineCard";
+import { PcsMark } from "./components/PcsMark";
+import type { LineDraft, LineState } from "./draft";
 import { emptyLine, lineState, receivedLine } from "./draft";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -55,6 +64,15 @@ function parseRequestId(raw: string | undefined): bigint {
 // signed for it can still be counted in.
 function acceptable(request: RestockRequest): boolean {
   return request.status === RestockRequestStatus.ONGOING || request.status === RestockRequestStatus.ARRIVED;
+}
+
+// What still holds a line up — the FIRST of it, in the card's order: the count, the broken units' rack, the put-away.
+// The line itself says the detail (its badge, its error); the ready line only names what to go and finish.
+function lineBlocker(st: LineState): string {
+  if (!st.counted) return "restock.accept.missing.received";
+  if (st.over > 0n || st.brokenOver) return "restock.accept.missing.count";
+  if (st.brokenNeedsPlace) return "restock.accept.missing.brokenRack";
+  return "restock.accept.missing.placement";
 }
 
 // RestockAcceptPage — the receiving warehouse COUNTS THE BOX IN (any-warehouse-member-counts-what-arrived), in one act:
@@ -77,8 +95,30 @@ export function RestockAcceptPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const mobile = useIsMobile();
+  // THE BOX ON THE LEFT, THE INFO ON THE RIGHT where there is room (the-accept-page-puts-the-box-left-and-the-info-right)
+  // — the warehouse detail's breakpoint, so the two pages split at the same width.
+  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
+  // The lines' column, measured: a line card arranges its three parts by the room IT has (lineLayout).
+  const [linesRef, linesWidth] = useElementWidth<HTMLDivElement>();
+  // The sticky header's height, published as `--accept-header-h` — a jump lands clear of it.
+  const [headerRef, header] = useElementSize<HTMLDivElement>();
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  // THE READY LINE TAKES YOU TO WHAT IT NAMES (owner: *"usulan 1 oke"*, the-ready-line-jumps-to-what-it-names) — a line,
+  // or the courier's charge; it scrolls there, clear of the header, and the card blinks (a-nav-jump-blinks-where-it-lands).
+  function jumpToMissing(id: string) {
+    const target = id.startsWith("line-") ? id : "charge";
+    const el = pageRef.current?.querySelector<HTMLElement>(`[data-jump="${target}"]`);
+    if (el) jumpTo(el);
+  }
+  const layout = lineLayout(linesWidth);
 
   const requestId = parseRequestId(rawId);
+  // EVERY WAY OUT GOES WHERE THE PAGE WAS OPENED (a-form-returns-where-it-was-opened; owner, on the restock form: *"kalau
+  // detail ke detail, kalau list ke list"*) — the list with its filters, or this restock's page. Reached by a link, the
+  // restock's page: what Terima was about.
+  const openedFrom = cameFrom(useLocation());
+  const backTo = openedFrom ?? `/inventories/restock/${rawId ?? ""}`;
 
   // Only what the person at the door TYPES is state — the restock comes from a query. A line nobody has touched reads
   // as an empty draft, so a line the selling team adds while the box is open simply appears, uncounted.
@@ -124,23 +164,26 @@ export function RestockAcceptPage() {
   const places = useProductPlaces({ warehouseId: teamId, productIds }).data ?? [];
   // The cover pictures, in one batch — someone matching a box recognises the picture before the SKU.
   const products = useProductsByIds({ teamId, productIds }).data;
-  const { suppliers, channels } = useLineSuppliers(teamId, items);
 
   const draftOf = (itemId: bigint) => drafts[itemId.toString()] ?? emptyLine();
   const updater = (itemId: bigint) => (fn: (d: LineDraft) => LineDraft) =>
     setDrafts((prev) => ({ ...prev, [itemId.toString()]: fn(prev[itemId.toString()] ?? emptyLine()) }));
 
-  // Unticked, there is no charge, whatever was typed before the tick came off.
+  // On Tidak ada, there is no charge, whatever was typed before.
   const courierCharge = chargeAsked ? toRupiah(charge) : 0;
-  // Ticked, the amount and the note are both required (the-courier-is-paid-once-per-restock); the note's error shows once
-  // there is an amount, so a fresh tick is not all red.
+  // On Ada, the amount and the note are both required (the-courier-is-paid-once-per-restock); the note's error shows once
+  // there is an amount, so a fresh Ada is not all red.
   const chargeAmountMissing = chargeAsked && courierCharge <= 0;
   const chargeNoteMissing = chargeAsked && courierCharge > 0 && chargeNote.trim() === "";
-  const chargeIncomplete = chargeAsked && (courierCharge <= 0 || chargeNote.trim() === "");
+  // Who owes the charge back — named in the charge's text (the-cod-paid-is-said-in-its-own-section).
+  const requester = useTeamDetail({ teamId: request?.requestingTeamId ?? 0n, enabled: (request?.requestingTeamId ?? 0n) > 0n });
+  const sellingTeam =
+    requester.data?.name || t("restock.teamRef", { id: (request?.requestingTeamId ?? 0n).toString() });
 
   // The landed unit price: shipping + the courier's charge, spread over every unit ORDERED in the restock
   // (unit-price-is-line-price-plus-costs-per-unit, all-qty-is-every-unit-ordered). It does not move as the box is
-  // counted, and a broken or missing unit is worth the same price as a good one.
+  // counted, and a broken or missing unit is worth the same price as a good one. Not SHOWN as a price per piece
+  // (the-accept-line-shows-no-price) — only as what a broken or missing unit was worth.
   const costs = (request?.shipmentCost ?? 0) + courierCharge;
   const allQty = items.reduce((sum, i) => sum + i.count, 0n);
   const landedOf = (item: (typeof items)[number]) => unitHpp(item.total, item.count, costs, allQty);
@@ -151,12 +194,25 @@ export function RestockAcceptPage() {
     return { item, draft, landed, st: lineState(item, draft, landed) };
   });
 
-  const unfinished = lines.filter((l) => !l.st.ready).length;
-  const ready = lines.length > 0 && unfinished === 0 && !chargeIncomplete;
+  // WHAT TERIMA WAITS FOR, in the page's order — each unfinished line by its product, then the charge in the info
+  // beside or under them (a-save-button-says-what-it-waits-for): one line by the button, the rest on asking.
+  const missing: ReadyLineItem[] = [
+    ...lines
+      .filter((l) => !l.st.ready)
+      .map((l) => ({ id: `line-${l.item.productId}`, label: t(lineBlocker(l.st), { name: l.item.name }) })),
+    chargeAmountMissing && { id: "chargeAmount", label: t("restock.accept.missing.chargeAmount") },
+    chargeNoteMissing && { id: "chargeNote", label: t("restock.accept.missing.chargeNote") },
+  ].filter((m): m is ReadyLineItem => Boolean(m));
+  const ready = lines.length > 0 && missing.length === 0;
   const busy = accept.isPending;
 
   const ordered = allQty;
   const inBox = lines.reduce((sum, l) => sum + l.st.received, 0n);
+  // HOW THE BOX STANDS, IN ITS COLOUR (owner: *"keterangan n dari n pcs di atas buat lebih kelihatan secara warna"*,
+  // the-box-count-says-its-state-in-colour): still counting → info; every line counted and the box whole → success;
+  // counted and short → warning (the missing units); more than ordered → error (the selling team edits first).
+  const allCounted = lines.length > 0 && lines.every((l) => l.st.counted);
+  const boxTone = inBox > ordered ? "error" : !allCounted ? "info" : inBox < ordered ? "warning" : "success";
 
   async function submit() {
     if (teamId === undefined || !request) return;
@@ -184,24 +240,27 @@ export function RestockAcceptPage() {
       if (notKept.length > 0) {
         toaster.create({ type: "warning", title: t("restock.accept.toast.notKept", { parts: notKept.join(", ") }) });
       }
-      navigate(`/inventories/restock/${request.id}`);
+      navigate(openedFrom ?? `/inventories/restock/${request.id}`);
     } catch (err) {
       setSubmitError(rpcError(err));
       toaster.create({ type: "error", title: t("restock.accept.toast.failed"), description: rpcError(err) });
     }
   }
 
+  // Back is its icon alone, on every width (owner: *"kembali ke restok di accept icon saja"*) — as on the restock's own
+  // page (RestockTitleRow); its words are its name and its hover.
   const back = (
-    <Button
-      size="xs"
+    <IconButton
+      size="sm"
       variant="ghost"
+      flexShrink={0}
       aria-label={t("restock.accept.back")}
-      onClick={() => navigate(`/inventories/restock/${rawId ?? ""}`)}
+      title={t("restock.accept.back")}
+      onClick={() => navigate(backTo)}
       data-testid="accept-back"
     >
       <Icon as={ArrowLeft} boxSize="4" />
-      {mobile ? null : t("restock.accept.back")}
-    </Button>
+    </IconButton>
   );
 
   if (!current || !isWarehouse) {
@@ -215,19 +274,15 @@ export function RestockAcceptPage() {
     );
   }
 
+  // The first load shows the page's shape (motion-is-small-quick-and-shared).
   if (loading) {
-    return (
-      <Stack gap="section">
-        {back}
-        <Spinner colorPalette="brand" />
-      </Stack>
-    );
+    return <ListSkeleton heading rows={3} testId="accept-loading" />;
   }
 
   if (loadError || !request || request.warehouseId !== teamId) {
     return (
       <Stack gap="section">
-        {back}
+        <Box>{back}</Box>
         <Text color="error.fg" data-testid="accept-error">
           {loadError || t("restock.accept.notFound")}
         </Text>
@@ -241,7 +296,7 @@ export function RestockAcceptPage() {
     const statusKey = RESTOCK_STATUS_TABS.find((tab) => tab.status === request.status)?.labelKey;
 
     return (
-      <Stack gap="section" data-testid="restock-accept-page">
+      <Stack gap="section" animationStyle="enter" data-testid="restock-accept-page">
         <Flex align="center" gap="card" wrap="wrap">
           {back}
           <Heading size="md">{t("restock.accept.title")}</Heading>
@@ -267,45 +322,113 @@ export function RestockAcceptPage() {
           data-testid="accept-open-restock"
           onClick={() => navigate(`/inventories/restock/${request.id}`)}
         >
+          <Icon as={ArrowUpRight} boxSize="4" />
           {t("restock.accept.openRestock")}
         </Button>
       </Stack>
     );
   }
 
-  // How far the count has got — beside Accept on a desktop, under the sticky row on a phone.
+  // How far the count has got, and what Terima still waits for — ONE line (a-save-button-says-what-it-waits-for): the
+  // first thing missing, the rest on asking, or ✓ Siap diterima. Beside Terima on a desktop, under the sticky row on a
+  // phone.
   const progress = (
-    <Stack gap="0" textAlign={mobile ? "start" : "end"}>
-      <Text fontSize="sm" data-testid="accept-restock-count">
-        {t("restock.accept.countSummary", { received: inBox.toString(), ordered: ordered.toString() })}
-      </Text>
-      {unfinished > 0 ? (
-        <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
-          {t("restock.accept.progress", { count: unfinished })}
-        </Text>
-      ) : chargeAmountMissing ? (
-        <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
-          {t("restock.accept.courier.amountRequired")}
-        </Text>
-      ) : chargeIncomplete ? (
-        <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
-          {t("restock.accept.courier.noteRequired")}
-        </Text>
-      ) : (
-        <Text fontSize="xs" color="success.fg" data-testid="accept-ready">
-          {t("restock.accept.ready")}
-        </Text>
-      )}
+    <Stack gap="1" align={mobile ? "flex-start" : "flex-end"} minW="0">
+      {/* Only the pcs is highlighted, in the box's tone; the rest is plain (the-pcs-alone-is-highlighted). */}
+      <Flex align="center" gap="1.5" fontSize="sm" data-tone={boxTone} data-testid="accept-restock-count">
+        <PcsMark tone={boxTone} testId="accept-restock-count-pcs">
+          {t("restock.accept.countPcs", { received: inBox.toString(), ordered: ordered.toString() })}
+        </PcsMark>
+        <Text>{t("restock.accept.countInBox")}</Text>
+      </Flex>
+      <ReadyLine
+        missing={missing}
+        readyLabel={t("restock.accept.readyToAccept")}
+        testId="accept-ready-line"
+        onSelect={jumpToMissing}
+      />
+    </Stack>
+  );
+
+  // EVERY LINE OF THE BOX — measured, so each card arranges its three parts by this column's width.
+  const linesColumn = (
+    <Stack ref={linesRef} gap="section" minW="0" data-testid="accept-lines">
+      {lines.map(({ item, draft, st }) => {
+        const product = products?.get(item.productId.toString());
+
+        return (
+          <LineCard
+            key={item.id.toString()}
+            item={item}
+            draft={draft}
+            st={st}
+            warehouseId={teamId ?? 0n}
+            imageUrl={product?.defaultImageUrl}
+            thumbnailUrl={product?.defaultImageThumbnailUrl}
+            // Real placements only — a pile with no placement is not somewhere to put things.
+            recommendations={places.filter((p) => p.productId === item.productId && p.rackId !== 0n)}
+            brokenPhotoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenPhoto" />}
+            brokenRackMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenRack" />}
+            layout={layout}
+            update={updater(item.id)}
+          />
+        );
+      })}
+    </Stack>
+  );
+
+  // THE INFO — the restock's record, then the courier's charge. The charge lives OUTSIDE the summary cards (owner):
+  // everything in them is already on the record, and this is a figure the person at the door may change. It says what the
+  // warehouse paid, as text, and changes on Ubah (the-cod-paid-is-said-in-its-own-section); it moves every landed price
+  // in the lines.
+  const infoColumn = (
+    <Stack gap="section" minW="0" data-testid="accept-info">
+      <AcceptSummary request={request} narrow={wide} />
+      <Card.Root data-jump="charge" scrollMarginTop="calc(var(--accept-header-h, 0px) + 1rem)" css={FLASH_ON_LANDING}>
+        <Card.Body>
+          <ChargeSection
+            asked={chargeAsked}
+            onAsked={setChargeAsked}
+            amount={charge}
+            charge={courierCharge}
+            note={chargeNote}
+            noteMissing={chargeNoteMissing}
+            onAmount={setCharge}
+            onNote={setChargeNote}
+            photo={chargePhoto}
+            onPhoto={setChargePhoto}
+            team={sellingTeam}
+            mark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="codFromArrival" />}
+            photoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="courierPhoto" />}
+          />
+        </Card.Body>
+      </Card.Root>
     </Stack>
   );
 
   return (
-    // NOT capped at the page level (owner): the cap belongs to the read-only summary, not to the counting.
-    <Stack gap="section" data-testid="restock-accept-page">
-      {/* The action header rides at the top of the scroll: on a long delivery the Accept and the reason it will not
-          press must stay in reach. On a phone it is ONE row — back, the title, the status, ⋯
-          (the-phone-header-is-one-row) — and the progress comes down under it. */}
-      <Box position="sticky" top="0" zIndex="1" bg="bg" borderBottomWidth="1px" borderColor="border" py="card">
+    // NOT capped at the page level (owner): the cap belongs to the read-only summary, not to the counting. The page
+    // arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack
+      ref={pageRef}
+      gap="section"
+      animationStyle="enter"
+      data-testid="restock-accept-page"
+      style={{ ["--accept-header-h" as string]: `${header.height}px` }}
+    >
+      {/* The action header rides at the top of the scroll: on a long delivery Terima and what it waits for must stay in
+          reach. On a phone it is ONE row — back, the title, the status, Terima as its icon
+          (the-phone-header-is-one-row, a-phone-header-action-is-an-icon) — and the progress comes down under it. */}
+      <Box
+        ref={headerRef}
+        position="sticky"
+        top="0"
+        zIndex="1"
+        bg="bg"
+        borderBottomWidth="1px"
+        borderColor="border"
+        py="card"
+      >
         <Flex align="center" gap={mobile ? "2" : "card"} wrap={mobile ? "nowrap" : "wrap"}>
           {back}
           <Heading size="md" truncate>
@@ -315,37 +438,24 @@ export function RestockAcceptPage() {
           <Spacer />
 
           {mobile ? (
-            <Menu.Root>
-              <Menu.Trigger asChild>
-                <IconButton
-                  size="xs"
-                  variant="ghost"
-                  aria-label={t("restock.accept.actions")}
-                  data-testid="accept-actions"
-                >
-                  <Icon as={MoreHorizontal} boxSize="4" />
-                </IconButton>
-              </Menu.Trigger>
-              <Portal>
-                <Menu.Positioner>
-                  <Menu.Content>
-                    <Menu.Item
-                      value="accept"
-                      disabled={!ready || busy}
-                      data-testid="accept-submit"
-                      // No handler while disabled — a disabled item's DOM click still fires.
-                      onClick={!ready || busy ? undefined : () => setConfirmOpen(true)}
-                    >
-                      <Icon as={CheckCheck} boxSize="4" />
-                      {t("restock.accept.action")}
-                    </Menu.Item>
-                  </Menu.Content>
-                </Menu.Positioner>
-              </Portal>
-            </Menu.Root>
+            <CompactActions
+              menuLabel={t("restock.accept.actions")}
+              actions={[
+                {
+                  id: "accept",
+                  label: t("restock.accept.action"),
+                  icon: PackageCheck,
+                  primary: true,
+                  disabled: !ready || busy,
+                  testId: "accept-submit",
+                  onClick: () => setConfirmOpen(true),
+                },
+              ]}
+            />
           ) : (
             <>
               {progress}
+              {/* The same icon as the act that opened this page (WarehouseRestockActions) — an-action-button-carries-its-icon. */}
               <Button
                 colorPalette="brand"
                 disabled={!ready}
@@ -353,6 +463,7 @@ export function RestockAcceptPage() {
                 data-testid="accept-submit"
                 onClick={() => setConfirmOpen(true)}
               >
+                <Icon as={PackageCheck} boxSize="4" />
                 {t("restock.accept.action")}
               </Button>
             </>
@@ -368,63 +479,46 @@ export function RestockAcceptPage() {
         </Text>
       )}
 
-      {/* What is not kept yet — the broken units' photo (pending.ts). */}
+      {/* What is not kept yet — the broken photo, the broken rack, the charge from Tiba, the slip (pending.ts). */}
       <NotImplementedSummary list={RESTOCK_ACCEPT_PENDING} />
 
-      <AcceptSummary request={request} courierCharge={courierCharge} />
-
-      {/* The courier's charge lives OUTSIDE the summary cards (owner): everything in them is already on the record,
-          and this is a figure the person at the door types. It moves the owed line above and every HPP below. */}
-      <CourierCharge
-        asked={chargeAsked}
-        onAsked={setChargeAsked}
-        amount={charge}
-        note={chargeNote}
-        noteMissing={chargeNoteMissing}
-        onAmount={setCharge}
-        onNote={setChargeNote}
-        photo={chargePhoto}
-        onPhoto={setChargePhoto}
-        mark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="codFromArrival" />}
-        photoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="courierPhoto" />}
-      />
-
-      {lines.map(({ item, draft, landed, st }) => {
-        const product = products?.get(item.productId.toString());
-
-        return (
-          <LineCard
-            key={item.id.toString()}
-            item={item}
-            draft={draft}
-            st={st}
-            warehouseId={teamId ?? 0n}
-            imageUrl={product?.defaultImageUrl}
-            thumbnailUrl={product?.defaultImageThumbnailUrl}
-            suppliers={suppliers}
-            channels={channels}
-            goodsPrice={unitGoods(item.total, item.count)}
-            hpp={landed}
-            // Real placements only — a pile with no placement is not somewhere to put things.
-            recommendations={places.filter((p) => p.productId === item.productId && p.rackId !== 0n)}
-            brokenPhotoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenPhoto" />}
-            brokenRackMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenRack" />}
-            update={updater(item.id)}
-          />
-        );
-      })}
+      {/* THE BOX ON THE LEFT, THE INFO ON THE RIGHT (owner: *"produk semua di kiri, info lain di kanan"*,
+          the-accept-page-puts-the-box-left-and-the-info-right) — every line in the main column; the restock's record and
+          the courier's charge in a 20rem column beside it from `xl`, as the warehouse's restock page has it. Narrower, one
+          column: the lines first, then the info. A JS branch, so no card exists twice. */}
+      {wide ? (
+        <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start">
+          {linesColumn}
+          {infoColumn}
+        </Grid>
+      ) : (
+        <>
+          {linesColumn}
+          {infoColumn}
+        </>
+      )}
 
       {/* Accepting moves stock and cannot be undone, so it confirms first. One dialog for both shells — the desktop
-          button and the phone's menu item both open it. */}
+          button and the phone's icon both open it. It SAYS THE COUNT (owner: *"2 oke"*, the-confirm-says-the-count):
+          the figures first, then what happens to them. */}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         destructive={false}
         title={t("restock.accept.confirm.title")}
-        message={t("restock.accept.confirm.message")}
         confirmLabel={t("restock.accept.confirm.label")}
         onConfirm={submit}
-      />
+      >
+        <ConfirmSummary
+          good={lines.reduce((sum, l) => sum + l.st.good, 0n)}
+          broken={lines.reduce((sum, l) => sum + l.st.broken, 0n)}
+          missing={lines.reduce((sum, l) => sum + l.st.missing, 0n)}
+          charge={courierCharge}
+        />
+        <Text fontSize="sm" color="fg.muted">
+          {t("restock.accept.confirm.message")}
+        </Text>
+      </ConfirmDialog>
     </Stack>
   );
 }

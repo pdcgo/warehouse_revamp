@@ -27,7 +27,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 // A PHONE (the-restock-detail-follows-the-screen-rules) — the header ONE row that stays: back, the number, the status,
-// the actions (three, so one ⋯); the tabs across the top; the product lines as blocks.
+// the actions (three, so one ⋯); the tabs across the top; the product lines as blocks; the title at 20px.
 export const Mobile: Story = {
   name: "Mobile",
   globals: { viewport: { value: "mobile1" } },
@@ -39,5 +39,12 @@ export const Mobile: Story = {
     await expect(within(strip).getByTestId("section-nav-strip")).toBeVisible();
     await expect(canvas.getByTestId("restock-actions-501")).toBeVisible();
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+
+    // EVERY TITLE ON A PHONE IS 20px, this one too, not 26 (every-phone-title-is-20px) — and the order id reads whole,
+    // uncut. The sticky bar's title is the same size.
+    const title = canvas.getByTestId("restock-detail-title");
+    await expect(getComputedStyle(title).fontSize).toBe("20px");
+    const value = [...title.querySelectorAll<HTMLElement>("*")].filter((el) => el.scrollWidth > el.clientWidth + 1);
+    await expect(value).toHaveLength(0);
   },
 };

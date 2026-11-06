@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Minus, Plus } from "lucide-react";
 
 export const description =
-  "The shared whole-number field — a quantity, a count. Chakra's NumberInput for the behaviour (parsing, clamping, keyboard arrows, no scroll-wheel edits) with its cramped default steppers replaced by a − and a + FLANKING the box, which are reachable with a thumb and render the same in every browser. Holds a STRING, like every other field in a form draft, so a cleared box stays empty instead of collapsing to 0. In an invalid field the whole control — the box and both buttons — takes the error edge.";
+  "The shared whole-number field — a quantity, a count. Chakra's NumberInput for the behaviour (parsing, clamping, keyboard arrows, no scroll-wheel edits) with its cramped default steppers replaced by a − and a + FLANKING the box, which are reachable with a thumb and render the same in every browser. Holds a STRING, like every other field in a form draft, so a cleared box stays empty instead of collapsing to 0 — and an empty box SHOWS its minimum, 0 or 1, in the quiet placeholder ink. In an invalid field the whole control — the box and both buttons — takes the error edge.";
 
 export interface QuantityInputProps {
   /** Kept as a STRING while editing: an empty input is not 0, and a form draft holds what was typed. */
@@ -15,7 +15,10 @@ export interface QuantityInputProps {
   /** The BOX's width — the two buttons sit outside it. Defaults to a table cell's narrow field. */
   width?: string;
   size?: "xs" | "sm" | "md";
-  /** Shown while the box is empty — a form field's **0**, never its value (every-form-field-shows-an-example). */
+  /**
+   * Shown while the box is empty — never its value. Defaults to the MINIMUM, `0` or `1` (owner, on Terima: *"input number
+   * default 0"*, a-quantity-field-shows-its-minimum-until-typed), as a money field shows its 0.
+   */
   placeholder?: string;
   "aria-label"?: string;
   testId?: string;
@@ -41,6 +44,10 @@ export interface QuantityInputProps {
 // ⚠ THE VALUE STAYS A STRING. Every caller holds a draft of what was typed (`LineDraft.quantity`),
 // where "" is a box somebody cleared and 0 is a quantity they chose. Emitting numbers here would
 // erase that difference at the one point where it matters.
+//
+// ⚠ SO THE 0 AN EMPTY BOX SHOWS IS A PLACEHOLDER, NOT A VALUE (a-quantity-field-shows-its-minimum-until-typed). A
+// restock's "received" left at a real 0 would read as "nothing came" — every unit missing — and Terima would press on a
+// box nobody counted. The grey 0 says what the field holds; the empty value says nobody has answered.
 export function QuantityInput({
   value,
   onChange,
@@ -95,7 +102,7 @@ export function QuantityInput({
           w={width}
           textAlign="center"
           px="1"
-          placeholder={placeholder}
+          placeholder={placeholder ?? String(min)}
           data-testid={testId}
           aria-label={rest["aria-label"]}
         />

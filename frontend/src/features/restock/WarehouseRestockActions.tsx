@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button, HStack, Icon, IconButton, Menu, Portal, Separator } from "@chakra-ui/react";
 import { MoreHorizontal, PackageCheck, PackageOpen, Printer, Receipt } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -15,6 +15,7 @@ import { CourierCharge } from "./CourierCharge";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
+import { fromHere } from "../../lib/cameFrom";
 
 // WHAT THE WAREHOUSE MAY DO TO A RESTOCK COMING TO IT, BY STATUS — the one matrix both the inbound list's rows and the
 // warehouse detail's header read. The warehouse owns the two acts that happen at its door
@@ -74,6 +75,7 @@ export interface WarehouseRestockActionsProps {
 export function WarehouseRestockActions({ request, teamId, variant, codMark, idSuffix = "" }: WarehouseRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [signing, setSigning] = useState(false);
 
   const actions = warehouseActions(request.status);
@@ -87,8 +89,10 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
         setSigning(true);
         return;
       case "accept":
-        // Accepting is COUNTING, placing and pricing — a form with sections, so it is a PAGE, not a dialog.
-        navigate(`/inventories/restock/${id}/accept`);
+        // Accepting is COUNTING, placing and pricing — a form with sections, so it is a PAGE, not a dialog. It carries
+        // where it was opened, so Back and Terima return there — the list with its filters, or this restock's page
+        // (a-form-returns-where-it-was-opened).
+        navigate(`/inventories/restock/${id}/accept`, { state: fromHere(location) });
         return;
       case "labels":
         navigate(`/inventories/restock/${id}/labels`);

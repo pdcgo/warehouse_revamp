@@ -102,6 +102,27 @@ export const WithoutTheUnplacedPile: Story = {
   },
 };
 
+// A RACK ANOTHER ROW HOLDS IS SHOWN DISABLED (one-rack-once-per-line) — a restock line's placement rows pass each other's
+// picks: the taken rack is still listed, disabled and with no words beside it, and a click does not pick it; this
+// picker's own value is never taken.
+export const TakenRacksAreDisabled: Story = {
+  args: { allowUnplaced: false, value: racks[1]!.id.toString(), takenRackIds: [racks[0]!.id.toString(), racks[1]!.id.toString()] },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("rack-select"));
+    const taken = await canvas.findByTestId(`rack-select-option-${racks[0]!.id}`);
+    await expect(taken).toHaveAttribute("data-disabled");
+    await expect(taken).toHaveTextContent(racks[0]!.code);
+    await expect(taken).not.toHaveTextContent("chosen");
+    // Its own pick is not taken from itself.
+    await expect(canvas.getByTestId(`rack-select-option-${racks[1]!.id}`)).not.toHaveAttribute("data-disabled");
+
+    await userEvent.click(taken, { pointerEventsCheck: 0 });
+    await expect(args.onChange).not.toHaveBeenCalled();
+  },
+};
+
 // A move's SOURCE is never its destination (a-move-is-one-rack-to-one-or-more-racks): the Move dialog passes the rack
 // it opened on, and that rack is simply not offered — the others still are.
 export const LeavesOneRackOut: Story = {

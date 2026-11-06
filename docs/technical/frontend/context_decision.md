@@ -91,6 +91,9 @@ when it applies one of these.
 | [every-combobox-reopens-whole](#every-combobox-reopens-whole) | EVERY combobox, opened again after a pick, shows its whole list — the person filter and the product search were the two that did not; the product search opens on its catalogue's first page | every combobox; swept 2026-11-04 |
 | [a-conflict-with-a-business-decision-is-said-in-its-mark](#a-conflict-with-a-business-decision-is-said-in-its-mark) | a part of a screen that does what the owner asked AGAINST a written business decision says so in its pending mark — `conflict: true`, and the decision in plain words in the strip's row and on the badge's hover | every pending list; restock's three, 2026-11-05 |
 | [stories-are-grouped-by-the-part-of-the-screen](#stories-are-grouped-by-the-part-of-the-screen) | a big page's stories are folders by the part of the screen they are about, each story with a short name; Default and Mobile lead, straight under the page | every page over 15 stories — 24 pages, 2026-11-05 |
+| [a-phone-card-is-padded-less](#a-phone-card-is-padded-less) | on a phone a card pads 16px a side — Chakra's `sm` — not its `md` 24px; from `md` up nothing changes; set once in the theme | every card, from Terima's Mobile story, 2026-11-05 |
+| [a-quantity-field-shows-its-minimum-until-typed](#a-quantity-field-shows-its-minimum-until-typed) | an empty quantity box shows its minimum — **0**, or 1 where 1 is the least — as the placeholder, never the value; `QuantityInput` does it on every screen | every `QuantityInput`, from Terima, 2026-11-06 |
+| [every-phone-title-is-20px](#every-phone-title-is-20px) | on a phone every page title is 20px — the page title (`Heading md`, 22 from `md`) and a detail page's larger one (`lg`, 26 from `md`) alike; a title row's gaps are 8px | every screen, from a restock's title row, 2026-11-05 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2064,6 +2067,77 @@ BEFORE  RestockSelling (27 in one list)        NOW  RestockSelling
 | pinned by | every story of those pages, passing in their folders |
 
 What it replaces: one `index.stories.tsx` per page, every story in one list under its long name.
+
+## a-phone-card-is-padded-less
+
+> Owner, in chat (2026-11-05), on Terima's Mobile story: *"padding default kebesaran di mobile"*.
+
+```
+a phone, 375px                     before                       now
+shell gutter                       12px                         12px
+a card's padding (Chakra md)       24px                         16px   ← Chakra's own sm
+room for a field                   375 − 72 = 303px             375 − 56 = 319px
+from md (the desktop shell)        24px                         24px   unchanged
+```
+
+| | |
+| --- | --- |
+| the rule | below `md` — the phone shell (`shell.ts`) — a card pads **16px** a side, Chakra's `sm` padding; from `md` up the `md` card keeps its 24px |
+| where | `theme.ts`, the card recipe's `md` size (`--card-padding`) — header, body and footer read the one variable, so every card on every screen moved at once; nothing is set per screen |
+| a box inside a card | keeps its own padding (`card`, 12px) — Terima's *Yang tiba* and *Taruh ke penempatan* panels |
+| `size="sm"` cards | already 16px everywhere, unchanged |
+| pinned by | Terima's `Mobile` story (a line's card body pads 16px); read at 1280px, the same card pads 24px |
+
+What it replaces: Chakra's 24px card padding on a phone.
+
+## every-phone-title-is-20px
+
+> Owner, in chat (2026-11-05), a screenshot of a restock's title row on a phone — *INV/2026/1…* cut beside the back
+> arrow and ⋯: *"judul kebesaran di mobile"*. Then, to a detail title brought down to 22px: *"20?"* — and to the
+> question whether for that title alone or every title on a phone: *"iya"*, every one.
+
+```
+a phone, 320px                   before                         now
+←  INV/2026/1… ⧉       [⋯]       26px, cut after 9 characters    ←  INV/2026/10/1001 ⧉  [⋯]   20px, whole
+   [Dalam Perjalanan]            gaps 12px                          [Dalam Perjalanan]       gaps 8px
+   Resi JNE0123456789 ⧉                                             Resi JNE0123456789 ⧉
+
+                     phone (below md)    from md
+Heading md           22 → 20             22        the page title — Pesanan, Terima Kiriman, every list
+Heading lg           26 → 20             26        a detail page's — a restock, a product, a rack, a batch
+Card.Title           18                  18        still a step under every title
+```
+
+| | |
+| --- | --- |
+| the size | below `md` — the phone shell (`shell.ts`) — **every page title is 20px**: `Heading md` and `Heading lg` are one size there. From `md` up nothing changes, 22 and 26. Set once on the heading recipe in `theme.ts`; no screen sizes its own title |
+| why one size | a detail title alone at 20 would have been the smallest title on a phone, and smaller than its own sticky bar's (`md`) — the bar showing the same words larger once the page scrolls |
+| the row | the restock's and the product's title rows (`RestockTitleRow`, `ProductTitleRow`) space back, title and actions **8px** apart on a phone — the sticky bar's gap; 12px from `md` |
+| a longer id | still cuts, with the copy button beside it copying the whole value — a store's invoice can be 27 characters, and no size fits that beside two buttons |
+| pinned by | the restock selling detail's `Mobile` story — the title 20px, nothing in it cut |
+
+What it replaces: the 22px page title and the 26px `lg` title on a phone.
+
+## a-quantity-field-shows-its-minimum-until-typed
+
+> Owner, in chat (2026-11-06), on Terima's count fields: *"input number default 0"*.
+
+```
+before   [−][    ][+]          an empty box, nothing in it
+now      [−][  0 ][+]          the 0 in the quiet placeholder ink — the value is still ""
+         [−][  1 ][+]          a field whose least is 1 (an order's quantity, a restock's count) shows 1
+```
+
+| | |
+| --- | --- |
+| the rule | an empty `QuantityInput` shows its **minimum** as its placeholder — `0`, or `1` where `min` is 1 — as every money field shows its 0 ([a-money-field-shows-0-until-typed](#a-money-field-shows-0-until-typed)). A caller's own `placeholder` still wins |
+| a placeholder, not a value | the box's VALUE stays `""` until something is typed or stepped. On Terima a real 0 in *Diterima* would mean "nothing came" — every unit missing — and Terima would press on a box nobody counted; the grey 0 says what the field holds while the empty value still says nobody answered |
+| where | `QuantityInput` itself (`placeholder ?? String(min)`) — every screen at once: Terima, the transfer's accept, the order form, bundles, the restock form, the stock count, the rack dialogs |
+| pinned by | Terima's `Default` (*Diterima* shows 0 and holds "") |
+
+What it replaces: an empty quantity box with nothing in it — and the row *counts keep their blank* of
+[the-restock-accept-follows-the-screen-rules](restock_decision.md#the-restock-accept-follows-the-screen-rules), which held
+that a number in an uncounted box would read as counted. The placeholder answers that: grey, and never the value.
 
 ## Recorded elsewhere
 

@@ -898,7 +898,8 @@ native element is genuinely needed, get an explicit ask first.
 - **A quantity is [`QuantityInput`](frontend/src/components/inputs/QuantityInput.tsx)** — Chakra's
   NumberInput with a − and a + flanking the box. `<input type="number">` draws the browser's own 15px
   spinners, **changes its value when somebody scrolls past it**, and accepts `1e3`. The value stays a
-  STRING, so a cleared box is empty rather than 0.
+  STRING, so a cleared box is empty rather than 0 — and an empty box SHOWS its minimum (0 or 1) as the
+  placeholder ([a-quantity-field-shows-its-minimum-until-typed](docs/technical/frontend/context_decision.md#a-quantity-field-shows-its-minimum-until-typed)).
 
 **A picker over data that GROWS is a SEARCH SELECT** (owner). Chakra's `Combobox` — a field you type
 into — not a `Select` you scroll. The exception is a set that is **static AND small**: it stays a plain
@@ -1072,6 +1073,9 @@ are set. Three things are centralised there on purpose:
   rare (e.g. `size="xs"` on a table row action).
 - **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
   those, never raw spacing values, so the whole app's density is retuned in one place.
+- **A phone's card pads 16px, not 24px** (owner) — the card recipe's `md` size, below `md`
+  ([a-phone-card-is-padded-less](docs/technical/frontend/context_decision.md#a-phone-card-is-padded-less)). Never
+  re-pad a `Card.Body` per screen to get there.
 - **The palette is seven TONES, each a Tailwind colour** (owner): main **rose** (`brand`), primary
   **indigo** (`primary`), success **emerald**, warning **amber**, info **sky**, error **red**,
   plain **gray**. Each tone is a `colorPalette` of its own name, defined once in theme.ts.
@@ -1085,7 +1089,8 @@ are set. Three things are centralised there on purpose:
   told apart by SIZE and COLOUR with bold as the single strong weight: page title 22, card title 18,
   section 15, **field label 13 bold in `fg.label` with a red `*` when required**, helper text 12
   `fg.muted`. It is set on the `heading`, `card` and `field` recipes — ⚠ under `variants.size`, never
-  `sizes`, which Chakra v3 silently ignores.
+  `sizes`, which Chakra v3 silently ignores. **On a phone every title is 20** — the page title (`md`) and a detail
+  page's larger one (`lg`, 26 from `md`) alike ([every-phone-title-is-20px](docs/technical/frontend/context_decision.md#every-phone-title-is-20px)).
 - **Fields react in the main tone, thinly** (owner): hover and focus change the BORDER to
   `border.fieldHover` / `brand.focusRing`, with `focusVisibleRing: "none"` — Chakra's own ring plus a
   border reads as a 2px double line. `FIELD_OUTLINE` is applied by NAME to every recipe that draws a
