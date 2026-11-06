@@ -1,144 +1,266 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Badge,
+  Alert,
   Box,
   Button,
   Card,
-  Checkbox,
   Flex,
+  Grid,
   Heading,
   Icon,
-  NativeSelect,
-  SegmentGroup,
+  IconButton,
+  Portal,
   Spacer,
-  Spinner,
   Stack,
   Text,
+  useBreakpointValue,
 } from "@chakra-ui/react";
-import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, Check, Download, Info, Printer, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Info, Printer, Tags, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
+
 import type { RestockLabel } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { toaster } from "../../components/feedback/Toaster";
 import { useTeam } from "../../features/team/TeamContext";
-import { useRestockLabels, useRestockRequest } from "../../features/restock/queries";
-import { formatRupiahNumber } from "../../lib/money";
+import { labelsPath } from "../../features/restock/labelsPath";
+import { useIsMobile } from "../../layouts/shell";
+import { cameFrom } from "../../lib/cameFrom";
+import { formatUnixDate } from "../../lib/datetime";
+import { useElementWidth } from "../../lib/useElementWidth";
+import { useFitToWindow } from "../../lib/useFitToWindow";
+import { FLASH_ON_LANDING, jumpTo } from "../../lib/useScrollSpy";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
+import { LabelPaper, LabelSticker } from "./components/LabelPaper";
+import { LabelSettingsPanel } from "./components/LabelSettingsPanel";
+import { RestocksCard } from "./components/RestocksCard";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { RESTOCK_LABELS_PENDING } from "./pending";
+import type { LabelSet } from "./labelSets";
+import { useLabelSets } from "./labelSets";
+import type { LabelSettings } from "./settings";
+import {
+  DEFAULT_SETTINGS,
+  PX_PER_MM,
+  clearSettings,
+  labelBox,
+  loadSettings,
+  normalise,
+  papersOf,
+  runOf,
+  saveSettings,
+} from "./settings";
 
-// One printable job entry — a label to draw, plus which copy of how many it is (piece mode).
-interface JobEntry {
+/** One label on the print — the restock it is from, and its place among that restock's labels. */
+interface Entry {
+  set: LabelSet;
   label: RestockLabel;
-  copyIndex: number;
-  copyTotal: number;
+  /** Its count's key: the restock and the label's index in it. */
+  key: string;
 }
 
-// The physical sticker sizes (#207). Screen shows a scaled preview; print emits these exact mm — see
-// the print stylesheet below, keyed on the `sz-*` class.
-const SIZES = ["30x15", "40x25", "50x30", "60x40"] as const;
-type LabelSize = (typeof SIZES)[number];
-
-// On a per-piece run of hundreds, the screen previews a sample and prints the whole job — the overflow
-// is rendered but hidden on screen, and revealed by the print stylesheet.
-const PREVIEW_CAP = 48;
-
-function parseRequestId(raw: string | undefined): bigint {
-  if (!raw) return 0n;
-  try {
-    return BigInt(raw);
-  } catch {
-    return 0n;
+// THE RESTOCKS ON THIS PRINT — the address's `?ids=503,502`, the labels' one address for one restock or several
+// (the-labels-have-one-address). Every id once, in order; anything that is not a whole number is dropped.
+function idsOf(search: string): bigint[] {
+  const parts = (new URLSearchParams(search).get("ids") ?? "").split(",");
+  const ids: bigint[] = [];
+  for (const part of parts) {
+    const p = part.trim();
+    if (!/^\d+$/.test(p)) continue;
+    const id = BigInt(p);
+    if (id > 0n && !ids.includes(id)) ids.push(id);
   }
-}
 
-function formatDate(unix: bigint): string {
-  if (unix <= 0n) return "";
-
-  return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return ids;
 }
 
 // RestockLabelsPage prints the stickers for an ACCEPTED delivery — the step after counting it in: one label per
 // shelved unit (or per placement) so a picker can find and scan what just landed.
 //
 // It is warehouse-only, like accepting: the crew that shelved the goods prints them. The QR encodes
-// `sku/batch-id` — one batch per line (one-batch-per-line) — while WHERE it went rides beside it as the
-// placement chip, because a line split across two placements is one code in two places. Every good unit is on
-// a placement (there-is-no-unplaced-pile), so every label has one; there is no holding pile to print.
+// `sku/batch-id` — one batch per line (one-batch-per-line). Every good unit is on a placement
+// (there-is-no-unplaced-pile), so every label has one; there is no holding pile to print.
 //
-// ONLY AN ACCEPTED RESTOCK HAS LABELS: before the count nothing became stock, so there is nothing to stick on.
-// The page reads the restock first and says so, rather than asking for labels the server would refuse.
+// AN ACCEPTED RESTOCK — AND AN ARRIVED ONE (owner: *"halaman ini juga bisa diakses status tiba, tapi tanpa penempatan
+// harusnya"*, labels-print-from-arrived). Accepted, the labels are the server's: one per placement, its batch in the QR.
+// Arrived, the box is signed for and not yet counted, so nothing is on a placement and no batch exists: the labels are
+// the restock's own lines — one per product, as many as were ordered, NO PLACEMENT, the SKU alone in the QR. Any other
+// status has none, and the page says so rather than asking for labels the server would refuse.
 //
 // Broken and missing units are absent by construction: they never became stock, so the server returns no
 // label for them. The count of what was left out is shown so a short run reads as deliberate.
+//
+// SET UP IN MM (owner, 2026-11-06, the-label-is-set-up-in-mm) — the paper, the grid of labels on it, the padding, the
+// text and each text's size, the run's limit and page; remembered on this device (settings.ts). The screen previews
+// each paper at its true proportions, scaled up; the print sends every paper of the run, one paper a page, the page
+// exactly the paper's size.
+//
+// ON THE SCREEN RULES (the-restock-labels-follow-the-screen-rules): back is its icon in the title's row and returns
+// where the page was opened; on a phone the header is one row with Cetak as its icon; a first load is a
+// skeleton; the date speaks the app's language; nothing runs past a phone's edge.
+//
+// MANY RESTOCKS IN ONE PRINT (owner: *"halaman labels bisa print banyak restock sekaligus"*,
+// labels-print-several-restocks) — the page holds a LIST of restocks, opened with the one it came from: *Tambah Restok*
+// puts another on, ✕ takes one off, and the run is every label of every restock, in that order, each with its own
+// count. The address follows (`/inventories/restock/labels?ids=503,502`), so a refresh prints the same set — ONE
+// address, one restock or several (owner: *"pakai 1 alamat saja"*, the-labels-have-one-address); the old
+// `/inventories/restock/503/labels` redirects here (router.tsx).
 export function RestockLabelsPage() {
   const { current } = useTeam();
-  const { requestId: rawId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const mobile = useIsMobile();
+  // From `lg` the settings stand in a column beside the preview, held in view and fitted to the window.
+  const wide = useBreakpointValue({ base: false, lg: true }) ?? false;
+  const column = useFitToWindow<HTMLDivElement>(wide);
 
-  const requestId = parseRequestId(rawId);
+  const [ids, setIds] = useState<bigint[]>(() => idsOf(location.search));
+  // EVERY WAY OUT GOES WHERE THE PAGE WAS OPENED (a-form-returns-where-it-was-opened) — the list with its filters, or
+  // a restock's page; reached by a link, the restock's page, or the list for several. Read once: the address changes
+  // as restocks are added, and the way back must not change with it.
+  const [openedFrom] = useState(() => cameFrom(location));
+  const one = ids.length === 1;
+  const backTo = openedFrom ?? (one ? `/inventories/restock/${ids[0]!.toString()}` : "/inventories/restock");
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const teamId = isWarehouse ? current?.teamId : undefined;
 
-  // The restock first — only an ACCEPTED one has labels, and asking for any other's is a refusal dressed as an error.
-  const restock = useRestockRequest({ teamId, requestId });
-  const accepted = restock.data?.status === RestockRequestStatus.ACCEPTED;
+  // Each restock's labels — accepted, the server's; arrived, its own lines; anything else, none (labelSets.ts).
+  const sets = useLabelSets(teamId, ids);
+  const readySets = sets.filter((s) => s.state === "ready");
 
-  const query = useRestockLabels({ teamId: accepted ? teamId : undefined, requestId });
-  const data = query.data ?? null;
+  // A restock on or off the print — the address follows, replaced, carrying the way back.
+  const changeIds = (next: bigint[]) => {
+    setIds(next);
+    navigate(labelsPath(next), {
+      replace: true,
+      preventScrollReset: true,
+      state: openedFrom ? { from: openedFrom } : undefined,
+    });
+  };
+  const addRestock = (id: bigint) => {
+    if (!ids.includes(id)) changeIds([...ids, id]);
+  };
+  const removeRestock = (id: bigint) => {
+    if (ids.length > 1) changeIds(ids.filter((x) => x !== id));
+  };
+  // A RESTOCK TAKES YOU TO ITS LABELS (owner: *"restock navigasi ke labelnya"*, labels-a-restock-jumps-to-its-labels) —
+  // its group in Yang Dicetak, scrolled to and blinking once (a-nav-jump-blinks-where-it-lands).
+  const jumpToRestock = (id: bigint) => {
+    const el = document.querySelector<HTMLElement>(`[data-jump="restock-${id.toString()}"]`);
+    if (el) jumpTo(el);
+  };
 
-  const [mode, setMode] = useState<"piece" | "shelf">("piece");
-  const [size, setSize] = useState<LabelSize>("40x25");
-  const [showPlacement, setShowPlacement] = useState(true);
-  const [showRef, setShowRef] = useState(true);
-  const [showHpp, setShowHpp] = useState(false);
+  // Remembered on this device (the-label-settings-are-remembered); the run's page is not — a new visit starts at 1.
+  const [settings, setSettings] = useState<LabelSettings>(loadSettings);
+  const [page, setPage] = useState(1);
+  useEffect(() => saveSettings(settings), [settings]);
+  const change = (patch: Partial<LabelSettings>) => setSettings((prev) => normalise({ ...prev, ...patch }));
+  const reset = () => {
+    clearSettings();
+    setSettings(DEFAULT_SETTINGS);
+    setPage(1);
+  };
 
-  const labels = useMemo(() => data?.labels ?? [], [data]);
-
-  // The full print job. Shelf mode is one label per placement; piece mode expands each placement into
-  // one sticker per unit on it.
-  const job = useMemo<JobEntry[]>(() => {
-    if (mode === "shelf") {
-      return labels.map((label) => ({ label, copyIndex: 1, copyTotal: 1 }));
-    }
-
-    const out: JobEntry[] = [];
-    for (const label of labels) {
-      const total = Number(label.quantity);
-      for (let i = 1; i <= total; i++) {
-        out.push({ label, copyIndex: i, copyTotal: total });
-      }
-    }
-    return out;
-  }, [labels, mode]);
-
-  const productCount = useMemo(
-    () => new Set(labels.map((l) => l.sku)).size,
-    [labels],
+  // Every label of every restock, in the restocks' order — the restock it is from travels with it.
+  const entries = useMemo<Entry[]>(
+    () =>
+      readySets.flatMap((set) =>
+        set.labels.map((label, i) => ({ set, label, key: `${set.id.toString()}:${i}` })),
+      ),
+    // `sets` is rebuilt only when an answer changes (labelSets.ts).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sets],
   );
+  const labels = useMemo(() => entries.map((e) => e.label), [entries]);
 
-  const restockRef = data ? `#${data.restockId.toString()}` : "";
-  const receivedOn = data ? formatDate(data.receivedAtUnix) : "";
+  // HOW MANY OF EACH LABEL (owner: *"bisa diedit jumlahnya"*, the-print-list-is-each-label-and-its-count) — each label of
+  // the restock (a product on a placement) with its own count, typed over. Until typed, *Satu label per* says: a piece,
+  // the units on that placement; a placement, 1. Choosing it again starts every count over from it.
+  const [counts, setCounts] = useState<Record<string, string>>({});
+  const defaultCount = (label: RestockLabel) => (settings.mode === "shelf" ? 1 : Number(label.quantity));
+  const countOf = (entry: Entry) => {
+    const typed = counts[entry.key];
+    if (typed === undefined) return defaultCount(entry.label);
+    const n = Number(typed);
+    return typed === "" || !Number.isFinite(n) ? 0 : Math.max(0, Math.round(n));
+  };
+  const changeSettings = (patch: Partial<LabelSettings>) => {
+    if (patch.mode !== undefined) setCounts({});
+    change(patch);
+  };
 
+  // The full job — each label as many times as its count.
+  const job: RestockLabel[] = [];
+  for (const entry of entries) {
+    for (let n = 0; n < countOf(entry); n++) job.push(entry.label);
+  }
+  /** How many of one restock's labels print — its counts summed. */
+  const printedOf = (id: bigint) => entries.filter((e) => e.set.id === id).reduce((s, e) => s + countOf(e), 0);
+
+  const productCount = useMemo(() => new Set(labels.map((l) => l.sku)).size, [labels]);
+  // The run this print sends — `limit` labels, the `page`-th of them — cut into papers.
+  const run = runOf(job, settings.limit, page);
+  const papers = papersOf(run.items, settings);
+  // Today, in the app's language — printed when the date is on.
+  const today = formatUnixDate(BigInt(Math.floor(Date.now() / 1000)));
+
+  // THE PREVIEW — one paper, the run's first, filled as it will print; else the first label on its own. As large as the
+  // card holds, up to 3×, never below its true size; 24px is the grey ground's padding.
+  const [previewRef, previewWidth] = useElementWidth<HTMLDivElement>();
+  const paperPx = settings.paperWidth * PX_PER_MM;
+  const scale = previewWidth > 0 ? Math.min(3, Math.max(1, (previewWidth - 24) / paperPx)) : 1;
+  const previewLabels = papers[0] ?? (labels[0] ? [labels[0]] : []);
+  // Yang Dicetak's stickers — each label at up to 2× its box.
+  const stickerPx = labelBox(settings).width * PX_PER_MM;
+  const stickerScale = Math.min(2, Math.max(1, 200 / Math.max(1, stickerPx)));
+
+  // OUR PRINT — the run's papers, through the browser's dialog (which is where a PDF is saved too). Nothing to print is
+  // said, never a blank page sent.
+  const printLabels = () => {
+    if (papers.length === 0) {
+      toaster.create({ type: "warning", title: t("restock.labels.nothingToPrint") });
+      return;
+    }
+    window.print();
+  };
+  // CTRL+P IS OUR PRINT (owner: *"detect ctrl+P jadi cetak kita"*, ctrl-p-prints-the-labels) — and ⌘P on a Mac: the same
+  // act as Cetak, so the shortcut never prints the page as it looks, nor a run with nothing in it. Read through a ref, so
+  // the one listener always prints the latest run.
+  const printRef = useRef(printLabels);
+  printRef.current = printLabels;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        printRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Back is its icon alone, in the title's row — as on the restock's other pages.
   const back = (
-    <Button
-      size="xs"
+    <IconButton
+      size="sm"
       variant="ghost"
-      alignSelf="flex-start"
+      flexShrink={0}
       className="no-print"
-      onClick={() => navigate(`/inventories/restock/${rawId ?? ""}`)}
+      aria-label={one ? t("restock.labels.back", { id: ids[0]!.toString() }) : t("restock.labels.backAny")}
+      title={one ? t("restock.labels.back", { id: ids[0]!.toString() }) : t("restock.labels.backAny")}
+      onClick={() => navigate(backTo)}
       data-testid="labels-back"
     >
       <Icon as={ArrowLeft} boxSize="4" />
-      {t("restock.labels.back", { id: rawId ?? "" })}
-    </Button>
+    </IconButton>
   );
 
   if (!current) {
@@ -161,374 +283,408 @@ export function RestockLabelsPage() {
     );
   }
 
-  if (restock.isPending && teamId !== undefined && requestId !== 0n) {
+  // The first load shows the page's shape (motion-is-small-quick-and-shared) — until the first restock is in; one added
+  // later loads in its own row, and the rest of the page stays.
+  if (ids.length > 0 && sets.every((s) => s.state === "loading")) {
+    return <ListSkeleton heading rows={3} testId="labels-loading" />;
+  }
+
+  const first = sets[0];
+
+  // ONE RESTOCK, NEITHER ACCEPTED NOR ARRIVED — said plainly, with the way to the restock, as Terima says a restock it
+  // cannot take. Among several, it is a row of the Restok card that says so.
+  if (one && first?.state === "notPrintable" && first.restock) {
+    const id = first.restock.id;
+
     return (
-      <Stack gap="section">
-        {back}
-        <Spinner colorPalette="brand" />
+      <Stack gap="section" animationStyle="enter">
+        <Flex align="center" gap="2">
+          {back}
+          <Heading size="md" truncate>
+            {t("restock.labels.title")}
+          </Heading>
+          <RestockStatusBadge status={first.restock.status} />
+        </Flex>
+        <Alert.Root status="info" maxW="3xl" data-testid="labels-not-printable">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{t("restock.labels.notAcceptedTitle", { id: id.toString() })}</Alert.Title>
+            <Alert.Description>{t("restock.labels.notAccepted")}</Alert.Description>
+          </Alert.Content>
+        </Alert.Root>
+        <Button
+          variant="outline"
+          alignSelf="flex-start"
+          data-testid="labels-open-restock"
+          onClick={() => navigate(`/inventories/restock/${id}`)}
+        >
+          <Icon as={ArrowUpRight} boxSize="4" />
+          {t("restock.accept.openRestock")}
+        </Button>
       </Stack>
     );
   }
 
-  if (restock.data && !accepted) {
+  // NOTHING TO SHOW — no restock in the address, or the only one could not be read. Among several, an unreadable one is
+  // a row of the Restok card that says so.
+  if (!first || (one && first.state === "error")) {
     return (
       <Stack gap="section">
-        {back}
-        <Text color="fg.muted" data-testid="labels-not-accepted">
-          {t("restock.labels.notAccepted")}
-        </Text>
-      </Stack>
-    );
-  }
-
-  if (query.isPending && accepted) {
-    return (
-      <Stack gap="section">
-        {back}
-        <Spinner colorPalette="brand" />
-      </Stack>
-    );
-  }
-
-  if (restock.isError || query.isError || !data) {
-    return (
-      <Stack gap="section">
-        {back}
+        <Box>{back}</Box>
         <Text color="error.fg" data-testid="labels-error">
-          {restock.isError
-            ? rpcError(restock.error)
-            : query.isError
-              ? rpcError(query.error)
-              : t("restock.labels.notFound")}
+          {first?.error ? rpcError(first.error) : t("restock.labels.notFound")}
         </Text>
       </Stack>
     );
   }
 
-  const preview = job.slice(0, PREVIEW_CAP);
-  const overflow = job.slice(PREVIEW_CAP);
+  // How many will print — beside the actions on a desktop, under the title's row on a phone.
+  const summary = (
+    <Stack gap="0" textAlign={mobile ? "start" : "end"} data-testid="labels-count">
+      <Text fontSize="sm">
+        <Text as="span" fontWeight="bold">
+          {job.length}
+        </Text>{" "}
+        {t("restock.labels.count", { products: productCount })}
+      </Text>
+      <Text fontSize="xs" color="fg.muted" data-testid="labels-run">
+        {t("restock.labels.settings.runLine", { from: run.from, to: run.to, total: job.length, papers: papers.length })}
+      </Text>
+    </Stack>
+  );
 
   return (
-    <Stack gap="section">
-      <PrintStyles />
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack gap="section" animationStyle="enter" data-testid="labels-page">
+      <PrintStyles settings={settings} />
 
-      {back}
-
-      {/* The action header — count of what will print, and Print / Download (both the browser's own
-          print dialog, which is where a PDF is saved too). */}
-      <Flex align="center" gap="card" wrap="wrap" className="no-print">
-        <Heading size="md">{t("restock.labels.heading", { id: data.restockId.toString() })}</Heading>
-        <Badge colorPalette="success">
-          <Icon as={Check} boxSize="3.5" />
-          {t("restock.labels.accepted")}
-        </Badge>
+      {/* THE TITLE'S ROW — back, the title, the status, and Cetak: the browser's own print dialog, which is where a PDF
+          is saved too — so there is no Unduh PDF beside it (owner: *"unduh pdf dan cetak sama plek ketiplek, tidak
+          perlu unduh pdf"*, cetak-is-the-one-print-button). On a phone ONE row with Cetak as its icon
+          (the-phone-header-is-one-row, a-phone-header-action-is-an-icon), and how many will print comes down under it. */}
+      <Flex align="center" gap={mobile ? "2" : "card"} wrap={mobile ? "nowrap" : "wrap"} className="no-print">
+        {back}
+        {/* One restock names itself and its status; several are counted, and the Restok card names each. */}
+        <Heading size="md" truncate data-testid="labels-heading">
+          {one
+            ? t("restock.labels.heading", { id: first.id.toString() })
+            : t("restock.labels.headingMany", { count: ids.length })}
+        </Heading>
+        {one && first.restock && <RestockStatusBadge status={first.restock.status} />}
         <Spacer />
-        <Stack gap="0" textAlign="end" mr="2">
-          <Text fontSize="sm">
-            <Text as="span" fontWeight="semibold">
-              {job.length}
-            </Text>{" "}
-            {t("restock.labels.count", { products: productCount })}
-          </Text>
-          <Text fontSize="xs" color="fg.muted">
-            {mode === "piece" ? t("restock.labels.perPiece") : t("restock.labels.perShelf")}
-          </Text>
-        </Stack>
-        <Button variant="outline" onClick={() => window.print()} data-testid="labels-download">
-          <Icon as={Download} boxSize="4" />
-          {t("restock.labels.downloadPdf")}
-        </Button>
-        <Button colorPalette="brand" onClick={() => window.print()} data-testid="labels-print">
-          <Icon as={Printer} boxSize="4" />
-          {t("restock.labels.print")}
-        </Button>
+        {mobile ? (
+          <CompactActions
+            menuLabel={t("restock.accept.actions")}
+            actions={[
+              {
+                id: "print",
+                label: t("restock.labels.print"),
+                icon: Printer,
+                primary: true,
+                disabled: papers.length === 0,
+                testId: "labels-print",
+                onClick: printLabels,
+              },
+            ]}
+          />
+        ) : (
+          <>
+            {summary}
+            <Button
+              colorPalette="brand"
+              disabled={papers.length === 0}
+              title={t("restock.labels.printShortcut")}
+              onClick={printLabels}
+              data-testid="labels-print"
+            >
+              <Icon as={Printer} boxSize="4" />
+              {t("restock.labels.print")}
+            </Button>
+          </>
+        )}
       </Flex>
 
-      {/* Controls: how many labels, how big, what goes on them. */}
-      <Card.Root className="no-print">
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="semibold">
-              {t("restock.labels.controls")}
-            </Text>
-            <Text fontSize="xs" color="fg.muted" mt="-2">
-              {t("restock.labels.qrHint")}
-            </Text>
+      {mobile && <Box className="no-print">{summary}</Box>}
 
-            <Flex gap="8" wrap="wrap" align="flex-start">
-              <Stack gap="1.5">
-                <Text fontSize="xs" color="fg.subtle" fontWeight="semibold" textTransform="uppercase">
-                  {t("restock.labels.oneLabelPer")}
-                </Text>
-                <SegmentGroup.Root
-                  value={mode}
-                  onValueChange={(e) => setMode((e.value as "piece" | "shelf") ?? "piece")}
-                  data-testid="labels-mode"
-                >
-                  <SegmentGroup.Indicator />
-                  <SegmentGroup.Items
-                    items={[
-                      { value: "piece", label: t("restock.labels.piece") },
-                      { value: "shelf", label: t("restock.labels.shelf") },
-                    ]}
-                  />
-                </SegmentGroup.Root>
-              </Stack>
+      {/* What is not wired yet — the restocks are read one by one (pending.ts). */}
+      <Box className="no-print">
+        <NotImplementedSummary list={RESTOCK_LABELS_PENDING} />
+      </Box>
 
-              <Stack gap="1.5">
-                <Text fontSize="xs" color="fg.subtle" fontWeight="semibold" textTransform="uppercase">
-                  {t("restock.labels.size")}
-                </Text>
-                <NativeSelect.Root width="40">
-                  <NativeSelect.Field
-                    value={size}
-                    onChange={(e) => setSize(e.target.value as LabelSize)}
-                    data-testid="labels-size"
-                  >
-                    {SIZES.map((s) => (
-                      <option key={s} value={s}>
-                        {s.replace("x", " × ")} mm
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-              </Stack>
+      {/* THE SETTINGS BESIDE THE PREVIEW where there is room — held in view while the preview scrolls
+          (the-label-page-is-settings-and-a-preview); on the right, what is printed: the restocks, the Pratinjau, Yang
+          Dicetak. On a phone it all stacks, the restocks first (labels-print-several-restocks).
 
-              <Stack gap="1.5">
-                <Text fontSize="xs" color="fg.subtle" fontWeight="semibold" textTransform="uppercase">
-                  {t("restock.labels.showOn")}
-                </Text>
-                <Stack gap="1.5">
-                  <LabelToggle
-                    checked={showPlacement}
-                    onChange={setShowPlacement}
-                    label={t("restock.labels.showPlacement")}
-                  />
-                  <LabelToggle
-                    checked={showRef}
-                    onChange={setShowRef}
-                    label={t("restock.labels.showRef")}
-                  />
-                  <LabelToggle
-                    checked={showHpp}
-                    onChange={setShowHpp}
-                    label={t("restock.labels.showHpp")}
-                  />
-                </Stack>
-              </Stack>
-            </Flex>
+            lg                                   base
+            ┌ settings ┐ ┌ Restok ──────────┐   Restok
+            │ (sticky, │ ├ Pratinjau ───────┤   settings
+            │  fitted) │ ├ Yang Dicetak ────┤   Pratinjau
+            └──────────┘ └──────────────────┘   Yang Dicetak
 
-            {/* The honest hard case: broken and missing units never entered stock, so they got no label. */}
-            {data.excludedCount > 0n && (
-              <Flex
-                align="center"
-                gap="2"
-                borderTopWidth="1px"
-                borderColor="border"
-                pt="card"
-                color="fg.muted"
-                fontSize="sm"
-                data-testid="labels-excluded"
-              >
-                <Icon as={TriangleAlert} boxSize="4" color="warning.fg" />
-                <Text>{t("restock.labels.excluded", { count: Number(data.excludedCount) })}</Text>
-              </Flex>
-            )}
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-
-      {job.length === 0 ? (
-        <Text color="fg.muted" data-testid="labels-empty">
-          {t("restock.labels.none")}
-        </Text>
-      ) : (
-        <Box>
-          <Box className="labels-sheet" data-testid="labels-sheet">
-            {preview.map((entry, i) => (
-              <LabelCard
-                key={`p${i}`}
-                entry={entry}
-                size={size}
-                showPlacement={showPlacement}
-                showRef={showRef}
-                showHpp={showHpp}
-                restockRef={restockRef}
-                receivedOn={receivedOn}
-              />
-            ))}
-            {/* Rendered but hidden on screen — the print stylesheet reveals them so the whole job
-                prints even when the preview shows a sample. */}
-            {overflow.map((entry, i) => (
-              <Box key={`o${i}`} className="print-only-label">
-                <LabelCard
-                  entry={entry}
-                  size={size}
-                  showPlacement={showPlacement}
-                  showRef={showRef}
-                  showHpp={showHpp}
-                  restockRef={restockRef}
-                  receivedOn={receivedOn}
-                />
-              </Box>
-            ))}
-          </Box>
-
-          {overflow.length > 0 && (
-            <Flex align="center" gap="2" mt="card" color="fg.subtle" fontSize="sm" className="no-print">
-              <Icon as={Info} boxSize="4" />
-              <Text>
-                {t("restock.labels.previewNote", { shown: PREVIEW_CAP, total: job.length })}
-              </Text>
-            </Flex>
-          )}
+          The second row is `1fr`, so the settings — spanning both rows — never stretch the Restok card's. */}
+      <Grid
+        templateColumns={{ base: "minmax(0, 1fr)", lg: "22rem minmax(0, 1fr)" }}
+        templateRows={{ lg: "auto 1fr" }}
+        gap="section"
+        alignItems="start"
+      >
+        <Box gridColumn={{ lg: "2" }} gridRow={{ lg: "1" }} minW="0">
+          <RestocksCard
+            teamId={teamId}
+            sets={sets}
+            printedOf={printedOf}
+            onAdd={addRestock}
+            onRemove={removeRestock}
+            onJump={jumpToRestock}
+          />
         </Box>
-      )}
+
+        {/* THE SETTINGS ARE THE WHOLE COLUMN (owner: *"scrollbar di label settingnya tidak enak"*,
+            the-label-settings-scroll-inside-their-card) — as Product Discover's filter panel is its column: it sticks and
+            ends a gutter above the window's foot wherever it stands (useFitToWindow); its title stays and the groups
+            scroll inside. Sharing the column with the Restok card left them a window of ~430px for ~900px of settings. */}
+        <Box
+          ref={column}
+          gridColumn={{ lg: "1" }}
+          gridRow={{ lg: "1 / span 2" }}
+          position={wide ? "sticky" : "static"}
+          top="page"
+          display="flex"
+          flexDirection="column"
+          minW="0"
+        >
+          <LabelSettingsPanel
+            settings={settings}
+            onChange={changeSettings}
+            page={run.page}
+            pages={run.pages}
+            onPage={setPage}
+            onReset={reset}
+            fill={wide}
+          />
+        </Box>
+
+        {/* THE RIGHT COLUMN — the Pratinjau on top, one paper as it will print; under it Yang Dicetak, every label once
+            with its count (owner: *"kasih pratinjau di atas qrcodenya dan jumlahnya, bisa diedit jumlahnya, semua qrcode
+            yang sekarang bukan pratinjau jadi yang di print"*, the-print-list-is-each-label-and-its-count). */}
+        <Stack gap="section" minW="0" className="no-print" gridColumn={{ lg: "2" }} gridRow={{ lg: "2" }}>
+          <Card.Root minW="0" data-testid="labels-preview">
+            <Card.Body>
+              <Stack gap="card">
+                <Flex align="baseline" gap="2" wrap="wrap">
+                  <Text fontWeight="bold">{t("restock.labels.settings.preview")}</Text>
+                  <Text fontSize="xs" color="fg.muted" data-testid="labels-preview-size">
+                    {t("restock.labels.settings.previewSize", {
+                      width: settings.paperWidth,
+                      height: settings.paperHeight,
+                      rows: settings.rows,
+                      columns: settings.columns,
+                    })}
+                  </Text>
+                </Flex>
+
+                {previewLabels.length === 0 ? (
+                  // AN EMPTY RUN SAYS WHY (an-empty-list-shows-a-hint) — nothing of this delivery went into stock.
+                  <EmptyHint icon={Tags} title={t("restock.labels.none")} testId="labels-empty" />
+                ) : (
+                  // ONE PAPER on a grey ground, as large as the card holds; a paper wider than a phone scrolls in it
+                  // (nothing-runs-past-a-phones-edge).
+                  <Box ref={previewRef} bg="bg.muted" borderRadius="md" p="card" overflowX="auto" minW="0">
+                    <Flex justify="center">
+                      <Box flexShrink={0} bg="white" borderRadius="sm" boxShadow="sm" overflow="hidden">
+                        <Box style={{ zoom: scale }}>
+                          <LabelPaper labels={previewLabels} settings={settings} today={today} testId="labels-paper-0" />
+                        </Box>
+                      </Box>
+                    </Flex>
+                  </Box>
+                )}
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+
+          {(entries.length > 0 || (!one && readySets.length > 0)) && (
+            <Card.Root minW="0" data-testid="labels-to-print">
+              <Card.Body>
+                <Stack gap="card">
+                  <Flex align="baseline" gap="2" wrap="wrap">
+                    <Text fontWeight="bold">{t("restock.labels.settings.toPrint")}</Text>
+                    <Text fontSize="xs" color="fg.muted" data-testid="labels-to-print-total">
+                      {t("restock.labels.settings.toPrintLine", { total: job.length, kinds: labels.length })}
+                    </Text>
+                  </Flex>
+
+                  {/* EVERY LABEL ONCE, WITH ITS COUNT — the sticker on a grey tile, the product and its placement, and how
+                      many to print, typed over. Several restocks: one group each, under its number and status, in the
+                      order they print (labels-print-several-restocks). */}
+                  <Stack gap="section" className="labels-sheet" data-testid="labels-sheet">
+                    {readySets.map((set) => {
+                      const id = set.id.toString();
+                      const items = entries.filter((e) => e.set.id === set.id);
+
+                      return (
+                        // Where a row of the Restok card lands (labels-a-restock-jumps-to-its-labels) — clear of the
+                        // window's top, blinking once.
+                        <Stack
+                          key={id}
+                          gap="card"
+                          data-jump={`restock-${id}`}
+                          scrollMarginTop="page"
+                          borderRadius="md"
+                          css={FLASH_ON_LANDING}
+                          data-testid={`labels-group-${id}`}
+                        >
+                          {!one && (
+                            <Flex align="center" gap="2" wrap="wrap">
+                              <Text fontWeight="bold">#{id}</Text>
+                              {set.restock && <RestockStatusBadge status={set.restock.status} />}
+                              <Text fontSize="xs" color="fg.muted">
+                                {t("restock.labels.restocks.labelCount", { count: printedOf(set.id) })}
+                              </Text>
+                            </Flex>
+                          )}
+
+                          {/* ARRIVED, NOT COUNTED (labels-print-from-arrived) — said once a restock: no placement on its
+                              labels yet, and the counts are what was ordered. */}
+                          {set.arrived && (
+                            <Flex align="flex-start" gap="2" color="fg.muted" fontSize="sm" data-testid="labels-arrived-note">
+                              <Icon as={Info} boxSize="4" color="info.fg" flexShrink={0} mt="0.5" />
+                              <Text>{t("restock.labels.arrivedNote")}</Text>
+                            </Flex>
+                          )}
+
+                          {/* The honest hard case: broken and missing units never entered stock, so they got no label. */}
+                          {set.excludedCount > 0n && (
+                            <Flex align="center" gap="2" color="fg.muted" fontSize="sm" data-testid="labels-excluded">
+                              <Icon as={TriangleAlert} boxSize="4" color="warning.fg" flexShrink={0} />
+                              <Text>{t("restock.labels.excluded", { count: Number(set.excludedCount) })}</Text>
+                            </Flex>
+                          )}
+
+                          {items.length === 0 ? (
+                            <Text fontSize="sm" color="fg.muted">
+                              {t("restock.labels.none")}
+                            </Text>
+                          ) : (
+                            <Grid templateColumns="repeat(auto-fill, minmax(min(15rem, 100%), 1fr))" gap="card">
+                              {items.map((entry) => (
+                                <LabelItem
+                                  key={entry.key}
+                                  entry={entry}
+                                  index={entries.indexOf(entry)}
+                                  count={countOf(entry)}
+                                  value={counts[entry.key] ?? String(defaultCount(entry.label))}
+                                  onChange={(value) => setCounts((prev) => ({ ...prev, [entry.key]: value }))}
+                                  settings={settings}
+                                  today={today}
+                                  stickerScale={stickerScale}
+                                />
+                              ))}
+                            </Grid>
+                          )}
+                        </Stack>
+                      );
+                    })}
+                  </Stack>
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          )}
+        </Stack>
+      </Grid>
+
+      {/* WHAT PRINTS — every paper of the run, at its true size, one paper a page. Hidden on screen; outside the app's
+          root, so the print can drop everything else whole. */}
+      <Portal>
+        <div className="labels-print-root" data-testid="labels-print-root">
+          {papers.map((paperLabels, i) => (
+            <LabelPaper key={i} labels={paperLabels} settings={settings} today={today} />
+          ))}
+        </div>
+      </Portal>
     </Stack>
   );
 }
 
-function LabelToggle({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  return (
-    <Checkbox.Root
-      checked={checked}
-      onCheckedChange={(e) => onChange(e.checked === true)}
-      size="sm"
-    >
-      <Checkbox.HiddenInput />
-      <Checkbox.Control />
-      <Checkbox.Label>{label}</Checkbox.Label>
-    </Checkbox.Root>
-  );
-}
-
-// One sticker. The QR (vector, so it prints crisp at any size) sets the square height; the text
-// stacks beside it, with the placement's code — what is painted on the aisle — as a chip.
-function LabelCard({
+// ONE LABEL IN YANG DICETAK — its sticker on a grey tile, the product's name, where it is and how many there, and how
+// many of it to print, typed over (the-print-list-is-each-label-and-its-count). `index` is its place in the whole run,
+// across restocks, so the test ids read down the page.
+function LabelItem({
   entry,
-  size,
-  showPlacement,
-  showRef,
-  showHpp,
-  restockRef,
-  receivedOn,
+  index,
+  count,
+  value,
+  onChange,
+  settings,
+  today,
+  stickerScale,
 }: {
-  entry: JobEntry;
-  size: LabelSize;
-  showPlacement: boolean;
-  showRef: boolean;
-  showHpp: boolean;
-  restockRef: string;
-  receivedOn: string;
+  entry: Entry;
+  index: number;
+  count: number;
+  value: string;
+  onChange: (value: string) => void;
+  settings: LabelSettings;
+  today: string;
+  stickerScale: number;
 }) {
+  const { t } = useTranslation();
   const { label } = entry;
-  const payload = `${label.sku}/${label.batchId.toString()}`;
-
-  const meta: string[] = [];
-  if (entry.copyTotal > 1) meta.push(`${entry.copyIndex}/${entry.copyTotal}`);
-  if (showRef && restockRef) meta.push(`${restockRef}${receivedOn ? ` · ${receivedOn}` : ""}`);
 
   return (
-    <div className={`print-label sz-${size}`}>
-      <div className="label-qr">
-        <QRCodeSVG value={payload} size={128} marginSize={0} level="M" />
-      </div>
-      <div className="label-main">
-        <div className="label-top">
-          <span className="label-name">{label.name}</span>
-          {showPlacement && label.placementCode && (
-            <span className="label-rack" data-testid="label-placement">
-              {label.placementCode}
-            </span>
-          )}
-        </div>
-        <div className="label-foot">
-          <span className="label-sku">{payload}</span>
-          {showHpp && <span className="label-hpp">{formatRupiahNumber(label.hpp)}</span>}
-        </div>
-        {meta.length > 0 && <span className="label-meta">{meta.join(" · ")}</span>}
-      </div>
-    </div>
+    <Stack
+      gap="2"
+      borderWidth="1px"
+      borderColor="border"
+      borderRadius="md"
+      p="3"
+      opacity={count === 0 ? 0.55 : 1}
+      data-testid={`labels-item-${index}`}
+    >
+      <Flex justify="center" bg="bg.muted" borderRadius="sm" p="2" overflowX="auto">
+        <Box flexShrink={0} bg="white" boxShadow="xs" borderRadius="xs" overflow="hidden">
+          <Box style={{ zoom: stickerScale }}>
+            <LabelSticker label={label} settings={settings} today={today} />
+          </Box>
+        </Box>
+      </Flex>
+      {/* The name on its own line; under it where it is and how many there, beside the count. */}
+      <Text fontSize="sm" fontWeight="bold" lineClamp={1} title={label.name}>
+        {label.name}
+      </Text>
+      <Flex align="center" gap="2">
+        <Text fontSize="xs" color="fg.muted" flex="1" minW="0" data-testid={`labels-item-${index}-where`}>
+          {label.placementCode
+            ? `${label.placementCode} · ${t("restock.labels.settings.onPlacement", { count: Number(label.quantity) })}`
+            : t("restock.labels.settings.ordered", { count: Number(label.quantity) })}
+        </Text>
+        <QuantityInput
+          min={0}
+          width="12"
+          value={value}
+          aria-label={t("restock.labels.settings.countOf", { name: label.name, placement: label.placementCode })}
+          testId={`labels-count-${index}`}
+          onChange={onChange}
+        />
+      </Flex>
+    </Stack>
   );
 }
 
-// Print + label styling. Kept as a scoped stylesheet rather than Chakra props because it is genuinely
-// CSS's job: physical mm dimensions, point-sized type that fits a 30×15 sticker, and an @media print
-// block that strips the app chrome and lays the labels out as a sheet of real stickers. The class
-// names are local to this page.
-function PrintStyles() {
+// The page's print rules — the page's size IS the paper's, no margin; the app and everything but the run's papers is
+// dropped; one paper a page. Written with the settings in it, because `@page` takes no variables.
+function PrintStyles({ settings }: { settings: LabelSettings }) {
   return (
     <style>{`
-      .labels-sheet {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 12px;
-      }
-      .print-only-label { display: none; }
-      .print-label {
-        border: 1px solid #d0d5dd;
-        border-radius: 6px;
-        background: #fff;
-        color: #101828;
-        padding: 10px 12px;
-        display: flex;
-        align-items: stretch;
-        gap: 10px;
-        overflow: hidden;
-      }
-      .print-label.sz-30x15 { aspect-ratio: 2 / 1; }
-      .print-label.sz-40x25 { aspect-ratio: 8 / 5; }
-      .print-label.sz-50x30 { aspect-ratio: 5 / 3; }
-      .print-label.sz-60x40 { aspect-ratio: 3 / 2; }
-      .label-qr { flex: 0 0 auto; aspect-ratio: 1; height: 100%; display: grid; place-items: center; }
-      .label-qr svg { width: 100% !important; height: 100% !important; display: block; }
-      .label-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-      .label-top { display: flex; align-items: flex-start; gap: 8px; }
-      .label-name {
-        font-size: 13px; font-weight: 700; line-height: 1.2; flex: 1 1 auto; min-width: 0;
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-      }
-      .label-rack {
-        flex: 0 0 auto; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
-        background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe;
-        padding: 2px 7px; border-radius: 5px; white-space: nowrap;
-      }
-      .label-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: auto; }
-      .label-sku { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: #475467; }
-      .label-hpp { font-size: 11px; font-weight: 700; color: #101828; font-variant-numeric: tabular-nums; }
-      .label-meta {
-        font-size: 10.5px; color: #667085; font-variant-numeric: tabular-nums;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
-      .sz-30x15 .label-name { -webkit-line-clamp: 1; font-size: 12px; }
-      .sz-30x15 .label-hpp, .sz-30x15 .label-meta { font-size: 10px; }
-
+      .labels-print-root { display: none; }
       @media print {
-        @page { margin: 8mm; }
-        body { background: #fff; }
-        .no-print { display: none !important; }
-        .print-only-label { display: block; }
-        .labels-sheet { display: flex; flex-wrap: wrap; gap: 0; }
-        .print-only-label > .print-label, .labels-sheet > .print-label {
-          border: 1px dashed #bbb; border-radius: 0; break-inside: avoid; aspect-ratio: auto;
-        }
-        .print-label.sz-30x15 { width: 30mm; height: 15mm; padding: 1.5mm 2mm; gap: 1.5mm; }
-        .print-label.sz-40x25 { width: 40mm; height: 25mm; padding: 2mm 2.5mm; gap: 2mm; }
-        .print-label.sz-50x30 { width: 50mm; height: 30mm; padding: 2.5mm 3mm; gap: 2.5mm; }
-        .print-label.sz-60x40 { width: 60mm; height: 40mm; padding: 3mm 3.5mm; gap: 3mm; }
-        .sz-30x15 .label-name { font-size: 6pt; }
-        .sz-30x15 .label-sku, .sz-30x15 .label-hpp, .sz-30x15 .label-meta, .sz-30x15 .label-rack { font-size: 4.5pt; }
-        .sz-40x25 .label-name { font-size: 7pt; }
-        .sz-40x25 .label-sku, .sz-40x25 .label-hpp, .sz-40x25 .label-meta, .sz-40x25 .label-rack { font-size: 5.5pt; }
+        @page { size: ${settings.paperWidth}mm ${settings.paperHeight}mm; margin: 0; }
+        html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+        body > *:not(.labels-print-root) { display: none !important; }
+        .labels-print-root { display: block !important; }
+        .labels-print-root .label-paper { break-after: page; page-break-after: always; }
+        .labels-print-root .label-paper:last-child { break-after: auto; page-break-after: auto; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     `}</style>
   );

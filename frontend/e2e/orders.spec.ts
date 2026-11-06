@@ -1197,16 +1197,21 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(page.getByTestId("restock-detail-page")).toContainText("acc-02 (3)");
 
   // #207 — once accepted, the warehouse prints the shelf labels for exactly what entered stock.
+  // The OLD address — it lands on the labels' one address with this restock on it (the-labels-have-one-address).
   await page.goto(`/inventories/restock/${seeded.requestId}/labels`);
+  await expect(page).toHaveURL(new RegExp(`/inventories/restock/labels\\?ids=${seeded.requestId}$`));
   await expect(page.getByTestId("labels-sheet")).toBeVisible();
 
-  // Piece mode by default: 8 good units (5 + 3) → 8 labels. The 2 broken got none, and the screen says so.
-  await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(8);
+  // Yang Dicetak lists each label once — the two shelves — with its count (the-print-list-is-each-label-and-its-count).
+  // Piece mode by default: 8 good units (5 + 3) → 8 labels to print. The 2 broken got none, and the screen says so.
+  const printed = page.getByTestId("labels-print-root").locator(".print-label");
+  await expect(page.getByTestId("labels-sheet").locator(".label-sticker")).toHaveCount(2);
+  await expect(printed).toHaveCount(8);
   await expect(page.getByTestId("labels-excluded")).toContainText("2");
 
-  // One-per-shelf collapses the run to one label per placement — the two shelves, two labels.
+  // One-per-shelf starts each count at 1 — the two shelves, two labels.
   await page.getByTestId("labels-mode").getByText("Shelf").click();
-  await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(2);
+  await expect(printed).toHaveCount(2);
 
   // #219 — the goods-received receipt for the whole delivery: 10 arrived, 2 broken, 8 accepted into stock.
   await page.goto(`/inventories/restock/${seeded.requestId}/receipt`);

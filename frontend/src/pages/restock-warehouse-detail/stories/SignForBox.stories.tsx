@@ -35,7 +35,7 @@ export const SignForBoxMovesItToArrived: Story = {
     await userEvent.click(confirm);
 
     await expectStatus(canvas, RestockRequestStatus.ARRIVED);
-    await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-accept-501"]));
+    await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-accept-501", "restock-action-labels-501"]));
     await waitFor(() => expect(trailRows(canvasElement)).toHaveLength(2));
     await expect(trailRows(canvasElement)[1]).toHaveTextContent("Signed for the box");
     await expect(canvas.getByTestId("restock-detail-arrived-at")).not.toHaveTextContent("—");
@@ -70,7 +70,7 @@ export const ALateLostBoxIsSignedForAsArrived: Story = {
     await userEvent.click(confirm);
 
     await expectStatus(canvas, RestockRequestStatus.ARRIVED);
-    await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-accept-504"]));
+    await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-accept-504", "restock-action-labels-504"]));
     const move = await canvas.findByTestId("restock-timeline-3-move");
     await expect(within(move).getByTestId(`restock-status-${RestockRequestStatus.LOST}`)).toBeVisible();
     await expect(within(move).getByTestId(`restock-status-${RestockRequestStatus.ARRIVED}`)).toBeVisible();

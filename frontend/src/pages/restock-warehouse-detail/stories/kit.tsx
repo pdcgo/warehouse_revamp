@@ -1,6 +1,6 @@
 import { within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../../.storybook/pageStory";
+import { asTeam, marker, markerWithSearch, routedPage } from "../../../../.storybook/pageStory";
 import { asRole } from "../../../../.storybook/sessionScenario";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { RestockWarehouseDetailPage } from "../index";
@@ -21,7 +21,8 @@ export function routedAt(id: bigint) {
     [
       { path: "/inventories/restock/:requestId", element: <RestockWarehouseDetailPage /> },
       marker("/inventories/restock/:requestId/accept", "at-restock-accept"),
-      marker("/inventories/restock/:requestId/labels", "at-restock-labels"),
+      // The labels' one address (the-labels-have-one-address) — static, so it ranks above :requestId.
+      markerWithSearch("/inventories/restock/labels", "at-restock-labels"),
       marker("/inventories/restock/:requestId/receipt", "at-restock-receipt"),
       marker("/inventories/restock", "at-restock-list"),
     ],

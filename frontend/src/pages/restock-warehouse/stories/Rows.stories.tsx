@@ -74,7 +74,8 @@ export const TheRowSaysWhoAndWhen: Story = {
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
 
-    await expect(heads).toEqual(["Restock", "From", "Products", "Shipment", "Status", "Created", "Arrived", "Actions"]);
+    // The first column is the ticks' — its head is the box that ticks the page (the-list-prints-the-ticked-restocks).
+    await expect(heads).toEqual(["", "Restock", "From", "Products", "Shipment", "Status", "Created", "Arrived", "Actions"]);
     await expect(canvas.getByTestId("restock-open-501")).toHaveTextContent(/^#501$/);
     await expect(canvas.getByTestId("restock-from-501")).toHaveTextContent("Toko Melati");
     await waitFor(() => expect(canvas.getByTestId("restock-created-by-501")).toHaveTextContent(/^by /));

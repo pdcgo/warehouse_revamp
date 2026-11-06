@@ -94,6 +94,8 @@ when it applies one of these.
 | [a-phone-card-is-padded-less](#a-phone-card-is-padded-less) | on a phone a card pads 16px a side — Chakra's `sm` — not its `md` 24px; from `md` up nothing changes; set once in the theme | every card, from Terima's Mobile story, 2026-11-05 |
 | [a-quantity-field-shows-its-minimum-until-typed](#a-quantity-field-shows-its-minimum-until-typed) | an empty quantity box shows its minimum — **0**, or 1 where 1 is the least — as the placeholder, never the value; `QuantityInput` does it on every screen | every `QuantityInput`, from Terima, 2026-11-06 |
 | [every-phone-title-is-20px](#every-phone-title-is-20px) | on a phone every page title is 20px — the page title (`Heading md`, 22 from `md`) and a detail page's larger one (`lg`, 26 from `md`) alike; a title row's gaps are 8px | every screen, from a restock's title row, 2026-11-05 |
+| [a-sticky-side-column-ends-above-the-windows-foot](#a-sticky-side-column-ends-above-the-windows-foot) | a column sticking beside a page ends a gutter above the window's foot wherever it stands — its title stays, the rest scrolls inside its card, the bar on the card's edge; one hook, `useFitToWindow` | every sticky side column — Product Discover, Cetak Label, 2026-11-06 |
+| [an-interim-read-is-marked](#an-interim-read-is-marked) | a part that works and is true but reads one call per row, where one call for all should be, carries a pending mark of a fifth kind, `interim` — *pembacaan sementara* | every pending list — from Cetak Label, 2026-11-06 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2138,6 +2140,55 @@ now      [−][  0 ][+]          the 0 in the quiet placeholder ink — the valu
 What it replaces: an empty quantity box with nothing in it — and the row *counts keep their blank* of
 [the-restock-accept-follows-the-screen-rules](restock_decision.md#the-restock-accept-follows-the-screen-rules), which held
 that a number in an uncounted box would read as counted. The placeholder answers that: grey, and never the value.
+
+## a-sticky-side-column-ends-above-the-windows-foot
+
+> Owner, in chat (2026-11-06), on Cetak Label: *"scrollbarnya settingnya seperti di product discover, heightnya
+> menyesuaikan"* — the rule first given on Product Discover
+> ([the-filter-panel-ends-above-the-windows-foot](products_decision.md#the-filter-panel-ends-above-the-windows-foot)).
+
+```
+┌ Title              ↺ ┐  ← stays
+│ group               ▐│
+│ group               ▐│  ← scrolls; the bar on the card's right edge
+│ group               ▐│
+└──────────────────────┘
+        gutter              ← the box's own sticky `top`, below as above
+═══════ window's foot ═══
+```
+
+| | |
+| --- | --- |
+| the rule | a column that sticks beside a page (filters, settings) **ends a gutter above the window's foot wherever it stands** — lower at rest under the title, taller once it sticks — re-measured on scroll and resize. Its title stays; what overflows scrolls INSIDE its card, the bar on the card's right edge (`scrollList`, pulled out through the card's padding) |
+| why measured | a fixed `100dvh` cap still runs past the foot while the column rests under the page's title; a sticky box taller than the window hides its last part until the page beside it is scrolled |
+| one card, the whole column | the panel is the column — nothing else sticks with it. On Cetak Label a Restok card above the settings left them ~430px of a 800px window for ~900px of groups, and the owner: *"scrollbar di label settingnya tidak enak"*. Anything else goes to the other column |
+| one hook | `lib/useFitToWindow` — `FilterPanel` and Cetak Label's column. Only while the column is sticky: stacked on a narrow screen it is as tall as it is. Never measured from above its sticky top, or at the page's end it grows and lengthens the page |
+| applied | Product Discover's filter panel · Cetak Label's settings ([the-label-settings-scroll-inside-their-card](restock_decision.md#the-label-settings-scroll-inside-their-card)) |
+
+What it replaces: each sticky column capping and scrolling itself its own way.
+
+## an-interim-read-is-marked
+
+> Owner, in chat (2026-11-06), on Cetak Label: *"restock detail harusnya ada yang dipanggil ids"*, then *"kasih
+> unimplemented"*.
+
+```
+⚠ 1 bagian layar ini belum diimplementasi                              [Lihat bagiannya]
+  1. Restok dibaca satu per satu — Belum ada pembacaan beberapa restok sekaligus, … · pembacaan sementara
+
+Restok 2 [⚠ 1]                 ← the badge on what reads one by one
+```
+
+| | |
+| --- | --- |
+| the kind | a fifth pending kind, **`interim`** — the part works and what is on screen is true, but it is read the long way round until the read it needs exists: one call per row where one call for all should be. Its tag is *· pembacaan sementara* / *· interim read* |
+| why not the four | `dropped` loses a value, `sample` shows invented figures, `derived` computes by an unsettled rule, `missing` is not on screen — none of them is "right, and slower than it will be" |
+| where the badge goes | on the control or card that does the reading (Cetak Label: the Restok card's title); the strip under the title as on every screen ([a-conflict-with-a-business-decision-is-said-in-its-mark](#a-conflict-with-a-business-decision-is-said-in-its-mark) and the rest of the marks' rules hold) |
+| applied | Cetak Label — `restock.labels.pending.byIds` ([the-labels-mark-their-one-by-one-read](restock_decision.md#the-labels-mark-their-one-by-one-read)) |
+| also | the strip's toggle says *Lihat bagiannya* for one part — it read *Lihat 1 bagiannya* / *Show the 1 parts* |
+
+What it replaces: no way to mark a part that works but reads one by one — it would have been marked as something it is
+not, or not at all.
 
 ## Recorded elsewhere
 

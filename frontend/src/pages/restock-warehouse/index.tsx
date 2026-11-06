@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Flex,
   Heading,
   Icon,
+  IconButton,
   Menu,
   Portal,
   Span,
@@ -16,7 +18,7 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { Check, ChevronDown, PackageOpen, SearchX } from "lucide-react";
+import { Check, ChevronDown, PackageOpen, Printer, SearchX, X } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
@@ -34,6 +36,9 @@ import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTa
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
 import { shortfall } from "../../features/restock/summary";
 import { WarehouseRestockActions, warehouseActions } from "../../features/restock/WarehouseRestockActions";
+import { labelsPath } from "../../features/restock/labelsPath";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { fromHere } from "../../lib/cameFrom";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
@@ -117,11 +122,24 @@ const ACTOR_ROLE_CODEC = oneOfCodec<ActorRole>(["created", "accepted"]);
 //                                                  ‹ [1] ›    ← the growing pager, always on screen
 //
 // On a phone the filters are a sheet and each restock is a block.
+//
+// TICKED, THEN PRINTED AT ONCE (owner: *"listnya ada cekbox dan bisa cetak sekaligus yang dicheck"*,
+// the-list-prints-the-ticked-restocks) — a box before each row, for the restocks that have labels (Tiba, Diterima; the
+// rest are there, disabled); the header's box ticks every one of them on the page. While any is ticked the title's row
+// offers *Cetak N Restok*, which opens Cetak Label with all of them. The ticks are held as ids, so they outlast a page,
+// a tab or a filter — a morning's deliveries are gathered from Tiba and Diterima alike.
 export function RestockWarehousePage() {
   const { current } = useTeam();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+
+  // The restocks ticked for printing, in the order they were ticked — the order they print in.
+  const [picked, setPicked] = useState<string[]>([]);
+  const togglePick = (id: string) =>
+    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const printPicked = () => navigate(labelsPath(picked.map((id) => BigInt(id))), { state: fromHere(location) });
 
   // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
   // restock, opens the same narrowed queue. The page number stays on screen only.
@@ -333,6 +351,38 @@ export function RestockWarehousePage() {
     );
   }
 
+  // A restock can be ticked when it has labels — when Cetak is one of its acts (WarehouseRestockActions holds which).
+  const printable = (request: RestockRequest) => warehouseActions(request.status).includes("labels");
+  const printableOnPage = requests.filter(printable).map((r) => r.id.toString());
+  const allOnPage = printableOnPage.length > 0 && printableOnPage.every((id) => picked.includes(id));
+  const someOnPage = printableOnPage.some((id) => picked.includes(id));
+  const toggleAllOnPage = () =>
+    setPicked((prev) =>
+      allOnPage ? prev.filter((id) => !printableOnPage.includes(id)) : [...prev, ...printableOnPage.filter((id) => !prev.includes(id))],
+    );
+
+  // One row's box — disabled, with no word about it, for a restock that has no labels. It stops the row's navigate:
+  // ticking a box must not open the restock.
+  function pickBox(request: RestockRequest) {
+    const id = request.id.toString();
+
+    return (
+      <Box display="inline-flex" onClick={(e) => e.stopPropagation()}>
+        <Checkbox.Root
+          size="sm"
+          checked={picked.includes(id)}
+          disabled={!printable(request)}
+          onCheckedChange={() => togglePick(id)}
+          aria-label={t("restock.inbound.pickOne", { id })}
+          data-testid={`restock-pick-${id}`}
+        >
+          <Checkbox.HiddenInput />
+          <Checkbox.Control />
+        </Checkbox.Root>
+      </Box>
+    );
+  }
+
   if (!current) {
     return (
       <Stack gap="section">
@@ -408,6 +458,7 @@ export function RestockWarehousePage() {
               onClick={() => open(request)}
             >
               <Flex align="center" gap="2" wrap="wrap">
+                {pickBox(request)}
                 <Text fontWeight="bold" data-testid={`restock-open-${request.id}`}>
                   #{request.id.toString()}
                 </Text>
@@ -452,6 +503,20 @@ export function RestockWarehousePage() {
         <Table.Root size="sm" data-testid="restock-inbound-table">
           <Table.Header>
             <Table.Row>
+              {/* Every restock on this page that has labels — all, some (a dash), or none ticked. */}
+              <Table.ColumnHeader width="1">
+                <Checkbox.Root
+                  size="sm"
+                  checked={allOnPage ? true : someOnPage ? "indeterminate" : false}
+                  disabled={printableOnPage.length === 0}
+                  onCheckedChange={toggleAllOnPage}
+                  aria-label={t("restock.inbound.pickAll")}
+                  data-testid="restock-pick-all"
+                >
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control />
+                </Checkbox.Root>
+              </Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.restock")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.from")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.product")}</Table.ColumnHeader>
@@ -474,6 +539,7 @@ export function RestockWarehousePage() {
                 css={LIGHTS_UP}
                 onClick={() => open(request)}
               >
+                <Table.Cell>{pickBox(request)}</Table.Cell>
                 {/* The number alone — when it was raised has its own column now (the-inbound-row-says-who-and-when). */}
                 <Table.Cell data-testid={`restock-open-${request.id}`}>
                   <Span fontWeight="medium">#{request.id.toString()}</Span>
@@ -514,12 +580,56 @@ export function RestockWarehousePage() {
       {/* THE PAGE NAMES ITSELF (the-desktop-shell-has-no-top-bar). No team badge (owner, 2026-07-30): the switcher names
           the team. No "New Restock": a warehouse does not order goods for itself — it receives what a selling team
           bought (#105). */}
-      <Stack gap="0">
-        <Heading size="md">{t("restock.inbound.title")}</Heading>
-        <Text fontSize="sm" color="fg.muted">
-          {t("restock.inbound.subtitle")}
-        </Text>
-      </Stack>
+      <Flex align="flex-start" gap="card">
+        <Stack gap="0" flex="1" minW="0">
+          <Heading size="md">{t("restock.inbound.title")}</Heading>
+          <Text fontSize="sm" color="fg.muted">
+            {t("restock.inbound.subtitle")}
+          </Text>
+        </Stack>
+
+        {/* THE TICKED RESTOCKS, PRINTED AT ONCE (the-list-prints-the-ticked-restocks) — only while any is ticked. On a
+            phone its icon (a-phone-header-action-is-an-icon); the ✕ un-ticks them all. */}
+        {picked.length > 0 &&
+          (isMobile ? (
+            <CompactActions
+              menuLabel={t("restock.table.actions")}
+              actions={[
+                {
+                  id: "print",
+                  label: t("restock.inbound.printPicked", { count: picked.length }),
+                  icon: Printer,
+                  primary: true,
+                  testId: "restock-print-picked",
+                  onClick: printPicked,
+                },
+                {
+                  id: "clear",
+                  label: t("restock.inbound.clearPicked"),
+                  icon: X,
+                  testId: "restock-pick-clear",
+                  onClick: () => setPicked([]),
+                },
+              ]}
+            />
+          ) : (
+            <Flex align="center" gap="1" flexShrink={0} animationStyle="appear">
+              <Button colorPalette="brand" onClick={printPicked} data-testid="restock-print-picked">
+                <Icon as={Printer} boxSize="4" />
+                {t("restock.inbound.printPicked", { count: picked.length })}
+              </Button>
+              <IconButton
+                variant="ghost"
+                aria-label={t("restock.inbound.clearPicked")}
+                title={t("restock.inbound.clearPicked")}
+                onClick={() => setPicked([])}
+                data-testid="restock-pick-clear"
+              >
+                <Icon as={X} boxSize="4" />
+              </IconButton>
+            </Flex>
+          ))}
+      </Flex>
 
       {/* What is not real yet — the COD figure; the queue itself is. */}
       <NotImplementedSummary list={RESTOCK_INBOUND_PENDING} />

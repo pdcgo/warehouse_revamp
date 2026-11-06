@@ -937,10 +937,11 @@ list, because searching seven options you can already see in full is a keystroke
 not a comment and not a sentence typed into each card. The screen declares a `PendingList` (`{ns, parts}`,
 one `pending.ts` per page); `<NotImplementedSummary list>` renders the folded strip at the top and
 `<NotImplemented list id>` the ⚠ + NUMBER on the control it belongs to. **The number is the position
-in the list**, so a badge and its row cannot drift, and removing an entry removes both. Four kinds,
+in the list**, so a badge and its row cannot drift, and removing an entry removes both. Five kinds,
 and they cost the reader different things: `dropped` (typed and thrown away), `sample` (invented
 figures), `derived` (real figures, unsettled rule), `missing` (not on screen at all, and a total is
-short because of it). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
+short because of it), `interim` (true and working, but read the long way — one call per row until a read for all
+exists, [an-interim-read-is-marked](docs/technical/frontend/context_decision.md#an-interim-read-is-marked)). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
 `<ns>.pending.<id>.label|reason`. A part that goes **against a written business decision** says so in its mark — `conflict: true`, the decision
 in plain words at `<ns>.pending.<id>.conflict` ([a-conflict-with-a-business-decision-is-said-in-its-mark](docs/technical/frontend/context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)).
 

@@ -10,6 +10,7 @@ import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useArriveRestockRequest } from "./queries";
+import { labelsPath } from "./labelsPath";
 import { toRupiah } from "./counting";
 import { CourierCharge } from "./CourierCharge";
 import { CompactActions } from "../../components/chrome/CompactActions";
@@ -23,11 +24,15 @@ import { fromHere } from "../../lib/cameFrom";
 //
 //   ongoing  → Sign for Box · Accept   a box that turns up unannounced can be accepted straight away
 //                                      (accept-locks-the-restock)
-//   arrived  → Accept                  signed for, waiting to be counted
+//   arrived  → Accept · Print          signed for, waiting to be counted — its labels can print already, without
+//                                      placements (labels-print-from-arrived)
 //   lost     → Sign for Box            the parcel turned up after all — the same restock, signed for as arrived
 //                                      (a-late-lost-box-is-signed-for-as-arrived)
-//   accepted → Print Labels · Receipt  what the crew does right after counting it in — not a status change
+//   accepted → Print · Receipt         what the crew does right after counting it in — not a status change
 //   cancelled → nothing
+//
+// *Print* is the labels — the action says the verb alone (owner: *"cetak label di action, cetak saja"*,
+// print-is-the-labels-action); the page it opens is still Cetak Label.
 //
 // Editing, cancelling and marking lost are the SELLING team's, and never appear here.
 export type WarehouseAction = "signForBox" | "accept" | "labels" | "receipt";
@@ -37,7 +42,7 @@ export function warehouseActions(status: RestockRequestStatus): WarehouseAction[
     case RestockRequestStatus.ONGOING:
       return ["signForBox", "accept"];
     case RestockRequestStatus.ARRIVED:
-      return ["accept"];
+      return ["accept", "labels"];
     case RestockRequestStatus.LOST:
       return ["signForBox"];
     case RestockRequestStatus.ACCEPTED:
@@ -95,7 +100,9 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
         navigate(`/inventories/restock/${id}/accept`, { state: fromHere(location) });
         return;
       case "labels":
-        navigate(`/inventories/restock/${id}/labels`);
+        // The labels' one address, with this restock on it (the-labels-have-one-address); Back returns where the labels
+        // were opened from, as Terima's does.
+        navigate(labelsPath([id]), { state: fromHere(location) });
         return;
       case "receipt":
         navigate(`/inventories/restock/${id}/receipt`);

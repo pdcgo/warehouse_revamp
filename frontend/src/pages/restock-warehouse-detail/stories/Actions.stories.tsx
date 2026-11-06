@@ -35,7 +35,7 @@ export const ArrivedOffersAcceptOnly: Story = {
   play: async ({ canvasElement }) => {
     await loaded(canvasElement);
 
-    await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-accept-502"]));
+    await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-accept-502", "restock-action-labels-502"]));
   },
 };
 
@@ -60,6 +60,20 @@ export const AcceptedOffersLabelsAndReceipt: Story = {
     await waitFor(() =>
       expect(actionsIn(canvasElement)).toEqual(["restock-action-labels-503", "restock-action-receipt-503"]),
     );
+  },
+};
+
+// CETAK OPENS THE LABELS' ONE ADDRESS (the-labels-have-one-address) — `/inventories/restock/labels?ids=503`, the same
+// page that prints several.
+export const PrintOpensTheLabels: Story = {
+  name: "Print opens the labels",
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("restock-action-labels-503"));
+    await canvas.findByTestId("at-restock-labels");
+    await expect(canvas.getByTestId("location-search")).toHaveTextContent("?ids=503");
   },
 };
 

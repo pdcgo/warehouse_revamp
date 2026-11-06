@@ -91,6 +91,21 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [terima-keeps-the-order-id](#terima-keeps-the-order-id) | Terima's Paket card keeps the store's reference, named *Order ID* — never *Invoice* |
 | [the-ready-line-jumps-to-what-it-names](#the-ready-line-jumps-to-what-it-names) | each thing Terima's ready line names is a link — the page scrolls to that line or the charge, clear of the header, and it blinks |
 | [the-confirm-says-the-count](#the-confirm-says-the-count) | Terima's confirm shows the box in figures — good, broken, missing in pcs and the COD charge — before its sentence |
+| [the-restock-labels-follow-the-screen-rules](#the-restock-labels-follow-the-screen-rules) | Cetak Label follows the screen rules: back as an icon to where it was opened, icons on a phone's one-row header, the size as pills, the app's dates, a skeleton, an Alert and an EmptyHint, Default and Mobile stories |
+| [the-label-is-set-up-in-mm](#the-label-is-set-up-in-mm) | a label run is set up in mm — the paper (35 × 15), rows × columns and gap on it (1 × 1, 0), padding (2 mm) all round or per side, SKU · placement · name · date each with its size, bold, centred, condensed, the QR's gap, the name's lines, a limit and a page; one paper a printed page |
+| [the-label-settings-are-remembered](#the-label-settings-are-remembered) | the label settings save themselves to the device's local storage on every change; Kembalikan Default puts them back |
+| [the-label-page-is-settings-and-a-preview](#the-label-page-is-settings-and-a-preview) | Cetak Label is the settings held in view beside a Pratinjau card — white stickers on a grey ground, three a row at up to 2× |
+| [the-print-list-is-each-label-and-its-count](#the-print-list-is-each-label-and-its-count) | Cetak Label shows one paper in Pratinjau, then Yang Dicetak: each label once with its count to print, typed over — what prints is exactly those counts |
+| [ctrl-p-prints-the-labels](#ctrl-p-prints-the-labels) | on Cetak Label, Ctrl+P / ⌘P is the page's own print — the same act as Cetak; with nothing to print it says so |
+| [labels-print-from-arrived](#labels-print-from-arrived) | Cetak Label opens from Tiba too, beside Terima: one label per line, as many as ordered, no placement, the SKU alone in the QR — and the page says so |
+| [labels-print-several-restocks](#labels-print-several-restocks) | Cetak Label prints several restocks in one run: a Restok card over the Pratinjau — each restock with its labels and ✕, and *Tambah Restok* (a search select of Tiba and Diterima) — and Yang Dicetak is grouped by restock |
+| [print-is-the-labels-action](#print-is-the-labels-action) | the labels' action is *Cetak* — the verb alone, on the list's row, the restock's page and its sticky bar; the page it opens is still Cetak Label |
+| [the-list-prints-the-ticked-restocks](#the-list-prints-the-ticked-restocks) | the warehouse list has a box before each row — enabled for Tiba and Diterima — and a page box in the head; while any is ticked the title's row offers *Cetak N Restok*, opening Cetak Label with all of them |
+| [the-label-settings-scroll-inside-their-card](#the-label-settings-scroll-inside-their-card) | Cetak Label's settings are the whole left column, as Product Discover's filter panel is: it sticks and ends a gutter above the window's foot wherever it stands; the title stays and the groups scroll inside, the bar on the card's edge |
+| [labels-a-restock-jumps-to-its-labels](#labels-a-restock-jumps-to-its-labels) | on Cetak Label, a restock in the Restok card takes you to its labels — Yang Dicetak scrolls to its group, which blinks where it lands |
+| [the-labels-have-one-address](#the-labels-have-one-address) | Cetak Label has one address, `/inventories/restock/labels?ids=…`, for one restock or several; every way in opens it, and the old `/inventories/restock/:id/labels` redirects to `?ids=:id` |
+| [cetak-is-the-one-print-button](#cetak-is-the-one-print-button) | Cetak Label has one print button, *Cetak* — no *Unduh PDF*: both opened the same print dialog, which is where a PDF is saved |
+| [the-labels-mark-their-one-by-one-read](#the-labels-mark-their-one-by-one-read) | Cetak Label reads each restock on its own — a detail, and an accepted one's labels — and says so: an `interim` pending mark on the Restok card and in the strip under the title |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -2018,3 +2033,399 @@ Barang baik masuk ke penempatan yang Anda pilih, … Ini tidak dapat dibatalkan.
 | pinned by | `Confirm says the count` (Baik 16, Rusak grey, Kurang 1, no charge; Escape leaves the page as it was) |
 
 What it replaces: the confirm's general sentence alone.
+
+## the-restock-labels-follow-the-screen-rules
+
+> Owner, in chat (2026-11-06): *"inisiasi labels"* — start Cetak Label from the rules every screen follows.
+
+```
+desktop   ←  Label · Restok #503  [Diterima]           27 label · 2 produk   [🖨 Cetak]
+phone     ←  Label · Restok #503  [Diterima]                                          [🖨]
+          27 label · 2 produk
+          satu per pcs
+```
+
+| rule | applied |
+| --- | --- |
+| back | its icon alone, in the title's row — it was *← Kembali ke Restok #503* above it; it returns where the page was opened ([a-form-returns-where-it-was-opened](context_decision.md#a-form-returns-where-it-was-opened)) — the list with its filters, or the restock's page; by a link, the restock's page. `WarehouseRestockActions` records the opener |
+| the status | the restock's own `RestockStatusBadge`, not a page-made *Diterima* badge |
+| [a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon) · [the-phone-header-is-one-row](context_decision.md#the-phone-header-is-one-row) | on a phone Cetak is its icon on the title's row (`CompactActions`) — the one print button ([cetak-is-the-one-print-button](#cetak-is-the-one-print-button)); how many will print comes down under it |
+| the settings | the browser's own size select and the four fixed sizes gave way to the settings in mm ([the-label-is-set-up-in-mm](#the-label-is-set-up-in-mm)) — every one a Chakra field labelled on the type scale ([chakra-first-whenever-it-has-the-component](context_decision.md#chakra-first-whenever-it-has-the-component)); they were small grey capitals |
+| [a-date-speaks-the-apps-language](context_decision.md#a-date-speaks-the-apps-language) | the sticker's date, when it is on, is `formatUnixDate` — the app's language and Jakarta time; it was the browser's |
+| [motion-is-small-quick-and-shared](context_decision.md#motion-is-small-quick-and-shared) | the page rises in; a first load is a skeleton, not a spinner |
+| not printable | an info `Alert` with *Buka Restok*, as Terima says a restock it cannot take — it was a grey sentence; which statuses print is [labels-print-from-arrived](#labels-print-from-arrived) |
+| [an-empty-list-shows-a-hint](context_decision.md#an-empty-list-shows-a-hint) | a run with nothing to label is an `EmptyHint` |
+| [nothing-runs-past-a-phones-edge](context_decision.md#nothing-runs-past-a-phones-edge) | the preview scales each paper to the column, and a paper wider than a phone scrolls in its own box — a 300px label column ran past a 320px phone |
+| [every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story) · [a-page-story-has-its-shells-gutter](context_decision.md#a-page-story-has-its-shells-gutter) | **Default** and **Mobile** lead; the stories lost Storybook's `padded` layout; every story has a short name; `From the list · back` is new |
+| kept | the QR (`sku/batch-id`); *Pcs / Rak* as a segmented control |
+| pinned by | `Default`, `Mobile`, `Ongoing, no labels`, `From the list · back` |
+
+What it replaces: the labels page's own layout — a labelled back over the title, the browser's select and date, a
+spinner, plain sentences for the empty and not-accepted cases.
+
+## the-label-is-set-up-in-mm
+
+> Owner, in chat (2026-11-06): *"setting yang diperlukan adalah ukuran kertas ukuran dalam mm, default p x l, 35 x 25, 1
+> keras bisa ada baris dan kolom dan gapnya, default 1 dan 1 dan 0, padding bisa all bisa custom atas bawah kanan kiri,
+> label bold default dan bisa tidak, ada setting rata tengah tapi default tidak, ada setting ukuran font, ada setting gap
+> qr dan teksnya, ada setting font condensed, teks yang ada adalah sku utamanya, penempatan, nama produk, tanggal print
+> atau hari ini yang defaultnya tidak muncul, setting nama produk ellipsis berapa linenya juga untuk jaga-jaga nama
+> panjang, ukuran teks semuanya bisa disesuaikan, lalu kasih setting limit dan halaman"*. Then, of the defaults:
+> *"35x15mm defaultnya!!!"* and *"padding 2"*.
+
+```
+Pengaturan Label                                    [↺ Kembalikan Default]
+Kertas    Lebar [35] mm   Tinggi [25] mm
+          Baris [1]  Kolom [1]  Jarak [0] mm         ← one paper holds rows × columns of labels
+Padding   (• Semua sisi) ( Per sisi )  [1] mm        ← or Atas · Kanan · Bawah · Kiri
+Teks      ☑ SKU            [5.5] pt
+          ☑ Penempatan     [7]   pt
+          ☑ Nama produk    [5.5] pt   maks [2] baris
+          ☐ Tanggal cetak  [5]   pt                  ← today, in the app's language
+          ☑ Tebal  ☐ Rata tengah  ☐ Font condensed
+          Jarak QR dan teks [1.5] mm
+Cetak     Satu label per [Pcs | Rak]
+          Limit [100]   Halaman [1] dari 1           ← the run: labels 1–100, then 101–200, …
+
+┌ a paper, 35 × 15 mm ────────────┐
+│ ▓▓▓▓▓  SKU-BERAS-5K             │   SKU · penempatan · nama (N baris) · tanggal
+│ ▓QR▓▓  A-01-1                   │   each its own size; bold, centred, condensed as set
+│ ▓▓▓▓▓  Beras Pandan Wangi 5kg   │
+└─────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the paper | **width × height in mm, default 35 × 15**; one paper holds **rows × columns** of labels with a **gap** between them, **default 1 × 1, gap 0**. Each label's box is the paper less the gaps, shared out |
+| padding | inside each label, **the same all round** (default **2 mm**) **or each side its own** — top, right, bottom, left |
+| what is on it | the **main SKU**, the **placement**, the **product's name**, and **today's date — off by default**; each shown or not, **each its own size in pt** (defaults SKU 5.5, placement 7, name 5.5, date 5 — they fit a 12-character SKU and two lines of name on 35 × 15 with its 11 mm QR). The QR stays (`sku/batch-id`, one batch per line). Gone from the sticker: the restock's reference and date, the HPP, the *1/5* copy number |
+| the name | cut after **N lines** (default **2**), so a long name never pushes the rest off |
+| how it is set | **bold — on by default**; **centred — off by default**; **condensed font — off**; the **gap between the QR and the text** (default 1.5 mm) |
+| the run | *Satu label per* Pcs or Rak, as before; a **limit** of labels per print (default **100**) and the **page** — which hundred — *dari N*; the header says *label 101–200 dari 245 · 100 kertas* |
+| the print | every paper of the run, **one paper a page, the page exactly the paper's size** (`@page`), no margin — a run prints pages of the paper's size, checked in Chromium's PDF; the app is dropped whole |
+| the preview | each paper at its true proportions, scaled to the column (up to 3×), a dashed edge for the paper; the first 12 papers of the run, *semua akan dicetak* under them |
+| bounds | every number is held in a range — paper 10–300 mm, grid 1–20, padding and gaps 0–20 mm, text 3–36 pt, name 1–5 lines, limit 1–1000 — so a typo cannot make a 0 mm paper |
+| pinned by | `Default`, `Paper size`, `Rows and columns`, `Padding`, `Text`, `Name lines`, `Limit and page`; the e2e prints 8 then 2 |
+
+What it replaces: the four fixed sticker sizes, the *Ref & tanggal* and *HPP* ticks and the sticker's copy number.
+
+## the-label-settings-are-remembered
+
+> Owner, in chat (2026-11-06), after it was built unasked with the settings: *"35x25 mm, setting auto save di local
+> storage"* — the settings save themselves on the device (the paper's default became 35 × 15 mm after, [the-label-is-set-up-in-mm](#the-label-is-set-up-in-mm)). A warehouse prints on
+> the same stickers every day; some twenty settings typed again per run would be a tax.
+
+| | |
+| --- | --- |
+| where | this device's **local storage** (`restock-labels.settings.v3`) — per device, not per account: the printer sits beside one machine |
+| when | **on every change**, by itself — there is no Simpan |
+| what | **only the settings changed from the defaults** — an untouched page stores nothing, so a setting nobody touched follows the defaults when they change; the run's page is never stored and starts at 1 on each visit. v1 and v2 stored every setting the moment the page opened, which is why a changed default (35 × 15, padding 2) did not reach a device that had opened it once — the key moved to v3 |
+| reset | **Kembalikan Default** puts every setting back and forgets the stored ones |
+| safe | storage that is missing or refuses leaves the page on the defaults; a stored value out of its bounds is held to them |
+| pinned by | `Remembered` (an untouched page stores nothing; 60 mm typed is stored alone; Kembalikan Default back to 35 × 15) |
+
+## the-label-page-is-settings-and-a-preview
+
+> Owner, in chat (2026-11-06), on Cetak Label: *"untuk skunya kurang bagus dilihat dilayar"*, *"maksudnya qrcode
+> kesuluruhan"*, then *"bukan, tapi tata letaknya di halaman, qrcode nya tidak masalah"* — the stickers are fine; the
+> page they sit on is not.
+
+```
+BEFORE  ┌ settings ┐  ▓▓▓▓ SKU…  ┊ ▓▓▓▓ SKU…        ← papers at 3×, two a row, dashed edges touching,
+        │ (scrolls │  ▓▓▓▓ A-01 ┊ ▓▓▓▓ A-01          loose on the page; the settings scrolled away
+        │  away)   │  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+                       ▓▓▓▓ SKU…  ┊ ▓▓▓▓ SKU…
+
+NOW     ┌ Pengaturan Label ┐  ┌ Pratinjau  kertas 35 × 15 mm · 1 × 1 label ──────────┐
+        │ (held in view,   │  │ ⚠ 3 unit datang rusak atau kurang …                   │
+        │  scrolls in its  │  │ ┌ grey ground ─────────────────────────────────────┐ │
+        │  own box)        │  │ │ [▓▓ SKU-…]  [▓▓ SKU-…]  [▓▓ SKU-…]               │ │  ← white stickers, a soft
+        │                  │  │ │ [▓▓ SKU-…]  [▓▓ SKU-…]  [▓▓ SKU-…]               │ │    shadow, three a row
+        └──────────────────┘  │ └──────────────────────────────────────────────────┘ │
+                              │ ⓘ Menampilkan 12 kertas pertama dari 27 …             │
+                              └────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the preview | a **card of its own**, *Pratinjau* with the paper's size and grid beside it, what was left out under it; the papers on a **grey ground** as **white stickers** with a soft shadow — no dashed edges |
+| the scale | as many papers to a row as fit at 1.6× or more, each then as large as the row allows up to **2×** — three 35 mm papers a row on a desktop; one, at the width, on a phone. It was 3×, two a row |
+| the settings | **held in view** beside the preview on a desktop (sticky), scrolling in their own box when taller than the window; above the preview on a phone |
+| unchanged | the stickers themselves, and what prints |
+| pinned by | `Default` (the papers in the Pratinjau card, its size line) |
+
+What it replaces: the preview at 3× loose on the page beside settings that scrolled away, in
+[the-label-is-set-up-in-mm](#the-label-is-set-up-in-mm).
+
+## the-print-list-is-each-label-and-its-count
+
+> Owner, in chat (2026-11-06): *"kasih pratinjau di atas qrcodenya dan jumlahnya, bisa diedit jumlahnya, semua qrcode yang
+> sekarang bukan pratinjau jadi yang di print"*.
+
+```
+┌ Pratinjau  kertas 35 × 15 mm · 1 × 1 label ─────────────────────┐
+│        ┌──────────────────────────────┐                          │   ONE paper, the run's first, as it prints
+│        │ ▓▓▓▓  SKU-BERAS-5K           │                          │
+│        │ ▓QR▓  A-01-1                 │                          │
+│        └──────────────────────────────┘                          │
+└──────────────────────────────────────────────────────────────────┘
+┌ Yang Dicetak  27 label dari 3 jenis ─────────────────────────────┐
+│ ⚠ 3 unit datang rusak atau kurang …                              │
+│ ┌ [sticker] ───────┐ ┌ [sticker] ───────┐ ┌ [sticker] ───────┐   │   each label ONCE
+│ │ Beras Pandan …   │ │ Beras Pandan …   │ │ Teh Melati 100g  │   │
+│ │ A-01-1 · 5 pcs di│ │ B-02-1 · 2 pcs di│ │ A-01-2 · 20 pcs  │   │
+│ │ rak    [−][5][+] │ │ rak    [−][2][+] │ │ di rak [−][20][+]│   │   its count, typed over
+│ └──────────────────┘ └──────────────────┘ └──────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| Pratinjau | on top: **one paper**, the run's first, filled as it will print, as large as the card holds (up to 3×) — to see the settings on a sticker, not to count |
+| Yang Dicetak | under it: **every label of the restock once** — a product on a placement — its sticker, its name, *A-01-1 · 5 pcs di rak*, and **its count to print**, a `QuantityInput` typed over. *27 label dari 3 jenis* says the whole. A label at 0 is greyed and prints none |
+| the count | starts from *Satu label per*: **Pcs** — the units on that placement; **Rak** — 1. Choosing it again starts every count over from it. Typed counts are this visit's, never stored |
+| what prints | exactly the counts — each label that many times — then the limit and page cut the run, and the papers follow (`labels-print-root`) |
+| replaces | the wall of every sticker of the run (27 for 503), which was both the preview and the list |
+| pinned by | `Edit the count` (5 → 2 on the rice at A-01-1: 24 print; per placement, every count 1, 3 print), `Every label placed`; the e2e checks 2 kinds listed, 8 then 2 printed |
+
+What it replaces: the preview of the first 12 papers of the run in
+[the-label-page-is-settings-and-a-preview](#the-label-page-is-settings-and-a-preview).
+
+## ctrl-p-prints-the-labels
+
+> Owner, in chat (2026-11-06): *"detect ctrl+P jadi cetak kita"*.
+
+```
+Ctrl+P / ⌘P on Cetak Label  ──►  the page's own print — the same as [🖨 Cetak]
+                                  ├ labels in the run   → the browser's print dialog, the run's papers only
+                                  └ nothing in the run  → "Tidak ada label untuk dicetak — semua jumlahnya 0."
+```
+
+| | |
+| --- | --- |
+| the shortcut | on Cetak Label, **Ctrl+P — and ⌘P on a Mac — is the page's print**, the very act of *Cetak* ([cetak-is-the-one-print-button](#cetak-is-the-one-print-button)): the browser's own shortcut is stopped and the page's print runs instead |
+| nothing to print | when the run has no papers — every count at 0 — it says *Tidak ada label untuk dicetak — semua jumlahnya 0.* and sends nothing, rather than a blank page |
+| said | the Cetak button's hover reads *Cetak (Ctrl+P)* |
+| only here | the listener lives with the page and leaves with it; elsewhere Ctrl+P is the browser's |
+| pinned by | `Ctrl+P prints` (one print; with every count 0, the warning and no print) |
+
+What it replaces: Ctrl+P as the browser's own print — which already printed the run through the page's print styles, but
+skipped the page's print and would send a blank page with nothing to print.
+
+## labels-print-from-arrived
+
+> Owner, in chat (2026-11-06): *"halaman ini juga bisa diakses status tiba, tapi tanpa penempatan harusnya"*.
+
+```
+status        actions                labels
+Dalam Jalan   Tandai Tiba · Terima   none — "Restok #501 belum bisa dilabeli"
+Tiba          Terima · Cetak         one per LINE       · count = ordered   · no placement · QR = SKU
+Diterima      Cetak · Struk          one per PLACEMENT  · count = put away  · its rack     · QR = SKU/batch
+```
+
+| | |
+| --- | --- |
+| the action | an arrived restock offers **Cetak** — the labels ([print-is-the-labels-action](#print-is-the-labels-action)) — beside Terima — on the list's row, the restock's page and its sticky bar (`warehouseActions(ARRIVED)` is `accept`, `labels`) |
+| the labels | one per line of the restock, its count **what was ordered** (*Dipesan 12 pcs* under it, where an accepted label says its rack) — nothing is counted yet, so there is no other number to start from; the count is typed over as on any label ([the-print-list-is-each-label-and-its-count](#the-print-list-is-each-label-and-its-count)) |
+| no placement | the sticker has no placement line — the box has not been put away; the rest of the sticker is unchanged |
+| the QR | **the SKU alone** — there is no batch until Terima mints one ([one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line)); an accepted label stays `sku/batch` |
+| said | an info line over Yang Dicetak: *Restok ini baru Tiba — label tanpa penempatan, dan jumlahnya dari yang dipesan. Setelah diterima, labelnya per penempatan.* |
+| not printable | before Tiba, the Alert reads *Restok #{{id}} belum bisa dilabeli* — *Label bisa dicetak saat restok sudah Tiba atau Diterima.* (testid `labels-not-printable`) |
+| pinned by | `Arrived, no placement` (17 labels of 2 kinds, no placement, *Ordered 12 pcs*) · `Ongoing, no labels` · the Actions and SignForBox stories of the list and the restock's page (502, and 501/504 after signing, now offer Cetak) |
+
+What it replaces: labels only once Diterima — Tiba offered Terima alone, and the labels page turned an arrived restock
+away.
+
+## labels-print-several-restocks
+
+> Owner, in chat (2026-11-06): *"nah sekarang kurang 1, yaitu halaman labels bisa print banyak restock sekaligus"*.
+
+```
+←  Label · 2 Restok                         44 label · 3 produk   [🖨 Cetak]
+
+┌ Pengaturan Label ───┐   ┌ Restok · 2 ─────────────────────────────────────┐
+│ …                   │   │ #503 [Diterima]  SCP5544332211        27 label ✕ │
+│                     │   │ #502 [Tiba]      JNT9988776655        17 label ✕ │
+│                     │   │ [ Tambah restok — no., resi, SKU            ⌄ ] │
+│                     │   └─────────────────────────────────────────────────┘
+│                     │   ┌ Pratinjau ──────────────────────────────────────┐
+│                     │   │            one paper                            │
+│                     │   └─────────────────────────────────────────────────┘
+│                     │   ┌ Yang Dicetak · 44 label dari 5 jenis ───────────┐
+│                     │   │ #503 [Diterima] 27 label                        │
+│                     │   │   ⚠ 3 unit rusak atau kurang …                   │
+│                     │   │   [label 5] [label 2] [label 20]                │
+│                     │   │ #502 [Tiba] 17 label                            │
+│                     │   │   ⓘ Restok ini baru Tiba …                      │
+│                     │   │   [label 12] [label 5]                          │
+└─────────────────────┘   └─────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the set | the page holds a LIST of restocks, opened with the one it came from; the run is every label of every restock, in the list's order, each with its own count |
+| Restok card | heads the right column, over the Pratinjau — what is printed reads down one column: the restocks, the paper, the labels; first of all on a phone. The settings keep the left column to themselves ([the-label-settings-scroll-inside-their-card](#the-label-settings-scroll-inside-their-card)). A row per restock (its number, status, resi, how many of its labels print) and ✕ to take it off. The last one stays (✕ disabled): a print of nothing is not a page |
+| Tambah Restok | a **search select** — a warehouse's restocks grow without end: opened, the newest **Tiba and Diterima** ones (the only ones with labels; ten of each, merged newest first); typed, the server's search over the number, resi, Order ID, a line's SKU or name. One already on the page is there **disabled**, with no word about it. A pick adds the restock and the box empties for the next |
+| Yang Dicetak | one group per restock, under its number, status and label count; the *Tiba* note and the broken-or-missing line move into their restock's group. One restock alone has no group heading, as before |
+| the title | one restock — *Label · Restok #503* and its status; several — *Label · 2 Restok*, the card naming each |
+| a restock that cannot print | among several, its row says so (*belum bisa dilabeli*, or why it could not be read) and it adds no label; alone, the page's Alert as before ([labels-print-from-arrived](#labels-print-from-arrived)) |
+| the address | `/inventories/restock/labels?ids=503,502` — one restock or several ([the-labels-have-one-address](#the-labels-have-one-address)); a restock on or off replaces it, the page still mounted, so the counts typed stay; a refresh prints the same set. Back still goes where the page was opened |
+| pinned by | `Several restocks` (503 + 502: 44 labels, the groups and their notes; ✕ 502 → 503's page again, ✕ disabled) · `Add a restock` (507/503/502 offered, 503 disabled, 501/504/505/506 not; a pick keeps the typed count; *teh* narrows to 507 and 503) |
+
+What it replaces: one restock a print — the page's address carried one id, and printing a day's deliveries meant
+setting up and printing once for each.
+
+## print-is-the-labels-action
+
+> Owner, in chat (2026-11-06): *"cetak label di action, cetak saja"*.
+
+```
+Tiba       [Terima] [🖨 Cetak]
+Diterima   [🖨 Cetak] [Struk]          ← was [🖨 Cetak Label]
+```
+
+| | |
+| --- | --- |
+| the action | the labels' action reads **Cetak** (`restock.labels.action`) — on the list's row, the restock's page, its sticky bar and a phone's icon label; its icon stays the printer |
+| the page | still **Cetak Label** — its title says what it prints; the action beside Terima and Struk needs only the verb |
+| pinned by | the warehouse detail's `Mobile` (the action's name is *Print*) |
+
+What it replaces: *Cetak Label* as the action's name — including where
+[a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon)'s row here lists it.
+
+## the-list-prints-the-ticked-restocks
+
+> Owner, in chat (2026-11-06): *"listnya ada cekbox dan bisa cetak sekaligus yang dicheck"*.
+
+```
+Restok Masuk                                               [🖨 Cetak 2 Restok] [✕]
+…
+[▣]  Restok  Dari          Produk   Pengiriman   Status        …   Aksi
+[ ]  #506    Toko Kenanga  …        …            [Dalam Jln.]      [Tandai Tiba] [Terima]   ← disabled box
+[✓]  #502    Toko Melati   …        …            [Tiba]            [Terima] [Cetak]
+[✓]  #503    Toko Melati   …        …            [Diterima]        [Cetak] [Struk]
+```
+
+| | |
+| --- | --- |
+| the box | before each row (on a phone, first on the block's first line) — **enabled when the restock has labels**, i.e. Cetak is one of its acts (Tiba, Diterima); the rest are there, disabled, with no word about it. Ticking does not open the restock |
+| the head's box | ticks every restock on the page that has labels; all ticked — checked; some — a dash; disabled when the page has none |
+| Cetak N Restok | in the title's row while any is ticked (*Cetak 2 Restok*, brand), with ✕ beside it to un-tick all; on a phone both are icons ([a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon)). It opens Cetak Label with every ticked restock, in the order ticked ([labels-print-several-restocks](#labels-print-several-restocks)), and Back there returns to the list as it was |
+| held as ids | the ticks outlast a page, a tab or a filter — a morning's deliveries are gathered from Tiba and Diterima alike, and the button's count says how many are held |
+| pinned by | `Print / Tick and print` (502, 503, 507 tickable, the rest not; 503 then 502 → `?ids=503,502`) · `Print / Tick all on the page` (3, then a dash, then ✕) · `Print / Tick on a phone` · `Rows / Who and when` (the ticks' column leads) |
+
+What it replaces: one restock a print from the list — each row's Cetak opened its own.
+
+## the-label-settings-scroll-inside-their-card
+
+> Owner, in chat (2026-11-06): *"scrollbarnya settingnya seperti di product discover, heightnya menyesuaikan"*; then
+> *"scrollbar di label settingnya tidak enak"* — sharing the column with the Restok card, the settings had a window of
+> ~430px for ~900px of groups.
+
+```
+┌ Pengaturan Label   ↺ ┐  ← stays          the column IS the settings card, as Product Discover's IS its
+│ Kertas              ▐│                   filter panel: it sticks, and ends a gutter above the window's foot
+│ …                   ▐│  ← the groups     wherever it stands — lower at rest, taller once it sticks;
+│ Teks                ▐│     scroll; the   re-measured on scroll and resize (~600px of groups at 800px)
+│ …                   ▐│     bar on the
+└──────────────────────┘     card's edge
+```
+
+| | |
+| --- | --- |
+| the column | from `lg`, the **settings alone** stick beside the page and **end a gutter above the window's foot** — the same measure as Product Discover's filter panel, one shared hook (`lib/useFitToWindow`, FilterPanel moved onto it); the Restok card moved to the right column, over the Pratinjau ([labels-print-several-restocks](#labels-print-several-restocks)) |
+| the settings card | its title and *Kembalikan Default* stay, and the **groups scroll inside it**, the bar riding the card's right edge (`scrollList`, pulled out through the card's padding) |
+| the page's end | measured never from above the sticky gutter — at the page's end the column is pushed up, and measured from there it grew and lengthened the page (FilterPanel had the same) |
+| narrower | below `lg` it all stacks — the Restok card, the settings, the Pratinjau, Yang Dicetak — and the settings are as tall as they are |
+
+What it replaces: the whole column scrolling in a box capped at `100dvh − 2rem`, its bar beside the cards — which, at
+rest under the title, still ran past the window's foot; and then the Restok card sharing the sticky column with the
+settings.
+
+## labels-a-restock-jumps-to-its-labels
+
+> Owner, in chat (2026-11-06): *"restock navigasi ke labelnya"*.
+
+```
+┌ Restok · 2 ───────────────────────────────────┐
+│ [#503 [Diterima] SCP5544332211     27 label] ✕ │
+│ [#502 [Tiba]     JNT9988776655     17 label] ✕ │ ── click ──┐
+└───────────────────────────────────────────────┘            │
+┌ Yang Dicetak ─────────────────────────────────┐            │
+│ #503 …                                        │            │
+│ ░#502 [Tiba] 17 label░  ← scrolled to, blinks ◄────────────┘
+│ ░[label 12] [label 5]░                        │
+└───────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the jump | a restock's row in the Restok card — its number, status, resi and label count — scrolls Yang Dicetak to that restock's group, which blinks once where it lands ([a-nav-jump-blinks-where-it-lands](context_decision.md#a-nav-jump-blinks-where-it-lands), `jumpTo`, as Terima's ready line jumps to its line) |
+| the row | lights up under the pointer, and is a button by the keyboard (Enter, Space), named *Ke label restok #502* |
+| ✕ | stands beside the jump, never inside it — a click on ✕ takes the restock off and goes nowhere |
+| no labels | a restock still loading, one that cannot print, or one that could not be read has no group, and its row is not a jump |
+| pinned by | `Restock jumps to its labels` (502's row → 502's group blinks, 503's does not; 503 by Enter) |
+
+What it replaces: a Restok card that only listed the restocks — finding a restock's labels meant scrolling Yang Dicetak
+for its heading.
+
+## the-labels-have-one-address
+
+> Owner, in chat (2026-11-06): *"kalau di restock/id/labels gimana idsnya, kok masih bisa select restock? kalau
+> restock/labels?ids=id aman"* — then *"iya, pakai 1 alamat saja"*.
+
+```
+row's Cetak · detail's Cetak · sticky bar  ─┐
+list's [Cetak N Restok]                     ├──►  /inventories/restock/labels?ids=503[,502…]
+Tambah Restok / ✕ on the page               ─┘          ▲
+/inventories/restock/503/labels (old link) ── redirect ─┘
+```
+
+| | |
+| --- | --- |
+| the address | **`/inventories/restock/labels?ids=…`** — one restock (`?ids=503`) or several (`?ids=503,502`); the page reads its list from it and nothing else |
+| every way in | a restock's *Cetak* — on the list's row, the restock's page, its sticky bar — and the list's *Cetak N Restok* ([the-list-prints-the-ticked-restocks](#the-list-prints-the-ticked-restocks)) all build it with `labelsPath` (`features/restock/labelsPath.ts`) |
+| the old address | `/inventories/restock/:id/labels` is a **loader redirect** to `?ids=:id`, as the moved picking and draft addresses are — a bookmark or a pasted link still lands, and no frame of a wrong page shows |
+| why | the path named one restock while the page let more be added — and adding one moved the address to the other form, so a page had two addresses and its name said less than it held |
+| pinned by | `Old address redirects` (→ `?ids=503`, 503's labels) · the warehouse detail's `Print opens the labels` (→ `?ids=503`) · the e2e accept flow (the old address lands on `?ids=`) |
+
+What it replaces: two addresses for one page — `/:id/labels` for one restock, `/labels?ids=` once a second was added.
+
+## cetak-is-the-one-print-button
+
+> Owner, in chat (2026-11-06): *"unduh pdf dan cetak sama plek ketiplek, tidak perlu unduh pdf"*.
+
+```
+before   ←  Label · Restok #503  [Diterima]   27 label · 2 produk   [⬇ Unduh PDF] [🖨 Cetak]
+now      ←  Label · Restok #503  [Diterima]   27 label · 2 produk   [🖨 Cetak]
+phone    ←  Label · Restok #503  [Diterima]                         [🖨]
+```
+
+| | |
+| --- | --- |
+| one button | the title's row has **Cetak** alone — on a phone its icon alone (`CompactActions`). Ctrl+P is the same act ([ctrl-p-prints-the-labels](#ctrl-p-prints-the-labels)) |
+| a PDF | is saved from the print dialog Cetak opens (its *Save as PDF* destination) — the papers at their true size, one a page; a second button that opened the very same dialog was two names for one act |
+| pinned by | `Default` and `Mobile` (Cetak, and no *Unduh PDF*) |
+
+What it replaces: *Unduh PDF* beside *Cetak*, both calling the same print.
+
+## the-labels-mark-their-one-by-one-read
+
+> Owner, in chat (2026-11-06): *"restock detail harusnya ada yang dipanggil ids"*, then *"kasih unimplemented"*.
+
+```
+per restock                                   5 restocks     50 restocks
+  RestockRequestDetail          1             5              50
+  RestockRequestLabels          1 if Diterima ≤ 5            ≤ 50
+                                              ─────          ──────
+                                              5–10 calls     50–100 calls      (a read by ids: 2)
+```
+
+| | |
+| --- | --- |
+| today | no read takes several restocks: `RestockRequestDetail` and `RestockRequestLabels` take one id each, and `RestockRequestList`'s filter has no ids (its `ids` is the answer's order). So `useLabelSets` asks per restock, through `useQueries`, each cached on its own |
+| the mark | `restock.labels.pending.byIds`, kind **`interim`** ([an-interim-read-is-marked](context_decision.md#an-interim-read-is-marked)) — *Restok dibaca satu per satu*: ⚠ 1 beside the Restok card's title, and the strip under the page's title |
+| when it lands | `labelSets.ts` is the one file that changes; the page reads the same `LabelSet`s |
+| pinned by | `One-by-one read, marked` (the strip, *interim read*, and the card's ⚠ 1) |
+
+What it replaces: a page reading one call per restock with nothing on it saying so.

@@ -154,8 +154,49 @@ since a rule for every list, the seller's order list included
 ([a-statistics-button-ends-the-tab-row](../../technical/frontend/context_decision.md#a-statistics-button-ends-the-tab-row),
 `components/chrome/StatsToggle`).
 Screen decisions for the restock screens now go in
-[docs/technical/frontend/restock_decision.md](../../technical/frontend/restock_decision.md). Not yet: the selling detail,
-the form, and every warehouse-side restock screen.
+[docs/technical/frontend/restock_decision.md](../../technical/frontend/restock_decision.md). On the screen rules
+(2026-11-06): the selling list and detail, the form, the warehouse list and detail, Terima, Cetak Label
+([the-restock-labels-follow-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-labels-follow-the-screen-rules)).
+Cetak Label is then set up in mm — paper, grid, padding, each text and its size, the run's limit and page; one paper a
+printed page; defaults 35 × 15 mm, padding 2 mm; the settings auto-saved to the device's local storage (owner-confirmed),
+only what differs from the defaults (key v3)
+([the-label-is-set-up-in-mm](../../technical/frontend/restock_decision.md#the-label-is-set-up-in-mm),
+[the-label-settings-are-remembered](../../technical/frontend/restock_decision.md#the-label-settings-are-remembered));
+the sticker carries no price any more. The page is the settings held in view beside a Pratinjau card — white stickers
+on a grey ground, three a row
+([the-label-page-is-settings-and-a-preview](../../technical/frontend/restock_decision.md#the-label-page-is-settings-and-a-preview));
+then one paper in Pratinjau and, under it, Yang Dicetak — each label once with its count to print, typed over; what
+prints is exactly those counts
+([the-print-list-is-each-label-and-its-count](../../technical/frontend/restock_decision.md#the-print-list-is-each-label-and-its-count));
+Ctrl+P / ⌘P on the page is its own print, as Cetak
+([ctrl-p-prints-the-labels](../../technical/frontend/restock_decision.md#ctrl-p-prints-the-labels)).
+Cetak Label opens from Tiba too, beside Terima: the labels are built on the screen from the restock's own lines — one per
+line, counted as ordered, no placement, the SKU alone in the QR, and `RestockRequestLabels` is not called (it answers
+an accepted restock only)
+([labels-print-from-arrived](../../technical/frontend/restock_decision.md#labels-print-from-arrived)).
+Several restocks print in one run: a Restok card over the Pratinjau — a row jumps to its group in Yang Dicetak
+([labels-a-restock-jumps-to-its-labels](../../technical/frontend/restock_decision.md#labels-a-restock-jumps-to-its-labels)) — (each restock, its label count, ✕; *Tambah Restok*,
+a search select over `RestockRequestList` asked twice — ARRIVED and ACCEPTED — and merged), Yang Dicetak grouped by
+restock. ONE address for one restock or several, `/inventories/restock/labels?ids=503,502`; every Cetak opens it and
+the old `/inventories/restock/:id/labels` is a loader redirect to `?ids=:id`
+([the-labels-have-one-address](../../technical/frontend/restock_decision.md#the-labels-have-one-address)). ⚠ Each restock is
+read on its own — no read takes several ids — and the page marks it, a pending part of the new kind `interim`
+([the-labels-mark-their-one-by-one-read](../../technical/frontend/restock_decision.md#the-labels-mark-their-one-by-one-read)). Each restock is read
+with the shared `restockRequestQuery` / `restockLabelsQuery` options through `useQueries`
+(`pages/restock-labels/labelSets.ts`)
+([labels-print-several-restocks](../../technical/frontend/restock_decision.md#labels-print-several-restocks)). The
+labels' action reads *Cetak* ([print-is-the-labels-action](../../technical/frontend/restock_decision.md#print-is-the-labels-action)),
+and on the page *Cetak* is the one print button — *Unduh PDF* is gone, a PDF is saved from the print dialog
+([cetak-is-the-one-print-button](../../technical/frontend/restock_decision.md#cetak-is-the-one-print-button)).
+The warehouse list ticks restocks — a box per row, enabled when Cetak is one of its acts, a page box in the head — and
+*Cetak N Restok* in the title's row opens Cetak Label with them; the ticks are ids, outlasting pages, tabs and filters
+([the-list-prints-the-ticked-restocks](../../technical/frontend/restock_decision.md#the-list-prints-the-ticked-restocks);
+`features/restock/labelsPath.ts` builds the address for both). Cetak Label's left column now fits the window as
+Product Discover's filters do — one hook, `lib/useFitToWindow`, which `FilterPanel` moved onto
+([the-label-settings-scroll-inside-their-card](../../technical/frontend/restock_decision.md#the-label-settings-scroll-inside-their-card),
+[a-sticky-side-column-ends-above-the-windows-foot](../../technical/frontend/context_decision.md#a-sticky-side-column-ends-above-the-windows-foot)).
+**Not yet:** Struk (`pages/batch-receipt` — no stories at all, back by
+`navigate(-1)`, a spinner; it shows the unit and line cost while the warehouse's pages show none — unasked).
 
 ✅ **2026-10-17: the accept is on the ledgers, the tables carry the owner's names, the money is `double`** — uncommitted,
 for the owner's review ([ledgers.md](ledgers.md), stages 2a, 2c, 2b).

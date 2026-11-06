@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/login/index";
 import { Layout } from "./layouts/Layout";
 import { TeamProvider, useTeam } from "./features/team/TeamContext";
 import { TeamType } from "./gen/warehouse/team/v1/team_pb";
+import { labelsPath } from "./features/restock/labelsPath";
 
 // The app SHELL (auth gate, protected route, team provider, layout) and the LOGIN page load eagerly —
 // they are on the critical path to the first paint. Every PAGE behind the layout is code-split with
@@ -402,8 +403,16 @@ export const router = createBrowserRouter([
       { path: "inventories/restock/:requestId/edit", element: <RestockFormPage key="edit" /> },
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
       { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
-      // After accepting, print the shelf labels for what landed (#207) — the step after accept.
-      { path: "inventories/restock/:requestId/labels", element: <RestockLabelsPage /> },
+      // THE LABELS HAVE ONE ADDRESS (owner: *"pakai 1 alamat saja"*, the-labels-have-one-address) — one restock or
+      // several, `?ids=503` or `?ids=503,502` (labels-print-several-restocks). `labels` is static, so it ranks above
+      // :requestId whatever the order here.
+      { path: "inventories/restock/labels", element: <RestockLabelsPage /> },
+      // Where one restock's labels used to live (#207). A bookmark or a link still lands — on the one address, by a
+      // loader redirect like the ones above.
+      {
+        path: "inventories/restock/:requestId/labels",
+        loader: ({ params }) => redirect(labelsPath([params.requestId ?? ""])),
+      },
       // The goods-received receipt for the delivery (#219) — a printable document, reached from an
       // accepted restock and from a batch's Print receipt (?batch= highlights that product's line).
       { path: "inventories/restock/:requestId/receipt", element: <BatchReceiptPage /> },

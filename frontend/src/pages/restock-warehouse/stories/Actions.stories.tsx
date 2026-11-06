@@ -31,7 +31,7 @@ export const TheRowActionsFollowTheStatus: Story = {
       "restock-action-sign-501",
       "restock-action-accept-501",
     ]);
-    await expect(actionsOf(canvas.getByTestId("restock-row-502"))).toEqual(["restock-action-accept-502"]);
+    await expect(actionsOf(canvas.getByTestId("restock-row-502"))).toEqual(["restock-action-accept-502", "restock-action-labels-502"]);
     await expect(actionsOf(canvas.getByTestId("restock-row-506"))).toEqual([
       "restock-action-sign-506",
       "restock-action-accept-506",
@@ -52,7 +52,7 @@ export const SignForBoxFromTheRow: Story = {
 
     const row = canvas.getByTestId("restock-row-501");
     await waitFor(() => expect(within(row).getByTestId(`restock-status-${RestockRequestStatus.ARRIVED}`)).toBeVisible());
-    await waitFor(() => expect(actionsOf(row)).toEqual(["restock-action-accept-501"]));
+    await waitFor(() => expect(actionsOf(row)).toEqual(["restock-action-accept-501", "restock-action-labels-501"]));
     // The dialog did not navigate the row behind it.
     await expect(canvas.queryByTestId("at-restock-detail")).toBeNull();
   },

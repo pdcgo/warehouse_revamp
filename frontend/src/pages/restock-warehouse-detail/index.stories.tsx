@@ -64,7 +64,7 @@ export const Mobile: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("restock-action-labels-503")).toHaveAccessibleName("Print Labels");
+    await expect(canvas.getByTestId("restock-action-labels-503")).toHaveAccessibleName("Print");
     const items = canvas.getByTestId("restock-detail-items");
     await expect(within(items).queryAllByRole("columnheader")).toHaveLength(0);
     const rice = canvas.getByTestId("restock-detail-item-74");

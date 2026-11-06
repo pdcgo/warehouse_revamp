@@ -1467,6 +1467,11 @@
       "lost": "Lost"
     },
     "inbound": {
+      "pickOne": "Select restock #{{id}} to print",
+      "pickAll": "Select every restock on this page that can print",
+      "printPicked_one": "Print {{count}} Restock",
+      "printPicked_other": "Print {{count}} Restocks",
+      "clearPicked": "Clear the selection",
       "pending": {
         "cod": {
           "label": "COD paid",
@@ -1795,7 +1800,7 @@
       "fulfilled": "Restock request fulfilled"
     },
     "labels": {
-      "action": "Print Labels",
+      "action": "Print",
       "title": "Print Labels",
       "heading": "Labels · Restock #{{id}}",
       "back": "Back to Restock #{{id}}",
@@ -1803,25 +1808,77 @@
       "notFound": "Those labels are not available.",
       "accepted": "Accepted",
       "count": "labels · {{products}} products",
-      "perPiece": "one per piece",
-      "perShelf": "one per placement",
       "print": "Print",
-      "downloadPdf": "Download PDF",
-      "controls": "Labels to print",
-      "qrHint": "Each QR encodes product-code / batch-id — printed under it as a readable fallback.",
       "oneLabelPer": "One label per",
       "piece": "Piece",
       "shelf": "Shelf",
-      "size": "Label size",
-      "showOn": "Show on label",
-      "showRef": "Restock ref & date",
-      "showHpp": "HPP / cost price",
       "excluded_one": "{{count}} unit arrived broken or missing — it never entered stock, so it gets no label.",
       "excluded_other": "{{count}} units arrived broken or missing — they never entered stock, so they get no label.",
-      "previewNote": "Showing the first {{shown}} of {{total}} — all {{total}} print.",
       "none": "Nothing entered stock on this delivery, so there is nothing to label.",
-      "showPlacement": "Placement",
-      "notAccepted": "Only an accepted restock has labels — nothing became stock before it was counted in."
+      "notAccepted": "Labels print once a restock has Arrived or been Accepted.",
+      "notAcceptedTitle": "Restock #{{id}} has no labels yet",
+      "arrivedNote": "This restock has only Arrived — its labels carry no placement, and the counts are what was ordered. Once accepted, its labels are per placement.",
+      "printShortcut": "Print (Ctrl+P)",
+      "nothingToPrint": "No labels to print — every count is 0.",
+      "headingMany": "Labels · {{count}} Restocks",
+      "pending": {
+        "byIds": {
+          "label": "Restocks read one by one",
+          "reason": "There is no read of several restocks at once yet, so each is read on its own — its detail, and an accepted one's labels: 5 restocks are up to 10 calls, 50 up to 100. With a read by ids it would be two."
+        }
+      },
+      "backAny": "Back",
+      "restocks": {
+        "title": "Restocks",
+        "add": "Add a restock — no., tracking, SKU",
+        "addLabel": "Add a restock",
+        "loading": "Loading…",
+        "noMatch": "No Arrived or Accepted restock matches",
+        "remove": "Remove restock #{{id}}",
+        "jump": "Go to restock #{{id}}'s labels",
+        "labelCount_one": "{{count}} label",
+        "labelCount_other": "{{count}} labels",
+        "notPrintable": "no labels yet"
+      },
+      "settings": {
+        "title": "Label Settings",
+        "reset": "Reset to Defaults",
+        "paper": "Paper",
+        "width": "Width",
+        "height": "Height",
+        "rows": "Rows",
+        "columns": "Columns",
+        "gap": "Gap",
+        "padding": "Padding",
+        "paddingAll": "All sides",
+        "paddingSides": "Each side",
+        "top": "Top",
+        "right": "Right",
+        "bottom": "Bottom",
+        "left": "Left",
+        "text": "Text",
+        "sku": "SKU",
+        "placement": "Placement",
+        "name": "Product name",
+        "nameLines": "max lines",
+        "date": "Print date",
+        "bold": "Bold",
+        "center": "Centred",
+        "condensed": "Condensed font",
+        "qrGap": "Gap between QR and text",
+        "run": "Print",
+        "limit": "Limit",
+        "page": "Page",
+        "ofPages": "of {{pages}}",
+        "runLine": "labels {{from}}–{{to}} of {{total}} · {{papers}} papers",
+        "preview": "Preview",
+        "toPrint": "To Print",
+        "toPrintLine": "{{total}} labels of {{kinds}} kinds",
+        "onPlacement": "{{count}} pcs on the rack",
+        "ordered": "Ordered {{count}} pcs",
+        "countOf": "Labels of {{name}} on {{placement}}",
+        "previewSize": "paper {{width}} × {{height}} mm · {{rows}} × {{columns}} labels"
+      }
     },
     "accept": {
       "title": "Accept Delivery",
@@ -4278,13 +4335,15 @@
     "title_other": "{{count}} parts of this screen are not implemented yet",
     "lead_one": "One of them works on screen only — what you type into it is not sent: {{parts}}.",
     "lead_other": "These work on screen only — what you type into them is not sent: {{parts}}.",
-    "toggle": "Show the {{count}} parts",
+    "toggle_one": "Show the part",
+    "toggle_other": "Show the {{count}} parts",
     "markAria": "Not implemented, number {{n}}: {{label}}",
     "tag": {
       "dropped": "· not sent",
       "sample": "· sample figures",
       "derived": "· rule not settled",
-      "missing": "· not in the total"
+      "missing": "· not in the total",
+      "interim": "· interim read"
     },
     "conflict": "Against a business decision:"
   },

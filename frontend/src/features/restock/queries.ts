@@ -254,10 +254,12 @@ export function useRestockInbound(args: { teamId: bigint | undefined; requesting
 // The printable labels for a fulfilled restock (#207), scoped to the accepting warehouse. Its own
 // key params so it caches independently of the request detail — a different question about the same
 // receipt. Only enabled once we have a warehouse team and a real request id.
-export function useRestockLabels(args: { teamId: bigint | undefined; requestId: bigint }) {
-  const { teamId, requestId } = args;
-
-  return useQuery({
+//
+// The OPTIONS are exported as well as the hook, so a page reading several restocks at once (Cetak Label over many,
+// labels-print-several-restocks) asks `useQueries` the very same question — one cache entry per restock, shared with
+// the single reads.
+export function restockLabelsQuery(teamId: bigint | undefined, requestId: bigint) {
+  return {
     queryKey: key.restock(teamId, { labels: requestId.toString() }),
     enabled: teamId !== undefined && requestId > 0n,
     queryFn: async () => {
@@ -265,19 +267,61 @@ export function useRestockLabels(args: { teamId: bigint | undefined; requestId: 
 
       return res;
     },
-  });
+  };
 }
 
-export function useRestockRequest(args: { teamId: bigint | undefined; requestId: bigint }) {
-  const { teamId, requestId } = args;
+export function useRestockLabels(args: { teamId: bigint | undefined; requestId: bigint }) {
+  return useQuery(restockLabelsQuery(args.teamId, args.requestId));
+}
 
-  return useQuery({
+export function restockRequestQuery(teamId: bigint | undefined, requestId: bigint) {
+  return {
     queryKey: key.restock(teamId, { requestId: requestId.toString() }),
     enabled: teamId !== undefined && requestId > 0n,
     queryFn: async () => {
       const res = await restockClient.restockRequestDetail({ teamId: teamId!, requestId });
 
       return res.request ?? null;
+    },
+  };
+}
+
+export function useRestockRequest(args: { teamId: bigint | undefined; requestId: bigint }) {
+  return useQuery(restockRequestQuery(args.teamId, args.requestId));
+}
+
+// How many of each printable status the picker offers before anything is typed.
+const LABELABLE_PAGE = 10;
+
+// THE RESTOCKS THAT HAVE LABELS — Tiba and Diterima, for Cetak Label's *Tambah Restok* (labels-print-several-restocks):
+// the newest of each, narrowed by the list's own search (number, resi, Order ID, a line's SKU or name). The list takes
+// ONE status, so it is asked twice and the two answers merged, newest first — a picker that offered every status
+// would open on boxes still on the road, none of which can be picked.
+//
+// `referenceQuery`: a picker feed (HARD RULE 10). What is picked is read again, whole, by the page.
+export function useLabelableRestocks(args: { teamId: bigint | undefined; q: string }) {
+  const { teamId, q } = args;
+
+  return useQuery({
+    queryKey: key.restock(teamId, { labelable: q }),
+    ...referenceQuery,
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const ask = (status: RestockRequestStatus) =>
+        restockClient.restockRequestList({
+          teamId: teamId!,
+          filter: { status, q },
+          dataRequest: restockListRowData(),
+          page: { page: 1, limit: LABELABLE_PAGE },
+        });
+      const [arrived, accepted] = await Promise.all([
+        ask(RestockRequestStatus.ARRIVED),
+        ask(RestockRequestStatus.ACCEPTED),
+      ]);
+
+      return [...restocksFromList(arrived.items, arrived.ids), ...restocksFromList(accepted.items, accepted.ids)].sort(
+        (a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0),
+      );
     },
   });
 }

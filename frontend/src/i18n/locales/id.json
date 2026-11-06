@@ -1453,6 +1453,11 @@
       "lost": "Hilang"
     },
     "inbound": {
+      "pickOne": "Pilih restok #{{id}} untuk dicetak",
+      "pickAll": "Pilih semua restok di halaman ini yang bisa dicetak",
+      "printPicked_one": "Cetak {{count}} Restok",
+      "printPicked_other": "Cetak {{count}} Restok",
+      "clearPicked": "Hapus pilihan",
       "pending": {
         "cod": {
           "label": "Ongkir COD dibayar",
@@ -1778,7 +1783,7 @@
       "fulfilled": "Permintaan restok terpenuhi"
     },
     "labels": {
-      "action": "Cetak Label",
+      "action": "Cetak",
       "title": "Cetak Label",
       "heading": "Label · Restok #{{id}}",
       "back": "Kembali ke Restok #{{id}}",
@@ -1786,25 +1791,77 @@
       "notFound": "Label tersebut tidak tersedia.",
       "accepted": "Diterima",
       "count": "label · {{products}} produk",
-      "perPiece": "satu per pcs",
-      "perShelf": "satu per penempatan",
       "print": "Cetak",
-      "downloadPdf": "Unduh PDF",
-      "controls": "Label untuk dicetak",
-      "qrHint": "Setiap QR memuat kode-produk / id-batch — dicetak di bawahnya sebagai teks cadangan.",
       "oneLabelPer": "Satu label per",
       "piece": "Pcs",
       "shelf": "Rak",
-      "size": "Ukuran label",
-      "showOn": "Tampilkan di label",
-      "showRef": "Ref & tanggal restok",
-      "showHpp": "HPP / harga pokok",
       "excluded_one": "{{count}} unit datang rusak atau kurang — tidak masuk stok, jadi tidak diberi label.",
       "excluded_other": "{{count}} unit datang rusak atau kurang — tidak masuk stok, jadi tidak diberi label.",
-      "previewNote": "Menampilkan {{shown}} pertama dari {{total}} — semua {{total}} akan dicetak.",
       "none": "Tidak ada yang masuk stok pada kiriman ini, jadi tidak ada yang perlu dilabeli.",
-      "showPlacement": "Penempatan",
-      "notAccepted": "Hanya restok yang sudah diterima yang punya label — belum ada yang masuk stok sebelum dihitung."
+      "notAccepted": "Label bisa dicetak saat restok sudah Tiba atau Diterima.",
+      "notAcceptedTitle": "Restok #{{id}} belum bisa dilabeli",
+      "arrivedNote": "Restok ini baru Tiba — label tanpa penempatan, dan jumlahnya dari yang dipesan. Setelah diterima, labelnya per penempatan.",
+      "printShortcut": "Cetak (Ctrl+P)",
+      "nothingToPrint": "Tidak ada label untuk dicetak — semua jumlahnya 0.",
+      "headingMany": "Label · {{count}} Restok",
+      "pending": {
+        "byIds": {
+          "label": "Restok dibaca satu per satu",
+          "reason": "Belum ada pembacaan beberapa restok sekaligus, jadi tiap restok dibaca sendiri — detailnya, dan label untuk yang Diterima: 5 restok sampai 10 panggilan, 50 sampai 100. Dengan pembacaan per ids cukup 2."
+        }
+      },
+      "backAny": "Kembali",
+      "restocks": {
+        "title": "Restok",
+        "add": "Tambah restok — no., resi, SKU",
+        "addLabel": "Tambah restok",
+        "loading": "Memuat…",
+        "noMatch": "Tidak ada restok Tiba atau Diterima yang cocok",
+        "remove": "Lepas restok #{{id}}",
+        "jump": "Ke label restok #{{id}}",
+        "labelCount_one": "{{count}} label",
+        "labelCount_other": "{{count}} label",
+        "notPrintable": "belum bisa dilabeli"
+      },
+      "settings": {
+        "title": "Pengaturan Label",
+        "reset": "Kembalikan Default",
+        "paper": "Kertas",
+        "width": "Lebar",
+        "height": "Tinggi",
+        "rows": "Baris",
+        "columns": "Kolom",
+        "gap": "Jarak",
+        "padding": "Padding",
+        "paddingAll": "Semua sisi",
+        "paddingSides": "Per sisi",
+        "top": "Atas",
+        "right": "Kanan",
+        "bottom": "Bawah",
+        "left": "Kiri",
+        "text": "Teks",
+        "sku": "SKU",
+        "placement": "Penempatan",
+        "name": "Nama produk",
+        "nameLines": "maks baris",
+        "date": "Tanggal cetak",
+        "bold": "Tebal",
+        "center": "Rata tengah",
+        "condensed": "Font condensed",
+        "qrGap": "Jarak QR dan teks",
+        "run": "Cetak",
+        "limit": "Limit",
+        "page": "Halaman",
+        "ofPages": "dari {{pages}}",
+        "runLine": "label {{from}}–{{to}} dari {{total}} · {{papers}} kertas",
+        "preview": "Pratinjau",
+        "toPrint": "Yang Dicetak",
+        "toPrintLine": "{{total}} label dari {{kinds}} jenis",
+        "onPlacement": "{{count}} pcs di rak",
+        "ordered": "Dipesan {{count}} pcs",
+        "countOf": "Jumlah label {{name}} di {{placement}}",
+        "previewSize": "kertas {{width}} × {{height}} mm · {{rows}} × {{columns}} label"
+      }
     },
     "accept": {
       "title": "Terima Kiriman",
@@ -4254,13 +4311,15 @@
     "title_other": "{{count}} bagian layar ini belum diimplementasi",
     "lead_one": "Bagian ini hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
     "lead_other": "Bagian berikut hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
-    "toggle": "Lihat {{count}} bagiannya",
+    "toggle_one": "Lihat bagiannya",
+    "toggle_other": "Lihat {{count}} bagiannya",
     "markAria": "Belum diimplementasi, nomor {{n}}: {{label}}",
     "tag": {
       "dropped": "· tidak terkirim",
       "sample": "· angka contoh",
       "derived": "· rumus belum final",
-      "missing": "· tidak masuk total"
+      "missing": "· tidak masuk total",
+      "interim": "· pembacaan sementara"
     },
     "conflict": "Bertentangan dengan keputusan bisnis:"
   },
