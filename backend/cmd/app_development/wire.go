@@ -67,6 +67,7 @@ func InitializeApp() (*App, error) {
 		NewInventoryProductReader,
 		// The link to an order's label, for the warehouse that ships it — see order_label_linker.go.
 		NewOrderLabelLinker,
+		NewDraftRegionMatcher,
 		// The link to a restock's label photo, for the warehouse it is going to — see restock_photo_linker.go.
 		NewRestockPhotoLinker,
 		// Where the order events go (#153) — see event_sender.go. Dev publishes to the local

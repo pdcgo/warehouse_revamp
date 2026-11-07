@@ -235,8 +235,8 @@ export const products = [
 // ⚠ Codes are LOWERCASE, matching ShippingBadge's colour map. A badge looks up its palette by code, so an
 // uppercase fixture would quietly fall through to the unknown-courier gray.
 //
-// Some order fixtures below use `anteraja`, which is NOT here on purpose: it is the old-data case the
-// code bridge renders as the raw code (the-old-catalogue-bridges-by-code).
+// Some order fixtures below name channel 95, which is NOT here on purpose: an id the catalogue does not hold renders
+// as `#95`, never a borrowed name (ShipmentChannelBadge).
 export const shipmentChannels = [
   { id: 91n, code: "jne", name: "JNE", desc: "Pickup daily at 15:00", isDeleted: false },
   { id: 92n, code: "jnt", name: "J&T", desc: "", isDeleted: false },
@@ -433,18 +433,18 @@ export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 
 // Only 101 and 110 carry a BUYER USERNAME — one on each detail page (the seller's and the warehouse's). Every other
 // row has none, which is the ordinary case (the-buyers-username-is-optional) and must show nothing at all.
 const orderRows = [
-  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PENDING, customerName: "Bu Ani", customerPhone: "0812-3456-0001", buyerUsername: "ani.melati88", platformTotal: 245_000, goodsCost: 148_000, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
-  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PENDING, customerName: "Pak Budi", customerPhone: "0812-3456-0002", platformTotal: 176_500, goodsCost: 107_520, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
-  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PROCESSED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", platformTotal: 92_000, goodsCost: 55_040, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
-  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", platformTotal: 413_000, goodsCost: 257_280, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
-  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PICKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", platformTotal: 303_500, goodsCost: 189_440, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
-  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPING, customerName: "Pak Firman", customerPhone: "0812-3456-0006", platformTotal: 137_000, goodsCost: 82_560, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
-  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCEL, customerName: "Bu Gita", customerPhone: "0812-3456-0007", shippingCode: "jne", createdByUserId: 0n, createdAtUnix: daysAgo(8) },
-  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPING, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", goodsCost: 307_200, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
-  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", platformTotal: 258_000, goodsCost: 161_280, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PENDING, customerName: "Bu Ani", customerPhone: "0812-3456-0001", buyerUsername: "ani.melati88", platformTotal: 245_000, goodsCost: 148_000, orderExternalRefId: "SP-2409-8841", shipmentChannelId: 91n, createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PENDING, customerName: "Pak Budi", customerPhone: "0812-3456-0002", platformTotal: 176_500, goodsCost: 107_520, orderExternalRefId: "TK-88120347", shipmentChannelId: 93n, createdByUserId: 62n, createdAtUnix: daysAgo(2) },
+  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PROCESSED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", platformTotal: 92_000, goodsCost: 55_040, orderExternalRefId: "SP-2409-8852", shipmentChannelId: 91n, createdByUserId: 65n, createdAtUnix: daysAgo(3) },
+  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", platformTotal: 413_000, goodsCost: 257_280, orderExternalRefId: "LZ-4471902", shipmentChannelId: 95n, createdByUserId: 63n, createdAtUnix: daysAgo(4) },
+  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PICKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", platformTotal: 303_500, goodsCost: 189_440, orderExternalRefId: "TK-88120388", shipmentChannelId: 91n, createdByUserId: 65n, createdAtUnix: daysAgo(5) },
+  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPING, customerName: "Pak Firman", customerPhone: "0812-3456-0006", platformTotal: 137_000, goodsCost: 82_560, orderExternalRefId: "SP-2409-8877", shipmentChannelId: 93n, createdByUserId: 62n, createdAtUnix: daysAgo(6) },
+  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCEL, customerName: "Bu Gita", customerPhone: "0812-3456-0007", shipmentChannelId: 91n, createdByUserId: 0n, createdAtUnix: daysAgo(8) },
+  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPING, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", goodsCost: 307_200, orderExternalRefId: "TK-88120411", shipmentChannelId: 95n, createdByUserId: 62n, createdAtUnix: daysAgo(120) },
+  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.PROCESSED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", platformTotal: 258_000, goodsCost: 161_280, orderExternalRefId: "LZ-4471955", shipmentChannelId: 91n, createdByUserId: 65n, createdAtUnix: daysAgo(1) },
 
-  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PENDING, customerName: "Pak Joko", customerPhone: "0813-9999-0001", buyerUsername: "joko_kenanga", platformTotal: 628_000, goodsCost: 395_520, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
-  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PICKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", shippingCode: "jne", createdByUserId: 61n, createdAtUnix: daysAgo(3) },
+  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PENDING, customerName: "Pak Joko", customerPhone: "0813-9999-0001", buyerUsername: "joko_kenanga", platformTotal: 628_000, goodsCost: 395_520, orderExternalRefId: "SP-2410-1002", shipmentChannelId: 95n, createdByUserId: 61n, createdAtUnix: daysAgo(2) },
+  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PICKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", shipmentChannelId: 91n, createdByUserId: 61n, createdAtUnix: daysAgo(3) },
 ];
 
 // ── The three facts a row has carried since 00018/00019 ─────────────────────────────────────────
@@ -699,70 +699,131 @@ export function orderDetailFor(id: bigint) {
   };
 }
 
+// ── A draft's ONE address row (selling 00046, one-address-per-order-and-per-draft) — NAMES only, as the app read them
+// (an-address-is-plain-names); the four codes are always empty on a draft. The list and the detail both carry it.
+//
+//   201  names the region list's ONE place exactly (Kota Bandung › Sukajadi › Sukawarna) — the form opens pre-filled
+//   202  "Kab. Bandung" over Cicendo — Cicendo is Kota Bandung's, so the prefix disagrees and NOTHING matches: the
+//        dropdowns open empty and the person picks, reading the text (the-cs-edits-the-whole-address-before-create)
+const draftAddressNames = (
+  provinsiName: string, kabupatenName: string, kecamatanName: string, desaName: string, kodePos: string, addressLine: string,
+) => ({
+  provinsiCode: "", provinsiName, kabupatenCode: "", kabupatenName, kecamatanCode: "", kecamatanName, desaCode: "", desaName,
+  kodePos, addressLine,
+});
+
+export const draftAddresses: Record<string, ReturnType<typeof draftAddressNames>> = {
+  "201": draftAddressNames("JAWA BARAT", "Kota Bandung", "Sukajadi", "Sukawarna", "40162", "Jl. Sukajadi No. 45"),
+  "202": draftAddressNames("Jawa Barat", "Kab. Bandung", "Cicendo", "Pajajaran", "40173", "Jl. Pajajaran No. 12"),
+  "203": draftAddressNames("", "", "", "", "", "Jl. Melati No. 3, Bandung"),
+  "204": draftAddressNames("Jawa Barat", "Kota Bandung", "", "", "", "Jl. Cicendo No. 8"),
+};
+
 // ── Order drafts ────────────────────────────────────────────────────────────────────────────────
 //
 // Only the SELLING team has any, and that is not an omission: a draft is a half-typed order, and a
 // warehouse never types one. It is what the Drafts tab's badge counts, so the two versions of the
 // list differ there too — a number for Melati, a zero for Gudang Pusat.
 export const orderDrafts = [
-  { id: 201n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", buyerUsername: "lestari.shop", shippingCode: "jne", itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 0 },
-  { id: 202n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", buyerUsername: "", shippingCode: "sicepat", itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 3_600n, platformShipmentDeadlineUnix: 0n, platformTotal: 130_000 },
-  // TWO DRAFTS ONE FIELD SHORT OF READY — every line mapped, and each missing exactly one of the two things Promote
-  // refuses that the list can read: 203 the marketplace order date, 204 the stored sell price. Without them the list
-  // could call a draft ready that Promote turns away, and no story would notice.
-  { id: 203n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9003", shopId: 21n, warehouseId: 11n, customerName: "Bu Rina", customerPhone: "0812-3456-0103", buyerUsername: "", shippingCode: "jne", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 55_000 },
-  { id: 204n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9004", shopId: 22n, warehouseId: 11n, customerName: "Pak Yusuf", customerPhone: "0812-3456-0104", buyerUsername: "", shippingCode: "sicepat", itemCount: 1, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 7_200n, platformShipmentDeadlineUnix: 0n, platformTotal: 0 },
+  { id: 201n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", buyerUsername: "lestari.shop", shipmentChannelId: 91n, itemCount: 3, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 0, address: draftAddresses["201"] },
+  { id: 202n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", buyerUsername: "", shipmentChannelId: 93n, itemCount: 2, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 3_600n, platformShipmentDeadlineUnix: 0n, platformTotal: 130_000, address: draftAddresses["202"] },
+  // TWO DRAFTS ONE FIELD SHORT OF READY — each missing exactly one of the things Create refuses that the list can read:
+  // 203 the marketplace order date (and, a `manual` draft, its ref), 204 the stored sell price. Without them the list
+  // could call a draft ready that Create turns away, and no story would notice. No draft stores a mapping
+  // (a-draft-stores-no-mapping), so no line keeps any of them from Ready (the-drafts-list-counts-no-mapping).
+  { id: 203n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9003", shopId: 21n, warehouseId: 11n, customerName: "Bu Rina", customerPhone: "0812-3456-0103", buyerUsername: "", shipmentChannelId: 91n, itemCount: 1, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: 0n, platformShipmentDeadlineUnix: 0n, platformTotal: 55_000, address: draftAddresses["203"] },
+  { id: 204n, teamId: 12n, authorUserId: 61n, source: "ScraperX", externalId: "MEL-9004", shopId: 22n, warehouseId: 11n, customerName: "Pak Yusuf", customerPhone: "0812-3456-0104", buyerUsername: "", shipmentChannelId: 93n, itemCount: 1, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1), platformCreatedAtUnix: daysAgo(1) - 7_200n, platformShipmentDeadlineUnix: 0n, platformTotal: 0, address: draftAddresses["204"] },
 ];
 
 // ── What a draft DETAIL read adds — its lines ───────────────────────────────────────────────────
 //
-// Same split as `orderDetailExtras`: `OrderDraftList` returns a summary with only the COUNTS, and
-// `OrderDraftDetail` is the one read that populates `items`. The line counts here must agree with
-// `itemCount` / `unmappedItemCount` above, or the list and the detail disagree about the same draft.
+// Same split as `orderDetailExtras`: `OrderDraftList` returns a summary with only the COUNT, and
+// `OrderDraftDetail` is the one read that populates `items` (and `regionMatch`). The line counts here must agree with
+// `itemCount` above, or the list and the detail disagree about the same draft. The lines are the platform's reference —
+// a draft stores no mapping (a-draft-stores-no-mapping); the person picks our products in the form.
 //
-//   201  three lines, ONE UNMAPPED (productId 0) — Promote is disabled and says why.
-//   202  two lines, all mapped, all within the warehouse's stock, its marketplace order date set and its sell price
-//        STORED (130.000, the rows' own sum) — the draft that is READY.
+//   201  three scraped lines, the mug a bonus the platform listed.
+//   202  two lines, its marketplace order date set and its sell price STORED (130.000, the rows' own sum) — the draft
+//        that is READY on the list; in the form the person still maps its lines.
 //        201 has no order date and no stored sell price, the other things Promote names
 //        (platform-created-at-is-required-at-finalize, platform-total-is-required-at-finalize) — its field follows the
 //        rows' 155.000, which is not stored until it is saved.
 //   203  204  list rows only — no lines here, so their detail opens empty. The list reads only their counts.
 //
-// Mapped lines point at products 71 and 72, which Gudang Pusat holds (`warehouseStock`), so the
-// availability column has a real figure to show rather than a dash.
-const draftAddress = {
-  provinsiCode: "32", provinsiName: "Jawa Barat",
-  kabupatenCode: "3273", kabupatenName: "Kota Bandung",
-  kecamatanCode: "327301", kecamatanName: "Sukajadi",
-  desaCode: "3273011001", desaName: "Sukawarna",
-  kodePos: "40162",
-  addressLine: "Jl. Sukajadi No. 45",
-};
-
 export const orderDraftItems: Record<
   string,
-  { id: bigint; externalSku: string; externalName: string; productId: bigint; quantity: number; unitPrice: number }[]
+  { id: bigint; externalSku: string; externalName: string; quantity: number; unitPrice: number }[]
 > = {
   "201": [
-    { id: 2011n, externalSku: "SHP-KOPI-250", externalName: "Kopi Arabika Gayo 250gr Biji Sangrai", productId: 71n, quantity: 2, unitPrice: 55_000 },
-    { id: 2012n, externalSku: "SHP-TEH-100", externalName: "Teh Melati Wangi 100 gram", productId: 72n, quantity: 1, unitPrice: 25_000 },
-    // THE UNMAPPED ONE — the scrape read it, nobody has said which product it is yet.
-    { id: 2013n, externalSku: "SHP-MUG-01", externalName: "Mug Keramik Motif Batik (bonus)", productId: 0n, quantity: 1, unitPrice: 20_000 },
+    { id: 2011n, externalSku: "SHP-KOPI-250", externalName: "Kopi Arabika Gayo 250gr Biji Sangrai", quantity: 2, unitPrice: 55_000 },
+    { id: 2012n, externalSku: "SHP-TEH-100", externalName: "Teh Melati Wangi 100 gram", quantity: 1, unitPrice: 25_000 },
+    // A bonus the platform listed — the person decides in the form whether anything of ours goes with it.
+    { id: 2013n, externalSku: "SHP-MUG-01", externalName: "Mug Keramik Motif Batik (bonus)", quantity: 1, unitPrice: 20_000 },
   ],
   "202": [
-    { id: 2021n, externalSku: "TK-KOPI-250", externalName: "Kopi Arabika 250g", productId: 71n, quantity: 1, unitPrice: 55_000 },
-    // EXACTLY what the warehouse holds (product 72 has 3) — ready as it stands, and ONE click on the
-    // + away from short. That is the edge the short-stock alert is judged against.
-    { id: 2022n, externalSku: "TK-TEH-100", externalName: "Teh Melati Kemasan 100gr", productId: 72n, quantity: 3, unitPrice: 25_000 },
+    { id: 2021n, externalSku: "TK-KOPI-250", externalName: "Kopi Arabika 250g", quantity: 1, unitPrice: 55_000 },
+    { id: 2022n, externalSku: "TK-TEH-100", externalName: "Teh Melati Kemasan 100gr", quantity: 3, unitPrice: 25_000 },
   ],
 };
 
-/** One draft as `OrderDraftDetail` returns it — the list row plus its lines and a frozen address. */
+/** One draft as `OrderDraftDetail` returns it — the list row plus its lines and its address pre-fill. */
 export function orderDraftDetailFor(id: bigint) {
   const row = orderDrafts.find((d) => d.id === id);
   if (!row) return undefined;
 
-  return { ...row, address: draftAddress, items: orderDraftItems[id.toString()] ?? [] };
+  return { ...row, items: orderDraftItems[id.toString()] ?? [], regionMatch: regionMatchFor(row.address) };
+}
+
+// THE REGION MATCH, as region_service's RegionMatch answers it (the-cs-edits-the-whole-address-before-create) over the
+// fixture tree: exact on all four levels after normalising case and spacing, the kabupaten level's Kabupaten / Kab. /
+// Kota prefix agreeing when one is written; ONE desa = its place, several or none = undefined.
+const normaliseRegion = (name: string) => name.trim().split(/\s+/).join(" ").toLowerCase();
+
+function splitKabupaten(name: string): { kind: string; base: string } {
+  const n = normaliseRegion(name);
+  for (const [prefix, kind] of [["kabupaten ", "kab"], ["kab. ", "kab"], ["kab.", "kab"], ["kab ", "kab"], ["kota ", "kota"]]) {
+    if (n.startsWith(prefix!)) return { kind: kind!, base: n.slice(prefix!.length).trim().replace(/^administrasi /, "") };
+  }
+
+  return { kind: "", base: n };
+}
+
+export function regionMatchFor(address?: { provinsiName: string; kabupatenName: string; kecamatanName: string; desaName: string }) {
+  if (!address || !address.provinsiName || !address.kabupatenName || !address.kecamatanName || !address.desaName) return undefined;
+
+  const byCode = new Map(regionTree.map((r) => [r.code, r]));
+  const asked = splitKabupaten(address.kabupatenName);
+  const hits = regionTree.filter((desa) => {
+    const kec = byCode.get(desa.parentCode);
+    const kab = kec && byCode.get(kec.parentCode);
+    const prov = kab && byCode.get(kab.parentCode);
+    if (desa.level !== 4 || !kec || !kab || !prov) return false;
+
+    const place = splitKabupaten(kab.name);
+
+    return (
+      normaliseRegion(desa.name) === normaliseRegion(address.desaName) &&
+      normaliseRegion(kec.name) === normaliseRegion(address.kecamatanName) &&
+      normaliseRegion(prov.name) === normaliseRegion(address.provinsiName) &&
+      asked.base === place.base &&
+      (asked.kind === "" || asked.kind === place.kind)
+    );
+  });
+  if (hits.length !== 1) return undefined;
+
+  const desa = hits[0]!;
+  const kec = byCode.get(desa.parentCode)!;
+  const kab = byCode.get(kec.parentCode)!;
+  const prov = byCode.get(kab.parentCode)!;
+
+  return {
+    provinsiCode: prov.code, provinsiName: prov.name,
+    kabupatenCode: kab.code, kabupatenName: kab.name,
+    kecamatanCode: kec.code, kecamatanName: kec.name,
+    desaCode: desa.code, desaName: desa.name,
+    kodePos: desa.kodePos,
+    addressLine: "",
+  };
 }
 
 // ── Where an order's goods were drawn from — `StockPickLocations` ───────────────────────────────

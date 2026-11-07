@@ -314,9 +314,10 @@ message Order {
   // was `string customer_address` — free text, replaced by the structured snapshot `address` (#118).
   reserved 7;
   reserved "customer_address";
-  // A courier code (opaque; no FK) — a shipment_service channel's `code`. Moves to
-  // shipment_channel_id with the order redesign (the-old-catalogue-bridges-by-code).
-  string shipping_code = 8;
+  // 8 was `shipping_code` — the courier CODE the bridge stored (the-old-catalogue-bridges-by-code), replaced by
+  // `shipment_channel_id` below (selling 00044).
+  reserved 8;
+  reserved "shipping_code";
 
   // 9, 10, 11 were `subtotal`, `shipping_cost` and `total`. The owner's `orders` has none of them: our side of the
   // trade is `goods_cost` and `total_cost` below, and an order records no shipping (an-order-records-no-shipping-cost).
@@ -494,6 +495,12 @@ message Order {
   // the order page, or from an imported statement). 0 = NOT YET: the open failed, is dead-lettered, or never ran — the
   // order still committed. OrderListFilter.settlement_not_opened lists exactly those.
   int64 settlement_opened_at_unix = 35;
+
+  // THE COURIER carrying it — an OPAQUE id into shipment_service (shipment-channel-is-an-id-into-shipment-service), no FK
+  // and nothing else about the channel stored (the-channel-name-is-not-frozen): a screen resolves the name by
+  // ShipmentChannelByIds, which answers a deleted channel too, flagged (a-deleted-channel-still-resolves-by-id).
+  // Required at create (no-order-without-a-courier); 0 only on a developer's order from before selling 00044.
+  uint64 shipment_channel_id = 36;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -549,7 +556,9 @@ message OrderCreateRequest {
   // was `string customer_address` — free text, replaced by `address` below (#118).
   reserved 5;
   reserved "customer_address";
-  string shipping_code = 6 [(buf.validate.field).string.max_len = 40];
+  // 6 was `shipping_code`, the courier CODE (the-old-catalogue-bridges-by-code) — replaced by `shipment_channel_id`.
+  reserved 6;
+  reserved "shipping_code";
 
   // 7, 8, 9 were `subtotal`, `shipping_cost` and `total` — the order's money is the take's, frozen by the server
   // (goods_cost, warehouse_fee, total_cost), and it records no shipping (an-order-records-no-shipping-cost).
@@ -634,6 +643,12 @@ message OrderCreateRequest {
     min_len: 1
     max_len: 128
   }];
+
+  // THE COURIER — a shipment channel's id (shipment-channel-is-an-id-into-shipment-service), as the form's courier picker
+  // emits it or the draft carried it. REQUIRED (no-order-without-a-courier): the placement rule both doors share refuses
+  // 0, naming what is missing, so the proto leaves it unconstrained the way it does `platform_total`. Opaque: the
+  // server does not look the channel up — the picker offers live channels only.
+  uint64 shipment_channel_id = 23;
 }
 
 message OrderCreateResponse {
@@ -728,8 +743,11 @@ message OrderListFilter {
   uint64 seller_team_id = 8;
   // Only orders whose shop is on this marketplace. UNSPECIFIED = any.
   warehouse.marketplace.v1.Marketplace marketplace = 9 [(buf.validate.field).enum.defined_only = true];
-  // Only orders with this courier — `shipping_code` (jne, jnt …). Empty = any.
-  string shipping_code = 10 [(buf.validate.field).string.max_len = 50];
+  // 10 was `shipping_code`, the courier CODE — replaced by `shipment_channel_id` (selling 00044).
+  reserved 10;
+  reserved "shipping_code";
+  // Only orders with this courier — the order's `shipment_channel_id`. 0 = any.
+  uint64 shipment_channel_id = 14;
 
   // Only orders shipping FROM this warehouse — the order's `warehouse_id`. 0 = any.
   //
@@ -1322,7 +1340,10 @@ message OrderStatFilter {
   // The warehouse's three filters, as on OrderListFilter.
   uint64 seller_team_id = 7;
   warehouse.marketplace.v1.Marketplace marketplace = 8 [(buf.validate.field).enum.defined_only = true];
-  string shipping_code = 9 [(buf.validate.field).string.max_len = 50];
+  // 9 was `shipping_code` — replaced by `shipment_channel_id`, as on OrderListFilter.
+  reserved 9;
+  reserved "shipping_code";
+  uint64 shipment_channel_id = 13;
 
   // The seller list's warehouse filter, as on OrderListFilter.
   uint64 warehouse_id = 10;

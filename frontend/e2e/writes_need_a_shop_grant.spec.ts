@@ -84,6 +84,8 @@ async function useGateTeam(page: Page) {
 function orderOn(shopId: string, ref: string) {
   return {
     idempotencyKey: `e2e-gate-${ref}-${SUFFIX}`,
+    // Every order names its courier (no-order-without-a-courier) — a shipment channel id, opaque to the order.
+    shipmentChannelId: "1",
     teamId,
     shopId,
     warehouseId: "999999",

@@ -336,16 +336,9 @@ export function OrderDraftsPage() {
                       </Table.Cell>
 
                       <Table.Cell>
-                        {d.unmappedItemCount > 0 ? (
-                          <Badge colorPalette="warning" data-testid={`draft-unmapped-${d.id}`}>
-                            {t("orderDrafts.unmappedOf", {
-                              unmapped: d.unmappedItemCount,
-                              total: d.itemCount,
-                            })}
-                          </Badge>
-                        ) : (
-                          <Text>{d.itemCount}</Text>
-                        )}
+                        {/* The line count only — a draft stores no mapping, so the list counts none
+                            (the-drafts-list-counts-no-mapping). */}
+                        <Text data-testid={`draft-lines-${d.id}`}>{d.itemCount}</Text>
                       </Table.Cell>
 
                       <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>

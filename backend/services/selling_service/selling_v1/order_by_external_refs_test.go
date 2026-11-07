@@ -23,7 +23,7 @@ func insertRefOrder(t *testing.T, db *gorm.DB, teamID, shopID uint64, ref, statu
 		ShopID:             shopID,
 		WarehouseID:        testWarehouse,
 		Status:             status,
-		CustomerName:       "Buyer " + ref,
+		Address:            &selling_service_models.OrderAddress{CustomerName: "Buyer " + ref},
 		OrderExternalRefID: ref,
 		CreatedByUserID:    creator,
 	}

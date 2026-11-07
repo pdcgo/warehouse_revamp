@@ -33,7 +33,9 @@ type orderPlacement struct {
 	// a reason to refuse (the-buyers-username-is-optional) — so validate does not look at it.
 	buyerUsername string
 	address       *sellingv1.OrderAddress
-	shippingCode  string
+	// The courier — a shipment channel id, opaque here (shipment-channel-is-an-id-into-shipment-service). REQUIRED
+	// (validate, no-order-without-a-courier): a draft may arrive without one, and the person picks it on the form.
+	shipmentChannelID uint64
 	// What whoever took the order wrote down for the people who handle it — written as the order's FIRST NOTE ROW
 	// (a-note-is-a-timeline-row), not a column of the order. Nothing here branches on it. Trimmed when the row is
 	// written; "" (or spaces alone) = nothing written down, and no note row.
@@ -77,8 +79,11 @@ type orderPlacement struct {
 var (
 	errOrderNoShop     = errors.New("an order must say which shop it came through")
 	errOrderNoCustomer = errors.New("an order must name a customer")
-	errOrderNoItems    = errors.New("an order must have at least one line")
-	errOrderBadLine    = errors.New("every line must name a product and a quantity of at least one")
+	// no-order-without-a-courier: an order with no courier cannot be handed over. A draft the app could not convert
+	// arrives without one, and the person picks it on the form — or root adds the missing channel first.
+	errOrderNoCourier = errors.New("an order must say which courier carries it")
+	errOrderNoItems   = errors.New("an order must have at least one line")
+	errOrderBadLine   = errors.New("every line must name a product and a quantity of at least one")
 	// platform-created-at-is-required-at-finalize: every order comes from a platform, so every order has the moment
 	// its buyer ordered there — read off the same storefront page as the ref.
 	errOrderNoPlatformDate = errors.New("an order must say when the buyer ordered it on the marketplace")
@@ -110,6 +115,12 @@ func (p *orderPlacement) validate() error {
 
 	if p.customerName == "" {
 		return errOrderNoCustomer
+	}
+
+	// Here, the one definition every order meets, so a promoted draft without a courier is refused exactly as a typed
+	// order is (no-order-without-a-courier). Only presence: the id is shipment_service's and opaque to this service.
+	if p.shipmentChannelID == 0 {
+		return errOrderNoCourier
 	}
 
 	// Checked HERE, the one definition every order meets, so a promoted draft cannot slip through without the date the
@@ -257,32 +268,17 @@ func (s *Service) placeOrder(
 			return shopErr
 		}
 
-		address := p.address
-
 		order = selling_service_models.Order{
 			TeamID: p.teamID,
 			ShopID: p.shopID,
 			// The warehouse this order ships from (#72), as chosen by whoever typed it — copied onto
 			// the order, never looked up later, so it reads the same forever.
-			WarehouseID:   p.warehouseID,
-			Status:        orderStatusPending,
-			CustomerName:  p.customerName,
-			CustomerPhone: p.customerPhone,
+			WarehouseID: p.warehouseID,
+			Status:      orderStatusPending,
 			// Trimmed HERE, where both doors meet, so spaces alone are stored as none whichever way the order came in.
 			BuyerUsername: strings.TrimSpace(p.buyerUsername),
-			// FROZEN at order time: the names are copied, not resolved later, so this order reads the
-			// same forever even after region_service renames or merges the desa (#118).
-			ProvinsiCode:  address.GetProvinsiCode(),
-			ProvinsiName:  address.GetProvinsiName(),
-			KabupatenCode: address.GetKabupatenCode(),
-			KabupatenName: address.GetKabupatenName(),
-			KecamatanCode: address.GetKecamatanCode(),
-			KecamatanName: address.GetKecamatanName(),
-			DesaCode:      address.GetDesaCode(),
-			DesaName:      address.GetDesaName(),
-			KodePos:       address.GetKodePos(),
-			AddressLine:   address.GetAddressLine(),
-			ShippingCode:  p.shippingCode,
+			// The courier's id, as picked — nothing else about the channel (the-channel-name-is-not-frozen).
+			ShipmentChannelID: p.shipmentChannelID,
 			// Getters all the way down: a nil receipt is an order with none, not a crash.
 			ReceiptDocumentID: p.receipt.GetDocumentId(),
 			ReceiptFilename:   p.receipt.GetFilename(),
@@ -328,6 +324,28 @@ func (s *Service) placeOrder(
 
 			return createErr
 		}
+
+		// THE ORDER'S ONE ADDRESS ROW, in its own transaction (one-address-per-order-and-per-draft) — so an order without
+		// one is never reachable. NAMES ONLY (an-address-is-plain-names): the picker's region codes are discarded here, and
+		// the names are frozen so the order reads the same after a desa is renamed upstream.
+		address := selling_service_models.OrderAddress{
+			OrderID:       order.ID,
+			CustomerName:  p.customerName,
+			CustomerPhone: p.customerPhone,
+			ProvinsiName:  p.address.GetProvinsiName(),
+			KabupatenName: p.address.GetKabupatenName(),
+			KecamatanName: p.address.GetKecamatanName(),
+			DesaName:      p.address.GetDesaName(),
+			PostalCode:    p.address.GetKodePos(),
+			AddressLine:   p.address.GetAddressLine(),
+		}
+
+		addressErr := tx.Create(&address).Error
+		if addressErr != nil {
+			return addressErr
+		}
+
+		order.Address = &address
 
 		// THE FIRST ROW ON ITS TIMELINE (order-timeline-logs-replaces-order-events), from the selling team that
 		// placed it. Both doors into `orders` run this function, so a promoted draft gets the same opening row

@@ -24,7 +24,7 @@ func sortOrder(t *testing.T, db *gorm.DB, shop uint64, totalCost float64, platfo
 
 	o := selling_service_models.Order{
 		IdempotencyKey: newOrderKey(), TeamID: 2, ShopID: shop, WarehouseID: testWarehouse, Status: "processed",
-		CustomerName: "Budi", TotalCost: totalCost, PlatformTotal: platformTotal,
+		Address: &selling_service_models.OrderAddress{CustomerName: "Budi"}, TotalCost: totalCost, PlatformTotal: platformTotal,
 	}
 
 	err := db.Create(&o).Error

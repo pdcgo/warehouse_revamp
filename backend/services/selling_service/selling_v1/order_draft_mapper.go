@@ -14,13 +14,13 @@ import (
 // per-line touched mark, and the rule that actually matters — a re-scrape never destroys a mapping —
 // holds without it: once somebody has touched the lines, the app stops rewriting them at all.
 const (
-	draftFieldShopID        = "shop_id"
-	draftFieldWarehouseID   = "warehouse_id"
-	draftFieldCustomerName  = "customer_name"
-	draftFieldCustomerPhone = "customer_phone"
-	draftFieldAddress       = "address"
-	draftFieldShippingCode  = "shipping_code"
-	draftFieldItems         = "items"
+	draftFieldShopID          = "shop_id"
+	draftFieldWarehouseID     = "warehouse_id"
+	draftFieldCustomerName    = "customer_name"
+	draftFieldCustomerPhone   = "customer_phone"
+	draftFieldAddress         = "address"
+	draftFieldShipmentChannel = "shipment_channel_id"
+	draftFieldItems           = "items"
 	// The platform's two dates, each its own field: correcting the order date says nothing about the deadline.
 	draftFieldPlatformCreatedAt        = "platform_created_at_unix"
 	draftFieldPlatformShipmentDeadline = "platform_shipment_deadline_unix"
@@ -87,13 +87,8 @@ func sortStrings(names []string) {
 	}
 }
 
-// draftItemModels builds the line rows from a push.
-//
-// product_id is deliberately NOT read: the app does not know our catalogue ids, and a client
-// matching titles against our catalogue on its own would guess wrong silently (§6.4). Mapping is a
-// human act, performed through OrderDraftUpdate. Same instinct as OrderItem's unit_cost, which
-// orderItemModels ignores for the same reason — a client must not write the numbers that decide
-// what the record means.
+// draftItemModels builds the line rows from a push — the platform's reference only. A draft stores no mapping
+// (a-draft-stores-no-mapping): the CS maps each line in the order form, straight into the order's lines.
 func draftItemModels(items []*sellingv1.OrderDraftItem) []selling_service_models.OrderDraftItem {
 	models := make([]selling_service_models.OrderDraftItem, 0, len(items))
 
@@ -119,6 +114,13 @@ func draftToProto(d *selling_service_models.OrderDraft) *sellingv1.OrderDraft {
 
 	sortStrings(names)
 
+	// The buyer and the address from the draft's one address row, NAMES only — the codes stay empty
+	// (an-address-is-plain-names). No row loaded reads as an empty buyer and address.
+	address := d.Address
+	if address == nil {
+		address = &selling_service_models.OrderDraftAddress{}
+	}
+
 	return &sellingv1.OrderDraft{
 		Id:            d.ID,
 		TeamId:        d.TeamID,
@@ -128,24 +130,20 @@ func draftToProto(d *selling_service_models.OrderDraft) *sellingv1.OrderDraft {
 		TouchedFields: names,
 		ShopId:        d.ShopID,
 		WarehouseId:   d.WarehouseID,
-		CustomerName:  d.CustomerName,
-		CustomerPhone: d.CustomerPhone,
+		CustomerName:  address.CustomerName,
+		CustomerPhone: address.CustomerPhone,
 		Address: &sellingv1.OrderAddress{
-			ProvinsiCode:  d.ProvinsiCode,
-			ProvinsiName:  d.ProvinsiName,
-			KabupatenCode: d.KabupatenCode,
-			KabupatenName: d.KabupatenName,
-			KecamatanCode: d.KecamatanCode,
-			KecamatanName: d.KecamatanName,
-			DesaCode:      d.DesaCode,
-			DesaName:      d.DesaName,
-			KodePos:       d.KodePos,
-			AddressLine:   d.AddressLine,
+			ProvinsiName:  address.ProvinsiName,
+			KabupatenName: address.KabupatenName,
+			KecamatanName: address.KecamatanName,
+			DesaName:      address.DesaName,
+			KodePos:       address.PostalCode,
+			AddressLine:   address.AddressLine,
 		},
-		ShippingCode:  d.ShippingCode,
-		Items:         draftItemsToProto(d.Items),
-		CreatedAtUnix: d.CreatedAt.Unix(),
-		UpdatedAtUnix: d.UpdatedAt.Unix(),
+		ShipmentChannelId: d.ShipmentChannelID,
+		Items:             draftItemsToProto(d.Items),
+		CreatedAtUnix:     d.CreatedAt.Unix(),
+		UpdatedAtUnix:     d.UpdatedAt.Unix(),
 		// The platform's two dates; 0 = not known yet.
 		PlatformCreatedAtUnix:        unixOrZero(d.PlatformCreatedAt),
 		PlatformShipmentDeadlineUnix: unixOrZero(d.PlatformShipmentDeadline),
@@ -164,7 +162,6 @@ func draftItemsToProto(items []selling_service_models.OrderDraftItem) []*selling
 			Id:           items[i].ID,
 			ExternalSku:  items[i].ExternalSKU,
 			ExternalName: items[i].ExternalName,
-			ProductId:    items[i].ProductID,
 			Quantity:     items[i].Quantity,
 			UnitPrice:    items[i].UnitPrice,
 		})

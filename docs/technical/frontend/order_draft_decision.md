@@ -22,6 +22,7 @@ each old heading there now points here.
 | [a-draft-stores-no-mapping](#a-draft-stores-no-mapping) | a draft's rows are a reference; the create form maps each to a product, a bundle or a split, in one sitting, straight into `order_items` |
 | [the-draft-row-names-the-person-and-the-app](#the-draft-row-names-the-person-and-the-app) | the *Dibuat* cell's second line is `oleh <name> via <app>`, one line, truncated with the whole on hover |
 | [the-draft-opens-in-the-order-form](#the-draft-opens-in-the-order-form) | a draft opens IN the order form — `/orders/new?draft=ID`, seeded from the draft; its scraped lines a text list above the products; Create places the order and deletes the draft |
+| [the-drafts-list-counts-no-mapping](#the-drafts-list-counts-no-mapping) | the drafts list drops the unmapped count and gap; Ready means the other gaps are filled | owner, as recommended | — |
 
 ## the-draft-list-is-the-drafts-tab
 
@@ -312,6 +313,8 @@ flowchart LR
 | the build | still saves and promotes on the server — [the-build-lets-a-person-draft-and-promotes-on-the-server](../../business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server) |
 | 🔄 *(2026-10-29)* | the promote half is done: Promote is `OrderCreate` with the draft's id, built from the page, so the mapping on screen goes straight into `order_items` ([a-draft-becomes-an-order-through-order-create](../../business/order/context_decision.md#a-draft-becomes-an-order-through-order-create)). The draft page's Save still stores a row's product mapping |
 
+✅ Built 2026-11-06 — selling `00047` drops `order_draft_items.product_id`; proto `OrderDraftItem.product_id` (4), `OrderDraftLineEdit.product_id` (2) and `OrderDraft.unmapped_item_count` (18) reserved; the order form seeds no line from a draft (the person maps every scraped line there); `ProductHasHistory` no longer reads draft lines. Tests: the draft tests map in the form (`promoteMapped`, `mappedItems`); stories map draft 202 in the form.
+
 ---
 
 ## the-draft-row-names-the-person-and-the-app
@@ -436,3 +439,13 @@ Pesanan yang belum selesai — dikirim aplikasi lain, atau disimpan dari form pe
 | a phone | the bar keeps its one Orders tab, which lights on the drafts too (it claims `/order-drafts`); the drafts are in More's menu |
 | the stories | their own file, kept in the Order group — `Pages/Order/OrderDraftsPage` (owner: *"storynya bagian dari order, tidak masalah"*) |
 | a mark | the strip's ⚠ (`statusSet`) left with the strip; the summary's ⚠ is now the page's first |
+
+---
+
+## the-drafts-list-counts-no-mapping
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: with [a-draft-stores-no-mapping](#a-draft-stores-no-mapping) a draft holds no product mapping, but the drafts list still shows *"1 of 3 unmapped"* under *Baris* and *Unmapped lines* as a gap — so every draft with lines would count as unmapped forever. Drop them?
+
+**The verdict.** The drafts list **drops** the unmapped count and the *Unmapped lines* gap. *Baris* shows the line count only. **Ready** means every other gap is filled — shop, warehouse, customer, address, courier — and the lines are mapped in the order form at Create, as the decision says. Supersedes the *unmapped* parts of this file's list spec. ⚠ Not built.
+
+✅ Built 2026-11-06 — *Baris* is the line count only (`draft-lines-<id>`), the `N of M unmapped` badge and the *Unmapped lines* gap are gone; `draftGaps` adds *Address* (no street line) and *Courier* (no channel) after the customer and keeps every other gap (lines, order date, sell price, a manual draft's ref), and the server's `readyDrafts` matches it rule for rule (address row `customer_name` + `address_line`, `shipment_channel_id`). Tests `TestOrderDraftList_ReadyCountIsTheWholeSets` (7 drafts), `draftReadiness.test.ts`; stories *TheListCountsNoMapping*, *NoAddressOrNoCourierIsNotReady*; e2e `order_drafts.spec.ts` gaps title.

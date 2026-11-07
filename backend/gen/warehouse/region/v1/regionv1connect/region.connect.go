@@ -45,6 +45,9 @@ const (
 	// RegionServiceRegionResolveProcedure is the fully-qualified name of the RegionService's
 	// RegionResolve RPC.
 	RegionServiceRegionResolveProcedure = "/warehouse.region.v1.RegionService/RegionResolve"
+	// RegionServiceRegionMatchProcedure is the fully-qualified name of the RegionService's RegionMatch
+	// RPC.
+	RegionServiceRegionMatchProcedure = "/warehouse.region.v1.RegionService/RegionMatch"
 )
 
 // RegionServiceClient is a client for the warehouse.region.v1.RegionService service.
@@ -65,6 +68,12 @@ type RegionServiceClient interface {
 	RegionSearchByKodePos(context.Context, *connect.Request[v1.RegionSearchByKodePosRequest]) (*connect.Response[v1.RegionSearchByKodePosResponse], error)
 	// The full ancestry of one code — hydrate a saved address, or back-fill the picker.
 	RegionResolve(context.Context, *connect.Request[v1.RegionResolveRequest]) (*connect.Response[v1.RegionResolveResponse], error)
+	// FOUR NAMES IN, THE ONE PLACE THEY NAME OUT — or none (the-cs-edits-the-whole-address-before-create, *Pre-filled when
+	// certain*). A draft's address arrives as plain names (an-address-is-plain-names), and the order form's picker works by
+	// code; when the four names match EXACTLY ONE desa, its ancestry is the pre-fill. Exact on all four levels after
+	// normalising case, spacing and the kabupaten level's Kabupaten / Kab. / Kota prefix — never a fuzzy guess: a wrong
+	// pre-fill would look like a person's pick. Several matches or none answer no match, and the person picks.
+	RegionMatch(context.Context, *connect.Request[v1.RegionMatchRequest]) (*connect.Response[v1.RegionMatchResponse], error)
 }
 
 // NewRegionServiceClient constructs a client for the warehouse.region.v1.RegionService service. By
@@ -102,6 +111,12 @@ func NewRegionServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(regionServiceMethods.ByName("RegionResolve")),
 			connect.WithClientOptions(opts...),
 		),
+		regionMatch: connect.NewClient[v1.RegionMatchRequest, v1.RegionMatchResponse](
+			httpClient,
+			baseURL+RegionServiceRegionMatchProcedure,
+			connect.WithSchema(regionServiceMethods.ByName("RegionMatch")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -111,6 +126,7 @@ type regionServiceClient struct {
 	regionSearch          *connect.Client[v1.RegionSearchRequest, v1.RegionSearchResponse]
 	regionSearchByKodePos *connect.Client[v1.RegionSearchByKodePosRequest, v1.RegionSearchByKodePosResponse]
 	regionResolve         *connect.Client[v1.RegionResolveRequest, v1.RegionResolveResponse]
+	regionMatch           *connect.Client[v1.RegionMatchRequest, v1.RegionMatchResponse]
 }
 
 // RegionList calls warehouse.region.v1.RegionService.RegionList.
@@ -133,6 +149,11 @@ func (c *regionServiceClient) RegionResolve(ctx context.Context, req *connect.Re
 	return c.regionResolve.CallUnary(ctx, req)
 }
 
+// RegionMatch calls warehouse.region.v1.RegionService.RegionMatch.
+func (c *regionServiceClient) RegionMatch(ctx context.Context, req *connect.Request[v1.RegionMatchRequest]) (*connect.Response[v1.RegionMatchResponse], error) {
+	return c.regionMatch.CallUnary(ctx, req)
+}
+
 // RegionServiceHandler is an implementation of the warehouse.region.v1.RegionService service.
 type RegionServiceHandler interface {
 	// Children of one region — the cascading picker's only query.
@@ -151,6 +172,12 @@ type RegionServiceHandler interface {
 	RegionSearchByKodePos(context.Context, *connect.Request[v1.RegionSearchByKodePosRequest]) (*connect.Response[v1.RegionSearchByKodePosResponse], error)
 	// The full ancestry of one code — hydrate a saved address, or back-fill the picker.
 	RegionResolve(context.Context, *connect.Request[v1.RegionResolveRequest]) (*connect.Response[v1.RegionResolveResponse], error)
+	// FOUR NAMES IN, THE ONE PLACE THEY NAME OUT — or none (the-cs-edits-the-whole-address-before-create, *Pre-filled when
+	// certain*). A draft's address arrives as plain names (an-address-is-plain-names), and the order form's picker works by
+	// code; when the four names match EXACTLY ONE desa, its ancestry is the pre-fill. Exact on all four levels after
+	// normalising case, spacing and the kabupaten level's Kabupaten / Kab. / Kota prefix — never a fuzzy guess: a wrong
+	// pre-fill would look like a person's pick. Several matches or none answer no match, and the person picks.
+	RegionMatch(context.Context, *connect.Request[v1.RegionMatchRequest]) (*connect.Response[v1.RegionMatchResponse], error)
 }
 
 // NewRegionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -184,6 +211,12 @@ func NewRegionServiceHandler(svc RegionServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(regionServiceMethods.ByName("RegionResolve")),
 		connect.WithHandlerOptions(opts...),
 	)
+	regionServiceRegionMatchHandler := connect.NewUnaryHandler(
+		RegionServiceRegionMatchProcedure,
+		svc.RegionMatch,
+		connect.WithSchema(regionServiceMethods.ByName("RegionMatch")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.region.v1.RegionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RegionServiceRegionListProcedure:
@@ -194,6 +227,8 @@ func NewRegionServiceHandler(svc RegionServiceHandler, opts ...connect.HandlerOp
 			regionServiceRegionSearchByKodePosHandler.ServeHTTP(w, r)
 		case RegionServiceRegionResolveProcedure:
 			regionServiceRegionResolveHandler.ServeHTTP(w, r)
+		case RegionServiceRegionMatchProcedure:
+			regionServiceRegionMatchHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -217,4 +252,8 @@ func (UnimplementedRegionServiceHandler) RegionSearchByKodePos(context.Context, 
 
 func (UnimplementedRegionServiceHandler) RegionResolve(context.Context, *connect.Request[v1.RegionResolveRequest]) (*connect.Response[v1.RegionResolveResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.region.v1.RegionService.RegionResolve is not implemented"))
+}
+
+func (UnimplementedRegionServiceHandler) RegionMatch(context.Context, *connect.Request[v1.RegionMatchRequest]) (*connect.Response[v1.RegionMatchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.region.v1.RegionService.RegionMatch is not implemented"))
 }

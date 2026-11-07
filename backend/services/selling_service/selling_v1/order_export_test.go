@@ -38,6 +38,10 @@ func (f *fakeExports) UserNames(_ context.Context, ids []uint64) (map[uint64]str
 	return pick(map[uint64]string{}, ids), nil
 }
 
+func (f *fakeExports) ChannelCodes(_ context.Context, ids []uint64) (map[uint64]string, error) {
+	return pick(map[uint64]string{testShipmentChannel: "jne"}, ids), nil
+}
+
 func pick(all map[uint64]string, ids []uint64) map[uint64]string {
 	out := map[uint64]string{}
 	for _, id := range ids {
@@ -59,7 +63,7 @@ type exportRun struct {
 func export(t *testing.T, db *gorm.DB, store *fakeExports, req *sellingv1.OrderExportRequest) exportRun {
 	t.Helper()
 
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, store, nil, nil)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, store, nil, nil, nil)
 
 	mux := http.NewServeMux()
 	mux.Handle(sellingv1connect.NewOrderServiceHandler(svc))
@@ -101,11 +105,12 @@ func phoneOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, ph
 	t.Helper()
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
 		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Budi", CustomerPhone: phone, ShippingCode: "jne", BuyerUsername: " budi.melati ",
+		CustomerName: "Budi", CustomerPhone: phone, BuyerUsername: " budi.melati ",
 		OrderExternalRefId: "5780000000000000001", ReceiptCode: "JP0012345678",
 		Items: []*sellingv1.OrderItem{{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 3}},
 	}))

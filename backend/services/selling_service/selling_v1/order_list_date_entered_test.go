@@ -88,7 +88,7 @@ func TestOrderList_FiltersByTheFirstEntryIntoAStatus(t *testing.T) {
 
 	// Another team's order, processed in the window — outside the scope, whatever its date.
 	elsewhere := insertShop(t, db, 3, "Toko B", "TOKO-B", "shopee")
-	other := selling_service_models.Order{IdempotencyKey: newOrderKey(), TeamID: 3, ShopID: elsewhere, WarehouseID: testWarehouse, Status: "processed", CustomerName: "Sari"}
+	other := selling_service_models.Order{IdempotencyKey: newOrderKey(), TeamID: 3, ShopID: elsewhere, WarehouseID: testWarehouse, Status: "processed", Address: &selling_service_models.OrderAddress{CustomerName: "Sari"}}
 	if err := db.Create(&other).Error; err != nil {
 		t.Fatalf("seed: %v", err)
 	}

@@ -785,7 +785,7 @@ type OrderScopeFilter =
       // The warehouse's three (the-filter-gains-seller-marketplace-and-courier).
       sellerTeamId?: bigint;
       marketplace?: Marketplace;
-      shippingCode?: string;
+      shipmentChannelId?: bigint;
       // The seller list's warehouse filter.
       warehouseId?: bigint;
       // Which date the window reads (the-date-filter-switches-created-or-platform).
@@ -887,7 +887,7 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     // The seller team, the marketplace its shop is on, the courier — as the server's scopedOrders applies them.
     .filter((o) => !filter?.sellerTeamId || o.teamId === filter.sellerTeamId)
     .filter((o) => !filter?.marketplace || shops.find((s) => s.id === o.shopId)?.marketplace === filter.marketplace)
-    .filter((o) => !filter?.shippingCode || o.shippingCode === filter.shippingCode)
+    .filter((o) => !filter?.shipmentChannelId || o.shipmentChannelId === filter.shipmentChannelId)
     .filter((o) => !filter?.warehouseId || o.warehouseId === filter.warehouseId)
     // settlement_opened_at IS NULL, as scopedOrders reads it.
     .filter((o) => !filter?.settlementNotOpened || o.settlementOpenedAtUnix === 0n)
@@ -1718,10 +1718,8 @@ export const transport = createRouterTransport(({ service }) => {
       };
     },
 
-    // Save-as-draft is TWO calls, and the stub has to honour that or the second half is untested:
-    // PUSH writes the draft but IGNORES product_id on every line, then UPDATE carries the mapping.
-    // So the lines come back here with `productId: 0n` — exactly as the server would return them —
-    // and the page's follow-up update is what fills them in.
+    // The app's intake: the draft's lines come back as the platform's reference, never a mapping
+    // (a-draft-stores-no-mapping).
     orderDraftPush: (req) => ({
       created: true,
       draft: {
@@ -1730,7 +1728,6 @@ export const transport = createRouterTransport(({ service }) => {
           id: BigInt(910 + i),
           externalSku: item.externalSku,
           externalName: item.externalName,
-          productId: 0n,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
         })),

@@ -80,12 +80,17 @@ func (s *Service) OrderDraftList(
 		return nil, dbError(err)
 	}
 
+	// The buyer each row names (and draftGaps reads): the page's address rows, in one query.
+	err = attachDraftAddresses(s.db.WithContext(ctx), drafts)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	protoDrafts := make([]*sellingv1.OrderDraft, 0, len(drafts))
 
 	for i := range drafts {
 		draft := draftToProto(&drafts[i])
-		draft.ItemCount = counts[drafts[i].ID].total
-		draft.UnmappedItemCount = counts[drafts[i].ID].unmapped
+		draft.ItemCount = counts[drafts[i].ID]
 
 		protoDrafts = append(protoDrafts, draft)
 	}
@@ -104,24 +109,24 @@ func (s *Service) OrderDraftList(
 	}), nil
 }
 
-// readyDrafts narrows a draft query to the drafts with nothing left before Promote — the SQL twin of the frontend's
-// draftGaps (features/orderDrafts/draftReadiness.ts), rule for rule, minus the stock check only the draft's page can
-// make. ⚠ A gap added there that a stored field can answer belongs here too, or the card and the rows disagree.
+// readyDrafts narrows a draft query to the drafts with nothing left before Create — the SQL twin of the frontend's
+// draftGaps (features/orderDrafts/draftReadiness.ts), rule for rule, minus the stock check only the order form can make.
+// ⚠ A gap added there that a stored field can answer belongs here too, or the card and the rows disagree.
+//
+// NO MAPPING (the-drafts-list-counts-no-mapping): a draft stores none (a-draft-stores-no-mapping), so its lines are
+// mapped in the order form at Create and no line keeps a draft from Ready. The buyer's name and the address line are
+// the draft's one address row's; the courier is `shipment_channel_id` (no-order-without-a-courier).
 func readyDrafts(query *gorm.DB) *gorm.DB {
 	return query.
 		Where("shop_id <> 0").
 		Where("warehouse_id <> 0").
-		Where("customer_name <> ''").
+		Where("EXISTS (SELECT 1 FROM order_draft_addresses a WHERE a.order_draft_id = order_drafts.id"+
+			" AND a.customer_name <> '' AND a.address_line <> '')").
+		Where("shipment_channel_id <> 0").
 		Where("platform_created_at IS NOT NULL AND platform_created_at > to_timestamp(0)").
 		Where("platform_total > 0").
 		Where("source <> ?", draftSourceManual).
-		Where("EXISTS (SELECT 1 FROM order_draft_items i WHERE i.draft_id = order_drafts.id)").
-		Where("NOT EXISTS (SELECT 1 FROM order_draft_items i WHERE i.draft_id = order_drafts.id AND i.product_id = 0)")
-}
-
-type draftCounts struct {
-	total    uint32
-	unmapped uint32
+		Where("EXISTS (SELECT 1 FROM order_draft_items i WHERE i.draft_id = order_drafts.id)")
 }
 
 // draftItemCounts answers "how much work is left on each of these" in ONE query.
@@ -133,8 +138,8 @@ type draftCounts struct {
 func (s *Service) draftItemCounts(
 	ctx context.Context,
 	drafts []selling_service_models.OrderDraft,
-) (map[uint64]draftCounts, error) {
-	counts := map[uint64]draftCounts{}
+) (map[uint64]uint32, error) {
+	counts := map[uint64]uint32{}
 
 	if len(drafts) == 0 {
 		return counts, nil
@@ -146,16 +151,14 @@ func (s *Service) draftItemCounts(
 	}
 
 	var rows []struct {
-		DraftID  uint64
-		Total    uint32
-		Unmapped uint32
+		DraftID uint64
+		Total   uint32
 	}
 
 	err := s.db.
 		WithContext(ctx).
 		Model(&selling_service_models.OrderDraftItem{}).
-		Select("draft_id, COUNT(*) AS total, "+
-			"COUNT(*) FILTER (WHERE product_id = 0) AS unmapped").
+		Select("draft_id, COUNT(*) AS total").
 		Where("draft_id IN ?", ids).
 		Group("draft_id").
 		Scan(&rows).
@@ -165,7 +168,7 @@ func (s *Service) draftItemCounts(
 	}
 
 	for _, row := range rows {
-		counts[row.DraftID] = draftCounts{total: row.Total, unmapped: row.Unmapped}
+		counts[row.DraftID] = row.Total
 	}
 
 	return counts, nil

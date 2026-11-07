@@ -44,7 +44,7 @@ func (f *fakeLinker) LabelURL(_ context.Context, ownerTeamID uint64, documentID 
 }
 
 func labelService(db *gorm.DB, linker selling_v1.LabelLinker) *selling_v1.Service {
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, linker)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, linker, nil)
 }
 
 // insertLabelOrder writes an order of selling team 2 shipping from `warehouse`, with a label file or none.
@@ -59,7 +59,7 @@ func insertLabelOrder(t *testing.T, db *gorm.DB, warehouse uint64, documentID st
 		ShopID:            shop,
 		WarehouseID:       warehouse,
 		Status:            "processed",
-		CustomerName:      "Budi",
+		Address:           &selling_service_models.OrderAddress{CustomerName: "Budi"},
 		ReceiptDocumentID: documentID,
 		ReceiptFilename:   "label.pdf",
 		ReceiptMimeType:   "application/pdf",

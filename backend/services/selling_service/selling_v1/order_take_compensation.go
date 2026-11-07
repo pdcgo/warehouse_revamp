@@ -108,6 +108,7 @@ func (s *Service) placedOrderByKey(ctx context.Context, key string) (*selling_se
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
 		}).
+		Preload("Address").
 		Where("idempotency_key = ?", key).
 		Limit(1).
 		Find(&order)

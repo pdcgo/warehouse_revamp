@@ -20,6 +20,11 @@ Users & Role System, Documents, region, shipping, expense.
 | **Sorting by Total works** | *Total* is what the order cost the seller; *Platform total* sorts what the buyer paid |
 | **A transfer's label photo opens for every side** | the sending warehouse, the receiving one and the seller |
 | **A stuck stock release is replayed** | `san pubsub releases list / replay` finds a dead-lettered release and gives the stock back, safely twice |
+| **A shop is closed, never deleted** | **Close** and **Reopen** replace Delete; a closed shop takes no new orders, keeps importing statements, settlement, accounts and expenses, and its access stays editable; its code is freed, and reopening is refused while another open shop holds it. Report filters still offer it, badged *Closed* |
+| **Every order names its courier** | the courier is a real link to the catalogue; the form marks it required and holds **Create** until one is picked |
+| **Addresses are names, and drafts open ready to check** | an order's and a draft's address are kept as names; a draft opens with the marketplace's address shown, the regions pre-filled when they match exactly one place, everything editable |
+| **Drafts are Ready without mapping** | a draft keeps no product mapping (lines are mapped at Create); *Ready* means shop, warehouse, customer, address and courier are filled |
+| **Expense figures name their people** | Analytic's *Created by* lists who typed or corrected an expense; a stock loss lands on the Jakarta day |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

@@ -39,7 +39,7 @@ type orderScopeFilter interface {
 	GetCreatedByUserId() uint64
 	GetSellerTeamId() uint64
 	GetMarketplace() marketplacev1.Marketplace
-	GetShippingCode() string
+	GetShipmentChannelId() uint64
 	GetWarehouseId() uint64
 	GetDateField() sellingv1.OrderDateField
 	GetSettlementNotOpened() bool
@@ -135,12 +135,18 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		// The TRACKING NUMBER for the same reason, from the other end: a parcel in somebody's hand carries
 		// its slip, and the slip's number is what a scan or a buyer's "where is it" gives you
 		// (a-label-scan-reads-the-ref-or-the-receipt).
-		clause := `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
+		//
+		// The customer's name and phone live on the order's one address row (00045, one-address-per-order-and-per-draft):
+		// `id IN (the matching address rows)`, which Postgres runs ONCE as a hashed SubPlan — a correlated EXISTS probed
+		// the address index for every order in scope and doubled a warehouse's search (47 → 111 ms at 16 667 orders).
+		clause := `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE a.customer_name ILIKE @like ESCAPE '\'` +
+			` OR a.customer_phone ILIKE @like ESCAPE '\')` +
 			` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\')`
 
 		id, err := strconv.ParseUint(term, 10, 64)
 		if err == nil && id > 0 {
-			clause = `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
+			clause = `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE a.customer_name ILIKE @like ESCAPE '\'` +
+				` OR a.customer_phone ILIKE @like ESCAPE '\')` +
 				` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\' OR id = @id)`
 			args["id"] = id
 		}
@@ -190,8 +196,9 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		query = query.Where("shop_id IN (SELECT id FROM shops WHERE marketplace = ?)", san_marketplace.ToText(marketplace))
 	}
 
-	if courier := strings.TrimSpace(filter.GetShippingCode()); courier != "" {
-		query = query.Where("shipping_code = ?", courier)
+	// The courier, by its shipment channel id (shipment-channel-is-an-id-into-shipment-service).
+	if courier := filter.GetShipmentChannelId(); courier > 0 {
+		query = query.Where("shipment_channel_id = ?", courier)
 	}
 
 	// The seller list's warehouse filter — the building the order ships FROM. ANDed with the scope, so a warehouse
@@ -321,6 +328,12 @@ func (s *Service) OrderList(
 		Order(orderOrderClause(req.Msg.GetSort())).
 		Find(&orders).
 		Error
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	// The page's buyers and addresses — one read for the page (attachAddresses).
+	err = attachAddresses(s.db.WithContext(ctx), orders)
 	if err != nil {
 		return nil, dbError(err)
 	}

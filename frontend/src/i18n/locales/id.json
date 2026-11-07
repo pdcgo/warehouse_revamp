@@ -1303,11 +1303,11 @@
     "lines": "Baris",
     "remaining": "Masih kurang",
     "ready": "Siap dipromosikan",
-    "unmappedOf": "{{unmapped}} dari {{total}} belum dipetakan",
-    "unmappedLines": "Baris belum dipetakan",
     "missingShop": "Toko",
     "missingWarehouse": "Gudang",
     "missingCustomer": "Pelanggan",
+    "gapAddress": "Alamat",
+    "gapCourier": "Kurir",
     "missingLines": "Tidak ada baris",
     "missingStock": "Stok",
     "gapOrderDate": "Tanggal pesanan",
@@ -4277,6 +4277,10 @@
       "from": "Dari {{source}} — pilih produknya di bawah",
       "fromManual": "Dari draf yang disimpan di form ini — pilih produknya di bawah"
     },
+    "draftAddress": {
+      "title": "Alamat dari marketplace",
+      "none": "Marketplace tidak memberi alamat"
+    },
     "draft": {
       "badge": "Draf {{ref}}",
       "delete": "Hapus Draf",
@@ -4316,7 +4320,8 @@
     "shopClosed": {
       "title": "{{name}} sudah ditutup",
       "body": "Toko yang ditutup tidak menerima pesanan baru, jadi draf ini tidak bisa dibuat pesanan. Hapus draf ini, atau minta owner atau admin tim membuka kembali tokonya."
-    }
+    },
+    "courierRequired": "Pilih kurir — pesanan tidak bisa dibuat tanpa kurir."
   },
   "quantityInput": {
     "increase": "Tambah",

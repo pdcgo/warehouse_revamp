@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Flex, Icon, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
+import { courierCodeOf, useShippingCatalogue } from "../../../features/shipping/catalogue";
 import { Truck } from "lucide-react";
 
 import { formatUnixDateTime } from "../../../lib/datetime";
@@ -19,7 +20,7 @@ import { Rail } from "./Rail";
 // — and a missing trail must read as "not recorded", not as "this screen does not show trails".
 export function ShipmentLeg({
   title,
-  courier,
+  channelId = 0n,
   receiptCode,
   extra,
   trail,
@@ -29,7 +30,8 @@ export function ShipmentLeg({
   title: string;
   /** ⚠ beside the trail's label — nothing reads the courier back. */
   trailMark?: ReactNode;
-  courier?: string;
+  /** The order's `shipment_channel_id` — printed as its courier code, read from the shared catalogue. 0 = none. */
+  channelId?: bigint;
   receiptCode?: string;
   /** A third fact — the order leg's ship-by deadline. */
   extra?: { label: string; value?: ReactNode; mark?: ReactNode };
@@ -37,6 +39,8 @@ export function ShipmentLeg({
   testId: string;
 }) {
   const { t } = useTranslation();
+  const { couriers, loading } = useShippingCatalogue();
+  const courier = courierCodeOf(couriers, channelId, loading);
 
   return (
     <Stack gap="3" data-testid={testId}>

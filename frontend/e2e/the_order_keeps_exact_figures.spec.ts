@@ -177,6 +177,9 @@ test("Exact: the form previews the exact figures, and the order stores exactly t
   await page.getByTestId("order-marketplace-total").fill("15000,5");
   await expect(page.getByTestId("order-marketplace-total")).toHaveValue("15.000,5");
   await page.getByTestId("order-external-ref-id").fill(`EXA-${SUFFIX}`);
+  // The courier — every order names one (no-order-without-a-courier).
+  await page.getByTestId("shipment-channel-select").getByRole("combobox").click();
+  await page.getByTestId("shipment-channel-option-jne").click();
 
   await page.getByTestId("order-create-order-date").click();
   const today = await page.evaluate(() => {

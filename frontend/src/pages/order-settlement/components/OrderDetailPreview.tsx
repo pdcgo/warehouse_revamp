@@ -166,7 +166,7 @@ function orderFor(settlement: OrderSettlement): Order {
     status: OrderStatus.SHIPPED,
     customerName: "Bu Ani",
     customerPhone: "0812-3456-0001",
-    shippingCode: "jne",
+    shipmentChannelId: 91n,
     orderExternalRefId: settlement.orderRef,
     platformTotal: settlement.initialTotal,
     goodsCost: settlement.goodsCost,

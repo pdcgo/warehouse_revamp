@@ -28,7 +28,7 @@ func raceImportOrder(t *testing.T, db *gorm.DB, shopID uint64, ref, status strin
 	order := selling_service_models.Order{
 		IdempotencyKey: newOrderKey(),
 		TeamID:         raceOrderTeam, ShopID: shopID, WarehouseID: testWarehouse,
-		Status: status, OrderExternalRefID: ref, CustomerName: "Budi",
+		Status: status, OrderExternalRefID: ref, Address: &selling_service_models.OrderAddress{CustomerName: "Budi"},
 	}
 
 	err := db.Create(&order).Error

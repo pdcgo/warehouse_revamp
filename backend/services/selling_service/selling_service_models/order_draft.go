@@ -35,24 +35,18 @@ type OrderDraft struct {
 	ShopID      uint64
 	WarehouseID uint64
 
-	CustomerName  string
-	CustomerPhone string
+	// The buyer and the address: the draft's ONE `order_draft_addresses` row (00046, one-address-per-order-and-per-draft),
+	// names only. Not a GORM association — written and read beside the draft by the handlers (order_draft_address.go), in
+	// the draft's transaction. nil = not loaded.
+	Address *OrderDraftAddress `gorm:"-"`
+
 	// The buyer's marketplace username (00021, the-buyers-username-is-optional), trimmed as the app pushed it or a
 	// person corrected it. '' = none — never a reason Promote refuses. Promote copies it onto the order.
 	BuyerUsername string
 
-	// The same frozen-address shape an order carries (#118), so promote copies rather than translates.
-	ProvinsiCode  string
-	ProvinsiName  string
-	KabupatenCode string
-	KabupatenName string
-	KecamatanCode string
-	KecamatanName string
-	DesaCode      string
-	DesaName      string
-	KodePos       string
-	AddressLine   string
-	ShippingCode  string
+	// The courier as the app converted it or a person picked it (00044, the-app-converts-the-courier-to-a-channel-id) —
+	// a shipment channel id; 0 = not known yet, which a draft may be. OrderCreate requires one (no-order-without-a-courier).
+	ShipmentChannelID uint64
 
 	// WHAT THE BUYER PAID on the platform — the owner's `order_drafts.platform_total` (00022, renamed by 00026;
 	// platform-total-is-required-at-finalize), a double (00041), as the app pushed it or a person typed it. 0 = not known

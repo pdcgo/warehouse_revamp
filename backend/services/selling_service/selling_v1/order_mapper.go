@@ -175,15 +175,17 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 	}
 
 	return &sellingv1.Order{
-		Id:            o.ID,
-		TeamId:        o.TeamID,
-		ShopId:        o.ShopID,
-		WarehouseId:   o.WarehouseID,
-		Status:        orderStatusFromText(o.Status),
-		CustomerName:  o.CustomerName,
-		CustomerPhone: o.CustomerPhone,
+		Id:          o.ID,
+		TeamId:      o.TeamID,
+		ShopId:      o.ShopID,
+		WarehouseId: o.WarehouseID,
+		Status:      orderStatusFromText(o.Status),
+		// From the order's one address row (one-address-per-order-and-per-draft).
+		CustomerName:  o.Customer(),
+		CustomerPhone: o.Phone(),
 		Address:       orderAddressToProto(o),
-		ShippingCode:  o.ShippingCode,
+		// The courier's id; the screen names it from shipment_service (the-channel-name-is-not-frozen).
+		ShipmentChannelId: o.ShipmentChannelID,
 		// No note: an order's notes are its timeline rows with no status (a-note-is-a-timeline-row).
 		Receipt: orderReceiptToProto(o),
 		// The order's frozen money, as placeOrder wrote it — the owner's three header figures.
@@ -274,17 +276,20 @@ func statusAtUnix(o *selling_service_models.Order) int64 {
 // nil): an order with no address is an EMPTY address, not a missing field — that keeps the client
 // from having to null-check a value it will render either way.
 func orderAddressToProto(o *selling_service_models.Order) *sellingv1.OrderAddress {
+	a := o.Address
+	if a == nil {
+		return &sellingv1.OrderAddress{}
+	}
+
+	// NAMES ONLY (an-address-is-plain-names): an order keeps no region codes, so the four `_code` fields are always
+	// empty on an order — a draft's address still carries them until order_draft_addresses lands.
 	return &sellingv1.OrderAddress{
-		ProvinsiCode:  o.ProvinsiCode,
-		ProvinsiName:  o.ProvinsiName,
-		KabupatenCode: o.KabupatenCode,
-		KabupatenName: o.KabupatenName,
-		KecamatanCode: o.KecamatanCode,
-		KecamatanName: o.KecamatanName,
-		DesaCode:      o.DesaCode,
-		DesaName:      o.DesaName,
-		KodePos:       o.KodePos,
-		AddressLine:   o.AddressLine,
+		ProvinsiName:  a.ProvinsiName,
+		KabupatenName: a.KabupatenName,
+		KecamatanName: a.KecamatanName,
+		DesaName:      a.DesaName,
+		KodePos:       a.PostalCode,
+		AddressLine:   a.AddressLine,
 	}
 }
 

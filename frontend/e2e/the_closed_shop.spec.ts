@@ -194,6 +194,8 @@ test("setup: a selling team of its own, two Shopee shops, Root granted the one t
   ] as const) {
     const placed = await ok(page, "selling.v1.OrderService/OrderCreate", {
       idempotencyKey: `e2e-close-${ref}-${SUFFIX}`,
+      // Every order names its courier (no-order-without-a-courier) — a shipment channel id, opaque to the order.
+      shipmentChannelId: "1",
       teamId,
       shopId,
       warehouseId: wh,
@@ -232,6 +234,8 @@ test("Close on /shops: it confirms, the shop leaves the open list and the order 
   // Sent straight to the API, an order on it is refused — even from the team's owner.
   const refused = await call(page, "selling.v1.OrderService/OrderCreate", {
     idempotencyKey: `e2e-closed-${SUFFIX}`,
+    // Every order names its courier (no-order-without-a-courier) — a shipment channel id, opaque to the order.
+    shipmentChannelId: "1",
     teamId,
     shopId: shopClosing,
     warehouseId: "999999",

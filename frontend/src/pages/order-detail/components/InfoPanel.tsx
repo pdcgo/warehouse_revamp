@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Card, Separator, SimpleGrid, Stack, Table, Text } from "@chakra-ui/react";
 
 import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
-import { ShippingBadge } from "../../../components/badges/ShippingBadge";
+import { OrderCourierBadge } from "../../../features/orders/OrderCourierBadge";
 import { AddressField, Field } from "../../../features/orders/components/OrderFields";
 import { lineTotalBeli, lineUnitBeli, orderFee } from "../../../features/orders/margin";
 import { formatRupiah } from "../../../lib/money";
@@ -55,7 +55,7 @@ export function InfoPanel({
                   same fact in two places, and the two would eventually disagree. */}
               <Field
                 label={t("orders.shipping")}
-                value={<ShippingBadge code={order.shippingCode} />}
+                value={<OrderCourierBadge channelId={order.shipmentChannelId} />}
               />
               {/* The MARKETPLACE'S own id, and only when there is one — it is the name the buyer and
                   the storefront's support use, so whoever is on the phone about this order needs it

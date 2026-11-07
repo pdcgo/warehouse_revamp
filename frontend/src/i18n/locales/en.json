@@ -1315,11 +1315,11 @@
     "lines": "Lines",
     "remaining": "Still needed",
     "ready": "Ready to promote",
-    "unmappedOf": "{{unmapped}} of {{total}} unmapped",
-    "unmappedLines": "Unmapped lines",
     "missingShop": "Shop",
     "missingWarehouse": "Warehouse",
     "missingCustomer": "Customer",
+    "gapAddress": "Address",
+    "gapCourier": "Courier",
     "missingLines": "No lines",
     "missingStock": "Stock",
     "gapOrderDate": "Order date",
@@ -4298,6 +4298,10 @@
       "from": "From {{source}} — pick our products below",
       "fromManual": "From a draft saved on this form — pick our products below"
     },
+    "draftAddress": {
+      "title": "Address from the marketplace",
+      "none": "The marketplace gave no address"
+    },
     "draft": {
       "badge": "Draft {{ref}}",
       "delete": "Delete Draft",
@@ -4337,7 +4341,8 @@
     "shopClosed": {
       "title": "{{name}} is closed",
       "body": "A closed shop takes no new orders, so this draft cannot be placed. Delete the draft, or ask the team's owner or admin to reopen the shop."
-    }
+    },
+    "courierRequired": "Pick the courier — an order cannot be created without one."
   },
   "quantityInput": {
     "increase": "Increase",

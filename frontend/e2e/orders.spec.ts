@@ -112,6 +112,13 @@ async function pickOrderDate(page: Page) {
   await page.keyboard.press("Escape");
 }
 
+// The courier — every order names one (no-order-without-a-courier): the server refuses an order without it. JNE is
+// seeded by shipment_service's first migration in every database.
+async function pickCourier(page: Page, code = "jne") {
+  await page.getByTestId("shipment-channel-select").getByRole("combobox").click();
+  await page.getByTestId(`shipment-channel-option-${code}`).click();
+}
+
 // Adds products to the order through the picker dialog (#165's pattern, now the order form's too).
 async function addProducts(page: Page, skus: string[]) {
   await page.getByTestId("order-create-add-line").click();
@@ -144,6 +151,7 @@ async function fillOrderForm(page: Page, customer: string, ref: string): Promise
   await page.getByTestId("order-marketplace-total").fill("25000");
   // The marketplace ref — required to place (an-order-ref-is-required-by-the-rpc).
   await page.getByTestId("order-external-ref-id").fill(ref);
+  await pickCourier(page);
   // No price: a line is valued at the warehouse HPP, which this fixture's product has none of.
   await expect(page.getByTestId("order-create-save")).toBeEnabled();
 
@@ -484,6 +492,7 @@ test("Create: place an order through the form; money computes; the detail opens"
   // The MARKETPLACE'S own id for this order — typed beside the shop that took it, because that pair
   // is what lets anybody find this order again on the storefront.
   await page.getByTestId("order-external-ref-id").fill(MARKETPLACE_REF);
+  await pickCourier(page);
 
   // THE TRACKING NUMBER printed on the slip — its own field now (`receipt_code`), kept beside the slip itself.
   await page.getByTestId("order-receipt-code").fill(TRACKING_NUMBER);

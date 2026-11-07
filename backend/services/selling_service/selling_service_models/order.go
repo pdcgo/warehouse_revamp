@@ -22,31 +22,18 @@ type Order struct {
 	// DB CHECK (the mapper + proto validation guard it; cf. #80).
 	Status string
 
-	CustomerName  string
-	CustomerPhone string
+	// ⚠ NO CUSTOMER OR ADDRESS COLUMNS (00045): who the parcel is for and where it goes are the order's ONE
+	// `order_addresses` row (one-address-per-order-and-per-draft), names only (an-address-is-plain-names) — Address below.
 
 	// THE BUYER'S USERNAME on the marketplace (00021, the-buyers-username-is-optional) — the name the buyer goes by in
 	// the marketplace chat. Not CustomerName, which is who the parcel is addressed to. Trimmed at placement; '' = none,
 	// which is a valid order on both doors.
 	BuyerUsername string
 
-	// The delivery address, FROZEN at order time (#118) — codes AND names, so a past order renders
-	// without region_service and survives a desa being renamed or merged. The codes are opaque
-	// region_service ids; no FK (HARD RULE 3). AddressLine is the free text (jalan, no. rumah, RT/RW)
-	// that no dataset supplies — it is what the old `customer_address` column held.
-	ProvinsiCode  string
-	ProvinsiName  string
-	KabupatenCode string
-	KabupatenName string
-	KecamatanCode string
-	KecamatanName string
-	DesaCode      string
-	DesaName      string
-	KodePos       string
-	AddressLine   string
-	// A courier code (opaque) — a shipment_service channel's `code`. Moves to shipment_channel_id with
-	// the order redesign (the-old-catalogue-bridges-by-code).
-	ShippingCode string
+	// THE COURIER (00044) — an OPAQUE shipment_service channel id, no FK (shipment-channel-is-an-id-into-shipment-service),
+	// and nothing else about the channel is stored (the-channel-name-is-not-frozen): screens resolve the name at read
+	// time. Required at create (no-order-without-a-courier); 0 only on a developer's order from before 00044.
+	ShipmentChannelID uint64
 
 	// THE MARKETPLACE'S OWN ID for this order (owner) — read off the storefront and typed in beside
 	// the shop that took it. The only name this order has that a buyer, a payout report or the
@@ -148,6 +135,11 @@ type Order struct {
 	// The lines; loaded on demand (OrderDetail).
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
 
+	// THE BUYER AND WHERE THE PARCEL GOES — the order's one `order_addresses` row (00045), loaded on demand
+	// (loadOrderAddresses / Preload). nil = not loaded, or a developer's row seeded without one; read through the
+	// nil-safe getters below.
+	Address *OrderAddress `gorm:"foreignKey:OrderID"`
+
 	// The order's timeline, oldest first; loaded on demand (OrderDetail), like Items
 	// (order-timeline-logs-replaces-order-events).
 	//
@@ -163,4 +155,22 @@ type Order struct {
 
 func (Order) TableName() string {
 	return "orders"
+}
+
+// Customer is the order's customer name, from its address row — "" when the row is not loaded.
+func (o *Order) Customer() string {
+	if o.Address == nil {
+		return ""
+	}
+
+	return o.Address.CustomerName
+}
+
+// Phone is the order's customer phone, from its address row — "" when the row is not loaded.
+func (o *Order) Phone() string {
+	if o.Address == nil {
+		return ""
+	}
+
+	return o.Address.CustomerPhone
 }

@@ -88,6 +88,14 @@ async function pickOrderDate(canvasElement: HTMLElement) {
   await userEvent.keyboard("{Escape}");
 }
 
+// THE COURIER — required to place (no-order-without-a-courier, the-courier-required-look-is-accepted).
+async function pickCourier(canvasElement: HTMLElement) {
+  await userEvent.click(within(within(canvasElement).getByTestId("shipment-channel-select")).getByRole("combobox"));
+  const option = await screen.findByTestId("shipment-channel-option-jne");
+  await waitFor(() => expect(option).toBeVisible());
+  await userEvent.click(option);
+}
+
 async function fillPlaceableOrder(canvasElement: HTMLElement, ref = REF) {
   const canvas = within(canvasElement);
 
@@ -97,6 +105,7 @@ async function fillPlaceableOrder(canvasElement: HTMLElement, ref = REF) {
   const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
   await waitFor(() => expect(shop).toBeVisible());
   await userEvent.click(shop);
+  await pickCourier(canvasElement);
 
   await pickProduct(canvasElement, products[0]!.id);
   await pickOrderDate(canvasElement);

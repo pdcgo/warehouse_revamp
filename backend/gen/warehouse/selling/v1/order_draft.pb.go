@@ -165,11 +165,10 @@ func (OrderDraftByExternalRefsDataType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_selling_v1_order_draft_proto_rawDescGZIP(), []int{2}
 }
 
-// One scraped line of a draft.
+// One scraped line of a draft — the platform's reference: what the marketplace said, never what we resolved it to.
 //
-// It carries BOTH what the marketplace said and what we resolved it to. A marketplace scraper knows
-// the marketplace's product TITLE, not our `product_id` — so the title is stored verbatim and a
-// person maps it later. The unmapped line IS the incompleteness that makes this a draft.
+// A DRAFT STORES NO MAPPING (a-draft-stores-no-mapping): a marketplace scraper knows the platform's product TITLE, not
+// our product, so the title is stored verbatim and the CS maps it in the order form, straight into the order's lines.
 type OrderDraftItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -178,12 +177,6 @@ type OrderDraftItem struct {
 	// somebody tell a wrong mapping from a right one.
 	ExternalSku  string `protobuf:"bytes,2,opt,name=external_sku,json=externalSku,proto3" json:"external_sku,omitempty"`
 	ExternalName string `protobuf:"bytes,3,opt,name=external_name,json=externalName,proto3" json:"external_name,omitempty"`
-	// Our catalogue id, 0 until a person maps it.
-	//
-	// ⚠ IGNORED ON PUSH. The app does not know our ids, and a client guessing them by matching titles
-	// against our catalogue — silently, on its own — is exactly the design §6.4 rejected. Mapping is a
-	// human act performed through OrderDraftUpdate.
-	ProductId uint64 `protobuf:"varint,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	// Unconstrained, unlike OrderItem's `quantity >= 1`: a scrape may not have been able to read
 	// either. Refusing a whole push over one unreadable line would lose the other nine — promote is
 	// where every requirement lands.
@@ -244,13 +237,6 @@ func (x *OrderDraftItem) GetExternalName() string {
 	return ""
 }
 
-func (x *OrderDraftItem) GetProductId() uint64 {
-	if x != nil {
-		return x.ProductId
-	}
-	return 0
-}
-
 func (x *OrderDraftItem) GetQuantity() uint32 {
 	if x != nil {
 		return x.Quantity
@@ -282,28 +268,21 @@ type OrderDraft struct {
 	TouchedFields []string `protobuf:"bytes,6,rep,name=touched_fields,json=touchedFields,proto3" json:"touched_fields,omitempty"`
 	// 0 until known. Opaque cross-service ids with no FK, so either can be deleted underneath a draft —
 	// OrderCreate re-checks both when the draft page promotes it.
-	ShopId        uint64 `protobuf:"varint,7,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	WarehouseId   uint64 `protobuf:"varint,8,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	CustomerName  string `protobuf:"bytes,9,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
-	CustomerPhone string `protobuf:"bytes,10,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
-	// The same frozen-address shape an order carries (#118), so promote copies rather than translates.
-	Address      *OrderAddress `protobuf:"bytes,11,opt,name=address,proto3" json:"address,omitempty"`
-	ShippingCode string        `protobuf:"bytes,12,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
+	ShopId      uint64 `protobuf:"varint,7,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	WarehouseId uint64 `protobuf:"varint,8,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	// The buyer and the address live in the draft's ONE `order_draft_addresses` row (selling 00046,
+	// one-address-per-order-and-per-draft), as NAMES only (an-address-is-plain-names): the address's four `_code` fields
+	// are always empty here, and any a caller sends is discarded. Best effort — every part may be empty.
+	CustomerName  string        `protobuf:"bytes,9,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
+	CustomerPhone string        `protobuf:"bytes,10,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
+	Address       *OrderAddress `protobuf:"bytes,11,opt,name=address,proto3" json:"address,omitempty"`
 	// The lines — populated by OrderDraftDetail (the list returns a summary without them).
 	Items         []*OrderDraftItem `protobuf:"bytes,14,rep,name=items,proto3" json:"items,omitempty"`
 	CreatedAtUnix int64             `protobuf:"varint,15,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	UpdatedAtUnix int64             `protobuf:"varint,16,opt,name=updated_at_unix,json=updatedAtUnix,proto3" json:"updated_at_unix,omitempty"`
-	// How far along this draft is, WITHOUT its lines (#192). Both are computed by the server on every
-	// read, list and detail alike.
-	//
-	// They exist because the list deliberately does not return items, and "how much work is left on
-	// this one" is the only question the list screen (#195) is really asking. Counting client-side
-	// would mean loading every draft's lines to render one page of a list — the exact shape of the
-	// slow query pagination is there to prevent.
+	// How many lines the draft holds, WITHOUT its lines (#192) — computed by the server on every read, list and detail
+	// alike, because the list deliberately returns no items.
 	ItemCount uint32 `protobuf:"varint,17,opt,name=item_count,json=itemCount,proto3" json:"item_count,omitempty"`
-	// Lines still carrying product_id = 0. Non-zero means this draft CANNOT be promoted: an unmapped
-	// line is precisely what makes it a draft.
-	UnmappedItemCount uint32 `protobuf:"varint,18,opt,name=unmapped_item_count,json=unmappedItemCount,proto3" json:"unmapped_item_count,omitempty"`
 	// WHEN THE BUYER ORDERED on the storefront (platform-created-at-is-required-at-finalize). 0 = not known yet: a draft
 	// may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto the order.
 	PlatformCreatedAtUnix int64 `protobuf:"varint,19,opt,name=platform_created_at_unix,json=platformCreatedAtUnix,proto3" json:"platform_created_at_unix,omitempty"`
@@ -318,6 +297,16 @@ type OrderDraft struct {
 	// draft may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto
 	// Order.platform_total, exact as the order is placed — a draft keeps what was read or typed, and so does the order.
 	PlatformTotal float64 `protobuf:"fixed64,22,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
+	// THE COURIER, as the app converted it (the-app-converts-the-courier-to-a-channel-id) or a person picked it — a
+	// shipment channel's id. 0 = not known: the app could not map the platform's courier, and the person picks it in the
+	// order form, where it is required (no-order-without-a-courier).
+	ShipmentChannelId uint64 `protobuf:"varint,23,opt,name=shipment_channel_id,json=shipmentChannelId,proto3" json:"shipment_channel_id,omitempty"`
+	// THE ADDRESS PICKER'S PRE-FILL (the-cs-edits-the-whole-address-before-create, *Pre-filled when certain*): when the
+	// draft's four region names match EXACTLY ONE region_service place (RegionMatch), that place — codes, the region
+	// list's own names, its kode pos; `address_line` empty. Unset when they match none or several, or a level is empty:
+	// the form's dropdowns then open empty and the person picks, reading `address` as text. OrderDraftDetail only, worked
+	// out on every read and never stored — the draft keeps names (an-address-is-plain-names).
+	RegionMatch   *OrderAddress `protobuf:"bytes,24,opt,name=region_match,json=regionMatch,proto3" json:"region_match,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -429,13 +418,6 @@ func (x *OrderDraft) GetAddress() *OrderAddress {
 	return nil
 }
 
-func (x *OrderDraft) GetShippingCode() string {
-	if x != nil {
-		return x.ShippingCode
-	}
-	return ""
-}
-
 func (x *OrderDraft) GetItems() []*OrderDraftItem {
 	if x != nil {
 		return x.Items
@@ -460,13 +442,6 @@ func (x *OrderDraft) GetUpdatedAtUnix() int64 {
 func (x *OrderDraft) GetItemCount() uint32 {
 	if x != nil {
 		return x.ItemCount
-	}
-	return 0
-}
-
-func (x *OrderDraft) GetUnmappedItemCount() uint32 {
-	if x != nil {
-		return x.UnmappedItemCount
 	}
 	return 0
 }
@@ -497,6 +472,20 @@ func (x *OrderDraft) GetPlatformTotal() float64 {
 		return x.PlatformTotal
 	}
 	return 0
+}
+
+func (x *OrderDraft) GetShipmentChannelId() uint64 {
+	if x != nil {
+		return x.ShipmentChannelId
+	}
+	return 0
+}
+
+func (x *OrderDraft) GetRegionMatch() *OrderAddress {
+	if x != nil {
+		return x.RegionMatch
+	}
+	return nil
 }
 
 type OrderDraftListRequest struct {
@@ -717,7 +706,7 @@ func (*OrderDraftListFilterSort_General) isOrderDraftListFilterSort_S() {}
 func (*OrderDraftListFilterSort_OrderDraft) isOrderDraftListFilterSort_S() {}
 
 // The ORDER_DRAFT slice reuses the OrderDraft message directly (a list summary leaves items empty,
-// but carries item_count / unmapped_item_count).
+// but carries item_count).
 type OrderDraftRowMapItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MapData       map[uint64]*OrderDraft `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -849,10 +838,11 @@ type OrderDraftListResponse struct {
 	Items    []*OrderDraftListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	Ids      []uint64                      `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo *v1.PageInfo                  `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	// How many drafts of the WHOLE filtered set (every page, not this one) have nothing left before Promote — the
-	// list's own readiness rule (the frontend's draftGaps): a shop, a warehouse, a customer, at least one line and none
-	// unmapped, an order date, a sell price, and not a `manual` draft (its order ref is still to be typed). Stock is not
-	// in it: only the draft's page can read the warehouse's availability for its lines.
+	// How many drafts of the WHOLE filtered set (every page, not this one) have nothing left before Create — the
+	// list's own readiness rule (the frontend's draftGaps, the-drafts-list-counts-no-mapping): a shop, a warehouse, a
+	// customer, an address line, a courier, at least one line, an order date, a sell price, and not a `manual` draft (its
+	// order ref is still to be typed). No mapping: the lines are mapped in the order form at Create. Stock is not in it:
+	// only the order form can read the warehouse's availability.
 	ReadyCount    uint64 `protobuf:"varint,4,opt,name=ready_count,json=readyCount,proto3" json:"ready_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -970,8 +960,7 @@ func (x *OrderDraftDetailRequest) GetDraftId() uint64 {
 
 type OrderDraftDetailResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// WITH its lines — each carrying both the scraped text and the product it has been mapped to, so
-	// the mapping screen (#196) can show one beside the other.
+	// WITH its lines (the scraped text the order form shows above its products) and its `region_match`.
 	Draft         *OrderDraft `protobuf:"bytes,1,opt,name=draft,proto3" json:"draft,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1014,7 +1003,8 @@ func (x *OrderDraftDetailResponse) GetDraft() *OrderDraft {
 	return nil
 }
 
-// One line as a PERSON edits it (#193) — the mapping act, and the small corrections around it.
+// One line as a PERSON edits it (#193) — a quantity or price correction; a draft stores no mapping
+// (a-draft-stores-no-mapping).
 //
 // The scraped text is deliberately absent. `external_sku` / `external_name` are the evidence of what
 // the buyer ordered and are never overwritten by anybody; a request that could carry them would be a
@@ -1023,10 +1013,7 @@ type OrderDraftLineEdit struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An existing line of this draft. 0 adds a NEW line, which is how a person records something the
 	// scrape never saw — such a line has no external text, and its emptiness truthfully says so.
-	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The mapping. 0 leaves the line unmapped, which keeps the draft unpromotable — that is a legal
-	// state to save, because half-finished work is the whole point of a draft.
-	ProductId     uint64  `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Id            uint64  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Quantity      uint32  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	UnitPrice     float64 `protobuf:"fixed64,4,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1066,13 +1053,6 @@ func (*OrderDraftLineEdit) Descriptor() ([]byte, []int) {
 func (x *OrderDraftLineEdit) GetId() uint64 {
 	if x != nil {
 		return x.Id
-	}
-	return 0
-}
-
-func (x *OrderDraftLineEdit) GetProductId() uint64 {
-	if x != nil {
-		return x.ProductId
 	}
 	return 0
 }
@@ -1140,8 +1120,8 @@ func (x *OrderDraftLines) GetLines() []*OrderDraftLineEdit {
 	return nil
 }
 
-// OrderDraftUpdate is the person's edit, made in our UI (#193) — mapping a scraped line to a real
-// product, fixing the address, choosing the shop and warehouse.
+// OrderDraftUpdate is the person's edit, made in our UI (#193) — correcting a line, fixing the address, choosing the
+// shop and warehouse. A draft stores no mapping (a-draft-stores-no-mapping).
 //
 // ⚠ IT ALWAYS WINS, and marks every field it writes as TOUCHED. That mark is what OrderDraftPush
 // reads to know what it may not overwrite, so this RPC and that one are two halves of one rule.
@@ -1159,8 +1139,7 @@ type OrderDraftUpdateRequest struct {
 	CustomerName  *string                `protobuf:"bytes,5,opt,name=customer_name,json=customerName,proto3,oneof" json:"customer_name,omitempty"`
 	CustomerPhone *string                `protobuf:"bytes,6,opt,name=customer_phone,json=customerPhone,proto3,oneof" json:"customer_phone,omitempty"`
 	// The address is ONE field, whole. Somebody who corrects a kecamatan has corrected the address.
-	Address      *OrderAddress `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
-	ShippingCode *string       `protobuf:"bytes,8,opt,name=shipping_code,json=shippingCode,proto3,oneof" json:"shipping_code,omitempty"`
+	Address *OrderAddress `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
 	// The lines, if this edit touches them at all.
 	Items *OrderDraftLines `protobuf:"bytes,10,opt,name=items,proto3" json:"items,omitempty"`
 	// The two platform dates, as a person read them off the storefront. Set = edited and marked touched, so the app's
@@ -1173,8 +1152,11 @@ type OrderDraftUpdateRequest struct {
 	// What the buyer paid on the platform, as a person read it or typed it (platform-total-is-required-at-finalize).
 	// Set = edited and marked touched, so the app's next push leaves it alone; 0 clears it.
 	PlatformTotal *float64 `protobuf:"fixed64,14,opt,name=platform_total,json=platformTotal,proto3,oneof" json:"platform_total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The courier, as a person picked it — a shipment channel's id. Set = edited and marked touched, so the app's next push
+	// leaves it alone; 0 clears it.
+	ShipmentChannelId *uint64 `protobuf:"varint,15,opt,name=shipment_channel_id,json=shipmentChannelId,proto3,oneof" json:"shipment_channel_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *OrderDraftUpdateRequest) Reset() {
@@ -1256,13 +1238,6 @@ func (x *OrderDraftUpdateRequest) GetAddress() *OrderAddress {
 	return nil
 }
 
-func (x *OrderDraftUpdateRequest) GetShippingCode() string {
-	if x != nil && x.ShippingCode != nil {
-		return *x.ShippingCode
-	}
-	return ""
-}
-
 func (x *OrderDraftUpdateRequest) GetItems() *OrderDraftLines {
 	if x != nil {
 		return x.Items
@@ -1294,6 +1269,13 @@ func (x *OrderDraftUpdateRequest) GetBuyerUsername() string {
 func (x *OrderDraftUpdateRequest) GetPlatformTotal() float64 {
 	if x != nil && x.PlatformTotal != nil {
 		return *x.PlatformTotal
+	}
+	return 0
+}
+
+func (x *OrderDraftUpdateRequest) GetShipmentChannelId() uint64 {
+	if x != nil && x.ShipmentChannelId != nil {
+		return *x.ShipmentChannelId
 	}
 	return 0
 }
@@ -1479,7 +1461,6 @@ type OrderDraftPushRequest struct {
 	CustomerName  string        `protobuf:"bytes,6,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
 	CustomerPhone string        `protobuf:"bytes,7,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
 	Address       *OrderAddress `protobuf:"bytes,8,opt,name=address,proto3" json:"address,omitempty"`
-	ShippingCode  string        `protobuf:"bytes,9,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
 	// The scraped lines. NO minimum: a push carrying a customer and an address but no readable lines
 	// is still worth keeping — refusing it would throw away everything the app COULD see over the one
 	// thing it could not.
@@ -1502,8 +1483,12 @@ type OrderDraftPushRequest struct {
 	// binary client is unaffected — ⚠ but a JSON client still sending `marketplaceTotal` has it DISCARDED silently, and
 	// its drafts reach Promote with 0.
 	PlatformTotal float64 `protobuf:"fixed64,15,opt,name=platform_total,json=platformTotal,proto3" json:"platform_total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// THE COURIER, converted by the app from the platform's text to our channel id — the app reads ShipmentChannelList and
+	// maps onto it (the-app-converts-the-courier-to-a-channel-id). 0 = the app could not map it; the draft keeps none and
+	// the person picks one in the order form. Not looked up: a wrong mapping is the app's defect, corrected on the draft.
+	ShipmentChannelId uint64 `protobuf:"varint,16,opt,name=shipment_channel_id,json=shipmentChannelId,proto3" json:"shipment_channel_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *OrderDraftPushRequest) Reset() {
@@ -1592,13 +1577,6 @@ func (x *OrderDraftPushRequest) GetAddress() *OrderAddress {
 	return nil
 }
 
-func (x *OrderDraftPushRequest) GetShippingCode() string {
-	if x != nil {
-		return x.ShippingCode
-	}
-	return ""
-}
-
 func (x *OrderDraftPushRequest) GetItems() []*OrderDraftItem {
 	if x != nil {
 		return x.Items
@@ -1630,6 +1608,13 @@ func (x *OrderDraftPushRequest) GetBuyerUsername() string {
 func (x *OrderDraftPushRequest) GetPlatformTotal() float64 {
 	if x != nil {
 		return x.PlatformTotal
+	}
+	return 0
+}
+
+func (x *OrderDraftPushRequest) GetShipmentChannelId() uint64 {
+	if x != nil {
+		return x.ShipmentChannelId
 	}
 	return 0
 }
@@ -2078,16 +2063,15 @@ var File_warehouse_selling_v1_order_draft_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\n" +
-	"&warehouse/selling/v1/order_draft.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\x1a warehouse/selling/v1/order.proto\"\xd6\x01\n" +
+	"&warehouse/selling/v1/order_draft.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\x1a warehouse/selling/v1/order.proto\"\xc9\x01\n" +
 	"\x0eOrderDraftItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12+\n" +
 	"\fexternal_sku\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\vexternalSku\x12-\n" +
-	"\rexternal_name\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\fexternalName\x12\x1d\n" +
-	"\n" +
-	"product_id\x18\x04 \x01(\x04R\tproductId\x12\x1a\n" +
+	"\rexternal_name\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\fexternalName\x12\x1a\n" +
 	"\bquantity\x18\x05 \x01(\rR\bquantity\x12\x1d\n" +
 	"\n" +
-	"unit_price\x18\x06 \x01(\x01R\tunitPrice\"\xe4\x06\n" +
+	"unit_price\x18\x06 \x01(\x01R\tunitPriceJ\x04\b\x04\x10\x05R\n" +
+	"product_id\"\xb6\a\n" +
 	"\n" +
 	"OrderDraft\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
@@ -2102,18 +2086,18 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\rcustomer_name\x18\t \x01(\tR\fcustomerName\x12%\n" +
 	"\x0ecustomer_phone\x18\n" +
 	" \x01(\tR\rcustomerPhone\x12<\n" +
-	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12#\n" +
-	"\rshipping_code\x18\f \x01(\tR\fshippingCode\x12:\n" +
+	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12:\n" +
 	"\x05items\x18\x0e \x03(\v2$.warehouse.selling.v1.OrderDraftItemR\x05items\x12&\n" +
 	"\x0fcreated_at_unix\x18\x0f \x01(\x03R\rcreatedAtUnix\x12&\n" +
 	"\x0fupdated_at_unix\x18\x10 \x01(\x03R\rupdatedAtUnix\x12\x1d\n" +
 	"\n" +
-	"item_count\x18\x11 \x01(\rR\titemCount\x12.\n" +
-	"\x13unmapped_item_count\x18\x12 \x01(\rR\x11unmappedItemCount\x127\n" +
+	"item_count\x18\x11 \x01(\rR\titemCount\x127\n" +
 	"\x18platform_created_at_unix\x18\x13 \x01(\x03R\x15platformCreatedAtUnix\x12E\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\x14 \x01(\x03R\x1cplatformShipmentDeadlineUnix\x12%\n" +
 	"\x0ebuyer_username\x18\x15 \x01(\tR\rbuyerUsername\x12%\n" +
-	"\x0eplatform_total\x18\x16 \x01(\x01R\rplatformTotalJ\x04\b\r\x10\x0eR\rshipping_cost\"\xe6\x02\n" +
+	"\x0eplatform_total\x18\x16 \x01(\x01R\rplatformTotal\x12.\n" +
+	"\x13shipment_channel_id\x18\x17 \x01(\x04R\x11shipmentChannelId\x12E\n" +
+	"\fregion_match\x18\x18 \x01(\v2\".warehouse.selling.v1.OrderAddressR\vregionMatchJ\x04\b\f\x10\rJ\x04\b\r\x10\x0eJ\x04\b\x12\x10\x13R\rshipping_codeR\rshipping_costR\x13unmapped_item_count\"\xe6\x02\n" +
 	"\x15OrderDraftListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12B\n" +
 	"\x06filter\x18\x02 \x01(\v2*.warehouse.selling.v1.OrderDraftListFilterR\x06filter\x12B\n" +
@@ -2150,16 +2134,15 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\bdraft_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\adraftId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"R\n" +
 	"\x18OrderDraftDetailResponse\x126\n" +
-	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\"\x90\x01\n" +
+	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\"\x83\x01\n" +
 	"\x12OrderDraftLineEdit\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
-	"\n" +
-	"product_id\x18\x02 \x01(\x04R\tproductId\x12\x1a\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\rR\bquantity\x12/\n" +
 	"\n" +
-	"unit_price\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\tunitPrice\"Q\n" +
+	"unit_price\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\tunitPriceJ\x04\b\x02\x10\x03R\n" +
+	"product_id\"Q\n" +
 	"\x0fOrderDraftLines\x12>\n" +
-	"\x05lines\x18\x01 \x03(\v2(.warehouse.selling.v1.OrderDraftLineEditR\x05lines\"\xac\a\n" +
+	"\x05lines\x18\x01 \x03(\v2(.warehouse.selling.v1.OrderDraftLineEditR\x05lines\"\xc9\a\n" +
 	"\x17OrderDraftUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\bdraft_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\adraftId\x12\x1c\n" +
@@ -2167,26 +2150,26 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\fwarehouse_id\x18\x04 \x01(\x04H\x01R\vwarehouseId\x88\x01\x01\x122\n" +
 	"\rcustomer_name\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01H\x02R\fcustomerName\x88\x01\x01\x123\n" +
 	"\x0ecustomer_phone\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(H\x03R\rcustomerPhone\x88\x01\x01\x12<\n" +
-	"\aaddress\x18\a \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x121\n" +
-	"\rshipping_code\x18\b \x01(\tB\a\xbaH\x04r\x02\x18(H\x04R\fshippingCode\x88\x01\x01\x12;\n" +
+	"\aaddress\x18\a \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12;\n" +
 	"\x05items\x18\n" +
 	" \x01(\v2%.warehouse.selling.v1.OrderDraftLinesR\x05items\x12E\n" +
-	"\x18platform_created_at_unix\x18\v \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x05R\x15platformCreatedAtUnix\x88\x01\x01\x12S\n" +
-	"\x1fplatform_shipment_deadline_unix\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x06R\x1cplatformShipmentDeadlineUnix\x88\x01\x01\x123\n" +
-	"\x0ebuyer_username\x18\r \x01(\tB\a\xbaH\x04r\x02\x18dH\aR\rbuyerUsername\x88\x01\x01\x12<\n" +
-	"\x0eplatform_total\x18\x0e \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00H\bR\rplatformTotal\x88\x01\x01:\v\x92\xb5\x18\a\n" +
+	"\x18platform_created_at_unix\x18\v \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x04R\x15platformCreatedAtUnix\x88\x01\x01\x12S\n" +
+	"\x1fplatform_shipment_deadline_unix\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x05R\x1cplatformShipmentDeadlineUnix\x88\x01\x01\x123\n" +
+	"\x0ebuyer_username\x18\r \x01(\tB\a\xbaH\x04r\x02\x18dH\x06R\rbuyerUsername\x88\x01\x01\x12<\n" +
+	"\x0eplatform_total\x18\x0e \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00H\aR\rplatformTotal\x88\x01\x01\x123\n" +
+	"\x13shipment_channel_id\x18\x0f \x01(\x04H\bR\x11shipmentChannelId\x88\x01\x01:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05B\n" +
 	"\n" +
 	"\b_shop_idB\x0f\n" +
 	"\r_warehouse_idB\x10\n" +
 	"\x0e_customer_nameB\x11\n" +
-	"\x0f_customer_phoneB\x10\n" +
-	"\x0e_shipping_codeB\x1b\n" +
+	"\x0f_customer_phoneB\x1b\n" +
 	"\x19_platform_created_at_unixB\"\n" +
 	" _platform_shipment_deadline_unixB\x11\n" +
 	"\x0f_buyer_usernameB\x11\n" +
-	"\x0f_platform_totalJ\x04\b\t\x10\n" +
-	"R\rshipping_cost\"R\n" +
+	"\x0f_platform_totalB\x16\n" +
+	"\x14_shipment_channel_idJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"R\rshipping_codeR\rshipping_cost\"R\n" +
 	"\x18OrderDraftUpdateResponse\x126\n" +
 	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\"u\n" +
 	"\x17OrderDraftDeleteRequest\x12$\n" +
@@ -2195,7 +2178,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10dR\bdraftIds:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"4\n" +
 	"\x18OrderDraftDeleteResponse\x12\x18\n" +
-	"\adeleted\x18\x01 \x01(\rR\adeleted\"\xed\x05\n" +
+	"\adeleted\x18\x01 \x01(\rR\adeleted\"\x84\x06\n" +
 	"\x15OrderDraftPushRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12!\n" +
 	"\x06source\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x06source\x12+\n" +
@@ -2206,15 +2189,16 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\fwarehouse_id\x18\x05 \x01(\x04R\vwarehouseId\x12-\n" +
 	"\rcustomer_name\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\fcustomerName\x12.\n" +
 	"\x0ecustomer_phone\x18\a \x01(\tB\a\xbaH\x04r\x02\x18(R\rcustomerPhone\x12<\n" +
-	"\aaddress\x18\b \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12,\n" +
-	"\rshipping_code\x18\t \x01(\tB\a\xbaH\x04r\x02\x18(R\fshippingCode\x12:\n" +
+	"\aaddress\x18\b \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12:\n" +
 	"\x05items\x18\v \x03(\v2$.warehouse.selling.v1.OrderDraftItemR\x05items\x12@\n" +
 	"\x18platform_created_at_unix\x18\f \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x15platformCreatedAtUnix\x12N\n" +
 	"\x1fplatform_shipment_deadline_unix\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x1cplatformShipmentDeadlineUnix\x12.\n" +
 	"\x0ebuyer_username\x18\x0e \x01(\tB\a\xbaH\x04r\x02\x18dR\rbuyerUsername\x127\n" +
-	"\x0eplatform_total\x18\x0f \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\rplatformTotal:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05J\x04\b\n" +
-	"\x10\vR\rshipping_cost\"j\n" +
+	"\x0eplatform_total\x18\x0f \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\rplatformTotal\x12.\n" +
+	"\x13shipment_channel_id\x18\x10 \x01(\x04R\x11shipmentChannelId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05J\x04\b\t\x10\n" +
+	"J\x04\b\n" +
+	"\x10\vR\rshipping_codeR\rshipping_cost\"j\n" +
 	"\x16OrderDraftPushResponse\x126\n" +
 	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\x12\x18\n" +
 	"\acreated\x18\x02 \x01(\bR\acreated\"m\n" +
@@ -2321,52 +2305,53 @@ var file_warehouse_selling_v1_order_draft_proto_goTypes = []any{
 var file_warehouse_selling_v1_order_draft_proto_depIdxs = []int32{
 	31, // 0: warehouse.selling.v1.OrderDraft.address:type_name -> warehouse.selling.v1.OrderAddress
 	3,  // 1: warehouse.selling.v1.OrderDraft.items:type_name -> warehouse.selling.v1.OrderDraftItem
-	6,  // 2: warehouse.selling.v1.OrderDraftListRequest.filter:type_name -> warehouse.selling.v1.OrderDraftListFilter
-	7,  // 3: warehouse.selling.v1.OrderDraftListRequest.sort:type_name -> warehouse.selling.v1.OrderDraftListFilterSort
-	0,  // 4: warehouse.selling.v1.OrderDraftListRequest.data_request:type_name -> warehouse.selling.v1.OrderDraftListDataType
-	32, // 5: warehouse.selling.v1.OrderDraftListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	33, // 6: warehouse.selling.v1.OrderDraftListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	34, // 7: warehouse.selling.v1.OrderDraftListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	1,  // 8: warehouse.selling.v1.OrderDraftListFilterSort.order_draft:type_name -> warehouse.selling.v1.OrderDraftRowSort
-	28, // 9: warehouse.selling.v1.OrderDraftRowMapItem.map_data:type_name -> warehouse.selling.v1.OrderDraftRowMapItem.MapDataEntry
-	35, // 10: warehouse.selling.v1.OrderDraftListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	8,  // 11: warehouse.selling.v1.OrderDraftListResponseItem.order_draft:type_name -> warehouse.selling.v1.OrderDraftRowMapItem
-	9,  // 12: warehouse.selling.v1.OrderDraftListResponse.items:type_name -> warehouse.selling.v1.OrderDraftListResponseItem
-	36, // 13: warehouse.selling.v1.OrderDraftListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	4,  // 14: warehouse.selling.v1.OrderDraftDetailResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
-	13, // 15: warehouse.selling.v1.OrderDraftLines.lines:type_name -> warehouse.selling.v1.OrderDraftLineEdit
-	31, // 16: warehouse.selling.v1.OrderDraftUpdateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
-	14, // 17: warehouse.selling.v1.OrderDraftUpdateRequest.items:type_name -> warehouse.selling.v1.OrderDraftLines
-	4,  // 18: warehouse.selling.v1.OrderDraftUpdateResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
-	31, // 19: warehouse.selling.v1.OrderDraftPushRequest.address:type_name -> warehouse.selling.v1.OrderAddress
-	3,  // 20: warehouse.selling.v1.OrderDraftPushRequest.items:type_name -> warehouse.selling.v1.OrderDraftItem
-	4,  // 21: warehouse.selling.v1.OrderDraftPushResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
-	21, // 22: warehouse.selling.v1.OrderDraftByExternalRefsRequest.filter:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsFilter
-	2,  // 23: warehouse.selling.v1.OrderDraftByExternalRefsRequest.data_request:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsDataType
-	29, // 24: warehouse.selling.v1.OrderDraftRefMapItem.map_data:type_name -> warehouse.selling.v1.OrderDraftRefMapItem.MapDataEntry
-	24, // 25: warehouse.selling.v1.OrderDraftByExternalRefsResponseItem.draft_ref:type_name -> warehouse.selling.v1.OrderDraftRefMapItem
-	25, // 26: warehouse.selling.v1.OrderDraftByExternalRefsResponseList.items:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsResponseItem
-	30, // 27: warehouse.selling.v1.OrderDraftByExternalRefsResponse.items:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsResponse.ItemsEntry
-	4,  // 28: warehouse.selling.v1.OrderDraftRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderDraft
-	23, // 29: warehouse.selling.v1.OrderDraftRefMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderDraftRefItem
-	26, // 30: warehouse.selling.v1.OrderDraftByExternalRefsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsResponseList
-	19, // 31: warehouse.selling.v1.OrderDraftService.OrderDraftPush:input_type -> warehouse.selling.v1.OrderDraftPushRequest
-	5,  // 32: warehouse.selling.v1.OrderDraftService.OrderDraftList:input_type -> warehouse.selling.v1.OrderDraftListRequest
-	11, // 33: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:input_type -> warehouse.selling.v1.OrderDraftDetailRequest
-	15, // 34: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:input_type -> warehouse.selling.v1.OrderDraftUpdateRequest
-	17, // 35: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:input_type -> warehouse.selling.v1.OrderDraftDeleteRequest
-	22, // 36: warehouse.selling.v1.OrderDraftService.OrderDraftByExternalRefs:input_type -> warehouse.selling.v1.OrderDraftByExternalRefsRequest
-	20, // 37: warehouse.selling.v1.OrderDraftService.OrderDraftPush:output_type -> warehouse.selling.v1.OrderDraftPushResponse
-	10, // 38: warehouse.selling.v1.OrderDraftService.OrderDraftList:output_type -> warehouse.selling.v1.OrderDraftListResponse
-	12, // 39: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:output_type -> warehouse.selling.v1.OrderDraftDetailResponse
-	16, // 40: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:output_type -> warehouse.selling.v1.OrderDraftUpdateResponse
-	18, // 41: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:output_type -> warehouse.selling.v1.OrderDraftDeleteResponse
-	27, // 42: warehouse.selling.v1.OrderDraftService.OrderDraftByExternalRefs:output_type -> warehouse.selling.v1.OrderDraftByExternalRefsResponse
-	37, // [37:43] is the sub-list for method output_type
-	31, // [31:37] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	31, // 2: warehouse.selling.v1.OrderDraft.region_match:type_name -> warehouse.selling.v1.OrderAddress
+	6,  // 3: warehouse.selling.v1.OrderDraftListRequest.filter:type_name -> warehouse.selling.v1.OrderDraftListFilter
+	7,  // 4: warehouse.selling.v1.OrderDraftListRequest.sort:type_name -> warehouse.selling.v1.OrderDraftListFilterSort
+	0,  // 5: warehouse.selling.v1.OrderDraftListRequest.data_request:type_name -> warehouse.selling.v1.OrderDraftListDataType
+	32, // 6: warehouse.selling.v1.OrderDraftListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	33, // 7: warehouse.selling.v1.OrderDraftListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	34, // 8: warehouse.selling.v1.OrderDraftListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	1,  // 9: warehouse.selling.v1.OrderDraftListFilterSort.order_draft:type_name -> warehouse.selling.v1.OrderDraftRowSort
+	28, // 10: warehouse.selling.v1.OrderDraftRowMapItem.map_data:type_name -> warehouse.selling.v1.OrderDraftRowMapItem.MapDataEntry
+	35, // 11: warehouse.selling.v1.OrderDraftListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	8,  // 12: warehouse.selling.v1.OrderDraftListResponseItem.order_draft:type_name -> warehouse.selling.v1.OrderDraftRowMapItem
+	9,  // 13: warehouse.selling.v1.OrderDraftListResponse.items:type_name -> warehouse.selling.v1.OrderDraftListResponseItem
+	36, // 14: warehouse.selling.v1.OrderDraftListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	4,  // 15: warehouse.selling.v1.OrderDraftDetailResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
+	13, // 16: warehouse.selling.v1.OrderDraftLines.lines:type_name -> warehouse.selling.v1.OrderDraftLineEdit
+	31, // 17: warehouse.selling.v1.OrderDraftUpdateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
+	14, // 18: warehouse.selling.v1.OrderDraftUpdateRequest.items:type_name -> warehouse.selling.v1.OrderDraftLines
+	4,  // 19: warehouse.selling.v1.OrderDraftUpdateResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
+	31, // 20: warehouse.selling.v1.OrderDraftPushRequest.address:type_name -> warehouse.selling.v1.OrderAddress
+	3,  // 21: warehouse.selling.v1.OrderDraftPushRequest.items:type_name -> warehouse.selling.v1.OrderDraftItem
+	4,  // 22: warehouse.selling.v1.OrderDraftPushResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
+	21, // 23: warehouse.selling.v1.OrderDraftByExternalRefsRequest.filter:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsFilter
+	2,  // 24: warehouse.selling.v1.OrderDraftByExternalRefsRequest.data_request:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsDataType
+	29, // 25: warehouse.selling.v1.OrderDraftRefMapItem.map_data:type_name -> warehouse.selling.v1.OrderDraftRefMapItem.MapDataEntry
+	24, // 26: warehouse.selling.v1.OrderDraftByExternalRefsResponseItem.draft_ref:type_name -> warehouse.selling.v1.OrderDraftRefMapItem
+	25, // 27: warehouse.selling.v1.OrderDraftByExternalRefsResponseList.items:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsResponseItem
+	30, // 28: warehouse.selling.v1.OrderDraftByExternalRefsResponse.items:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsResponse.ItemsEntry
+	4,  // 29: warehouse.selling.v1.OrderDraftRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderDraft
+	23, // 30: warehouse.selling.v1.OrderDraftRefMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.OrderDraftRefItem
+	26, // 31: warehouse.selling.v1.OrderDraftByExternalRefsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderDraftByExternalRefsResponseList
+	19, // 32: warehouse.selling.v1.OrderDraftService.OrderDraftPush:input_type -> warehouse.selling.v1.OrderDraftPushRequest
+	5,  // 33: warehouse.selling.v1.OrderDraftService.OrderDraftList:input_type -> warehouse.selling.v1.OrderDraftListRequest
+	11, // 34: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:input_type -> warehouse.selling.v1.OrderDraftDetailRequest
+	15, // 35: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:input_type -> warehouse.selling.v1.OrderDraftUpdateRequest
+	17, // 36: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:input_type -> warehouse.selling.v1.OrderDraftDeleteRequest
+	22, // 37: warehouse.selling.v1.OrderDraftService.OrderDraftByExternalRefs:input_type -> warehouse.selling.v1.OrderDraftByExternalRefsRequest
+	20, // 38: warehouse.selling.v1.OrderDraftService.OrderDraftPush:output_type -> warehouse.selling.v1.OrderDraftPushResponse
+	10, // 39: warehouse.selling.v1.OrderDraftService.OrderDraftList:output_type -> warehouse.selling.v1.OrderDraftListResponse
+	12, // 40: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:output_type -> warehouse.selling.v1.OrderDraftDetailResponse
+	16, // 41: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:output_type -> warehouse.selling.v1.OrderDraftUpdateResponse
+	18, // 42: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:output_type -> warehouse.selling.v1.OrderDraftDeleteResponse
+	27, // 43: warehouse.selling.v1.OrderDraftService.OrderDraftByExternalRefs:output_type -> warehouse.selling.v1.OrderDraftByExternalRefsResponse
+	38, // [38:44] is the sub-list for method output_type
+	32, // [32:38] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_draft_proto_init() }

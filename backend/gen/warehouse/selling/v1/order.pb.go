@@ -1145,9 +1145,6 @@ type Order struct {
 	Status        OrderStatus            `protobuf:"varint,4,opt,name=status,proto3,enum=warehouse.selling.v1.OrderStatus" json:"status,omitempty"`
 	CustomerName  string                 `protobuf:"bytes,5,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
 	CustomerPhone string                 `protobuf:"bytes,6,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
-	// A courier code (opaque; no FK) — a shipment_service channel's `code`. Moves to
-	// shipment_channel_id with the order redesign (the-old-catalogue-bridges-by-code).
-	ShippingCode string `protobuf:"bytes,8,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
 	// WHAT THE BUYER PAID on the platform — the owner's `platform_total` (the-total-is-ours-the-platform-total-is-theirs),
 	// after the marketplace's vouchers, coin subsidies and promotions. A FACT read off the storefront, not an estimate
 	// (marketplace-total-is-a-fact-not-an-estimate); stored because nothing here CAN derive it. Settlement opens the
@@ -1289,8 +1286,13 @@ type Order struct {
 	// the order page, or from an imported statement). 0 = NOT YET: the open failed, is dead-lettered, or never ran — the
 	// order still committed. OrderListFilter.settlement_not_opened lists exactly those.
 	SettlementOpenedAtUnix int64 `protobuf:"varint,35,opt,name=settlement_opened_at_unix,json=settlementOpenedAtUnix,proto3" json:"settlement_opened_at_unix,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// THE COURIER carrying it — an OPAQUE id into shipment_service (shipment-channel-is-an-id-into-shipment-service), no FK
+	// and nothing else about the channel stored (the-channel-name-is-not-frozen): a screen resolves the name by
+	// ShipmentChannelByIds, which answers a deleted channel too, flagged (a-deleted-channel-still-resolves-by-id).
+	// Required at create (no-order-without-a-courier); 0 only on a developer's order from before selling 00044.
+	ShipmentChannelId uint64 `protobuf:"varint,36,opt,name=shipment_channel_id,json=shipmentChannelId,proto3" json:"shipment_channel_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -1361,13 +1363,6 @@ func (x *Order) GetCustomerName() string {
 func (x *Order) GetCustomerPhone() string {
 	if x != nil {
 		return x.CustomerPhone
-	}
-	return ""
-}
-
-func (x *Order) GetShippingCode() string {
-	if x != nil {
-		return x.ShippingCode
 	}
 	return ""
 }
@@ -1526,6 +1521,13 @@ func (x *Order) GetSettlementOpenedAtUnix() int64 {
 	return 0
 }
 
+func (x *Order) GetShipmentChannelId() uint64 {
+	if x != nil {
+		return x.ShipmentChannelId
+	}
+	return 0
+}
+
 type OrderCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -1537,7 +1539,6 @@ type OrderCreateRequest struct {
 	WarehouseId   uint64 `protobuf:"varint,12,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	CustomerName  string `protobuf:"bytes,3,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
 	CustomerPhone string `protobuf:"bytes,4,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
-	ShippingCode  string `protobuf:"bytes,6,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
 	// What the buyer PAID on the platform. REQUIRED at finalize (platform-total-is-required-at-finalize) — refused
 	// when 0 by the placement rule both doors share, so the message names what is missing rather than a field number.
 	// See Order.platform_total. A fraction is kept exact as the order is placed; NaN and infinities are refused.
@@ -1597,8 +1598,13 @@ type OrderCreateRequest struct {
 	// KEY_USED detail — never answered with that order (the-order-refuses-a-used-key). A key starting `order:` is
 	// refused too: that shape is reserved for the rows the migration filled. Capped at 128, like the ref.
 	IdempotencyKey string `protobuf:"bytes,22,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// THE COURIER — a shipment channel's id (shipment-channel-is-an-id-into-shipment-service), as the form's courier picker
+	// emits it or the draft carried it. REQUIRED (no-order-without-a-courier): the placement rule both doors share refuses
+	// 0, naming what is missing, so the proto leaves it unconstrained the way it does `platform_total`. Opaque: the
+	// server does not look the channel up — the picker offers live channels only.
+	ShipmentChannelId uint64 `protobuf:"varint,23,opt,name=shipment_channel_id,json=shipmentChannelId,proto3" json:"shipment_channel_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *OrderCreateRequest) Reset() {
@@ -1662,13 +1668,6 @@ func (x *OrderCreateRequest) GetCustomerName() string {
 func (x *OrderCreateRequest) GetCustomerPhone() string {
 	if x != nil {
 		return x.CustomerPhone
-	}
-	return ""
-}
-
-func (x *OrderCreateRequest) GetShippingCode() string {
-	if x != nil {
-		return x.ShippingCode
 	}
 	return ""
 }
@@ -1755,6 +1754,13 @@ func (x *OrderCreateRequest) GetIdempotencyKey() string {
 		return x.IdempotencyKey
 	}
 	return ""
+}
+
+func (x *OrderCreateRequest) GetShipmentChannelId() uint64 {
+	if x != nil {
+		return x.ShipmentChannelId
+	}
+	return 0
 }
 
 type OrderCreateResponse struct {
@@ -1922,8 +1928,8 @@ type OrderListFilter struct {
 	SellerTeamId uint64 `protobuf:"varint,8,opt,name=seller_team_id,json=sellerTeamId,proto3" json:"seller_team_id,omitempty"`
 	// Only orders whose shop is on this marketplace. UNSPECIFIED = any.
 	Marketplace v11.Marketplace `protobuf:"varint,9,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"marketplace,omitempty"`
-	// Only orders with this courier — `shipping_code` (jne, jnt …). Empty = any.
-	ShippingCode string `protobuf:"bytes,10,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
+	// Only orders with this courier — the order's `shipment_channel_id`. 0 = any.
+	ShipmentChannelId uint64 `protobuf:"varint,14,opt,name=shipment_channel_id,json=shipmentChannelId,proto3" json:"shipment_channel_id,omitempty"`
 	// Only orders shipping FROM this warehouse — the order's `warehouse_id`. 0 = any.
 	//
 	// The SELLING list's question ("only the ones leaving Gudang Pusat"). A warehouse reading its own queue leaves it at
@@ -2035,11 +2041,11 @@ func (x *OrderListFilter) GetMarketplace() v11.Marketplace {
 	return v11.Marketplace(0)
 }
 
-func (x *OrderListFilter) GetShippingCode() string {
+func (x *OrderListFilter) GetShipmentChannelId() uint64 {
 	if x != nil {
-		return x.ShippingCode
+		return x.ShipmentChannelId
 	}
-	return ""
+	return 0
 }
 
 func (x *OrderListFilter) GetWarehouseId() uint64 {
@@ -4274,9 +4280,9 @@ type OrderStatFilter struct {
 	CreatedToUnix   int64  `protobuf:"varint,5,opt,name=created_to_unix,json=createdToUnix,proto3" json:"created_to_unix,omitempty"`
 	CreatedByUserId uint64 `protobuf:"varint,6,opt,name=created_by_user_id,json=createdByUserId,proto3" json:"created_by_user_id,omitempty"`
 	// The warehouse's three filters, as on OrderListFilter.
-	SellerTeamId uint64          `protobuf:"varint,7,opt,name=seller_team_id,json=sellerTeamId,proto3" json:"seller_team_id,omitempty"`
-	Marketplace  v11.Marketplace `protobuf:"varint,8,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"marketplace,omitempty"`
-	ShippingCode string          `protobuf:"bytes,9,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
+	SellerTeamId      uint64          `protobuf:"varint,7,opt,name=seller_team_id,json=sellerTeamId,proto3" json:"seller_team_id,omitempty"`
+	Marketplace       v11.Marketplace `protobuf:"varint,8,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"marketplace,omitempty"`
+	ShipmentChannelId uint64          `protobuf:"varint,13,opt,name=shipment_channel_id,json=shipmentChannelId,proto3" json:"shipment_channel_id,omitempty"`
 	// The seller list's warehouse filter, as on OrderListFilter.
 	WarehouseId uint64 `protobuf:"varint,10,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	// Which date the window reads, as on OrderListFilter — so the tab counts total what the table shows.
@@ -4373,11 +4379,11 @@ func (x *OrderStatFilter) GetMarketplace() v11.Marketplace {
 	return v11.Marketplace(0)
 }
 
-func (x *OrderStatFilter) GetShippingCode() string {
+func (x *OrderStatFilter) GetShipmentChannelId() uint64 {
 	if x != nil {
-		return x.ShippingCode
+		return x.ShipmentChannelId
 	}
-	return ""
+	return 0
 }
 
 func (x *OrderStatFilter) GetWarehouseId() uint64 {
@@ -5710,16 +5716,14 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vdocument_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"documentId\x12$\n" +
 	"\bfilename\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bfilename\x12%\n" +
-	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xf6\n" +
-	"\n" +
+	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\x96\v\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
 	"\ashop_id\x18\x03 \x01(\x04R\x06shopId\x129\n" +
 	"\x06status\x18\x04 \x01(\x0e2!.warehouse.selling.v1.OrderStatusR\x06status\x12#\n" +
 	"\rcustomer_name\x18\x05 \x01(\tR\fcustomerName\x12%\n" +
-	"\x0ecustomer_phone\x18\x06 \x01(\tR\rcustomerPhone\x12#\n" +
-	"\rshipping_code\x18\b \x01(\tR\fshippingCode\x12%\n" +
+	"\x0ecustomer_phone\x18\x06 \x01(\tR\rcustomerPhone\x12%\n" +
 	"\x0eplatform_total\x18\x11 \x01(\x01R\rplatformTotal\x125\n" +
 	"\x05items\x18\f \x03(\v2\x1f.warehouse.selling.v1.OrderItemR\x05items\x12K\n" +
 	"\rtimeline_logs\x18\x17 \x03(\v2&.warehouse.selling.v1.OrderTimelineLogR\ftimelineLogs\x12&\n" +
@@ -5743,18 +5747,18 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x14date_entered_at_unix\x18  \x01(\x03R\x11dateEnteredAtUnix\x12'\n" +
 	"\x0fidempotency_key\x18! \x01(\tR\x0eidempotencyKey\x12%\n" +
 	"\x0etransaction_id\x18\" \x01(\x04R\rtransactionId\x129\n" +
-	"\x19settlement_opened_at_unix\x18# \x01(\x03R\x16settlementOpenedAtUnixB\x10\n" +
-	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\t\x10\n" +
+	"\x19settlement_opened_at_unix\x18# \x01(\x03R\x16settlementOpenedAtUnix\x12.\n" +
+	"\x13shipment_channel_id\x18$ \x01(\x04R\x11shipmentChannelIdB\x10\n" +
+	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\x8a\b\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\rshipping_codeR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\xa1\b\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12*\n" +
 	"\fwarehouse_id\x18\f \x01(\x04B\a\xbaH\x042\x02 \x00R\vwarehouseId\x12/\n" +
 	"\rcustomer_name\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\fcustomerName\x12.\n" +
-	"\x0ecustomer_phone\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18(R\rcustomerPhone\x12,\n" +
-	"\rshipping_code\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(R\fshippingCode\x127\n" +
+	"\x0ecustomer_phone\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18(R\rcustomerPhone\x127\n" +
 	"\x0eplatform_total\x18\r \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\rplatformTotal\x12<\n" +
 	"\areceipt\x18\x0f \x01(\v2\".warehouse.selling.v1.OrderReceiptR\areceipt\x12\x1c\n" +
 	"\x04note\x18\x0e \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x04note\x12=\n" +
@@ -5769,9 +5773,10 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12$\n" +
 	"\x0eorder_draft_id\x18\x15 \x01(\x04R\forderDraftId\x123\n" +
 	"\x0fidempotency_key\x18\x16 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x0eidempotencyKey:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05J\x04\b\x05\x10\x06J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
-	"R\x10customer_addressR\bsubtotalR\rshipping_costR\x05total\"H\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x0eidempotencyKey\x12.\n" +
+	"\x13shipment_channel_id\x18\x17 \x01(\x04R\x11shipmentChannelId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"R\x10customer_addressR\rshipping_codeR\bsubtotalR\rshipping_costR\x05total\"H\n" +
 	"\x13OrderCreateResponse\x121\n" +
 	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order\"\xd5\x02\n" +
 	"\x10OrderListRequest\x12$\n" +
@@ -5781,7 +5786,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2'.warehouse.selling.v1.OrderListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xfd\x04\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x94\x05\n" +
 	"\x0fOrderListFilter\x12C\n" +
 	"\x06status\x18\x01 \x01(\x0e2!.warehouse.selling.v1.OrderStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status\x12\x1d\n" +
 	"\n" +
@@ -5792,13 +5797,13 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x0fcreated_to_unix\x18\x06 \x01(\x03R\rcreatedToUnix\x12+\n" +
 	"\x12created_by_user_id\x18\a \x01(\x04R\x0fcreatedByUserId\x12$\n" +
 	"\x0eseller_team_id\x18\b \x01(\x04R\fsellerTeamId\x12Q\n" +
-	"\vmarketplace\x18\t \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vmarketplace\x12,\n" +
-	"\rshipping_code\x18\n" +
-	" \x01(\tB\a\xbaH\x04r\x02\x182R\fshippingCode\x12!\n" +
+	"\vmarketplace\x18\t \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vmarketplace\x12.\n" +
+	"\x13shipment_channel_id\x18\x0e \x01(\x04R\x11shipmentChannelId\x12!\n" +
 	"\fwarehouse_id\x18\v \x01(\x04R\vwarehouseId\x12M\n" +
 	"\n" +
 	"date_field\x18\f \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\x122\n" +
-	"\x15settlement_not_opened\x18\r \x01(\bR\x13settlementNotOpened\"\xd6\x01\n" +
+	"\x15settlement_not_opened\x18\r \x01(\bR\x13settlementNotOpenedJ\x04\b\n" +
+	"\x10\vR\rshipping_code\"\xd6\x01\n" +
 	"\x13OrderListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12:\n" +
@@ -5961,7 +5966,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"orders_30d\x18\x02 \x01(\x03R\torders30d\"a\n" +
 	"\x19OrderActivityStatResponse\x12D\n" +
-	"\apreview\x18\x01 \x01(\v2*.warehouse.selling.v1.OrderActivityPreviewR\apreview\"\xb8\x04\n" +
+	"\apreview\x18\x01 \x01(\v2*.warehouse.selling.v1.OrderActivityPreviewR\apreview\"\xcf\x04\n" +
 	"\x0fOrderStatFilter\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x1f\n" +
@@ -5971,13 +5976,14 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x0fcreated_to_unix\x18\x05 \x01(\x03R\rcreatedToUnix\x12+\n" +
 	"\x12created_by_user_id\x18\x06 \x01(\x04R\x0fcreatedByUserId\x12$\n" +
 	"\x0eseller_team_id\x18\a \x01(\x04R\fsellerTeamId\x12Q\n" +
-	"\vmarketplace\x18\b \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vmarketplace\x12,\n" +
-	"\rshipping_code\x18\t \x01(\tB\a\xbaH\x04r\x02\x182R\fshippingCode\x12!\n" +
+	"\vmarketplace\x18\b \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vmarketplace\x12.\n" +
+	"\x13shipment_channel_id\x18\r \x01(\x04R\x11shipmentChannelId\x12!\n" +
 	"\fwarehouse_id\x18\n" +
 	" \x01(\x04R\vwarehouseId\x12M\n" +
 	"\n" +
 	"date_field\x18\v \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\x122\n" +
-	"\x15settlement_not_opened\x18\f \x01(\bR\x13settlementNotOpened\"\x87\x01\n" +
+	"\x15settlement_not_opened\x18\f \x01(\bR\x13settlementNotOpenedJ\x04\b\t\x10\n" +
+	"R\rshipping_code\"\x87\x01\n" +
 	"\x10OrderStatRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12=\n" +
 	"\x06filter\x18\x02 \x01(\v2%.warehouse.selling.v1.OrderStatFilterR\x06filter:\x0e\x92\xb5\x18\n" +

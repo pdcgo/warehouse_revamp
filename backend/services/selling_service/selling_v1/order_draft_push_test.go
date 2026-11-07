@@ -95,13 +95,6 @@ func TestOrderDraftPush_CreatesADraftFromScrapedText(t *testing.T) {
 		t.Fatalf("external_name = %q — the evidence of what was ordered must survive verbatim",
 			first.GetExternalName())
 	}
-
-	// The unmapped line IS what makes this a draft (§6.4). A push that arrived already mapped would
-	// mean a client had guessed at our catalogue.
-	if first.GetProductId() != 0 {
-		t.Fatalf("product_id = %d on a fresh scrape, want 0 — mapping is a human act",
-			first.GetProductId())
-	}
 }
 
 // THE POINT OF THE DEDUPE KEY (§6.5). A retry after a flaky connection must land on the same draft;
@@ -141,7 +134,7 @@ func TestOrderDraftPush_IsIdempotentOnTheExternalRef(t *testing.T) {
 }
 
 // THE MERGE RULE, and the substance of #191: a re-scrape may fill blanks and may NOT overwrite work
-// a person has done. Without it, a background push silently destroys ten minutes of mapping.
+// a person has done. Without it, a background push silently destroys a person's corrections.
 func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -149,12 +142,12 @@ func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 	created := push(t, svc, 7, scrape())
 	draftID := created.GetDraft().GetId()
 
-	// A person corrected the customer and mapped the lines.
+	// A person corrected the customer (on the draft's one address row) and a line's quantity.
 	markTouched(t, db, draftID, `["customer_name","items"]`)
 
 	err := db.
-		Model(&selling_service_models.OrderDraft{}).
-		Where("id = ?", draftID).
+		Model(&selling_service_models.OrderDraftAddress{}).
+		Where("order_draft_id = ?", draftID).
 		Update("customer_name", "Budi Santoso").
 		Error
 	if err != nil {
@@ -164,10 +157,10 @@ func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 	err = db.
 		Model(&selling_service_models.OrderDraftItem{}).
 		Where("draft_id = ? AND external_sku = ?", draftID, "MP-1").
-		Update("product_id", 42).
+		Update("quantity", 4).
 		Error
 	if err != nil {
-		t.Fatalf("apply the mapping: %v", err)
+		t.Fatalf("apply the line edit: %v", err)
 	}
 
 	// The app re-scrapes, and disagrees about everything.
@@ -185,20 +178,20 @@ func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 	}
 
 	if len(draft.GetItems()) != 2 {
-		t.Fatalf("items = %d, want the 2 the person mapped — the re-push rewrote touched lines",
+		t.Fatalf("items = %d, want the 2 the person edited — the re-push rewrote touched lines",
 			len(draft.GetItems()))
 	}
 
-	var mapped uint64
+	var quantity uint32
 
 	for _, item := range draft.GetItems() {
 		if item.GetExternalSku() == "MP-1" {
-			mapped = item.GetProductId()
+			quantity = item.GetQuantity()
 		}
 	}
 
-	if mapped != 42 {
-		t.Fatalf("product_id on MP-1 = %d, want 42 — the mapping was destroyed", mapped)
+	if quantity != 4 {
+		t.Fatalf("quantity on MP-1 = %d, want 4 — the person's edit was destroyed", quantity)
 	}
 
 	// …and the untouched field DID move. "Blanks only" is a rule about touched fields, not about
@@ -209,7 +202,7 @@ func TestOrderDraftPush_LeavesTouchedFieldsAlone(t *testing.T) {
 	}
 }
 
-// The address is ONE touched field, not ten columns. Somebody who fixes a kecamatan has fixed the
+// The address is ONE touched field, not six names. Somebody who fixes a kecamatan has fixed the
 // address, and a re-scrape rewriting the columns around their fix would leave a hybrid address that
 // was never true anywhere.
 func TestOrderDraftPush_TheAddressIsTouchedWhole(t *testing.T) {

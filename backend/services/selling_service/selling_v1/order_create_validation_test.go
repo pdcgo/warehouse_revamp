@@ -20,6 +20,7 @@ func TestOrderCreateRequest_RefIsRequired(t *testing.T) {
 	// Only the ref varies; everything else is the smallest request the contract accepts.
 	req := func(ref string) *sellingv1.OrderCreateRequest {
 		return &sellingv1.OrderCreateRequest{
+			ShipmentChannelId:  testShipmentChannel,
 			IdempotencyKey:     newOrderKey(),
 			TeamId:             12,
 			ShopId:             21,

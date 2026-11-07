@@ -55,6 +55,7 @@ func gateCreate(svc *selling_v1.Service, userID, shopID uint64) error {
 	}
 
 	_, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
 		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
@@ -75,7 +76,7 @@ func gateCreate(svc *selling_v1.Service, userID, shopID uint64) error {
 func TestOrderCreate_NeedsAGrantOrAManager(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{}
-	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil, nil)
 
 	shop := insertShop(t, db, gateTeam, "Melati Store", "MLT", "shopee")
 	grantShop(t, db, shop, gateGranted, true)
@@ -119,7 +120,7 @@ func TestOrderCreate_NeedsAGrantOrAManager(t *testing.T) {
 func TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
 	picker := &fakePicker{}
-	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil, nil)
 
 	closed := insertShop(t, db, gateTeam, "Gone Store", "GONE", "shopee")
 	grantShop(t, db, closed, gateGranted, true)
@@ -152,7 +153,7 @@ func TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused(t *testing.T) {
 // shop (a-closed-shop-refuses-only-new-selling). A push naming no shop yet writes on none and goes through.
 func TestOrderDraftPush_NeedsAGrantOrAManager(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil, nil)
 
 	shop := insertShop(t, db, gateTeam, "Melati Store", "MLT", "shopee")
 	grantShop(t, db, shop, gateGranted, true)
@@ -196,7 +197,7 @@ func TestOrderDraftPush_NeedsAGrantOrAManager(t *testing.T) {
 // or an edit that leaves the shop alone, asks nothing.
 func TestOrderDraftUpdate_SettingTheShopNeedsAGrantOrAManager(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil, nil)
 
 	shop := insertShop(t, db, gateTeam, "Melati Store", "MLT", "shopee")
 	grantShop(t, db, shop, gateGranted, true)
@@ -236,7 +237,7 @@ func TestOrderDraftUpdate_SettingTheShopNeedsAGrantOrAManager(t *testing.T) {
 // every one for a manager — while the unfiltered list stays team-wide (reads are not gated).
 func TestShopList_WritableIsTheCallersShops(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil, nil)
 
 	a := insertShop(t, db, gateTeam, "Shop A", "SA", "shopee")
 	b := insertShop(t, db, gateTeam, "Shop B", "SB", "shopee")
@@ -306,6 +307,7 @@ func TestOrderCreate_AShopClosedDuringTheTakeIsRefused(t *testing.T) {
 	svc = newServiceWithPicker(t, db, picker)
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
 		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,

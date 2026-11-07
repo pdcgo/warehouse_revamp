@@ -449,6 +449,116 @@ sequenceDiagram
 | passed through | any Connect error the take answers with — its code, message and details. A take that never answered in its own terms (not a Connect error) is still `Internal` |
 | the release | unchanged: a refused take is still released by its key, as every failed placement is |
 
+## The courier is a channel id, and no order goes without one — `placeOrder` (2026-11-06)
+
+`orders.shipment_channel_id` and `order_drafts.shipment_channel_id` (selling `00044`) replace the courier CODE the
+bridge stored ([the-old-catalogue-bridges-by-code](../../business/shipment/context_decision.md#the-old-catalogue-bridges-by-code)).
+The id is shipment_service's and OPAQUE here
+([shipment-channel-is-an-id-into-shipment-service](../../business/order/context_decision.md#shipment-channel-is-an-id-into-shipment-service)):
+selling stores it and nothing else about the channel
+([the-channel-name-is-not-frozen](../../business/order/context_decision.md#the-channel-name-is-not-frozen)), and every screen
+names it through `ShipmentChannelByIds`, which answers a deleted channel too, flagged. Create refuses an order with none
+([no-order-without-a-courier](../../business/order/context_decision.md#no-order-without-a-courier)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as third-party app
+    participant UI as order form
+    participant SELL as selling_service
+    participant SHIP as shipment_service
+
+    APP->>SHIP: ShipmentChannelList - the ids it maps onto
+    APP->>SELL: OrderDraftPush - shipment_channel_id, or 0 when it could not map the courier
+    UI->>SELL: OrderCreate - shipment_channel_id from the picker, seeded from the draft
+    alt shipment_channel_id is 0
+        SELL-->>UI: InvalidArgument - an order must say which courier carries it, nothing taken
+    else a channel id
+        SELL->>SELL: validate, then the take and the row - the id stored as sent, never looked up
+        SELL-->>UI: the order, with its shipment_channel_id
+    end
+    UI->>SHIP: ShipmentChannelByIds - the badge names the courier at read time
+```
+
+| | |
+| --- | --- |
+| the rule | `orderPlacement.validate` (`errOrderNoCourier`) — both doors, before the shop, the owners and the take. The request carries no `gt = 0`, so the refusal names what is missing, as `platform_total`'s does |
+| looked up | never — the id is opaque here; the picker (`ShipmentChannelSelect`) offers live channels only |
+| a draft | may hold 0 (the app could not convert the platform's courier). Push writes it unless a person touched `shipment_channel_id`; `OrderDraftUpdate.shipment_channel_id` (optional) sets it and marks it |
+| the filters | `OrderListFilter.shipment_channel_id` / `OrderStatFilter.shipment_channel_id` — 0 = any, an equality ANDed with the scope (≈6 ms over 50 000 orders, `TestPerf_OrderList_Courier`) |
+| the file | `OrderExport`'s courier column is the channel's CODE, through `OrderExportStore.ChannelCodes` (composition root → `ShipmentChannelByIds`); an id that resolves to nothing is written `#id` |
+| older rows | a developer's order from before `00044` holds 0 — the codes were not filled in, since a selling migration may not read shipment's table ([revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet)) |
+
+## An order's address is its own row, names only — `placeOrder` (2026-11-06)
+
+The customer and the address leave `orders` for the order's ONE `order_addresses` row (selling `00045`,
+[one-address-per-order-and-per-draft](../../business/order/context_decision.md#one-address-per-order-and-per-draft)),
+names only ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form
+    participant SELL as selling_service placeOrder
+    participant DB as orders, order_addresses
+
+    UI->>SELL: OrderCreate - customer, phone, the picker's address with codes and names
+    SELL->>DB: one transaction - INSERT orders, then INSERT order_addresses - names, postcode, line, the codes discarded
+    SELL-->>UI: the order - customer and address read from that row
+    UI->>SELL: OrderList, OrderDetail, OrderExport
+    SELL->>DB: the orders, then their address rows - one read per page or batch
+```
+
+| | |
+| --- | --- |
+| written | `placeOrder`, after the order row, in its transaction — an order without its row is never reachable; the response carries it |
+| read | `OrderDetail` preloads it; `OrderList`, `OrderExport` (per batch), `OrderCancel`, `OrderReceiptUpdate`, `OrderReturnAccept` and the re-read by key attach it (`attachAddresses`, one `order_id IN` read) |
+| the wire | unchanged: `Order.customer_name` / `customer_phone` / `address` are filled from the row; an order's `address` carries no `_code` (always empty now), `kode_pos` is the row's `postal_code` |
+| the search | the name and phone match `orders.id IN (SELECT order_id FROM order_addresses WHERE …)`, beside the ref and the receipt, served by the GIN trigram indexes of selling `00048` (`order_addresses_customer_trgm_idx`, `orders_ref_receipt_trgm_idx` — the [OrderList audit](../../../audits/services/selling_service/performances/OrderList.md)'s finding 1; its re-measure is there) |
+| a draft | its own ONE `order_draft_addresses` row, names only (selling `00046`) — see *A draft's address* below |
+
+## A draft's address — `order_draft_addresses` and the form's pre-fill (2026-11-06)
+
+A draft's buyer and address are its ONE `order_draft_addresses` row (selling `00046`,
+[one-address-per-order-and-per-draft](../../business/order/context_decision.md#one-address-per-order-and-per-draft)),
+names only and best effort ([a-draft-carries-the-scraped-address](../../business/order/context_decision.md#a-draft-carries-the-scraped-address)).
+The order form's region picker works by code, so `OrderDraftDetail` asks region_service, in-process, for the ONE place
+the draft's four names match — the address picker's pre-fill
+([the-cs-edits-the-whole-address-before-create](../../business/order/context_decision.md#the-cs-edits-the-whole-address-before-create),
+*Pre-filled when certain*).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as third-party app
+    participant UI as order form
+    participant SELL as selling_service OrderDraft RPCs
+    participant DB as order_drafts, order_draft_addresses
+    participant REG as region_service RegionMatch, in-process
+
+    APP->>SELL: OrderDraftPush - customer, phone, address names, codes ignored
+    SELL->>DB: one transaction - the draft row, then its ONE address row - insert, or update of untouched parts
+    UI->>SELL: OrderDraftDetail
+    SELL->>DB: the draft, its address row, its lines
+    alt all four region names present
+        SELL->>REG: MatchRegion - the four names as the draft holds them
+        REG-->>SELL: the one place, or none - several or none both answer none
+    end
+    SELL-->>UI: draft - address as text, region_match when certain
+    UI->>UI: dropdowns pre-filled from region_match, else empty - postcode and street seeded - all editable
+    UI->>SELL: OrderCreate - what the person left in the form, the codes discarded
+```
+
+| | |
+| --- | --- |
+| written | `OrderDraftPush` creates the row with the draft (always, empty fields and all) and a re-push updates its untouched parts (`customer_name`, `customer_phone`, `address` — the address one touched field); `OrderDraftUpdate` writes the present parts and marks them. Under the draft's `FOR UPDATE` lock, in its transaction |
+| read | `OrderDraftDetail` (one row), `OrderDraftList` (`attachDraftAddresses`, one `order_draft_id IN` read for the page), `OrderDraftUpdate` / push responses |
+| the wire | unchanged: `OrderDraft.customer_name` / `customer_phone` / `address` from the row; the address's `_code` fields always empty |
+| the matcher | region_service `RegionMatch`: exact on all four levels after normalising case and spacing and the kabupaten level's Kabupaten / Kab. / Kab / Kota (Administrasi) prefix — a written prefix must agree with the place's, none matches either; several desa matched (a prefix-less name fitting a Kota and a Kabupaten, two desa of one name in one kecamatan) = no match. Two queries (the desa candidates through `regions_name_lower_idx`, their ancestors by key), 0.5–2.1 ms over the 91 599-row seed (`TestPerf_RegionMatch`) |
+| the seam | `selling_v1.RegionMatcher` → `cmd/app_development/order_draft_regions.go` (`protovalidate` first; a name the request refuses is no match) → `region_v1.RegionMatch`. A blank level is never asked; a failed lookup is logged and leaves `region_match` unset — the read never fails over a pre-fill |
+| `region_match` | `OrderDraft.region_match` (24), an `OrderAddress` with codes, the region list's spelling and the desa's kode pos; `OrderDraftDetail` only, never stored. The form takes the draft's own postcode over the place's |
+| the list's Ready | `readyDrafts` needs the row's `customer_name` and `address_line` and the draft's `shipment_channel_id` — no mapping ([the-drafts-list-counts-no-mapping](../../technical/frontend/order_draft_decision.md#the-drafts-list-counts-no-mapping)); ≈10 ms over 50 000 drafts (`TestPerf_OrderDraftListReadyCount`) |
+
 ## The submit's own key — `OrderCreate.idempotency_key` (backlog #10, slice 1)
 
 Every submit of the order form — a new order, a resubmit after an error, a draft's finalize — mints a fresh key with
@@ -784,16 +894,18 @@ Four details that are decisions rather than implementation:
 
 - **It is "untouched fields only", NOT "empty fields only".** An untouched field the app has changed
   its mind about *is* updated — the app remains the authority on everything nobody here has claimed.
-- **The address is one touched field, not ten columns.** Somebody who corrects a kecamatan has
-  corrected the address, and rewriting the nine columns around their fix would leave a hybrid address
-  that was never true anywhere.
+- **The address is one touched field, not six names.** Somebody who corrects a kecamatan has
+  corrected the address, and rewriting the other parts of the draft's address row around their fix would leave a
+  hybrid address that was never true anywhere.
 - **`items` is one touched field too.** Once a person has edited any line, the app stops rewriting
   the lines altogether. Per-line merging would need a per-line touched mark; the rule that matters —
-  a re-scrape never destroys a mapping — holds without one. While untouched, the lines are replaced
+  a re-scrape never destroys a person's correction — holds without one. While untouched, the lines are replaced
   **wholesale**, so a line the app no longer sees disappears rather than lingering.
-- **`product_id` is ignored on push.** The app does not know our catalogue ids, and a client matching
-  titles against our catalogue on its own would guess wrong silently. Mapping is a human act. This is
-  the same instinct as `OrderItem.unit_cost`, which `OrderCreate` also refuses from the client.
+- **A draft stores no mapping** (selling `00047`,
+  [a-draft-stores-no-mapping](../../technical/frontend/order_draft_decision.md#a-draft-stores-no-mapping)). The app does
+  not know our catalogue ids, and a client matching titles against our catalogue would guess wrong silently, so a line
+  is the platform's reference only (`OrderDraftItem.product_id` / `OrderDraftLineEdit.product_id` reserved); the CS maps
+  each one in the order form, straight into the order's lines.
 
 **The author follows the push.** A draft is personal, and a colleague cannot pick one up — so
 re-pushing under the right person's login is the only way to hand a draft over. That makes
@@ -821,27 +933,29 @@ A colleague's draft reads as **NotFound**, not PermissionDenied: the caller hold
 role in the team, and "exists but is not yours" would leak that a given external ref has already been
 scraped by somebody else.
 
-**The list carries counts, not lines.** `item_count` and `unmapped_item_count` are aggregated in one
-`GROUP BY` for the whole page — they are the only thing on the list screen (#195) that says how much
-work is left on a draft, and computing them client-side would mean loading every draft's lines to
-render one page of a list. A non-zero `unmapped_item_count` is exactly what makes a draft still a
-draft.
+**The list carries a count, not lines.** `item_count` is aggregated in one `GROUP BY` for the whole page — computing
+it client-side would mean loading every draft's lines to render one page of a list. 🔄 *(2026-11-06)*
+`unmapped_item_count` is gone (reserved 18): a draft stores no mapping, so the list counts none
+([the-drafts-list-counts-no-mapping](../../technical/frontend/order_draft_decision.md#the-drafts-list-counts-no-mapping)).
+The page's buyers come from their address rows in one more `order_draft_id IN` read.
 
 **The list carries the set's ready count** (#16, 2026-11-04) — `ready_count`, the drafts of the WHOLE filtered set (every
 page) with nothing left before Promote, so the drafts screen's *Ready* card reads the backlog and not the page on screen
 ([the-draft-summary-is-three-cards](../../technical/frontend/order_draft_decision.md#the-draft-summary-is-three-cards)). It is
 `readyDrafts` (order_draft_list.go), the SQL twin of the frontend's `draftGaps`, rule for rule: a shop, a warehouse, a
-customer name, an order date, a sell price, at least one line and none unmapped, and not a `manual` draft. Stock is not in
-it — only the draft's page reads the warehouse's availability. One extra `COUNT(*)` on the same narrowed query, run
-before the page's own reads (a GORM `Session` copies the statement, so it must not see their ORDER/OFFSET). Perf: 4
-queries, ≈9 ms median at 5 000 drafts for one author (`TestPerf_OrderDraftListReadyCount`) — fast, no audit file.
+customer name and an address line (the draft's `order_draft_addresses` row, an `EXISTS`), a courier, an order date, a
+sell price, at least one line, and not a `manual` draft — no mapping (2026-11-06). Stock is not in it — only the order
+form reads the warehouse's availability. One extra `COUNT(*)` on the same narrowed query, run before the page's own
+reads (a GORM `Session` copies the statement, so it must not see their ORDER/OFFSET). Perf: 5 queries, ≈10 ms median
+at 5 000 drafts for one author (`TestPerf_OrderDraftListReadyCount`, re-measured 2026-11-06) — fast, no audit file.
 
 ```mermaid
 flowchart LR
   Q["team_id + author_user_id + source"] --> C["COUNT - total_items"]
   Q --> R["readyDrafts - COUNT - ready_count"]
   Q --> P["ORDER, OFFSET, LIMIT - the page"]
-  P --> G["GROUP BY draft_id - item and unmapped counts"]
+  P --> G["GROUP BY draft_id - item counts"]
+  P --> A["order_draft_addresses - the page's buyers"]
 ```
 
 ### The human edit path — `OrderDraftUpdate` (#193)
@@ -1270,7 +1384,7 @@ sequenceDiagram
     participant C as a list's Export - seller or warehouse
     participant S as OrderExport
     participant DB as orders, order_items, shops
-    participant T as team_service and user_service
+    participant T as team_service, user_service and shipment_service
     participant D as document_service
 
     C->>S: team_id, the list's filter and tab, the view, the ticked ids if any
@@ -1278,7 +1392,7 @@ sequenceDiagram
     S-->>C: exporting orders - 0 of N
     loop 200 rows at a time, newest first, keyset on id
         S->>DB: the page, with each row's item_quantity, and its shops
-        S->>T: TeamByIds and UserByIDs - the sellers' and creators' names, as the caller
+        S->>T: TeamByIds, UserByIDs and ShipmentChannelByIds - the sellers' and creators' names and the couriers' codes, as the caller
         S->>S: write the rows - ids and phones as text
         S-->>C: rows written - done of N
     end

@@ -8,8 +8,8 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
-	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
@@ -31,7 +31,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	events := &recorder{}
 	twoLines := &fakePicker{draw: draw}
-	svc := selling_v1.NewService(db, twoLines, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 10}, nil)
+	svc := selling_v1.NewService(db, twoLines, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 10}, nil, nil)
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
@@ -57,7 +57,7 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	// THE SAME ORDER, TYPED AS ONE LINE OF 3 — what the merged order must be indistinguishable from.
 	oneLine := &fakePicker{draw: draw}
-	single := selling_v1.NewService(db, oneLine, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 10}, nil)
+	single := selling_v1.NewService(db, oneLine, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 10}, nil, nil)
 
 	singleReq := orderReq(shop)
 	singleReq.Items = []*sellingv1.OrderItem{
@@ -174,10 +174,10 @@ func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T)
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	// Both rows mapped to product 41, at one marketplace price — 2 + 1 units.
+	// Both rows mapped to product 41 in the form, at one marketplace price — 2 + 1 units.
 	draftID := draftOfOneProduct(t, svc, shop, 50_000, 50_000)
 
-	order, err := promote(t, svc, 7, 2, draftID)
+	order, err := promoteMapped(t, svc, 7, 2, draftID, 41, 41)
 	if err != nil {
 		t.Fatalf("a draft mapping two rows to one product was refused: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(
 
 	draftID := draftOfOneProduct(t, svc, shop, 50_000, 35_000)
 
-	order, err := promote(t, svc, 7, 2, draftID)
+	order, err := promoteMapped(t, svc, 7, 2, draftID, 41, 41)
 	if err != nil {
 		t.Fatalf("two rows of one product at two marketplace prices were refused: %v", err)
 	}
@@ -253,8 +253,8 @@ func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(
 	}
 }
 
-// draftOfOneProduct is a finished draft whose two scraped rows (2 × and 1 ×) are BOTH mapped to product 41, each at
-// the unit price given.
+// draftOfOneProduct is a finished draft of two scraped rows (2 × and 1 ×), each at the unit price given — the person
+// maps BOTH to product 41 in the form (promoteMapped), since a draft stores no mapping.
 func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, first, second float64) uint64 {
 	t.Helper()
 
@@ -277,8 +277,8 @@ func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, fir
 		WarehouseId:  u64(testWarehouse),
 		CustomerName: str("Budi"),
 		Items: &sellingv1.OrderDraftLines{Lines: []*sellingv1.OrderDraftLineEdit{
-			{Id: items[0].GetId(), ProductId: 41, Quantity: items[0].GetQuantity(), UnitPrice: first},
-			{Id: items[1].GetId(), ProductId: 41, Quantity: items[1].GetQuantity(), UnitPrice: second},
+			{Id: items[0].GetId(), Quantity: items[0].GetQuantity(), UnitPrice: first},
+			{Id: items[1].GetId(), Quantity: items[1].GetQuantity(), UnitPrice: second},
 		}},
 		PlatformCreatedAtUnix: i64(testPlatformDate),
 		PlatformTotal:         f64(testPlatformTotal),

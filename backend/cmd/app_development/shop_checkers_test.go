@@ -42,7 +42,7 @@ func TestShopCheckers_AClosedShopImportsButIsNotLinked(t *testing.T) {
 		t.Fatalf("seed grant: %v", err)
 	}
 
-	selling := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil)
+	selling := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	_, err = selling.ShopClose(context.Background(), connect.NewRequest(&sellingv1.ShopCloseRequest{TeamId: team, ShopId: shop.ID}))
 	if err != nil {

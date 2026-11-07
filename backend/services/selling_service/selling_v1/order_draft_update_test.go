@@ -127,9 +127,9 @@ func TestOrderDraftUpdate_ClearingAFieldIsAnEdit(t *testing.T) {
 	}
 }
 
-// THE MAPPING ACT — the reason this whole feature exists. The scraped text must survive it, because
-// it is the evidence a reviewer checks the mapping against.
-func TestOrderDraftUpdate_MapsALineAndKeepsTheScrapedText(t *testing.T) {
+// A LINE CORRECTION — a quantity or a price a person reads off the storefront. The scraped text must survive it,
+// because it is the evidence of what the buyer ordered. A draft stores no mapping (a-draft-stores-no-mapping).
+func TestOrderDraftUpdate_CorrectsALineAndKeepsTheScrapedText(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
@@ -144,8 +144,7 @@ func TestOrderDraftUpdate_MapsALineAndKeepsTheScrapedText(t *testing.T) {
 	for _, item := range detail.GetItems() {
 		lines = append(lines, &sellingv1.OrderDraftLineEdit{
 			Id:        item.GetId(),
-			ProductId: 42,
-			Quantity:  item.GetQuantity(),
+			Quantity:  item.GetQuantity() + 1,
 			UnitPrice: item.GetUnitPrice(),
 		})
 	}
@@ -156,12 +155,12 @@ func TestOrderDraftUpdate_MapsALineAndKeepsTheScrapedText(t *testing.T) {
 		Items:   &sellingv1.OrderDraftLines{Lines: lines},
 	})
 
-	if draft.GetUnmappedItemCount() != 0 {
-		t.Fatalf("unmapped = %d after mapping both lines, want 0", draft.GetUnmappedItemCount())
+	if draft.GetItems()[0].GetQuantity() != 3 {
+		t.Fatalf("quantity = %d after the correction, want 3", draft.GetItems()[0].GetQuantity())
 	}
 
 	if draft.GetItems()[0].GetExternalName() != "Kaos Polos Hitam L" {
-		t.Fatalf("external_name = %q — the mapping overwrote the evidence",
+		t.Fatalf("external_name = %q — the correction overwrote the evidence",
 			draft.GetItems()[0].GetExternalName())
 	}
 }
@@ -185,7 +184,7 @@ func TestOrderDraftUpdate_AnOmittedLineIsDeleted(t *testing.T) {
 		TeamId:  2,
 		DraftId: draftID,
 		Items: &sellingv1.OrderDraftLines{Lines: []*sellingv1.OrderDraftLineEdit{
-			{Id: keep.GetId(), ProductId: 42, Quantity: 2, UnitPrice: 50000},
+			{Id: keep.GetId(), Quantity: 2, UnitPrice: 50000},
 		}},
 	})
 
@@ -221,10 +220,10 @@ func TestOrderDraftUpdate_AddsALineTheScrapeNeverSaw(t *testing.T) {
 		t.Fatalf("detail: %v", err)
 	}
 
-	lines := []*sellingv1.OrderDraftLineEdit{{Id: 0, ProductId: 7, Quantity: 3, UnitPrice: 1000}}
+	lines := []*sellingv1.OrderDraftLineEdit{{Id: 0, Quantity: 7, UnitPrice: 1000}}
 	for _, item := range detail.GetItems() {
 		lines = append(lines, &sellingv1.OrderDraftLineEdit{
-			Id: item.GetId(), ProductId: 42, Quantity: item.GetQuantity(), UnitPrice: item.GetUnitPrice(),
+			Id: item.GetId(), Quantity: item.GetQuantity(), UnitPrice: item.GetUnitPrice(),
 		})
 	}
 
@@ -241,7 +240,7 @@ func TestOrderDraftUpdate_AddsALineTheScrapeNeverSaw(t *testing.T) {
 	var added *sellingv1.OrderDraftItem
 
 	for _, item := range draft.GetItems() {
-		if item.GetProductId() == 7 {
+		if item.GetQuantity() == 7 {
 			added = item
 		}
 	}
@@ -270,7 +269,7 @@ func TestOrderDraftUpdate_RejectsALineFromAnotherDraft(t *testing.T) {
 		TeamId:  2,
 		DraftId: mine,
 		Items: &sellingv1.OrderDraftLines{Lines: []*sellingv1.OrderDraftLineEdit{
-			{Id: foreign.GetItems()[0].GetId(), ProductId: 42, Quantity: 1},
+			{Id: foreign.GetItems()[0].GetId(), Quantity: 1},
 		}},
 	}))
 

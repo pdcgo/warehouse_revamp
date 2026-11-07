@@ -388,6 +388,8 @@ flowchart LR
 | ⚠ old data | existing rows with a code outside the new seed (e.g. `anteraja`) render as the raw code until root creates that channel |
 | ⚠ old table | `shippings` is left in existing databases, unused — no migration of another service may drop it |
 
+✅ **Built 2026-11-06** — the order redesign's move: selling orders and drafts store `shipment_channel_id` (selling `00044`, [shipment-channel-is-an-id-into-shipment-service](../order/context_decision.md#shipment-channel-is-an-id-into-shipment-service)); the order screens pick with `ShipmentChannelSelect` and name with `ShipmentChannelBadge` (through `OrderCourierBadge`). No selling record stores a courier code any more.
+
 ---
 
 ## receipt-check-is-shipments

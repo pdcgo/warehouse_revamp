@@ -96,8 +96,9 @@ func perfTakeShelf(t *testing.T, db *gorm.DB) uint64 {
 
 func perfTakeReq(shop, warehouse uint64, key string) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
-		IdempotencyKey: key,
-		TeamId:         perfTakeTeam, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
+		ShipmentChannelId: testShipmentChannelID,
+		IdempotencyKey:    key,
+		TeamId:            perfTakeTeam, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 60_000,
 		Items: []*sellingv1.OrderItem{{ProductId: perfTakeProduct, ProductCode: "KAOS", Name: "Kaos", Quantity: 3}},
 	}
@@ -109,7 +110,7 @@ func TestPerf_OrderCreate_TakeBeforeTheRow(t *testing.T) {
 
 	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
 	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil,
-		NewWarehouseFeePricer(warehouse_v1.NewService(db, nil)), nil)
+		NewWarehouseFeePricer(warehouse_v1.NewService(db, nil)), nil, nil)
 
 	run := 0
 

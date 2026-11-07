@@ -62,7 +62,7 @@ func orderListItems(
 		case sellingv1.OrderListDataType_ORDER_LIST_DATA_TYPE_GENERAL:
 			m := make(map[uint64]*commonv1.GeneralItem, len(orders))
 			for i := range orders {
-				m[orders[i].ID] = &commonv1.GeneralItem{Id: orders[i].ID, Name: orders[i].CustomerName}
+				m[orders[i].ID] = &commonv1.GeneralItem{Id: orders[i].ID, Name: orders[i].Customer()}
 			}
 			items = append(items, &sellingv1.OrderListResponseItem{
 				D: &sellingv1.OrderListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}},

@@ -129,6 +129,12 @@ func (s *Service) OrderReturnAccept(
 
 	accepted.order.Items = order.Items
 
+	// The answer names the buyer — from the order's one address row (one-address-per-order-and-per-draft).
+	err = attachAddress(s.db.WithContext(ctx), &accepted.order)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	return connect.NewResponse(&sellingv1.OrderReturnAcceptResponse{
 		Order:  orderToProto(&accepted.order),
 		Labels: labels,

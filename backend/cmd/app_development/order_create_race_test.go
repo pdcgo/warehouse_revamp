@@ -108,13 +108,14 @@ func orderService(db *gorm.DB, fees selling_v1.WarehouseFeePricer) *selling_v1.S
 		fees = NewWarehouseFeePricer(warehouse_v1.NewService(db, nil))
 	}
 
-	return selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, fees, nil)
+	return selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, fees, nil, nil)
 }
 
 func twoUnits(shop uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
-		IdempotencyKey: newOrderKey(),
-		TeamId:         ocTeam, ShopId: shop, WarehouseId: ocWarehouse, CustomerName: "Budi",
+		ShipmentChannelId: testShipmentChannelID,
+		IdempotencyKey:    newOrderKey(),
+		TeamId:            ocTeam, ShopId: shop, WarehouseId: ocWarehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 60_000,
 		Items: []*sellingv1.OrderItem{{ProductId: ocProduct, ProductCode: "KAOS", Name: "Kaos", Quantity: 2}},
 	}

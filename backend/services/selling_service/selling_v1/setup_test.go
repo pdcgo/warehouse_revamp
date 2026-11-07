@@ -175,7 +175,7 @@ func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // everyoneMayWrite is a team where every person asked about may write on every shop and may be granted one: the write
@@ -197,14 +197,14 @@ func (everyoneMayWrite) Member(context.Context, uint64, uint64) (selling_v1.Team
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
@@ -215,7 +215,7 @@ func newServiceWithCatalog(
 ) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // insertShop seeds an active shop directly and returns its id.
@@ -256,6 +256,7 @@ func placeOrderAs(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
 		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
@@ -318,14 +319,14 @@ func (f *fakeFees) Price(_ context.Context, _, _ uint64, goodsCost float64) (flo
 func newServiceWithFees(t *testing.T, db *gorm.DB, picker *fakePicker, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil)
 }
 
 // newServiceWithCredit is for the tests that care whether an order is REFUSED (#189).
 func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChecker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, everyoneMayWrite{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // testPlatformDate is when the buyer of every test order ordered on the storefront — REQUIRED at placement
@@ -335,3 +336,7 @@ const testPlatformDate int64 = 1_790_000_000
 // testPlatformTotal is what the buyer of every test order paid on the storefront — REQUIRED at placement too
 // (platform-total-is-required-at-finalize). A test that asserts on the figure sets its own.
 const testPlatformTotal float64 = 12_000
+
+// testShipmentChannel is the courier every test order names — an opaque shipment channel id, which create requires
+// (no-order-without-a-courier) and never looks up (shipment-channel-is-an-id-into-shipment-service).
+const testShipmentChannel uint64 = 4

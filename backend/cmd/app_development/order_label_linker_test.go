@@ -34,7 +34,7 @@ func TestOrderLabelLinker_TheShippingWarehouseOpensTheSellersLabel(t *testing.T)
 
 	cfg := docstore.DefaultConfig(docstore.Config{Dir: t.TempDir(), BaseURL: "http://test.local/files", TokenSecret: "test"})
 	documents := document_v1.NewService(db, cfg)
-	orders := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents))
+	orders := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents), nil)
 
 	// The seller's upload — the real two-phase flow.
 	up, err := documents.RequestUpload(ctx, connect.NewRequest(&documentv1.RequestUploadRequest{
@@ -79,7 +79,7 @@ func TestOrderLabelLinker_TheShippingWarehouseOpensTheSellersLabel(t *testing.T)
 
 	order := selling_service_models.Order{
 		IdempotencyKey: newOrderKey(),
-		TeamID:         seller, ShopID: shop.ID, WarehouseID: warehouse, Status: "processed", CustomerName: "Budi",
+		TeamID:         seller, ShopID: shop.ID, WarehouseID: warehouse, Status: "processed", Address: &selling_service_models.OrderAddress{CustomerName: "Budi"},
 		ReceiptDocumentID: conf.Msg.GetDocument().GetId(), ReceiptFilename: "resi.pdf", ReceiptMimeType: "application/pdf",
 	}
 

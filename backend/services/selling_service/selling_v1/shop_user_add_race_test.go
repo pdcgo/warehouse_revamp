@@ -137,7 +137,7 @@ func raceOrderOn(shopID uint64) func(tx *gorm.DB) error {
 			ShopID:         shopID,
 			WarehouseID:    testWarehouse,
 			Status:         "pending",
-			CustomerName:   "Race",
+			Address:        &selling_service_models.OrderAddress{CustomerName: "Race"},
 		}).Error
 	}
 }

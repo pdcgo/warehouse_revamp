@@ -43,7 +43,6 @@ func TestPerf_OrderDraftByExternalRefs(t *testing.T) {
 			ExternalID:    fmt.Sprintf("2511%010d", i),
 			ShopID:        uint64(31 + i%shops),
 			TouchedFields: "[]",
-			CustomerName:  "Budi",
 			CreatedAt:     at,
 			UpdatedAt:     at,
 		})

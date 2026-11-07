@@ -32,6 +32,7 @@ func (s *Service) OrderDetail(
 		}).
 		// The timeline, oldest first, the id breaking a tie between two rows of one instant. It matches
 		// order_timeline_logs_order_idx, so it is an index scan rather than a sort.
+		Preload("Address").
 		Preload("TimelineLogs", func(db *gorm.DB) *gorm.DB {
 			return db.Order("created_at ASC, id ASC")
 		}).

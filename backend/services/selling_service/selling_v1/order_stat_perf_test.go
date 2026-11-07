@@ -42,7 +42,7 @@ func perfOrderRows(n int, shopIDs []uint64) []selling_service_models.Order {
 			ShopID:         shopIDs[i%len(shopIDs)],
 			WarehouseID:    uint64(900 + i%3),
 			Status:         statuses[i%len(statuses)],
-			CustomerName:   "Budi",
+			Address:        &selling_service_models.OrderAddress{CustomerName: "Budi"},
 			GoodsCost:      float64(10_000 + i),
 			PlatformTotal:  float64(15_000 + i),
 			// Half inside the 30-day window, half outside it, so the FILTER aggregates are not
@@ -83,13 +83,13 @@ func perfStatOrderRows(n int, teamOf func(int) uint64, shopIDs []uint64, salt in
 		total := int64(15_000 + k%5_000)
 
 		o := selling_service_models.Order{
-			IdempotencyKey:     newOrderKey(),
-			TeamID:             teamOf(i),
-			ShopID:             shopIDs[i%len(shopIDs)],
-			WarehouseID:        uint64(900 + i%3),
-			Status:             perfStatStatuses[i%len(perfStatStatuses)],
-			CustomerName:       perfStatNames[i%len(perfStatNames)],
-			CustomerPhone:      fmt.Sprintf("08%010d", k),
+			IdempotencyKey: newOrderKey(),
+			TeamID:         teamOf(i),
+			ShopID:         shopIDs[i%len(shopIDs)],
+			WarehouseID:    uint64(900 + i%3),
+			Status:         perfStatStatuses[i%len(perfStatStatuses)],
+			Address:        &selling_service_models.OrderAddress{CustomerName: perfStatNames[i%len(perfStatNames)], CustomerPhone: fmt.Sprintf("08%010d", k)},
+
 			OrderExternalRefID: fmt.Sprintf("INV-%08d", k),
 			TotalCost:          float64(total),
 			// Half inside the 30-day window, half outside it.

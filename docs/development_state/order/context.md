@@ -539,3 +539,58 @@ Supersedes the whole-rupiah freezing of the two sections above (the `double` sha
 Tests: `TestOrderCreate_FractionalCostsAreFrozenExactAndTravelAsDoubles`, `TestOrderCreateFromDraft_APlatformTotalIsFrozenExactEndToEnd`, `TestOrderCreate_RefusesAPlatformTotalOfDustButPlacesAFraction`, the unit-cost asserts in `order_item_markup_test` / `order_line_merge_test` / `order_stock_test`, `features/orders/form/money.test.ts`, e2e `the_order_keeps_exact_figures.spec.ts` (form preview == stored order via `formatRupiah`; Team Balance posts 316,67475).
 
 Note — the owner's example in the decision reads total cost `12.983,675`; the exact sum of goods `12.666,99` and fee `316,67475` is `12.983,66475`, shown `Rp 12.983,665`. The fee example (`316,675`) matches the 3-decimal display of the exact fee.
+
+## 2026-11-06 — the courier is a shipment channel id, and the server refuses an order without one (order model, item a)
+
+Decisions: [shipment-channel-is-an-id-into-shipment-service](../../business/order/context_decision.md#shipment-channel-is-an-id-into-shipment-service),
+[the-channel-name-is-not-frozen](../../business/order/context_decision.md#the-channel-name-is-not-frozen),
+[no-order-without-a-courier](../../business/order/context_decision.md#no-order-without-a-courier),
+[the-app-converts-the-courier-to-a-channel-id](../../business/shipment/context_decision.md#the-app-converts-the-courier-to-a-channel-id).
+
+| | built |
+| --- | --- |
+| schema | selling `00044_order_shipment_channel_id.sql` — `shipment_channel_id BIGINT NOT NULL DEFAULT 0` on `orders` and `order_drafts`, `shipping_code` dropped on both, the draft touched mark renamed. No code-to-id fill (a dev order from before shows no courier); up and down proved in a rolled-back transaction on `warehouse_test` |
+| contract | `uint64 shipment_channel_id` on `Order` (36), `OrderCreateRequest` (23), `OrderListFilter` (14), `OrderStatFilter` (13), `OrderDraft` (23), `OrderDraftUpdateRequest` (15, optional), `OrderDraftPushRequest` (16); every `shipping_code` reserved by number and name. The create request carries no `gt = 0`: the placement rule names what is missing |
+| the rule | `placeOrder` validate → `errOrderNoCourier` *"an order must say which courier carries it"* (InvalidArgument), both doors, before the shop gate and the take. Opaque: never looked up |
+| reads | the list/stat filter is an id equality; `OrderExport`'s courier column is the channel CODE through the new `OrderExportStore.ChannelCodes` (composition root `order_export_deps.go` → `ShipmentChannelByIds`), `#id` when unresolved |
+| frontend (no visible change) | the form picks with `ShipmentChannelSelect` (same look and copy as ShippingSelect) and seeds the draft's id; `features/orders/OrderCourierBadge.tsx` (new, story `Features/Orders/OrderCourierBadge`, 4) names an order's courier from the shared session catalogue for `AwbCell`, the warehouse InfoPanel, the pick screen and pick-queue-next; `OrderReferences`/`ShipmentLeg` print the code through `courierCodeOf`; pick-queue-next's courier filter is an id in the URL. Fixtures: jne 91, sicepat 93, the old `anteraja` → 95 (an id the catalogue does not hold, shown `#95`) |
+| ⚠ prototype only | the form's REQUIRED courier — `OrderCreatePage courierRequired` (red `*`, `orderForm.courierRequired` under the field, Create held): `pages/order-create/courierRequired.stories.tsx` (5 stories, incl. *TheLiveFormDoesNotMarkTheCourier*). Awaiting the owner's design accept; until then a live Create without a courier shows the server's refusal in `order-create-error` |
+| e2e | every form flow picks JNE (`pickCourier` in orders.spec, the exact-figures spec); the direct `OrderCreate` seeds (stock_count_cancel, the_closed_shop, writes_need_a_shop_grant) send `shipmentChannelId: "1"` |
+| tests | Go `order_shipment_channel_test.go` (refuses none, stores the id, draft push/pick/yield, promote needs one, export names by code); 19 test files' requests carry `testShipmentChannel`; the warehouse filter test filters by id; perf `TestPerf_OrderList_Courier` ≈6 ms median over 50 000 orders (a filter on the warehouse's bitmap scan) — no report. Concurrency: one column and one comparison, no new lock — no report |
+
+## 2026-11-06 — an order's address is its own row, names only (order model, item b — the order's half)
+
+Decisions: [an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names),
+[one-address-per-order-and-per-draft](../../business/order/context_decision.md#one-address-per-order-and-per-draft).
+
+| | built |
+| --- | --- |
+| schema | selling `00045_order_addresses.sql` — `order_addresses` (UNIQUE `order_id`, FK cascade, CHECK customer present), every existing order copied in, `orders` loses `customer_name`, `customer_phone`, the four codes, the four names, `kode_pos`, `address_line` and `orders_customer_present`. Up/down proved in a rolled-back transaction on `warehouse_test` |
+| code | model `OrderAddress` + `Order.Address` (has-one) and `Customer()`/`Phone()`; `placeOrder` inserts the row after the order; `attachAddresses` (`order_address.go`) for list/export/cancel/receipt/return-accept/re-read; `OrderDetail` preloads; the search is `orders.id IN (… order_addresses …)` |
+| contract | none changed — `Order.customer_name`, `customer_phone`, `address` filled from the row; an order's address codes are always empty |
+| tests | `order_address_test.go` (3) + `TestOrder_CreateThenDetail` now asserts no codes; 13 test files' seeded `Order{}` rows carry `Address` |
+| perf | ⚠ `TestPerf_OrderList_Root`: a warehouse's search 47 → 118 ms (the address subquery is unscoped); root 112–119 → 128–142 ms. Written into the OrderList audit's finding 1 with the split trigram fix (58–83 ms probed) — recommended, not applied. ⚠ `TestPerf_OrderStat` fails on a scan of `item_count` into int64 — not this pass's code (the probe's own SQL), left as found |
+| ⛔ not built | `order_draft_addresses` — a draft's address stays inline with codes. Names-only drafts could not fill the code-driven AddressPicker the form seeds from a draft: a visible change, awaiting the owner |
+
+## 2026-11-06 — order model part 2: the courier required live, the draft's address row, drafts store no mapping, the search's trigram indexes
+
+Decisions: [the-courier-required-look-is-accepted](../../business/order/context_decision.md#the-courier-required-look-is-accepted),
+[the-cs-edits-the-whole-address-before-create](../../business/order/context_decision.md#the-cs-edits-the-whole-address-before-create),
+[a-draft-carries-the-scraped-address](../../business/order/context_decision.md#a-draft-carries-the-scraped-address),
+[one-address-per-order-and-per-draft](../../business/order/context_decision.md#one-address-per-order-and-per-draft),
+[an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names),
+[a-draft-stores-no-mapping](../../technical/frontend/order_draft_decision.md#a-draft-stores-no-mapping),
+[the-drafts-list-counts-no-mapping](../../technical/frontend/order_draft_decision.md#the-drafts-list-counts-no-mapping).
+Supersedes the *⚠ prototype only* and *⛔ not built* rows of the two entries above.
+
+| | built |
+| --- | --- |
+| the courier, live | `OrderCreatePage` takes no prop: the courier field always carries the `*` and the hint while none is picked, and Create is held until `shipmentChannelId > 0n`. `courierRequired.stories.tsx` 4 stories (the live-unmarked one removed); `index.stories` / `formLock.stories` pick JNE after the shop |
+| schema | selling `00046_order_draft_addresses.sql` (UNIQUE `order_draft_id`, FK cascade, names only, best effort, every draft copied, twelve columns off `order_drafts`), `00047_order_draft_items_no_product.sql` (drop `product_id`), `00048_order_search_trigram.sql` (`pg_trgm`, `order_addresses_customer_trgm_idx`, `orders_ref_receipt_trgm_idx`). All three down → up proved in one rolled-back transaction on `warehouse_test` (the draft's names survive both ways) |
+| the matcher | region_service `RegionMatch` (new RPC, `region_v1/region_match.go`, `allow_only_authenticated`): exact on all four levels after normalising case/spacing and the Kabupaten / Kab. / Kab / Kota (Administrasi) prefix; one desa = its ancestry, several or none = no match (`matches` 0/1/2). Perf `TestPerf_RegionMatch` over the real 91 599-row seed: 0.5–2.1 ms, 2 queries — no report |
+| the seam | `selling_v1.RegionMatcher` (10th `NewService` dep) → `cmd/app_development/order_draft_regions.go` (`protovalidate`, then the handler in-process). `OrderDraftDetail` returns `OrderDraft.region_match` (24) — read-time only; a blank level is never asked, a failed lookup is logged and leaves it unset |
+| draft RPCs | push creates the address row with the draft and a re-push updates its untouched parts; `OrderDraftUpdate` writes the present parts; detail and list read it (`order_draft_address.go`, one `IN` read for a page). `readyDrafts`: + address row's `customer_name`/`address_line`, + `shipment_channel_id`, − the mapping clause. `ProductHasHistory` reads no draft lines. Proto reserved: `OrderDraftItem.product_id` 4, `OrderDraftLineEdit.product_id` 2, `OrderDraft.unmapped_item_count` 18 |
+| the form | `pages/order-create/draftAddress.ts` `addressOf` — the four levels from `regionMatch`, else empty; the draft's postcode (over the place's) and street seeded; `DraftAddressText` shows the marketplace's address above the picker through the new `CustomerInfoForm addressHint` slot; no line is seeded from a draft |
+| the drafts list | *Baris* = `draft-lines-<id>`, the unmapped badge and gap removed; `draftGaps` + `gapAddress` (no street line), `gapCourier` (no channel), every other gap kept; i18n − `orderDrafts.unmappedOf/unmappedLines`, + `orderDrafts.gapAddress/gapCourier`, `orderForm.draftAddress.title/none` |
+| tests | Go: `region_match_test.go` (4), `order_draft_address_test.go` (4), detail pre-fill (2, `fakeRegions`), `TestDraftRegionMatcher_PrefillsADraftsAddressFromTheRegionList` (real wiring), the ready-count test over 7 drafts (no-courier, no-address, no-customer), draft tests map in the form (`promoteMapped`/`mappedItems`). Frontend: `draftAddress.test.ts` (4), `draftReadiness.test.ts` (4), stories *ADraftAddressThatMatchesOnePlaceOpensPrefilled*, *APrefilledAddressStaysEditable*, *ADraftAddressWithNoMatchOpensEmpty*, *TheListCountsNoMapping*, *NoAddressOrNoCourierIsNotReady*, `CustomerInfoForm` *AnAddressHintSitsAboveThePicker*; e2e `order_drafts.spec.ts` (gaps title; a Kab. match pre-fills, a Kota mismatch stays empty, through the real server) |
+| perf | `OrderDraftList` ≈10 ms, 5 queries over 50 000 drafts. OrderList's search re-measured with `00048` — see the [OrderList audit](../../../audits/services/selling_service/performances/OrderList.md), finding 1. Concurrency: the address row is written under the draft's existing `FOR UPDATE` lock in the same transaction (a racing first push still loses on the draft's unique index and retries as a merge) — no new lock, no report |

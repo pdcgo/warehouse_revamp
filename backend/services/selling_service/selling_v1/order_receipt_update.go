@@ -127,6 +127,12 @@ func (s *Service) OrderReceiptUpdate(
 		return nil, mapOrderErr(err)
 	}
 
+	// The answer names the buyer — from the order's one address row (one-address-per-order-and-per-draft).
+	err = attachAddress(s.db.WithContext(ctx), &order)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	return connect.NewResponse(&sellingv1.OrderReceiptUpdateResponse{Order: orderToProto(&order)}), nil
 }
 

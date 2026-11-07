@@ -79,12 +79,6 @@ func (s *Service) OrderDraftUpdate(
 	out := draftToProto(&draft)
 	out.ItemCount = uint32(len(draft.Items))
 
-	for i := range draft.Items {
-		if draft.Items[i].ProductID == 0 {
-			out.UnmappedItemCount++
-		}
-	}
-
 	return connect.NewResponse(&sellingv1.OrderDraftUpdateResponse{Draft: out}), nil
 }
 
@@ -96,6 +90,12 @@ func applyDraftEdit(
 ) error {
 	touched := decodeTouched(draft.TouchedFields)
 	updates := map[string]any{}
+
+	// The buyer and the address are the draft's one address row, read under the draft's lock and written back whole.
+	err := loadDraftAddress(tx, draft)
+	if err != nil {
+		return err
+	}
 
 	if msg.ShopId != nil {
 		updates["shop_id"] = msg.GetShopId()
@@ -110,14 +110,12 @@ func applyDraftEdit(
 	}
 
 	if msg.CustomerName != nil {
-		updates["customer_name"] = msg.GetCustomerName()
-		draft.CustomerName = msg.GetCustomerName()
+		draft.Address.CustomerName = msg.GetCustomerName()
 		touched[draftFieldCustomerName] = true
 	}
 
 	if msg.CustomerPhone != nil {
-		updates["customer_phone"] = msg.GetCustomerPhone()
-		draft.CustomerPhone = msg.GetCustomerPhone()
+		draft.Address.CustomerPhone = msg.GetCustomerPhone()
 		touched[draftFieldCustomerPhone] = true
 	}
 
@@ -129,38 +127,22 @@ func applyDraftEdit(
 		touched[draftFieldBuyerUsername] = true
 	}
 
-	// The address is one field, ten columns. Correcting a kecamatan claims the whole address, so the
-	// app cannot later rewrite the other nine around somebody's fix.
+	// The address is one field, six names. Correcting a kecamatan claims the whole address, so the
+	// app cannot later rewrite the other parts around somebody's fix. Names only: any codes sent are discarded.
 	if address := msg.GetAddress(); address != nil {
-		updates["provinsi_code"] = address.GetProvinsiCode()
-		updates["provinsi_name"] = address.GetProvinsiName()
-		updates["kabupaten_code"] = address.GetKabupatenCode()
-		updates["kabupaten_name"] = address.GetKabupatenName()
-		updates["kecamatan_code"] = address.GetKecamatanCode()
-		updates["kecamatan_name"] = address.GetKecamatanName()
-		updates["desa_code"] = address.GetDesaCode()
-		updates["desa_name"] = address.GetDesaName()
-		updates["kode_pos"] = address.GetKodePos()
-		updates["address_line"] = address.GetAddressLine()
-
-		draft.ProvinsiCode = address.GetProvinsiCode()
-		draft.ProvinsiName = address.GetProvinsiName()
-		draft.KabupatenCode = address.GetKabupatenCode()
-		draft.KabupatenName = address.GetKabupatenName()
-		draft.KecamatanCode = address.GetKecamatanCode()
-		draft.KecamatanName = address.GetKecamatanName()
-		draft.DesaCode = address.GetDesaCode()
-		draft.DesaName = address.GetDesaName()
-		draft.KodePos = address.GetKodePos()
-		draft.AddressLine = address.GetAddressLine()
-
+		setDraftAddress(draft.Address, address)
 		touched[draftFieldAddress] = true
 	}
 
-	if msg.ShippingCode != nil {
-		updates["shipping_code"] = msg.GetShippingCode()
-		draft.ShippingCode = msg.GetShippingCode()
-		touched[draftFieldShippingCode] = true
+	err = saveDraftAddress(tx, draft)
+	if err != nil {
+		return err
+	}
+
+	if msg.ShipmentChannelId != nil {
+		updates["shipment_channel_id"] = msg.GetShipmentChannelId()
+		draft.ShipmentChannelID = msg.GetShipmentChannelId()
+		touched[draftFieldShipmentChannel] = true
 	}
 
 	// What the buyer paid (platform-total-is-required-at-finalize). 0 clears it — and still marks it touched, as a
@@ -186,7 +168,7 @@ func applyDraftEdit(
 	}
 
 	if msg.GetItems() != nil {
-		err := applyDraftLines(tx, msg.GetItems().GetLines(), draft)
+		err = applyDraftLines(tx, msg.GetItems().GetLines(), draft)
 		if err != nil {
 			return err
 		}
@@ -197,7 +179,7 @@ func applyDraftEdit(
 	draft.TouchedFields = encodeTouched(touched)
 	updates["touched_fields"] = draft.TouchedFields
 
-	err := tx.
+	err = tx.
 		Model(&selling_service_models.OrderDraft{}).
 		Where("id = ?", draft.ID).
 		Updates(withUpdatedAt(updates)).
@@ -256,7 +238,6 @@ func applyDraftLines(
 			// nobody scraped it — a person typed it in.
 			draft.Items = append(draft.Items, selling_service_models.OrderDraftItem{
 				DraftID:   draft.ID,
-				ProductID: edit.GetProductId(),
 				Quantity:  edit.GetQuantity(),
 				UnitPrice: edit.GetUnitPrice(),
 			})
@@ -269,7 +250,6 @@ func applyDraftLines(
 			return errDraftLineForeign
 		}
 
-		line.ProductID = edit.GetProductId()
 		line.Quantity = edit.GetQuantity()
 		line.UnitPrice = edit.GetUnitPrice()
 		kept[line.ID] = true

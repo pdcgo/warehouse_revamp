@@ -5,7 +5,7 @@ import {
 } from "../../gen/warehouse/selling/v1/order_draft_pb";
 
 // OrderDraftList moved to the guideline list shape; the ORDER_DRAFT slice reuses the OrderDraft
-// message directly (item_count / unmapped_item_count included), so this pulls OrderDraft[] out.
+// message directly (item_count included; a draft stores no mapping), so this pulls OrderDraft[] out.
 export const orderDraftListRowData = (): OrderDraftListDataType[] => [
   OrderDraftListDataType.ORDER_DRAFT,
 ];

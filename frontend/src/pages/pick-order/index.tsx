@@ -21,7 +21,7 @@ import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import type { StockPickLocation } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { OrderCourierBadge } from "../../features/orders/OrderCourierBadge";
 import { AddressField, Field } from "../../features/orders/components/OrderFields";
 import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -254,7 +254,7 @@ export function PickOrderPage() {
               <AddressField label={t("orders.address")} address={order.address} />
               <Field
                 label={t("orders.shipping")}
-                value={<ShippingBadge code={order.shippingCode} />}
+                value={<OrderCourierBadge channelId={order.shipmentChannelId} />}
               />
             </SimpleGrid>
           </Stack>

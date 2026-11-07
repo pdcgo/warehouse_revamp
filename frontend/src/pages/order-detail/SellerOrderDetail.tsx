@@ -258,7 +258,7 @@ export function SellerOrderDetailPage() {
             this page to carry elsewhere. In the first card rather than the sticky header (owner:
             *"jangan di sticky"*), so they are read on arrival and scroll away. */}
         <OrderReferences
-          courier={order.shippingCode}
+          channelId={order.shipmentChannelId}
           receiptCode={receiptCode}
           orderRefId={order.orderExternalRefId}
         />
@@ -456,7 +456,7 @@ export function SellerOrderDetailPage() {
           tracking is designed. */}
       <ShipmentLeg
         title={t("orderDetail.shipping.outbound")}
-        courier={order.shippingCode}
+        channelId={order.shipmentChannelId}
         receiptCode={receiptCode}
         extra={{
           label: t("orderDetail.shipping.deadline"),

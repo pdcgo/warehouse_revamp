@@ -155,6 +155,8 @@ test("Count: a cancel is refused naming the count, and goes through once the cou
 
   const placed = await rpc<{ order: { id: string } }>(page, "selling.v1.OrderService/OrderCreate", {
     idempotencyKey: `e2e-count-cancel-${SUFFIX}`,
+    // Every order names its courier (no-order-without-a-courier) — a shipment channel id, opaque to the order.
+    shipmentChannelId: "1",
     teamId: seller,
     shopId: shop.shop.id,
     warehouseId: wh,

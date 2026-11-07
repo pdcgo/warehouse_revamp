@@ -133,6 +133,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-draft-keeps-its-platform-total-as-typed](#a-draft-keeps-its-platform-total-as-typed) | a draft keeps a fractional platform total as typed; it is rounded to whole rupiah when the order is placed | owner, as recommended | — |
 | [the-backend-never-rounds-money](#the-backend-never-rounds-money) | the backend stores and posts every rupiah exactly; only the screen rounds (3 decimals) | owner, as recommended | — |
 | [large-sum-drift-is-left-for-now](#large-sum-drift-is-left-for-now) | summing exact doubles may drift past the 4-place tolerance only at ~100.000 entries; left for now | owner, as recommended | — |
+| [the-courier-required-look-is-accepted](#the-courier-required-look-is-accepted) | the order form marks the courier required and holds Create until one is picked | owner, as recommended | — |
+| [the-cs-edits-the-whole-address-before-create](#the-cs-edits-the-whole-address-before-create) | before Create, the CS can edit every part of a draft's address | owner, as recommended | — |
 
 ---
 
@@ -1059,6 +1061,10 @@ adding the four codes back at write time, not deriving them later from text.
 ⚠ **The build stores codes today** — `provinsi_code`, `kabupaten_code`, `kecamatan_code`, `desa_code` on
 `orders` — so this is a column drop, and `kode_pos` becomes `postal_code` in the same move.
 
+✅ **Built 2026-11-06 — the order's half** — selling `00045_order_addresses.sql`: `order_addresses` holds `customer_name`, `customer_phone`, the four `_name`s, `postal_code` and `address_line`; the four `_code` columns on `orders` are dropped, not moved, and the picker's codes are discarded on write (`placeOrder`). The wire's `kode_pos` stays its name. ⛔ The draft's half (`order_draft_addresses`, names only) is not built: a names-only scraped address cannot fill the code-driven AddressPicker the order form seeds from a draft — how the form shows it is a visible change awaiting the owner.
+
+✅ Built 2026-11-06 — the draft's half: `order_draft_addresses` holds names only (selling `00046`); the codes a push or an edit sends are discarded, and the order form's code-driven picker is pre-filled by name match at read time ([the-cs-edits-the-whole-address-before-create](#the-cs-edits-the-whole-address-before-create)).
+
 ---
 
 ## a-draft-carries-the-scraped-address
@@ -1093,6 +1099,8 @@ made every draft need the same manual work, including the ones the app got right
 ⚠ **Where an unsplittable address should land:** `address_line`, holding whatever text the platform gave,
 so nothing is lost when the app cannot parse the region tiers.
 
+✅ Built 2026-11-06 — `order_draft_addresses` (selling `00046`): `customer_name`, `customer_phone`, the four `_name`s, `postal_code`, `address_line`, every field optional; written by `OrderDraftPush` with the draft and updated by a re-push (untouched parts) and `OrderDraftUpdate`; the draft's twelve inline columns dropped after the copy (codes not moved). Tests `order_draft_address_test.go`.
+
 ---
 
 ## one-address-per-order-and-per-draft
@@ -1123,6 +1131,10 @@ means — the join is total, and an order detail can read it as if it were colum
 
 ⚠ **The build's `customer_name` is required** (`orders_customer_present CHECK`). Splitting the table moves
 that rule: the address row must exist and carry a name, or the same guarantee is quietly lost.
+
+✅ **Built 2026-11-06 — `order_addresses`** — `UNIQUE (order_id)` (`order_addresses_order_unique`), written in the order's own transaction, `order_addresses_customer_present` carrying the old `orders_customer_present`; the migration copied every existing order's row. Tests `order_address_test.go` (one row, names only; a second row and a nameless one refused; the list searches the row). ⛔ `order_draft_addresses` (`UNIQUE (order_draft_id)`) is not built — see [an-address-is-plain-names](#an-address-is-plain-names).
+
+✅ Built 2026-11-06 — the draft's half: `order_draft_addresses` `UNIQUE (order_draft_id)` (`order_draft_addresses_draft_unique`), FK cascade, written in the draft's own transaction under its `FOR UPDATE` lock; corrections update the one row. Tests `order_draft_address_test.go` (one row of names, a re-push and an edit update it, a second row refused, gone with the draft).
 
 ---
 
@@ -1159,6 +1171,8 @@ renamed or retired channel changes what an old order appears to have shipped by 
 blank. **→ Recommend freezing the channel's NAME beside the id**, the way the receipt already freezes its
 filename. Open, not decided.
 
+✅ **Built 2026-11-06** — selling `00044_order_shipment_channel_id.sql`: `orders.shipment_channel_id` and `order_drafts.shipment_channel_id` (BIGINT, 0 = none, no FK) replace `shipping_code`, which is dropped (no code-to-id fill — a selling migration may not read shipment's table, [revamp-has-no-real-orders-yet](#revamp-has-no-real-orders-yet)); proto `Order.shipment_channel_id` (36), `OrderCreateRequest` (23), `OrderListFilter` (14), `OrderStatFilter` (13), `OrderDraft` (23), `OrderDraftUpdateRequest` (15), `OrderDraftPushRequest` (16), the old numbers reserved. Opaque to selling — never looked up. Tests `order_shipment_channel_test.go`, perf `TestPerf_OrderList_Courier`.
+
 ---
 
 ## the-channel-name-is-not-frozen
@@ -1193,6 +1207,8 @@ It also keeps one name in one place, so a correction reaches every order at once
 **→ The mitigation belongs to `shipment_service`, not here: a channel is RETIRED, never deleted.** Orders
 reference it forever, so a hard delete breaks history that this decision has no fallback for. Worth writing
 into that context when it is designed.
+
+✅ **Built 2026-11-06** — the order stores the id only; screens name it from shipment's catalogue at read time (`features/orders/OrderCourierBadge.tsx` over the shared session catalogue, deleted channels included; `courierCodeOf` where a screen prints the code), and `OrderExport` resolves it through `OrderExportStore.ChannelCodes` → `ShipmentChannelByIds`.
 
 ---
 
@@ -3004,6 +3020,10 @@ flowchart LR
 | `order_drafts.shipment_channel_id` | may be empty — the app could not convert the platform's courier |
 | the form | the courier field is required, seeded from the draft when it has one |
 
+✅ **Built 2026-11-06 (the server)** — `placeOrder`'s shared rule refuses an order with no `shipment_channel_id`, *"an order must say which courier carries it"*, on both doors (a promoted draft too); a draft may still hold 0 (push and `OrderDraftUpdate` store it, touched mark `shipment_channel_id`). Tests `TestOrderCreate_RefusesAnOrderWithNoCourier`, `TestOrderCreateFromDraft_NeedsACourier`. ⛔ The form's **required** courier field (the `*`, the line under it, Create held) is a Storybook prototype awaiting design accept — `pages/order-create/courierRequired.stories.tsx` behind `OrderCreatePage courierRequired`; until then the live form shows the server's refusal under its header.
+
+✅ Built 2026-11-06 — the form's required courier is live ([the-courier-required-look-is-accepted](#the-courier-required-look-is-accepted)): the `*`, the hint, Create held until a courier is picked.
+
 ---
 
 ## the-status-move-is-the-only-journey
@@ -4300,3 +4320,25 @@ Still on integers on 2026-11-05: the settlement ledger and its reports, the liab
 > In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: with [the-backend-never-rounds-money](#the-backend-never-rounds-money), a sum of ~100.000 exact entries (e.g. 316,675 each) drifts ~0,00005 — past the 4-place tolerance of `san_money.Equal` — so a report total could compare unequal to its log. Loosen the tolerance for large sums?
 
 **The verdict.** Not now. No ledger is near that size; comparisons keep the 4-place tolerance. Revisit when a ledger, report or reconcile sums entries in that range — the fix then is a tolerance scaled to the count of summed entries, not rounding.
+
+---
+
+## the-courier-required-look-is-accepted
+
+> In chat *(owner, 2026-11-06)* — *"A"*, replying to the Storybook screenshots `order_model/a_courier_required_{desktop,phone}.png` (`courierRequired.stories.tsx`).
+
+**The verdict.** The design for [no-order-without-a-courier](#no-order-without-a-courier) on the order form: the courier field carries the **required `*`** and a hint, and **Create is held until a courier is picked** — the server's refusal is shown before the person presses Create, not after. ⚠ Not built live (the story's prototype only).
+
+✅ Built 2026-11-06 — live: `OrderCreatePage` has no prototype prop any more — the courier field always carries the `*` and `orderForm.courierRequired` while none is picked (`ShippingReceiptCard courierRequired`), and Create is held until `shipment_channel_id > 0`. Stories `pages/order-create/courierRequired.stories.tsx` (4, the live-unmarked one removed); every form story and e2e that places an order picks JNE.
+
+---
+
+## the-cs-edits-the-whole-address-before-create
+
+> In chat *(owner, 2026-11-06)* — *"Make before finalize order customer service can edit all address again"*, to: a draft stores its address as names only ([an-address-is-plain-names](#an-address-is-plain-names), [one-address-per-order-and-per-draft](#one-address-per-order-and-per-draft)) while the form's region picker works by code — how does the form show it?
+
+**The verdict.** Opening a draft in the order form, **every part of the address stays editable until Create**: the customer's name and phone, the street line and postal code, and all four region levels (Provinsi → Kabupaten → Kecamatan → Desa). The draft's address is shown as text from the marketplace so the CS can check it while editing; nothing in the address is locked by the draft. What is created is what the CS leaves in the form, stored as names.
+
+**Pre-filled when certain** — *"A"*, as recommended, to the follow-up: when the draft's four region names match **exactly one** place in the region list, the dropdowns open **pre-filled** with it; the CS can still change any level. With no exact match (spelling, *Kota* / *Kab.* prefixes the matcher cannot settle), they open empty and the CS picks, reading the text. ⚠ Not built.
+
+✅ Built 2026-11-06 — a draft's address is its `order_draft_addresses` row (names only, selling `00046`); `OrderDraftDetail` asks region_service's new `RegionMatch` in-process (`selling_v1.RegionMatcher` → `cmd/app_development/order_draft_regions.go`) and returns `OrderDraft.region_match` (24) when the four names match exactly one place — exact after normalising case, spacing and the Kabupaten / Kab. / Kab / Kota (Administrasi) prefix (a written prefix must agree; several or no matches = none). The form (`pages/order-create/draftAddress.ts`) opens the dropdowns pre-filled from it, else empty; the draft's postcode and street line are seeded either way; every part stays editable; the draft's address is shown as text above the picker (`DraftAddressText`, the hint sand). Tests: `region_match_test.go` (exact, prefix variants, ambiguous, no match), `order_draft_detail_test.go` (pre-fill, none, blank level, failed lookup), `TestDraftRegionMatcher_PrefillsADraftsAddressFromTheRegionList` (real wiring), `draftAddress.test.ts`; stories *ADraftAddressThatMatchesOnePlaceOpensPrefilled*, *APrefilledAddressStaysEditable*, *ADraftAddressWithNoMatchOpensEmpty*; e2e `order_drafts.spec.ts` (a Kab. match pre-fills, a Kota mismatch stays empty).

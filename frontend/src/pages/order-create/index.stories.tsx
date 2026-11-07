@@ -130,6 +130,24 @@ async function pickProduct(canvasElement: HTMLElement, productId: bigint) {
   await userEvent.click(await screen.findByTestId("product-picker-confirm"));
 }
 
+// THE COURIER — required to place (no-order-without-a-courier, the-courier-required-look-is-accepted): Create is held
+// until one is picked. JNE, off the shared channel catalogue.
+async function pickCourier(canvasElement: HTMLElement, code = "jne") {
+  const canvas = within(canvasElement);
+
+  await userEvent.click(within(canvas.getByTestId("shipment-channel-select")).getByRole("combobox"));
+  const option = await screen.findByTestId(`shipment-channel-option-${code}`);
+  await waitFor(() => expect(option).toBeVisible());
+  await userEvent.click(option);
+}
+
+// A DRAFT'S LINES ARE MAPPED HERE (a-draft-stores-no-mapping): the form seeds none, so the person picks our product —
+// Toko Melati's own Beras (74), which Gudang Pusat holds.
+async function mapDraftLines(canvasElement: HTMLElement) {
+  await pickProduct(canvasElement, 74n);
+  await waitFor(() => expect(within(canvasElement).getByTestId("order-line-0")).toBeInTheDocument());
+}
+
 // THE MARKETPLACE'S ORDER DATE — required to place (platform-created-at-is-required-at-finalize). Picked off the
 // calendar the way a person picks it: the trigger opens it, today's cell sets the day (at 00:00), Escape closes it.
 async function pickOrderDate(canvasElement: HTMLElement) {
@@ -286,6 +304,7 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     // Product 71: 40 on the shelf against a quantity of 1, so nothing is short.
     await pickProduct(canvasElement, products[0]!.id);
@@ -321,6 +340,7 @@ export const ARefusedTakeNamesItsReasonAndTheLine: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
@@ -595,6 +615,7 @@ export const TheSameNumberInBothBoxesPlaces: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
@@ -638,6 +659,7 @@ export const AThinMarginAsksFirstAndThenPlaces: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
@@ -726,6 +748,7 @@ export const AWarehouseWithNoRateRefusesTheOrder: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillSellPrice(canvasElement);
@@ -762,6 +785,7 @@ export const TheMarketplaceOrderDateIsRequiredToPlace: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await fillSellPrice(canvasElement);
     await fillOrderRef(canvasElement);
@@ -788,6 +812,7 @@ export const CreateStaysOffUntilTheSellPriceIsFilled: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillOrderRef(canvasElement);
@@ -820,6 +845,7 @@ export const TheMarketplaceRefIsRequiredToPlace: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillSellPrice(canvasElement);
@@ -1032,9 +1058,9 @@ export const AnOrderHoldsItemsOrBundles: Story = {
 
 // ── A draft opens in this form (`the-draft-opens-in-the-order-form`) ──────────────────────────────────────
 
-// SEEDED FROM THE DRAFT — the buyer, the shop, the warehouse; its mapped lines arrive as the products they name; its
-// scraped lines are a list of TEXT above the products (the unmapped mug included, which is on no line); the header says
-// which draft, with Delete Draft beside it; and there is no Save as Draft — a draft is finished here, not drafted again.
+// SEEDED FROM THE DRAFT — the buyer, the shop, the warehouse; NO line (a draft stores no mapping, a-draft-stores-no-mapping
+// — the person picks our products); its scraped lines are a list of TEXT above the products; the header says which
+// draft, with Delete Draft beside it; and there is no Save as Draft — a draft is finished here, not drafted again.
 export const ADraftOpensInTheForm: Story = {
   render: () => <RoutedFromDraft />,
   // The drafts are Toko Melati's.
@@ -1061,10 +1087,90 @@ export const ADraftOpensInTheForm: Story = {
     await expect(hints).toHaveTextContent("Products to Send");
     await expect(canvas.getByTestId("draft-product-hints-source")).toHaveTextContent("From ScraperX");
 
-    // The two mapped lines are on the order; the mug is not.
-    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
-    await expect(canvas.getByTestId("order-line-1")).toBeInTheDocument();
-    await expect(canvas.queryByTestId("order-line-2")).toBeNull();
+    // Nothing scraped is on the order: the lines are the person's to pick.
+    await expect(canvas.getByTestId("order-create-no-products")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-line-0")).toBeNull();
+  },
+};
+
+// ── The draft's address (the-cs-edits-the-whole-address-before-create) ─────────────────────────────────────────────
+
+const levelInput = (canvasElement: HTMLElement, level: string) =>
+  within(within(canvasElement).getByTestId(`address-${level}`)).getByRole("combobox");
+
+// PRE-FILLED WHEN CERTAIN: draft 201's four names ("JAWA BARAT", Kota Bandung, Sukajadi, Sukawarna) match exactly one
+// place, so the dropdowns open on it — in the region list's own spelling — with the draft's postcode and street. The
+// draft's address stays beside them as the marketplace's text, in the hint's sand.
+export const ADraftAddressThatMatchesOnePlaceOpensPrefilled: Story = {
+  render: () => <RoutedFromDraft />,
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(levelInput(canvasElement, "desa")).toHaveValue("Sukawarna"), { timeout: 4000 });
+    await expect(levelInput(canvasElement, "provinsi")).toHaveValue("Jawa Barat");
+    await expect(levelInput(canvasElement, "kabupaten")).toHaveValue("Kota Bandung");
+    await expect(levelInput(canvasElement, "kecamatan")).toHaveValue("Sukajadi");
+    await expect(within(canvas.getByTestId("address-kodepos")).getByRole("combobox")).toHaveValue("40162");
+    await expect(canvas.getByTestId("address-line")).toHaveValue("Jl. Sukajadi No. 45");
+
+    const text = canvas.getByTestId("draft-address-text");
+    await expect(text).toHaveTextContent("Address from the marketplace");
+    await expect(canvas.getByTestId("draft-address-text-street")).toHaveTextContent("Jl. Sukajadi No. 45");
+    await expect(canvas.getByTestId("draft-address-text-place")).toHaveTextContent(
+      "Sukawarna, Sukajadi, Kota Bandung, JAWA BARAT 40162",
+    );
+    await expect(getComputedStyle(text).backgroundColor).toBe("rgb(251, 247, 239)");
+    // Text, not a field.
+    await expect(within(text).queryAllByRole("textbox")).toHaveLength(0);
+  },
+};
+
+// …AND STILL EDITABLE: the pre-fill is where the form starts, never a lock. Another desa of the same kecamatan is picked
+// over Sukawarna, and the draft's text beside it is unchanged.
+export const APrefilledAddressStaysEditable: Story = {
+  render: () => <RoutedFromDraft />,
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(levelInput(canvasElement, "desa")).toHaveValue("Sukawarna"), { timeout: 4000 });
+
+    await userEvent.click(levelInput(canvasElement, "desa"));
+    const other = await screen.findByTestId("address-desa-option-3273011002");
+    await waitFor(() => expect(other).toBeVisible());
+    await userEvent.click(other);
+
+    await waitFor(() => expect(levelInput(canvasElement, "desa")).toHaveValue("Sukagalih"));
+    await expect(within(canvas.getByTestId("address-kodepos")).getByRole("combobox")).toHaveValue("40163");
+    await expect(canvas.getByTestId("draft-address-text-place")).toHaveTextContent("Sukawarna");
+  },
+};
+
+// ELSE EMPTY: draft 202's "Kab. Bandung" over Cicendo matches no place (Cicendo is Kota Bandung's — the prefix
+// disagrees), so the four dropdowns open empty while the postcode and the street are seeded; the person reads the
+// marketplace's text and picks, from the provinsi down.
+export const ADraftAddressWithNoMatchOpensEmpty: Story = {
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: asMelatiWithMaps,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("draft-address-text-place")).toHaveTextContent(
+      "Pajajaran, Cicendo, Kab. Bandung, Jawa Barat 40173",
+    ), { timeout: 4000 });
+    for (const level of ["provinsi", "kabupaten", "kecamatan", "desa"]) {
+      await expect(levelInput(canvasElement, level)).toHaveValue("");
+    }
+    await expect(within(canvas.getByTestId("address-kodepos")).getByRole("combobox")).toHaveValue("40173");
+    await expect(canvas.getByTestId("address-line")).toHaveValue("Jl. Pajajaran No. 12");
+
+    await userEvent.click(levelInput(canvasElement, "provinsi"));
+    const jabar = await screen.findByTestId("address-provinsi-option-32");
+    await waitFor(() => expect(jabar).toBeVisible());
+    await userEvent.click(jabar);
+    await waitFor(() => expect(levelInput(canvasElement, "provinsi")).toHaveValue("Jawa Barat"));
+    await expect(levelInput(canvasElement, "kabupaten")).toBeEnabled();
   },
 };
 
@@ -1150,6 +1256,7 @@ async function fillPlaceableOrder(canvasElement: HTMLElement, ref: string) {
   const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
   await waitFor(() => expect(shop).toBeVisible());
   await userEvent.click(shop);
+  await pickCourier(canvasElement);
 
   await pickProduct(canvasElement, products[0]!.id);
   await pickOrderDate(canvasElement);
@@ -1378,6 +1485,7 @@ export const FinalizingADraftDoesNotWarnAboutItself: Story = {
     await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
       timeout: 4000,
     });
+    await mapDraftLines(canvasElement);
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
     await userEvent.click(create);
@@ -1440,6 +1548,7 @@ export const FinalizingADraftNamesAnotherDraft: Story = {
     await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
       timeout: 4000,
     });
+    await mapDraftLines(canvasElement);
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
     await userEvent.click(create);
@@ -1464,6 +1573,7 @@ export const FinalizingADraftWarnsAboutALiveOrder: Story = {
     await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
       timeout: 4000,
     });
+    await mapDraftLines(canvasElement);
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
     await userEvent.click(create);
@@ -1520,6 +1630,7 @@ export const FinalizingADraftSendsItsOwnKey: Story = {
     await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
       timeout: 4000,
     });
+    await mapDraftLines(canvasElement);
     const create = canvas.getByTestId("order-create-save");
     await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
     await userEvent.click(create);

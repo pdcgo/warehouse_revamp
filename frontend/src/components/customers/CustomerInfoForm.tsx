@@ -21,6 +21,11 @@ export interface CustomerInfoFormProps {
   onAddressChange: (value: AddressValue) => void;
   /** Pass through to AddressPicker: offer the kecamatan-by-name search as well as the kode pos. */
   addressKecamatanSearch?: boolean;
+  /**
+   * Rendered above the address picker — on a draft, the address as the marketplace wrote it
+   * (the-cs-edits-the-whole-address-before-create), read while the picker is edited. Nothing by default.
+   */
+  addressHint?: ReactNode;
 
   /** The team the receipt's file is uploaded FOR — document_service scopes every file to one. */
   teamId?: bigint;
@@ -174,6 +179,7 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
           <GridItem gridColumn={{ md: 2 }} gridRow={{ md: "1 / span 2" }}>
             <Stack gap="card" data-testid={`${idPrefix}-address`}>
               <Heading as="h3" size="sm">{t("orders.deliveryAddress")}</Heading>
+              {props.addressHint}
               <AddressPicker
                 value={address}
                 onChange={onAddressChange}

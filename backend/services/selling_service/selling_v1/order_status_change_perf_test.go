@@ -202,8 +202,10 @@ func TestPerf_OrderList_Root(t *testing.T) {
 	orders := perfOrderRows(50_000, shopIDs)
 	for i := range orders {
 		id := orders[i].ID
-		orders[i].CustomerName = fmt.Sprintf("Budi %d", id)
-		orders[i].CustomerPhone = fmt.Sprintf("0812%08d", id)
+		orders[i].Address = &selling_service_models.OrderAddress{
+			CustomerName:  fmt.Sprintf("Budi %d", id),
+			CustomerPhone: fmt.Sprintf("0812%08d", id),
+		}
 		orders[i].OrderExternalRefID = fmt.Sprintf("2610%010d", id)
 		orders[i].Receipt = fmt.Sprintf("JP%010d", id)
 	}
@@ -360,14 +362,17 @@ func TestPerf_OrderList_Root(t *testing.T) {
 		measure(c)
 	}
 
-	// THE TRIGRAM PROBE — the proposed fix for the search, PROBED and not applied: pg_trgm and one multicolumn GIN
-	// index over the four searched columns, created INSIDE this test's transaction (rolled back with it, never a
-	// migration), then the UNCHANGED handler measured again.
+	// THE TRIGRAM INDEXES AS A LIVE DATABASE HOLDS THEM — the search's GIN trigram indexes are selling 00048's
+	// (orders_ref_receipt_trgm_idx, order_addresses_customer_trgm_idx; OrderList audit finding 1), so they exist from
+	// the start and every seeded row went into their PENDING LIST (GIN's fastupdate), with no statistics either. The
+	// planner prices a long pending list as a scan of it and picks a sequential scan instead (the measurement above is
+	// that case). A live database's autovacuum flushes the list and keeps the statistics, so the TRGM figures below —
+	// the UNCHANGED handler after both — are what a real search costs.
 	for _, ddl := range []string{
-		"CREATE EXTENSION IF NOT EXISTS pg_trgm",
-		"CREATE INDEX perf_orders_search_trgm ON orders USING gin " +
-			"(customer_name gin_trgm_ops, customer_phone gin_trgm_ops, order_external_ref_id gin_trgm_ops, receipt gin_trgm_ops)",
+		"SELECT gin_clean_pending_list('orders_ref_receipt_trgm_idx'::regclass)",
+		"SELECT gin_clean_pending_list('order_addresses_customer_trgm_idx'::regclass)",
 		"ANALYZE orders",
+		"ANALYZE order_addresses",
 	} {
 		err := db.Exec(ddl).Error
 		if err != nil {
@@ -399,7 +404,8 @@ func TestPerf_OrderList_Root(t *testing.T) {
 	setMode("auto")
 
 	// The generic plans themselves, for root's count and page of a text term.
-	match := `(customer_name ILIKE $1 ESCAPE '\' OR customer_phone ILIKE $1 ESCAPE '\' ` +
+	match := `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE ` +
+		`a.customer_name ILIKE $1 ESCAPE '\' OR a.customer_phone ILIKE $1 ESCAPE '\') ` +
 		`OR order_external_ref_id ILIKE $1 ESCAPE '\' OR receipt ILIKE $1 ESCAPE '\')`
 
 	for _, stmt := range []string{

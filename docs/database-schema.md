@@ -357,8 +357,10 @@ erDiagram
 erDiagram
     shops ||--o{ shop_users : "shop_id"
     shops ||--o{ orders : "shop_id"
+    orders ||--|| order_addresses : "order_id, exactly one"
     orders ||--o{ order_items : "order_id"
     orders ||--o{ order_timeline_logs : "order_id"
+    order_drafts ||--|| order_draft_addresses : "order_draft_id, exactly one"
     order_drafts ||--o{ order_draft_items : "draft_id"
     team_return_configurations
     product_return_maps
@@ -389,20 +391,8 @@ erDiagram
         bigint      team_id          "owning SELLING team, opaque, no FK"
         bigint      shop_id          FK "-> shops(id)"
         text        status           "OrderStatus as text, the eleven (00015) — default pending; no CHECK"
-        text        customer_name    "required"
-        text        customer_phone
-        text        buyer_username   "the buyer's marketplace username (00021), trimmed. Optional — '' = none, NOT NULL"
-        text        provinsi_code    "frozen address snapshot: opaque region_service code, no FK"
-        text        provinsi_name    "frozen name — survives a rename upstream"
-        text        kabupaten_code
-        text        kabupaten_name
-        text        kecamatan_code
-        text        kecamatan_name
-        text        desa_code
-        text        desa_name
-        text        kode_pos         "as chosen (editable in the picker)"
-        text        address_line     "jalan, no. rumah, RT/RW — free text"
-        text        shipping_code    "opaque courier code — matched against shipment_service.shipment_channels.code"
+        text        buyer_username   "the buyer's marketplace username (00021), trimmed. Optional — '' = none, NOT NULL. The customer and the address are its order_addresses row since 00045"
+        bigint      shipment_channel_id "the COURIER - an opaque shipment_service channel id, no FK, nothing else about it stored (00044, shipment-channel-is-an-id-into-shipment-service). Required at create, checked in code (no-order-without-a-courier). 0 only on a dev row from before 00044 - shipping_code dropped, no fill"
         double      goods_cost         "the owner's goods_cost - sum of the lines' frozen total, a borrowed line WITH its markup; the warehouse fee's basis. Exact, never rounded; 0 = unknown, not free (cogs until 00027). A double since 00042"
         double      total_cost         "the owner's total_cost - goods_cost + warehouse_fee, frozen at create (00027). Unrounded, CHECK >= 0; back-filled with a NULL fee as 0"
         double      platform_total     "the owner's platform_total - what the buyer paid on the platform (marketplace_total until 00026). Required at placement since 00022, checked in code; 0 only before that. A double since 00041, frozen exact at placement"
@@ -415,10 +405,25 @@ erDiagram
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
         text        receipt_filename    "snapshot of what the receipt was called when attached"
         text        receipt_mime_type   "image/* or application/pdf — how to render it without fetching it"
-        text        receipt             "the TRACKING NUMBER printed on that slip (00018), verbatim — the owner's orders.receipt, Order.receipt_code on the wire. '' = not recorded. Searched with ILIKE, not indexed"
+        text        receipt             "the TRACKING NUMBER printed on that slip (00018), verbatim — the owner's orders.receipt, Order.receipt_code on the wire. '' = not recorded. Searched with ILIKE through the GIN trigram index orders_ref_receipt_trgm_idx (00048)"
         double      warehouse_fee       "the warehouse's fee, FROZEN at create from WarehouseFeeCalculate on goods_cost (00019, step 3 of the-flat-rate-is-dropped-last). Unrounded. NULL = never priced, placed before 00019. 0 = a warehouse charging nothing. CHECK >= 0"
         timestamptz platform_created_at        "when the BUYER ordered on the storefront (00020) — required at placement, checked in code. NULL only before 00020"
         timestamptz platform_shipment_deadline "the marketplace's own ship-by time, its kirim sebelum (00020). Optional, NULL = none"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    order_addresses {
+        bigserial   id             PK
+        bigint      order_id       FK "-> orders(id), ON DELETE CASCADE, UNIQUE (order_addresses_order_unique) - exactly one per order, written in its transaction (00045)"
+        text        customer_name  "required - CHECK order_addresses_customer_present, moved from orders_customer_present. Searched with ILIKE through the GIN trigram index order_addresses_customer_trgm_idx (customer_name, customer_phone) (00048)"
+        text        customer_phone
+        text        provinsi_name  "NAMES ONLY (an-address-is-plain-names) - no region codes kept"
+        text        kabupaten_name
+        text        kecamatan_name
+        text        desa_name
+        text        postal_code    "as chosen in the picker - kode_pos until 00045, still kode_pos on the wire"
+        text        address_line   "jalan, no. rumah, RT/RW - free text"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -459,23 +464,26 @@ erDiagram
         jsonb       touched_fields "field names a human has edited; the push writes only what is absent here"
         bigint      shop_id        "0 until known — no FK, can go stale"
         bigint      warehouse_id   "0 until known — no FK, can go stale"
-        text        customer_name  "optional, like everything below"
-        text        customer_phone
-        text        buyer_username "the buyer's marketplace username (00021), trimmed — '' = none. Promote copies it"
-        text        provinsi_code  "same frozen-address shape as orders (#118)"
-        text        provinsi_name
-        text        kabupaten_code
-        text        kabupaten_name
-        text        kecamatan_code
-        text        kecamatan_name
-        text        desa_code
-        text        desa_name
-        text        kode_pos
-        text        address_line
-        text        shipping_code
+        text        buyer_username "the buyer's marketplace username (00021), trimmed — '' = none. Promote copies it. The customer and the address are its order_draft_addresses row since 00046"
+        bigint      shipment_channel_id "the courier as the app converted it or a person picked it (00044) - 0 = not known yet, allowed on a draft. Its own touched mark"
         double      platform_total "what the buyer paid on the platform, as pushed or typed (a double since 00041, kept as typed) (00022; marketplace_total until 00026). 0 allowed on a draft — Promote copies it, and refuses a 0"
         timestamptz platform_created_at        "when the buyer ordered on the storefront, as pushed or corrected (00020). NULL allowed on a draft — Promote refuses it"
         timestamptz platform_shipment_deadline "the marketplace's ship-by time (00020). Optional everywhere"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    order_draft_addresses {
+        bigserial   id             PK
+        bigint      order_draft_id FK "-> order_drafts(id), ON DELETE CASCADE, UNIQUE (order_draft_addresses_draft_unique) - exactly one per draft, written in its transaction (00046)"
+        text        customer_name  "best effort - '' allowed, a draft is incomplete by definition; Create requires it"
+        text        customer_phone
+        text        provinsi_name  "NAMES ONLY (an-address-is-plain-names), as the app read them - no region codes kept"
+        text        kabupaten_name
+        text        kecamatan_name
+        text        desa_name
+        text        postal_code    "kode_pos until 00046, still kode_pos on the wire"
+        text        address_line   "jalan, no. rumah - and the whole text when the app cannot split the tiers"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -484,8 +492,7 @@ erDiagram
         bigserial   id            PK
         bigint      draft_id      FK "-> order_drafts(id), ON DELETE CASCADE"
         text        external_sku  "what the app scraped, never overwritten"
-        text        external_name "what the app scraped, never overwritten"
-        bigint      product_id    "0 until a person maps it — the unmapped line IS the incompleteness"
+        text        external_name "what the app scraped, never overwritten. NO product_id since 00047 - a draft stores no mapping (a-draft-stores-no-mapping)"
         int         quantity      "no CHECK, unlike order_items — a scrape may not have read it"
         double      unit_price    "what the marketplace charged per unit, as scraped — the owner's platform_price; kept as read, not rounded (00042); deleted with the draft"
         timestamptz created_at
@@ -531,6 +538,32 @@ erDiagram
     }
 ```
 
+- **`order_addresses`** *(00045, 2026-11-06)* — an order's buyer and where the parcel goes, as plain names
+  ([an-address-is-plain-names](business/order/context_decision.md#an-address-is-plain-names)): exactly one row per order,
+  `order_id` UNIQUE, written in the order's own transaction by `placeOrder`
+  ([one-address-per-order-and-per-draft](business/order/context_decision.md#one-address-per-order-and-per-draft)). The
+  customer's name is required here (`order_addresses_customer_present`, the CHECK `orders` carried). The four region
+  `_code` columns were dropped, not moved; `kode_pos` is `postal_code`. The migration copied every existing order's
+  customer and address into its row.
+- **`order_draft_addresses`** *(00046, 2026-11-06)* — a draft's buyer and address, mirroring `order_addresses` field for
+  field ([a-draft-carries-the-scraped-address](business/order/context_decision.md#a-draft-carries-the-scraped-address)),
+  as plain names: exactly one row per draft, `order_draft_id` UNIQUE, written in the draft's own transaction —
+  `OrderDraftPush` creates it with the draft, a re-push and `OrderDraftUpdate` update the one row
+  ([one-address-per-order-and-per-draft](business/order/context_decision.md#one-address-per-order-and-per-draft)).
+  Unlike an order's, no field is required (best effort). The migration copied every draft's customer and address names
+  into its row and dropped the twelve columns from `order_drafts` (the four codes not moved). The order form's region
+  pre-fill is read-time only — `OrderDraftDetail` asks region_service's `RegionMatch` and stores nothing
+  ([the-cs-edits-the-whole-address-before-create](business/order/context_decision.md#the-cs-edits-the-whole-address-before-create)).
+- **`order_draft_items.product_id` dropped** *(00047, 2026-11-06)* — a draft stores no mapping
+  ([a-draft-stores-no-mapping](technical/frontend/order_draft_decision.md#a-draft-stores-no-mapping)); the CS maps each
+  line in the order form, straight into `order_items`. Its down migration brings the column back as `0` (the mapping is
+  not recoverable).
+- **The order search's trigram indexes** *(00048, 2026-11-06)* — `CREATE EXTENSION IF NOT EXISTS pg_trgm` (the schema's
+  first extension; trusted since Postgres 13) and two GIN indexes for OrderList's `ILIKE '%term%'` search:
+  `order_addresses_customer_trgm_idx (customer_name gin_trgm_ops, customer_phone gin_trgm_ops)` and
+  `orders_ref_receipt_trgm_idx (order_external_ref_id gin_trgm_ops, receipt gin_trgm_ops)` — the OrderList audit's
+  finding 1, split over the two tables since 00045. The down migration drops the indexes and keeps the extension (the
+  database's, not this service's).
 - **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
   `use_scope`), so a shop is only ever reachable within its owning team. 🔄 *(00043, 2026-11-06)* a shop
   is **closed, never deleted**
@@ -807,11 +840,11 @@ erDiagram
     only fields absent from this list; `OrderDraftUpdate` (a person, in our UI) always wins and adds
     to it. The app and the person authenticate as the *same user*, so identity cannot tell them
     apart — the **RPC** is what carries the distinction.
-  - **A line keeps BOTH the scrape and the mapping.** `external_sku`/`external_name` are what the
+  - **A line keeps the scrape, never a mapping.** `external_sku`/`external_name` are what the
     marketplace said and are never overwritten, even by a person editing the line: they are the
-    evidence of what the buyer ordered, and keeping them beside `product_id` is what lets somebody
-    spot a wrong mapping. `product_id` is `0` until mapped, and an unmapped line is precisely the
-    incompleteness that keeps this a draft.
+    evidence of what the buyer ordered. 🔄 *(00047, 2026-11-06)* `product_id` is gone — a draft stores no
+    mapping ([a-draft-stores-no-mapping](technical/frontend/order_draft_decision.md#a-draft-stores-no-mapping)); the
+    CS maps each line in the order form, straight into `order_items`.
   - **No `quantity >= 1` CHECK**, unlike `order_items` — a scrape can arrive with a quantity it could
     not read, and refusing the whole push over one unreadable line would lose the other nine. Promote
     is where every requirement lands, by running the same validation `OrderCreate` runs.

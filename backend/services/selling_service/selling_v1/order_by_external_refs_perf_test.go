@@ -82,7 +82,7 @@ func perfRefOrders(shopIDs [][]uint64) []selling_service_models.Order {
 			ShopID:             shopIDs[team][j],
 			WarehouseID:        testWarehouse,
 			Status:             statuses[i%len(statuses)],
-			CustomerName:       "Budi",
+			Address:            &selling_service_models.OrderAddress{CustomerName: "Budi"},
 			OrderExternalRefID: ref,
 			CreatedByUserID:    uint64(700 + i%40),
 			GoodsCost:          float64(10_000 + i),

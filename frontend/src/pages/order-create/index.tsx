@@ -30,8 +30,9 @@ import { useAuth } from "../../features/auth/AuthContext";
 import { useCreateOrder } from "../../features/orders/queries";
 import { useShopOptions } from "../../features/shops/queries";
 import { useDeleteOrderDrafts, useOrderDraft } from "../../features/orderDrafts/queries";
-import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import { DraftProductHints } from "./components/DraftProductHints";
+import { DraftAddressText } from "./components/DraftAddressText";
+import { addressOf } from "./draftAddress";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { useIsMobile } from "../../layouts/shell";
 import { useStockTakeQuote } from "../../features/inventory/queries";
@@ -109,25 +110,6 @@ function addressTouched(a: AddressValue): boolean {
 // ours, no marketplace's, so it is not copied into the order's ref (a manual draft has its ref typed).
 const DRAFT_SOURCE = "manual";
 
-// A draft's address as the form holds one — the same frozen shape an order carries, field for field.
-function addressOf(draft: OrderDraft): AddressValue {
-  const a = draft.address;
-  if (!a) return emptyAddress;
-
-  return {
-    provinsiCode: a.provinsiCode,
-    provinsiName: a.provinsiName,
-    kabupatenCode: a.kabupatenCode,
-    kabupatenName: a.kabupatenName,
-    kecamatanCode: a.kecamatanCode,
-    kecamatanName: a.kecamatanName,
-    desaCode: a.desaCode,
-    desaName: a.desaName,
-    kodePos: a.kodePos,
-    addressLine: a.addressLine,
-  };
-}
-
 // Everything the leave-guard counts as WORK, as one comparable string. On a draft the form opens already filled, so
 // "dirty" means changed since it was seeded, not merely non-empty — leaving a draft untouched loses nothing (the draft
 // is still on the list), and must not ask whether to discard it.
@@ -136,7 +118,7 @@ interface WorkFields {
   customerPhone: string;
   shopId: bigint;
   orderRef: string;
-  shippingCode: string;
+  shipmentChannelId: string;
   note: string;
   receipt: boolean;
   address: AddressValue;
@@ -174,6 +156,9 @@ function parseDraftId(raw: string | null): bigint {
 // transaction that writes it, so this screen is where stock leaves the building. Two consequences run
 // through the whole page — the warehouse is required and visible, and every line shows what that
 // warehouse actually holds.
+//
+// THE COURIER IS REQUIRED (no-order-without-a-courier, the-courier-required-look-is-accepted): the field carries the
+// red `*` and a hint while none is picked, and Create is held until one is — the server's refusal said before Create.
 export function OrderCreatePage() {
   const { t } = useTranslation();
   const { current } = useTeam();
@@ -193,10 +178,10 @@ export function OrderCreatePage() {
   // also be deleted from the header. Without the id the parameter is absent, the query never runs, and the form is
   // exactly what it was.
   //
-  // ⚠ THE SCRAPED LINES ARE NOT COPIED IN. A marketplace title names no product of ours (`product_id` is 0 until a
-  // person maps it), and auto-picking by matching titles is what the draft design refused: a wrong guess is
-  // indistinguishable from a person's choice once it is in the form. A line that IS mapped (a draft saved from this
-  // form) comes in as the product it names.
+  // ⚠ THE SCRAPED LINES ARE NOT COPIED IN. A marketplace title names no product of ours, and a draft stores no mapping
+  // (a-draft-stores-no-mapping): the person maps every line HERE, straight into the order's lines. Auto-picking by
+  // matching titles is what the draft design refused: a wrong guess is indistinguishable from a person's choice once it
+  // is in the form.
   const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const externalDraftId = parseDraftId(searchParams.get("draft"));
@@ -225,7 +210,9 @@ export function OrderCreatePage() {
   // is the team stating where it ships from, and it stays visible and changeable on every order. The
   // server also still refuses an order that names no warehouse, so nothing here can let one through.
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
-  const [shippingCode, setShippingCode] = useState("");
+  // The courier — a shipment channel id (shipment-channel-is-an-id-into-shipment-service). 0n = none picked; the server
+  // refuses an order without one (no-order-without-a-courier).
+  const [shipmentChannelId, setShipmentChannelId] = useState<bigint>(0n);
   // The resi as TEXT — the number the buyer is given, beside the courier and the file it is printed
   // on. Sent as `receipt_code`, the order's own field for it.
   const [receiptCode, setReceiptCode] = useState("");
@@ -389,23 +376,14 @@ export function OrderCreatePage() {
     const seededDeadline =
       draft.platformShipmentDeadlineUnix > 0n ? unixToDateTimeInput(draft.platformShipmentDeadlineUnix) : "";
     const seededAddress = addressOf(draft);
+    // NO LINE IS SEEDED: a draft stores no mapping (a-draft-stores-no-mapping) — its scraped lines are the text above
+    // the products, and the person picks ours.
     const seededLines: LineDraft[] = [];
-    for (const item of draft.items) {
-      if (item.productId <= 0n || seededLines.some((l) => l.productId === item.productId)) continue;
-      seededLines.push({
-        productId: item.productId,
-        productCode: item.externalSku,
-        name: item.externalName,
-        imageUrl: "",
-        thumbnailUrl: "",
-        quantity: String(item.quantity > 0 ? item.quantity : 1),
-      });
-    }
 
     setCustomerName(draft.customerName);
     setCustomerPhone(draft.customerPhone);
     setAddress(seededAddress);
-    setShippingCode(draft.shippingCode);
+    setShipmentChannelId(draft.shipmentChannelId);
     setMarketplace((prev) => ({ ...prev, shopId: draft.shopId, orderExternalRefId: orderRef, platformTotal }));
     setOrderDate(seededOrderDate);
     setDeadline(seededDeadline);
@@ -418,7 +396,7 @@ export function OrderCreatePage() {
         customerPhone: draft.customerPhone,
         shopId: draft.shopId,
         orderRef,
-        shippingCode: draft.shippingCode,
+        shipmentChannelId: draft.shipmentChannelId.toString(),
         note: "",
         receipt: false,
         address: seededAddress,
@@ -757,7 +735,10 @@ export function OrderCreatePage() {
     orderDate !== "" &&
     sellPrice > 0 &&
     marketplace.orderExternalRefId.trim() !== "" &&
-    unmappedReturns === 0;
+    unmappedReturns === 0 &&
+    // No order without a courier (no-order-without-a-courier, the-courier-required-look-is-accepted) — held here, before
+    // the server would refuse it.
+    shipmentChannelId > 0n;
 
   // How many lines the chosen warehouse cannot fill. Summarised at the top as well as marked on each
   // line: on a long order the failing line can be off screen, and "Create is disabled and I cannot see
@@ -775,7 +756,7 @@ export function OrderCreatePage() {
     customerPhone,
     shopId,
     orderRef: marketplace.orderExternalRefId,
-    shippingCode,
+    shipmentChannelId: shipmentChannelId.toString(),
     note,
     receipt: hasReceipt(receipt),
     address,
@@ -793,7 +774,7 @@ export function OrderCreatePage() {
     customerPhone.trim() !== "" ||
     shopId > 0n ||
     marketplace.orderExternalRefId.trim() !== "" ||
-    shippingCode !== "" ||
+    shipmentChannelId > 0n ||
     note.trim() !== "" ||
     hasReceipt(receipt) ||
     addressTouched(address) ||
@@ -894,7 +875,7 @@ export function OrderCreatePage() {
       customerName,
       customerPhone,
       address: addressTouched(address) ? address : undefined,
-      shippingCode,
+      shipmentChannelId,
       // Trimmed, so a note of nothing but whitespace is stored as no note at all — otherwise the
       // detail page would render an empty note card for a field somebody tabbed through.
       note: note.trim(),
@@ -1208,8 +1189,9 @@ export function OrderCreatePage() {
               }
               trackingCode={receiptCode}
               onTrackingCodeChange={setReceiptCode}
-              shippingCode={shippingCode}
-              onShippingCodeChange={setShippingCode}
+              shipmentChannelId={shipmentChannelId}
+              onShipmentChannelChange={setShipmentChannelId}
+              courierRequired
               filledFromFile={filledFromFile}
               scanResult={scan?.result}
             />
@@ -1401,6 +1383,9 @@ export function OrderCreatePage() {
               onCustomerPhoneChange={setCustomerPhone}
               address={address}
               onAddressChange={setAddress}
+              // A DRAFT'S ADDRESS AS THE MARKETPLACE WROTE IT (the-cs-edits-the-whole-address-before-create), read beside
+              // the editable picker — every part of which the person may change before Create.
+              addressHint={draft ? <DraftAddressText address={draft.address} /> : undefined}
               teamId={cardTeamId}
               // THE SECOND WAY INTO AN ADDRESS (owner): search the kecamatan by name, which fills
               // everything above it and the postcode when that kecamatan has only one.

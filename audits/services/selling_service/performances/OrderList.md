@@ -127,6 +127,45 @@ Only the CTE form was measured. Inside `scopedOrders` the same fence would be
 `id IN (SELECT id FROM orders WHERE <match> OFFSET 0)`, which fits the `Where` chain and also serves the count and
 OrderStat. That form needs one measurement before it is adopted.
 
+> 🔄 **Re-measured 2026-11-06 — the customer moved to `order_addresses` (selling `00045`,
+> [one-address-per-order-and-per-draft](../../../../docs/business/order/context_decision.md#one-address-per-order-and-per-draft)).**
+> The name and phone are no longer columns of `orders`, so the search reads them as `orders.id IN (SELECT a.order_id FROM
+> order_addresses a WHERE a.customer_name ILIKE … OR a.customer_phone ILIKE …)` beside the order's ref and receipt — a
+> hashed SubPlan that scans every address row once. Same seed, every order with its address row (`TestPerf_OrderList_Root`):
+>
+> | Case | before (2026-10-22) | now, `IN` (built) | a correlated `EXISTS` (measured, not built) | now + trigram on both tables (probed, rolled back) |
+> | --- | --- | --- | --- | --- |
+> | root · search a tracking number · 20 | 119 ms | **142 ms** | 160 ms | 80–84 ms |
+> | root · search digits · 20 | 112 ms | **128 ms** | 146 ms | 75–84 ms |
+> | warehouse 900 · search a tracking number · 20 | 47 ms | **118 ms** 🔴 | 111 ms | 58–83 ms |
+>
+> **What got worse:** a WAREHOUSE's search now reads every team's address rows (the subquery has no scope), so 16 667
+> orders in scope cost as much as 50 000. **→ Recommend (not applied):** the same GIN trigram fix, split over the two
+> tables — `order_addresses (customer_name gin_trgm_ops, customer_phone gin_trgm_ops)` and `orders (order_external_ref_id
+> gin_trgm_ops, receipt gin_trgm_ops)` — which the probe measures at 58 ms for the warehouse and 80 ms for root under the
+> generic plan; an index migration is the owning service's and the owner's call (HARD RULE 2).
+>
+> ✅ **Applied 2026-11-06 — the index half, as recommended** (selling `00048_order_search_trigram.sql`): `pg_trgm`,
+> `order_addresses_customer_trgm_idx (customer_name, customer_phone)` and `orders_ref_receipt_trgm_idx
+> (order_external_ref_id, receipt)`, GIN `gin_trgm_ops`. Re-measured on the same seed (`TestPerf_OrderList_Root`, median of 5,
+> nothing else on the machine). Rows seeded inside the test's transaction sit in the GIN pending list with no statistics,
+> which the planner prices as a scan and skips — so the probe now flushes the lists (`gin_clean_pending_list`) and runs
+> `ANALYZE` first, as autovacuum leaves a live database:
+>
+> | Case | before the index (00045) | with 00048, `auto` | custom plan | generic plan |
+> | --- | --- | --- | --- | --- |
+> | root · search a tracking number · 20 | 133–143 ms | **77 ms** | 77 ms | 83 ms |
+> | root · search digits · 20 | 123–129 ms | **73 ms** | 72 ms | 80 ms |
+> | warehouse 900 · search a tracking number · 20 | 112–118 ms | **55 ms** | 55 ms | 84 ms |
+>
+> The address side now reads through its index (the hashed SubPlan's seq scan of every address row, ~30 ms, is a Bitmap
+> Index Scan), and the count of a generic plan halved (80 → 42 ms). **Still 🔴 for root, 🟡 for a warehouse:** the
+> orders side cannot BitmapOr an `IN (subquery)` with the two `ILIKE`s, so the ref and receipt are still FILTERED over
+> every order in scope — the remaining cost. The ids-first page measured here (`page ids-first`, 48–56 ms generic) does
+> not beat the built shape any more. **→ Recommend (not applied):** the match as a `UNION` of three index-served id
+> sets (address rows, refs, receipts) fenced before the scope — a query change in `scopedOrders` that needs its own
+> measurement; the owner's call.
+
 ### 2. An OFFSET page runs both subqueries for every row it skips ✅ fixed 2026-10-22
 
 > ✅ **Applied 2026-10-22, as recommended below**, by the pass that added `status_at` — the regression was its own,

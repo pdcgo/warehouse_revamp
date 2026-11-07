@@ -56,10 +56,11 @@ func (s *Service) OrderCreate(
 		// Optional — placeOrder trims it and never refuses an empty one (the-buyers-username-is-optional).
 		buyerUsername: req.Msg.GetBuyerUsername(),
 		address:       req.Msg.GetAddress(),
-		shippingCode:  req.Msg.GetShippingCode(),
-		note:          req.Msg.GetNote(),
-		receipt:       req.Msg.GetReceipt(),
-		receiptCode:   req.Msg.GetReceiptCode(),
+		// The courier (no-order-without-a-courier — placeOrder refuses 0).
+		shipmentChannelID: req.Msg.GetShipmentChannelId(),
+		note:              req.Msg.GetNote(),
+		receipt:           req.Msg.GetReceipt(),
+		receiptCode:       req.Msg.GetReceiptCode(),
 		// The platform's two dates (platform-created-at-is-required-at-finalize — placeOrder refuses a missing one).
 		platformCreatedAt:        req.Msg.GetPlatformCreatedAtUnix(),
 		platformShipmentDeadline: req.Msg.GetPlatformShipmentDeadlineUnix(),

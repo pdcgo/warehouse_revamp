@@ -34,6 +34,7 @@ func createMarketplaceOrder(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
 		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,

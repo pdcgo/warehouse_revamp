@@ -11,6 +11,8 @@ import (
 
 	documentv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1/documentv1connect"
+	shipmentv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipment/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipment/v1/shipmentv1connect"
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
@@ -26,6 +28,7 @@ type orderExports struct {
 	http      *internalHTTPClient
 	teams     teamv1connect.TeamServiceClient
 	users     userv1connect.UserServiceClient
+	shipment  shipmentv1connect.ShipmentChannelServiceClient
 }
 
 // NewOrderExportStore is OrderExport's store: document_service for the file, team_service and user_service for the
@@ -46,6 +49,8 @@ func NewOrderExportStore(
 		http:      client,
 		teams:     teamv1connect.NewTeamServiceClient(client, cfg.InternalBaseURL, forward),
 		users:     userv1connect.NewUserServiceClient(client, cfg.InternalBaseURL, forward),
+		// The courier catalogue's reads are public (by-ids-is-public-too); the token is forwarded all the same.
+		shipment: shipmentv1connect.NewShipmentChannelServiceClient(client, cfg.InternalBaseURL, forward),
 	}
 }
 
@@ -116,6 +121,33 @@ func (a *orderExports) UserNames(ctx context.Context, ids []uint64) (map[uint64]
 		for _, item := range list.GetItems() {
 			for id, general := range item.GetGeneral().GetMapData() {
 				out[id] = general.GetName()
+			}
+		}
+	}
+
+	return out, nil
+}
+
+// ChannelCodes resolves the rows' couriers through ShipmentChannelByIds — deleted channels included, flagged
+// (a-deleted-channel-still-resolves-by-id) — to their codes.
+func (a *orderExports) ChannelCodes(ctx context.Context, ids []uint64) (map[uint64]string, error) {
+	out := map[uint64]string{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+
+	resp, err := a.shipment.ShipmentChannelByIds(ctx, connect.NewRequest(&shipmentv1.ShipmentChannelByIdsRequest{
+		Filter:      &shipmentv1.ShipmentChannelByIdsFilter{Ids: ids},
+		DataRequest: []shipmentv1.ShipmentChannelByIdsDataType{shipmentv1.ShipmentChannelByIdsDataType_SHIPMENT_CHANNEL_BY_IDS_DATA_TYPE_CHANNEL},
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, list := range resp.Msg.GetItems() {
+		for _, item := range list.GetItems() {
+			for id, channel := range item.GetChannel().GetMapData() {
+				out[id] = channel.GetCode()
 			}
 		}
 	}

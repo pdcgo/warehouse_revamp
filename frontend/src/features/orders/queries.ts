@@ -33,8 +33,8 @@ export interface OrderFilters {
   sellerTeamId?: bigint;
   /** Only orders whose shop is on this marketplace. UNSPECIFIED or absent = any. */
   marketplace?: Marketplace;
-  /** Only orders with this courier (`shipping_code`). "" or absent = any. */
-  shippingCode?: string;
+  /** Only orders with this courier — its `shipment_channel_id`. 0n or absent = any. */
+  shipmentChannelId?: bigint;
   /** Only orders shipping from this warehouse — the seller list's filter. 0n or absent = any. */
   warehouseId?: bigint;
   /**
@@ -67,7 +67,7 @@ const filterKey = (f: OrderFilters) => ({
   createdByUserId: (f.createdByUserId ?? 0n).toString(),
   sellerTeamId: (f.sellerTeamId ?? 0n).toString(),
   marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
-  shippingCode: f.shippingCode ?? "",
+  shipmentChannelId: (f.shipmentChannelId ?? 0n).toString(),
   warehouseId: (f.warehouseId ?? 0n).toString(),
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
   settlementNotOpened: f.settlementNotOpened ?? false,
@@ -84,7 +84,7 @@ export const orderListFilterMsg = (f: OrderFilters) => ({
   createdByUserId: f.createdByUserId ?? 0n,
   sellerTeamId: f.sellerTeamId ?? 0n,
   marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
-  shippingCode: f.shippingCode ?? "",
+  shipmentChannelId: f.shipmentChannelId ?? 0n,
   warehouseId: f.warehouseId ?? 0n,
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
   settlementNotOpened: f.settlementNotOpened ?? false,

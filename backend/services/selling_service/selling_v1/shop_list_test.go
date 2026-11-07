@@ -212,7 +212,7 @@ func TestShopList_TheStatusFilter(t *testing.T) {
 // grants still count on a closed shop (a-closed-shop-locks-all-but-its-grants).
 func TestShopList_ClosedAndWritable(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, gateRoles(), nil, nil, nil, nil)
 
 	granted := insertShop(t, db, gateTeam, "Granted Closed", "GC", "shopee")
 	grantShop(t, db, granted, gateGranted, true)

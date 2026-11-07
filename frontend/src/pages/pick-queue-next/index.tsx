@@ -30,12 +30,12 @@ import { Pagination } from "../../components/chrome/Pagination";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
-import { ShippingSelect } from "../../components/pickers/ShippingSelect";
+import { ShipmentChannelSelect } from "../../components/pickers/ShipmentChannelSelect";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
 import { CopyText } from "../../components/chrome/CopyText";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { OrderCourierBadge } from "../../features/orders/OrderCourierBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrderLabels } from "../../features/orders/labels";
@@ -146,7 +146,8 @@ export function PickQueueNextPage() {
   // The shipment-state switch is gone: the status tabs are it.
   const [sellerId, setSellerId] = useUrlState("team", 0n, idCodec);
   const [marketplace, setMarketplace] = useUrlState("marketplace", Marketplace.UNSPECIFIED, MARKETPLACE_CODEC);
-  const [courier, setCourier] = useUrlState("courier", "", textCodec);
+  // The courier is its shipment channel id (shipment-channel-is-an-id-into-shipment-service).
+  const [courier, setCourier] = useUrlState("courier", 0n, idCodec);
 
   // ── THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`) ──
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -170,7 +171,7 @@ export function PickQueueNextPage() {
       toUnix,
       sellerTeamId: sellerId,
       marketplace,
-      shippingCode: courier,
+      shipmentChannelId: courier,
     };
   }, [debouncedSearch, range, sellerId, marketplace, courier]);
   const filterCount = [
@@ -178,7 +179,7 @@ export function PickQueueNextPage() {
     !isAllDates(range),
     sellerId > 0n,
     marketplace !== Marketplace.UNSPECIFIED,
-    courier !== "",
+    courier > 0n,
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
@@ -334,7 +335,7 @@ export function PickQueueNextPage() {
             setRange(ALL_DATES);
             setSellerId(0n);
             setMarketplace(Marketplace.UNSPECIFIED);
-            setCourier("");
+            setCourier(0n);
           })
         }
       >
@@ -368,10 +369,10 @@ export function PickQueueNextPage() {
 
         {/* THE COURIER — what parcels are grouped by before a pickup. */}
         <FilterField w="15rem" testId="warehouse-orders-courier-filter">
-          <ShippingSelect
+          <ShipmentChannelSelect
             value={courier}
             placeholder={t("warehouseOrders.filter.courier")}
-            onChange={(code) => refilter(() => setCourier(code))}
+            onChange={(channelId) => refilter(() => setCourier(channelId))}
           />
         </FilterField>
 
@@ -534,7 +535,7 @@ export function PickQueueNextPage() {
                                 <ShopRefCell shop={facts.shop} orderRefId={order.orderExternalRefId} />
                               </Table.Cell>
                               <Table.Cell>
-                                <AwbCell courier={order.shippingCode} code={facts.resi} />
+                                <AwbCell channelId={order.shipmentChannelId} code={facts.resi} />
                               </Table.Cell>
                               <Table.Cell textAlign="end" data-testid={`pick-queue-qty-${order.id}`}>
                                 {facts.quantity}
@@ -698,7 +699,7 @@ function OrderBlock({
           {order.orderExternalRefId && <CopyText value={order.orderExternalRefId} fontSize="xs" />}
         </Flex>
         <Flex align="center" gap="1.5" wrap="wrap">
-          {order.shippingCode && <ShippingBadge code={order.shippingCode} />}
+          {order.shipmentChannelId > 0n && <OrderCourierBadge channelId={order.shipmentChannelId} />}
           {facts.resi && <CopyText value={facts.resi} mono fontSize="xs" />}
         </Flex>
         <Flex align="center" gap="1" wrap="wrap">

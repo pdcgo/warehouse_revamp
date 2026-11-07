@@ -37,6 +37,13 @@ service RegionService {
   rpc RegionSearchByKodePos(RegionSearchByKodePosRequest) returns (RegionSearchByKodePosResponse);
   // The full ancestry of one code — hydrate a saved address, or back-fill the picker.
   rpc RegionResolve(RegionResolveRequest) returns (RegionResolveResponse);
+
+  // FOUR NAMES IN, THE ONE PLACE THEY NAME OUT — or none (the-cs-edits-the-whole-address-before-create, *Pre-filled when
+  // certain*). A draft's address arrives as plain names (an-address-is-plain-names), and the order form's picker works by
+  // code; when the four names match EXACTLY ONE desa, its ancestry is the pre-fill. Exact on all four levels after
+  // normalising case, spacing and the kabupaten level's Kabupaten / Kab. / Kota prefix — never a fuzzy guess: a wrong
+  // pre-fill would look like a person's pick. Several matches or none answer no match, and the person picks.
+  rpc RegionMatch(RegionMatchRequest) returns (RegionMatchResponse);
 }
 
 // The four administrative tiers. The numbers are the `level` column verbatim (1..4), a structure
@@ -173,4 +180,37 @@ message RegionResolveRequest {
 
 message RegionResolveResponse {
   RegionAncestry ancestry = 1;
+}
+
+message RegionMatchRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // The four levels as a marketplace wrote them. All four are required: a match on fewer levels names an area, not the
+  // place a parcel goes, so a caller holding fewer has nothing to match.
+  string provinsi_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  // "Kabupaten Bogor", "Kab. Bogor", "Kab Bogor", "Kota Bogor" or "Bogor". A prefix must agree with the place's own
+  // (Kab. never matches a Kota); no prefix matches either.
+  string kabupaten_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string kecamatan_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string desa_name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+message RegionMatchResponse {
+  // The one desa the names match, with its full ancestry (the region list's own spelling, codes and kode pos). Unset when
+  // none matches and when several do.
+  RegionAncestry match = 1;
+  // How many desa matched, capped at 2: 0 = none, 1 = `match` is set, 2 = more than one (ambiguous).
+  uint32 matches = 2;
 }

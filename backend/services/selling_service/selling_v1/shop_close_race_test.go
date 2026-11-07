@@ -55,6 +55,7 @@ func closeRaceHarness(t *testing.T) *san_race.Harness {
 
 func raceCloseOrder(svc *selling_v1.Service, shopID uint64) error {
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
 		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
@@ -123,7 +124,7 @@ func TestRace_ShopClose_OrderCreate(t *testing.T) {
 	db := h.DB()
 
 	picker := &lockedPicker{}
-	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 
 	placed, refused := 0, 0
 

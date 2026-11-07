@@ -5,7 +5,7 @@ import { Clock } from "lucide-react";
 
 import { ShopItem } from "../../components/entity/ShopItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { OrderCourierBadge } from "./OrderCourierBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -439,12 +439,12 @@ export function ShopRefCell({
  * THE AIR WAYBILL — the courier over the tracking number (copyable). The column packing and handover are
  * done by: parcels are grouped by courier, and the number is what the courier scans.
  */
-export function AwbCell({ courier, code, mark }: { courier: string; code?: string; mark?: ReactNode }) {
+export function AwbCell({ channelId, code, mark }: { channelId: bigint; code?: string; mark?: ReactNode }) {
   const value = (code ?? "").trim();
 
   return (
     <Stack gap="0.5" minW="0" align="start">
-      {courier ? <ShippingBadge code={courier} /> : <Nothing testId="order-courier-none" />}
+      {channelId > 0n ? <OrderCourierBadge channelId={channelId} /> : <Nothing testId="order-courier-none" />}
       <Flex align="center" gap="1">
         {value === "" ? <Nothing testId="order-receipt-none" /> : <CopyText value={value} mono fontSize="xs" testId="order-receipt" />}
         {mark}

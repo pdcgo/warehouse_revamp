@@ -16,6 +16,9 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
+// testShipmentChannelID is the courier every order placed here names — create requires one (no-order-without-a-courier).
+const testShipmentChannelID uint64 = 1
+
 // newOrderKey mints the key a submit carries (every-submit-mints-a-new-key) — a fresh random one per call, so two
 // requests built by one helper never share a key and the second is never refused as a used one.
 func newOrderKey() string {
@@ -35,7 +38,7 @@ func TestOrderCreate_OneProductOnTwoLinesThroughTheRealTake(t *testing.T) {
 
 	db := san_testdb.DB(t)
 	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 5)
 	shop := shopForOrders(t, db, team)
@@ -72,7 +75,7 @@ func TestOrderCreate_AShortRealTakeKeepsItsCodeAndDetail(t *testing.T) {
 
 	db := san_testdb.DB(t)
 	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 2)
 	shop := shopForOrders(t, db, team)
@@ -118,8 +121,9 @@ func twoLinesOf(team, shop, warehouse, product uint64) *sellingv1.OrderCreateReq
 	}
 
 	return &sellingv1.OrderCreateRequest{
-		IdempotencyKey: newOrderKey(),
-		TeamId:         team, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
+		ShipmentChannelId: testShipmentChannelID,
+		IdempotencyKey:    newOrderKey(),
+		TeamId:            team, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 40_000,
 		Items: []*sellingv1.OrderItem{line(2), line(1)},
 	}

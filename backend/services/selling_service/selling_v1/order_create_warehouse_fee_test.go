@@ -19,6 +19,7 @@ import (
 // feeOrderReq is two lines of goods whose cost the picker knows: 2 × 4.000 + 1 × 6.000 = a goods cost of 14.000.
 func feeOrderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
 		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
@@ -183,7 +184,7 @@ func TestOrderCreate_FractionalCostsAreFrozenExactAndTravelAsDoubles(t *testing.
 	events := &recorder{}
 	picker := &fakePicker{costs: map[uint64]float64{1: 3_333.33, 2: 6_000.33}}
 	fees := &fakeFees{percent: 2.5}
-	svc := selling_v1.NewService(db, picker, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil)
+	svc := selling_v1.NewService(db, picker, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil)
 	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(feeOrderReq(shop)))
