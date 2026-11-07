@@ -1,23 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
-import {
-  Button,
-  Card,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  SimpleGrid,
-  Spinner,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
-import { ArrowLeft, ArrowRightLeft, Gift, MoreHorizontal } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Box, Button, Flex, HStack, Heading, Icon, IconButton, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
+import { ArrowLeft, ArrowRightLeft, Gift, History, PackageOpen } from "lucide-react";
 import { productClient, rackClient, rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
@@ -28,8 +13,14 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
 import { useTeam } from "../../features/team/TeamContext";
-import { Pagination } from "../../components/chrome/Pagination";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { ProductListItem } from "../../components/products/ProductListItem";
+import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
+import { cameFrom } from "../../lib/cameFrom";
+import { formatUnixDate } from "../../lib/datetime";
 import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { formatRupiah } from "../../lib/money";
@@ -41,6 +32,9 @@ import { RecordSampleDialog } from "./components/RecordSampleDialog";
 import { RACK_DETAIL_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// A ROW LIGHTS UP UNDER THE POINTER, every cell of it (a-table-row-lights-up).
+const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
 function parseRackId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -69,11 +63,19 @@ function parseRackId(raw: string | undefined): bigint {
 // returns product ids this warehouse does not own, and it deliberately returns ONLY ids — resolving
 // them is the caller's job, via ProductByIds and NOT ProductList, which serves the warehouse's own
 // catalogue and would silently omit most of the shelf.
+//
+// ON THE SCREEN RULES (owner: *"sekarang inisiasi rack"*, the-racks-follow-the-screen-rules): back is its icon in the
+// title's row and returns where the page was opened; the two acts carry their icons, and on a phone are their icons; the
+// header figures are the card strip; a first load is a skeleton; an empty shelf or history is a hint; the pager grows;
+// on a phone the tabs run across the top and each product is a block; the date speaks the app's language.
 export function RackDetailPage() {
   const { t } = useTranslation();
   const { rackId: rackIdParam } = useParams();
   const navigate = useNavigate();
   const { current } = useTeam();
+  // EVERY WAY OUT GOES WHERE THE PAGE WAS OPENED (a-form-returns-where-it-was-opened) — the list with its search; by a
+  // link, the list.
+  const backTo = cameFrom(useLocation()) ?? "/inventories/racks";
 
   const rackId = parseRackId(rackIdParam);
   const teamId = current?.teamId;
@@ -284,23 +286,30 @@ export function RackDetailPage() {
     );
   }
 
+  // Back is its icon alone, in the title's row — to where the page was opened (the list with its search), else the list.
+  const back = (
+    <IconButton
+      size="sm"
+      variant="ghost"
+      flexShrink={0}
+      aria-label={t("racks.detail.back")}
+      title={t("racks.detail.back")}
+      data-testid="rack-detail-back"
+      onClick={() => navigate(backTo)}
+    >
+      <Icon as={ArrowLeft} boxSize="4" />
+    </IconButton>
+  );
+
+  // The first load shows the page's shape (motion-is-small-quick-and-shared).
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading rows={3} testId="rack-detail-loading" />;
   }
 
   if (error || !rack) {
     return (
       <Stack gap="section">
-        <Button
-          size="xs"
-          variant="ghost"
-          alignSelf="flex-start"
-          data-testid="rack-detail-back"
-          onClick={() => navigate("/inventories/racks")}
-        >
-          <Icon as={ArrowLeft} boxSize="4" />
-          {t("racks.detail.back")}
-        </Button>
+        <Box>{back}</Box>
         <Text color="error.fg" data-testid="rack-detail-error">
           {error || t("racks.detail.notFound")}
         </Text>
@@ -308,151 +317,158 @@ export function RackDetailPage() {
     );
   }
 
-  const productsTable = (
-    <RackStockTable
-      lines={lines}
-      products={products}
-      teams={teams}
-      loading={stockLoading}
-      error={stockError}
-      showMoney={false}
+  const shelfPager = (
+    <GrowingPager
+      page={page}
+      onPageChange={setPage}
+      hasNext={page * pageSize < totalItems}
+      resetKey={String(pageSize)}
+      pageSize={pageSize}
+      pageSizeOptions={PAGE_SIZE_OPTIONS}
+      onPageSizeChange={(n) => {
+        setPageSize(n);
+        setPage(1);
+      }}
     />
   );
 
-  // Two actions, so they stay inline on a desktop; on a phone they fold into `⋯`, as every phone header does.
+  // THE TWO ACTS OFF THIS RACK, each with its icon (an-action-button-carries-its-icon) — on a phone their icons alone, two
+  // stay out of `⋯` (a-phone-header-action-is-an-icon).
   const actions = isMobile ? (
-    <Menu.Root>
-      <Menu.Trigger asChild>
-        <IconButton size="sm" variant="ghost" aria-label={t("racks.detail.actions")} data-testid="rack-actions">
-          <Icon as={MoreHorizontal} boxSize="4" />
-        </IconButton>
-      </Menu.Trigger>
-      <Portal>
-        <Menu.Positioner>
-          <Menu.Content>
-            <Menu.Item value="move" data-testid="rack-action-move" onClick={() => setDialog("move")}>
-              <Icon as={ArrowRightLeft} boxSize="4" />
-              {t("racks.move.action")}
-            </Menu.Item>
-            <Menu.Item value="sample" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
-              <Icon as={Gift} boxSize="4" />
-              {t("racks.sample.action")}
-            </Menu.Item>
-          </Menu.Content>
-        </Menu.Positioner>
-      </Portal>
-    </Menu.Root>
+    <CompactActions
+      menuLabel={t("racks.detail.actions")}
+      actions={[
+        {
+          id: "sample",
+          label: t("racks.sample.action"),
+          icon: Gift,
+          testId: "rack-action-sample",
+          onClick: () => setDialog("sample"),
+        },
+        {
+          id: "move",
+          label: t("racks.move.action"),
+          icon: ArrowRightLeft,
+          primary: true,
+          testId: "rack-action-move",
+          onClick: () => setDialog("move"),
+        },
+      ]}
+    />
   ) : (
-    <HStack gap="2">
-      <Button size="sm" variant="outline" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
+    <HStack gap="2" flexShrink={0}>
+      <Button variant="outline" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
         <Icon as={Gift} boxSize="4" />
         {t("racks.sample.action")}
       </Button>
-      <Button size="sm" colorPalette="brand" data-testid="rack-action-move" onClick={() => setDialog("move")}>
+      <Button colorPalette="brand" data-testid="rack-action-move" onClick={() => setDialog("move")}>
         <Icon as={ArrowRightLeft} boxSize="4" />
         {t("racks.move.action")}
       </Button>
     </HStack>
   );
 
+  const counted = summary?.lastCountedAt ? Date.parse(summary.lastCountedAt) : NaN;
+  const unknownCost = summary?.unknownCostProducts ?? 0;
+
   return (
-    <Stack gap="section" data-testid="rack-detail-page">
-      <HStack justify="space-between">
-        <Button
-          size="xs"
-          variant="ghost"
-          data-testid="rack-detail-back"
-          onClick={() => navigate("/inventories/racks")}
-        >
-          <Icon as={ArrowLeft} boxSize="4" />
-          {t("racks.detail.back")}
-        </Button>
-        {actions}
-      </HStack>
-
-      {/* The Move and Record Sample writes are a prototype; this strip names the parts whose rule is not settled. */}
-      <NotImplementedSummary list={RACK_DETAIL_PENDING} />
-
-      {/* THE HEADER (#197): the shelf's label, then the two numbers somebody wants at a glance. */}
-      <SimpleGrid columns={{ base: 1, md: 3 }} gap="card" alignItems="stretch">
-        <Stack gap="1" justify="center">
-          {/* The CODE is what is painted on the shelf — it is how a person finds this rack in the
-              building, so it is the heading. The name only qualifies it, and is legitimately empty. */}
-          <Heading size="lg" data-testid="rack-detail-code">
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack gap="section" animationStyle="enter" data-testid="rack-detail-page">
+      {/* THE TITLE'S ROW (the-phone-header-is-one-row) — back, the code painted on the shelf as the heading with its name
+          small under it, and the two acts. */}
+      <Flex align="center" gap={isMobile ? "2" : "card"}>
+        {back}
+        <Stack gap="0" flex="1" minW="0">
+          {/* The CODE is how a person finds this rack in the building, so it is the heading. The name only qualifies
+              it, and is legitimately empty. */}
+          <Heading size="lg" truncate data-testid="rack-detail-code">
             {rack.code}
           </Heading>
           {rack.name && (
-            <Text fontSize="sm" fontWeight="medium" data-testid="rack-detail-name">
+            <Text fontSize="sm" color="fg.muted" truncate data-testid="rack-detail-name">
               {rack.name}
             </Text>
           )}
         </Stack>
+        {actions}
+      </Flex>
 
-        <Card.Root>
-          <Card.Body>
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("racks.detail.countAndValue")}
-              </Text>
-              <Text fontWeight="medium" data-testid="rack-summary-count">
-                {t("racks.detail.unitsOnShelf", {
-                  count: Number(summary?.totalOnHand ?? 0n),
-                })}
-              </Text>
-              <Text fontSize="sm" data-testid="rack-summary-value">
-                {formatRupiah(summary?.totalValue ?? 0n)}
-              </Text>
+      {/* The Move and Record Sample writes are a prototype; this strip names the parts whose rule is not settled. */}
+      <NotImplementedSummary list={RACK_DETAIL_PENDING} />
 
-              {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds
-                  nothing to it, so a shelf of never-restocked goods would otherwise read as a
-                  confident small number. */}
-              {(summary?.unknownCostProducts ?? 0) > 0 && (
-                <Text fontSize="xs" color="warning.fg" data-testid="rack-summary-unknown-cost">
-                  {t("racks.detail.unknownCost", { count: summary?.unknownCostProducts ?? 0 })}
-                </Text>
+      {/* THE HEADER FIGURES, the order list's card strip (a-list-summary-is-the-order-lists-card-strip) — what is on the
+          shelf and what it is worth, then when it was last counted. */}
+      <SummaryStrip testId="rack-summary">
+        <SummaryCard
+          emphasis
+          label={t("racks.detail.countAndValue")}
+          value={
+            <Span data-testid="rack-summary-count">
+              {t("racks.detail.unitsOnShelf", { count: Number(summary?.totalOnHand ?? 0n) })}
+            </Span>
+          }
+          line={
+            <>
+              <Span data-testid="rack-summary-value">{formatRupiah(summary?.totalValue ?? 0n)}</Span>
+              {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds nothing to it,
+                  so a shelf of never-restocked goods would otherwise read as a confident small number. */}
+              {unknownCost > 0 && (
+                <Span color="warning.fg" data-testid="rack-summary-unknown-cost">
+                  {" · "}
+                  {t("racks.detail.unknownCost", { count: unknownCost })}
+                </Span>
               )}
-            </Stack>
-          </Card.Body>
-        </Card.Root>
+            </>
+          }
+          testId="rack-summary-stock"
+        />
+        {/* "Never counted" is a real answer for a new shelf, and it must not render as a date. The date speaks the
+            app's language (a-date-speaks-the-apps-language). */}
+        <SummaryCard
+          label={t("racks.detail.lastCounted")}
+          value={
+            <Span data-testid="rack-summary-last-counted">
+              {Number.isNaN(counted)
+                ? t("racks.detail.neverCounted")
+                : formatUnixDate(BigInt(Math.floor(counted / 1000)))}
+            </Span>
+          }
+          testId="rack-summary-counted"
+        />
+      </SummaryStrip>
 
-        <Card.Root>
-          <Card.Body>
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("racks.detail.lastCounted")}
-              </Text>
-              {/* "Never counted" is a real answer for a new shelf, and it must not render as a date. */}
-              <Text fontWeight="medium" data-testid="rack-summary-last-counted">
-                {summary?.lastCountedAt
-                  ? new Date(summary.lastCountedAt).toLocaleDateString()
-                  : t("racks.detail.neverCounted")}
-              </Text>
-            </Stack>
-          </Card.Body>
-        </Card.Root>
-      </SimpleGrid>
-
-      {/* VERTICAL tabs down the left, content beside them (#197). */}
-      <Tabs.Root defaultValue="products" orientation="vertical" data-testid="rack-tabs">
-        <Tabs.List minW="48">
-          <Tabs.Trigger value="info" data-testid="rack-tab-info">
+      {/* VERTICAL tabs down the left, content beside them (#197) — across the top on a phone, scrolling in their own
+          row rather than past the screen's edge (nothing-runs-past-a-phones-edge). */}
+      <Tabs.Root
+        defaultValue="products"
+        orientation={isMobile ? "horizontal" : "vertical"}
+        data-testid="rack-tabs"
+      >
+        <Tabs.List
+          minW={isMobile ? undefined : "48"}
+          flexShrink={0}
+          flexWrap="nowrap"
+          overflowX={isMobile ? "auto" : undefined}
+          overflowY={isMobile ? "hidden" : undefined}
+        >
+          <Tabs.Trigger value="info" flexShrink={0} data-testid="rack-tab-info">
             {t("racks.detail.tab.info")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="products" data-testid="rack-tab-products">
+          <Tabs.Trigger value="products" flexShrink={0} data-testid="rack-tab-products">
             {t("racks.detail.tab.products")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="prices" data-testid="rack-tab-prices">
+          <Tabs.Trigger value="prices" flexShrink={0} data-testid="rack-tab-prices">
             {t("racks.detail.tab.prices")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="stockHistory" data-testid="rack-tab-stock-history">
+          <Tabs.Trigger value="stockHistory" flexShrink={0} data-testid="rack-tab-stock-history">
             {t("racks.detail.tab.stockHistory")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="placementHistory" data-testid="rack-tab-placement-history">
+          <Tabs.Trigger value="placementHistory" flexShrink={0} data-testid="rack-tab-placement-history">
             {t("racks.detail.tab.placementHistory")}
           </Tabs.Trigger>
         </Tabs.List>
 
-        <Tabs.Content value="info" flex="1" data-testid="rack-info-panel">
+        <Tabs.Content value="info" flex="1" minW="0" data-testid="rack-info-panel">
           <Stack gap="card">
             <Field label={t("racks.detail.code")} value={rack.code} testId="rack-info-code" />
             <Field
@@ -468,26 +484,23 @@ export function RackDetailPage() {
           </Stack>
         </Tabs.Content>
 
-        <Tabs.Content value="products" flex="1" data-testid="rack-products-panel">
+        <Tabs.Content value="products" flex="1" minW="0" data-testid="rack-products-panel">
           <Stack gap="card">
-            {productsTable}
-            <Pagination
-              count={totalItems}
-              pageSize={pageSize}
-              page={page}
-              onPageChange={setPage}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageSizeChange={(n) => {
-                setPageSize(n);
-                setPage(1);
-              }}
+            <RackStockTable
+              lines={lines}
+              products={products}
+              teams={teams}
+              loading={stockLoading}
+              error={stockError}
+              showMoney={false}
             />
+            {shelfPager}
           </Stack>
         </Tabs.Content>
 
         {/* PRICES reads the SAME call the Products tab does — one query, two views, so the count and
             the money beside it can never come from two different reads of the shelf. */}
-        <Tabs.Content value="prices" flex="1" data-testid="rack-prices-panel">
+        <Tabs.Content value="prices" flex="1" minW="0" data-testid="rack-prices-panel">
           <Stack gap="card">
             <RackStockTable
               lines={lines}
@@ -497,27 +510,17 @@ export function RackDetailPage() {
               error={stockError}
               showMoney
             />
-            <Pagination
-              count={totalItems}
-              pageSize={pageSize}
-              page={page}
-              onPageChange={setPage}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageSizeChange={(n) => {
-                setPageSize(n);
-                setPage(1);
-              }}
-            />
+            {shelfPager}
           </Stack>
         </Tabs.Content>
 
-        <Tabs.Content value="stockHistory" flex="1" data-testid="rack-stock-history-panel">
+        <Tabs.Content value="stockHistory" flex="1" minW="0" data-testid="rack-stock-history-panel">
           <RackHistory teamId={teamId} rackId={rackId} reloadKey={reloadKey} testId="rack-stock-history" />
         </Tabs.Content>
 
         {/* PLACEMENT HISTORY is the same ledger narrowed to the movements that decided goods LIVE
             here — put-aways and moves, rather than every change to a count. */}
-        <Tabs.Content value="placementHistory" flex="1" data-testid="rack-placement-history-panel">
+        <Tabs.Content value="placementHistory" flex="1" minW="0" data-testid="rack-placement-history-panel">
           <RackHistory
             teamId={teamId}
             rackId={rackId}
@@ -552,10 +555,11 @@ export function RackDetailPage() {
   );
 }
 
+// A field of the Info tab — its label on the type scale's field label (13 bold, `fg.label`), its value under it.
 function Field({ label, value, testId }: { label: string; value: string; testId: string }) {
   return (
-    <Stack gap="0">
-      <Text fontSize="xs" color="fg.muted">
+    <Stack gap="0.5">
+      <Text fontSize="0.8125rem" fontWeight="bold" color="fg.label">
         {label}
       </Text>
       <Text data-testid={testId}>{value}</Text>
@@ -584,6 +588,7 @@ function RackStockTable({
   showMoney,
 }: RackStockTableProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   if (error) {
     return (
@@ -594,118 +599,156 @@ function RackStockTable({
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton rows={3} testId={showMoney ? "rack-prices-loading" : "rack-stock-loading"} />;
   }
 
   // Distinct testid per tab: BOTH panels mount this table (Products and Prices are one component,
   // two views), so a shared one resolves to two elements and any assertion on it is ambiguous rather
   // than wrong — the worst kind of test failure to read.
   if (lines.length === 0) {
+    // AN EMPTY SHELF SAYS SO, AND WHAT FILLS IT (an-empty-list-shows-a-hint).
     return (
-      <Text color="fg.muted" data-testid={showMoney ? "rack-prices-empty" : "rack-detail-empty"}>
-        {t("racks.detail.empty")}
-      </Text>
+      <EmptyHint
+        size="sm"
+        icon={PackageOpen}
+        title={t("racks.detail.empty")}
+        description={t("racks.detail.emptyHint")}
+        testId={showMoney ? "rack-prices-empty" : "rack-detail-empty"}
+      />
+    );
+  }
+
+  // A product that did not resolve still gets a ROW and still shows its count: the box is physically on the shelf
+  // whether or not the catalogue still lists it, and dropping or blanking it would hide stock someone can walk up and
+  // touch. It is labelled as unknown rather than left to ProductListItem's neutral "Product #<id>" fallback. The
+  // product is shown WITHOUT its team: the team has its own column (one context per column).
+  const productOf = (line: RackStockLine) => {
+    const product = products.get(line.productId.toString());
+    return {
+      product,
+      item: product
+        ? { ...product, teamId: undefined }
+        : { id: line.productId, name: t("racks.detail.productUnknown", { id: line.productId.toString() }) },
+    };
+  };
+
+  // WHOSE IT IS — the reason this page exists: a warehouse holds other teams' goods. Shown the way a team is shown
+  // everywhere (TeamItem). A product the catalogue could not name has no known owner, and says so rather than guessing.
+  const teamOf = (product: Product | undefined) =>
+    product ? (
+      <TeamItem
+        team={{
+          teamId: product.teamId,
+          teamName: teams.get(product.teamId.toString())?.name,
+          teamType: teams.get(product.teamId.toString())?.type,
+          imageUrl: teams.get(product.teamId.toString())?.imageUrl,
+        }}
+      />
+    ) : (
+      <Text color="fg.muted">—</Text>
+    );
+
+  // ⚠ UNKNOWN IS NOT FREE. A dash-like word rather than "Rp 0", because a zero would say the goods cost nothing — and
+  // the difference is the whole reason the server sends `cost_known` rather than letting a screen infer it.
+  const money = (line: RackStockLine, v: bigint) => (line.costKnown ? formatRupiah(v) : t("racks.detail.costUnknown"));
+
+  if (isMobile) {
+    // A PHONE READS EACH PRODUCT AS A BLOCK (a-phone-reads-each-line-as-a-block) — the product at full width, whose it
+    // is, then the count on this rack (and on Prices, its unit price × count = its value).
+    return (
+      <Stack gap="3" data-testid={showMoney ? "rack-detail-prices" : "rack-detail-stock"}>
+        {lines.map((line) => {
+          const { product, item } = productOf(line);
+
+          return (
+            <Stack
+              key={line.productId.toString()}
+              gap="2"
+              borderWidth="1px"
+              borderRadius="md"
+              p="3"
+              data-testid={`rack-stock-row-${line.productId}`}
+            >
+              <ProductListItem product={item} />
+              <Flex align="center" gap="2" justify="space-between">
+                <Box data-testid={`rack-stock-team-${line.productId}`} minW="0">
+                  {teamOf(product)}
+                </Box>
+                <Text fontSize="sm" flexShrink={0}>
+                  {t("racks.detail.onThisRack")}{" "}
+                  <Span fontWeight="bold" data-testid={`rack-stock-onhand-${line.productId}`}>
+                    {line.onHand.toString()}
+                  </Span>
+                </Text>
+              </Flex>
+              {showMoney && (
+                <Text fontSize="sm" color="fg.muted">
+                  <Span data-testid={`rack-unit-cost-${line.productId}`}>{money(line, line.unitCost)}</Span>
+                  {` × ${line.onHand.toString()} … `}
+                  <Span fontWeight="bold" color="fg" data-testid={`rack-line-value-${line.productId}`}>
+                    {money(line, line.value)}
+                  </Span>
+                </Text>
+              )}
+            </Stack>
+          );
+        })}
+      </Stack>
     );
   }
 
   return (
-    <Table.Root size="sm" data-testid={showMoney ? "rack-detail-prices" : "rack-detail-stock"}>
-      <Table.Header>
-        <Table.Row>
-          <Table.ColumnHeader>{t("racks.detail.product")}</Table.ColumnHeader>
-          <Table.ColumnHeader>{t("racks.detail.team")}</Table.ColumnHeader>
-          {/* NOT "On hand" — the app already uses that for the warehouse-wide number
-              (inventory.table.onHand), and this is one shelf's share of it. Naming both the same is
-              how someone reads a rack's count as the warehouse's. */}
-          <Table.ColumnHeader textAlign="end">{t("racks.detail.onThisRack")}</Table.ColumnHeader>
-          {showMoney && (
-            <>
-              <Table.ColumnHeader textAlign="end">{t("racks.detail.unitCost")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("racks.detail.lineValue")}</Table.ColumnHeader>
-            </>
-          )}
-        </Table.Row>
-      </Table.Header>
+    // The table scrolls inside its own box, never the page.
+    <Box overflowX="auto" w="full" maxW="full" minW="0">
+      <Table.Root size="sm" data-testid={showMoney ? "rack-detail-prices" : "rack-detail-stock"}>
+        <Table.Header>
+          <Table.Row>
+            <Table.ColumnHeader>{t("racks.detail.product")}</Table.ColumnHeader>
+            <Table.ColumnHeader>{t("racks.detail.team")}</Table.ColumnHeader>
+            {/* NOT "On hand" — the app already uses that for the warehouse-wide number
+                (inventory.table.onHand), and this is one shelf's share of it. */}
+            <Table.ColumnHeader textAlign="end">{t("racks.detail.onThisRack")}</Table.ColumnHeader>
+            {showMoney && (
+              <>
+                <Table.ColumnHeader textAlign="end">{t("racks.detail.unitCost")}</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end">{t("racks.detail.lineValue")}</Table.ColumnHeader>
+              </>
+            )}
+          </Table.Row>
+        </Table.Header>
 
-      <Table.Body>
-        {lines.map((line) => {
-          const product = products.get(line.productId.toString());
+        <Table.Body>
+          {lines.map((line) => {
+            const { product, item } = productOf(line);
 
-          return (
-            <Table.Row
-              key={line.productId.toString()}
-              data-testid={`rack-stock-row-${line.productId}`}
-            >
-              <Table.Cell>
-                {/* A product that did not resolve still gets a ROW and still shows its count: the box
-                    is physically on the shelf whether or not the catalogue still lists it, and
-                    dropping or blanking it would hide stock someone can walk up and touch. It is
-                    labelled as unknown rather than left to ProductListItem's neutral "Product #<id>"
-                    fallback, which reads as a product that merely has no name. */}
-                {/* The product WITHOUT its team: the team has its own column (one context per column), so
-                    ProductListItem is given no teamId and does not print it a second time under the name. */}
-                <ProductListItem
-                  product={
-                    product
-                      ? { ...product, teamId: undefined }
-                      : {
-                          id: line.productId,
-                          name: t("racks.detail.productUnknown", { id: line.productId.toString() }),
-                        }
-                  }
-                />
-              </Table.Cell>
-
-              {/* WHOSE IT IS — the reason this page exists: a warehouse holds other teams' goods. Shown the way a
-                  team is shown everywhere (TeamItem: avatar, name, type). A product the catalogue could not name
-                  has no known owner, and says so rather than guessing. */}
-              <Table.Cell data-testid={`rack-stock-team-${line.productId}`}>
-                {product ? (
-                  <TeamItem
-                    team={{
-                      teamId: product.teamId,
-                      teamName: teams.get(product.teamId.toString())?.name,
-                      teamType: teams.get(product.teamId.toString())?.type,
-                      imageUrl: teams.get(product.teamId.toString())?.imageUrl,
-                    }}
-                  />
-                ) : (
-                  <Text color="fg.muted">—</Text>
+            return (
+              // A row lights up under the pointer, every cell (a-table-row-lights-up).
+              <Table.Row key={line.productId.toString()} css={LIGHTS_UP} data-testid={`rack-stock-row-${line.productId}`}>
+                <Table.Cell>
+                  <ProductListItem product={item} />
+                </Table.Cell>
+                <Table.Cell data-testid={`rack-stock-team-${line.productId}`}>{teamOf(product)}</Table.Cell>
+                {/* Deliberately its own column rather than ProductListItem's `stock` badge: that badge means READY
+                    STOCK across the warehouse, and this is the count on THIS rack. */}
+                <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-stock-onhand-${line.productId}`}>
+                  {line.onHand.toString()}
+                </Table.Cell>
+                {showMoney && (
+                  <>
+                    <Table.Cell textAlign="end" data-testid={`rack-unit-cost-${line.productId}`}>
+                      {money(line, line.unitCost)}
+                    </Table.Cell>
+                    <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-line-value-${line.productId}`}>
+                      {money(line, line.value)}
+                    </Table.Cell>
+                  </>
                 )}
-              </Table.Cell>
-
-              {/* Deliberately its own column rather than ProductListItem's `stock` badge: that badge
-                  means READY STOCK across the warehouse, and this is the count on THIS rack. */}
-              <Table.Cell
-                textAlign="end"
-                fontWeight="medium"
-                data-testid={`rack-stock-onhand-${line.productId}`}
-              >
-                {line.onHand.toString()}
-              </Table.Cell>
-
-              {showMoney && (
-                <>
-                  {/* ⚠ UNKNOWN IS NOT FREE. A dash rather than "Rp 0", because a zero here would say
-                      the goods cost nothing — and the difference is the whole reason the server sends
-                      `cost_known` rather than letting a screen infer it. */}
-                  <Table.Cell textAlign="end" data-testid={`rack-unit-cost-${line.productId}`}>
-                    {line.costKnown ? formatRupiah(line.unitCost) : t("racks.detail.costUnknown")}
-                  </Table.Cell>
-                  <Table.Cell
-                    textAlign="end"
-                    fontWeight="medium"
-                    data-testid={`rack-line-value-${line.productId}`}
-                  >
-                    {line.costKnown ? formatRupiah(line.value) : t("racks.detail.costUnknown")}
-                  </Table.Cell>
-                </>
-              )}
-            </Table.Row>
-          );
-        })}
-      </Table.Body>
-    </Table.Root>
+              </Table.Row>
+            );
+          })}
+        </Table.Body>
+      </Table.Root>
+    </Box>
   );
 }
 
@@ -828,15 +871,7 @@ function RackHistory({ teamId, rackId, kinds, reloadKey, testId }: RackHistoryPr
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
-  }
-
-  if (movements.length === 0) {
-    return (
-      <Text color="fg.muted" data-testid={`${testId}-empty`}>
-        {t("racks.detail.noHistory")}
-      </Text>
-    );
+    return <ListSkeleton rows={3} testId={`${testId}-loading`} />;
   }
 
   return (
@@ -852,13 +887,18 @@ function RackHistory({ teamId, rackId, kinds, reloadKey, testId }: RackHistoryPr
         productLabel={(id) => productNames.get(id.toString()) ?? `#${id}`}
         afterLabel={t("racks.detail.after")}
         emptyText={t("racks.detail.noHistory")}
+        // THE REWORKED LEDGER (an-empty-list-shows-a-hint, a-table-row-lights-up, a-phone-reads-each-line-as-a-block):
+        // an empty history is a hint, the rows light up, and a phone reads each movement as two lines.
+        emptyIcon={History}
+        emptyDescription={t("racks.detail.noHistoryHint")}
       />
 
-      <Pagination
-        count={totalItems}
-        pageSize={pageSize}
+      <GrowingPager
         page={page}
         onPageChange={setPage}
+        hasNext={page * pageSize < totalItems}
+        resetKey={[kindKey, pageSize].join("|")}
+        pageSize={pageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         onPageSizeChange={(n) => {
           setPageSize(n);

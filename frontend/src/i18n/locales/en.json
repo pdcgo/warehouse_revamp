@@ -1472,6 +1472,7 @@
       "printPicked_one": "Print {{count}} Restock",
       "printPicked_other": "Print {{count}} Restocks",
       "clearPicked": "Clear the selection",
+      "pickFull": "At most {{max}} restocks a print — the rest cannot be ticked.",
       "pending": {
         "cod": {
           "label": "COD paid",
@@ -1491,8 +1492,7 @@
       "actorCreated": "Raised by",
       "actorAccepted": "Counted by",
       "actorAll": "Anyone",
-      "restocksHint": "on their way or at the door",
-      "pickFull": "At most {{max}} restocks a print — the rest cannot be ticked."
+      "restocksHint": "on their way or at the door"
     },
     "detail": {
       "title": "Restock",
@@ -2253,7 +2253,10 @@
       "description": "Description",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Create"
+      "create": "Create",
+      "codePlaceholder": "e.g. A-01-1",
+      "namePlaceholder": "e.g. Front aisle, bottom shelf",
+      "descriptionPlaceholder": "e.g. By the loading door, for fast movers"
     },
     "select": {
       "placeholder": "Select a place",
@@ -2301,7 +2304,9 @@
           "label": "Count lock",
           "reason": "A product being counted is locked at 0 here — a count stops units moving (decided), but the stock count is not built, so only the prototype ever sets it."
         }
-      }
+      },
+      "emptyHint": "Goods land here when a delivery is accepted onto this rack, or moved to it from another.",
+      "noHistoryHint": "Every delivery put away here, move and sample shows up in this list."
     },
     "move": {
       "action": "Move Goods",
@@ -2322,7 +2327,7 @@
       "counting": "Being counted",
       "countingHelp": "Locked until the count ends.",
       "note": "Note",
-      "notePlaceholder": "Optional, e.g. tidy the rack",
+      "notePlaceholder": "e.g. Tidying aisle A for the new stock",
       "summary": "{{units}} units of {{products}} product(s) to {{racks}} rack(s)",
       "problem": {
         "noRack": "Choose where {{name}} goes.",
@@ -2343,14 +2348,40 @@
       "quantity": "Quantity of {{name}} given",
       "given": "given",
       "recipient": "Given to",
-      "recipientPlaceholder": "Name of the person who received it",
+      "recipientPlaceholder": "e.g. Pak Budi, the photographer",
       "recipientHelp": "As the person gave it, so the sample can be traced later.",
-      "notePlaceholder": "Optional, e.g. for a product photo",
+      "notePlaceholder": "e.g. For the product photos",
       "summary": "{{units}} units of {{products}} product(s)",
       "empty": "Nothing on this rack to give.",
       "refused": "Nothing was recorded",
       "submit": "Record Sample",
       "done": "Recorded a sample of {{count}} units from {{code}}"
+    },
+    "subtitle": "This warehouse's racks — the code painted on each, and what it holds.",
+    "none": "No racks yet",
+    "emptyHint": "Register the racks this warehouse has, by the code painted on each.",
+    "editOne": "Edit rack {{code}}",
+    "deleteOne": "Delete rack {{code}}",
+    "productCount_one": "{{count}} product",
+    "productCount_other": "{{count}} products",
+    "stockCount_one": "{{count}} pc",
+    "stockCount_other": "{{count}} pcs",
+    "emptyBadge": "Empty",
+    "stat": {
+      "racks": "Racks",
+      "racksNote": "registered in this warehouse",
+      "filled": "Holding stock",
+      "filledNote": "racks with something on them",
+      "empty": "Empty",
+      "emptyNote": "free to put away into, or delete",
+      "stock": "Stock on racks",
+      "stockNote": "every rack's pieces, summed"
+    },
+    "pending": {
+      "pageTotals": {
+        "label": "Holding stock, Empty and Stock on racks",
+        "reason": "Nothing sums every rack yet, so these three are counted from the racks on this page — racks on the other pages are not in them."
+      }
     }
   },
   "suppliers": {

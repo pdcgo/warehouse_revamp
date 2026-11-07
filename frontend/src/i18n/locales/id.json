@@ -1458,6 +1458,7 @@
       "printPicked_one": "Cetak {{count}} Restok",
       "printPicked_other": "Cetak {{count}} Restok",
       "clearPicked": "Hapus pilihan",
+      "pickFull": "Maksimal {{max}} restok sekali cetak — sisanya tidak bisa dicentang.",
       "pending": {
         "cod": {
           "label": "Ongkir COD dibayar",
@@ -1477,8 +1478,7 @@
       "actorCreated": "Dibuat oleh",
       "actorAccepted": "Dihitung oleh",
       "actorAll": "Siapa saja",
-      "restocksHint": "dalam perjalanan atau di pintu",
-      "pickFull": "Maksimal {{max}} restok sekali cetak — sisanya tidak bisa dicentang."
+      "restocksHint": "dalam perjalanan atau di pintu"
     },
     "detail": {
       "title": "Restok",
@@ -2236,7 +2236,10 @@
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat"
+      "create": "Buat",
+      "codePlaceholder": "Contoh: A-01-1",
+      "namePlaceholder": "Contoh: Lorong depan, rak bawah",
+      "descriptionPlaceholder": "Contoh: Dekat pintu bongkar, untuk barang yang cepat keluar"
     },
     "select": {
       "placeholder": "Pilih tempat",
@@ -2284,7 +2287,9 @@
           "label": "Kunci opname",
           "reason": "Produk yang sedang diopname terkunci di 0 di sini — opname menghentikan perpindahan barang (sudah diputuskan), tetapi opname belum dibangun, jadi hanya prototipe yang mengisinya."
         }
-      }
+      },
+      "emptyHint": "Barang masuk ke sini saat kiriman diterima ke rak ini, atau dipindah dari rak lain.",
+      "noHistoryHint": "Setiap barang yang ditaruh, dipindah, atau diambil sebagai sampel di rak ini muncul di sini."
     },
     "move": {
       "action": "Pindahkan Barang",
@@ -2305,7 +2310,7 @@
       "counting": "Sedang diopname",
       "countingHelp": "Terkunci sampai opname selesai.",
       "note": "Catatan",
-      "notePlaceholder": "Opsional, mis. merapikan rak",
+      "notePlaceholder": "Contoh: Merapikan lorong A untuk barang baru",
       "summary": "{{units}} unit dari {{products}} produk ke {{racks}} rak",
       "problem": {
         "noRack": "Pilih ke mana {{name}} dipindahkan.",
@@ -2326,14 +2331,40 @@
       "quantity": "Jumlah {{name}} yang diberikan",
       "given": "diberikan",
       "recipient": "Diberikan kepada",
-      "recipientPlaceholder": "Nama orang yang menerimanya",
+      "recipientPlaceholder": "Contoh: Pak Budi, fotografer",
       "recipientHelp": "Sesuai yang disebutkan orangnya, agar sampel bisa dilacak nanti.",
-      "notePlaceholder": "Opsional, mis. untuk foto produk",
+      "notePlaceholder": "Contoh: Untuk foto produk",
       "summary": "{{units}} unit dari {{products}} produk",
       "empty": "Tidak ada yang bisa diberikan dari rak ini.",
       "refused": "Tidak ada yang dicatat",
       "submit": "Catat Sampel",
       "done": "Sampel {{count}} unit dari {{code}} dicatat"
+    },
+    "subtitle": "Rak di gudang ini — kode yang tertempel di rak, dan apa isinya.",
+    "none": "Belum ada rak",
+    "emptyHint": "Daftarkan rak yang ada di gudang ini, dengan kode yang tertempel di raknya.",
+    "editOne": "Ubah rak {{code}}",
+    "deleteOne": "Hapus rak {{code}}",
+    "productCount_one": "{{count}} produk",
+    "productCount_other": "{{count}} produk",
+    "stockCount_one": "{{count}} pcs",
+    "stockCount_other": "{{count}} pcs",
+    "emptyBadge": "Kosong",
+    "stat": {
+      "racks": "Rak",
+      "racksNote": "terdaftar di gudang ini",
+      "filled": "Terisi",
+      "filledNote": "rak yang ada barangnya",
+      "empty": "Kosong",
+      "emptyNote": "bisa diisi, atau dihapus",
+      "stock": "Stok di rak",
+      "stockNote": "pcs semua rak, dijumlah"
+    },
+    "pending": {
+      "pageTotals": {
+        "label": "Terisi, Kosong dan Stok di rak",
+        "reason": "Belum ada yang menjumlahkan semua rak, jadi ketiganya dihitung dari rak di halaman ini — rak di halaman lain tidak masuk."
+      }
     }
   },
   "suppliers": {

@@ -30,7 +30,8 @@ async function login(page: Page, username: string, password: string) {
 
 async function gotoRacks(page: Page) {
   await page.goto("/inventories/racks");
-  await expect(page.getByTestId("racks-table")).toBeVisible();
+  // Loaded: the table, or — a warehouse with no racks yet — the hint that says so (an-empty-list-shows-a-hint).
+  await expect(page.getByTestId("racks-table").or(page.getByTestId("racks-empty"))).toBeVisible();
 }
 
 test.describe.configure({ mode: "serial" });

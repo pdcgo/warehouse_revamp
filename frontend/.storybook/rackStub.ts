@@ -147,6 +147,13 @@ export function lastRackWrite(): RackWrite | null {
 }
 
 /** The registry as the stub holds it now — for a story to assert a create, an edit or a delete landed. */
+/** A warehouse with no racks — for an empty list's story. Lasts the story: preview's `beforeEach` resets the stub. */
+export function noRacksAt(warehouseId: bigint) {
+  for (const r of rackRows) {
+    if (r.warehouseId === warehouseId) r.deleted = true;
+  }
+}
+
 export function rackRow(warehouseId: bigint, code: string): RackRow | undefined {
   return rackRows.find((r) => r.warehouseId === warehouseId && r.code === code && !r.deleted);
 }

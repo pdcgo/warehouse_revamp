@@ -80,6 +80,22 @@ flowchart LR
    now calls `RackMove` with one line — no batch, no *unplaced* end.
 8. ✅ `audit-sql` done (`rack_move_race_test.go`); ✅ `audit-rpc-performance` on both, fixed 2026-10-17.
 
+## The screens on the screen rules (2026-11-07)
+
+The owner: *"sekarang inisiasi rack"*. Both rack screens now follow [context_decision.md](../../technical/frontend/context_decision.md)
+— recorded in a new file, [racks_decision.md](../../technical/frontend/racks_decision.md)
+([the-racks-follow-the-screen-rules](../../technical/frontend/racks_decision.md#the-racks-follow-the-screen-rules)). No proto
+change.
+
+| | |
+| --- | --- |
+| the list | title and a line under it (no team badge); *Rak Baru* with its icon, its icon alone on a phone; `FilterBar` search (debounced, in the URL); rows light up; a block per rack on a phone; `EmptyHint` for no match and for no racks; `ListSkeleton`; `GrowingPager`; ✎ 🗑 named per rack. `RackFormDialog` is now opened by the page only (no trigger of its own): examples, `CharCount` (32/200/500), a two-row description, icons on Buat/Simpan. A rack opened from the list carries it (`fromHere`) |
+| a rack's page | back as an icon to where it was opened (`cameFrom`); the two acts with icons, their icons on a phone (`CompactActions`); the header tiles are `SummaryStrip`; the last count's date `formatUnixDate`; tabs vertical on a desktop, across the top on a phone; Produk/Harga rows light up, a block per product on a phone; `EmptyHint` for an empty shelf; history through `MovementTable`'s reworked mode (`emptyIcon`); `GrowingPager` ×3; skeletons |
+| the dialogs | Move Goods and Record Sample: notes are two-row boxes with `CharCount` 500, the recipient `CharCount` 200; example placeholders; icons on the submits |
+| stories | RackList 13 (`Mobile`, `Nothing matches`, `No racks yet`, `Form, examples and counts` new; short names; no `padded`) · RackDetail 14 (`Mobile`, `Back to the list`, `An empty rack` new). `rackStub.noRacksAt` for the empty warehouse |
+| e2e | `racks.spec.ts` waits for the table or the hint — a warehouse with no racks shows the hint now |
+| then | *"sedikit sepi, ada saran?"* → *"3, 4"*: a **Kosong** badge on an empty rack's row ([an-empty-rack-says-so](../../technical/frontend/racks_decision.md#an-empty-rack-says-so)), and the card strip over the list — Rak · Terisi · Kosong · Stok di rak ([the-rack-list-leads-with-its-figures](../../technical/frontend/racks_decision.md#the-rack-list-leads-with-its-figures)). ⚠ The three past *Rak* are summed from the page; past one page they carry `pageTotals` (`missing`, `pages/racks/pending.ts`) — nothing sums every rack yet. Not taken: the rack page's Produk/Pemilik cards and the share bar per product (proposals 1, 2) |
+
 ## Elsewhere
 
 - Your text in [placement.md](../../business/inventory/placement.md) still lacks `move` in `change_type`, the rules decided

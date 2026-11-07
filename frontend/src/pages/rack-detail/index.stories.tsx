@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { lastRackWrite, rackShelf, rackStubScenario } from "../../../.storybook/rackStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -27,11 +27,21 @@ function routedAt(rackId: bigint) {
 
 const At41 = routedAt(41n);
 const At42 = routedAt(42n);
+const At43 = routedAt(43n);
+// Opened from the list narrowed to "a-01" — the back goes there (a-form-returns-where-it-was-opened).
+const FromTheList = routedPage(
+  [
+    { path: "/inventories/racks/:rackId", element: <RackDetailPage /> },
+    { path: "/inventories/racks", element: <LocationProbe /> },
+  ],
+  { pathname: "/inventories/racks/41", state: { from: "/inventories/racks?q=a-01" } },
+);
 
 const meta = {
   title: "Pages/Inventory/Racks/RackDetail",
   component: At41,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  // No "padded" layout: a page story is framed by its shell's gutter (a-page-story-has-its-shells-gutter).
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(11n)();
     asRole(Role.WAREHOUSE_STAFF)();
@@ -88,12 +98,67 @@ export const Default: Story = {
     await expect(stock(canvas).getByTestId("rack-stock-team-71")).toHaveTextContent("Gudang Pusat");
     await expect(canvas.getByTestId("rack-action-move")).toBeInTheDocument();
     await expect(canvas.getByTestId("rack-action-sample")).toBeInTheDocument();
+
+    // THE SCREEN RULES (the-racks-follow-the-screen-rules): back is its icon, both acts carry theirs, the figures are
+    // the card strip, and the shelf's rows light up.
+    await expect(canvas.getByTestId("rack-detail-back")).toHaveTextContent("");
+    await expect(canvas.getByTestId("rack-action-move").querySelector("svg")).not.toBeNull();
+    await expect(canvas.getByTestId("rack-action-sample").querySelector("svg")).not.toBeNull();
+    await expect(canvas.getByTestId("rack-summary")).toBeVisible();
+    await expect(canvas.getByTestId("rack-summary-count")).toHaveTextContent("25 units");
+  },
+};
+
+// A PHONE (every-page-has-a-mobile-story) — the title's row is one row and the two acts are their icons
+// (a-phone-header-action-is-an-icon); the tabs run across the top; each product is a block, no headings
+// (a-phone-reads-each-line-as-a-block); nothing runs past the screen's edge (nothing-runs-past-a-phones-edge).
+export const Mobile: Story = {
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("rack-detail-stock", {}, { timeout: 4000 });
+
+    await expect(canvas.getByTestId("rack-action-move")).toHaveAccessibleName("Move Goods");
+    await expect(canvas.getByTestId("rack-action-move")).toHaveTextContent("");
+    await expect(canvas.getByTestId("rack-tabs")).toHaveAttribute("data-orientation", "horizontal");
+    await expect(within(canvas.getByTestId("rack-detail-stock")).queryAllByRole("columnheader")).toHaveLength(0);
+    await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("12"));
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};
+
+// OPENED FROM THE LIST, BACK TO THE LIST (a-form-returns-where-it-was-opened) — with its search.
+export const BackToTheList: Story = {
+  name: "Back to the list",
+  render: () => <FromTheList />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("rack-detail-back", {}, { timeout: 4000 }));
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("?q=a-01"));
+  },
+};
+
+// AN EMPTY RACK SAYS SO, AND WHAT FILLS IT (an-empty-list-shows-a-hint) — B-02-1 holds nothing and has no history.
+export const AnEmptyRack: Story = {
+  name: "An empty rack",
+  render: () => <At43 />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const empty = await canvas.findByTestId("rack-detail-empty", {}, { timeout: 4000 });
+    await expect(empty).toHaveTextContent("moved to it from another");
+    await expect(canvas.getByTestId("rack-summary-last-counted")).toHaveTextContent("Never counted");
+    await userEvent.click(canvas.getByTestId("rack-tab-stock-history"));
+    await expect(await canvas.findByTestId("rack-stock-history-empty")).toBeVisible();
   },
 };
 
 // Two teams' goods to one rack: the shelves change and the server writes one transaction per owning team
 // (a-move-writes-one-transaction-per-owning-team). Every product starts at 0, so only what is typed moves.
 export const MoveToOneRack: Story = {
+  name: "Move to one rack",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openMove();
@@ -121,6 +186,7 @@ export const MoveToOneRack: Story = {
 // A to B and C: one product split over two racks (a-move-is-one-rack-to-one-or-more-racks). The first line keeps the
 // default rack; the split line names its own.
 export const SplitOverTwoRacks: Story = {
+  name: "Split over two racks",
   play: async () => {
     await openMove();
 
@@ -143,6 +209,7 @@ export const SplitOverTwoRacks: Story = {
 
 // "Move Everything" fills each product up to its stock count — and until a rack is chosen, Move waits and says why.
 export const MoveEverythingNeedsARack: Story = {
+  name: "Move everything, needs a rack",
   play: async () => {
     await openMove();
 
@@ -161,6 +228,7 @@ export const MoveEverythingNeedsARack: Story = {
 
 // The source rack is never a destination: it is not even offered.
 export const TheSourceRackIsNotOffered: Story = {
+  name: "Source rack not offered",
   play: async () => {
     await openMove();
 
@@ -175,6 +243,7 @@ export const TheSourceRackIsNotOffered: Story = {
 
 // One product to the same rack twice is one line, not two: Move waits and names it.
 export const SameRackTwiceIsOneLine: Story = {
+  name: "Same rack twice",
   play: async () => {
     await openMove();
 
@@ -192,6 +261,7 @@ export const SameRackTwiceIsOneLine: Story = {
 // ALL OR NOTHING (a-move-is-all-or-nothing): somebody took two Gula a second before the click. The dialog allowed 5;
 // the server refuses the WHOLE move and names the product — Kopi did not move either.
 export const RefusedWholeWhenALineChanged: Story = {
+  name: "Refused whole",
   play: async () => {
     await openMove();
 
@@ -212,6 +282,7 @@ export const RefusedWholeWhenALineChanged: Story = {
 // A product being counted is LOCKED AT 0 — shown, not hidden, with the pending mark: what a count's lock blocks is
 // opname Q4.
 export const ACountedProductIsLocked: Story = {
+  name: "Counted product locked",
   render: () => <At42 />,
   play: async () => {
     await userEvent.click(await screen.findByTestId("rack-action-move"));
@@ -225,6 +296,7 @@ export const ACountedProductIsLocked: Story = {
 // A SAMPLE (a-sample-is-handed-over-at-the-warehouse): staff take it off this rack — never chosen
 // (a-sample-names-the-rack-it-was-taken-from) — and say who received it. It lands in the rack's stock history.
 export const RecordSample: Story = {
+  name: "Record sample",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openSample();
@@ -249,6 +321,7 @@ export const RecordSample: Story = {
 
 // A sample cannot take a product a count is holding, either.
 export const ASampleOfACountedProductIsLocked: Story = {
+  name: "Sample of a counted product",
   render: () => <At42 />,
   play: async () => {
     await openSample();
@@ -261,6 +334,7 @@ export const ASampleOfACountedProductIsLocked: Story = {
 // WHO DID IT (any-warehouse-member-may-move-goods — every row names its person): after a move, Placement History shows
 // the move with the product's name and the person who made it — the signed-in staff member, Ani Rahayu.
 export const PlacementHistoryNamesWhoMovedIt: Story = {
+  name: "History names who moved it",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openMove();
