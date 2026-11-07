@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import { RestockStatusBadge } from "../../../components/badges/RestockStatusBadge";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { LABELS_MAX_RESTOCKS } from "../../../features/restock/labelsPath";
 import { RESTOCK_LABELS_PENDING } from "../pending";
 import type { LabelSet } from "../labelSets";
 import { AddRestockSelect } from "./AddRestockSelect";
@@ -41,6 +42,7 @@ export function RestocksCard({
 }) {
   const { t } = useTranslation();
   const only = sets.length === 1;
+  const full = sets.length >= LABELS_MAX_RESTOCKS;
 
   return (
     // Over the Pratinjau where there is room; first of all on a phone (the-label-settings-scroll-inside-their-card).
@@ -146,7 +148,15 @@ export function RestocksCard({
             })}
           </Stack>
 
-          <AddRestockSelect teamId={teamId} taken={sets.map((s) => s.id)} onAdd={onAdd} />
+          {/* AT MOST 50 A PRINT (at-most-fifty-restocks-a-print) — at the limit the box is off, and says why. */}
+          <Stack gap="1">
+            <AddRestockSelect teamId={teamId} taken={sets.map((s) => s.id)} onAdd={onAdd} disabled={full} />
+            {full && (
+              <Text fontSize="xs" color="fg.muted" data-testid="labels-restocks-full">
+                {t("restock.labels.restocks.full", { max: LABELS_MAX_RESTOCKS })}
+              </Text>
+            )}
+          </Stack>
         </Stack>
       </Card.Body>
     </Card.Root>

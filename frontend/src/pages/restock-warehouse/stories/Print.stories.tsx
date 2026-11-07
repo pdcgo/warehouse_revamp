@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { marker, markerWithSearch, routedPage } from "../../../../.storybook/pageStory";
+import { restockRequestService } from "../../../../.storybook/restockStub";
 import { RestockWarehousePage } from "../index";
 import { WAREHOUSE_META, loaded } from "./kit";
 
@@ -75,6 +76,58 @@ export const TickEveryOneOnThePage: Story = {
     await userEvent.click(canvas.getByTestId("restock-pick-clear"));
     await waitFor(() => expect(canvas.queryByTestId("restock-print-picked")).toBeNull());
     await expect(all).toHaveAttribute("data-state", "unchecked");
+  },
+};
+
+// AT MOST 50 A PRINT (at-most-fifty-restocks-a-print) — with 50 more boxes at the door, the head's box ticks a page of
+// 20, then 20, then only the 10 that fit; every box not ticked is then off, the line under the title says why, and the
+// print takes 50.
+export const AtMostFifty: Story = {
+  name: "At most 50",
+  beforeEach: async () => {
+    for (let i = 0; i < 50; i++) {
+      const { request } = await restockRequestService.restockRequestCreate!(
+        {
+          teamId: 12n,
+          warehouseId: 11n,
+          receipt: `JNE-LIMIT-${i}`,
+          receiptFile: "",
+          shipmentId: 91n,
+          invoiceRefId: "",
+          financeAccountId: 1301n,
+          shipmentCost: 0,
+          note: "",
+          items: [
+            { productId: 71n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", count: 1n, total: 40000, supplierId: 0n, supplierChannelId: 0n, note: "" },
+          ],
+        } as never,
+        {} as never,
+      );
+      await restockRequestService.restockRequestArrive!({ teamId: 11n, requestId: request!.id } as never, {} as never);
+    }
+  },
+  play: async ({ canvasElement }) => {
+    // The newest first: 557 heads page 1 (the 50 are 508–557), and 501 is on page 3.
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("restock-row-557", {}, { timeout: 4000 });
+    const head = () => canvas.getByTestId("restock-pick-all").querySelector("input")!;
+    const nextPage = () => userEvent.click(canvas.getByTestId("restock-inbound-pager-next"));
+
+    await userEvent.click(head());
+    await waitFor(() => expect(canvas.getByTestId("restock-print-picked")).toHaveTextContent("Print 20 Restocks"));
+    await nextPage();
+    await waitFor(() => expect(head()).not.toBeChecked());
+    await userEvent.click(head());
+    await waitFor(() => expect(canvas.getByTestId("restock-print-picked")).toHaveTextContent("Print 40 Restocks"));
+    await nextPage();
+    await waitFor(() => expect(head()).not.toBeChecked());
+    await userEvent.click(head());
+    await waitFor(() => expect(canvas.getByTestId("restock-print-picked")).toHaveTextContent("Print 50 Restocks"));
+
+    // Full: what is not ticked cannot be — 507 and 503 on this page — and the line says why.
+    await expect(canvas.getByTestId("restock-pick-full")).toHaveTextContent("At most 50 restocks a print");
+    await expect(box(canvas, "507")).toBeDisabled();
+    await expect(box(canvas, "503")).toBeDisabled();
   },
 };
 

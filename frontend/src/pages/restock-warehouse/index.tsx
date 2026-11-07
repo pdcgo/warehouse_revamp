@@ -36,7 +36,7 @@ import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTa
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
 import { shortfall } from "../../features/restock/summary";
 import { WarehouseRestockActions, warehouseActions } from "../../features/restock/WarehouseRestockActions";
-import { labelsPath } from "../../features/restock/labelsPath";
+import { LABELS_MAX_RESTOCKS, labelsPath } from "../../features/restock/labelsPath";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { fromHere } from "../../lib/cameFrom";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
@@ -135,10 +135,14 @@ export function RestockWarehousePage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
-  // The restocks ticked for printing, in the order they were ticked — the order they print in.
+  // The restocks ticked for printing, in the order they were ticked — the order they print in. At most
+  // LABELS_MAX_RESTOCKS (at-most-fifty-restocks-a-print): past it a box does not tick.
   const [picked, setPicked] = useState<string[]>([]);
+  const full = picked.length >= LABELS_MAX_RESTOCKS;
   const togglePick = (id: string) =>
-    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setPicked((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < LABELS_MAX_RESTOCKS ? [...prev, id] : prev,
+    );
   const printPicked = () => navigate(labelsPath(picked.map((id) => BigInt(id))), { state: fromHere(location) });
 
   // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
@@ -356,10 +360,15 @@ export function RestockWarehousePage() {
   const printableOnPage = requests.filter(printable).map((r) => r.id.toString());
   const allOnPage = printableOnPage.length > 0 && printableOnPage.every((id) => picked.includes(id));
   const someOnPage = printableOnPage.some((id) => picked.includes(id));
+  // The head's box ticks this page's restocks up to the limit — so a third page of 20 adds 10 — and, when every one of
+  // them is ticked or the limit is reached, un-ticks this page's instead.
+  const headOff = printableOnPage.length === 0 || (full && !someOnPage);
   const toggleAllOnPage = () =>
-    setPicked((prev) =>
-      allOnPage ? prev.filter((id) => !printableOnPage.includes(id)) : [...prev, ...printableOnPage.filter((id) => !prev.includes(id))],
-    );
+    setPicked((prev) => {
+      if (allOnPage || prev.length >= LABELS_MAX_RESTOCKS) return prev.filter((id) => !printableOnPage.includes(id));
+      const room = LABELS_MAX_RESTOCKS - prev.length;
+      return [...prev, ...printableOnPage.filter((id) => !prev.includes(id)).slice(0, room)];
+    });
 
   // One row's box — disabled, with no word about it, for a restock that has no labels. It stops the row's navigate:
   // ticking a box must not open the restock.
@@ -371,7 +380,7 @@ export function RestockWarehousePage() {
         <Checkbox.Root
           size="sm"
           checked={picked.includes(id)}
-          disabled={!printable(request)}
+          disabled={!printable(request) || (full && !picked.includes(id))}
           onCheckedChange={() => togglePick(id)}
           aria-label={t("restock.inbound.pickOne", { id })}
           data-testid={`restock-pick-${id}`}
@@ -508,7 +517,7 @@ export function RestockWarehousePage() {
                 <Checkbox.Root
                   size="sm"
                   checked={allOnPage ? true : someOnPage ? "indeterminate" : false}
-                  disabled={printableOnPage.length === 0}
+                  disabled={headOff}
                   onCheckedChange={toggleAllOnPage}
                   aria-label={t("restock.inbound.pickAll")}
                   data-testid="restock-pick-all"
@@ -630,6 +639,13 @@ export function RestockWarehousePage() {
             </Flex>
           ))}
       </Flex>
+
+      {/* AT THE LIMIT (at-most-fifty-restocks-a-print) — the boxes not ticked are off, and this says why. */}
+      {full && (
+        <Text fontSize="xs" color="fg.muted" mt="-3" textAlign={isMobile ? "start" : "end"} data-testid="restock-pick-full">
+          {t("restock.inbound.pickFull", { max: LABELS_MAX_RESTOCKS })}
+        </Text>
+      )}
 
       {/* What is not real yet — the COD figure; the queue itself is. */}
       <NotImplementedSummary list={RESTOCK_INBOUND_PENDING} />

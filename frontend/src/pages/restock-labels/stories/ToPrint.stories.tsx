@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { LABELS_META, printedLabels, sheet, typeMeasure } from "./kit";
+import { restockRequestService } from "../../../../.storybook/restockStub";
+import { At503And502, LABELS_META, printedLabels, sheet, typeMeasure } from "./kit";
 
 // RESTOCK LABELS — Yang Dicetak: each label once with its count, typed over, and what was left out
 // (the-print-list-is-each-label-and-its-count). The page's stories are grouped by the part of the screen they are about
@@ -61,6 +62,52 @@ export const EditTheCount: Story = {
     await userEvent.click(within(canvas.getByTestId("labels-mode")).getByText("Shelf"));
     await waitFor(() => expect(canvas.getByTestId("labels-count-0")).toHaveValue("1"));
     await expect(printedLabels()).toBe(3);
+  },
+};
+
+/**
+ * A COUNT FOLLOWS ITS LABEL, NOT ITS PLACE (owner: *"oke, no. 1 semuanya"*, a-label-count-follows-its-label) — 502 is at
+ * the door: its coffee, 12 ordered, is typed down to 3. Then the warehouse counts 502 in (coffee on A-01-1) and it is
+ * read again: the coffee's label is now a batch on a placement — a different label — so it starts from its own 12, not
+ * from the 3 typed for the uncounted one that sat in the same place.
+ */
+export const ACountFollowsItsLabel: Story = {
+  name: "Count follows its label",
+  render: () => <At503And502 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await sheet(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("labels-restock-502-count")).toHaveTextContent("17 labels"));
+
+    // 503's three labels, then 502's coffee — the fourth.
+    await expect(canvas.getByTestId("labels-item-3-where")).toHaveTextContent("Ordered 12 pcs");
+    await typeMeasure(canvas.getByTestId("labels-count-3"), "3");
+    await waitFor(() => expect(canvas.getByTestId("labels-restock-502-count")).toHaveTextContent("8 labels"));
+
+    // The box is counted in, elsewhere.
+    await restockRequestService.restockRequestAccept!(
+      {
+        teamId: 11n,
+        requestId: 502n,
+        lines: [
+          { itemId: 5021n, receivedCount: 12n, brokenCount: 0n, placements: [{ placementId: 41n, quantity: 12n }] },
+          { itemId: 5022n, receivedCount: 5n, brokenCount: 0n, placements: [{ placementId: 42n, quantity: 5n }] },
+        ],
+        warehouseAdditionalCost: 0,
+        warehouseAdditionalCostNote: "",
+      } as never,
+      {} as never,
+    );
+
+    // Read again — taken off and put back on.
+    await userEvent.click(canvas.getByTestId("labels-restock-502-remove"));
+    await waitFor(() => expect(canvas.queryByTestId("labels-restock-502")).toBeNull());
+    await userEvent.click(canvas.getByRole("combobox", { name: "Add a restock" }));
+    const option = await screen.findByTestId("labels-add-restock-option-502", {}, { timeout: 4000 });
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() => expect(canvas.getByTestId("labels-item-3-where")).toHaveTextContent("A-01-1"), { timeout: 4000 });
+    await expect(canvas.getByTestId("labels-count-3")).toHaveValue("12");
   },
 };
 

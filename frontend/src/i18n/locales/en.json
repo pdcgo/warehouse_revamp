@@ -1491,7 +1491,8 @@
       "actorCreated": "Raised by",
       "actorAccepted": "Counted by",
       "actorAll": "Anyone",
-      "restocksHint": "on their way or at the door"
+      "restocksHint": "on their way or at the door",
+      "pickFull": "At most {{max}} restocks a print — the rest cannot be ticked."
     },
     "detail": {
       "title": "Restock",
@@ -1837,7 +1838,8 @@
         "jump": "Go to restock #{{id}}'s labels",
         "labelCount_one": "{{count}} label",
         "labelCount_other": "{{count}} labels",
-        "notPrintable": "no labels yet"
+        "notPrintable": "no labels yet",
+        "full": "At most {{max}} restocks a print — take one off to add another."
       },
       "settings": {
         "title": "Label Settings",

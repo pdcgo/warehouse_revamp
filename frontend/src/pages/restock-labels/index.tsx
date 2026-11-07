@@ -29,7 +29,7 @@ import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
 import { useTeam } from "../../features/team/TeamContext";
-import { labelsPath } from "../../features/restock/labelsPath";
+import { LABELS_MAX_RESTOCKS, labelsPath } from "../../features/restock/labelsPath";
 import { useIsMobile } from "../../layouts/shell";
 import { cameFrom } from "../../lib/cameFrom";
 import { formatUnixDate } from "../../lib/datetime";
@@ -57,20 +57,33 @@ import {
   saveSettings,
 } from "./settings";
 
-/** One label on the print — the restock it is from, and its place among that restock's labels. */
+/** One label on the print — the restock it is from, and what it is a label OF. */
 interface Entry {
   set: LabelSet;
   label: RestockLabel;
-  /** Its count's key: the restock and the label's index in it. */
+  /** Its count's key — see `labelKeyOf`. */
   key: string;
 }
 
+/**
+ * WHAT A LABEL IS, NOT WHERE IT SITS (a-label-count-follows-its-label) — the restock, the product, the batch and the
+ * placement. An accepted restock's label is a batch on a placement (one batch per line, a placement named once a line);
+ * an arrived one's is a product of the restock (a product once per restock). So a count typed for the rice on A-01-1
+ * stays the rice's on A-01-1 when the selling team adds a line to an arrived restock, or a refetch reorders the list —
+ * keyed by its index it moved to whatever label took that place.
+ */
+function labelKeyOf(set: LabelSet, label: RestockLabel): string {
+  return [set.id, label.productId, label.batchId, label.placementCode].join(":");
+}
+
 // THE RESTOCKS ON THIS PRINT — the address's `?ids=503,502`, the labels' one address for one restock or several
-// (the-labels-have-one-address). Every id once, in order; anything that is not a whole number is dropped.
+// (the-labels-have-one-address). Every id once, in order; anything that is not a whole number is dropped; past
+// LABELS_MAX_RESTOCKS the rest are left off (at-most-fifty-restocks-a-print).
 function idsOf(search: string): bigint[] {
   const parts = (new URLSearchParams(search).get("ids") ?? "").split(",");
   const ids: bigint[] = [];
   for (const part of parts) {
+    if (ids.length >= LABELS_MAX_RESTOCKS) break;
     const p = part.trim();
     if (!/^\d+$/.test(p)) continue;
     const id = BigInt(p);
@@ -146,7 +159,7 @@ export function RestockLabelsPage() {
     });
   };
   const addRestock = (id: bigint) => {
-    if (!ids.includes(id)) changeIds([...ids, id]);
+    if (!ids.includes(id) && ids.length < LABELS_MAX_RESTOCKS) changeIds([...ids, id]);
   };
   const removeRestock = (id: bigint) => {
     if (ids.length > 1) changeIds(ids.filter((x) => x !== id));
@@ -169,12 +182,20 @@ export function RestockLabelsPage() {
     setPage(1);
   };
 
-  // Every label of every restock, in the restocks' order — the restock it is from travels with it.
+  // Every label of every restock, in the restocks' order — the restock it is from travels with it. Two alike, which the
+  // rules above never produce, keep apart by a suffix rather than share one count.
   const entries = useMemo<Entry[]>(
-    () =>
-      readySets.flatMap((set) =>
-        set.labels.map((label, i) => ({ set, label, key: `${set.id.toString()}:${i}` })),
-      ),
+    () => {
+      const seen = new Map<string, number>();
+      return readySets.flatMap((set) =>
+        set.labels.map((label) => {
+          const base = labelKeyOf(set, label);
+          const n = seen.get(base) ?? 0;
+          seen.set(base, n + 1);
+          return { set, label, key: n === 0 ? base : `${base}#${n}` };
+        }),
+      );
+    },
     // `sets` is rebuilt only when an answer changes (labelSets.ts).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sets],

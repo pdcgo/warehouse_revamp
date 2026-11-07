@@ -108,6 +108,9 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-labels-mark-their-one-by-one-read](#the-labels-mark-their-one-by-one-read) | Cetak Label reads each restock on its own — a detail, and an accepted one's labels — and says so: an `interim` pending mark on the Restok card and in the strip under the title |
 | [the-labels-stories-are-folders-by-part](#the-labels-stories-are-folders-by-part) | Cetak Label's 22 stories are folders by the part of the screen — Default and Mobile first, then Header, Restocks, Settings, States, ToPrint — as every big page's are |
 | [there-is-no-struk](#there-is-no-struk) | there is no Struk — the goods-received receipt (#219) was built without a decision and is not needed: an accepted restock offers Cetak alone, and the receipt's address lands on the restock |
+| [a-label-count-follows-its-label](#a-label-count-follows-its-label) | on Cetak Label a typed count belongs to the label it was typed for — the restock, product, batch and placement — never to the place it sat in the list |
+| [at-most-fifty-restocks-a-print](#at-most-fifty-restocks-a-print) | at most 50 restocks a print — Cetak Label's address holds the first 50 and Tambah Restok stops there; the list's ticks stop there too, each saying why |
+| [the-labels-address-probe-is-hidden](#the-labels-address-probe-is-hidden) | the address a Cetak Label story reads (`?ids=…`) is kept off the screen under review — in the DOM for the test, not shown |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -2479,3 +2482,55 @@ Diterima   Cetak · Struk           Cetak
 | pinned by | the warehouse detail's `Accepted · labels` (Cetak alone) · the e2e accept flow (the receipt's address lands on the restock) |
 
 What it replaces: the Struk action on an accepted restock and the page behind it.
+
+## a-label-count-follows-its-label
+
+> Owner, in chat (2026-11-07): *"oke, no. 1 semuanya"* — the proposals: a count keyed by what the label is, a limit of 50,
+> the probe hidden.
+
+```
+502 at the door        coffee ·  ·  (no placement)   count typed 3     key 502:71:0:
+502 counted in         coffee · batch 5021 · A-01-1  count 12          key 502:71:5021:A-01-1   ← a different label
+                                                                        (by index it would have taken the 3)
+```
+
+| | |
+| --- | --- |
+| the key | the restock, the product, the batch and the placement (`labelKeyOf`) — an accepted restock's label is a batch on a placement (one batch per line, a placement named once a line); an arrived one's is a product of the restock (a product once per restock) |
+| why | keyed by its index, a count moved to whatever label took that place — a line added to an arrived restock, or the restock counted in while the page was open and read again |
+| two alike | which the rules never produce, keep apart by a suffix rather than share one count |
+| pinned by | `ToPrint / Count follows its label` (502's coffee typed to 3; 502 counted in and read again; the coffee on A-01-1 starts at its own 12) |
+
+What it replaces: a count keyed by the restock and the label's index ([labels-print-several-restocks](#labels-print-several-restocks)).
+
+## at-most-fifty-restocks-a-print
+
+> Owner, in chat (2026-11-07): *"oke, no. 1 semuanya"*.
+
+```
+Cetak Label   ?ids= with 52 restocks  →  the first 50 held      [ Tambah restok … ⌄ ] (off)
+                                                                  Maksimal 50 restok sekali cetak — lepas satu untuk menambah.
+the list      head ☑ page 1 → 20 · page 2 → 40 · page 3 → +10 = 50   every box not ticked: off
+                                                                  Maksimal 50 restok sekali cetak — sisanya tidak bisa dicentang.
+```
+
+| | |
+| --- | --- |
+| why 50 | the list's largest page — one tick of its head fills it; each restock is its own read for now ([the-labels-mark-their-one-by-one-read](#the-labels-mark-their-one-by-one-read)), so 50 is up to 100 calls, and the address stays a sane length |
+| one number | `LABELS_MAX_RESTOCKS` in `features/restock/labelsPath.ts`, read by the page and the list |
+| Cetak Label | an address naming more holds the first 50; at 50 *Tambah Restok* is off, with the line under it |
+| the list | a box past the limit does not tick; the head's box ticks the page up to what fits (a third page of 20 adds 10), and at the limit un-ticks the page's; every box not ticked is off, and a line under the title says why |
+| pinned by | `Restocks / At most 50` (52 in the address, 50 held, Tambah off) · the list's `Print / At most 50` (50 more at the door: 20, 40, then 50; 507 and 503 off) |
+
+What it replaces: no limit — the list could hand Cetak Label every restock it held.
+
+## the-labels-address-probe-is-hidden
+
+> Owner, in chat (2026-11-06): *"ada ids di bawah options?"* — then (2026-11-07) *"oke, no. 1 semuanya"*.
+
+| | |
+| --- | --- |
+| the probe | `LocationProbe` (`.storybook/pageStory.tsx`) takes `hidden` — the address's query stays in the DOM for `toHaveTextContent`, screen-reader only, and off the screen under review. Cetak Label's stories pass it; the other stories' probes are unchanged |
+| pinned by | every Cetak Label story that reads the address (`Several restocks`, `Add a restock`, `Old address redirects`) |
+
+What it replaces: `?ids=503,502` printed under the page in those stories, reading as the page's own text.

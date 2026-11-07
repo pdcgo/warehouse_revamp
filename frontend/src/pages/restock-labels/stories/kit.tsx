@@ -21,13 +21,14 @@ import { clearSettings } from "../settings";
 //
 // The settings are remembered on the device (the-label-settings-are-remembered) — every story starts from the defaults.
 
-// `probe` puts the address's query beside the page — for a story that reads the restocks written to it. The labels have
-// ONE address (the-labels-have-one-address); the old one redirects to it by a loader, as the app's router does.
+// `probe` puts the address's query beside the page — for a story that reads the restocks written to it; hidden, so the
+// page under review shows nothing that is not the page's own. The labels have ONE address (the-labels-have-one-address);
+// the old one redirects to it by a loader, as the app's router does.
 function routes(probe = false) {
   const page = probe ? (
     <>
       <RestockLabelsPage />
-      <LocationProbe />
+      <LocationProbe hidden />
     </>
   ) : (
     <RestockLabelsPage />
@@ -51,6 +52,11 @@ export const At502 = routedPage(routes(), "/inventories/restock/labels?ids=502")
 export const At503Probed = routedPage(routes(true), "/inventories/restock/labels?ids=503");
 export const At503And502 = routedPage(routes(true), "/inventories/restock/labels?ids=503,502");
 export const AtTheOldAddress = routedPage(routes(true), "/inventories/restock/503/labels");
+/** 52 restocks in the address — the seven fixtures, then 45 numbers no restock has. */
+export const AtFiftyTwo = routedPage(
+  routes(true),
+  `/inventories/restock/labels?ids=${[503, 502, 501, 504, 505, 506, 507, ...Array.from({ length: 45 }, (_, i) => 900 + i)].join(",")}`,
+);
 export const FromTheList = routedPage(routes(), {
   pathname: "/inventories/restock/labels",
   search: "?ids=503",

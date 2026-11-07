@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { At503And502, At503Probed, LABELS_META, printedLabels, sheet, typeMeasure } from "./kit";
+import { At503And502, At503Probed, AtFiftyTwo, LABELS_META, printedLabels, sheet, typeMeasure } from "./kit";
 
 // RESTOCK LABELS — the Restok card: several restocks in one print, Tambah Restok, a restock's jump to its labels, and
 // the one-by-one read that is marked (labels-print-several-restocks). The page's stories are grouped by the part of the
@@ -107,6 +107,22 @@ export const ARestockJumpsToItsLabels: Story = {
     canvas.getByRole("button", { name: "Go to restock #503's labels" }).focus();
     await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(canvas.getByTestId("labels-group-503")).toHaveAttribute("data-flash"), { timeout: 2000 });
+  },
+};
+
+// AT MOST 50 RESTOCKS A PRINT (at-most-fifty-restocks-a-print) — an address naming 52 holds the first 50; Tambah Restok
+// is off and says why. (Past the seven fixtures the numbers name no restock, and their rows say so.)
+export const AtMostFifty: Story = {
+  name: "At most 50",
+  render: () => <AtFiftyTwo />,
+  play: async ({ canvasElement }) => {
+    const canvas = await sheet(canvasElement);
+
+    await expect(canvas.getByTestId("labels-heading")).toHaveTextContent("Labels · 50 Restocks");
+    await expect(canvas.getByTestId("labels-restock-942")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("labels-restock-943")).toBeNull();
+    await expect(canvas.getByTestId("labels-restocks-full")).toHaveTextContent("At most 50 restocks a print");
+    await expect(canvas.getByRole("combobox", { name: "Add a restock" })).toBeDisabled();
   },
 };
 

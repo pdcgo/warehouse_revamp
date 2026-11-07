@@ -20,11 +20,14 @@ export function AddRestockSelect({
   teamId,
   taken,
   onAdd,
+  disabled = false,
 }: {
   teamId: bigint | undefined;
   /** The restocks already on the page. */
   taken: bigint[];
   onAdd: (id: bigint) => void;
+  /** The print is full (at-most-fifty-restocks-a-print). */
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
@@ -53,6 +56,7 @@ export function AddRestockSelect({
     <Combobox.Root
       key={round}
       collection={collection}
+      disabled={disabled}
       openOnClick
       value={[]}
       onValueChange={(e) => {

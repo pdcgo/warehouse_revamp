@@ -6,3 +6,10 @@
 export function labelsPath(ids: (bigint | string)[]): string {
   return `/inventories/restock/labels?ids=${ids.join(",")}`;
 }
+
+/**
+ * AT MOST 50 RESTOCKS A PRINT (owner: *"oke, no. 1 semuanya"*, at-most-fifty-restocks-a-print) — the list's largest
+ * page, so one tick of its head fills it. Each restock is its own read for now (the-labels-mark-their-one-by-one-read):
+ * 50 restocks are up to 100 calls, and the address stays a sane length. The page and the list both stop here.
+ */
+export const LABELS_MAX_RESTOCKS = 50;

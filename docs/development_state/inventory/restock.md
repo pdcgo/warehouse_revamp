@@ -200,6 +200,13 @@ page, its action, `useBatchReceipt` and its copy are gone; an accepted restock o
 `/inventories/restock/:id/receipt` is a loader redirect to the restock
 ([there-is-no-struk](../../technical/frontend/restock_decision.md#there-is-no-struk)). inventory_service's `BatchReceipt`
 RPC is untouched and no longer read by any screen. With it the restock flow's screens are all on the screen rules.
+Cetak Label's last three (2026-11-07): a typed count is keyed by the restock, product, batch and placement
+([a-label-count-follows-its-label](../../technical/frontend/restock_decision.md#a-label-count-follows-its-label)); at
+most 50 restocks a print, `LABELS_MAX_RESTOCKS` in `features/restock/labelsPath.ts`, on the page and the list's ticks
+([at-most-fifty-restocks-a-print](../../technical/frontend/restock_decision.md#at-most-fifty-restocks-a-print)); the
+stories' address probe is hidden (`LocationProbe hidden`,
+[the-labels-address-probe-is-hidden](../../technical/frontend/restock_decision.md#the-labels-address-probe-is-hidden)).
+What is left on restock is the ⚠ marks — each waits on a read or a write the screen cannot make yet.
 
 ✅ **2026-10-17: the accept is on the ledgers, the tables carry the owner's names, the money is `double`** — uncommitted,
 for the owner's review ([ledgers.md](ledgers.md), stages 2a, 2c, 2b).

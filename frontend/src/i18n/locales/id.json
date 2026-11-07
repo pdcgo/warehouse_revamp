@@ -1477,7 +1477,8 @@
       "actorCreated": "Dibuat oleh",
       "actorAccepted": "Dihitung oleh",
       "actorAll": "Siapa saja",
-      "restocksHint": "dalam perjalanan atau di pintu"
+      "restocksHint": "dalam perjalanan atau di pintu",
+      "pickFull": "Maksimal {{max}} restok sekali cetak — sisanya tidak bisa dicentang."
     },
     "detail": {
       "title": "Restok",
@@ -1820,7 +1821,8 @@
         "jump": "Ke label restok #{{id}}",
         "labelCount_one": "{{count}} label",
         "labelCount_other": "{{count}} label",
-        "notPrintable": "belum bisa dilabeli"
+        "notPrintable": "belum bisa dilabeli",
+        "full": "Maksimal {{max}} restok sekali cetak — lepas satu untuk menambah."
       },
       "settings": {
         "title": "Pengaturan Label",
