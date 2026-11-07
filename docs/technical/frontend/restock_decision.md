@@ -107,6 +107,7 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [cetak-is-the-one-print-button](#cetak-is-the-one-print-button) | Cetak Label has one print button, *Cetak* — no *Unduh PDF*: both opened the same print dialog, which is where a PDF is saved |
 | [the-labels-mark-their-one-by-one-read](#the-labels-mark-their-one-by-one-read) | Cetak Label reads each restock on its own — a detail, and an accepted one's labels — and says so: an `interim` pending mark on the Restok card and in the strip under the title |
 | [the-labels-stories-are-folders-by-part](#the-labels-stories-are-folders-by-part) | Cetak Label's 22 stories are folders by the part of the screen — Default and Mobile first, then Header, Restocks, Settings, States, ToPrint — as every big page's are |
+| [there-is-no-struk](#there-is-no-struk) | there is no Struk — the goods-received receipt (#219) was built without a decision and is not needed: an accepted restock offers Cetak alone, and the receipt's address lands on the restock |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -2454,3 +2455,27 @@ RestockLabels
 | pinned by | the 22 stories, passing in their folders |
 
 What it replaces: one `index.stories.tsx` holding every story of Cetak Label.
+
+## there-is-no-struk
+
+> Owner, in chat (2026-11-07): *"struk tidak ada keputusan untuk dibuat secara resmi, cuma bayanganmu saat melihat teks
+> tersebut"*, then *"struk tidak dibutuhkan ternyata"*.
+
+```
+status     actions before          actions now
+Tiba       Terima · Cetak          Terima · Cetak
+Diterima   Cetak · Struk           Cetak
+
+/inventories/restock/503/receipt  ── redirect ──►  /inventories/restock/503
+```
+
+| | |
+| --- | --- |
+| why | the Struk page (`pages/batch-receipt`, #219) was built from an issue's text, never decided; what it held — each line's count, broken, rack, who raised and who accepted — the warehouse's restock page already shows. Not needed |
+| gone | the page, its action on the list's row, the restock's page and its sticky bar (`warehouseActions(ACCEPTED)` is `labels`), `useBatchReceipt`, and the `batchReceipt.*` and `restock.table.receipt` copy |
+| the old address | `/inventories/restock/:id/receipt` is a **loader redirect** to the restock's page, as the moved picking and draft addresses are |
+| not touched | inventory_service's `BatchReceipt` RPC — the screen no longer reads it |
+| stale, recorded here | the entries that still name Struk as an action, written before this: [the-warehouse-restock-detail-follows-the-screen-rules](#the-warehouse-restock-detail-follows-the-screen-rules)'s phone-header row (*Tandai Tiba, Terima, Cetak Label, Struk*), [labels-print-from-arrived](#labels-print-from-arrived)'s table (*Diterima — Cetak · Struk*), [print-is-the-labels-action](#print-is-the-labels-action)'s picture and its *the page* row, and [the-list-prints-the-ticked-restocks](#the-list-prints-the-ticked-restocks)'s picture (*[Cetak] [Struk]*); and *batch-receipt* in the date-formatter list of [context_decision.md](context_decision.md). Read them with Struk gone |
+| pinned by | the warehouse detail's `Accepted · labels` (Cetak alone) · the e2e accept flow (the receipt's address lands on the restock) |
+
+What it replaces: the Struk action on an accepted restock and the page behind it.

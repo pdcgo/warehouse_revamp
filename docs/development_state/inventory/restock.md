@@ -195,8 +195,11 @@ The warehouse list ticks restocks — a box per row, enabled when Cetak is one o
 Product Discover's filters do — one hook, `lib/useFitToWindow`, which `FilterPanel` moved onto
 ([the-label-settings-scroll-inside-their-card](../../technical/frontend/restock_decision.md#the-label-settings-scroll-inside-their-card),
 [a-sticky-side-column-ends-above-the-windows-foot](../../technical/frontend/context_decision.md#a-sticky-side-column-ends-above-the-windows-foot)).
-**Not yet:** Struk (`pages/batch-receipt` — no stories at all, back by
-`navigate(-1)`, a spinner; it shows the unit and line cost while the warehouse's pages show none — unasked).
+**There is no Struk** (2026-11-07): `pages/batch-receipt` (#219) was built without a decision and is not needed — the
+page, its action, `useBatchReceipt` and its copy are gone; an accepted restock offers Cetak alone, and
+`/inventories/restock/:id/receipt` is a loader redirect to the restock
+([there-is-no-struk](../../technical/frontend/restock_decision.md#there-is-no-struk)). inventory_service's `BatchReceipt`
+RPC is untouched and no longer read by any screen. With it the restock flow's screens are all on the screen rules.
 
 ✅ **2026-10-17: the accept is on the ledgers, the tables carry the owner's names, the money is `double`** — uncommitted,
 for the owner's review ([ledgers.md](ledgers.md), stages 2a, 2c, 2b).

@@ -50,16 +50,14 @@ export const LostOffersSignForBox: Story = {
   },
 };
 
-// Accepted: no status act — only what the crew does next, the labels and the receipt.
-export const AcceptedOffersLabelsAndReceipt: Story = {
-  name: "Accepted · labels and receipt",
+// Accepted: no status act — only what the crew does next, the labels. No Struk (there-is-no-struk).
+export const AcceptedOffersLabels: Story = {
+  name: "Accepted · labels",
   render: () => <At503 />,
   play: async ({ canvasElement }) => {
     await loaded(canvasElement);
 
-    await waitFor(() =>
-      expect(actionsIn(canvasElement)).toEqual(["restock-action-labels-503", "restock-action-receipt-503"]),
-    );
+    await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-labels-503"]));
   },
 };
 

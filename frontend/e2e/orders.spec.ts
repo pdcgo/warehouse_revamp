@@ -1213,11 +1213,10 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await page.getByTestId("labels-mode").getByText("Shelf").click();
   await expect(printed).toHaveCount(2);
 
-  // #219 — the goods-received receipt for the whole delivery: 10 arrived, 2 broken, 8 accepted into stock.
+  // THERE IS NO STRUK (there-is-no-struk) — the receipt's old address lands on the restock itself.
   await page.goto(`/inventories/restock/${seeded.requestId}/receipt`);
-  await expect(page.getByTestId("batch-receipt-doc")).toBeVisible();
-  await expect(page.getByTestId("batch-receipt-lines")).toContainText("e2e accept");
-  await expect(page.getByTestId("batch-receipt-total-accepted")).toHaveText("8");
+  await expect(page).toHaveURL(new RegExp(`/inventories/restock/${seeded.requestId}$`));
+  await expect(page.getByTestId("restock-detail-page")).toBeVisible();
 });
 
 // #145 — a selling team's DEFAULT SHIPPING WAREHOUSE pre-fills the order form.

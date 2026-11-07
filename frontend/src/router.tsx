@@ -138,9 +138,6 @@ const BatchesPage = lazy(() => import("./pages/batches").then((m) => ({ default:
 const BatchDetailPage = lazy(() =>
   import("./pages/batch-detail").then((m) => ({ default: m.BatchDetailPage })),
 );
-const BatchReceiptPage = lazy(() =>
-  import("./pages/batch-receipt").then((m) => ({ default: m.BatchReceiptPage })),
-);
 const WarehouseProductPage = lazy(() =>
   import("./pages/warehouse-product").then((m) => ({ default: m.WarehouseProductPage })),
 );
@@ -413,9 +410,13 @@ export const router = createBrowserRouter([
         path: "inventories/restock/:requestId/labels",
         loader: ({ params }) => redirect(labelsPath([params.requestId ?? ""])),
       },
-      // The goods-received receipt for the delivery (#219) — a printable document, reached from an
-      // accepted restock and from a batch's Print receipt (?batch= highlights that product's line).
-      { path: "inventories/restock/:requestId/receipt", element: <BatchReceiptPage /> },
+      // THERE IS NO STRUK (owner: *"struk tidak dibutuhkan ternyata"*, there-is-no-struk) — the goods-received receipt
+      // (#219) was built without a decision and is gone. Where it lived lands on the restock itself, by a loader redirect
+      // like the moved picking and draft addresses.
+      {
+        path: "inventories/restock/:requestId/receipt",
+        loader: ({ params }) => redirect(`/inventories/restock/${params.requestId ?? ""}`),
+      },
       // A selling team moving its own stock between warehouses — one path, two screens (WarehouseTransferRoute).
       // `new` is static, so it ranks above :transferId whatever the order here. Create only: lines are never edited.
       { path: "inventories/transfer", element: <WarehouseTransferRoute /> },

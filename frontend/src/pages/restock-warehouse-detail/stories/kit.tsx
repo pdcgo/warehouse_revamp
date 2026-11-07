@@ -23,7 +23,6 @@ export function routedAt(id: bigint) {
       marker("/inventories/restock/:requestId/accept", "at-restock-accept"),
       // The labels' one address (the-labels-have-one-address) — static, so it ranks above :requestId.
       markerWithSearch("/inventories/restock/labels", "at-restock-labels"),
-      marker("/inventories/restock/:requestId/receipt", "at-restock-receipt"),
       marker("/inventories/restock", "at-restock-list"),
     ],
     `/inventories/restock/${id}`,

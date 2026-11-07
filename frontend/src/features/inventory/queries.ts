@@ -41,7 +41,6 @@ import {
   stockLevelsFromList,
 } from "./adapt";
 import type {
-  BatchReceiptResponse,
   StockBatch,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
@@ -797,70 +796,6 @@ export function useBatchHistory(args: {
         page: { page, limit: pageSize },
       });
       return { movements: movementsFromList(res), pageInfo: res.pageInfo };
-    },
-  });
-}
-
-// The goods-received receipt for one delivery (#219) — the printable document. The read returns ids;
-// the page needs names, so resolve the destination warehouse (a team) and the two actors here,
-// best-effort. Supplier and the restock CREATOR are not resolvable/captured yet — see the page.
-export interface BatchReceipt {
-  data: BatchReceiptResponse | null;
-  warehouseName: string;
-  actorNames: Map<string, string>;
-  rackCodes: Map<string, string>;
-}
-
-export function useBatchReceipt(args: { warehouseId: bigint | undefined; deliveryId: bigint }) {
-  const { warehouseId, deliveryId } = args;
-
-  return useQuery<BatchReceipt>({
-    queryKey: key.inventory(warehouseId, { receipt: deliveryId.toString() }),
-    enabled: warehouseId !== undefined && deliveryId > 0n,
-    queryFn: async () => {
-      const res = await inventoryClient.batchReceipt({ teamId: warehouseId!, deliveryId });
-
-      const rackCodes = new Map<string, string>();
-      try {
-        const racks = await rackClient.rackList({
-          teamId: warehouseId!,
-          dataRequest: rackListRowData(),
-          page: { page: 1, limit: 200 },
-        });
-        for (const r of racksFromList(racks.items, racks.ids)) {
-          rackCodes.set(r.id.toString(), r.code);
-        }
-      } catch {
-        // leave empty — a line's rack falls back to "#id".
-      }
-
-      let warehouseName = "";
-      try {
-        const teams = teamsByIds(
-          await teamClient.teamByIds({
-            filter: { ids: [res.warehouseId] },
-            dataRequest: teamByIdsRowData(),
-          }),
-        );
-        warehouseName = teams[res.warehouseId.toString()]?.name ?? "";
-      } catch {
-        warehouseName = "";
-      }
-
-      const actorNames = new Map<string, string>();
-      const actorIds = [...new Set([res.createdBy, res.acceptedBy].filter((id) => id > 0n))];
-      if (actorIds.length > 0) {
-        try {
-          const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
-          for (const [id, u] of Object.entries(users)) {
-            actorNames.set(id, u.name || u.username);
-          }
-        } catch {
-          // leave empty — the page falls back to "#id".
-        }
-      }
-
-      return { data: res, warehouseName, actorNames, rackCodes };
     },
   });
 }

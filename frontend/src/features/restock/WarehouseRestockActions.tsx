@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, HStack, Icon, IconButton, Menu, Portal, Separator } from "@chakra-ui/react";
-import { MoreHorizontal, PackageCheck, PackageOpen, Printer, Receipt } from "lucide-react";
+import { MoreHorizontal, PackageCheck, PackageOpen, Printer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
@@ -28,14 +28,15 @@ import { fromHere } from "../../lib/cameFrom";
 //                                      placements (labels-print-from-arrived)
 //   lost     → Sign for Box            the parcel turned up after all — the same restock, signed for as arrived
 //                                      (a-late-lost-box-is-signed-for-as-arrived)
-//   accepted → Print · Receipt         what the crew does right after counting it in — not a status change
+//   accepted → Print                   what the crew does right after counting it in — not a status change
 //   cancelled → nothing
 //
 // *Print* is the labels — the action says the verb alone (owner: *"cetak label di action, cetak saja"*,
-// print-is-the-labels-action); the page it opens is still Cetak Label.
+// print-is-the-labels-action); the page it opens is still Cetak Label. There is no Struk: it was built without a
+// decision, and is not needed (owner: *"struk tidak dibutuhkan ternyata"*, there-is-no-struk).
 //
 // Editing, cancelling and marking lost are the SELLING team's, and never appear here.
-export type WarehouseAction = "signForBox" | "accept" | "labels" | "receipt";
+export type WarehouseAction = "signForBox" | "accept" | "labels";
 
 export function warehouseActions(status: RestockRequestStatus): WarehouseAction[] {
   switch (status) {
@@ -46,7 +47,7 @@ export function warehouseActions(status: RestockRequestStatus): WarehouseAction[
     case RestockRequestStatus.LOST:
       return ["signForBox"];
     case RestockRequestStatus.ACCEPTED:
-      return ["labels", "receipt"];
+      return ["labels"];
     default:
       return [];
   }
@@ -56,7 +57,6 @@ const LOOK: Record<WarehouseAction, { icon: LucideIcon; labelKey: string; slug: 
   signForBox: { icon: PackageOpen, labelKey: "restock.actions.signForBox", slug: "sign" },
   accept: { icon: PackageCheck, labelKey: "restock.actions.accept", slug: "accept", primary: true },
   labels: { icon: Printer, labelKey: "restock.labels.action", slug: "labels" },
-  receipt: { icon: Receipt, labelKey: "restock.table.receipt", slug: "receipt" },
 };
 
 export interface WarehouseRestockActionsProps {
@@ -103,9 +103,6 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
         // The labels' one address, with this restock on it (the-labels-have-one-address); Back returns where the labels
         // were opened from, as Terima's does.
         navigate(labelsPath([id]), { state: fromHere(location) });
-        return;
-      case "receipt":
-        navigate(`/inventories/restock/${id}/receipt`);
         return;
     }
   }
