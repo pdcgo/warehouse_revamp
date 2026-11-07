@@ -173,8 +173,10 @@ export function TermsPanel({
         onOpenChange={setEditOpen}
         teamId={teamId}
         editing={own}
-        // The counterparty is fixed by the page, so the picker has exactly this one to offer — it is
-        // not a choice here the way it was on the list screen.
+        // The counterparty is fixed by the page — and PINNED, so the dialog shows its name rather than a picker. A
+        // picker would also offer the DEFAULT row, and a pair's terms live on the pair while the default lives on the
+        // list (the-default-terms-row-is-a-dialog-on-the-list).
+        fixedCounterpartyId={counterpartyId}
         options={[{ id: counterpartyId, name: counterpartyName }]}
         overrideWriter={isOverrideWriter(role)}
       />

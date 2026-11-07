@@ -71,6 +71,8 @@ The **80% warning** is a per-row badge, not a tile ([Q9](../balance/team_balance
 still open on where the debtor's half lives). A tile that said *"3 teams near their limit"* would be a
 fifth summary number nobody asked for.
 
+✅ Built 2026-11-07 — the four tiles are the order list's `SummaryStrip` of `SummaryCard`s ([a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip)), still read from the server's whole-set summary; the list pages with `GrowingPager`.
+
 ---
 
 ## the-default-terms-row-is-a-dialog-on-the-list

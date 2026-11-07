@@ -86,7 +86,7 @@
     "awaitingNav": "{{count}} awaiting your confirmation",
     "totalPayable": "Total payable",
     "totalReceivable": "Total receivable",
-    "awaitingTile": "Awaiting your confirm",
+    "awaitingTile": "Awaiting your confirmation",
     "oldestTile": "Oldest unsettled",
     "days": "{{count}} days",
     "searchPlaceholder": "Search counterparty",
@@ -104,7 +104,7 @@
     "colReceivable": "Receivable",
     "colOldest": "Oldest unsettled",
     "colAwaiting": "Awaiting",
-    "toConfirm": "{{count}} to confirm",
+    "toConfirm": "{{count}} to accept",
     "teamFallback": "Team #{{id}}",
     "empty": "No counterparties yet.",
     "selectTeamView": "Select a team to view its position.",
@@ -113,7 +113,10 @@
     "square": "Square",
     "emptyHint": "What this team owes other teams, and is owed, shows here once it is recorded.",
     "requestSent": "Payment requested",
-    "requestAsked": "Asks you to pay"
+    "requestAsked": "Asks you to pay",
+    "overLimit": "{{percent}}% of the limit you set — their next order is refused",
+    "frozenLimit": "Frozen — their next order is refused",
+    "kindLabel": "Team type"
   },
   "liabilityDetail": {
     "title": "Liability",
@@ -145,15 +148,15 @@
     "colProof": "Proof",
     "colStatus": "Status",
     "reversal": "Reversal",
-    "confirm": "Confirm",
+    "confirm": "Accept",
     "reject": "Reject",
     "proofNone": "No proof attached",
     "proofNth": "Proof {{n}}",
     "causeProductFee": "Product fee · order #{{id}}",
     "causePayment": "Payment #{{id}}",
     "causeUnknown": "Unknown #{{id}}",
-    "statusRecorded": "Recorded",
-    "statusConfirmed": "Confirmed",
+    "statusRecorded": "Pending",
+    "statusConfirmed": "Accepted",
     "statusRejected": "Rejected",
     "statusUnknown": "—",
     "kindWarehouse": "Warehouse team",
@@ -164,9 +167,9 @@
     "emptyPayable": "Nothing you owe them in this range.",
     "emptyMine": "You have not recorded any payments.",
     "emptyTeam": "No payments from them to confirm.",
-    "confirmTitle": "Confirm Payment",
-    "confirmMessage": "Confirm that this payment of {{amount}} arrived. This posts a settling entry to the ledger and reduces the balance.",
-    "confirmLabel": "Confirm Payment",
+    "confirmTitle": "Accept Payment",
+    "confirmMessage": "Accept this payment of {{amount}} only if the money reached your account. It posts a settling entry to the ledger and reduces the balance — and it is final: it cannot be changed or reversed.",
+    "confirmLabel": "Accept Payment",
     "rejectTitle": "Reject Payment",
     "rejectDescription": "Reject this claimed payment of {{amount}}. Nothing is posted to the ledger and the balance does not move — but the claim is closed for good, so the payer must record a new one.",
     "rejectReason": "Why are you rejecting it?",
@@ -182,7 +185,7 @@
     "recordSubmit": "Make Payment",
     "tabLimits": "Limit changes",
     "causeOrderFee": "Order fee · order #{{id}}",
-    "causeIncidentalFee": "Delivery costs · restock #{{id}}",
+    "causeIncidentalFee": "Courier at a restock · restock #{{id}}",
     "causeBrokenGood": "Goods broken · movement #{{id}}",
     "causeLostGood": "Goods lost · movement #{{id}}",
     "causeFound": "Goods found again · movement #{{id}}",
@@ -206,7 +209,13 @@
     "requestAskedHelp": "Asked on {{date}}. Pay through Make Payment — nothing moves by itself.",
     "requestSent": "You asked {{name}} to pay {{amount}} on {{date}}.",
     "causeReturnIncidentalFee": "Courier at a return · order #{{id}}",
-    "causeTransferFee": "Courier on a transfer · transfer #{{id}}"
+    "causeTransferFee": "Courier on a transfer · transfer #{{id}}",
+    "recordNotePlaceholder": "e.g. BCA transfer on 7 Nov",
+    "tabAll": "All",
+    "emptyAll": "Nothing has moved between you in this range.",
+    "balanceAfterLine": "Balance after {{amount}}",
+    "recordProofAttach": "Attach Proof",
+    "recordProofAttachAnother": "Attach Another"
   },
   "common": {
     "perPage": "Per page",
@@ -3531,7 +3540,7 @@
     "remove": "Remove Terms",
     "removeDialog": {
       "title": "Remove Terms for {{name}}",
-      "message": "This pair falls back to your DEFAULT terms — limit, fee and markup together, because the whole row is what resolves. With no default row set, that means unlimited credit.",
+      "message": "This pair falls back to your default terms. With no default set, that means unlimited credit.",
       "confirm": "Remove"
     },
     "empty": "No terms set. Every team you trade with is unlimited and charged nothing.",
@@ -3558,7 +3567,8 @@
     "colLimitChange": "Limit",
     "colReason": "Reason",
     "usingDefault": "Using the default terms",
-    "noneSet": "No terms set — unlimited credit, no fee, no markup"
+    "noneSet": "No terms set — unlimited credit",
+    "reasonPlaceholder": "e.g. agreed with their owner on the phone"
   },
   "shipmentChannels": {
     "title": "Shipment Channels",
@@ -4202,7 +4212,8 @@
       "role": {
         "warehouse": "Warehouse",
         "owner": "Product owner"
-      }
+      },
+      "refused": "at the limit — this order will be refused"
     },
     "profit": {
       "title": "Estimated Profit",

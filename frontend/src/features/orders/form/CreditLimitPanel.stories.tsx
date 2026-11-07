@@ -79,3 +79,27 @@ export const TheReadFailed: Story = {
     await expect(canvas.queryByTestId("credit-warn-15")).toBeNull();
   },
 };
+
+// ⚠ ALREADY AT THE LIMIT — THE CREATE WILL BE REFUSED (over-the-limit-refuses-the-create). The check compares the debt
+// already committed, so Gudang Pusat at 10.400.000 of 10.000.000 refuses this order whatever it adds, and a frozen
+// creditor (no credit at all) refuses it too. Said in words on the row, folded rail or not — a red bar alone does not
+// tell customer service the order cannot go through.
+export const AtTheLimitTheOrderIsRefused: Story = {
+  args: {
+    compact: true,
+    rows: [
+      { ...row(11n, "Gudang Pusat", { state: "ready", debt: 10_400_000, limit: 10_000_000 }, 2_000), roles: ["warehouse"] },
+      row(13n, "Toko Kenanga", { state: "ready", debt: 0, limit: 0 }),
+      row(15n, "Toko Anggrek", { state: "ready", debt: 870_000, limit: 1_000_000 }, 200_000),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("credit-after-11")).toHaveTextContent("this order will be refused");
+    await expect(canvas.getByTestId("credit-after-13")).toHaveTextContent("this order will be refused");
+    // Under the limit today, over it after this order: it goes through, and the NEXT one is stopped.
+    await expect(canvas.getByTestId("credit-after-15")).toHaveTextContent("over the limit after this order");
+    await expect(canvas.getByTestId("credit-after-15")).not.toHaveTextContent("refused");
+  },
+};

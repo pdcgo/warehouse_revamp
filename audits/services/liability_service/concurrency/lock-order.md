@@ -11,7 +11,7 @@ inversion — which is invisible from inside any one handler.
 | --- | --- | --- |
 | `LiabilityPaymentConfirm` | `liability_payments` → `liability_balances` | `lockPayment` (`FOR UPDATE`), then `PostEntry` |
 | `LiabilityPaymentReject` | `liability_payments` | a strict PREFIX of confirm's order, so it cannot invert it. Nothing posts |
-| `LiabilityPaymentRecord` | *(none)* | one INSERT, no read-modify-write |
+| `LiabilityPaymentRecord` *(2026-11-07)* | `liability_balances` (`FOR SHARE`, the payer's row) | the-debtor-claims-the-creditor-decides made it a check-then-insert: the payer's side of the pair must be negative. The read is `FOR SHARE` inside the claim's transaction, so a confirm squaring the pair (PostEntry's upsert) is waited for and its result read; two claims by one debtor never queue (SHARE locks do not conflict). It takes no `liability_payments` lock — it INSERTs a new row — so it cannot invert confirm's order ([`payment_record_race_test.go`](../../../../backend/services/liability_service/liability_v1/payment_record_race_test.go)) |
 | `PostEntry` | `liability_balances` | reached from confirm, or standalone from another service |
 | `ChargeTransferCourier` *(2026-11-04)* | `liability_balances` | `PostEntry` on its own transaction, from Warehouse Transfer Accepted. Idempotent by the ledger's unique key (`transfer_fee`, the transfer): 8 deliveries at once → one posting, every one acked; beside a restock courier charge of the same number → both post, no deadlock ([`transfer_courier_charge_race_test.go`](../../../../backend/services/liability_service/liability_v1/transfer_courier_charge_race_test.go)) |
 
@@ -55,6 +55,8 @@ third entry at the top.
 | `TestRace_LiabilityPaymentConfirm` | 8 concurrent confirms → exactly 1 winner, balance 0 |
 | `TestRace_LiabilityPaymentConfirmAgainstReject` | 🆕 8 callers alternating confirm/reject → 1 winner, and the status and the balance tell the SAME story |
 | `TestInterleave_RejectBlocksBehindConfirm` | 🆕 **the proof of safety** — B blocked 305ms on A's lock and re-read `confirmed` after acquiring it |
+| `TestInterleave_RecordWaitsForTheConfirmThatSquaresThePair` | *(2026-11-07)* a second claim's owes-check blocked 304ms behind a confirm's posting, then read the squared pair and refused — never the 15.000 from before (fails without `FOR SHARE`: returned at once and passed) |
+| `TestInterleave_RecordTwoClaimsDoNotQueue` | *(2026-11-07)* two claims by one debtor read the pair at once, neither blocked |
 
 ```sh
 go test -tags raceaudit -run "TestRace_Liability|TestInterleave_" ./backend/services/liability_service/liability_v1/

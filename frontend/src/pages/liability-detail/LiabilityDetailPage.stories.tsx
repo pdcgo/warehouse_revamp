@@ -99,12 +99,94 @@ export const Default: Story = {
     //    bare signed number: direction is words and separate figures.
     await expect(canvas.getByTestId("liability-detail-balance")).toBeInTheDocument();
 
-    // 3. "its show change balance log" — the ledger, in its four cuts.
+    // 3. "its show change balance log" — the ledger. ALL is the FIRST tab and the one it opens on
+    //    (the-team-balance-screens-are-accepted), with its rows: the stub once served the wrong slice and every ledger
+    //    drew empty, which only a ROW proves against.
+    const all = await canvas.findByTestId("liability-detail-tab-all");
+    await expect(all.parentElement!.querySelector('[role="tab"]')).toBe(all);
+    await expect(all).toHaveAttribute("aria-selected", "true");
     await expect(canvas.getByTestId("liability-detail-tab-receivable")).toBeInTheDocument();
     await expect(canvas.getByTestId("liability-detail-tab-payable")).toBeInTheDocument();
+    await expect(await canvas.findByTestId("liability-detail-entry-501")).toHaveTextContent("Order fee · order #9001");
+
+    // The figures are the order list's cards (a-list-summary-is-the-order-lists-card-strip): the position leads, in
+    // words under its figure, and the pages grow as they are opened (every-list-pages-with-the-growing-pager).
+    await expect(canvas.getByTestId("liability-detail-position")).toHaveAttribute("data-emphasis", "true");
+    await expect(canvas.getByTestId("liability-detail-direction")).toHaveTextContent("They owe you");
+    await expect(within(canvas.getByTestId("liability-detail-all")).getByTestId("liability-detail-all-pager")).toBeInTheDocument();
 
     // 2. "Its show change limit history log" — the NEW tab, and a different kind of log entirely.
     await expect(canvas.getByTestId("liability-detail-tab-limits")).toBeInTheDocument();
+  },
+};
+
+// ── THE ALL TAB (the-team-balance-screens-are-accepted) ─────────────────────────────────────────────────────────────
+//
+// The Receivable and Payable cuts split by the SIGN of a movement, so a payment and a reversal land in the other cut
+// and *Balance after* skips rows. All is the whole running ledger, in its order, first and the default — every row of
+// the pair, whichever way it went, with the balance it left.
+export const TheAllTabRunsTheWholeLedger: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const all = await canvas.findByTestId("liability-detail-all");
+
+    // Eleven movements, newest first — the fees, the broken-goods payable, the found reversal and the payment.
+    await waitFor(() => expect(within(all).getAllByTestId(/^liability-detail-entry-/)).toHaveLength(11));
+    await expect(within(all).getAllByTestId(/^liability-detail-entry-/).map((r) => r.dataset.testid)).toEqual(
+      [501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511].map((id) => `liability-detail-entry-${id}`),
+    );
+
+    // The payable row and the payment, each with its balance after — both missing from the Receivable cut's run.
+    await expect(within(all).getByTestId("liability-detail-entry-503")).toHaveTextContent("−Rp 450.000");
+    await expect(within(all).getByTestId("liability-detail-balance-after-503")).toHaveTextContent("Rp 7.470.000");
+    await expect(within(all).getByTestId("liability-detail-entry-511")).toHaveTextContent("Payment #601");
+    await expect(within(all).getByTestId("liability-detail-balance-after-511")).toHaveTextContent("Rp 7.865.000");
+
+    // The cuts are unchanged: Receivable leaves the payable movement out.
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-receivable"));
+    const receivable = canvas.getByTestId("liability-detail-receivable");
+    await waitFor(() => expect(within(receivable).getByTestId("liability-detail-entry-501")).toBeVisible());
+    await expect(within(receivable).queryByTestId("liability-detail-entry-503")).toBeNull();
+  },
+};
+
+// ── MAKE PAYMENT IS THE DEBTOR'S (the-debtor-claims-the-creditor-decides) ──────────────────────────────────────────
+
+// ⛔ THE CREDITOR IS NOT OFFERED IT. Toko Melati owes Gudang Pusat 8.700.000, so Gudang Pusat may ask to be paid and
+// accept or reject what Melati sends — never record a payment of its own; the server refuses one as FailedPrecondition.
+export const TheCreditorIsNotOfferedMakePayment: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("8.700.000"));
+    await expect(await canvas.findByTestId("liability-detail-request-payment")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("liability-detail-make-payment")).toBeNull();
+  },
+};
+
+// A PAIR THAT OWES NOTHING OFFERS NO PAYMENT: Toko Kenanga's page for Toko Melati — nothing ever moved between them, so
+// it is square, and neither Make Payment nor Request Payment is offered.
+const KenangaAtMelati = routedPage(
+  [
+    { path: "/liability/:counterpartyId", element: <LiabilityDetailPage /> },
+    marker("/liability", "at-liability-list"),
+  ],
+  `/liability/${COUNTERPARTY}`,
+);
+
+export const ASquarePairOffersNoPayment: Story = {
+  render: () => <KenangaAtMelati />,
+  beforeEach: () => {
+    asTeam(13n)();
+    asRole(Role.SELLING_OWNER)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("liability-detail-direction")).toHaveTextContent("Square"));
+    await expect(await canvas.findByTestId("liability-ledger-empty")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("liability-detail-make-payment")).toBeNull();
+    await expect(canvas.queryByTestId("liability-detail-request-payment")).toBeNull();
   },
 };
 
@@ -115,8 +197,8 @@ export const TheLimitLogIsSeparateFromTheLedger: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    // The ledger tab first: entries carry an amount and a running balance.
-    await expect(canvas.getByTestId("liability-detail-receivable")).toBeInTheDocument();
+    // The ledger tab first — All, the default: entries carry an amount and a running balance.
+    await expect(canvas.getByTestId("liability-detail-all")).toBeInTheDocument();
 
     await userEvent.click(canvas.getByTestId("liability-detail-tab-limits"));
 
@@ -198,19 +280,41 @@ export const TheTermsTabWarnsWhenTheLimitIsNearlyUsed: Story = {
 // payment with nothing attached asks the creditor to accept on the payer's word, which is exactly
 // what two-phase confirmation declines to trust — so the send is disabled rather than refused after
 // the fact.
+//
+// Toko Melati — the DEBTOR — pays Gudang Pusat: Make Payment is the team that owes's (the-debtor-claims-the-creditor-decides).
+const MelatiAtGudangPusat = routedPage(
+  [
+    { path: "/liability/:counterpartyId", element: <LiabilityDetailPage /> },
+    marker("/liability", "at-liability-list"),
+  ],
+  `/liability/${WAREHOUSE.id}`,
+);
+const asTheDebtor = () => {
+  asTeam(COUNTERPARTY)();
+  asRole(Role.SELLING_OWNER)();
+};
+
 export const APaymentCannotBeSentWithoutProof: Story = {
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: asTheDebtor,
   play: async ({ canvasElement }) => {
     await loaded(canvasElement);
 
     // The dialog portals, so it is queried from the document rather than the canvas.
-    await userEvent.click(within(canvasElement).getByTestId("liability-detail-make-payment"));
+    await userEvent.click(await within(canvasElement).findByTestId("liability-detail-make-payment"));
 
     const amount = await screen.findByTestId("record-amount");
     await userEvent.type(amount, "500000", { delay: 40 });
 
     // A valid amount is not enough on its own.
     await waitFor(() => expect(screen.getByTestId("record-submit")).toBeDisabled());
-    await expect(screen.getByTestId("record-proof-input")).toBeInTheDocument();
+
+    // ⚠ THE PROOF FIELD IS CHAKRA'S FILE UPLOAD (chakra-first-whenever-it-has-the-component) — a trigger button with its
+    // icon, the browser's input hidden behind it, never the native "Choose file · No file chosen" box.
+    const pick = screen.getByTestId("record-proof-pick");
+    await expect(pick.tagName).toBe("BUTTON");
+    await expect(pick).toHaveTextContent("Attach Proof");
+    await expect(screen.getByTestId("record-proof-input").closest('[data-scope="file-upload"]')).not.toBeNull();
   },
 };
 
@@ -290,14 +394,18 @@ export const ARejectedClaimShowsWhy: Story = {
 const KAS_GUDANG = account("Kas Gudang");
 const BCA_GUDANG = account("BCA Gudang");
 
-// The payer's half. Amount and proof are not enough any more: the send waits for the account the
-// transfer left, and once it is sent the claim is pending — the balance does not move.
+// The payer's half — Toko Melati, the debtor. Amount and proof are not enough any more: the send waits for the account
+// the transfer left, and once it is sent the claim is pending — the balance does not move. Melati has several
+// accounts, so the picker does not fill itself in.
+const BCA_OPERASIONAL = account("BCA Operasional");
+
 export const APaymentNamesTheAccountItWasPaidFrom: Story = {
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: asTheDebtor,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
+    await userEvent.click(await canvas.findByTestId("liability-detail-make-payment"));
     const balanceBefore = canvas.getByTestId("liability-detail-balance").textContent;
-
-    await userEvent.click(canvas.getByTestId("liability-detail-make-payment"));
 
     // The dialog portals, so it is queried from the document rather than the canvas.
     await userEvent.type(await screen.findByTestId("record-amount"), "500000", { delay: 40 });
@@ -306,6 +414,8 @@ export const APaymentNamesTheAccountItWasPaidFrom: Story = {
       new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "transfer.png", { type: "image/png" }),
     );
     await waitFor(() => expect(screen.getByTestId("record-proof-list")).toHaveTextContent("transfer.png"));
+    // A second slip goes under the first — the trigger now says so.
+    await expect(screen.getByTestId("record-proof-pick")).toHaveTextContent("Attach Another");
 
     // ⚠ Amount and proof, and still not ready — the account the transfer left is required too.
     const submit = screen.getByTestId("record-submit");
@@ -314,7 +424,7 @@ export const APaymentNamesTheAccountItWasPaidFrom: Story = {
     const trigger = screen.getByTestId("record-from-account");
     await waitFor(() => expect(trigger).not.toBeDisabled());
     await userEvent.click(trigger);
-    const option = await screen.findByTestId(`record-from-account-option-${BCA_GUDANG.id}`);
+    const option = await screen.findByTestId(`record-from-account-option-${BCA_OPERASIONAL.id}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
@@ -329,7 +439,7 @@ export const APaymentNamesTheAccountItWasPaidFrom: Story = {
     // story had ever pressed Send to notice.
     await waitFor(() => expect(screen.queryByTestId("record-submit")).not.toBeInTheDocument());
     await userEvent.click(canvas.getByTestId("liability-detail-tab-mine"));
-    await expect(await canvas.findByTestId("liability-detail-payment-700")).toHaveTextContent("Recorded");
+    await expect(await canvas.findByTestId("liability-detail-payment-700")).toHaveTextContent("Pending");
     await expect(canvas.getByTestId("liability-detail-balance").textContent).toBe(balanceBefore);
   },
 };
@@ -363,7 +473,7 @@ export const AcceptingNamesTheAccountItLandedIn: Story = {
     await userEvent.click(submit);
 
     await waitFor(() => expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("6.700.000"));
-    await expect(canvas.getByTestId("liability-detail-payment-602")).toHaveTextContent("Confirmed");
+    await expect(canvas.getByTestId("liability-detail-payment-602")).toHaveTextContent("Accepted");
     await expect(canvas.queryByTestId("liability-detail-confirm-602")).not.toBeInTheDocument();
   },
 };
@@ -467,5 +577,114 @@ export const TheWarehouseAdminMayAskToPay: Story = {
     await expect(await canvas.findByTestId("liability-detail-request-payment")).toBeInTheDocument();
     // Melati was already asked — the creditor reads what it asked.
     await expect(await canvas.findByTestId("liability-detail-payment-requested")).toHaveTextContent("Rp 8.700.000");
+  },
+};
+
+// ── MOBILE (every-page-has-a-mobile-story) — the phone's own arrangement (the-team-balance-phone-layout-is-accepted) ──
+//
+// Its own phone shell (the-phone-header-is-one-row, a-phone-reads-each-line-as-a-block, a-phone-filters-from-a-sheet):
+// the header one row, the cards with the position across the row, every ledger entry, payment and limit change a block,
+// the date range in the Filter sheet, and the seven tabs scrolling in one row with the picked one kept in view.
+// Gudang Pusat is the creditor here, so its icon is Request Payment alone — never Make Payment
+// (the-debtor-claims-the-creditor-decides).
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("liability-detail-page")).toHaveAttribute("data-layout", "phone");
+    await waitFor(() => expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("8.700.000"));
+
+    // One header row: back, the name, the creditor's one icon.
+    const header = canvas.getByTestId("liability-detail-header");
+    const request = await canvas.findByTestId("liability-detail-request-payment");
+    await expect(canvas.queryByTestId("liability-detail-make-payment")).toBeNull();
+    await expect(request.getBoundingClientRect().top).toBeLessThan(canvas.getByTestId("liability-detail-back").getBoundingClientRect().bottom);
+    await expect(header).toHaveTextContent("Toko Melati");
+
+    // The lead card takes the whole row.
+    const position = canvas.getByTestId("liability-detail-position").getBoundingClientRect();
+    const receivable = canvas.getByTestId("liability-detail-receivable-card").getBoundingClientRect();
+    await expect(position.width).toBeGreaterThan(receivable.width * 1.5);
+
+    // All first, as blocks, each with its balance after.
+    const ledger = await within(canvas.getByTestId("liability-detail-all")).findByTestId("liability-ledger-table");
+    await expect(ledger).toHaveAttribute("data-layout", "blocks");
+    await expect(canvas.getByTestId("liability-detail-balance-after-501")).toHaveTextContent("Balance after Rp 8.700.000");
+
+    // The tabs scroll in ONE row rather than overlap: every trigger on the first one's line, the row wider than the screen.
+    const list = canvas.getByTestId("liability-detail-tab-all").parentElement!;
+    await expect(list).toHaveAttribute("data-scroll", "x");
+    await expect(list.scrollWidth).toBeGreaterThan(list.clientWidth);
+    const top = canvas.getByTestId("liability-detail-tab-all").getBoundingClientRect().top;
+    await expect(Math.abs(canvas.getByTestId("liability-detail-tab-terms").getBoundingClientRect().top - top)).toBeLessThan(2);
+  },
+};
+
+// The date range opens from the counted Filter button, in a bottom sheet (a-phone-filters-from-a-sheet).
+export const MobileFiltersFromASheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("liability-detail-range")).toBeNull();
+    await userEvent.click(await canvas.findByTestId("liability-detail-filters-open"));
+    const sheet = await screen.findByTestId("liability-detail-filters-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(within(sheet).getByTestId("liability-detail-range")).toBeVisible();
+
+    await userEvent.click(within(sheet).getByTestId("liability-detail-filters-done"));
+    await waitFor(() => expect(screen.queryByTestId("liability-detail-filters-sheet")).toBeNull());
+  },
+};
+
+// Team payments as blocks — the amount and its state, the day and the note, the proof and the creditor's two acts.
+export const MobilePaymentsAreBlocks: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("liability-detail-tab-team"));
+    const block = await canvas.findByTestId("liability-detail-payment-602");
+    await waitFor(() => expect(block).toBeVisible());
+    await expect(block.tagName).not.toBe("TR");
+    await expect(block).toHaveTextContent("Rp 2.000.000");
+    await expect(block).toHaveTextContent("Pending");
+    await expect(within(block).getByTestId("liability-detail-confirm-602")).toBeVisible();
+    await expect(within(block).getByTestId("liability-detail-proof-doc-602a")).toBeInTheDocument();
+
+    // The picked tab is scrolled into view.
+    const team = canvas.getByTestId("liability-detail-tab-team");
+    await waitFor(() =>
+      expect(team.getBoundingClientRect().right).toBeLessThanOrEqual(team.parentElement!.getBoundingClientRect().right + 1),
+    );
+  },
+};
+
+// The debtor's phone: Make Payment is its icon, beside nothing else — it was asked, so it pays.
+export const MobileTheDebtorPays: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: asTheDebtor,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await canvas.findByTestId("liability-detail-make-payment")).toBeVisible();
+    await expect(canvas.queryByTestId("liability-detail-request-payment")).toBeNull();
+    await expect(await canvas.findByTestId("liability-detail-payment-request")).toHaveTextContent("Gudang Pusat asks you to pay");
+    await expect(canvas.getByTestId("liability-detail-direction")).toHaveTextContent("You owe them");
+  },
+};
+
+// The limit changes as blocks too — the move, the override mark, when and who, the reason.
+export const MobileLimitChangesAreBlocks: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("liability-detail-tab-limits"));
+    const table = await canvas.findByTestId("terms-history-table", {}, { timeout: 3000 });
+    await expect(table).toHaveAttribute("data-layout", "blocks");
+    await expect(canvas.getByTestId("terms-change-3")).toHaveTextContent("Cap lifted for the ramadan push");
+    await expect(canvas.getByTestId("terms-override-3")).toBeInTheDocument();
   },
 };

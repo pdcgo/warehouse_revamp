@@ -1,68 +1,39 @@
-import { useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Badge,
-  Button,
-  Input,
-  CloseButton,
-  Dialog,
-  Field,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Portal,
-  SimpleGrid,
-  Spacer,
-  Stack,
-  Stat,
-  Table,
-  Tabs,
-  Text,
-  Textarea,
-} from "@chakra-ui/react";
-import { ArrowLeft, BellRing, Paperclip, Plus, X } from "lucide-react";
+import { Box, Button, Flex, Heading, Icon, IconButton, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
+import { ArrowLeft, BellRing, Plus } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { TermsPanel } from "./components/TermsPanel";
 import { LimitSetOnYou } from "./components/LimitSetOnYou";
 import { LiabilityLedgerTable } from "./components/LiabilityLedgerTable";
-import { fmtDate } from "./format";
-import { PaymentProof } from "./components/PaymentProof";
 import { RejectPaymentDialog } from "./components/RejectPaymentDialog";
 import { AcceptPaymentDialog } from "./components/AcceptPaymentDialog";
 import { PaymentRequestNotice } from "./components/PaymentRequestNotice";
+import { MakePaymentDialog } from "./components/MakePaymentDialog";
+import { PaymentTable } from "./components/PaymentTable";
+import { PairSummary } from "./components/PairSummary";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { canRequestPayment } from "../../lib/roles";
-import { FinancialAccountSelect } from "../../components/pickers/FinancialAccountSelect";
-import { useProofUpload, type UploadedProof } from "../../features/documents/useProofUpload";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { LiabilityPaymentStatus } from "../../gen/warehouse/liability/v1/liability_pb";
 import type { LiabilityPayment } from "../../gen/warehouse/liability/v1/liability_pb";
-import { formatRupiah } from "../../lib/money";
-import {
-  ALL_DATES,
-  DateRangePicker,
-  resolveRange,
-} from "../../components/datetime/DateRangePicker";
+import { formatRupiah, signOfRupiah } from "../../lib/money";
+import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
 import { dateRangeCodec, useUrlState } from "../../lib/urlState";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
-import { directionCopy, directionPalette } from "../../features/liability/direction";
 import {
   useLiabilityLogs,
   useLiabilityPayments,
   useLiabilityPosition,
-  useRecordPayment,
   useRequestPayment,
 } from "../../features/liability/queries";
-import { CurrencyInput } from "../../components/inputs/CurrencyInput";
-import { Pagination } from "../../components/chrome/Pagination";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
@@ -84,41 +55,18 @@ function teamKindKey(type: TeamType): string {
   }
 }
 
-function statusKey(status: LiabilityPaymentStatus): string {
-  switch (status) {
-    case LiabilityPaymentStatus.RECORDED:
-      return "liabilityDetail.statusRecorded";
-    case LiabilityPaymentStatus.CONFIRMED:
-      return "liabilityDetail.statusConfirmed";
-    case LiabilityPaymentStatus.REJECTED:
-      return "liabilityDetail.statusRejected";
-    default:
-      return "liabilityDetail.statusUnknown";
-  }
-}
-
-function statusPalette(status: LiabilityPaymentStatus): string {
-  switch (status) {
-    case LiabilityPaymentStatus.RECORDED:
-      return "warning";
-    case LiabilityPaymentStatus.CONFIRMED:
-      return "success";
-    // ⚠ RED. A refusal is an outcome the payer has to act on — re-send the slip, or the money.
-    case LiabilityPaymentStatus.REJECTED:
-      return "error";
-    default:
-      return "gray";
-  }
-}
-
 // LiabilityDetailPage is the running history of ONE relationship (#222/§5.1 B) — a PAGE, not a dialog
-// (CLAUDE.md), reached by clicking a row on the liability list. Four tabs over one relationship: the
-// ledger split by direction (receivable / payable) and the payment records split by who recorded them
-// (mine — you paid them — and theirs, which only you confirm). This supersedes the old
-// /liability/:counterpartyId screen.
+// (CLAUDE.md), reached by clicking a row on the liability list. The balance log in four cuts of one read — ALL, the
+// whole running ledger, first and the default (the-team-balance-screens-are-accepted), then the receivable and
+// payable directions — the payment records split by who recorded them (mine — you paid them — and theirs, which only
+// you accept), the limit's changes and the pair's terms.
+//
+// A PHONE GETS ITS OWN ARRANGEMENT (the-team-balance-phone-layout-is-accepted) — a JS breakpoint, never CSS hiding: a
+// one-row header, the position card full width, the date range in the Filter sheet, the seven tabs scrolling in one
+// row, and every ledger entry, payment and limit change a block.
 export function LiabilityDetailPage() {
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
+  const phone = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
   const params = useParams();
@@ -137,6 +85,10 @@ export function LiabilityDetailPage() {
   // THE DATE RANGE LIVES IN THE URL (a-lists-filters-live-in-the-url) — it narrows every tab, so a refresh keeps it.
   // The tabs are views of the pair, not filters, and stay where they are.
   const [dateRange, setDateRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
+  // ALL IS FIRST AND THE DEFAULT (the-team-balance-screens-are-accepted) — the whole running ledger, so a payment and a
+  // reversal sit in their place and *Balance after* runs row to row.
+  const [tab, setTab] = useState("all");
+  const tabList = useRef<HTMLDivElement>(null);
 
   const [recordOpen, setRecordOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<LiabilityPayment | null>(null);
@@ -183,6 +135,15 @@ export function LiabilityDetailPage() {
   });
   const counterparty = teamQuery.data?.[counterpartyId.toString()];
 
+  // ON A PHONE THE TABS SCROLL IN ONE ROW, and the picked one is kept in view — as the order page's section
+  // chips are (SectionNav `compact`).
+  useEffect(() => {
+    if (!phone) return;
+    tabList.current
+      ?.querySelector<HTMLElement>("[data-selected]")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [phone, tab]);
+
   if (!current) {
     return (
       <Stack gap="section">
@@ -212,22 +173,17 @@ export function LiabilityDetailPage() {
     return true;
   }
 
-  // The gross tiles are the two sides of the single signed balance: a pair carries one net figure, so
-  // "they owe you" and "you owe them" are the positive and negative reading of it — mirroring the
-  // liability list's two columns.
-  const receivable = balance > 0n ? balance : 0n;
-  const payable = balance < 0n ? -balance : 0n;
-
   const name = counterparty?.name ?? t("liabilityDetail.teamFallback", { id: counterpartyId.toString() });
 
-  const receivableRows = entries.filter((e) => e.amount > 0n && inRange(e.createdAtUnix));
-  const payableRows = entries.filter((e) => e.amount < 0n && inRange(e.createdAtUnix));
+  // THE WHOLE LEDGER, IN ITS ORDER — every movement in the range, whichever way it went, each with the balance it left.
+  const allRows = entries.filter((e) => inRange(e.createdAtUnix));
+  const receivableRows = allRows.filter((e) => e.amount > 0);
+  const payableRows = allRows.filter((e) => e.amount < 0);
   // My payments = ones you recorded (you are the payer). Team payments = ones they recorded (they are
   // the payer) — those are the ones only you, the creditor, can confirm.
   const minePayments = payments.filter((p) => p.payerTeamId === current.teamId && inRange(p.createdAtUnix));
   const teamPayments = payments.filter((p) => p.payerTeamId === counterpartyId && inRange(p.createdAtUnix));
 
-  const copy = directionCopy(balance);
   const loading = entriesQuery.isPending || paymentsQuery.isPending;
   const error = entriesQuery.isError
     ? rpcError(entriesQuery.error)
@@ -240,10 +196,14 @@ export function LiabilityDetailPage() {
   // GetDownloadUrl for team 0 rather than fail loudly.
   const readerTeamId = current.teamId;
 
-  // REQUEST PAYMENT — the creditor's owner and admin, while the counterparty owes (a-creditor-may-request-payment).
   // Pay, request, confirm and reject are all writes — none while the admin team monitors the team.
   const writable = canWrite(current);
-  const mayRequest = writable && balance > 0n && canRequestPayment(current.role);
+  // REQUEST PAYMENT — the creditor's owner and admin, while the counterparty owes (a-creditor-may-request-payment).
+  const mayRequest = writable && signOfRupiah(balance) > 0 && canRequestPayment(current.role);
+  // MAKE PAYMENT — ONLY THE TEAM THAT OWES (the-debtor-claims-the-creditor-decides). The creditor, and a pair square
+  // or owing this team, is offered none; the server refuses them as FailedPrecondition. Read off the loaded balance, so
+  // it appears once the ledger has said this team owes — never offered on a guess.
+  const mayPay = writable && !entriesQuery.isPending && signOfRupiah(balance) < 0;
 
   async function sendRequest() {
     try {
@@ -254,168 +214,152 @@ export function LiabilityDetailPage() {
     }
   }
 
-  function renderPaymentTable(rows: LiabilityPayment[], emptyKey: string, withConfirm: boolean) {
-    if (rows.length === 0) {
-      return (
-        <Text color="fg.muted" py="card">
-          {t(emptyKey)}
-        </Text>
-      );
-    }
+  const paymentTable = (rows: LiabilityPayment[], emptyKey: string, withConfirm: boolean) => (
+    <PaymentTable
+      rows={rows}
+      emptyText={t(emptyKey)}
+      withConfirm={withConfirm}
+      writable={writable}
+      readerTeamId={readerTeamId}
+      onConfirm={setConfirmTarget}
+      onReject={setRejectTarget}
+      phone={phone}
+    />
+  );
 
-    return (
-      <Table.Root size="sm">
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeader>{t("liabilityDetail.colDate")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("liabilityDetail.colNote")}</Table.ColumnHeader>
-            {/* §Payment Flow's middle step — *"Team B check manually"* — needs something to look at. */}
-            <Table.ColumnHeader>{t("liabilityDetail.colProof")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("liabilityDetail.colStatus")}</Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {rows.map((p) => (
-            <Table.Row key={p.id.toString()} data-testid={`liability-detail-payment-${p.id}`}>
-              <Table.Cell whiteSpace="nowrap">{fmtDate(p.createdAtUnix)}</Table.Cell>
-              <Table.Cell textAlign="end" whiteSpace="nowrap">
-                {formatRupiah(p.amount)}
-              </Table.Cell>
-              <Table.Cell color="fg.muted">
-                <Stack gap="0">
-                  <Text>{p.note || "—"}</Text>
-                  {/* ⚠ THE REASON IS SHOWN ON BOTH SIDES, and to the payer above all: a refusal they
-                      cannot read is a debt they cannot fix. */}
-                  {p.reason !== "" && (
-                    <Text fontSize="xs" color="error.fg" data-testid={`liability-detail-reason-${p.id}`}>
-                      {p.reason}
-                    </Text>
-                  )}
-                </Stack>
-              </Table.Cell>
-              <Table.Cell>
-                <PaymentProof teamId={readerTeamId} documentIds={p.documentIds} />
-              </Table.Cell>
-              <Table.Cell>
-                <Flex align="center" gap="2">
-                  <Badge colorPalette={statusPalette(p.status)}>{t(statusKey(p.status))}</Badge>
-                  {/* TWO actions, so they stay inline — an overflow menu is for three or more. */}
-                  {withConfirm && writable && p.status === LiabilityPaymentStatus.RECORDED && (
-                    <>
-                      <Button
-                        size="xs"
-                        colorPalette="success"
-                        data-testid={`liability-detail-confirm-${p.id}`}
-                        onClick={() => setConfirmTarget(p)}
-                      >
-                        {t("liabilityDetail.confirm")}
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        colorPalette="error"
-                        data-testid={`liability-detail-reject-${p.id}`}
-                        onClick={() => setRejectTarget(p)}
-                      >
-                        {t("liabilityDetail.reject")}
-                      </Button>
-                    </>
-                  )}
-                </Flex>
-              </Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
-    );
-  }
+  // The ledger's three cuts share ONE read and so one page; each tab draws its own pager over it.
+  const entryPager = (testId: string) => (
+    <GrowingPager
+      page={entryPage}
+      onPageChange={setEntryPage}
+      hasNext={entriesQuery.isPlaceholderData ? undefined : entryPage * ENTRY_PAGE_SIZE < entriesTotal}
+      resetKey={counterpartyId.toString()}
+      pageSize={ENTRY_PAGE_SIZE}
+      testId={testId}
+    />
+  );
+  const paymentPager = (testId: string) => (
+    <GrowingPager
+      page={paymentPage}
+      onPageChange={setPaymentPage}
+      hasNext={paymentsQuery.isPlaceholderData ? undefined : paymentPage * PAYMENT_PAGE_SIZE < paymentsTotal}
+      resetKey={counterpartyId.toString()}
+      pageSize={PAYMENT_PAGE_SIZE}
+      testId={testId}
+    />
+  );
+
+  // A phone's tab keeps its width and the row scrolls; the desktop's tabs sit in one row as they always did.
+  const trigger = phone ? { flexShrink: "0" } : {};
+
+  const back = (
+    <IconButton
+      size="xs"
+      variant="ghost"
+      aria-label={t("liabilityDetail.back")}
+      data-testid="liability-detail-back"
+      onClick={() => navigate("/liability")}
+    >
+      <Icon as={ArrowLeft} boxSize="4" />
+    </IconButton>
+  );
+
+  // A phone's header action is its icon (a-phone-header-action-is-an-icon).
+  const compactActions = (
+    <CompactActions
+      menuLabel={t("common.actions")}
+      actions={[
+        mayRequest && { id: "request", label: t("liabilityDetail.requestPayment"), icon: BellRing, testId: "liability-detail-request-payment", onClick: () => setRequestOpen(true) },
+        mayPay && { id: "pay", label: t("liabilityDetail.makePayment"), icon: Plus, primary: true, testId: "liability-detail-make-payment", onClick: () => setRecordOpen(true) },
+      ]}
+    />
+  );
 
   return (
     // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
-    <Stack gap="section" animationStyle="enter" data-testid="liability-detail-page">
-      <Flex align="flex-start" gap="card" wrap="wrap">
-        <IconButton
-          size="xs"
-          variant="ghost"
-          aria-label={t("liabilityDetail.back")}
-          data-testid="liability-detail-back"
-          onClick={() => navigate("/liability")}
-        >
-          <Icon as={ArrowLeft} boxSize="4" />
-        </IconButton>
-        <Stack gap="0">
-          <Heading size="md">{name}</Heading>
-          {counterparty && (
-            <Text color="fg.subtle" fontSize="sm">
-              {t(teamKindKey(counterparty.type))}
-            </Text>
-          )}
-        </Stack>
-        <Spacer />
-        {/* A phone's header action is its icon (a-phone-header-action-is-an-icon). */}
-        {!writable ? null : isMobile ? (
-          <CompactActions
-            menuLabel={t("common.actions")}
-            actions={[
-              mayRequest && { id: "request", label: t("liabilityDetail.requestPayment"), icon: BellRing, testId: "liability-detail-request-payment", onClick: () => setRequestOpen(true) },
-              { id: "pay", label: t("liabilityDetail.makePayment"), icon: Plus, primary: true, testId: "liability-detail-make-payment", onClick: () => setRecordOpen(true) },
-            ]}
-          />
-        ) : (
-          <Flex gap="field">
-            {mayRequest && (
-              <Button variant="outline" data-testid="liability-detail-request-payment" onClick={() => setRequestOpen(true)}>
-                <Icon as={BellRing} boxSize="4" />
-                {t("liabilityDetail.requestPayment")}
-              </Button>
+    <Stack gap="section" animationStyle="enter" data-testid="liability-detail-page" data-layout={phone ? "phone" : undefined}>
+      {phone ? (
+        // THE PHONE HEADER IS ONE ROW (the-phone-header-is-one-row) — back, the name and its kind, the actions' icons.
+        <Flex align="center" gap="2" wrap="nowrap" data-testid="liability-detail-header">
+          {back}
+          <Stack gap="0" flex="1" minW="0">
+            <Heading size="md" truncate>
+              {name}
+            </Heading>
+            {counterparty && (
+              <Text color="fg.subtle" fontSize="xs" truncate>
+                {t(teamKindKey(counterparty.type))}
+              </Text>
             )}
-            <Button
-              colorPalette="brand"
-              data-testid="liability-detail-make-payment"
-              onClick={() => setRecordOpen(true)}
-            >
-              <Icon as={Plus} boxSize="4" />
-              {t("liabilityDetail.makePayment")}
-            </Button>
-          </Flex>
-        )}
-      </Flex>
+          </Stack>
+          {writable && compactActions}
+        </Flex>
+      ) : (
+        <Flex align="flex-start" gap="card" wrap="wrap" data-testid="liability-detail-header">
+          {back}
+          <Stack gap="0">
+            <Heading size="md">{name}</Heading>
+            {counterparty && (
+              <Text color="fg.subtle" fontSize="sm">
+                {t(teamKindKey(counterparty.type))}
+              </Text>
+            )}
+          </Stack>
+          <Spacer />
+          {writable && (
+            <Flex gap="field">
+              {mayRequest && (
+                <Button variant="outline" data-testid="liability-detail-request-payment" onClick={() => setRequestOpen(true)}>
+                  <Icon as={BellRing} boxSize="4" />
+                  {t("liabilityDetail.requestPayment")}
+                </Button>
+              )}
+              {mayPay && (
+                <Button colorPalette="brand" data-testid="liability-detail-make-payment" onClick={() => setRecordOpen(true)}>
+                  <Icon as={Plus} boxSize="4" />
+                  {t("liabilityDetail.makePayment")}
+                </Button>
+              )}
+            </Flex>
+          )}
+        </Flex>
+      )}
 
       <PaymentRequestNotice request={positionQuery.data?.paymentRequest} teamId={current.teamId} counterpartyName={name} />
 
-      {/* The position, in words, and the two gross sides of it. */}
-      <SimpleGrid columns={{ base: 1, md: 3 }} gap="card">
-        <Stat.Root>
-          <Stat.Label>{t("liabilityDetail.positionLabel")}</Stat.Label>
-          <Stat.ValueText color={`${directionPalette(balance)}.fg`} data-testid="liability-detail-balance">
-            {t(copy.key, { amount: copy.amount })}
-          </Stat.ValueText>
-        </Stat.Root>
-        <Stat.Root>
-          <Stat.Label>{t("liabilityDetail.receivableLabel")}</Stat.Label>
-          <Stat.ValueText color="success.fg">{formatRupiah(receivable)}</Stat.ValueText>
-          <Stat.HelpText>{t("liabilityDetail.receivableHint")}</Stat.HelpText>
-        </Stat.Root>
-        <Stat.Root>
-          <Stat.Label>{t("liabilityDetail.payableLabel")}</Stat.Label>
-          <Stat.ValueText color="warning.fg">{formatRupiah(payable)}</Stat.ValueText>
-          <Stat.HelpText>{t("liabilityDetail.payableHint")}</Stat.HelpText>
-        </Stat.Root>
+      {/* The position, as the order list's cards: the net figure leading, its two gross sides beside it. */}
+      <Stack gap="card">
+        <PairSummary balance={balance} phone={phone} />
         {/* THE LIMIT THEY SET ON YOU — only when this team is the debtor on the pair, so the creditor's
             view is untouched (the-debtor-sees-the-limits-set-on-it). */}
         <LimitSetOnYou teamId={current.teamId} creditorId={counterpartyId} creditorName={name} />
-      </SimpleGrid>
+      </Stack>
       {/* The position row carries no oldest-unsettled timestamp — LiabilityLogList returns only the
           balance, so "oldest unsettled N days" is omitted here (it lives on the list's position row). */}
 
-      {/* Date range — OUTSIDE the tabs: one filter over whichever tab is open. */}
+      {/* Date range — OUTSIDE the tabs: one filter over whichever tab is open. On a phone it opens from the sheet
+          (a-phone-filters-from-a-sheet), the history's title beside the Filter button. */}
       <Flex align="center" gap="card" wrap="wrap">
         <Text fontSize="sm" fontWeight="medium" color="fg.muted">
           {t("liabilityDetail.history")}
         </Text>
         <Spacer />
-        <DateRangePicker value={dateRange} onChange={setDateRange} testId="liability-detail-range" />
+        {phone ? (
+          <Box>
+            <FilterBar
+              active={!isAllDates(dateRange)}
+              count={isAllDates(dateRange) ? 0 : 1}
+              onClear={() => setDateRange(ALL_DATES)}
+              testId="liability-detail-filters"
+            >
+              <FilterField w="auto">
+                <DateRangePicker value={dateRange} onChange={setDateRange} testId="liability-detail-range" />
+              </FilterField>
+            </FilterBar>
+          </Box>
+        ) : (
+          <DateRangePicker value={dateRange} onChange={setDateRange} testId="liability-detail-range" />
+        )}
       </Flex>
 
       {error && (
@@ -429,27 +373,37 @@ export function LiabilityDetailPage() {
       {loading ? (
         <ListSkeleton testId="liability-detail-loading" />
       ) : (
-        <Tabs.Root defaultValue="receivable" variant="line">
-          <Tabs.List>
-            <Tabs.Trigger value="receivable" data-testid="liability-detail-tab-receivable">
+        // Only the open tab is mounted (a-page-picks-its-view-over-its-filters' `lazyMount` / `unmountOnExit`): All and
+        // the two cuts draw the same entries, and each panel reads only when it is opened.
+        <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value)} variant="line" lazyMount unmountOnExit>
+          <Tabs.List
+            ref={tabList}
+            // Seven tabs do not fit 390px, so on a phone they SCROLL in one row rather than overlap.
+            {...(phone ? { overflowX: "auto", flexWrap: "nowrap", css: { scrollbarWidth: "none" } } : {})}
+            data-scroll={phone ? "x" : undefined}
+          >
+            <Tabs.Trigger value="all" {...trigger} data-testid="liability-detail-tab-all">
+              {t("liabilityDetail.tabAll")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="receivable" {...trigger} data-testid="liability-detail-tab-receivable">
               {t("liabilityDetail.tabReceivable")}
             </Tabs.Trigger>
-            <Tabs.Trigger value="payable" data-testid="liability-detail-tab-payable">
+            <Tabs.Trigger value="payable" {...trigger} data-testid="liability-detail-tab-payable">
               {t("liabilityDetail.tabPayable")}
             </Tabs.Trigger>
-            <Tabs.Trigger value="mine" data-testid="liability-detail-tab-mine">
+            <Tabs.Trigger value="mine" {...trigger} data-testid="liability-detail-tab-mine">
               {t("liabilityDetail.tabMine")}
             </Tabs.Trigger>
-            <Tabs.Trigger value="team" data-testid="liability-detail-tab-team">
+            <Tabs.Trigger value="team" {...trigger} data-testid="liability-detail-tab-team">
               {t("liabilityDetail.tabTeam")}
             </Tabs.Trigger>
             {/* THE CREDIT LIMIT LOG — `team_balance_design.md` §Detail Pair Team Balance 2.
-                ⚠ It is a DIFFERENT log from the four tabs beside it. Those are money that MOVED;
+                ⚠ It is a DIFFERENT log from the ledger tabs beside it. Those are money that MOVED;
                 this is a RULE that changed. Both belong on this page because a person asking "why
                 is this team blocked" needs the limit's history and the balance's history together —
                 but they must never be merged into one list, because they have different grains and
                 only one of them is a ledger. */}
-            <Tabs.Trigger value="limits" data-testid="liability-detail-tab-limits">
+            <Tabs.Trigger value="limits" {...trigger} data-testid="liability-detail-tab-limits">
               {t("liabilityDetail.tabLimits")}
             </Tabs.Trigger>
             {/* WHERE THE LIMIT IS SET — terms-live-on-the-pair-detail.
@@ -457,57 +411,44 @@ export function LiabilityDetailPage() {
                 table. Terms belong beside the pair they govern, so the list is gone and each pair
                 carries its own. The tab beside this one is the same limit's HISTORY: one writes the
                 rule, the other shows how it changed. */}
-            <Tabs.Trigger value="terms" data-testid="liability-detail-tab-terms">
+            <Tabs.Trigger value="terms" {...trigger} data-testid="liability-detail-tab-terms">
               {t("liabilityDetail.tabTerms")}
             </Tabs.Trigger>
             <Tabs.Indicator />
           </Tabs.List>
 
+          <Tabs.Content value="all" animationStyle="swap">
+            <Stack gap="card" data-testid="liability-detail-all">
+              <LiabilityLedgerTable rows={allRows} emptyText={t("liabilityDetail.emptyAll")} phone={phone} />
+              {entryPager("liability-detail-all-pager")}
+            </Stack>
+          </Tabs.Content>
+
           <Tabs.Content value="receivable" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-receivable">
-              <LiabilityLedgerTable rows={receivableRows} emptyText={t("liabilityDetail.emptyReceivable")} />
-              <Pagination
-                page={entryPage}
-                pageSize={ENTRY_PAGE_SIZE}
-                count={entriesTotal}
-                onPageChange={setEntryPage}
-              />
+              <LiabilityLedgerTable rows={receivableRows} emptyText={t("liabilityDetail.emptyReceivable")} phone={phone} />
+              {entryPager("liability-detail-receivable-pager")}
             </Stack>
           </Tabs.Content>
 
           <Tabs.Content value="payable" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-payable">
-              <LiabilityLedgerTable rows={payableRows} emptyText={t("liabilityDetail.emptyPayable")} />
-              <Pagination
-                page={entryPage}
-                pageSize={ENTRY_PAGE_SIZE}
-                count={entriesTotal}
-                onPageChange={setEntryPage}
-              />
+              <LiabilityLedgerTable rows={payableRows} emptyText={t("liabilityDetail.emptyPayable")} phone={phone} />
+              {entryPager("liability-detail-payable-pager")}
             </Stack>
           </Tabs.Content>
 
           <Tabs.Content value="mine" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-mine">
-              {renderPaymentTable(minePayments, "liabilityDetail.emptyMine", false)}
-              <Pagination
-                page={paymentPage}
-                pageSize={PAYMENT_PAGE_SIZE}
-                count={paymentsTotal}
-                onPageChange={setPaymentPage}
-              />
+              {paymentTable(minePayments, "liabilityDetail.emptyMine", false)}
+              {paymentPager("liability-detail-mine-pager")}
             </Stack>
           </Tabs.Content>
 
           <Tabs.Content value="team" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-team">
-              {renderPaymentTable(teamPayments, "liabilityDetail.emptyTeam", true)}
-              <Pagination
-                page={paymentPage}
-                pageSize={PAYMENT_PAGE_SIZE}
-                count={paymentsTotal}
-                onPageChange={setPaymentPage}
-              />
+              {paymentTable(teamPayments, "liabilityDetail.emptyTeam", true)}
+              {paymentPager("liability-detail-team-pager")}
             </Stack>
           </Tabs.Content>
 
@@ -533,6 +474,7 @@ export function LiabilityDetailPage() {
               nameOf={() => name}
               page={limitPage}
               onPageChange={setLimitPage}
+              phone={phone}
             />
           </Tabs.Content>
         </Tabs.Root>
@@ -557,7 +499,7 @@ export function LiabilityDetailPage() {
         open={requestOpen}
         onOpenChange={setRequestOpen}
         title={t("liabilityDetail.requestTitle")}
-        message={t("liabilityDetail.requestMessage", { name, amount: formatRupiah(balance > 0n ? balance : 0n) })}
+        message={t("liabilityDetail.requestMessage", { name, amount: formatRupiah(balance > 0 ? balance : 0) })}
         confirmLabel={t("liabilityDetail.requestConfirm")}
         onConfirm={sendRequest}
       />
@@ -570,237 +512,5 @@ export function LiabilityDetailPage() {
         counterpartyName={name}
       />
     </Stack>
-  );
-}
-
-interface MakePaymentDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  payerTeamId: bigint;
-  creditorTeamId: bigint;
-  counterpartyName: string;
-}
-
-// MAKE A PAYMENT — a focused form dialog for a payment YOU are sending. It has NO ledger effect until
-// the creditor confirms it arrived (two-phase, #188).
-function MakePaymentDialog({
-  open,
-  onOpenChange,
-  payerTeamId,
-  creditorTeamId,
-  counterpartyName,
-}: MakePaymentDialogProps) {
-  const { t } = useTranslation();
-  const record = useRecordPayment();
-
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [error, setError] = useState("");
-  const [proofs, setProofs] = useState<UploadedProof[]>([]);
-  // WHICH OF YOUR ACCOUNTS PAID — the payer's half of a-team-payment-posts-on-accept. When they
-  // accept, this account goes down and theirs goes up, so it is chosen here, by the one person who
-  // knows which bank the transfer left from.
-  const [fromAccountId, setFromAccountId] = useState(0n);
-
-  const proof = useProofUpload({ teamId: payerTeamId, shareWithTeamId: creditorTeamId });
-  const busy = record.isPending || proof.uploading;
-
-  // ⚠ PROOF IS PART OF "READY", not a nicety. The contract requires amount > 0 AND at least one
-  // document (a-payment-must-carry-proof) — this mirrors the server rather than inventing a second
-  // idea of ready, so the button is disabled instead of the send being refused after the fact.
-  // ⚠ AND THE ACCOUNT. The acceptance has to post OUT of somewhere; a payment with no account is one
-  // the financial accounts can never hear. The server requires it too, and refuses one not yours.
-  const ready = amount !== "" && Number(amount) > 0 && proofs.length > 0 && fromAccountId > 0n;
-
-  function change(next: boolean) {
-    onOpenChange(next);
-    if (!next) {
-      setAmount("");
-      setNote("");
-      setError("");
-      setFromAccountId(0n);
-      // ⚠ THE UPLOADED FILES ARE NOT DELETED, only forgotten. They are already shared with the
-      // creditor and a share cannot be withdrawn; a cancelled dialog leaves an orphan document, which
-      // is the cheap side of that trade.
-      setProofs([]);
-      proof.setError("");
-    }
-  }
-
-  async function pick(file: File | undefined) {
-    if (!file) return;
-
-    const uploaded = await proof.upload(file);
-    if (uploaded) {
-      setProofs((prev) => [...prev, uploaded]);
-    }
-  }
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!ready) return;
-    setError("");
-
-    record.mutate(
-      {
-        teamId: payerTeamId,
-        creditorTeamId,
-        amount: Number(amount),
-        note,
-        documentIds: proofs.map((p) => p.id),
-        fromAccountId,
-      },
-      {
-        onSuccess: () => change(false),
-        onError: (err) => setError(rpcError(err)),
-      },
-    );
-  }
-
-  return (
-    <Dialog.Root open={open} onOpenChange={(e) => change(e.open)} placement="center">
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content>
-            {/* ⚠ noValidate — `ready` above IS this form's validation. The proof input is `required`
-                (from its Field) and is cleared after every upload so the same file can be picked
-                again, so the browser saw an empty required field and silently swallowed every
-                submit: Make Payment could not be sent from this screen at all. */}
-            <form onSubmit={submit} noValidate>
-              <Dialog.Header>
-                <Dialog.Title>{t("liabilityDetail.recordTitle")}</Dialog.Title>
-              </Dialog.Header>
-
-              <Dialog.Body>
-                <Stack gap="field">
-                  <Text color="fg.muted" fontSize="sm">
-                    {t("liabilityDetail.recordDescription", { name: counterpartyName })}
-                  </Text>
-
-                  <Field.Root required>
-                    <Field.Label>{t("liabilityDetail.recordAmount")}</Field.Label>
-                    <CurrencyInput
-                      value={amount}
-                      onChange={setAmount}
-                      disabled={busy}
-                      data-testid="record-amount"
-                    />
-                  </Field.Root>
-
-                  {/* PAID FROM — any active account of yours, not only the operational ones: those
-                      are what a RESTOCK may be paid from (operational-accounts-pay-for-operations),
-                      and settling a debt with another team is not an operation. */}
-                  <Field.Root required>
-                    <Field.Label>{t("liabilityDetail.recordFromAccount")}</Field.Label>
-                    <FinancialAccountSelect
-                      teamId={payerTeamId}
-                      value={fromAccountId}
-                      onChange={setFromAccountId}
-                      autoPickSingle
-                      disabled={busy}
-                      placeholder={t("liabilityDetail.recordFromAccountPlaceholder")}
-                      testId="record-from-account"
-                    />
-                    <Field.HelperText>{t("liabilityDetail.recordFromAccountHelp")}</Field.HelperText>
-                  </Field.Root>
-
-                  <Field.Root>
-                    <Field.Label>
-                      {t("liabilityDetail.recordNote")}{" "}
-                      <Text as="span" color="fg.subtle" fontWeight="normal">
-                        {t("liabilityDetail.recordNoteOptional")}
-                      </Text>
-                    </Field.Label>
-                    <Textarea
-                      value={note}
-                      disabled={busy}
-                      data-testid="record-note"
-                      onChange={(e) => setNote(e.target.value)}
-                    />
-                    <Field.HelperText>{t("liabilityDetail.recordNoteHelp")}</Field.HelperText>
-                  </Field.Root>
-
-                  {/* PROOF OF THE TRANSFER — required (a-payment-must-carry-proof).
-                      `balance_context.md` §Payment Flow has the payer BRING it and the creditor CHECK
-                      IT MANUALLY, so a payment with nothing attached asks them to accept on your
-                      word. Uploading also SHARES the file with them: without that they would get
-                      NotFound on the one thing they have to look at. */}
-                  <Field.Root required>
-                    <Field.Label>{t("liabilityDetail.recordProof")}</Field.Label>
-
-                    <Input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      disabled={busy}
-                      data-testid="record-proof-input"
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                        void pick(e.target.files?.[0]);
-                        // Cleared so picking the SAME file twice still fires a change event.
-                        e.target.value = "";
-                      }}
-                    />
-
-                    <Field.HelperText>{t("liabilityDetail.recordProofHelp")}</Field.HelperText>
-
-                    {proofs.length > 0 && (
-                      <Stack gap="0.5" pt="1" data-testid="record-proof-list">
-                        {proofs.map((p) => (
-                          <Flex key={p.id} align="center" gap="field">
-                            <Icon as={Paperclip} boxSize="4" color="fg.muted" />
-                            <Text fontSize="sm">{p.filename}</Text>
-                            <IconButton
-                              size="xs"
-                              variant="ghost"
-                              aria-label={t("liabilityDetail.recordProofRemove")}
-                              disabled={busy}
-                              data-testid={`record-proof-remove-${p.id}`}
-                              onClick={() => setProofs((prev) => prev.filter((x) => x.id !== p.id))}
-                            >
-                              <Icon as={X} boxSize="4" />
-                            </IconButton>
-                          </Flex>
-                        ))}
-                      </Stack>
-                    )}
-
-                    {proof.error && (
-                      <Field.ErrorText data-testid="record-proof-error">{proof.error}</Field.ErrorText>
-                    )}
-                  </Field.Root>
-
-                  {error && (
-                    <Dialog.Description color="error.fg" data-testid="record-error">
-                      {error}
-                    </Dialog.Description>
-                  )}
-                </Stack>
-              </Dialog.Body>
-
-              <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline" disabled={busy}>
-                    {t("common.cancel")}
-                  </Button>
-                </Dialog.ActionTrigger>
-                <Button
-                  type="submit"
-                  colorPalette="brand"
-                  loading={busy}
-                  disabled={!ready}
-                  data-testid="record-submit"
-                >
-                  {t("liabilityDetail.recordSubmit")}
-                </Button>
-              </Dialog.Footer>
-            </form>
-
-            <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
   );
 }

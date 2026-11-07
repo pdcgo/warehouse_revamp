@@ -290,6 +290,25 @@ let paymentRequestsTable = liabilityPaymentRequests.map((r) => ({ ...r }));
 
 // The positions as TEAM `teamId` sees them. The table is signed from team 11's side; any other team sees its one pair
 // with 11, mirrored — so a debtor's story reads what it owes Gudang Pusat. Each row carries the pair's open request.
+// THE PAIR LEDGER FROM THE ASKING TEAM'S SIDE. The fixture is Gudang Pusat's (11) legs; a debtor reading its pair with
+// 11 gets the MIRRORED legs — every amount and running balance with the sign turned, as the server's two mirrored rows
+// are — so the debtor's Payable tab carries what it owes instead of drawing empty.
+function ledgerFor(teamId: bigint, counterpartyId: bigint) {
+  if (teamId !== 11n && counterpartyId === 11n) {
+    return liabilityEntries
+      .filter((e) => e.counterpartyId === teamId)
+      .map((e) => ({ ...e, teamId, counterpartyId: 11n, amount: -e.amount, balanceAfter: -e.balanceAfter }));
+  }
+
+  // A pair without Gudang Pusat has no ledger in the fixtures — never another pair's legs (Kenanga reading Melati is
+  // square: nothing ever moved between them).
+  if (teamId !== 11n) {
+    return [];
+  }
+
+  return liabilityEntries.filter((e) => e.counterpartyId === counterpartyId);
+}
+
 function positionsFor(teamId: bigint) {
   const rows =
     teamId === 11n
@@ -1790,9 +1809,11 @@ export const transport = createRouterTransport(({ service }) => {
     // ⚠ `balance` is the pair's CURRENT net, not the sum of the returned window. The screen shows
     // both, and a stub deriving one from the other would hide a real difference between them.
     liabilityLogList: (req) => ({
+      // ⚠ The slice is `log` — the oneof case since two-logs-two-names renamed the entry. Served as "entry", the
+      // adapter read nothing and every pair's ledger tab drew empty in Storybook, with no story noticing.
       ...pagedColumnar(
-        "entry",
-        liabilityEntries.filter((e) => e.counterpartyId === req.filter?.counterpartyId),
+        "log",
+        ledgerFor(req.teamId, req.filter?.counterpartyId ?? 0n),
         req.page,
       ),
       // From the asking team's side — a debtor's story reads its pair with Gudang Pusat as owed.
@@ -1859,8 +1880,9 @@ export const transport = createRouterTransport(({ service }) => {
         "payment",
         paymentsTable.filter(
           (p) =>
-            (p.payerTeamId === req.filter?.counterpartyId ||
-              p.creditorTeamId === req.filter?.counterpartyId) &&
+            // The asking team's payments with that counterparty, either way — never another pair's.
+            ((p.payerTeamId === req.teamId && p.creditorTeamId === req.filter?.counterpartyId) ||
+              (p.creditorTeamId === req.teamId && p.payerTeamId === req.filter?.counterpartyId)) &&
             (!req.filter?.awaitingMyConfirmation || p.status === 1),
         ),
         req.page,
@@ -1874,6 +1896,16 @@ export const transport = createRouterTransport(({ service }) => {
     liabilityPaymentRecord: (req) => {
       if (!req.fromAccountId) {
         throw new ConnectError("from_account_id: value must be greater than 0", Code.InvalidArgument);
+      }
+
+      // ⚠ ONLY THE TEAM THAT OWES RECORDS A PAYMENT (the-debtor-claims-the-creditor-decides) — the payer's side of the
+      // pair must be negative, as the server reads it; the creditor and a square pair are refused alike.
+      const owes = positionsFor(req.teamId).find((p) => p.counterpartyId === req.creditorTeamId)?.balance ?? 0;
+      if (owes >= 0) {
+        throw new ConnectError(
+          "your team owes this team nothing right now, so there is no payment to record — only the team that owes records a payment",
+          Code.FailedPrecondition,
+        );
       }
 
       const row = {

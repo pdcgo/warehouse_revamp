@@ -49,6 +49,17 @@ export const Default: Story = {
 
     await expect(canvas.getByTestId("liability-total-payable")).toBeInTheDocument();
     await expect(canvas.getByTestId("liability-table")).toBeInTheDocument();
+
+    // THE TILES ARE THE ORDER LIST'S CARDS (a-list-summary-is-the-order-lists-card-strip): four SummaryCards in one
+    // SummaryStrip, each a label, one figure and its line — the oldest debt names its team.
+    const strip = canvas.getByTestId("liability-summary");
+    await expect(strip.children).toHaveLength(4);
+    await expect(within(strip).getByTestId("liability-total-receivable")).toHaveTextContent("Rp 16.150.000");
+    await waitFor(() => expect(canvas.getByTestId("liability-oldest-card")).toHaveTextContent("Toko Kenanga"));
+
+    // THE PAGES GROW AS THEY ARE OPENED (every-list-pages-with-the-growing-pager) — one page here: ‹ [1] ›, always on screen.
+    await expect(canvas.getByTestId("liability-pager-page-1")).toBeInTheDocument();
+    await expect(canvas.getByTestId("liability-pager-next")).toBeDisabled();
   },
 };
 
@@ -92,18 +103,23 @@ export const ADebtorNearItsLimitIsBadged: Story = {
   },
 };
 
-// ⚠ THE BADGE IS ONLY FOR A REAL CEILING, and the three limit states are why. Team 13 is FROZEN
-// (limit 0) and team 15 has no row at all, inheriting the DEFAULT — which is unlimited. A percentage
-// of zero is a division by zero and a percentage of unlimited is not a number, so neither is badged.
-export const FrozenAndUnlimitedTeamsAreNotBadged: Story = {
+// THE THREE LIMIT STATES READ DIFFERENTLY. Team 14 is OVER its limit (6.2m against 5m) — blocked, so the badge is red
+// and says the next order is refused. Team 13 is FROZEN (limit 0): no credit at all, which refuses its next order
+// whatever it owes (the-threshold-defaults-to-unlimited) — a percentage of zero cannot be shown, so it reads "Frozen".
+// Team 15 has no row, inheriting the DEFAULT — unlimited — and 80% of unlimited is not a number: no badge.
+export const BlockedAndFrozenTeamsAreBadgedUnlimitedIsNot: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    // Team 14 IS over its limit (6.2m against 5m), so the screen is definitely rendering badges.
-    await expect(await canvas.findByTestId("liability-near-limit-14")).toBeInTheDocument();
+    await expect(await canvas.findByTestId("liability-near-limit-14")).toHaveTextContent(
+      "124% of the limit you set — their next order is refused",
+    );
 
+    await expect(canvas.getByTestId("liability-frozen-13")).toHaveTextContent("Frozen");
     await expect(canvas.queryByTestId("liability-near-limit-13")).not.toBeInTheDocument();
+
     await expect(canvas.queryByTestId("liability-near-limit-15")).not.toBeInTheDocument();
+    await expect(canvas.queryByTestId("liability-frozen-15")).not.toBeInTheDocument();
   },
 };
 
@@ -130,12 +146,51 @@ export const FiltersLiveInTheUrl: Story = {
     const canvas = await loaded(canvasElement);
     const location = canvas.getByTestId("location-search");
 
-    await expect(canvas.getByTestId("liability-kind")).toHaveValue(String(TeamType.SELLING));
+    // The team type reads the URL's pick in Chakra's Select trigger (chakra-first-whenever-it-has-the-component).
+    await expect(canvas.getByTestId("liability-kind")).toHaveTextContent("Selling team");
     await expect(within(canvas.getByTestId("liability-awaiting-only")).getByRole("checkbox")).toBeChecked();
 
     await userEvent.type(canvas.getByTestId("liability-search"), "Toko", { delay: 40 });
     await waitFor(() => expect(location).toHaveTextContent("q=Toko"));
     await expect(location).toHaveTextContent("awaiting=1");
+  },
+};
+
+// THE TEAM TYPE IS CHAKRA'S SELECT, never a NativeSelect (chakra-first-whenever-it-has-the-component): "All teams" until
+// a pick, the pick narrows the rows and is written to the URL, and its × sets it back to all
+// (every-filter-clears-from-its-own-x). Warehouses only — Gudang Cabang (14) stays, Toko Melati (12) goes.
+const AtTheList = routedPage(
+  [{ path: "/liability", element: <><LiabilityListPage /><LocationProbe /></> }],
+  "/liability",
+);
+
+export const TheTeamTypeFilterNarrowsAndClearsFromItsX: Story = {
+  render: () => <AtTheList />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+    const kind = canvas.getByTestId("liability-kind");
+
+    await expect(kind.tagName).toBe("BUTTON");
+    await expect(kind).toHaveTextContent("All teams");
+    await expect(await canvas.findByTestId("liability-row-12")).toBeInTheDocument();
+
+    await userEvent.click(kind);
+    const warehouses = await canvas.findByTestId(`liability-kind-option-${TeamType.WAREHOUSE}`);
+    await waitFor(() => expect(warehouses).toBeVisible());
+    await userEvent.click(warehouses);
+
+    await waitFor(() => expect(canvas.queryByTestId("liability-row-12")).toBeNull());
+    await expect(canvas.getByTestId("liability-row-14")).toBeInTheDocument();
+    await expect(kind).toHaveTextContent("Warehouse team");
+    await waitFor(() => expect(location).toHaveTextContent(`kind=${TeamType.WAREHOUSE}`));
+
+    const clear = canvas.getByTestId("liability-kind-clear");
+    await waitFor(() => expect(clear).toBeVisible());
+    await userEvent.click(clear);
+    await waitFor(() => expect(canvas.getByTestId("liability-row-12")).toBeInTheDocument());
+    await expect(kind).toHaveTextContent("All teams");
+    await waitFor(() => expect(location).not.toHaveTextContent("kind="));
   },
 };
 
@@ -164,5 +219,63 @@ export const ARequestedPairIsMarked: Story = {
 
     await expect(await canvas.findByTestId("liability-request-12")).toHaveTextContent("Payment requested");
     await expect(canvas.queryByTestId("liability-request-13")).toBeNull();
+  },
+};
+
+// ── MOBILE (every-page-has-a-mobile-story) — the phone's own arrangement (the-team-balance-phone-layout-is-accepted) ──
+//
+// ONE BLOCK PER PAIR (a-phone-reads-each-line-as-a-block): the name and what is owed, the kind and the age, the badges —
+// and a tap opens the pair. Default Terms is the header's icon (a-phone-header-action-is-an-icon). The tiles stay.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("liability-list-page")).toHaveAttribute("data-layout", "phone");
+    await expect(canvas.getByTestId("liability-total-payable")).toBeInTheDocument();
+
+    const list = canvas.getByTestId("liability-table");
+    await expect(list).toHaveAttribute("data-layout", "blocks");
+
+    const melati = await canvas.findByTestId("liability-row-12");
+    await waitFor(() => expect(melati).toHaveTextContent("Toko Melati"));
+    await expect(melati).toHaveTextContent("Rp 8.700.000");
+    await expect(melati).toHaveTextContent("Receivable");
+    await expect(within(melati).getByTestId("liability-near-limit-12")).toHaveTextContent("87%");
+    await expect(within(melati).getByTestId("liability-request-12")).toBeInTheDocument();
+    await expect(within(canvas.getByTestId("liability-row-13")).getByTestId("liability-frozen-13")).toBeInTheDocument();
+
+    // No block is wider than the screen — nothing clipped off the edge.
+    await expect(melati.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(await canvas.findByTestId("liability-default-terms")).toBeVisible();
+
+    await userEvent.click(melati);
+    await expect(await canvas.findByTestId("at-pair-detail")).toBeInTheDocument();
+  },
+};
+
+// THE FILTERS OPEN FROM A SHEET (a-phone-filters-from-a-sheet): the search stays in the row; the team type, "awaiting
+// my confirmation" and "unsettled only" are full-width rows in the sheet, and the Filter button counts what narrows.
+export const MobileFiltersFromASheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("liability-search")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("liability-filters-open"));
+    const sheet = await screen.findByTestId("liability-filters-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+
+    // Warehouses only — Gudang Cabang (14) stays, the selling teams go.
+    await userEvent.click(within(sheet).getByText("Warehouse team"));
+    await waitFor(() => expect(canvas.queryByTestId("liability-row-12")).toBeNull());
+    await expect(canvas.getByTestId("liability-row-14")).toBeInTheDocument();
+    await expect(within(sheet).getByTestId("liability-unsettled-only")).toBeVisible();
+    await expect(within(sheet).getByTestId("liability-awaiting-only")).toBeVisible();
+    await expect(canvas.getByTestId("liability-filters-count")).toHaveTextContent("1");
+
+    await userEvent.click(within(sheet).getByTestId("liability-filters-clear"));
+    await waitFor(() => expect(canvas.getByTestId("liability-row-12")).toBeInTheDocument());
+    await userEvent.click(within(sheet).getByTestId("liability-filters-done"));
+    await waitFor(() => expect(screen.queryByTestId("liability-filters-sheet")).toBeNull());
   },
 };

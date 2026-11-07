@@ -12,7 +12,7 @@ Size: S ≈ under a pass · M ≈ one pass · L ≈ several passes. Kind: bug ·
 
 ### Tier 1 — bugs that hurt a person
 
-Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
+Empty again since 2026-11-07 — #31 fixed (see Done).
 
 ### Tier 2 — money that never arrives
 
@@ -31,6 +31,8 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 | 27 | **Old dev orders have no Team Balance fees** — liability's order routes were never mounted until 2026-11-06, so their `order-placed` events dead-lettered; `san pubsub redrive --topic order-placed` replays them if wanted | data | liability | S | `docs/tools/san.md` |
 | 23 | **Settlement — a screen for a shop's own direct rows** (no RPC lists them; a new screen → prototype first) | frontend · API | settlement | M | `docs/development_state/settlement/context.md` |
 | 16e | **Several warehouse labels in one PDF** — OrderLabels takes one order today (step 2: merge, a new resource type) | API · frontend | order | L | `pick-queue-next/pending.ts` printMerge |
+| 34 | **Team Balance filters narrow only the loaded page** — the list's search/team filter (20 rows) and the detail's date range (50 rows) are client-side; the RPCs need the filters | API · frontend | balance | M | `LiabilityList`, `LiabilityEntryList` |
+| 35 | **The warehouse daily statement's old words** — still says *COD* and *Handling fees* (the report is deferred: `the-daily-report-is-deferred`) | frontend | balance | S | `DailyStatementPage` |
 
 ### Later — decided, bigger
 
@@ -106,4 +108,5 @@ Empty since 2026-11-04 — all six fixed (see Done). Tier 2 is next.
 | 2026-11-06 | #22 Analytic expense metrics live — Ads expense + Expenses (typed kinds), kept by expense_service in the same transaction (expense 00006), a correction on its own day for its maker, Seller / Warehouse headline rule; e2e `the_expense_metrics.spec.ts`; dev DB migrated | `88621385` |
 | 2026-11-06 | #30 `ExpensePersonList` — Analytic's Created by lists the expense metrics' people; #29 a stock-loss expense lands on the Jakarta day (`expense_v1.JakartaDay`) | `dfb77e3f` |
 | 2026-11-06 | #21b Close Shop — `status` + `closed_at` replace `deleted` (selling 00043), ShopClose / ShopReopen, edit locked but access editable, new selling refused (re-checked in the order's transaction), a waiting draft keeps its closed shop; report filters offer closed shops badged (`report-filters-offer-closed-shops`); e2e `the_closed_shop.spec.ts`; dev DB migrated | `ecd8f0c6` |
-| 2026-11-06 | Order model: courier as `shipment_channel_id`, required on the form (selling 00044); `order_addresses` / `order_draft_addresses`, names only (00045, 00046) with the form pre-filling regions on one exact match (`RegionMatch`); drafts store no mapping (00047) and the list's Ready drops *unmapped*; trigram search indexes (00048); dev DB migrated | uncommitted |
+| 2026-11-06 | Order model: courier as `shipment_channel_id`, required on the form (selling 00044); `order_addresses` / `order_draft_addresses`, names only (00045, 00046) with the form pre-filling regions on one exact match (`RegionMatch`); drafts store no mapping (00047) and the list's Ready drops *unmapped*; trigram search indexes (00048); dev DB migrated | `9c819418` |
+| 2026-11-07 | Team Balance desktop screens pass `design_accept` (`the-team-balance-screens-are-accepted`): review fixes (stub ledger, frozen badge, Pending/Accept words, Edit Terms, order-form limit line), the **All** tab first, #31 only the debtor records a payment (FailedPrecondition, shared lock vs accept, race tests), the proof upload / summary strip / GrowingPager; the phone layout live (`the-team-balance-phone-layout-is-accepted`: blocks, filters in a sheet, tabs scroll in one row); the team-type filter is the shared `ChoiceFilter` | uncommitted |

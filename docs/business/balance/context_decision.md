@@ -845,6 +845,8 @@ written and this one is the correction — the reverse is now **[Q11](./context_
 not a defect. Its sibling, the missing `rejected` state, is **confirmed** as a defect and is now
 build work.
 
+✅ Built 2026-11-07 — only the debtor records: `LiabilityPaymentRecord` refuses a payer whose side of the pair is not negative (the creditor, a square pair) as `FailedPrecondition`, reading the balance `FOR SHARE` in the claim's transaction; the pair detail offers Make Payment only while the team owes ([rpc.md](../../services/liability_service/rpc.md#only-the-debtor-records--and-only-while-it-owes)).
+
 ---
 
 ## an-incidental-line-must-say-what-it-was-for

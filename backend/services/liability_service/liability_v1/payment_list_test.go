@@ -39,7 +39,18 @@ func TestPaymentList_ShowsPaymentsMadeAndReceived(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	recordPayment(t, svc, selling, warehouse, 5000)
+	// Selling owed and paid; later the pair turned and the warehouse owed and paid — only the team that owes records
+	// a payment (the-debtor-claims-the-creditor-decides), so each claim is made while its payer owes.
+	owes(t, svc, db, selling, warehouse, 5000, 1)
+
+	paid := recordPayment(t, svc, selling, warehouse, 5000)
+
+	_, err := confirmPayment(t, svc, warehouse, paid.GetId())
+	if err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+
+	owes(t, svc, db, warehouse, selling, 3000, 2)
 	recordPayment(t, svc, warehouse, selling, 3000)
 
 	if n := len(paymentList(t, svc, selling, nil).GetIds()); n != 2 {
@@ -52,6 +63,7 @@ func TestPaymentList_HidesOtherPairs(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
+	oweThem(t, svc, db, 5000, 1)
 	recordPayment(t, svc, selling, warehouse, 5000)
 
 	if n := len(paymentList(t, svc, productOwner, nil).GetIds()); n != 0 {
@@ -66,9 +78,13 @@ func TestPaymentList_AwaitingMyConfirmationIsOnlyWhatIOwe(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
-	// One the warehouse must act on, one it recorded itself.
-	incoming := recordPayment(t, svc, selling, warehouse, 5000)
+	// One the warehouse recorded itself while it owed 3.000, then — the pair turned to selling owing 5.000 net — one it
+	// must act on. Each claim is made while its payer owes (the-debtor-claims-the-creditor-decides).
+	owes(t, svc, db, warehouse, selling, 3000, 1)
 	recordPayment(t, svc, warehouse, selling, 3000)
+
+	owes(t, svc, db, selling, warehouse, 8000, 2)
+	incoming := recordPayment(t, svc, selling, warehouse, 5000)
 
 	msg := paymentList(t, svc, warehouse,
 		&liabilityv1.LiabilityPaymentListFilter{AwaitingMyConfirmation: true})
@@ -110,6 +126,8 @@ func TestPaymentList_CounterpartyFilterNarrows(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
+	owes(t, svc, db, selling, warehouse, 5000, 1)
+	owes(t, svc, db, selling, productOwner, 7000, 2)
 	recordPayment(t, svc, selling, warehouse, 5000)
 	recordPayment(t, svc, selling, productOwner, 7000)
 

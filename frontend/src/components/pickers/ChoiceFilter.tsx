@@ -1,10 +1,14 @@
 import { useMemo } from "react";
 import { Select, createListCollection } from "@chakra-ui/react";
 
-// ONE OF A FEW FIXED CHOICES, AS A FILTER — the products list's lock and stock-age filters. A static, small set, so a
-// plain list and not a search (a search over four options you can already see is a keystroke tax); an × on a pick that
-// clears it back to "any" (every-filter-clears-from-its-own-x), emitting `undefined`, the "none" sentinel. Rendered
-// inline (no Portal), as MarketplaceSelect is, so it also works inside the phone's Filter sheet.
+// ONE OF A FEW FIXED CHOICES, AS A FILTER — the products list's lock and stock-age filters, the Team Balance list's team
+// type. A static, small set, so a plain list and not a search (a search over four options you can already see is a
+// keystroke tax); an × on a pick that clears it back to "any" (every-filter-clears-from-its-own-x), emitting `undefined`,
+// the "none" sentinel. Chakra's composable Select, never a NativeSelect (chakra-first-whenever-it-has-the-component).
+// Rendered inline (no Portal), as MarketplaceSelect is, so it also works inside the phone's Filter sheet.
+export const description =
+  "One of a few fixed choices as a filter (Chakra Select, inline): the placeholder reads as \"any\", a pick carries an × that clears it back, emitting undefined.";
+
 export function ChoiceFilter<V extends string>({
   value,
   onChange,

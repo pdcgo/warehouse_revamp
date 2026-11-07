@@ -6,7 +6,7 @@ import { RouterProvider, createMemoryRouter, useParams } from "react-router-dom"
 import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { bundleFixture } from "../../../.storybook/bundleFixtures";
-import { orderDrafts, orders, products, receiptLabel, receiptLabelFile, shops, users } from "../../../.storybook/fixtures";
+import { liabilityTerms, orderDrafts, orders, products, receiptLabel, receiptLabelFile, shops, users } from "../../../.storybook/fixtures";
 import { asTeam } from "../../../.storybook/pageStory";
 import { withProductState } from "../../../.storybook/productScenario";
 import {
@@ -882,6 +882,31 @@ export const TheDebtLimitsAreEachCreditorsOwn: Story = {
 
     await expect(canvas.queryByTestId("not-implemented-creditLimit")).toBeNull();
     await expect(canvas.queryByTestId("pending-row-creditLimit")).toBeNull();
+  },
+};
+
+// THE DEBTOR'S WARNING AT THE LIMIT (over-the-limit-refuses-the-create). Gudang Pusat lowers Melati's limit to
+// 8.000.000 while Melati already owes it 8.700.000 — the committed debt is past the limit, so the create will be
+// refused whatever this order adds, and the row says so in words before customer service presses Create.
+export const ACreditorAtItsLimitSaysTheOrderIsRefused: Story = {
+  beforeEach: [
+    asTeam(12n),
+    () => {
+      const terms = liabilityTerms.find((x) => x.teamId === 11n && x.counterpartyId === 12n)!;
+      const before = terms.creditLimit;
+      terms.creditLimit = 8_000_000;
+      return () => {
+        terms.creditLimit = before;
+      };
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // 8.700.000 of 8.000.000 is 108,75% — the meter prints whole percents, rounded.
+    await expect(await canvas.findByTestId("credit-meter-11-pct", {}, { timeout: 4000 })).toHaveTextContent("109%");
+    await expect(canvas.getByTestId("credit-warn-11")).toBeInTheDocument();
+    await expect(canvas.getByTestId("credit-after-11")).toHaveTextContent("this order will be refused");
   },
 };
 

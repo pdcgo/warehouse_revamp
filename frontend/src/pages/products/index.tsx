@@ -17,7 +17,7 @@ import { useDebounced } from "../../lib/useDebounced";
 import { idCodec, nullableCodec, oneOfCodec, optionalCodec, sortCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { ChoiceFilter } from "./components/ChoiceFilter";
+import { ChoiceFilter } from "../../components/pickers/ChoiceFilter";
 import { ProductStats } from "./components/ProductStats";
 import { ProductsTable } from "./components/ProductsTable";
 import { PRODUCTS_LIST_PENDING } from "./pending";

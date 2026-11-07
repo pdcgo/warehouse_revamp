@@ -589,6 +589,7 @@ sequenceDiagram
     participant C as Creditor team
 
     P->>S: LiabilityPaymentRecord — amount, note, PROOF, Paid from
+    Note over S: the payer must OWE the creditor on this pair, else FailedPrecondition
     Note over S: status = recorded. NO ledger effect.
     S-->>C: appears in the badge and the awaiting_my_confirmation list
 
@@ -686,11 +687,42 @@ let any team write off its own debt by typing a number. Only the creditor can se
 which is also why counterparties are **teams only**: an external party has no account and could never
 confirm.
 
+### Only the debtor records — and only while it owes
+
+[the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides):
+a payment is started by the team that **owes** — never the creditor, never a team on a square pair. Since 2026-11-07
+`LiabilityPaymentRecord` enforces it (it had accepted a claim from any team).
+
+```mermaid
+sequenceDiagram
+    participant P as Payer team
+    participant S as liability_service
+    P->>S: Record — creditor, amount, proof, Paid from
+    S->>S: Paid from asked of the accounts first (unchanged)
+    S->>S: tx — read the payer's balance row on the pair FOR SHARE
+    alt the payer's side is negative beyond float dust
+        S->>S: INSERT the claim, clear the creditor's open request
+        S-->>P: the claim, recorded
+    else square, no row, or the payer is the creditor
+        S-->>P: FailedPrecondition — only the team that owes records a payment
+    end
+```
+
+| | |
+| --- | --- |
+| the rule | the payer's own row `(team_id = payer, counterparty_id = creditor)` must be **negative** — `san_money.Positive(-balance)`, the server's 4-place tolerance, so float dust is square. No row is a pair nothing ever moved on: square |
+| the refusal | `FailedPrecondition`, *"your team owes this team nothing right now, so there is no payment to record — only the team that owes records a payment"* — the same code `LiabilityPaymentRequestSend` gives a pair owing nothing |
+| order | after the same-team check (`InvalidArgument`) and the *Paid from* check, before the amount check — a refused claim writes nothing and leaves the creditor's request standing |
+| the amount | not capped at the debt — the creditor still checks the transfer by hand and accepts or rejects it |
+| `FOR SHARE` | inside the claim's transaction, so a confirm squaring the pair at the same moment (PostEntry's upsert) is waited for and its result read; two claims by one debtor take SHARE locks and never queue. Proven by `TestInterleave_RecordWaitsForTheConfirmThatSquaresThePair` / `TestInterleave_RecordTwoClaimsDoNotQueue` (`-tags raceaudit`); the matrix row is in [lock-order.md](../../../audits/services/liability_service/concurrency/lock-order.md) |
+| cost | one more statement, a lookup on `liability_balances`' `(team_id, counterparty_id)` unique index — not heavy, no audit file |
+| the screen | the pair detail offers **Make Payment** only while this team owes the counterparty |
+
 ### The scope asymmetry IS the design
 
 | RPC | `team_id` must be | |
 | --- | --- | --- |
-| `Record` | the **payer** | you may only assert a movement of your own money |
+| `Record` | the **payer** — and the pair's **debtor** | you may only assert a movement of your own money, and only toward a team you owe |
 | `Confirm` | the **creditor** | a payer who could confirm their own payment could write off any debt |
 | `Reject` | the **creditor** | only the team that was supposedly paid can say the money did not arrive |
 

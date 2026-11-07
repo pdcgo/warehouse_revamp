@@ -155,9 +155,11 @@ export function TermsEditDialog({
                     <Field.Label>{t("terms.counterparty")}</Field.Label>
                     {isEdit || pinned ? (
                       <Text data-testid="terms-counterparty-fixed">
+                        {/* The team's NAME — the caller passes it in `options` — and the id only when nothing named it. */}
                         {BigInt(counterpartyId) === 0n
                           ? t("terms.defaultRow")
-                          : t("terms.teamFallback", { id: counterpartyId })}
+                          : (options.find((o) => o.id.toString() === counterpartyId)?.name ??
+                            t("terms.teamFallback", { id: counterpartyId }))}
                       </Text>
                     ) : (
                       <NativeSelect.Root>
@@ -228,6 +230,7 @@ export function TermsEditDialog({
                     <Textarea
                       value={reason}
                       disabled={busy}
+                      placeholder={t("terms.reasonPlaceholder")}
                       data-testid="terms-reason"
                       onChange={(e) => setReason(e.target.value)}
                     />

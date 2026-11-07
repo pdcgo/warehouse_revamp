@@ -265,6 +265,14 @@ test("Liability: the warehouse sees the same debt as money owed TO it (#185)", a
   const cells = page.getByTestId(`liability-row-${WAREHOUSE_TEAM}`).locator("td");
   await expect(cells.nth(1)).toHaveText("—");
   await expect(cells.nth(2)).toHaveText("Rp 25.000");
+
+  // ⛔ THE CREDITOR IS NOT OFFERED MAKE PAYMENT (the-debtor-claims-the-creditor-decides): on its pair with team 1 it is
+  // owed, so the page offers no payment of its own — the server would refuse one (see the payment test below).
+  await page.getByTestId(`liability-row-${WAREHOUSE_TEAM}`).click();
+  await expect(page.getByTestId("liability-detail-balance")).toHaveText("Rp 25.000");
+  await expect(page.getByTestId("liability-detail-direction")).toHaveText("They owe you");
+  await expect(page.getByTestId("liability-detail-all")).toContainText("Courier at a restock");
+  await expect(page.getByTestId("liability-detail-make-payment")).toHaveCount(0);
 });
 
 // #221 — the Chakra redesign at /liability. Same real debt as above (root owes the warehouse), but the
@@ -300,8 +308,13 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
   await page.getByTestId(`liability-row-${warehouseId}`).click();
 
   await expect(page.getByTestId("liability-detail-page")).toBeVisible();
-  // Net position, in words — never a sign.
-  await expect(page.getByTestId("liability-detail-balance")).toContainText("You owe them Rp 25.000");
+  // Net position — the figure, and its direction in words under it, never a sign.
+  await expect(page.getByTestId("liability-detail-balance")).toHaveText("Rp 25.000");
+  await expect(page.getByTestId("liability-detail-direction")).toHaveText("You owe them");
+
+  // ALL IS FIRST AND THE DEFAULT (the-team-balance-screens-are-accepted): the whole running ledger, the debt in it.
+  await expect(page.getByTestId("liability-detail-tab-all")).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("liability-detail-all")).toContainText("Courier at a restock");
 
   // the-debtor-sees-the-limits-set-on-it — root OWES the warehouse, so its page shows the limit the warehouse set on
   // it: none, which is unlimited. Read through the real LiabilityCreditByIds, past the real interceptor.
@@ -309,7 +322,7 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
 
   // The Payable tab carries the debt, named by its typed cause + the restock id (not a free-text note).
   await page.getByTestId("liability-detail-tab-payable").click();
-  await expect(page.getByTestId("liability-detail-payable")).toContainText("Delivery costs");
+  await expect(page.getByTestId("liability-detail-payable")).toContainText("Courier at a restock");
 
   // Make Payment opens the two-phase form (recording alone moves nothing until they confirm).
   await page.getByTestId("liability-detail-make-payment").click();
@@ -427,6 +440,20 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   });
   expect(notMine.status).toBe(400);
 
+  // ⛔ AND THE CREDITOR CANNOT RECORD ONE AT ALL (the-debtor-claims-the-creditor-decides): the warehouse is OWED on this
+  // pair, so its claim — its own live account, a slip — is refused as FailedPrecondition, before anything is written.
+  const creditorPays = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
+    teamId: warehouseId,
+    creditorTeamId: String(WAREHOUSE_TEAM),
+    amount: "5000",
+    note: "the creditor paying the debtor",
+    documentIds: [proofId],
+    fromAccountId: receivedInto,
+  });
+  expect(creditorPays.status).toBe(400);
+  expect(creditorPays.body.code).toBe("failed_precondition");
+  expect(creditorPays.body.message).toContain("only the team that owes records a payment");
+
   // A claim the creditor will refuse.
   const claimed = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
     teamId: String(WAREHOUSE_TEAM),
@@ -520,4 +547,17 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
 
   expect(await accountBalance(page, String(WAREHOUSE_TEAM), paidFrom)).toBe(0);
   expect(await accountBalance(page, warehouseId, receivedInto)).toBe(5000);
+
+  // ✅ THE ALL TAB SHOWS THE PAYMENT IN THE RUNNING LEDGER (the-team-balance-screens-are-accepted) — the accepted 5.000,
+  // in its place after the 25.000 courier charge, with the balance it left: team 1 now owes 20.000. The Receivable cut,
+  // which splits by sign, would carry it alone with no debt beside it.
+  await page.goto(`/liability/${warehouseId}`);
+  await expect(page.getByTestId("liability-detail-tab-all")).toHaveAttribute("aria-selected", "true");
+  const paymentRow = page
+    .getByTestId("liability-detail-all")
+    .locator('[data-testid^="liability-detail-entry-"]', { hasText: `Payment #${confirmed.body.payment.id}` });
+  await expect(paymentRow).toHaveCount(1);
+  await expect(paymentRow).toContainText("+Rp 5.000");
+  await expect(paymentRow.locator('[data-testid^="liability-detail-balance-after-"]')).toHaveText("−Rp 20.000");
+  await expect(page.getByTestId("liability-detail-all")).toContainText("Courier at a restock");
 });

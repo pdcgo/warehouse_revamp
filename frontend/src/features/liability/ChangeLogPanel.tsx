@@ -2,15 +2,17 @@ import { useMemo } from "react";
 import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { ArrowRight } from "lucide-react";
+import { Badge, Box, Flex, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
+import { ArrowRight, History } from "lucide-react";
 
 import { rpcError, userClient } from "../../api/clients";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import { useTermsHistory } from "./queries";
-import { Pagination } from "../../components/chrome/Pagination";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { formatRupiah, isZeroRupiah, type Rupiah } from "../../lib/money";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
 
 const PAGE_SIZE = 10;
 
@@ -32,6 +34,8 @@ interface ChangeLogPanelProps {
   nameOf: (id: bigint) => string;
   page: number;
   onPageChange: (page: number) => void;
+  /** Each change as a block on a phone (the-team-balance-phone-layout-is-accepted) — the pair page's `useIsMobile()`. */
+  phone?: boolean;
 }
 
 // ChangeLogPanel is the audit trail for one creditor-debtor pair's CREDIT LIMIT.
@@ -51,6 +55,7 @@ export function ChangeLogPanel({
   nameOf,
   page,
   onPageChange,
+  phone = false,
 }: ChangeLogPanelProps) {
   const { t } = useTranslation();
 
@@ -95,6 +100,47 @@ export function ChangeLogPanel({
       ) : (
         <RefreshOverlay busy={query.isFetching && !query.isPending}>
           <Stack gap="card">
+            {/* ON A PHONE, ONE BLOCK PER CHANGE (a-phone-reads-each-line-as-a-block) — the limit's move and the override
+                mark on the first line, when and who on the second, the reason under them. */}
+            {phone && changes.length > 0 && (
+              <Stack gap="0" data-testid="terms-history-table" data-layout="blocks">
+                {changes.map((c) => (
+                  <Box
+                    key={c.id.toString()}
+                    py="2.5"
+                    px="1"
+                    borderBottomWidth="1px"
+                    borderColor="border.muted"
+                    data-testid={`terms-change-${c.id}`}
+                  >
+                    <Flex justify="space-between" align="center" gap="2">
+                      <Text fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
+                        <LimitText limit={c.oldCreditLimit} />
+                        <Icon as={ArrowRight} boxSize="3" mx="2" color="fg.subtle" />
+                        <LimitText limit={c.newCreditLimit} />
+                      </Text>
+                      {c.override && (
+                        <Badge colorPalette="purple" data-testid={`terms-override-${c.id}`}>
+                          {t("terms.override")}
+                        </Badge>
+                      )}
+                    </Flex>
+                    <Text fontSize="xs" color="fg.muted" mt="0.5" lineClamp={1}>
+                      {formatUnixDateTimeShort(c.changedAtUnix)} ·{" "}
+                      {personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
+                    </Text>
+                    {c.reason && (
+                      <Text fontSize="sm" mt="0.5">
+                        {c.reason}
+                      </Text>
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+            )}
+
+            {/* An empty log is the list's hint, not a header over nothing (an-empty-list-shows-a-hint). */}
+            {!phone && changes.length > 0 && (
             <Table.Root size="sm" data-testid="terms-history-table">
               <Table.Header>
                 <Table.Row>
@@ -111,7 +157,7 @@ export function ChangeLogPanel({
                 {changes.map((c) => (
                   <Table.Row key={c.id.toString()} data-testid={`terms-change-${c.id}`}>
                     <Table.Cell whiteSpace="nowrap">
-                      {new Date(Number(c.changedAtUnix) * 1000).toLocaleString()}
+                      {formatUnixDateTimeShort(c.changedAtUnix)}
                     </Table.Cell>
                     <Table.Cell>
                       <Text as="span">
@@ -146,19 +192,22 @@ export function ChangeLogPanel({
                 ))}
               </Table.Body>
             </Table.Root>
-
-            {changes.length === 0 ? (
-              <Text color="fg.muted" data-testid="terms-history-empty">
-                {t("terms.historyEmpty")}
-              </Text>
-            ) : (
-              <Pagination
-                page={page}
-                pageSize={PAGE_SIZE}
-                count={query.data?.totalItems ?? 0}
-                onPageChange={onPageChange}
-              />
             )}
+
+            {changes.length === 0 && (
+              <EmptyHint icon={History} size="sm" title={t("terms.historyEmpty")} testId="terms-history-empty" />
+            )}
+
+            {/* THE PAGES GROW AS THEY ARE OPENED, and the pager is always on screen (every-list-pages-with-the-growing-pager,
+                the-pager-is-always-on-screen). */}
+            <GrowingPager
+              page={page}
+              onPageChange={onPageChange}
+              hasNext={query.isPlaceholderData ? undefined : page * PAGE_SIZE < (query.data?.totalItems ?? 0)}
+              resetKey={String(counterpartyId ?? "all")}
+              pageSize={PAGE_SIZE}
+              testId="terms-history-pager"
+            />
           </Stack>
         </RefreshOverlay>
       )}

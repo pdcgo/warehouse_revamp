@@ -104,7 +104,7 @@
     "colReceivable": "Piutang",
     "colOldest": "Terlama belum lunas",
     "colAwaiting": "Menunggu",
-    "toConfirm": "{{count}} dikonfirmasi",
+    "toConfirm": "{{count}} perlu diterima",
     "teamFallback": "Tim #{{id}}",
     "empty": "Belum ada rekanan.",
     "selectTeamView": "Pilih tim untuk melihat posisinya.",
@@ -113,7 +113,10 @@
     "square": "Lunas",
     "emptyHint": "Utang dan piutang dengan tim lain muncul di sini setelah tercatat.",
     "requestSent": "Pembayaran diminta",
-    "requestAsked": "Meminta Anda membayar"
+    "requestAsked": "Meminta Anda membayar",
+    "overLimit": "{{percent}}% dari batas yang Anda tetapkan — pesanan berikutnya ditolak",
+    "frozenLimit": "Dibekukan — pesanan berikutnya ditolak",
+    "kindLabel": "Jenis tim"
   },
   "liabilityDetail": {
     "title": "Kewajiban",
@@ -145,15 +148,15 @@
     "colProof": "Bukti",
     "colStatus": "Status",
     "reversal": "Pembalikan",
-    "confirm": "Konfirmasi",
+    "confirm": "Terima",
     "reject": "Tolak",
     "proofNone": "Tidak ada bukti terlampir",
     "proofNth": "Bukti {{n}}",
     "causeProductFee": "Biaya produk · pesanan #{{id}}",
     "causePayment": "Pembayaran #{{id}}",
     "causeUnknown": "Tidak diketahui #{{id}}",
-    "statusRecorded": "Dicatat",
-    "statusConfirmed": "Dikonfirmasi",
+    "statusRecorded": "Menunggu",
+    "statusConfirmed": "Diterima",
     "statusRejected": "Ditolak",
     "statusUnknown": "—",
     "kindWarehouse": "Tim gudang",
@@ -164,13 +167,13 @@
     "emptyPayable": "Tidak ada hutang Anda dalam rentang ini.",
     "emptyMine": "Anda belum mencatat pembayaran apa pun.",
     "emptyTeam": "Tidak ada pembayaran dari mereka untuk dikonfirmasi.",
-    "confirmTitle": "Konfirmasi Pembayaran",
-    "confirmMessage": "Konfirmasi bahwa pembayaran sebesar {{amount}} telah diterima. Ini mencatat entri pelunasan ke buku besar dan mengurangi saldo.",
-    "confirmLabel": "Konfirmasi Pembayaran",
+    "confirmTitle": "Terima Pembayaran",
+    "confirmMessage": "Terima pembayaran sebesar {{amount}} ini hanya jika uangnya sudah masuk ke rekening Anda. Ini mencatat entri pelunasan ke buku besar dan mengurangi saldo — dan bersifat final: tidak bisa diubah atau dibalik.",
+    "confirmLabel": "Terima Pembayaran",
     "rejectTitle": "Tolak Pembayaran",
     "rejectDescription": "Tolak klaim pembayaran sebesar {{amount}} ini. Tidak ada yang diposting ke buku besar dan saldo tidak berubah — tetapi klaim ini ditutup permanen, jadi pembayar harus membuat klaim baru.",
     "rejectReason": "Kenapa ditolak?",
-    "rejectReasonPlaceholder": "mis. tidak ada transfer sejumlah ini masuk ke rekening kami",
+    "rejectReasonPlaceholder": "Contoh: tidak ada transfer sejumlah ini masuk ke rekening kami",
     "rejectReasonHelp": "Pembayar membaca ini. Beri tahu mereka apakah harus mengirim ulang bukti atau uangnya.",
     "rejectLabel": "Tolak Pembayaran",
     "recordTitle": "Buat Pembayaran",
@@ -182,7 +185,7 @@
     "recordSubmit": "Buat Pembayaran",
     "tabLimits": "Perubahan batas",
     "causeOrderFee": "Biaya pesanan · pesanan #{{id}}",
-    "causeIncidentalFee": "Biaya penerimaan · restock #{{id}}",
+    "causeIncidentalFee": "Biaya kurir restock · restock #{{id}}",
     "causeBrokenGood": "Barang rusak · pergerakan #{{id}}",
     "causeLostGood": "Barang hilang · pergerakan #{{id}}",
     "causeFound": "Barang ditemukan lagi · pergerakan #{{id}}",
@@ -206,7 +209,13 @@
     "requestAskedHelp": "Diminta pada {{date}}. Bayar lewat Buat Pembayaran — tidak ada yang bergerak sendiri.",
     "requestSent": "Anda meminta {{name}} membayar {{amount}} pada {{date}}.",
     "causeReturnIncidentalFee": "Biaya kurir retur · pesanan #{{id}}",
-    "causeTransferFee": "Biaya kurir transfer · transfer #{{id}}"
+    "causeTransferFee": "Biaya kurir transfer · transfer #{{id}}",
+    "recordNotePlaceholder": "Contoh: transfer BCA tanggal 7 Nov",
+    "tabAll": "Semua",
+    "emptyAll": "Tidak ada perubahan saldo antara Anda dalam rentang ini.",
+    "balanceAfterLine": "Saldo sesudah {{amount}}",
+    "recordProofAttach": "Lampirkan Bukti",
+    "recordProofAttachAnother": "Lampirkan Lagi"
   },
   "common": {
     "perPage": "Per halaman",
@@ -3513,7 +3522,7 @@
     "remove": "Hapus Ketentuan",
     "removeDialog": {
       "title": "Hapus Ketentuan untuk {{name}}",
-      "message": "Pasangan ini kembali ke ketentuan BAWAAN Anda — batas, biaya, dan markup sekaligus, karena yang berlaku adalah satu baris utuh. Jika belum ada baris bawaan, artinya kredit tanpa batas.",
+      "message": "Pasangan ini kembali ke ketentuan bawaan Anda. Jika belum ada ketentuan bawaan, artinya kredit tanpa batas.",
       "confirm": "Hapus"
     },
     "empty": "Belum ada ketentuan. Semua tim yang Anda layani tanpa batas dan tidak ditagih.",
@@ -3540,7 +3549,8 @@
     "colLimitChange": "Batas",
     "colReason": "Alasan",
     "usingDefault": "Memakai ketentuan bawaan",
-    "noneSet": "Belum ada ketentuan — kredit tanpa batas, tanpa biaya, tanpa markup"
+    "noneSet": "Belum ada ketentuan — kredit tanpa batas",
+    "reasonPlaceholder": "Contoh: sudah disepakati dengan pemiliknya lewat telepon"
   },
   "shipmentChannels": {
     "title": "Channel Pengiriman",
@@ -4181,7 +4191,8 @@
       "role": {
         "warehouse": "Gudang",
         "owner": "Pemilik produk"
-      }
+      },
+      "refused": "sudah di batas — pesanan ini akan ditolak"
     },
     "profit": {
       "title": "Estimasi Profit",
