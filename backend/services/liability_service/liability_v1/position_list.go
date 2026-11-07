@@ -2,6 +2,8 @@ package liability_v1
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"connectrpc.com/connect"
 
@@ -9,6 +11,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
+	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
@@ -56,11 +59,20 @@ func (s *Service) LiabilityPositionList(
 		return q
 	}
 
-	query := scope()
+	// THE NARROWING FILTERS — the search, the kind and "awaiting only" — applied BEFORE THE PAGE (backlog #34). They
+	// were the screen's, over the 20 rows it had loaded, so a counterparty on page 2 was "not found". They narrow the
+	// rows and the count; the summary below keeps `scope`, because the summary is ALL balance and a search box is not
+	// a scope (the-summary-is-tiles-on-the-list).
+	rows, err := s.positionRows(ctx, teamID, req.Msg.GetFilter(), scope)
+	if err != nil {
+		return nil, err
+	}
+
+	query := rows()
 
 	var total int64
 
-	err := query.Count(&total).Error
+	err = query.Count(&total).Error
 	if err != nil {
 		return nil, dbError(err)
 	}
@@ -145,3 +157,86 @@ func (s *Service) LiabilityPositionList(
 
 // awaitingConfirmation lives in awaiting_confirmation.go — it grew a real query when payments landed
 // (#188).
+
+// positionRows is `scope` narrowed by the pair list's three row filters, as a function for the same reason `scope`
+// is one: the count and the page must be built fresh from one definition.
+//
+// ⚠ THE SEARCH AND THE KIND ARE TEAM_SERVICE'S FACTS, never a join (HARD RULE 3). The team's own pairs are read here —
+// one index-only read of `liability_balances (team_id, counterparty_id)`, bounded by the teams it trades with — and
+// their names, codes and types are asked of team_service through the in-process seam; the ids that match narrow the
+// SQL. A pair whose team team_service does not know never matches either filter.
+func (s *Service) positionRows(
+	ctx context.Context,
+	teamID uint64,
+	filter *liabilityv1.LiabilityPositionListFilter,
+	scope func() *gorm.DB,
+) (func() *gorm.DB, error) {
+	q := strings.TrimSpace(filter.GetQ())
+	kind := filter.GetCounterpartyType()
+
+	var matched []uint64
+
+	byTeam := q != "" || kind != teamv1.TeamType_TEAM_TYPE_UNSPECIFIED
+
+	if byTeam {
+		var ids []uint64
+
+		err := scope().
+			Pluck("counterparty_id", &ids).
+			Error
+		if err != nil {
+			return nil, dbError(err)
+		}
+
+		facts := map[uint64]TeamFact{}
+
+		if len(ids) > 0 {
+			facts, err = s.names.TeamFacts(ctx, ids)
+			if err != nil {
+				// team_service's own refusal reaches the caller with its own code, as checkAccount does.
+				var connectErr *connect.Error
+				if errors.As(err, &connectErr) {
+					return nil, connectErr
+				}
+
+				return nil, connect.NewError(connect.CodeUnavailable, err)
+			}
+		}
+
+		matched = make([]uint64, 0, len(ids))
+
+		for _, id := range ids {
+			fact, known := facts[id]
+			if teamMatches(fact, known, q, kind) {
+				matched = append(matched, id)
+			}
+		}
+	}
+
+	awaitingOnly := filter.GetAwaitingOnly()
+
+	return func() *gorm.DB {
+		query := scope()
+
+		if byTeam {
+			if len(matched) == 0 {
+				// Nothing matched: an empty answer, still counted by the same query as a full one.
+				query = query.Where("FALSE")
+			} else {
+				query = query.Where("counterparty_id IN ?", matched)
+			}
+		}
+
+		if awaitingOnly {
+			// The rows the badge counts: a payment the counterparty recorded TO this team, still awaiting its accept or
+			// reject — awaitingConfirmation's own predicate, read by `liability_payments_awaiting_idx`.
+			query = query.Where("counterparty_id IN (?)", s.db.
+				WithContext(ctx).
+				Model(&liability_service_models.LiabilityPayment{}).
+				Select("payer_team_id").
+				Where("creditor_team_id = ? AND status = ?", teamID, paymentRecorded))
+		}
+
+		return query
+	}, nil
+}

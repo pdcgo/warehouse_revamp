@@ -42,6 +42,7 @@ import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { useIsMobile } from "../../layouts/shell";
 import type { LiabilityPosition } from "../../gen/warehouse/liability/v1/liability_pb";
 import { boolCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { useDebounced } from "../../lib/useDebounced";
 
 const PAGE_SIZE = 20;
 
@@ -83,11 +84,29 @@ export function LiabilityListPage() {
   const teamId = current?.teamId;
 
   // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a pair, opens the same list.
-  const [unsettledOnly, setUnsettledOnly] = useUrlState("unsettled", true, boolCodec);
-  const [awaitingOnly, setAwaitingOnly] = useUrlState("awaiting", false, boolCodec);
-  const [search, setSearch] = useUrlState("q", "", textCodec);
-  const [kind, setKind] = useUrlState<string>("kind", "all", KIND_CODEC);
+  const [unsettledOnly, setUnsettledOnlyRaw] = useUrlState("unsettled", true, boolCodec);
+  const [awaitingOnly, setAwaitingOnlyRaw] = useUrlState("awaiting", false, boolCodec);
+  const [search, setSearchRaw] = useUrlState("q", "", textCodec);
+  const [kind, setKindRaw] = useUrlState<string>("kind", "all", KIND_CODEC);
   const [page, setPage] = useState(1);
+
+  // EVERY FILTER IS THE SERVER'S AND NARROWS BEFORE THE PAGE (backlog #34), so any change starts again at page 1: the
+  // page number belongs to the old result set, and page 3 of a narrower one is usually empty.
+  const refilter =
+    <T,>(set: (value: T) => void) =>
+    (value: T) => {
+      set(value);
+      setPage(1);
+    };
+  const setUnsettledOnly = refilter(setUnsettledOnlyRaw);
+  const setAwaitingOnly = refilter(setAwaitingOnlyRaw);
+  const setSearch = refilter(setSearchRaw);
+  const setKind = refilter(setKindRaw);
+
+  // The search is held back until typing pauses, as every list's is (lib/useDebounced) — one request per word, not per
+  // key. The box itself shows what was typed at once.
+  const q = useDebounced(search.trim());
+  const counterpartyType = kind === "all" ? TeamType.UNSPECIFIED : (Number(kind) as TeamType);
   const [defaultTermsOpen, setDefaultTermsOpen] = useState(false);
 
   // The desktop's team-type filter offers the two kinds; nothing picked is "all" (its placeholder), and its × clears back.
@@ -99,7 +118,15 @@ export function LiabilityListPage() {
     [t],
   );
 
-  const query = useLiabilityPositions({ teamId, page, pageSize: PAGE_SIZE, unsettledOnly });
+  const query = useLiabilityPositions({
+    teamId,
+    page,
+    pageSize: PAGE_SIZE,
+    unsettledOnly,
+    q,
+    counterpartyType,
+    awaitingOnly,
+  });
   const positions = query.data?.positions ?? [];
   const total = query.data?.totalItems ?? 0;
   const awaitingTotal = query.data?.awaitingConfirmation ?? 0;
@@ -164,15 +191,10 @@ export function LiabilityListPage() {
   // (a-limit-change-is-recorded). The server decides for real; this only shapes the form.
   const overrideWriter = current?.role === Role.ROOT || current?.role === Role.ADMINISTRATOR;
 
-  // Search and team-type filter narrow the LOADED page client-side, as the mock drives them.
-  const rows = positions.filter((p) => {
-    const team = teamMap[p.counterpartyId.toString()];
-    const name = team?.name ?? "";
-    if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (kind !== "all" && team && team.type.toString() !== kind) return false;
-    if (awaitingOnly && p.awaitingConfirmation === 0) return false;
-    return true;
-  });
+  // ⚠ THE ROWS ARE THE SERVER'S PAGE AS IT IS. The search, the team type and "awaiting only" used to narrow the 20 rows
+  // loaded here, so a team on page 2 read as "no team found" (backlog #34); the server narrows before the page now, and
+  // nothing may cut `positions` again in the browser.
+  const rows = positions;
 
   // ⚠ THE TILES COME FROM THE SERVER, over EVERY counterparty — never from `rows`, which is one page
   // of 20 narrowed further by the search box. They used to be a `rows.reduce`, so a creditor with 21
@@ -290,7 +312,6 @@ export function LiabilityListPage() {
             setKind("all");
             setAwaitingOnly(false);
             setUnsettledOnly(true);
-            setPage(1);
           }}
           testId="liability-filters"
         >
@@ -330,10 +351,7 @@ export function LiabilityListPage() {
           <FilterField>
             <Checkbox.Root
               checked={unsettledOnly}
-              onCheckedChange={(e) => {
-                setUnsettledOnly(!!e.checked);
-                setPage(1);
-              }}
+              onCheckedChange={(e) => setUnsettledOnly(!!e.checked)}
               data-testid="liability-unsettled-only"
             >
               <Checkbox.HiddenInput />
@@ -373,10 +391,7 @@ export function LiabilityListPage() {
         </Checkbox.Root>
         <Checkbox.Root
           checked={unsettledOnly}
-          onCheckedChange={(e) => {
-            setUnsettledOnly(!!e.checked);
-            setPage(1);
-          }}
+          onCheckedChange={(e) => setUnsettledOnly(!!e.checked)}
           data-testid="liability-unsettled-only"
         >
           <Checkbox.HiddenInput />
@@ -565,12 +580,12 @@ export function LiabilityListPage() {
           )}
 
           {/* THE PAGES GROW AS THEY ARE OPENED, and the pager is always on screen (every-list-pages-with-the-growing-pager,
-              the-pager-is-always-on-screen). A new "unsettled only" — the one filter the server applies — starts over. */}
+              the-pager-is-always-on-screen). Every filter is the server's, so any of them changing starts it over. */}
           <GrowingPager
             page={page}
             onPageChange={setPage}
             hasNext={query.isPlaceholderData ? undefined : page * PAGE_SIZE < total}
-            resetKey={String(unsettledOnly)}
+            resetKey={[unsettledOnly, q, kind, awaitingOnly].join("|")}
             pageSize={PAGE_SIZE}
             testId="liability-pager"
           />

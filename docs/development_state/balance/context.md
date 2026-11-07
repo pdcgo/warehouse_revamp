@@ -1,5 +1,15 @@
 # Development state — balance
 
+✅ **2026-11-07: the Team Balance filters are the server's (backlog #34)** — uncommitted.
+
+| | |
+| --- | --- |
+| proto | `LiabilityPositionListFilter` + `q`, `counterparty_type`, `awaiting_only`; `LiabilityLogListFilter` + `from`, `to`, `direction` (new enum `LiabilityLogDirection`); `LiabilityPaymentListFilter` + `from`, `to`, `side` (new enum `LiabilityPaymentSide`); `LiabilityTermsHistoryListFilter` + `from`, `to`. All applied before the page; rules in [rpc.md](../../services/liability_service/rpc.md#the-team-balance-lists-filter-before-the-page-backlog-34) |
+| backend | `liability_v1/list_filters.go` (`listPeriod` — Jakarta midnights, [the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day); `teamMatches`); `position_list.go` `positionRows` (summary unnarrowed); the seam `TeamNamer.TeamFacts` (name, code, type) — `cmd/app_development/liability_deps.go` now calls team_service's `TeamByIds` handler in-process (Wire regenerated), batches of 200. No migration, no index |
+| screens | list: `q` sent debounced (`useDebounced`, as every list), team type and *awaiting only* sent; the client-side narrowing is gone; every filter resets the page and the `GrowingPager`. Detail: the date range (`liabilityPeriod`, URL unchanged) and the open tab's direction / side go with each read, each tab draws its own server page (a tab's skeleton while its cut loads; rows kept only within the same pair), pagers reset on a range / tab change; `ChangeLogPanel` sends the range |
+| tests | Go: `TestPositionList_ASearchFindsAPairOnPage2`, `…TheKindFilterNarrowsBeforeThePage`, `…TheSummaryIgnoresTheSearch`, `…AnUnknownTeamNeverMatchesAFilter`, `…AwaitingOnlyNarrowsBeforeThePage`, `…OnlyASearchAsksTeamService`; `TestEntryList_ADateRangeFindsEntriesOnPage2`, `…ARangeReadsJakartaDays` (00:30 / 06:30 WIB, the process clock set to UTC; mutation-checked), `…AFilteredPageCarriesTheTrueRunningBalance`, `…ABadPeriodIsRefused`; `TestPaymentList_EachSideIsItsOwnPage`, `…ADateRangeNarrowsBeforeThePage`; `TestTermsHistory_ADateRangeNarrowsBeforeThePage`; `TestLiabilityTeamNamer_ReadsNamesAndFactsFromTeamService` (cmd). Stories (stub filters as the server does; requests recorded in `.storybook/liabilityScenario.ts`): PairList `ASearchFindsATeamByNameOrCodeOnTheServer`, request asserts in `FiltersLiveInTheUrl` / `TheTeamTypeFilterNarrowsAndClearsFromItsX`; PairDetail `EachTabReadsItsOwnServerPage`, range asserts in `FiltersLiveInTheUrl`. e2e `liability.spec.ts` *a search finds a team and a date range narrows the ledger* |
+| perf | probes `-tags perfaudit` for all four; none heavy except `LiabilityPositionList` by query count (7 with a search, 6 unfiltered — the old probe's bound of 5 was red at HEAD) → [audit](../../../audits/services/liability_service/performances/LiabilityPositionList.md) |
+
 ✅ **2026-11-07: the phone layout is live; the list's team filter is Chakra's Select** — uncommitted.
 
 | | |

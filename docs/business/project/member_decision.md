@@ -341,3 +341,17 @@ dev                idle since 2026-10-12
 | ✅ CLAUDE.md §Git workflow | updated 2026-11-02 on the owner's ask, with the FAQ's branch entry — it had said *commit straight to `dev`* ([claude-md-still-sends-every-commit-to-dev](./member_clarify.md#claude-md-still-sends-every-commit-to-dev)) |
 | also closes | [workflow Q3](../../technical/development/workflow_clarify.md#question), *how many people build on `dev` at once?* |
 | ✅ built | nothing to build |
+
+---
+
+## heri-owns-the-ledger-area
+
+> Owner (Heri), in chat (2026-11-07): *"I own the ledger area, not toni"* — answering the assistant's question *"who owns the ledger, you or Toni?"*, asked from a stale *Next* line in `heri.md` without reading [ledger-is-retired-as-a-context](#ledger-is-retired-as-a-context) first.
+
+**The verdict.** The **ledger area is Heri's**. It amends one line of [ledger-is-retired-as-a-context](#ledger-is-retired-as-a-context) — *"nobody owns it"* — and keeps the rest: there is still **no central book**; every service keeps its own ledger and the statistics come from each service's metrics.
+
+| | |
+| --- | --- |
+| Heri decides | the ledger docs ([ledger/context.md](../ledger/context.md) and its clarify), the technical template every service builds its ledger by ([mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md)), and any question that spans more than one service's ledger |
+| unchanged | a ledger inside a service stays that service's; the earlier *"→ Toni"* recommendation in [member_clarify](./member_clarify.md) is overruled |
+| should the central book come back | not implied by this — it stays retired unless Heri says so |

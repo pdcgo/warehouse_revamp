@@ -329,6 +329,47 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
   await expect(page.getByTestId("record-amount")).toBeVisible();
 });
 
+// ⛔ BACKLOG #34 — THE FILTERS ARE THE SERVER'S. The search and a date range used to narrow only the rows the screen had
+// loaded (20 pairs, 50 entries), so a team past page 1 read as "no team found" and a range reaching past page 1 showed
+// what page 1 held. Against the real server: the search box sends `q` and finds the warehouse by its name and by its
+// code; a range on the pair page is sent as Jakarta days and narrows the ledger — the balance stays the pair's.
+test("Liability filters: a search finds a team and a date range narrows the ledger (#34)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await page.goto("/liability");
+  await expect(page.getByTestId("liability-table")).toBeVisible();
+
+  const search = page.getByTestId("liability-search");
+  for (const term of [`settle wh ${SUFFIX}`, `SW${SUFFIX}`.slice(0, 10).toLowerCase()]) {
+    const asked = page.waitForRequest(
+      (r) => r.url().includes("LiabilityPositionList") && (r.postData() ?? "").includes(`"q":"${term}"`),
+    );
+    await search.fill(term);
+    await asked;
+    await expect(page.getByTestId(`liability-row-${warehouseId}`)).toBeVisible();
+    await expect(page.getByTestId("liability-table").locator('[data-testid^="liability-row-"]')).toHaveCount(1);
+  }
+
+  await search.fill(`nobody-${SUFFIX}`);
+  await expect(page.getByTestId("liability-empty")).toBeVisible();
+  await expect(page.getByTestId(`liability-row-${warehouseId}`)).toHaveCount(0);
+
+  // A window that holds nothing of this pair — the year before it existed: the ledger is empty, the balance is not.
+  const ranged = page.waitForRequest(
+    (r) => r.url().includes("LiabilityLogList") && (r.postData() ?? "").includes('"from":"2020-01-01"'),
+  );
+  await page.goto(`/liability/${warehouseId}?range=2020-01-01..2020-12-31`);
+  await ranged;
+  await expect(page.getByTestId("liability-ledger-empty")).toBeVisible();
+  await expect(page.getByTestId("liability-detail-balance")).toHaveText("Rp 25.000");
+
+  // Today holds the courier's charge, posted in this run.
+  await page.goto(`/liability/${warehouseId}?range=1d`);
+  await expect(page.getByTestId("liability-detail-all")).toContainText("Courier at a restock");
+  await page.getByTestId("liability-detail-tab-receivable").click();
+  await expect(page.getByTestId("liability-ledger-empty")).toBeVisible();
+});
+
 // a-team-payment-posts-on-accept: each side names its OWN account — the payer the one the transfer left, the
 // creditor the one it landed in. Opened through the real contract, so liability's check is asked of the real
 // financial accounts, under the caller's token.

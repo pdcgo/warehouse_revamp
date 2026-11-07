@@ -3,6 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { liabilityListCalls } from "../../../.storybook/liabilityScenario";
 import { liabilityPositions, teams } from "../../../.storybook/fixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -153,6 +154,51 @@ export const FiltersLiveInTheUrl: Story = {
     await userEvent.type(canvas.getByTestId("liability-search"), "Toko", { delay: 40 });
     await waitFor(() => expect(location).toHaveTextContent("q=Toko"));
     await expect(location).toHaveTextContent("awaiting=1");
+
+    // THE URL'S FILTERS ARE SENT, not applied to what loaded (backlog #34): the read carries the type, "awaiting only"
+    // and — once typing pauses — the search, and only Toko Melati (12, selling, a payment waiting) comes back.
+    await waitFor(() =>
+      expect(liabilityListCalls.positions.at(-1)).toMatchObject({
+        q: "Toko",
+        counterpartyType: TeamType.SELLING,
+        awaitingOnly: true,
+      }),
+    );
+    await waitFor(() => expect(canvas.getByTestId("liability-row-12")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("liability-row-13")).toBeNull();
+    await expect(canvas.queryByTestId("liability-row-15")).toBeNull();
+  },
+};
+
+// ⛔ THE SEARCH IS THE SERVER'S (backlog #34). It used to narrow the 20 rows the screen had loaded, so a team on page 2
+// read as "no team found". The box sends `q` — debounced, one request once typing pauses — over the counterparty's name
+// AND its code, and the rows are what came back. The tiles stay the whole set's: a search is not a scope.
+export const ASearchFindsATeamByNameOrCodeOnTheServer: Story = {
+  render: () => <AtTheList />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const search = canvas.getByTestId("liability-search");
+    const receivable = canvas.getByTestId("liability-total-receivable").textContent;
+
+    await userEvent.type(search, "kenanga", { delay: 30 });
+    await waitFor(() => expect(liabilityListCalls.positions.at(-1)?.q).toBe("kenanga"));
+    await waitFor(() => expect(canvas.queryByTestId("liability-row-12")).toBeNull());
+    await expect(canvas.getByTestId("liability-row-13")).toBeInTheDocument();
+    // Debounced: the request went once typing paused, not per key.
+    await expect(liabilityListCalls.positions.filter((f) => f?.q && f.q !== "kenanga")).toHaveLength(0);
+    await expect(canvas.getByTestId("liability-total-receivable")).toHaveTextContent(receivable ?? "");
+
+    // By its CODE — Gudang Cabang is WH-02.
+    await userEvent.clear(search);
+    await userEvent.type(search, "wh-02", { delay: 30 });
+    await waitFor(() => expect(liabilityListCalls.positions.at(-1)?.q).toBe("wh-02"));
+    await waitFor(() => expect(canvas.getByTestId("liability-row-14")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("liability-row-13")).toBeNull();
+
+    // Nothing matches: the empty hint, not a stale row.
+    await userEvent.clear(search);
+    await userEvent.type(search, "zzz", { delay: 30 });
+    await expect(await canvas.findByTestId("liability-empty")).toBeInTheDocument();
   },
 };
 
@@ -183,6 +229,8 @@ export const TheTeamTypeFilterNarrowsAndClearsFromItsX: Story = {
     await waitFor(() => expect(canvas.queryByTestId("liability-row-12")).toBeNull());
     await expect(canvas.getByTestId("liability-row-14")).toBeInTheDocument();
     await expect(kind).toHaveTextContent("Warehouse team");
+    // The pick is SENT (backlog #34) — the server narrows before the page.
+    await expect(liabilityListCalls.positions.at(-1)?.counterpartyType).toBe(TeamType.WAREHOUSE);
     await waitFor(() => expect(location).toHaveTextContent(`kind=${TeamType.WAREHOUSE}`));
 
     const clear = canvas.getByTestId("liability-kind-clear");

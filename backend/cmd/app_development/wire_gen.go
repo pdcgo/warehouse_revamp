@@ -61,7 +61,7 @@ func InitializeApp() (*App, error) {
 	product_v1Service := product_v1.NewService(db, product_v1ProductHistory, teamCodes)
 	financialAccountServiceClient := NewFinancialAccountClient(config, mainInternalHTTPClient)
 	accountChecker := NewLiabilityAccountChecker(financialAccountServiceClient)
-	teamNamer := NewLiabilityTeamNamer(config, mainInternalHTTPClient)
+	teamNamer := NewLiabilityTeamNamer(team_v1Service)
 	liability_v1Service := liability_v1.NewService(db, eventSender, accountChecker, teamNamer)
 	inventory_v1LiabilityPoster := NewLiabilityPoster(liability_v1Service)
 	shopServiceClient := NewShopClient(config, mainInternalHTTPClient)

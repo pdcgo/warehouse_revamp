@@ -380,6 +380,48 @@ query to reuse, and reusing it keeps their footer identical to their list screen
 here, so a second one would be a second definition of the same sum — free to drift from the days above it,
 which is exactly the failure the other two reuse their query to avoid.
 
+## The Team Balance lists filter before the page (backlog #34)
+
+Every filter the two Team Balance screens offer is the SERVER's, applied before the page and counted in `page_info`.
+They used to be the screen's, over the rows it had loaded — 20 pairs, 50 entries — so a team on page 2 read as "no team
+found", a date range reaching past page 1 showed only what page 1 held, and *Their payments* drew empty under a page of
+*My payments*.
+
+| RPC | filter | rule |
+| --- | --- | --- |
+| `LiabilityPositionList` | `q` (≤ 100) | the counterparty TEAM's name or code, case-insensitive, anywhere in either, trimmed |
+| | `counterparty_type` | one kind of counterparty team (warehouse / selling); UNSPECIFIED = every kind |
+| | `awaiting_only` | pairs where the counterparty recorded a payment THIS team has not yet accepted or rejected — the rows the badge counts |
+| `LiabilityLogList` | `from`, `to` | the period, inclusive, as `YYYY-MM-DD` Jakarta days |
+| | `direction` | RECEIVABLE = `amount > 0`, PAYABLE = `amount < 0`, UNSPECIFIED = all (the All tab) |
+| `LiabilityPaymentList` | `from`, `to` | the day the payment was RECORDED, as Jakarta days |
+| | `side` | PAID = this team is the payer (*My payments*), RECEIVED = it is the creditor (*Their payments*) |
+| `LiabilityTermsHistoryList` | `from`, `to` | the day a limit CHANGED, as Jakarta days — the pair page's one range narrows its limit log too |
+
+- **A day is a Jakarta day** ([the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day)).
+  `from` / `to` become two instants — the Jakarta midnight opening `from` and the one closing `to` — compared with the
+  raw column (`created_at >= ? AND created_at < ?`), so an entry at 00:30 or 06:30 WIB is on its WIB date however the
+  host's clock is set, and an index on the column reads as it is. Either end may be empty (open); a non-day
+  (`2026-02-31`) or a `to` before `from` is `InvalidArgument`, never swapped (`list_filters.go` `listPeriod`).
+- **The summary is not filtered.** The tiles on the pair list and the `balance` on the pair page are the whole set's and
+  the whole pair's whatever the filter ([the-summary-is-tiles-on-the-list](../../technical/balance/team_balance_design_decision.md#the-summary-is-tiles-on-the-list):
+  a search box is not a scope).
+- **Balance after stays true on a cut.** `balance_after` is stored on each row when it is posted, so a filtered page
+  (a range, a direction, page 2 of either) still carries the running balance of the WHOLE ledger after that entry
+  ([the-team-balance-screens-are-accepted](../../technical/balance/team_balance_design_decision.md#the-team-balance-screens-are-accepted)).
+- **The search and the kind are team_service's facts, never a join** (HARD RULE 3). The handler reads its own pairs'
+  counterparty ids (one read of `liability_balances`, bounded by the teams it trades with), asks the in-process seam
+  `TeamNamer.TeamFacts(ids)` — the composition root's adapter calls team_service's `TeamByIds` handler (TEAM slice) in
+  batches of 200 — and narrows by the ids that match. A team team_service does not know (deleted) never matches a
+  search or a kind, and still lists when nothing is filtered. Without a search or a kind, team_service is not asked.
+- **A side never widens the scope**: PAID / RECEIVED narrow inside the payer-OR-creditor scope, so they only ever take
+  away from this team's own payments.
+
+Perf (`-tags perfaudit`): `LiabilityLogList` 6–15 ms / 3 queries over a 50 000-movement pair; `LiabilityPaymentList`
+4–31 ms / 3 queries over 200 000 payments; `LiabilityTermsHistoryList` ≈ 1 ms / 2 queries (the period is an index range
+on both history indexes); `LiabilityPositionList` 3–5 ms with a search — 7 queries, heavy by the query-count line only
+([audit](../../../audits/services/liability_service/performances/LiabilityPositionList.md)). No index was added.
+
 ## The rates and limits themselves — `LiabilityTermsService` (#189)
 
 Until this landed, `liability_terms` was a table only the fee code READ. Nothing could write it, so

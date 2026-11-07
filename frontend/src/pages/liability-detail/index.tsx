@@ -21,12 +21,17 @@ import { toaster } from "../../components/feedback/Toaster";
 import { canRequestPayment } from "../../lib/roles";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import type { LiabilityPayment } from "../../gen/warehouse/liability/v1/liability_pb";
+import {
+  LiabilityLogDirection,
+  LiabilityPaymentSide,
+  type LiabilityPayment,
+} from "../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah, signOfRupiah } from "../../lib/money";
-import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
+import { ALL_DATES, DateRangePicker, isAllDates, type DateRange } from "../../components/datetime/DateRangePicker";
 import { dateRangeCodec, useUrlState } from "../../lib/urlState";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import {
+  liabilityPeriod,
   useLiabilityLogs,
   useLiabilityPayments,
   useLiabilityPosition,
@@ -40,6 +45,20 @@ import { CompactActions } from "../../components/chrome/CompactActions";
 
 const ENTRY_PAGE_SIZE = 50;
 const PAYMENT_PAGE_SIZE = 50;
+
+// WHICH CUT EACH TAB READS (backlog #34) — a ledger tab's direction and a payment tab's side, sent to the server, so each
+// tab is its own filtered page rather than a cut of one loaded page. A tab with no cut of its own reads All / both.
+function directionOf(tab: string): LiabilityLogDirection {
+  if (tab === "receivable") return LiabilityLogDirection.RECEIVABLE;
+  if (tab === "payable") return LiabilityLogDirection.PAYABLE;
+  return LiabilityLogDirection.UNSPECIFIED;
+}
+
+function sideOf(tab: string): LiabilityPaymentSide {
+  // Their payments — the counterparty paid THIS team, the creditor, who alone accepts them. Mine is the default, so the
+  // payment read on the other tabs is the one My payments will show.
+  return tab === "team" ? LiabilityPaymentSide.RECEIVED : LiabilityPaymentSide.PAID;
+}
 
 // The counterparty's kind, as a subtitle under its name.
 function teamKindKey(type: TeamType): string {
@@ -84,10 +103,27 @@ export function LiabilityDetailPage() {
   const [limitPage, setLimitPage] = useState(1);
   // THE DATE RANGE LIVES IN THE URL (a-lists-filters-live-in-the-url) — it narrows every tab, so a refresh keeps it.
   // The tabs are views of the pair, not filters, and stay where they are.
-  const [dateRange, setDateRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
+  const [dateRange, setDateRangeRaw] = useUrlState("range", ALL_DATES, dateRangeCodec);
   // ALL IS FIRST AND THE DEFAULT (the-team-balance-screens-are-accepted) — the whole running ledger, so a payment and a
   // reversal sit in their place and *Balance after* runs row to row.
-  const [tab, setTab] = useState("all");
+  const [tab, setTabRaw] = useState("all");
+
+  // A NEW RANGE OR A NEW TAB IS A NEW RESULT SET (backlog #34), so every pager it narrows starts again at page 1 — page 3
+  // of the unfiltered ledger is not page 3 of one week of it.
+  const setDateRange = (next: DateRange) => {
+    setDateRangeRaw(next);
+    setEntryPage(1);
+    setPaymentPage(1);
+    setLimitPage(1);
+  };
+  const setTab = (next: string) => {
+    setTabRaw(next);
+    setEntryPage(1);
+    setPaymentPage(1);
+  };
+  const { from, to } = liabilityPeriod(dateRange);
+  const direction = directionOf(tab);
+  const side = sideOf(tab);
   const tabList = useRef<HTMLDivElement>(null);
 
   const [recordOpen, setRecordOpen] = useState(false);
@@ -100,21 +136,28 @@ export function LiabilityDetailPage() {
 
   const teamId = current?.teamId;
 
+  // THE OPEN TAB'S OWN PAGE, filtered on the SERVER (backlog #34): the date range and the tab's direction or side go
+  // with each read. They were one read each, cut here over the 50 rows loaded — so a range reaching past page 1 showed
+  // only what page 1 held, and Their payments drew empty under a page of My payments. The ledger read also carries the
+  // pair's balance (the WHOLE pair's, whatever the cut), so it runs on every tab.
   const entriesQuery = useLiabilityLogs({
     teamId,
     counterpartyId,
     page: entryPage,
     pageSize: ENTRY_PAGE_SIZE,
+    from,
+    to,
+    direction,
   });
-  // Both directions and both payer-sides come from ONE read each; the tabs are a client-side cut, and
-  // the date range filters whichever tab is open — client-side over the loaded page (the RPCs have no
-  // date filter).
   const paymentsQuery = useLiabilityPayments({
     teamId,
     counterpartyId,
     awaitingMyConfirmation: false,
     page: paymentPage,
     pageSize: PAYMENT_PAGE_SIZE,
+    from,
+    to,
+    side,
   });
 
   // THE OPEN PAYMENT REQUEST, either way (a-creditor-may-request-payment) — read off the pair's position row.
@@ -153,36 +196,22 @@ export function LiabilityDetailPage() {
     );
   }
 
-  const entries = entriesQuery.data?.entries ?? [];
+  // THE OPEN TAB'S ROWS, or undefined while its own page loads. A tab switch keeps the previous read on screen
+  // (`placeholderData`, same pair only) — that is another cut's rows, so the tab shows its skeleton instead of them.
+  // The balance above is the whole pair's in every cut, so it may stay.
+  const entries = entriesQuery.data?.direction === direction ? entriesQuery.data.entries : undefined;
   const balance = entriesQuery.data?.balance ?? 0;
   const entriesTotal = entriesQuery.data?.totalItems ?? 0;
 
-  const payments = paymentsQuery.data?.payments ?? [];
+  const payments = paymentsQuery.data?.side === side ? paymentsQuery.data.payments : undefined;
   const paymentsTotal = paymentsQuery.data?.totalItems ?? 0;
-
-  // resolveRange yields unix SECONDS with 0 = open end; the client filter below wants number|null, so
-  // an open bound (0) maps to null (no constraint).
-  const { fromUnix: fromBound, toUnix: toBound } = resolveRange(dateRange);
-  const fromUnix = fromBound === 0n ? null : Number(fromBound);
-  const toUnix = toBound === 0n ? null : Number(toBound);
-
-  function inRange(unix: bigint): boolean {
-    const n = Number(unix);
-    if (fromUnix !== null && n < fromUnix) return false;
-    if (toUnix !== null && n > toUnix) return false;
-    return true;
-  }
 
   const name = counterparty?.name ?? t("liabilityDetail.teamFallback", { id: counterpartyId.toString() });
 
-  // THE WHOLE LEDGER, IN ITS ORDER — every movement in the range, whichever way it went, each with the balance it left.
-  const allRows = entries.filter((e) => inRange(e.createdAtUnix));
-  const receivableRows = allRows.filter((e) => e.amount > 0);
-  const payableRows = allRows.filter((e) => e.amount < 0);
-  // My payments = ones you recorded (you are the payer). Team payments = ones they recorded (they are
-  // the payer) — those are the ones only you, the creditor, can confirm.
-  const minePayments = payments.filter((p) => p.payerTeamId === current.teamId && inRange(p.createdAtUnix));
-  const teamPayments = payments.filter((p) => p.payerTeamId === counterpartyId && inRange(p.createdAtUnix));
+  // ⚠ EACH TAB DRAWS THE SERVER'S PAGE AS IT IS — the open tab's cut, in the range. Nothing narrows `entries` or
+  // `payments` in the browser any more (backlog #34); each row's *Balance after* is the true running balance of the
+  // whole ledger, stored when it was posted. My payments are the ones this team paid; Their payments the ones it was
+  // paid — the only ones it, the creditor, accepts or rejects.
 
   const loading = entriesQuery.isPending || paymentsQuery.isPending;
   const error = entriesQuery.isError
@@ -214,7 +243,10 @@ export function LiabilityDetailPage() {
     }
   }
 
-  const paymentTable = (rows: LiabilityPayment[], emptyKey: string, withConfirm: boolean) => (
+  const paymentTable = (rows: LiabilityPayment[] | undefined, emptyKey: string, withConfirm: boolean) =>
+    rows === undefined ? (
+      <ListSkeleton testId="liability-detail-tab-loading" />
+    ) : (
     <PaymentTable
       rows={rows}
       emptyText={t(emptyKey)}
@@ -225,15 +257,22 @@ export function LiabilityDetailPage() {
       onReject={setRejectTarget}
       phone={phone}
     />
-  );
+    );
 
-  // The ledger's three cuts share ONE read and so one page; each tab draws its own pager over it.
+  const ledgerTable = (emptyKey: string) =>
+    entries === undefined ? (
+      <ListSkeleton testId="liability-detail-tab-loading" />
+    ) : (
+      <LiabilityLedgerTable rows={entries} emptyText={t(emptyKey)} phone={phone} />
+    );
+
+  // Each tab's pager over its own filtered page; a new pair, range or cut starts it over.
   const entryPager = (testId: string) => (
     <GrowingPager
       page={entryPage}
       onPageChange={setEntryPage}
       hasNext={entriesQuery.isPlaceholderData ? undefined : entryPage * ENTRY_PAGE_SIZE < entriesTotal}
-      resetKey={counterpartyId.toString()}
+      resetKey={[counterpartyId, from, to, direction].join("|")}
       pageSize={ENTRY_PAGE_SIZE}
       testId={testId}
     />
@@ -243,7 +282,7 @@ export function LiabilityDetailPage() {
       page={paymentPage}
       onPageChange={setPaymentPage}
       hasNext={paymentsQuery.isPlaceholderData ? undefined : paymentPage * PAYMENT_PAGE_SIZE < paymentsTotal}
-      resetKey={counterpartyId.toString()}
+      resetKey={[counterpartyId, from, to, side].join("|")}
       pageSize={PAYMENT_PAGE_SIZE}
       testId={testId}
     />
@@ -419,35 +458,35 @@ export function LiabilityDetailPage() {
 
           <Tabs.Content value="all" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-all">
-              <LiabilityLedgerTable rows={allRows} emptyText={t("liabilityDetail.emptyAll")} phone={phone} />
+              {ledgerTable("liabilityDetail.emptyAll")}
               {entryPager("liability-detail-all-pager")}
             </Stack>
           </Tabs.Content>
 
           <Tabs.Content value="receivable" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-receivable">
-              <LiabilityLedgerTable rows={receivableRows} emptyText={t("liabilityDetail.emptyReceivable")} phone={phone} />
+              {ledgerTable("liabilityDetail.emptyReceivable")}
               {entryPager("liability-detail-receivable-pager")}
             </Stack>
           </Tabs.Content>
 
           <Tabs.Content value="payable" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-payable">
-              <LiabilityLedgerTable rows={payableRows} emptyText={t("liabilityDetail.emptyPayable")} phone={phone} />
+              {ledgerTable("liabilityDetail.emptyPayable")}
               {entryPager("liability-detail-payable-pager")}
             </Stack>
           </Tabs.Content>
 
           <Tabs.Content value="mine" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-mine">
-              {paymentTable(minePayments, "liabilityDetail.emptyMine", false)}
+              {paymentTable(payments, "liabilityDetail.emptyMine", false)}
               {paymentPager("liability-detail-mine-pager")}
             </Stack>
           </Tabs.Content>
 
           <Tabs.Content value="team" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-team">
-              {paymentTable(teamPayments, "liabilityDetail.emptyTeam", true)}
+              {paymentTable(payments, "liabilityDetail.emptyTeam", true)}
               {paymentPager("liability-detail-team-pager")}
             </Stack>
           </Tabs.Content>
@@ -474,6 +513,8 @@ export function LiabilityDetailPage() {
               nameOf={() => name}
               page={limitPage}
               onPageChange={setLimitPage}
+              from={from}
+              to={to}
               phone={phone}
             />
           </Tabs.Content>

@@ -6,6 +6,7 @@ import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
+import "warehouse/team/v1/team.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1;liabilityv1";
 
@@ -351,6 +352,22 @@ message LiabilityPositionListFilter {
   uint64 counterparty_id = 1;
   // Only pairs that are not square (the default "who owes what" view).
   bool unsettled_only = 2;
+
+  // ⚠ THE THREE NARROWING FILTERS BELOW ARE APPLIED BEFORE THE PAGE (backlog #34). They used to be the screen's,
+  // over the 20 rows it had loaded — a team with more counterparties than one page searched page 1 and reported
+  // "no team found" while the match sat on page 2. They narrow the ROWS and `page_info`; the summary tiles ignore
+  // them (the-summary-is-tiles-on-the-list: the summary is ALL balance, and a search box is not a scope).
+
+  // A SEARCH over the counterparty TEAM's name and code — case-insensitive, anywhere in either. The names are
+  // team_service's: they are asked of it through an in-process seam for this team's own pairs, never joined.
+  // Empty = no search. A pair whose team team_service does not know (deleted) never matches a search.
+  string q = 3 [(buf.validate.field).string.max_len = 100];
+  // One KIND of counterparty team — a warehouse or a selling team. UNSPECIFIED = every kind. Read from
+  // team_service through the same seam as `q`.
+  warehouse.team.v1.TeamType counterparty_type = 4 [(buf.validate.field).enum.defined_only = true];
+  // Only pairs where the counterparty has recorded a payment THIS team has not yet accepted or rejected — the
+  // rows the nav badge counts.
+  bool awaiting_only = 5;
 }
 
 enum LiabilityPositionListDataType {
@@ -453,6 +470,33 @@ message LiabilityPositionListResponse {
 message LiabilityLogListFilter {
   // WHOSE history. Required here (the counterparty detail page). Still NOT the scope.
   uint64 counterparty_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD JAKARTA days (the-liability-day-is-the-jakarta-day) — an
+  // entry posted at 06:30 WIB belongs to that WIB date, not to the UTC day before. Either end may be empty, which
+  // leaves that side open; both empty = the whole history. A `to` before `from` is refused, never swapped.
+  //
+  // ⚠ APPLIED BEFORE THE PAGE (backlog #34), as `direction` is: the screen used to narrow the 50 rows it had loaded,
+  // so a range reaching past page 1 showed only what page 1 happened to hold.
+  string from = 2 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+  string to = 3 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+
+  // WHICH WAY the movement went, from `team_id`'s side — the pair page's Receivable and Payable tabs. UNSPECIFIED
+  // is every movement, the All tab.
+  //
+  // ⚠ `balance_after` on a filtered row is still the TRUE running balance of the whole ledger after that entry —
+  // it is stored on the row when it is posted, never summed over the rows a filter returns.
+  LiabilityLogDirection direction = 4 [(buf.validate.field).enum.defined_only = true];
+}
+
+// A cut of the ledger by SIGN (§4.11): RECEIVABLE is a positive amount — the counterparty owes this team more, or
+// this team paid down what it owed — and PAYABLE a negative one. The words follow the sign, never the source type.
+enum LiabilityLogDirection {
+  // Every movement, whichever way — the All tab.
+  LIABILITY_LOG_DIRECTION_UNSPECIFIED = 0;
+  // amount > 0.
+  LIABILITY_LOG_DIRECTION_RECEIVABLE = 1;
+  // amount < 0.
+  LIABILITY_LOG_DIRECTION_PAYABLE = 2;
 }
 
 enum LiabilityLogListDataType {
@@ -497,8 +541,10 @@ message LiabilityLogListResponseItem {
 message LiabilityLogListResponse {
   repeated LiabilityLogListResponseItem items = 1;
   repeated uint64 ids = 2;
+  // Over the FILTERED set — the period and the direction — so the pager counts what the tab shows.
   warehouse.common.v1.PageInfo page_info = 3;
-  // The pair's current balance, so the header needs no second call.
+  // The pair's current balance, so the header needs no second call. ⚠ The WHOLE pair's, whatever the filter: a
+  // period or a direction narrows the rows, never what the two teams owe each other now.
   double balance = 4;
 }
 
@@ -920,6 +966,25 @@ message LiabilityPaymentListFilter {
   uint64 counterparty_id = 1;
   // Only payments this team must act on: recorded by somebody else, awaiting this team's confirmation.
   bool awaiting_my_confirmation = 2;
+
+  // THE PERIOD the payment was RECORDED in, inclusive, as YYYY-MM-DD Jakarta days — the same rule as
+  // LiabilityLogListFilter.from / to. Applied before the page (backlog #34).
+  string from = 3 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+  string to = 4 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+
+  // WHICH SIDE this team was on — the pair page's My payments and Their payments tabs, each its own page. They were
+  // one read cut in the browser, so a tab showed only the part of a 50-row page its side happened to fill.
+  LiabilityPaymentSide side = 5 [(buf.validate.field).enum.defined_only = true];
+}
+
+// Which side of a payment the asking team (`team_id`) was on.
+enum LiabilityPaymentSide {
+  // Both — every payment between the two.
+  LIABILITY_PAYMENT_SIDE_UNSPECIFIED = 0;
+  // This team PAID it (it is the payer) — My payments.
+  LIABILITY_PAYMENT_SIDE_PAID = 1;
+  // This team was PAID (it is the creditor) — Their payments, the only ones it accepts or rejects.
+  LIABILITY_PAYMENT_SIDE_RECEIVED = 2;
 }
 
 enum LiabilityPaymentListDataType {
@@ -1183,6 +1248,11 @@ message LiabilityTermsHistoryListFilter {
   // WHOSE terms. 0 is a real value here — the default row — so this cannot use `gt = 0`, and a
   // caller wanting every counterparty's history omits the field instead.
   optional uint64 counterparty_id = 1;
+
+  // THE PERIOD the limit was CHANGED in, inclusive, as YYYY-MM-DD Jakarta days — the same rule as
+  // LiabilityLogListFilter.from / to, so the pair page's one date range narrows its limit log too. Before the page.
+  string from = 2 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+  string to = 3 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
 }
 
 message LiabilityTermsHistoryListRequest {

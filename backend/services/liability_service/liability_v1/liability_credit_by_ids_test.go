@@ -376,10 +376,26 @@ func TestCreditByIds_RefusesIdsOutOfBounds(t *testing.T) {
 	}
 }
 
-// fakeNames is team_service as the GENERAL slice sees it — a fixed map, counting how often it is asked.
+// fakeNames is team_service as the GENERAL slice and the pair list's filters see it — fixed maps, counting how often
+// it is asked.
 type fakeNames struct {
 	names map[uint64]string
+	facts map[uint64]liability_v1.TeamFact
 	calls int
+}
+
+func (f *fakeNames) TeamFacts(_ context.Context, ids []uint64) (map[uint64]liability_v1.TeamFact, error) {
+	f.calls++
+
+	out := map[uint64]liability_v1.TeamFact{}
+
+	for _, id := range ids {
+		if fact, ok := f.facts[id]; ok {
+			out[id] = fact
+		}
+	}
+
+	return out, nil
 }
 
 func (f *fakeNames) TeamNames(_ context.Context, ids []uint64) (map[uint64]string, error) {

@@ -34,6 +34,9 @@ interface ChangeLogPanelProps {
   nameOf: (id: bigint) => string;
   page: number;
   onPageChange: (page: number) => void;
+  /** The pair page's date range — `yyyy-mm-dd` Jakarta days, "" an open end — narrowing on the server (backlog #34). */
+  from?: string;
+  to?: string;
   /** Each change as a block on a phone (the-team-balance-phone-layout-is-accepted) — the pair page's `useIsMobile()`. */
   phone?: boolean;
 }
@@ -55,11 +58,13 @@ export function ChangeLogPanel({
   nameOf,
   page,
   onPageChange,
+  from = "",
+  to = "",
   phone = false,
 }: ChangeLogPanelProps) {
   const { t } = useTranslation();
 
-  const query = useTermsHistory({ teamId, counterpartyId, page, pageSize: PAGE_SIZE });
+  const query = useTermsHistory({ teamId, counterpartyId, page, pageSize: PAGE_SIZE, from, to });
   const changes = query.data?.changes ?? [];
 
   // Resolve the actors in one batch — they are users, and this service does not know their names.
@@ -204,7 +209,7 @@ export function ChangeLogPanel({
               page={page}
               onPageChange={onPageChange}
               hasNext={query.isPlaceholderData ? undefined : page * PAGE_SIZE < (query.data?.totalItems ?? 0)}
-              resetKey={String(counterpartyId ?? "all")}
+              resetKey={[counterpartyId ?? "all", from, to].join("|")}
               pageSize={PAGE_SIZE}
               testId="terms-history-pager"
             />

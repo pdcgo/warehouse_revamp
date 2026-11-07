@@ -3,6 +3,9 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { liabilityListCalls } from "../../../.storybook/liabilityScenario";
+import { liabilityPeriod } from "../../features/liability/queries";
+import { LiabilityLogDirection, LiabilityPaymentSide } from "../../gen/warehouse/liability/v1/liability_pb";
 import { teams } from "../../../.storybook/fixtures";
 import { account } from "../../../.storybook/financialAccountFixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -82,11 +85,66 @@ export const FiltersLiveInTheUrl: Story = {
 
     await expect(range).toHaveTextContent("Last 7 days");
 
+    // ⛔ THE RANGE IS THE SERVER'S (backlog #34). It used to narrow the 50 rows loaded, so a range reaching past page 1
+    // showed only what page 1 held. The ledger read carries the window as Jakarta days, and the rows are what came
+    // back: yesterday's fee is in it, the payment of 12 days ago is not.
+    const week = liabilityPeriod({ kind: "relative", days: 7 });
+    await waitFor(() => expect(liabilityListCalls.logs.at(-1)).toMatchObject({ from: week.from, to: week.to }));
+    await expect(await canvas.findByTestId("liability-detail-entry-501")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("liability-detail-entry-511")).toBeNull();
+    // The header's balance is still the WHOLE pair's.
+    await expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("8.700.000");
+
     await userEvent.click(range);
     const month = await screen.findByTestId("liability-detail-range-quick-1m");
     await waitFor(() => expect(month).toBeVisible());
     await userEvent.click(month);
     await waitFor(() => expect(location).toHaveTextContent("range=1m"));
+
+    // A new window is a new read, and the payment's row is back.
+    const lastMonth = liabilityPeriod({ kind: "relative", months: 1 });
+    await waitFor(() => expect(liabilityListCalls.logs.at(-1)).toMatchObject({ from: lastMonth.from, to: lastMonth.to }));
+    await expect(await canvas.findByTestId("liability-detail-entry-511")).toBeInTheDocument();
+
+    // The limit log reads the same window (ChangeLogPanel sends it).
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-limits"));
+    await waitFor(() =>
+      expect(liabilityListCalls.termsHistory.at(-1)).toMatchObject({ from: lastMonth.from, to: lastMonth.to }),
+    );
+  },
+};
+
+// ⛔ EACH TAB IS ITS OWN SERVER PAGE (backlog #34). The cuts were one read each, narrowed here — so Their payments drew
+// empty under a page of My payments, and a cut's pager counted the whole ledger. Each tab sends its direction or side,
+// and draws what came back; *Balance after* stays the true running balance of the whole ledger on a cut.
+export const EachTabReadsItsOwnServerPage: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId("liability-detail-entry-501");
+    await expect(liabilityListCalls.logs.at(-1)?.direction).toBe(LiabilityLogDirection.UNSPECIFIED);
+
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-payable"));
+    await waitFor(() => expect(liabilityListCalls.logs.at(-1)?.direction).toBe(LiabilityLogDirection.PAYABLE));
+    const payable = canvas.getByTestId("liability-detail-payable");
+    await waitFor(() =>
+      expect(within(payable).getAllByTestId(/^liability-detail-entry-/).map((r) => r.dataset.testid)).toEqual(
+        [503, 508, 509].map((id) => `liability-detail-entry-${id}`),
+      ),
+    );
+    // The broken-goods payable left 7.470.000 — the whole ledger's balance after it, not a sum of the cut.
+    await expect(within(payable).getByTestId("liability-detail-balance-after-503")).toHaveTextContent("Rp 7.470.000");
+
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-team"));
+    await waitFor(() => expect(liabilityListCalls.payments.at(-1)?.side).toBe(LiabilityPaymentSide.RECEIVED));
+    const team = canvas.getByTestId("liability-detail-team");
+    await waitFor(() => expect(within(team).getByTestId("liability-detail-payment-602")).toBeInTheDocument());
+    await expect(within(team).queryByTestId("liability-detail-payment-601")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-mine"));
+    await waitFor(() => expect(liabilityListCalls.payments.at(-1)?.side).toBe(LiabilityPaymentSide.PAID));
+    const mine = canvas.getByTestId("liability-detail-mine");
+    await waitFor(() => expect(within(mine).getByTestId("liability-detail-payment-601")).toBeInTheDocument());
+    await expect(within(mine).queryByTestId("liability-detail-payment-602")).toBeNull();
   },
 };
 

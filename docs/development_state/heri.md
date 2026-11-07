@@ -26,6 +26,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **Drafts are Ready without mapping** | a draft keeps no product mapping (lines are mapped at Create); *Ready* means shop, warehouse, customer, address and courier are filled |
 | **Expense figures name their people** | Analytic's *Created by* lists who typed or corrected an expense; a stock loss lands on the Jakarta day |
 | **Team Balance passed your review** | desktop and phone accepted; the pair page opens on **All** — the whole running ledger; only the team that owes can record a payment |
+| **Team Balance filters search everything** | the list's search finds a team by name or code past the first page; the pair's date range and tabs read the whole history, not only what was loaded |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |
@@ -207,8 +208,7 @@ flowchart LR
 You accepted the Team Balance screens on 2026-11-07 — desktop
 ([the-team-balance-screens-are-accepted](../technical/balance/team_balance_design_decision.md#the-team-balance-screens-are-accepted))
 and phone ([the-team-balance-phone-layout-is-accepted](../technical/balance/team_balance_design_decision.md#the-team-balance-phone-layout-is-accepted)).
-The `design_accept` gate is passed. Still open there: the list's filters and the pair's date range narrow only the loaded rows
-(backlog #34), and the warehouse daily statement's old words (#35).
+The `design_accept` gate is passed. Still open there: the warehouse daily statement's old words (#35).
 
 ### What is honest about the rest
 
@@ -227,6 +227,5 @@ end-to-end passing together for the first time. Two concurrency audits are writt
 ### Next
 
 1. ~~Get the balance screens previewed~~ — ✅ accepted 2026-11-07.
-2. **Wire settlement into order creation** — the one piece settlement is missing.
-3. **Decide who owns the ledger** — it is the last unowned area, and both lanes touch it
-   ([member_clarify.md Q1](../business/project/member_clarify.md#question)).
+2. ~~Wire settlement into order creation~~ — ✅ done: settlement opens and cancels each sale from `OrderPlaced` / `OrderCancelled` ([settlement/context.md](settlement/context.md)).
+3. ~~Decide who owns the ledger~~ — ✅ yours ([heri-owns-the-ledger-area](../business/project/member_decision.md#heri-owns-the-ledger-area)); there is still no central book ([ledger-is-retired-as-a-context](../business/project/member_decision.md#ledger-is-retired-as-a-context)).

@@ -32,11 +32,14 @@ import { OrderAnalyticService } from "../src/gen/warehouse/selling/v1/order_anal
 import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
   LiabilityCreditState,
+  LiabilityLogDirection,
   LiabilityPaymentService,
+  LiabilityPaymentSide,
   LiabilityService,
   LiabilitySourceType,
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
+import { liabilityListCalls, resetLiabilityListCalls } from "./liabilityScenario";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
 import type { OrderDraft } from "../src/gen/warehouse/selling/v1/order_draft_pb";
 import { draftGaps } from "../src/features/orderDrafts/draftReadiness";
@@ -453,6 +456,21 @@ function creditStateOf(limit: number | undefined, debt: number): LiabilityCredit
 }
 
 
+// THE TEAM BALANCE LISTS' FILTERS, AS THE SERVER APPLIES THEM — before the page (backlog #34). Each request is recorded
+// in liabilityScenario.ts so a story's play() can assert the screen SENT the filter rather than narrowing what loaded.
+// A unix instant's JAKARTA day, `yyyy-mm-dd` (the-liability-day-is-the-jakarta-day) — what a list's from / to compare.
+function jakartaDayOf(unix: bigint): string {
+  return new Date((Number(unix) + 7 * 3600) * 1000).toISOString().slice(0, 10);
+}
+
+// Inside an inclusive `from` / `to` of Jakarta days; "" leaves that end open.
+function inLiabilityPeriod(unix: bigint, filter: { from?: string; to?: string } | undefined): boolean {
+  const day = jakartaDayOf(unix);
+  if (filter?.from && day < filter.from) return false;
+  if (filter?.to && day > filter.to) return false;
+  return true;
+}
+
 // ⚠ SAME REASON, AND A DEEP COPY. `liabilityPaymentReject` writes `status` and `reason` onto the row
 // itself, so a shallow spread of the array would still hand the next story the mutated object — and
 // a claim another story already refused would render as terminal, making "there is a Reject button"
@@ -462,6 +480,7 @@ export function resetLiabilityPayments() {
   nextPaymentId = 700n;
   positionsTable = liabilityPositions.map((p) => ({ ...p }));
   paymentRequestsTable = liabilityPaymentRequests.map((r) => ({ ...r }));
+  resetLiabilityListCalls();
 }
 
 // ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
@@ -1778,11 +1797,42 @@ export const transport = createRouterTransport(({ service }) => {
     // read against. `unsettledOnly` is honoured because the terms screen deliberately asks for
     // EVERY pair, including the square ones: a team at zero still has a limit worth seeing.
     liabilityPositionList: (req) => {
-      const set = positionsFor(req.teamId).filter(
+      liabilityListCalls.positions.push(req.filter);
+
+      const scoped = positionsFor(req.teamId).filter(
         (p) =>
           (!req.filter?.unsettledOnly || p.balance !== 0) &&
           (!req.filter?.counterpartyId || p.counterpartyId === req.filter.counterpartyId),
       );
+
+      // THE ROW FILTERS, before the page (backlog #34): the search over the counterparty team's name and code, its
+      // type, and the pairs with a payment waiting on THIS team. A team the fixtures do not know never matches either.
+      const needle = (req.filter?.q ?? "").trim().toLowerCase();
+      const kind = req.filter?.counterpartyType ?? TeamType.UNSPECIFIED;
+      const rows = scoped.filter((p) => {
+        const team = teams.find((x) => x.id === p.counterpartyId);
+        if ((needle || kind !== TeamType.UNSPECIFIED) && !team) return false;
+        if (kind !== TeamType.UNSPECIFIED && team?.type !== kind) return false;
+        if (
+          needle &&
+          !team!.name.toLowerCase().includes(needle) &&
+          !team!.teamCode.toLowerCase().includes(needle)
+        ) {
+          return false;
+        }
+        if (
+          req.filter?.awaitingOnly &&
+          !paymentsTable.some(
+            (x) => x.creditorTeamId === req.teamId && x.payerTeamId === p.counterpartyId && x.status === 1,
+          )
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+      // The summary is the UNNARROWED set — a search is not a scope (the-summary-is-tiles-on-the-list).
+      const set = scoped;
 
       // ⚠ THE SUMMARY IS COMPUTED OVER `set`, NEVER OVER THE PAGE — the stub models the server, and
       // the whole point of these fields is that the tiles cannot be a reduce of what loaded. A stub
@@ -1792,7 +1842,7 @@ export const transport = createRouterTransport(({ service }) => {
         .sort((a, b) => Number(a.oldestUnsettledAtUnix - b.oldestUnsettledAtUnix))[0];
 
       return {
-        ...pagedColumnarBy("position", set, (p) => p.counterpartyId, req.page),
+        ...pagedColumnarBy("position", rows, (p) => p.counterpartyId, req.page),
         // Whole-set, as the server counts it: every payment recorded TO this team and not yet confirmed or
         // refused — the menu's count on Kewajiban reads it (`the-sidebar-is-in-sections`).
         awaitingConfirmation: paymentsTable.filter((p) => p.creditorTeamId === req.teamId && p.status === 1).length,
@@ -1808,18 +1858,31 @@ export const transport = createRouterTransport(({ service }) => {
     //
     // ⚠ `balance` is the pair's CURRENT net, not the sum of the returned window. The screen shows
     // both, and a stub deriving one from the other would hide a real difference between them.
-    liabilityLogList: (req) => ({
-      // ⚠ The slice is `log` — the oneof case since two-logs-two-names renamed the entry. Served as "entry", the
-      // adapter read nothing and every pair's ledger tab drew empty in Storybook, with no story noticing.
-      ...pagedColumnar(
-        "log",
-        ledgerFor(req.teamId, req.filter?.counterpartyId ?? 0n),
-        req.page,
-      ),
-      // From the asking team's side — a debtor's story reads its pair with Gudang Pusat as owed.
-      balance:
-        positionsFor(req.teamId).find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0,
-    }),
+    //
+    // THE PERIOD AND THE DIRECTION NARROW BEFORE THE PAGE (backlog #34), and each row keeps its stored `balanceAfter` —
+    // the running balance of the whole ledger, never re-summed over the cut.
+    liabilityLogList: (req) => {
+      liabilityListCalls.logs.push(req.filter);
+
+      return {
+        // ⚠ The slice is `log` — the oneof case since two-logs-two-names renamed the entry. Served as "entry", the
+        // adapter read nothing and every pair's ledger tab drew empty in Storybook, with no story noticing.
+        ...pagedColumnar(
+          "log",
+          ledgerFor(req.teamId, req.filter?.counterpartyId ?? 0n).filter(
+            (e) =>
+              inLiabilityPeriod(e.createdAtUnix, req.filter) &&
+              (req.filter?.direction !== LiabilityLogDirection.RECEIVABLE || e.amount > 0) &&
+              (req.filter?.direction !== LiabilityLogDirection.PAYABLE || e.amount < 0),
+          ),
+          req.page,
+        ),
+        // From the asking team's side — a debtor's story reads its pair with Gudang Pusat as owed.
+        balance:
+          positionsFor(req.teamId).find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0,
+      };
+    },
+
 
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
     // it treats as earnings. It picks ORDER_FEE alone: COD reimburses cash already handed to a
@@ -1875,18 +1938,28 @@ export const transport = createRouterTransport(({ service }) => {
     // Both sides' payments for one pair. `awaitingMyConfirmation` is a SERVER-side filter, so the
     // stub honours it rather than letting the screen narrow — a paginated list filtered on the
     // client reports the unfiltered total beside the wrong rows.
-    liabilityPaymentList: (req) =>
-      pagedColumnar(
+    //
+    // The period (the day it was recorded) and the SIDE — My payments / Their payments — are the server's too (backlog
+    // #34): each tab its own page.
+    liabilityPaymentList: (req) => {
+      liabilityListCalls.payments.push(req.filter);
+      const side = req.filter?.side ?? LiabilityPaymentSide.UNSPECIFIED;
+
+      return pagedColumnar(
         "payment",
         paymentsTable.filter(
           (p) =>
             // The asking team's payments with that counterparty, either way — never another pair's.
             ((p.payerTeamId === req.teamId && p.creditorTeamId === req.filter?.counterpartyId) ||
               (p.creditorTeamId === req.teamId && p.payerTeamId === req.filter?.counterpartyId)) &&
-            (!req.filter?.awaitingMyConfirmation || p.status === 1),
+            (!req.filter?.awaitingMyConfirmation || p.status === 1) &&
+            (side !== LiabilityPaymentSide.PAID || p.payerTeamId === req.teamId) &&
+            (side !== LiabilityPaymentSide.RECEIVED || p.creditorTeamId === req.teamId) &&
+            inLiabilityPeriod(p.createdAtUnix, req.filter),
         ),
         req.page,
-      ),
+      );
+    },
 
     // RECORD — the payer's claim. ⚠ IT POSTS NOTHING: a recorded payment is pending until the creditor
     // accepts it, so the stub adds the row and leaves every balance where it was.
@@ -2110,15 +2183,21 @@ export const transport = createRouterTransport(({ service }) => {
       return {};
     },
 
-    liabilityTermsHistoryList: (req) =>
-      pagedColumnarBy(
+    // The period — the day a limit CHANGED, a Jakarta day — narrows before the page (backlog #34).
+    liabilityTermsHistoryList: (req) => {
+      liabilityListCalls.termsHistory.push(req.filter);
+
+      return pagedColumnarBy(
         "change",
         liabilityTermsChanges.filter(
-          (c) => req.filter?.counterpartyId === undefined || c.counterpartyId === req.filter.counterpartyId,
+          (c) =>
+            (req.filter?.counterpartyId === undefined || c.counterpartyId === req.filter.counterpartyId) &&
+            inLiabilityPeriod(c.changedAtUnix, req.filter),
         ),
         (c) => c.id,
         req.page,
-      ),
+      );
+    },
   });
 
   service(ExpenseService, {

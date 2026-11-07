@@ -462,3 +462,5 @@ A `ByIds` read, per the service guideline.
 Closes the phone half left open by [the-team-balance-screens-are-accepted](#the-team-balance-screens-are-accepted). ⚠ Not live (the Storybook switch).
 
 ✅ Built 2026-11-07 — the phone layout is live: `/liability` and `/liability/:id` read `useIsMobile()` (the Storybook-only switch `features/liability/phonePrototype.tsx` is deleted), and the `PhonePrototype*` stories are the pages' `Mobile*` stories now ([development_state](../../development_state/balance/context.md)).
+
+✅ Built 2026-11-07 — the list's search / type / awaiting and the pair's date range / direction / side are applied on the server before paging (backlog #34), so every tab, the All ledger included, reads the whole history; Balance after stays the true running balance.
