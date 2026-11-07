@@ -20,7 +20,8 @@ import (
 //     a-deleted-supplier-is-kept-for-its-figures) — so nothing here checks a supplier exists.
 //   - No total: it reads limit + 1 and says whether another page follows (a-page-says-whether-another-follows).
 //
-// ONE statement: the scope grouped by the key, ordered, a page plus one.
+// ONE statement: each table grouped by the key, the two grouped reads summed per key (a UNION ALL of the GROUPED rows —
+// window() says why never of the raw rows), ordered, a page plus one.
 func (s *Service) MetricSearch(
 	ctx context.Context,
 	req *connect.Request[supplierv1.MetricSearchRequest],
@@ -46,9 +47,16 @@ func (s *Service) MetricSearch(
 	limit := int(page.GetLimit())
 
 	db := s.db.WithContext(ctx)
-	grouped := scope.rows(db).
-		Select(group.key + " AS key, " + figureSums("r") + ", " + unitsSum("r") + " AS units").
+	restock := scope.rows(db).
+		Select(group.key + " AS key, " + figureSums("r") + ", " + zerosOf(salesColumns) + ", " + unitsSum("r") + " AS units").
 		Group(group.key)
+	sales := scope.salesRows(db).
+		Select(group.key + " AS key, " + zerosOf(restockColumns) + ", " + salesSums("r") + ", 0::bigint AS units").
+		Group(group.key)
+	grouped := db.
+		Table("(? UNION ALL ?) AS u", restock, sales).
+		Select("u.key, " + sumsOf("u", append(append([]string{}, restockColumns...), salesColumns...)) + ", SUM(u.units) AS units").
+		Group("u.key")
 
 	query := db.
 		Table("(?) AS g", grouped).

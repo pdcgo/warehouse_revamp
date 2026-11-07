@@ -125,6 +125,7 @@ import { orderAnswerInterceptor, refuseOrderCreateIfScripted } from "./orderAnsw
 import { warehouseFeeService } from "./warehouseFeeStub";
 import { warehouseInfoService } from "./warehouseInfoStub";
 import { agentService } from "./agentStub";
+import { supplierGoods } from "./supplierGoodsStub";
 import { AgentService } from "../src/gen/warehouse/user/v1/agent_pb";
 import { WarehouseFeeService } from "../src/gen/warehouse/warehouse/v1/warehouse_fee_pb";
 import { WarehouseInfoService } from "../src/gen/warehouse/warehouse/v1/warehouse_info_pb";
@@ -1261,6 +1262,8 @@ export const transport = createRouterTransport(({ service }) => {
   service(ProductService, productService);
 
   service(InventoryService, {
+    // A supplier's goods — the supplier pages' Terjual / Siap / Gudang terkait (supplierGoodsStub.ts).
+    supplierGoods: (req) => supplierGoods(req),
     // The owner's side of a catalogue — the product screens' stat row and the detail page's Price, Batch and Stock
     // history tabs. Figured for team 15 only (productStub.ts); every other team reads nothing.
     ownerStockStat: (req) => ownerStockStat(req),

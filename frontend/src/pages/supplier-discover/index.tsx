@@ -24,8 +24,8 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
-import { LIST_FIGURE_MARKS, SupplierFigureCells, SupplierFigureHeaders } from "../../features/suppliers/SupplierFigures";
-import { sampleFiguresFor } from "../../features/suppliers/sampleSupplierFigures";
+import { NO_FIGURE_MARKS, SupplierFigureCells, SupplierFigureHeaders } from "../../features/suppliers/SupplierFigures";
+import { useSupplierGoods } from "../../features/suppliers/goods";
 import {
   NO_FIGURE_RANGES,
   rangesOn,
@@ -63,7 +63,7 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 // THE SUPPLIER LIST'S FIGURES AND FILTERS (owner: *"data dan filter yang sama ada di discovers"*,
 // `discover-shows-the-same-figures-and-filters`) — Terjual and Siap with their last dates, and a range filter each;
-// sample figures and dropped picks, marked, as there.
+// the figures real (InventoryService.SupplierGoods, every team's goods), the range picks dropped and marked, as there.
 export function DiscoverSuppliersPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -76,8 +76,8 @@ export function DiscoverSuppliersPage() {
   const [channelType, setChannelType] = useUrlState("type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   // The team that keeps the supplier — 0n is any team.
   const [ownerTeamId, setOwnerTeamId] = useUrlState("team", 0n, idCodec);
-  // The warehouse the supplier's restocks are received at, and the range pills — both held on screen and thrown away
-  // (`dropped`): nothing narrows the list by either yet. 0n is any warehouse.
+  // The warehouse the supplier's restocks are received at — held on screen and thrown away (`dropped`): nothing narrows
+  // the list by it yet. 0n is any warehouse. The range pills narrow on the server (the-range-pills-are-a-fixed-set).
   const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
   const [ranges, setRanges] = useUrlFigureRanges();
   const [page, setPage] = useState(1);
@@ -85,7 +85,7 @@ export function DiscoverSuppliersPage() {
   // Cards first (owner: *"default card"*); a desktop may switch to the table. A phone always shows cards.
   const [view, setView] = useState<DiscoverView>("cards");
   const shownView: DiscoverView = isMobile ? "cards" : view;
-  // The dropped picks count, so Clear is there to take them back — though the rows do not move for them.
+  // The dropped warehouse pick counts too, so Clear is there to take it back — though the rows do not move for it.
   const filtering =
     q.trim() !== "" ||
     channelType !== Marketplace.UNSPECIFIED ||
@@ -95,7 +95,7 @@ export function DiscoverSuppliersPage() {
   // Typed, then settled — a word is one request to the server, not one per key.
   const term = useDebounced(q.trim());
   // What the rows on screen were asked with, which is what "nothing matches" is about.
-  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED || ownerTeamId !== 0n;
+  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED || ownerTeamId !== 0n || rangesOn(ranges) > 0;
 
   // A filter change is a new question, so it starts again at page one.
   function refilter(change: () => void) {
@@ -103,8 +103,14 @@ export function DiscoverSuppliersPage() {
     setPage(1);
   }
 
-  const query = useDiscoverSuppliers({ teamId: current?.teamId, q: term, channelType, ownerTeamId, page, pageSize });
+  const query = useDiscoverSuppliers({ teamId: current?.teamId, q: term, channelType, ownerTeamId, ranges, page, pageSize });
   const suppliers = query.data?.suppliers ?? [];
+  // Terjual and Siap of every supplier on the page, in one read (every-selling-team-sees-every-teams-figures).
+  const goods = useSupplierGoods(
+    current?.teamType === TeamType.WAREHOUSE ? undefined : current?.teamId,
+    suppliers.map((s) => s.id),
+  );
+  const figuresOf = (s: DiscoverSupplier) => goods.figures.get(s.id.toString()) ?? null;
   const totalItems = query.data?.totalItems ?? 0;
   const error = query.isError ? rpcError(query.error) : "";
 
@@ -162,7 +168,7 @@ export function DiscoverSuppliersPage() {
       return (
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3, "2xl": 4 }} gap="3" data-testid="discover-suppliers-table" data-view="cards">
           {suppliers.map((s) => (
-            <DiscoverSupplierCard key={s.id.toString()} supplier={s} onOpen={() => open(s)} />
+            <DiscoverSupplierCard key={s.id.toString()} supplier={s} figures={figuresOf(s)} onOpen={() => open(s)} />
           ))}
         </SimpleGrid>
       );
@@ -178,7 +184,7 @@ export function DiscoverSuppliersPage() {
             <Table.ColumnHeader>{t("suppliers.discover.table.contact")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("suppliers.discover.table.description")}</Table.ColumnHeader>
             {/* The figures last, at the right edge, as on the supplier list. */}
-            <SupplierFigureHeaders marks={LIST_FIGURE_MARKS} />
+            <SupplierFigureHeaders marks={NO_FIGURE_MARKS} />
           </Table.Row>
         </Table.Header>
 
@@ -218,7 +224,7 @@ export function DiscoverSuppliersPage() {
                   {s.description || "—"}
                 </Text>
               </Table.Cell>
-              <SupplierFigureCells figures={sampleFiguresFor(s)} id={s.id} testIdPrefix="discover" />
+              <SupplierFigureCells figures={figuresOf(s)} id={s.id} testIdPrefix="discover" />
             </Table.Row>
           ))}
         </Table.Body>
@@ -236,7 +242,7 @@ export function DiscoverSuppliersPage() {
         </Text>
       </Stack>
 
-      {/* What is not real yet — the figures and their filters, as on the supplier list. */}
+      {/* What is not real yet — the figures' filters and the warehouse filter, as on the supplier list. */}
       <NotImplementedSummary list={SUPPLIER_LIST_PENDING} />
 
       {/* The filters, and the store-type chips right under them — one group, a step apart. */}
@@ -279,7 +285,7 @@ export function DiscoverSuppliersPage() {
 
           {/* Terjual and Siap, a panel of range pills each — the supplier list's (`the-figure-filters-are-two-panels`). On
               a phone each stands in the sheet as a label over its pills. */}
-          <SupplierRangeFilters value={ranges} onChange={setRanges} />
+          <SupplierRangeFilters value={ranges} onChange={(next) => refilter(() => setRanges(next))} />
         </FilterBar>
 
         {/* "WHO SELLS ON SHOPEE?" — the store type as CHIPS, every type on screen (owner: *"filter jenis tokonya seperti

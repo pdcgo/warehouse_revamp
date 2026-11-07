@@ -27,6 +27,7 @@ import { resetDuplicateRefStub } from "./duplicateRefStub";
 import { resetOrderAnswerStub } from "./orderAnswerStub";
 import { resetUserStub } from "./userStub";
 import { resetSupplierStub } from "./supplierStub";
+import { resetSupplierGoodsStub } from "./supplierGoodsStub";
 import { resetShopStub } from "./shopStub";
 import { resetCategoryStub } from "./categoryStub";
 import { resetProductStub } from "./productStub";
@@ -410,6 +411,7 @@ const preview: Preview = {
     resetUserStub();
     // …and the suppliers and their channels, which a create, an edit or a delete writes to.
     resetSupplierStub();
+    resetSupplierGoodsStub();
     resetShopStub();
     // …and the category tree, which the category screen's create, edit and delete write to.
     resetCategoryStub();

@@ -38,7 +38,7 @@ func raceHarness(t *testing.T) *san_race.Harness {
 // raceService builds the real service over db — the pool, or one Interleave transaction (where the
 // handler's own Transaction becomes a SAVEPOINT and its locks are held until that transaction ends).
 func raceService(db *gorm.DB) *supplier_v1.Service {
-	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil)
+	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, nil)
 }
 
 // ── The pause hook ──────────────────────────────────────────────────────────────────────────────────

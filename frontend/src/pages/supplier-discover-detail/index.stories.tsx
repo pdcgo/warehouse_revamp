@@ -139,7 +139,8 @@ export const TheProductsAndTheFiguresAreSample: Story = {
 };
 
 // A STORE SHOWS ITS SOLD AND READY, as on the manage detail (the-detail-tabs-show-sold-and-ready) — read-only, so the
-// two columns are the table's last; marked 2 and 3 in THIS page's list.
+// two columns are the table's last; real and unmarked — another team's supplier's goods, all of them
+// (every-selling-team-sees-every-teams-figures). A store nothing was bought at reads a dash.
 export const AStoreShowsItsSoldAndReady: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -149,8 +150,10 @@ export const AStoreShowsItsSoldAndReady: Story = {
     const headers = within(table).getAllByRole("columnheader");
     await expect(headers.at(-2)).toHaveTextContent(/^Sold/);
     await expect(headers.at(-1)).toHaveTextContent(/^Ready/);
-    await expect(within(headers.at(-2)!).getByTestId("not-implemented-sold")).toHaveTextContent("2");
-    await expect(within(headers.at(-1)!).getByTestId("not-implemented-ready")).toHaveTextContent("3");
+    await expect(within(headers.at(-2)!).queryByTestId("not-implemented-sold")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId("channel-sold-371")).toHaveTextContent(/^640ordered /));
+    await expect(canvas.getByTestId("channel-ready-371")).toHaveTextContent(/^90restocked /);
+    await expect(canvas.getByTestId("channel-sold-372")).toHaveTextContent("—");
   },
 };
 
@@ -230,14 +233,19 @@ export const AnEmptySupplierShowsItsNameAndTeam: Story = {
   },
 };
 
-// GUDANG TERKAIT, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — over the tabs, marked 4 and 5.
+// GUDANG TERKAIT, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — over the tabs, real; the pick
+// marked 4.
 export const TheWarehousesScopeThePage: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const row = await canvas.findByTestId("supplier-warehouses");
-    await expect(within(row).getByTestId("not-implemented-warehouses")).toHaveTextContent("4");
-    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("5");
+    await expect(within(row).queryByTestId("not-implemented-warehouses")).toBeNull();
+    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("4");
+    await waitFor(() =>
+      expect(within(row).getByTestId("supplier-warehouses-chips")).toHaveTextContent(/^AllGudang Cabang$/),
+    );
+    await expect(within(row).getByTestId("supplier-warehouse-summary-sold")).toHaveTextContent(/640 units.*from 52 orders · last /);
     await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       canvas.getByTestId("supplier-tabs").getBoundingClientRect().top,
     );
@@ -245,12 +253,12 @@ export const TheWarehousesScopeThePage: Story = {
 };
 
 // EACH TAB EXPORTS ITS OWN TABLE, as on the manage detail (each-supplier-tab-exports-its-own-table) — read-only, so the
-// Export is the strip's only action; marked 7 in THIS page's list.
+// Export is the strip's only action; marked 6 in THIS page's list.
 export const EachTabExportsItsOwnTable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const button = await canvas.findByTestId("channels-export");
-    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("7");
+    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("5");
   },
 };

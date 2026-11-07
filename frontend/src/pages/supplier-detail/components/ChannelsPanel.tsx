@@ -27,8 +27,8 @@ export function ChannelsPanel({
   supplierId: bigint;
   /** The current team keeps this supplier — only then may it add, edit or delete a store. */
   canManage: boolean;
-  /** The page's marks for each store's Terjual and Siap. */
-  figureMarks: FigureMarks;
+  /** Marks for each store's Terjual and Siap — none: they are real (InventoryService.SupplierGoods). */
+  figureMarks?: FigureMarks;
   /** The page's mark for the tab's Export. */
   exportMark: ReactNode;
 }) {

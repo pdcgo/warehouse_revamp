@@ -36,12 +36,12 @@ import {
   useUrlFigureRanges,
 } from "../../features/suppliers/SupplierRangeFilter";
 import {
-  LIST_FIGURE_MARKS,
+  NO_FIGURE_MARKS,
   SupplierFigureCells,
   SupplierFigureHeaders,
   SupplierFigureLines,
 } from "../../features/suppliers/SupplierFigures";
-import { sampleFiguresFor } from "../../features/suppliers/sampleSupplierFigures";
+import { useSupplierGoods } from "../../features/suppliers/goods";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
 import { SupplierWarehouseFilter } from "../../features/suppliers/SupplierWarehouseFilter";
@@ -90,8 +90,8 @@ export function SuppliersPage() {
   // opens the same narrowed list.
   const [q, setQ] = useUrlState("q", "", textCodec);
   const [channelType, setChannelType] = useUrlState("type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
-  // The warehouse the supplier's restocks are received at, and the range pills — both held on screen and thrown away
-  // (`dropped`): nothing narrows the list by either yet. 0n is any warehouse.
+  // The warehouse the supplier's restocks are received at — held on screen and thrown away (`dropped`): nothing narrows
+  // the list by it yet. 0n is any warehouse. The range pills narrow on the server (the-range-pills-are-a-fixed-set).
   const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
   const [ranges, setRanges] = useUrlFigureRanges();
   // `null` = the list's own order, newest first — no heading stands for it.
@@ -102,21 +102,26 @@ export function SuppliersPage() {
 
   // Typed, then settled — a word is one request to the server, not one per key.
   const term = useDebounced(q.trim());
-  // The dropped picks count, so Clear is there to take them back — though the rows do not move for them.
+  // The dropped warehouse pick counts too, so Clear is there to take it back — though the rows do not move for it.
   const filtering =
     (q.trim() !== "" ? 1 : 0) +
     (warehouseId !== 0n ? 1 : 0) +
     (channelType !== Marketplace.UNSPECIFIED ? 1 : 0) +
     rangesOn(ranges);
   // What the rows on screen were asked with, which is what "nothing matches" is about.
-  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED;
+  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED || rangesOn(ranges) > 0;
 
   const teamId = current?.teamId;
 
-  const query = useSuppliers({ teamId, q: term, channelType, sort, page, pageSize });
+  // The range pills only for a selling team, which is the only one shown them.
+  const query = useSuppliers({ teamId, q: term, channelType, sort, ranges: canManage ? ranges : undefined, page, pageSize });
   const deleteSupplier = useDeleteSupplier();
 
   const suppliers = query.data?.suppliers ?? [];
+  // Terjual and Siap, real (InventoryService.SupplierGoods) — every team's goods from each supplier on the page
+  // (every-selling-team-sees-every-teams-figures). A supplier none of whose goods ever arrived reads a dash.
+  const goods = useSupplierGoods(canManage ? teamId : undefined, suppliers.map((s) => s.id));
+  const figuresOf = (supplier: ManagedSupplier) => goods.figures.get(supplier.id.toString()) ?? null;
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
@@ -254,9 +259,9 @@ export function SuppliersPage() {
                   {t("suppliers.noStores")}
                 </Text>
               )}
-              {/* Its sales and its ready stock, a line each with the last time it moved — sample figures, each line
-                  carrying its ⚠ number. A store-less supplier has no product, so no lines. */}
-              <SupplierFigureLines figures={sampleFiguresFor(supplier)} marks={LIST_FIGURE_MARKS} testId={`supplier-row-${supplier.id}-figures`} />
+              {/* Its sales and its ready stock, a line each with the last time it moved. A supplier none of whose goods
+                  ever arrived has nothing to count, so no lines. */}
+              <SupplierFigureLines figures={figuresOf(supplier)} marks={NO_FIGURE_MARKS} testId={`supplier-row-${supplier.id}-figures`} />
               {/* The labelled buttons at the block's FOOT — beside the name they squeezed it into a narrow column. */}
               {mayWrite && (
                 <Box pt="1" onClick={(e) => e.stopPropagation()}>
@@ -287,9 +292,9 @@ export function SuppliersPage() {
                 — who to call, read with the name, before its stores and figures. */}
             <Table.ColumnHeader>{t("suppliers.table.contact")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("suppliers.table.channels")}</Table.ColumnHeader>
-            {/* SALES AND READY STOCK, SAMPLE FIGURES (owner: *"tampilkan saja dulu, tulis unimplemented karena memang belum
-                ada"*, `the-supplier-list-shows-sales-and-ready-stock`) — each heading carries its ⚠ number. */}
-            <SupplierFigureHeaders marks={LIST_FIGURE_MARKS} />
+            {/* SALES AND READY STOCK (`the-supplier-list-shows-sales-and-ready-stock`,
+                `sales-are-all-time-with-their-last-dates`) — real since 2026-11-07, so no ⚠ marks. */}
+            <SupplierFigureHeaders marks={NO_FIGURE_MARKS} />
             {mayWrite && <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>}
           </Table.Row>
         </Table.Header>
@@ -318,7 +323,7 @@ export function SuppliersPage() {
               <Table.Cell>
                 <ChannelTypes channels={supplier.channels} />
               </Table.Cell>
-              <SupplierFigureCells figures={sampleFiguresFor(supplier)} id={supplier.id} testIdPrefix="supplier" />
+              <SupplierFigureCells figures={figuresOf(supplier)} id={supplier.id} testIdPrefix="supplier" />
 
               {mayWrite && (
                 // Stop the row's navigate from firing when a row action is used.
@@ -393,7 +398,7 @@ export function SuppliersPage() {
 
         {/* Terjual and Siap as range pills, a panel each (`the-figure-filters-are-two-panels`) — a selling team's only: a
             warehouse team has no figures to narrow by. On a phone each stands in the sheet as a label over its pills. */}
-        {canManage && <SupplierRangeFilters value={ranges} onChange={setRanges} />}
+        {canManage && <SupplierRangeFilters value={ranges} onChange={(next) => refilter(() => setRanges(next))} />}
 
         {isMobile && (
           <FilterField testId="suppliers-sort-field">

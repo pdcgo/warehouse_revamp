@@ -17,8 +17,14 @@ import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
-import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
-import { sampleStoreFigures } from "./sampleSupplierFigures";
+import {
+  type FigureMarks,
+  NO_FIGURE_MARKS,
+  SupplierFigureCells,
+  SupplierFigureHeaders,
+  SupplierFigureLines,
+} from "./SupplierFigures";
+import { useSupplierStoreGoods } from "./goods";
 import { SupplierTabExport } from "./SupplierTabExport";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -70,8 +76,8 @@ export interface ChannelBrowserProps {
   rowActions?: (channel: SupplierChannelRecord) => ReactNode;
   /** The page's own pending mark for the Description column, if it has one. */
   descriptionMark?: ReactNode;
-  /** The page's marks for Terjual and Siap — sample figures, numbered in the page's own pending list. */
-  figureMarks: FigureMarks;
+  /** Marks for Terjual and Siap — none by default: a store's figures are real (InventoryService.SupplierGoods). */
+  figureMarks?: FigureMarks;
   /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
   exportMark: ReactNode;
 }
@@ -89,11 +95,13 @@ export interface ChannelBrowserProps {
 // `the-detail-tabs-show-sold-and-ready`) — the supplier list's figures, for what was bought at this store: the last two
 // columns before the actions, the last order and the last restock under them; on a phone, a line each.
 //
-//   Toko pemasok              Link        Deskripsi    Terjual ⚠2          Siap ⚠3           Aksi
+//   Toko pemasok              Link        Deskripsi    Terjual             Siap              Aksi
 //   Sumber Makmur Official    shopee.…    …               1.204                86             [✎ Ubah] …
 //   [Shopee]                                         pesanan 5 Okt 2026  restok 20 Sep 2026
 //
-// ⚠ SAMPLE FIGURES (sampleStoreFigures) — nothing yet says which products were bought at which store.
+// REAL since 2026-11-07: every team's goods bought at the store — the batches minted with its id
+// (InventoryService.SupplierGoods by store, a-batch-keeps-its-supplier). A store none of whose goods ever arrived reads a
+// dash.
 export function ChannelBrowser({
   teamId,
   supplierId,
@@ -101,11 +109,13 @@ export function ChannelBrowser({
   emptyAction,
   rowActions,
   descriptionMark,
-  figureMarks,
+  figureMarks = NO_FIGURE_MARKS,
   exportMark,
 }: ChannelBrowserProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const goods = useSupplierStoreGoods(teamId, supplierId);
+  const figuresOf = (ch: SupplierChannelRecord) => goods.figures.get(ch.id.toString()) ?? null;
 
   // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `store.`-prefixed, since the Produk and Statistik
   // tabs share the detail page's route and keep their own.
@@ -186,7 +196,7 @@ export function ChannelBrowser({
                 )}
               </Stack>
               <SupplierFigureLines
-                figures={sampleStoreFigures(ch.id)}
+                figures={figuresOf(ch)}
                 marks={figureMarks}
                 testId={`channel-row-${ch.id}-figures`}
               />
@@ -231,7 +241,7 @@ export function ChannelBrowser({
                 </Text>
               </Table.Cell>
 
-              <SupplierFigureCells figures={sampleStoreFigures(ch.id)} id={ch.id} testIdPrefix="channel" />
+              <SupplierFigureCells figures={figuresOf(ch)} id={ch.id} testIdPrefix="channel" />
 
               {rowActions && <Table.Cell textAlign="end">{rowActions(ch)}</Table.Cell>}
             </Table.Row>

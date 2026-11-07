@@ -46,7 +46,14 @@ type SupplierMetric struct {
 	// broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
 	// rate of 0. Ranked only among keys with at least 50 units; the rest follow, in key order
 	// (rate-ranking-needs-50-units, a-rate-ranks-only-above-its-minimum-sample).
-	BrokenRate    float64 `protobuf:"fixed64,7,opt,name=broken_rate,json=brokenRate,proto3" json:"broken_rate,omitempty"`
+	BrokenRate float64 `protobuf:"fixed64,7,opt,name=broken_rate,json=brokenRate,proto3" json:"broken_rate,omitempty"`
+	// PENJUALAN — units SOLD to a buyer from the supplier's goods (batches carrying its id), counted on the Jakarta day
+	// the order was placed; a cancel takes them back on the cancel's day, so a day may read negative
+	// (penjualan-is-the-selling-value-on-the-order-day). TEAM is the team that owns the goods — the restocking team.
+	SalesCount int64 `protobuf:"varint,8,opt,name=sales_count,json=salesCount,proto3" json:"sales_count,omitempty"`
+	// Their SELLING value, rupiah, exact: each order line's share of the order's `platform_total` (by the line's frozen
+	// total), spread over the line's units — the units from this supplier's batches at that price.
+	SalesValue    float64 `protobuf:"fixed64,9,opt,name=sales_value,json=salesValue,proto3" json:"sales_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -126,6 +133,20 @@ func (x *SupplierMetric) GetShippingBrokenValuation() float64 {
 func (x *SupplierMetric) GetBrokenRate() float64 {
 	if x != nil {
 		return x.BrokenRate
+	}
+	return 0
+}
+
+func (x *SupplierMetric) GetSalesCount() int64 {
+	if x != nil {
+		return x.SalesCount
+	}
+	return 0
+}
+
+func (x *SupplierMetric) GetSalesValue() float64 {
+	if x != nil {
+		return x.SalesValue
 	}
 	return 0
 }
@@ -798,7 +819,7 @@ var File_warehouse_supplier_v1_supplier_analytic_proto protoreflect.FileDescript
 
 const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\n" +
-	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xdc\x03\n" +
+	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xb6\x04\n" +
 	"\x0eSupplierMetric\x12/\n" +
 	"\rrestock_count\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\frestockCount\x127\n" +
@@ -813,7 +834,13 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x19shipping_broken_valuation\x18\x06 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x17shippingBrokenValuation\x12-\n" +
 	"\vbroken_rate\x18\a \x01(\x01B\f\x9a\xb5\x18\x04\b\x01\x102\xa0\xb5\x18\x01R\n" +
-	"brokenRate:)\x9a\xb5\x18%\n" +
+	"brokenRate\x12+\n" +
+	"\vsales_count\x18\b \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\n" +
+	"salesCount\x12+\n" +
+	"\vsales_value\x18\t \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\n" +
+	"salesValue:)\x9a\xb5\x18%\n" +
 	"\x04\x01\x04\x06\t\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
 	"\x12SupplierMetricByID\x12J\n" +
 	"\x05items\x18\x01 \x03(\v24.warehouse.supplier.v1.SupplierMetricByID.ItemsEntryR\x05items\x1a_\n" +

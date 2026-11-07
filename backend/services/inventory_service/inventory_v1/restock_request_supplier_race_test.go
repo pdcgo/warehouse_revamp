@@ -308,7 +308,7 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 	}
 
 	answering := &raceRestockRealSuppliers{
-		svc:      supplier_v1.NewService(h.DB(), nil, nil),
+		svc:      supplier_v1.NewService(h.DB(), nil, nil, nil),
 		answered: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
@@ -333,7 +333,7 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 				return errors.New("supplier_service was never asked")
 			}
 
-			_, err := supplier_v1.NewService(tx, nil, nil).SupplierDelete(ctx, connect.NewRequest(&supplierv1.SupplierDeleteRequest{
+			_, err := supplier_v1.NewService(tx, nil, nil, nil).SupplierDelete(ctx, connect.NewRequest(&supplierv1.SupplierDeleteRequest{
 				TeamId: 12, SupplierId: supplierID,
 			}))
 

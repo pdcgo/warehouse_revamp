@@ -9,7 +9,7 @@ The suppliers a selling team buys stock from, and the online stores each one sel
 | --- | --- | --- |
 | `SupplierService` | `SupplierCreate` | a supplier in the scoped team — **refused unless it is a SELLING team** (asks team_service) |
 | | `SupplierUpdate` · `SupplierDelete` | the owning team's own; delete is **soft** |
-| | `SupplierList` | `OWN` (My Supplier) or `EVERY_TEAM` (Discover Supplier), searched, filtered by store type and by the team that keeps it (`owner_team_id`, 0 = any), paged · the `CHANNELS` slice brings each supplier's stores |
+| | `SupplierList` | `OWN` (My Supplier) or `EVERY_TEAM` (Discover Supplier), searched, filtered by store type, by the team that keeps it (`owner_team_id`, 0 = any) and by the **range pills** `sold` / `ready` (asked of inventory before the page — [§ The range pills](#the-range-pills--supplierlists-sold-and-ready)), paged · the `CHANNELS` slice brings each supplier's stores |
 | | `SupplierDetail` | **any** team's live supplier |
 | | `SupplierByIds` | ids a caller holds — any team's, **deleted ones included, marked** |
 | `SupplierChannelService` | `SupplierChannelList` | any team's live supplier's live stores, searched, filtered by type, paged |
@@ -18,6 +18,7 @@ The suppliers a selling team buys stock from, and the online stores each one sel
 | `SupplierAnalyticService` | `MetricSearch` · `MetricData` | `metrics/suppliers`, the analytic pattern ([rpc_provide.md](../../business/analytic/rpc_provide.md)) — rank a page of suppliers, products or periods by one field, then fill those keys; grouped by SUMMARY, the headline |
 | `SupplierAnalyticMaintenanceService` | `AnalyticReplayCompute` · `AnalyticMaintenanceRun` | Root and the Administrator — rebuild the figures from a day; prune the dedup table |
 | *(webhook)* | `/event/supplier-fold/push` | the fold — *Restock Accepted* into `supplier_product_daily_reports` |
+| *(webhook)* | `/event/supplier-order-placed/push` · `/event/supplier-order-cancelled/push` | the sales fold — *Order Placed* / *Order Cancelled* into `supplier_sale_daily_reports` ([§ Penjualan](#penjualan--a-fold-of-order-placed-and-order-cancelled)) |
 
 **Reads cross teams, writes do not**
 ([another-team-sees-everything-of-a-supplier](../../business/supplier/context_decision.md#another-team-sees-everything-of-a-supplier)) —
@@ -130,9 +131,75 @@ sequenceDiagram
 | the day | the event's `accepted_on`, the accept's Jakarta day — read, never re-derived |
 | ⚠ lag | a figure lags the accept by the broker's delivery. In dev and e2e the subscriptions are PULL and nothing pulls, so the live fold does not run there unless `pubsub ensure` is given a `--push-base-url` — the backfill and the tests call the fold directly |
 
+## Penjualan — a fold of Order Placed and Order Cancelled
+
+What a supplier's goods SOLD for ([penjualan-is-the-selling-value-on-the-order-day](../../technical/frontend/suppliers_decision.md#penjualan-is-the-selling-value-on-the-order-day)),
+beside Direstok on the Statistik tab and the Supplier Report — the shape of the order metrics and the warehouse fee: the
+order's Jakarta day adds, a cancel takes back on its own day
+([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)).
+`SalesFoldHandler` (`supplier_v1/sales_fold.go`), two push routes, one handler.
+
+```mermaid
+sequenceDiagram
+  participant SEL as selling_service
+  participant PS as Pub/Sub - order-placed, order-cancelled
+  participant W as supplier_service sales fold
+  participant INV as inventory - in-process GoodsReader
+  participant DB as supplier_service tables
+  SEL->>PS: OrderPlaced - lines with their frozen total, platform_total, transaction_id
+  PS->>W: push to /event/supplier-order-placed/push
+  W->>INV: OrderTakeSuppliers(transaction_id) - units per product, supplier, owning team
+  Note over W: before the transaction - an error NACKs, nothing written
+  W->>DB: claim supplier_sale_orders(order_id) FOR UPDATE - placed already? 200, nothing more
+  W->>DB: placed_day = the event's Jakarta day, the parts kept in supplier_sale_order_parts
+  W->>DB: upsert the day rows ADDING units and value, in key order
+  W->>DB: cancelled already - the cancel came first - take them back on its day too
+  SEL->>PS: OrderCancelled
+  PS->>W: push to /event/supplier-order-cancelled/push
+  W->>DB: claim the same row FOR UPDATE - cancelled already? 200
+  W->>DB: cancelled_day = the cancel's Jakarta day - no placement yet? stop, the placement takes it back
+  W->>DB: the kept parts SUBTRACTED on the cancel's day
+```
+
+| | |
+| --- | --- |
+| the goods | the units the order's take drew from batches carrying a supplier — inventory's `batch_logs` `order` rows of the event's `transaction_id`, gross (a release's rollback rows never subtracted), joined to `batches` for supplier, product and the batch's team. The same goods Terjual counts (`SupplierGoods`) |
+| the value | each line's share of the order's `platform_total` by its frozen `total` (by quantity when no line has one), spread over the line's units; a supplier's part = its units × that price. Exact, never rounded. A platform total of 0 values the units at 0 and still counts them |
+| the team | the batch's team — the team that restocked the goods, as Direstok's rows are keyed; the `TeamFilter` narrows it |
+| the days | the events' `occurred_at` in Asia/Jakarta (`saleDay`) — an order at 00:30 WIB is that day, on any host clock |
+| order of events | either: a cancel first leaves `cancelled_day` on the row and the late placement folds both days in one transaction |
+| idempotent | the order's row is the claim — a redelivery of either event writes nothing |
+| replay | NOT replayed by `AnalyticReplayCompute`, which deletes and re-seeks the restock subscription only — Penjualan is its own table for that reason |
+| tests | `sales_fold_test.go` (00:30 WIB on a UTC clock, the split by line total and by quantity, a cancel on its own day + redeliveries, a cancel first, another team's sale for every reader + the sort, an unread take NACKed, a warehouse role refused) · `sales_fold_race_test.go` (`-tags raceaudit`) · `register_test.go` (both routes mounted) |
+
+## The range pills — SupplierList's `sold` and `ready`
+
+The fixed bands ([the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decision.md#the-range-pills-are-a-fixed-set)):
+Terjual and Siap as `SupplierGoods` reads them, over every team's goods. `SupplierFigureBand{min, max}` — `min`
+inclusive, `max` exclusive, `max` 0 open-ended (protovalidate: `max` 0 or above `min`, neither negative). Narrowed
+BEFORE the count and the page, so a supplier on page 2 is found and the pager counts only the band.
+
+```mermaid
+sequenceDiagram
+  participant UI as supplier list or Discover
+  participant S as supplier_service SupplierList
+  participant INV as inventory - in-process GoodsReader
+  UI->>S: SupplierList - filter sold 500..1000
+  S->>INV: SupplierIDsByFigure(SOLD, 500, 1000) - the suppliers with goods in the band
+  S->>S: suppliers.id = ANY(the set) - then count, order, page
+  UI->>S: SupplierList - filter sold 0..500
+  S->>INV: SupplierIDsByFigure(SOLD, 500, open) - the complement, a never-sold supplier reads 0
+  S->>S: suppliers.id <> ALL(the set)
+```
+
+Inventory can list only suppliers WITH goods, so a band from 0 is asked as its complement. An empty set from above 0 is no
+supplier. Inventory not answering is `Internal`, never an empty list. Tests: `supplier_list_test.go`
+(`ABandFindsASupplierBeyondTheFirstPage`, `BandsAreLowerInclusiveUpperExclusive`, `ABandIsValidated`).
+
 ## The reads
 
-ONE metric, `metrics/suppliers` — `SupplierMetric`, the six figures and the broken rate — read through the analytic
+ONE metric, `metrics/suppliers` — `SupplierMetric`, the six figures, the broken rate and Penjualan's `sales_count` /
+`sales_value` (fields 8–9, sortable) — read through the analytic
 pattern every service's figures share ([rpc_provide.md](../../business/analytic/rpc_provide.md),
 [the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics));
 it replaced `AnalyticTimeSearch`, `AnalyticProductSearch`, `AnalyticGroupSearch` and `AnalyticGroupMetric` on
@@ -161,13 +228,19 @@ sequenceDiagram
 | read | groups | queries | note |
 | --- | --- | --- | --- |
 | `MetricSearch` | SUPPLIER, PRODUCT, DAILY … YEARLY — never SUMMARY | 1 — the scope grouped by the key, ordered, `limit + 1` | the sort is one `can_sort` field by its proto name; the key DESC breaks a tie; by `broken_rate`, units ≥ 50 ranked first ([rate-ranking-needs-50-units](../../business/supplier/context_decision.md#rate-ranking-needs-50-units)); no total, only `has_next` |
-| `MetricData` | the same, and SUMMARY | 1 | every asked key comes back, zero when quiet; a period keyed by its first day — a Monday, the 1st, 1 January; SUMMARY takes no keys |
+| `MetricData` | the same, and SUMMARY | 2 — the restock table's, Penjualan's | every asked key comes back, zero when quiet; a period keyed by its first day — a Monday, the 1st, 1 January; SUMMARY takes no keys |
 
 | filter | narrows | screen |
 | --- | --- | --- |
-| `DateRangeFilter` — required | the accept's Jakarta day, both ends inclusive, as literals in SQL (`window()`) | both |
-| `TeamFilter` | whose restocks are counted | both |
+| `DateRangeFilter` — required | the accept's (or the sale's) Jakarta day, both ends inclusive, as literals in SQL (`window()`) | both |
+| `TeamFilter` | whose restocks are counted — for Penjualan, whose goods were sold | both |
 | `SupplierFilter` | one supplier | the Statistics tab |
+
+Each read narrows BOTH tables — `supplier_product_daily_reports` and `supplier_sale_daily_reports`, keyed alike — by the
+same filters and sums them per key: `MetricData` as two grouped statements added in Go, `MetricSearch` as one UNION ALL
+of the two GROUPED reads. Never a UNION ALL of the raw rows under one aggregate: Postgres plans that as a Parallel Append,
+and the workers' start-up alone took the 30-day headline from 9 to ≈ 40 ms. A supplier with sales and no restock in the
+window is a key of the ranking too.
 
 The Statistics tab lists its periods itself — a time group needs no search — so a quiet period is a row too, and
 reads `MetricData` by DAILY / MONTHLY / YEARLY for the page's periods. Performance:

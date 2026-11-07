@@ -21,12 +21,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Two triggers, each with its mark; its own narrow panel; a pick closes it and the trigger reads the band. */
+/** Two triggers, unmarked (the-range-pills-are-a-fixed-set); its own narrow panel; a pick closes it and the trigger reads the band. */
 export const TwoPanels: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("supplier-range-sold-trigger");
-    await expect(within(canvas.getByTestId("supplier-range-sold")).getByTestId("not-implemented-soldRange")).toBeVisible();
+    await expect(within(canvas.getByTestId("supplier-range-sold")).queryByTestId("not-implemented-soldRange")).toBeNull();
 
     await userEvent.click(trigger);
     const panel = await screen.findByTestId("supplier-range-sold-panel");

@@ -5,13 +5,11 @@ import { ChevronDown, X } from "lucide-react";
 
 import { useIsMobile } from "../../layouts/shell";
 import { FilterChips } from "../../components/chrome/FilterChips";
-import { NotImplemented } from "../pending/NotImplemented";
-import { SUPPLIER_LIST_PENDING } from "./listPending";
 import { FIGURE_RANGES, type FigureRangeKind, rangeLabel } from "./figureRanges";
 import { oneOfCodec, useUrlState } from "../../lib/urlState";
 
 export const description =
-  "A supplier figure's range filter — Terjual or Siap — as a trigger of its own opening a narrow panel of range pills, Semua first. The trigger reads the picked band in the main tone, with an × attached to it that clears the band without opening the panel, its ⚠ mark beside it; a pick closes the panel. On a phone, inside the Filter sheet, it is a label over its pills instead. Nothing narrows a list by it yet (`dropped`).";
+  "A supplier figure's range filter — Terjual or Siap — as a trigger of its own opening a narrow panel of range pills, Semua first. The trigger reads the picked band in the main tone, with an × attached to it that clears the band without opening the panel, a pick closes the panel. On a phone, inside the Filter sheet, it is a label over its pills instead. The bands are a fixed set (`the-range-pills-are-a-fixed-set`); the list asks the server for the suppliers in the band before it pages.";
 
 /** The band picked per figure — "" for all. */
 export type FigureRangePicks = Record<FigureRangeKind, string>;
@@ -64,22 +62,22 @@ export function SupplierRangeFilters({
 // terlalu lebar juga panelnya"*, `the-figure-filters-are-two-panels`). Terjual and Siap are two of these, side by side —
 // on the supplier list and on Discover (`discover-shows-the-same-figures-and-filters`).
 //
-//   [Terjual: 500–1.000 ⌄] ⚠3   [Siap ⌄] ⚠4
+//   [Terjual: 500–1.000 ⌄]   [Siap ⌄]
 //   ┌──────────────────────────────────────┐
 //   │ (Semua) (< 500) (500–1.000) (1.000–2.500) │
 //   │ (2.500–5.000) (≥ 5.000)                │
 //   └──────────────────────────────────────┘
 //
 // The trigger names its figure and, once a band is picked, the band — pale rose, as a chosen pill is
-// (a-chosen-option-is-in-the-main-tone). A pick closes the panel: one choice, as a select's. Nothing narrows the list by
-// it yet, so the trigger carries its `dropped` mark, beside it where it is seen without opening anything.
+// (a-chosen-option-is-in-the-main-tone). A pick closes the panel: one choice, as a select's. The list narrows by it on the
+// server (`the-range-pills-are-a-fixed-set`); its `dropped` mark went with that.
 //
 // AN × CLEARS IT (owner: *"panel ada closablenya untuk filter, misal marketplace terjual dan siap"*,
 // `every-filter-clears-from-its-own-x`) — once a band is picked, an × attached to the trigger's end sets it back to
 // Semua without opening the panel, as a select's × does. Attached, not inside: a button nested in the trigger is a
 // button inside a button.
 //
-//   [Terjual: 500–1.000 ⌄][×] ⚠3
+//   [Terjual: 500–1.000 ⌄][×]
 //
 // ON A PHONE the FilterBar has already put every control in its bottom sheet, so the figure stands there as a label over
 // its pills — a popover inside a sheet is a panel inside a panel. A JS breakpoint, never CSS.
@@ -99,7 +97,6 @@ export function SupplierRangeFilter({
   const ranges = FIGURE_RANGES[kind];
   const picked = ranges.find((range) => range.key === value);
   const label = t(`suppliers.table.${kind}`);
-  const mark = <NotImplemented list={SUPPLIER_LIST_PENDING} id={kind === "sold" ? "soldRange" : "readyRange"} />;
 
   const pills = (
     <FilterChips
@@ -119,12 +116,9 @@ export function SupplierRangeFilter({
   if (isMobile) {
     return (
       <Stack gap="2" data-testid={`supplier-range-${kind}`}>
-        <HStack gap="1">
-          <Text fontSize="sm" fontWeight="bold" color="fg.label">
-            {label}
-          </Text>
-          {mark}
-        </HStack>
+        <Text fontSize="sm" fontWeight="bold" color="fg.label">
+          {label}
+        </Text>
         {pills}
       </Stack>
     );
@@ -172,7 +166,6 @@ export function SupplierRangeFilter({
           </Popover.Positioner>
         </Portal>
       </Popover.Root>
-      {mark}
     </HStack>
   );
 }

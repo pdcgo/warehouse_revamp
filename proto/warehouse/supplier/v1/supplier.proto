@@ -184,6 +184,24 @@ message SupplierListFilter {
   // team. Not the scope: the request's own team_id is the caller's team, and q does not reach a team's name, which
   // supplier_service does not hold.
   uint64 owner_team_id = 4;
+  // THE RANGE PILLS (the-range-pills-are-a-fixed-set): Terjual — every unit sold of the supplier's goods, all time, a
+  // cancel counted back — and Siap — units on a shelf — as InventoryService.SupplierGoods reads them, every team's goods
+  // (every-selling-team-sees-every-teams-figures). Narrowed on the server BEFORE the page; unset = Semua.
+  SupplierFigureBand sold = 5;
+  SupplierFigureBand ready = 6;
+}
+
+// One band: `min` inclusive, `max` exclusive, `max` 0 = no upper edge. A supplier with no goods reads 0, so it is in
+// every band starting at 0.
+message SupplierFigureBand {
+  option (buf.validate.message).cel = {
+    id: "supplier_figure_band.max_above_min"
+    message: "max must be 0 (open-ended) or above min"
+    expression: "this.max == 0 || this.max > this.min"
+  };
+
+  int64 min = 1 [(buf.validate.field).int64.gte = 0];
+  int64 max = 2 [(buf.validate.field).int64.gte = 0];
 }
 
 enum SupplierListDataType {

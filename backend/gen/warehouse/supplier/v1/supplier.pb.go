@@ -750,7 +750,12 @@ type SupplierListFilter struct {
 	// Only the suppliers this team keeps — Discover's Team filter (discover-filters-by-the-team-that-keeps-it). 0 = any
 	// team. Not the scope: the request's own team_id is the caller's team, and q does not reach a team's name, which
 	// supplier_service does not hold.
-	OwnerTeamId   uint64 `protobuf:"varint,4,opt,name=owner_team_id,json=ownerTeamId,proto3" json:"owner_team_id,omitempty"`
+	OwnerTeamId uint64 `protobuf:"varint,4,opt,name=owner_team_id,json=ownerTeamId,proto3" json:"owner_team_id,omitempty"`
+	// THE RANGE PILLS (the-range-pills-are-a-fixed-set): Terjual — every unit sold of the supplier's goods, all time, a
+	// cancel counted back — and Siap — units on a shelf — as InventoryService.SupplierGoods reads them, every team's goods
+	// (every-selling-team-sees-every-teams-figures). Narrowed on the server BEFORE the page; unset = Semua.
+	Sold          *SupplierFigureBand `protobuf:"bytes,5,opt,name=sold,proto3" json:"sold,omitempty"`
+	Ready         *SupplierFigureBand `protobuf:"bytes,6,opt,name=ready,proto3" json:"ready,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -813,6 +818,74 @@ func (x *SupplierListFilter) GetOwnerTeamId() uint64 {
 	return 0
 }
 
+func (x *SupplierListFilter) GetSold() *SupplierFigureBand {
+	if x != nil {
+		return x.Sold
+	}
+	return nil
+}
+
+func (x *SupplierListFilter) GetReady() *SupplierFigureBand {
+	if x != nil {
+		return x.Ready
+	}
+	return nil
+}
+
+// One band: `min` inclusive, `max` exclusive, `max` 0 = no upper edge. A supplier with no goods reads 0, so it is in
+// every band starting at 0.
+type SupplierFigureBand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Min           int64                  `protobuf:"varint,1,opt,name=min,proto3" json:"min,omitempty"`
+	Max           int64                  `protobuf:"varint,2,opt,name=max,proto3" json:"max,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierFigureBand) Reset() {
+	*x = SupplierFigureBand{}
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierFigureBand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierFigureBand) ProtoMessage() {}
+
+func (x *SupplierFigureBand) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierFigureBand.ProtoReflect.Descriptor instead.
+func (*SupplierFigureBand) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SupplierFigureBand) GetMin() int64 {
+	if x != nil {
+		return x.Min
+	}
+	return 0
+}
+
+func (x *SupplierFigureBand) GetMax() int64 {
+	if x != nil {
+		return x.Max
+	}
+	return 0
+}
+
 type SupplierListFilterSort struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	SortType v1.CommonSortType      `protobuf:"varint,1,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
@@ -827,7 +900,7 @@ type SupplierListFilterSort struct {
 
 func (x *SupplierListFilterSort) Reset() {
 	*x = SupplierListFilterSort{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[9]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -839,7 +912,7 @@ func (x *SupplierListFilterSort) String() string {
 func (*SupplierListFilterSort) ProtoMessage() {}
 
 func (x *SupplierListFilterSort) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[9]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -852,7 +925,7 @@ func (x *SupplierListFilterSort) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierListFilterSort.ProtoReflect.Descriptor instead.
 func (*SupplierListFilterSort) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SupplierListFilterSort) GetSortType() v1.CommonSortType {
@@ -912,7 +985,7 @@ type SupplierRowMapItem struct {
 
 func (x *SupplierRowMapItem) Reset() {
 	*x = SupplierRowMapItem{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[10]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -924,7 +997,7 @@ func (x *SupplierRowMapItem) String() string {
 func (*SupplierRowMapItem) ProtoMessage() {}
 
 func (x *SupplierRowMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[10]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -937,7 +1010,7 @@ func (x *SupplierRowMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierRowMapItem.ProtoReflect.Descriptor instead.
 func (*SupplierRowMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SupplierRowMapItem) GetMapData() map[uint64]*Supplier {
@@ -957,7 +1030,7 @@ type SupplierChannelsMapItem struct {
 
 func (x *SupplierChannelsMapItem) Reset() {
 	*x = SupplierChannelsMapItem{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[11]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -969,7 +1042,7 @@ func (x *SupplierChannelsMapItem) String() string {
 func (*SupplierChannelsMapItem) ProtoMessage() {}
 
 func (x *SupplierChannelsMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[11]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -982,7 +1055,7 @@ func (x *SupplierChannelsMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelsMapItem.ProtoReflect.Descriptor instead.
 func (*SupplierChannelsMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SupplierChannelsMapItem) GetMapData() map[uint64]*SupplierChannelSet {
@@ -1006,7 +1079,7 @@ type SupplierListResponseItem struct {
 
 func (x *SupplierListResponseItem) Reset() {
 	*x = SupplierListResponseItem{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[12]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1018,7 +1091,7 @@ func (x *SupplierListResponseItem) String() string {
 func (*SupplierListResponseItem) ProtoMessage() {}
 
 func (x *SupplierListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[12]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1031,7 +1104,7 @@ func (x *SupplierListResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierListResponseItem.ProtoReflect.Descriptor instead.
 func (*SupplierListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SupplierListResponseItem) GetD() isSupplierListResponseItem_D {
@@ -1101,7 +1174,7 @@ type SupplierListResponse struct {
 
 func (x *SupplierListResponse) Reset() {
 	*x = SupplierListResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[13]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1113,7 +1186,7 @@ func (x *SupplierListResponse) String() string {
 func (*SupplierListResponse) ProtoMessage() {}
 
 func (x *SupplierListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[13]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1126,7 +1199,7 @@ func (x *SupplierListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierListResponse.ProtoReflect.Descriptor instead.
 func (*SupplierListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SupplierListResponse) GetItems() []*SupplierListResponseItem {
@@ -1162,7 +1235,7 @@ type SupplierDetailRequest struct {
 
 func (x *SupplierDetailRequest) Reset() {
 	*x = SupplierDetailRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[14]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1174,7 +1247,7 @@ func (x *SupplierDetailRequest) String() string {
 func (*SupplierDetailRequest) ProtoMessage() {}
 
 func (x *SupplierDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[14]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1187,7 +1260,7 @@ func (x *SupplierDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierDetailRequest.ProtoReflect.Descriptor instead.
 func (*SupplierDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SupplierDetailRequest) GetTeamId() uint64 {
@@ -1213,7 +1286,7 @@ type SupplierDetailResponse struct {
 
 func (x *SupplierDetailResponse) Reset() {
 	*x = SupplierDetailResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[15]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1298,7 @@ func (x *SupplierDetailResponse) String() string {
 func (*SupplierDetailResponse) ProtoMessage() {}
 
 func (x *SupplierDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[15]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1311,7 @@ func (x *SupplierDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierDetailResponse.ProtoReflect.Descriptor instead.
 func (*SupplierDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SupplierDetailResponse) GetSupplier() *Supplier {
@@ -1263,7 +1336,7 @@ type SupplierByIdsRequest struct {
 
 func (x *SupplierByIdsRequest) Reset() {
 	*x = SupplierByIdsRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[16]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1275,7 +1348,7 @@ func (x *SupplierByIdsRequest) String() string {
 func (*SupplierByIdsRequest) ProtoMessage() {}
 
 func (x *SupplierByIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[16]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1288,7 +1361,7 @@ func (x *SupplierByIdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierByIdsRequest.ProtoReflect.Descriptor instead.
 func (*SupplierByIdsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SupplierByIdsRequest) GetTeamId() uint64 {
@@ -1322,7 +1395,7 @@ type SupplierByIdsFilter struct {
 
 func (x *SupplierByIdsFilter) Reset() {
 	*x = SupplierByIdsFilter{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[17]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1334,7 +1407,7 @@ func (x *SupplierByIdsFilter) String() string {
 func (*SupplierByIdsFilter) ProtoMessage() {}
 
 func (x *SupplierByIdsFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[17]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1347,7 +1420,7 @@ func (x *SupplierByIdsFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierByIdsFilter.ProtoReflect.Descriptor instead.
 func (*SupplierByIdsFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SupplierByIdsFilter) GetIds() []uint64 {
@@ -1370,7 +1443,7 @@ type SupplierByIdsResponseItem struct {
 
 func (x *SupplierByIdsResponseItem) Reset() {
 	*x = SupplierByIdsResponseItem{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[18]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1382,7 +1455,7 @@ func (x *SupplierByIdsResponseItem) String() string {
 func (*SupplierByIdsResponseItem) ProtoMessage() {}
 
 func (x *SupplierByIdsResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[18]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1395,7 +1468,7 @@ func (x *SupplierByIdsResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierByIdsResponseItem.ProtoReflect.Descriptor instead.
 func (*SupplierByIdsResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{18}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SupplierByIdsResponseItem) GetD() isSupplierByIdsResponseItem_D {
@@ -1448,7 +1521,7 @@ type SupplierByIdsResponseList struct {
 
 func (x *SupplierByIdsResponseList) Reset() {
 	*x = SupplierByIdsResponseList{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[19]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1460,7 +1533,7 @@ func (x *SupplierByIdsResponseList) String() string {
 func (*SupplierByIdsResponseList) ProtoMessage() {}
 
 func (x *SupplierByIdsResponseList) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[19]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1473,7 +1546,7 @@ func (x *SupplierByIdsResponseList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierByIdsResponseList.ProtoReflect.Descriptor instead.
 func (*SupplierByIdsResponseList) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SupplierByIdsResponseList) GetItems() []*SupplierByIdsResponseItem {
@@ -1493,7 +1566,7 @@ type SupplierByIdsResponse struct {
 
 func (x *SupplierByIdsResponse) Reset() {
 	*x = SupplierByIdsResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[20]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1505,7 +1578,7 @@ func (x *SupplierByIdsResponse) String() string {
 func (*SupplierByIdsResponse) ProtoMessage() {}
 
 func (x *SupplierByIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[20]
+	mi := &file_warehouse_supplier_v1_supplier_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1518,7 +1591,7 @@ func (x *SupplierByIdsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierByIdsResponse.ProtoReflect.Descriptor instead.
 func (*SupplierByIdsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{20}
+	return file_warehouse_supplier_v1_supplier_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SupplierByIdsResponse) GetItems() map[uint64]*SupplierByIdsResponseList {
@@ -1585,12 +1658,18 @@ const file_warehouse_supplier_v1_supplier_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2+.warehouse.supplier.v1.SupplierListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xed\x01\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xed\x02\n" +
 	"\x12SupplierListFilter\x12\x15\n" +
 	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12H\n" +
 	"\x05scope\x18\x02 \x01(\x0e2(.warehouse.supplier.v1.SupplierListScopeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x05scope\x12R\n" +
 	"\fchannel_type\x18\x03 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vchannelType\x12\"\n" +
-	"\rowner_team_id\x18\x04 \x01(\x04R\vownerTeamId\"\xe3\x01\n" +
+	"\rowner_team_id\x18\x04 \x01(\x04R\vownerTeamId\x12=\n" +
+	"\x04sold\x18\x05 \x01(\v2).warehouse.supplier.v1.SupplierFigureBandR\x04sold\x12?\n" +
+	"\x05ready\x18\x06 \x01(\v2).warehouse.supplier.v1.SupplierFigureBandR\x05ready\"\xc4\x01\n" +
+	"\x12SupplierFigureBand\x12\x19\n" +
+	"\x03min\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x03min\x12\x19\n" +
+	"\x03max\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x03max:x\xbaHu\x1as\n" +
+	"\"supplier_figure_band.max_above_min\x12'max must be 0 (open-ended) or above min\x1a$this.max == 0 || this.max > this.min\"\xe3\x01\n" +
 	"\x16SupplierListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12D\n" +
@@ -1681,7 +1760,7 @@ func file_warehouse_supplier_v1_supplier_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_supplier_v1_supplier_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_warehouse_supplier_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_warehouse_supplier_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_warehouse_supplier_v1_supplier_proto_goTypes = []any{
 	(SupplierListScope)(0),            // 0: warehouse.supplier.v1.SupplierListScope
 	(SupplierListDataType)(0),         // 1: warehouse.supplier.v1.SupplierListDataType
@@ -1696,75 +1775,78 @@ var file_warehouse_supplier_v1_supplier_proto_goTypes = []any{
 	(*SupplierDeleteResponse)(nil),    // 10: warehouse.supplier.v1.SupplierDeleteResponse
 	(*SupplierListRequest)(nil),       // 11: warehouse.supplier.v1.SupplierListRequest
 	(*SupplierListFilter)(nil),        // 12: warehouse.supplier.v1.SupplierListFilter
-	(*SupplierListFilterSort)(nil),    // 13: warehouse.supplier.v1.SupplierListFilterSort
-	(*SupplierRowMapItem)(nil),        // 14: warehouse.supplier.v1.SupplierRowMapItem
-	(*SupplierChannelsMapItem)(nil),   // 15: warehouse.supplier.v1.SupplierChannelsMapItem
-	(*SupplierListResponseItem)(nil),  // 16: warehouse.supplier.v1.SupplierListResponseItem
-	(*SupplierListResponse)(nil),      // 17: warehouse.supplier.v1.SupplierListResponse
-	(*SupplierDetailRequest)(nil),     // 18: warehouse.supplier.v1.SupplierDetailRequest
-	(*SupplierDetailResponse)(nil),    // 19: warehouse.supplier.v1.SupplierDetailResponse
-	(*SupplierByIdsRequest)(nil),      // 20: warehouse.supplier.v1.SupplierByIdsRequest
-	(*SupplierByIdsFilter)(nil),       // 21: warehouse.supplier.v1.SupplierByIdsFilter
-	(*SupplierByIdsResponseItem)(nil), // 22: warehouse.supplier.v1.SupplierByIdsResponseItem
-	(*SupplierByIdsResponseList)(nil), // 23: warehouse.supplier.v1.SupplierByIdsResponseList
-	(*SupplierByIdsResponse)(nil),     // 24: warehouse.supplier.v1.SupplierByIdsResponse
-	nil,                               // 25: warehouse.supplier.v1.SupplierRowMapItem.MapDataEntry
-	nil,                               // 26: warehouse.supplier.v1.SupplierChannelsMapItem.MapDataEntry
-	nil,                               // 27: warehouse.supplier.v1.SupplierByIdsResponse.ItemsEntry
-	(*v1.CommonPagination)(nil),       // 28: warehouse.common.v1.CommonPagination
-	(v11.Marketplace)(0),              // 29: warehouse.marketplace.v1.Marketplace
-	(v1.CommonSortType)(0),            // 30: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),               // 31: warehouse.common.v1.GeneralSort
-	(*v1.GeneralMapItem)(nil),         // 32: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),               // 33: warehouse.common.v1.PageInfo
-	(*SupplierChannelSet)(nil),        // 34: warehouse.supplier.v1.SupplierChannelSet
+	(*SupplierFigureBand)(nil),        // 13: warehouse.supplier.v1.SupplierFigureBand
+	(*SupplierListFilterSort)(nil),    // 14: warehouse.supplier.v1.SupplierListFilterSort
+	(*SupplierRowMapItem)(nil),        // 15: warehouse.supplier.v1.SupplierRowMapItem
+	(*SupplierChannelsMapItem)(nil),   // 16: warehouse.supplier.v1.SupplierChannelsMapItem
+	(*SupplierListResponseItem)(nil),  // 17: warehouse.supplier.v1.SupplierListResponseItem
+	(*SupplierListResponse)(nil),      // 18: warehouse.supplier.v1.SupplierListResponse
+	(*SupplierDetailRequest)(nil),     // 19: warehouse.supplier.v1.SupplierDetailRequest
+	(*SupplierDetailResponse)(nil),    // 20: warehouse.supplier.v1.SupplierDetailResponse
+	(*SupplierByIdsRequest)(nil),      // 21: warehouse.supplier.v1.SupplierByIdsRequest
+	(*SupplierByIdsFilter)(nil),       // 22: warehouse.supplier.v1.SupplierByIdsFilter
+	(*SupplierByIdsResponseItem)(nil), // 23: warehouse.supplier.v1.SupplierByIdsResponseItem
+	(*SupplierByIdsResponseList)(nil), // 24: warehouse.supplier.v1.SupplierByIdsResponseList
+	(*SupplierByIdsResponse)(nil),     // 25: warehouse.supplier.v1.SupplierByIdsResponse
+	nil,                               // 26: warehouse.supplier.v1.SupplierRowMapItem.MapDataEntry
+	nil,                               // 27: warehouse.supplier.v1.SupplierChannelsMapItem.MapDataEntry
+	nil,                               // 28: warehouse.supplier.v1.SupplierByIdsResponse.ItemsEntry
+	(*v1.CommonPagination)(nil),       // 29: warehouse.common.v1.CommonPagination
+	(v11.Marketplace)(0),              // 30: warehouse.marketplace.v1.Marketplace
+	(v1.CommonSortType)(0),            // 31: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),               // 32: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),         // 33: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),               // 34: warehouse.common.v1.PageInfo
+	(*SupplierChannelSet)(nil),        // 35: warehouse.supplier.v1.SupplierChannelSet
 }
 var file_warehouse_supplier_v1_supplier_proto_depIdxs = []int32{
 	4,  // 0: warehouse.supplier.v1.SupplierCreateResponse.supplier:type_name -> warehouse.supplier.v1.Supplier
 	4,  // 1: warehouse.supplier.v1.SupplierUpdateResponse.supplier:type_name -> warehouse.supplier.v1.Supplier
 	12, // 2: warehouse.supplier.v1.SupplierListRequest.filter:type_name -> warehouse.supplier.v1.SupplierListFilter
-	13, // 3: warehouse.supplier.v1.SupplierListRequest.sort:type_name -> warehouse.supplier.v1.SupplierListFilterSort
+	14, // 3: warehouse.supplier.v1.SupplierListRequest.sort:type_name -> warehouse.supplier.v1.SupplierListFilterSort
 	1,  // 4: warehouse.supplier.v1.SupplierListRequest.data_request:type_name -> warehouse.supplier.v1.SupplierListDataType
-	28, // 5: warehouse.supplier.v1.SupplierListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	29, // 5: warehouse.supplier.v1.SupplierListRequest.page:type_name -> warehouse.common.v1.CommonPagination
 	0,  // 6: warehouse.supplier.v1.SupplierListFilter.scope:type_name -> warehouse.supplier.v1.SupplierListScope
-	29, // 7: warehouse.supplier.v1.SupplierListFilter.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
-	30, // 8: warehouse.supplier.v1.SupplierListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	31, // 9: warehouse.supplier.v1.SupplierListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	2,  // 10: warehouse.supplier.v1.SupplierListFilterSort.supplier:type_name -> warehouse.supplier.v1.SupplierRowSort
-	25, // 11: warehouse.supplier.v1.SupplierRowMapItem.map_data:type_name -> warehouse.supplier.v1.SupplierRowMapItem.MapDataEntry
-	26, // 12: warehouse.supplier.v1.SupplierChannelsMapItem.map_data:type_name -> warehouse.supplier.v1.SupplierChannelsMapItem.MapDataEntry
-	32, // 13: warehouse.supplier.v1.SupplierListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	14, // 14: warehouse.supplier.v1.SupplierListResponseItem.supplier:type_name -> warehouse.supplier.v1.SupplierRowMapItem
-	15, // 15: warehouse.supplier.v1.SupplierListResponseItem.channels:type_name -> warehouse.supplier.v1.SupplierChannelsMapItem
-	16, // 16: warehouse.supplier.v1.SupplierListResponse.items:type_name -> warehouse.supplier.v1.SupplierListResponseItem
-	33, // 17: warehouse.supplier.v1.SupplierListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	4,  // 18: warehouse.supplier.v1.SupplierDetailResponse.supplier:type_name -> warehouse.supplier.v1.Supplier
-	21, // 19: warehouse.supplier.v1.SupplierByIdsRequest.filter:type_name -> warehouse.supplier.v1.SupplierByIdsFilter
-	3,  // 20: warehouse.supplier.v1.SupplierByIdsRequest.data_request:type_name -> warehouse.supplier.v1.SupplierByIdsDataType
-	32, // 21: warehouse.supplier.v1.SupplierByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	14, // 22: warehouse.supplier.v1.SupplierByIdsResponseItem.supplier:type_name -> warehouse.supplier.v1.SupplierRowMapItem
-	22, // 23: warehouse.supplier.v1.SupplierByIdsResponseList.items:type_name -> warehouse.supplier.v1.SupplierByIdsResponseItem
-	27, // 24: warehouse.supplier.v1.SupplierByIdsResponse.items:type_name -> warehouse.supplier.v1.SupplierByIdsResponse.ItemsEntry
-	4,  // 25: warehouse.supplier.v1.SupplierRowMapItem.MapDataEntry.value:type_name -> warehouse.supplier.v1.Supplier
-	34, // 26: warehouse.supplier.v1.SupplierChannelsMapItem.MapDataEntry.value:type_name -> warehouse.supplier.v1.SupplierChannelSet
-	23, // 27: warehouse.supplier.v1.SupplierByIdsResponse.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierByIdsResponseList
-	5,  // 28: warehouse.supplier.v1.SupplierService.SupplierCreate:input_type -> warehouse.supplier.v1.SupplierCreateRequest
-	7,  // 29: warehouse.supplier.v1.SupplierService.SupplierUpdate:input_type -> warehouse.supplier.v1.SupplierUpdateRequest
-	9,  // 30: warehouse.supplier.v1.SupplierService.SupplierDelete:input_type -> warehouse.supplier.v1.SupplierDeleteRequest
-	11, // 31: warehouse.supplier.v1.SupplierService.SupplierList:input_type -> warehouse.supplier.v1.SupplierListRequest
-	18, // 32: warehouse.supplier.v1.SupplierService.SupplierDetail:input_type -> warehouse.supplier.v1.SupplierDetailRequest
-	20, // 33: warehouse.supplier.v1.SupplierService.SupplierByIds:input_type -> warehouse.supplier.v1.SupplierByIdsRequest
-	6,  // 34: warehouse.supplier.v1.SupplierService.SupplierCreate:output_type -> warehouse.supplier.v1.SupplierCreateResponse
-	8,  // 35: warehouse.supplier.v1.SupplierService.SupplierUpdate:output_type -> warehouse.supplier.v1.SupplierUpdateResponse
-	10, // 36: warehouse.supplier.v1.SupplierService.SupplierDelete:output_type -> warehouse.supplier.v1.SupplierDeleteResponse
-	17, // 37: warehouse.supplier.v1.SupplierService.SupplierList:output_type -> warehouse.supplier.v1.SupplierListResponse
-	19, // 38: warehouse.supplier.v1.SupplierService.SupplierDetail:output_type -> warehouse.supplier.v1.SupplierDetailResponse
-	24, // 39: warehouse.supplier.v1.SupplierService.SupplierByIds:output_type -> warehouse.supplier.v1.SupplierByIdsResponse
-	34, // [34:40] is the sub-list for method output_type
-	28, // [28:34] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	30, // 7: warehouse.supplier.v1.SupplierListFilter.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
+	13, // 8: warehouse.supplier.v1.SupplierListFilter.sold:type_name -> warehouse.supplier.v1.SupplierFigureBand
+	13, // 9: warehouse.supplier.v1.SupplierListFilter.ready:type_name -> warehouse.supplier.v1.SupplierFigureBand
+	31, // 10: warehouse.supplier.v1.SupplierListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	32, // 11: warehouse.supplier.v1.SupplierListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	2,  // 12: warehouse.supplier.v1.SupplierListFilterSort.supplier:type_name -> warehouse.supplier.v1.SupplierRowSort
+	26, // 13: warehouse.supplier.v1.SupplierRowMapItem.map_data:type_name -> warehouse.supplier.v1.SupplierRowMapItem.MapDataEntry
+	27, // 14: warehouse.supplier.v1.SupplierChannelsMapItem.map_data:type_name -> warehouse.supplier.v1.SupplierChannelsMapItem.MapDataEntry
+	33, // 15: warehouse.supplier.v1.SupplierListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	15, // 16: warehouse.supplier.v1.SupplierListResponseItem.supplier:type_name -> warehouse.supplier.v1.SupplierRowMapItem
+	16, // 17: warehouse.supplier.v1.SupplierListResponseItem.channels:type_name -> warehouse.supplier.v1.SupplierChannelsMapItem
+	17, // 18: warehouse.supplier.v1.SupplierListResponse.items:type_name -> warehouse.supplier.v1.SupplierListResponseItem
+	34, // 19: warehouse.supplier.v1.SupplierListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	4,  // 20: warehouse.supplier.v1.SupplierDetailResponse.supplier:type_name -> warehouse.supplier.v1.Supplier
+	22, // 21: warehouse.supplier.v1.SupplierByIdsRequest.filter:type_name -> warehouse.supplier.v1.SupplierByIdsFilter
+	3,  // 22: warehouse.supplier.v1.SupplierByIdsRequest.data_request:type_name -> warehouse.supplier.v1.SupplierByIdsDataType
+	33, // 23: warehouse.supplier.v1.SupplierByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	15, // 24: warehouse.supplier.v1.SupplierByIdsResponseItem.supplier:type_name -> warehouse.supplier.v1.SupplierRowMapItem
+	23, // 25: warehouse.supplier.v1.SupplierByIdsResponseList.items:type_name -> warehouse.supplier.v1.SupplierByIdsResponseItem
+	28, // 26: warehouse.supplier.v1.SupplierByIdsResponse.items:type_name -> warehouse.supplier.v1.SupplierByIdsResponse.ItemsEntry
+	4,  // 27: warehouse.supplier.v1.SupplierRowMapItem.MapDataEntry.value:type_name -> warehouse.supplier.v1.Supplier
+	35, // 28: warehouse.supplier.v1.SupplierChannelsMapItem.MapDataEntry.value:type_name -> warehouse.supplier.v1.SupplierChannelSet
+	24, // 29: warehouse.supplier.v1.SupplierByIdsResponse.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierByIdsResponseList
+	5,  // 30: warehouse.supplier.v1.SupplierService.SupplierCreate:input_type -> warehouse.supplier.v1.SupplierCreateRequest
+	7,  // 31: warehouse.supplier.v1.SupplierService.SupplierUpdate:input_type -> warehouse.supplier.v1.SupplierUpdateRequest
+	9,  // 32: warehouse.supplier.v1.SupplierService.SupplierDelete:input_type -> warehouse.supplier.v1.SupplierDeleteRequest
+	11, // 33: warehouse.supplier.v1.SupplierService.SupplierList:input_type -> warehouse.supplier.v1.SupplierListRequest
+	19, // 34: warehouse.supplier.v1.SupplierService.SupplierDetail:input_type -> warehouse.supplier.v1.SupplierDetailRequest
+	21, // 35: warehouse.supplier.v1.SupplierService.SupplierByIds:input_type -> warehouse.supplier.v1.SupplierByIdsRequest
+	6,  // 36: warehouse.supplier.v1.SupplierService.SupplierCreate:output_type -> warehouse.supplier.v1.SupplierCreateResponse
+	8,  // 37: warehouse.supplier.v1.SupplierService.SupplierUpdate:output_type -> warehouse.supplier.v1.SupplierUpdateResponse
+	10, // 38: warehouse.supplier.v1.SupplierService.SupplierDelete:output_type -> warehouse.supplier.v1.SupplierDeleteResponse
+	18, // 39: warehouse.supplier.v1.SupplierService.SupplierList:output_type -> warehouse.supplier.v1.SupplierListResponse
+	20, // 40: warehouse.supplier.v1.SupplierService.SupplierDetail:output_type -> warehouse.supplier.v1.SupplierDetailResponse
+	25, // 41: warehouse.supplier.v1.SupplierService.SupplierByIds:output_type -> warehouse.supplier.v1.SupplierByIdsResponse
+	36, // [36:42] is the sub-list for method output_type
+	30, // [30:36] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_supplier_v1_supplier_proto_init() }
@@ -1774,16 +1856,16 @@ func file_warehouse_supplier_v1_supplier_proto_init() {
 	}
 	file_warehouse_supplier_v1_supplier_channel_proto_init()
 	file_warehouse_supplier_v1_supplier_proto_msgTypes[3].OneofWrappers = []any{}
-	file_warehouse_supplier_v1_supplier_proto_msgTypes[9].OneofWrappers = []any{
+	file_warehouse_supplier_v1_supplier_proto_msgTypes[10].OneofWrappers = []any{
 		(*SupplierListFilterSort_General)(nil),
 		(*SupplierListFilterSort_Supplier)(nil),
 	}
-	file_warehouse_supplier_v1_supplier_proto_msgTypes[12].OneofWrappers = []any{
+	file_warehouse_supplier_v1_supplier_proto_msgTypes[13].OneofWrappers = []any{
 		(*SupplierListResponseItem_General)(nil),
 		(*SupplierListResponseItem_Supplier)(nil),
 		(*SupplierListResponseItem_Channels)(nil),
 	}
-	file_warehouse_supplier_v1_supplier_proto_msgTypes[18].OneofWrappers = []any{
+	file_warehouse_supplier_v1_supplier_proto_msgTypes[19].OneofWrappers = []any{
 		(*SupplierByIdsResponseItem_General)(nil),
 		(*SupplierByIdsResponseItem_Supplier)(nil),
 	}
@@ -1793,7 +1875,7 @@ func file_warehouse_supplier_v1_supplier_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_supplier_v1_supplier_proto_rawDesc), len(file_warehouse_supplier_v1_supplier_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

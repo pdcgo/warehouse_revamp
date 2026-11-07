@@ -7,8 +7,8 @@ import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDate } from "../../lib/datetime";
 import { FilterChips } from "../../components/chrome/FilterChips";
 import { SummaryCard, SummaryStrip } from "../orders/SummaryCard";
-import { type SupplierWarehouse, warehouseSummary } from "./sampleWarehouses";
-import { units } from "./sampleSupplierFigures";
+import { type SupplierWarehouse, warehouseSummary } from "./goods";
+import { units } from "./figureValues";
 
 export const description =
   "A supplier page's related warehouses — every warehouse its restocks were received at — as a row of chips that is also the page's filter (Semua first, one chosen at a time, the chosen one scoping every tab), and under them two cards of what this supplier's goods did in the chosen warehouse, or in all of them: units sold, with the orders and the last one under it, and units ready, with the restocks and the last one under it. More than eight chips fold behind \"+N More\"; a phone scrolls the row sideways. A supplier never restocked says so in words.";
@@ -62,8 +62,12 @@ export function RelatedWarehouses({
 
   // A card's count and its last date — one line on a desktop, a line each on a phone, where two cards share a row and
   // one line would be cut before the date.
-  const countAndLast = (count: string, last: string) =>
-    isMobile ? { line: count, note: last } : { line: `${count} · ${last}` };
+  // A warehouse that never sold (or only holds the goods by a transfer) has no last date — the count stands alone.
+  const countAndLast = (count: string, at: bigint) => {
+    if (at <= 0n) return { line: count };
+    const last = t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(at) });
+    return isMobile ? { line: count, note: last } : { line: `${count} · ${last}` };
+  };
 
   return (
     <Stack gap="3" data-testid="supplier-warehouses">
@@ -119,7 +123,7 @@ export function RelatedWarehouses({
               value={t("suppliers.relatedWarehouses.summary.units", { n: units(summary.sold) })}
               {...countAndLast(
                 t("suppliers.relatedWarehouses.summary.orders", { n: units(summary.orders) }),
-                t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastOrderAt) }),
+                summary.lastOrderAt,
               )}
               testId="supplier-warehouse-summary-sold"
             />
@@ -128,7 +132,7 @@ export function RelatedWarehouses({
               value={t("suppliers.relatedWarehouses.summary.units", { n: units(summary.ready) })}
               {...countAndLast(
                 t("suppliers.relatedWarehouses.summary.restocks", { n: units(summary.restocks) }),
-                t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastRestockAt) }),
+                summary.lastRestockAt,
               )}
               testId="supplier-warehouse-summary-ready"
             />

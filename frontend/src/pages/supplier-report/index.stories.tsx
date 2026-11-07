@@ -282,18 +282,23 @@ export const ExportIsMarkedNotBuilt: Story = {
 };
 
 // SALES SIT BESIDE RESTOCKED, as on the Statistik tab (sales-sit-beside-restocked) — a Penjualan card after Direstok and
-// a Penjualan column after Direstok; sample figures, marked 2 in THIS page's list (Ekspor is 1).
+// a Penjualan column after Direstok. REAL since 2026-11-07 (penjualan-is-the-selling-value-on-the-order-day), unmarked:
+// the window sold 100 + 150 + 10 + 1 = 261 units for Rp 7.813.000; Sumber's row 100 for Rp 4.225.000.
 export const SalesSitBesideRestocked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const card = canvas.getByTestId("supplier-report-summary-sales");
-    await expect(within(card).getByTestId("not-implemented-sales")).toHaveTextContent("2");
+    await expect(within(card).queryByTestId("not-implemented-sales")).toBeNull();
+    await expect(canvas.getByTestId("supplier-report-summary-sales-value")).toHaveTextContent(rp(7_813_000n));
+    await expect(canvas.getByTestId("supplier-report-summary-sales-units")).toHaveTextContent("261 units");
 
     const headers = within(canvas.getByTestId("supplier-report-table")).getAllByRole("columnheader");
     const restocked = headers.findIndex((h) => h.textContent === "Restocked");
-    await expect(headers[restocked + 1]).toHaveTextContent(/^Sales/);
-    await expect(within(headers[restocked + 1]!).getByTestId("not-implemented-sales")).toHaveTextContent("2");
+    await expect(headers[restocked + 1]).toHaveTextContent(/^Sales$/);
+
+    const sumber = canvas.getByTestId("supplier-report-row-31");
+    await expect(within(sumber).getByTestId("figure-sales")).toHaveTextContent(`100${rp(4_225_000n)}`);
   },
 };
 

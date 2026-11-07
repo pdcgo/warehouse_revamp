@@ -20,6 +20,11 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sup
 // webhook consuming `RestockAccepted` (the-report-is-processed-like-settlement). A figure can lag the accept by the
 // broker's delivery time, and never by more than that.
 //
+// PENJUALAN (penjualan-is-the-selling-value-on-the-order-day) is folded beside them, into its OWN table
+// `supplier_sale_daily_reports`, by the same service's webhook consuming `OrderPlaced` and `OrderCancelled` — the units
+// the order's stock take drew from batches carrying the supplier (read from inventory through an in-process seam), at
+// their share of what the order sold them for, on the order's Jakarta day; a cancel takes them back on its own day.
+//
 // ⚠ EVERY SELLING TEAM READS EVERY TEAM'S FIGURES (every-selling-team-sees-every-teams-figures). `team_id` is the
 // CALLER's scope, as on every read; a TeamFilter narrows to whose restocks are counted.
 service SupplierAnalyticService {
@@ -113,6 +118,20 @@ message SupplierMetric {
       rank_min_sample: 50
     },
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_RATIO
+  ];
+
+  // PENJUALAN — units SOLD to a buyer from the supplier's goods (batches carrying its id), counted on the Jakarta day
+  // the order was placed; a cancel takes them back on the cancel's day, so a day may read negative
+  // (penjualan-is-the-selling-value-on-the-order-day). TEAM is the team that owns the goods — the restocking team.
+  int64 sales_count = 8 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Their SELLING value, rupiah, exact: each order line's share of the order's `platform_total` (by the line's frozen
+  // total), spread over the line's units — the units from this supplier's batches at that price.
+  double sales_value = 9 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
 }
 

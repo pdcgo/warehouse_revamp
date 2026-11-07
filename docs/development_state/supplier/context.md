@@ -128,3 +128,43 @@ Postgres (`localhost:5433/postgres`): legacy `legacy_suppliers` **1 → 3** ("Te
 supplier_service's 1 / store 1, created from 2026-10-12, and was left alone). `dev setup --no-docker` then ran clean:
 2 suppliers + 2 stores moved (supplier_service now 1, 2, 3 / stores 1, 2, 3), the 15 lines on supplier 2 resolve.
 Backup / restore SQL: `D:/hermes/cache/scratch/dev_supplier_renumber_backup.sql` (scratch dir — pruned after 24h idle).
+
+## 2026-11-07 — the supplier pages' Sold / Ready / Gudang terkait are real
+
+`InventoryService.SupplierGoods` (inventory owns batches and their ledger, so no seam): per supplier, store or warehouse —
+sold units and orders (the batches' `order` rows netted per transaction, so a cancel is counted back), the last order,
+ready units, restocks and the last restock. A supplier's goods = the batches minted with its id
+([a-batch-keeps-its-supplier](../../business/inventory/context_decision.md#a-batch-keeps-its-supplier)), EVERY team's
+([every-selling-team-sees-every-teams-figures](../../business/supplier/context_decision.md#every-selling-team-sees-every-teams-figures)).
+
+| | |
+| --- | --- |
+| backend | `inventory_v1/supplier_goods.go` + `_test.go` (6: every team's goods, a cancel counted back, another team reads the same, by store / by warehouse, the last order skips a cancelled one, a transfer is not a restock, the policy) · inventory `00039_batches_supplier_index.sql` · perf `supplier_goods_perf_test.go` — 🟡 [SupplierGoods.md](../../../audits/services/inventory_service/performances/SupplierGoods.md) (list page 41 ms; a 100 000-row supplier ≈ 5 s — fold recommended, not applied) · read only, so no concurrency audit |
+| frontend | `features/suppliers/goods.ts` (`useSupplierGoods`, `useSupplierStoreGoods`, `useSupplierWarehouses`, `warehouseSummary`), `figureValues.ts`; supplier list, Discover cards + table, the Toko tab (`ChannelBrowser`), Gudang terkait on both details read them. `sampleWarehouses.ts` deleted; `sampleSupplierFigures.ts` keeps the Produk tab's product figures only |
+| marks | list/Discover: `sold`, `ready` removed (range pills now ⚠1–2, warehouse ⚠3) · both details: `warehouses` removed (products 1, sold/ready 2–3 now for the Produk tab only, warehouseFilter 4, sales 5, export 6) |
+| Storybook | `.storybook/supplierGoodsStub.ts` (lots per supplier/store/warehouse, `supplierGoodsCalls`), stories assert real numbers |
+| e2e | `the_supplier_goods.spec.ts` — own seller restocks 5 from its supplier's store, order of 2 → 2 sold · 3 ready on the list, the store and Gudang terkait; cancel → 0 · 5 (polled) |
+
+**Still not real:** the Produk tab (rows and figures — the store-product link); Penjualan on the Statistik tab — ⚠ UNDECIDED
+(which rupiah, which day); the range pills (the bands' source is open, `supplier-figures-filter-by-range-pills`); the
+list's Gudang filter (supplier_service's list cannot narrow by inventory's warehouses yet); the warehouse pick narrowing
+the tabs; the Exports.
+
+## 2026-11-07 (part 2) — Penjualan is real, and the range pills narrow the list on the server
+
+[penjualan-is-the-selling-value-on-the-order-day](../../technical/frontend/suppliers_decision.md#penjualan-is-the-selling-value-on-the-order-day)
+and [the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decision.md#the-range-pills-are-a-fixed-set).
+
+| | |
+| --- | --- |
+| Penjualan | `metrics/suppliers` gains `sales_count` / `sales_value` (fields 8–9, sortable), folded by supplier_service's **sales fold** (`supplier_v1/sales_fold.go`) from `OrderPlaced` / `OrderCancelled` — two new push subscriptions `supplier-order-placed`, `supplier-order-cancelled` (`register.go`, `tools/san/pubsub.go`). The goods are what the order's take drew from batches carrying a supplier, asked of inventory in-process (`GoodsReader.OrderTakeSuppliers` → `cmd/app_development/supplier_goods_reader.go` → `inventory_v1.OrderTakeSuppliers`); the value is each line's share of `platform_total` by its frozen `total`, spread over its units; the order's Jakarta day adds, the cancel's day takes back; the team is the batch's (the restocking team, as Direstok's) |
+| schema | supplier `00004_supplier_sales.sql` — `supplier_sale_daily_reports` (signed, keyed as the restock rows), `supplier_sale_orders` (the claim, either event first), `supplier_sale_order_parts` (what the cancel takes back). Read with the restock rows as one UNION ALL in `window()` |
+| range pills | `SupplierListFilter.sold` / `ready` (`SupplierFigureBand{min, max}`, lower-inclusive, upper-exclusive, `max` 0 open; CEL-validated). `SupplierList` asks inventory (`GoodsReader.SupplierIDsByFigure` → `inventory_v1.SupplierIDsByFigure`) BEFORE the count and the page; a band from 0 is asked as its complement (a never-sold supplier reads 0). Same filter on Discover (`discover-shows-the-same-figures-and-filters`). In the URL as before (`sold`, `ready`); a pick now resets the page |
+| frontend | `figures.ts` + `FigureParts.tsx` read the real sales (`sampleSales.ts` deleted, every `salesMark` prop gone); the `sales` pending mark left both details (export ⚠6 → ⚠5) and the Supplier Report (only Ekspor ⚠1 left); the range pills' two `dropped` marks left `listPending.ts` (the warehouse ⚠3 → ⚠1). `queries.ts` / `discover.ts` send the bands (`figureBand`) |
+| tests | Go: `sales_fold_test.go` (7), `sales_fold_race_test.go` (2, raceaudit), `register_test.go` (routes), `supplier_list_test.go` +3 (page 2 found, band edges, validation), inventory `supplier_order_take_test.go` (2), `supplier_ids_by_figure_test.go` (2), `cmd/app_development/supplier_goods_reader_test.go` · stories: SupplierStatistics `SalesSitBesideRestocked` (real numbers), `ByProductReadsItsSales`; SupplierReport `SalesSitBesideRestocked`; suppliers / Discover range-pill stories assert the band sent and the rows narrowed (`supplierListBandCalls`) · e2e `the_supplier_goods.spec.ts` +2 tests and the cancel's Penjualan back to 0 |
+| perf | inventory [SupplierIDsByFigure.md](../../../audits/services/inventory_service/performances/SupplierIDsByFigure.md) 🔴 (Terjual band ≈ 0.6–0.9 s at 1 M order rows, Siap ≈ 60 ms) · supplier [SalesFold.md](../../../audits/services/supplier_service/performances/SalesFold.md) (the fold ≈ 2 ms / 6 statements; the reads per table, merged — HEAD-level with no sales, ≈ 2–2.8× on 366-day windows when every restock row also has a sale row) · concurrency [SalesFold.md](../../../audits/services/supplier_service/concurrency/SalesFold.md) ✅ |
+
+**⚠ My readings (report):** a line's selling value is its share of the order's `platform_total` by the lines' frozen
+`total` (no line stores a platform price — product-is-its-own-line-metric); Penjualan's team filter means whose goods
+(the batch's team), as Direstok means whose restocks. **Not replayed:** `AnalyticReplayCompute` re-seeks only
+`supplier-fold`, so Penjualan has no rebuild path yet.

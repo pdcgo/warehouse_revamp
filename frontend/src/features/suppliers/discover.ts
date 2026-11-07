@@ -13,6 +13,8 @@ import {
   supplierRecord,
   suppliersFromList,
 } from "./adapt";
+import { figureBand } from "./figureRanges";
+import { type FigureRangePicks, NO_FIGURE_RANGES } from "./SupplierRangeFilter";
 
 // DISCOVER SUPPLIERS — every selling team's suppliers, searched across teams (discover-searches-every-teams-suppliers,
 // another-team-sees-everything-of-a-supplier). The manage page lists the suppliers a team keeps; this is the
@@ -44,6 +46,8 @@ export interface DiscoverQuery {
   channelType: Marketplace;
   /** The team that keeps the supplier; `0n` = any team. */
   ownerTeamId: bigint;
+  /** Terjual and Siap's range pills, the supplier list's (discover-shows-the-same-figures-and-filters); absent = Semua. */
+  ranges?: FigureRangePicks;
   page: number;
   pageSize: number;
 }
@@ -76,10 +80,19 @@ export async function fetchDiscoverPage(
   query: DiscoverQuery,
 ): Promise<{ suppliers: DiscoverSupplier[]; totalItems: number }> {
   const { q, channelType, ownerTeamId, page, pageSize } = query;
+  const ranges = query.ranges ?? NO_FIGURE_RANGES;
 
   const res = await supplierClient.supplierList({
     teamId,
-    filter: { q, scope: SupplierListScope.EVERY_TEAM, channelType, ownerTeamId },
+    filter: {
+      q,
+      scope: SupplierListScope.EVERY_TEAM,
+      channelType,
+      ownerTeamId,
+      // Narrowed on the server, before the page (the-range-pills-are-a-fixed-set).
+      sold: figureBand("sold", ranges.sold),
+      ready: figureBand("ready", ranges.ready),
+    },
     dataRequest: supplierListWithChannelsData(),
     page: { page, limit: pageSize },
   });
@@ -99,6 +112,7 @@ export async function fetchDiscoverPage(
 
 export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & DiscoverQuery) {
   const { teamId, q, channelType, ownerTeamId, page, pageSize } = args;
+  const ranges = args.ranges ?? NO_FIGURE_RANGES;
   const client = useQueryClient();
 
   return useQuery({
@@ -111,11 +125,13 @@ export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & Disc
       q,
       channelType,
       ownerTeamId: ownerTeamId.toString(),
+      sold: ranges.sold,
+      ready: ranges.ready,
       page,
       pageSize,
     }),
     enabled: teamId !== undefined,
-    queryFn: () => fetchDiscoverPage(client, teamId!, { q, channelType, ownerTeamId, page, pageSize }),
+    queryFn: () => fetchDiscoverPage(client, teamId!, { q, channelType, ownerTeamId, ranges, page, pageSize }),
   });
 }
 

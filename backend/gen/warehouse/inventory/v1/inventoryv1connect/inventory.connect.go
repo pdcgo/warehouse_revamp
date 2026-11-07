@@ -105,6 +105,9 @@ const (
 	// InventoryServiceOwnerStockHistoryProcedure is the fully-qualified name of the InventoryService's
 	// OwnerStockHistory RPC.
 	InventoryServiceOwnerStockHistoryProcedure = "/warehouse.inventory.v1.InventoryService/OwnerStockHistory"
+	// InventoryServiceSupplierGoodsProcedure is the fully-qualified name of the InventoryService's
+	// SupplierGoods RPC.
+	InventoryServiceSupplierGoodsProcedure = "/warehouse.inventory.v1.InventoryService/SupplierGoods"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -178,6 +181,12 @@ type InventoryServiceClient interface {
 	OwnerCostLayerList(context.Context, *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error)
 	OwnerBatchList(context.Context, *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error)
 	OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error)
+	// A SUPPLIER'S GOODS — the supplier pages' Terjual and Siap with their last dates, and Gudang terkait's counts
+	// (the-supplier-list-shows-sales-and-ready-stock, sales-are-all-time-with-their-last-dates,
+	// the-detail-tabs-show-sold-and-ready, the-summary-is-sold-and-ready-with-their-counts). A supplier's goods are the
+	// batches minted with its id (a-batch-keeps-its-supplier), from EVERY team — a supplier's figures are not private
+	// to the team that bought (every-selling-team-sees-every-teams-figures).
+	SupplierGoods(context.Context, *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -358,6 +367,13 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		supplierGoods: connect.NewClient[v1.SupplierGoodsRequest, v1.SupplierGoodsResponse](
+			httpClient,
+			baseURL+InventoryServiceSupplierGoodsProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("SupplierGoods")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -387,6 +403,7 @@ type inventoryServiceClient struct {
 	ownerCostLayerList     *connect.Client[v1.OwnerCostLayerListRequest, v1.OwnerCostLayerListResponse]
 	ownerBatchList         *connect.Client[v1.OwnerBatchListRequest, v1.OwnerBatchListResponse]
 	ownerStockHistory      *connect.Client[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse]
+	supplierGoods          *connect.Client[v1.SupplierGoodsRequest, v1.SupplierGoodsResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -509,6 +526,11 @@ func (c *inventoryServiceClient) OwnerStockHistory(ctx context.Context, req *con
 	return c.ownerStockHistory.CallUnary(ctx, req)
 }
 
+// SupplierGoods calls warehouse.inventory.v1.InventoryService.SupplierGoods.
+func (c *inventoryServiceClient) SupplierGoods(ctx context.Context, req *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error) {
+	return c.supplierGoods.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -581,6 +603,12 @@ type InventoryServiceHandler interface {
 	OwnerCostLayerList(context.Context, *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error)
 	OwnerBatchList(context.Context, *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error)
 	OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error)
+	// A SUPPLIER'S GOODS — the supplier pages' Terjual and Siap with their last dates, and Gudang terkait's counts
+	// (the-supplier-list-shows-sales-and-ready-stock, sales-are-all-time-with-their-last-dates,
+	// the-detail-tabs-show-sold-and-ready, the-summary-is-sold-and-ready-with-their-counts). A supplier's goods are the
+	// batches minted with its id (a-batch-keeps-its-supplier), from EVERY team — a supplier's figures are not private
+	// to the team that bought (every-selling-team-sees-every-teams-figures).
+	SupplierGoods(context.Context, *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -757,6 +785,13 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceSupplierGoodsHandler := connect.NewUnaryHandler(
+		InventoryServiceSupplierGoodsProcedure,
+		svc.SupplierGoods,
+		connect.WithSchema(inventoryServiceMethods.ByName("SupplierGoods")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -807,6 +842,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceOwnerBatchListHandler.ServeHTTP(w, r)
 		case InventoryServiceOwnerStockHistoryProcedure:
 			inventoryServiceOwnerStockHistoryHandler.ServeHTTP(w, r)
+		case InventoryServiceSupplierGoodsProcedure:
+			inventoryServiceSupplierGoodsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -910,4 +947,8 @@ func (UnimplementedInventoryServiceHandler) OwnerBatchList(context.Context, *con
 
 func (UnimplementedInventoryServiceHandler) OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerStockHistory is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) SupplierGoods(context.Context, *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.SupplierGoods is not implemented"))
 }

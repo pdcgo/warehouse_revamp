@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Flex, HStack, Span, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Flex, Span, Stack, Table, Text } from "@chakra-ui/react";
 
 import { formatRupiah } from "../../lib/money";
 import { SummaryCard, SummaryStrip } from "../orders/SummaryCard";
@@ -9,7 +9,6 @@ import { PRESSABLE } from "../../lib/motion";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { type SupplierFigures, brokenRate, lostRate, unitsReceived } from "./figures";
-import { sampleSalesFrom } from "./sampleSales";
 
 // THE PIECES EVERY SUPPLIER FIGURE IS DRAWN WITH — shared by the Statistics tab (SupplierStatistics) and the Supplier
 // Report page, so a supplier's numbers read the same in both places (the-figures-are-a-statistics-tab-and-a-supplier-report).
@@ -20,7 +19,8 @@ import { sampleSalesFrom } from "./sampleSales";
 //
 // SALES SIT BESIDE RESTOCKED (owner: *"di sebelah restocked ada penjualan … sama saja formatnya unit bawahnya harga"*,
 // `sales-sit-beside-restocked`) — what went OUT next to what came IN, drawn the same way: units over rupiah in a cell,
-// rupiah over units on a card. ⚠ Sample figures (sampleSales.ts); each page hands in its own mark.
+// rupiah over units on a card. Real since 2026-11-07: the selling value of the supplier's goods on the order's day, a
+// cancel taken back on its own (`penjualan-is-the-selling-value-on-the-order-day`, `metrics/suppliers`' sales fields).
 
 const units = (n: number) => n.toLocaleString("id-ID");
 // A rate to one decimal, written the way the app writes every number — 4,6 rather than 4.6.
@@ -39,18 +39,15 @@ const pct = (rate: number) => rate.toLocaleString("id-ID", { maximumFractionDigi
  * THE TOTAL LEADS (owner: *"iya, kasih total"*): every unit received — restocked, lost and broken — and its value, the
  * strip's one lead card, so a percentage has its whole on screen: "1 unit · 0,7% dari total".
  *
- *   ┌ Total ───────┐ ┌ Direstok ────┐ ┌ Penjualan ⚠ ─┐ ┌ Hilang di… ──────────┐ ┌ Rusak di… ───────────┐
+ *   ┌ Total ───────┐ ┌ Direstok ────┐ ┌ Penjualan ───┐ ┌ Hilang di… ──────────┐ ┌ Rusak di… ───────────┐
  *   │ Rp 4.645.000 │ │ Rp 4.400.000 │ │ Rp 5.120.000 │ │ Rp 50.000            │ │ Rp 195.000           │
  *   │ 137 unit     │ │ 130 unit     │ │ 98 unit      │ │ 1 unit · 0,7% dari…  │ │ 6 unit · 4,4% dari…  │
  */
 export function FiguresSummary({
   figures,
-  salesMark,
   testId = "figures-summary",
 }: {
   figures: SupplierFigures | undefined;
-  /** The page's ⚠ for Penjualan — sample figures, numbered in the page's own pending list. */
-  salesMark: ReactNode;
   testId?: string;
 }) {
   const { t } = useTranslation();
@@ -84,7 +81,6 @@ export function FiguresSummary({
     ) : undefined;
 
   const received = figures ? unitsReceived(figures) : 0;
-  const sales = figures ? sampleSalesFrom(figures) : undefined;
 
   // HOW A FIGURE IS MADE is a desktop line: on a phone two cards share a row and the note was always cut to "unit
   // yang…" (owner: *"iya"*, `a-phone-card-shows-no-note`) — the label, the figure and its units say enough there.
@@ -110,9 +106,8 @@ export function FiguresSummary({
       />
       <SummaryCard
         label={t("supplierFigures.sales")}
-        mark={salesMark}
-        value={sales ? formatRupiah(sales.value) : "—"}
-        line={unitLine(sales?.count ?? 0, "sales")}
+        value={figures ? formatRupiah(figures.salesValue) : "—"}
+        line={unitLine(figures?.salesCount ?? 0, "sales")}
         note={note("supplierFigures.salesHint")}
         testId={`${testId}-sales`}
       />
@@ -135,18 +130,13 @@ export function FiguresSummary({
 }
 
 /** The figure columns — restocked, sales, lost and its rate, broken and its rate — in the order the summary reads them. */
-export function FigureHeaders({ salesMark }: { salesMark: ReactNode }) {
+export function FigureHeaders() {
   const { t } = useTranslation();
 
   return (
     <>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.restocked")}</Table.ColumnHeader>
-      <Table.ColumnHeader textAlign="end">
-        <HStack gap="1" justify="end">
-          {t("supplierFigures.col.sales")}
-          {salesMark}
-        </HStack>
-      </Table.ColumnHeader>
+      <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.sales")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.lost")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.lostRate")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.broken")}</Table.ColumnHeader>
@@ -175,7 +165,7 @@ export function FigureCells({
   return (
     <>
       <CountCell count={figures.restockCount} value={figures.restockValue} />
-      <CountCell {...sampleSalesFrom(figures)} testId="figure-sales" />
+      <CountCell count={figures.salesCount} value={figures.salesValue} testId="figure-sales" />
       <CountCell count={figures.lostCount} value={figures.lostValue} tone="warning.fg" />
       <RateCell rate={lostRate(figures)} count={figures.lostCount} tone="warning.fg" testId="figure-lost-rate" />
       <CountCell count={figures.brokenCount} value={figures.brokenValue} tone="error.fg" />
@@ -258,7 +248,7 @@ function RateCell({
  *
  *   2026-10-08
  *   Direstok 40 · Rp 2.000.000
- *   Penjualan 31 · Rp 1.984.000 ⚠      ← beside restocked, as the columns (sales-sit-beside-restocked)
+ *   Penjualan 31 · Rp 1.984.000        ← beside restocked, as the columns (sales-sit-beside-restocked)
  *   Hilang 1 · 2,3%    Rusak 2 · 4,7%
  */
 export function FigureBlock({
@@ -266,7 +256,6 @@ export function FigureBlock({
   sub,
   header,
   figures,
-  salesMark,
   onClick,
   rateMuted,
   testId,
@@ -276,15 +265,12 @@ export function FigureBlock({
   /** Drawn in place of the title and its sub-line — a product block's picture, name and SKU (ProductListItem). */
   header?: ReactNode;
   figures: SupplierFigures;
-  /** The page's ⚠ for Penjualan. */
-  salesMark: ReactNode;
   onClick?: () => void;
   /** See FigureCells. */
   rateMuted?: boolean;
   testId: string;
 }) {
   const { t } = useTranslation();
-  const sales = sampleSalesFrom(figures);
 
   return (
     <Stack
@@ -312,10 +298,9 @@ export function FigureBlock({
       <Text fontSize="sm">
         {t("supplierFigures.line.restocked", { n: units(figures.restockCount), value: formatRupiah(figures.restockValue) })}
       </Text>
-      <HStack gap="1.5" fontSize="sm" data-testid={`${testId}-sales`}>
-        <Text>{t("supplierFigures.line.sales", { n: units(sales.count), value: formatRupiah(sales.value) })}</Text>
-        {salesMark}
-      </HStack>
+      <Text fontSize="sm" data-testid={`${testId}-sales`}>
+        {t("supplierFigures.line.sales", { n: units(figures.salesCount), value: formatRupiah(figures.salesValue) })}
+      </Text>
       <Flex fontSize="sm" columnGap="4" rowGap="0.5" wrap="wrap">
         <BlockLoss
           label={t("supplierFigures.line.lost", { n: units(figures.lostCount) })}

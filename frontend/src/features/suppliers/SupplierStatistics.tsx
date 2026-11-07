@@ -45,8 +45,6 @@ export const description =
 export interface SupplierStatisticsProps {
   /** Any team's supplier — its figures count every team's restocks from it. */
   supplierId: bigint;
-  /** The page's ⚠ for Penjualan (sales-sit-beside-restocked) — numbered in the page's own pending list. */
-  salesMark: ReactNode;
   /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
   exportMark: ReactNode;
 }
@@ -71,7 +69,7 @@ type StatisticsView = "time" | "product";
 //
 // ⚠ FOLDED, NOT LIVE: the figures are supplier_service's fold of *Restock Accepted* (the-report-is-processed-like-settlement),
 // so an accept a moment ago can take a moment to appear.
-export function SupplierStatistics({ supplierId, salesMark, exportMark }: SupplierStatisticsProps) {
+export function SupplierStatistics({ supplierId, exportMark }: SupplierStatisticsProps) {
   const isMobile = useIsMobile();
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -206,7 +204,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
         )}
 
         <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
-          <FiguresSummary figures={headline.data} salesMark={salesMark} testId="statistics-summary" />
+          <FiguresSummary figures={headline.data} testId="statistics-summary" />
         </RefreshOverlay>
 
         <Stack gap="field">
@@ -219,7 +217,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={series.isFetching && !series.isPending}>
-                  <SeriesTable points={series.data?.points ?? []} grain={grain} salesMark={salesMark} />
+                  <SeriesTable points={series.data?.points ?? []} grain={grain} />
                 </RefreshOverlay>
 
                 {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
@@ -243,7 +241,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={products.isFetching && !products.isPending}>
-                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} salesMark={salesMark} />}
+                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} />}
                 </RefreshOverlay>
 
                 <GrowingPager
@@ -268,11 +266,9 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
 function SeriesTable({
   points,
   grain,
-  salesMark,
 }: {
   points: SupplierFigurePoint[];
   grain: PeriodGrain;
-  salesMark: ReactNode;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -301,7 +297,7 @@ function SeriesTable({
             </Text>
           ) : (
             <FigureBlock
-              salesMark={salesMark}
+             
               key={point.at}
               title={formatPeriod(point.at, grain)}
               figures={point.figures}
@@ -319,7 +315,7 @@ function SeriesTable({
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.period")}</Table.ColumnHeader>
-            <FigureHeaders salesMark={salesMark} />
+            <FigureHeaders />
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -343,11 +339,9 @@ function SeriesTable({
 function ProductTable({
   rows,
   showTeam,
-  salesMark,
 }: {
   rows: SupplierProductRow[];
   showTeam: boolean;
-  salesMark: ReactNode;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -383,7 +377,7 @@ function ProductTable({
       <Stack gap="2" data-testid="statistics-products">
         {rows.map((row) => (
           <FigureBlock
-            salesMark={salesMark}
+           
             key={row.key}
             title={productLabel(row)}
             // The team as a badge beside the SKU — the Produk tab's phone block.
@@ -403,7 +397,7 @@ function ProductTable({
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.product")}</Table.ColumnHeader>
             {showTeam && <Table.ColumnHeader>{t("supplierFigures.col.team")}</Table.ColumnHeader>}
-            <FigureHeaders salesMark={salesMark} />
+            <FigureHeaders />
           </Table.Row>
         </Table.Header>
         <Table.Body>

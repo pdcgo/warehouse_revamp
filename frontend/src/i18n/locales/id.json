@@ -2145,23 +2145,15 @@
         },
         "sold": {
           "label": "Terjual",
-          "reason": "angka contoh — unit terjual dan pesanan terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+          "reason": "angka contoh — baris tab Produk masih karangan, begitu pula unit terjual dan pesanan terakhir tiap produk; angka per toko di tab Toko sudah nyata"
         },
         "ready": {
           "label": "Siap",
-          "reason": "angka contoh — stok siap dan restok terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
-        },
-        "warehouses": {
-          "label": "Gudang terkait",
-          "reason": "data contoh — belum ada yang mencatat di gudang mana restok dari pemasok ini diterima, jadi gudang dan ringkasannya masih karangan"
+          "reason": "angka contoh — baris tab Produk masih karangan, begitu pula stok siap tiap produk; angka per toko di tab Toko sudah nyata"
         },
         "warehouseFilter": {
           "label": "Filter gudang",
           "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
-        },
-        "sales": {
-          "label": "Penjualan",
-          "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
         },
         "export": {
           "label": "Ekspor",
@@ -2194,25 +2186,9 @@
     "editAction": "Ubah",
     "actions": "Aksi pemasok",
     "pending": {
-      "sold": {
-        "label": "Terjual",
-        "reason": "angka contoh — semua unit yang terjual dan pesanan terakhirnya dijumlah dari produk-produk pemasok, dan belum ada yang menyebut produk mana dari pemasok mana"
-      },
-      "ready": {
-        "label": "Siap",
-        "reason": "angka contoh — stok siap dan restok terakhir dijumlah dari produk-produk pemasok, dan belum ada yang menyebut produk mana dari pemasok mana"
-      },
-      "soldRange": {
-        "label": "Filter Terjual",
-        "reason": "pilihan rentang hanya tampil di layar — daftar belum bisa disaring dengan jumlah yang belum ada, dan dari mana batas rentangnya diambil belum ditentukan"
-      },
-      "readyRange": {
-        "label": "Filter Siap",
-        "reason": "pilihan rentang hanya tampil di layar — daftar belum bisa disaring dengan jumlah yang belum ada, dan dari mana batas rentangnya diambil belum ditentukan"
-      },
       "warehouse": {
         "label": "Filter Gudang",
-        "reason": "pilihan gudang hanya tampil di layar — belum ada yang mencatat di gudang mana restok dari pemasok diterima, jadi daftar belum bisa disaring dengannya"
+        "reason": "pilihan gudang hanya tampil di layar — daftar pemasok belum bisa disaring dengan gudang tempat barangnya diterima"
       }
     },
     "lastOrder": "pesanan {{date}}",
@@ -2290,23 +2266,15 @@
       },
       "sold": {
         "label": "Terjual",
-        "reason": "angka contoh — unit terjual dan pesanan terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+        "reason": "angka contoh — baris tab Produk masih karangan, begitu pula unit terjual dan pesanan terakhir tiap produk; angka per toko di tab Toko sudah nyata"
       },
       "ready": {
         "label": "Siap",
-        "reason": "angka contoh — stok siap dan restok terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
-      },
-      "warehouses": {
-        "label": "Gudang terkait",
-        "reason": "data contoh — belum ada yang mencatat di gudang mana restok dari pemasok ini diterima, jadi gudang dan ringkasannya masih karangan"
+        "reason": "angka contoh — baris tab Produk masih karangan, begitu pula stok siap tiap produk; angka per toko di tab Toko sudah nyata"
       },
       "warehouseFilter": {
         "label": "Filter gudang",
         "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
-      },
-      "sales": {
-        "label": "Penjualan",
-        "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
       },
       "export": {
         "label": "Ekspor",
@@ -2413,10 +2381,6 @@
       "export": {
         "label": "Ekspor",
         "reason": "Belum ada yang membuat file — isinya peringkat dengan angkanya, dan sehalaman atau seluruh peringkat, masih terbuka."
-      },
-      "sales": {
-        "label": "Penjualan",
-        "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
       }
     }
   },

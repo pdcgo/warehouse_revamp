@@ -382,6 +382,18 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "order-cancelled",
 			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
 		},
+		// supplier_service's sales fold — mirrors supplier_service.SalesPlacedSubscription and SalesCancelledSubscription
+		// (penjualan-is-the-selling-value-on-the-order-day): Penjualan added on the order's day, taken back on the cancel's.
+		{
+			ID:     "supplier-order-placed",
+			Topic:  "order-placed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderPlaced"`,
+		},
+		{
+			ID:     "supplier-order-cancelled",
+			Topic:  "order-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
+		},
 	}
 }
 

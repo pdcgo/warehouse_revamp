@@ -133,6 +133,9 @@ func InitializeApp() (*App, error) {
 		// is a selling team, is asked of team_service — see supplier_deps.go.
 		supplier_v1.NewService,
 		NewSupplierSellingTeams,
+		// What inventory knows of a supplier's goods — Penjualan's take, the range pills' sets. In-process, see
+		// supplier_goods_reader.go.
+		NewSupplierGoodsReader,
 		// What a warehouse charges per order (warehouse-prices-balance-records); its one outside question, a warehouse's
 		// name for a refusal, is asked of team_service — see warehouse_deps.go.
 		warehouse_v1.NewService,

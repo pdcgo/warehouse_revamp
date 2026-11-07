@@ -2158,23 +2158,15 @@
         },
         "sold": {
           "label": "Sold",
-          "reason": "sample figures — units sold and the last order per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
+          "reason": "sample figures — the Products tab's rows are invented, and so is each product's units sold and last order; a store's figures on the Stores tab are real"
         },
         "ready": {
           "label": "Ready",
-          "reason": "sample figures — ready stock and the last restock per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
-        },
-        "warehouses": {
-          "label": "Related warehouses",
-          "reason": "sample data — nothing yet records which warehouse a restock from this supplier was received at, so the warehouses and their summary are invented"
+          "reason": "sample figures — the Products tab's rows are invented, and so is each product's ready stock; a store's figures on the Stores tab are real"
         },
         "warehouseFilter": {
           "label": "Warehouse filter",
           "reason": "picking a warehouse only switches the summary under it — no tab can be narrowed by a warehouse yet"
-        },
-        "sales": {
-          "label": "Sales",
-          "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
         },
         "export": {
           "label": "Export",
@@ -2207,25 +2199,9 @@
     "editAction": "Edit",
     "actions": "Supplier actions",
     "pending": {
-      "sold": {
-        "label": "Sold",
-        "reason": "sample figures — every unit sold and its last order are summed over a supplier's products, and nothing yet says which products came from which supplier"
-      },
-      "ready": {
-        "label": "Ready",
-        "reason": "sample figures — ready stock and its last restock are summed over a supplier's products, and nothing yet says which products came from which supplier"
-      },
-      "soldRange": {
-        "label": "Sold filter",
-        "reason": "the picked range is held on screen only — the list cannot be narrowed by a sum that does not exist yet, and where the range edges come from is not decided"
-      },
-      "readyRange": {
-        "label": "Ready filter",
-        "reason": "the picked range is held on screen only — the list cannot be narrowed by a sum that does not exist yet, and where the range edges come from is not decided"
-      },
       "warehouse": {
         "label": "Warehouse filter",
-        "reason": "the picked warehouse is held on screen only — nothing yet records which warehouse a supplier's restocks are received at, so the list cannot be narrowed by it"
+        "reason": "the picked warehouse is held on screen only — the supplier list cannot be narrowed by where its goods were received yet"
       }
     },
     "lastOrder": "ordered {{date}}",
@@ -2303,23 +2279,15 @@
       },
       "sold": {
         "label": "Sold",
-        "reason": "sample figures — units sold and the last order per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
+        "reason": "sample figures — the Products tab's rows are invented, and so is each product's units sold and last order; a store's figures on the Stores tab are real"
       },
       "ready": {
         "label": "Ready",
-        "reason": "sample figures — ready stock and the last restock per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
-      },
-      "warehouses": {
-        "label": "Related warehouses",
-        "reason": "sample data — nothing yet records which warehouse a restock from this supplier was received at, so the warehouses and their summary are invented"
+        "reason": "sample figures — the Products tab's rows are invented, and so is each product's ready stock; a store's figures on the Stores tab are real"
       },
       "warehouseFilter": {
         "label": "Warehouse filter",
         "reason": "picking a warehouse only switches the summary under it — no tab can be narrowed by a warehouse yet"
-      },
-      "sales": {
-        "label": "Sales",
-        "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
       },
       "export": {
         "label": "Export",
@@ -2426,10 +2394,6 @@
       "export": {
         "label": "Export",
         "reason": "Nothing builds a file yet — whether it carries the ranking with its figures, and this page or the whole ranking, is still open."
-      },
-      "sales": {
-        "label": "Sales",
-        "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
       }
     }
   },

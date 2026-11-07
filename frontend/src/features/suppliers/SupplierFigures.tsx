@@ -4,12 +4,10 @@ import { Badge, HStack, Icon, Stack, Table, Text, VisuallyHidden } from "@chakra
 import { PackageCheck, ShoppingCart } from "lucide-react";
 
 import { formatUnixDate } from "../../lib/datetime";
-import { NotImplemented } from "../pending/NotImplemented";
-import { SUPPLIER_LIST_PENDING } from "./listPending";
-import { type SampleSupplierFigures, units } from "./sampleSupplierFigures";
+import { type SupplierFigureValues, units } from "./figureValues";
 
 export const description =
-  "Two figures — every unit sold with the last order under it, and every unit ready with the last restock under it — for a supplier, one of its stores or one of its products: as a table's two columns, as two lines in a phone block, or as one row of small pale badges on a card — an icon and the units, no dates; Terjual indigo, Siap green. Sample figures, each carrying the ⚠ mark its page hands in; nothing to count (a supplier with no store) is a dash in a table and on a card, and no lines in a block.";
+  "Two figures — every unit sold with the last order under it, and every unit ready with the last restock under it — for a supplier, one of its stores or one of its products: as a table's two columns, as two lines in a phone block, or as one row of small pale badges on a card — an icon and the units, no dates; Terjual indigo, Siap green. Real for a supplier and a store (InventoryService.SupplierGoods), invented for a product on the Produk tab, which carries the ⚠ mark its page hands in; nothing to count (none of its goods ever arrived) is a dash in a table and on a card, and no lines in a block.";
 
 // THE FIGURES (`the-supplier-list-shows-sales-and-ready-stock`, `sales-are-all-time-with-their-last-dates`), drawn the
 // same on the supplier list, on Discover (`discover-shows-the-same-figures-and-filters`) and on the supplier's page, for
@@ -32,11 +30,11 @@ export interface FigureMarks {
   ready: ReactNode;
 }
 
-/** The marks on the supplier list and on Discover, which share one pending list. */
-export const LIST_FIGURE_MARKS: FigureMarks = {
-  sold: <NotImplemented list={SUPPLIER_LIST_PENDING} id="sold" />,
-  ready: <NotImplemented list={SUPPLIER_LIST_PENDING} id="ready" />,
-};
+/**
+ * No marks — the figures are real: a supplier on the supplier list and on Discover, and a store on the Toko tab
+ * (InventoryService.SupplierGoods). Only the Produk tab's product figures are still invented, and carry the page's marks.
+ */
+export const NO_FIGURE_MARKS: FigureMarks = { sold: null, ready: null };
 
 /** The two column headings, each carrying its ⚠ number. */
 export function SupplierFigureHeaders({ marks }: { marks: FigureMarks }) {
@@ -83,7 +81,7 @@ export function SupplierFigureCells({
   id,
   testIdPrefix,
 }: {
-  figures: SampleSupplierFigures | null;
+  figures: SupplierFigureValues | null;
   id: bigint | string;
   testIdPrefix: string;
 }) {
@@ -93,7 +91,11 @@ export function SupplierFigureCells({
     <>
       <FigureCell
         value={figures?.sold}
-        last={figures ? t("suppliers.lastOrder", { date: formatUnixDate(figures.lastOrderAt) }) : undefined}
+        last={
+          figures && figures.lastOrderAt > 0n
+            ? t("suppliers.lastOrder", { date: formatUnixDate(figures.lastOrderAt) })
+            : undefined
+        }
         testId={`${testIdPrefix}-sold-${id}`}
       />
       <FigureCell
@@ -117,14 +119,14 @@ export function SupplierFigureCells({
 // EACH A SMALL PALE BADGE (owner: *"terlalu besar, sama kasih sedikit highlight"*, `a-card-figure-is-a-pale-badge`) — the
 // store badges' size, so the row is no taller than theirs; the units bold, in the text colour, the tint at half and the
 // tone on the icon (`a-card-figure-is-toned-down`). Siap in `success`, the tone the app already
-// gives ready stock (ProductListItem's badge); Terjual in `primary`, a tone with no status meaning. A store-less supplier
-// reads a grey dash for each, unmarked, so every card has the row.
+// gives ready stock (ProductListItem's badge); Terjual in `primary`, a tone with no status meaning. A supplier none of
+// whose goods ever arrived reads a grey dash for each, unmarked, so every card has the row.
 export function SupplierFigureIcons({
   figures,
   marks,
   testId,
 }: {
-  figures: SampleSupplierFigures | null;
+  figures: SupplierFigureValues | null;
   marks: FigureMarks;
   testId: string;
 }) {
@@ -167,7 +169,7 @@ export function SupplierFigureLines({
   marks,
   testId,
 }: {
-  figures: SampleSupplierFigures | null;
+  figures: SupplierFigureValues | null;
   marks: FigureMarks;
   testId: string;
 }) {
@@ -179,8 +181,8 @@ export function SupplierFigureLines({
     <Stack gap="0.5" fontSize="sm" color="fg.muted" data-testid={testId}>
       <HStack gap="1.5" wrap="wrap">
         <Text>
-          {t("suppliers.table.sold")} {units(figures.sold)} ·{" "}
-          {t("suppliers.lastOrder", { date: formatUnixDate(figures.lastOrderAt) })}
+          {t("suppliers.table.sold")} {units(figures.sold)}
+          {figures.lastOrderAt > 0n && ` · ${t("suppliers.lastOrder", { date: formatUnixDate(figures.lastOrderAt) })}`}
         </Text>
         {marks.sold}
       </HStack>

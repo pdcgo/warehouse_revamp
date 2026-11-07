@@ -6,11 +6,11 @@ import { LocationProbe, routedPage } from "../../../.storybook/pageStory";
 import { channelFixture, supplierFixture } from "../../../.storybook/supplierFixtures";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { ChannelBrowser } from "./ChannelBrowser";
-import { LIST_FIGURE_MARKS } from "./SupplierFigures";
 
 // A supplier's Channels tab, shared by the manage detail (with its actions) and the discover detail (read-only)
 // — supplier-detail-has-channels-and-products-tabs. It reads its own page from SupplierChannelList, which searches,
-// filters by type and pages on the server (the stub plays it: supplierStub.ts).
+// filters by type and pages on the server (the stub plays it: supplierStub.ts). Each store's Terjual and Siap are real —
+// InventoryService.SupplierGoods by store (supplierGoodsStub.ts).
 
 const SUMBER = supplierFixture("PT Sumber Makmur"); // team 12's — three live stores and a deleted one
 const SINAR = supplierFixture("Toko Grosir Sinar"); // no stores
@@ -27,8 +27,7 @@ const TEAM = 12n;
 const meta = {
   title: "Features/Suppliers/ChannelBrowser",
   component: ChannelBrowser,
-  // Any page's marks will do here — the page numbers them; the story only needs them drawn.
-  args: { teamId: TEAM, supplierId: SUMBER.id, figureMarks: LIST_FIGURE_MARKS, exportMark: null },
+  args: { teamId: TEAM, supplierId: SUMBER.id, exportMark: null },
 } satisfies Meta<typeof ChannelBrowser>;
 
 export default meta;
@@ -56,6 +55,33 @@ export const WithActions: Story = {
 export const Empty: Story = { args: { supplierId: SINAR.id } };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
+
+// the-detail-tabs-show-sold-and-ready: each store's Terjual (the last order under it) and Siap (the last restock under
+// it) are what was bought there — real, so unmarked. A store whose goods never sold reads 0 with no order date.
+export const EachStoreReadsItsGoods: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId(`channel-sold-${SHOPEE_STORE.id}`)).toHaveTextContent(/^1\.204ordered /));
+    await expect(canvas.getByTestId(`channel-ready-${SHOPEE_STORE.id}`)).toHaveTextContent(/^86restocked /);
+    await expect(canvas.getByTestId(`channel-sold-${TOKOPEDIA_STORE.id}`)).toHaveTextContent(/^303ordered /);
+    await expect(canvas.getByTestId(`channel-sold-${WEBSITE.id}`)).toHaveTextContent(/^0$/);
+    await expect(canvas.getByTestId(`channel-ready-${WEBSITE.id}`)).toHaveTextContent(/^40restocked /);
+    await expect(canvas.queryByTestId("not-implemented-sold")).toBeNull();
+  },
+};
+
+// A store none of whose goods ever arrived reads a dash for each.
+export const AStoreNeverBoughtFromIsADash: Story = {
+  args: { supplierId: MAKMUR_JAYA.id },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("channel-sold-341")).toHaveTextContent(/^2\.579ordered /));
+    await expect(canvas.getByTestId("channel-sold-342")).toHaveTextContent("—");
+    await expect(canvas.getByTestId("channel-ready-342")).toHaveTextContent("—");
+  },
+};
 
 // Read-only means no Actions column at all, not an empty one.
 export const ReadOnlyHasNoActionsColumn: Story = {
@@ -120,7 +146,7 @@ const AtFilteredUrl = routedPage(
       path: "/inventories/suppliers/:supplierId",
       element: (
         <>
-          <ChannelBrowser teamId={TEAM} supplierId={SUMBER.id} figureMarks={LIST_FIGURE_MARKS} exportMark={null} />
+          <ChannelBrowser teamId={TEAM} supplierId={SUMBER.id} exportMark={null} />
           <LocationProbe />
         </>
       ),

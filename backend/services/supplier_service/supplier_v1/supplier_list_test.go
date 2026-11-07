@@ -5,8 +5,10 @@ import (
 	"slices"
 	"testing"
 
+	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -201,5 +203,128 @@ func TestSupplierList_Pages(t *testing.T) {
 	info := resp.Msg.GetPageInfo()
 	if len(resp.Msg.GetIds()) != 1 || info.GetTotalItems() != 3 || info.GetTotalPage() != 2 || info.GetCurrentPage() != 2 {
 		t.Fatalf("page 2 = %d ids, info %+v", len(resp.Msg.GetIds()), info)
+	}
+}
+
+// THE RANGE PILLS NARROW ON THE SERVER, BEFORE THE PAGE (the-range-pills-are-a-fixed-set): 30 suppliers, by name; the
+// only one selling 1.000–2.500 sorts last, on page 2 of 25 — the band finds it on page 1 and counts one item.
+func TestSupplierList_ABandFindsASupplierBeyondTheFirstPage(t *testing.T) {
+	db := san_testdb.DB(t)
+	goods := &fakeGoods{sold: map[uint64]int64{}, ready: map[uint64]int64{}}
+	svc := supplier_v1.NewService(db, nil, nil, goods)
+
+	var last supplier_service_models.Supplier
+	for i := range 30 {
+		last = insertSupplier(t, db, sellingA, "Pemasok "+string(rune('A'+i/26))+string(rune('a'+i%26)))
+		goods.sold[last.ID] = int64(i * 10)
+	}
+
+	goods.sold[last.ID] = 1_200
+
+	all, err := svc.SupplierList(context.Background(), connect.NewRequest(&supplierv1.SupplierListRequest{
+		TeamId: sellingA, Page: page(1, 25),
+		Sort: &supplierv1.SupplierListFilterSort{SortType: commonv1.CommonSortType_COMMON_SORT_TYPE_ASC, S: &supplierv1.SupplierListFilterSort_Supplier{
+			Supplier: supplierv1.SupplierRowSort_SUPPLIER_ROW_SORT_NAME,
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("SupplierList: %v", err)
+	}
+
+	if slices.Contains(all.Msg.GetIds(), last.ID) {
+		t.Fatalf("the last supplier is already on page 1 — the fixture proves nothing")
+	}
+
+	got, err := svc.SupplierList(context.Background(), connect.NewRequest(&supplierv1.SupplierListRequest{
+		TeamId: sellingA, Page: page(1, 25),
+		Filter: &supplierv1.SupplierListFilter{Sold: &supplierv1.SupplierFigureBand{Min: 1_000, Max: 2_500}},
+	}))
+	if err != nil {
+		t.Fatalf("SupplierList with a band: %v", err)
+	}
+
+	if ids := got.Msg.GetIds(); len(ids) != 1 || ids[0] != last.ID || got.Msg.GetPageInfo().GetTotalItems() != 1 {
+		t.Fatalf("Terjual 1.000–2.500 = %v (total %d), want only %d", ids, got.Msg.GetPageInfo().GetTotalItems(), last.ID)
+	}
+}
+
+// A BAND'S EDGES: the bottom is in, the top is out; a band from 0 keeps a supplier that never sold (inventory lists only
+// suppliers with goods, so it is asked as its complement); an empty band is no supplier; Terjual and Siap AND.
+func TestSupplierList_BandsAreLowerInclusiveUpperExclusive(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	never := insertSupplier(t, db, sellingA, "Belum Pernah")
+	at500 := insertSupplier(t, db, sellingA, "Tepat 500")
+	at499 := insertSupplier(t, db, sellingA, "Kurang Satu")
+	big := insertSupplier(t, db, sellingA, "Besar")
+
+	goods := &fakeGoods{
+		sold:  map[uint64]int64{at500.ID: 500, at499.ID: 499, big.ID: 5_000},
+		ready: map[uint64]int64{at500.ID: 50, at499.ID: 10, big.ID: 49},
+	}
+	svc := supplier_v1.NewService(db, nil, nil, goods)
+
+	band := func(lo, hi int64) *supplierv1.SupplierFigureBand {
+		return &supplierv1.SupplierFigureBand{Min: lo, Max: hi}
+	}
+
+	cases := []struct {
+		name  string
+		sold  *supplierv1.SupplierFigureBand
+		ready *supplierv1.SupplierFigureBand
+		want  []uint64
+	}{
+		{"< 500 keeps 499 and the never-sold", band(0, 500), nil, []uint64{never.ID, at499.ID}},
+		{"500–1.000 starts at 500", band(500, 1_000), nil, []uint64{at500.ID}},
+		{"≥ 5.000 is open-ended", band(5_000, 0), nil, []uint64{big.ID}},
+		{"2.500–5.000 is empty", band(2_500, 5_000), nil, nil},
+		{"Siap ≥ 50 and Terjual < 1.000", band(0, 1_000), band(50, 0), []uint64{at500.ID}},
+		{"Semua", nil, nil, []uint64{never.ID, at500.ID, at499.ID, big.ID}},
+	}
+
+	for _, c := range cases {
+		got := list(t, svc, &supplierv1.SupplierListFilter{Sold: c.sold, Ready: c.ready}).GetIds()
+		slices.Sort(got)
+
+		want := slices.Clone(c.want)
+		slices.Sort(want)
+
+		if !slices.Equal(got, want) {
+			t.Fatalf("%s = %v, want %v", c.name, got, want)
+		}
+	}
+
+	// Inventory not answering is an error, never an empty list.
+	goods.err = errTeamServiceDown
+
+	_, err := svc.SupplierList(context.Background(), connect.NewRequest(&supplierv1.SupplierListRequest{
+		TeamId: sellingA, Page: page(1, 50), Filter: &supplierv1.SupplierListFilter{Sold: band(0, 500)},
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("a band with inventory down = %v, want Internal", err)
+	}
+}
+
+// A band's top must sit above its bottom, or be 0 (open-ended); neither edge is negative — the proto's own rules, which
+// the interceptor applies before the handler runs.
+func TestSupplierList_ABandIsValidated(t *testing.T) {
+	cases := []struct {
+		band *supplierv1.SupplierFigureBand
+		ok   bool
+	}{
+		{&supplierv1.SupplierFigureBand{Min: 500, Max: 1_000}, true},
+		{&supplierv1.SupplierFigureBand{Min: 5_000}, true},
+		{&supplierv1.SupplierFigureBand{Min: 1_000, Max: 1_000}, false},
+		{&supplierv1.SupplierFigureBand{Min: 1_000, Max: 500}, false},
+		{&supplierv1.SupplierFigureBand{Min: -1, Max: 500}, false},
+	}
+
+	for _, c := range cases {
+		err := protovalidate.Validate(&supplierv1.SupplierListRequest{
+			TeamId: sellingA, Page: page(1, 50), Filter: &supplierv1.SupplierListFilter{Sold: c.band},
+		})
+		if (err == nil) != c.ok {
+			t.Fatalf("band [%d, %d): err %v, want ok=%v", c.band.GetMin(), c.band.GetMax(), err, c.ok)
+		}
 	}
 }

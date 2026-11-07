@@ -23,6 +23,8 @@ import {
   supplierChannelsFromList,
   supplierListWithChannelsData,
 } from "./adapt";
+import { figureBand } from "./figureRanges";
+import { type FigureRangePicks, NO_FIGURE_RANGES } from "./SupplierRangeFilter";
 
 // The supplier screens' reads (#176), against supplier_service (warehouse.supplier.v1). Every one returns
 // `SupplierRecord` / `SupplierChannelRecord` through the mapper in adapt.ts, so no screen sees the proto.
@@ -52,23 +54,40 @@ export function useSuppliers(args: {
   channelType?: Marketplace;
   /** `null` = the list's own order, newest first; otherwise by name, A to Z or back (the server sorts). */
   sort?: SortState<SupplierSortKey> | null;
+  /** Terjual and Siap's range pills — narrowed on the server, before the page (the-range-pills-are-a-fixed-set). */
+  ranges?: FigureRangePicks;
   page: number;
   pageSize: number;
 }) {
   const { teamId, q, page, pageSize } = args;
   const channelType = args.channelType ?? Marketplace.UNSPECIFIED;
   const sort = args.sort ?? null;
+  const ranges = args.ranges ?? NO_FIGURE_RANGES;
 
   return useQuery({
     // A search, a filter, a sort and a page refine the same question, so the previous rows stay up while it runs
     // (HARD RULE 10). The page wraps its table in a RefreshOverlay for the same reason.
     ...listQuery,
-    queryKey: key.suppliers(teamId, { q, channelType, sort: sort ? `${sort.by}:${sort.dir}` : "", page, pageSize }),
+    queryKey: key.suppliers(teamId, {
+      q,
+      channelType,
+      sort: sort ? `${sort.by}:${sort.dir}` : "",
+      sold: ranges.sold,
+      ready: ranges.ready,
+      page,
+      pageSize,
+    }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await supplierClient.supplierList({
         teamId: teamId!,
-        filter: { q, scope: SupplierListScope.OWN, channelType },
+        filter: {
+          q,
+          scope: SupplierListScope.OWN,
+          channelType,
+          sold: figureBand("sold", ranges.sold),
+          ready: figureBand("ready", ranges.ready),
+        },
         sort: sort
           ? {
               sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,

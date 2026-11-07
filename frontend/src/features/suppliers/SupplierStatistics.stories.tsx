@@ -6,8 +6,6 @@ import { teams } from "../../../.storybook/fixtures";
 import { dayAgo } from "../../../.storybook/supplierFigureFixtures";
 import { formatRupiah } from "../../lib/money";
 import { SupplierStatistics, description } from "./SupplierStatistics";
-import { NotImplemented } from "../pending/NotImplemented";
-import type { PendingList } from "../pending/registry";
 
 // A SUPPLIER'S STATISTICS TAB (the-figures-are-a-statistics-tab-and-a-supplier-report, the-figures-screens-are-accepted)
 // — on both supplier details. The stub serves supplier_service's figures from supplierFigureFixtures.ts.
@@ -19,19 +17,19 @@ import type { PendingList } from "../pending/registry";
 //   12 days ago  Toko Melati    Beras  30 good  Rp 1.500.000 ·                    · 1 broken Rp  50.000
 //   ─────────────────────────────────────────────────────────────────────────────────────────────────
 //   the window                         130 good Rp 4.400.000 · 1 short Rp 50.000 · 6 broken Rp 195.000 — 4,4% broken
+//
+// …and sold, on the same days (Penjualan, penjualan-is-the-selling-value-on-the-order-day): 30 Beras Rp 1.950.000, 50 Gula
+// Rp 975.000, 20 Beras Rp 1.300.000 — 100 units, Rp 4.225.000 in the window.
 
 const MELATI = teams.find((t) => t.id === 12n)!;
 
 // formatRupiah uses a no-break space; toHaveTextContent normalises the element's whitespace.
 const rp = (amount: bigint) => formatRupiah(amount).replace(/\s/g, " ");
 
-// The page hands in its own mark for Penjualan (sales-sit-beside-restocked) — a one-part list stands in for it here.
-const SALES_ONLY: PendingList<"sales"> = { ns: "supplierReport", parts: [{ id: "sales", kind: "sample" }] };
-
 const meta = {
   title: "Features/Suppliers/SupplierStatistics",
   component: SupplierStatistics,
-  args: { supplierId: 31n, salesMark: <NotImplemented list={SALES_ONLY} id="sales" />, exportMark: null },
+  args: { supplierId: 31n, exportMark: null },
   parameters: { signedIn: true, docs: { description: { component: description } } },
   beforeEach: asTeam(MELATI.id),
 } satisfies Meta<typeof SupplierStatistics>;
@@ -302,11 +300,11 @@ export const EachRateFollowsItsFigure: Story = {
     const headers = within(canvas.getByTestId("statistics-series"))
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    // Sales sits right after Restocked (sales-sit-beside-restocked), its heading carrying the page's mark.
+    // Sales sits right after Restocked (sales-sit-beside-restocked) — real, unmarked.
     await expect(headers).toEqual([
       "Period",
       "Restocked",
-      expect.stringMatching(/^Sales/),
+      "Sales",
       "Lost in shipping",
       "Lost rate",
       "Broken in shipping",
@@ -401,7 +399,7 @@ const AtFilteredUrl = routedPage(
       path: "/inventories/suppliers/:supplierId",
       element: (
         <>
-          <SupplierStatistics supplierId={31n} salesMark={<NotImplemented list={SALES_ONLY} id="sales" />} exportMark={null} />
+          <SupplierStatistics supplierId={31n} exportMark={null} />
           <LocationProbe />
         </>
       ),
@@ -440,7 +438,8 @@ export const TheViewsArePerPeriodAndPerProduct: Story = {
 };
 
 // SALES SIT BESIDE RESTOCKED (sales-sit-beside-restocked) — a Penjualan card right after Direstok, rupiah over units as
-// Direstok's; and a Penjualan column right after Direstok, units over rupiah as Direstok's; each carrying the page's mark.
+// Direstok's; and a Penjualan column right after Direstok, units over rupiah as Direstok's. REAL since 2026-11-07
+// (penjualan-is-the-selling-value-on-the-order-day): `metrics/suppliers`' sales fields, no mark.
 export const SalesSitBesideRestocked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -448,14 +447,34 @@ export const SalesSitBesideRestocked: Story = {
     const cards = within(canvas.getByTestId("statistics-summary")).getAllByText(/^(Total|Restocked|Sales|Lost in shipping|Broken in shipping)$/);
     await expect(cards.map((c) => c.textContent)).toEqual(["Total", "Restocked", "Sales", "Lost in shipping", "Broken in shipping"]);
     const sales = canvas.getByTestId("statistics-summary-sales");
-    await expect(within(sales).getByTestId("not-implemented-sales")).toBeVisible();
-    await expect(canvas.getByTestId("statistics-summary-sales-value")).toHaveTextContent(/^Rp/);
-    await expect(canvas.getByTestId("statistics-summary-sales-units")).toHaveTextContent(/^[\d.]+ units?$/);
+    await expect(within(sales).queryByTestId("not-implemented-sales")).toBeNull();
+    // The window's three sale days: 100 units for Rp 4.225.000 — the headline the server summed.
+    await expect(canvas.getByTestId("statistics-summary-sales-value")).toHaveTextContent(rp(4_225_000n));
+    await expect(canvas.getByTestId("statistics-summary-sales-units")).toHaveTextContent("100 units");
 
     const headers = within(canvas.getByTestId("statistics-series")).getAllByRole("columnheader").map((h) => h.textContent ?? "");
-    await expect(headers[headers.indexOf("Restocked") + 1]).toMatch(/^Sales/);
-    // The day 40 were restocked sold some of them; a quiet day sold nothing — one muted 0, as Direstok's.
+    await expect(headers[headers.indexOf("Restocked") + 1]).toBe("Sales");
+    // Two days ago 30 Beras sold for Rp 1.950.000; yesterday sold nothing — one muted 0, as Direstok's.
     const busy = canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`);
-    await expect(within(busy).getByTestId("figure-sales")).toHaveTextContent(/^[\d.]+Rp/);
+    await expect(within(busy).getByTestId("figure-sales")).toHaveTextContent(`30${rp(1_950_000n)}`);
+    const quiet = canvas.getByTestId(`statistics-series-row-${dayAgo(1)}`);
+    await expect(within(quiet).getByTestId("figure-sales")).toHaveTextContent(/^0$/);
+  },
+};
+
+// PER PRODUK READS PENJUALAN TOO, beside Direstok (sales-sit-beside-restocked): Beras 30 + 20 = 50 units, Rp 3.250.000;
+// Gula 50, Rp 975.000 — each product its own sales, summed over the window.
+export const ByProductReadsItsSales: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const products = await openByProduct(canvas);
+
+    const headers = within(products).getAllByRole("columnheader").map((h) => h.textContent ?? "");
+    await expect(headers[headers.indexOf("Restocked") + 1]).toBe("Sales");
+
+    const beras = await canvas.findByTestId("statistics-product-row-12|74");
+    await expect(within(beras).getByTestId("figure-sales")).toHaveTextContent(`50${rp(3_250_000n)}`);
+    const gula = canvas.getByTestId("statistics-product-row-13|73");
+    await expect(within(gula).getByTestId("figure-sales")).toHaveTextContent(`50${rp(975_000n)}`);
   },
 };

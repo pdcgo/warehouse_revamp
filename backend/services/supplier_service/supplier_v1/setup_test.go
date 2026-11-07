@@ -39,7 +39,7 @@ var errTeamServiceDown = errors.New("team_service unreachable")
 func newService(t *testing.T, db *gorm.DB) *supplier_v1.Service {
 	t.Helper()
 
-	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil)
+	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, nil)
 }
 
 func page(n, limit uint32) *commonv1.CommonPagination {

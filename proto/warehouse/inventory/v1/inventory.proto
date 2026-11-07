@@ -193,6 +193,17 @@ service InventoryService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // A SUPPLIER'S GOODS — the supplier pages' Terjual and Siap with their last dates, and Gudang terkait's counts
+  // (the-supplier-list-shows-sales-and-ready-stock, sales-are-all-time-with-their-last-dates,
+  // the-detail-tabs-show-sold-and-ready, the-summary-is-sold-and-ready-with-their-counts). A supplier's goods are the
+  // batches minted with its id (a-batch-keeps-its-supplier), from EVERY team — a supplier's figures are not private
+  // to the team that bought (every-selling-team-sees-every-teams-figures).
+  rpc SupplierGoods(SupplierGoodsRequest) returns (SupplierGoodsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -1787,4 +1798,80 @@ message OwnerStockHistoryResponse {
   repeated OwnerStockHistoryResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// SupplierGoodsGroup — what one row of SupplierGoods is about: a supplier, one of its stores, or one warehouse its
+// goods were received at.
+enum SupplierGoodsGroup {
+  SUPPLIER_GOODS_GROUP_UNSPECIFIED = 0;
+  // One row per supplier — the supplier list and Discover.
+  SUPPLIER_GOODS_GROUP_SUPPLIER = 1;
+  // One row per supplier and store (store_id; 0 = a line that named the supplier and no store) — the Toko tab.
+  SUPPLIER_GOODS_GROUP_STORE = 2;
+  // One row per supplier and warehouse — Gudang terkait.
+  SUPPLIER_GOODS_GROUP_WAREHOUSE = 3;
+}
+
+message SupplierGoodsRequest {
+  // Read: the selling side, as the supplier pages are (only-a-selling-team-has-suppliers). The figures are every
+  // team's, so team_id only authorizes — it never narrows them (every-selling-team-sees-every-teams-figures).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The suppliers on screen — a list page, or the one supplier of a detail page.
+  repeated uint64 supplier_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+
+  SupplierGoodsGroup group = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+// SupplierGoods — what one supplier's goods did, over all time, in one group. Bounded: a supplier has few stores and
+// few warehouses, and the ids are capped at 100, so the response is not paged.
+message SupplierGoods {
+  uint64 supplier_id = 1;
+  // The store, under SUPPLIER_GOODS_GROUP_STORE; 0 otherwise.
+  uint64 store_id = 2;
+  // The warehouse, under SUPPLIER_GOODS_GROUP_WAREHOUSE; 0 otherwise.
+  uint64 warehouse_id = 3;
+
+  // Terjual — every unit that went out on an order, all time; a cancelled order's units are counted back, since the
+  // cancel puts them back into the batch they came from.
+  int64 sold_units = 4;
+  // The orders those units went out on (a cancelled one not counted) — "dari N transaksi".
+  int64 orders = 5;
+  // The newest order that took any of them and was not cancelled; 0 = none.
+  int64 last_order_unix = 6;
+
+  // Siap — units on a shelf now.
+  int64 ready_units = 7;
+  // Accepted restocks that received this supplier's goods; 0 = never (a transfer-in is not a restock).
+  int64 restocks = 8;
+  // The newest of them; 0 = never.
+  int64 last_restock_unix = 9;
+}
+
+message SupplierGoodsResponse {
+  // Only what has a figure: a supplier (store, warehouse) none of whose goods ever arrived is absent.
+  repeated SupplierGoods rows = 1;
 }

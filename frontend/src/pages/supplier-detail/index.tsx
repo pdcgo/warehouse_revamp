@@ -19,9 +19,10 @@ import { SupplierMeta } from "../../features/suppliers/SupplierMeta";
 import { SupplierHeaderActions } from "./components/SupplierHeaderActions";
 import type { FigureMarks } from "../../features/suppliers/SupplierFigures";
 import { RelatedWarehouses } from "../../features/suppliers/RelatedWarehouses";
-import { sampleWarehousesFor } from "../../features/suppliers/sampleWarehouses";
+import { useSupplierWarehouses } from "../../features/suppliers/goods";
 
-// Each store's and product's Terjual and Siap carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`).
+// Each PRODUCT's Terjual and Siap on the Produk tab carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`) —
+// invented with the tab's rows. A store's on the Toko tab are real and unmarked.
 const FIGURE_MARKS: FigureMarks = {
   sold: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sold" />,
   ready: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="ready" />,
@@ -76,6 +77,8 @@ export function SupplierDetailPage() {
   // supplier — and folding them together would let one request's failure hide the other's result.
   const supplierQuery = useSupplier({ teamId, supplierId: id });
   const channelsQuery = useSupplierChannels({ teamId, supplierId: id });
+  // Gudang terkait — where this supplier's goods were received, and what they did there (every team's).
+  const warehouses = useSupplierWarehouses(current?.teamType === TeamType.WAREHOUSE ? undefined : teamId, id);
 
   const supplier = supplierQuery.data ?? null;
   const loading = supplierQuery.isPending && id !== 0n;
@@ -164,18 +167,13 @@ export function SupplierDetailPage() {
       {/* GUDANG TERKAIT — the warehouses its restocks were received at, and the page's scope: a chip picked narrows every
           tab (`a-supplier-page-is-scoped-by-its-warehouses`). Over the tabs, since a tab cannot narrow the tabs beside it.
           Each chip is a warehouse's name; under them, what this supplier's goods did in the chosen one or in all
-          (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Sample warehouses, and a pick that only switches
-          that summary — both marked. */}
+          (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Real warehouses and figures
+          (InventoryService.SupplierGoods by warehouse); a pick only switches that summary — marked. */}
       <RelatedWarehouses
-        warehouses={sampleWarehousesFor(supplier.id, channels.length)}
+        warehouses={warehouses.warehouses}
         value={warehouseId}
         onChange={setWarehouseId}
-        marks={
-          <>
-            <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="warehouses" />
-            <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />
-          </>
-        }
+        marks={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />}
       />
 
       {/* The underline SLIDES to the picked tab, and the tab's content fades in where the last one was
@@ -198,7 +196,7 @@ export function SupplierDetailPage() {
         </Tabs.List>
 
         <Tabs.Content value="channels" animationStyle="swap">
-          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
+          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
         <Tabs.Content value="products" animationStyle="swap">
@@ -206,7 +204,7 @@ export function SupplierDetailPage() {
         </Tabs.Content>
 
         <Tabs.Content value="statistics" animationStyle="swap">
-          <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sales" />}
+          <SupplierStatistics supplierId={supplier.id}
             exportMark={EXPORT_MARK} />
         </Tabs.Content>
       </Tabs.Root>

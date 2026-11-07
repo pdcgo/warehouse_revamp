@@ -48,9 +48,6 @@ import { CompactActions } from "../../components/chrome/CompactActions";
 import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 
-// Penjualan beside Direstok carries THIS page's mark (`sales-sit-beside-restocked`).
-const SALES_MARK = <NotImplemented list={SUPPLIER_REPORT_PENDING} id="sales" />;
-
 const PAGE_SIZE = 20;
 
 const RANK_BY_CODEC = oneOfCodec<SupplierRankBy>(["value", "brokenRate"]);
@@ -212,7 +209,6 @@ export function SupplierReportPage() {
         <Stack gap="2" data-testid="supplier-report-table">
           {rows.map((row) => (
             <FigureBlock
-              salesMark={SALES_MARK}
               key={row.supplier.id.toString()}
               title={t("supplierReport.rankedName", { rank: row.rank, name: nameOf(row) })}
               sub={
@@ -238,7 +234,7 @@ export function SupplierReportPage() {
               <Table.ColumnHeader w="3rem">{t("supplierReport.col.rank")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("supplierReport.col.supplier")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("supplierReport.col.keptBy")}</Table.ColumnHeader>
-              <FigureHeaders salesMark={SALES_MARK} />
+              <FigureHeaders />
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -381,7 +377,7 @@ export function SupplierReportPage() {
       )}
 
       <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
-        <FiguresSummary figures={headline.data} salesMark={SALES_MARK} testId="supplier-report-summary" />
+        <FiguresSummary figures={headline.data} testId="supplier-report-summary" />
       </RefreshOverlay>
 
       {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — a fold is a projection, never live. */}

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { RelatedWarehouses, VISIBLE_WAREHOUSES, description } from "./RelatedWarehouses";
-import type { SupplierWarehouse } from "./sampleWarehouses";
+import type { SupplierWarehouse } from "./goods";
 
 // GUDANG TERKAIT — a supplier page's warehouses as chips (the list and the page's filter), and under them what the
 // supplier's goods did in the chosen one or in all (a-supplier-page-is-scoped-by-its-warehouses,
@@ -63,6 +63,16 @@ export const ChipsAndTheirSummary: Story = {
     await userEvent.click(chips[2]!);
     await waitFor(() => expect(card(canvas, "sold")).toHaveTextContent("Sold2.000 unitsfrom 200 orders · last Oct 6, 2026"));
     await expect(card(canvas, "ready")).toHaveTextContent("Ready20 units4 restocks · last Oct 7, 2026");
+  },
+};
+
+/** A warehouse whose share never sold reads its count alone — there is no last order to name. */
+export const NeverSoldHasNoLastDate: Story = {
+  args: { warehouses: [{ ...warehouse(0, 2), sold: 0, orders: 0, lastOrderAt: 0n }] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(card(canvas, "sold")).toHaveTextContent(/^Sold0 unitsfrom 0 orders$/);
+    await expect(card(canvas, "ready")).toHaveTextContent("Ready10 units2 restocks · last Oct 8, 2026");
   },
 };
 

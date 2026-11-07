@@ -27,6 +27,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **Expense figures name their people** | Analytic's *Created by* lists who typed or corrected an expense; a stock loss lands on the Jakarta day |
 | **Team Balance passed your review** | desktop and phone accepted; the pair page opens on **All** — the whole running ledger; only the team that owes can record a payment |
 | **Team Balance filters search everything** | the list's search finds a team by name or code past the first page; the pair's date range and tabs read the whole history, not only what was loaded |
+| **Supplier figures are real** | *Terjual* and *Siap* with their last order and restock dates, per store and per warehouse, on the supplier pages and Discover — every selling team's goods; a cancel takes its sale back. *Penjualan* is the real selling value on the order's day, and the Terjual / Siap pills filter the list |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

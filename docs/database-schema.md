@@ -1355,6 +1355,9 @@ erDiagram
   stock_count > 0`: the take and `StockTakeQuote` sum an owner's stock of a product across EVERY warehouse in one grouped
   read, and every other batches index leads with `warehouse_id`
   ([the-reserve-is-read-once-for-every-line](business/inventory/order_decision.md#the-reserve-is-read-once-for-every-line)).
+- **A supplier's goods are read by supplier** — `00039` `batches_supplier_idx ON batches (supplier_id, supplier_channel_id,
+  warehouse_id)`: `SupplierGoods` (the supplier pages' Terjual / Siap / Gudang terkait) sums the batches minted with a
+  supplier's id, grouped by store or warehouse; without it every read scanned every batch.
 - **Written set-based** — a write locks each ledger's rows in one statement, works the rows out in memory, and stores
   each table with one `UPDATE … FROM unnest(…)` or one multi-row `INSERT`, however many lines
   ([ledger-writes-are-set-based](technical/stock/design_decision.md#ledger-writes-are-set-based)).
@@ -2559,6 +2562,7 @@ each sells through (docs/business/supplier/context_decision.md, the-supplier-get
 ```mermaid
 erDiagram
     suppliers ||--o{ supplier_channels : "supplier_id"
+    supplier_sale_orders ||--o{ supplier_sale_order_parts : "order_id, no FK - written together"
 
     suppliers {
         bigserial   id          PK "moved rows keep their inventory_service id"
@@ -2597,6 +2601,34 @@ erDiagram
         bigint      shipping_broken_count     "arrived broken"
         double      shipping_broken_valuation
         timestamptz last_updated
+    }
+
+    supplier_sale_daily_reports {
+        bigserial   id           PK
+        date        day          "the order or the cancel, Jakarta day"
+        bigint      supplier_id  "the batch supplier, no FK"
+        bigint      product_id   "the batch product, opaque"
+        bigint      team_id      "the batch team - the RESTOCKING team"
+        bigint      sales_count  "units sold, SIGNED - a cancel subtracts on its day"
+        double      sales_value  "their share of the platform total, exact"
+        timestamptz last_updated
+    }
+
+    supplier_sale_orders {
+        bigint      order_id      PK "selling's order, opaque - the sales fold claim"
+        date        placed_day    "NULL until OrderPlaced is folded"
+        date        cancelled_day "NULL while the order stands"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    supplier_sale_order_parts {
+        bigint      order_id    PK "with the three ids below"
+        bigint      supplier_id PK
+        bigint      product_id  PK
+        bigint      team_id     PK
+        bigint      units       "what the placement added"
+        double      value       "taken back exactly by the cancel"
     }
 
     supplier_event_logs {
@@ -2654,6 +2686,25 @@ write path reads them.
 | `supplier_product_daily_reports_key_idx` UNIQUE (day, supplier_id, product_id, team_id) | the fold's upsert · the replay's delete · every window scan — the ranking |
 | `supplier_product_daily_reports_supplier_day_idx` (supplier_id, day) | one supplier over a window — the Statistics tab's series and by-product table |
 | `supplier_event_logs_day_idx` (day) · `_created_idx` (created_at) | the replay's delete · the prune |
+
+### Penjualan — `00004_supplier_sales`
+
+What a supplier's goods SOLD for (penjualan-is-the-selling-value-on-the-order-day), folded from selling's `OrderPlaced`
+and `OrderCancelled` by the sales fold — DERIVED, like the restock figures, and in tables of its own because
+`AnalyticReplayCompute` deletes and re-seeks only the restock subscription.
+
+- **`supplier_sale_daily_reports`** is keyed as the restock rows are (`day`, `supplier_id`, `product_id`, `team_id`) and
+  read with them as one UNION ALL by `metrics/suppliers`. SIGNED: the order's day adds, the cancel's day subtracts.
+- **`supplier_sale_orders`** is the claim — one row per order, locked FOR UPDATE by both events, so either may arrive
+  first; **`supplier_sale_order_parts`** keeps what the placement added, so the cancel takes back exactly that.
+- The supplier, product and team are the BATCH's that the order's take drew (inventory's ledger, read in-process at the
+  fold); no FK across services.
+
+| index | serves |
+| --- | --- |
+| `supplier_sale_daily_reports_key_idx` UNIQUE (day, supplier_id, product_id, team_id) | the sales fold's upsert · every window scan |
+| `supplier_sale_daily_reports_supplier_day_idx` (supplier_id, day) | one supplier over a window — the Statistics tab |
+| `supplier_sale_orders_pkey` (order_id) · `supplier_sale_order_parts_pkey` (order_id, supplier_id, product_id, team_id) | the claim · the cancel's read of its parts |
 
 **Not here yet:** `supplier_channel_products` — the store-to-product link
 (restock-accepted-links-the-product-to-its-channel) needs a store on each restock line, which the restock does not

@@ -21,6 +21,7 @@
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
+import { goodsTotalsOf, inBand, recordSupplierListBands } from "./supplierGoodsStub";
 import { SupplierListDataType, SupplierListScope, SupplierRowSort, SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import { getOption } from "@bufbuild/protobuf";
@@ -134,13 +135,19 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
     const channelType = req.filter?.channelType ?? Marketplace.UNSPECIFIED;
     // Discover's Team filter — the team that keeps the supplier. 0 = any team.
     const ownerTeamId = req.filter?.ownerTeamId ?? 0n;
+    // The range pills (the-range-pills-are-a-fixed-set) — over the goods stub's all-time figures, every team's, before
+    // the page, lower-inclusive and upper-exclusive; a supplier with no goods reads 0.
+    const sold = req.filter?.sold;
+    const ready = req.filter?.ready;
+    recordSupplierListBands(sold, ready);
 
     const found = newestFirst(
       suppliers
         .filter((s) => !s.deleted && (everyTeam || s.teamId === req.teamId))
         .filter((s) => ownerTeamId === 0n || s.teamId === ownerTeamId)
         .filter((s) => channelType === Marketplace.UNSPECIFIED || liveStoresOf(s.id).some((c) => c.channelType === channelType))
-        .filter((s) => matches(q, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name))),
+        .filter((s) => matches(q, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name)))
+        .filter((s) => inBand(goodsTotalsOf(s.id).sold, sold) && inBand(goodsTotalsOf(s.id).ready, ready)),
     );
     // By name when asked — the server's order (supplierOrderClause): the name, then the id to break a tie.
     const byName =
@@ -345,6 +352,8 @@ const zeroMetric = (): Metric => ({
   shippingLostValuation: 0,
   shippingBrokenCount: 0n,
   shippingBrokenValuation: 0,
+  salesCount: 0n,
+  salesValue: 0,
   brokenRate: 0,
 });
 
@@ -359,6 +368,8 @@ function addRow(m: Metric, r: FigureFixture): Metric {
     shippingLostValuation: m.shippingLostValuation + r.shippingLostValuation,
     shippingBrokenCount: m.shippingBrokenCount + r.shippingBrokenCount,
     shippingBrokenValuation: m.shippingBrokenValuation + r.shippingBrokenValuation,
+    salesCount: m.salesCount + r.salesCount,
+    salesValue: m.salesValue + r.salesValue,
     brokenRate: 0,
   };
   const units = unitsOf(next);

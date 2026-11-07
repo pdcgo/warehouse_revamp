@@ -1318,6 +1318,61 @@ sequenceDiagram
 Measured: 3 statements flat at a page of 20 and 50, ≈ 20 ms at 10 000 products held
 ([performance audit](../../../audits/services/inventory_service/performances/WarehouseStockList.md)).
 
+## A supplier's goods — `SupplierGoods`
+
+The supplier pages' **Terjual** (with the last order) and **Siap** (with the last restock) for a supplier on the supplier
+list and Discover, for each store on the Toko tab, and per warehouse under **Gudang terkait** with its orders and restocks
+([sales-are-all-time-with-their-last-dates](../../technical/frontend/suppliers_decision.md#sales-are-all-time-with-their-last-dates),
+[the-detail-tabs-show-sold-and-ready](../../technical/frontend/suppliers_decision.md#the-detail-tabs-show-sold-and-ready),
+[the-summary-is-sold-and-ready-with-their-counts](../../technical/frontend/suppliers_decision.md#the-summary-is-sold-and-ready-with-their-counts)).
+A supplier's goods are the batches minted with its id ([a-batch-keeps-its-supplier](../../business/inventory/context_decision.md#a-batch-keeps-its-supplier)),
+from EVERY team ([every-selling-team-sees-every-teams-figures](../../business/supplier/context_decision.md#every-selling-team-sees-every-teams-figures)).
+**Built 2026-11-07**: `inventory_v1/supplier_goods.go`, index `00039` `batches_supplier_idx`, screens through
+`features/suppliers/goods.ts`. inventory owns every row it reads, so no other service is called; the screen names the
+warehouses with `TeamByIds`.
+
+| | |
+| --- | --- |
+| who | Root, Administrator, selling Owner, Admin, CS; the admin team's monitor and an agent (`NO_SIDE_EFFECTS`). No warehouse role — a warehouse has no supplier pages |
+| scope | `team_id` (`use_scope`) authorizes only — it never narrows the figures |
+| ask | `supplier_ids` 1–100, `group` SUPPLIER · STORE (`supplier_channel_id`) · WAREHOUSE |
+| sold · orders · last order | the batches' `order` rows of `batch_logs`, netted per transaction: a cancel's rollback writes flipped rows of the same type, so a cancelled order nets 0 — not sold, not an order, not the last order |
+| ready | `SUM(stock_count)` of the batches |
+| restocks · last restock | the distinct `restock` transactions that minted them, the newest batch's `created_at`; a transfer-in batch carries the supplier and is not a restock |
+| absent | a supplier, store or warehouse none of whose goods ever arrived — the screen draws a dash |
+
+```mermaid
+sequenceDiagram
+    participant S as Supplier list — a selling team
+    participant I as SupplierGoods — inventory
+    participant DB as Postgres
+    S->>I: team 12, the page's supplier ids, group SUPPLIER
+    I->>I: policy — selling roles, scope team 12 (authorizes only)
+    I->>DB: SUM(stock_count) FROM batches WHERE supplier_id IN ids GROUP BY supplier
+    I->>DB: COUNT(DISTINCT transaction_id), MAX(created_at) — the restock batches
+    I->>DB: per batch, its order rows (LATERAL, batch_logs_batch_idx) — netted per transaction, then per supplier
+    I-->>S: sold, orders, last order, ready, restocks, last restock — per supplier
+```
+
+Measured ([performance audit](../../../audits/services/inventory_service/performances/SupplierGoods.md), 🟡): a list page
+of 50 in 41 ms, one ordinary supplier by warehouse in 2 ms; a supplier with 100 000 sold rows ≈ 5 s cold — the audit
+recommends folding the sold figures on the take's write path (the owner's call).
+
+### The same goods for supplier_service — two in-process seams, not RPCs
+
+supplier_service asks inventory about a supplier's goods through its `GoodsReader`, answered by the composition root
+(`cmd/app_development/supplier_goods_reader.go`) from these plain methods — no caller token, no policy, nothing over
+Connect:
+
+| method | for | reads |
+| --- | --- | --- |
+| `OrderTakeSuppliers(transaction_id)` (`supplier_order_take.go`) | Penjualan's sales fold, on OrderPlaced ([penjualan-is-the-selling-value-on-the-order-day](../../technical/frontend/suppliers_decision.md#penjualan-is-the-selling-value-on-the-order-day)) | the take's own `order` rows (`change_count < 0`, `batch_logs_transaction_idx`) joined to `batches` — units per product, supplier and the batch's team; GROSS, a release's rollback never subtracted; a batch from nobody left out |
+| `SupplierIDsByFigure(figure, lo, hi)` (`supplier_ids_by_figure.go`) | SupplierList's range pills ([the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decision.md#the-range-pills-are-a-fixed-set)) | the suppliers whose Terjual (every `order` row netted) or Siap (`SUM(stock_count)` of batches holding stock) lies in `[lo, hi)`, `hi` 0 open — every team's goods, only suppliers WITH goods |
+
+Measured (`supplier_ids_by_figure_perf_test.go`, SupplierGoods' background — 200 000 batches, 1 000 000 `order` rows,
+3 001 suppliers): Terjual's set ≈ 0.6–0.9 s (one pass over every `order` row) 🔴, Siap's ≈ 60 ms —
+[SupplierIDsByFigure.md](../../../audits/services/inventory_service/performances/SupplierIDsByFigure.md).
+
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 
 A `DAMAGED` / `LOST` adjust already wrote the units off the shelf and their frozen cost to expense.
