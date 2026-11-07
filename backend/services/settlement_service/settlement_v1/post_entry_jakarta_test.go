@@ -37,7 +37,7 @@ func TestSettlementPost_APostAt2330UTCLandsOnTheJakartaDay(t *testing.T) {
 		return nil
 	}
 
-	svc := settlement_v1.NewService(db, sender, nil, nil, nil)
+	svc := settlement_v1.NewService(db, sender, nil, nil, nil, nil, nil)
 
 	result, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {

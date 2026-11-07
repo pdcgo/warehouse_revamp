@@ -19,7 +19,7 @@ import (
 // NewSettlementReports is settlement_service as the operations tool needs it: the day re-fold and nothing else. No
 // sender — the re-fold publishes nothing — no broker, no shop lookup, no order marker.
 func NewSettlementReports(db *gorm.DB) *settlement_v1.Service {
-	return settlement_v1.NewService(db, nil, nil, nil, nil)
+	return settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 }
 
 var (

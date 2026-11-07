@@ -47,7 +47,7 @@ var foldTables = []string{
 func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 	h := san_race.New(t, foldTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const n = 8
@@ -125,7 +125,7 @@ func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 func TestRace_Fold_ARedeliveryStormFoldsOnce(t *testing.T) {
 	h := san_race.New(t, foldTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const n = 8

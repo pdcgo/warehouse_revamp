@@ -74,7 +74,7 @@ func initialTotal(uniqueID string) settlement_v1.PostInput {
 // `net received` would read as a subtraction and report the opposite of the truth.
 func TestSettlementPost_OpensTheAccountWithThePositiveSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	result, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -102,7 +102,7 @@ func TestSettlementPost_OpensTheAccountWithThePositiveSale(t *testing.T) {
 // reached us, is the platform's take — and nothing else in this system can produce that number.
 func TestSettlementPost_ProjectsTheWorkedExample(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -151,7 +151,7 @@ func TestSettlementPost_ProjectsTheWorkedExample(t *testing.T) {
 // timeout, and the second call must change nothing and SAY it changed nothing.
 func TestSettlementPost_IsIdempotentAndReportsIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	first, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -180,7 +180,7 @@ func TestSettlementPost_IsIdempotentAndReportsIt(t *testing.T) {
 // opposite of the sale's, so the projection's running sum returns to zero on its own.
 func TestSettlementPost_CancelZeroesTheLiveSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -222,7 +222,7 @@ func TestSettlementPost_CancelZeroesTheLiveSale(t *testing.T) {
 // service still believes is live, and nothing on any screen would show the disagreement.
 func TestSettlementPost_RefusesAHandPostedCancel(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	for _, source := range []settlementv1.SourceType{
 		settlementv1.SourceType_SOURCE_TYPE_MANUAL,
@@ -248,7 +248,7 @@ func TestSettlementPost_RefusesAHandPostedCancel(t *testing.T) {
 // nothing about whether the ACCOUNT does.
 func TestSettlementPost_RefusesAnotherTeamsAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -275,7 +275,7 @@ func TestSettlementPost_RefusesAnotherTeamsAccount(t *testing.T) {
 // wrong order — not a shop change to accept quietly.
 func TestSettlementPost_RefusesAShopMismatch(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -297,7 +297,7 @@ func TestSettlementPost_RefusesAShopMismatch(t *testing.T) {
 // An append-only ledger cannot repair a dangling pointer later, so it is refused at write time.
 func TestSettlementPost_RefusesAReversalOfNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -320,7 +320,7 @@ func TestSettlementPost_RefusesAReversalOfNothing(t *testing.T) {
 // ledger you can edit is not evidence of anything.
 func TestSettlementPost_ReversalOffsetsRatherThanEdits(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -362,7 +362,7 @@ func TestSettlementPost_ReversalOffsetsRatherThanEdits(t *testing.T) {
 // of its rows within the tolerance. Three payouts of 10.000,4 are 30.001,2.
 func TestSettlementPost_StoresAFractionExact(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -444,7 +444,7 @@ func TestSettlementPost_StoresAFractionExact(t *testing.T) {
 // an order event, the importer — is held to the same, and nothing is written.
 func TestSettlementPost_RefusesAChangeThatIsNotFinite(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	for i, change := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
 		_, err := post(t, svc, settlement_v1.PostInput{

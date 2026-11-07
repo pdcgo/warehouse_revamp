@@ -5,6 +5,7 @@ package warehouse.settlement.v1;
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/marketplace/v1/marketplace.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1";
@@ -47,6 +48,13 @@ service SettlementService {
   rpc OrderSettlementDetail(OrderSettlementDetailRequest) returns (OrderSettlementDetailResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
     // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Shop Entries — the rows addressed to a SHOP and no order (an-entry-names-an-order-or-a-shop), newest learned first,
+  // each with the statement it came from and whether it is reversed (the-shop-entries-page-is-accepted). A row is
+  // REVERSED through SettlementPost, as on the order's ledger (a-shop-entry-reverses-inline).
+  rpc ShopSettlementEntryList(ShopSettlementEntryListRequest) returns (ShopSettlementEntryListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it.
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -467,6 +475,124 @@ message OrderSettlementDetailResponse {
   OrderSettlement settlement = 1;
   // Oldest first, so the running `balance` column reads downward the way it was built.
   repeated SettlementEntry entries = 2;
+}
+
+// ── shop entries (the-shop-entries-page-is-accepted) ────────────────────────────────────────────
+
+message ShopSettlementEntryListFilter {
+  // One shop, or 0 for every shop the scope reads. NOT the scope — `team_id` is.
+  uint64 shop_id = 1;
+
+  // Empty = every kind. Only the eleven a shop row can carry: never the sale or its cancel, which need an order.
+  repeated SettlementType settlement_types = 2 [(buf.validate.field).repeated = {
+    max_items: 11
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [
+          0,
+          1,
+          7
+        ]
+      }
+    }
+  }];
+
+  // The LEARNED day — `posted_on`, a Jakarta day (posted-on-buckets-the-report) — inclusive, YYYY-MM-DD. Empty ends are
+  // open. The report buckets by the same day, so a shop's entries add up to what the report folded for it.
+  string posted_from = 3 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+  string posted_to = 4 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+}
+
+enum ShopSettlementEntryListDataType {
+  SHOP_SETTLEMENT_ENTRY_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SHOP_SETTLEMENT_ENTRY_LIST_DATA_TYPE_ENTRY = 1;
+}
+
+// The settlement read set (the-write-set-is-cs-and-up names who writes; every settlement read takes the same five).
+// The root team reads every team's rows, as the report's own reads do.
+message ShopSettlementEntryListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  ShopSettlementEntryListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated ShopSettlementEntryListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+// Why an imported line went to the SHOP rather than to an order — the importer's own record of it.
+enum ShopEntryStatementReason {
+  SHOP_ENTRY_STATEMENT_REASON_UNSPECIFIED = 0;
+  // A line that names no order — a withdrawal, a shop-level fee.
+  SHOP_ENTRY_STATEMENT_REASON_SHOP_LINE = 1;
+  // Its ref found no order (an-unmatched-ref-posts-to-the-shop).
+  SHOP_ENTRY_STATEMENT_REASON_NO_ORDER = 2;
+  // Its ref found several live orders (two-live-orders-on-a-ref-post-to-the-shop) — `found_order_ids` names them.
+  SHOP_ENTRY_STATEMENT_REASON_SEVERAL_ORDERS = 3;
+}
+
+// THE STATEMENT A ROW CAME FROM — the importer's line whose `settlement_log_id` is the row, asked of the importer
+// in-process (settlement holds no file id and reads none of the importer's tables).
+message ShopEntryStatement {
+  uint64 uploaded_file_id = 1;
+  warehouse.marketplace.v1.Marketplace platform = 2;
+  // The statement's own range, YYYY-MM-DD.
+  string period_from = 3;
+  string period_to = 4;
+  // The file's sheet and the platform's own words for the line.
+  string sheet = 5;
+  string description = 6;
+  // The order ref the line carried — empty for a line that names none.
+  string order_ref = 7;
+  ShopEntryStatementReason reason = 8;
+  repeated uint64 found_order_ids = 9;
+  // Who uploaded the file, and their name.
+  uint64 uploaded_by_user_id = 10;
+  string uploaded_by_name = 11;
+}
+
+message ShopSettlementEntry {
+  // The row, `actor_name` resolved.
+  SettlementEntry entry = 1;
+  // The row that reverses this one, or 0 — a row is reversed once (a-shop-entry-reverses-inline).
+  uint64 reversed_by_id = 2;
+  // Unset for a row posted by hand.
+  ShopEntryStatement statement = 3;
+}
+
+message ShopSettlementEntryMapItem {
+  map<uint64, ShopSettlementEntry> map_data = 1;
+}
+
+message ShopSettlementEntryListResponseItem {
+  oneof d {
+    ShopSettlementEntryMapItem entry = 1;
+  }
+}
+
+message ShopSettlementEntryListResponse {
+  repeated ShopSettlementEntryListResponseItem items = 1;
+  // Newest learned first (`posted_on`, then `id`).
+  repeated uint64 ids = 2;
+  // `total_items` is the Entries total — the whole filtered set.
+  warehouse.common.v1.PageInfo page_info = 3;
+
+  // The WHOLE FILTERED SET, not the page (the-report-headline-is-position-to-date): Σ change of every row but the
+  // withdrawals, and −Σ change of the withdrawals (positive) — the report's own Received and Withdrawn.
+  double total_received = 4;
+  double total_withdrawn = 5;
 }
 
 // ── maintenance ─────────────────────────────────────────────────────────────────────────────────

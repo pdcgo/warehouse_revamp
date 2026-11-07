@@ -38,6 +38,9 @@ interface Scope {
   team?: bigint;
 }
 
+/** Every window the report asked for, newest last — a story asserts the days it sent (backlog #36). */
+export const settlementWindowCalls: { from: string; to: string }[] = [];
+
 function scopeOf(teamId: bigint, groupBy: GroupType, items: FilterItem[]): { scope: Scope; rows: Row[] } {
   const scope: Scope = { from: "", to: "" };
 
@@ -45,6 +48,7 @@ function scopeOf(teamId: bigint, groupBy: GroupType, items: FilterItem[]): { sco
     if (f.case === "dateRangeFilter") {
       scope.from = f.value.dateMin;
       scope.to = f.value.dateMax;
+      settlementWindowCalls.push({ from: scope.from, to: scope.to });
     }
     if (f.case === "shopFilter") scope.shop = f.value.shopId;
     if (f.case === "userFilter") scope.user = f.value.userId;

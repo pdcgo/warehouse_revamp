@@ -36,7 +36,7 @@ func (f *fakeOpened) SettlementOpened(_ context.Context, orderID uint64, openedA
 func TestOrderOpened_ThePlacementStampsTheOpeningRowsMoment(t *testing.T) {
 	db := san_testdb.DB(t)
 	opened := &fakeOpened{}
-	svc := settlement_v1.NewService(db, nil, nil, nil, opened)
+	svc := settlement_v1.NewService(db, nil, nil, nil, opened, nil, nil)
 
 	deliver(t, svc, placedEvent(sale))
 	deliver(t, svc, placedEvent(sale)) // redelivered
@@ -68,7 +68,7 @@ func TestOrderOpened_ThePlacementStampsTheOpeningRowsMoment(t *testing.T) {
 func TestOrderOpened_AnOpeningByHandStampsAndOtherRowsDoNot(t *testing.T) {
 	db := san_testdb.DB(t)
 	opened := &fakeOpened{}
-	svc := settlement_v1.NewService(db, nil, nil, nil, opened)
+	svc := settlement_v1.NewService(db, nil, nil, nil, opened, nil, nil)
 
 	_, err := post(t, svc, settlement_v1.PostInput{
 		UniqueID:       "fund-before-any-sale",
@@ -102,7 +102,7 @@ func TestOrderOpened_AnOpeningByHandStampsAndOtherRowsDoNot(t *testing.T) {
 func TestOrderOpened_AFailedStampLeavesTheOpeningCommitted(t *testing.T) {
 	db := san_testdb.DB(t)
 	opened := &fakeOpened{err: errors.New("the order service is down")}
-	svc := settlement_v1.NewService(db, nil, nil, nil, opened)
+	svc := settlement_v1.NewService(db, nil, nil, nil, opened, nil, nil)
 
 	deliver(t, svc, placedEvent(sale)) // deliver fails the test on any error
 

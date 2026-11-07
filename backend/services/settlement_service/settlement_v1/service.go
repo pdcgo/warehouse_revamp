@@ -44,6 +44,12 @@ type Service struct {
 	// Where the order learns its account OPENED — orders.settlement_opened_at, stamped at the first `initial_total`
 	// (a-missing-account-is-found-by-its-opened-at). The order's own row, so the order service writes it.
 	opened OrderOpenedMarker
+
+	// The statement a shop row came from — the importer's line, asked in-process (shop_entry_sources.go).
+	statements StatementSources
+
+	// Who posted or uploaded a shop row, by name — the user read, in-process.
+	users UserNames
 }
 
 // compile-time proof Service serves every proto service. One implementation behind four, exactly as
@@ -61,6 +67,8 @@ func NewService(
 	broker ReplayBroker,
 	shops ShopPrimary,
 	opened OrderOpenedMarker,
+	statements StatementSources,
+	users UserNames,
 ) *Service {
 	// A nil sender would panic on the first post. EmptySender still VALIDATES the event, so a malformed
 	// one is caught with no broker in sight — the right default for tests and a local run.
@@ -83,7 +91,24 @@ func NewService(
 		opened = noOrderOpened{}
 	}
 
-	return &Service{db: db, events: events, broker: broker, shops: shops, opened: opened}
+	// With no importer, no row names a statement; with no user service, a name falls back to the id on the screen.
+	if statements == nil {
+		statements = noStatementSources{}
+	}
+
+	if users == nil {
+		users = noUserNames{}
+	}
+
+	return &Service{
+		db:         db,
+		events:     events,
+		broker:     broker,
+		shops:      shops,
+		opened:     opened,
+		statements: statements,
+		users:      users,
+	}
 }
 
 const dateLayout = "2006-01-02"
@@ -173,6 +198,20 @@ var (
 	errChangeNotFinite = connect.NewError(
 		connect.CodeInvalidArgument,
 		errors.New("change must be a finite amount of rupiah"),
+	)
+
+	// A ROW IS REVERSED ONCE (a-shop-entry-reverses-inline: "a row already reversed shows so and offers no second
+	// Reverse"). Checked under the account's lock, so two reversals at once cannot both find it unreversed.
+	errAlreadyReversed = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("this entry is already reversed"),
+	)
+
+	// A reversal POSTS THE NEGATION, SAME settlement_type (a-correction-is-a-new-row) — anything else is a new entry
+	// pretending to undo an old one.
+	errReversalNotOpposite = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("a reversal must carry the reversed entry's type and the opposite amount"),
 	)
 
 	errUnknownType   = errors.New("unknown settlement_type")

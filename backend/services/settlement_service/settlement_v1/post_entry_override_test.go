@@ -31,7 +31,7 @@ func asScoped(userID, teamID uint64, role role_basev1.Role) context.Context {
 // the order's event.
 func TestSettlementPost_StampsAnOverride(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	// The account opens from the order's event — no person on the ctx, so the system's row.
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
@@ -98,7 +98,7 @@ func TestSettlementPost_StampsAnOverride(t *testing.T) {
 func TestOrderSale_EachRowCarriesItsEventsStamp(t *testing.T) {
 	db := san_testdb.DB(t)
 	capture := &captureEvents{}
-	svc := settlement_v1.NewService(db, capture.send, nil, nil, nil)
+	svc := settlement_v1.NewService(db, capture.send, nil, nil, nil, nil, nil)
 
 	placedBy := func(orderID uint64, override bool) *eventsv1.Event {
 		return &eventsv1.Event{
@@ -169,7 +169,7 @@ func TestOrderSale_EachRowCarriesItsEventsStamp(t *testing.T) {
 func TestSettlementPost_TheEventCarriesTheRowsStamp(t *testing.T) {
 	db := san_testdb.DB(t)
 	capture := &captureEvents{}
-	svc := settlement_v1.NewService(db, capture.send, nil, nil, nil)
+	svc := settlement_v1.NewService(db, capture.send, nil, nil, nil, nil, nil)
 
 	for _, c := range []struct {
 		name     string

@@ -142,6 +142,18 @@ sequenceDiagram
 | `CancelSale` takes its amount FROM the live sale | a person may have corrected the sale since placement — cancelling the order's original figure would cancel the wrong number |
 | the idempotency check runs BEFORE these rules | a retried cancel finds its own row, instead of being refused because the sale is now zero |
 
+### A reversal — the opposite, once (2026-11-07)
+
+A row with `reverses_id` must name a row of the **same account** (an order's, or — `order_id IS NULL AND shop_id = ?` —
+the shop's), carry **its type and the opposite amount** (`san_money.Equal(change, −reversed.change)`,
+[a-correction-is-a-new-row](../../business/settlement/context_decision.md#a-correction-is-a-new-row)), and the row must
+not be reversed already ([a-shop-entry-reverses-inline](../../technical/frontend/settlement_report_decision.md#a-shop-entry-reverses-inline):
+*"a row already reversed shows so and offers no second Reverse"*). The last is read by `reverses_id`
+(`settlement_logs_reverses_idx`, 00011) **under the account's lock**, so two reversals of one row under different keys
+serialise and the second is refused (`TestRace_SettlementPost_AShopEntryIsReversedOnce`); the same key twice is the
+first one's retry, answered by the idempotency lookup before any of this. Both ledgers' Reverse use the key
+`reverse-<id>` — the order's ledger and Shop Entries.
+
 ### The event
 
 `SettlementLogPosted` carries the **whole row** plus `order_created_by_user_id`. `event_id` is
@@ -153,8 +165,8 @@ logged and never fails the post; re-posting the same `unique_id` republishes it.
 | code | when |
 | --- | --- |
 | `PermissionDenied` | a cancel from a non-`order` source · the account belongs to another team |
-| `FailedPrecondition` | a second live sale · a cancel exceeding the live sale · `CancelSale` with nothing live (`ErrNothingToCancel`) |
-| `InvalidArgument` | a `change` that is NaN or infinite · unknown type or source · a bad date · a shop that disagrees with the account · `reverses_id` naming nothing on this account · a sale with no order · a `system_adjustment` on an order · a `unique_id` already used on another account |
+| `FailedPrecondition` | a second live sale · a cancel exceeding the live sale · `CancelSale` with nothing live (`ErrNothingToCancel`) · a reversal of a row already reversed |
+| `InvalidArgument` | a `change` that is NaN or infinite · unknown type or source · a bad date · a shop that disagrees with the account · `reverses_id` naming nothing on this account · a reversal that is not the reversed row's type and opposite amount · a sale with no order · a `system_adjustment` on an order · a `unique_id` already used on another account |
 | `Internal` | the database |
 
 ---
@@ -313,6 +325,40 @@ page.
   counts it.
 - `order_id` breaks ties, so equal rows keep one order across pages. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
 activity — and an order with no account is **`NotFound`**, never a zeroed row.
+
+### A shop's own rows — `ShopSettlementEntryList` (2026-11-07)
+
+Shop Entries ([the-shop-entries-page-is-accepted](../../technical/frontend/settlement_report_decision.md#the-shop-entries-page-is-accepted)):
+the rows addressed to a shop and no order ([an-entry-names-an-order-or-a-shop](../../business/settlement/context_decision.md#an-entry-names-an-order-or-a-shop)).
+The settlement read set, `use_scope` on `team_id`; the root team reads every team's, as `scopeOf`.
+
+```mermaid
+sequenceDiagram
+  participant S as Shop Entries
+  participant L as ShopSettlementEntryList
+  participant DB as settlement_logs
+  participant I as importer (in-process)
+  participant U as user read (in-process)
+  S->>L: team, shop, kinds, posted_from..posted_to, page
+  L->>DB: COUNT, Σ change but withdrawals, −Σ withdrawals (the whole filtered set)
+  L->>DB: the page, posted_on DESC, id DESC
+  L->>DB: reversals of the page (reverses_id IN page)
+  L->>I: StatementLinesBySettlementLogIds(team, imported ids)
+  L->>U: names of the posters and uploaders
+  L-->>S: ids, rows (entry, reversed_by_id, statement), page_info, totals
+```
+
+| | |
+| --- | --- |
+| rows | `order_id IS NULL`, the team's (`settlement_logs_shop_rows_idx (team_id, posted_on DESC, id DESC) WHERE order_id IS NULL`, 00011) |
+| filters | `shop_id` (0 = every shop), `settlement_types` (empty = all eleven; the sale and its cancel are refused — never a shop row), `posted_from` / `posted_to` — the LEARNED day, a Jakarta `DATE`, inclusive ([posted-on-buckets-the-report](../../business/settlement/context_decision.md#posted-on-buckets-the-report)) |
+| totals | `page_info.total_items` = Entries; `total_received` = Σ change of every row but withdrawals; `total_withdrawn` = −Σ withdrawals — over the filtered set, never the page ([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date)) |
+| a row | the `SettlementEntry` (`actor_name` resolved), `reversed_by_id` (0 = not reversed), and `statement` — the importer's line that POSTED it (file id, platform, period, sheet, description, ref, reason `SHOP_LINE` / `NO_ORDER` / `SEVERAL_ORDERS`, found orders, uploader + name); unset for a hand row |
+| seams | `StatementSources` → the importer's `StatementLinesBySettlementLogIds`, `UserNames` → `UserByIDs` — both in-process (`cmd/app_development/settlement_shop_entries.go`); settlement reads neither service's tables |
+
+Five queries a page (count+sums, page, reversals, the importer's lines, the names): 1.7 ms at 200 000 log rows a team
+(5 000 shop rows), 68 ms without the partial index — `shop_settlement_entry_list_perf_test.go` reads both plans. Not
+heavy; no write-up. **Reverse** is SettlementPost of the opposite row (above).
 
 ### Who a USER filter offers — `SettlementPersonList`
 

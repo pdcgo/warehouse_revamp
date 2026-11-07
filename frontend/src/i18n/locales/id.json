@@ -33,6 +33,8 @@
     "settlementList": "Daftar",
     "settlementReportShort": "Laporan",
     "settlementImportsShort": "Impor",
+    "settlementShopEntriesShort": "Entri Toko",
+    "settlementShopEntries": "Entri Toko",
     "financialAccounts": "Akun Keuangan",
     "accountsList": "Daftar Akun",
     "accountsReport": "Laporan Akun",
@@ -3343,6 +3345,54 @@
       "takeRate": "Potongan",
       "positionToDate": "Posisi s.d. kini"
     }
+  },
+  "settlementShopEntries": {
+    "title": "Entri Toko",
+    "subtitle": "Uang yang dipindahkan marketplace untuk toko itu sendiri, bukan untuk pesanan — penarikan, biaya tingkat toko, dan baris laporan yang tidak cocok dengan pesanan mana pun.",
+    "selectTeam": "Pilih tim untuk melihat entri tokonya.",
+    "allShops": "Semua toko",
+    "allKinds": "Semua jenis",
+    "kindLabel": "Jenis",
+    "shopLabel": "Toko",
+    "learned": "Diketahui",
+    "belongsTo": "untuk {{date}}",
+    "stat": {
+      "count": "Entri",
+      "countLine": "pada periode ini",
+      "received": "Diterima",
+      "receivedLine": "Pembayaran, biaya dan penyesuaian — tanpa penarikan",
+      "withdrawn": "Ditarik",
+      "withdrawnLine": "Dipindahkan dari dompet marketplace ke bank"
+    },
+    "col": {
+      "date": "Tanggal",
+      "shop": "Toko",
+      "kind": "Jenis",
+      "amount": "Jumlah",
+      "reference": "Referensi",
+      "statement": "Dari"
+    },
+    "type": {
+      "system_adjustment": "Penyesuaian sistem"
+    },
+    "reason": {
+      "no_order": "Ref {{ref}} · pesanan tidak ditemukan",
+      "several_orders": "Ref {{ref}} · {{count}} pesanan aktif: {{orders}}"
+    },
+    "statement": "Laporan {{period}}",
+    "byHand": "Dicatat manual",
+    "byPerson": "oleh {{name}}",
+    "empty": "Tidak ada entri toko pada periode ini.",
+    "emptyHint": "Penarikan, biaya tingkat toko dan baris laporan yang tidak cocok dengan pesanan mana pun masuk ke sini.",
+    "emptyFiltered": "Tidak ada entri toko yang cocok dengan filter ini.",
+    "emptyFilteredHint": "Coba jenis atau toko lain, atau hapus filternya.",
+    "openFromReport": "Buka entri toko",
+    "fromReportHint": "Buka sebuah toko untuk membaca entri yang ditujukan ke toko itu, bukan ke pesanan.",
+    "reverseBody": "Ini membuat entri {{amount}} dengan arah berlawanan di {{shop}}, membalikkan {{type}} yang diketahui {{date}}. Entri asli tetap ada — entri tidak pernah diubah atau dihapus.",
+    "reversed": "Entri #{{id}} dibalikkan",
+    "reverseFailed": "Entri tidak dapat dibalikkan",
+    "reversedBadge": "Dibalikkan",
+    "reversalOf": "Membalikkan #{{id}}"
   },
   "orderSettlement": {
     "tab": "Settlement",

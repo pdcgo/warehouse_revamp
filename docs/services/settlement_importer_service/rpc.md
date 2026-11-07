@@ -138,4 +138,15 @@ it was sent as the whole number 100.000 before). The IsWhole test is a check on 
 | `UploadedFileByIds` | the guideline ByIds — id → its slices | another team's file is absent |
 | `UploadedFileLineList` | the guideline List over one file's lines, filtered by outcomes AND reasons — the file page asks HELD, SKIPPED, and POSTED + NO_ORDER | another team's file is `NotFound` |
 
+### The statement a ledger row came from — `StatementLinesBySettlementLogIds` (in-process, 2026-11-07)
+
+Not an RPC: settlement's Shop Entries asks it through the composition root
+(`cmd/app_development/settlement_shop_entries.go`, [the-shop-entries-page-is-accepted](../../technical/frontend/settlement_report_decision.md#the-shop-entries-page-is-accepted)).
+Per settlement log id, ONE line — `DISTINCT ON (settlement_log_id)`, the line that **posted** the row first, else the
+first line that found it (a re-import's `existing`) — with its file's platform, period and uploader (`created_by_user_id`).
+The reason is said only by the posting line (`no_order` / `several_orders`, else empty — a line that names no order).
+Scoped by the files' team; the root team reads every team's. Over `uploaded_file_lines_settlement_log_idx
+(settlement_log_id, id) WHERE settlement_log_id <> 0` (00005): 3 ms for a page of 20 ids, 51 lines each — probe
+`statement_lines_perf_test.go`.
+
 Code: [backend/services/settlement_importer_service/settlement_importer_v1/](../../../backend/services/settlement_importer_service/settlement_importer_v1/).

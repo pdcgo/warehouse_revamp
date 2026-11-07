@@ -92,7 +92,7 @@ func mustData(
 // ⚠ AND THE BREAKDOWN EXPLAINS IT: Settlement by type's fields add up to `received`, by construction.
 func TestMetricData_SummaryIsTheHeadlineAndTheBreakdownExplainsIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -129,7 +129,7 @@ func TestMetricData_SummaryIsTheHeadlineAndTheBreakdownExplainsIt(t *testing.T) 
 // A withdrawal is not received — it is our own money moving on — but it IS in the position.
 func TestMetricData_AWithdrawalMovesThePositionNotReceived(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(30, "2026-01-04", shop, 0, 0, 3,
@@ -147,7 +147,7 @@ func TestMetricData_AWithdrawalMovesThePositionNotReceived(t *testing.T) {
 // take rate: it is UNSET, never 0.
 func TestMetricData_DailyCarriesTheQuietDay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -180,7 +180,7 @@ func TestMetricData_DailyCarriesTheQuietDay(t *testing.T) {
 // the position the carry holds on each, and a day before the window's first row carries what came before the window.
 func TestMetricData_APageOfDaysReadsOneRunningSum(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -201,7 +201,7 @@ func TestMetricData_APageOfDaysReadsOneRunningSum(t *testing.T) {
 // period the window does not meet is zero.
 func TestMetricData_APeriodIsClippedToTheWindow(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -220,7 +220,7 @@ func TestMetricData_APeriodIsClippedToTheWindow(t *testing.T) {
 // A period is keyed by its FIRST day — any other day names no row.
 func TestMetricData_RefusesADayThatStartsNoPeriod(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := metricData(svc, team, analytic_basev1.GroupType_GROUP_TYPE_WEEKLY, dayKeys("2026-01-01"),
 		[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-31")}, metricSettlement)
@@ -233,7 +233,7 @@ func TestMetricData_RefusesADayThatStartsNoPeriod(t *testing.T) {
 // ends the window on, its movement only the window's.
 func TestMetricData_ByShopFillsEveryAskedKey(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(20, "2026-01-02", otherShop, otherOrder, 8, 8,
@@ -259,7 +259,7 @@ func TestMetricData_ByShopFillsEveryAskedKey(t *testing.T) {
 // by someone else.
 func TestMetricData_ByUserReadsThePersonTable(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -279,7 +279,7 @@ func TestMetricData_ByUserReadsThePersonTable(t *testing.T) {
 // that combination (one-settlement-metric-reads-both-tables).
 func TestMetricData_RefusesAShopAndAPersonTogether(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	cases := map[string]struct {
 		group   analytic_basev1.GroupType
@@ -305,7 +305,7 @@ func TestMetricData_RefusesAShopAndAPersonTogether(t *testing.T) {
 // A team reads its own figures and nothing of another team's; the root team reads every team's.
 func TestMetricData_TheScopeIsTheCallersTeam(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -336,7 +336,7 @@ func TestMetricData_TheScopeIsTheCallersTeam(t *testing.T) {
 // (san_money.Equal) — exact doubles summed in another order may differ by float dust, never by a rounding.
 func TestMetricData_TheSumsAndThePositionEqualTheLog(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	inputs := []settlement_v1.PostInput{
 		initialTotal("order-5001-initial"),

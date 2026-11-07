@@ -43,7 +43,7 @@ ORDER BY user_id, team_id, day DESC`).Error
 	}
 
 	db, probe := san_perf.Wrap(base)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	for _, c := range []struct {

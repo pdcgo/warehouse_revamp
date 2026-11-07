@@ -73,6 +73,10 @@ const SettlementReportPage = lazy(() =>
   import("./pages/settlement-report").then((m) => ({ default: m.SettlementReportPage })),
 );
 // The platform statements that feed that ledger — the file list, and one file's page.
+// A shop's own settlement rows — the-shop-entries-page-is-accepted.
+const SettlementShopEntriesPage = lazy(() =>
+  import("./pages/settlement-shop-entries").then((m) => ({ default: m.SettlementShopEntriesPage })),
+);
 const SettlementImportsPage = lazy(() =>
   import("./pages/settlement-imports").then((m) => ({ default: m.SettlementImportsPage })),
 );
@@ -423,6 +427,7 @@ export const router = createBrowserRouter([
       // per order), the route for what the screen is to the person opening it.
       { path: "settlement", element: <SettlementListRoute /> },
       { path: "settlement/report", element: <SettlementReportPage /> },
+      { path: "settlement/shop-entries", element: <SettlementShopEntriesPage /> },
       { path: "settlement/imports", element: <SettlementImportsPage /> },
       { path: "settlement/imports/:fileId", element: <SettlementImportDetailPage /> },
       // ⚠ "report" is a static segment, so it outranks :accountId — an account is never read as "report".

@@ -355,9 +355,9 @@ func impVariants(t *testing.T, ledgerDB *gorm.DB, ledger, ask *san_perf.Probe, r
 
 	ctx := context.Background()
 
-	manualSvc := settlement_v1.NewService(ledgerDB, nil, nil, nil, nil)
-	stubSvc := settlement_v1.NewService(ledgerDB, nil, nil, primaryIs(shopPrimaryCS), nil)
-	connectSvc := settlement_v1.NewService(ledgerDB, nil, nil, realAsk, nil)
+	manualSvc := settlement_v1.NewService(ledgerDB, nil, nil, nil, nil, nil, nil)
+	stubSvc := settlement_v1.NewService(ledgerDB, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
+	connectSvc := settlement_v1.NewService(ledgerDB, nil, nil, realAsk, nil, nil, nil)
 
 	postRow := func(svc *settlement_v1.Service, source settlementv1.SourceType, key string) func(int) error {
 		return func(i int) error {
@@ -479,7 +479,7 @@ func TestPerf_SettlementPostImportedShopRow(t *testing.T) {
 	ledgerProbe.Reset()
 	askProbe.Reset()
 
-	_, err := settlement_v1.NewService(ledgerDB, nil, nil, realAsk, nil).
+	_, err := settlement_v1.NewService(ledgerDB, nil, nil, realAsk, nil, nil, nil).
 		PostEntry(context.Background(), impShopRow(target, settlementv1.SourceType_SOURCE_TYPE_IMPORTER, "perfimp-explain"))
 	if err != nil {
 		t.Fatalf("explain post: %v", err)
@@ -490,12 +490,12 @@ func TestPerf_SettlementPostImportedShopRow(t *testing.T) {
 	// What a re-import meets when the shop cannot answer — the row EXISTS, and the post is still refused.
 	existing := "perfimp-in-tx-connect-0"
 
-	_, err = settlement_v1.NewService(ledgerDB, nil, nil, &stubPrimary{err: errors.New("connection refused")}, nil).
+	_, err = settlement_v1.NewService(ledgerDB, nil, nil, &stubPrimary{err: errors.New("connection refused")}, nil, nil, nil).
 		PostEntry(context.Background(), impShopRow(target, settlementv1.SourceType_SOURCE_TYPE_IMPORTER, existing))
 	t.Logf("re-posting an already-written imported shop row while the shop cannot answer → %v (%v)",
 		connect.CodeOf(err), err)
 
-	_, err = settlement_v1.NewService(ledgerDB, nil, nil, primaryIs(0), nil).
+	_, err = settlement_v1.NewService(ledgerDB, nil, nil, primaryIs(0), nil, nil, nil).
 		PostEntry(context.Background(), impShopRow(target, settlementv1.SourceType_SOURCE_TYPE_IMPORTER, existing))
 	t.Logf("re-posting an already-written imported shop row after the primary was removed → %v (%v)",
 		connect.CodeOf(err), err)
@@ -539,7 +539,7 @@ func TestPerf_SettlementPostImportedStatementAsksPerRow(t *testing.T) {
 
 	ledgerDB := wrapped.Session(&gorm.Session{DisableNestedTransaction: true})
 	realAsk := &connectShopPrimary{shops: impAskServer(t, sellingDB)}
-	svc := settlement_v1.NewService(ledgerDB, nil, nil, realAsk, nil)
+	svc := settlement_v1.NewService(ledgerDB, nil, nil, realAsk, nil, nil, nil)
 	ctx := context.Background()
 
 	for _, n := range []int{20, 200} {

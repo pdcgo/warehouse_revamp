@@ -96,6 +96,10 @@ func InitializeApp() (*App, error) {
 		// Where the order learns its settlement account opened — orders.settlement_opened_at, stamped in-process by
 		// the order service (a-missing-account-is-found-by-its-opened-at). See settlement_opened_marker.go.
 		NewSettlementOpenedMarker,
+		// Shop Entries' statement (the importer's line) and names (the user read), in-process — see
+		// settlement_shop_entries.go.
+		NewSettlementStatementSources,
+		NewSettlementUserNames,
 		// The subscription settlement's replay seeks — see replay_broker.go.
 		NewReplayBroker,
 		// The settlement importer, and its four services as clients under the uploader's token — see

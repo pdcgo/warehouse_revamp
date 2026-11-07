@@ -9,6 +9,8 @@ import type { CommonPagination, CommonSortType, GeneralMapItem } from "../../com
 import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { Marketplace } from "../../marketplace/v1/marketplace_pb";
+import { file_warehouse_marketplace_v1_marketplace } from "../../marketplace/v1/marketplace_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -16,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/settlement/v1/settlement.proto.
  */
 export const file_warehouse_settlement_v1_settlement: GenFile = /*@__PURE__*/
-  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSKDAwoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEhEKCXVuaXF1ZV9pZBgCIAEoCRIQCghvcmRlcl9pZBgDIAEoBBIPCgdzaG9wX2lkGAQgASgEEg8KB3RlYW1faWQYBSABKAQSEAoIYWN0b3JfaWQYBiABKAQSOAoLc291cmNlX3R5cGUYByABKA4yIy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5Tb3VyY2VUeXBlEkAKD3NldHRsZW1lbnRfdHlwZRgIIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlEg4KBmNoYW5nZRgJIAEoARIPCgdiYWxhbmNlGAogASgBEhMKC29jY3VycmVkX29uGAsgASgJEhEKCXBvc3RlZF9vbhgMIAEoCRITCgtyZXZlcnNlc19pZBgNIAEoBBIMCgRub3RlGA4gASgJEhIKCmFjdG9yX25hbWUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBCKOAQoPT3JkZXJTZXR0bGVtZW50EhAKCG9yZGVyX2lkGAEgASgEEhUKDWluaXRpYWxfdG90YWwYAiABKAESFAoMbGFzdF9iYWxhbmNlGAMgASgBEg8KB3RlYW1faWQYBCABKAQSDwoHc2hvcF9pZBgFIAEoBBIaChJjcmVhdGVkX2J5X3VzZXJfaWQYBiABKAQivQMKFVNldHRsZW1lbnRQb3N0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIQCghvcmRlcl9pZBgCIAEoBBIYCgdzaG9wX2lkGAogASgEQge6SAQyAiAAEh0KCXVuaXF1ZV9pZBgDIAEoCUIKukgHcgUQARiAARJMCg9zZXR0bGVtZW50X3R5cGUYBCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZUIKukgHggEEEAEgABJECgtzb3VyY2VfdHlwZRgFIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGVCCrpIB4IBBBABIAASFwoGY2hhbmdlGAYgASgBQge6SAQSAkABEjgKC29jY3VycmVkX29uGAcgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBITCgtyZXZlcnNlc19pZBgIIAEoBBIWCgRub3RlGAkgASgJQgi6SAVyAxj0AxIaChJjcmVhdGVkX2J5X3VzZXJfaWQYCyABKAQ6C5K1GAcKBQECAwQFIqABChZTZXR0bGVtZW50UG9zdFJlc3BvbnNlEjcKBWVudHJ5GAEgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5EjwKCnNldHRsZW1lbnQYAiABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnQSDwoHY3JlYXRlZBgDIAEoCCJRChlPcmRlclNldHRsZW1lbnRMaXN0RmlsdGVyEg8KB3Nob3BfaWQYASABKAQSDAoEZnJvbRgCIAEoCRIKCgJ0bxgDIAEoCRIJCgFxGAQgASgJIpMBCh1PcmRlclNldHRsZW1lbnRMaXN0RmlsdGVyU29ydBI6CgRzb3J0GAEgASgOMiwud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50U29ydBI2Cglzb3J0X3R5cGUYAiABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlIuICChpPcmRlclNldHRsZW1lbnRMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJKCgZmaWx0ZXIYAiABKAsyMi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0RmlsdGVyQga6SAPIAQESSgoMZGF0YV9yZXF1ZXN0GAMgAygOMjQud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBARJECgRzb3J0GAUgASgLMjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlclNvcnQ6C5K1GAcKBQECAwQFIsIBChZPcmRlclNldHRsZW1lbnRNYXBJdGVtEk4KCG1hcF9kYXRhGAEgAygLMjwud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TWFwSXRlbS5NYXBEYXRhRW50cnkaWAoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudDoCOAEipQEKH09yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABJFCgpzZXR0bGVtZW50GAIgASgLMi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TWFwSXRlbUgAQgMKAWQi+AEKG09yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZRJHCgVpdGVtcxgBIAMoCzI4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SGwoTdG90YWxfaW5pdGlhbF90b3RhbBgEIAEoARIaChJ0b3RhbF9sYXN0X2JhbGFuY2UYBSABKAESGAoQdG90YWxfdW5yZWNvcmRlZBgGIAEoBCJkChxPcmRlclNldHRsZW1lbnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSKYAQodT3JkZXJTZXR0bGVtZW50RGV0YWlsUmVzcG9uc2USPAoKc2V0dGxlbWVudBgBIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudBI5CgdlbnRyaWVzGAIgAygLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5ImEKHEFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlcXVlc3QSNwoKc3RhcnRfZGF0ZRgBIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQ6CJK1GAQKAgECIp4BCh1BbmFseXRpY1JlcGxheUNvbXB1dGVSZXNwb25zZRIOCgZzdGF0dXMYASABKAkSGQoRZGVsZXRlZF9zaG9wX2RheXMYAiABKAMSGQoRZGVsZXRlZF91c2VyX2RheXMYAyABKAMSGgoSZGVsZXRlZF9ldmVudF9sb2dzGAQgASgDEhsKE2VhcmxpZXN0X3N0YXJ0X2RhdGUYBSABKAkiKQodQW5hbHl0aWNNYWludGVuYW5jZVJ1blJlcXVlc3Q6CJK1GAQKAgECIkwKHkFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXNwb25zZRIaChJkZWxldGVkX2V2ZW50X2xvZ3MYASABKAMSDgoGY3V0b2ZmGAIgASgJKpkECg5TZXR0bGVtZW50VHlwZRIfChtTRVRUTEVNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1TRVRUTEVNRU5UX1RZUEVfSU5JVElBTF9UT1RBTBABEhgKFFNFVFRMRU1FTlRfVFlQRV9GVU5EEAISJAogU0VUVExFTUVOVF9UWVBFX0VYVEVSTkFMX0FEU19GRUUQAxIhCh1TRVRUTEVNRU5UX1RZUEVfQUZGSUxJQVRFX0ZFRRAEEioKJlNFVFRMRU1FTlRfVFlQRV9NQVJLRVRQTEFDRV9BREpVU1RNRU5UEAUSGQoVU0VUVExFTUVOVF9UWVBFX09USEVSEAYSKAokU0VUVExFTUVOVF9UWVBFX0lOSVRJQUxfVE9UQUxfQ0FOQ0VMEAcSJQohU0VUVExFTUVOVF9UWVBFX1NZU1RFTV9BREpVU1RNRU5UEAgSHgoaU0VUVExFTUVOVF9UWVBFX1dJVEhEUkFXQUwQCRInCiNTRVRUTEVNRU5UX1RZUEVfU0hJUE1FTlRfQURKVVNUTUVOVBAKEioKJlNFVFRMRU1FTlRfVFlQRV9MT0dJU1RJQ19SRUlNQlVSU0VNRU5UEAsSKgomU0VUVExFTUVOVF9UWVBFX1BMQVRGT1JNX1JFSU1CVVJTRU1FTlQQDBInCiNTRVRUTEVNRU5UX1RZUEVfTUFSS0VUUExBQ0VfUFJPR1JBTRANKnIKClNvdXJjZVR5cGUSGwoXU09VUkNFX1RZUEVfVU5TUEVDSUZJRUQQABIYChRTT1VSQ0VfVFlQRV9JTVBPUlRFUhABEhYKElNPVVJDRV9UWVBFX01BTlVBTBACEhUKEVNPVVJDRV9UWVBFX09SREVSEAMqzQEKE09yZGVyU2V0dGxlbWVudFNvcnQSJQohT1JERVJfU0VUVExFTUVOVF9TT1JUX1VOU1BFQ0lGSUVEEAASHgoaT1JERVJfU0VUVExFTUVOVF9TT1JUX0xPU1MQARIiCh5PUkRFUl9TRVRUTEVNRU5UX1NPUlRfT1JERVJfSUQQAhInCiNPUkRFUl9TRVRUTEVNRU5UX1NPUlRfSU5JVElBTF9UT1RBTBADEiIKHk9SREVSX1NFVFRMRU1FTlRfU09SVF9SRUNFSVZFRBAEKqsBChtPcmRlclNldHRsZW1lbnRMaXN0RGF0YVR5cGUSLworT1JERVJfU0VUVExFTUVOVF9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEisKJ09SREVSX1NFVFRMRU1FTlRfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEi4KKk9SREVSX1NFVFRMRU1FTlRfTElTVF9EQVRBX1RZUEVfU0VUVExFTUVOVBACMqkCChFTZXR0bGVtZW50U2VydmljZRKFAQoTT3JkZXJTZXR0bGVtZW50TGlzdBIzLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RSZXF1ZXN0GjQud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdFJlc3BvbnNlIgOQAgESiwEKFU9yZGVyU2V0dGxlbWVudERldGFpbBI1LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudERldGFpbFJlcXVlc3QaNi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnREZXRhaWxSZXNwb25zZSIDkAIBMosBChZTZXR0bGVtZW50V3JpdGVTZXJ2aWNlEnEKDlNldHRsZW1lbnRQb3N0Ei4ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXF1ZXN0Gi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXNwb25zZTK7AgokU2V0dGxlbWVudEFuYWx5dGljTWFpbnRlbmFuY2VTZXJ2aWNlEoYBChVBbmFseXRpY1JlcGxheUNvbXB1dGUSNS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY1JlcGxheUNvbXB1dGVSZXF1ZXN0GjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVzcG9uc2USiQEKFkFuYWx5dGljTWFpbnRlbmFuY2VSdW4SNi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdBo3LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXNwb25zZUJUWlJnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NldHRsZW1lbnQvdjE7c2V0dGxlbWVudHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSKDAwoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEhEKCXVuaXF1ZV9pZBgCIAEoCRIQCghvcmRlcl9pZBgDIAEoBBIPCgdzaG9wX2lkGAQgASgEEg8KB3RlYW1faWQYBSABKAQSEAoIYWN0b3JfaWQYBiABKAQSOAoLc291cmNlX3R5cGUYByABKA4yIy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5Tb3VyY2VUeXBlEkAKD3NldHRsZW1lbnRfdHlwZRgIIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlEg4KBmNoYW5nZRgJIAEoARIPCgdiYWxhbmNlGAogASgBEhMKC29jY3VycmVkX29uGAsgASgJEhEKCXBvc3RlZF9vbhgMIAEoCRITCgtyZXZlcnNlc19pZBgNIAEoBBIMCgRub3RlGA4gASgJEhIKCmFjdG9yX25hbWUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBCKOAQoPT3JkZXJTZXR0bGVtZW50EhAKCG9yZGVyX2lkGAEgASgEEhUKDWluaXRpYWxfdG90YWwYAiABKAESFAoMbGFzdF9iYWxhbmNlGAMgASgBEg8KB3RlYW1faWQYBCABKAQSDwoHc2hvcF9pZBgFIAEoBBIaChJjcmVhdGVkX2J5X3VzZXJfaWQYBiABKAQivQMKFVNldHRsZW1lbnRQb3N0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIQCghvcmRlcl9pZBgCIAEoBBIYCgdzaG9wX2lkGAogASgEQge6SAQyAiAAEh0KCXVuaXF1ZV9pZBgDIAEoCUIKukgHcgUQARiAARJMCg9zZXR0bGVtZW50X3R5cGUYBCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZUIKukgHggEEEAEgABJECgtzb3VyY2VfdHlwZRgFIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGVCCrpIB4IBBBABIAASFwoGY2hhbmdlGAYgASgBQge6SAQSAkABEjgKC29jY3VycmVkX29uGAcgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBITCgtyZXZlcnNlc19pZBgIIAEoBBIWCgRub3RlGAkgASgJQgi6SAVyAxj0AxIaChJjcmVhdGVkX2J5X3VzZXJfaWQYCyABKAQ6C5K1GAcKBQECAwQFIqABChZTZXR0bGVtZW50UG9zdFJlc3BvbnNlEjcKBWVudHJ5GAEgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5EjwKCnNldHRsZW1lbnQYAiABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnQSDwoHY3JlYXRlZBgDIAEoCCJRChlPcmRlclNldHRsZW1lbnRMaXN0RmlsdGVyEg8KB3Nob3BfaWQYASABKAQSDAoEZnJvbRgCIAEoCRIKCgJ0bxgDIAEoCRIJCgFxGAQgASgJIpMBCh1PcmRlclNldHRsZW1lbnRMaXN0RmlsdGVyU29ydBI6CgRzb3J0GAEgASgOMiwud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50U29ydBI2Cglzb3J0X3R5cGUYAiABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlIuICChpPcmRlclNldHRsZW1lbnRMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJKCgZmaWx0ZXIYAiABKAsyMi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0RmlsdGVyQga6SAPIAQESSgoMZGF0YV9yZXF1ZXN0GAMgAygOMjQud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBARJECgRzb3J0GAUgASgLMjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlclNvcnQ6C5K1GAcKBQECAwQFIsIBChZPcmRlclNldHRsZW1lbnRNYXBJdGVtEk4KCG1hcF9kYXRhGAEgAygLMjwud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TWFwSXRlbS5NYXBEYXRhRW50cnkaWAoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudDoCOAEipQEKH09yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABJFCgpzZXR0bGVtZW50GAIgASgLMi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TWFwSXRlbUgAQgMKAWQi+AEKG09yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZRJHCgVpdGVtcxgBIAMoCzI4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SGwoTdG90YWxfaW5pdGlhbF90b3RhbBgEIAEoARIaChJ0b3RhbF9sYXN0X2JhbGFuY2UYBSABKAESGAoQdG90YWxfdW5yZWNvcmRlZBgGIAEoBCJkChxPcmRlclNldHRsZW1lbnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSKYAQodT3JkZXJTZXR0bGVtZW50RGV0YWlsUmVzcG9uc2USPAoKc2V0dGxlbWVudBgBIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudBI5CgdlbnRyaWVzGAIgAygLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5IoICCh1TaG9wU2V0dGxlbWVudEVudHJ5TGlzdEZpbHRlchIPCgdzaG9wX2lkGAEgASgEElgKEHNldHRsZW1lbnRfdHlwZXMYAiADKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZUIVukgSkgEPEAsiC4IBCBABIAAgASAHEjsKC3Bvc3RlZF9mcm9tGAMgASgJQia6SCNyITIfXihbMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSk/JBI5Cglwb3N0ZWRfdG8YBCABKAlCJrpII3IhMh9eKFswLTldezR9LVswLTldezJ9LVswLTldezJ9KT8kIqgCCh5TaG9wU2V0dGxlbWVudEVudHJ5TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESTgoGZmlsdGVyGAIgASgLMjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2hvcFNldHRsZW1lbnRFbnRyeUxpc3RGaWx0ZXJCBrpIA8gBARJOCgxkYXRhX3JlcXVlc3QYAyADKA4yOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TaG9wU2V0dGxlbWVudEVudHJ5TGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIDBAUi2QIKElNob3BFbnRyeVN0YXRlbWVudBIYChB1cGxvYWRlZF9maWxlX2lkGAEgASgEEjcKCHBsYXRmb3JtGAIgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlEhMKC3BlcmlvZF9mcm9tGAMgASgJEhEKCXBlcmlvZF90bxgEIAEoCRINCgVzaGVldBgFIAEoCRITCgtkZXNjcmlwdGlvbhgGIAEoCRIRCglvcmRlcl9yZWYYByABKAkSQQoGcmVhc29uGAggASgOMjEud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2hvcEVudHJ5U3RhdGVtZW50UmVhc29uEhcKD2ZvdW5kX29yZGVyX2lkcxgJIAMoBBIbChN1cGxvYWRlZF9ieV91c2VyX2lkGAogASgEEhgKEHVwbG9hZGVkX2J5X25hbWUYCyABKAkipgEKE1Nob3BTZXR0bGVtZW50RW50cnkSNwoFZW50cnkYASABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnkSFgoOcmV2ZXJzZWRfYnlfaWQYAiABKAQSPgoJc3RhdGVtZW50GAMgASgLMisud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2hvcEVudHJ5U3RhdGVtZW50Is4BChpTaG9wU2V0dGxlbWVudEVudHJ5TWFwSXRlbRJSCghtYXBfZGF0YRgBIAMoCzJALndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNob3BTZXR0bGVtZW50RW50cnlNYXBJdGVtLk1hcERhdGFFbnRyeRpcCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjsKBXZhbHVlGAIgASgLMiwud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2hvcFNldHRsZW1lbnRFbnRyeToCOAEicAojU2hvcFNldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZUl0ZW0SRAoFZW50cnkYASABKAsyMy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TaG9wU2V0dGxlbWVudEVudHJ5TWFwSXRlbUgAQgMKAWQi3gEKH1Nob3BTZXR0bGVtZW50RW50cnlMaXN0UmVzcG9uc2USSwoFaXRlbXMYASADKAsyPC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TaG9wU2V0dGxlbWVudEVudHJ5TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIWCg50b3RhbF9yZWNlaXZlZBgEIAEoARIXCg90b3RhbF93aXRoZHJhd24YBSABKAEiYQocQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVxdWVzdBI3CgpzdGFydF9kYXRlGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JDoIkrUYBAoCAQIingEKHUFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlc3BvbnNlEg4KBnN0YXR1cxgBIAEoCRIZChFkZWxldGVkX3Nob3BfZGF5cxgCIAEoAxIZChFkZWxldGVkX3VzZXJfZGF5cxgDIAEoAxIaChJkZWxldGVkX2V2ZW50X2xvZ3MYBCABKAMSGwoTZWFybGllc3Rfc3RhcnRfZGF0ZRgFIAEoCSIpCh1BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdDoIkrUYBAoCAQIiTAoeQW5hbHl0aWNNYWludGVuYW5jZVJ1blJlc3BvbnNlEhoKEmRlbGV0ZWRfZXZlbnRfbG9ncxgBIAEoAxIOCgZjdXRvZmYYAiABKAkqmQQKDlNldHRsZW1lbnRUeXBlEh8KG1NFVFRMRU1FTlRfVFlQRV9VTlNQRUNJRklFRBAAEiEKHVNFVFRMRU1FTlRfVFlQRV9JTklUSUFMX1RPVEFMEAESGAoUU0VUVExFTUVOVF9UWVBFX0ZVTkQQAhIkCiBTRVRUTEVNRU5UX1RZUEVfRVhURVJOQUxfQURTX0ZFRRADEiEKHVNFVFRMRU1FTlRfVFlQRV9BRkZJTElBVEVfRkVFEAQSKgomU0VUVExFTUVOVF9UWVBFX01BUktFVFBMQUNFX0FESlVTVE1FTlQQBRIZChVTRVRUTEVNRU5UX1RZUEVfT1RIRVIQBhIoCiRTRVRUTEVNRU5UX1RZUEVfSU5JVElBTF9UT1RBTF9DQU5DRUwQBxIlCiFTRVRUTEVNRU5UX1RZUEVfU1lTVEVNX0FESlVTVE1FTlQQCBIeChpTRVRUTEVNRU5UX1RZUEVfV0lUSERSQVdBTBAJEicKI1NFVFRMRU1FTlRfVFlQRV9TSElQTUVOVF9BREpVU1RNRU5UEAoSKgomU0VUVExFTUVOVF9UWVBFX0xPR0lTVElDX1JFSU1CVVJTRU1FTlQQCxIqCiZTRVRUTEVNRU5UX1RZUEVfUExBVEZPUk1fUkVJTUJVUlNFTUVOVBAMEicKI1NFVFRMRU1FTlRfVFlQRV9NQVJLRVRQTEFDRV9QUk9HUkFNEA0qcgoKU291cmNlVHlwZRIbChdTT1VSQ0VfVFlQRV9VTlNQRUNJRklFRBAAEhgKFFNPVVJDRV9UWVBFX0lNUE9SVEVSEAESFgoSU09VUkNFX1RZUEVfTUFOVUFMEAISFQoRU09VUkNFX1RZUEVfT1JERVIQAyrNAQoTT3JkZXJTZXR0bGVtZW50U29ydBIlCiFPUkRFUl9TRVRUTEVNRU5UX1NPUlRfVU5TUEVDSUZJRUQQABIeChpPUkRFUl9TRVRUTEVNRU5UX1NPUlRfTE9TUxABEiIKHk9SREVSX1NFVFRMRU1FTlRfU09SVF9PUkRFUl9JRBACEicKI09SREVSX1NFVFRMRU1FTlRfU09SVF9JTklUSUFMX1RPVEFMEAMSIgoeT1JERVJfU0VUVExFTUVOVF9TT1JUX1JFQ0VJVkVEEAQqqwEKG09yZGVyU2V0dGxlbWVudExpc3REYXRhVHlwZRIvCitPUkRFUl9TRVRUTEVNRU5UX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASKwonT1JERVJfU0VUVExFTUVOVF9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESLgoqT1JERVJfU0VUVExFTUVOVF9MSVNUX0RBVEFfVFlQRV9TRVRUTEVNRU5UEAIqhwEKH1Nob3BTZXR0bGVtZW50RW50cnlMaXN0RGF0YVR5cGUSNAowU0hPUF9TRVRUTEVNRU5UX0VOVFJZX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASLgoqU0hPUF9TRVRUTEVNRU5UX0VOVFJZX0xJU1RfREFUQV9UWVBFX0VOVFJZEAEqzAEKGFNob3BFbnRyeVN0YXRlbWVudFJlYXNvbhIrCidTSE9QX0VOVFJZX1NUQVRFTUVOVF9SRUFTT05fVU5TUEVDSUZJRUQQABIpCiVTSE9QX0VOVFJZX1NUQVRFTUVOVF9SRUFTT05fU0hPUF9MSU5FEAESKAokU0hPUF9FTlRSWV9TVEFURU1FTlRfUkVBU09OX05PX09SREVSEAISLgoqU0hPUF9FTlRSWV9TVEFURU1FTlRfUkVBU09OX1NFVkVSQUxfT1JERVJTEAMyvQMKEVNldHRsZW1lbnRTZXJ2aWNlEoUBChNPcmRlclNldHRsZW1lbnRMaXN0EjMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdFJlcXVlc3QaNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2UiA5ACARKLAQoVT3JkZXJTZXR0bGVtZW50RGV0YWlsEjUud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50RGV0YWlsUmVxdWVzdBo2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudERldGFpbFJlc3BvbnNlIgOQAgESkQEKF1Nob3BTZXR0bGVtZW50RW50cnlMaXN0Ejcud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2hvcFNldHRsZW1lbnRFbnRyeUxpc3RSZXF1ZXN0Gjgud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2hvcFNldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZSIDkAIBMosBChZTZXR0bGVtZW50V3JpdGVTZXJ2aWNlEnEKDlNldHRsZW1lbnRQb3N0Ei4ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXF1ZXN0Gi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXNwb25zZTK7AgokU2V0dGxlbWVudEFuYWx5dGljTWFpbnRlbmFuY2VTZXJ2aWNlEoYBChVBbmFseXRpY1JlcGxheUNvbXB1dGUSNS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY1JlcGxheUNvbXB1dGVSZXF1ZXN0GjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVzcG9uc2USiQEKFkFuYWx5dGljTWFpbnRlbmFuY2VSdW4SNi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdBo3LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXNwb25zZUJUWlJnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NldHRsZW1lbnQvdjE7c2V0dGxlbWVudHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_marketplace_v1_marketplace, file_warehouse_role_base_v1_role]);
 
 /**
  * One row of the log. IMMUTABLE.
@@ -588,6 +590,275 @@ export const OrderSettlementDetailResponseSchema: GenMessage<OrderSettlementDeta
   messageDesc(file_warehouse_settlement_v1_settlement, 11);
 
 /**
+ * @generated from message warehouse.settlement.v1.ShopSettlementEntryListFilter
+ */
+export type ShopSettlementEntryListFilter = Message<"warehouse.settlement.v1.ShopSettlementEntryListFilter"> & {
+  /**
+   * One shop, or 0 for every shop the scope reads. NOT the scope — `team_id` is.
+   *
+   * @generated from field: uint64 shop_id = 1;
+   */
+  shopId: bigint;
+
+  /**
+   * Empty = every kind. Only the eleven a shop row can carry: never the sale or its cancel, which need an order.
+   *
+   * @generated from field: repeated warehouse.settlement.v1.SettlementType settlement_types = 2;
+   */
+  settlementTypes: SettlementType[];
+
+  /**
+   * The LEARNED day — `posted_on`, a Jakarta day (posted-on-buckets-the-report) — inclusive, YYYY-MM-DD. Empty ends are
+   * open. The report buckets by the same day, so a shop's entries add up to what the report folded for it.
+   *
+   * @generated from field: string posted_from = 3;
+   */
+  postedFrom: string;
+
+  /**
+   * @generated from field: string posted_to = 4;
+   */
+  postedTo: string;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.ShopSettlementEntryListFilter.
+ * Use `create(ShopSettlementEntryListFilterSchema)` to create a new message.
+ */
+export const ShopSettlementEntryListFilterSchema: GenMessage<ShopSettlementEntryListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 12);
+
+/**
+ * The settlement read set (the-write-set-is-cs-and-up names who writes; every settlement read takes the same five).
+ * The root team reads every team's rows, as the report's own reads do.
+ *
+ * @generated from message warehouse.settlement.v1.ShopSettlementEntryListRequest
+ */
+export type ShopSettlementEntryListRequest = Message<"warehouse.settlement.v1.ShopSettlementEntryListRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.ShopSettlementEntryListFilter filter = 2;
+   */
+  filter?: ShopSettlementEntryListFilter | undefined;
+
+  /**
+   * @generated from field: repeated warehouse.settlement.v1.ShopSettlementEntryListDataType data_request = 3;
+   */
+  dataRequest: ShopSettlementEntryListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
+   */
+  page?: CommonPagination | undefined;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.ShopSettlementEntryListRequest.
+ * Use `create(ShopSettlementEntryListRequestSchema)` to create a new message.
+ */
+export const ShopSettlementEntryListRequestSchema: GenMessage<ShopSettlementEntryListRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 13);
+
+/**
+ * THE STATEMENT A ROW CAME FROM — the importer's line whose `settlement_log_id` is the row, asked of the importer
+ * in-process (settlement holds no file id and reads none of the importer's tables).
+ *
+ * @generated from message warehouse.settlement.v1.ShopEntryStatement
+ */
+export type ShopEntryStatement = Message<"warehouse.settlement.v1.ShopEntryStatement"> & {
+  /**
+   * @generated from field: uint64 uploaded_file_id = 1;
+   */
+  uploadedFileId: bigint;
+
+  /**
+   * @generated from field: warehouse.marketplace.v1.Marketplace platform = 2;
+   */
+  platform: Marketplace;
+
+  /**
+   * The statement's own range, YYYY-MM-DD.
+   *
+   * @generated from field: string period_from = 3;
+   */
+  periodFrom: string;
+
+  /**
+   * @generated from field: string period_to = 4;
+   */
+  periodTo: string;
+
+  /**
+   * The file's sheet and the platform's own words for the line.
+   *
+   * @generated from field: string sheet = 5;
+   */
+  sheet: string;
+
+  /**
+   * @generated from field: string description = 6;
+   */
+  description: string;
+
+  /**
+   * The order ref the line carried — empty for a line that names none.
+   *
+   * @generated from field: string order_ref = 7;
+   */
+  orderRef: string;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.ShopEntryStatementReason reason = 8;
+   */
+  reason: ShopEntryStatementReason;
+
+  /**
+   * @generated from field: repeated uint64 found_order_ids = 9;
+   */
+  foundOrderIds: bigint[];
+
+  /**
+   * Who uploaded the file, and their name.
+   *
+   * @generated from field: uint64 uploaded_by_user_id = 10;
+   */
+  uploadedByUserId: bigint;
+
+  /**
+   * @generated from field: string uploaded_by_name = 11;
+   */
+  uploadedByName: string;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.ShopEntryStatement.
+ * Use `create(ShopEntryStatementSchema)` to create a new message.
+ */
+export const ShopEntryStatementSchema: GenMessage<ShopEntryStatement> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 14);
+
+/**
+ * @generated from message warehouse.settlement.v1.ShopSettlementEntry
+ */
+export type ShopSettlementEntry = Message<"warehouse.settlement.v1.ShopSettlementEntry"> & {
+  /**
+   * The row, `actor_name` resolved.
+   *
+   * @generated from field: warehouse.settlement.v1.SettlementEntry entry = 1;
+   */
+  entry?: SettlementEntry | undefined;
+
+  /**
+   * The row that reverses this one, or 0 — a row is reversed once (a-shop-entry-reverses-inline).
+   *
+   * @generated from field: uint64 reversed_by_id = 2;
+   */
+  reversedById: bigint;
+
+  /**
+   * Unset for a row posted by hand.
+   *
+   * @generated from field: warehouse.settlement.v1.ShopEntryStatement statement = 3;
+   */
+  statement?: ShopEntryStatement | undefined;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.ShopSettlementEntry.
+ * Use `create(ShopSettlementEntrySchema)` to create a new message.
+ */
+export const ShopSettlementEntrySchema: GenMessage<ShopSettlementEntry> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 15);
+
+/**
+ * @generated from message warehouse.settlement.v1.ShopSettlementEntryMapItem
+ */
+export type ShopSettlementEntryMapItem = Message<"warehouse.settlement.v1.ShopSettlementEntryMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.settlement.v1.ShopSettlementEntry> map_data = 1;
+   */
+  mapData: { [key: string]: ShopSettlementEntry };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.ShopSettlementEntryMapItem.
+ * Use `create(ShopSettlementEntryMapItemSchema)` to create a new message.
+ */
+export const ShopSettlementEntryMapItemSchema: GenMessage<ShopSettlementEntryMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 16);
+
+/**
+ * @generated from message warehouse.settlement.v1.ShopSettlementEntryListResponseItem
+ */
+export type ShopSettlementEntryListResponseItem = Message<"warehouse.settlement.v1.ShopSettlementEntryListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.settlement.v1.ShopSettlementEntryListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.settlement.v1.ShopSettlementEntryMapItem entry = 1;
+     */
+    value: ShopSettlementEntryMapItem;
+    case: "entry";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.ShopSettlementEntryListResponseItem.
+ * Use `create(ShopSettlementEntryListResponseItemSchema)` to create a new message.
+ */
+export const ShopSettlementEntryListResponseItemSchema: GenMessage<ShopSettlementEntryListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 17);
+
+/**
+ * @generated from message warehouse.settlement.v1.ShopSettlementEntryListResponse
+ */
+export type ShopSettlementEntryListResponse = Message<"warehouse.settlement.v1.ShopSettlementEntryListResponse"> & {
+  /**
+   * @generated from field: repeated warehouse.settlement.v1.ShopSettlementEntryListResponseItem items = 1;
+   */
+  items: ShopSettlementEntryListResponseItem[];
+
+  /**
+   * Newest learned first (`posted_on`, then `id`).
+   *
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * `total_items` is the Entries total — the whole filtered set.
+   *
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
+   */
+  pageInfo?: PageInfo | undefined;
+
+  /**
+   * The WHOLE FILTERED SET, not the page (the-report-headline-is-position-to-date): Σ change of every row but the
+   * withdrawals, and −Σ change of the withdrawals (positive) — the report's own Received and Withdrawn.
+   *
+   * @generated from field: double total_received = 4;
+   */
+  totalReceived: number;
+
+  /**
+   * @generated from field: double total_withdrawn = 5;
+   */
+  totalWithdrawn: number;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.ShopSettlementEntryListResponse.
+ * Use `create(ShopSettlementEntryListResponseSchema)` to create a new message.
+ */
+export const ShopSettlementEntryListResponseSchema: GenMessage<ShopSettlementEntryListResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 18);
+
+/**
  * @generated from message warehouse.settlement.v1.AnalyticReplayComputeRequest
  */
 export type AnalyticReplayComputeRequest = Message<"warehouse.settlement.v1.AnalyticReplayComputeRequest"> & {
@@ -605,7 +876,7 @@ export type AnalyticReplayComputeRequest = Message<"warehouse.settlement.v1.Anal
  * Use `create(AnalyticReplayComputeRequestSchema)` to create a new message.
  */
 export const AnalyticReplayComputeRequestSchema: GenMessage<AnalyticReplayComputeRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 12);
+  messageDesc(file_warehouse_settlement_v1_settlement, 19);
 
 /**
  * @generated from message warehouse.settlement.v1.AnalyticReplayComputeResponse
@@ -649,7 +920,7 @@ export type AnalyticReplayComputeResponse = Message<"warehouse.settlement.v1.Ana
  * Use `create(AnalyticReplayComputeResponseSchema)` to create a new message.
  */
 export const AnalyticReplayComputeResponseSchema: GenMessage<AnalyticReplayComputeResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 13);
+  messageDesc(file_warehouse_settlement_v1_settlement, 20);
 
 /**
  * @generated from message warehouse.settlement.v1.AnalyticMaintenanceRunRequest
@@ -662,7 +933,7 @@ export type AnalyticMaintenanceRunRequest = Message<"warehouse.settlement.v1.Ana
  * Use `create(AnalyticMaintenanceRunRequestSchema)` to create a new message.
  */
 export const AnalyticMaintenanceRunRequestSchema: GenMessage<AnalyticMaintenanceRunRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 14);
+  messageDesc(file_warehouse_settlement_v1_settlement, 21);
 
 /**
  * @generated from message warehouse.settlement.v1.AnalyticMaintenanceRunResponse
@@ -688,7 +959,7 @@ export type AnalyticMaintenanceRunResponse = Message<"warehouse.settlement.v1.An
  * Use `create(AnalyticMaintenanceRunResponseSchema)` to create a new message.
  */
 export const AnalyticMaintenanceRunResponseSchema: GenMessage<AnalyticMaintenanceRunResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 15);
+  messageDesc(file_warehouse_settlement_v1_settlement, 22);
 
 /**
  * WHAT A ROW IS (#the-log-is-order-scoped-with-six-types, widened to seven by
@@ -941,6 +1212,66 @@ export const OrderSettlementListDataTypeSchema: GenEnum<OrderSettlementListDataT
   enumDesc(file_warehouse_settlement_v1_settlement, 3);
 
 /**
+ * @generated from enum warehouse.settlement.v1.ShopSettlementEntryListDataType
+ */
+export enum ShopSettlementEntryListDataType {
+  /**
+   * @generated from enum value: SHOP_SETTLEMENT_ENTRY_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SHOP_SETTLEMENT_ENTRY_LIST_DATA_TYPE_ENTRY = 1;
+   */
+  ENTRY = 1,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.ShopSettlementEntryListDataType.
+ */
+export const ShopSettlementEntryListDataTypeSchema: GenEnum<ShopSettlementEntryListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 4);
+
+/**
+ * Why an imported line went to the SHOP rather than to an order — the importer's own record of it.
+ *
+ * @generated from enum warehouse.settlement.v1.ShopEntryStatementReason
+ */
+export enum ShopEntryStatementReason {
+  /**
+   * @generated from enum value: SHOP_ENTRY_STATEMENT_REASON_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * A line that names no order — a withdrawal, a shop-level fee.
+   *
+   * @generated from enum value: SHOP_ENTRY_STATEMENT_REASON_SHOP_LINE = 1;
+   */
+  SHOP_LINE = 1,
+
+  /**
+   * Its ref found no order (an-unmatched-ref-posts-to-the-shop).
+   *
+   * @generated from enum value: SHOP_ENTRY_STATEMENT_REASON_NO_ORDER = 2;
+   */
+  NO_ORDER = 2,
+
+  /**
+   * Its ref found several live orders (two-live-orders-on-a-ref-post-to-the-shop) — `found_order_ids` names them.
+   *
+   * @generated from enum value: SHOP_ENTRY_STATEMENT_REASON_SEVERAL_ORDERS = 3;
+   */
+  SEVERAL_ORDERS = 3,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.ShopEntryStatementReason.
+ */
+export const ShopEntryStatementReasonSchema: GenEnum<ShopEntryStatementReason> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 5);
+
+/**
  * SettlementService is the ledger of WHAT THE MARKETPLACE PAYS US for an order.
  *
  * ⚠ NOT to be confused with `liability_service`, which is what TEAMS OWE EACH OTHER. That service was
@@ -991,6 +1322,18 @@ export const SettlementService: GenService<{
     methodKind: "unary";
     input: typeof OrderSettlementDetailRequestSchema;
     output: typeof OrderSettlementDetailResponseSchema;
+  },
+  /**
+   * Shop Entries — the rows addressed to a SHOP and no order (an-entry-names-an-order-or-a-shop), newest learned first,
+   * each with the statement it came from and whether it is reversed (the-shop-entries-page-is-accepted). A row is
+   * REVERSED through SettlementPost, as on the order's ledger (a-shop-entry-reverses-inline).
+   *
+   * @generated from rpc warehouse.settlement.v1.SettlementService.ShopSettlementEntryList
+   */
+  shopSettlementEntryList: {
+    methodKind: "unary";
+    input: typeof ShopSettlementEntryListRequestSchema;
+    output: typeof ShopSettlementEntryListResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_settlement_v1_settlement, 0);

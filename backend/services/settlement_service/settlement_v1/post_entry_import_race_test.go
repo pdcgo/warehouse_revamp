@@ -169,7 +169,7 @@ func TestInterleave_ImportedShopRow_TheAskHoldsNoLock(t *testing.T) {
 		parked:    make(chan struct{}),
 		release:   make(chan struct{}),
 	}
-	svc := settlement_v1.NewService(db, nil, nil, primary, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	// The account exists and holds a position before either post, so there is a real row to lock.
 	_, err := svc.PostEntry(ctx, imrRow(imrShop, "imr-open", -1_000, uploader, imrImporter))
@@ -277,7 +277,7 @@ func TestInterleave_ImportedShopRow_APosterHoldingTheAccountBlocksTheNext(t *tes
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS}
-	svc := settlement_v1.NewService(db, nil, nil, primary, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	_, err := svc.PostEntry(ctx, imrRow(imrShop, "imr-held-open", -1_000, uploader, imrImporter))
 	if err != nil {
@@ -352,7 +352,7 @@ func TestRace_ImportedShopRow_ABurstLosesNothingAndCountsForThePrimary(t *testin
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS, delay: 5 * time.Millisecond}
-	svc := settlement_v1.NewService(db, nil, nil, primary, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	const posters = 16
 
@@ -403,7 +403,7 @@ func TestRace_ImportedShopRow_ImportedAndManualShareOneAccount(t *testing.T) {
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS, delay: 5 * time.Millisecond}
-	svc := settlement_v1.NewService(db, nil, nil, primary, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	const posters = 16
 
@@ -455,7 +455,7 @@ func TestRace_ImportedShopRow_SameKeyWritesOnce(t *testing.T) {
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS, delay: 5 * time.Millisecond}
-	svc := settlement_v1.NewService(db, nil, nil, primary, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	const retries = 16
 
@@ -514,7 +514,7 @@ func TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsIsRefusedTheSame(t *
 	db := h.DB()
 	ctx := context.Background()
 
-	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS}, nil)
+	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS}, nil, nil, nil)
 
 	// One at a time: the contract's answer.
 	_, err := svc.PostEntry(ctx, imrRow(imrShop, "imr-collide-seq", -1_000, uploader, imrImporter))
@@ -626,7 +626,7 @@ func TestRace_ImportedShopRow_FoldsCrossingShopsAndPrimariesNeverDeadlock(t *tes
 	db := h.DB()
 	ctx := context.Background()
 
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	const (
 		primaryOne uint64 = 70

@@ -2216,6 +2216,8 @@ sale's, so the running sum returns to zero on its own.
 | `settlement_logs_unique_idx` (unique_id) | ⚠ **the idempotency key, GLOBAL** (`00002`). All three writers retry; this is what makes a retried cancel absorb instead of crediting twice. Scoped to `(order_id, unique_id)` until `order_id` became nullable — Postgres treats NULL as distinct from NULL, so the scoped form would have admitted a shop-addressed key twice, silently |
 | `settlement_logs_order_idx` (order_id, id) **WHERE order_id IS NOT NULL** | the panel's running balance, oldest first. ⚠ **Partial** (`00003`): with the column nullable, every shop-addressed row would otherwise sit in this index under one NULL group the panel never reads |
 | `settlement_logs_team_occurred_idx` / `_shop_occurred_idx` | a period's movement for a team or a shop |
+| `settlement_logs_shop_rows_idx` (team_id, posted_on DESC, id DESC) **WHERE order_id IS NULL** | Shop Entries (`ShopSettlementEntryList`, `00011`) — a team's SHOP rows, newest learned first; partial, since every order writes several rows of its own (1.7 ms vs 68 ms at 200 000 rows a team) |
+| `settlement_logs_reverses_idx` (reverses_id) **WHERE reverses_id IS NOT NULL** | a row is reversed once (`00011`) — SettlementPost looks the reversal up under the account's lock, and Shop Entries marks each row of a page with the row that reversed it |
 | `order_settlements_team_balance_idx` (team_id, last_balance) | the list screen, ranked by loss |
 | `order_settlements_shop_idx` (shop_id, last_balance) | the same, narrowed to one shop |
 
@@ -2429,6 +2431,7 @@ erDiagram
 | `uploaded_files_team_created_idx` (team_id, created_at DESC, id DESC) | the import screen — a team's uploads, newest first |
 | `uploaded_files_team_shop_created_idx` (team_id, shop_id, created_at DESC, id DESC) | the same, one shop's |
 | `uploaded_file_lines_file_outcome_idx` (uploaded_file_id, outcome, line_no) | one file's page — its lines by outcome, in the file's order |
+| `uploaded_file_lines_settlement_log_idx` (settlement_log_id, id) **WHERE settlement_log_id <> 0** | the statement a ledger row came from (`00005`) — `StatementLinesBySettlementLogIds`, asked in-process by settlement's Shop Entries, one page of ids at a time |
 
 ---
 

@@ -122,7 +122,7 @@ func TestPerf_Settlement(t *testing.T) {
 	san_perf.SeedRows(t, base, userDayRows(team))
 
 	db, probe := san_perf.Wrap(base)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	lastDay := perfStart.AddDate(0, 0, perfDays-1).Format(time.DateOnly)
@@ -220,7 +220,7 @@ func TestPerf_SettlementPost(t *testing.T) {
 	san_perf.SeedRows(t, base, logs)
 
 	db, probe := san_perf.Wrap(base)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	n := 0
 

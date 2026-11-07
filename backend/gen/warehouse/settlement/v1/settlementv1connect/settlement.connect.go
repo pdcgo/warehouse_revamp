@@ -44,6 +44,9 @@ const (
 	// SettlementServiceOrderSettlementDetailProcedure is the fully-qualified name of the
 	// SettlementService's OrderSettlementDetail RPC.
 	SettlementServiceOrderSettlementDetailProcedure = "/warehouse.settlement.v1.SettlementService/OrderSettlementDetail"
+	// SettlementServiceShopSettlementEntryListProcedure is the fully-qualified name of the
+	// SettlementService's ShopSettlementEntryList RPC.
+	SettlementServiceShopSettlementEntryListProcedure = "/warehouse.settlement.v1.SettlementService/ShopSettlementEntryList"
 	// SettlementWriteServiceSettlementPostProcedure is the fully-qualified name of the
 	// SettlementWriteService's SettlementPost RPC.
 	SettlementWriteServiceSettlementPostProcedure = "/warehouse.settlement.v1.SettlementWriteService/SettlementPost"
@@ -61,6 +64,10 @@ type SettlementServiceClient interface {
 	OrderSettlementList(context.Context, *connect.Request[v1.OrderSettlementListRequest]) (*connect.Response[v1.OrderSettlementListResponse], error)
 	// The panel on the order detail page — one account plus its whole log, oldest first.
 	OrderSettlementDetail(context.Context, *connect.Request[v1.OrderSettlementDetailRequest]) (*connect.Response[v1.OrderSettlementDetailResponse], error)
+	// Shop Entries — the rows addressed to a SHOP and no order (an-entry-names-an-order-or-a-shop), newest learned first,
+	// each with the statement it came from and whether it is reversed (the-shop-entries-page-is-accepted). A row is
+	// REVERSED through SettlementPost, as on the order's ledger (a-shop-entry-reverses-inline).
+	ShopSettlementEntryList(context.Context, *connect.Request[v1.ShopSettlementEntryListRequest]) (*connect.Response[v1.ShopSettlementEntryListResponse], error)
 }
 
 // NewSettlementServiceClient constructs a client for the warehouse.settlement.v1.SettlementService
@@ -88,13 +95,21 @@ func NewSettlementServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		shopSettlementEntryList: connect.NewClient[v1.ShopSettlementEntryListRequest, v1.ShopSettlementEntryListResponse](
+			httpClient,
+			baseURL+SettlementServiceShopSettlementEntryListProcedure,
+			connect.WithSchema(settlementServiceMethods.ByName("ShopSettlementEntryList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // settlementServiceClient implements SettlementServiceClient.
 type settlementServiceClient struct {
-	orderSettlementList   *connect.Client[v1.OrderSettlementListRequest, v1.OrderSettlementListResponse]
-	orderSettlementDetail *connect.Client[v1.OrderSettlementDetailRequest, v1.OrderSettlementDetailResponse]
+	orderSettlementList     *connect.Client[v1.OrderSettlementListRequest, v1.OrderSettlementListResponse]
+	orderSettlementDetail   *connect.Client[v1.OrderSettlementDetailRequest, v1.OrderSettlementDetailResponse]
+	shopSettlementEntryList *connect.Client[v1.ShopSettlementEntryListRequest, v1.ShopSettlementEntryListResponse]
 }
 
 // OrderSettlementList calls warehouse.settlement.v1.SettlementService.OrderSettlementList.
@@ -107,6 +122,11 @@ func (c *settlementServiceClient) OrderSettlementDetail(ctx context.Context, req
 	return c.orderSettlementDetail.CallUnary(ctx, req)
 }
 
+// ShopSettlementEntryList calls warehouse.settlement.v1.SettlementService.ShopSettlementEntryList.
+func (c *settlementServiceClient) ShopSettlementEntryList(ctx context.Context, req *connect.Request[v1.ShopSettlementEntryListRequest]) (*connect.Response[v1.ShopSettlementEntryListResponse], error) {
+	return c.shopSettlementEntryList.CallUnary(ctx, req)
+}
+
 // SettlementServiceHandler is an implementation of the warehouse.settlement.v1.SettlementService
 // service.
 type SettlementServiceHandler interface {
@@ -114,6 +134,10 @@ type SettlementServiceHandler interface {
 	OrderSettlementList(context.Context, *connect.Request[v1.OrderSettlementListRequest]) (*connect.Response[v1.OrderSettlementListResponse], error)
 	// The panel on the order detail page — one account plus its whole log, oldest first.
 	OrderSettlementDetail(context.Context, *connect.Request[v1.OrderSettlementDetailRequest]) (*connect.Response[v1.OrderSettlementDetailResponse], error)
+	// Shop Entries — the rows addressed to a SHOP and no order (an-entry-names-an-order-or-a-shop), newest learned first,
+	// each with the statement it came from and whether it is reversed (the-shop-entries-page-is-accepted). A row is
+	// REVERSED through SettlementPost, as on the order's ledger (a-shop-entry-reverses-inline).
+	ShopSettlementEntryList(context.Context, *connect.Request[v1.ShopSettlementEntryListRequest]) (*connect.Response[v1.ShopSettlementEntryListResponse], error)
 }
 
 // NewSettlementServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -137,12 +161,21 @@ func NewSettlementServiceHandler(svc SettlementServiceHandler, opts ...connect.H
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	settlementServiceShopSettlementEntryListHandler := connect.NewUnaryHandler(
+		SettlementServiceShopSettlementEntryListProcedure,
+		svc.ShopSettlementEntryList,
+		connect.WithSchema(settlementServiceMethods.ByName("ShopSettlementEntryList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.settlement.v1.SettlementService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SettlementServiceOrderSettlementListProcedure:
 			settlementServiceOrderSettlementListHandler.ServeHTTP(w, r)
 		case SettlementServiceOrderSettlementDetailProcedure:
 			settlementServiceOrderSettlementDetailHandler.ServeHTTP(w, r)
+		case SettlementServiceShopSettlementEntryListProcedure:
+			settlementServiceShopSettlementEntryListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -158,6 +191,10 @@ func (UnimplementedSettlementServiceHandler) OrderSettlementList(context.Context
 
 func (UnimplementedSettlementServiceHandler) OrderSettlementDetail(context.Context, *connect.Request[v1.OrderSettlementDetailRequest]) (*connect.Response[v1.OrderSettlementDetailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.OrderSettlementDetail is not implemented"))
+}
+
+func (UnimplementedSettlementServiceHandler) ShopSettlementEntryList(context.Context, *connect.Request[v1.ShopSettlementEntryListRequest]) (*connect.Response[v1.ShopSettlementEntryListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.ShopSettlementEntryList is not implemented"))
 }
 
 // SettlementWriteServiceClient is a client for the warehouse.settlement.v1.SettlementWriteService

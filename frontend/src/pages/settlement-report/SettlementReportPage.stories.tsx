@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { dayKey, teams } from "../../../.storybook/fixtures";
+import { settlementWindowCalls } from "../../../.storybook/settlementAnalyticStub";
 import { formatRupiah } from "../../lib/money";
 import { SettlementReportPage } from "./index";
 
@@ -41,6 +42,39 @@ async function loaded(canvasElement: HTMLElement) {
 
   return canvas;
 }
+
+// THE WINDOW IS JAKARTA DAYS (backlog #36, the-system-runs-on-jakarta-time): at 23:30 UTC on 6 Nov it is already 06:30
+// WIB on 7 Nov, so "the last 7 days" asks for 1–7 Nov — never the viewer's own midnight (a UTC browser would have sent
+// 31 Oct – 6 Nov). The clock is held at that instant for this story alone.
+const LATE = new Date("2026-11-06T23:30:00Z").getTime();
+
+export const TheWindowIsJakartaDaysAt2330Utc: Story = {
+  parameters: { dataRouter: true },
+  render: routedPage([{ path: "/settlement/report", element: <SettlementReportPage /> }], "/settlement/report?range=7d"),
+  beforeEach: () => {
+    settlementWindowCalls.splice(0);
+    const Real = Date;
+    class Late extends Real {
+      constructor(...args: unknown[]) {
+        if (args.length === 0) super(LATE);
+        else super(...(args as [string | number | Date]));
+      }
+
+      static now() {
+        return LATE;
+      }
+    }
+    globalThis.Date = Late as DateConstructor;
+
+    return () => {
+      globalThis.Date = Real;
+    };
+  },
+  play: async () => {
+    await waitFor(() => expect(settlementWindowCalls.length).toBeGreaterThan(0), { timeout: 3000 });
+    await expect(settlementWindowCalls.at(-1)).toEqual({ from: "2026-11-01", to: "2026-11-07" });
+  },
+};
 
 // The headline is the WHOLE WINDOW, asked of the server — never a sum of the page of periods below it.
 export const TheWindowInSixNumbers: Story = {

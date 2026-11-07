@@ -99,7 +99,7 @@ flowchart LR
 | what [only-the-replay-holds-the-lock](../../business/settlement/context_decision.md#only-the-replay-holds-the-lock) leaves in the code | the replay's error still names *a developer's maintenance* ([analytic_replay_compute.go:45](../../../backend/services/settlement_service/settlement_v1/analytic_replay_compute.go#L45)) and the table's migration comment says *human-set*. No `san` command pauses the fold by switching its subscription to pull. The lease for a lock the replay died holding is [meta Q2](../../business/settlement/meta_context_clarify.md#question) — open |
 | what [periods-are-grouped-on-the-server](../../business/settlement/context_decision.md#periods-are-grouped-on-the-server) leaves in OTHER services | `ExpenseDaily` and `LiabilityDaily` still return days, and the daily statement groups them in the browser ([period.ts:85](../../../frontend/src/lib/period.ts#L85), [queries.ts:170](../../../frontend/src/pages/daily-statement/queries.ts#L170)). Both RPCs take a grain with settlement's span unlock, the page draws buckets as they come, and the header comment stating the old rule goes |
 | a day re-fold from the log | ✅ **built 2026-11-05** — [below](#2026-11-05--the-reads-run-one-sum-the-session-is-jakarta-a-day-re-folds-the-report-has-an-e2e): `san report refold` → `settlement_v1/day_refold.go` |
-| a screen reading a shop's OWN direct rows | shop-addressed rows fold into the report but no RPC lists them |
+| a screen reading a shop's OWN direct rows | ✅ **built 2026-11-07** — Shop Entries, `ShopSettlementEntryList` + Reverse ([below](#2026-11-07--shop-entries-built-backlog-23-and-the-reports-jakarta-window-36)); prototyped the same day ([below](#2026-11-07--shop-entries-prototyped-backlog-23-storybook-only)) |
 | Jakarta time on the DSN | ✅ **built 2026-11-05** — `backend/pkgs/san_dbsession` pins `TimeZone=Asia/Jakarta` on every session; `posted_on` is the Jakarta day ([below](#2026-11-05--the-reads-run-one-sum-the-session-is-jakarta-a-day-re-folds-the-report-has-an-e2e)) |
 | the fixes the performance audit proposes | ✅ **built 2026-11-05** — the running sum ([below](#2026-11-05--the-reads-run-one-sum-the-session-is-jakarta-a-day-re-folds-the-report-has-an-e2e)). *Was:* 🔴 **the reads are HEAVY** — [MetricData](../../../audits/services/settlement_service/performances/MetricData.md) (285 ms @ 20 daily periods, 1.68 s @ 200; 231 ms @ 200 shops) and [MetricSearch](../../../audits/services/settlement_service/performances/MetricSearch.md) (138 ms); first found in the reads they replaced — [AnalyticTimeSearch](../../../audits/services/settlement_service/performances/AnalyticTimeSearch.md) (261 ms @ 20 daily buckets, 1.65 s @ 200), [AnalyticGroupSearch](../../../audits/services/settlement_service/performances/AnalyticGroupSearch.md) (261 ms), [AnalyticGroupMetric](../../../audits/services/settlement_service/performances/AnalyticGroupMetric.md) (185 ms). One cause: the position is found per scope by `DISTINCT ON` over the whole history, where `Σ change` gives it in one pass. **Not applied** — handler change, awaiting the owner. `SettlementPost` is 5 statements (+ a test-only SAVEPOINT), 1.8 ms — not heavy |
 | an e2e spec for `/settlement/report` | ✅ **built 2026-11-05** — `frontend/e2e/the_settlement_report.spec.ts` (3 tests) |
@@ -229,3 +229,67 @@ unequal). `openSale` skips a platform total that is not above 0 (`san_money.Posi
 unrecorded sale by `abs(initial_total) < 0.00005` (`recordedSale`, `san_money.ZeroBelow`) instead of `= 0`. `san report
 refold` prints its figures with `san_money.Text` digits ("25.000", a fraction to 3 places). Tests
 `TestSettlementPost_StoresAFractionExact`, `TestMetricData_TheSumsAndThePositionEqualTheLog` (tolerance), `TestReportRefold_RebuildsTheDayFromTheLog`.
+
+## 2026-11-07 — Shop Entries prototyped (backlog #23, Storybook only)
+
+The screen for a shop's OWN rows — settlement rows with no order ([an-entry-names-an-order-or-a-shop](../../business/settlement/context_decision.md#an-entry-names-an-order-or-a-shop)):
+withdrawals, `system_adjustment`, shop-level fees/ads, and statement lines whose ref found no order or several live
+orders ([an-unmatched-ref-posts-to-the-shop](../../business/settlement/settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop),
+[two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)).
+Never `initial_total`/its cancel (`post_entry.go` refuses them without an order). **No Go, proto, migration, route or menu
+change; the live screens are unchanged.**
+
+| | |
+| --- | --- |
+| the gate | `features/settlement/shopEntriesPrototype.tsx` — `SettlementShopEntriesPrototypeProvider` + `useSettlementShopEntriesPrototype()` (null in the app). Its `list` seam stands in for the missing RPC; Storybook answers it from `.storybook/shopEntriesPrototypeStub.ts` (`shopEntriesSeam`, `shopEntriesBook`, `shopEntriesCalls`) |
+| the page | `pages/settlement-shop-entries/` (`SettlementShopEntriesPage`, no route): totals strip (Entries · Received · Withdrawn, over the filtered set — the report's own words, [the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date)), FilterBar (ShopSelect `asFilter` · kind ChoiceFilter · DateRangePicker naming *Learned*), table / phone blocks, GrowingPager, EmptyHint. Filters in the URL (`shop`, `kind`, `range`). The window is `posted_on` ([posted-on-buckets-the-report](../../business/settlement/context_decision.md#posted-on-buckets-the-report)) in JAKARTA days (`window.ts` `jakartaWindowOf` — the report's `windowOf` still cuts at the viewer's midnight) |
+| the way in | the report's **By shop** row opens `/settlement/shop-entries?shop=<id>&range=<report's>` — only under the seam (`settlement-report/components/GroupTable.tsx`) |
+| stories | `pages/settlement-shop-entries/index.stories.tsx` (13), `pages/settlement-report/ShopEntriesEntry.stories.tsx` (4, incl. `TheLiveReportIsUnchanged`) |
+| i18n | `settlementShopEntries.*` (en + id) |
+
+**What the backend step must build** (then delete the seam, add the route + menu entry per the owner's answer, and
+turn the stories onto the real stub):
+
+1. `SettlementService.ShopSettlementEntryList` — a READ (`NO_SIDE_EFFECTS`), policy = every settlement read's
+   (`ROOT, ADMINISTRATOR, SELLING_OWNER, SELLING_ADMIN, SELLING_CS`, `use_scope` on `team_id`); filter `shop_id` (0 = all),
+   `settlement_types` (repeated, the eleven non-sale types), `from`/`to` Jakarta `posted_on` days; `CommonPagination`;
+   newest `posted_on` then `id` first; returns `SettlementEntry` rows + `has_next` + totals over the WHOLE filtered set
+   (count, received = Σ change of non-withdrawals, withdrawn = −Σ withdrawals). `settlement_logs WHERE team_id = ? AND
+   order_id IS NULL …` — a partial index `(team_id, posted_on DESC, id DESC) WHERE order_id IS NULL` (settlement
+   migration + `docs/database-schema.md`). Perf audit; no concurrency audit (a read).
+2. The statement each row came from — settlement holds no file id, and must not read the importer's tables. A read on the
+   importer: `UploadedFileLineBySettlementLogIds(team_id, ids)` → `uploaded_file_id`, sheet, description, `order_ref`,
+   reason (`NO_ORDER` / `SEVERAL_ORDERS` / a shop line), `found_order_ids` — over an index on
+   `uploaded_file_lines(settlement_log_id)`; the file's platform and period from `UploadedFileByIds`. The screen joins
+   them (two calls, one per page) — no write-contract change.
+3. Names: shops by `useShopOptions` (closed badged), people by `useActors` — both exist.
+4. An e2e named past `statement.spec.ts` (e.g. `the_shop_entries.spec.ts`): import a statement with an unmatched ref and a
+   withdrawal, open the report, click the shop, read both rows and the file link.
+
+✅ Both answered the same day — [the-shop-entries-page-is-accepted](../../technical/frontend/settlement_report_decision.md#the-shop-entries-page-is-accepted)
+(its own page, *Entri Toko*, and from the report) and [a-shop-entry-reverses-inline](../../technical/frontend/settlement_report_decision.md#a-shop-entry-reverses-inline);
+built [below](#2026-11-07--shop-entries-built-backlog-23-and-the-reports-jakarta-window-36). *Was:* where the screen sits in the menu, and whether a person may
+REVERSE a wrong shop row here ([an-upload-is-never-reverted](../../business/settlement/settlement_importer_decision.md#an-upload-is-never-reverted)
+records *"a wrong shop row — no screen"*; `post_entry.go` already scopes a shop row's reversal to its shop).
+
+## 2026-11-07 — Shop Entries built (backlog #23) and the report's Jakarta window (#36)
+
+[the-shop-entries-page-is-accepted](../../technical/frontend/settlement_report_decision.md#the-shop-entries-page-is-accepted) ·
+[a-shop-entry-reverses-inline](../../technical/frontend/settlement_report_decision.md#a-shop-entry-reverses-inline). The
+prototype's seam (`shopEntriesPrototype.tsx`, `.storybook/shopEntriesPrototypeStub.ts`) is deleted; the page reads the
+real RPC.
+
+| | |
+| --- | --- |
+| the read | `SettlementService.ShopSettlementEntryList` ([shop_settlement_entry_list.go](../../../backend/services/settlement_service/settlement_v1/shop_settlement_entry_list.go)) — `order_id IS NULL`, the read set, the root team reads every team's; filters shop · kinds (the eleven; the sale and its cancel refused) · `posted_from..posted_to` (the learned Jakarta `DATE`, inclusive); `CommonPagination`, newest learned then id first; `page_info.total_items` = Entries, `total_received` (Σ but withdrawals), `total_withdrawn` (−Σ withdrawals) over the filtered set. Each row: the entry with `actor_name`, `reversed_by_id`, `statement` |
+| the statement | settlement's `StatementSources` → the importer's in-process `StatementLinesBySettlementLogIds` ([statement_lines.go](../../../backend/services/settlement_importer_service/settlement_importer_v1/statement_lines.go)): per log id the line that POSTED it (else the first that found it), with file id, platform, period, sheet, description, ref, reason, found orders, uploader. Names: `UserNames` → `UserByIDs` in-process. Adapters: `cmd/app_development/settlement_shop_entries.go` (6th/7th `NewService` deps) |
+| Reverse | the order ledger's write — SettlementPost of the opposite row, same type, `reverses_id`, key `reverse-<id>` (`useReverseShopEntry`). [post_entry.go](../../../backend/services/settlement_service/settlement_v1/post_entry.go) now refuses, for BOTH ledgers: a reversal that is not the reversed row's type and opposite amount (`InvalidArgument`), and a second reversal of a row (`FailedPrecondition`, read by `reverses_id` under the account lock). A shop reversal reaches only its shop's rows — so never a sale or a cancel |
+| migrations | settlement **00011** — `settlement_logs_shop_rows_idx (team_id, posted_on DESC, id DESC) WHERE order_id IS NULL`, `settlement_logs_reverses_idx (reverses_id) WHERE reverses_id IS NOT NULL`; importer **00005** — `uploaded_file_lines_settlement_log_idx (settlement_log_id, id) WHERE settlement_log_id <> 0`. Indexes only |
+| perf | 5 queries a page, 1.7 ms at 200 000 log rows a team (5 000 shop rows); 68 ms without the partial index; one shop + withdrawals 15 ms (BitmapAnd with `shop_occurred_idx`). The importer's lines: 3 ms for 20 ids. Not heavy — no write-up |
+| concurrency | the only write path is SettlementPost's, already audited; the new reversed-once read sits under its existing account lock. `TestRace_SettlementPost_AShopEntryIsReversedOnce` (8 racers, half the screen's key, half another: 1 row lands, 4 refused, 3 answered by the key) — mutation-checked |
+| the screen | `/settlement/shop-entries` (`router.tsx`); **Entri Toko** (`nav.settlementShopEntriesShort`) the 4th child of Penyelesaian, for `isTeamManager` like Daftar and Laporan; the report's By shop row opens it with the shop and the report's range (`GroupTable`). Reverse (write set, not a monitor) → `ConfirmDialog` → toast; a reversed row dims and reads **Reversed**, a reversal reads *Reverses #id*; neither offers Reverse |
+| #36 | `jakartaWindowOf` moved to `features/settlement/window.ts`; the settlement report uses it — a relative range counts back from Jakarta's today. Story `TheWindowIsJakartaDaysAt2330Utc` holds the clock at 23:30 UTC (06:30 WIB next day). ⚠ It can only fail on a non-WIB runner (CI is UTC); `windowOf` stays for the analytic composer, the supplier figures and the settlement list (their own day questions, untouched) |
+| stories | `.storybook/shopEntriesStub.ts` (the list + the shop reversal, with the server's rules), `pages/settlement-shop-entries/index.stories.tsx` (17), `ShopEntriesEntry.stories.tsx` (3) |
+| e2e | `frontend/e2e/the_shop_entries.spec.ts` (5) — its own team; a one-line Shopee statement built per run (a key is global, so the shared fixture would be "already there"); import → Entri Toko with its statement → Reverse → Reversed, opposite row, totals back → a second reverse refused → the report's By shop row opens it |
+
+Not built: *Move to Order* for a no-order or two-orders line (a later step, by the decision).

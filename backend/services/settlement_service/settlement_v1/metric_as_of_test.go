@@ -16,7 +16,7 @@ import (
 // AS OF WHEN (a-money-metric-says-as-of-when): every MetricData answer carries when the fold last claimed an event.
 func TestMetricData_SaysAsOfWhen(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	asOf := func() int64 {
 		res, err := svc.MetricData(context.Background(), connect.NewRequest(&settlementv1.MetricDataRequest{

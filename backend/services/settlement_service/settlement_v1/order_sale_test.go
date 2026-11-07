@@ -66,7 +66,7 @@ func deliver(t *testing.T, svc *settlement_v1.Service, event *eventsv1.Event) {
 // by the person who placed it — and a second delivery of the same event writes nothing.
 func TestOrderSale_ThePlacementOpensTheAccountOnce(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	deliver(t, svc, placedEvent(sale))
 	deliver(t, svc, placedEvent(sale)) // Pub/Sub delivers at least once
@@ -87,7 +87,7 @@ func TestOrderSale_ThePlacementOpensTheAccountOnce(t *testing.T) {
 // and the event is still ACKed.
 func TestOrderSale_NoPlatformTotalOpensNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	deliver(t, svc, placedEvent(0))
 
@@ -100,7 +100,7 @@ func TestOrderSale_NoPlatformTotalOpensNothing(t *testing.T) {
 // redelivery, even one arriving after midnight, finds its row instead of crediting the account twice.
 func TestOrderSale_TheCancelCancelsTheSaleOnce(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	deliver(t, svc, placedEvent(sale))
 
@@ -122,7 +122,7 @@ func TestOrderSale_TheCancelCancelsTheSaleOnce(t *testing.T) {
 // event is ACKed rather than redelivered forever.
 func TestOrderSale_ACancelWithNothingToCancelIsAcked(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	deliver(t, svc, cancelledEvent(placedAt))
 
@@ -134,7 +134,7 @@ func TestOrderSale_ACancelWithNothingToCancelIsAcked(t *testing.T) {
 // A variant this handler does not consume is ACKed: redelivering it would be a loop, not a retry.
 func TestOrderSale_AnotherVariantIsAcked(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	deliver(t, svc, &eventsv1.Event{
 		EventId:    "member-removed:1",

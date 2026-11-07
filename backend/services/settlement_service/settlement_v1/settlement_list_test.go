@@ -80,7 +80,7 @@ func settleOrder(t *testing.T, svc *settlement_v1.Service, orderID uint64, shopI
 // worst order is the smallest number.
 func TestOrderSettlementList_RanksWorstLossFirstByDefault(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -104,7 +104,7 @@ func TestOrderSettlementList_RanksWorstLossFirstByDefault(t *testing.T) {
 // pages would be reporting the page, which nobody asked about.
 func TestOrderSettlementList_TotalsCoverEveryPage(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -135,7 +135,7 @@ func TestOrderSettlementList_TotalsCoverEveryPage(t *testing.T) {
 // at once.
 func TestOrderSettlementList_ScopesToTheTeam(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 
@@ -168,7 +168,7 @@ func TestOrderSettlementList_ScopesToTheTeam(t *testing.T) {
 // The shop filter is not the scope — `team_id` is — but it is what every real read uses.
 func TestOrderSettlementList_FiltersByShop(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop+1, -40_000)
@@ -186,7 +186,7 @@ func TestOrderSettlementList_FiltersByShop(t *testing.T) {
 // whenever a client forgets the enum, which reads as "this team has never settled anything".
 func TestOrderSettlementList_ReturnsAccountsWithoutADataRequest(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 
@@ -240,7 +240,7 @@ func wantIDs(t *testing.T, got []uint64, want []uint64, why string) {
 // (#the-settlement-list-sorts-by-its-headings).
 func TestOrderSettlementList_SortsByReceivedEitherWay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -258,7 +258,7 @@ func TestOrderSettlementList_SortsByReceivedEitherWay(t *testing.T) {
 // to the balance, so "ASC" meant the biggest loss — a contract that read backwards.
 func TestOrderSettlementList_LossDirectionIsTheLossNotTheBalance(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -276,7 +276,7 @@ func TestOrderSettlementList_LossDirectionIsTheLossNotTheBalance(t *testing.T) {
 // of an ascending sort is exactly where it would land without the rule.
 func TestOrderSettlementList_AnUnrecordedSaleSortsLastEitherWay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -303,7 +303,7 @@ func TestOrderSettlementList_AnUnrecordedSaleSortsLastEitherWay(t *testing.T) {
 // on two requests.
 func TestOrderSettlementList_TiesBreakOnTheOrderID(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 5, shop, -10_000)
 	settleOrder(t, svc, 7, shop, -10_000)
@@ -317,7 +317,7 @@ func TestOrderSettlementList_TiesBreakOnTheOrderID(t *testing.T) {
 // the loss by money that was never a gain.
 func TestOrderSettlementList_TotalsSkipAnUnrecordedSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -348,7 +348,7 @@ func TestOrderSettlementList_TotalsSkipAnUnrecordedSale(t *testing.T) {
 // put it on the 4th.
 func TestSettlementList_ThePeriodIsJakartaDays(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, order, shop, -1_000)
 

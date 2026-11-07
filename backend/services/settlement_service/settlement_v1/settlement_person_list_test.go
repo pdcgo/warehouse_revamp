@@ -50,7 +50,7 @@ ON CONFLICT (user_id, team_id) DO UPDATE SET last_day = GREATEST(s.last_day, EXC
 // are not read — and a scope a replay has cut to nothing (NULL) is not offered.
 func TestSettlementPersonList_OrdersByTheUserReportsLastDay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	for _, row := range []struct {
 		user uint64
@@ -128,7 +128,7 @@ func personList(
 // here (a-filter-keeps-former-and-suspended-people).
 func TestSettlementPersonList_ThePeopleOnTheTeamsRowsLatestFirst(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	personDay(t, db, team, 7, "2026-01-02")
 	personDay(t, db, team, 7, "2026-03-01")
@@ -163,7 +163,7 @@ func TestSettlementPersonList_ThePeopleOnTheTeamsRowsLatestFirst(t *testing.T) {
 // The root team lists every team's people, as its metrics read every team's.
 func TestSettlementPersonList_TheRootTeamListsEveryTeams(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	personDay(t, db, team, 7, "2026-01-02")
 	personDay(t, db, team+1, 50, "2026-05-01")

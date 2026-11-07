@@ -29,6 +29,7 @@ import { resetUserStub } from "./userStub";
 import { resetSupplierStub } from "./supplierStub";
 import { resetSupplierGoodsStub } from "./supplierGoodsStub";
 import { resetShopStub } from "./shopStub";
+import { resetShopEntries } from "./shopEntriesStub";
 import { resetCategoryStub } from "./categoryStub";
 import { resetProductStub } from "./productStub";
 import { resetRestockStub } from "./restockStub";
@@ -413,6 +414,8 @@ const preview: Preview = {
     resetSupplierStub();
     resetSupplierGoodsStub();
     resetShopStub();
+    // …and Shop Entries' book, which a Reverse writes to (shopEntriesStub.ts).
+    resetShopEntries();
     // …and the category tree, which the category screen's create, edit and delete write to.
     resetCategoryStub();
     // …and the catalogue, which a product create, edit, archive or restore writes to.

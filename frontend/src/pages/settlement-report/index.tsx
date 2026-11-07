@@ -16,7 +16,7 @@ import {
   useSettlementSummary,
   type SettlementGroupBy,
 } from "../../features/settlement/analytics";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../features/settlement/window";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
@@ -83,7 +83,9 @@ export function SettlementReportPage() {
   };
 
   const teamId = current?.teamId;
-  const { from, to } = windowOf(range);
+  // THE WINDOW IS JAKARTA DAYS (backlog #36, the-system-runs-on-jakarta-time): the report buckets by `posted_on`, a
+  // Jakarta day, so a relative range counts back from Jakarta's today — never the viewer's midnight.
+  const { from, to } = jakartaWindowOf(range);
   // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
   // under the picker says why rather than showing a refusal.
   const span = spanDays(from, to);

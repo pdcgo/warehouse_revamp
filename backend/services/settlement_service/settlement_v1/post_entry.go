@@ -424,6 +424,31 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			if reversed.ID == 0 {
 				return errReversesUnknown
 			}
+
+			// THE NEGATION, SAME TYPE (a-correction-is-a-new-row): a reversal undoes exactly the row it names.
+			if reversed.SettlementType != typeText || !san_money.Equal(in.Change, -reversed.Change) {
+				return errReversalNotOpposite
+			}
+
+			// ⚠ A ROW IS REVERSED ONCE (a-shop-entry-reverses-inline). Read under the ACCOUNT's lock — the row and its
+			// reversal are on one account (the scoped lookup above proves it) — so two reversals of one row under
+			// different keys serialise here and the second finds the first. A retry under the SAME key never gets
+			// this far: the idempotency lookup above answered it with its own row.
+			var reversal settlement_service_models.SettlementLog
+
+			err = tx.
+				Select("id").
+				Where("reverses_id = ?", in.ReversesID).
+				Limit(1).
+				Find(&reversal).
+				Error
+			if err != nil {
+				return dbError(err)
+			}
+
+			if reversal.ID != 0 {
+				return errAlreadyReversed
+			}
 		}
 
 		// THE LIVE SALE'S RULES — read under the account's lock, so two concurrent posts cannot both see

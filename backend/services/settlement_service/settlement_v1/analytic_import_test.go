@@ -12,7 +12,7 @@ import (
 // holds the row, and the uploader's does not (#settlement-asks-the-shop-for-its-primary-cs).
 func TestFold_CountsAnImportedShopRowForItsUser(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	event := logPosted(21, "2026-01-06", shop, 0, 0, uploader,
 		settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, -300_000)
@@ -36,7 +36,7 @@ func TestFold_CountsAnImportedShopRowForItsUser(t *testing.T) {
 // (#withdrawal-counts-in-the-position).
 func TestFold_FoldsTheFiveNewTypesIntoThePosition(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc,
 		logPosted(31, "2026-01-07", shop, 0, 0, 9, settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, -1_000),

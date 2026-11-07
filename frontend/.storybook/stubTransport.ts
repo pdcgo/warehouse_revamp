@@ -62,9 +62,11 @@ import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import { SettlementAnalyticService } from "../src/gen/warehouse/settlement/v1/settlement_analytic_pb";
 import {
   SettlementService,
+  SettlementWriteService,
   SettlementType as WireSettlementType,
   SourceType as WireSourceType,
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
+import { shopEntrySettlementPost, shopSettlementEntryList } from "./shopEntriesStub";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
 import {
@@ -2285,7 +2287,12 @@ export const transport = createRouterTransport(({ service }) => {
         })),
       };
     },
+    // Shop Entries — a shop's own rows (shopEntriesStub.ts).
+    shopSettlementEntryList,
   });
+  // The ledger's one write — served for a shop entry's reversal only (shopEntriesStub.ts); any other post stays
+  // unanswered, as before.
+  service(SettlementWriteService, { settlementPost: shopEntrySettlementPost });
 
   // THE SETTLEMENT METRICS, folded from one ledger book (fixtures: settlementBook) by the service's own rules —
   // settlementAnalyticStub.ts.

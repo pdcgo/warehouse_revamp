@@ -31,6 +31,7 @@ import {
   Truck,
   Undo2,
   Users,
+  Wallet,
 } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
@@ -195,6 +196,14 @@ const SETTLEMENT_IMPORTS: MenuItem = {
   label: "nav.settlementImports",
   icon: FileUp,
 };
+// A shop's OWN settlement rows — withdrawals, shop-level fees, statement lines no order matched
+// (the-shop-entries-page-is-accepted: "Entri Toko, the fourth child of the Penyelesaian group"; "the menu line follows the
+// list's and report's").
+const SETTLEMENT_SHOP_ENTRIES: MenuItem = {
+  to: "/settlement/shop-entries",
+  label: "nav.settlementShopEntries",
+  icon: Wallet,
+};
 
 // THE THREE AS ONE SUB-MENU (owner: *"aku ingin menu keuangan lebih simpel"* — on the proposal: *"penyelesaian oke gitu"*,
 // `settlement-is-one-sub-menu`): the payouts, their report and their imports are one subject — what the marketplace paid
@@ -208,6 +217,9 @@ function settlementFor(role: Role | undefined): MenuEntry | undefined {
   }
   if (canImportSettlement(role)) {
     children.push({ ...SETTLEMENT_IMPORTS, label: "nav.settlementImportsShort" });
+  }
+  if (isTeamManager(role)) {
+    children.push({ ...SETTLEMENT_SHOP_ENTRIES, label: "nav.settlementShopEntriesShort" });
   }
 
   // A group of one is a heading over a single link — a CS, who only imports, gets that link flat, its full name.

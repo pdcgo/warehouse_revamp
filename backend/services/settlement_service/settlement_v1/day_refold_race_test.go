@@ -43,7 +43,7 @@ var refoldTables = append([]string{"settlement_logs", "order_settlements"}, fold
 func TestRace_Refold_AFoldRacingItCountsEveryRowOnce(t *testing.T) {
 	h := san_race.New(t, refoldTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const rounds = 10
@@ -184,7 +184,7 @@ ORDER BY r.day`, table, keyColumn, logScope), key, team).
 func TestRace_Refold_TheLaterDaysTakeEveryShiftOnce(t *testing.T) {
 	h := san_race.New(t, refoldTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const rounds = 10
@@ -266,7 +266,7 @@ func TestRace_Refold_TheLaterDaysTakeEveryShiftOnce(t *testing.T) {
 func TestRace_Refold_TheShopAndPersonRefoldsCountEveryRowOnce(t *testing.T) {
 	h := san_race.New(t, refoldTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const rounds = 10

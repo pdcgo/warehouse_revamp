@@ -33,6 +33,8 @@
     "settlementList": "List",
     "settlementReportShort": "Report",
     "settlementImportsShort": "Import",
+    "settlementShopEntriesShort": "Shop Entries",
+    "settlementShopEntries": "Shop Entries",
     "financialAccounts": "Accounts",
     "accountsList": "Accounts",
     "accountsReport": "Account Report",
@@ -3360,6 +3362,54 @@
       "takeRate": "Take rate",
       "positionToDate": "Position to date"
     }
+  },
+  "settlementShopEntries": {
+    "title": "Shop Entries",
+    "subtitle": "Money the marketplace moved for the shop itself, not for an order — withdrawals, shop-level fees, and statement lines no order matched.",
+    "selectTeam": "Select a team to view its shop entries.",
+    "allShops": "All shops",
+    "allKinds": "All kinds",
+    "kindLabel": "Kind",
+    "shopLabel": "Shop",
+    "learned": "Learned",
+    "belongsTo": "for {{date}}",
+    "stat": {
+      "count": "Entries",
+      "countLine": "in this window",
+      "received": "Received",
+      "receivedLine": "Payouts, fees and adjustments — withdrawals left out",
+      "withdrawn": "Withdrawn",
+      "withdrawnLine": "Moved from the marketplace wallet to the bank"
+    },
+    "col": {
+      "date": "Date",
+      "shop": "Shop",
+      "kind": "Kind",
+      "amount": "Amount",
+      "reference": "Reference",
+      "statement": "From"
+    },
+    "type": {
+      "system_adjustment": "System adjustment"
+    },
+    "reason": {
+      "no_order": "Ref {{ref}} · no order found",
+      "several_orders": "Ref {{ref}} · {{count}} live orders: {{orders}}"
+    },
+    "statement": "Statement {{period}}",
+    "byHand": "Posted by hand",
+    "byPerson": "by {{name}}",
+    "empty": "No shop entries in this window.",
+    "emptyHint": "Withdrawals, shop-level fees and statement lines no order matched land here.",
+    "emptyFiltered": "No shop entries match these filters.",
+    "emptyFilteredHint": "Try another kind or shop, or clear the filters.",
+    "openFromReport": "Open shop entries",
+    "fromReportHint": "Open a shop to read the entries addressed to it, not to an order.",
+    "reverseBody": "This posts {{amount}} in the opposite direction on {{shop}}, undoing the {{type}} learned {{date}}. The original stays — entries are never edited or deleted.",
+    "reversed": "Entry #{{id}} reversed",
+    "reverseFailed": "Could not reverse the entry",
+    "reversedBadge": "Reversed",
+    "reversalOf": "Reverses #{{id}}"
   },
   "orderSettlement": {
     "tab": "Settlement",

@@ -311,7 +311,7 @@ func wrongFold(t *testing.T, db *gorm.DB, table, stateTable, keyColumn string, k
 // — their movement untouched — as does the state row. An earlier day is not written. A second run writes nothing.
 func TestDayRefold_RewritesAWrongDayAndShiftsTheLaterCarry(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -382,7 +382,7 @@ func TestDayRefold_RewritesAWrongDayAndShiftsTheLaterCarry(t *testing.T) {
 // redelivery folds nothing; the day then equals the log and the later day's carry follows by the lost −5.000.
 func TestDayRefold_CountsALostRowAndClaimsIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -425,7 +425,7 @@ func TestDayRefold_CountsALostRowAndClaimsIt(t *testing.T) {
 // every later day shifts by its whole change.
 func TestDayRefold_AQuietDayGainsItsRowAndEveryLaterDayFollows(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -459,7 +459,7 @@ func TestDayRefold_AQuietDayGainsItsRowAndEveryLaterDayFollows(t *testing.T) {
 // AN EVENT IN FLIGHT — a row written a moment ago and not folded yet — is left to the fold, which adds it after.
 func TestDayRefold_LeavesARowInFlightToTheFold(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -480,7 +480,7 @@ func TestDayRefold_LeavesARowInFlightToTheFold(t *testing.T) {
 // A DRY RUN shows the row it would write and the shift it would make, and writes nothing.
 func TestDayRefold_ADryRunWritesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 	refoldLogRow(t, db, "2026-01-02", settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER, -5_000, 3*time.Hour)
@@ -517,7 +517,7 @@ func TestDayRefold_ADryRunWritesNothing(t *testing.T) {
 // no row at all reads 0 in its state row.
 func TestDayRefold_RemovesARowTheLogDoesNotHold(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -563,7 +563,7 @@ func TestDayRefold_RemovesARowTheLogDoesNotHold(t *testing.T) {
 // the result; re-folding that next day closes it.
 func TestDayRefold_NamesACarryAlreadyOffAndItsOwnRefoldClosesIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -594,7 +594,7 @@ func TestDayRefold_NamesACarryAlreadyOffAndItsOwnRefoldClosesIt(t *testing.T) {
 
 func TestDayRefold_Refuses(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	user := creator
@@ -635,7 +635,7 @@ func TestDayRefold_Refuses(t *testing.T) {
 // earlier day not written, a second run writes nothing.
 func TestDayRefold_Person_RewritesAWrongDayAndShiftsTheLaterCarry(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -696,7 +696,7 @@ func TestDayRefold_Person_RewritesAWrongDayAndShiftsTheLaterCarry(t *testing.T) 
 // fold had built.
 func TestDayRefold_Person_CountsEachRowForWhomTheFoldDoes(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	const (
 		day         = "2026-02-01"
@@ -737,7 +737,7 @@ func TestDayRefold_Person_CountsEachRowForWhomTheFoldDoes(t *testing.T) {
 // so the SHOP report is short now — and its re-fold counts the row.
 func TestDayRefold_Person_ALostRowItClaimsIsCountedByTheShopRefold(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -781,7 +781,7 @@ func TestDayRefold_Person_ALostRowItClaimsIsCountedByTheShopRefold(t *testing.T)
 // the person re-fold counts it.
 func TestDayRefold_ALostRowTheShopRefoldClaimsIsCountedByThePersonRefold(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -842,7 +842,7 @@ func assertReportsAgree(t *testing.T, db *gorm.DB) {
 // AN EVENT IN FLIGHT is left to the fold on the person report too.
 func TestDayRefold_Person_LeavesARowInFlightToTheFold(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -863,7 +863,7 @@ func TestDayRefold_Person_LeavesARowInFlightToTheFold(t *testing.T) {
 // A DRY RUN on the person report writes nothing.
 func TestDayRefold_Person_ADryRunWritesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 	refoldLogRow(t, db, "2026-01-02", settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER, -5_000, 3*time.Hour)
@@ -888,7 +888,7 @@ func TestDayRefold_Person_ADryRunWritesNothing(t *testing.T) {
 // no row at all reads 0 and no last day — off the person list, as after a replay's cut.
 func TestDayRefold_Person_RemovesAStrayDayAndLowersTheLastDay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 
@@ -931,7 +931,7 @@ func TestDayRefold_Person_RemovesAStrayDayAndLowersTheLastDay(t *testing.T) {
 // EXACTLY: a sum of whole-rupiah doubles is exact, so the rewritten row is == the log's.
 func TestDayRefold_DustIsTheSameFigureAndARealDifferenceIsRestoredExactly(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	threeDays(t, db, svc)
 

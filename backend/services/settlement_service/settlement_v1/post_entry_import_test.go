@@ -50,7 +50,7 @@ func assertNoLog(t *testing.T, db *gorm.DB) {
 func TestSettlementPost_AnImportedShopRowCountsForThePrimaryCS(t *testing.T) {
 	db := san_testdb.DB(t)
 	primary := primaryIs(shopPrimaryCS)
-	svc := settlement_v1.NewService(db, nil, nil, primary, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	result, err := postShop(t, svc, importedShopRow("tiktok:withdrawal_records:w1",
 		settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, -500_000))
@@ -82,7 +82,7 @@ func TestSettlementPost_AnImportedShopRowCountsForThePrimaryCS(t *testing.T) {
 func TestSettlementPost_OnlyAnImportedShopRowAsksTheShop(t *testing.T) {
 	db := san_testdb.DB(t)
 	primary := primaryIs(shopPrimaryCS)
-	svc := settlement_v1.NewService(db, nil, nil, primary, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	manual := shopOther("manual-shop-row", -1_000)
 	manual.SourceType = settlementv1.SourceType_SOURCE_TYPE_MANUAL
@@ -114,7 +114,7 @@ func TestSettlementPost_OnlyAnImportedShopRowAsksTheShop(t *testing.T) {
 // counted for nobody, never for the uploader. Nothing is written.
 func TestSettlementPost_RefusesAnImportedShopRowWhenTheShopHasNoPrimary(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(0), nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(0), nil, nil, nil)
 
 	_, err := postShop(t, svc, importedShopRow("shopee:rincian_transaksi:x1",
 		settlementv1.SettlementType_SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT, -2_000))
@@ -138,7 +138,7 @@ func TestSettlementPost_RefusesAnImportedShopRowWhenTheShopCannotAnswer(t *testi
 		{"the shop service is down", errors.New("connection refused"), connect.CodeUnavailable},
 		{"the shop is not the team's", connect.NewError(connect.CodeNotFound, errors.New("shop not found")), connect.CodeNotFound},
 	} {
-		svc := settlement_v1.NewService(db, nil, nil, &stubPrimary{err: tc.answer}, nil)
+		svc := settlement_v1.NewService(db, nil, nil, &stubPrimary{err: tc.answer}, nil, nil, nil)
 
 		_, err := postShop(t, svc, importedShopRow("shopee:rincian_transaksi:"+tc.name,
 			settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER, -1_000))
@@ -158,7 +158,7 @@ func TestSettlementPost_ARetryOfAStoredImportedShopRowNeedsNoAnswerFromTheShop(t
 	row := importedShopRow("shopee:rincian_transaksi:retry",
 		settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, -5_000)
 
-	first, err := postShop(t, settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil), row)
+	first, err := postShop(t, settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil), row)
 	if err != nil {
 		t.Fatalf("first post: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestSettlementPost_ARetryOfAStoredImportedShopRowNeedsNoAnswerFromTheShop(t
 		{"the shop is not the team's", &stubPrimary{err: connect.NewError(connect.CodeNotFound, errors.New("shop not found"))}},
 		{"its primary was removed", primaryIs(0)},
 	} {
-		got, err := postShop(t, settlement_v1.NewService(db, nil, nil, tc.shops, nil), row)
+		got, err := postShop(t, settlement_v1.NewService(db, nil, nil, tc.shops, nil, nil, nil), row)
 		if err != nil {
 			t.Fatalf("%s: the retry was refused: %v", tc.name, err)
 		}
@@ -186,7 +186,7 @@ func TestSettlementPost_ARetryOfAStoredImportedShopRowNeedsNoAnswerFromTheShop(t
 // withdrawal names no order (#withdrawal-is-a-settlement-type).
 func TestSettlementPost_RefusesAWithdrawalOnAnOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	in := initialTotal("withdrawal-on-an-order")
 	in.SettlementType = settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL
@@ -204,7 +204,7 @@ func TestSettlementPost_RefusesAWithdrawalOnAnOrder(t *testing.T) {
 func TestSettlementPost_TheEventCarriesTheUser(t *testing.T) {
 	db := san_testdb.DB(t)
 	capture := &captureEvents{}
-	svc := settlement_v1.NewService(db, capture.send, nil, primaryIs(shopPrimaryCS), nil)
+	svc := settlement_v1.NewService(db, capture.send, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	_, err := postShop(t, svc, importedShopRow("tiktok:order_details:adj1",
 		settlementv1.SettlementType_SETTLEMENT_TYPE_PLATFORM_REIMBURSEMENT, 12_000))
@@ -220,7 +220,7 @@ func TestSettlementPost_TheEventCarriesTheUser(t *testing.T) {
 // Every one of the five types of 2026-09-24 posts — SettlementPost refused all five before.
 func TestSettlementPost_TakesTheFiveNewTypes(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	for i, settlementType := range []settlementv1.SettlementType{
 		settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL,

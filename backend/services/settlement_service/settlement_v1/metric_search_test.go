@@ -49,7 +49,7 @@ func twoShops(t *testing.T, svc *settlement_v1.Service) {
 // DESC. Shop 31 holds 50.000, shop 30 holds 30.000.
 func TestMetricSearch_RanksShopsByTheirPosition(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	twoShops(t, svc)
 
@@ -69,7 +69,7 @@ func TestMetricSearch_RanksShopsByTheirPosition(t *testing.T) {
 // window's end. The ranking by a movement then ties at zero and the key, DESC, breaks it.
 func TestMetricSearch_AQuietShopStillRanksByWhatItCarries(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	twoShops(t, svc)
 
@@ -99,7 +99,7 @@ func TestMetricSearch_AQuietShopStillRanksByWhatItCarries(t *testing.T) {
 // No total: a page reads limit + 1 and says whether another follows.
 func TestMetricSearch_SaysWhetherAnotherPageFollows(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	twoShops(t, svc)
 
@@ -129,7 +129,7 @@ func TestMetricSearch_SaysWhetherAnotherPageFollows(t *testing.T) {
 // A time group ranks EVERY period of the window, a quiet one included — 01-04 moved nothing and still holds 30.000.
 func TestMetricSearch_ATimeGroupRanksEveryPeriod(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -150,7 +150,7 @@ func TestMetricSearch_ATimeGroupRanksEveryPeriod(t *testing.T) {
 // counted everywhere else.
 func TestMetricSearch_TheUnrecordedPersonIsNoKey(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(40, "2026-01-02", shop, 0, 0, 0,
@@ -179,7 +179,7 @@ func TestMetricSearch_TheUnrecordedPersonIsNoKey(t *testing.T) {
 // still FOLLOWS, whichever way the rate is sorted: under the minimum it is not ranked at all.
 func TestMetricSearch_ATakeRateRanksOnlyAboveAMillionOfSales(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	const tokoA, tokoB, tokoC uint64 = 40, 41, 42
 
@@ -220,7 +220,7 @@ func TestMetricSearch_ATakeRateRanksOnlyAboveAMillionOfSales(t *testing.T) {
 // What the search refuses: a span too long to rank, a field that cannot sort, a summary, and a shop with a person.
 func TestMetricSearch_Refuses(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	cases := map[string]struct {
 		group   analytic_basev1.GroupType
