@@ -39,8 +39,18 @@ type fakeGoods struct {
 	takes map[uint64][]supplier_v1.SaleTakePart
 	sold  map[uint64]int64
 	ready map[uint64]int64
-	err   error
-	asked int
+	// Per store, for the Toko tab's export.
+	stores map[uint64]supplier_v1.StoreGoods
+	err    error
+	asked  int
+}
+
+func (f *fakeGoods) StoreGoods(context.Context, uint64) (map[uint64]supplier_v1.StoreGoods, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	return f.stores, nil
 }
 
 func (f *fakeGoods) OrderTakeSuppliers(_ context.Context, transactionID uint64) ([]supplier_v1.SaleTakePart, error) {
@@ -75,7 +85,7 @@ func (f *fakeGoods) SupplierIDsByFigure(_ context.Context, figure supplier_v1.Go
 }
 
 func salesService(db *gorm.DB, goods *fakeGoods) *supplier_v1.Service {
-	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, goods)
+	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, goods, nil)
 }
 
 // salePlaced is the OrderPlaced the order service sends, at an instant.

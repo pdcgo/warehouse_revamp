@@ -16,6 +16,18 @@ type GoodsReader interface {
 	// SupplierIDsByFigure lists the suppliers whose all-time figure lies in [lo, hi), `hi` 0 open-ended — only
 	// suppliers WITH goods, so a band from 0 is asked as its complement (the-range-pills-are-a-fixed-set).
 	SupplierIDsByFigure(ctx context.Context, figure GoodsFigure, lo, hi int64) ([]uint64, error)
+
+	// StoreGoods is what one supplier's goods did per STORE, all time — the Toko tab's Terjual and Siap with their dates
+	// (the-detail-tabs-show-sold-and-ready), the figures its export writes beside each store. Every team's goods
+	// (every-selling-team-sees-every-teams-figures); a store none of whose goods ever arrived is absent.
+	StoreGoods(ctx context.Context, supplierID uint64) (map[uint64]StoreGoods, error)
+}
+
+// StoreGoods is one store's figures: units sold (a cancel counted back) and ready, the last order and the last restock
+// in unix seconds — 0 when there was none.
+type StoreGoods struct {
+	Sold, Ready                    int64
+	LastOrderUnix, LastRestockUnix int64
 }
 
 // SaleTakePart is one slice of an order's take: units of one product from batches of one supplier, owned by one team.
@@ -47,5 +59,9 @@ func (noGoods) OrderTakeSuppliers(context.Context, uint64) ([]SaleTakePart, erro
 }
 
 func (noGoods) SupplierIDsByFigure(context.Context, GoodsFigure, int64, int64) ([]uint64, error) {
+	return nil, errNoGoodsReader
+}
+
+func (noGoods) StoreGoods(context.Context, uint64) (map[uint64]StoreGoods, error) {
 	return nil, errNoGoodsReader
 }

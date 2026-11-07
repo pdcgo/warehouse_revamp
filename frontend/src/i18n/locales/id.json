@@ -240,7 +240,13 @@
     "loading": "Memuat",
     "clearSearch": "Hapus pencarian",
     "actions": "Aksi",
-    "asOf": "Data per {{time}} WIB"
+    "asOf": "Data per {{time}} WIB",
+    "export": {
+      "running": "Mengekspor {{done}} / {{total}}",
+      "ready": "Ekspor siap — file sedang diunduh",
+      "failed": "Ekspor tidak dapat diselesaikan",
+      "noFile": "Ekspor berakhir tanpa file"
+    }
   },
   "dateRange": {
     "all": "Semua tanggal",
@@ -2159,7 +2165,7 @@
         },
         "export": {
           "label": "Ekspor",
-          "reason": "belum ada yang membuat file — tombolnya menyimpan tempat aksinya; isinya nanti tabel tab ini, sesuai filter yang aktif"
+          "reason": "baris tab Produk masih karangan, jadi filenya menunggu baris nyata — tab Toko dan Statistik sudah bisa diekspor"
         }
       },
       "teamAll": "Semua tim",
@@ -2280,7 +2286,7 @@
       },
       "export": {
         "label": "Ekspor",
-        "reason": "belum ada yang membuat file — tombolnya menyimpan tempat aksinya; isinya nanti tabel tab ini, sesuai filter yang aktif"
+        "reason": "baris tab Produk masih karangan, jadi filenya menunggu baris nyata — tab Toko dan Statistik sudah bisa diekspor"
       }
     },
     "tab": {
@@ -2378,13 +2384,7 @@
     "rateTooFew": "Kurang dari {{n}} unit pada periode ini — tidak diperingkat bersama yang lain",
     "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas.",
     "export": "Ekspor",
-    "actions": "Aksi laporan",
-    "pending": {
-      "export": {
-        "label": "Ekspor",
-        "reason": "Belum ada yang membuat file — isinya peringkat dengan angkanya, dan sehalaman atau seluruh peringkat, masih terbuka."
-      }
-    }
+    "actions": "Aksi laporan"
   },
   "teams": {
     "name": "Nama",
@@ -3854,12 +3854,6 @@
       "byProviderTitle": "Perubahan per Penyedia",
       "total": "Total",
       "export": "Ekspor",
-      "pending": {
-        "export": {
-          "label": "Ekspor",
-          "reason": "Belum ada yang membuat file — isinya periode dengan sembilan jenisnya atau juga rincian per akun dan penyedia, dan sehalaman atau seluruh rentang, masih terbuka."
-        }
-      },
       "views": {
         "period": "Periode",
         "breakdown": "Rincian"

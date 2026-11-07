@@ -856,6 +856,8 @@ Pemasok mana yang paling banyak direstok, …
 | not built | marked `dropped` in `pages/supplier-report/pending.ts` — nothing builds a file; whether it carries the ranking with its figures, this page or the whole ranking, is open |
 | the header | the title and its subtitle one block, the action beside it; the subtitle wraps under on a phone |
 
+✅ Built 2026-11-07 — the open content was settled by [a-report-export-is-the-whole-view-as-a-file](context_decision.md#a-report-export-is-the-whole-view-as-a-file): Ekspor writes the whole ranking as narrowed (`SupplierReportExport`); the ⚠1 mark and `pages/supplier-report/pending.ts` are gone. On a phone it stays the header's icon ([the-report-export-folds-on-a-phone](#the-report-export-folds-on-a-phone)).
+
 ## the-supplier-list-shows-sales-and-ready-stock
 
 > Owner, in chat (2026-10-13): *"sekarang ke suppliers, di situ ada harusnya penjualan dan stock ready"* — told the per-
@@ -1270,6 +1272,8 @@ a phone    [Cari nama…] [⚙ Filter] [+ Tambah Toko]
 | both pages | the manage detail and the Discover detail (read-only: the Export is the Toko strip's only action) |
 | not built | **`dropped`**, ⚠7 in each page's list — nothing builds a file; the button holds the action's place |
 | shared | `SupplierTabExport` in `features/suppliers/` with its story; each tab places it — the strip's actions on a desktop, a child of the FilterBar (so, the sheet) on a phone |
+
+✅ Built 2026-11-07 — the Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport — the tab's own filter, every page, its columns in Indonesian, .xlsx streamed with progress then downloaded, as the order list's export); both pages, the phone's in the Filter sheet. The Produk tab's Export keeps its mark: its rows are still invented, and a file cannot carry the ⚠.
 
 ## the-report-export-folds-on-a-phone
 

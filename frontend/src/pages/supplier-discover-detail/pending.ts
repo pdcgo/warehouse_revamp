@@ -15,8 +15,9 @@ const PARTS: PendingPart<DiscoverSupplierDetailPendingId>[] = [
   // Gudang terkait's pick, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — the chips and the
   // summary are real.
   { id: "warehouseFilter", kind: "dropped" },
-  // EACH TAB'S EXPORT (each-supplier-tab-exports-its-own-table) — nothing builds a file yet; the button holds the
-  // action's place, as the Supplier Report's does.
+  // THE PRODUK TAB'S EXPORT (each-supplier-tab-exports-its-own-table) — its rows are invented, and a spreadsheet cannot
+  // carry the ⚠ (one-export-is-the-list-as-a-file's only real data), so its file waits for real rows. The Toko and
+  // Statistik tabs export since 2026-11-07 (SupplierChannelExport, SupplierFigureExport) and carry no mark.
   { id: "export", kind: "dropped" },
 ];
 

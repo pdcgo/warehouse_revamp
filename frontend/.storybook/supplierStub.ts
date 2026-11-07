@@ -32,6 +32,7 @@ import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 import { teams, FOLDED_AS_OF } from "./fixtures";
 import { type ChannelFixture, type SupplierFixture, channelFixtures, supplierFixtures } from "./supplierFixtures";
 import { type FigureFixture, dayAgo, figureFixtures } from "./supplierFigureFixtures";
+import { resetSupplierExportScenario, supplierExportScenario } from "./supplierExportScenario";
 
 // ── The tables ──────────────────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ let channels: ChannelFixture[] = [];
 export function resetSupplierStub() {
   suppliers = supplierFixtures.map((s) => ({ ...s }));
   channels = channelFixtures.map((c) => ({ ...c }));
+  resetSupplierExportScenario();
 }
 
 resetSupplierStub();
@@ -248,6 +250,22 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
 
 // ── SupplierChannelService ──────────────────────────────────────────────────────────────────────
 
+/** The Toko tab's set — one live supplier's live stores, searched and typed, newest first; the list and its export. */
+function storeRows(filter: { supplierId: bigint; q: string; channelType: Marketplace } | undefined): ChannelFixture[] {
+  const supplier = live(filter?.supplierId ?? 0n);
+  const q = (filter?.q ?? "").trim().toLowerCase();
+  const channelType = filter?.channelType ?? Marketplace.UNSPECIFIED;
+
+  return newestFirst(
+    liveStoresOf(supplier.id)
+      .filter((c) => channelType === Marketplace.UNSPECIFIED || c.channelType === channelType)
+      .filter((c) => matches(q, c.name, c.uri, c.description)),
+  );
+}
+
+/** An export's link in Storybook: an empty data: URL, so the download a story triggers goes nowhere. */
+const EMPTY_XLSX = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,";
+
 export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelService>> = {
   // Stores by id, DELETED ONES INCLUDED and marked — what a restock line reads to show its store, badged when it is
   // gone (a-deleted-supplier-still-shows-with-a-badge). An unknown id is simply absent.
@@ -262,15 +280,7 @@ export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelS
 
   // Any team's live supplier's live stores — searched, filtered and paged here, as the server does.
   supplierChannelList: (req) => {
-    const supplier = live(req.filter?.supplierId ?? 0n);
-    const q = (req.filter?.q ?? "").trim().toLowerCase();
-    const channelType = req.filter?.channelType ?? Marketplace.UNSPECIFIED;
-
-    const rows = newestFirst(
-      liveStoresOf(supplier.id)
-        .filter((c) => channelType === Marketplace.UNSPECIFIED || c.channelType === channelType)
-        .filter((c) => matches(q, c.name, c.uri, c.description)),
-    );
+    const rows = storeRows(req.filter);
     const { rows: page, pageInfo } = pageOf(rows, req.page as PageReq);
 
     const mapData: Record<string, ReturnType<typeof wireChannel>> = {};
@@ -283,6 +293,24 @@ export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelS
       ids: page.map((c) => c.id),
       pageInfo,
     };
+  },
+
+  // THE TOKO TAB AS A FILE (each-supplier-tab-exports-its-own-table): the list's own set, every page — progress, then the
+  // link. What was asked is kept for the story to read (supplierExportScenario).
+  supplierChannelExport: async function* (req) {
+    const rows = storeRows(req.filter);
+    const total = BigInt(rows.length);
+
+    supplierExportScenario.stores.push({
+      teamId: req.teamId,
+      supplierId: req.filter?.supplierId ?? 0n,
+      q: req.filter?.q ?? "",
+      channelType: req.filter?.channelType ?? Marketplace.UNSPECIFIED,
+      rows: rows.length,
+    });
+
+    yield { message: "exporting supplier stores", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "toko-pemasok.xlsx" };
   },
 
   supplierChannelCreate: (req) => {
@@ -467,6 +495,42 @@ const keyDesc = (a: string, b: string) => (a.length !== b.length ? b.length - a.
 const camel = (field: string) => field.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()) as keyof Metric;
 
 export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyticService>> = {
+  // THE STATISTIK TAB AS A FILE (each-supplier-tab-exports-its-own-table): the view on screen over the tab's filters —
+  // one supplier, Per Periode at a day, month or year, or Per Produk. Refused as the server refuses: no supplier, or a
+  // group the tab never shows. What was asked is kept for the story to read.
+  supplierFigureExport: async function* (req) {
+    if (!req.filters.some((f) => f.f.case === "supplierFilter")) {
+      throw new ConnectError("the Statistik tab is one supplier's — a supplier filter is required", Code.InvalidArgument);
+    }
+    if (![GroupType.DAILY, GroupType.MONTHLY, GroupType.YEARLY, GroupType.PRODUCT].includes(req.groupBy)) {
+      throw new ConnectError("group_by: value must be in list [2, 4, 5, 6]", Code.InvalidArgument);
+    }
+
+    supplierExportScenario.figures.push({ teamId: req.teamId, groupBy: req.groupBy, filters: req.filters });
+
+    const total = BigInt(grouped(req.filters, req.groupBy).size);
+
+    yield { message: "exporting", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "statistik-pemasok.xlsx" };
+  },
+
+  // THE SUPPLIER REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file): the whole ranking over the report's own
+  // filters and order. Refused as the server refuses: one supplier (that is its Statistik tab). What was asked is kept
+  // for the story to read.
+  supplierReportExport: async function* (req) {
+    if (req.filters.some((f) => f.f.case === "supplierFilter")) {
+      throw new ConnectError("the Supplier Report ranks every supplier", Code.InvalidArgument);
+    }
+
+    const rows = grouped(req.filters, GroupType.SUPPLIER).size;
+    supplierExportScenario.reports.push({ teamId: req.teamId, filters: req.filters, sort: req.sort, rows });
+
+    const total = BigInt(rows);
+
+    yield { message: "exporting the ranking", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "laporan-pemasok.xlsx" };
+  },
+
   metricSearch: (req) => {
     const field = req.sort?.field ?? "";
     const sortable = SupplierMetricSchema.fields.find((f) => f.name === field);

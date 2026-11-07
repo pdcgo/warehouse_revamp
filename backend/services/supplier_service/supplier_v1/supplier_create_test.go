@@ -58,7 +58,7 @@ func TestSupplierCreate_RefusesANonSellingTeam(t *testing.T) {
 // A team service that cannot answer refuses the create — it is never read as "selling".
 func TestSupplierCreate_TeamServiceDownWritesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := supplier_v1.NewService(db, sellingTeams{err: errTeamServiceDown}, nil, nil)
+	svc := supplier_v1.NewService(db, sellingTeams{err: errTeamServiceDown}, nil, nil, nil)
 
 	_, err := svc.SupplierCreate(context.Background(), connect.NewRequest(&supplierv1.SupplierCreateRequest{
 		TeamId: sellingA, Name: "Sumber",
@@ -75,7 +75,7 @@ func TestSupplierCreate_TeamServiceDownWritesNothing(t *testing.T) {
 // With no team service wired at all, every create is refused rather than trusted.
 func TestSupplierCreate_NoTeamServiceRefuses(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := supplier_v1.NewService(db, nil, nil, nil)
+	svc := supplier_v1.NewService(db, nil, nil, nil, nil)
 
 	_, err := svc.SupplierCreate(context.Background(), connect.NewRequest(&supplierv1.SupplierCreateRequest{
 		TeamId: sellingA, Name: "Sumber",

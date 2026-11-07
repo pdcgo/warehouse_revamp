@@ -32,7 +32,7 @@ func TestPerf_SalesFold(t *testing.T) {
 	}
 
 	goods := &fakeGoods{takes: map[uint64][]supplier_v1.SaleTakePart{}}
-	b.svc = supplier_v1.NewService(b.db, perfSellingTeams{}, nil, goods)
+	b.svc = supplier_v1.NewService(b.db, perfSellingTeams{}, nil, goods, nil)
 	handler := b.svc.SalesFoldHandler()
 
 	at, err := time.ParseInLocation("2006-01-02 15:04", figLastDay+" 10:00", time.FixedZone("WIB", 7*3600))

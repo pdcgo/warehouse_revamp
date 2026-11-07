@@ -231,3 +231,33 @@ and Identify test "holds nothing" with `IsZero`. Refusals and the reconcile note
 The account detail's log and the Finance report each cut its relative range at the VIEWER's midnight (a local `windowOf`), so a browser outside WIB asked for days a
 few hours off the server's Jakarta days. It now reads `jakartaWindowOf` from `frontend/src/lib/jakartaDay.ts`, the one
 helper every range screen shares; tests `src/lib/jakartaDay.test.ts` ([architecture state](../architecture/context.md)).
+
+## 2026-11-07 — the report's Export: still marked, its shape applied but not built
+
+The account report's **Ekspor** (⚠1, `dropped`, `pages/financial-account-report/pending.ts`) is NOT built in the exports
+pass (the supplier tabs were). Its own decisions only mark it —
+[the-report-is-five-cards-and-one-table](../../technical/frontend/financial_accounts_decision.md#the-report-is-five-cards-and-one-table)
+("nothing builds a file"; the owner: *"sama action export"* — the order list's action). Applied, to confirm: the order
+list's [one-export-is-the-list-as-a-file](../../technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)
+with the supplier tabs' "the view on screen" — **Periode**: every period of the window at its grain, the screen's
+columns (the nine change types, Perubahan bersih, Saldo akhir), the account filter; **Rincian**
+([the-report-is-two-views-periode-and-rincian](../../technical/frontend/financial_accounts_decision.md#the-report-is-two-views-periode-and-rincian)):
+one sheet per card on screen, every row of each. The plumbing it would use exists now — `backend/pkgs/san_export`, the
+private `table_export` document, `lib/useFileExport.ts` — so it is one RPC in `FinancialAccountAnalyticService` over
+the report's own `MetricData` / `MetricSearch` reads, an adapter at the composition root, and the button wired.
+
+## 2026-11-07 — the report's Export is built
+
+[a-report-export-is-the-whole-view-as-a-file](../../technical/frontend/context_decision.md#a-report-export-is-the-whole-view-as-a-file)
+(owner *"A"*) settled the shape the entry above applied: the report's Ekspor writes **the view on screen, whole** —
+flow: [rpc.md § The report as a file](../../services/financial_account_service/rpc.md#the-report-as-a-file--financialaccountreportexport).
+
+| | |
+| --- | --- |
+| contract | `FinancialAccountAnalyticService.FinancialAccountReportExport` — `team_id`, `view` (`FinancialAccountReportView` PERIOD / BREAKDOWN), the report's `FilterItem`s (window required, account), `group_by` DAILY / MONTHLY / YEARLY and `sort_type` for Periode; a server stream `{message, done, total, download_url, filename}`; policy MetricData's readers — not NO_SIDE_EFFECTS |
+| Periode | every period at the grain, the quiet ones included, in the heading's order — `series()`; Periode · the nine types in the table's order · Perubahan bersih · Saldo akhir; `laporan-akun-periode-…` |
+| Rincian | sheets *Per Akun* · *Per Penyedia* · *Per Jenis* from `byAccount` (one statement): accounts and providers by movement size with a Total, the bridge Saldo awal → Masuk → Keluar → Saldo akhir; an account named as the report names it (shops via `ShopByIds`); an account picked narrows every sheet (the screen shows *one account* in place of the provider table — the file holds that account's row); `laporan-akun-rincian-…` |
+| backend | `financial_account_report_export.go`, `export_store.go` (`ExportStore` = `san_export.Store` + `ShopNames`; **3rd `NewService` dep**, nil = Unimplemented — 11 test files pass `nil`) · composition root `cmd/app_development/financial_account_exports.go` (`NewFinancialAccountExportStore`: `storeTableExport` + `ShopByIds` BASIC over the forwarding shop client), wire regenerated |
+| frontend | `features/financialAccount/exports.ts` `useAccountReportExport` (`analytics.ts` `filtersOf` exported); `pages/financial-account-report` — Ekspor wired (desktop button with progress; the phone header's icon), hidden from a monitored team. `pending.ts` DELETED with its i18n reason. Stub `financialAccountReportExport` + `.storybook/financialAccountExportScenario.ts` |
+| tests | Go `financial_account_report_export_test.go` (8: Periode = MetricData paged 20 across 46 days, ASC reversed; month/year labels; Rincian three sheets = the ranking fill, Total = headline; another team / a warehouse gets nothing; an account picked; money exact 12345.505; an unknown account by its shop, archived marked; refusals + policy) · stories `ExportsThePeriodeView`, `ExportsTheRincianViewAsFiltered`, `MonitoringOffersNoExport`, `MobileExports` · e2e `the_supplier_exports.spec.ts` "the account report's Periode and Rincian files" |
+| perf | `TestPerf_FinancialAccountReportExport` (50 accounts × a year): Periode ≤ 20 ms / 2 queries, Rincian ≤ 15 ms / 3 — not heavy |

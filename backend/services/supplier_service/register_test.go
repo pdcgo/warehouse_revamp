@@ -27,7 +27,7 @@ import (
 func TestRegister_TheOrderEventsReachTheSalesFold(t *testing.T) {
 	db := san_testdb.DB(t)
 	mux := http.NewServeMux()
-	supplier_service.NewRegister(mux, supplier_v1.NewService(db, nil, nil, takes{}), connect.WithInterceptors())()
+	supplier_service.NewRegister(mux, supplier_v1.NewService(db, nil, nil, takes{}, nil), connect.WithInterceptors())()
 
 	at := time.Date(2026, 10, 7, 3, 0, 0, 0, time.UTC)
 
@@ -60,6 +60,10 @@ func (takes) OrderTakeSuppliers(context.Context, uint64) ([]supplier_v1.SaleTake
 }
 
 func (takes) SupplierIDsByFigure(context.Context, supplier_v1.GoodsFigure, int64, int64) ([]uint64, error) {
+	return nil, nil
+}
+
+func (takes) StoreGoods(context.Context, uint64) (map[uint64]supplier_v1.StoreGoods, error) {
 	return nil, nil
 }
 

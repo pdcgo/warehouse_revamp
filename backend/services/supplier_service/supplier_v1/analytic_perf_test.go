@@ -265,7 +265,7 @@ ORDER BY day, id`).Error
 		t.Logf("PLAN_CACHE force_%s_plan", mode)
 	}
 
-	b.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil, nil)
+	b.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil, nil, nil)
 
 	return b
 }

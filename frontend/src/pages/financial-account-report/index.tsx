@@ -18,11 +18,10 @@ import {
   useAccountReportSummary,
 } from "../../features/financialAccount/analytics";
 import { useFinancialAccounts } from "../../features/financialAccount/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { useAccountReportExport } from "../../features/financialAccount/exports";
 import { PROVIDER_KEY, accountName } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { FinancialAccountStatus } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { MAX_PERIOD_DAYS, type PeriodGrain, spanDays } from "../../lib/period";
@@ -33,7 +32,6 @@ import { SeriesTable } from "./components/SeriesTable";
 import { ChangeDetailDialog } from "./components/ChangeDetailDialog";
 import { type Mover, MoversDialog } from "./components/MoversDialog";
 import { ReportSummary } from "./components/ReportSummary";
-import { REPORT_PENDING } from "./pending";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
@@ -121,6 +119,13 @@ export function FinancialAccountReportPage() {
   const byAccount = useAccountReportGroups({ ...ranking, groupBy: "account" });
   const byProvider = useAccountReportGroups({ ...ranking, groupBy: "provider" });
 
+  // THE VIEW AS A FILE (a-report-export-is-the-whole-view-as-a-file): Periode — every period at the grain on screen, the
+  // quiet ones included, in the heading's order; Rincian — one sheet per breakdown, every row. The window and the account
+  // as filtered. It stores a file, so a monitored team's reader has no Export (the-admin-team-monitors-read-only).
+  const writable = canWrite(current);
+  const exporter = useAccountReportExport(teamId);
+  const runExport = () => void exporter.start({ view, from, to, accountId, grain, dir: seriesSort.dir });
+
   const accountOf = (id: bigint) => shownAccounts.find((a) => a.id === id);
   const toMover = (row: AccountReportGroupRow): Mover => {
     const base = {
@@ -182,10 +187,11 @@ export function FinancialAccountReportPage() {
             {t("financialAccounts.report.subtitle")}
           </Text>
         </Stack>
-        {/* EXPORT, NOT BUILT (owner: *"sama action export, kasih warning unimplemented"*) — a grey outline, as the orders
-            list's: it takes nothing out of the screen yet, and the ⚠ number points at why. */}
-        {isMobile ? (
-          // A phone's header action is its icon (a-phone-header-action-is-an-icon).
+        {/* EXPORT (owner: *"sama action export"* — the orders list's action; a-report-export-is-the-whole-view-as-a-file) —
+            a grey outline, as the orders list's. Pressed, it streams the view on screen and reads its progress until the
+            download starts. */}
+        {!writable ? null : isMobile ? (
+          // A phone's header action is its icon (a-phone-header-action-is-an-icon); the toast says when it downloads.
           <CompactActions
             menuLabel={t("common.actions")}
             actions={[
@@ -193,21 +199,31 @@ export function FinancialAccountReportPage() {
                 id: "export",
                 label: t("financialAccounts.report.export"),
                 icon: Download,
-                mark: <NotImplemented list={REPORT_PENDING} id="export" />,
                 testId: "account-report-export",
+                disabled: !valid || exporter.running,
+                onClick: runExport,
               },
             ]}
           />
         ) : (
-          <Button variant="outline" colorPalette="gray" data-testid="account-report-export">
+          <Button
+            variant="outline"
+            colorPalette="gray"
+            data-testid="account-report-export"
+            disabled={!valid}
+            loading={exporter.running}
+            loadingText={
+              exporter.progress
+                ? t("common.export.running", { done: exporter.progress.done, total: exporter.progress.total })
+                : undefined
+            }
+            onClick={runExport}
+          >
             <Icon as={Download} boxSize="4" />
             {t("financialAccounts.report.export")}
-            <NotImplemented list={REPORT_PENDING} id="export" />
           </Button>
         )}
       </Flex>
-
-      <NotImplementedSummary list={REPORT_PENDING} />
 
       <Tabs.Root
         value={view}

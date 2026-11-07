@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
@@ -46,22 +47,7 @@ func (s *Service) MetricSearch(
 	page := msg.GetPage()
 	limit := int(page.GetLimit())
 
-	db := s.db.WithContext(ctx)
-	restock := scope.rows(db).
-		Select(group.key + " AS key, " + figureSums("r") + ", " + zerosOf(salesColumns) + ", " + unitsSum("r") + " AS units").
-		Group(group.key)
-	sales := scope.salesRows(db).
-		Select(group.key + " AS key, " + zerosOf(restockColumns) + ", " + salesSums("r") + ", 0::bigint AS units").
-		Group(group.key)
-	grouped := db.
-		Table("(? UNION ALL ?) AS u", restock, sales).
-		Select("u.key, " + sumsOf("u", append(append([]string{}, restockColumns...), salesColumns...)) + ", SUM(u.units) AS units").
-		Group("u.key")
-
-	query := db.
-		Table("(?) AS g", grouped).
-		Select("g.key").
-		Order(order).
+	query := s.ranking(ctx, scope, group, order).
 		Offset(int(page.GetOffset())).
 		Limit(limit + 1)
 
@@ -102,4 +88,26 @@ func (s *Service) MetricSearch(
 	}
 
 	return connect.NewResponse(&supplierv1.MetricSearchResponse{Keys: keys, HasNext: hasNext}), nil
+}
+
+// ranking is the search's ONE statement before its page is cut: each table grouped by the key, the two grouped reads
+// summed per key, every key with figures in the scope in the sort's order (the key breaking a tie). The Supplier
+// Report's export reads it whole (SupplierReportExport) — the same order, in one statement rather than a page at a time.
+func (s *Service) ranking(ctx context.Context, scope metricScope, group metricGroup, order string) *gorm.DB {
+	db := s.db.WithContext(ctx)
+	restock := scope.rows(db).
+		Select(group.key + " AS key, " + figureSums("r") + ", " + zerosOf(salesColumns) + ", " + unitsSum("r") + " AS units").
+		Group(group.key)
+	sales := scope.salesRows(db).
+		Select(group.key + " AS key, " + zerosOf(restockColumns) + ", " + salesSums("r") + ", 0::bigint AS units").
+		Group(group.key)
+	grouped := db.
+		Table("(? UNION ALL ?) AS u", restock, sales).
+		Select("u.key, " + sumsOf("u", append(append([]string{}, restockColumns...), salesColumns...)) + ", SUM(u.units) AS units").
+		Group("u.key")
+
+	return db.
+		Table("(?) AS g", grouped).
+		Select("g.key").
+		Order(order)
 }

@@ -13,9 +13,12 @@ The suppliers a selling team buys stock from, and the online stores each one sel
 | | `SupplierDetail` | **any** team's live supplier |
 | | `SupplierByIds` | ids a caller holds — any team's, **deleted ones included, marked** |
 | `SupplierChannelService` | `SupplierChannelList` | any team's live supplier's live stores, searched, filtered by type, paged |
+| | `SupplierChannelExport` | the Toko tab as a file — the list's rows, every page, with Terjual and Siap ([§ The tabs as files](#the-tabs-as-files--supplierchannelexport-and-supplierfigureexport)) |
 | | `SupplierChannelCreate` · `Update` · `Delete` | the owning team's own; delete is **soft** |
 | | `SupplierChannelByIds` | stores by id — any team's, **deleted ones included, marked**; what a restock line shows beside its supplier |
 | `SupplierAnalyticService` | `MetricSearch` · `MetricData` | `metrics/suppliers`, the analytic pattern ([rpc_provide.md](../../business/analytic/rpc_provide.md)) — rank a page of suppliers, products or periods by one field, then fill those keys; grouped by SUMMARY, the headline |
+| | `SupplierFigureExport` | the Statistik tab's view as a file — Per Periode or Per Produk, every page ([§ The tabs as files](#the-tabs-as-files--supplierchannelexport-and-supplierfigureexport)) |
+| | `SupplierReportExport` | the Supplier Report as a file — the whole ranking as narrowed, every page, each supplier with its figures ([§ The report as a file](#the-report-as-a-file--supplierreportexport)) |
 | `SupplierAnalyticMaintenanceService` | `AnalyticReplayCompute` · `AnalyticMaintenanceRun` | Root and the Administrator — rebuild the figures from a day; prune the dedup table |
 | *(webhook)* | `/event/supplier-fold/push` | the fold — *Restock Accepted* into `supplier_product_daily_reports` |
 | *(webhook)* | `/event/supplier-order-placed/push` · `/event/supplier-order-cancelled/push` | the sales fold — *Order Placed* / *Order Cancelled* into `supplier_sale_daily_reports` ([§ Penjualan](#penjualan--a-fold-of-order-placed-and-order-cancelled)) |
@@ -246,6 +249,108 @@ The Statistics tab lists its periods itself — a time group needs no search —
 reads `MetricData` by DAILY / MONTHLY / YEARLY for the page's periods. Performance:
 [MetricSearch.md](../../../audits/services/supplier_service/performances/MetricSearch.md),
 [MetricData.md](../../../audits/services/supplier_service/performances/MetricData.md).
+
+## The tabs as files — `SupplierChannelExport` and `SupplierFigureExport`
+
+[each-supplier-tab-exports-its-own-table](../../technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table),
+on the order list's pattern ([one-export-is-the-list-as-a-file](../../technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)):
+each tab's Export writes ITS table as narrowed — the tab's own filter, every page, its columns — as .xlsx, a server
+stream of progress ending with an expiring link. One RPC per table: the Toko tab's on `SupplierChannelService`, the
+Statistik tab's (the view on screen) on `SupplierAnalyticService`. The Produk tab's rows are still invented, so its
+Export stays marked and nothing builds its file. A `SUPPLIER` group is refused: the Supplier Report's file is its own
+RPC ([§ below](#the-report-as-a-file--supplierreportexport)).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as a supplier tab's Export
+  participant S as supplier_service
+  participant I as inventory - in-process GoodsReader
+  participant N as product_service and team_service
+  participant D as document_service
+  alt the Toko tab
+    C->>S: SupplierChannelExport - team_id, the list's filter and order
+    S->>S: the supplier live, else NotFound - COUNT of channelListQuery
+    S-->>C: exporting supplier stores - 0 of N
+    S->>I: StoreGoods - Terjual and Siap per store, every team's goods
+    loop 200 stores a step, the list's order
+      S->>S: write each store - name, type, link, description, the figures beside their Jakarta days
+      S-->>C: rows written - done of N
+    end
+  else the Statistik tab
+    C->>S: SupplierFigureExport - team_id, the tab's filters, DAILY, MONTHLY, YEARLY or PRODUCT
+    alt Per Periode
+      S->>S: every period of the window at its grain, newest first, the quiet ones included
+    else Per Produk
+      S->>S: MetricSearch PRODUCT by restock_valuation, 200 a call, until no page follows
+    end
+    loop 200 keys a step
+      S->>S: MetricData of the step's keys - the tab's own fill
+      S->>N: ProductByIds in-process, TeamByIds as the caller - Per Produk only
+      S-->>C: rows written - done of N
+    end
+  end
+  S->>D: RequestUpload TABLE_EXPORT, PUT, ConfirmUpload, GetDownloadUrl - as the caller
+  S-->>C: the file is ready - the expiring link and the filename
+```
+
+| | |
+| --- | --- |
+| the rows | **Toko**: `channelListQuery` — the very set `SupplierChannelList` pages, its order, every page. **Statistik**: Per Periode, the tab's own spine of periods (`periodSpine` = the screen's `bucketSpine`, newest first), each filled by `MetricData`; Per Produk, every key `MetricSearch` ranks with the tab's sort |
+| the columns | **Toko** (sheet *Toko*): Toko pemasok · Jenis toko · Tautan · Deskripsi · Terjual · Pesanan terakhir · Siap · Restok terakhir — the store's name and its badge in two cells, each figure beside the date under it on screen; the row's actions left out. **Statistik** (sheet *Per Periode* / *Per Produk*): Periode (`2026-10-07`, *Oktober 2026*, `2026` — [a-period-reads-as-its-grain](../../technical/frontend/suppliers_decision.md#a-period-reads-as-its-grain)) or Produk · SKU · Tim (only while no team is picked, as on screen), then Direstok, Penjualan, Hilang di pengiriman, Rusak di pengiriman — each its units and its Rp — and each loss's rate after it |
+| the figures | money is the metric's exact double ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money)); a rate is the exact share under a `0.0%` cell format, empty when nothing arrived; a store none of whose goods arrived has empty figure cells (the tab's dash); dates are Jakarta days |
+| the scope | every selling team reads every supplier's stores and figures, as the tabs do; the policy is `SupplierGoods`' / `MetricData`'s readers — Root, the Administrator and the selling roles, never a warehouse role. Not `NO_SIDE_EFFECTS`: it stores a file, so a monitor and an agent are refused ([the-admin-team-monitors-read-only](../../business/user/context_decision.md#the-admin-team-monitors-read-only)); the screens hide Export from a monitored team |
+| the Gudang terkait chip | narrows no tab yet (⚠ `dropped`), so it narrows no file either — the file is the tab |
+| the store | `ExportStore` (`export_store.go`), adapted at the composition root (`cmd/app_development/supplier_exports.go`): the file through document_service's upload as the caller — a private `table_export` (document `00010`) named `toko-pemasok-…` / `statistik-pemasok-per-periode-…` / `…-per-produk-…`; the products named in-process from product_service, the teams through TeamByIds as the caller. The xlsx writer and the progress stream are `backend/pkgs/san_export` |
+| measured (`-tags perfaudit`) | **Toko**: 300 stores 13.6 ms / 4 queries, typical 3 stores 4.1 ms / 3. **Statistik**: the top supplier (11 661 rows) daily over a year 35 ms / 4 queries (two steps), monthly 32 ms / 2, Per Produk over a year 82 ms / 6 (max 147 ms), over 30 days 22 ms; the median supplier ≤ 18 ms — none heavy |
+
+Tests: `supplier_channel_export_test.go` (the file equals the list's rows across five pages and two steps; the columns
+and the figures with their Jakarta days; a deleted supplier NotFound, the policy), `supplier_figure_export_test.go`
+(Per Periode = every day of a year, newest first, each row the tab's `MetricData`, money exact to its fraction; a month by
+its name; Per Produk = the tab's ranking across pages, named; a team picked holds only its restocks; refusals),
+`cmd/app_development/supplier_goods_reader_test.go` (`StoreGoods`), `document_v1` `TestUploadFlow_TableExportIsPrivate`.
+
+## The report as a file — `SupplierReportExport`
+
+Built 2026-11-07 ([a-report-export-is-the-whole-view-as-a-file](../../technical/frontend/context_decision.md#a-report-export-is-the-whole-view-as-a-file),
+closing what [the-report-export-is-marked](../../technical/frontend/suppliers_decision.md#the-report-export-is-marked)
+left open): the Supplier Report's Ekspor writes **the whole ranking as narrowed** — the report's window, whose
+restocks, the settled search and its *Urutkan* — every page, each supplier with its figures, as .xlsx; the same stream
+and store as the tabs' files.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as the Supplier Report's Export
+  participant S as supplier_service
+  participant N as team_service
+  participant D as document_service
+  C->>S: SupplierReportExport - team_id, the report's filters, its sort
+  S->>S: the ranking WHOLE - MetricSearch's own statement grouped by SUPPLIER, its order, one read
+  S-->>C: exporting the ranking - 0 of N
+  loop 200 suppliers a step, the ranking's order
+    S->>S: MetricData of the step's ids - the report's fill
+    S->>S: the suppliers by id, deleted ones included
+    S->>N: TeamByIds as the caller - who keeps each
+    S-->>C: rows written - done of N
+  end
+  S->>D: RequestUpload TABLE_EXPORT, PUT, ConfirmUpload, GetDownloadUrl - as the caller
+  S-->>C: the file is ready - the expiring link and the filename
+```
+
+| | |
+| --- | --- |
+| the rows | every supplier the report ranks with these filters, in its order — by restocked value, or by broken rate with the 50-unit minimum ranking as on screen — read in ONE statement: `ranking()` in metric_search.go, the statement `MetricSearch` cuts its pages from. Each step of 200 filled by `MetricData` |
+| the columns | sheet *Peringkat*: Peringkat (1-based across every page, as the screen counts) · Pemasok (`Pemasok #<id>` when unnamed) · Status (*Dihapus* for a deleted supplier, its figures kept — the badge) · Dikelola oleh (`Tim #<id>` when unnamed) · then the tabs' figure columns — Direstok, Penjualan, Hilang di pengiriman, Rusak di pengiriman, each units and Rp, each loss's rate after it |
+| the figures | the metric's exact doubles; a rate the exact share under `0.0%`, empty when nothing arrived; Jakarta days |
+| refused | a supplier filter (one supplier's figures are its Statistik tab's file), a sort of another metric or an unsortable field, no window — InvalidArgument; no store — Unimplemented |
+| the scope | the ranking's readers — Root, the Administrator, the selling roles; every selling team reads every team's figures, as the report does. Not `NO_SIDE_EFFECTS`: a monitor and an agent are refused; the screen hides Export from a monitored team |
+| the store | the tabs' `ExportStore` — file `laporan-pemasok-<yyyy-mm-dd-hhmmss>.xlsx`, a private `table_export` |
+| measured (`-tags perfaudit`, 2 000 suppliers) | 30 days 187 ms / 31 queries; a year 1.1 s (by broken rate 1.3 s, one team 478 ms, a search 1.7 s) — 🔴 heavy: the fill re-reads the window per 200 suppliers ([SupplierReportExport.md](../../../audits/services/supplier_service/performances/SupplierReportExport.md), its open question: fill from the ranking statement's own sums) |
+
+Tests: `supplier_report_export_test.go` — the file is the whole ranking across 214 suppliers (more than a step of 200,
+eleven screen pages), each row the report's own `MetricSearch` + `MetricData`, Penjualan included, the deleted supplier
+marked; narrowed by broken rate, a search and a team exactly as the report; refusals and the policy.
 
 ## AnalyticReplayCompute — never into the backfilled past
 

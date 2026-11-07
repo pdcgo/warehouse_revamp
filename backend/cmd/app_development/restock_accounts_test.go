@@ -19,7 +19,7 @@ import (
 // seam wired into inventory: a restock naming a plain account is refused, an operational one is raised.
 func TestRestockPayingAccounts_AnswersFromTheAccounts(t *testing.T) {
 	db := san_testdb.DB(t)
-	seam := NewRestockPayingAccounts(financial_account_v1.NewService(db, nil))
+	seam := NewRestockPayingAccounts(financial_account_v1.NewService(db, nil, nil))
 	ctx := context.Background()
 
 	const team, otherTeam uint64 = 9_311, 9_312

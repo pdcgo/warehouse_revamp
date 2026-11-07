@@ -174,3 +174,38 @@ and [the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decisio
 Supplier statistics and the supplier report cut its relative range at the VIEWER's midnight (a local `windowOf`), so a browser outside WIB asked for days a
 few hours off the server's Jakarta days. It now reads `jakartaWindowOf` from `frontend/src/lib/jakartaDay.ts`, the one
 helper every range screen shares; tests `src/lib/jakartaDay.test.ts` ([architecture state](../architecture/context.md)).
+
+## 2026-11-07 (part 3) — the Toko and Statistik tabs export their tables
+
+[each-supplier-tab-exports-its-own-table](../../technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table),
+on [one-export-is-the-list-as-a-file](../../technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)
+(flow: [rpc.md § The tabs as files](../../services/supplier_service/rpc.md#the-tabs-as-files--supplierchannelexport-and-supplierfigureexport)).
+
+| | |
+| --- | --- |
+| contract | `SupplierChannelService.SupplierChannelExport` (the list's filter + sort) and `SupplierAnalyticService.SupplierFigureExport` (the tab's `FilterItem`s + `group_by` DAILY / MONTHLY / YEARLY = Per Periode, PRODUCT = Per Produk; SUPPLIER refused), both server streams `{message, done, total, download_url, filename}`; policy Root, Administrator, selling roles — not NO_SIDE_EFFECTS. document `DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT = 8` |
+| backend | `supplier_channel_export.go` (`channelListQuery`, now shared with `SupplierChannelList`), `supplier_figure_export.go` (`periodSpine`, `rankedProducts` through `MetricSearch`, fills through `supplierMetricData`), `export_store.go` (`ExportStore` = `san_export.Store` + `ProductNames` + `TeamNames`; the 5th `NewService` dep, nil = Unimplemented) · `GoodsReader.StoreGoods` (inventory `SupplierGoods` by STORE, in-process) · `backend/pkgs/san_export` — the .xlsx stream writer (exact numbers, `Percent` under `0.0%`), the progress stream, WIB `Filename` / `Day` · composition root `cmd/app_development/supplier_exports.go` (`NewSupplierExportStore`: document upload as the caller via `uploadDocument`, products in-process via `product_v1`, teams via the forwarding TeamByIds) · document `00010_allow_table_export_resource_type.sql` |
+| frontend | `lib/useFileExport.ts` (the order export's stream → download → toast, for any table; i18n `common.export.*`) · `features/suppliers/exports.ts` (`useStoreExport`, `useStatisticsExport`; `analytics.ts` `statisticsFilters`) · `SupplierTabExport` takes `onExport` / `progress` / `disabled` / optional `mark` · `ChannelBrowser` and `SupplierStatistics` lost their `exportMark` prop and export for real (hidden from a monitored team); the Produk tab keeps the mark |
+| marks | both details: `export` stays (⚠5) for the **Produk tab only** — its rows are invented, so no file (the precedent's only-real-data rule); its reason now says so. The Supplier Report's Ekspor ⚠1 is untouched (its content is open) |
+| tests | Go `supplier_channel_export_test.go` (4), `supplier_figure_export_test.go` (5), `export_helpers_test.go`, `san_export_test.go` (3), `cmd/app_development/supplier_goods_reader_test.go` (+StoreGoods), document `TestUploadFlow_TableExportIsPrivate` · stories `SupplierTabExport` (5), ChannelBrowser `ExportsTheTabAsFiltered`, `AMonitorHasNoExport`, SupplierStatistics `ExportsTheViewOnScreen`, both details' `EachTabExportsItsOwnTable` / `APhoneExportIsInTheSheet` updated · e2e `the_supplier_exports.spec.ts` (3: the downloaded Toko file's headers and its 2 rows, the Per Produk file's one row at exactly Rp 50000) — helper `e2e/xlsx.ts` reads an .xlsx with no library |
+| perf | `-tags perfaudit` `TestPerf_SupplierChannelExport`, `TestPerf_SupplierFigureExport` — ≤ 35 ms but Per Produk over a year on the top supplier, 82 ms median; none heavy, no report |
+
+**Still not built:** the Produk tab's export (waits for the store–product link), the Supplier Report's export (its content
+is open — [the-report-export-is-marked](../../technical/frontend/suppliers_decision.md#the-report-export-is-marked)).
+
+## 2026-11-07 (part 4) — the Supplier Report exports the whole ranking
+
+[a-report-export-is-the-whole-view-as-a-file](../../technical/frontend/context_decision.md#a-report-export-is-the-whole-view-as-a-file)
+(owner *"A"*) closed what [the-report-export-is-marked](../../technical/frontend/suppliers_decision.md#the-report-export-is-marked)
+left open: the file is **the whole ranking as narrowed, each row with its figures** (flow:
+[rpc.md § The report as a file](../../services/supplier_service/rpc.md#the-report-as-a-file--supplierreportexport)).
+
+| | |
+| --- | --- |
+| contract | `SupplierAnalyticService.SupplierReportExport` — `team_id`, the report's `FilterItem`s (window required; team, keyword; a supplier refused), its `MetricSort`; a server stream `{message, done, total, download_url, filename}`; policy Root, Administrator, selling roles — not NO_SIDE_EFFECTS |
+| backend | `supplier_report_export.go` — the ranking WHOLE in one statement (`ranking()`, factored out of `MetricSearch` in metric_search.go, which still cuts its pages from it), each 200 filled by `supplierMetricData`, the suppliers read by id with the deleted ones (`suppliersOf`), teams through `ExportStore.TeamNames`; sheet *Peringkat*: Peringkat · Pemasok · Status (*Dihapus*) · Dikelola oleh · the tabs' figure columns (Penjualan included); file `laporan-pemasok-…` |
+| frontend | `features/suppliers/analytics.ts` `reportQuery` (the ranking's filters + sort), `exports.ts` `useReportExport`; `pages/supplier-report` — Ekspor wired on the desktop (progress on the button, disabled on an invalid window) and as the phone header's icon (the-report-export-folds-on-a-phone → a-phone-header-action-is-an-icon); hidden from a monitored team. `pending.ts` DELETED with its i18n reason — the report has no mark left |
+| tests | Go `supplier_report_export_test.go` (3: the file = the report's MetricSearch + MetricData across 214 suppliers / 11 screen pages / 2 steps, Penjualan, the deleted marked, the rank across pages; narrowed by rate, search, team; refusals + policy) · stories `ExportsTheWholeRankingAsNarrowed`, `MonitoringOffersNoExport`, `APhoneFoldsTheExport` (taps it) · e2e `the_supplier_exports.spec.ts` "the Supplier Report's file is the whole ranking as narrowed" (headers + the one ranked row, Rp 50000 exact) |
+| perf | `TestPerf_SupplierReportExport` (2 000 suppliers): 30 d 187 ms, a year 1.1 s / 31 queries, a search 1.7 s — 🔴 heavy: [SupplierReportExport.md](../../../audits/services/supplier_service/performances/SupplierReportExport.md) (open: fill from the ranking statement's own sums, ≈ 5× faster). Reading the ranking a MetricSearch page at a time was 2.6 s / 6.3 s before `ranking()` |
+
+**Still not built:** the Produk tab's export (waits for the store–product link).

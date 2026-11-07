@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 
@@ -17,7 +16,7 @@ import type { PeriodGrain } from "../../lib/period";
 import { dateRangeCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { formatPeriod } from "../../lib/datetime";
-import { useTeam } from "../team/TeamContext";
+import { useCanWrite, useTeam } from "../team/TeamContext";
 import {
   type SupplierFigurePoint,
   type SupplierProductRow,
@@ -27,6 +26,7 @@ import {
 } from "./analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "./FigureParts";
 import { SupplierTabExport } from "./SupplierTabExport";
+import { useStatisticsExport } from "./exports";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { unitsReceived } from "./figures";
 
@@ -45,8 +45,6 @@ export const description =
 export interface SupplierStatisticsProps {
   /** Any team's supplier — its figures count every team's restocks from it. */
   supplierId: bigint;
-  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
-  exportMark: ReactNode;
 }
 
 type StatisticsView = "time" | "product";
@@ -69,7 +67,7 @@ type StatisticsView = "time" | "product";
 //
 // ⚠ FOLDED, NOT LIVE: the figures are supplier_service's fold of *Restock Accepted* (the-report-is-processed-like-settlement),
 // so an accept a moment ago can take a moment to appear.
-export function SupplierStatistics({ supplierId, exportMark }: SupplierStatisticsProps) {
+export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   const isMobile = useIsMobile();
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -133,6 +131,19 @@ export function SupplierStatistics({ supplierId, exportMark }: SupplierStatistic
     pageSize: PAGE_SIZE,
   });
 
+  // THE VIEW AS A FILE (each-supplier-tab-exports-its-own-table): the view on screen — Per Periode at its grain, or Per
+  // Produk — over the same window and team, every page. It stores a file, so a monitored team's reader has no Export.
+  const writable = useCanWrite();
+  const exporter = useStatisticsExport(teamId);
+  const exportButton = writable ? (
+    <SupplierTabExport
+      testId="statistics-export"
+      disabled={!valid}
+      progress={exporter.progress}
+      onExport={() => void exporter.start({ supplierId, from, to, restockTeamId, view, grain })}
+    />
+  ) : null;
+
   // Nothing at all in the window — said once, instead of a headline of zeroes over a table of zeroes.
   const quiet = headline.data !== undefined && unitsReceived(headline.data) === 0;
 
@@ -175,7 +186,7 @@ export function SupplierStatistics({ supplierId, exportMark }: SupplierStatistic
         <FilterBar
           testId="statistics-filter"
           // Exports the view on screen — Per Periode or Per Produk — as narrowed.
-          actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="statistics-export" />}
+          actions={isMobile ? undefined : exportButton}
           active={restockTeamId !== 0n}
           count={restockTeamId !== 0n ? 1 : 0}
           onClear={() => pickTeam(0n)}
@@ -194,7 +205,7 @@ export function SupplierStatistics({ supplierId, exportMark }: SupplierStatistic
             </FilterField>
           )}
           {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
-          {isMobile && <SupplierTabExport mark={exportMark} testId="statistics-export" />}
+          {isMobile && exportButton}
         </FilterBar>
 
         {!valid && (

@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
-import { asRole } from "../../../.storybook/sessionScenario";
+import { asAdminTeam, asRole } from "../../../.storybook/sessionScenario";
+import { supplierExportScenario } from "../../../.storybook/supplierExportScenario";
 import { teams } from "../../../.storybook/fixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { formatRupiah } from "../../lib/money";
@@ -267,17 +268,44 @@ export const TheOrderShowsItsArrow: Story = {
   },
 };
 
-// EXPORT IS ON THE TITLE'S ROW, NOT BUILT — its icon, and the ⚠ number pointing at the not-implemented list
-// (the-report-export-is-marked).
-export const ExportIsMarkedNotBuilt: Story = {
+// THE REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file) — Export on the title's row, its icon, no ⚠ any more
+// (the-report-export-is-marked placed it). It asks for the WHOLE ranking as narrowed: the window, the search typed, and
+// the order on screen — here by broken rate — and the file downloads as the stream ends.
+export const ExportsTheWholeRankingAsNarrowed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const exportButton = canvas.getByTestId("supplier-report-export");
     await expect(exportButton).toHaveTextContent("Export");
     await expect(exportButton.querySelector("svg.lucide-download")).not.toBeNull();
-    await expect(within(exportButton).getByTestId("not-implemented-export")).toHaveTextContent("1");
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await expect(canvas.queryByTestId("not-implemented-export")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("supplier-report-rank-by-rate"));
+    await userEvent.type(canvas.getByTestId("supplier-report-search"), "makmur", { delay: 40 });
+    await waitFor(() => expect(order(canvas)).toEqual(["34", "31"]), { timeout: 4000 });
+
+    await userEvent.click(exportButton);
+    await waitFor(() => expect(supplierExportScenario.reports).toHaveLength(1));
+
+    const call = supplierExportScenario.reports[0]!;
+    await expect(call.teamId).toBe(MELATI.id);
+    await expect(call.sort).toMatchObject({ metricId: "metrics/suppliers", field: "broken_rate" });
+    await expect(call.filters.map((f) => f.f.case)).toEqual(["dateRangeFilter", "supplierKeywordFilter"]);
+    await expect(call.filters[1]!.f.value).toMatchObject({ q: "makmur" });
+    // Every supplier the search finds, not the page on screen.
+    await expect(call.rows).toBe(2);
+    await expect((await screen.findAllByText("Export ready — the file is downloading")).length).toBeGreaterThan(0);
+  },
+};
+
+// the-admin-team-monitors-read-only — the admin team READING the report: the ranking, but no Export, which stores a file.
+export const MonitoringOffersNoExport: Story = {
+  beforeEach: asAdminTeam(),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("supplier-report-export")).toBeNull();
   },
 };
 
@@ -303,8 +331,8 @@ export const SalesSitBesideRestocked: Story = {
 };
 
 // A PHONE'S HEADER IS ONE ROW (the-report-export-folds-on-a-phone, the-phone-header-is-one-row) — the title and the
-// export's ICON with its mark, on the title's row; one action, so no ⋯ (a-phone-header-action-is-an-icon). Wrapped under
-// the subtitle, the button stood alone.
+// export's ICON on the title's row; one action, so no ⋯ (a-phone-header-action-is-an-icon). Wrapped under the subtitle,
+// the button stood alone. Tapped, it exports the whole ranking, as the desktop's button does.
 export const APhoneFoldsTheExport: Story = {
   globals: { viewport: { value: "mobile2" } },
   play: async ({ canvasElement }) => {
@@ -316,7 +344,11 @@ export const APhoneFoldsTheExport: Story = {
     await expect(exportIcon).not.toHaveTextContent("Export");
     const title = canvas.getByRole("heading", { name: "Supplier Report" });
     await expect(Math.abs(exportIcon.getBoundingClientRect().top - title.getBoundingClientRect().top)).toBeLessThan(12);
-    await expect(within(exportIcon.parentElement!).getByTestId("not-implemented-export")).toHaveTextContent("1");
+    await expect(canvas.queryByTestId("not-implemented-export")).toBeNull();
+
+    await userEvent.click(exportIcon);
+    await waitFor(() => expect(supplierExportScenario.reports).toHaveLength(1));
+    await expect(supplierExportScenario.reports[0]!.sort).toMatchObject({ field: "restock_valuation" });
   },
 };
 

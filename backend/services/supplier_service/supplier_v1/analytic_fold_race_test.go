@@ -84,7 +84,7 @@ func figReset(t *testing.T, db *gorm.DB) {
 // figService is the real service over db — the pool, or one Interleave transaction (where the fold's own Transaction
 // becomes a SAVEPOINT, and its locks are held until that transaction ends). A nil broker refuses every replay.
 func figService(db *gorm.DB, broker supplier_v1.ReplayBroker) *supplier_v1.Service {
-	return supplier_v1.NewService(db, nil, broker, nil)
+	return supplier_v1.NewService(db, nil, broker, nil, nil)
 }
 
 // figAdd is what folding these lines adds to a row: the units, and their value at the line's price.

@@ -40,6 +40,9 @@ const (
 	// FinancialAccountAnalyticServiceMetricDataProcedure is the fully-qualified name of the
 	// FinancialAccountAnalyticService's MetricData RPC.
 	FinancialAccountAnalyticServiceMetricDataProcedure = "/warehouse.financial_account.v1.FinancialAccountAnalyticService/MetricData"
+	// FinancialAccountAnalyticServiceFinancialAccountReportExportProcedure is the fully-qualified name
+	// of the FinancialAccountAnalyticService's FinancialAccountReportExport RPC.
+	FinancialAccountAnalyticServiceFinancialAccountReportExportProcedure = "/warehouse.financial_account.v1.FinancialAccountAnalyticService/FinancialAccountReportExport"
 )
 
 // FinancialAccountAnalyticServiceClient is a client for the
@@ -49,6 +52,13 @@ type FinancialAccountAnalyticServiceClient interface {
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
 	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// THE ACCOUNT REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+	// view on screen, whole — Periode: every period of the window at its grain, the quiet ones included, in the screen's
+	// order, its columns the nine change types, Perubahan bersih and Saldo akhir; Rincian: one sheet per breakdown (Per
+	// Akun · Per Penyedia · Per Jenis), every row of each. Read exactly as the report reads, scoped by `team_id` and the
+	// account filter, Jakarta days, exact money. A server stream: progress, then an expiring link. Not a read: it stores a
+	// file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+	FinancialAccountReportExport(context.Context, *connect.Request[v1.FinancialAccountReportExportRequest]) (*connect.ServerStreamForClient[v1.FinancialAccountReportExportResponse], error)
 }
 
 // NewFinancialAccountAnalyticServiceClient constructs a client for the
@@ -77,13 +87,20 @@ func NewFinancialAccountAnalyticServiceClient(httpClient connect.HTTPClient, bas
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		financialAccountReportExport: connect.NewClient[v1.FinancialAccountReportExportRequest, v1.FinancialAccountReportExportResponse](
+			httpClient,
+			baseURL+FinancialAccountAnalyticServiceFinancialAccountReportExportProcedure,
+			connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("FinancialAccountReportExport")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // financialAccountAnalyticServiceClient implements FinancialAccountAnalyticServiceClient.
 type financialAccountAnalyticServiceClient struct {
-	metricSearch *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
-	metricData   *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	metricSearch                 *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
+	metricData                   *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	financialAccountReportExport *connect.Client[v1.FinancialAccountReportExportRequest, v1.FinancialAccountReportExportResponse]
 }
 
 // MetricSearch calls warehouse.financial_account.v1.FinancialAccountAnalyticService.MetricSearch.
@@ -96,6 +113,12 @@ func (c *financialAccountAnalyticServiceClient) MetricData(ctx context.Context, 
 	return c.metricData.CallUnary(ctx, req)
 }
 
+// FinancialAccountReportExport calls
+// warehouse.financial_account.v1.FinancialAccountAnalyticService.FinancialAccountReportExport.
+func (c *financialAccountAnalyticServiceClient) FinancialAccountReportExport(ctx context.Context, req *connect.Request[v1.FinancialAccountReportExportRequest]) (*connect.ServerStreamForClient[v1.FinancialAccountReportExportResponse], error) {
+	return c.financialAccountReportExport.CallServerStream(ctx, req)
+}
+
 // FinancialAccountAnalyticServiceHandler is an implementation of the
 // warehouse.financial_account.v1.FinancialAccountAnalyticService service.
 type FinancialAccountAnalyticServiceHandler interface {
@@ -103,6 +126,13 @@ type FinancialAccountAnalyticServiceHandler interface {
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
 	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// THE ACCOUNT REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+	// view on screen, whole — Periode: every period of the window at its grain, the quiet ones included, in the screen's
+	// order, its columns the nine change types, Perubahan bersih and Saldo akhir; Rincian: one sheet per breakdown (Per
+	// Akun · Per Penyedia · Per Jenis), every row of each. Read exactly as the report reads, scoped by `team_id` and the
+	// account filter, Jakarta days, exact money. A server stream: progress, then an expiring link. Not a read: it stores a
+	// file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+	FinancialAccountReportExport(context.Context, *connect.Request[v1.FinancialAccountReportExportRequest], *connect.ServerStream[v1.FinancialAccountReportExportResponse]) error
 }
 
 // NewFinancialAccountAnalyticServiceHandler builds an HTTP handler from the service implementation.
@@ -126,12 +156,20 @@ func NewFinancialAccountAnalyticServiceHandler(svc FinancialAccountAnalyticServi
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	financialAccountAnalyticServiceFinancialAccountReportExportHandler := connect.NewServerStreamHandler(
+		FinancialAccountAnalyticServiceFinancialAccountReportExportProcedure,
+		svc.FinancialAccountReportExport,
+		connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("FinancialAccountReportExport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.financial_account.v1.FinancialAccountAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case FinancialAccountAnalyticServiceMetricSearchProcedure:
 			financialAccountAnalyticServiceMetricSearchHandler.ServeHTTP(w, r)
 		case FinancialAccountAnalyticServiceMetricDataProcedure:
 			financialAccountAnalyticServiceMetricDataHandler.ServeHTTP(w, r)
+		case FinancialAccountAnalyticServiceFinancialAccountReportExportProcedure:
+			financialAccountAnalyticServiceFinancialAccountReportExportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -147,4 +185,8 @@ func (UnimplementedFinancialAccountAnalyticServiceHandler) MetricSearch(context.
 
 func (UnimplementedFinancialAccountAnalyticServiceHandler) MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.financial_account.v1.FinancialAccountAnalyticService.MetricData is not implemented"))
+}
+
+func (UnimplementedFinancialAccountAnalyticServiceHandler) FinancialAccountReportExport(context.Context, *connect.Request[v1.FinancialAccountReportExportRequest], *connect.ServerStream[v1.FinancialAccountReportExportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.financial_account.v1.FinancialAccountAnalyticService.FinancialAccountReportExport is not implemented"))
 }

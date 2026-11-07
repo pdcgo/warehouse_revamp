@@ -13,7 +13,7 @@ import (
 // whether it is active, whether it is marked operational — and another team's account reads as absent.
 func TestExpensePayingAccounts_AnswersFromTheAccounts(t *testing.T) {
 	db := san_testdb.DB(t)
-	seam := NewExpensePayingAccounts(financial_account_v1.NewService(db, nil))
+	seam := NewExpensePayingAccounts(financial_account_v1.NewService(db, nil, nil))
 	ctx := context.Background()
 
 	const team, otherTeam uint64 = 9_301, 9_302

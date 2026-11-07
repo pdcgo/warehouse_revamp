@@ -40,6 +40,17 @@ service SupplierAnalyticService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // THE STATISTIK TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): the view
+  // on screen — Per Periode (every period of the window at its grain, newest first, the quiet ones included) or Per
+  // Produk (every product, ranked as the tab ranks them) — over the tab's own filters, every page, in the tab's columns,
+  // as .xlsx. A server stream: progress, then an expiring link. Not a read: it stores a file, so a monitor and an agent
+  // are refused (the-admin-team-monitors-read-only).
+  rpc SupplierFigureExport(SupplierFigureExportRequest) returns (stream SupplierFigureExportResponse);
+  // THE SUPPLIER REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+  // WHOLE ranking as narrowed — the report's own window, team and search, in its own order — every page, each supplier
+  // with its figures in the report's columns, as .xlsx. A server stream: progress, then an expiring link. Not a read: it
+  // stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+  rpc SupplierReportExport(SupplierReportExportRequest) returns (stream SupplierReportExportResponse);
 }
 
 // The two operations a DEVELOPER runs on the fold — settlement's, read for the supplier
@@ -235,6 +246,94 @@ message MetricDataResponse {
   // ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
   // dead-letter topic and the lease's log.
   int64 as_of_unix = 2;
+}
+
+// THE STATISTIK TAB AS A FILE — the view's own read, every page (each-supplier-tab-exports-its-own-table).
+message SupplierFigureExportRequest {
+  // MetricData's readers.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // THE VIEW: DAILY, MONTHLY or YEARLY is Per Periode at that grain; PRODUCT is Per Produk. The Supplier Report's
+  // ranking (SUPPLIER) is not offered here — its file is SupplierReportExport.
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [2, 4, 5, 6]
+  }];
+
+  // The tab's own filters — the window (required), the supplier (required), and whose restocks when one team is picked.
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated = {
+    min_items: 2
+    max_items: 6
+  }];
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message SupplierFigureExportResponse {
+  // A sentence about the step.
+  string message = 1;
+  // Rows written so far, of the total the view holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
+}
+
+// THE SUPPLIER REPORT AS A FILE — the ranking's own reads, every page (a-report-export-is-the-whole-view-as-a-file).
+message SupplierReportExportRequest {
+  // MetricSearch's readers — the ranking's.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The report's own filters — the window (required), whose restocks when one team is picked, and the search. Never a
+  // supplier: a file of one supplier is its Statistik tab's (SupplierFigureExport).
+  repeated warehouse.analytic_base.v1.FilterItem filters = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 3
+  }];
+
+  // The report's order — `metrics/suppliers` by restock_valuation or broken_rate, as its "Urutkan" picks; the server
+  // ranks exactly as MetricSearch does (the rate's minimum sample included).
+  warehouse.analytic_base.v1.MetricSort sort = 3 [(buf.validate.field).required = true];
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message SupplierReportExportResponse {
+  // A sentence about the step.
+  string message = 1;
+  // Rows written so far, of the total the ranking holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
 }
 
 // ── maintenance ─────────────────────────────────────────────────────────────────────────────────

@@ -68,6 +68,11 @@ enum DocumentResourceType {
   // PRIVATE: an order list exported as .xlsx (one-export-is-the-list-as-a-file), stored as the person who exported it
   // and read back through an expiring signed link. Private because it names buyers and their phone numbers.
   DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT = 7;
+
+  // PRIVATE: a screen's table exported as .xlsx — a supplier page tab's (each-supplier-tab-exports-its-own-table), on
+  // the order list's pattern (one-export-is-the-list-as-a-file): stored as the person who exported it and read back
+  // through an expiring signed link. Private like every export: it is a team's working figures.
+  DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT = 8;
 }
 
 message Document {

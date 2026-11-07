@@ -190,7 +190,7 @@ func perfSetup(t *testing.T) perfBook {
 
 	san_perf.SeedRows(t, db, &dailies)
 
-	book.svc = financial_account_v1.NewService(db, anyShop{})
+	book.svc = financial_account_v1.NewService(db, anyShop{}, nil)
 
 	return book
 }

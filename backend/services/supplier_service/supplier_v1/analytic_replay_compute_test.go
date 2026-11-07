@@ -39,7 +39,7 @@ func jakartaDay(daysAgo int) string {
 func TestAnalyticReplayCompute_DeletesFromTheDaySeeksAndUnlocks(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 31 * 24 * time.Hour}
-	svc := supplier_v1.NewService(db, nil, broker, nil)
+	svc := supplier_v1.NewService(db, nil, broker, nil, nil)
 
 	fold(t, svc, accept(1, sellingA, 31, jakartaDay(10), line{product: 100, ordered: 1, total: 1000, accepted: 1}))
 	fold(t, svc, accept(2, sellingA, 31, jakartaDay(5), line{product: 100, ordered: 1, total: 1000, accepted: 1}))
@@ -80,7 +80,7 @@ func TestAnalyticReplayCompute_DeletesFromTheDaySeeksAndUnlocks(t *testing.T) {
 // (past-accepts-are-backfilled-once): it starts AFTER the live fold's first day, or it is refused.
 func TestAnalyticReplayCompute_RefusesTheBackfilledPast(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := supplier_v1.NewService(db, nil, &fakeBroker{window: 31 * 24 * time.Hour}, nil)
+	svc := supplier_v1.NewService(db, nil, &fakeBroker{window: 31 * 24 * time.Hour}, nil, nil)
 
 	replay := func(day string) error {
 		_, err := svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&supplierv1.AnalyticReplayComputeRequest{
@@ -112,7 +112,7 @@ func TestAnalyticReplayCompute_RefusesTheBackfilledPast(t *testing.T) {
 func TestAnalyticReplayCompute_RefusesWhatItCannotRebuild(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := supplier_v1.NewService(db, nil, broker, nil)
+	svc := supplier_v1.NewService(db, nil, broker, nil, nil)
 
 	fold(t, svc, accept(1, sellingA, 31, jakartaDay(20), line{product: 100, ordered: 1, total: 1000, accepted: 1}))
 
@@ -128,7 +128,7 @@ func TestAnalyticReplayCompute_RefusesWhatItCannotRebuild(t *testing.T) {
 		t.Fatalf("outside the retention = %v, want FailedPrecondition", code)
 	}
 
-	if code := connect.CodeOf(replay(supplier_v1.NewService(db, nil, nil, nil), jakartaDay(3))); code != connect.CodeFailedPrecondition {
+	if code := connect.CodeOf(replay(supplier_v1.NewService(db, nil, nil, nil, nil), jakartaDay(3))); code != connect.CodeFailedPrecondition {
 		t.Fatalf("no broker = %v, want FailedPrecondition", code)
 	}
 
@@ -150,7 +150,7 @@ func TestAnalyticReplayCompute_RefusesWhatItCannotRebuild(t *testing.T) {
 func TestAnalyticReplayCompute_TakesOverADeadReplaysLock(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 31 * 24 * time.Hour}
-	svc := supplier_v1.NewService(db, nil, broker, nil)
+	svc := supplier_v1.NewService(db, nil, broker, nil, nil)
 
 	// A replay rebuilds only what live accepts folded, and starts after the first of them — so one was folded earlier.
 	fold(t, svc, accept(1, sellingA, 31, jakartaDay(10), line{product: 100, ordered: 1, total: 1000, accepted: 1}))

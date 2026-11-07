@@ -47,7 +47,7 @@ var testShops = shopsOf{501: teamA, 502: teamA, 601: teamB}
 func newService(t *testing.T, db *gorm.DB) *financial_account_v1.Service {
 	t.Helper()
 
-	return financial_account_v1.NewService(db, testShops)
+	return financial_account_v1.NewService(db, testShops, nil)
 }
 
 // asAni is a context carrying a signed-in person, as the access interceptor leaves it.

@@ -302,3 +302,51 @@ func TestUploadFlow_SettlementStatementIsPrivate(t *testing.T) {
 		t.Fatalf("a statement's download must be signed and time-limited: %+v", dl.Msg)
 	}
 }
+
+// A table export is PRIVATE too (each-supplier-tab-exports-its-own-table): stored as the person who exported it, read back
+// only through a signed, expiring link that carries its own name (a-download-keeps-its-files-name). The CHECK of 00010
+// takes the new text — an INSERT of a type the constraint does not list fails here.
+func TestUploadFlow_TableExportIsPrivate(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc, cfg := newService(t, db)
+	ctx := context.Background()
+
+	const xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+	up, err := svc.RequestUpload(ctx, connect.NewRequest(&documentv1.RequestUploadRequest{
+		TeamId:       2,
+		ResourceType: documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT,
+		ContentType:  xlsx,
+		SizeBytes:    2,
+		Filename:     "pemasok-toko-2026-11-07-101500.xlsx",
+	}))
+	if err != nil {
+		t.Fatalf("RequestUpload: %v", err)
+	}
+
+	putBytes(t, cfg, up.Msg.GetUploadUrl(), []byte("PK"))
+
+	conf, err := svc.ConfirmUpload(ctx, connect.NewRequest(&documentv1.ConfirmUploadRequest{
+		UploadToken: up.Msg.GetUploadToken(),
+	}))
+	if err != nil {
+		t.Fatalf("ConfirmUpload: %v", err)
+	}
+
+	doc := conf.Msg.GetDocument()
+	if doc.GetResourceType() != documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT ||
+		doc.GetPublicUrl() != "" || doc.GetMimeType() != xlsx {
+		t.Fatalf("a table export must come back private, typed, and as the xlsx it is: %+v", doc)
+	}
+
+	dl, err := svc.GetDownloadUrl(ctx, connect.NewRequest(&documentv1.GetDownloadUrlRequest{
+		TeamId: 2, DocumentId: doc.GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("GetDownloadUrl: %v", err)
+	}
+
+	if dl.Msg.GetPublic() || dl.Msg.GetExpiresAtUnix() == 0 {
+		t.Fatalf("a table export's download must be signed and time-limited: %+v", dl.Msg)
+	}
+}

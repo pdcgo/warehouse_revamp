@@ -71,7 +71,7 @@ func TestPerf_RestockPayingAccount(t *testing.T) {
 	account := perfRestockAccounts(t, raw)
 
 	db, probe := san_perf.Wrap(raw)
-	seam := NewRestockPayingAccounts(financial_account_v1.NewService(db, nil))
+	seam := NewRestockPayingAccounts(financial_account_v1.NewService(db, nil, nil))
 	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, seam)
 	ctx := context.Background()
 

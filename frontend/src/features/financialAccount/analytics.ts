@@ -106,8 +106,11 @@ interface Window {
 
 type Filter = MessageInitShape<typeof FilterItemSchema>;
 
-/** The window, and one account when picked (finance-filters-by-account). */
-function filtersOf(from: string, to: string, accountId?: bigint): Filter[] {
+/**
+ * The window, and one account when picked (finance-filters-by-account) — what every report read sends, and so what its
+ * export sends (a-report-export-is-the-whole-view-as-a-file).
+ */
+export function filtersOf(from: string, to: string, accountId?: bigint): Filter[] {
   const out: Filter[] = [{ f: { case: "dateRangeFilter", value: { dateMin: from, dateMax: to } } }];
   if (accountId && accountId > 0n) out.push({ f: { case: "accountFilter", value: { accountIds: [accountId] } } });
 

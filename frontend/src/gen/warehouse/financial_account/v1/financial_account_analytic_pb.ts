@@ -2,10 +2,10 @@
 // @generated from file warehouse/financial_account/v1/financial_account_analytic.proto (package warehouse.financial_account.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { FilterItem, GroupType, MetricKeys, MetricSort, PaginationFilter } from "../../analytic_base/v1/analytic_pb";
+import type { FilterItem, GroupType, MetricKeys, MetricSort, PaginationFilter, SortType } from "../../analytic_base/v1/analytic_pb";
 import { file_warehouse_analytic_base_v1_analytic } from "../../analytic_base/v1/analytic_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/financial_account/v1/financial_account_analytic.proto.
  */
 export const file_warehouse_financial_account_v1_financial_account_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Cj93YXJlaG91c2UvZmluYW5jaWFsX2FjY291bnQvdjEvZmluYW5jaWFsX2FjY291bnRfYW5hbHl0aWMucHJvdG8SHndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MSLKAwoTQWNjb3VudENoYW5nZU1ldHJpYxIjCg9vcGVuaW5nX2JhbGFuY2UYASABKAFCCpq1GAIIAaC1GAQSGwoHZXhwZW5zZRgCIAEoAUIKmrUYAggBoLUYAxIfCgthZHNfZXhwZW5zZRgDIAEoAUIKmrUYAggBoLUYAxIeCgphZGp1c3RtZW50GAQgASgBQgqatRgCCAGgtRgDEh4KCndpdGhkcmF3YWwYBSABKAFCCpq1GAIIAaC1GAMSGwoHcmVzdG9jaxgGIAEoAUIKmrUYAggBoLUYAxIjCg9hY2NvdW50X29wZW5pbmcYByABKAFCCpq1GAIIAaC1GAMSHAoIdHJhbnNmZXIYCCABKAFCCpq1GAIIAaC1GAMSIAoMdGVhbV9wYXltZW50GAkgASgBQgqatRgCCAGgtRgDEhsKB2NhcGl0YWwYCiABKAFCCpq1GAIIAaC1GAMSGgoGY2hhbmdlGAsgASgBQgqatRgCCAGgtRgDEiMKD2Nsb3NpbmdfYmFsYW5jZRgMIAEoAUIKmrUYAggBoLUYBDowmrUYLAoCAQoSAQEaBwECAwQFDA0iGm1ldHJpY3MvZmluYW5jaWFsX2FjY291bnRzIs8BChdBY2NvdW50Q2hhbmdlTWV0cmljQnlJRBJRCgVpdGVtcxgBIAMoCzJCLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlTWV0cmljQnlJRC5JdGVtc0VudHJ5GmEKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEkIKBXZhbHVlGAIgASgLMjMud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VNZXRyaWM6AjgBItEBChhBY2NvdW50Q2hhbmdlTWV0cmljQnlEYXkSUgoFaXRlbXMYASADKAsyQy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZU1ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaYQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSQgoFdmFsdWUYAiABKAsyMy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZU1ldHJpYzoCOAEibgoXQWNjb3VudENoYW5nZVR5cGVNZXRyaWMSGgoGYW1vdW50GAEgASgBQgqatRgCCAGgtRgDOjeatRgzCgIBChIBARoIAQ4CAwQFDA0iIG1ldHJpY3MvZmluYW5jaWFsX2FjY291bnRzL3R5cGVzItsBChtBY2NvdW50Q2hhbmdlVHlwZU1ldHJpY0J5SUQSVQoFaXRlbXMYASADKAsyRi53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZVR5cGVNZXRyaWNCeUlELkl0ZW1zRW50cnkaZQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSRgoFdmFsdWUYAiABKAsyNy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZVR5cGVNZXRyaWM6AjgBIt0BChxBY2NvdW50Q2hhbmdlVHlwZU1ldHJpY0J5RGF5ElYKBWl0ZW1zGAEgAygLMkcud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VUeXBlTWV0cmljQnlEYXkuSXRlbXNFbnRyeRplCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRJGCgV2YWx1ZRgCIAEoCzI3LndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlVHlwZU1ldHJpYzoCOAEizwIKE01ldHJpY1NlYXJjaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESRQoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCDLpICYIBBhABIAAgARJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAISPAoEc29ydBgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY1NvcnRCBrpIA8gBARJCCgRwYWdlGAUgASgLMiwud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuUGFnaW5hdGlvbkZpbHRlckIGukgDyAEBOg6StRgKCggBAgMEBQYJCCJeChRNZXRyaWNTZWFyY2hSZXNwb25zZRI0CgRrZXlzGAEgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIQCghoYXNfbmV4dBgCIAEoCCKhAgoRTWV0cmljRGF0YVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQwoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCrpIB4IBBBABIAASQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhACEjQKBGtleXMYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEiAKCm1ldHJpY19pZHMYBSADKAlCDLpICZIBBggBEAIYAToOkrUYCgoIAQIDBAUGCQgigwQKCk1ldHJpY0RhdGESUAoNY2hhbmdlc19ieV9pZBgBIAEoCzI3LndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlTWV0cmljQnlJREgAElIKDmNoYW5nZXNfYnlfZGF5GAIgASgLMjgud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VNZXRyaWNCeURheUgAEk4KD2NoYW5nZXNfc3VtbWFyeRgDIAEoCzIzLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlTWV0cmljSAASUgoLdHlwZXNfYnlfaWQYBCABKAsyOy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZVR5cGVNZXRyaWNCeUlESAASVAoMdHlwZXNfYnlfZGF5GAUgASgLMjwud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VUeXBlTWV0cmljQnlEYXlIABJQCg10eXBlc19zdW1tYXJ5GAYgASgLMjcud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VUeXBlTWV0cmljSABCAwoBbSJqChJNZXRyaWNEYXRhUmVzcG9uc2USQAoMbWV0cmljX2RhdGFzGAEgAygLMioud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLk1ldHJpY0RhdGESEgoKYXNfb2ZfdW5peBgCIAEoAzKbAgofRmluYW5jaWFsQWNjb3VudEFuYWx5dGljU2VydmljZRJ+CgxNZXRyaWNTZWFyY2gSMy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuTWV0cmljU2VhcmNoUmVxdWVzdBo0LndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5NZXRyaWNTZWFyY2hSZXNwb25zZSIDkAIBEngKCk1ldHJpY0RhdGESMS53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuTWV0cmljRGF0YVJlcXVlc3QaMi53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuTWV0cmljRGF0YVJlc3BvbnNlIgOQAgFCYlpgZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9maW5hbmNpYWxfYWNjb3VudC92MTtmaW5hbmNpYWxfYWNjb3VudHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
+  fileDesc("Cj93YXJlaG91c2UvZmluYW5jaWFsX2FjY291bnQvdjEvZmluYW5jaWFsX2FjY291bnRfYW5hbHl0aWMucHJvdG8SHndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MSLKAwoTQWNjb3VudENoYW5nZU1ldHJpYxIjCg9vcGVuaW5nX2JhbGFuY2UYASABKAFCCpq1GAIIAaC1GAQSGwoHZXhwZW5zZRgCIAEoAUIKmrUYAggBoLUYAxIfCgthZHNfZXhwZW5zZRgDIAEoAUIKmrUYAggBoLUYAxIeCgphZGp1c3RtZW50GAQgASgBQgqatRgCCAGgtRgDEh4KCndpdGhkcmF3YWwYBSABKAFCCpq1GAIIAaC1GAMSGwoHcmVzdG9jaxgGIAEoAUIKmrUYAggBoLUYAxIjCg9hY2NvdW50X29wZW5pbmcYByABKAFCCpq1GAIIAaC1GAMSHAoIdHJhbnNmZXIYCCABKAFCCpq1GAIIAaC1GAMSIAoMdGVhbV9wYXltZW50GAkgASgBQgqatRgCCAGgtRgDEhsKB2NhcGl0YWwYCiABKAFCCpq1GAIIAaC1GAMSGgoGY2hhbmdlGAsgASgBQgqatRgCCAGgtRgDEiMKD2Nsb3NpbmdfYmFsYW5jZRgMIAEoAUIKmrUYAggBoLUYBDowmrUYLAoCAQoSAQEaBwECAwQFDA0iGm1ldHJpY3MvZmluYW5jaWFsX2FjY291bnRzIs8BChdBY2NvdW50Q2hhbmdlTWV0cmljQnlJRBJRCgVpdGVtcxgBIAMoCzJCLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlTWV0cmljQnlJRC5JdGVtc0VudHJ5GmEKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEkIKBXZhbHVlGAIgASgLMjMud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VNZXRyaWM6AjgBItEBChhBY2NvdW50Q2hhbmdlTWV0cmljQnlEYXkSUgoFaXRlbXMYASADKAsyQy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZU1ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaYQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSQgoFdmFsdWUYAiABKAsyMy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZU1ldHJpYzoCOAEibgoXQWNjb3VudENoYW5nZVR5cGVNZXRyaWMSGgoGYW1vdW50GAEgASgBQgqatRgCCAGgtRgDOjeatRgzCgIBChIBARoIAQ4CAwQFDA0iIG1ldHJpY3MvZmluYW5jaWFsX2FjY291bnRzL3R5cGVzItsBChtBY2NvdW50Q2hhbmdlVHlwZU1ldHJpY0J5SUQSVQoFaXRlbXMYASADKAsyRi53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZVR5cGVNZXRyaWNCeUlELkl0ZW1zRW50cnkaZQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSRgoFdmFsdWUYAiABKAsyNy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZVR5cGVNZXRyaWM6AjgBIt0BChxBY2NvdW50Q2hhbmdlVHlwZU1ldHJpY0J5RGF5ElYKBWl0ZW1zGAEgAygLMkcud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VUeXBlTWV0cmljQnlEYXkuSXRlbXNFbnRyeRplCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRJGCgV2YWx1ZRgCIAEoCzI3LndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlVHlwZU1ldHJpYzoCOAEizwIKE01ldHJpY1NlYXJjaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESRQoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCDLpICYIBBhABIAAgARJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAISPAoEc29ydBgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY1NvcnRCBrpIA8gBARJCCgRwYWdlGAUgASgLMiwud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuUGFnaW5hdGlvbkZpbHRlckIGukgDyAEBOg6StRgKCggBAgMEBQYJCCJeChRNZXRyaWNTZWFyY2hSZXNwb25zZRI0CgRrZXlzGAEgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIQCghoYXNfbmV4dBgCIAEoCCKhAgoRTWV0cmljRGF0YVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQwoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCrpIB4IBBBABIAASQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhACEjQKBGtleXMYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEiAKCm1ldHJpY19pZHMYBSADKAlCDLpICZIBBggBEAIYAToOkrUYCgoIAQIDBAUGCQgigwQKCk1ldHJpY0RhdGESUAoNY2hhbmdlc19ieV9pZBgBIAEoCzI3LndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlTWV0cmljQnlJREgAElIKDmNoYW5nZXNfYnlfZGF5GAIgASgLMjgud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VNZXRyaWNCeURheUgAEk4KD2NoYW5nZXNfc3VtbWFyeRgDIAEoCzIzLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5BY2NvdW50Q2hhbmdlTWV0cmljSAASUgoLdHlwZXNfYnlfaWQYBCABKAsyOy53YXJlaG91c2UuZmluYW5jaWFsX2FjY291bnQudjEuQWNjb3VudENoYW5nZVR5cGVNZXRyaWNCeUlESAASVAoMdHlwZXNfYnlfZGF5GAUgASgLMjwud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VUeXBlTWV0cmljQnlEYXlIABJQCg10eXBlc19zdW1tYXJ5GAYgASgLMjcud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLkFjY291bnRDaGFuZ2VUeXBlTWV0cmljSABCAwoBbSJqChJNZXRyaWNEYXRhUmVzcG9uc2USQAoMbWV0cmljX2RhdGFzGAEgAygLMioud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLk1ldHJpY0RhdGESEgoKYXNfb2ZfdW5peBgCIAEoAyL8AgojRmluYW5jaWFsQWNjb3VudFJlcG9ydEV4cG9ydFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESVAoEdmlldxgCIAEoDjI6LndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5GaW5hbmNpYWxBY2NvdW50UmVwb3J0Vmlld0IKukgHggEEEAEgABJDCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIKukgHkgEECAEQAhJJCghncm91cF9ieRgEIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIQukgNggEKEAEYABgCGAQYBRJBCglzb3J0X3R5cGUYBSABKA4yJC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Tb3J0VHlwZUIIukgFggECEAE6DpK1GAoKCAECAwQFBgkIInwKJEZpbmFuY2lhbEFjY291bnRSZXBvcnRFeHBvcnRSZXNwb25zZRIPCgdtZXNzYWdlGAEgASgJEgwKBGRvbmUYAiABKAMSDQoFdG90YWwYAyABKAMSFAoMZG93bmxvYWRfdXJsGAQgASgJEhAKCGZpbGVuYW1lGAUgASgJKqIBChpGaW5hbmNpYWxBY2NvdW50UmVwb3J0VmlldxItCilGSU5BTkNJQUxfQUNDT1VOVF9SRVBPUlRfVklFV19VTlNQRUNJRklFRBAAEigKJEZJTkFOQ0lBTF9BQ0NPVU5UX1JFUE9SVF9WSUVXX1BFUklPRBABEisKJ0ZJTkFOQ0lBTF9BQ0NPVU5UX1JFUE9SVF9WSUVXX0JSRUFLRE9XThACMskDCh9GaW5hbmNpYWxBY2NvdW50QW5hbHl0aWNTZXJ2aWNlEn4KDE1ldHJpY1NlYXJjaBIzLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5NZXRyaWNTZWFyY2hSZXF1ZXN0GjQud2FyZWhvdXNlLmZpbmFuY2lhbF9hY2NvdW50LnYxLk1ldHJpY1NlYXJjaFJlc3BvbnNlIgOQAgESeAoKTWV0cmljRGF0YRIxLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5NZXRyaWNEYXRhUmVxdWVzdBoyLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5NZXRyaWNEYXRhUmVzcG9uc2UiA5ACARKrAQocRmluYW5jaWFsQWNjb3VudFJlcG9ydEV4cG9ydBJDLndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5GaW5hbmNpYWxBY2NvdW50UmVwb3J0RXhwb3J0UmVxdWVzdBpELndhcmVob3VzZS5maW5hbmNpYWxfYWNjb3VudC52MS5GaW5hbmNpYWxBY2NvdW50UmVwb3J0RXhwb3J0UmVzcG9uc2UwAUJiWmBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ZpbmFuY2lhbF9hY2NvdW50L3YxO2ZpbmFuY2lhbF9hY2NvdW50djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
 
 /**
  * ACCOUNT CHANGES — the statement (`metrics/financial_accounts`).
@@ -399,6 +399,131 @@ export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PUR
   messageDesc(file_warehouse_financial_account_v1_financial_account_analytic, 10);
 
 /**
+ * THE ACCOUNT REPORT AS A FILE — the view on screen with the screen's own filters (a-report-export-is-the-whole-view-as-a-file).
+ *
+ * @generated from message warehouse.financial_account.v1.FinancialAccountReportExportRequest
+ */
+export type FinancialAccountReportExportRequest = Message<"warehouse.financial_account.v1.FinancialAccountReportExportRequest"> & {
+  /**
+   * The caller's scope — and whose accounts are written: never another team's.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.financial_account.v1.FinancialAccountReportView view = 2;
+   */
+  view: FinancialAccountReportView;
+
+  /**
+   * The report's own filters: the window (required) and, when one is picked, the account.
+   *
+   * @generated from field: repeated warehouse.analytic_base.v1.FilterItem filters = 3;
+   */
+  filters: FilterItem[];
+
+  /**
+   * Periode only: the grain on screen — DAILY, MONTHLY or YEARLY. Rincian has no grain and leaves it unset.
+   *
+   * @generated from field: warehouse.analytic_base.v1.GroupType group_by = 4;
+   */
+  groupBy: GroupType;
+
+  /**
+   * Periode only: the order the Periode heading set — DESC (newest first, the screen's default) or ASC.
+   *
+   * @generated from field: warehouse.analytic_base.v1.SortType sort_type = 5;
+   */
+  sortType: SortType;
+};
+
+/**
+ * Describes the message warehouse.financial_account.v1.FinancialAccountReportExportRequest.
+ * Use `create(FinancialAccountReportExportRequestSchema)` to create a new message.
+ */
+export const FinancialAccountReportExportRequestSchema: GenMessage<FinancialAccountReportExportRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_financial_account_v1_financial_account_analytic, 11);
+
+/**
+ * One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+ * the file.
+ *
+ * @generated from message warehouse.financial_account.v1.FinancialAccountReportExportResponse
+ */
+export type FinancialAccountReportExportResponse = Message<"warehouse.financial_account.v1.FinancialAccountReportExportResponse"> & {
+  /**
+   * A sentence about the step.
+   *
+   * @generated from field: string message = 1;
+   */
+  message: string;
+
+  /**
+   * Rows written so far, of the total the view holds.
+   *
+   * @generated from field: int64 done = 2;
+   */
+  done: bigint;
+
+  /**
+   * @generated from field: int64 total = 3;
+   */
+  total: bigint;
+
+  /**
+   * Set on the LAST message only: the file's expiring link, and its name.
+   *
+   * @generated from field: string download_url = 4;
+   */
+  downloadUrl: string;
+
+  /**
+   * @generated from field: string filename = 5;
+   */
+  filename: string;
+};
+
+/**
+ * Describes the message warehouse.financial_account.v1.FinancialAccountReportExportResponse.
+ * Use `create(FinancialAccountReportExportResponseSchema)` to create a new message.
+ */
+export const FinancialAccountReportExportResponseSchema: GenMessage<FinancialAccountReportExportResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_financial_account_v1_financial_account_analytic, 12);
+
+/**
+ * The report's two views (the-report-is-two-views-periode-and-rincian).
+ *
+ * @generated from enum warehouse.financial_account.v1.FinancialAccountReportView
+ */
+export enum FinancialAccountReportView {
+  /**
+   * @generated from enum value: FINANCIAL_ACCOUNT_REPORT_VIEW_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Periode — one row per period at the grain.
+   *
+   * @generated from enum value: FINANCIAL_ACCOUNT_REPORT_VIEW_PERIOD = 1;
+   */
+  PERIOD = 1,
+
+  /**
+   * Rincian — the window by account, by provider and by change type.
+   *
+   * @generated from enum value: FINANCIAL_ACCOUNT_REPORT_VIEW_BREAKDOWN = 2;
+   */
+  BREAKDOWN = 2,
+}
+
+/**
+ * Describes the enum warehouse.financial_account.v1.FinancialAccountReportView.
+ */
+export const FinancialAccountReportViewSchema: GenEnum<FinancialAccountReportView> = /*@__PURE__*/
+  enumDesc(file_warehouse_financial_account_v1_financial_account_analytic, 0);
+
+/**
  * THE FINANCE METRICS (financial-accounts-serve-their-changes-and-their-types, analytic-gains-a-finance-category),
  * served through the analytic pattern (docs/business/analytic/rpc_provide.md): `MetricSearch` ranks the keys,
  * `MetricData` fills them. They REPLACE the three shipped reads AnalyticTimeSearch / AnalyticGroupSearch /
@@ -441,6 +566,21 @@ export const FinancialAccountAnalyticService: GenService<{
     methodKind: "unary";
     input: typeof MetricDataRequestSchema;
     output: typeof MetricDataResponseSchema;
+  },
+  /**
+   * THE ACCOUNT REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+   * view on screen, whole — Periode: every period of the window at its grain, the quiet ones included, in the screen's
+   * order, its columns the nine change types, Perubahan bersih and Saldo akhir; Rincian: one sheet per breakdown (Per
+   * Akun · Per Penyedia · Per Jenis), every row of each. Read exactly as the report reads, scoped by `team_id` and the
+   * account filter, Jakarta days, exact money. A server stream: progress, then an expiring link. Not a read: it stores a
+   * file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+   *
+   * @generated from rpc warehouse.financial_account.v1.FinancialAccountAnalyticService.FinancialAccountReportExport
+   */
+  financialAccountReportExport: {
+    methodKind: "server_streaming";
+    input: typeof FinancialAccountReportExportRequestSchema;
+    output: typeof FinancialAccountReportExportResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_financial_account_v1_financial_account_analytic, 0);

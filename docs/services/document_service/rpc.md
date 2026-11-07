@@ -46,8 +46,10 @@ sequenceDiagram
   UI load a light preview fast. Generation is best-effort: a non-decodable image just yields no
   thumbnail, never a failed upload.
 - **Resource types split public from private.** `PROFILE_PICTURE` and `PRODUCT_IMAGE` are public —
-  shown inline from a stable URL. `GENERAL`, `ORDER_RECEIPT`, `PAYMENT_PROOF` and `SETTLEMENT_STATEMENT`
-  are private — a statement is the .xlsx the settlement importer uploads **as a client of this contract**,
+  shown inline from a stable URL. `GENERAL`, `ORDER_RECEIPT`, `PAYMENT_PROOF`, `SETTLEMENT_STATEMENT`, `ORDER_EXPORT`
+  and `TABLE_EXPORT` (`00010` — a screen's table as .xlsx, a supplier tab's:
+  [each-supplier-tab-exports-its-own-table](../../technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table),
+  uploaded as the person exporting, like the order list's export) are private — a statement is the .xlsx the settlement importer uploads **as a client of this contract**,
   under the uploader's own token, before it reads it. The rest of this point is the receipt's case: an order's courier slip
   (image or PDF) names a buyer and where their parcel went, so it is opened through a signed URL by
   somebody who belongs to the team. Adding a type means four edits in step — the proto enum,

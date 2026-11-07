@@ -240,7 +240,13 @@
     "loading": "Loading",
     "clearSearch": "Clear search",
     "actions": "Actions",
-    "asOf": "As of {{time}} WIB"
+    "asOf": "As of {{time}} WIB",
+    "export": {
+      "running": "Exporting {{done}} / {{total}}",
+      "ready": "Export ready — the file is downloading",
+      "failed": "The export could not be finished",
+      "noFile": "The export ended without a file"
+    }
   },
   "dateRange": {
     "all": "All dates",
@@ -2172,7 +2178,7 @@
         },
         "export": {
           "label": "Export",
-          "reason": "nothing builds a file yet — the button holds the action's place; it will take this tab's table, as filtered"
+          "reason": "the Products tab's rows are invented, so its file waits for real rows — the Stores and Statistics tabs export"
         }
       },
       "teamAll": "Any team",
@@ -2293,7 +2299,7 @@
       },
       "export": {
         "label": "Export",
-        "reason": "nothing builds a file yet — the button holds the action's place; it will take this tab's table, as filtered"
+        "reason": "the Products tab's rows are invented, so its file waits for real rows — the Stores and Statistics tabs export"
       }
     },
     "tab": {
@@ -2391,13 +2397,7 @@
     "rateTooFew": "Fewer than {{n}} units in this period — not rated against the others",
     "rateMinNote": "A supplier with fewer than {{n}} units in this period is ranked after the others, its rate muted — a handful of units cannot say how a supplier packs.",
     "export": "Export",
-    "actions": "Report actions",
-    "pending": {
-      "export": {
-        "label": "Export",
-        "reason": "Nothing builds a file yet — whether it carries the ranking with its figures, and this page or the whole ranking, is still open."
-      }
-    }
+    "actions": "Report actions"
   },
   "teams": {
     "name": "Name",
@@ -3873,12 +3873,6 @@
       "byProviderTitle": "Change by Provider",
       "total": "Total",
       "export": "Export",
-      "pending": {
-        "export": {
-          "label": "Export",
-          "reason": "Nothing builds a file yet — whether it holds the periods with their nine types or the account and provider breakdowns too, and this page or the whole window, is still open."
-        }
-      },
       "views": {
         "period": "Periods",
         "breakdown": "Breakdown"

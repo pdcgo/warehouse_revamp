@@ -28,7 +28,8 @@ const FIGURE_MARKS: FigureMarks = {
   ready: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="ready" />,
 };
 
-// Each tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`).
+// The Produk tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`): its rows are invented, so
+// its file waits for real ones. The Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport).
 const EXPORT_MARK = <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="export" />;
 
 function parseSupplierId(raw: string | undefined): bigint {
@@ -196,7 +197,7 @@ export function SupplierDetailPage() {
         </Tabs.List>
 
         <Tabs.Content value="channels" animationStyle="swap">
-          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} exportMark={EXPORT_MARK} />
+          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} />
         </Tabs.Content>
 
         <Tabs.Content value="products" animationStyle="swap">
@@ -204,8 +205,7 @@ export function SupplierDetailPage() {
         </Tabs.Content>
 
         <Tabs.Content value="statistics" animationStyle="swap">
-          <SupplierStatistics supplierId={supplier.id}
-            exportMark={EXPORT_MARK} />
+          <SupplierStatistics supplierId={supplier.id} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

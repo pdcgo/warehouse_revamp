@@ -32,6 +32,7 @@ func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 	batch := inventory_service_models.Batch{
 		WarehouseID: 5, TeamID: 12, ProductID: 901, TransactionID: restock.ID, PriceUnit: 1000,
 		StockCount: 7, StockValuation: 7000, InitStockCount: 10, InitStockValuation: 10000, SupplierID: 77,
+		SupplierChannelID: 701,
 	}
 
 	err := db.Create(&batch).Error
@@ -71,5 +72,17 @@ func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 	_, err = reader.SupplierIDsByFigure(ctx, supplier_v1.GoodsFigure(9), 0, 0)
 	if err == nil {
 		t.Fatalf("an unknown figure was answered")
+	}
+
+	// The Toko tab's export reads the same goods per STORE: 3 sold, 7 ready at store 701, with the order's and the
+	// restock's moments.
+	stores, err := reader.StoreGoods(ctx, 77)
+	if err != nil {
+		t.Fatalf("StoreGoods: %v", err)
+	}
+
+	got, found := stores[701]
+	if len(stores) != 1 || !found || got.Sold != 3 || got.Ready != 7 || got.LastOrderUnix == 0 || got.LastRestockUnix == 0 {
+		t.Fatalf("stores = %+v — want store 701 with 3 sold, 7 ready and both dates", stores)
 	}
 }

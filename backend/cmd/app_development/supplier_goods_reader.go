@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"connectrpc.com/connect"
+
+	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 )
@@ -56,4 +59,29 @@ func (r *supplierGoodsReader) SupplierIDsByFigure(
 	}
 
 	return r.inventory.SupplierIDsByFigure(ctx, asked, lo, hi)
+}
+
+// StoreGoods is the Toko tab's figures per store for one supplier — inventory's SupplierGoods grouped by STORE, called
+// in-process: the export's own policy ran at its door, and SupplierGoods' team_id only authorizes (it never narrows the
+// figures, every-selling-team-sees-every-teams-figures), so the read here passes none.
+func (r *supplierGoodsReader) StoreGoods(ctx context.Context, supplierID uint64) (map[uint64]supplier_v1.StoreGoods, error) {
+	res, err := r.inventory.SupplierGoods(ctx, connect.NewRequest(&inventoryv1.SupplierGoodsRequest{
+		SupplierIds: []uint64{supplierID},
+		Group:       inventoryv1.SupplierGoodsGroup_SUPPLIER_GOODS_GROUP_STORE,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[uint64]supplier_v1.StoreGoods, len(res.Msg.GetRows()))
+	for _, row := range res.Msg.GetRows() {
+		out[row.GetStoreId()] = supplier_v1.StoreGoods{
+			Sold:            row.GetSoldUnits(),
+			Ready:           row.GetReadyUnits(),
+			LastOrderUnix:   row.GetLastOrderUnix(),
+			LastRestockUnix: row.GetLastRestockUnix(),
+		}
+	}
+
+	return out, nil
 }

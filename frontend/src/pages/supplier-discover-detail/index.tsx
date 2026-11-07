@@ -28,7 +28,8 @@ const FIGURE_MARKS: FigureMarks = {
   ready: <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="ready" />,
 };
 
-// Each tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`).
+// The Produk tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`): its rows are invented, so
+// its file waits for real ones. The Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport).
 const EXPORT_MARK = <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="export" />;
 
 function parseSupplierId(raw: string | undefined): bigint {
@@ -179,7 +180,7 @@ export function DiscoverSupplierDetailPage() {
 
         {/* Read-only: no Add Store, no row actions — this is another team's supplier. */}
         <Tabs.Content value="channels" animationStyle="swap">
-          <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} exportMark={EXPORT_MARK} />
+          <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} />
         </Tabs.Content>
 
         <Tabs.Content value="products" animationStyle="swap">
@@ -187,8 +188,7 @@ export function DiscoverSupplierDetailPage() {
         </Tabs.Content>
 
         <Tabs.Content value="statistics" animationStyle="swap">
-          <SupplierStatistics supplierId={supplier.id}
-            exportMark={EXPORT_MARK} />
+          <SupplierStatistics supplierId={supplier.id} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

@@ -211,7 +211,7 @@ func TestSupplierList_Pages(t *testing.T) {
 func TestSupplierList_ABandFindsASupplierBeyondTheFirstPage(t *testing.T) {
 	db := san_testdb.DB(t)
 	goods := &fakeGoods{sold: map[uint64]int64{}, ready: map[uint64]int64{}}
-	svc := supplier_v1.NewService(db, nil, nil, goods)
+	svc := supplier_v1.NewService(db, nil, nil, goods, nil)
 
 	var last supplier_service_models.Supplier
 	for i := range 30 {
@@ -262,7 +262,7 @@ func TestSupplierList_BandsAreLowerInclusiveUpperExclusive(t *testing.T) {
 		sold:  map[uint64]int64{at500.ID: 500, at499.ID: 499, big.ID: 5_000},
 		ready: map[uint64]int64{at500.ID: 50, at499.ID: 10, big.ID: 49},
 	}
-	svc := supplier_v1.NewService(db, nil, nil, goods)
+	svc := supplier_v1.NewService(db, nil, nil, goods, nil)
 
 	band := func(lo, hi int64) *supplierv1.SupplierFigureBand {
 		return &supplierv1.SupplierFigureBand{Min: lo, Max: hi}

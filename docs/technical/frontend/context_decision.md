@@ -79,6 +79,7 @@ when it applies one of these.
 | [sticky-sticks-to-the-window](#sticky-sticks-to-the-window) | the desktop shell lets the window scroll, so `<main>` is `overflowX="clip"`, never `overflow="auto"` — anything else made every sticky header inside a page never stick | every desktop page |
 | [a-nav-jump-blinks-where-it-lands](#a-nav-jump-blinks-where-it-lands) | a detail page's section nav scrolls to the clicked section and that card BLINKS — a pale tint of the main tone, once, no ring or border | the product page and the order detail, every page on the shared `SectionNav` |
 | [the-phone-menu-carries-no-count-for-now](#the-phone-menu-carries-no-count-for-now) | the phone shell shows no waiting count — not on a menu item, not on More — for Kewajiban or Found Stock; the counts stay the desktop sidebar's, for now | the phone shell |
+| [a-report-export-is-the-whole-view-as-a-file](#a-report-export-is-the-whole-view-as-a-file) | a report's Ekspor holds everything the report shows as filtered, every page, the screen's columns | owner, as recommended | — |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1781,3 +1782,21 @@ flowchart LR
 | desktop | unchanged — the counts on their items, a shut group carrying its children's |
 | phone | no count anywhere — the More sheet's items and the More tab stay bare |
 | later | the owner's call; the shown mock was counts on the items and their total on More |
+
+---
+
+## a-report-export-is-the-whole-view-as-a-file
+
+> In chat *(owner, 2026-11-07)* — *"A"*, as recommended, to: what does a report's Ekspor file hold? Asked for the two reports whose export content was open — the Supplier Report ([the-report-export-is-marked](suppliers_decision.md#the-report-export-is-marked): *"whether it carries the ranking with its figures, this page or the whole ranking, is open"*) and the Financial Account Report (its Ekspor placed and marked `dropped`, content never decided).
+
+**The verdict.** The rule of the order list ([one-export-is-the-list-as-a-file](warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)) holds for **every report**: the file holds **everything the report shows as the reader has it filtered** — the whole ranking or every period, **every page**, not the page on screen — with **the screen's own columns**, exact money (the screen rounds, the file does not), Jakarta days, `.xlsx`, a progress stream ending in a download link.
+
+| report | the file |
+| --- | --- |
+| Supplier Report | the whole ranking as narrowed, each row with its figures |
+| Financial Account Report — *Periode* | every period at the grain on screen, quiet ones included: the nine change types, *Perubahan bersih*, *Saldo akhir* |
+| Financial Account Report — *Rincian* | one sheet per breakdown (*Per Akun · Per Penyedia · Per Jenis*), every row of each |
+
+⚠ Not built for these two.
+
+✅ Built 2026-11-07 — both: the Supplier Report's Ekspor is `SupplierReportExport` (the whole ranking as narrowed, sheet *Peringkat*), the Financial Account Report's is `FinancialAccountReportExport` (Periode: every period at the grain, quiet ones included; Rincian: sheets *Per Akun · Per Penyedia · Per Jenis*); both pages' `pending.ts` deleted. See [supplier state](../../development_state/supplier/context.md), [financial_account state](../../development_state/financial_account/context.md).

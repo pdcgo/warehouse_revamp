@@ -133,6 +133,28 @@ function windowFilters({ from, to, restockTeamId, q = "" }: Window): Filter[] {
 
 const supplierFilter = (supplierId: bigint): Filter => ({ f: { case: "supplierFilter", value: { supplierId } } });
 
+/**
+ * The Statistik tab's filters — the window, whose restocks, the supplier — exactly what its reads send, so its export
+ * sends the same (each-supplier-tab-exports-its-own-table).
+ */
+export function statisticsFilters(args: { from: string; to: string; restockTeamId: bigint; supplierId: bigint }): Filter[] {
+  return [
+    ...windowFilters({ teamId: undefined, valid: true, from: args.from, to: args.to, restockTeamId: args.restockTeamId }),
+    supplierFilter(args.supplierId),
+  ];
+}
+
+/**
+ * The Supplier Report's filters and order — the window, whose restocks, the settled search, and its "Urutkan" — exactly
+ * what its ranking sends, so its export sends the same (a-report-export-is-the-whole-view-as-a-file).
+ */
+export function reportQuery(args: { from: string; to: string; restockTeamId: bigint; q: string; rankBy: SupplierRankBy }) {
+  return {
+    filters: windowFilters({ teamId: undefined, valid: true, ...args }),
+    sort: { metricId: SUPPLIERS, field: rankField[args.rankBy], sortType: SortType.DESC },
+  };
+}
+
 const idKeys = (ids: bigint[]) => ({ k: { case: "ids" as const, value: { ids } } });
 
 const idsOf = (keys: MetricKeys | undefined): bigint[] => (keys?.k.case === "ids" ? keys.k.value.ids : []);

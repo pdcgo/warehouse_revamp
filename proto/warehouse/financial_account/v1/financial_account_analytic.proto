@@ -40,6 +40,13 @@ service FinancialAccountAnalyticService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // THE ACCOUNT REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+  // view on screen, whole — Periode: every period of the window at its grain, the quiet ones included, in the screen's
+  // order, its columns the nine change types, Perubahan bersih and Saldo akhir; Rincian: one sheet per breakdown (Per
+  // Akun · Per Penyedia · Per Jenis), every row of each. Read exactly as the report reads, scoped by `team_id` and the
+  // account filter, Jakarta days, exact money. A server stream: progress, then an expiring link. Not a read: it stores a
+  // file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+  rpc FinancialAccountReportExport(FinancialAccountReportExportRequest) returns (stream FinancialAccountReportExportResponse);
 }
 
 // Both metrics have the same keys:
@@ -284,4 +291,69 @@ message MetricDataResponse {
   // AS OF WHEN (a-money-metric-says-as-of-when), unix seconds. The daily rows are written in the log row's own
   // transaction, so a Finance figure is never behind its postings: this is the moment the figures were read.
   int64 as_of_unix = 2;
+}
+
+// The report's two views (the-report-is-two-views-periode-and-rincian).
+enum FinancialAccountReportView {
+  FINANCIAL_ACCOUNT_REPORT_VIEW_UNSPECIFIED = 0;
+  // Periode — one row per period at the grain.
+  FINANCIAL_ACCOUNT_REPORT_VIEW_PERIOD = 1;
+  // Rincian — the window by account, by provider and by change type.
+  FINANCIAL_ACCOUNT_REPORT_VIEW_BREAKDOWN = 2;
+}
+
+// THE ACCOUNT REPORT AS A FILE — the view on screen with the screen's own filters (a-report-export-is-the-whole-view-as-a-file).
+message FinancialAccountReportExportRequest {
+  // MetricData's readers: every team reads its own (every-team-reads-its-own-finance).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The caller's scope — and whose accounts are written: never another team's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  FinancialAccountReportView view = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The report's own filters: the window (required) and, when one is picked, the account.
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2
+  }];
+
+  // Periode only: the grain on screen — DAILY, MONTHLY or YEARLY. Rincian has no grain and leaves it unset.
+  warehouse.analytic_base.v1.GroupType group_by = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [0, 2, 4, 5]
+  }];
+
+  // Periode only: the order the Periode heading set — DESC (newest first, the screen's default) or ASC.
+  warehouse.analytic_base.v1.SortType sort_type = 5 [(buf.validate.field).enum.defined_only = true];
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message FinancialAccountReportExportResponse {
+  // A sentence about the step.
+  string message = 1;
+  // Rows written so far, of the total the view holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
 }

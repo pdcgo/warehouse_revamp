@@ -22,7 +22,7 @@ import (
 // The same expense delivered four times at once — Pub/Sub redelivering while the first still runs: it is paid ONCE.
 func TestRace_ExpensePayment_OneEventFourDeliveries(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "E000301", 500_000))
 
 	res := h.Race(t, 4, func(int) error {
@@ -39,7 +39,7 @@ func TestRace_ExpensePayment_OneEventFourDeliveries(t *testing.T) {
 // no deadlock, no lost update — X ends exactly where the sum of every move says.
 func TestRace_ExpensePayment_BesideHandTransfersOnTheSameAccount(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "E000311", 1_000_000))
 	y := mustCreate(t, svc, cash(teamA, "Ops Cash", 1_000_000))
 
@@ -78,7 +78,7 @@ func TestRace_ExpensePayment_BesideHandTransfersOnTheSameAccount(t *testing.T) {
 // listener takes the same row lock every other write takes.
 func TestInterleave_ExpensePayment_WaitsForAPostOnItsAccount(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "E000321", 500_000))
 
 	sched := h.Interleave(t,

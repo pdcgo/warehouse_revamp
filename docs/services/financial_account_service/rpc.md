@@ -19,6 +19,7 @@ that moves only with a log row ([context_decision.md](../../business/financial_a
 | | `FinancialAccountTransfer` · `Capital` · `Reconcile` | the hand rows — two legs · the owner's money · the bank's figure in, the difference posted |
 | | `FinancialAccountShopSet` · `OperationalSet` | which account a shop withdraws into · which accounts pay for operations |
 | `FinancialAccountAnalyticService` | `MetricSearch` · `MetricData` | the Finance metrics `metrics/financial_accounts` and `metrics/financial_accounts/types` — the analytic pattern, read from one row per account per day, a balance as one running sum ([below](#the-finance-metrics--metricsearch--metricdata)). The three old reads `AnalyticTimeSearch` / `AnalyticGroupSearch` / `AnalyticGroupMetric` were removed 2026-11-05 ([the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)) |
+| | `FinancialAccountReportExport` | the account report's view as a file — Periode (every period at the grain) or Rincian (one sheet per breakdown) ([below](#the-report-as-a-file--financialaccountreportexport)) |
 | *(push route)* | `/event/financial-account-withdrawal/push` | settlement's `withdrawal` rows into the shop's account |
 | *(push route)* | `/event/financial-account-team-payment/push` | liability's accepted team payments — out of the payer's account, into the creditor's |
 | *(push routes)* | `/event/financial-account-restock-{created,updated,cancelled}/push` | inventory's restock payments — out at create, the difference or the move on an edit, the refund on a cancel |
@@ -95,6 +96,52 @@ A period cut by the range has its edges at the range boundary: the running sum s
 time page needs the whole window's sum (a page's balance depends on every period before it), so MetricData reads the
 whole window — at most 366 daily rows per account — and answers the asked keys. Perf: 2–15 ms on 50 accounts × a year
 (was 156 ms – 3.3 s, [AnalyticTimeSearch.md](../../../audits/services/financial_account_service/performances/AnalyticTimeSearch.md)).
+
+## The report as a file — FinancialAccountReportExport
+
+Built 2026-11-07 ([a-report-export-is-the-whole-view-as-a-file](../../technical/frontend/context_decision.md#a-report-export-is-the-whole-view-as-a-file);
+the owner's *"sama action export"* on the report's Ekspor) — `financial_account_v1/financial_account_report_export.go`,
+on the supplier tabs' plumbing (`backend/pkgs/san_export`, a private `table_export` document). The view on screen,
+whole, read exactly as the report reads it: `team_id`, the window, the account when one is picked.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as the report's Export
+  participant F as FinancialAccountAnalyticService
+  participant S as selling - ShopByIds as the caller
+  participant D as document_service
+  C->>F: FinancialAccountReportExport - team_id, view, the window and account, the grain and order
+  alt Periode
+    F->>F: series - the balance before the window, then the window's days summed, the running sum per period
+    loop 200 periods a step, the screen's order
+      F-->>C: rows written - done of N
+    end
+  else Rincian
+    F->>F: byAccount - per account its balance before and the window's sums, one statement
+    F->>S: the shops the accounts are named by
+    F->>F: Per Akun, Per Penyedia, Per Jenis - each with its rows
+  end
+  F->>D: RequestUpload TABLE_EXPORT, PUT, ConfirmUpload, GetDownloadUrl - as the caller
+  F-->>C: the file is ready - the expiring link and the filename
+```
+
+| | |
+| --- | --- |
+| Periode | sheet *Periode*: every period of the window at the grain on screen (DAILY, MONTHLY, YEARLY — `2026-10-07`, `2026-10`, `2026`, as the table reads them), the quiet ones included (each carries its balance), newest first or as the Periode heading flipped it (`sort_type`). Columns: Periode · Penarikan · Modal · Restok · Biaya · Iklan · Pembayaran tim · Transfer · Penyesuaian · Saldo awal (the type) · Perubahan bersih · Saldo akhir — the table's. The rows are `series()`, the read MetricData fills a page from |
+| Rincian | three sheets, every row of each, in the screen's order (the largest movement either way first, the key breaking a tie): *Per Akun* — Akun (named as the report names it: an unknown account by its shops, a written `shop #<id>` by the shop's name — [the-unknown-account-reads-lainnya](../../technical/frontend/financial_accounts_decision.md#the-unknown-account-reads-lainnya)) · Penyedia · Status (*Diarsipkan*) · Saldo awal · Perubahan bersih · Saldo akhir, then a Total; *Per Penyedia* — the same by provider, then a Total; *Per Jenis* — the bridge: Saldo awal, each type that moved in (*Masuk*) by size, each that moved out (*Keluar*), Saldo akhir. All from `byAccount`, the read the ranking and the headline answer from |
+| an account picked | every sheet is that account's — the Periode balances its own, Rincian its one row, its provider, its types |
+| the figures | the exact doubles ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money)) — a 0 is a figure, written 0; money out negative; Jakarta days |
+| refused | no view, Periode with no grain or a week, no window, over a year — InvalidArgument; no store — Unimplemented |
+| the scope | `team_id`, always: another team's accounts are never in the file. The policy is MetricData's readers (selling and warehouse roles, Root, the Administrator); not `NO_SIDE_EFFECTS` — it stores a file, so a monitor and an agent are refused; the screen hides Export from a monitored team |
+| the store | `ExportStore` (`export_store.go`, the service's 3rd `NewService` dep), adapted at the composition root (`cmd/app_development/financial_account_exports.go`): the file through document_service as the caller, the shops through `ShopByIds` (BASIC) over the forwarding shop client. File `laporan-akun-periode-…` / `laporan-akun-rincian-…` |
+| measured (`-tags perfaudit`, 50 accounts × 365 days) | Periode a year by day 19.8 ms / 2 queries, by month 11 ms, a month 5.5 ms, one account's year 14 ms; Rincian a year 14.8 ms / 3, a month 7.2 ms — not heavy (the Go share is the file's encoding) |
+
+Tests: `financial_account_report_export_test.go` — Periode is every day of the window, each row the report's own
+`MetricData` paged 20 at a time, ASC the same rows reversed; a month and a year read as the table; Rincian's three
+sheets, each account row the report's ranking fill, the Total the headline; another team gets nothing (a selling team,
+a warehouse); an account picked narrows every sheet; money exact to its fraction; an unknown account named by its shop,
+an archived one marked; refusals and the policy.
 
 ---
 

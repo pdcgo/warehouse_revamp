@@ -43,6 +43,9 @@ type Service struct {
 	dedup san_event.EventDedup
 	// now is the clock — a picked day is refused when it is after today, in Jakarta.
 	now func() time.Time
+	// Where the report's export goes, and the shop names its account rows need (export_store.go). nil = the export is
+	// Unimplemented.
+	exports ExportStore
 }
 
 // compile-time proof Service serves both proto services.
@@ -51,7 +54,7 @@ var (
 	_ financial_accountv1connect.FinancialAccountAnalyticServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, shops ShopChecker) *Service {
+func NewService(db *gorm.DB, shops ShopChecker, exports ExportStore) *Service {
 	// With no shop to ask, every ShopSet is REFUSED rather than trusted.
 	if shops == nil {
 		shops = noShopChecker{}
@@ -63,7 +66,7 @@ func NewService(db *gorm.DB, shops ShopChecker) *Service {
 		panic(err)
 	}
 
-	return &Service{db: db, shops: shops, dedup: dedup, now: time.Now}
+	return &Service{db: db, shops: shops, dedup: dedup, now: time.Now, exports: exports}
 }
 
 type noShopChecker struct{}

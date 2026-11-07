@@ -22,7 +22,7 @@ import (
 // ONCE. A delivery that lost the claim may fail and be redelivered; it never posts a second time.
 func TestRace_RestockPayment_OneEventFourDeliveries(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000301", 500_000))
 
 	res := h.Race(t, 4, func(int) error {
@@ -39,7 +39,7 @@ func TestRace_RestockPayment_OneEventFourDeliveries(t *testing.T) {
 // the pair in id order — and the money is conserved.
 func TestRace_RestockPayment_AMoveBesideAnOppositeTransferNeverDeadlocks(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000311", 1_000_000))
 	y := mustCreate(t, svc, cash(teamA, "Ops Cash", 1_000_000))
 
@@ -73,7 +73,7 @@ func TestRace_RestockPayment_AMoveBesideAnOppositeTransferNeverDeadlocks(t *test
 // the listener takes the same row lock every other write takes.
 func TestInterleave_RestockPayment_WaitsForAPostOnItsAccount(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000321", 500_000))
 
 	sched := h.Interleave(t,

@@ -20,7 +20,10 @@ import { type Timestamp, timestampFromDate } from "@bufbuild/protobuf/wkt";
 
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import { GroupType, SortType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
-import { FinancialAccountAnalyticService } from "../src/gen/warehouse/financial_account/v1/financial_account_analytic_pb";
+import {
+  FinancialAccountAnalyticService,
+  FinancialAccountReportView,
+} from "../src/gen/warehouse/financial_account/v1/financial_account_analytic_pb";
 import { timeSpine } from "../src/features/analytic/provider";
 import {
   CapitalDirection,
@@ -35,6 +38,7 @@ import {
 } from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
 import { type AccountFixture, financialAccountLogs, financialAccounts } from "./financialAccountFixtures";
 import { dayKey, shops } from "./fixtures";
+import { accountReportExportScenario, resetAccountReportExportScenario } from "./financialAccountExportScenario";
 
 // ── The tables ──────────────────────────────────────────────────────────────────────────────────
 
@@ -111,6 +115,7 @@ export function resetFinancialAccounts() {
   nextAccountId = 1350n;
   nextLogId = 1500n;
   nextGroupId = 100n;
+  resetAccountReportExportScenario();
 }
 
 /**
@@ -852,7 +857,47 @@ function checkGroupOf(metricIds: string[], group: GroupType) {
   }
 }
 
+/** An export's link in Storybook: an empty data: URL, so the download a story triggers goes nowhere. */
+const EMPTY_XLSX = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,";
+
 export const financialAccountAnalyticService: Partial<ServiceImpl<typeof FinancialAccountAnalyticService>> = {
+  // THE ACCOUNT REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file): the view on screen over the report's
+  // filters — Periode at a day, month or year (every period), or Rincian (every account, provider and type). Refused as
+  // the server refuses: no view, a Periode with no such grain. What was asked is kept for the story to read.
+  financialAccountReportExport: async function* (req) {
+    const filters = financeFilters(req.filters as AnyFilter[], [CHANGES_ID]);
+    let rows: number;
+
+    if (req.view === FinancialAccountReportView.PERIOD) {
+      if (![GroupType.DAILY, GroupType.MONTHLY, GroupType.YEARLY].includes(req.groupBy)) {
+        throw new ConnectError(`Periode is read at a day, a month or a year, not ${req.groupBy}`, Code.InvalidArgument);
+      }
+      rows = financeSeries(req.teamId, req.groupBy, filters).size;
+    } else if (req.view === FinancialAccountReportView.BREAKDOWN) {
+      rows =
+        financeIdKeys(req.teamId, GroupType.ACCOUNT, filters).size +
+        financeIdKeys(req.teamId, GroupType.PROVIDER, filters).size +
+        financeIdKeys(req.teamId, GroupType.CHANGE_TYPE, filters).size;
+    } else {
+      throw new ConnectError("the report's view is Periode or Rincian", Code.InvalidArgument);
+    }
+
+    accountReportExportScenario.calls.push({
+      teamId: req.teamId,
+      view: req.view,
+      filters: req.filters,
+      groupBy: req.groupBy,
+      sortType: req.sortType,
+      rows,
+    });
+
+    const total = BigInt(rows);
+    const name = req.view === FinancialAccountReportView.PERIOD ? "laporan-akun-periode.xlsx" : "laporan-akun-rincian.xlsx";
+
+    yield { message: "exporting", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: name };
+  },
+
   metricSearch: (req) => {
     const metricId = req.sort?.metricId ?? "";
     const filters = financeFilters(req.filters as AnyFilter[], [metricId]);

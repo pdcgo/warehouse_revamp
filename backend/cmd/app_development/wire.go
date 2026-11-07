@@ -133,6 +133,9 @@ func InitializeApp() (*App, error) {
 		// whether a shop is the team's, is asked of the shop — see financial_account_deps.go.
 		financial_account_v1.NewService,
 		NewFinancialAccountShopChecker,
+		// Where the account report's export goes, and the shops its accounts are named by — see
+		// financial_account_exports.go.
+		NewFinancialAccountExportStore,
 		// The suppliers a selling team buys from, and their stores. Its one outside question, whether a team
 		// is a selling team, is asked of team_service — see supplier_deps.go.
 		supplier_v1.NewService,
@@ -140,6 +143,7 @@ func InitializeApp() (*App, error) {
 		// What inventory knows of a supplier's goods — Penjualan's take, the range pills' sets. In-process, see
 		// supplier_goods_reader.go.
 		NewSupplierGoodsReader,
+		NewSupplierExportStore,
 		// What a warehouse charges per order (warehouse-prices-balance-records); its one outside question, a warehouse's
 		// name for a refusal, is asked of team_service — see warehouse_deps.go.
 		warehouse_v1.NewService,

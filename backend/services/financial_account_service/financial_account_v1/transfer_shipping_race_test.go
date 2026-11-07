@@ -23,7 +23,7 @@ import (
 // ONCE. A delivery that lost the claim may fail and be redelivered; it never posts a second time.
 func TestRace_TransferShipping_OneEventFourDeliveries(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000401", 500_000))
 
 	res := h.Race(t, 4, func(int) error {
@@ -40,7 +40,7 @@ func TestRace_TransferShipping_OneEventFourDeliveries(t *testing.T) {
 // at the same instant: never a deadlock — every write locks the pair in id order — and the money is exactly the sum.
 func TestRace_TransferShipping_BesideHandTransfersOnTheSameAccounts(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000411", 1_000_000))
 	y := mustCreate(t, svc, cash(teamA, "Ops Cash", 1_000_000))
 
@@ -86,7 +86,7 @@ func TestRace_TransferShipping_BesideHandTransfersOnTheSameAccounts(t *testing.T
 // the listener takes the same row lock every other write takes.
 func TestInterleave_TransferShipping_WaitsForAPostOnItsAccount(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000421", 500_000))
 
 	sched := h.Interleave(t,

@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
 import { dayAgo } from "../../../.storybook/supplierFigureFixtures";
+import { supplierExportScenario } from "../../../.storybook/supplierExportScenario";
+import { GroupType } from "../../gen/warehouse/analytic_base/v1/analytic_pb";
 import { formatRupiah } from "../../lib/money";
 import { SupplierStatistics, description } from "./SupplierStatistics";
 
@@ -29,7 +31,7 @@ const rp = (amount: bigint) => formatRupiah(amount).replace(/\s/g, " ");
 const meta = {
   title: "Features/Suppliers/SupplierStatistics",
   component: SupplierStatistics,
-  args: { supplierId: 31n, exportMark: null },
+  args: { supplierId: 31n },
   parameters: { signedIn: true, docs: { description: { component: description } } },
   beforeEach: asTeam(MELATI.id),
 } satisfies Meta<typeof SupplierStatistics>;
@@ -399,7 +401,7 @@ const AtFilteredUrl = routedPage(
       path: "/inventories/suppliers/:supplierId",
       element: (
         <>
-          <SupplierStatistics supplierId={31n} exportMark={null} />
+          <SupplierStatistics supplierId={31n} />
           <LocationProbe />
         </>
       ),
@@ -476,5 +478,28 @@ export const ByProductReadsItsSales: Story = {
     await expect(within(beras).getByTestId("figure-sales")).toHaveTextContent(`50${rp(3_250_000n)}`);
     const gula = canvas.getByTestId("statistics-product-row-13|73");
     await expect(within(gula).getByTestId("figure-sales")).toHaveTextContent(`50${rp(975_000n)}`);
+  },
+};
+
+// THE VIEW AS A FILE (each-supplier-tab-exports-its-own-table): Export asks for the view on screen over the tab's own
+// filters — Per Periode at its grain, then, switched, Per Produk — and the file downloads as the stream ends.
+export const ExportsTheViewOnScreen: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("statistics-export"));
+    await waitFor(() => expect(supplierExportScenario.figures).toHaveLength(1));
+
+    const byPeriod = supplierExportScenario.figures[0]!;
+    await expect(byPeriod.groupBy).toBe(GroupType.DAILY);
+    await expect(byPeriod.teamId).toBe(MELATI.id);
+    await expect(byPeriod.filters.map((f) => f.f.case)).toEqual(["dateRangeFilter", "supplierFilter"]);
+    await expect(byPeriod.filters[1]!.f.value).toMatchObject({ supplierId: 31n });
+    await expect((await screen.findAllByText("Export ready — the file is downloading")).length).toBeGreaterThan(0);
+
+    await openByProduct(canvas);
+    await userEvent.click(canvas.getByTestId("statistics-export"));
+    await waitFor(() => expect(supplierExportScenario.figures).toHaveLength(2));
+    await expect(supplierExportScenario.figures[1]!.groupBy).toBe(GroupType.PRODUCT);
   },
 };

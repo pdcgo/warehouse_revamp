@@ -26,6 +26,8 @@ import {
 } from "./SupplierFigures";
 import { useSupplierStoreGoods } from "./goods";
 import { SupplierTabExport } from "./SupplierTabExport";
+import { useStoreExport } from "./exports";
+import { useCanWrite } from "../team/TeamContext";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -78,8 +80,6 @@ export interface ChannelBrowserProps {
   descriptionMark?: ReactNode;
   /** Marks for Terjual and Siap — none by default: a store's figures are real (InventoryService.SupplierGoods). */
   figureMarks?: FigureMarks;
-  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
-  exportMark: ReactNode;
 }
 
 // ChannelBrowser is a supplier's CHANNELS tab — on the manage detail and on the discover detail alike
@@ -110,7 +110,6 @@ export function ChannelBrowser({
   rowActions,
   descriptionMark,
   figureMarks = NO_FIGURE_MARKS,
-  exportMark,
 }: ChannelBrowserProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -143,6 +142,18 @@ export function ChannelBrowser({
   const error = query.isError ? rpcError(query.error) : "";
   // What the rows on screen were asked with — the settled search, not the one still being typed.
   const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED;
+
+  // THE TAB AS A FILE (each-supplier-tab-exports-its-own-table): the rows the list holds with the settled search and the
+  // type, every page. It stores a file, so a monitored team's reader has no Export (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
+  const exporter = useStoreExport(teamId);
+  const exportButton = writable ? (
+    <SupplierTabExport
+      testId="channels-export"
+      progress={exporter.progress}
+      onExport={() => void exporter.start({ supplierId, q: term, channelType })}
+    />
+  ) : null;
 
   function list() {
     if (channels.length === 0 && !error) {
@@ -264,7 +275,7 @@ export function ChannelBrowser({
             actions
           ) : (
             <>
-              <SupplierTabExport mark={exportMark} testId="channels-export" />
+              {exportButton}
               {actions}
             </>
           )
@@ -288,7 +299,7 @@ export function ChannelBrowser({
           />
         </FilterField>
         {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
-        {isMobile && <SupplierTabExport mark={exportMark} testId="channels-export" />}
+        {isMobile && exportButton}
       </FilterBar>
 
       {error && (

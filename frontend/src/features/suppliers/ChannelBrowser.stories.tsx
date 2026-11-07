@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "@chakra-ui/react";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { LocationProbe, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
+import { asAdminTeam } from "../../../.storybook/sessionScenario";
+import { supplierExportScenario } from "../../../.storybook/supplierExportScenario";
 import { channelFixture, supplierFixture } from "../../../.storybook/supplierFixtures";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { ChannelBrowser } from "./ChannelBrowser";
@@ -27,7 +29,7 @@ const TEAM = 12n;
 const meta = {
   title: "Features/Suppliers/ChannelBrowser",
   component: ChannelBrowser,
-  args: { teamId: TEAM, supplierId: SUMBER.id, exportMark: null },
+  args: { teamId: TEAM, supplierId: SUMBER.id },
 } satisfies Meta<typeof ChannelBrowser>;
 
 export default meta;
@@ -146,7 +148,7 @@ const AtFilteredUrl = routedPage(
       path: "/inventories/suppliers/:supplierId",
       element: (
         <>
-          <ChannelBrowser teamId={TEAM} supplierId={SUMBER.id} exportMark={null} />
+          <ChannelBrowser teamId={TEAM} supplierId={SUMBER.id} />
           <LocationProbe />
         </>
       ),
@@ -212,5 +214,33 @@ export const AStoreRowLightsUp: Story = {
     row.setAttribute("data-hover", "");
     await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
     await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
+  },
+};
+
+// THE TAB AS A FILE (each-supplier-tab-exports-its-own-table): Export asks for the rows the list holds with ITS filter —
+// the settled search and the type, every page — and the file downloads as the stream ends.
+export const ExportsTheTabAsFiltered: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("channels-search"), "tokopedia.com", { delay: 40 });
+    await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 1));
+
+    await userEvent.click(canvas.getByTestId("channels-export"));
+
+    await waitFor(() => expect(supplierExportScenario.stores).toHaveLength(1));
+    const asked = supplierExportScenario.stores[0]!;
+    await expect(asked).toMatchObject({ teamId: TEAM, supplierId: SUMBER.id, q: "tokopedia.com", rows: 1 });
+    await expect((await screen.findAllByText("Export ready — the file is downloading")).length).toBeGreaterThan(0);
+  },
+};
+
+// A monitored team is read, never written — and an export stores a file (the-admin-team-monitors-read-only).
+export const AMonitorHasNoExport: Story = {
+  parameters: { signedIn: true },
+  beforeEach: [asAdminTeam(), asTeam(TEAM)],
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.queryByTestId("channels-export")).toBeNull();
   },
 };
