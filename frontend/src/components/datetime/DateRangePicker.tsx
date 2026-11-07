@@ -2,7 +2,8 @@ import { useState, type ReactNode } from "react";
 import { Box, Button, Flex, Icon, Popover, Portal, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Calendar, ChevronDown, X } from "lucide-react";
-import { endOfDay, parseLocalDate, startOfDay, unixSeconds } from "../../lib/datetime";
+import { parseLocalDate } from "../../lib/datetime";
+import { jakartaUnixWindowOf } from "../../lib/jakartaDay";
 import { RadioPills } from "../inputs/RadioPills";
 import { RangeCalendar } from "./RangeCalendar";
 
@@ -45,36 +46,19 @@ const QUICK_RANGES: QuickRange[] = [
 /** The window a dated screen opens on — the last month (owner: *"default 1 bulan"*). */
 export const LAST_MONTH: DateRange = { kind: "relative", months: 1 };
 
-/** The same calendar day `months` back — clamped to that month's last day (31 Mar − 1 month is 28 Feb). */
-function monthsBack(now: Date, months: number): Date {
-  const first = new Date(now.getFullYear(), now.getMonth() - months, 1);
-  const lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
-  return new Date(first.getFullYear(), first.getMonth(), Math.min(now.getDate(), lastDay));
-}
-
 /**
  * Resolve a {@link DateRange} to a unix-seconds window for an RPC. `0n` is an OPEN end on either
  * side. A relative range ends at the END of today. By days it starts at the START of the day `days-1` back; by
  * months, the day AFTER the same date `months` back — so "Last 1 month" on 15 Oct is 16 Sep – 15 Oct, a month
  * of whole days the way "Last 7 days" is seven.
+ *
+ * IN JAKARTA DAYS (backlog #37, the-system-runs-on-jakarta-time): today is Jakarta's today and the bounds are
+ * 00:00 / 23:59:59 WIB, whatever the viewer's clock — the lists filtering on these instants (orders, restocks, returns,
+ * the pick queue, batches) cut the same days as the server's reports. A screen whose RPC takes `yyyy-mm-dd` days
+ * reads them with `jakartaWindowOf` (lib/jakartaDay.ts) instead.
  */
 export function resolveRange(range: DateRange, now: Date = new Date()): { fromUnix: bigint; toUnix: bigint } {
-  if (range.kind === "relative") {
-    let from: Date;
-    if (range.months !== undefined) {
-      const back = monthsBack(now, range.months);
-      from = startOfDay(new Date(back.getFullYear(), back.getMonth(), back.getDate() + 1));
-    } else {
-      from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (range.days - 1)));
-    }
-    return { fromUnix: unixSeconds(from), toUnix: unixSeconds(endOfDay(now)) };
-  }
-  const from = parseLocalDate(range.from);
-  const to = parseLocalDate(range.to);
-  return {
-    fromUnix: from ? unixSeconds(startOfDay(from)) : 0n,
-    toUnix: to ? unixSeconds(endOfDay(to)) : 0n,
-  };
+  return jakartaUnixWindowOf(range, now);
 }
 
 /** A relative window's name — "Today", "Last 7 days", "Last 3 months", "Last 1 year". */

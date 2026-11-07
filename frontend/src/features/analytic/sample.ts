@@ -11,7 +11,7 @@
 // cheap orders and NO settlement — sorted by a settlement figure, it is not a row, and the settlement book's shops are
 // (the-rows-are-the-keys-step-one-sends made visible: the service that ranks decides the rows). Toko Lama sells nothing.
 
-import { toDateInputValue } from "../../lib/datetime";
+import { jakartaToday } from "../../lib/jakartaDay";
 import { daySpine } from "../../lib/period";
 
 export interface SampleEntity {
@@ -152,7 +152,7 @@ function seeded(seed: string): number {
 }
 
 function build(): Record<string, Fact[]> {
-  const days = daySpine(SAMPLE_START, toDateInputValue(new Date()));
+  const days = daySpine(SAMPLE_START, jakartaToday());
   const facts: Record<string, Fact[]> = {
     "metrics/orders/created": [],
     ...Object.fromEntries(ORDER_MOVES.map((m) => [m.metricId, []])),

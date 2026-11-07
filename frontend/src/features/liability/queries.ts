@@ -17,8 +17,8 @@ import {
   termsFromList,
   termsRowData,
 } from "./adapt";
-import { resolveRange, type DateRange } from "../../components/datetime/DateRangePicker";
-import { toDateInputValue } from "../../lib/datetime";
+import type { DateRange } from "../../components/datetime/DateRangePicker";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 
 // The Liability screens' reads (#185).
 //
@@ -29,16 +29,10 @@ import { toDateInputValue } from "../../lib/datetime";
 // A picked date range → the `yyyy-mm-dd` pair the Team Balance lists filter on (backlog #34); "" is an open end, and
 // ALL_DATES is two of them. The server reads each day as a JAKARTA day (the-liability-day-is-the-jakarta-day).
 //
-// Through `resolveRange`, as the daily statement's `rangeDates` does: a RELATIVE range ("last 7 days") carries no dates,
-// only the count, and resolving turns it into today's seven. The instants come back in local time, so they are
-// formatted back with the local formatter — `toISOString` would shift the day by seven hours in Indonesia.
+// A RELATIVE range ("last 7 days") carries no dates, only the count — `jakartaWindowOf` resolves it against JAKARTA's
+// today (backlog #37), so the days asked for are the server's days whatever the viewer's clock says.
 export function liabilityPeriod(range: DateRange): { from: string; to: string } {
-  const { fromUnix, toUnix } = resolveRange(range);
-
-  return {
-    from: fromUnix > 0n ? toDateInputValue(new Date(Number(fromUnix) * 1000)) : "",
-    to: toUnix > 0n ? toDateInputValue(new Date(Number(toUnix) * 1000)) : "",
-  };
+  return jakartaWindowOf(range);
 }
 
 // THE PAIR PAGE'S PREVIOUS ROWS, KEPT ONLY FOR THE SAME PAIR. A new tab, page or date range refines the same question,

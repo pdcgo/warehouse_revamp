@@ -19,6 +19,7 @@ import {
   UploadedFileStatus,
 } from "../src/gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
+import { addDays, jakartaToday } from "../src/lib/jakartaDay";
 
 // ── Teams ───────────────────────────────────────────────────────────────────────────────────────
 //
@@ -880,13 +881,8 @@ export function pickLocationsByTransaction(transactionId: bigint) {
 // `2026-08-14` would slide out of the default window the moment the calendar moved past it, and the
 // statement stories would then fail on the date rather than on a change to the screen.
 
-/** `days` ago as the LOCAL `yyyy-mm-dd` the Daily RPCs bucket on — the same day the picker resolves. */
-export const dayKey = (days: number): string => {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+/** `days` ago as the JAKARTA `yyyy-mm-dd` the Daily RPCs bucket on — the same day the picker resolves (lib/jakartaDay). */
+export const dayKey = (days: number): string => addDays(jakartaToday(), -days);
 
 // Toko Melati's orders, four days of them inside the last fortnight.
 //

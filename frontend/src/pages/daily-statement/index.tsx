@@ -6,11 +6,11 @@ import { rpcError } from "../../api/clients";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { COST_FILTER_KINDS, ExpenseKindSelect } from "../../components/pickers/ExpenseKindSelect";
-import { DateRangePicker, resolveRange, LAST_MONTH } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
-import { toDateInputValue } from "../../lib/datetime";
+import { firstOfMonthBack, jakartaToday, jakartaWindowOf } from "../../lib/jakartaDay";
 import { MAX_PERIOD_DAYS, bucketSpine, spanDays } from "../../lib/period";
 import type { PeriodGrain } from "../../lib/period";
 import { boolCodec, dateRangeCodec, enumCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
@@ -34,25 +34,20 @@ import { StatementTable } from "./components/StatementTable";
 // refuse a span longer than a leap year, so a yearly view can hold at most one year — and "last year
 // and this one" is not a range this screen is allowed to ask for. It shows year-to-date and says so.
 // Lifting that means giving the RPCs a grain of their own, which is a contract change.
+//
+// Today, this month and this year are JAKARTA's (the-system-runs-on-jakarta-time, backlog #37) — the days the Daily RPCs
+// bucket on, whatever the viewer's clock says.
 function defaultRangeFor(grain: PeriodGrain): DateRange {
-  const now = new Date();
+  const today = jakartaToday();
 
   if (grain === "month") {
     // The 1st of the month eleven back — twelve calendar months, which is 365 or 366 days and so
     // never trips the cap.
-    return {
-      kind: "absolute",
-      from: toDateInputValue(new Date(now.getFullYear(), now.getMonth() - 11, 1)),
-      to: toDateInputValue(now),
-    };
+    return { kind: "absolute", from: firstOfMonthBack(today, 11), to: today };
   }
 
   if (grain === "year") {
-    return {
-      kind: "absolute",
-      from: toDateInputValue(new Date(now.getFullYear(), 0, 1)),
-      to: toDateInputValue(now),
-    };
+    return { kind: "absolute", from: `${today.slice(0, 4)}-01-01`, to: today };
   }
 
   // The calendar month would have matched the other three money screens, and it is deliberately NOT one: those
@@ -64,24 +59,6 @@ function defaultRangeFor(grain: PeriodGrain): DateRange {
 }
 
 const GRAIN_CODEC = oneOfCodec<PeriodGrain>(["day", "month", "year"]);
-
-// A DateRange → the `yyyy-mm-dd` pair both Daily RPCs filter on.
-//
-// It goes through `resolveRange` rather than reading `range.from`/`range.to` directly, because a
-// RELATIVE range ("last 30 days") has no dates on it at all — it stores the COUNT so the window stays
-// live. Resolving is what turns it into today's actual 30 days.
-//
-// The unix instants come back in LOCAL time (that is `resolveRange`'s whole contract), so they are
-// formatted back with the local formatter. Going via toISOString here would shift the boundary by seven
-// hours in Indonesia and quietly ask the server for a window one day off the one the picker shows.
-function rangeDates(range: DateRange): { from: string; to: string } {
-  const { fromUnix, toUnix } = resolveRange(range);
-
-  return {
-    from: fromUnix > 0n ? toDateInputValue(new Date(Number(fromUnix) * 1000)) : "",
-    to: toUnix > 0n ? toDateInputValue(new Date(Number(toUnix) * 1000)) : "",
-  };
-}
 
 // DailyStatementPage — the money, period by period.
 //
@@ -134,7 +111,9 @@ export function DailyStatementPage() {
   const mode = "warehouse" as const;
   const servesThisTeam = current?.teamType === TeamType.WAREHOUSE;
 
-  const { from, to } = rangeDates(range);
+  // A DateRange → the `yyyy-mm-dd` pair both Daily RPCs filter on. A RELATIVE range ("last 30 days") stores only the
+  // COUNT so the window stays live; `jakartaWindowOf` turns it into Jakarta's actual 30 days (backlog #37).
+  const { from, to } = jakartaWindowOf(range);
   const span = spanDays(from, to);
 
   // The SAME bound the server enforces, checked here first — and it is a bound in DAYS at every grain,

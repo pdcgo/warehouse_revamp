@@ -26,7 +26,7 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import {
   RATE_MIN_UNITS,
   type SupplierRankBy,
@@ -120,7 +120,7 @@ export function SupplierReportPage() {
     setPage(1);
   };
 
-  const { from, to } = windowOf(range);
+  const { from, to } = jakartaWindowOf(range);
   // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
   // under the picker says why rather than showing a refusal.
   const span = spanDays(from, to);

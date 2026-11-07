@@ -85,6 +85,8 @@ system's calendar is Jakarta; the presentation question is separate and not rais
 
 ✅ Built 2026-11-06 — the stock-loss expense: `cmd/app_development/expense_poster.go` `PostStockLoss` dates `occurred_at` by `expense_v1.JakartaDay(now)`, not the host clock; test `TestExpensePoster_AWriteOffAt0030WIBLandsOnItsJakartaDay` (00:30 WIB on a UTC clock lands on its Jakarta day) ([development_state/architecture](../../development_state/architecture/context.md)).
 
+✅ Built 2026-11-07 — the frontend's report and list windows (backlog #37): one helper, `frontend/src/lib/jakartaDay.ts` (fixed UTC+7 arithmetic, never the browser's zone) — `jakartaWindowOf` for the screens that send Jakarta `yyyy-mm-dd` days (Analytic, supplier statistics and report, financial account detail and report, settlement list, report and Shop Entries, Team Balance, the daily statement) and `resolveRange` → 00:00 / 23:59:59 WIB bounds for the unix-bound lists (orders, pick queue, restocks, returns, batches); `features/settlement/window.ts` and the local copies are gone. Test `src/lib/jakartaDay.test.ts` runs the 23:30 / 00:30 WIB edges under UTC, Los Angeles, Makassar, Jayapura and Jakarta, so viewer-midnight math fails it on any machine ([development_state/architecture](../../development_state/architecture/context.md)).
+
 ## region-stays-its-own-service
 
 > Owner, in chat (2026-10-31): *"yes"* — to [Q8](./context_clarify.md#question), *does `region_service` stay its own

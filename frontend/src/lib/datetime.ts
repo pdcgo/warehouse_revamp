@@ -7,6 +7,7 @@
 // the exact bug these helpers exist to prevent, so every parse builds the Date from parts in local time.
 
 import i18next from "i18next";
+import { jakartaDayEndUnix, jakartaDayOfUnix, jakartaDayStartUnix, jakartaDaysSince, jakartaToday } from "./jakartaDay";
 import type { PeriodGrain } from "./period";
 
 // THE APP'S LANGUAGE, NOT THE BROWSER'S, for every human date below (owner: *"yesterday tidak ikut i18n?"*). They all
@@ -18,7 +19,10 @@ const appLocale = (): string | undefined => i18next.language || undefined;
 // JAKARTA TIME, NOT THE VIEWER'S, for every date and time this file FORMATS (a-table-date-is-short-and-every-time-is-wib).
 // Indonesia has three zones: on the viewer's own clock a customer service agent in Makassar read a deadline as 16:00 while
 // the warehouse in Jakarta read 15:00. The analytic reports already count days in Jakarta time, so a row's "29 Okt" is the
-// report's. ⚠ Only the FORMATTERS — the picker math above still cuts days at the viewer's midnight, until a filter moves.
+// report's. The DAY math moved too (backlog #37): a `yyyy-mm-dd` ↔ unix bound (`dateInputToUnix`, `unixToDateInput`), the
+// calendar-day count and every range window are Jakarta days, from lib/jakartaDay.ts. What stays LOCAL is only the
+// calendar GRID (a Date standing for a cell, `parseLocalDate` / `toDateInputValue` / `monthGrid`) and the
+// `datetime-local` inputs, which hold a wall-clock time the viewer typed.
 const APP_TIME_ZONE = "Asia/Jakarta";
 
 export function startOfDay(d: Date): Date {
@@ -43,17 +47,11 @@ export function unixSeconds(d: Date): bigint {
  * reading it at 08:00, even though barely nine hours have passed. Flooring the elapsed milliseconds
  * would call that 0 days and report a box that has already survived a shift change as "today".
  *
- * Both ends are taken to LOCAL midnight for the reason this whole module exists — a UTC comparison
- * shifts the boundary by seven hours in Indonesia, which is exactly where the off-by-one lives.
+ * JAKARTA calendar days (the-system-runs-on-jakarta-time) — the warehouse's yesterday, not the viewer's: a laptop on
+ * UTC or in Makassar would move the day boundary by hours, which is exactly where the off-by-one lives.
  */
 export function daysSinceUnix(unix: bigint): number {
-  if (unix <= 0n) return 0;
-
-  const then = startOfDay(new Date(Number(unix) * 1000)).getTime();
-  const today = startOfDay(new Date()).getTime();
-  const days = Math.round((today - then) / 86_400_000);
-
-  return days > 0 ? days : 0;
+  return jakartaDaysSince(unix);
 }
 
 /** A `<input type="date">` value (`yyyy-mm-dd`) parsed at LOCAL midnight. `""`/malformed → null. */
@@ -108,13 +106,7 @@ export function todayDateInput(): string {
  * was not showing. `now` is a parameter so the boundary can be pinned without faking the clock.
  */
 export function todayWibDateInput(now: Date = new Date()): string {
-  const p = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: APP_TIME_ZONE })
-      .formatToParts(now)
-      .map((part) => [part.type, part.value]),
-  );
-
-  return `${p.year}-${p.month}-${p.day}`;
+  return jakartaToday(now);
 }
 
 /**
@@ -139,8 +131,9 @@ export function formatDayShort(day: string): string {
   return `${p.day} ${p.month}${year}`;
 }
 
+/** unix seconds → the JAKARTA day it falls on, as a `type="date"` value; `0n` → `""` (unset). */
 export function unixToDateInput(unix: bigint): string {
-  return unix === 0n ? "" : toDateInputValue(new Date(Number(unix) * 1000));
+  return jakartaDayOfUnix(unix);
 }
 
 /** unix seconds → a `type="datetime-local"` value; `0n` → `""` (unset). */
@@ -149,13 +142,14 @@ export function unixToDateTimeInput(unix: bigint): string {
 }
 
 /**
- * A `type="date"` value → unix seconds. `atEndOfDay` takes 23:59:59 of that day (so a same-day record
- * falls inside a range's upper bound); otherwise 00:00:00. `""` → `0n` (an open end).
+ * A `type="date"` value → unix seconds, the day read as a JAKARTA day. `atEndOfDay` takes 23:59:59 WIB of that day
+ * (so a same-day record falls inside a range's upper bound); otherwise 00:00:00 WIB. `""` → `0n` (an open end).
+ *
+ * ⚠ Jakarta, not the viewer's midnight: `formatUnixDate(dateInputToUnix(day, false))` labels a day on several screens,
+ * and a viewer's midnight in Makassar (WITA) is 23:00 WIB the day before — the label read a day early.
  */
 export function dateInputToUnix(s: string, atEndOfDay: boolean): bigint {
-  const d = parseLocalDate(s);
-  if (!d) return 0n;
-  return unixSeconds(atEndOfDay ? endOfDay(d) : startOfDay(d));
+  return atEndOfDay ? jakartaDayEndUnix(s) : jakartaDayStartUnix(s);
 }
 
 /** A `type="datetime-local"` value → unix seconds (to the minute). `""` → `0n` (an open end). */

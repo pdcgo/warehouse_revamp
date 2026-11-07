@@ -408,3 +408,9 @@ expense report's rows when only expense metrics are on the table (it offered nob
 | `TestPerf_ExpensePersonList` (perfaudit, ~137 000 rows) | 1 query: a seller 1.1–1.6 ms, root 24 ms (Ads alone 14 ms) — root's seq scan, as its metric reads, but over the whole history. ⚠ watch: grows with the report; the fix if it bites is settlement's per-person `last_day` row |
 | stories `expense.stories.tsx` (23) | `CreatedByOffersTheExpensePeople` (Ads + Expenses by Created by, Toko Melati: Ani, Budi, Dewi, Eko named, not Toko Kenanga's Ani Lestari; picking Dewi narrows to her −Rp 450.000), `CreatedByForAdsAloneAsksForTheAdsPeople` (sends `[metrics/ads]`), `AWarehouseIsOfferedItsOwnPeople` (Gudang Pusat: Dewi, Budi, Eko — no Ani), `RootIsOfferedEveryTeamsPeople` (all five) — the four fail with expense left out of `people.ts` |
 | e2e `the_expense_metrics.spec.ts` | `ExpensePersonList names the corrector and the typist, latest first` (as the team's CS: [Dewi today, root 3 days ago]); `The Created by filter offers the corrector, and picking her narrows the table` (Ads + Expenses by Created by: two options, Dewi by name; picked → `user=` in the URL, one row, −Rp 450.000, headline −Rp 450.000) |
+
+## 2026-11-07 — the date range is Jakarta days for any viewer (backlog #37)
+
+The Analytic composer cut its relative range at the VIEWER's midnight (a local `windowOf`), so a browser outside WIB asked for days a
+few hours off the server's Jakarta days. It now reads `jakartaWindowOf` from `frontend/src/lib/jakartaDay.ts`, the one
+helper every range screen shares; tests `src/lib/jakartaDay.test.ts` ([architecture state](../architecture/context.md)).

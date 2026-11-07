@@ -1618,6 +1618,8 @@ flowchart LR
 | first applied | the order screens' row cells ([OrderRowCells.tsx](../../../frontend/src/features/orders/OrderRowCells.tsx)) |
 | ✅ built *(2026-10-29)* | `APP_TIME_ZONE` on every formatter and `formatUnixDateTimeShort` / `formatRfc3339DateTimeShort` in [lib/datetime.ts](../../../frontend/src/lib/datetime.ts). Short in the table cells of the order rows, the draft list, stock counts, restocks, both transfer lists, the stock movement ledger and the pick queue. Detail pages, timelines and hover titles keep the full form. Pinned by story `TheRowIsRealFieldsOnly` (order drafts). Legacy pages untouched |
 
+✅ Built 2026-11-07 — *a date filter's day* (the ⚠ row above, backlog #37): every range filter now cuts Jakarta days — `lib/jakartaDay.ts` `jakartaWindowOf` / `resolveRange` at WIB midnights, and the range calendar marks Jakarta's today. A `yyyy-mm-dd` ↔ unix bound in `lib/datetime.ts` (`dateInputToUnix`, `unixToDateInput`) reads the Jakarta day too, so a DatePicker's label no longer reads a day early in WITA / WIT. Test `src/lib/jakartaDay.test.ts` ([development_state/architecture](../../development_state/architecture/context.md)).
+
 ## a-picker-dialog-keeps-its-height
 
 > Owner, in chat (2026-10-23), on the order form's bundle picker: *"modal bundelnya heightnya fix kan seperti produk"* —

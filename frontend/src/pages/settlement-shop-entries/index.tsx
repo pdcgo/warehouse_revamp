@@ -26,7 +26,7 @@ import {
   useShopSettlementEntries,
   type ShopEntry,
 } from "../../features/settlement/shopEntries";
-import { jakartaWindowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { useShopOptions } from "../../features/shops/queries";
 import { ShopStatusBadge } from "../../features/shops/ShopStatusBadge";
 import { canWrite, useTeam } from "../../features/team/TeamContext";

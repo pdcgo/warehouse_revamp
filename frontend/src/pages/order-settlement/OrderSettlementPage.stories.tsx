@@ -9,7 +9,7 @@ import {
   type SettlementSort,
   type SettlementSortKey,
 } from "../../features/settlement/queries";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { OrderSettlementPage, settlementTotalsOf, type OrderSettlementPageProps } from "./index";
 import { SETTLEMENT_PAGE_SIZE_OPTIONS } from "./SettlementListRoute";
 import { allOrders, noEstimate, worked } from "./fixtures";
@@ -75,7 +75,7 @@ function ListAsRouted(props: OrderSettlementPageProps) {
   const [range, setRange] = useState<DateRange>(ALL_DATES);
   const [sort, setSort] = useState<SettlementSort>(DEFAULT_SETTLEMENT_SORT);
 
-  const { from, to } = windowOf(range);
+  const { from, to } = jakartaWindowOf(range);
   const q = search.trim();
   const rows = sortLikeTheServer(
     props.orders.filter(

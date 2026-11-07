@@ -15,7 +15,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
 import type { PeriodGrain } from "../../lib/period";
 import { dateRangeCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
-import { windowOf } from "../settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { formatPeriod } from "../../lib/datetime";
 import { useTeam } from "../team/TeamContext";
 import {
@@ -103,7 +103,7 @@ export function SupplierStatistics({ supplierId, exportMark }: SupplierStatistic
     setProductPage(1);
   };
 
-  const { from, to } = windowOf(range);
+  const { from, to } = jakartaWindowOf(range);
   const valid = from !== "" && to !== "" && from <= to;
 
   const teamId = current?.teamId;

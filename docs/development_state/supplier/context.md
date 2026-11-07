@@ -168,3 +168,9 @@ and [the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decisio
 `total` (no line stores a platform price — product-is-its-own-line-metric); Penjualan's team filter means whose goods
 (the batch's team), as Direstok means whose restocks. **Not replayed:** `AnalyticReplayCompute` re-seeks only
 `supplier-fold`, so Penjualan has no rebuild path yet.
+
+## 2026-11-07 — the date range is Jakarta days for any viewer (backlog #37)
+
+Supplier statistics and the supplier report cut its relative range at the VIEWER's midnight (a local `windowOf`), so a browser outside WIB asked for days a
+few hours off the server's Jakarta days. It now reads `jakartaWindowOf` from `frontend/src/lib/jakartaDay.ts`, the one
+helper every range screen shares; tests `src/lib/jakartaDay.test.ts` ([architecture state](../architecture/context.md)).

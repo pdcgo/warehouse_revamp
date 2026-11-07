@@ -8,7 +8,7 @@ import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import type { SortState } from "../../components/chrome/SortableHeader";
-import { DateRangePicker, type DateRange, resolveRange, LAST_MONTH } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, type DateRange, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import { PERIOD_GRAINS, PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import {
@@ -24,7 +24,7 @@ import { PROVIDER_KEY, accountName } from "../../features/financialAccount/vocab
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { FinancialAccountStatus } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
-import { toDateInputValue } from "../../lib/datetime";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { MAX_PERIOD_DAYS, type PeriodGrain, spanDays } from "../../lib/period";
 import { dateRangeCodec, idCodec, oneOfCodec, sortCodec, useUrlState } from "../../lib/urlState";
 import { AccountFilter } from "./components/AccountFilter";
@@ -43,15 +43,6 @@ const DEFAULT_RANGE: DateRange = LAST_MONTH;
 const DEFAULT_SERIES_SORT: SortState<"period"> = { by: "period", dir: "desc" };
 const SERIES_SORT_CODEC = sortCodec(["period"] as const);
 const GRAIN_CODEC = oneOfCodec(PERIOD_GRAINS);
-
-function windowOf(range: DateRange): { from: string; to: string } {
-  const { fromUnix, toUnix } = resolveRange(range);
-
-  return {
-    from: fromUnix > 0n ? toDateInputValue(new Date(Number(fromUnix) * 1000)) : "",
-    to: toUnix > 0n ? toDateInputValue(new Date(Number(toUnix) * 1000)) : "",
-  };
-}
 
 const isDefaultRange = (range: DateRange) => range.kind === "relative" && range.months === 1;
 
@@ -89,7 +80,8 @@ export function FinancialAccountReportPage() {
   const [moversOpen, setMoversOpen] = useState<"account" | "provider" | null>(null);
 
   const teamId = current?.teamId;
-  const { from, to } = windowOf(range);
+  // The report's days are JAKARTA days (the-system-runs-on-jakarta-time, backlog #37) — never the viewer's midnight.
+  const { from, to } = jakartaWindowOf(range);
   // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the Finance metrics refuse a longer range, so it is not sent.
   const span = from !== "" && to !== "" ? spanDays(from, to) : 0;
   const tooLong = span > MAX_PERIOD_DAYS;

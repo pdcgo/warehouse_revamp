@@ -3,6 +3,7 @@ import { Flex, Grid, Icon, IconButton, Text, chakra } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addMonths, monthGrid, parseLocalDate, startOfMonth, toDateInputValue } from "../../lib/datetime";
+import { jakartaToday } from "../../lib/jakartaDay";
 
 /**
  * A month-grid range calendar — the absolute pane of {@link DateRangePicker}. Two clicks set a window:
@@ -38,12 +39,14 @@ function order(a: string | null, b: string | null): [string | null, string | nul
 export function RangeCalendar({ from, to, onChange, testId }: RangeCalendarProps) {
   const { i18n } = useTranslation();
   const locale = i18n.language;
-  const todayIso = toDateInputValue(new Date());
+  // TODAY IS JAKARTA'S (backlog #37) — the day "Today" and every quick range count from (resolveRange), so the cell
+  // marked today is the one a relative window ends on, whatever the viewer's clock says. The grid itself is labels.
+  const todayIso = jakartaToday();
 
   // The visible month — seeded from the selection (its end, then its start) so the picker opens looking
   // at the dates you already chose, not always at today.
   const [view, setView] = useState<Date>(() =>
-    startOfMonth(parseLocalDate(to) ?? parseLocalDate(from) ?? new Date()),
+    startOfMonth(parseLocalDate(to) ?? parseLocalDate(from) ?? parseLocalDate(todayIso) ?? new Date()),
   );
   // The anchor of an in-progress selection: set by the first click, cleared by the second.
   const [anchor, setAnchor] = useState<string | null>(null);

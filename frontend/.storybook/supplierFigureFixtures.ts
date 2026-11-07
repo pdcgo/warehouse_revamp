@@ -12,6 +12,8 @@
 //   Linen House      (37, Anggrek's)       — 5 units: under the 50-unit minimum, 40% broken
 //   CV Lama Tutup    (38, DELETED)         — its figures are kept (a-deleted-supplier-is-kept-for-its-figures)
 
+import { addDays, jakartaToday } from "../src/lib/jakartaDay";
+
 export interface FigureFixture {
   daysAgo: number;
   supplierId: bigint;
@@ -79,10 +81,7 @@ export const figureFixtures: FigureFixture[] = [
   row(10, 38n, 74n, 12n, [20, 1_000_000], [0, 0], [0, 0]),
 ];
 
-/** `yyyy-mm-dd`, `n` LOCAL days ago — the calendar the screens' window is built on (features/settlement/window.ts). */
+/** `yyyy-mm-dd`, `n` JAKARTA days ago — the calendar the screens' window is built on (lib/jakartaDay.ts). */
 export function dayAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return addDays(jakartaToday(), -n);
 }

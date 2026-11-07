@@ -41,6 +41,30 @@ finds it without having to re-read every decision log.
 > service's existing `wib` zone, the conversion a correction's Analytic day already used (`metricDay` reads it too) —
 > with an injectable `now`. Test `TestExpensePoster_AWriteOffAt0030WIBLandsOnItsJakartaDay` posts on a UTC clock at
 > 16:59 UTC (23:59 WIB, keeps 5 Nov) and 17:30 UTC (00:30 WIB, lands on 6 Nov); the host-clock mutant fails it.
+>
+> ✅ **Fixed 2026-11-07 (backlog #37) — the screens' date windows.** Every range filter cut its days at the VIEWER's
+> midnight (`windowOf` and four copies: resolveRange → local `toDateInputValue`), so a laptop on UTC asked for
+> yesterday's window 00:00–07:00 WIB and one in Makassar for tomorrow's from 23:00 WIB. ONE helper now,
+> `frontend/src/lib/jakartaDay.ts` — fixed UTC+7 arithmetic on the instant, never the browser's zone:
+> `jakartaWindowOf(range, now)` (inclusive Jakarta `yyyy-mm-dd`), `jakartaUnixWindowOf` (00:00 / 23:59:59 WIB bounds),
+> `jakartaToday`, `jakartaDayOfUnix`, `addDays`, `sameDayMonthsBack`, `firstOfMonthBack`, `jakartaDaysSince`.
+> `features/settlement/window.ts` is deleted. Day-string screens: Analytic, supplier statistics + report, financial
+> account detail + report, the settlement list, report and Shop Entries, Team Balance (`liabilityPeriod`), the daily
+> statement (window + its month/year presets). Unix-bound lists through `resolveRange` (now `jakartaUnixWindowOf`):
+> orders (seller, warehouse), pick queue, restocks (both), returns, batches + batch history. Also Jakarta now:
+> `lib/datetime` `dateInputToUnix` / `unixToDateInput` (a DatePicker's label read a day early in WITA/WIT),
+> `daysSinceUnix`, `todayWibDateInput`; the range calendar's *today* cell; the settlement entry form's default day
+> (`OrderLedgerPanel` took the UTC `toISOString` day — yesterday 00:00–07:00 WIB even on a WIB machine). Fixtures
+> `dayKey`, `dayAgo`, `wibDayKey`, the analytic sample's spine and story `ResolveRangeRules` count Jakarta days.
+> Test `src/lib/jakartaDay.test.ts` (`npm run test:unit`, 34): 23:30 / 23:59:59 / 00:00 / 00:30 WIB, 31 Mar, 1 Dec and
+> 1 Jan edges, each run with Node's zone stubbed to UTC, America/Los_Angeles, Asia/Makassar, Asia/Jayapura and Jakarta;
+> the viewer-midnight mutant fails 6 and a local `dateInputToUnix` fails 4 ON THIS WIB MACHINE.
+> ⚠ **Still viewer-local, not windows (listed, not changed):** the `datetime-local` inputs (order form's order time,
+> `DateTimeRangePicker` absolute — no page uses it), forms' *today* limits/defaults (`todayDateInput` in the order form
+> and ExtraInfoCard; `toDateInputValue(new Date())` in the four financial account dialogs), `toLocaleDateString` with no
+> `timeZone` in batches, batch detail/receipt, warehouse product, restock accept/labels, returns + return detail, rack
+> detail, shipment channels and the unrouted balance mock; elapsed-hours cuts (returns' "received in 30 × 24 h", batch
+> "14 × 24 h") — no calendar involved.
 
 ### (the plan as it was written)
 

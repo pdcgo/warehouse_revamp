@@ -225,3 +225,9 @@ and Identify test "holds nothing" with `IsZero`. Refusals and the reconcile note
 (up to 3 decimals). Storybook's `financialAccountStub` no longer rounds. Tests
 `TestExpensePayment_PostsTheExactFigureAndTheBalanceIsTheSumOfItsLogs`, `TestTeamPayment_PostsTheExactFigureOnBothLegs`,
 `TestFinancialAccountTransfer_PostsTwoLegsSharingAGroup` (250.000,4 exact).
+
+## 2026-11-07 — the date range is Jakarta days for any viewer (backlog #37)
+
+The account detail's log and the Finance report each cut its relative range at the VIEWER's midnight (a local `windowOf`), so a browser outside WIB asked for days a
+few hours off the server's Jakarta days. It now reads `jakartaWindowOf` from `frontend/src/lib/jakartaDay.ts`, the one
+helper every range screen shares; tests `src/lib/jakartaDay.test.ts` ([architecture state](../architecture/context.md)).

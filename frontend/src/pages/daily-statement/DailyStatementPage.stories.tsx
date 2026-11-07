@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { dayKey, expenseDays, revenueDays, liabilityDays, teams } from "../../../.storybook/fixtures";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
+import { jakartaToday } from "../../lib/jakartaDay";
 import { formatRupiah, type Rupiah } from "../../lib/money";
 import { DailyStatementPage } from "./index";
 
@@ -562,7 +563,8 @@ export const AYearlyViewIsOneRowAndSaysWhyItCannotBeTwo: Story = {
 
     // With ONE bucket, the row IS the period — so the running total, the row's profit and the footer are
     // three renderings of a single number, and any of them drifting shows up here.
-    const year = new Date().getFullYear().toString();
+    // this year in JAKARTA — the year the page opens on (defaultRangeFor), whatever the runner's clock says
+    const year = jakartaToday().slice(0, 4);
     const row = canvas.getByTestId(`statement-row-${year}`);
     const total = canvas.getByTestId("statement-total-profit").textContent!;
 

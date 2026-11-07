@@ -315,7 +315,7 @@ five tabs, the proof links, Confirm and Reject.
 | handler | `liability_v1/liability_daily.go`: groups by `(created_at AT TIME ZONE 'Asia/Jakarta')::date`; `parsePeriod` reads both dates as Jakarta midnights (`jakarta`, fixed +7), so the half-open bounds are `[from 00:00 WIB, to+1 00:00 WIB)` |
 | tests | `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay` (00:00 and 06:00 WIB on their WIB day, 23:59 WIB the evening before outside the period), `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` moved to WIB times (23:30 WIB in, 00:05 WIB next day out — one UTC day); both red on the UTC code |
 | perf | `liability_daily_perf_test.go` (`-tags perfaudit`): 1 query, 10.7 ms (31 days) / 30 ms (366 days) median at 50 000 legs for the team among 500 000; plan unchanged from the UTC grouping (bitmap on `liability_logs_pair_idx`, `team_id` prefix). Not heavy — [rpc.md](../../services/liability_service/rpc.md#bucketing--the-jakarta-day) |
-| screens | none changed — the daily statement (`pages/daily-statement`) already sends Jakarta date strings |
+| screens | none changed — the daily statement (`pages/daily-statement`) already sends Jakarta date strings (✅ for any viewer since 2026-11-07, backlog #37: it and the Team Balance detail cut their window with `lib/jakartaDay.ts` `jakartaWindowOf`; they cut it at the viewer's midnight before) |
 
 ## 2026-11-06 — the team-balance ledger is a double, frozen whole by `PostEntry` (money-type change, part 2)
 

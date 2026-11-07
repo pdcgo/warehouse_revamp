@@ -12,7 +12,7 @@ import {
   withShopEntriesBook,
 } from "../../../.storybook/shopEntriesStub";
 import { SHOP_ENTRIES_PATH } from "../../features/settlement/shopEntries";
-import { jakartaWindowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { SettlementType, SourceType } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import { formatRupiah, formatSignedRupiah } from "../../lib/money";

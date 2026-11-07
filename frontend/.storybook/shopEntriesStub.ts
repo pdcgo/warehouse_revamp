@@ -12,7 +12,7 @@
 
 import { Code, ConnectError } from "@connectrpc/connect";
 
-import { jakartaWindowOf } from "../src/features/settlement/window";
+import { addDays, jakartaToday } from "../src/lib/jakartaDay";
 import type { ShopEntry, ShopEntryImport } from "../src/features/settlement/shopEntries";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import {
@@ -24,7 +24,7 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 
 /** `days` ago as a JAKARTA `yyyy-mm-dd` — the calendar the list's window resolves on. */
-export const wibDayKey = (days: number): string => jakartaWindowOf({ kind: "relative", days: days + 1 }).from;
+export const wibDayKey = (days: number): string => addDays(jakartaToday(), -days);
 
 const NAMES: Record<string, string> = { "61": "Dewi Lestari", "62": "Budi Santoso", "64": "Rina Wijaya" };
 

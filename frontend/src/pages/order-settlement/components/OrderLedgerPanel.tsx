@@ -20,6 +20,7 @@ import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { AddEntryDialog, type EntryDraft } from "./AddEntryDialog";
 import { MarginBreakdown } from "./MarginBreakdown";
 import { useIsMobile } from "../../../layouts/shell";
+import { todayWibDateInput } from "../../../lib/datetime";
 import { formatRupiah, formatSignedRupiah } from "../../../lib/money";
 import {
   direction,
@@ -57,7 +58,10 @@ export interface OrderLedgerPanelProps {
   role?: PostingRole;
   onAddEntry?: (draft: EntryDraft) => void;
   onReverse?: (entry: SettlementEntry) => void;
-  /** Today, as `yyyy-mm-dd`. Passed in so a story is deterministic. */
+  /**
+   * Today, as `yyyy-mm-dd` — JAKARTA's (the-system-runs-on-jakarta-time). Passed in so a story is deterministic. Never
+   * the `toISOString` day: that is UTC, which pre-filled the entry with yesterday from 00:00 to 07:00 WIB.
+   */
   today?: string;
   /**
    * No card of its own — for a host that already frames it. The order detail's Settlement section is
@@ -84,7 +88,7 @@ export function OrderLedgerPanel({
   role = "team_admin",
   onAddEntry,
   onReverse,
-  today = new Date().toISOString().slice(0, 10),
+  today = todayWibDateInput(),
   bare = false,
   totalBeli,
 }: OrderLedgerPanelProps) {

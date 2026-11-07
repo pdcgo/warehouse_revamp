@@ -35,7 +35,7 @@ import {
   formatReportState,
   parseReportState,
 } from "../../features/analytic/url";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { useTeam } from "../../features/team/TeamContext";
 import { AccountsFilter } from "../../features/financialAccount/AccountsFilter";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -93,7 +93,7 @@ export function AnalyticPage() {
   // (a-who-filter-lists-the-people-on-its-rows), never the system-wide user search. Asked only while the filter shows.
   const people = useAnalyticPeople(teamId, shared.includes("user") ? defs : NO_METRICS);
   const sort = state.sort ?? defaultSort(state.groupBy, state.metricIds);
-  const { from, to } = windowOf(state.range);
+  const { from, to } = jakartaWindowOf(state.range);
   // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
   // under the picker says why rather than showing a refusal.
   const span = spanDays(from, to);

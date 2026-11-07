@@ -16,7 +16,7 @@ import {
   useSettlementSummary,
   type SettlementGroupBy,
 } from "../../features/settlement/analytics";
-import { jakartaWindowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
