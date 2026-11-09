@@ -3263,6 +3263,7 @@
     "statExpiring": "Expiring ≤ 30 days",
     "searchPlaceholder": "Search batch, receipt, or product…",
     "expiryAll": "Any expiry",
+    "teamAll": "All teams",
     "expirySoon": "Expiring ≤ 30 days",
     "expiryNone": "No expiry",
     "colBatch": "Batch",
@@ -3280,7 +3281,45 @@
     "costUnknown": "Unknown",
     "depleted": "Depleted",
     "empty": "No batches match.",
-    "backToList": "Back to Batches"
+    "backToList": "Back to Batches",
+    "subtitle": "Stock that came in together at one price — one per product of each accepted restock.",
+    "fromRestock": "Restock #{{id}}",
+    "fromReturn": "Return",
+    "none": "No batches yet",
+    "noneHint": "A batch is made when a restock is accepted — one for each product with good units.",
+    "statBatchesNote": "in this list",
+    "statReadyValueNote": "what the ready units cost",
+    "statExpiringNote": "expire within 30 days",
+    "expiryLabel": "Expiry",
+    "explainer": {
+      "toggle": "What is a batch?",
+      "lead": "A batch is stock that came in together at one price — one product, one owner, one unit cost.",
+      "made": "Made when a restock is accepted — one for each product that has good units. Returns, transfers in and stock counts make them too.",
+      "price": "Its unit cost is the purchase price plus the shipping and the courier's COD charge, shared over every unit of the restock.",
+      "oldestFirst": "Goods leave from the oldest batch first, so what leaves carries the cost it came in at.",
+      "notPlace": "A batch records value, not place — where the goods sit is the Racks. One batch can be spread over several racks.",
+      "exampleRestock": "Restock #503 accepted",
+      "exampleRice": "Rice · 7 pcs",
+      "exampleTea": "Tea · 20 pcs",
+      "exampleNote": "two batches — a line with every unit broken makes none"
+    },
+    "expiry": {
+      "left_one": "{{count}} day left",
+      "left_other": "{{count}} days left",
+      "today": "today",
+      "ago_one": "expired {{count}} day ago",
+      "ago_other": "expired {{count}} days ago"
+    },
+    "pending": {
+      "returnLink": {
+        "label": "The return a batch came from",
+        "reason": "A batch read carries the restock's number only, so a batch a return made does not know its return — it cannot open the return's page yet."
+      },
+      "teamFilter": {
+        "label": "Team filter",
+        "reason": "The batch list cannot be narrowed by team yet — the pick is kept, but every batch still shows."
+      }
+    }
   },
   "batchDetail": {
     "title": "Batch",
@@ -3331,7 +3370,10 @@
     "searchRack": "Search rack…",
     "noRackMatch": "No rack matches your search.",
     "lastOpname": "Last opname",
-    "neverCounted": "Never counted"
+    "neverCounted": "Never counted",
+    "fromRestock": "From Restock #{{id}}",
+    "actions": "Batch actions",
+    "noHistoryHint": "Every put-away, pick, move and count of this batch shows up here."
   },
   "warehouseProduct": {
     "title": "Product at this Warehouse",

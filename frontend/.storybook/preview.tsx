@@ -33,6 +33,7 @@ import { resetOpnameStub } from "./opnameStub";
 import { resetBundleStub } from "./bundleStub";
 import { resetProductScenario } from "./productScenario";
 import { resetRackStub } from "./rackStub";
+import { resetBatchStub } from "./batchStub";
 import { resetReturnConfigurationStub, resetReturnMapStub } from "./returnConfigurationStub";
 import { resetWarehouseFeeStub } from "./warehouseFeeStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
@@ -414,6 +415,8 @@ const preview: Preview = {
     resetProductScenario();
     // …and the shelves, which a move or a sample on Rack detail writes to.
     resetRackStub();
+    // …and the batches, which a story may empty.
+    resetBatchStub();
     // …and the return warehouses, which the settings card saves.
     resetReturnConfigurationStub();
     // …and the return maps, which every confirmed pick on the order form writes (the-map-is-written-when-it-is-picked).

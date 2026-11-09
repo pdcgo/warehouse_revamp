@@ -3246,6 +3246,7 @@
     "statExpiring": "Kedaluwarsa ≤ 30 hari",
     "searchPlaceholder": "Cari batch, resi, atau produk…",
     "expiryAll": "Semua kedaluwarsa",
+    "teamAll": "Semua tim",
     "expirySoon": "Kedaluwarsa ≤ 30 hari",
     "expiryNone": "Tanpa kedaluwarsa",
     "colBatch": "Batch",
@@ -3263,7 +3264,45 @@
     "costUnknown": "Tidak diketahui",
     "depleted": "Habis",
     "empty": "Tidak ada batch yang cocok.",
-    "backToList": "Kembali ke Batch"
+    "backToList": "Kembali ke Batch",
+    "subtitle": "Stok yang masuk bersamaan dengan harga yang sama — satu per produk di tiap restok yang diterima.",
+    "fromRestock": "Restok #{{id}}",
+    "fromReturn": "Retur",
+    "none": "Belum ada batch",
+    "noneHint": "Batch dibuat saat restok diterima — satu untuk tiap produk yang ada unit bagusnya.",
+    "statBatchesNote": "di daftar ini",
+    "statReadyValueNote": "nilai unit yang siap",
+    "statExpiringNote": "kedaluwarsa dalam 30 hari",
+    "expiryLabel": "Kedaluwarsa",
+    "explainer": {
+      "toggle": "Apa itu batch?",
+      "lead": "Batch adalah stok yang masuk bersamaan dengan harga yang sama — satu produk, satu pemilik, satu harga satuan.",
+      "made": "Dibuat saat restok diterima — satu untuk tiap produk yang ada unit bagusnya. Retur, transfer masuk, dan opname juga membuat batch.",
+      "price": "Harga satuannya adalah harga beli ditambah ongkir dan ongkos COD kurir, dibagi rata ke semua unit restok.",
+      "oldestFirst": "Barang keluar diambil dari batch terlama dulu, jadi barang yang keluar membawa harga saat ia masuk.",
+      "notPlace": "Batch mencatat nilai, bukan tempat — letak barang ada di Rak. Satu batch bisa tersebar di beberapa rak.",
+      "exampleRestock": "Restok #503 diterima",
+      "exampleRice": "Beras · 7 pcs",
+      "exampleTea": "Teh · 20 pcs",
+      "exampleNote": "dua batch — baris yang semua unitnya rusak tidak jadi batch"
+    },
+    "expiry": {
+      "left_one": "{{count}} hari lagi",
+      "left_other": "{{count}} hari lagi",
+      "today": "hari ini",
+      "ago_one": "lewat {{count}} hari",
+      "ago_other": "lewat {{count}} hari"
+    },
+    "pending": {
+      "returnLink": {
+        "label": "Retur asal batch",
+        "reason": "Data batch hanya membawa nomor restok, jadi batch dari retur belum tahu nomor returnya — belum bisa membuka halaman returnya."
+      },
+      "teamFilter": {
+        "label": "Filter tim",
+        "reason": "Daftar batch belum bisa disaring per tim — pilihannya disimpan, tapi semua batch tetap tampil."
+      }
+    }
   },
   "batchDetail": {
     "title": "Batch",
@@ -3314,7 +3353,10 @@
     "searchRack": "Cari rak…",
     "noRackMatch": "Tidak ada rak yang cocok.",
     "lastOpname": "Opname terakhir",
-    "neverCounted": "Belum pernah dihitung"
+    "neverCounted": "Belum pernah dihitung",
+    "fromRestock": "Dari Restok #{{id}}",
+    "actions": "Aksi batch",
+    "noHistoryHint": "Setiap barang batch ini yang ditaruh, diambil, dipindah, atau dihitung muncul di sini."
   },
   "warehouseProduct": {
     "title": "Produk di Gudang Ini",

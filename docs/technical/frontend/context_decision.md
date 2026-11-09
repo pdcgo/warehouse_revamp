@@ -96,6 +96,8 @@ when it applies one of these.
 | [every-phone-title-is-20px](#every-phone-title-is-20px) | on a phone every page title is 20px — the page title (`Heading md`, 22 from `md`) and a detail page's larger one (`lg`, 26 from `md`) alike; a title row's gaps are 8px | every screen, from a restock's title row, 2026-11-05 |
 | [a-sticky-side-column-ends-above-the-windows-foot](#a-sticky-side-column-ends-above-the-windows-foot) | a column sticking beside a page ends a gutter above the window's foot wherever it stands — its title stays, the rest scrolls inside its card, the bar on the card's edge; one hook, `useFitToWindow` | every sticky side column — Product Discover, Cetak Label, 2026-11-06 |
 | [an-interim-read-is-marked](#an-interim-read-is-marked) | a part that works and is true but reads one call per row, where one call for all should be, carries a pending mark of a fifth kind, `interim` — *pembacaan sementara* | every pending list — from Cetak Label, 2026-11-06 |
+| [a-day-without-a-time-is-shown-alone](#a-day-without-a-time-is-shown-alone) | a date that is a day with no clock — an expiry — is the day alone, `27 Nov`; beside a moment it is the same size; a limit coming up may say how long is left under it | every table — from the batch list, 2026-11-09 |
+| [a-team-of-a-known-type-shows-no-badge](#a-team-of-a-known-type-shows-no-badge) | where the screen already says what type a team is — a batch's owner, a restock's team — it is the small avatar and the name, `TeamItem size="xs"`; no type badge | the batch screens, Terima — 2026-11-09 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2189,6 +2191,50 @@ Restok 2 [⚠ 1]                 ← the badge on what reads one by one
 
 What it replaces: no way to mark a part that works but reads one by one — it would have been marked as something it is
 not, or not at all.
+
+## a-day-without-a-time-is-shown-alone
+
+> Owner, in chat (2026-11-09), on the batch list's *Tiba* and *Kedaluwarsa*: *"ukuran kadaluarsa dan tiba kenapa beda?
+> ada alasan?"*, then *"kalau melihat keputusan sebelumnya, kira-kira seperti apa?"* — and to the answer, *"oke"*.
+
+```
+Tiba           Kedaluwarsa
+1 Nov 13:05    27 Nov          ← both 12px; a moment carries its clock, a day does not
+               18 hari lagi
+```
+
+| | |
+| --- | --- |
+| the rule | a date that is a DAY, with no clock to it — an expiry, a printed best-before — is shown as the day alone: `27 Nov`, the year only when it is not this year, Jakarta's calendar. `formatUnixDateShort` in `lib/datetime.ts`. It widens [a-table-date-is-short-and-every-time-is-wib](#a-table-date-is-short-and-every-time-is-wib), which set the short form for a moment (`29 Okt 13:05`) and said nothing of a day |
+| a moment | keeps its clock — when something happened (arrived, accepted, ordered) |
+| side by side | a day beside a moment in one table is the same size — the two were 12px and 14px on the batch list for no reason |
+| a limit coming up | may say how long is left under the day, as the order list's ship-by deadline does — one fact read twice, so one cell ([one-context-per-column-and-never-three-lines](#one-context-per-column-and-never-three-lines)). Counted in Jakarta calendar days (`daysUntilUnix`) |
+| applied | the batch list's *Kedaluwarsa* ([an-expiry-says-how-long-is-left](batches_decision.md#an-expiry-says-how-long-is-left)) |
+
+What it replaces: a day printed the way each screen happened to — with the browser's date, or as a moment's form.
+
+## a-team-of-a-known-type-shows-no-badge
+
+> Owner, in chat (2026-11-09), on the batch list's team column: *"tim jelas selling, jadi simpel gambar kecil dan nama
+> saja"* — the second screen to say it, after Terima's info column: *"id restok, tim dan usernya simpel saja, gambarnya
+> kecil"* ([the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid](restock_decision.md#the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid)).
+
+```
+before                     now
+[TM] Toko Melati           ▪ Toko Melati        ← the smallest avatar, the name, one line
+     [Selling]
+```
+
+| | |
+| --- | --- |
+| the rule | where the screen already says what type a team is — a batch's owner, a restock's team: always a selling team — the team is `TeamItem size="xs"`: the smallest avatar, still tinted by its type, and the name on one line. No type badge |
+| why | the badge repeats what the column already means, and it made a row two lines for one fact |
+| unchanged | a list where teams of several types sit together keeps `TeamItem`'s badge; a filter follows its sibling, [a-one-type-picker-shows-the-name-alone](#a-one-type-picker-shows-the-name-alone) |
+| applied | Terima's info column · the batch list's *Tim* column and its phone block · a batch's page, beside the product (it was a brand-coloured name badge) |
+| pinned by | BatchList `Default`, BatchDetail `Default` — the name, no *Selling* |
+
+What it replaces: on the batch list, the full `TeamItem` (a larger avatar, the name, the *Selling* badge under it); on a
+batch's page, the owner as a name badge.
 
 ## Recorded elsewhere
 
