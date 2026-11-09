@@ -1114,14 +1114,47 @@ test("Picking: a selling team is told the queue is a warehouse screen (#151)", a
 });
 
 // THE RETURN ACCEPT (the-accept-is-the-status-return-completed), end to end: customer service claims a handed-over order
-// back, the parcel reaches the warehouse, the crew finds it on its Returns tab and accepts it — with the courier's
-// charge at the door, which liability posts from OrderReturnAccepted as the selling team's debt to the warehouse
-// (a-return-may-carry-the-couriers-ask). The event is the real one: the e2e broker pushes it to :8081.
+// back, the parcel reaches the warehouse — the team's return warehouse (only-the-return-warehouse-accepts-a-return) — the
+// crew finds it on its Returns tab and accepts it on the accept page — with the courier's charge at the door, which
+// liability posts from OrderReturnAccepted as the selling team's debt to the warehouse (a-return-may-carry-the-couriers-ask).
+// The event is the real one: the e2e broker pushes it to :8081.
+//
+// The box comes back EMPTY — every unit missing (a-short-return-is-missing-at-the-door) — so no unit goes back on a shelf
+// and the stock this file's later tests count is untouched. A return racked back is the_return_goes_back_on_the_shelf.
 test("Return: the warehouse accepts a returned parcel and the courier's charge lands on the balance", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   await placeOrderViaForm(page, `${CUSTOMER} return`);
   const orderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
+
+  // Root's team returns to the warehouse that ships its orders.
+  await page.evaluate(
+    async ([whCode]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+      const warehouse = (Object.values(teams.items?.find((it: any) => it.team)?.team?.mapData ?? {}) as any[]).find(
+        (t: any) => t.teamCode === whCode,
+      );
+      await call("selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationSet", {
+        teamId: "1",
+        warehouseId: warehouse.id,
+      });
+    },
+    [WH_CODE] as const,
+  );
 
   // The warehouse walks it to the courier — three moves on the crew's screen.
   await switchToWarehouse(page);
@@ -1150,18 +1183,30 @@ test("Return: the warehouse accepts a returned parcel and the courier's charge l
   await expect(page).toHaveURL(/step=return/);
   await page.getByTestId(`pick-queue-row-${orderId}`).locator("td").nth(1).click();
 
-  // Nothing missing; the courier asked for postage, and the charge needs what it was for before Accept presses.
+  // Accept Return opens the accept page (the-return-accept-page-is-accepted). Every unit missing — nothing to rack; the
+  // courier asked for postage, and the charge needs what it was for before Accept presses.
   await page.getByTestId("pick-order-accept-return").click();
-  await page.getByTestId("accept-return-charge").fill("12000");
-  await expect(page.getByTestId("accept-return-charge-note-error")).toBeVisible();
-  await expect(page.getByTestId("accept-return-submit")).toBeDisabled();
+  await expect(page).toHaveURL(new RegExp(`/warehouse-orders/${orderId}/accept-return$`));
 
-  await page.getByTestId("accept-return-charge-note").fill("ongkir retur");
-  await page.getByTestId("accept-return-submit").click();
+  const lines = page.locator('[data-testid^="return-accept-line-"]');
+  await expect(lines.first()).toBeVisible();
+  for (const testId of await lines.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid") ?? ""))) {
+    const itemId = testId.replace("return-accept-line-", "");
+    const ordered = (await page.getByTestId(`return-accept-ordered-${itemId}`).innerText()).replace(/\D/g, "");
+    await page.getByTestId(`return-accept-missing-${itemId}`).fill(ordered);
+    await expect(page.getByTestId(`return-accept-nothing-to-place-${itemId}`)).toBeVisible();
+  }
 
-  // An order of the team's own product has no label to print, so the dialog closes on the accept — and the return's
-  // one step is gone with it.
-  await expect(page.getByTestId("accept-return-dialog")).toBeHidden();
+  await page.getByTestId("return-accept-charge").fill("12000");
+  await expect(page.getByTestId("return-accept-charge-note-error")).toBeVisible();
+  await expect(page.getByTestId("return-accept-submit")).toBeDisabled();
+
+  await page.getByTestId("return-accept-charge-note").fill("ongkir retur");
+  await page.getByTestId("return-accept-submit").click();
+  await page.getByTestId("confirm-action").click();
+
+  // Accepted, the page goes back to where it was opened — the order, whose one return step is gone.
+  await expect(page).toHaveURL(new RegExp(`/warehouse-orders/${orderId}$`));
   await expect(page.getByTestId("pick-order-accept-return")).toBeHidden();
   await expect(page.getByText("Return received").first()).toBeVisible();
 

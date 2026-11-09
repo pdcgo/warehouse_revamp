@@ -332,7 +332,7 @@ The other two rows were closed by your §Status Move redraw. Kept as a heading s
 # Awaiting
 
 - ✅ **The money of a return** beyond settlement: balance reverses nothing ([a-return-keeps-both-fees](./context_decision.md#a-return-keeps-both-fees)).
-  ➡ The value the units re-enter stock at is inventory's ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief), [return.md](../inventory/return.md)).
+  ➡ The value the units re-enter stock at is inventory's ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief), [return.md](../inventory/return_decision.md#return-md-is-retired)).
 - ✅ *(2026-10-21)* **A parcel found after `lost`** — a `found` stock-in naming the order
   ([a-found-lost-parcel-is-a-found-stock-in](./context_decision.md#a-found-lost-parcel-is-a-found-stock-in)).
 - ✅ *(2026-10-21)* **Buyer shipping and COD** — nothing on the order; COD is only ever the marketplace's

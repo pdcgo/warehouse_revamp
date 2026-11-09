@@ -1,7 +1,9 @@
 //go:build raceaudit
 
 // Concurrency audit for OrderReturnAccept (the audit-sql skill): two of the crew scanning the same returned parcel in
-// the same second must accept it ONCE — one `return_completed` row, one OrderReturnAccepted, so one courier charge.
+// the same second must accept it ONCE — one `return_completed` row, one OrderReturnAccepted, so one courier charge. The
+// stock half here is a fake; the real one — one return transaction for two accepts at once — is
+// cmd/app_development/order_return_accept_race_test.go.
 //
 //	go test -tags raceaudit -run 'TestRace_OrderReturnAccept|TestInterleave_OrderReturnAccept' -v ./backend/services/selling_service/selling_v1/
 package selling_v1_test
@@ -14,6 +16,8 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+
+	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
@@ -54,6 +58,47 @@ func (r *lockedRecorder) count(orderID uint64) int {
 	return n
 }
 
+// ReturnStock is the fake stock side's return, safe for the racing goroutines (lockedPicker: shop_close_race_test.go).
+func (p *lockedPicker) ReturnStock(ctx context.Context, in selling_v1.StockReturn) (selling_v1.ReturnedStock, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.fakePicker.ReturnStock(ctx, in)
+}
+
+// configureRaceReturnWarehouse gives the race team its return warehouse — committed, cleaned by orderRaceHarness.
+func configureRaceReturnWarehouse(t *testing.T, db *gorm.DB, warehouseID uint64) {
+	t.Helper()
+
+	err := db.Exec(`INSERT INTO team_return_configurations (team_id, warehouse_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())`,
+		raceOrderTeam, warehouseID).Error
+	if err != nil {
+		t.Fatalf("configure the race team's return warehouse: %v", err)
+	}
+}
+
+// raceLines is a whole, sound count of the order: every line on one rack.
+func raceLines(t *testing.T, db *gorm.DB, orderID uint64) []*sellingv1.OrderReturnAcceptLine {
+	t.Helper()
+
+	var items []selling_service_models.OrderItem
+
+	err := db.Where("order_id = ?", orderID).Order("id").Find(&items).Error
+	if err != nil {
+		t.Fatalf("read the order's lines: %v", err)
+	}
+
+	lines := make([]*sellingv1.OrderReturnAcceptLine, 0, len(items))
+	for _, item := range items {
+		lines = append(lines, &sellingv1.OrderReturnAcceptLine{
+			OrderItemId: item.ID,
+			Placements:  []*sellingv1.OrderReturnPlacement{{RackId: 77, Quantity: item.Quantity}},
+		})
+	}
+
+	return lines
+}
+
 // raceReturnedOrder places a race-team order and walks it to `return` — committed.
 func raceReturnedOrder(t *testing.T, svc *selling_v1.Service, shopID uint64) uint64 {
 	t.Helper()
@@ -73,14 +118,14 @@ func raceReturnedOrder(t *testing.T, svc *selling_v1.Service, shopID uint64) uin
 	return orderID
 }
 
-func raceAccept(svc *selling_v1.Service, orderID uint64) error {
-	return raceAcceptAt(svc, testWarehouse, orderID)
+func raceAccept(svc *selling_v1.Service, orderID uint64, lines []*sellingv1.OrderReturnAcceptLine) error {
+	return raceAcceptAt(svc, testWarehouse, orderID, lines)
 }
 
-// raceAcceptAt accepts the order as the given warehouse — any warehouse may accept a return.
-func raceAcceptAt(svc *selling_v1.Service, warehouseID, orderID uint64) error {
+// raceAcceptAt accepts the order as the given warehouse — only the return warehouse is let through.
+func raceAcceptAt(svc *selling_v1.Service, warehouseID, orderID uint64, lines []*sellingv1.OrderReturnAcceptLine) error {
 	_, err := svc.OrderReturnAccept(context.Background(), connect.NewRequest(&sellingv1.OrderReturnAcceptRequest{
-		TeamId: warehouseID, OrderId: orderID, CourierCharge: 15_000, CourierChargeNote: "ongkir retur",
+		TeamId: warehouseID, OrderId: orderID, CourierCharge: 15_000, CourierChargeNote: "ongkir retur", Lines: lines,
 	}))
 
 	return err
@@ -91,18 +136,20 @@ func raceAcceptAt(svc *selling_v1.Service, warehouseID, orderID uint64) error {
 func TestRace_OrderReturnAccept_SameParcelAtOnce(t *testing.T) {
 	h := orderRaceHarness(t)
 	rec := &lockedRecorder{}
-	svc := selling_v1.NewService(h.DB(), &fakePicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(h.DB(), &lockedPicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 	shopID := insertShop(t, h.DB(), raceOrderTeam, "Race Return", "RR-1", "shopee")
+	configureRaceReturnWarehouse(t, h.DB(), testWarehouse)
 
 	const n = 8
 
 	for round := range 10 {
 		orderID := raceReturnedOrder(t, svc, shopID)
+		lines := raceLines(t, h.DB(), orderID)
 
 		errs := make([]error, n)
 
 		res := h.Race(t, n, func(i int) error {
-			errs[i] = raceAccept(svc, orderID)
+			errs[i] = raceAccept(svc, orderID, lines)
 
 			// A refusal is the expected answer for all but one — judged below, not counted as a failure here.
 			return nil
@@ -144,14 +191,16 @@ func TestInterleave_OrderReturnAccept_SecondWaitsAndReReads(t *testing.T) {
 	h := orderRaceHarness(t)
 	svc := newService(t, h.DB())
 	shopID := insertShop(t, h.DB(), raceOrderTeam, "Race Return", "RR-2", "shopee")
+	configureRaceReturnWarehouse(t, h.DB(), testWarehouse)
 
 	orderID := raceReturnedOrder(t, svc, shopID)
+	lines := raceLines(t, h.DB(), orderID)
 
 	var aErr, bErr error
 
 	accept := func(dst *error) func(tx *gorm.DB) error {
 		return func(tx *gorm.DB) error {
-			*dst = raceAccept(newService(t, tx), orderID)
+			*dst = raceAccept(newService(t, tx), orderID, lines)
 
 			return nil
 		}
@@ -185,27 +234,25 @@ func TestInterleave_OrderReturnAccept_SecondWaitsAndReReads(t *testing.T) {
 	}
 }
 
-// TWO BUILDINGS, ONE PARCEL — any warehouse may accept a return (the-accept-records-where-it-was-accepted), so the order's
-// own warehouse and the configured return warehouse can both press Accept in the same second. One wins, the other is told
-// it is already accepted, and the accept row names the ONE that won — the warehouse the single event charges for.
+// TWO BUILDINGS, ONE PARCEL — only the return warehouse accepts a return (only-the-return-warehouse-accepts-a-return).
+// The order's own warehouse and the configured return warehouse press Accept in the same second: every press at the
+// shipping warehouse is refused naming where the parcel goes, exactly one press at the return warehouse accepts it, and
+// the accept row and the one event name the return warehouse.
 func TestRace_OrderReturnAccept_TwoWarehousesAtOnce(t *testing.T) {
 	h := orderRaceHarness(t)
 	rec := &lockedRecorder{}
-	svc := selling_v1.NewService(h.DB(), &fakePicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(h.DB(), &lockedPicker{}, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 	shopID := insertShop(t, h.DB(), raceOrderTeam, "Race Return", "RR-3", "shopee")
 
 	const returnWarehouse uint64 = 7_700_950
 
-	err := h.DB().Exec(`INSERT INTO team_return_configurations (team_id, warehouse_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())`,
-		raceOrderTeam, returnWarehouse).Error
-	if err != nil {
-		t.Fatalf("configure the race team's return warehouse: %v", err)
-	}
+	configureRaceReturnWarehouse(t, h.DB(), returnWarehouse)
 
 	const n = 8
 
 	for round := range 10 {
 		orderID := raceReturnedOrder(t, svc, shopID)
+		lines := raceLines(t, h.DB(), orderID)
 
 		errs := make([]error, n)
 		at := func(i int) uint64 {
@@ -217,7 +264,7 @@ func TestRace_OrderReturnAccept_TwoWarehousesAtOnce(t *testing.T) {
 		}
 
 		res := h.Race(t, n, func(i int) error {
-			errs[i] = raceAcceptAt(svc, at(i), orderID)
+			errs[i] = raceAcceptAt(svc, at(i), orderID, lines)
 
 			return nil
 		})
@@ -226,19 +273,25 @@ func TestRace_OrderReturnAccept_TwoWarehousesAtOnce(t *testing.T) {
 			res.Report(t)
 		}
 
-		winners := map[uint64]int{}
+		accepted := 0
 
 		for i, err := range errs {
 			switch {
+			case at(i) == testWarehouse:
+				// Before the accept it is told where the parcel goes; after it, that the return is already accepted.
+				if connect.CodeOf(err) != connect.CodeFailedPrecondition ||
+					!strings.Contains(err.Error(), "this return goes to") && !strings.Contains(err.Error(), "already accepted") {
+					t.Fatalf("round %d: the shipping warehouse's caller %d got %v — want it refused", round, i, err)
+				}
 			case err == nil:
-				winners[at(i)]++
+				accepted++
 			case connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "already accepted"):
 				t.Fatalf("round %d: caller %d (warehouse %d) got %v — want \"already accepted\"", round, i, at(i), err)
 			}
 		}
 
-		if len(winners) != 1 {
-			t.Fatalf("round %d: winners %v — want exactly one accept", round, winners)
+		if accepted != 1 {
+			t.Fatalf("round %d: %d accepts at the return warehouse — want exactly one", round, accepted)
 		}
 
 		var row struct{ AcceptingWarehouseID uint64 }
@@ -249,8 +302,9 @@ func TestRace_OrderReturnAccept_TwoWarehousesAtOnce(t *testing.T) {
 			t.Fatalf("round %d: read the accept row: %v", round, err)
 		}
 
-		if winners[row.AcceptingWarehouseID] != 1 {
-			t.Fatalf("round %d: the accept row names %d, but %v won", round, row.AcceptingWarehouseID, winners)
+		if row.AcceptingWarehouseID != returnWarehouse {
+			t.Fatalf("round %d: the accept row names %d, want the return warehouse %d", round, row.AcceptingWarehouseID,
+				returnWarehouse)
 		}
 
 		if got := eventCount(t, h.DB(), orderID, "return_completed"); got != 1 {

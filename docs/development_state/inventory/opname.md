@@ -10,7 +10,7 @@ flowchart LR
   A["design decided"] --> P["prototype - 2026-10-14"]
   P --> D["design_accept - 2026-11-02"]
   D --> B["backend step - built 2026-11-02"]
-  B --> N["next - the owner's adjustment.md, the open points below"]
+  B --> N["next - the open points below; adjustment.md retired 2026-11-09"]
 ```
 
 ## What exists
@@ -136,7 +136,7 @@ flowchart LR
 | two identical reports | two requests — `FoundRequestCreate` has no idempotency key (none was decided); the approver rejects the duplicate |
 | the warehouse product page | ✅ fixed 2026-11-03: `/inventories/products/:id` reads `StockCost`, whose policy was the selling roles' only (from when it was an order's cost), so it answered permission_denied to every warehouse role. The policy now admits warehouse Owner, Admin and Staff — RackDetail and RackStock already give them the same average — and a warehouse caller reads its own building only (`filter.warehouse_id` must be its `team_id`, else PermissionDenied). Tests: `TestStockCost_PolicyAdmitsTheWarehouse`, `TestStockCost_AWarehouseReadsItsOwnBuildingOnly`; e2e *the warehouse product page opens for the warehouse's Admin and Staff* |
 | the Stock screen | ✅ verified live, then decided and built 2026-11-04: it listed the warehouse team's own catalogue (always empty) — it now lists what the warehouse has held, [below](#the-stock-screen-lists-what-the-warehouse-has-held--built) |
-| the Adjust screen itself | still undesigned ([adjustment.md](../../business/inventory/adjustment.md) is empty) |
+| the Adjust screen itself | still undesigned ([adjustment.md](../../business/inventory/adjustment_decision.md#adjustment-md-is-retired) is empty) |
 
 ## The warehouse picks only what it has held — built
 

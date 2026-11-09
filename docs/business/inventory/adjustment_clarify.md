@@ -1,6 +1,6 @@
 # Clarify — `inventory/adjustment.md`
 
-[adjustment.md](./adjustment.md) is yours, and this file is mine. When a point is answered I delete it here, and your
+[adjustment.md](./adjustment_decision.md#adjustment-md-is-retired) is yours, and this file is mine. When a point is answered I delete it here, and your
 answer goes in an `adjustment_decision.md` beside it.
 
 > 🆕 **Opened 2026-10-16:** you chose to keep `StockAdjust` and the one-rack `StockOpname` working through the cut-over,

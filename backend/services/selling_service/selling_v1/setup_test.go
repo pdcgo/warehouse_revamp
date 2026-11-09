@@ -49,6 +49,10 @@ type fakePicker struct {
 	lock      *selling_v1.StockLock     // if set, StockLockCheck answers that a count holds the take
 	lockErr   error                     // if set, StockLockCheck fails
 	checked   []string                  // keys StockLockCheck was asked about, in order
+
+	stockReturns   []selling_v1.StockReturn // every ReturnStock call, in order
+	returnStockErr error                    // if set, ReturnStock refuses
+	returnTxID     uint64                   // the return transaction ReturnStock answers; 0 = 8001
 }
 
 func (f *fakePicker) Pick(
@@ -132,6 +136,39 @@ func (f *fakePicker) StockLockCheck(_ context.Context, _, _ uint64, key string) 
 	return f.lock, nil
 }
 
+// ReturnStock answers as inventory does: one return transaction, and a door row per line's broken and missing units,
+// with the line's note.
+func (f *fakePicker) ReturnStock(_ context.Context, in selling_v1.StockReturn) (selling_v1.ReturnedStock, error) {
+	f.stockReturns = append(f.stockReturns, in)
+
+	if f.returnStockErr != nil {
+		return selling_v1.ReturnedStock{}, f.returnStockErr
+	}
+
+	txID := f.returnTxID
+	if txID == 0 {
+		txID = 8001
+	}
+
+	out := selling_v1.ReturnedStock{TransactionID: txID, Posted: len(f.stockReturns) == 1}
+
+	for _, line := range in.Lines {
+		if line.Broken > 0 {
+			out.Problems = append(out.Problems, selling_v1.ReturnedProblem{
+				ProductID: line.ProductID, Broken: true, Count: line.Broken, Note: line.Note,
+			})
+		}
+
+		if line.Missing > 0 {
+			out.Problems = append(out.Problems, selling_v1.ReturnedProblem{
+				ProductID: line.ProductID, Count: line.Missing, Note: line.Note,
+			})
+		}
+	}
+
+	return out, nil
+}
+
 // fakeCatalog stands in for product_service when a draft is promoted (#194).
 //
 // It resolves EVERY id to a synthetic snapshot except those named in `missing` — which is the shape
@@ -175,7 +212,7 @@ func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 }
 
 // everyoneMayWrite is a team where every person asked about may write on every shop and may be granted one: the write
@@ -197,14 +234,14 @@ func (everyoneMayWrite) Member(context.Context, uint64, uint64) (selling_v1.Team
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 }
 
 // newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
@@ -215,7 +252,7 @@ func newServiceWithCatalog(
 ) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 }
 
 // insertShop seeds an active shop directly and returns its id.
@@ -319,14 +356,14 @@ func (f *fakeFees) Price(_ context.Context, _, _ uint64, goodsCost float64) (flo
 func newServiceWithFees(t *testing.T, db *gorm.DB, picker *fakePicker, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil, nil)
 }
 
 // newServiceWithCredit is for the tests that care whether an order is REFUSED (#189).
 func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChecker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, everyoneMayWrite{}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 }
 
 // testPlatformDate is when the buyer of every test order ordered on the storefront — REQUIRED at placement

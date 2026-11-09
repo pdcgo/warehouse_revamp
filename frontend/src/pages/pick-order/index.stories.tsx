@@ -30,10 +30,10 @@ import { PickOrderPage } from "./index";
 //   | AShippedOrderHasNoStepLeft      | a handed-over order leaves nothing to press                  |
 //   | AnOrderShippingElsewhereIsNot…  | the scope is this building                                   |
 //   | ASellingTeamIsTurnedAway        | no shelves, no pick list                                     |
-//   | AReturnIsAcceptedHere           | RETURN → Accept Return, then return_completed — nothing left |
+//   | AReturnOpensTheAcceptPage       | RETURN → Accept Return opens the accept page                 |
 //   | OnlyAReturnOffersTheAccept      | a pending order is confirmed, never accepted as a return     |
-//   | TheReturnWarehouseAccepts…      | the configured return warehouse opens and accepts a return   |
-//   | ForceReturnOnTheOrderPage       | shipped → Force Return, confirmed → Accept Return is offered  |
+//   | TheReturnWarehouseAccepts…      | the configured return warehouse opens a return's accept      |
+//   | ForceReturnOnTheOrderPage       | shipped → Force Return, confirmed → Accept Return, the page   |
 //   | ForceReturnIsOnlyForAParcel…    | a pending order offers no Force Return                       |
 //   | SetPickedIsTheScans             | processed: the racks, then the item scans — wrong refused,   |
 //   |                                 | too many refused, every line exact turns Set Picked on       |
@@ -54,6 +54,8 @@ const Routed = (path: string) =>
     [
       { path: "/warehouse-orders/:orderId", element: <PickOrderPage /> },
       marker("/warehouse-orders", "at-pick-queue"),
+      // The accept page (the-return-accept-page-is-accepted) — its own stories are Pages/Warehouse/OrderReturnAccept.
+      marker("/warehouse-orders/:orderId/accept-return", "at-return-accept"),
     ],
     path,
   );
@@ -214,23 +216,21 @@ export const ASellingTeamIsTurnedAway: Story = {
 // ── The return accept (the-accept-is-the-status-return-completed) ─────────────────────────────────
 
 /**
- * A RETURN'S ONE STEP IS THE ACCEPT. Order 101 read in `return`: the crew's screen offers Accept Return — not a plain move,
- * so it opens its dialog — and the accept moves it to return_completed, after which nothing is left to press.
+ * A RETURN'S ONE STEP IS THE ACCEPT. Order 101 read in `return`: the crew's screen offers Accept Return and no plain move
+ * — it opens the accept page (the-return-accept-page-is-accepted), where the parcel is counted and racked.
  */
-export const AReturnIsAcceptedHere: Story = {
+export const AReturnOpensTheAcceptPage: Story = {
   beforeEach: withOrdersInReturn(FULL.id),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(await canvas.findByTestId("pick-order-accept-return"));
+    const button = await canvas.findByTestId("pick-order-accept-return");
     await expect(canvas.queryByTestId("pick-order-advance")).toBeNull();
 
-    await userEvent.click(await screen.findByTestId("accept-return-submit"));
-
-    // A toast from an earlier story may still be on screen — at least one says so.
-    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
-    await waitFor(() => expect(canvas.queryByTestId("pick-order-accept-return")).toBeNull());
-    await expect(returnAcceptScenario.last?.orderId).toBe(FULL.id);
+    await userEvent.click(button);
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
+    // Nothing is accepted by opening it.
+    await expect(returnAcceptScenario.calls).toBe(0);
   },
 };
 
@@ -245,9 +245,8 @@ export const OnlyAReturnOffersTheAccept: Story = {
 };
 
 /**
- * THE RETURN WAREHOUSE ACCEPTS AN ORDER IT DID NOT SHIP (the-accept-records-where-it-was-accepted). Order 109 shipped from
- * Gudang Cabang; Toko Melati returns to Gudang Pusat, whose crew opens it, accepts it — and the accept is scoped on Gudang
- * Pusat, the warehouse recorded as where it was accepted.
+ * THE RETURN WAREHOUSE ACCEPTS AN ORDER IT DID NOT SHIP (only-the-return-warehouse-accepts-a-return). Order 109 shipped
+ * from Gudang Cabang; Toko Melati returns to Gudang Pusat, whose crew opens it and its Accept Return — the page.
  */
 const AtReturnedElsewhere = Routed("/warehouse-orders/109");
 
@@ -258,11 +257,7 @@ export const TheReturnWarehouseAcceptsAnOrderItDidNotShip: Story = {
     const canvas = within(canvasElement);
 
     await userEvent.click(await canvas.findByTestId("pick-order-accept-return"));
-    await userEvent.click(await screen.findByTestId("accept-return-submit"));
-
-    // A toast from an earlier story may still be on screen — at least one says so.
-    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
-    await expect(returnAcceptScenario.last?.orderId).toBe(109n);
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
   },
 };
 
@@ -293,7 +288,7 @@ export const ForceReturnOnTheOrderPage: Story = {
     await expect(canvas.queryByTestId("pick-order-force-return")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("pick-order-accept-return"));
-    await expect(await screen.findByTestId("accept-return-dialog")).toHaveTextContent(`Accept Return #${SHIPPED.id}`);
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
   },
 };
 

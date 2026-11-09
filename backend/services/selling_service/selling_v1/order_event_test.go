@@ -92,7 +92,7 @@ func TestOrderCreate_PublishesTheFrozenMoney(t *testing.T) {
 func TestOrderCreate_TheEventCarriesTheFrozenWarehouseFee(t *testing.T) {
 	db := san_testdb.DB(t)
 	rec := &recorder{}
-	svc := selling_v1.NewService(db, knownCosts(), rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 2.5}, nil, nil)
+	svc := selling_v1.NewService(db, knownCosts(), rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 2.5}, nil, nil, nil)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(feeOrderReq(shop)))

@@ -292,6 +292,23 @@ export function useAcceptReturn() {
   });
 }
 
+// THE ACCEPT PAGE'S READ (the-return-accept-page-is-accepted): the order, and — for an order in `return` — the code each
+// borrowed line's units are relabelled with (a-returned-borrowed-unit-is-relabelled-at-the-accept), both from
+// OrderDetail. The order says where its return goes (`returnWarehouseId`, only-the-return-warehouse-accepts-a-return).
+export function useReturnAcceptOrder(args: { teamId: bigint | undefined; orderId: bigint }) {
+  const { teamId, orderId } = args;
+
+  return useQuery({
+    queryKey: key.orders(teamId, { orderId: orderId.toString(), returnAccept: "1" }),
+    enabled: teamId !== undefined && orderId > 0n,
+    queryFn: async () => {
+      const res = await orderClient.orderDetail({ teamId: teamId!, orderId });
+
+      return { order: res.order ?? null, returnLabels: res.returnLabels };
+    },
+  });
+}
+
 // ADD A NOTE TO AN ORDER (a-note-is-a-timeline-row) — a timeline row with no status, written by either end: the
 // selling team's `team_id` writes `from = selling`, its warehouse's writes `from = warehouse`. There is no edit and
 // no delete, so this is the only note write there is: a correction is a new note.

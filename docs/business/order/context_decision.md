@@ -135,6 +135,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [large-sum-drift-is-left-for-now](#large-sum-drift-is-left-for-now) | summing exact doubles may drift past the 4-place tolerance only at ~100.000 entries; left for now | owner, as recommended | — |
 | [the-courier-required-look-is-accepted](#the-courier-required-look-is-accepted) | the order form marks the courier required and holds Create until one is picked | owner, as recommended | — |
 | [the-cs-edits-the-whole-address-before-create](#the-cs-edits-the-whole-address-before-create) | before Create, the CS can edit every part of a draft's address | owner, as recommended | — |
+| [only-the-return-warehouse-accepts-a-return](#only-the-return-warehouse-accepts-a-return) | a return is accepted only by the selling team's configured return warehouse | owner, against the recommendation | — |
 
 ---
 
@@ -3406,7 +3407,7 @@ flowchart LR
 | the missing units | an inventory `problem`, reason *lost*, in the same act — the shelf count is right at once |
 | the note | an `order_timeline_logs` row, `from = warehouse`, naming each missing product and how many |
 | the money | customer service's claim on the platform, entered in settlement by hand ([a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand)) |
-| inventory's side | part of the brief [inventory return.md](../inventory/return.md) answers ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief)) |
+| inventory's side | part of the brief [inventory return.md](../inventory/return_decision.md#return-md-is-retired) answers ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief)) |
 
 ---
 
@@ -3908,7 +3909,7 @@ flowchart LR
 **The verdict.** The warehouse's **return accept** — `return → return_completed`
 ([the-accept-is-the-status-return-completed](#the-accept-is-the-status-return-completed)) — is built **now**, with
 everything the order side decides, and **without** inventory's return transaction: the returned units are not put back
-on a shelf until [inventory/return.md](../inventory/return.md) designs it
+on a shelf until [inventory/return.md](../inventory/return_decision.md#return-md-is-retired) designs it
 ([return-is-unplanned](../inventory/context_decision.md#return-is-unplanned) still holds for the stock half).
 
 ```mermaid
@@ -4342,3 +4343,30 @@ Still on integers on 2026-11-05: the settlement ledger and its reports, the liab
 **Pre-filled when certain** — *"A"*, as recommended, to the follow-up: when the draft's four region names match **exactly one** place in the region list, the dropdowns open **pre-filled** with it; the CS can still change any level. With no exact match (spelling, *Kota* / *Kab.* prefixes the matcher cannot settle), they open empty and the CS picks, reading the text. ⚠ Not built.
 
 ✅ Built 2026-11-06 — a draft's address is its `order_draft_addresses` row (names only, selling `00046`); `OrderDraftDetail` asks region_service's new `RegionMatch` in-process (`selling_v1.RegionMatcher` → `cmd/app_development/order_draft_regions.go`) and returns `OrderDraft.region_match` (24) when the four names match exactly one place — exact after normalising case, spacing and the Kabupaten / Kab. / Kab / Kota (Administrasi) prefix (a written prefix must agree; several or no matches = none). The form (`pages/order-create/draftAddress.ts`) opens the dropdowns pre-filled from it, else empty; the draft's postcode and street line are seeded either way; every part stays editable; the draft's address is shown as text above the picker (`DraftAddressText`, the hint sand). Tests: `region_match_test.go` (exact, prefix variants, ambiguous, no match), `order_draft_detail_test.go` (pre-fill, none, blank level, failed lookup), `TestDraftRegionMatcher_PrefillsADraftsAddressFromTheRegionList` (real wiring), `draftAddress.test.ts`; stories *ADraftAddressThatMatchesOnePlaceOpensPrefilled*, *APrefilledAddressStaysEditable*, *ADraftAddressWithNoMatchOpensEmpty*; e2e `order_drafts.spec.ts` (a Kab. match pre-fills, a Kota mismatch stays empty).
+
+---
+
+## only-the-return-warehouse-accepts-a-return
+
+> Owner (Heri), in chat (2026-11-09): *"i chose C"* — after *"tell more"* and *"in option B, why b crew can pick rack in C ? its different team and building ?"* — to: when a warehouse that is not the team's configured return warehouse holds a returned parcel (a stale label), whose stock do the units go into? A — the accepting warehouse's; B — the configured one's, as [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted) recorded (unworkable: the holding crew cannot see or name the other building's racks, and every unit must be on a rack); C — only the configured return warehouse may accept. Against the recommendation (A).
+
+**The verdict.** A return is **accepted only by the selling team's configured return warehouse**, read at that moment ([the-return-warehouse-is-read-when-the-return-happens](#the-return-warehouse-is-read-when-the-return-happens), [the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations)). Its crew puts the units on **its own** racks, so the stock is always where the box is. A parcel a stale label brought to another building **waits there until it is carried** to the return warehouse; that building cannot accept it.
+
+```mermaid
+flowchart LR
+  P["parcel back at Gudang B - an old label"] --> X["B: Accept refused - this return goes to Gudang C"]
+  X --> M["the parcel is carried to C"]
+  M --> A["C accepts - units on C's racks"]
+  Q["parcel back at Gudang C"] --> A
+```
+
+| | |
+| --- | --- |
+| `OrderReturnAccept` | refused, `FailedPrecondition`, unless the accepting warehouse is the order's selling team's configured return warehouse — the message names it (*"this return goes to Gudang C"*) |
+| Receive a Return at another building | the search may still find the order, shown with where it goes and **no Accept** |
+| a team with no return warehouse | no one can accept — [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) keeps such a team from ordering once it is on |
+| unchanged | [a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move) and who may force; [a-stale-return-location-is-accepted](#a-stale-return-location-is-accepted) — the configuration is trusted; [a-return-may-land-in-another-warehouse](#a-return-may-land-in-another-warehouse) — the return warehouse may differ from the one that shipped |
+
+**What it reverses** (HARD RULE 11): the built *"any warehouse may accept an order in `return`"* of [the-return-accept-is-built-before-its-stock-half](#the-return-accept-is-built-before-its-stock-half); and the stock row of [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted) — the stock no longer goes anywhere but where it is accepted, which is now always the return warehouse (the recorded accepting warehouse stays, and always equals it). The courier's charge is owed to the return warehouse, as the accepting one. ⚠ Not built.
+
+✅ **Built 2026-11-09** — `selling_v1/order_return_accept.go` (`requireReturnWarehouse`: `FailedPrecondition` *"this return goes to Gudang C …"* through the `TeamNamer` seam, or *"the selling team has no return warehouse"*), the units onto the return warehouse's racks by inventory's `OrderTransactionReturn`; Receive a Return shows where a parcel goes with no Accept (`ReceiveReturnDialog`); tests `TestOrderReturnAccept_OnlyTheReturnWarehouseAccepts`, `TestOrderReturnAccept_ATeamWithNoReturnWarehouseIsRefused`, `TestRace_OrderReturnAccept_TwoWarehousesAtOnce`, e2e *Wrong warehouse: …*.

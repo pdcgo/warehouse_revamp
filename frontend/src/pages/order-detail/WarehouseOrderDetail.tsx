@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Flex, Heading, Icon, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
@@ -16,7 +15,7 @@ import { InfoPanel } from "./components/InfoPanel";
 import { NotesSection, noteWriter } from "./components/NotesSection";
 import { TimelinePanel } from "./components/TimelinePanel";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
-import { AcceptReturnDialog } from "../../features/orders/AcceptReturnDialog";
+import { useOpenReturnAccept } from "../../features/orders/returnAccept";
 import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
 
 function parseOrderId(raw: string | undefined): bigint {
@@ -45,7 +44,8 @@ export function WarehouseOrderDetailPage() {
   // THE RETURN, from the warehouse's side (a-return-is-received-by-search-then-forced, A): Force Return for an order that
   // left the building, confirmed — then the order re-reads in `return` and Accept Return is offered, as on the pick screen.
   const forceReturn = useForceReturn({ teamId });
-  const [accepting, setAccepting] = useState(false);
+  // …and Accept Return opens its page (the-return-accept-page-is-accepted).
+  const openReturnAccept = useOpenReturnAccept();
 
   const order = query.data ?? null;
   const loading = query.isPending && id !== 0n;
@@ -187,7 +187,7 @@ export function WarehouseOrderDetailPage() {
         )}
 
         {order.status === OrderStatus.RETURN && canWrite(current) && (
-          <Button colorPalette="brand" onClick={() => setAccepting(true)} data-testid="order-accept-return">
+          <Button colorPalette="brand" onClick={() => openReturnAccept(order.id)} data-testid="order-accept-return">
             <Icon as={PackageCheck} boxSize="4" />
             {t("picking.action.acceptReturn")}
           </Button>
@@ -195,11 +195,6 @@ export function WarehouseOrderDetailPage() {
       </Flex>
 
       {forceReturn.dialog}
-      {/* Mounted whatever the status, as on the pick screen: the accept re-reads the order as return_completed, and a
-          dialog under the button would vanish with the labels it is about to show. */}
-      {teamId !== undefined && (
-        <AcceptReturnDialog open={accepting} onOpenChange={setAccepting} teamId={teamId} order={order} />
-      )}
 
       {/* VERTICAL tabs down the left, content beside them (owner) — the same shape the product, rack,
           batch and restock detail pages use, because they are the same kind of screen: one record,

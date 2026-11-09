@@ -85,6 +85,58 @@ func (OrderTransactionRefusalReason) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP(), []int{0}
 }
 
+// What happened to a returned unit that did not go back on a shelf.
+type OrderTransactionReturnProblemType int32
+
+const (
+	OrderTransactionReturnProblemType_ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_UNSPECIFIED OrderTransactionReturnProblemType = 0
+	// In the parcel, too damaged to sell — thrown away (a-broken-returned-unit-is-thrown-away-at-the-door).
+	OrderTransactionReturnProblemType_ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_BROKEN OrderTransactionReturnProblemType = 1
+	// Not in the parcel (a-short-return-is-missing-at-the-door).
+	OrderTransactionReturnProblemType_ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_MISSING OrderTransactionReturnProblemType = 2
+)
+
+// Enum value maps for OrderTransactionReturnProblemType.
+var (
+	OrderTransactionReturnProblemType_name = map[int32]string{
+		0: "ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_UNSPECIFIED",
+		1: "ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_BROKEN",
+		2: "ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_MISSING",
+	}
+	OrderTransactionReturnProblemType_value = map[string]int32{
+		"ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_UNSPECIFIED": 0,
+		"ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_BROKEN":      1,
+		"ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_MISSING":     2,
+	}
+)
+
+func (x OrderTransactionReturnProblemType) Enum() *OrderTransactionReturnProblemType {
+	p := new(OrderTransactionReturnProblemType)
+	*p = x
+	return p
+}
+
+func (x OrderTransactionReturnProblemType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OrderTransactionReturnProblemType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_order_transaction_proto_enumTypes[1].Descriptor()
+}
+
+func (OrderTransactionReturnProblemType) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_order_transaction_proto_enumTypes[1]
+}
+
+func (x OrderTransactionReturnProblemType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OrderTransactionReturnProblemType.Descriptor instead.
+func (OrderTransactionReturnProblemType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP(), []int{1}
+}
+
 // OrderTransactionLine is one product the order wants from the warehouse.
 type OrderTransactionLine struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -609,6 +661,393 @@ func (x *OrderTransactionReleaseResponse) GetReleased() bool {
 	return false
 }
 
+type OrderTransactionReturnRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The RETURN warehouse — where the parcel is, and where the sound units are minted and shelved.
+	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The ORDERING team — the return transaction's team and every minted batch's owner, borrowed lines too
+	// (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+	SellingTeamId uint64 `protobuf:"varint,2,opt,name=selling_team_id,json=sellingTeamId,proto3" json:"selling_team_id,omitempty"`
+	// The order's take (orders.transaction_id): its batch rows are the layers the return mints from, and it is the
+	// once-only key — one return per take.
+	TakeTransactionId uint64 `protobuf:"varint,3,opt,name=take_transaction_id,json=takeTransactionId,proto3" json:"take_transaction_id,omitempty"`
+	// Every product the take drew, once.
+	Lines []*OrderTransactionReturnLine `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
+	// Written on the transaction, e.g. "return of order #12".
+	Description   string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderTransactionReturnRequest) Reset() {
+	*x = OrderTransactionReturnRequest{}
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderTransactionReturnRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderTransactionReturnRequest) ProtoMessage() {}
+
+func (x *OrderTransactionReturnRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderTransactionReturnRequest.ProtoReflect.Descriptor instead.
+func (*OrderTransactionReturnRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *OrderTransactionReturnRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnRequest) GetSellingTeamId() uint64 {
+	if x != nil {
+		return x.SellingTeamId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnRequest) GetTakeTransactionId() uint64 {
+	if x != nil {
+		return x.TakeTransactionId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnRequest) GetLines() []*OrderTransactionReturnLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+func (x *OrderTransactionReturnRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// OrderTransactionReturnLine is one product of the take as the return warehouse's crew counted it. sound + broken +
+// missing is what the take drew of it.
+type OrderTransactionReturnLine struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The product the take drew — the order line's.
+	ProductId uint64 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	// The product the units come back as: product_id itself for the team's own, the team's mapped own product for a
+	// borrowed line (a-return-never-clones-a-product).
+	ReturnProductId uint64 `protobuf:"varint,2,opt,name=return_product_id,json=returnProductId,proto3" json:"return_product_id,omitempty"`
+	// The markup the team paid on a borrowed line, as a fraction of its cost (0.2 = 20 %) — the line's frozen
+	// markup_total over its cost. 0 on the team's own line. Each layer is minted at its price × (1 + markup_rate).
+	MarkupRate float64 `protobuf:"fixed64,3,opt,name=markup_rate,json=markupRate,proto3" json:"markup_rate,omitempty"`
+	Sound      int64   `protobuf:"varint,4,opt,name=sound,proto3" json:"sound,omitempty"`
+	Broken     int64   `protobuf:"varint,5,opt,name=broken,proto3" json:"broken,omitempty"`
+	Missing    int64   `protobuf:"varint,6,opt,name=missing,proto3" json:"missing,omitempty"`
+	// The crew's note on the broken and missing units (a-return-door-row-carries-an-optional-note); kept on the line's
+	// door rows. Ignored when both are 0.
+	Note string `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
+	// Where the sound units went — together exactly `sound`, racks of the return warehouse.
+	Placements    []*OrderTransactionReturnPlacement `protobuf:"bytes,8,rep,name=placements,proto3" json:"placements,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderTransactionReturnLine) Reset() {
+	*x = OrderTransactionReturnLine{}
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderTransactionReturnLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderTransactionReturnLine) ProtoMessage() {}
+
+func (x *OrderTransactionReturnLine) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderTransactionReturnLine.ProtoReflect.Descriptor instead.
+func (*OrderTransactionReturnLine) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *OrderTransactionReturnLine) GetProductId() uint64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnLine) GetReturnProductId() uint64 {
+	if x != nil {
+		return x.ReturnProductId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnLine) GetMarkupRate() float64 {
+	if x != nil {
+		return x.MarkupRate
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnLine) GetSound() int64 {
+	if x != nil {
+		return x.Sound
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnLine) GetBroken() int64 {
+	if x != nil {
+		return x.Broken
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnLine) GetMissing() int64 {
+	if x != nil {
+		return x.Missing
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnLine) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+func (x *OrderTransactionReturnLine) GetPlacements() []*OrderTransactionReturnPlacement {
+	if x != nil {
+		return x.Placements
+	}
+	return nil
+}
+
+type OrderTransactionReturnPlacement struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlacementId   uint64                 `protobuf:"varint,1,opt,name=placement_id,json=placementId,proto3" json:"placement_id,omitempty"`
+	Quantity      int64                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderTransactionReturnPlacement) Reset() {
+	*x = OrderTransactionReturnPlacement{}
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderTransactionReturnPlacement) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderTransactionReturnPlacement) ProtoMessage() {}
+
+func (x *OrderTransactionReturnPlacement) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderTransactionReturnPlacement.ProtoReflect.Descriptor instead.
+func (*OrderTransactionReturnPlacement) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *OrderTransactionReturnPlacement) GetPlacementId() uint64 {
+	if x != nil {
+		return x.PlacementId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnPlacement) GetQuantity() int64 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
+// OrderTransactionReturnProblem is one door row: one product's broken or missing units, priced from the layers they
+// came off, newest first, at what the team paid.
+type OrderTransactionReturnProblem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The product the take drew — the order line's.
+	ProductId     uint64                            `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Type          OrderTransactionReturnProblemType `protobuf:"varint,2,opt,name=type,proto3,enum=warehouse.inventory.v1.OrderTransactionReturnProblemType" json:"type,omitempty"`
+	Count         int64                             `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
+	Total         float64                           `protobuf:"fixed64,4,opt,name=total,proto3" json:"total,omitempty"`
+	Note          string                            `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderTransactionReturnProblem) Reset() {
+	*x = OrderTransactionReturnProblem{}
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderTransactionReturnProblem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderTransactionReturnProblem) ProtoMessage() {}
+
+func (x *OrderTransactionReturnProblem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderTransactionReturnProblem.ProtoReflect.Descriptor instead.
+func (*OrderTransactionReturnProblem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *OrderTransactionReturnProblem) GetProductId() uint64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnProblem) GetType() OrderTransactionReturnProblemType {
+	if x != nil {
+		return x.Type
+	}
+	return OrderTransactionReturnProblemType_ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_UNSPECIFIED
+}
+
+func (x *OrderTransactionReturnProblem) GetCount() int64 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnProblem) GetTotal() float64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnProblem) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+type OrderTransactionReturnResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The take's one `return` transaction.
+	TransactionId uint64 `protobuf:"varint,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	// True when this call wrote it; false when the take was already returned — the answer is then what was written.
+	Posted bool `protobuf:"varint,2,opt,name=posted,proto3" json:"posted,omitempty"`
+	// The door rows, broken before missing per product.
+	Problems      []*OrderTransactionReturnProblem `protobuf:"bytes,3,rep,name=problems,proto3" json:"problems,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderTransactionReturnResponse) Reset() {
+	*x = OrderTransactionReturnResponse{}
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderTransactionReturnResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderTransactionReturnResponse) ProtoMessage() {}
+
+func (x *OrderTransactionReturnResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_order_transaction_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderTransactionReturnResponse.ProtoReflect.Descriptor instead.
+func (*OrderTransactionReturnResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *OrderTransactionReturnResponse) GetTransactionId() uint64 {
+	if x != nil {
+		return x.TransactionId
+	}
+	return 0
+}
+
+func (x *OrderTransactionReturnResponse) GetPosted() bool {
+	if x != nil {
+		return x.Posted
+	}
+	return false
+}
+
+func (x *OrderTransactionReturnResponse) GetProblems() []*OrderTransactionReturnProblem {
+	if x != nil {
+		return x.Problems
+	}
+	return nil
+}
+
 var File_warehouse_inventory_v1_order_transaction_proto protoreflect.FileDescriptor
 
 const file_warehouse_inventory_v1_order_transaction_proto_rawDesc = "" +
@@ -655,16 +1094,55 @@ const file_warehouse_inventory_v1_order_transaction_proto_rawDesc = "" +
 	"\x05\x01\x02\x03\x04\x05\"d\n" +
 	"\x1fOrderTransactionReleaseResponse\x12%\n" +
 	"\x0etransaction_id\x18\x01 \x01(\x04R\rtransactionId\x12\x1a\n" +
-	"\breleased\x18\x02 \x01(\bR\breleased*\x9d\x02\n" +
+	"\breleased\x18\x02 \x01(\bR\breleased\"\xbf\x02\n" +
+	"\x1dOrderTransactionReturnRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12/\n" +
+	"\x0fselling_team_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\rsellingTeamId\x127\n" +
+	"\x13take_transaction_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\x11takeTransactionId\x12U\n" +
+	"\x05lines\x18\x04 \x03(\v22.warehouse.inventory.v1.OrderTransactionReturnLineB\v\xbaH\b\x92\x01\x05\b\x01\x10\xc8\x01R\x05lines\x12*\n" +
+	"\vdescription\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\vdescription:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"\x90\x03\n" +
+	"\x1aOrderTransactionReturnLine\x12&\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x123\n" +
+	"\x11return_product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0freturnProductId\x121\n" +
+	"\vmarkup_rate\x18\x03 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\n" +
+	"markupRate\x12\x1d\n" +
+	"\x05sound\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05sound\x12\x1f\n" +
+	"\x06broken\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x06broken\x12!\n" +
+	"\amissing\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\amissing\x12\x1c\n" +
+	"\x04note\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\x12a\n" +
+	"\n" +
+	"placements\x18\b \x03(\v27.warehouse.inventory.v1.OrderTransactionReturnPlacementB\b\xbaH\x05\x92\x01\x02\x102R\n" +
+	"placements\"r\n" +
+	"\x1fOrderTransactionReturnPlacement\x12*\n" +
+	"\fplacement_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\vplacementId\x12#\n" +
+	"\bquantity\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\"\xcd\x01\n" +
+	"\x1dOrderTransactionReturnProblem\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\x04R\tproductId\x12M\n" +
+	"\x04type\x18\x02 \x01(\x0e29.warehouse.inventory.v1.OrderTransactionReturnProblemTypeR\x04type\x12\x14\n" +
+	"\x05count\x18\x03 \x01(\x03R\x05count\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x01R\x05total\x12\x12\n" +
+	"\x04note\x18\x05 \x01(\tR\x04note\"\xb2\x01\n" +
+	"\x1eOrderTransactionReturnResponse\x12%\n" +
+	"\x0etransaction_id\x18\x01 \x01(\x04R\rtransactionId\x12\x16\n" +
+	"\x06posted\x18\x02 \x01(\bR\x06posted\x12Q\n" +
+	"\bproblems\x18\x03 \x03(\v25.warehouse.inventory.v1.OrderTransactionReturnProblemR\bproblems*\x9d\x02\n" +
 	"\x1dOrderTransactionRefusalReason\x120\n" +
 	",ORDER_TRANSACTION_REFUSAL_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")ORDER_TRANSACTION_REFUSAL_REASON_KEY_USED\x10\x01\x120\n" +
 	",ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED\x10\x02\x125\n" +
 	"1ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK\x10\x03\x122\n" +
-	".ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED\x10\x042\xb0\x02\n" +
+	".ORDER_TRANSACTION_REFUSAL_REASON_BEING_COUNTED\x10\x04*\xbf\x01\n" +
+	"!OrderTransactionReturnProblemType\x125\n" +
+	"1ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_UNSPECIFIED\x10\x00\x120\n" +
+	",ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_BROKEN\x10\x01\x121\n" +
+	"-ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_MISSING\x10\x022\xba\x03\n" +
 	"\x17OrderTransactionService\x12\x87\x01\n" +
 	"\x16OrderTransactionCreate\x125.warehouse.inventory.v1.OrderTransactionCreateRequest\x1a6.warehouse.inventory.v1.OrderTransactionCreateResponse\x12\x8a\x01\n" +
-	"\x17OrderTransactionRelease\x126.warehouse.inventory.v1.OrderTransactionReleaseRequest\x1a7.warehouse.inventory.v1.OrderTransactionReleaseResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
+	"\x17OrderTransactionRelease\x126.warehouse.inventory.v1.OrderTransactionReleaseRequest\x1a7.warehouse.inventory.v1.OrderTransactionReleaseResponse\x12\x87\x01\n" +
+	"\x16OrderTransactionReturn\x125.warehouse.inventory.v1.OrderTransactionReturnRequest\x1a6.warehouse.inventory.v1.OrderTransactionReturnResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_warehouse_inventory_v1_order_transaction_proto_rawDescOnce sync.Once
@@ -678,33 +1156,45 @@ func file_warehouse_inventory_v1_order_transaction_proto_rawDescGZIP() []byte {
 	return file_warehouse_inventory_v1_order_transaction_proto_rawDescData
 }
 
-var file_warehouse_inventory_v1_order_transaction_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_inventory_v1_order_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_warehouse_inventory_v1_order_transaction_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_warehouse_inventory_v1_order_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_warehouse_inventory_v1_order_transaction_proto_goTypes = []any{
 	(OrderTransactionRefusalReason)(0),      // 0: warehouse.inventory.v1.OrderTransactionRefusalReason
-	(*OrderTransactionLine)(nil),            // 1: warehouse.inventory.v1.OrderTransactionLine
-	(*OrderTransactionCreateRequest)(nil),   // 2: warehouse.inventory.v1.OrderTransactionCreateRequest
-	(*OrderTransactionItem)(nil),            // 3: warehouse.inventory.v1.OrderTransactionItem
-	(*OrderTransactionCreateResponse)(nil),  // 4: warehouse.inventory.v1.OrderTransactionCreateResponse
-	(*OrderTransactionRefusedLine)(nil),     // 5: warehouse.inventory.v1.OrderTransactionRefusedLine
-	(*OrderTransactionRefusal)(nil),         // 6: warehouse.inventory.v1.OrderTransactionRefusal
-	(*OrderTransactionReleaseRequest)(nil),  // 7: warehouse.inventory.v1.OrderTransactionReleaseRequest
-	(*OrderTransactionReleaseResponse)(nil), // 8: warehouse.inventory.v1.OrderTransactionReleaseResponse
+	(OrderTransactionReturnProblemType)(0),  // 1: warehouse.inventory.v1.OrderTransactionReturnProblemType
+	(*OrderTransactionLine)(nil),            // 2: warehouse.inventory.v1.OrderTransactionLine
+	(*OrderTransactionCreateRequest)(nil),   // 3: warehouse.inventory.v1.OrderTransactionCreateRequest
+	(*OrderTransactionItem)(nil),            // 4: warehouse.inventory.v1.OrderTransactionItem
+	(*OrderTransactionCreateResponse)(nil),  // 5: warehouse.inventory.v1.OrderTransactionCreateResponse
+	(*OrderTransactionRefusedLine)(nil),     // 6: warehouse.inventory.v1.OrderTransactionRefusedLine
+	(*OrderTransactionRefusal)(nil),         // 7: warehouse.inventory.v1.OrderTransactionRefusal
+	(*OrderTransactionReleaseRequest)(nil),  // 8: warehouse.inventory.v1.OrderTransactionReleaseRequest
+	(*OrderTransactionReleaseResponse)(nil), // 9: warehouse.inventory.v1.OrderTransactionReleaseResponse
+	(*OrderTransactionReturnRequest)(nil),   // 10: warehouse.inventory.v1.OrderTransactionReturnRequest
+	(*OrderTransactionReturnLine)(nil),      // 11: warehouse.inventory.v1.OrderTransactionReturnLine
+	(*OrderTransactionReturnPlacement)(nil), // 12: warehouse.inventory.v1.OrderTransactionReturnPlacement
+	(*OrderTransactionReturnProblem)(nil),   // 13: warehouse.inventory.v1.OrderTransactionReturnProblem
+	(*OrderTransactionReturnResponse)(nil),  // 14: warehouse.inventory.v1.OrderTransactionReturnResponse
 }
 var file_warehouse_inventory_v1_order_transaction_proto_depIdxs = []int32{
-	1, // 0: warehouse.inventory.v1.OrderTransactionCreateRequest.lines:type_name -> warehouse.inventory.v1.OrderTransactionLine
-	3, // 1: warehouse.inventory.v1.OrderTransactionCreateResponse.items:type_name -> warehouse.inventory.v1.OrderTransactionItem
-	0, // 2: warehouse.inventory.v1.OrderTransactionRefusal.reason:type_name -> warehouse.inventory.v1.OrderTransactionRefusalReason
-	5, // 3: warehouse.inventory.v1.OrderTransactionRefusal.lines:type_name -> warehouse.inventory.v1.OrderTransactionRefusedLine
-	2, // 4: warehouse.inventory.v1.OrderTransactionService.OrderTransactionCreate:input_type -> warehouse.inventory.v1.OrderTransactionCreateRequest
-	7, // 5: warehouse.inventory.v1.OrderTransactionService.OrderTransactionRelease:input_type -> warehouse.inventory.v1.OrderTransactionReleaseRequest
-	4, // 6: warehouse.inventory.v1.OrderTransactionService.OrderTransactionCreate:output_type -> warehouse.inventory.v1.OrderTransactionCreateResponse
-	8, // 7: warehouse.inventory.v1.OrderTransactionService.OrderTransactionRelease:output_type -> warehouse.inventory.v1.OrderTransactionReleaseResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2,  // 0: warehouse.inventory.v1.OrderTransactionCreateRequest.lines:type_name -> warehouse.inventory.v1.OrderTransactionLine
+	4,  // 1: warehouse.inventory.v1.OrderTransactionCreateResponse.items:type_name -> warehouse.inventory.v1.OrderTransactionItem
+	0,  // 2: warehouse.inventory.v1.OrderTransactionRefusal.reason:type_name -> warehouse.inventory.v1.OrderTransactionRefusalReason
+	6,  // 3: warehouse.inventory.v1.OrderTransactionRefusal.lines:type_name -> warehouse.inventory.v1.OrderTransactionRefusedLine
+	11, // 4: warehouse.inventory.v1.OrderTransactionReturnRequest.lines:type_name -> warehouse.inventory.v1.OrderTransactionReturnLine
+	12, // 5: warehouse.inventory.v1.OrderTransactionReturnLine.placements:type_name -> warehouse.inventory.v1.OrderTransactionReturnPlacement
+	1,  // 6: warehouse.inventory.v1.OrderTransactionReturnProblem.type:type_name -> warehouse.inventory.v1.OrderTransactionReturnProblemType
+	13, // 7: warehouse.inventory.v1.OrderTransactionReturnResponse.problems:type_name -> warehouse.inventory.v1.OrderTransactionReturnProblem
+	3,  // 8: warehouse.inventory.v1.OrderTransactionService.OrderTransactionCreate:input_type -> warehouse.inventory.v1.OrderTransactionCreateRequest
+	8,  // 9: warehouse.inventory.v1.OrderTransactionService.OrderTransactionRelease:input_type -> warehouse.inventory.v1.OrderTransactionReleaseRequest
+	10, // 10: warehouse.inventory.v1.OrderTransactionService.OrderTransactionReturn:input_type -> warehouse.inventory.v1.OrderTransactionReturnRequest
+	5,  // 11: warehouse.inventory.v1.OrderTransactionService.OrderTransactionCreate:output_type -> warehouse.inventory.v1.OrderTransactionCreateResponse
+	9,  // 12: warehouse.inventory.v1.OrderTransactionService.OrderTransactionRelease:output_type -> warehouse.inventory.v1.OrderTransactionReleaseResponse
+	14, // 13: warehouse.inventory.v1.OrderTransactionService.OrderTransactionReturn:output_type -> warehouse.inventory.v1.OrderTransactionReturnResponse
+	11, // [11:14] is the sub-list for method output_type
+	8,  // [8:11] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_order_transaction_proto_init() }
@@ -717,8 +1207,8 @@ func file_warehouse_inventory_v1_order_transaction_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_order_transaction_proto_rawDesc), len(file_warehouse_inventory_v1_order_transaction_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   8,
+			NumEnums:      2,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -3,6 +3,7 @@ import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/tes
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, teams } from "../../../.storybook/fixtures";
+import { withReturnWarehouse } from "../../../.storybook/returnConfigurationStub";
 import {
   asAdminTeam,
   labelScanScenario,
@@ -57,7 +58,7 @@ import { PickQueuePage } from "./index";
 //   | HandoverSkipsACancelledTwin        | …a cancelled twin is skipped, the live one handed over      |
 //   | TheReturnsTabListsBoth             | Retur = return + return_completed, counted, in the URL      |
 //   | TheReturnWarehouseLists… / Another… | the configured return warehouse's returns, and only those   |
-//   | Receive…                           | Receive a Return: accept, force then accept, not found, why  |
+//   | Receive…                           | Receive a Return: accept page, force then it, done, not found |
 //   | AMonitorSeesNoWrites               | a monitoring team reads, prints and exports — never moves    |
 //   | Phone                              | the one-row header: three actions fold into ⋯                |
 
@@ -80,6 +81,9 @@ const Routed = routedPage(
   [
     { path: "/warehouse-orders", element: <PickQueuePage /> },
     marker("/warehouse-orders/:orderId", "at-pick-order"),
+    // Receive a Return's Accept opens the accept page (the-return-accept-page-is-accepted) — its own stories are
+    // Pages/Warehouse/OrderReturnAccept.
+    marker("/warehouse-orders/:orderId/accept-return", "at-return-accept"),
   ],
   "/warehouse-orders",
 );
@@ -928,10 +932,10 @@ async function openReceive(canvasElement: HTMLElement) {
 
 /**
  * ALREADY IN RETURN — customer service claimed it first. The scanned tracking number finds it, with its shop and customer,
- * and its one step is Accept Return: the existing dialog opens on the order's lines, and the accept lands.
+ * and — Kenanga returning to this warehouse — its one step is Accept Return, which opens the accept page.
  */
 export const ReceiveFindsAnOrderAlreadyInReturn: Story = {
-  beforeEach: withOrdersInReturn(RETURNED.id),
+  beforeEach: [withOrdersInReturn(RETURNED.id), withReturnWarehouse(RETURNED.teamId, WAREHOUSE.id)],
   play: async ({ canvasElement }) => {
     const input = await openReceive(canvasElement);
     await scan(input, RETURNED.receiptCode);
@@ -945,22 +949,28 @@ export const ReceiveFindsAnOrderAlreadyInReturn: Story = {
     await expect(screen.queryByTestId("receive-return-force-110")).toBeNull();
 
     await userEvent.click(screen.getByTestId("receive-return-accept-110"));
-    const accept = await screen.findByTestId("accept-return-dialog");
-    await waitFor(() => expect(accept).toBeVisible());
-    await expect(accept).toHaveTextContent("Accept Return #110");
+    await waitFor(() => expect(within(canvasElement).getByTestId("at-return-accept")).toBeInTheDocument());
+    await expect(returnAcceptScenario.calls).toBe(0);
+  },
+};
 
-    await userEvent.click(screen.getByTestId("accept-return-submit"));
-    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
-    await expect(returnAcceptScenario.last?.orderId).toBe(110n);
+/** …and once accepted, the parcel is received: saying so is all that is left. */
+export const ReceiveSaysAnAcceptedReturnIsDone: Story = {
+  beforeEach: () => {
+    returnAcceptScenario.accepted = [RETURNED.id];
+  },
+  play: async ({ canvasElement }) => {
+    const input = await openReceive(canvasElement);
+    await scan(input, RETURNED.receiptCode);
 
-    // The search re-reads: the parcel is received, and saying so is all that is left.
     await waitFor(() => expect(screen.getByTestId("receive-return-reason-110")).toHaveTextContent("already accepted"));
+    await expect(screen.queryByTestId("receive-return-accept-110")).toBeNull();
   },
 };
 
 /**
  * NOT A RETURN YET — the parcel beat customer service to it. A shipped order offers Force Return, which confirms in the
- * owner's words, moves the order to `return`, and goes straight on to Accept Return.
+ * owner's words, moves the order to `return`, and goes straight on to the accept page.
  */
 export const ReceiveForcesAShippedOrderThenAccepts: Story = {
   beforeEach: withOrderStatus(SHIPPED_HERE.id, OrderStatus.SHIPPED),
@@ -980,14 +990,8 @@ export const ReceiveForcesAShippedOrderThenAccepts: Story = {
     await userEvent.click(confirm);
 
     // Straight on to the accept — no second search, no second press.
-    const accept = await screen.findByTestId("accept-return-dialog");
-    await waitFor(() => expect(accept).toBeVisible());
-    await expect(accept).toHaveTextContent("Accept Return #106");
+    await waitFor(() => expect(within(canvasElement).getByTestId("at-return-accept")).toBeInTheDocument());
     await expect(returnAcceptScenario.inReturn).toContain(106n);
-
-    await userEvent.click(screen.getByTestId("accept-return-submit"));
-    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
-    await expect(returnAcceptScenario.last?.orderId).toBe(106n);
   },
 };
 

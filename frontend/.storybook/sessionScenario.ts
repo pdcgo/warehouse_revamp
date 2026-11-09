@@ -121,7 +121,8 @@ export const orderStatScenario = { calls: 0 };
  * every count a list story pins — so a story names the orders the stub reads in `return` (`inReturn`), and an accept moves
  * one to `return_completed` (`accepted`) for the rest of that story. `labels` is what the accept answers for borrowed lines
  * (the server works them out from the return maps; a story says what it answered), `refusal` makes it refuse with that
- * message, and `last` is what the last OrderReturnAccept carried.
+ * message, and `last` is what the last OrderReturnAccept carried — per line the broken and missing counts, the note and
+ * the sound units' racks (return_decision.md); `calls` counts them.
  */
 export const returnAcceptScenario = {
   inReturn: [] as bigint[],
@@ -138,7 +139,20 @@ export const returnAcceptScenario = {
   refusal: undefined as string | undefined,
   last: undefined as
     | undefined
-    | { orderId: bigint; missing: { orderItemId: bigint; quantity: number }[]; courierCharge: number; courierChargeNote: string },
+    | {
+        teamId: bigint;
+        orderId: bigint;
+        lines: {
+          orderItemId: bigint;
+          broken: number;
+          missing: number;
+          note: string;
+          placements: { rackId: bigint; quantity: number }[];
+        }[];
+        courierCharge: number;
+        courierChargeNote: string;
+      },
+  calls: 0,
   /**
    * The status a story reads an order in, by id — no fixture is shipped, completed or in a problem, and a parcel the
    * warehouse receives (a-return-is-received-by-search-then-forced) is one of those. `inReturn` and `accepted` win over
@@ -209,6 +223,7 @@ export function resetSessionScenario() {
   returnAcceptScenario.refusal = undefined;
   returnAcceptScenario.last = undefined;
   returnAcceptScenario.statusOf = {};
+  returnAcceptScenario.calls = 0;
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */

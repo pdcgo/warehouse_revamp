@@ -19,8 +19,10 @@ import (
 )
 
 // ONE ACCEPT over 50 000 orders, their lines and ~250 000 timeline rows: the order and its lines by primary key, the
-// selling team's maps for those lines, the order FOR UPDATE, one UPDATE, one timeline INSERT (two with a short parcel).
-// The count must not move with anything — there is no list in it.
+// selling team's return warehouse (its unique team index), the selling team's maps for those lines, then — after the
+// stock half, a fake here (inventory's own probe is TestPerf_OrderTransactionReturn) — the order FOR UPDATE, the status
+// UPDATE, the return transaction's UPDATE, one timeline INSERT (two with a broken or missing unit). The count must not
+// move with anything — there is no list in it.
 func TestPerf_OrderReturnAccept(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	orders := seedOrders(t, db)
@@ -46,18 +48,39 @@ func TestPerf_OrderReturnAccept(t *testing.T) {
 		t.Fatalf("only %d returns from warehouse %d in the seed, want 6", len(returned), testWarehouse)
 	}
 
+	// The take each return mints from, and every seeded team's return warehouse — the one that shipped them.
+	err := db.Exec(`UPDATE orders SET transaction_id = id WHERE id IN ?`, returned).Error
+	if err != nil {
+		t.Fatalf("give the returns their takes: %v", err)
+	}
+
+	for team := uint64(2); team <= 6; team++ {
+		configureReturnWarehouse(t, db, team, testWarehouse)
+	}
+
+	linesOf := map[uint64][]*sellingv1.OrderReturnAcceptLine{}
+
+	for _, item := range items {
+		// One unit of every line broken, so each accept writes its door note too.
+		linesOf[item.OrderID] = append(linesOf[item.OrderID], &sellingv1.OrderReturnAcceptLine{
+			OrderItemId: item.ID, Broken: 1, Note: "pecah",
+			Placements: placementsOf(item.Quantity - 1),
+		})
+	}
+
 	svc := newService(t, db)
 	ctx := asUser(7)
 
 	accept := func(orderID uint64) error {
 		_, err := svc.OrderReturnAccept(ctx, connect.NewRequest(&sellingv1.OrderReturnAcceptRequest{
 			TeamId: testWarehouse, OrderId: orderID, CourierCharge: 15_000, CourierChargeNote: "ongkir retur",
+			Lines: linesOf[orderID],
 		}))
 
 		return err
 	}
 
-	err := accept(returned[0]) // warm-up
+	err = accept(returned[0]) // warm-up
 	if err != nil {
 		t.Fatalf("OrderReturnAccept warm-up: %v", err)
 	}
@@ -89,6 +112,15 @@ func TestPerf_OrderReturnAccept(t *testing.T) {
 
 		t.Log(san_perf.Explain(t, db, q.SQL))
 	}
+}
+
+// placementsOf is a line's sound units on one rack, none when nothing is sound.
+func placementsOf(sound uint32) []*sellingv1.OrderReturnPlacement {
+	if sound == 0 {
+		return nil
+	}
+
+	return []*sellingv1.OrderReturnPlacement{{RackId: 77, Quantity: sound}}
 }
 
 // THE SCOPE'S THIRD READER (orderReaders): every order read now asks whether the caller is a selling team's configured

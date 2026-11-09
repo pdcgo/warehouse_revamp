@@ -107,18 +107,18 @@ type OrderServiceClient interface {
 	// .xlsx. A server stream — progress, then an expiring link.
 	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest]) (*connect.ServerStreamForClient[v1.OrderExportResponse], error)
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
-	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
-	// `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
-	// not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
-	// and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
-	// than move a status, which is why OrderStatusChange refuses
-	// that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
-	// timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
-	// product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
-	// courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
-	//
-	// ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
-	// inventory's return transaction is designed, so a completed return under-reads stock by them.
+	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): the selling team's configured RETURN WAREHOUSE has
+	// the returned parcel in its hands, so `return → return_completed` — and only it may
+	// (only-the-return-warehouse-accepts-a-return); any other building is refused, told where the parcel goes. The accept
+	// is recorded on its timeline row (the-accept-records-where-it-was-accepted). It does more than move a status, which
+	// is why OrderStatusChange refuses that move: the return is whole (a-return-is-never-partial); per line the crew
+	// counts what is broken and missing and names the racks of the sound units, and inventory puts them back on the shelf
+	// FIRST — one `return` transaction (OrderTransactionReturn), refused whole under a count lock or a bad rack, the order
+	// then still `return`; broken and missing units are named, with the crew's notes, on a timeline note from the
+	// warehouse for customer service's platform claim (a-return-door-row-carries-an-optional-note); a borrowed line
+	// answers the mapped own product's code to print over the lender's label
+	// (a-returned-borrowed-unit-is-relabelled-at-the-accept); and the courier's ask at the door, if any, rides
+	// OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
 	OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error)
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.
@@ -426,18 +426,18 @@ type OrderServiceHandler interface {
 	// .xlsx. A server stream — progress, then an expiring link.
 	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest], *connect.ServerStream[v1.OrderExportResponse]) error
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
-	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
-	// `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
-	// not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
-	// and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
-	// than move a status, which is why OrderStatusChange refuses
-	// that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
-	// timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
-	// product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
-	// courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
-	//
-	// ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
-	// inventory's return transaction is designed, so a completed return under-reads stock by them.
+	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): the selling team's configured RETURN WAREHOUSE has
+	// the returned parcel in its hands, so `return → return_completed` — and only it may
+	// (only-the-return-warehouse-accepts-a-return); any other building is refused, told where the parcel goes. The accept
+	// is recorded on its timeline row (the-accept-records-where-it-was-accepted). It does more than move a status, which
+	// is why OrderStatusChange refuses that move: the return is whole (a-return-is-never-partial); per line the crew
+	// counts what is broken and missing and names the racks of the sound units, and inventory puts them back on the shelf
+	// FIRST — one `return` transaction (OrderTransactionReturn), refused whole under a count lock or a bad rack, the order
+	// then still `return`; broken and missing units are named, with the crew's notes, on a timeline note from the
+	// warehouse for customer service's platform claim (a-return-door-row-carries-an-optional-note); a borrowed line
+	// answers the mapped own product's code to print over the lender's label
+	// (a-returned-borrowed-unit-is-relabelled-at-the-accept); and the courier's ask at the door, if any, rides
+	// OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
 	OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error)
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.

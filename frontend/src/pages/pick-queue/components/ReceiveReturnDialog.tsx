@@ -15,7 +15,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { CircleSlash, PackageCheck, PackageSearch, Search, Undo2 } from "lucide-react";
+import { CircleSlash, PackageCheck, PackageSearch, Search, Undo2, Warehouse } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import { useIsMobile } from "../../../layouts/shell";
@@ -23,9 +23,10 @@ import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatusBadge, orderStatusLabelKey } from "../../../components/badges/OrderStatusBadge";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
-import { AcceptReturnDialog } from "../../../features/orders/AcceptReturnDialog";
-import { NO_ORDER_FILTERS, useOrder, useOrders } from "../../../features/orders/queries";
+import { NO_ORDER_FILTERS, useOrders } from "../../../features/orders/queries";
+import { useOpenReturnAccept } from "../../../features/orders/returnAccept";
 import { canForceReturn, useForceReturn } from "../../../features/orders/useForceReturn";
+import { useTeamsByIds } from "../../../features/teams/queries";
 import { useShopsByIds } from "../../../features/shops/queries";
 
 export const description =
@@ -51,8 +52,10 @@ const RESULT_LIMIT = 10;
 // Enter. Enter searches and EMPTIES the field for the next parcel — what was searched stays readable as "Results for …" —
 // and focus stays in the field.
 //
-// ⚠ THE ACCEPT NEEDS THE ORDER'S LINES, which a list row never carries — so pressing Accept (or a force that succeeded)
-// reads the order's detail first, and the existing AcceptReturnDialog opens on it.
+// ⚠ ACCEPT OPENS THE ACCEPT PAGE (the-return-accept-page-is-accepted) — per line missing, broken and racks need its room;
+// a force that succeeded opens it too. Its Back comes back to the queue. ONLY THE RETURN WAREHOUSE ACCEPTS A RETURN
+// (only-the-return-warehouse-accepts-a-return): a return addressed to another building is shown with where it goes, and
+// no Accept — read off the row's `return_warehouse_id`, the selling team's return warehouse as configured now.
 export function ReceiveReturnDialog({
   open,
   onOpenChange,
@@ -72,8 +75,7 @@ export function ReceiveReturnDialog({
   const [value, setValue] = useState("");
   // What was searched — set on Enter or the search button, never per keystroke: a scanner types a whole code at once.
   const [term, setTerm] = useState("");
-  // The order whose Accept Return is opening — its detail is read first.
-  const [accepting, setAccepting] = useState<bigint | null>(null);
+  const openReturnAccept = useOpenReturnAccept();
 
   // A fresh search every time it opens.
   useEffect(() => {
@@ -81,7 +83,6 @@ export function ReceiveReturnDialog({
 
     setValue("");
     setTerm("");
-    setAccepting(null);
   }, [open]);
 
   const query = useOrders({
@@ -94,10 +95,7 @@ export function ReceiveReturnDialog({
   const found = term === "" ? [] : (query.data?.orders ?? []);
   const shops = useShopsByIds({ shopIds: found.map((o) => o.shopId) }).data;
 
-  const detail = useOrder({ teamId: accepting === null ? undefined : warehouseId, orderId: accepting ?? 0n });
-  const acceptOrder = accepting !== null && detail.data && detail.data.id === accepting ? detail.data : null;
-
-  const force = useForceReturn({ teamId: warehouseId, onForced: (order) => setAccepting(order.id) });
+  const force = useForceReturn({ teamId: warehouseId, onForced: (order) => openReturnAccept(order.id) });
 
   const searching = term !== "" && query.isFetching;
   const error = query.isError ? rpcError(query.error) : "";
@@ -184,10 +182,10 @@ export function ReceiveReturnDialog({
                             <FoundOrder
                               key={order.id.toString()}
                               order={order}
+                              warehouseId={warehouseId}
                               shopName={shops?.get(order.shopId.toString())?.name ?? ""}
-                              opening={accepting === order.id && !acceptOrder}
                               forcing={force.busy}
-                              onAccept={() => setAccepting(order.id)}
+                              onAccept={() => openReturnAccept(order.id)}
                               onForce={() => force.ask({ id: order.id, status: order.status })}
                             />
                           ))
@@ -207,20 +205,6 @@ export function ReceiveReturnDialog({
       </Dialog.Root>
 
       {force.dialog}
-
-      {/* Mounted once the order's lines are read; closing it leaves the search open for the next parcel. */}
-      {acceptOrder && (
-        <AcceptReturnDialog
-          open
-          onOpenChange={(next) => {
-            if (next) return;
-            setAccepting(null);
-            inputRef.current?.focus();
-          }}
-          teamId={warehouseId}
-          order={acceptOrder}
-        />
-      )}
     </>
   );
 }
@@ -229,15 +213,16 @@ export function ReceiveReturnDialog({
 // the one thing they can do with it, or why there is nothing.
 function FoundOrder({
   order,
+  warehouseId,
   shopName,
-  opening,
   forcing,
   onAccept,
   onForce,
 }: {
   order: Order;
+  /** This warehouse — the one searching. */
+  warehouseId: bigint;
   shopName: string;
-  opening: boolean;
   forcing: boolean;
   onAccept: () => void;
   onForce: () => void;
@@ -245,6 +230,10 @@ function FoundOrder({
   const { t } = useTranslation();
   const id = order.id.toString();
   const reason = whyNot(order.status);
+  // Only the return warehouse accepts a return (only-the-return-warehouse-accepts-a-return): one addressed to another
+  // building — or to none — says where it goes, with no Accept.
+  const goesTo = order.returnWarehouseId;
+  const elsewhere = order.status === OrderStatus.RETURN && goesTo !== warehouseId;
 
   return (
     <Stack
@@ -294,11 +283,12 @@ function FoundOrder({
         )}
       </Stack>
 
-      {order.status === OrderStatus.RETURN ? (
+      {elsewhere ? (
+        <GoesElsewhere orderId={order.id} sellingTeamId={order.teamId} returnWarehouseId={goesTo} />
+      ) : order.status === OrderStatus.RETURN ? (
         <Button
           colorPalette="brand"
           alignSelf={{ base: "stretch", md: "flex-end" }}
-          loading={opening}
           data-testid={`receive-return-accept-${id}`}
           onClick={onAccept}
         >
@@ -309,7 +299,7 @@ function FoundOrder({
         <Button
           colorPalette="brand"
           alignSelf={{ base: "stretch", md: "flex-end" }}
-          loading={opening || forcing}
+          loading={forcing}
           data-testid={`receive-return-force-${id}`}
           onClick={onForce}
         >
@@ -323,6 +313,33 @@ function FoundOrder({
         </Flex>
       )}
     </Stack>
+  );
+}
+
+// Where the parcel goes instead, or that its team has no return warehouse and nobody can accept it (create-refuses-a-team-with-no-return-warehouse keeps that from happening once on).
+function GoesElsewhere({
+  orderId,
+  sellingTeamId,
+  returnWarehouseId,
+}: {
+  orderId: bigint;
+  sellingTeamId: bigint;
+  returnWarehouseId: bigint;
+}) {
+  const { t } = useTranslation();
+  const names = useTeamsByIds({ ids: [sellingTeamId, returnWarehouseId] }).data;
+  const team = names?.[sellingTeamId.toString()]?.name ?? `#${sellingTeamId}`;
+  const warehouse = names?.[returnWarehouseId.toString()]?.name ?? `#${returnWarehouseId}`;
+
+  return (
+    <Flex gap="2" align="flex-start" color="warning.fg" fontSize="sm" data-testid={`receive-return-elsewhere-${orderId}`}>
+      <Icon as={Warehouse} boxSize="4" mt="0.5" flexShrink={0} />
+      <Text>
+        {returnWarehouseId === 0n
+          ? t("picking.returnAccept.noReturnWarehouse.title", { team })
+          : t("picking.returnAccept.elsewhere.short", { warehouse })}
+      </Text>
+    </Flex>
   );
 }
 

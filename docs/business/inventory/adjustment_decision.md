@@ -1,6 +1,6 @@
 # Decisions — `inventory/adjustment.md`
 
-What the owner decided about [adjustment.md](./adjustment.md), recorded before it is acted on. **Append-only** — the
+What the owner decided about [adjustment.md](./adjustment_decision.md#adjustment-md-is-retired), recorded before it is acted on. **Append-only** — the
 opposite lifecycle to [adjustment_clarify.md](./adjustment_clarify.md), which holds only what is still open.
 
 These decide the **provisional** port of `StockAdjust` and the one-rack `StockOpname` onto the ledgers
@@ -11,6 +11,7 @@ while adjustment.md itself is still empty.
 | --- | --- |
 | [a-recount-shortfall-is-written-off-and-owed](#a-recount-shortfall-is-written-off-and-owed) | a recount that finds fewer units than the rack holds books their cost as the stock count does — an expense, and a debt to the owning team |
 | [the-finished-count-comes-next-not-a-refined-port](#the-finished-count-comes-next-not-a-refined-port) | the temporary port is not refined further; the next inventory pass builds the finished stock count |
+| [adjustment-md-is-retired](#adjustment-md-is-retired) | adjustment.md is deleted — what it was for is decided; correcting a wrong stock-in waits in the backlog | owner, as recommended | — |
 
 ---
 
@@ -84,7 +85,7 @@ flowchart LR
 | withdrawn | [Q1](./adjustment_clarify.md#question) (a recount surplus), Q3 (a named batch), Q4 (a 0 rack row) — each about the port |
 | stands | [a-recount-shortfall-is-written-off-and-owed](#a-recount-shortfall-is-written-off-and-owed) — the one change to the port, already decided |
 | the next pass, in order | 1 · the owner reviews and accepts the stock-count prototype ([opname.md](./opname.md)) · 2 · the stock-problem register (`warehouse_stock_problems`), the session count and the claim rule ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first)) |
-| the Adjust screen | still needs its own design — [adjustment.md](./adjustment.md) is empty; the finished count does not replace it by itself |
+| the Adjust screen | still needs its own design — [adjustment.md](./adjustment_decision.md#adjustment-md-is-retired) is empty; the finished count does not replace it by itself |
 
 ✅ **Built 2026-11-02 — the backend step.** The finished count is in (the-count-prototype-is-accepted in
 [opname_decision.md](./opname_decision.md#the-count-prototype-is-accepted)), and the Adjust screen's damaged and lost
@@ -93,3 +94,22 @@ a `problem` transaction of the batch's owner and one `warehouse_stock_problems` 
 rack (`inventory_mutations/post_problem.go`, `stock_adjust_problem_test.go`). The recount and the found are unchanged —
 provisional `adjustment` transactions — and every adjust is refused on a product a count holds. The one-rack
 `StockOpname` is retired.
+
+---
+
+## adjustment-md-is-retired
+
+> Owner (Heri), in chat (2026-11-09): *"lets talk about adjustment.md, all decision is made right ? and this file just i forget to delete it"*, then *"A"* — as recommended: delete the file, point its links here, keep the one open point in the backlog.
+
+**The verdict.** `adjustment.md` — a heading and nothing under it — is **deleted**. What it was meant to hold is decided and built elsewhere:
+
+| | decided by |
+| --- | --- |
+| a recount shortfall | [a-recount-shortfall-is-written-off-and-owed](#a-recount-shortfall-is-written-off-and-owed) |
+| the finished stock count | [the-finished-count-comes-next-not-a-refined-port](#the-finished-count-comes-next-not-a-refined-port), [the-count-prototype-is-accepted](./opname_decision.md#the-count-prototype-is-accepted) |
+| damaged / lost on the Adjust screen | [an-adjustment-writes-the-same-problem-row](./opname_decision.md#an-adjustment-writes-the-same-problem-row) |
+| found stock, a surplus | [an-adjust-found-waits-for-the-owner-or-admin](./opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin), [a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first) |
+
+**The one point left open:** correcting a **wrong stock-in** (a restock or transfer accepted with the wrong count). Its direction is decided — never rolled back, corrected by an `adjustment` for the units still there ([a-rollback-only-undoes-a-take](./transaction_decision.md#a-rollback-only-undoes-a-take)) — but the correction itself (who makes it, whether it moves money, how it names what it corrects) is not designed. It waits in `docs/development_state/backlog.md` (*Later*), to be designed when needed; until then a recount shortfall is the only way, and it wrongly charges the warehouse a loss.
+
+**What it ripples** (HARD RULE 11): the links into `adjustment.md` — in [adjustment_clarify](./adjustment_clarify.md), this file, [opname_decision](./opname_decision.md), [placement_decision](./placement_decision.md), [transaction_decision](./transaction_decision.md) and `development_state/inventory/opname.md` — now point here; their words are kept as written.

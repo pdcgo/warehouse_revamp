@@ -123,7 +123,7 @@ import { warehouseStockList } from "./warehouseStockListStub";
 import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_request_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
-import { orderReturnAccept, orderStatusChange, readsOrder, scenarioStatus } from "./returnAcceptStub";
+import { orderReturnAccept, orderStatusChange, readsOrder, returnLabelsOf, scenarioStatus } from "./returnAcceptStub";
 import { orderByExternalRefs, orderDraftByExternalRefs } from "./duplicateRefStub";
 import { orderAnswerInterceptor, refuseOrderCreateIfScripted } from "./orderAnswerStub";
 import { warehouseFeeService } from "./warehouseFeeStub";
@@ -1538,12 +1538,16 @@ export const transport = createRouterTransport(({ service }) => {
       }
 
       // Every row, the notes a story wrote included — the server returns them in one `timeline_logs`.
+      const read = scenarioStatus(order);
+
       return {
         order: {
           // The status a return-accept story reads the order in (returnAcceptStub.ts); the fixture's otherwise.
-          ...scenarioStatus(order),
+          ...read,
           timelineLogs: [...order.timelineLogs, ...(writtenNotes.get(order.id.toString()) ?? [])],
         },
+        // While it is a return, the code each borrowed line comes back as (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+        returnLabels: returnLabelsOf(read),
       };
     },
 

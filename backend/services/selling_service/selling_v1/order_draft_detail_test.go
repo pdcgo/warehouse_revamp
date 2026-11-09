@@ -131,7 +131,7 @@ func newServiceWithRegions(t *testing.T, db *gorm.DB, regions selling_v1.RegionM
 	t.Helper()
 
 	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil,
-		regions)
+		regions, nil)
 }
 
 // pushAddressed is a scrape that read all four region levels — "Kab. Bogor", as a marketplace writes it.

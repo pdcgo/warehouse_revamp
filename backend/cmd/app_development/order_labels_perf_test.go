@@ -43,7 +43,7 @@ func TestPerf_OrderLabels_FiftyMerged(t *testing.T) {
 
 	cfg := docstore.DefaultConfig(docstore.Config{Dir: t.TempDir(), BaseURL: "http://test.local/files", TokenSecret: "test"})
 	documents := document_v1.NewService(db, cfg)
-	svc := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents), nil)
+	svc := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents), nil, nil)
 
 	samples, err := filepath.Glob("../../../examples/receipt_file_samples/*.pdf")
 	if err != nil || len(samples) == 0 {

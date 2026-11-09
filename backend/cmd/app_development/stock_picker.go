@@ -123,3 +123,54 @@ func (p *stockPicker) StockLockCheck(
 
 	return &selling_v1.StockLock{SessionID: counted.SessionID, Reason: counted.Error()}, nil
 }
+
+// ReturnStock puts an accepted return back on the return warehouse's shelves through inventory's OrderTransactionReturn,
+// in process (return_decision.md). Called by the order's return accept before it moves the order, under the WAREHOUSE's
+// scope the accept already passed — the same policy OrderTransactionReturn declares — so the check this path skips is
+// the one that just ran. A refusal comes back as inventory's own Connect error, unchanged.
+func (p *stockPicker) ReturnStock(ctx context.Context, in selling_v1.StockReturn) (selling_v1.ReturnedStock, error) {
+	lines := make([]*inventoryv1.OrderTransactionReturnLine, 0, len(in.Lines))
+	for _, line := range in.Lines {
+		placements := make([]*inventoryv1.OrderTransactionReturnPlacement, 0, len(line.Placements))
+		for _, p := range line.Placements {
+			placements = append(placements, &inventoryv1.OrderTransactionReturnPlacement{
+				PlacementId: p.RackID,
+				Quantity:    p.Quantity,
+			})
+		}
+
+		lines = append(lines, &inventoryv1.OrderTransactionReturnLine{
+			ProductId:       line.ProductID,
+			ReturnProductId: line.ReturnProductID,
+			MarkupRate:      line.MarkupRate,
+			Sound:           line.Sound,
+			Broken:          line.Broken,
+			Missing:         line.Missing,
+			Note:            line.Note,
+			Placements:      placements,
+		})
+	}
+
+	res, err := p.inventory.OrderTransactionReturn(ctx, connect.NewRequest(&inventoryv1.OrderTransactionReturnRequest{
+		TeamId:            in.ReturnWarehouseID,
+		SellingTeamId:     in.SellingTeamID,
+		TakeTransactionId: in.TakeTransactionID,
+		Lines:             lines,
+		Description:       in.Description,
+	}))
+	if err != nil {
+		return selling_v1.ReturnedStock{}, err
+	}
+
+	out := selling_v1.ReturnedStock{TransactionID: res.Msg.GetTransactionId(), Posted: res.Msg.GetPosted()}
+	for _, problem := range res.Msg.GetProblems() {
+		out.Problems = append(out.Problems, selling_v1.ReturnedProblem{
+			ProductID: problem.GetProductId(),
+			Broken:    problem.GetType() == inventoryv1.OrderTransactionReturnProblemType_ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_BROKEN,
+			Count:     problem.GetCount(),
+			Note:      problem.GetNote(),
+		})
+	}
+
+	return out, nil
+}

@@ -184,7 +184,7 @@ func TestOrderCreate_FractionalCostsAreFrozenExactAndTravelAsDoubles(t *testing.
 	events := &recorder{}
 	picker := &fakePicker{costs: map[uint64]float64{1: 3_333.33, 2: 6_000.33}}
 	fees := &fakeFees{percent: 2.5}
-	svc := selling_v1.NewService(db, picker, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil)
+	svc := selling_v1.NewService(db, picker, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil, nil)
 	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(feeOrderReq(shop)))

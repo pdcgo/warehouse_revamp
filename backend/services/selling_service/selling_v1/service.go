@@ -57,6 +57,10 @@ type Service struct {
 	// The draft address's pre-fill (the-cs-edits-the-whole-address-before-create) — region_service's RegionMatch, behind
 	// an interface this service owns. See order_draft_region_match.go. nil = no pre-fill: a draft's dropdowns open empty.
 	regions RegionMatcher
+	// Team NAMES for a sentence a person reads — the return accept's refusal names the warehouse a parcel goes to
+	// (only-the-return-warehouse-accepts-a-return). team_service, behind an interface this service owns. See
+	// team_namer.go. nil = the sentence names the warehouse by its id.
+	names TeamNamer
 
 	// A TEST SEAM, nil in every built server: when set, placeOrder hands it the order transaction's result and uses what
 	// it returns — so a test can make a commit that landed REPORT an error (backlog #10c), which no real database does on
@@ -83,6 +87,7 @@ func NewService(
 	fees WarehouseFeePricer,
 	labels LabelLinker,
 	regions RegionMatcher,
+	names TeamNamer,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -115,6 +120,7 @@ func NewService(
 		fees:    fees,
 		labels:  labels,
 		regions: regions,
+		names:   names,
 	}
 }
 

@@ -28,6 +28,21 @@ service OrderTransactionService {
   // K claimed with a transaction → that transaction is rolled back, once · claimed with none → nothing · not claimed
   // yet → claimed with none, so a take arriving late is refused.
   rpc OrderTransactionRelease(OrderTransactionReleaseRequest) returns (OrderTransactionReleaseResponse);
+
+  // THE RETURN (return_decision.md): an order's returned parcel, accepted at the selling team's return warehouse
+  // (only-the-return-warehouse-accepts-a-return), back on its shelves. ONE `return` transaction of the ORDERING team at
+  // the return warehouse, per take, once (a second call answers the first one's transaction, posted = false):
+  //
+  //   sound     one batch minted per batch the take drew from, price, expiry and supplier kept — a borrowed line at the
+  //             markup the team paid, under its mapped own product (a-return-mints-one-batch-per-batch-the-order-took) —
+  //             onto the named racks of the return warehouse, its products linked there
+  //   missing   a door row, off the NEWEST layer first (a-short-return-is-missing-at-the-door)
+  //   broken    a door row, thrown away (a-broken-returned-unit-is-thrown-away-at-the-door)
+  //
+  // Door rows carry the crew's note (a-return-door-row-carries-an-optional-note) and are the selling team's: never the
+  // warehouse's payable, never claimable, never Inventory Lost. A rack a stock count holds the product on, or a rack
+  // that is not the return warehouse's, refuses the whole return (a-lock-stops-sales-and-cancels-too).
+  rpc OrderTransactionReturn(OrderTransactionReturnRequest) returns (OrderTransactionReturnResponse);
 }
 
 // OrderTransactionLine is one product the order wants from the warehouse.
@@ -156,4 +171,99 @@ message OrderTransactionReleaseResponse {
   uint64 transaction_id = 1;
   // True when this call rolled it back; false when there was nothing to roll back or it already was.
   bool released = 2;
+}
+
+message OrderTransactionReturnRequest {
+  // Write: the RETURN warehouse's crew, the people holding the parcel (only-the-return-warehouse-accepts-a-return).
+  // Called in process by the order's return accept, which has run its own policy and checked the warehouse.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The RETURN warehouse — where the parcel is, and where the sound units are minted and shelved.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The ORDERING team — the return transaction's team and every minted batch's owner, borrowed lines too
+  // (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+  uint64 selling_team_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // The order's take (orders.transaction_id): its batch rows are the layers the return mints from, and it is the
+  // once-only key — one return per take.
+  uint64 take_transaction_id = 3 [(buf.validate.field).uint64.gt = 0];
+
+  // Every product the take drew, once.
+  repeated OrderTransactionReturnLine lines = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+
+  // Written on the transaction, e.g. "return of order #12".
+  string description = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+// OrderTransactionReturnLine is one product of the take as the return warehouse's crew counted it. sound + broken +
+// missing is what the take drew of it.
+message OrderTransactionReturnLine {
+  // The product the take drew — the order line's.
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The product the units come back as: product_id itself for the team's own, the team's mapped own product for a
+  // borrowed line (a-return-never-clones-a-product).
+  uint64 return_product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The markup the team paid on a borrowed line, as a fraction of its cost (0.2 = 20 %) — the line's frozen
+  // markup_total over its cost. 0 on the team's own line. Each layer is minted at its price × (1 + markup_rate).
+  double markup_rate = 3 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  int64 sound = 4 [(buf.validate.field).int64.gte = 0];
+  int64 broken = 5 [(buf.validate.field).int64.gte = 0];
+  int64 missing = 6 [(buf.validate.field).int64.gte = 0];
+  // The crew's note on the broken and missing units (a-return-door-row-carries-an-optional-note); kept on the line's
+  // door rows. Ignored when both are 0.
+  string note = 7 [(buf.validate.field).string.max_len = 200];
+  // Where the sound units went — together exactly `sound`, racks of the return warehouse.
+  repeated OrderTransactionReturnPlacement placements = 8 [(buf.validate.field).repeated.max_items = 50];
+}
+
+message OrderTransactionReturnPlacement {
+  uint64 placement_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+// What happened to a returned unit that did not go back on a shelf.
+enum OrderTransactionReturnProblemType {
+  ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_UNSPECIFIED = 0;
+  // In the parcel, too damaged to sell — thrown away (a-broken-returned-unit-is-thrown-away-at-the-door).
+  ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_BROKEN = 1;
+  // Not in the parcel (a-short-return-is-missing-at-the-door).
+  ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_MISSING = 2;
+}
+
+// OrderTransactionReturnProblem is one door row: one product's broken or missing units, priced from the layers they
+// came off, newest first, at what the team paid.
+message OrderTransactionReturnProblem {
+  // The product the take drew — the order line's.
+  uint64 product_id = 1;
+  OrderTransactionReturnProblemType type = 2;
+  int64 count = 3;
+  double total = 4;
+  string note = 5;
+}
+
+message OrderTransactionReturnResponse {
+  // The take's one `return` transaction.
+  uint64 transaction_id = 1;
+  // True when this call wrote it; false when the take was already returned — the answer is then what was written.
+  bool posted = 2;
+  // The door rows, broken before missing per product.
+  repeated OrderTransactionReturnProblem problems = 3;
 }

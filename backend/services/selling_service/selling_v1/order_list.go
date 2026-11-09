@@ -289,7 +289,10 @@ func statusFilter(query *gorm.DB, filter *sellingv1.OrderListFilter) *gorm.DB {
 func orderListColumns(filter orderScopeFilter) (string, []any) {
 	columns := "orders.*, " +
 		"(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity, " +
-		"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at"
+		"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at, " +
+		// Where a return of it goes (only-the-return-warehouse-accepts-a-return) — the team's one configuration row, by its
+		// unique team index, so Receive a Return can say a parcel goes elsewhere.
+		"COALESCE((SELECT c.warehouse_id FROM team_return_configurations c WHERE c.team_id = orders.team_id), 0) AS return_warehouse_id"
 
 	status, ok := dateFieldStatuses[filter.GetDateField()]
 	if !ok {

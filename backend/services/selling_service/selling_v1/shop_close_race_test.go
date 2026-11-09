@@ -124,7 +124,7 @@ func TestRace_ShopClose_OrderCreate(t *testing.T) {
 	db := h.DB()
 
 	picker := &lockedPicker{}
-	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 
 	placed, refused := 0, 0
 

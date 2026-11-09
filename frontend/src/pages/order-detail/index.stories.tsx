@@ -45,7 +45,7 @@ import { ORDER_DETAIL_PENDING } from "./pending";
 //   | TheTimelineKeepsStatusRowsOnly    | a note is not a step; a hand-back's reason stays on it    |
 //   | WarehouseDetailShowsTheNotes…     | the warehouse reads the notes and writes as the warehouse |
 //   | WarehouseTimelineKeepsStatus…     | the warehouse's Timeline tab drops the notes too          |
-//   | WarehouseForcesAReturn            | completed → Force Return, confirmed → Accept Return       |
+//   | WarehouseForcesAReturn            | completed → Force Return, confirmed → Accept Return, page |
 
 const SELLER = teams[1]!; // Toko Melati (12)
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
@@ -74,6 +74,8 @@ const Routed = (path: string) =>
     [
       { path: "/orders/:orderId", element: <OrderDetailPage /> },
       marker("/orders", "at-order-list"),
+      // The return accept page (the-return-accept-page-is-accepted) — the warehouse order detail is one of its ways in.
+      marker("/warehouse-orders/:orderId/accept-return", "at-return-accept"),
     ],
     path,
   );
@@ -797,7 +799,7 @@ export const EveryDeclaredGapIsMarkedOnScreen: Story = {
 /**
  * THE WAREHOUSE FORCES A RETURN FROM ITS ORDER DETAIL (a-return-is-received-by-search-then-forced, A) — 106 read as
  * completed: the buyer sent it back after delivery. Force Return confirms, the order re-reads in `return`, and Accept
- * Return is offered on the same header.
+ * Return is offered on the same header — opening the accept page.
  */
 const AtCompleted = Routed("/orders/106");
 
@@ -820,5 +822,8 @@ export const WarehouseForcesAReturn: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("order-accept-return")).toBeInTheDocument());
     await expect(canvas.queryByTestId("order-force-return")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("order-accept-return"));
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
   },
 };

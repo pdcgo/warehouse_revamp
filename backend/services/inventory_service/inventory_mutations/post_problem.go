@@ -18,8 +18,8 @@ import (
 // rack (a-problem-row-names-its-rack) and keeps its note as written (a-problem-note-names-its-racks). No session lists
 // the transaction, which is what tells this door from a count's.
 //
-// The Adjust screen still names the batch the report is about, as it always has: the finished adjustment's shape is the
-// owner's adjustment.md, still empty.
+// The Adjust screen still names the batch the report is about, as it always has (adjustment-md-is-retired: nothing
+// further is designed for it).
 
 // ShelfProblem is units of ONE named batch, on one rack, found broken or lost.
 type ShelfProblem struct {

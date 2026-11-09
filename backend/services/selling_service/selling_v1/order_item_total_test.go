@@ -19,7 +19,7 @@ func TestOrderCreate_FreezesTheTakesLineTotal(t *testing.T) {
 	db := san_testdb.DB(t)
 	rec := &recorder{}
 	picker := &fakePicker{totals: map[uint64]float64{100: 39_600.5}}
-	svc := selling_v1.NewService(db, picker, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
@@ -50,7 +50,7 @@ func TestOrderCreate_ALineTheTakeDidNotPriceFreezesNoTotal(t *testing.T) {
 	db := san_testdb.DB(t)
 	rec := &recorder{}
 	picker := &fakePicker{}
-	svc := selling_v1.NewService(db, picker, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))

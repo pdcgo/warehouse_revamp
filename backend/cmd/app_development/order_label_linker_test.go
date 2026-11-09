@@ -37,7 +37,7 @@ func TestOrderLabelLinker_TheShippingWarehouseOpensTheSellersLabel(t *testing.T)
 
 	cfg := docstore.DefaultConfig(docstore.Config{Dir: t.TempDir(), BaseURL: "http://test.local/files", TokenSecret: "test"})
 	documents := document_v1.NewService(db, cfg)
-	orders := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents), nil)
+	orders := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents), nil, nil)
 
 	// The seller's upload — the real two-phase flow.
 	up, err := documents.RequestUpload(ctx, connect.NewRequest(&documentv1.RequestUploadRequest{
@@ -127,7 +127,7 @@ func TestOrderLabelLinker_TheWarehouseMergesTheSellersLabels(t *testing.T) {
 
 	cfg := docstore.DefaultConfig(docstore.Config{Dir: t.TempDir(), BaseURL: "http://test.local/files", TokenSecret: "test"})
 	documents := document_v1.NewService(db, cfg)
-	orders := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents), nil)
+	orders := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, NewOrderLabelLinker(documents), nil, nil)
 
 	shop := selling_service_models.Shop{TeamID: seller, Name: "Toko Label", ShopCode: "LBL-MERGE", Marketplace: "shopee"}
 

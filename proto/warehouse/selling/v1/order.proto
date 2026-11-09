@@ -46,18 +46,18 @@ service OrderService {
   // .xlsx. A server stream — progress, then an expiring link.
   rpc OrderExport(OrderExportRequest) returns (stream OrderExportResponse);
   rpc OrderStatusChange(OrderStatusChangeRequest) returns (OrderStatusChangeResponse);
-  // THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
-  // `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
-  // not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
-  // and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
-  // than move a status, which is why OrderStatusChange refuses
-  // that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
-  // timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
-  // product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
-  // courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
-  //
-  // ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
-  // inventory's return transaction is designed, so a completed return under-reads stock by them.
+  // THE RETURN ACCEPT (the-accept-is-the-status-return-completed): the selling team's configured RETURN WAREHOUSE has
+  // the returned parcel in its hands, so `return → return_completed` — and only it may
+  // (only-the-return-warehouse-accepts-a-return); any other building is refused, told where the parcel goes. The accept
+  // is recorded on its timeline row (the-accept-records-where-it-was-accepted). It does more than move a status, which
+  // is why OrderStatusChange refuses that move: the return is whole (a-return-is-never-partial); per line the crew
+  // counts what is broken and missing and names the racks of the sound units, and inventory puts them back on the shelf
+  // FIRST — one `return` transaction (OrderTransactionReturn), refused whole under a count lock or a bad rack, the order
+  // then still `return`; broken and missing units are named, with the crew's notes, on a timeline note from the
+  // warehouse for customer service's platform claim (a-return-door-row-carries-an-optional-note); a borrowed line
+  // answers the mapped own product's code to print over the lender's label
+  // (a-returned-borrowed-unit-is-relabelled-at-the-accept); and the courier's ask at the door, if any, rides
+  // OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
   rpc OrderReturnAccept(OrderReturnAcceptRequest) returns (OrderReturnAcceptResponse);
   // A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
   // Never edited and never deleted — a correction is a new note.
@@ -503,6 +503,16 @@ message Order {
   // ShipmentChannelByIds, which answers a deleted channel too, flagged (a-deleted-channel-still-resolves-by-id).
   // Required at create (no-order-without-a-courier); 0 only on a developer's order from before selling 00044.
   uint64 shipment_channel_id = 36;
+
+  // WHERE A RETURN OF THIS ORDER GOES — the selling team's configured return warehouse, read NOW
+  // (the-return-warehouse-is-read-when-the-return-happens), the only building that may accept it
+  // (only-the-return-warehouse-accepts-a-return). OrderList and OrderDetail fill it, so Receive a Return and the accept
+  // page can say where a parcel goes. 0 = the team has none, and nobody can accept its return.
+  uint64 return_warehouse_id = 37;
+
+  // THE RETURN'S INVENTORY TRANSACTION — the `return` transaction its accepted return was put back on the shelf in
+  // (OrderTransactionReturn), stored by the accept beside `transaction_id`. 0 = not accepted back.
+  uint64 return_transaction_id = 38;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -857,6 +867,11 @@ message OrderDetailRequest {
 
 message OrderDetailResponse {
   Order order = 1;
+  // For an order in `return`: the label each BORROWED line's units are relabelled with at the accept
+  // (a-returned-borrowed-unit-is-relabelled-at-the-accept) — the selling team's mapped own product, `quantity` the
+  // line's whole quantity — so the accept page shows the code to print before the crew accepts. An own line, an
+  // unmapped one (the accept refuses it) and any other status answer none.
+  repeated OrderReturnLabel return_labels = 2;
 }
 
 // OrderCancel moves a PENDING order to CANCEL (terminal), returning its stock and cancelling its sale.
@@ -1104,21 +1119,21 @@ message OrderReturnAcceptRequest {
     ]
   };
 
-  // The ACCEPTING warehouse — whichever holds the parcel: the order's own, the selling team's configured return
-  // warehouse, or one an old label still names (the-accept-records-where-it-was-accepted). Any warehouse may accept an
-  // order in `return`; it is recorded on the accept's row, and the courier's charge is owed to it. An order not in
-  // `return` reads NotFound unless this team may read it (its two ends, or its team's configured return warehouse), and
-  // the order's own selling team is refused — it claims a return, it does not accept one.
+  // The ACCEPTING warehouse — which must be the order's selling team's configured return warehouse, read at this moment
+  // (only-the-return-warehouse-accepts-a-return): any other is refused FailedPrecondition, the message naming where the
+  // parcel goes, and a team with none cannot have a return accepted. It is recorded on the accept's row, and the
+  // courier's charge is owed to it. An order not in `return` reads NotFound unless this team may read it (its two ends,
+  // or its team's configured return warehouse), and the order's own selling team is refused — it claims a return, it
+  // does not accept one.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
   uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // The units that did NOT come back (a-short-return-is-accepted-and-the-gap-written-off). Empty — the common case —
-  // when the parcel is whole. The return stays whole either way (a-return-is-never-partial): each named unit is written
-  // on one timeline note from the warehouse, for customer service to claim from the platform. One entry per line, never
-  // above the line's quantity.
-  repeated OrderReturnMissingLine missing_lines = 3 [(buf.validate.field).repeated.max_items = 200];
+  // 3 was `missing_lines` — the units missing from the parcel, with no rack and no broken count. Every line now says
+  // all three in `lines` (the-return-accept-page-is-accepted).
+  reserved 3;
+  reserved "missing_lines";
   // What the courier asked at the door, exact; 0 = nothing, the common case (a-return-may-carry-the-couriers-ask).
   // Above 0, the order's selling team owes the ACCEPTING warehouse that amount — it paid at its door — and liability
   // posts it from OrderReturnAccepted.
@@ -1129,13 +1144,34 @@ message OrderReturnAcceptRequest {
   // What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
   // checks, since a rule across two fields is not written here. Ignored when there is no charge.
   string courier_charge_note = 5 [(buf.validate.field).string.max_len = 200];
+  // EVERY LINE OF THE ORDER, ONCE, as the crew counted it (the-return-accept-page-is-accepted). The return is whole
+  // (a-return-is-never-partial): sound = the line's quantity − broken − missing goes onto the racks named.
+  repeated OrderReturnAcceptLine lines = 6 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
 }
 
-// One line's units missing from the returned parcel.
-message OrderReturnMissingLine {
+// One line of the returned parcel: what did not come back sound, and where the sound units went.
+message OrderReturnAcceptLine {
   // The order line (OrderItem.id).
   uint64 order_item_id = 1 [(buf.validate.field).uint64.gt = 0];
-  // How many of its units did not come back — 1 to the line's quantity.
+  // In the parcel but too damaged to sell — thrown away at the door (a-broken-returned-unit-is-thrown-away-at-the-door).
+  uint32 broken = 2;
+  // Not in the parcel — missing at the door (a-short-return-is-missing-at-the-door). broken + missing never exceeds the
+  // line's quantity.
+  uint32 missing = 3;
+  // The crew's optional note on the broken and missing units (a-return-door-row-carries-an-optional-note) — kept on the
+  // line's door rows and copied onto the order's warehouse note. Ignored when both are 0.
+  string note = 4 [(buf.validate.field).string.max_len = 200];
+  // The sound units' racks of THIS warehouse (there-is-no-unplaced-pile): together exactly the line's quantity − broken
+  // − missing, each rack once.
+  repeated OrderReturnPlacement placements = 5 [(buf.validate.field).repeated.max_items = 50];
+}
+
+// Some of a line's sound units on one rack.
+message OrderReturnPlacement {
+  uint64 rack_id = 1 [(buf.validate.field).uint64.gt = 0];
   uint32 quantity = 2 [(buf.validate.field).uint32.gt = 0];
 }
 
@@ -1158,7 +1194,8 @@ message OrderReturnLabel {
   uint64 own_product_id = 4;
   string own_product_code = 5;
   string own_product_name = 6;
-  // How many to print: the line's units in hand — its quantity less the units named missing.
+  // How many to print: the line's SOUND units — its quantity less the units broken and missing (OrderDetail's
+  // return_labels, read before the count: the whole quantity).
   uint32 quantity = 7;
 }
 

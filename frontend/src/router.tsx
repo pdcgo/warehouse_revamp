@@ -172,6 +172,9 @@ const PickQueuePage = lazy(() =>
 const PickOrderPage = lazy(() =>
   import("./pages/pick-order").then((m) => ({ default: m.PickOrderPage })),
 );
+const OrderReturnAcceptPage = lazy(() =>
+  import("./pages/order-return-accept").then((m) => ({ default: m.OrderReturnAcceptPage })),
+);
 const RackDetailPage = lazy(() =>
   import("./pages/rack-detail").then((m) => ({ default: m.RackDetailPage })),
 );
@@ -393,6 +396,9 @@ export const router = createBrowserRouter([
       // route /orders/:orderId above is shared: the crew that shipped an order can open and read it.
       { path: "warehouse-orders", element: <PickQueuePage /> },
       { path: "warehouse-orders/:orderId", element: <PickOrderPage /> },
+      // ACCEPT RETURN (the-return-accept-page-is-accepted): the return warehouse's crew counts the parcel and racks its
+      // sound units — a write, so a read-only role is turned away at the door.
+      { path: "warehouse-orders/:orderId/accept-return", element: write(<OrderReturnAcceptPage />) },
       // Where these two used to live. A crew member with the old URL open — or bookmarked, or in
       // history — gets the screen rather than React Router's "Unexpected Application Error!", which
       // is what a removed route renders and reads as the app being broken.
