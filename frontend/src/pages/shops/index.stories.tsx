@@ -9,9 +9,9 @@ import { SHOPS_META, loaded } from "./stories/kit";
 // (stories-are-grouped-by-the-part-of-the-screen):
 //
 //   Actions     New Shop, Edit and Close
+//   Close Shop  closing and reopening a shop, and everywhere a closed shop still shows — the list, its page, the
+//               imports, the order form
 //   Filters     the search, the marketplace and primary CS filters (each narrows the list), the URL, the empty hint
-//
-// Closing and reopening a shop, and where a closed shop still shows, are ./CloseShop.stories.tsx.
 //   Primary CS  its column, and Change Primary CS from the row's ⋯
 //   Rows        what a row shows, its sort, and how it opens the shop
 

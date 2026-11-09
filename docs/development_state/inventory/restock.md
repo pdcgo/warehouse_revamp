@@ -1,5 +1,11 @@
 # Development state — inventory / restock
 
+🔀 **2026-11-09: after the `backup/inventory` merge, monitoring keeps what only reads**
+([monitoring-keeps-what-only-reads](../../technical/frontend/context_decision.md#monitoring-keeps-what-only-reads)) —
+uncommitted. The admin team reading a team keeps Catatan (read, `NoteEditor` hides its Ubah through `useCanWrite`) and
+Cetak label; every other restock action is gone. Stories: RestockSelling `Notes / Monitoring, read only`,
+RestockWarehouse `Actions / Monitoring, Print only`.
+
 🔀 **2026-11-02: the selling detail follows the screen rules** — uncommitted, for the owner's pass
 ([the-restock-detail-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-detail-follows-the-screen-rules)).
 `pages/restock-selling-detail`: icon actions on a phone (`SellingRestockActions` `compact`), product lines as blocks on a

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { asAdminTeam } from "../../../../.storybook/sessionScenario";
 import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { WAREHOUSE_META, loaded } from "./kit";
 
@@ -36,6 +37,19 @@ export const TheRowActionsFollowTheStatus: Story = {
       "restock-action-sign-506",
       "restock-action-accept-506",
     ]);
+  },
+};
+
+// MONITORING KEEPS WHAT ONLY READS (monitoring-keeps-what-only-reads) — the admin team reading this warehouse: Sign for
+// Box and Accept are gone (the-admin-team-monitors-read-only), Print stays — the labels read and change nothing.
+export const MonitoringKeepsPrint: Story = {
+  name: "Monitoring, Print only",
+  beforeEach: () => asAdminTeam()(),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(actionsOf(canvas.getByTestId("restock-row-501"))).toEqual([]);
+    await expect(actionsOf(canvas.getByTestId("restock-row-502"))).toEqual(["restock-action-labels-502"]);
   },
 };
 

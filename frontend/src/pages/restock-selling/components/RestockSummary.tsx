@@ -15,7 +15,7 @@ import { type RestockPile, type RestockSummaryData, pileValue } from "../summary
 //
 //   SEMUA STATUS   a card per pile: the total, then one per status — how many TRANSACTIONS leads (owner: *"jumlah
 //                  transaksi yang penting"*), the units and the value compact under it
-//   A STATUS       that status's figures as cards, whole: Transaksi · Jumlah barang · Jumlah SKU · Nilai barang ·
+//   A STATUS       that status's figures as cards, whole: Transaksi · Jumlah barang · Jumlah kode produk · Nilai barang ·
 //                  Ongkir COD · Nilai transaksi (Rincian › per paying account)
 //
 // ⚠ IT SITS UNDER THE TABS AND CONTROLS NOTHING — no card navigates, filters or selects; the tab above is how a status

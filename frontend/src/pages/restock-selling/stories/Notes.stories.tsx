@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { asAdminTeam } from "../../../../.storybook/sessionScenario";
 import { SELLING_META, loaded, menuOf } from "./kit";
 
 // RESTOCK SELLING — Catatan from the row (the-list-opens-the-notes-in-a-dialog) — read, edited, and a late one not kept. The page's stories are grouped by the part of the screen they are about
@@ -58,6 +59,24 @@ export const NotesOpenFromTheRowAndSave: Story = {
     await expect(within(dialog).getByTestId("restock-notes-edit")).toBeVisible();
     await expect(within(dialog).getByTestId("restock-notes-close")).toBeVisible();
     await expect(canvas.queryByTestId("at-restock-detail")).toBeNull();
+  },
+};
+
+// MONITORING KEEPS WHAT ONLY READS (monitoring-keeps-what-only-reads) — the admin team reading this team: the row's ⋯ is
+// Catatan alone (no Edit, Cancel or Mark Lost — the-admin-team-monitors-read-only), and the note is read with no Ubah.
+export const MonitoringReadsTheNotes: Story = {
+  name: "Monitoring, read only",
+  beforeEach: () => asAdminTeam()(),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await menuOf(canvas, 501)).toEqual(["restock-action-notes-501"]);
+    await userEvent.click(screen.getByTestId("restock-action-notes-501"));
+    const dialog = await screen.findByTestId("restock-notes-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+
+    await expect(await within(dialog).findByTestId("restock-detail-note")).toHaveTextContent("Untuk promo 10.10");
+    await expect(within(dialog).queryByTestId("restock-notes-edit")).toBeNull();
   },
 };
 

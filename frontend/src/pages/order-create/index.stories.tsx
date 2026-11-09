@@ -9,8 +9,10 @@ import { ORDER_CREATE_META } from "./stories/kit";
 //
 //   Address       the draft's address: pre-filled on one match, still editable, empty on none
 //   Bundles       the bundle card: its dialog, items OR bundles, a bundle's products as real lines
+//   Courier       the courier is required: marked, a draft's seeded, a cleared one holds Create
 //   Create        what Create needs, the checks it asks, where it goes, and the key every submit mints
 //   DuplicateRef  a live order or a draft on this shop + ref, named before Create: Create Anyway or Go Back
+//   FormLock      the form locked from Create until an answer: a server error gives it back, no answer is Try Again
 //   Header        Back and its guard; the form opened from a draft (one on a closed shop too) or from a product's page
 //   Lines         the product lines: none to start, stock and HPP, a short line, two batches
 //   Receipt       the receipt file and its two numbers, and the label read back

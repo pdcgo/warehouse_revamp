@@ -63,7 +63,7 @@ export function ProductSelect({
   scope = "team",
   value,
   onChange,
-  placeholder = "Search products by name or SKU",
+  placeholder = "Search products by name or product code",
   disabled,
   portalled = true,
 }: ProductSelectProps) {

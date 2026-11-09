@@ -98,7 +98,7 @@ export const AtMostFifty: Story = {
           shipmentCost: 0,
           note: "",
           items: [
-            { productId: 71n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", count: 1n, total: 40000, supplierId: 0n, supplierChannelId: 0n, note: "" },
+            { productId: 71n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g", count: 1n, total: 40000, supplierId: 0n, supplierChannelId: 0n, note: "" },
           ],
         } as never,
         {} as never,

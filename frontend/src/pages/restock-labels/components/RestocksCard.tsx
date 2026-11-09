@@ -21,7 +21,7 @@ import { AddRestockSelect } from "./AddRestockSelect";
 //   ┌ Restok · 2 ─────────────────────────────┐
 //   │ #503 [Diterima]  SCP5544332211   27 label ✕ │
 //   │ #502 [Tiba]      JNT9988776655   17 label ✕ │
-//   │ [ Tambah restok — no., resi, SKU     ⌄ ]    │
+//   │ [ Tambah restok — no., resi, kode produk ⌄ ]    │
 //   └─────────────────────────────────────────┘
 export function RestocksCard({
   teamId,

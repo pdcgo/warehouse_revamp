@@ -4,10 +4,10 @@ import { Text } from "@chakra-ui/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { orderDrafts } from "../../../.storybook/fixtures";
-import { asTeam } from "../../../.storybook/pageStory";
-import { seedReturnMap } from "../../../.storybook/returnConfigurationStub";
-import { OrderCreatePage } from "./index";
+import { orderDrafts } from "../../../../.storybook/fixtures";
+import { asTeam } from "../../../../.storybook/pageStory";
+import { seedReturnMap } from "../../../../.storybook/returnConfigurationStub";
+import { OrderCreatePage } from "../index";
 
 // NO ORDER WITHOUT A COURIER (no-order-without-a-courier) — LIVE since the owner accepted its look
 // (the-courier-required-look-is-accepted). The server refuses an order naming no shipment channel, on both doors; the
@@ -35,7 +35,7 @@ function Routed({ entry }: { entry: string }) {
 }
 
 const meta = {
-  title: "Pages/Order/OrderCreate/CourierRequired",
+  title: "Pages/Order/OrderCreate/Courier",
   component: OrderCreatePage,
   parameters: { signedIn: true, dataRouter: true, layout: "fullscreen" },
   render: () => <Routed entry="/order-create" />,
@@ -88,6 +88,7 @@ async function courierInput(canvasElement: HTMLElement) {
 }
 
 export const TheCourierIsMarkedRequired: Story = {
+  name: "Marked required",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const field = canvas.getByTestId("order-create-courier-field");
@@ -100,6 +101,7 @@ export const TheCourierIsMarkedRequired: Story = {
 };
 
 export const ADraftsCourierIsSeededAndCreateIsOn: Story = {
+  name: "Draft's courier seeded",
   render: () => <Routed entry="/order-create?draft=202" />,
   beforeEach: asMelatiWithMaps,
   play: async ({ canvasElement }) => {
@@ -113,6 +115,7 @@ export const ADraftsCourierIsSeededAndCreateIsOn: Story = {
 };
 
 export const ClearingTheCourierHoldsCreate: Story = {
+  name: "Cleared holds Create",
   render: () => <Routed entry="/order-create?draft=202" />,
   beforeEach: asMelatiWithMaps,
   play: async ({ canvasElement }) => {
@@ -138,6 +141,7 @@ export const ClearingTheCourierHoldsCreate: Story = {
 };
 
 export const ADraftWithNoCourierWaitsForOne: Story = {
+  name: "Draft with no courier",
   render: () => <Routed entry="/order-create?draft=202" />,
   beforeEach: [asMelatiWithMaps, draft202WithoutACourier],
   play: async ({ canvasElement }) => {

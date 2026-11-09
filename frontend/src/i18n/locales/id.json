@@ -817,8 +817,8 @@
     },
     "form": {
       "missing": {
-        "sku": "SKU",
-        "skuTaken": "SKU yang belum dipakai",
+        "sku": "kode produk",
+        "skuTaken": "kode produk yang belum dipakai",
         "name": "nama",
         "category": "kategori",
         "markup": "markup cross yang benar",
@@ -1445,7 +1445,7 @@
         "transactions": "Transaksi",
         "units": "Jumlah barang",
         "pcs": "{{count}} pcs",
-        "skus": "Jumlah SKU",
+        "skus": "Jumlah kode produk",
         "skusLine": "produk yang berbeda",
         "goods": "Nilai barang",
         "courierCharge": "Ongkir COD",
@@ -1878,7 +1878,7 @@
       "backAny": "Kembali",
       "restocks": {
         "title": "Restok",
-        "add": "Tambah restok — no., resi, SKU",
+        "add": "Tambah restok — no., resi, kode produk",
         "addLabel": "Tambah restok",
         "loading": "Memuat…",
         "noMatch": "Tidak ada restok Tiba atau Diterima yang cocok",
@@ -1906,7 +1906,7 @@
         "bottom": "Bawah",
         "left": "Kiri",
         "text": "Teks",
-        "sku": "SKU",
+        "sku": "Kode produk",
         "placement": "Penempatan",
         "name": "Nama produk",
         "nameLines": "maks baris",

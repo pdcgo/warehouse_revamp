@@ -39,7 +39,7 @@ export const TheStatisticsAreShutThenCountTransactions: Story = {
   },
 };
 
-// A STATUS TAB DRAWS THAT STATUS'S FIGURES — Transaksi · Jumlah barang · Jumlah SKU · Nilai barang · Ongkir COD · Nilai
+// A STATUS TAB DRAWS THAT STATUS'S FIGURES — Transaksi · Jumlah barang · Jumlah kode produk · Nilai barang · Ongkir COD · Nilai
 // transaksi — and Rincian › opens the value per paying account: the team's two operational accounts, a transfer and an
 // e-wallet, adding up to the card.
 export const AStatusTabShowsItsFiguresAndPayments: Story = {

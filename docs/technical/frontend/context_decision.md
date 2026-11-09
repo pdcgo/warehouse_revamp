@@ -100,6 +100,8 @@ when it applies one of these.
 | [a-team-of-a-known-type-shows-no-badge](#a-team-of-a-known-type-shows-no-badge) | where the screen already says what type a team is — a batch's owner, a restock's team — it is the small avatar and the name, `TeamItem size="xs"`; no type badge | the batch screens, Terima — 2026-11-09 |
 | [the-phone-menu-carries-no-count-for-now](#the-phone-menu-carries-no-count-for-now) | the phone shell shows no waiting count — not on a menu item, not on More — for Kewajiban or Found Stock; the counts stay the desktop sidebar's, for now | the phone shell |
 | [a-report-export-is-the-whole-view-as-a-file](#a-report-export-is-the-whole-view-as-a-file) | a report's Ekspor holds everything the report shows as filtered, every page, the screen's columns | the Supplier Report and the Financial Account Report, 2026-11-07 |
+| [monitoring-keeps-what-only-reads](#monitoring-keeps-what-only-reads) | while the admin team monitors a team, an action that only READS stays — Catatan (read, no Ubah), Cetak label; every write goes | the restock lists and pages, 2026-11-09 |
+| [every-screen-says-product-code](#every-screen-says-product-code) | no screen says "SKU" — it is *Kode produk* / *Product code*, on the product screens and every other | the product form, restock statistics, Cetak Label, the product picker — 2026-11-09 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2290,3 +2292,48 @@ flowchart LR
 ⚠ Not built for these two.
 
 ✅ Built 2026-11-07 — both: the Supplier Report's Ekspor is `SupplierReportExport` (the whole ranking as narrowed, sheet *Peringkat*), the Financial Account Report's is `FinancialAccountReportExport` (Periode: every period at the grain, quiet ones included; Rincian: sheets *Per Akun · Per Penyedia · Per Jenis*); both pages' `pending.ts` deleted. See [supplier state](../../development_state/supplier/context.md), [financial_account state](../../development_state/financial_account/context.md).
+
+## monitoring-keeps-what-only-reads
+
+> Owner, in chat (2026-11-09): *"2 oke"* — to keeping, in the admin team's read-only view, the two restock actions that
+> change nothing: Catatan and Cetak label. Found while merging `backup/inventory`, whose screens hid every action there.
+
+```
+monitoring a selling team                 monitoring a warehouse
+row ⋯   Catatan                           row     [Cetak]                 ← kept: they only read
+        (no Ubah, Batal, Tandai Hilang)           (no Tandai Tiba, Terima)
+```
+
+| | |
+| --- | --- |
+| the rule | while the admin team monitors a team ([the-admin-team-monitors-read-only](../../business/user/context_decision.md#the-admin-team-monitors-read-only)), an action that only READS stays on screen; every write is gone, as that decision says |
+| kept | **Catatan** — the notes dialog, read: its **Ubah** is a write and is not offered (`NoteEditor` reads `useCanWrite`) · **Cetak label** — `RestockRequestLabels` is marked a read in the proto, so the server lets the monitor through |
+| where | `SellingRestockActions` (Catatan with the writes filtered out), `WarehouseRestockActions` (Print only), `NoteEditor` |
+| the test for a new one | the RPC behind it carries `idempotency_level = NO_SIDE_EFFECTS` — the same marker the server passes a monitor on. An action whose RPC is not marked is a write, whatever it looks like |
+| pinned by | RestockSelling `Notes / Monitoring, read only` · RestockWarehouse `Actions / Monitoring, Print only` |
+
+What it replaces: `backup/inventory`'s restock actions returning nothing at all for a monitor.
+
+## every-screen-says-product-code
+
+> Owner, in chat (2026-11-09): *"1. oke"* — to replacing every "SKU" still on a screen after the `backup/inventory` merge
+> brought [the-screen-says-product-code](products_decision.md#the-screen-says-product-code), which had changed the product
+> screens' words only.
+
+```
+before                                        now
+Belum diisi: SKU                              Belum diisi: kode produk
+Jumlah SKU                                    Jumlah kode produk
+Tambah restok — no., resi, SKU                Tambah restok — no., resi, kode produk
+Pengaturan Label · SKU                        Pengaturan Label · Kode produk
+Search products by name or SKU                Search products by name or product code
+```
+
+| | |
+| --- | --- |
+| the rule | no screen says "SKU": the product's code is **Kode produk** — *Product code* in English — on every screen, a label, a placeholder, a count. Sentence case, as [the-screen-says-product-code](products_decision.md#the-screen-says-product-code) set it |
+| applied | the product form's line by Simpan (`products.form.missing.sku`, `skuTaken`), the selling restock statistics' card (`restock.selling.summary.skus`), Cetak Label's add-a-restock field and its settings row (`restock.labels.restocks.add`, `restock.labels.settings.sku`), `ProductSelect`'s default placeholder |
+| not changed | the i18n KEYS, props, test ids and the wire's names still say `sku` — words only, as the product decision did; the old screens under `frontend/src/legacy*/` |
+| pinned by | ProductEdit `Save` — *Not filled in: product code* |
+
+What it replaces: the five strings and one placeholder above, which still said SKU.

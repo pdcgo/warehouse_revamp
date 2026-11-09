@@ -41,7 +41,7 @@ export const SaveWaitsForTheRequired: Story = {
     const save = canvas.getByTestId("product-edit-save");
 
     await expect(save).toBeDisabled();
-    await expect(canvas.getByTestId("product-edit-missing")).toHaveTextContent("Not filled in: SKU");
+    await expect(canvas.getByTestId("product-edit-missing")).toHaveTextContent("Not filled in: product code");
     await expect(canvas.getByTestId("product-edit-missing-more")).toHaveTextContent("+2 more");
 
     await userEvent.type(canvas.getByTestId("product-edit-sku"), "ANG-045", { delay: 30 });

@@ -2,17 +2,17 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
-import { asRole } from "../../../.storybook/sessionScenario";
-import { unlinkShopForStory } from "../../../.storybook/financialAccountStub";
-import { closeShopForStory, shopService } from "../../../.storybook/shopStub";
-import { MarketplaceInfoForm, emptyMarketplaceInfo } from "../../components/orders/MarketplaceInfoForm";
-import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
-import { formatUnixDate } from "../../lib/datetime";
-import { SettlementImportsPage } from "../settlement-imports";
-import { ShopDetailPage } from "../shop-detail";
-import { ShopsPage } from "./index";
+import { LocationProbe, asTeam, routedPage } from "../../../../.storybook/pageStory";
+import { asRole } from "../../../../.storybook/sessionScenario";
+import { unlinkShopForStory } from "../../../../.storybook/financialAccountStub";
+import { closeShopForStory, shopService } from "../../../../.storybook/shopStub";
+import { MarketplaceInfoForm, emptyMarketplaceInfo } from "../../../components/orders/MarketplaceInfoForm";
+import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
+import { formatUnixDate } from "../../../lib/datetime";
+import { SettlementImportsPage } from "../../settlement-imports";
+import { ShopDetailPage } from "../../shop-detail";
+import { ShopsPage } from "../index";
 
 // CLOSE A SHOP — the accepted design (the-close-shop-prototype-is-accepted), now live over ShopList `status`, ShopClose
 // and ShopReopen (the stub plays the server's rules, .storybook/shopStub.ts).
@@ -74,7 +74,7 @@ const OrderForm = routedPage([{ path: "/orders/new", element: <OrderFormShop /> 
 const DraftOnClosedShop = routedPage([{ path: "/orders/new", element: <OrderFormShop shopId={22n} /> }], "/orders/new");
 
 const meta = {
-  title: "Pages/Shops/CloseShop",
+  title: "Pages/Shops/Shops/Close Shop",
   component: List,
   parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
@@ -122,6 +122,7 @@ async function alertDialog() {
 /** OPEN BY DEFAULT (a-shop-is-closed-never-deleted): the status filter reads *Open shops*, the closed Melati Store is not
  * listed, and every open row offers Close in Delete's place — there is no delete at all. */
 export const TheListShowsOpenShopsByDefault: Story = {
+  name: "List, open by default",
   play: async ({ canvasElement }) => {
     const canvas = await listed(canvasElement);
 
@@ -143,6 +144,7 @@ export const TheListShowsOpenShopsByDefault: Story = {
  * place, no Edit (a-closed-shop-locks-all-but-its-grants) — and the primary CS action still in its ⋯ (grants stay
  * editable). The pick is in the URL. */
 export const TheClosedFilterListsTheClosedShops: Story = {
+  name: "Closed filter",
   play: async ({ canvasElement }) => {
     const canvas = await listed(canvasElement);
 
@@ -166,6 +168,7 @@ export const TheClosedFilterListsTheClosedShops: Story = {
 
 /** ALL: every shop, the closed one badged under its name so the badges line up. */
 export const AllListsBothTheClosedOneBadged: Story = {
+  name: "All, closed badged",
   render: () => <ListAll />,
   play: async ({ canvasElement }) => {
     const canvas = await listed(canvasElement, "MEL-TOK");
@@ -184,6 +187,7 @@ export const AllListsBothTheClosedOneBadged: Story = {
 /** CLOSE CONFIRMS, saying what it does (the closed-shop decisions), then the shop leaves the Open list and is under
  * Closed. Never refused for drafts (a-close-leaves-the-drafts-waiting). */
 export const CloseConfirmsWhatItDoes: Story = {
+  name: "Close confirms",
   play: async ({ canvasElement }) => {
     const canvas = await listed(canvasElement, "MEL-LAZ");
 
@@ -208,6 +212,7 @@ export const CloseConfirmsWhatItDoes: Story = {
 /** REOPEN gives selling back at once — not destructive, so no confirm — and the shop is on the Open list again. With no
  * closed shop left, the Closed list says so. */
 export const ReopenPutsItBackOnTheOpenList: Story = {
+  name: "Reopen",
   render: () => <ListClosed />,
   play: async ({ canvasElement }) => {
     const canvas = await listed(canvasElement, "MEL-TOK");
@@ -227,6 +232,7 @@ export const ReopenPutsItBackOnTheOpenList: Story = {
 /** REOPEN IS REFUSED while an open shop of the team holds the code, naming that shop
  * (a-shop-code-is-unique-among-open-shops) — closing freed MEL-TOK and a new shop took it. */
 export const ReopenIsRefusedWhileAnOpenShopHoldsTheCode: Story = {
+  name: "Reopen refused, code taken",
   render: () => <ListClosed />,
   beforeEach: () => {
     shopService.shopCreate({
@@ -249,6 +255,7 @@ export const ReopenIsRefusedWhileAnOpenShopHoldsTheCode: Story = {
 
 /** No closed shop yet — the Closed list says so, rather than offering to add one. */
 export const NoClosedShopSaysSo: Story = {
+  name: "No closed shop",
   render: () => <ListClosed />,
   beforeEach: async () => {
     shopService.shopReopen({ teamId: MELATI, shopId: 22n });
@@ -264,6 +271,7 @@ export const NoClosedShopSaysSo: Story = {
 /** A PHONE — each shop a block; the closed one's badge under its name and Reopen at its foot; the status filter stands in
  * the Filter sheet with the others (a-phone-filters-from-a-sheet). */
 export const Mobile: Story = {
+  name: "Phone",
   globals: { viewport: { value: "mobile2" } },
   render: () => <ListAll />,
   play: async ({ canvasElement }) => {
@@ -288,6 +296,7 @@ export const Mobile: Story = {
  * Reopen Shop as its one action — no Edit, no Close, no Delete (a-closed-shop-locks-all-but-its-grants) — while the access
  * panel still takes a grant, so its last statements can be imported. */
 export const AClosedShopsPageSaysSo: Story = {
+  name: "Closed shop's page",
   render: () => <StorePage />,
   play: async ({ canvasElement }) => {
     const canvas = await detail(canvasElement);
@@ -308,6 +317,7 @@ export const AClosedShopsPageSaysSo: Story = {
 
 /** A closed shop with no withdrawal account offers no link (a-closed-shop-takes-no-new-account-link) — it says why. */
 export const AClosedShopTakesNoNewAccountLink: Story = {
+  name: "No new account link",
   render: () => <StorePage />,
   beforeEach: () => {
     unlinkShopForStory(22n);
@@ -324,6 +334,7 @@ export const AClosedShopTakesNoNewAccountLink: Story = {
 
 /** AN OPEN SHOP CLOSES FROM ITS PAGE — Close Shop in Delete's place confirms, and the page stays, now read as closed. */
 export const AnOpenShopClosesFromItsPage: Story = {
+  name: "Close from its page",
   render: () => <OfficialPage />,
   play: async ({ canvasElement }) => {
     const canvas = await detail(canvasElement);
@@ -344,6 +355,7 @@ export const AnOpenShopClosesFromItsPage: Story = {
 
 /** Reopen from the page — the banner goes, Edit and Close come back. */
 export const ReopenFromItsPage: Story = {
+  name: "Reopen from its page",
   render: () => <StorePage />,
   play: async ({ canvasElement }) => {
     const canvas = await detail(canvasElement);
@@ -359,6 +371,7 @@ export const ReopenFromItsPage: Story = {
 /** A PHONE — the header stays one row: back above, then the name, the Closed badge and Reopen as its icon
  * (the-phone-header-is-one-row); the banner under it. */
 export const ClosedShopMobile: Story = {
+  name: "Closed shop, phone",
   globals: { viewport: { value: "mobile2" } },
   render: () => <StorePage />,
   play: async ({ canvasElement }) => {
@@ -380,6 +393,7 @@ export const ClosedShopMobile: Story = {
  * the close): the dialog's picker offers Melati TikTok, closed, after the open shops and badged; picked, it says its
  * statements still import, and the import runs. */
 export const TheStatementImportOffersAClosedShop: Story = {
+  name: "Statement import offers it",
   render: () => <Imports />,
   beforeEach: () => {
     closeShopForStory(25n, 1);
@@ -417,6 +431,7 @@ export const TheStatementImportOffersAClosedShop: Story = {
 
 /** The import dialog's picker, open — the closed shops last, each badged (the picture to review). */
 export const TheImportPickerListsTheClosedShopsLast: Story = {
+  name: "Import picker, closed last",
   render: () => <Imports />,
   beforeEach: () => {
     closeShopForStory(25n, 1);
@@ -437,6 +452,7 @@ export const TheImportPickerListsTheClosedShopsLast: Story = {
 /** THE ORDER FORM'S PICKER NEVER OFFERS A CLOSED SHOP (a-closed-shop-refuses-only-new-selling) — the order form's own
  * block: Melati Store is not an option. */
 export const TheOrderFormsPickerNeverOffersAClosedShop: Story = {
+  name: "Order form never offers it",
   render: () => <OrderForm />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -453,6 +469,7 @@ export const TheOrderFormsPickerNeverOffersAClosedShop: Story = {
  * order form opened on a draft of the closed Melati Store holds it — badged, never silently cleared — and offers no
  * other closed shop. (The form's refused Create is pinned on the order form's own stories.) */
 export const TheOrderFormKeepsADraftsClosedShop: Story = {
+  name: "Draft keeps its closed shop",
   render: () => <DraftOnClosedShop />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -473,6 +490,7 @@ export const TheOrderFormKeepsADraftsClosedShop: Story = {
 
 /** The list: the status filter, Close on every open row, no Delete — and the closed shop is off the default list. */
 export const TheLiveListClosesAndNeverDeletes: Story = {
+  name: "Live list closes",
   render: () => <List />,
   play: async ({ canvasElement }) => {
     const canvas = await listed(canvasElement);
@@ -487,6 +505,7 @@ export const TheLiveListClosesAndNeverDeletes: Story = {
 
 /** An open shop's page: Edit and Close Shop, no Delete, no banner. */
 export const TheLivePageClosesAndNeverDeletes: Story = {
+  name: "Live page closes",
   render: () => <OfficialPage />,
   play: async ({ canvasElement }) => {
     const canvas = await detail(canvasElement);
@@ -500,6 +519,7 @@ export const TheLivePageClosesAndNeverDeletes: Story = {
 
 /** The import dialog offers a closed shop — the gap the close fixed (backlog #21b). */
 export const TheLiveImportDialogOffersTheClosedShop: Story = {
+  name: "Live import dialog",
   render: () => <Imports />,
   beforeEach: () => {
     closeShopForStory(25n, 1);

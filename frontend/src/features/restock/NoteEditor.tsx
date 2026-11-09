@@ -6,6 +6,7 @@ import { Button, CloseButton, Drawer, Field, HStack, Icon, Portal, Stack, Text, 
 import { Pencil } from "lucide-react";
 
 import { useIsMobile } from "../../layouts/shell";
+import { useCanWrite } from "../team/TeamContext";
 
 /** The longest a restock note may be — the contract's `max_len`. */
 export const MAX_NOTE = 1000;
@@ -63,6 +64,9 @@ export function NoteEditor({
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  // READ, NEVER CHANGED, WHILE THE ADMIN TEAM MONITORS (the-admin-team-monitors-read-only, monitoring-keeps-what-only-reads):
+  // the note is still there to read; its Ubah is a write control, so it is not offered.
+  const writable = useCanWrite();
   const inSheet = isMobile && !inPlace;
   const [draft, setDraft] = useState("");
   const [editing, setEditingState] = useState(false);
@@ -148,7 +152,7 @@ export function NoteEditor({
   return (
     <>
       {head(
-        !editingHere ? (
+        !writable ? undefined : !editingHere ? (
           <HStack gap="1">
             <Button size="xs" variant="outline" data-testid={`${testId}-edit`} onClick={startEditing}>
               <Icon as={Pencil} boxSize="4" />

@@ -825,8 +825,8 @@
     },
     "form": {
       "missing": {
-        "sku": "SKU",
-        "skuTaken": "an unused SKU",
+        "sku": "product code",
+        "skuTaken": "an unused product code",
         "name": "name",
         "category": "category",
         "markup": "a valid cross markup",
@@ -1457,7 +1457,7 @@
         "transactions": "Transactions",
         "units": "Units",
         "pcs": "{{count}} pcs",
-        "skus": "SKUs",
+        "skus": "Product codes",
         "skusLine": "different products",
         "goods": "Goods value",
         "courierCharge": "Courier COD",
@@ -1894,7 +1894,7 @@
       "backAny": "Back",
       "restocks": {
         "title": "Restocks",
-        "add": "Add a restock — no., tracking, SKU",
+        "add": "Add a restock — no., tracking, product code",
         "addLabel": "Add a restock",
         "loading": "Loading…",
         "noMatch": "No Arrived or Accepted restock matches",
@@ -1922,7 +1922,7 @@
         "bottom": "Bottom",
         "left": "Left",
         "text": "Text",
-        "sku": "SKU",
+        "sku": "Product code",
         "placement": "Placement",
         "name": "Product name",
         "nameLines": "max lines",

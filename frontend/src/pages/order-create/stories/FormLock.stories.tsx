@@ -5,16 +5,16 @@ import { Text } from "@chakra-ui/react";
 import { RouterProvider, createMemoryRouter, useParams } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { products, shops } from "../../../.storybook/fixtures";
-import { orderKeyScenario } from "../../../.storybook/sessionScenario";
-import { duplicateRefScenario } from "../../../.storybook/duplicateRefStub";
+import { products, shops } from "../../../../.storybook/fixtures";
+import { orderKeyScenario } from "../../../../.storybook/sessionScenario";
+import { duplicateRefScenario } from "../../../../.storybook/duplicateRefStub";
 import {
   orderAnswerScenario,
   releaseSlowAnswer,
   withOrderAnswers,
-} from "../../../.storybook/orderAnswerStub";
-import { todayDateInput } from "../../lib/datetime";
-import { OrderCreatePage } from "./index";
+} from "../../../../.storybook/orderAnswerStub";
+import { todayDateInput } from "../../../lib/datetime";
+import { OrderCreatePage } from "../index";
 
 // THE ORDER FORM'S LOCK AND TRY AGAIN (backlog #10 slice 2) — the-form-locks-until-it-is-answered,
 // no-answer-is-only-a-lost-connection, every-submit-mints-a-new-key, a-try-again-always-warns.
@@ -53,7 +53,7 @@ function RoutedOrderCreate() {
 }
 
 const meta = {
-  title: "Pages/Order/OrderCreateFormLock",
+  title: "Pages/Order/OrderCreate/FormLock",
   component: OrderCreatePage,
   parameters: { signedIn: true, dataRouter: true, layout: "fullscreen" },
   render: () => <RoutedOrderCreate />,
@@ -179,6 +179,7 @@ async function expectUnlockedAsTyped(canvasElement: HTMLElement) {
 // the banner at the top. A slow server is NOT no answer (no time limit): still locked after a wait. Leaving asks — the
 // order may still be placed — and staying keeps the lock. When the answer comes, the order opens.
 export const LockedWhileWaiting: Story = {
+  name: "Locked while waiting",
   beforeEach: withOrderAnswers("slow"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -216,6 +217,7 @@ export const LockedWhileWaiting: Story = {
 // A SERVER ERROR IS AN ANSWER — even Internal: the form unlocks exactly as typed, the error shows as it always did, and
 // there is no Try Again panel. The next Create is an ordinary submit.
 export const AServerErrorUnlocksAndKeepsTheForm: Story = {
+  name: "Server error unlocks",
   beforeEach: withOrderAnswers("serverError"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -237,6 +239,7 @@ export const AServerErrorUnlocksAndKeepsTheForm: Story = {
 // have been placed: Try Again, and the quieter link to the orders list (a new tab, so the form survives the look). No
 // error sentence, nothing navigates, and nothing is resent by itself.
 export const ALostConnectionShowsNoAnswer: Story = {
+  name: "No answer",
   beforeEach: withOrderAnswers("lost"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -270,6 +273,7 @@ export const ALostConnectionShowsNoAnswer: Story = {
 // still opens (a-try-again-always-warns), saying the last Create may still be finishing, with Send Again. The resend is
 // the FROZEN order under a key of its own.
 export const TryAgainSendsANewKey: Story = {
+  name: "Try Again, new key",
   beforeEach: withOrderAnswers("lost"),
   play: async ({ canvasElement }) => {
     await create(canvasElement);
@@ -305,6 +309,7 @@ export const TryAgainSendsANewKey: Story = {
 // (Order #900, a link in a new tab) and says it is most likely that Create. Create Anyway is still the person's call:
 // it sends the frozen order again, under a new key.
 export const TryAgainWarnsAboutTheFirstOrder: Story = {
+  name: "Try Again warns",
   beforeEach: withOrderAnswers("lostAfterPlacing"),
   play: async ({ canvasElement }) => {
     await create(canvasElement);
@@ -337,6 +342,7 @@ export const TryAgainWarnsAboutTheFirstOrder: Story = {
 // GO BACK FROM TRY AGAIN UNLOCKS — the warning's Go Back gives the form back, as it was sent, and nothing is resent.
 // (Closing the warning any other way — the X, Escape — keeps the lock and the panel.)
 export const GoBackFromTryAgainUnlocks: Story = {
+  name: "Go back unlocks",
   beforeEach: withOrderAnswers("lostAfterPlacing"),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -363,6 +369,7 @@ export const GoBackFromTryAgainUnlocks: Story = {
 
 // ON A PHONE — the no-answer panel inside the screen, Try Again and the orders-list link stacked full width.
 export const Phone: Story = {
+  name: "Phone",
   globals: { viewport: { value: "mobile2" } },
   beforeEach: withOrderAnswers("lost"),
   play: async ({ canvasElement }) => {
