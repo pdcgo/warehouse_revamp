@@ -24,6 +24,11 @@ export interface CompactAction {
   /** The test id the desktop button carries, so a test finds the action on both. */
   testId?: string;
   disabled?: boolean;
+  /**
+   * ALWAYS ITS OWN ICON, even past two: the rest fold behind ⋯ beside it. An exception a page's decision grants to the
+   * action its people take on almost every visit (the warehouse list's Scan Label, `scan-label-stays-an-icon-on-a-phone`).
+   */
+  pinned?: boolean;
 }
 
 // A PHONE'S HEADER ACTIONS ARE ICONS, AND PAST TWO THEY FOLD (owner: *"di mobile, action di atas itu sangat memakan
@@ -38,7 +43,7 @@ export interface CompactAction {
 //
 // A labelled button was what wrapped a phone header onto rows of its own. Two icons stay on the title's row and are
 // still one tap; a third would crowd the title, so all of them go behind ⋯ with their names — never two icons and a
-// menu of one.
+// menu of one. A PINNED action is the one exception: past two it stays its icon and only the others fold.
 export function CompactActions({
   actions,
   menuLabel,
@@ -53,31 +58,25 @@ export function CompactActions({
   const shown = actions.filter((action): action is CompactAction => Boolean(action));
   if (shown.length === 0) return null;
 
-  if (shown.length <= COMPACT_LIMIT) {
-    return (
-      <HStack gap="1.5" flexShrink={0}>
-        {shown.map((action) => (
-          <HStack key={action.id} gap="0.5">
-            <IconButton
-              size="sm"
-              variant={action.primary ? "solid" : "outline"}
-              colorPalette={action.primary ? "brand" : action.danger ? "error" : "gray"}
-              aria-label={action.label}
-              title={action.label}
-              disabled={action.disabled}
-              data-testid={action.testId}
-              onClick={action.onClick}
-            >
-              <Icon as={action.icon} boxSize="4" />
-            </IconButton>
-            {action.mark}
-          </HStack>
-        ))}
-      </HStack>
-    );
-  }
+  const iconOf = (action: CompactAction) => (
+    <HStack key={action.id} gap="0.5">
+      <IconButton
+        size="sm"
+        variant={action.primary ? "solid" : "outline"}
+        colorPalette={action.primary ? "brand" : action.danger ? "error" : "gray"}
+        aria-label={action.label}
+        title={action.label}
+        disabled={action.disabled}
+        data-testid={action.testId}
+        onClick={action.onClick}
+      >
+        <Icon as={action.icon} boxSize="4" />
+      </IconButton>
+      {action.mark}
+    </HStack>
+  );
 
-  return (
+  const menuOf = (items: CompactAction[]) => (
     <Menu.Root positioning={{ placement: "bottom-end" }}>
       <Menu.Trigger asChild>
         <IconButton size="sm" variant="outline" colorPalette="gray" aria-label={menuLabel} flexShrink={0} data-testid={menuTestId}>
@@ -87,7 +86,7 @@ export function CompactActions({
       <Portal>
         <Menu.Positioner>
           <Menu.Content>
-            {shown.map((action) => (
+            {items.map((action) => (
               <Menu.Item
                 key={action.id}
                 value={action.id}
@@ -106,5 +105,24 @@ export function CompactActions({
         </Menu.Positioner>
       </Portal>
     </Menu.Root>
+  );
+
+  if (shown.length <= COMPACT_LIMIT) {
+    return (
+      <HStack gap="1.5" flexShrink={0}>
+        {shown.map(iconOf)}
+      </HStack>
+    );
+  }
+
+  // Past two: a pinned action keeps its icon and only the others fold; with none pinned, all of them fold.
+  const pinned = shown.filter((action) => action.pinned);
+  const folded = shown.filter((action) => !action.pinned);
+  if (pinned.length === 0) return menuOf(folded);
+  return (
+    <HStack gap="1.5" flexShrink={0}>
+      {pinned.map(iconOf)}
+      {folded.length > 0 && menuOf(folded)}
+    </HStack>
   );
 }

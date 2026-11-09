@@ -1,35 +1,36 @@
 import { useTranslation } from "react-i18next";
 import { Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
-import { ArrowRight, Eye, MoreHorizontal, PackageSearch, Printer, ScanLine, Undo2 } from "lucide-react";
+import { ArrowRight, Eye, MoreHorizontal, PackageSearch, Printer, Undo2 } from "lucide-react";
 
 import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { WAREHOUSE_ORDERS_PENDING } from "../pending";
 import type { WarehouseStep } from "../steps";
 import { STEP_MOVES, isBack, stepLabelKey, stepOfStatus } from "../steps";
 
-// ONE ORDER'S ACTIONS — the moves its step allows, by the owner's table, then the scans and the label.
+// ONE ORDER'S ACTIONS — the moves its step allows, by the owner's table, then finding the parcel, the label, and the
+// order's pick page.
 //
-// Every move on offer is ALLOWED; a move the RPCs cannot make yet still shows, with its ⚠, because the
-// owner's table is the design and the RPCs are what is late.
+// ⚠ NEVER "Move to Picked": a confirmed order is picked on its pick page, after every line is scanned exact
+// (the-item-scans-live-on-the-page) — Open Pick List is its way there. A monitoring team (`canMove` false) gets no move
+// at all, only what reads.
 export function RowActions({
   order,
+  canMove,
   onMove,
-  onValidate,
   onFind,
   onPrint,
   onOpen,
 }: {
   order: Order;
+  /** Whether this person may move the order — false for a team they only monitor (canWrite). */
+  canMove: boolean;
   onMove: (to: WarehouseStep) => void;
-  onValidate: () => void;
   onFind: () => void;
   onPrint: () => void;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
   const from = stepOfStatus(order.status);
-  const moves = from ? STEP_MOVES[from] : [];
+  const moves = from && canMove ? STEP_MOVES[from] : [];
   const hasReceipt = Boolean(order.receipt?.documentId);
 
   return (
@@ -64,15 +65,6 @@ export function RowActions({
                   })}
                 </Menu.Item>
               ))}
-
-            {/* While the goods are being taken off the shelves — the scan that proves every line is exact. */}
-            {from === "confirm" && (
-              <Menu.Item value="validate" data-testid={`pick-queue-validate-${order.id}`} onClick={onValidate}>
-                <Icon as={ScanLine} boxSize="4" />
-                {t("warehouseOrders.row.validate")}
-                <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="barcode" />
-              </Menu.Item>
-            )}
 
             {/* Once it is boxed it goes into a sack — finding it again is a scan through the pile. */}
             {(from === "picked" || from === "handover") && (

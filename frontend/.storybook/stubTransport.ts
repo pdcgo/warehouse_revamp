@@ -71,6 +71,7 @@ import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
 import {
   ADMIN_TEAM,
+  labelScanScenario,
   orderExportScenario,
   orderImportScenario,
   orderKeyScenario,
@@ -79,6 +80,7 @@ import {
   receiptUpdateScenario,
   orderLabelScenario,
   sessionScenario,
+  statusChangeScenario,
   takeRefusalScenario,
   teamCreateScenario,
 } from "./sessionScenario";
@@ -915,6 +917,11 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
   return orders
     // The return accept's scenario (returnAcceptStub.ts): a story reads some orders in `return`, then accepted.
     .map(scenarioStatus)
+    // A label a story gave to several orders (labelScanScenario) — their tracking number, as the server would read it.
+    .map((o) => {
+      const shared = labelScanScenario.receiptOf[o.id.toString()];
+      return shared === undefined ? o : { ...o, receiptCode: shared };
+    })
     // EITHER SIDE — see OrderList below.
     // Its two ends — and its team's configured return warehouse, for a return only (readsOrder, as orderReaders does).
     .filter((o) => readsOrder(o, teamId))
@@ -1484,8 +1491,11 @@ export const transport = createRouterTransport(({ service }) => {
     // matches it against EITHER side, so a selling team sees what it placed and a warehouse sees what
     // ships from it. Stubbing this as `o.teamId === req.teamId` would make the warehouse's list a
     // permanently empty table — and empty reads as "no work today" rather than as a broken stub.
-    orderList: (req) =>
-      pagedColumnar(
+    orderList: (req) => {
+      // Every search asked — a label scan is one (lookupLabel), and a story shows it reached the server.
+      if (req.filter?.search) labelScanScenario.searches.push(req.filter.search);
+
+      return pagedColumnar(
         "order",
         visibleOrders(req.teamId, req.filter)
           .filter(
@@ -1493,6 +1503,8 @@ export const transport = createRouterTransport(({ service }) => {
             // order can hold — so it must not be compared against one.
             (o) => !req.filter?.status || o.status === req.filter.status,
           )
+          // ANY of several — the warehouse's Retur tab (the-warehouse-list-has-a-returns-tab); empty is no filter.
+          .filter((o) => !req.filter?.statuses?.length || req.filter.statuses.includes(o.status))
           // The row's unit count, summed from the order's lines as the server's query does — and, when the date filter
           // reads a status, the first entry into it.
           .map((o) => {
@@ -1505,7 +1517,8 @@ export const transport = createRouterTransport(({ service }) => {
             };
           }),
         req.page,
-      ),
+      );
+    },
 
     // THE DETAIL READ, and it is a DIFFERENT MESSAGE from a list row — `items` and `events` are
     // populated here and nowhere else (order.proto). That is why it cannot be served by finding the
@@ -1535,27 +1548,46 @@ export const transport = createRouterTransport(({ service }) => {
     },
 
     // THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): an order shipping from the asking
-    // warehouse — or any order, for the root team — with a label gets the link; another warehouse's order, or no such
-    // order, is NOT_SHIPPED_HERE; one with no label is NO_LABEL. One order per call (step 1), as the contract caps it.
+    // warehouse — or any order, for the root team — with a label is included; another warehouse's order, or no such
+    // order, is NOT_SHIPPED_HERE; one with no label is NO_LABEL. ONE id links that order's own file; SEVERAL read the
+    // files (an `unreadable` one is UNREADABLE) and link one merged PDF. 1 to 50 ids, as the contract caps it.
     orderLabels: (req) => {
       orderLabelScenario.last = { teamId: req.teamId, orderIds: [...req.orderIds] };
-      if (req.orderIds.length !== 1) throw new ConnectError("order_ids: one order for now", Code.InvalidArgument);
+      if (req.orderIds.length < 1 || req.orderIds.length > 50) {
+        throw new ConnectError("order_ids: 1 to 50 orders", Code.InvalidArgument);
+      }
+
+      const several = req.orderIds.length > 1;
 
       const results = req.orderIds.map((orderId) => {
         const order = orderDetailFor(orderId);
         const shipsHere = order !== undefined && (req.teamId === 1n || order.warehouseId === req.teamId);
+        const document =
+          order?.receipt?.documentId ?? (orderLabelScenario.labelled.includes(orderId) ? `doc-${orderId}` : undefined);
         const reason =
           orderLabelScenario.refusal ??
-          (!shipsHere ? OrderLabelReason.NOT_SHIPPED_HERE : !order.receipt?.documentId ? OrderLabelReason.NO_LABEL : undefined);
+          (!shipsHere
+            ? OrderLabelReason.NOT_SHIPPED_HERE
+            : !document
+              ? OrderLabelReason.NO_LABEL
+              : several && orderLabelScenario.unreadable.includes(orderId)
+                ? OrderLabelReason.UNREADABLE
+                : undefined);
 
-        return { orderId, included: reason === undefined, reason: reason ?? OrderLabelReason.UNSPECIFIED, document: order?.receipt?.documentId };
+        return { orderId, included: reason === undefined, reason: reason ?? OrderLabelReason.UNSPECIFIED, document };
       });
 
-      const included = results.find((r) => r.included);
+      const included = results.filter((r) => r.included);
+      const url =
+        included.length === 0
+          ? ""
+          : several
+            ? `https://example.invalid/labels/merged-${included.map((r) => r.orderId).join("-")}.pdf`
+            : `https://example.invalid/label/${included[0]!.document}`;
 
       return {
-        url: included ? `https://example.invalid/label/${included.document}` : "",
-        expiresAtUnix: included ? BigInt(Math.floor(Date.now() / 1000) + 900) : 0n,
+        url,
+        expiresAtUnix: url ? BigInt(Math.floor(Date.now() / 1000) + 900) : 0n,
         results: results.map(({ orderId, included, reason }) => ({ orderId, included, reason })),
       };
     },
@@ -1639,7 +1671,10 @@ export const transport = createRouterTransport(({ service }) => {
     // `return` only, a charge with its note; the labels are the story's.
     orderReturnAccept: (req) => orderReturnAccept(req),
     // returnAcceptStub.ts: a move into `return` follows orderMoves and is kept, so a forced return is then accepted.
-    orderStatusChange: (req) => orderStatusChange(req),
+    orderStatusChange: (req) => {
+      statusChangeScenario.calls.push({ teamId: req.teamId, orderIds: [...req.orderIds], to: req.to });
+      return orderStatusChange(req);
+    },
 
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were

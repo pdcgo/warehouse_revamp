@@ -63,6 +63,11 @@ const (
 	// the order list's pattern (one-export-is-the-list-as-a-file): stored as the person who exported it and read back
 	// through an expiring signed link. Private like every export: it is a team's working figures.
 	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT DocumentResourceType = 8
+	// PRIVATE: the shipping labels of several orders merged into ONE PDF for the warehouse that ships them to print
+	// (a-warehouse-prints-the-labels-of-orders-it-ships). Written by the order service's OrderLabels — never uploaded by a
+	// browser — under the warehouse's team, and read back through an expiring signed link. Private like the labels it
+	// holds: each names a buyer and an address.
+	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_LABELS DocumentResourceType = 9
 )
 
 // Enum value maps for DocumentResourceType.
@@ -77,6 +82,7 @@ var (
 		6: "DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT",
 		7: "DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT",
 		8: "DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT",
+		9: "DOCUMENT_RESOURCE_TYPE_ORDER_LABELS",
 	}
 	DocumentResourceType_value = map[string]int32{
 		"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED":          0,
@@ -88,6 +94,7 @@ var (
 		"DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT": 6,
 		"DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT":         7,
 		"DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT":         8,
+		"DOCUMENT_RESOURCE_TYPE_ORDER_LABELS":         9,
 	}
 )
 
@@ -844,7 +851,7 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"5\n" +
 	"\x1bProfilePictureEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\rR\x06erased*\x8f\x03\n" +
+	"\x06erased\x18\x01 \x01(\rR\x06erased*\xb8\x03\n" +
 	"\x14DocumentResourceType\x12&\n" +
 	"\"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eDOCUMENT_RESOURCE_TYPE_GENERAL\x10\x01\x12*\n" +
@@ -854,7 +861,8 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"$DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF\x10\x05\x12/\n" +
 	"+DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT\x10\x06\x12'\n" +
 	"#DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT\x10\a\x12'\n" +
-	"#DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT\x10\b2\xc7\x04\n" +
+	"#DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT\x10\b\x12'\n" +
+	"#DOCUMENT_RESOURCE_TYPE_ORDER_LABELS\x10\t2\xc7\x04\n" +
 	"\x0fDocumentService\x12j\n" +
 	"\rRequestUpload\x12+.warehouse.document.v1.RequestUploadRequest\x1a,.warehouse.document.v1.RequestUploadResponse\x12j\n" +
 	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12r\n" +

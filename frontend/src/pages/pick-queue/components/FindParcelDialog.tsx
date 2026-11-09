@@ -5,7 +5,7 @@ import { CircleCheck, CircleX } from "lucide-react";
 
 import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
 import { beep } from "../../../lib/beep";
-import { ScanInput } from "./ScanInput";
+import { ScanInput } from "../../../features/picking/ScanInput";
 
 // FINDING ONE PARCEL IN A SACK (owner — `scanning-is-the-crews-hands`).
 //

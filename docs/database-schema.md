@@ -951,7 +951,7 @@ erDiagram
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement | order_export | table_export (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement | order_export | table_export | order_labels (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -989,7 +989,11 @@ erDiagram
   ([one-export-is-the-list-as-a-file](technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)),
   stored as the person who exported it: it names buyers and their phone numbers. And `table_export` (`00010`) — a
   screen's table exported as .xlsx the same way, a supplier page tab's
-  ([each-supplier-tab-exports-its-own-table](technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table)). A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
+  ([each-supplier-tab-exports-its-own-table](technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table)).
+  And `order_labels` (`00011`) — several orders' shipping labels merged into ONE PDF for the warehouse that prints them
+  ([a-warehouse-prints-the-labels-of-orders-it-ships](technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)):
+  written ACTIVE by the order service's `OrderLabels` under the WAREHOUSE's team (never uploaded — `RequestUpload`
+  refuses the type), its object straight under `assets/`; private, since every label on it names a buyer. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
   `ProfilePictureErase` ([erase-deletes-the-photo-file](business/user/context_decision.md#erase-deletes-the-photo-file)),
   which deletes every photo one person uploaded — removing their share rows first, deliberately, since `RESTRICT`
   would otherwise refuse it.

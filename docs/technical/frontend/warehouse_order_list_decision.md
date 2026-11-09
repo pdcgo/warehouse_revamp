@@ -23,6 +23,10 @@ each old heading there now points here.
 | [a-batch-move-saves-in-one-transaction](#a-batch-move-saves-in-one-transaction) | a batch status move saves in one transaction of four statements; refusals stay per order, a database failure moves nothing |
 | [one-export-is-the-list-as-a-file](#one-export-is-the-list-as-a-file) | one `OrderExport(team_id, filter)` for both lists: the list's rows, the reader's columns, .xlsx, streamed with progress |
 | [a-download-keeps-its-files-name](#a-download-keeps-its-files-name) | every private document downloads under its own name — the link carries it, the storage answers inline with it |
+| [the-warehouse-order-list-is-accepted](#the-warehouse-order-list-is-accepted) | the new warehouse order list (PickQueueNextPage) is the design, with the scan gaps closed per the decisions | owner, as recommended | — |
+| [scan-label-opens-the-pick-page](#scan-label-opens-the-pick-page) | a Scan Label button in the list header opens the scanned order's pick page | owner, as recommended | — |
+| [the-warehouse-list-has-a-returns-tab](#the-warehouse-list-has-a-returns-tab) | the new warehouse list carries a Returns tab after Handed Over | owner, as recommended | — |
+| [scan-label-stays-an-icon-on-a-phone](#scan-label-stays-an-icon-on-a-phone) | on a phone, Scan Label stays a one-tap icon; the other header actions fold behind ⋯ | owner, as recommended | — |
 
 ## the-two-ends-are-two-screens
 
@@ -258,6 +262,8 @@ a scan of the label finds the order by `order_external_ref_id` **or** `receipt`.
 resi alone and must take the ref too. Find-parcel already compares with both. When a code matches several orders, all are shown and people decide:
 [two-orders-on-one-label-are-shown-not-chosen](../../business/inventory/order_decision.md#two-orders-on-one-label-are-shown-not-chosen).
 
+✅ **Built 2026-11-09 — `printMerge`.** The bulk bar's *Print Labels* merges the ticked rows' labels into one PDF through `OrderLabels` ([a-warehouse-prints-the-labels-of-orders-it-ships](#a-warehouse-prints-the-labels-of-orders-it-ships)); the mark is removed from `pages/pick-queue-next/pending.ts`.
+
 ## the-bulk-actions-are-always-on-screen
 
 > Owner, in chat (2026-10-01): *"aksi yang perlu centang apa tidak bisa muncul dari awal saja?"*
@@ -423,6 +429,8 @@ sequenceDiagram
 | no sharing | no `document_shares` rows for labels, and nothing to re-share when customer service replaces one |
 | ⛔ today | the warehouse screen reads a label with `GetDownloadUrl` under its own team, and the label belongs to the seller, so it comes back *not found*. Print Label fails on every order |
 
+✅ **Built 2026-11-09 — several labels, one PDF.** `OrderLabels` takes 1 to 50 ids (the list's largest page): one id still links that order's own file; several are read under the order service's identity, merged in the order sent — a PDF label adds its pages, a label photo one page — and stored as a private `order_labels` document of the warehouse (document `00011`) behind one expiring link, with a result per order: included, or *not shipped here*, *no label uploaded*, *the file can't be read* (`UNREADABLE`, new). A broken or hostile file is refused for its order alone (pure-Go pdfcpu, each file read on its own, a library panic recovered per file). [order_labels.go](../../../backend/services/selling_service/selling_v1/order_labels.go), [san_pdf_merge](../../../backend/pkgs/san_pdf_merge/merge.go); flow in [rpc.md](../../services/selling_service/rpc.md#the-labels-a-warehouse-prints--orderlabels). The preview's bulk bar *Print Labels* sends the ticked rows and toasts each order left out; its `printMerge` mark is gone. ⚠ The preview itself is still unrouted, so no live screen prints several yet.
+
 ---
 
 ## one-export-is-the-list-as-a-file
@@ -532,3 +540,60 @@ sequenceDiagram
 | public files | unchanged — avatars and product images are shown, never downloaded, at their stable URL |
 | a cloud store | the day one replaces the local backend, its signer passes the same name as the provider's response-disposition parameter |
 | ✅ built *(2026-10-21)* | [docstore](../../../backend/services/document_service/docstore/local.go) and [get_download_url.go](../../../backend/services/document_service/document_v1/get_download_url.go); pinned by `TestUploadFlow_PrivateDocument` and the orders e2e's Export, which now expects `orders-….xlsx` |
+
+---
+
+## the-warehouse-order-list-is-accepted
+
+> In chat *(owner, 2026-11-09)* — *"A"*, as recommended, replying to the Storybook screenshots `warehouse_list_review/01b…11` (the list with the old system's columns and the tabs, a row's menu, the item scan wrong and exact, the handover scan, the bulk bar's merged labels with the left-out toast, the phone list and scan), asked with the gaps the decisions already settle.
+
+**The verdict.** `Pages/Warehouse/PickQueueNextPage` is the design of the warehouse's order list — [the-warehouse-row-is-the-old-systems-columns](#the-warehouse-row-is-the-old-systems-columns), [the-warehouse-tabs-are-the-processed-steps](#the-warehouse-tabs-are-the-processed-steps), the filters, the bulk bar ([the-bulk-actions-are-always-on-screen](#the-bulk-actions-are-always-on-screen)), [a-warehouse-prints-the-labels-of-orders-it-ships](#a-warehouse-prints-the-labels-of-orders-it-ships), [one-export-is-the-list-as-a-file](#one-export-is-the-list-as-a-file), the phone layout — **with these gaps closed before it is routed**, each by a decision already made:
+
+| gap in the preview | closed by |
+| --- | --- |
+| *Picked* reachable from the row menu and Change Step with no scan | [the-item-scans-live-on-the-page](../../business/inventory/order_decision.md#the-item-scans-live-on-the-page) — *Set Picked* only after every line is scanned exact |
+| the item scan in a dialog on the list | [the-pick-page-opens-first-by-the-label](../../business/inventory/order_decision.md#the-pick-page-opens-first-by-the-label) — scanning the label opens the order's one page (racks for the walk, then the item scans, then *Set Picked*) |
+| write actions shown to a monitoring team | the live page's rule (`canWrite`) |
+| the handover matches only loaded orders and keeps one per code | `resiLookup` on the server, and [two-orders-on-one-label-are-shown-not-chosen](../../business/inventory/order_decision.md#two-orders-on-one-label-are-shown-not-chosen) — every match shown, none chosen, cancelled ones skipped |
+
+**Still to ask:** where the crew scans a label to open its page; whether the list carries the live page's *Returns* tab beside *Receive a Return* (the pick queue's action, [the-return-receiving-screens-are-accepted](../../business/order/context_decision.md#the-return-receiving-screens-are-accepted)). Product barcodes stay parked (design_clarify Q18). ⚠ Not routed.
+
+✅ **Built 2026-11-09 — the list is live.** `/warehouse-orders` is this list (`pages/pick-queue`, Storybook `Pages/Warehouse/PickQueuePage`); the old pick queue is retired, its *Receive a Return* kept. The gaps: *Set Picked* only on the pick page once every line is scanned exact — no row menu, Change Step or plain *Mark Picked* offers it (`pages/pick-queue/steps.ts`, `pages/pick-order/components/ItemScan.tsx`); the item scan moved off the list onto that page, under the racks; a monitoring team gets no write (`canWrite`: no move, Change Step, Hand Over, Scan Handover or Receive a Return — Scan Label, Print Labels and Export read, so they stay); the handover asks the server per scan, every live match shown and none handed over when several, `cancel` skipped (`features/picking/labelLookup.ts`, the `resiLookup` mark gone). The barcode stays parked: the item scan matches the product code, its ⚠ on the pick page. e2e `the_warehouse_list.spec.ts`; Print Labels clicked from the bar in `the_labels_print_together.spec.ts`.
+
+---
+
+## scan-label-opens-the-pick-page
+
+> In chat *(owner, 2026-11-09)* — *"A"*, as recommended, to: where does the crew scan a label to open its pick page? ([the-pick-page-opens-first-by-the-label](../../business/inventory/order_decision.md#the-pick-page-opens-first-by-the-label) says the scan opens the page, not where.)
+
+**The verdict.** **Scan Label** sits in the warehouse list's header beside *Scan Handover* — an icon on a phone ([a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon)). It opens a scan field; the code is looked up on the server among **this warehouse's** orders (resi, marketplace ref, order id — `resiLookup`):
+
+| the scan finds | then |
+| --- | --- |
+| one live order | its pick page opens — racks for the walk, then the item scans, then *Set Picked* |
+| several | they are listed and **none is opened** ([two-orders-on-one-label-are-shown-not-chosen](../../business/inventory/order_decision.md#two-orders-on-one-label-are-shown-not-chosen)); the crew picks one |
+| none, or only cancelled ones | the wrong sound and a message; nothing opens |
+
+The list's search box stays a search, not a scan field. ⚠ Not built.
+
+✅ **Built 2026-11-09.** *Scan Label* in the header (`pages/pick-queue/components/ScanLabelDialog.tsx`); on a phone it joins Scan Handover and Receive a Return in the ⋯ (three actions fold, [a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon)) and is a monitor's one icon. The lookup is OrderList's own `q` as this warehouse, keeping the rows whose tracking number, ref or id EQUALS the code in any case (an all-digit id pushed off the 100-row page is asked by `OrderDetail`): one live order → its pick page; several → listed with shop, status, date and units under the warning, none opened, each with its own *Open*; none or only cancelled → the wrong sound and a sentence.
+
+---
+
+## the-warehouse-list-has-a-returns-tab
+
+> In chat *(owner, 2026-11-09)* — *"A"*, as recommended, to: does the new warehouse list carry the live page's *Returns* tab? ([the-warehouse-tabs-are-the-processed-steps](#the-warehouse-tabs-are-the-processed-steps) predates returns; *Receive a Return* is the list's action, [the-return-receiving-screens-are-accepted](../../business/order/context_decision.md#the-return-receiving-screens-are-accepted).)
+
+**The verdict.** The tabs are *To Confirm · Confirmed · Picked · Handed Over · **Returns** · All*. **Returns** lists the returns addressed to this warehouse — the orders in `return` (on their way back) and `return_completed` (accepted), as the live page's tab reads them — counted like the other tabs and kept in the URL. **Receive a Return** stays in the header. Amends [the-warehouse-tabs-are-the-processed-steps](#the-warehouse-tabs-are-the-processed-steps). ⚠ Not built.
+
+✅ **Built 2026-11-09.** *Retur* after *Sudah diserahkan* (`pages/pick-queue/tabs.ts`), read through the new `OrderListFilter.statuses` (field 15 — `return` + `return_completed`; OrderExport takes it too, so the tab's file is its rows), counted as the two statuses together and kept in the URL (`?step=return`). *Receive a Return* is in the header for the warehouse's writers.
+
+---
+
+## scan-label-stays-an-icon-on-a-phone
+
+> In chat *(owner, 2026-11-09)* — *"A"*, as recommended, to: a crew member's phone header has three actions (Scan Label, Scan Handover, Receive a Return), and [a-phone-header-action-is-an-icon](context_decision.md#a-phone-header-action-is-an-icon) folds more than two behind ⋯ — should Scan Label be an exception?
+
+**The verdict.** An exception to the fold, for this list only: on a phone **Scan Label is always its own icon** beside ⋯, and the rest of the header's actions (Scan Handover, Receive a Return) fold behind ⋯. It is the crew's action on almost every order, so it stays one tap. A monitor, who has only Scan Label, sees just its icon. Amends [scan-label-opens-the-pick-page](#scan-label-opens-the-pick-page)'s *"an icon on a phone"*. ⚠ Not built.
+
+✅ Built 2026-11-09 — `CompactAction.pinned` in `components/chrome/CompactActions.tsx` (past two, a pinned action keeps its icon and only the others fold; story `APinnedActionStaysAnIcon`); the warehouse list's Scan Label is pinned (`pages/pick-queue/index.tsx`, story `Phone`).

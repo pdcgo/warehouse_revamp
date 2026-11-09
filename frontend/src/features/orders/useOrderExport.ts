@@ -11,6 +11,8 @@ export interface OrderExportArgs {
   /** The list's own filter and status tab — the file holds exactly the rows the list holds. */
   filters: OrderFilters;
   status: OrderStatus;
+  /** A tab that is more than one status (the warehouse's Returns) — the file holds the tab's rows. */
+  statuses?: OrderStatus[];
   /** Whose columns: the seller's list or the warehouse's. */
   view: OrderExportView;
   /** The ticked rows, when a selection is exported. Empty = every row the filter holds. */
@@ -39,7 +41,7 @@ export function useOrderExport() {
       try {
         const stream = orderClient.orderExport({
           teamId: args.teamId,
-          filter: { status: args.status, ...orderListFilterMsg(args.filters) },
+          filter: { status: args.status, statuses: args.statuses ?? [], ...orderListFilterMsg(args.filters) },
           view: args.view,
           orderIds: args.orderIds ?? [],
         });

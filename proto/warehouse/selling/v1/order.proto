@@ -128,13 +128,15 @@ service OrderService {
   }
 
   // THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
-  // ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
-  // link is minted under its own identity, so a label is never shared document by document.
+  // ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and reads
+  // the files under its own identity, so a label is never shared document by document.
   //
-  // ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+  // One id is the same call: its link is that order's own file. Several are merged into ONE PDF, in the order of the
+  // ids — a PDF label adds its pages, a label photo one page — stored as a private ORDER_LABELS document of the
+  // warehouse, and the link is that file. A label that cannot be read is refused for its order, and the rest merge.
   rpc OrderLabels(OrderLabelsRequest) returns (OrderLabelsResponse) {
-    // A READ — it writes no row and moves no file; it signs a link (an-agent-only-reads-for-now,
-    // the-admin-team-monitors-read-only).
+    // A READ — it changes no order and no label (an-agent-only-reads-for-now, the-admin-team-monitors-read-only). The
+    // merged PDF it stores is its answer, the way an export's file is, not a record of anything.
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -765,6 +767,23 @@ message OrderListFilter {
   // (a-missing-account-is-found-by-its-opened-at). false = no filter. A person fixes each by hand on the order page
   // (a-missing-account-is-fixed-by-hand). Mirrored on OrderStatFilter, so the tabs count the same set.
   bool settlement_not_opened = 13;
+
+  // Only orders in ANY of these statuses — a tab that is more than one status. Empty = no filter. ANDed with `status`
+  // like every other filter, so a caller sets one or the other.
+  //
+  // The warehouse list's Returns tab is `return` and `return_completed` together — the parcels on their way back and the
+  // ones accepted (the-warehouse-list-has-a-returns-tab). NOT mirrored on OrderStatFilter, for the reason `status` is
+  // not: the stat groups by status, and the tab's count is the sum of its statuses' counts.
+  repeated OrderStatus statuses = 15 [(buf.validate.field).repeated = {
+    max_items: 11
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -1616,10 +1635,11 @@ message OrderLabelsRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  // In print order. ⚠ One for now: merging several labels into one PDF is step 2.
+  // In print order — the list's order. Up to 50, the warehouse list's largest page: the merge holds every file in
+  // memory, and a label may be up to the 15 MiB an upload allows.
   repeated uint64 order_ids = 2 [(buf.validate.field).repeated = {
     min_items: 1
-    max_items: 1
+    max_items: 50
     unique: true
     items: {
       uint64: {gt: 0}
@@ -1635,6 +1655,9 @@ enum OrderLabelReason {
   ORDER_LABEL_REASON_NOT_SHIPPED_HERE = 1;
   // The seller has not attached a label file to the order.
   ORDER_LABEL_REASON_NO_LABEL = 2;
+  // The label file is there but cannot be read — not a PDF or a picture, broken, or gone from storage. Only a print of
+  // several labels reads the files; one label is linked as it is.
+  ORDER_LABEL_REASON_UNREADABLE = 3;
 }
 
 // One asked order, and whether its label is behind the link.
@@ -1646,7 +1669,8 @@ message OrderLabelResult {
 }
 
 message OrderLabelsResponse {
-  // The label file behind a short-lived signed link. Empty when no asked order's label is included.
+  // The label file — one order's own, or the merged PDF of several — behind a short-lived signed link. Empty when no
+  // asked order's label is included.
   string url = 1;
   // When the link stops working, unix seconds. 0 with no link.
   int64 expires_at_unix = 2;

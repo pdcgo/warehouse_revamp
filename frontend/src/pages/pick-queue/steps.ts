@@ -5,9 +5,14 @@ import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 // (one-status-change-for-every-plain-move). Each step IS an order status now:
 //
 //   Perlu konfirmasi (pending)    → Dikonfirmasi
-//   Dikonfirmasi (processed)      → Sudah diambil · back to Perlu konfirmasi
+//   Dikonfirmasi (processed)      → back to Perlu konfirmasi — Sudah diambil is the pick page's Set Picked, never a menu's
 //   Sudah diambil (picked)        → Sudah diserahkan · back to Perlu konfirmasi
 //   Sudah diserahkan (shipping)   → (none — the parcel is customer service's from here)
+//
+// ⚠ SET PICKED IS THE SCAN'S (the-item-scans-live-on-the-page, the-warehouse-order-list-is-accepted): processed → picked
+// happens only on the order's one pick page, once every line is scanned exact. The server still allows the edge — the
+// page's Set Picked is that move — so it is this table, which feeds the row menu and the bulk Change Step, that leaves
+// it out.
 //
 // Going BACK is only ever to Perlu konfirmasi — goods on no rack, or the platform cancelled and the parcel
 // was unpacked — and asks for a reason, which the server requires and keeps on the order's history. Stock
@@ -24,7 +29,7 @@ export type WarehouseStep = "toConfirm" | "confirm" | "picked" | "handover";
 
 export const STEP_MOVES: Record<WarehouseStep, WarehouseStep[]> = {
   toConfirm: ["confirm"],
-  confirm: ["picked", "toConfirm"],
+  confirm: ["toConfirm"],
   picked: ["handover", "toConfirm"],
   handover: [],
 };

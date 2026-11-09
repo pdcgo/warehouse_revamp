@@ -47,7 +47,7 @@ const RESULT_LIMIT = 10;
 // configured return warehouse. A parcel whose order is neither is "not found" (the decision's row), never another
 // building's order.
 //
-// ⚠ THE INPUT IS A SCANNER'S (the pick-queue-next ScanInput precedent): a handheld scanner types the code and presses
+// ⚠ THE INPUT IS A SCANNER'S (features/picking/ScanInput's precedent): a handheld scanner types the code and presses
 // Enter. Enter searches and EMPTIES the field for the next parcel — what was searched stays readable as "Results for …" —
 // and focus stays in the field.
 //

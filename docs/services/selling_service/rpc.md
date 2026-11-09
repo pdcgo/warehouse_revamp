@@ -709,6 +709,35 @@ flowchart LR
 Server-side, because the list is paginated: a client-side filter narrows the loaded page only and
 still reports the unfiltered total.
 
+…and **`statuses`** *(2026-11-09)* — any of several, for a tab that is more than one status: the warehouse list's
+*Retur* reads `return` and `return_completed` together
+([the-warehouse-list-has-a-returns-tab](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-list-has-a-returns-tab)).
+One `statusFilter` serves `OrderList` and `OrderExport`, so the tab's file holds the tab's rows; both fields AND, like
+every filter. `status IN (…)` stays on the status index — `TestPerf_OrderList_Statuses`: a warehouse's *Retur* over
+50 000 orders ≈ 4.9 ms, 3 queries, the same as one status.
+
+### Which order a scanned label is — `OrderList`'s `q`, narrowed on the screen
+
+*Scan Label* and the handover scan ask one lookup (`features/picking/labelLookup.ts`), per scan, as the warehouse
+([scan-label-opens-the-pick-page](../../technical/frontend/warehouse_order_list_decision.md#scan-label-opens-the-pick-page),
+[two-orders-on-one-label-are-shown-not-chosen](../../business/inventory/order_decision.md#two-orders-on-one-label-are-shown-not-chosen)).
+No new read: `q` already matches the tracking number, the ref and — all digits — the id, inside the reader's scope.
+It is a SUBSTRING search, so the screen keeps only the rows whose tracking number, ref or id EQUALS the code.
+
+```mermaid
+sequenceDiagram
+    participant UI as Scan Label or the handover
+    participant S as selling_service
+    UI->>S: OrderList(team_id=warehouse, search=code, page of 100)
+    S-->>UI: rows matching the code anywhere, inside the scope
+    Note over UI: kept - receipt, ref or id EQUALS the code, any case
+    opt an all-digit code, more than 100 rows, its id not among them
+        UI->>S: OrderDetail(team_id=warehouse, order_id=code)
+        S-->>UI: the order, or NotFound - not this warehouse's
+    end
+    Note over UI: cancelled skipped - one live opens or hands over, several are shown, none is a wrong sound
+```
+
 ### Which shelf to walk to — `StockPickLocations`
 
 The screen's one hard question: a product can sit on several racks (#135), so which does the picker
@@ -1328,36 +1357,51 @@ draft carries absent. Same roles as `OrderCreate` (ROOT, ADMINISTRATOR, SELLING_
 | index | `order_drafts_team_shop_external_idx` `(team_id, shop_id, external_id)` (selling `00037`, 2026-11-05) — the lookup's own key, one seek per ref. 1 query: ≈0.5 ms at 50 000 drafts in one team for 1 ref and for 50 (was ≈6 ms / ≈15 ms on the unique `(team_id, source, external_id)`, which could not seek without `source`). [Audit](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md) |
 | the warning's links | the read answers `author_user_id`; the dialog links only the caller's OWN drafts to `/orders/new?draft=id` — a colleague's is named *"A colleague's draft #id"* with no link, since a draft opens only for its author |
 
-## The labels a warehouse prints — `OrderLabels` (step 1)
+## The labels a warehouse prints — `OrderLabels`
 
 A shipping label is the SELLER's document — uploaded under its team — so the warehouse that ships the order cannot read
 it with `GetDownloadUrl` (NotFound: owner or share only). It asks the ORDER
-([a-warehouse-prints-the-labels-of-orders-it-ships](../../technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)):
+([a-warehouse-prints-the-labels-of-orders-it-ships](../../technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)).
+One id links that order's own file; several are merged into ONE PDF (2026-11-09, backlog #16e):
 
 ```mermaid
 sequenceDiagram
-  participant W as warehouse screen
+  participant W as warehouse screen - the ticked rows
   participant O as selling_service OrderLabels
   participant L as LabelLinker - order_label_linker.go
-  participant D as document_v1 LabelURL
-  W->>O: team_id = the warehouse, order_ids = one
+  participant D as document_v1
+  participant M as san_pdf_merge
+  W->>O: team_id = the warehouse, order_ids = 1 to 50, in the list's order
   O->>O: orders WHERE id IN ids AND warehouse_id = team - root reads all
   O-->>W: none found - NOT_SHIPPED_HERE, no label file - NO_LABEL
-  O->>L: LabelURL - the order's team as owner, its receipt document id
-  L->>D: in-process call, not an RPC
-  D->>D: active order_receipt of that owner? else NotFound
-  D-->>O: signed URL and its expiry
-  O-->>W: url, expires_at, a result per order
+  alt one id
+    O->>L: LabelURL - the order's team as owner, its receipt document id
+    L->>D: in-process call, not an RPC
+    D-->>O: signed URL of the order's own file, or NotFound - NO_LABEL
+  else several ids
+    O->>L: LabelFiles - each label with its owner
+    L->>D: one documents query, then one read per file
+    D-->>O: the bytes and type of each active order_receipt of its owner
+    O->>M: Merge - the distinct files in the asked order
+    M-->>O: one PDF and a result per file - pages, or the file can't be read
+    O->>L: StoreOrderLabels - the warehouse's team, labels-date-time.pdf
+    L->>D: an active private order_labels document, then its signed URL
+  end
+  O-->>W: url, expires_at, a result per order - included or its reason
 ```
 
 | | |
 | --- | --- |
-| policy | WAREHOUSE_OWNER / ADMIN / STAFF, ROOT, ADMINISTRATOR — `NO_SIDE_EFFECTS` (it writes nothing, it signs a link). The seller keeps `GetDownloadUrl` |
-| the check | the order's `warehouse_id` is the scoped team; another warehouse's order and a missing id both read `NOT_SHIPPED_HERE`, and document_service is never asked |
-| the seam | selling's `LabelLinker` interface → composition root `NewOrderLabelLinker` → `document_v1.Service.LabelURL`, a plain method reading document_service's own table (id, owner team, `order_receipt`, active). No `document_shares` row is ever written |
-| a gone file | document_service's NotFound becomes `NO_LABEL` (and a WARN log); any other error is the call's error |
-| ⚠ step 1 | `order_ids` max 1, no PDF merge — the link is the order's own file. Merging (step 2) is the pick queue's `printMerge` mark |
-| cost | one primary-key read, 0.5 ms at 50 000 orders — not heavy |
+| policy | WAREHOUSE_OWNER / ADMIN / STAFF, ROOT, ADMINISTRATOR — `NO_SIDE_EFFECTS`: it changes no order and no label; the merged PDF it stores is its answer, the way an export's file is. The seller keeps `GetDownloadUrl` |
+| the check | the order's `warehouse_id` is the scoped team; another warehouse's order and a missing id both read `NOT_SHIPPED_HERE`, and document_service is never asked for its file |
+| the cap | `order_ids` 1 to 50, unique — the warehouse list's largest page; the merge holds every file in memory and a label may be up to 15 MiB |
+| one id | as step 1: the link is the order's own file (a photo stays a photo, the download keeps its name) — nothing is read, merged or stored |
+| several ids | the files are read once each (two orders naming one file print it once), merged in the asked order — a PDF label adds its pages, a label photo one page of its own size — and stored as a private `order_labels` document of the CALLER's team (the warehouse, or root's team 1), its creator the caller, override-stamped like any upload. A run with nothing printable stores nothing and answers no link |
+| the reasons | `NOT_SHIPPED_HERE`, `NO_LABEL` (none attached, or the file is not the seller's / not there), `UNREADABLE` (several only: not a PDF or a picture, broken, gone from storage, or over the upload limit). One refusal never blocks the rest |
+| a hostile file | [san_pdf_merge](../../../backend/pkgs/san_pdf_merge/merge.go) (pdfcpu v0.15.0, pure Go, Apache-2.0) reads each file on its own, rewrites it once and reads it back (pdfcpu reads lazily, so a broken stream otherwise surfaces only in the merged file), and recovers a library panic per file. The result is written without object streams (a classic xref) for any viewer or printer. `TestMerge_CorruptedFilesNeverCrash` overwrites every sample at 24 places |
+| the seam | selling's `LabelLinker` (`LabelURL`, `LabelFiles`, `StoreOrderLabels`) → composition root `NewOrderLabelLinker` → `document_v1.Service` plain methods over document_service's own table and store. No `document_shares` row is ever written; `RequestUpload` refuses the `ORDER_LABELS` type |
+| errors | document_service's NotFound on one id becomes `NO_LABEL` (and a WARN log); any other read or store failure is the call's error |
+| cost | 3 queries (the orders by key, the documents by key, the stored row), ≈85 ms for 50 real labels (4.9 MB) end to end, ≈70 ms of it the merge; one id is one primary-key read, 0.5 ms at 50 000 orders — not heavy |
 
 ## The order list's money sorts and its *settlement not opened* filter — `OrderList` (2026-11-05)
 

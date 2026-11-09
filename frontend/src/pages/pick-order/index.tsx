@@ -32,6 +32,9 @@ import { orderNotes, timelineFromKey } from "../../features/orders/timelineLogs"
 import { formatUnixDateTime } from "../../lib/datetime";
 import { AcceptReturnDialog } from "../../features/orders/AcceptReturnDialog";
 import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ItemScan } from "./components/ItemScan";
+import { PICK_ORDER_PENDING } from "./pending";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -52,11 +55,14 @@ function parseOrderId(raw: string | undefined): bigint {
 // the selling team's button until now (#91), which is why a warehouse opening a just-placed order used
 // to find a screen with nothing on it to press.
 //
-// The warehouse's three forward moves of the status diagram, each an OrderStatusChange: confirm, Set
-// Picked, and the handover. A move back to pending is the list's (it asks for a reason).
+// The warehouse's forward moves of the status diagram that are a plain button, each an OrderStatusChange: confirm, and
+// the handover. A move back to pending is the list's (it asks for a reason).
+//
+// ⚠ SET PICKED IS NOT ONE OF THEM (the-item-scans-live-on-the-page): a processed order moves to picked only from the
+// item scan below the racks, once every line is scanned exact. The plain "Mark Picked" this ladder used to offer moved an
+// order with nothing scanned at all.
 const NEXT_STEP: Partial<Record<OrderStatus, { labelKey: string; toastKey: string; to: OrderStatus }>> = {
   [OrderStatus.PENDING]: { labelKey: "picking.action.confirm", toastKey: "picking.toast.confirmed", to: OrderStatus.PROCESSED },
-  [OrderStatus.PROCESSED]: { labelKey: "picking.action.markPicked", toastKey: "picking.toast.picked", to: OrderStatus.PICKED },
   [OrderStatus.PICKED]: { labelKey: "picking.action.markHandedOver", toastKey: "picking.toast.handedOver", to: OrderStatus.SHIPPING },
 };
 
@@ -100,18 +106,30 @@ export function PickOrderPage() {
     const step = NEXT_STEP[order.status];
     if (!step) return;
 
+    await moveTo(step.to, step.toastKey);
+  }
+
+  // SET PICKED — the item scan's one write, once every line is exact (the-item-scans-live-on-the-page). A second person's
+  // Set Picked on the same order is refused by the server and says so; the order stays picked.
+  async function setPicked() {
+    await moveTo(OrderStatus.PICKED, "picking.toast.picked");
+  }
+
+  async function moveTo(to: OrderStatus, toastKey: string) {
+    if (warehouseId === undefined) return;
+
     try {
       // The move is read off NEXT_STEP rather than re-derived from the status here. The two used to be
       // separate ladders — a label table and a chain of ternaries — and adding a state to one and not
       // the other is how a button ends up making the previous step's move.
-      const [result] = await moveMutation.mutateAsync({ teamId: warehouseId, orderIds: [orderId], to: step.to });
+      const [result] = await moveMutation.mutateAsync({ teamId: warehouseId, orderIds: [orderId], to });
 
       if (!result?.moved) {
         toaster.create({ type: "error", title: t("picking.toast.stepFailed"), description: result?.refusedReason });
         return;
       }
 
-      toaster.create({ type: "success", title: t(step.toastKey) });
+      toaster.create({ type: "success", title: t(toastKey) });
     } catch (err) {
       toaster.create({
         type: "error",
@@ -184,10 +202,14 @@ export function PickOrderPage() {
   const step = NEXT_STEP[order.status];
   // The order's notes, newest first — timeline rows with no status (a-note-is-a-timeline-row).
   const notes = orderNotes(order.timelineLogs);
+  // THE ITEM SCAN — a processed order, being picked, by someone who may write (a monitor reads the page only).
+  const scanning = order.status === OrderStatus.PROCESSED && canWrite(current);
 
   return (
     <Stack gap="section">
       {back}
+
+      {scanning && <NotImplementedSummary list={PICK_ORDER_PENDING} />}
 
       <Flex align="center" gap="card">
         <Heading size="md">{t("picking.detail.title", { id: String(order.id) })}</Heading>
@@ -372,6 +394,18 @@ export function PickOrderPage() {
           </Stack>
         </Card.Body>
       </Card.Root>
+
+      {/* ONE PAGE, THE RACKS FIRST (the-pick-page-opens-first-by-the-label): the walk reads the shelves above, and back at
+          the table the same page takes the item scans, then Set Picked. Keyed by the order, so another order's page never
+          inherits a count. */}
+      {scanning && (
+        <ItemScan
+          key={order.id.toString()}
+          items={order.items}
+          setting={moveMutation.isPending}
+          onSetPicked={() => void setPicked()}
+        />
+      )}
     </Stack>
   );
 }

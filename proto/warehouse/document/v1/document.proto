@@ -73,6 +73,12 @@ enum DocumentResourceType {
   // the order list's pattern (one-export-is-the-list-as-a-file): stored as the person who exported it and read back
   // through an expiring signed link. Private like every export: it is a team's working figures.
   DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT = 8;
+
+  // PRIVATE: the shipping labels of several orders merged into ONE PDF for the warehouse that ships them to print
+  // (a-warehouse-prints-the-labels-of-orders-it-ships). Written by the order service's OrderLabels — never uploaded by a
+  // browser — under the warehouse's team, and read back through an expiring signed link. Private like the labels it
+  // holds: each names a buyer and an address.
+  DOCUMENT_RESOURCE_TYPE_ORDER_LABELS = 9;
 }
 
 message Document {

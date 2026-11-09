@@ -51,10 +51,15 @@ export const orderExportScenario = {
 /**
  * OrderLabels (a-warehouse-prints-the-labels-of-orders-it-ships): who asked for which order's label, and — when a story
  * sets it — the refusal the stub answers every asked order with, so a story can show what the screen says.
+ *
+ * A print of SEVERAL reads the files: `labelled` names orders the stub treats as having a label beside the fixtures'
+ * (list rows carry no file of their own), and `unreadable` the ones whose file it answers as unreadable.
  */
 export const orderLabelScenario = {
   last: undefined as undefined | { teamId: bigint; orderIds: bigint[] },
   refusal: undefined as undefined | OrderLabelReason,
+  labelled: [] as bigint[],
+  unreadable: [] as bigint[],
 };
 
 export const receiptUpdateScenario = {
@@ -156,7 +161,32 @@ export function withOrdersInReturn(...orderIds: bigint[]) {
   };
 }
 
+/**
+ * THE LABEL SCANS' KNOBS (scan-label-opens-the-pick-page, two-orders-on-one-label-are-shown-not-chosen): orders a story
+ * reads under ANOTHER tracking number — so two can share one label, as a duplicated marketplace ref does — and every
+ * OrderList search the stub was asked, so a story can show a scan went to the server.
+ */
+export const labelScanScenario = {
+  receiptOf: {} as Record<string, string>,
+  searches: [] as string[],
+};
+
+/** A `beforeEach`: these orders all carry the tracking number `code`. */
+export function withSharedLabel(code: string, ...orderIds: bigint[]) {
+  return () => {
+    labelScanScenario.receiptOf = Object.fromEntries(orderIds.map((id) => [id.toString(), code]));
+  };
+}
+
+/** Every OrderStatusChange the stub answered, in order — the moves a story made (Set Picked among them). */
+export const statusChangeScenario = {
+  calls: [] as { teamId: bigint; orderIds: bigint[]; to: OrderStatus }[],
+};
+
 export function resetSessionScenario() {
+  labelScanScenario.receiptOf = {};
+  labelScanScenario.searches = [];
+  statusChangeScenario.calls = [];
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
   sessionScenario.memberOf = null;
   sessionScenario.teamNames = {};
@@ -166,6 +196,8 @@ export function resetSessionScenario() {
   receiptUpdateScenario.last = undefined;
   orderLabelScenario.last = undefined;
   orderLabelScenario.refusal = undefined;
+  orderLabelScenario.labelled = [];
+  orderLabelScenario.unreadable = [];
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;
   orderKeyScenario.sent = [];

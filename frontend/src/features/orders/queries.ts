@@ -95,9 +95,11 @@ export function useOrders(args: {
   page: number;
   pageSize: number;
   status: OrderStatus;
+  /** A tab that is more than one status — the warehouse's Returns (the-warehouse-list-has-a-returns-tab). */
+  statuses?: OrderStatus[];
   filters?: OrderFilters;
 }) {
-  const { teamId, page, pageSize, status, filters = NO_ORDER_FILTERS } = args;
+  const { teamId, page, pageSize, status, statuses = [], filters = NO_ORDER_FILTERS } = args;
 
   return useQuery({
     // `listQuery`: the status tab, the filter bar and the pager all REFINE the same question — "this
@@ -106,12 +108,12 @@ export function useOrders(args: {
     // and a table that blanked between keystrokes would be unusable however fast the server answered.
     // The page pairs it with a RefreshOverlay, which is the other half.
     ...listQuery,
-    queryKey: key.orders(teamId, { page, pageSize, status, ...filterKey(filters) }),
+    queryKey: key.orders(teamId, { page, pageSize, status, statuses: statuses.join(","), ...filterKey(filters) }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await orderClient.orderList({
         teamId: teamId!,
-        filter: { status, ...filterMsg(filters) },
+        filter: { status, statuses, ...filterMsg(filters) },
         dataRequest: orderListRowData(),
         page: { page, limit: pageSize },
       });

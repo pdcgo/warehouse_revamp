@@ -996,6 +996,31 @@ async function switchToWarehouse(page: Page) {
   await expect(page.getByTestId("team-switcher")).toContainText(WH_NAME);
 }
 
+// SET PICKED IS THE SCAN'S (the-item-scans-live-on-the-page): on a processed order's pick page, below the racks, every
+// line is scanned exact — each line's product code, once per unit — and only then does Set Picked press.
+async function pickByScan(page: Page) {
+  const scan = page.getByTestId("pick-scan-input");
+  await expect(scan).toBeVisible();
+  // No plain "Mark Picked" any more.
+  await expect(page.getByTestId("pick-order-advance")).toBeHidden();
+
+  const lines = page.locator("[data-testid^='pick-scan-line-']");
+  for (let i = 0; i < (await lines.count()); i += 1) {
+    const line = lines.nth(i);
+    const code = (await line.getAttribute("data-code")) ?? "";
+    const quantity = Number(await line.getAttribute("data-quantity"));
+
+    for (let n = 0; n < quantity; n += 1) {
+      await scan.fill(code);
+      await scan.press("Enter");
+    }
+    await expect(line).toHaveAttribute("data-exact", "true");
+  }
+
+  await page.getByTestId("pick-order-set-picked").click();
+  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Handed Over");
+}
+
 // #151 — the crew's whole job, end to end: find the order the moment it arrives, open it, ACCEPT IT,
 // read WHICH SHELF to walk to, and walk it through picked → handed over (the-status-move-is-the-only-journey).
 //
@@ -1007,17 +1032,18 @@ test("Fulfilment: the warehouse takes an order from pending through to the hando
   // Placed from the SELLING seat and left there — PENDING, untouched, waiting on the warehouse.
   await placeOrderViaForm(page, `${CUSTOMER} picking`);
   await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "pending");
+  const placedId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
 
   await switchToWarehouse(page);
 
   await page.goto("/warehouse-orders");
 
-  // The screen opens on NEW — orders this building has not accepted yet. This is the tab that was
-  // missing: the order below is PENDING, and before it existed the crew's screen opened on To Pick and
-  // showed an empty table.
-  const row = page.getByTestId("pick-queue-table").getByText(`${CUSTOMER} picking`);
+  // The screen opens on To Confirm — orders this building has not accepted yet (the-warehouse-tabs-are-the-processed-steps).
+  await expect(page.getByTestId("pick-tab-toConfirm")).toHaveAttribute("aria-selected", "true");
+  const row = page.getByTestId(`pick-queue-row-${placedId}`);
   await expect(row).toBeVisible();
-  await row.click();
+  // The row's "created by" cell — the first after its tick box — opens the order's pick page.
+  await row.locator("td").nth(1).click();
 
   // THE POINT OF THE SCREEN: the line names the rack the take drew from — the seed's, the only one holding it.
   const pickList = page.getByTestId("pick-list-table");
@@ -1026,15 +1052,14 @@ test("Fulfilment: the warehouse takes an order from pending through to the hando
   await expect(pickList).toContainText("e2e-seed");
 
   // Forward, one move at a time — and the button always reads as the single next thing that happens.
-  // THREE moves: this building accepting the job, Set Picked, and the handover.
+  // THREE moves: this building accepting the job, Set Picked — the item scan's, never a plain button
+  // (the-item-scans-live-on-the-page) — and the handover.
   const advance = page.getByTestId("pick-order-advance");
 
   await expect(advance).toContainText("Confirm Order");
   await advance.click();
-  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Picked");
 
-  await page.getByTestId("pick-order-advance").click();
-  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Handed Over");
+  await pickByScan(page);
 
   await page.getByTestId("pick-order-advance").click();
 
@@ -1102,10 +1127,10 @@ test("Return: the warehouse accepts a returned parcel and the courier's charge l
   await switchToWarehouse(page);
   await page.goto(`/warehouse-orders/${orderId}`);
 
-  for (const next of ["Mark Picked", "Mark Handed Over"]) {
-    await page.getByTestId("pick-order-advance").click();
-    await expect(page.getByTestId("pick-order-advance")).toContainText(next);
-  }
+  // Confirm, then Set Picked by the item scan (the-item-scans-live-on-the-page), then the handover.
+  await expect(page.getByTestId("pick-order-advance")).toContainText("Confirm Order");
+  await page.getByTestId("pick-order-advance").click();
+  await pickByScan(page);
 
   await page.getByTestId("pick-order-advance").click();
   await expect(page.getByTestId("pick-order-advance")).toBeHidden();
@@ -1117,11 +1142,13 @@ test("Return: the warehouse accepts a returned parcel and the courier's charge l
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
 
-  // The parcel arrives: the crew finds it on the Returns tab — the accept's queue.
+  // The parcel arrives: the crew finds it on the Returns tab — the accept's queue, return and return_completed together
+  // (the-warehouse-list-has-a-returns-tab), and the tab is in the URL.
   await switchToWarehouse(page);
   await page.goto("/warehouse-orders");
   await page.getByTestId("pick-tab-return").click();
-  await page.getByTestId(`pick-queue-row-${orderId}`).click();
+  await expect(page).toHaveURL(/step=return/);
+  await page.getByTestId(`pick-queue-row-${orderId}`).locator("td").nth(1).click();
 
   // Nothing missing; the courier asked for postage, and the charge needs what it was for before Accept presses.
   await page.getByTestId("pick-order-accept-return").click();
@@ -1623,10 +1650,10 @@ async function toShipped(page: Page, customer: string): Promise<string> {
   // The warehouse walks it to the courier.
   await switchToWarehouse(page);
   await page.goto(`/warehouse-orders/${orderId}`);
-  for (const next of ["Mark Picked", "Mark Handed Over"]) {
-    await page.getByTestId("pick-order-advance").click();
-    await expect(page.getByTestId("pick-order-advance")).toContainText(next);
-  }
+  // Confirm, then Set Picked by the item scan (the-item-scans-live-on-the-page), then the handover.
+  await expect(page.getByTestId("pick-order-advance")).toContainText("Confirm Order");
+  await page.getByTestId("pick-order-advance").click();
+  await pickByScan(page);
   await page.getByTestId("pick-order-advance").click();
   await expect(page.getByTestId("pick-order-advance")).toBeHidden();
 

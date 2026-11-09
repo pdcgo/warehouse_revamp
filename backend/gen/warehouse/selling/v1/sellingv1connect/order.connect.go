@@ -164,10 +164,12 @@ type OrderServiceClient interface {
 	// (a-who-filter-lists-the-people-on-its-rows).
 	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
 	// THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
-	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
-	// link is minted under its own identity, so a label is never shared document by document.
+	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and reads
+	// the files under its own identity, so a label is never shared document by document.
 	//
-	// ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+	// One id is the same call: its link is that order's own file. Several are merged into ONE PDF, in the order of the
+	// ids — a PDF label adds its pages, a label photo one page — stored as a private ORDER_LABELS document of the
+	// warehouse, and the link is that file. A label that cannot be read is refused for its order, and the rest merge.
 	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
 }
 
@@ -481,10 +483,12 @@ type OrderServiceHandler interface {
 	// (a-who-filter-lists-the-people-on-its-rows).
 	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
 	// THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
-	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
-	// link is minted under its own identity, so a label is never shared document by document.
+	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and reads
+	// the files under its own identity, so a label is never shared document by document.
 	//
-	// ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+	// One id is the same call: its link is that order's own file. Several are merged into ONE PDF, in the order of the
+	// ids — a PDF label adds its pages, a label photo one page — stored as a private ORDER_LABELS document of the
+	// warehouse, and the link is that file. A label that cannot be read is refused for its order, and the rest merge.
 	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
 }
 

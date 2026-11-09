@@ -111,4 +111,12 @@ The restock form's label photo is uploaded through the same ReceiptUpload as an 
 `order_receipt` too — the door did not widen to admit it.
 It reads only `documents` (`id`, `team_id` = owner, `resource_type = 'order_receipt'`, `status = 'active'`) and answers
 NotFound for anything else — never a payment proof or a statement. No `document_shares` row is written; `GetDownloadUrl`'s
-two doors are unchanged. Flow in [selling rpc.md](../selling_service/rpc.md#the-labels-a-warehouse-prints--orderlabels-step-1).
+two doors are unchanged. Flow in [selling rpc.md](../selling_service/rpc.md#the-labels-a-warehouse-prints--orderlabels).
+
+**Several labels at once** (2026-11-09) go through two more in-process methods for the same caller, OrderLabels, after the
+same check: `LabelFiles(ctx, refs)` reads the BYTES of the asked labels — one `documents` query (`id IN …`, active
+`order_receipt`), each row kept only when it is the named owner's, then one store read per file (capped at the upload
+limit; a row whose file is gone comes back with no content, which selling reports as *the file can't be read*) — and
+`StoreOrderLabels(ctx, team, filename, pdf)` writes the merged PDF straight to the asset prefix and an ACTIVE private
+`order_labels` row of the warehouse (`00011`), then signs its link. `RequestUpload` refuses `ORDER_LABELS`: only the
+order service makes one. Code: `label_files.go`, `order_labels_store.go`.
