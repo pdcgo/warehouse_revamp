@@ -5,28 +5,27 @@ import (
 
 	"gorm.io/gorm"
 
-	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
 // isOverride answers whether this write is somebody reaching into a team that is not theirs
-// (terms-are-team-scoped-root-is-global).
+// (terms-are-team-scoped-root-is-global, an-override-is-stamped-in-every-service). It stamps the terms log, a payment's
+// record and confirm, a payment request, and the ledger legs of a posting a person made.
 //
 // ⚠ IT READS THE ROLE THE INTERCEPTOR RESOLVED, never anything the caller sent. A caller cannot be
 // trusted to report that its own write was an override — that is the one fact it has a reason to
 // misreport.
 //
-// ROLE_UNSPECIFIED means the caller holds no role in the CREDITOR team. The request got in, so it was
-// authorized; holding no role there means it was authorized by the root-team bypass instead. That is
-// exactly what an override is.
+// It is san_auth.IsOverride — the ONE rule every service stamps by, so it cannot drift here. A scoped request whose
+// caller holds no role in the team got in by the root-team bypass, which is exactly what an override is.
 //
-// ⚠ A DIRECT DOMAIN CALL (a test, a CLI command) ALSO READS AS UNSPECIFIED, and recording those as
-// overrides is the right way round: an unattributed write to somebody's credit limit is the case that
-// most deserves a second look, and the alternative — defaulting to "not an override" — would make the
-// flag silently absent exactly where the audit trail thins out.
+// ⚠ A CALL WITH NO PERSON OR NO SCOPE READS FALSE. This used to read ROLE_UNSPECIFIED alone, so a direct domain call
+// also counted as an override — right for the terms log, whose every write is a scoped RPC, and wrong the moment the
+// same answer stamps the ledger, where an event consumer posts with no caller at all: its legs would all have read as
+// the platform reaching in.
 func isOverride(ctx context.Context) bool {
-	return san_auth.GetCallerRole(ctx) == role_basev1.Role_ROLE_UNSPECIFIED
+	return san_auth.IsOverride(ctx)
 }
 
 // recordTermsChange writes one row of the limit history.

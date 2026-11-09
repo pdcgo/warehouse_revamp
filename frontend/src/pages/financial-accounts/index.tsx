@@ -29,7 +29,7 @@ import { BalanceText, ProviderBadge } from "../../features/financialAccount/badg
 import { useAccountBalances, useFinancialAccounts, useTypeTotals } from "../../features/financialAccount/queries";
 import { TYPE_KEY, accountName, isUnknown } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixRelative } from "../../lib/datetime";
 import { canMoveAccountMoney, canTransferMoney } from "../../lib/roles";
@@ -142,7 +142,8 @@ export function FinancialAccountsPage() {
     );
   }
 
-  const canMove = canMoveAccountMoney(current.role);
+  // canWrite first: a monitor's role is the screen role, which alone would offer the Owner's writes.
+  const canMove = canWrite(current) && canMoveAccountMoney(current.role);
   const shopOf = (id: bigint) => shops.data?.find((s) => s.id === id);
   const nameOf = (id: bigint) => shopOf(id)?.name;
   const shopName = (id: bigint) => nameOf(id) ?? `#${id}`;
@@ -271,6 +272,9 @@ export function FinancialAccountsPage() {
         {(shops.data?.length ?? 0) > 0 && (
           <FilterField testId="account-shop-filter">
             <ShopSelect
+              // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops): an account keeps the
+              // links its closed shop made (a-closed-shop-takes-no-new-account-link).
+              asFilter
               teamId={teamId}
               value={shopId > 0n ? shopId : undefined}
               placeholder={t("financialAccounts.allShops")}

@@ -22,8 +22,9 @@ import { ShopSelect } from "../../components/pickers/ShopSelect";
 import { useShopOptions } from "../../features/shops/queries";
 import { UploadedFileStatusBadge } from "../../features/settlementImport/UploadedFileStatusBadge";
 import { useUploadedFiles } from "../../features/settlementImport/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
+import { personName } from "../../lib/users";
 import { UploadedFileStatus } from "../../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 import { idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { ImportFileDialog } from "./components/ImportFileDialog";
@@ -85,12 +86,14 @@ export function SettlementImportsPage() {
           </Text>
         </Stack>
         <Spacer />
-        <ImportFileDialog teamId={teamId} />
+        {canWrite(current) && <ImportFileDialog teamId={teamId} />}
       </Flex>
 
       <Flex gap="card" wrap="wrap" align="center">
         <HStack maxW="xs" flex="1" minW="56" gap="1" data-testid="imports-shop-filter">
           <ShopSelect
+            // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+            asFilter
             teamId={teamId}
             value={shopId}
             placeholder={t("settlementImports.filter.allShops")}
@@ -158,7 +161,7 @@ export function SettlementImportsPage() {
               <Table.Body>
                 {files.map((file) => {
                   const shop = shopById.get(file.shopId.toString());
-                  const uploader = actors.data?.get(file.createdByUserId.toString())?.name;
+                  const uploader = personName(actors.data?.get(file.createdByUserId.toString()), `#${file.createdByUserId}`);
 
                   return (
                     <Table.Row
@@ -177,7 +180,7 @@ export function SettlementImportsPage() {
                         {file.periodFrom ? `${file.periodFrom} – ${file.periodTo}` : "—"}
                       </Table.Cell>
                       <Table.Cell>
-                        <Text>{uploader ?? `#${file.createdByUserId}`}</Text>
+                        <Text>{uploader}</Text>
                         <Text fontSize="xs" color="fg.muted">
                           {file.createdAt ? timestampDate(file.createdAt).toLocaleString() : "—"}
                         </Text>

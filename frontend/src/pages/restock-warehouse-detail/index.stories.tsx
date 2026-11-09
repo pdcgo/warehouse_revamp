@@ -8,7 +8,7 @@ import { At503, WAREHOUSE_DETAIL_META, loaded } from "./stories/kit";
 // by the part of the screen they are about, one file each in ./stories (stories-are-grouped-by-the-part-of-the-screen):
 //
 //   Actions     the title row's acts, by status
-//   Payment     the total, the courier's charge owed back, its slip
+//   Payment     the total, the courier's charge owed back, its slip, the label photo it opens
 //   Products    the count, where the units went, the broken units' photo and rack
 //   SignForBox  Sign for Box — its dialog, and the move to arrived
 //   States      the delivery in each other status, as it opens

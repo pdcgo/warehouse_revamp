@@ -61,15 +61,16 @@ export function lockFieldsOf(mode: LockMode, minimum: number): { crossLocked: bo
 }
 
 /**
- * Whether the minimum is closing the product NOW — the total stock is AT or under it (owner: *"terkunci itu yang kena
- * dikunci dan stoknya <= min"*, then *"iya"* to ≤ for both the badge and Discover's filter, `the-minimum-closes-at-the-minimum`).
- * A product holding exactly its minimum is closed: the minimum is what the owner keeps, so none of it is another team's.
+ * Whether the minimum is closing the product NOW — the total stock is UNDER it (`a-minimum-closes-only-under-it`, from the
+ * business rule `exactly-the-reserve-stays-open`). A product holding exactly its minimum is still OPEN: the minimum is a
+ * low-stock line, not a floor, and the order take lets another team in at `total >= reserve` — a badge closing it there
+ * would say *Terkunci* on a product the server still sells.
  * `undefined` when that cannot be said: the setting is not a minimum, or the total is not known (a warehouse lens shows
  * one building's stock, and the rule reads every warehouse's).
  */
 export function lockedByMinimumNow(p: LockFields, totalReady: bigint | undefined): boolean | undefined {
   if (lockModeOf(p) !== "min" || totalReady === undefined) return undefined;
-  return totalReady <= BigInt(p.reservedStock);
+  return totalReady < BigInt(p.reservedStock);
 }
 
 /** The setting in a few words — "Terbuka", "Min 20 pcs", "Selalu dikunci". */

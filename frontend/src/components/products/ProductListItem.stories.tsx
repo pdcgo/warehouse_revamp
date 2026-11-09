@@ -14,7 +14,7 @@ const meta = {
     docs: { description: { component: description } },
   },
   args: {
-    product: { id: product.id, teamId: product.teamId, sku: product.sku, name: product.name },
+    product: { id: product.id, teamId: product.teamId, productCode: product.productCode, name: product.name },
   },
 } satisfies Meta<typeof ProductListItem>;
 
@@ -110,15 +110,15 @@ export const ClickableCoverIsARealButton: Story = {
 
 // A COPYABLE SKU (the products list: *"sku copyable"*) — the SKU becomes CopyText, a button named for what it copies.
 // Without the prop it stays plain text, which StaticCoverHasNoButton below also pins (no button anywhere).
-export const CopyableSku: Story = {
-  args: { skuCopyable: true },
+export const CopyableProductCode: Story = {
+  args: { productCodeCopyable: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const sku = canvas.getByTestId(`product-list-item-sku-${product.id}`);
+    const productCode = canvas.getByTestId(`product-list-item-sku-${product.id}`);
 
-    await expect(sku.tagName).toBe("BUTTON");
-    await expect(sku).toHaveAccessibleName(new RegExp(product.sku));
-    await expect(sku).toHaveTextContent(product.sku);
+    await expect(productCode.tagName).toBe("BUTTON");
+    await expect(productCode).toHaveAccessibleName(new RegExp(product.productCode));
+    await expect(productCode).toHaveTextContent(product.productCode);
   },
 };
 
@@ -135,8 +135,8 @@ export const StaticCoverHasNoButton: Story = {
 
 // A product with no name falls back to its SKU — and then must NOT repeat that SKU on the line
 // underneath, which would read as two different identifiers.
-export const NamelessProductDoesNotRepeatItsSku: Story = {
-  args: { product: { id: 77n, sku: "SKU-ONLY" } },
+export const NamelessProductDoesNotRepeatItsProductCode: Story = {
+  args: { product: { id: 77n, productCode: "SKU-ONLY" } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

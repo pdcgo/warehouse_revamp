@@ -1261,13 +1261,13 @@ const file_warehouse_selling_v1_return_configuration_proto_rawDesc = "" +
 	"8TEAM_RETURN_CONFIGURATION_BY_IDS_DATA_TYPE_CONFIGURATION\x10\x01*\x82\x01\n" +
 	"\x1dProductReturnMapByIdsDataType\x123\n" +
 	"/PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12,\n" +
-	"(PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_PAIR\x10\x012\xee\x05\n" +
-	"\x1eTeamReturnConfigurationService\x12\x98\x01\n" +
-	"\x1dTeamReturnConfigurationDetail\x12:.warehouse.selling.v1.TeamReturnConfigurationDetailRequest\x1a;.warehouse.selling.v1.TeamReturnConfigurationDetailResponse\x12\x8f\x01\n" +
+	"(PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_PAIR\x10\x012\xf8\x05\n" +
+	"\x1eTeamReturnConfigurationService\x12\x9d\x01\n" +
+	"\x1dTeamReturnConfigurationDetail\x12:.warehouse.selling.v1.TeamReturnConfigurationDetailRequest\x1a;.warehouse.selling.v1.TeamReturnConfigurationDetailResponse\"\x03\x90\x02\x01\x12\x8f\x01\n" +
 	"\x1aTeamReturnConfigurationSet\x127.warehouse.selling.v1.TeamReturnConfigurationSetRequest\x1a8.warehouse.selling.v1.TeamReturnConfigurationSetResponse\x12\x95\x01\n" +
 	"\x1cTeamReturnConfigurationByIds\x129.warehouse.selling.v1.TeamReturnConfigurationByIdsRequest\x1a:.warehouse.selling.v1.TeamReturnConfigurationByIdsResponse\x12\x83\x01\n" +
-	"\x16ProductReturnMapCreate\x123.warehouse.selling.v1.ProductReturnMapCreateRequest\x1a4.warehouse.selling.v1.ProductReturnMapCreateResponse\x12\x80\x01\n" +
-	"\x15ProductReturnMapByIds\x122.warehouse.selling.v1.ProductReturnMapByIdsRequest\x1a3.warehouse.selling.v1.ProductReturnMapByIdsResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\x16ProductReturnMapCreate\x123.warehouse.selling.v1.ProductReturnMapCreateRequest\x1a4.warehouse.selling.v1.ProductReturnMapCreateResponse\x12\x85\x01\n" +
+	"\x15ProductReturnMapByIds\x122.warehouse.selling.v1.ProductReturnMapByIdsRequest\x1a3.warehouse.selling.v1.ProductReturnMapByIdsResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_return_configuration_proto_rawDescOnce sync.Once

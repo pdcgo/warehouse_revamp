@@ -44,8 +44,9 @@ test("Language: switching to Indonesian translates the shell and persists", asyn
   // translation rather than a deleted element. Asserting an in-page CONTROL keeps the test's real
   // claim — that content translates, not just the chrome — without depending on a layout choice.
   await page.goto("/products");
-  await expect(page.getByRole("button", { name: "Produk baru" })).toBeVisible();
-  await expect(page.getByPlaceholder("Cari SKU atau nama")).toBeVisible();
+  // By test id: an empty catalogue also shows an empty-list hint with the same "Produk Baru" button.
+  await expect(page.getByTestId("open-create-product")).toHaveText("Produk Baru");
+  await expect(page.getByPlaceholder("Cari kode produk atau nama")).toBeVisible();
   await page.goto("/");
 
   // Persists across a reload.

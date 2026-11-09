@@ -50,6 +50,15 @@ export const AnotherTeamsProductIsNotAllowed: Story = {
   },
 };
 
+export const BeingCounted: Story = {
+  args: {
+    refusal: {
+      reason: OrderTransactionRefusalReason.BEING_COUNTED,
+      lines: [{ productId: 71n, wanted: 3n, available: 1n, countingSessionId: 12n }],
+    },
+  },
+};
+
 export const AlreadyPlaced: Story = {
   args: { refusal: { reason: OrderTransactionRefusalReason.KEY_USED, lines: [] } },
 };
@@ -100,5 +109,20 @@ export const AnUnnamedProductIsListedByItsId: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByTestId("take-refusal-line-99")).toHaveTextContent("#99: wants 1, the warehouse holds 0");
+  },
+};
+
+// A COUNTED LINE SAYS WHAT IS FREE AND WHICH COUNT HOLDS THE REST (a-lock-stops-sales-and-cancels-too) — the warehouse
+// has the stock, so "holds 1" would send the person to lower a quantity the shelf could fill once the count is done.
+export const ACountedLineNamesTheCount: Story = {
+  args: BeingCounted.args,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("take-refusal")).toHaveAttribute("data-reason", "beingCounted");
+    await expect(canvas.getByTestId("take-refusal")).toHaveTextContent("A stock count holds some of this stock");
+    await expect(canvas.getByTestId("take-refusal-line-71")).toHaveTextContent(
+      "Kopi Arabika 250g: wants 3, 1 free — the rest is held by stock count #12",
+    );
   },
 };

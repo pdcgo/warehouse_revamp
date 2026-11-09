@@ -2,14 +2,14 @@
 
 **Scope:** the **imported shop row** — [settlement-asks-the-shop-for-its-primary-cs](../../../../docs/business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs): the ask before the transaction, the shop account's lock, and the idempotency key every retry races.
 
-**Verdict:** 🟡 low — the ask holds no lock, and nothing is lost or written twice. But one key colliding across two accounts **at once** answers `internal`, where one at a time it answers `invalid_argument` — the data is right, the answer is not
+**Verdict:** ✅ safe (was 🟡 low) — the ask holds no lock, and nothing is lost or written twice. One key colliding across two accounts **at once** answered `internal`, where one at a time it answered `invalid_argument`; since 2026-11-05 both answer `invalid_argument` (finding 1 ✅ fixed)
 **Proved:** 2026-09-29 · `settlement_service/settlement_v1/post_entry.go` + `shop_primary.go` · [`post_entry_import_race_test.go`](../../../../backend/services/settlement_service/settlement_v1/post_entry_import_race_test.go) (`-tags raceaudit`) · every passing test green 20 of 20 (`-count=20`)
 **Isolation:** READ COMMITTED
 
 | | |
 | --- | --- |
 | race | 2 real posters, one key, two shops of one team — 20 rounds |
-| result | **20 of 20** losers answered `internal: duplicated key not allowed` — one at a time the same collision answers `invalid_argument` |
+| result | before: **20 of 20** losers answered `internal: duplicated key not allowed` · after (2026-11-05): **20 of 20** `invalid_argument` — the same as one at a time |
 | interleaving | B's insert ⏸ blocked 307 ms on A's uncommitted key, released on A's commit into 23505 |
 
 ---
@@ -57,7 +57,7 @@ sequenceDiagram
 | 1 | `INSERT shop_settlements … ON CONFLICT DO NOTHING` | none when the account exists | ✅ |
 | 2 | `SELECT shop_settlements … FOR UPDATE` | the shop's account row | ✅ serialises every poster on the shop |
 | 3 | `SELECT settlement_logs WHERE unique_id = ?` | none — read under the account lock | ✅ same account · 🟡 another account's in-flight key is invisible |
-| 4 | `INSERT settlement_logs` — `user_id` = the primary | the key, in `settlement_logs_unique_idx` | 🟡 23505 → `internal` on a cross-account collision |
+| 4 | `INSERT settlement_logs` — `user_id` = the primary | the key, in `settlement_logs_unique_idx` | ✅ 23505 → `errUniqueIDTaken` (`invalid_argument`) — was `internal` before finding 1's fix |
 | 5 | `UPDATE shop_settlements SET last_balance` | the account row, still held | ✅ |
 | 6 | publish `SettlementLogPosted` | after COMMIT | ✅ |
 
@@ -65,7 +65,20 @@ sequenceDiagram
 
 ## Findings
 
-### 1. A key colliding across accounts at once answers internal 🟡
+### 1. A key colliding across accounts at once answers internal 🟡 — ✅ fixed
+
+✅ **Fixed 2026-11-05** — owner decision
+[a-colliding-key-at-once-is-refused-the-same](../../../../docs/business/settlement/context_decision.md#a-colliding-key-at-once-is-refused-the-same).
+`post_entry.go` step 4 maps a unique violation (`isUniqueViolation`: `gorm.ErrDuplicatedKey` under TranslateError,
+or a raw pg `23505`) to `errUniqueIDTaken`. The regression test, renamed
+`TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsIsRefusedTheSame`, is green (`-count=10`):
+
+| | interleaved B (blocked ≈309 ms, released on A's commit) | 20 rounds, two real posters |
+| --- | --- | --- |
+| before | `internal: duplicated key not allowed` | `map[internal:20]` |
+| after | `invalid_argument: unique_id already names an entry on another account` | `map[invalid_argument:20]` |
+
+What follows is the finding as it was.
 
 Pattern 3, correctly backed — the unique index holds, and the data is right: one row. But the loser's answer
 depends on timing. One at a time, step 3 finds the other shop's row and refuses it as `invalid_argument`

@@ -1,10 +1,9 @@
-// THE RANGE PILLS' BANDS — PLACEHOLDERS. Where a band's edges come from is open (owner: *"nilai range belum ditentukan
-// dari mana"*), and two schemes are on the table: bands drawn from the totals, or a ready-made set. Until one is chosen
-// each figure has a fixed set, wide enough to tell its sample figures apart — and nothing narrows the list by them yet
-// (`supplier-figures-filter-by-range-pills`, `the-figure-filters-are-two-panels`). The supplier list and Discover share
-// them (`discover-shows-the-same-figures-and-filters`).
+// THE RANGE PILLS' BANDS — A FIXED SET PER FIGURE (owner: *"A"*, `the-range-pills-are-a-fixed-set`), so a pill means the
+// same every day and lives in the URL. A band is lower-inclusive, upper-exclusive, and the SERVER narrows the list by it
+// before paging (SupplierList's `sold` / `ready`, over every team's goods). The supplier list and Discover share them
+// (`discover-shows-the-same-figures-and-filters`).
 
-import { units } from "./sampleSupplierFigures";
+import { units } from "./figureValues";
 
 /** One band, `min` inclusive and `max` exclusive; `max: null` is open-ended. */
 export interface FigureRange {
@@ -23,6 +22,17 @@ export const FIGURE_RANGES: Record<FigureRangeKind, FigureRange[]> = {
   // Units ready on a shelf — tens to hundreds.
   ready: [band(0, 50), band(50, 100), band(100, 250), band(250, 500), band(500, null)],
 };
+
+/**
+ * The band a URL key names, as SupplierList's `SupplierFigureBand` takes it — `max` 0 is open-ended. `undefined` for
+ * Semua ("") and for a key no band carries, which reads as Semua too.
+ */
+export function figureBand(kind: FigureRangeKind, key: string): { min: bigint; max: bigint } | undefined {
+  const range = FIGURE_RANGES[kind].find((r) => r.key === key);
+  if (!range) return undefined;
+
+  return { min: BigInt(range.min), max: BigInt(range.max ?? 0) };
+}
 
 /** A band as a pill reads it: `< 500`, `500–1.000`, `≥ 5.000`. */
 export function rangeLabel(range: FigureRange): string {

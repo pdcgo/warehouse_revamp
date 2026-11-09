@@ -12,7 +12,7 @@ import {
   type SettlementSort,
   type SettlementSortKey,
 } from "../../features/settlement/queries";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, idCodec, sortCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { OrderSettlementPage } from "./index";
@@ -46,7 +46,7 @@ export function SettlementListRoute() {
 
   const teamId = current?.teamId;
   const q = useDebounced(search.trim());
-  const { from, to } = windowOf(range);
+  const { from, to } = jakartaWindowOf(range);
   const query = useOrderSettlements({ teamId, shopId, q, from, to, sort, page, pageSize });
 
   // Any filter change restarts at page 1: the page number belongs to the old result set, and page 4

@@ -35,18 +35,25 @@ const (
 type SupplierMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Units accepted as good stock.
-	RestockCount     int64 `protobuf:"varint,1,opt,name=restock_count,json=restockCount,proto3" json:"restock_count,omitempty"`
-	RestockValuation int64 `protobuf:"varint,2,opt,name=restock_valuation,json=restockValuation,proto3" json:"restock_valuation,omitempty"`
+	RestockCount     int64   `protobuf:"varint,1,opt,name=restock_count,json=restockCount,proto3" json:"restock_count,omitempty"`
+	RestockValuation float64 `protobuf:"fixed64,2,opt,name=restock_valuation,json=restockValuation,proto3" json:"restock_valuation,omitempty"`
 	// Units short in an accepted parcel.
-	ShippingLostCount     int64 `protobuf:"varint,3,opt,name=shipping_lost_count,json=shippingLostCount,proto3" json:"shipping_lost_count,omitempty"`
-	ShippingLostValuation int64 `protobuf:"varint,4,opt,name=shipping_lost_valuation,json=shippingLostValuation,proto3" json:"shipping_lost_valuation,omitempty"`
+	ShippingLostCount     int64   `protobuf:"varint,3,opt,name=shipping_lost_count,json=shippingLostCount,proto3" json:"shipping_lost_count,omitempty"`
+	ShippingLostValuation float64 `protobuf:"fixed64,4,opt,name=shipping_lost_valuation,json=shippingLostValuation,proto3" json:"shipping_lost_valuation,omitempty"`
 	// Units that arrived broken.
-	ShippingBrokenCount     int64 `protobuf:"varint,5,opt,name=shipping_broken_count,json=shippingBrokenCount,proto3" json:"shipping_broken_count,omitempty"`
-	ShippingBrokenValuation int64 `protobuf:"varint,6,opt,name=shipping_broken_valuation,json=shippingBrokenValuation,proto3" json:"shipping_broken_valuation,omitempty"`
+	ShippingBrokenCount     int64   `protobuf:"varint,5,opt,name=shipping_broken_count,json=shippingBrokenCount,proto3" json:"shipping_broken_count,omitempty"`
+	ShippingBrokenValuation float64 `protobuf:"fixed64,6,opt,name=shipping_broken_valuation,json=shippingBrokenValuation,proto3" json:"shipping_broken_valuation,omitempty"`
 	// broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
 	// rate of 0. Ranked only among keys with at least 50 units; the rest follow, in key order
 	// (rate-ranking-needs-50-units, a-rate-ranks-only-above-its-minimum-sample).
-	BrokenRate    float64 `protobuf:"fixed64,7,opt,name=broken_rate,json=brokenRate,proto3" json:"broken_rate,omitempty"`
+	BrokenRate float64 `protobuf:"fixed64,7,opt,name=broken_rate,json=brokenRate,proto3" json:"broken_rate,omitempty"`
+	// PENJUALAN — units SOLD to a buyer from the supplier's goods (batches carrying its id), counted on the Jakarta day
+	// the order was placed; a cancel takes them back on the cancel's day, so a day may read negative
+	// (penjualan-is-the-selling-value-on-the-order-day). TEAM is the team that owns the goods — the restocking team.
+	SalesCount int64 `protobuf:"varint,8,opt,name=sales_count,json=salesCount,proto3" json:"sales_count,omitempty"`
+	// Their SELLING value, rupiah, exact: each order line's share of the order's `platform_total` (by the line's frozen
+	// total), spread over the line's units — the units from this supplier's batches at that price.
+	SalesValue    float64 `protobuf:"fixed64,9,opt,name=sales_value,json=salesValue,proto3" json:"sales_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -88,7 +95,7 @@ func (x *SupplierMetric) GetRestockCount() int64 {
 	return 0
 }
 
-func (x *SupplierMetric) GetRestockValuation() int64 {
+func (x *SupplierMetric) GetRestockValuation() float64 {
 	if x != nil {
 		return x.RestockValuation
 	}
@@ -102,7 +109,7 @@ func (x *SupplierMetric) GetShippingLostCount() int64 {
 	return 0
 }
 
-func (x *SupplierMetric) GetShippingLostValuation() int64 {
+func (x *SupplierMetric) GetShippingLostValuation() float64 {
 	if x != nil {
 		return x.ShippingLostValuation
 	}
@@ -116,7 +123,7 @@ func (x *SupplierMetric) GetShippingBrokenCount() int64 {
 	return 0
 }
 
-func (x *SupplierMetric) GetShippingBrokenValuation() int64 {
+func (x *SupplierMetric) GetShippingBrokenValuation() float64 {
 	if x != nil {
 		return x.ShippingBrokenValuation
 	}
@@ -126,6 +133,20 @@ func (x *SupplierMetric) GetShippingBrokenValuation() int64 {
 func (x *SupplierMetric) GetBrokenRate() float64 {
 	if x != nil {
 		return x.BrokenRate
+	}
+	return 0
+}
+
+func (x *SupplierMetric) GetSalesCount() int64 {
+	if x != nil {
+		return x.SalesCount
+	}
+	return 0
+}
+
+func (x *SupplierMetric) GetSalesValue() float64 {
+	if x != nil {
+		return x.SalesValue
 	}
 	return 0
 }
@@ -530,8 +551,16 @@ func (*MetricData_SupplierByDay) isMetricData_M() {}
 func (*MetricData_SupplierSummary) isMetricData_M() {}
 
 type MetricDataResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MetricDatas   []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	MetricDatas []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	// AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+	// `supplier_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+	// behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+	// every metric it serves shares it. 0 = nothing folded yet.
+	//
+	// ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+	// dead-letter topic and the lease's log.
+	AsOfUnix      int64 `protobuf:"varint,2,opt,name=as_of_unix,json=asOfUnix,proto3" json:"as_of_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -573,6 +602,304 @@ func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
 	return nil
 }
 
+func (x *MetricDataResponse) GetAsOfUnix() int64 {
+	if x != nil {
+		return x.AsOfUnix
+	}
+	return 0
+}
+
+// THE STATISTIK TAB AS A FILE — the view's own read, every page (each-supplier-tab-exports-its-own-table).
+type SupplierFigureExportRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// THE VIEW: DAILY, MONTHLY or YEARLY is Per Periode at that grain; PRODUCT is Per Produk. The Supplier Report's
+	// ranking (SUPPLIER) is not offered here — its file is SupplierReportExport.
+	GroupBy v1.GroupType `protobuf:"varint,2,opt,name=group_by,json=groupBy,proto3,enum=warehouse.analytic_base.v1.GroupType" json:"group_by,omitempty"`
+	// The tab's own filters — the window (required), the supplier (required), and whose restocks when one team is picked.
+	Filters       []*v1.FilterItem `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierFigureExportRequest) Reset() {
+	*x = SupplierFigureExportRequest{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierFigureExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierFigureExportRequest) ProtoMessage() {}
+
+func (x *SupplierFigureExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierFigureExportRequest.ProtoReflect.Descriptor instead.
+func (*SupplierFigureExportRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SupplierFigureExportRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SupplierFigureExportRequest) GetGroupBy() v1.GroupType {
+	if x != nil {
+		return x.GroupBy
+	}
+	return v1.GroupType(0)
+}
+
+func (x *SupplierFigureExportRequest) GetFilters() []*v1.FilterItem {
+	if x != nil {
+		return x.Filters
+	}
+	return nil
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+type SupplierFigureExportResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A sentence about the step.
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// Rows written so far, of the total the view holds.
+	Done  int64 `protobuf:"varint,2,opt,name=done,proto3" json:"done,omitempty"`
+	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	// Set on the LAST message only: the file's expiring link, and its name.
+	DownloadUrl   string `protobuf:"bytes,4,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
+	Filename      string `protobuf:"bytes,5,opt,name=filename,proto3" json:"filename,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierFigureExportResponse) Reset() {
+	*x = SupplierFigureExportResponse{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierFigureExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierFigureExportResponse) ProtoMessage() {}
+
+func (x *SupplierFigureExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierFigureExportResponse.ProtoReflect.Descriptor instead.
+func (*SupplierFigureExportResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SupplierFigureExportResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SupplierFigureExportResponse) GetDone() int64 {
+	if x != nil {
+		return x.Done
+	}
+	return 0
+}
+
+func (x *SupplierFigureExportResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *SupplierFigureExportResponse) GetDownloadUrl() string {
+	if x != nil {
+		return x.DownloadUrl
+	}
+	return ""
+}
+
+func (x *SupplierFigureExportResponse) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+// THE SUPPLIER REPORT AS A FILE — the ranking's own reads, every page (a-report-export-is-the-whole-view-as-a-file).
+type SupplierReportExportRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The report's own filters — the window (required), whose restocks when one team is picked, and the search. Never a
+	// supplier: a file of one supplier is its Statistik tab's (SupplierFigureExport).
+	Filters []*v1.FilterItem `protobuf:"bytes,2,rep,name=filters,proto3" json:"filters,omitempty"`
+	// The report's order — `metrics/suppliers` by restock_valuation or broken_rate, as its "Urutkan" picks; the server
+	// ranks exactly as MetricSearch does (the rate's minimum sample included).
+	Sort          *v1.MetricSort `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierReportExportRequest) Reset() {
+	*x = SupplierReportExportRequest{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierReportExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierReportExportRequest) ProtoMessage() {}
+
+func (x *SupplierReportExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierReportExportRequest.ProtoReflect.Descriptor instead.
+func (*SupplierReportExportRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SupplierReportExportRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SupplierReportExportRequest) GetFilters() []*v1.FilterItem {
+	if x != nil {
+		return x.Filters
+	}
+	return nil
+}
+
+func (x *SupplierReportExportRequest) GetSort() *v1.MetricSort {
+	if x != nil {
+		return x.Sort
+	}
+	return nil
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+type SupplierReportExportResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A sentence about the step.
+	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// Rows written so far, of the total the ranking holds.
+	Done  int64 `protobuf:"varint,2,opt,name=done,proto3" json:"done,omitempty"`
+	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	// Set on the LAST message only: the file's expiring link, and its name.
+	DownloadUrl   string `protobuf:"bytes,4,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
+	Filename      string `protobuf:"bytes,5,opt,name=filename,proto3" json:"filename,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierReportExportResponse) Reset() {
+	*x = SupplierReportExportResponse{}
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierReportExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierReportExportResponse) ProtoMessage() {}
+
+func (x *SupplierReportExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierReportExportResponse.ProtoReflect.Descriptor instead.
+func (*SupplierReportExportResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SupplierReportExportResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SupplierReportExportResponse) GetDone() int64 {
+	if x != nil {
+		return x.Done
+	}
+	return 0
+}
+
+func (x *SupplierReportExportResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *SupplierReportExportResponse) GetDownloadUrl() string {
+	if x != nil {
+		return x.DownloadUrl
+	}
+	return ""
+}
+
+func (x *SupplierReportExportResponse) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
 type AnalyticReplayComputeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The first Jakarta day to rebuild, YYYY-MM-DD. Every figure row on or after it is deleted and rebuilt from what the
@@ -584,7 +911,7 @@ type AnalyticReplayComputeRequest struct {
 
 func (x *AnalyticReplayComputeRequest) Reset() {
 	*x = AnalyticReplayComputeRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -596,7 +923,7 @@ func (x *AnalyticReplayComputeRequest) String() string {
 func (*AnalyticReplayComputeRequest) ProtoMessage() {}
 
 func (x *AnalyticReplayComputeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[8]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -609,7 +936,7 @@ func (x *AnalyticReplayComputeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticReplayComputeRequest.ProtoReflect.Descriptor instead.
 func (*AnalyticReplayComputeRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AnalyticReplayComputeRequest) GetStartDate() string {
@@ -633,7 +960,7 @@ type AnalyticReplayComputeResponse struct {
 
 func (x *AnalyticReplayComputeResponse) Reset() {
 	*x = AnalyticReplayComputeResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +972,7 @@ func (x *AnalyticReplayComputeResponse) String() string {
 func (*AnalyticReplayComputeResponse) ProtoMessage() {}
 
 func (x *AnalyticReplayComputeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[9]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +985,7 @@ func (x *AnalyticReplayComputeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticReplayComputeResponse.ProtoReflect.Descriptor instead.
 func (*AnalyticReplayComputeResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AnalyticReplayComputeResponse) GetStatus() string {
@@ -697,7 +1024,7 @@ type AnalyticMaintenanceRunRequest struct {
 
 func (x *AnalyticMaintenanceRunRequest) Reset() {
 	*x = AnalyticMaintenanceRunRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -709,7 +1036,7 @@ func (x *AnalyticMaintenanceRunRequest) String() string {
 func (*AnalyticMaintenanceRunRequest) ProtoMessage() {}
 
 func (x *AnalyticMaintenanceRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[10]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -722,7 +1049,7 @@ func (x *AnalyticMaintenanceRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticMaintenanceRunRequest.ProtoReflect.Descriptor instead.
 func (*AnalyticMaintenanceRunRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{14}
 }
 
 type AnalyticMaintenanceRunResponse struct {
@@ -737,7 +1064,7 @@ type AnalyticMaintenanceRunResponse struct {
 
 func (x *AnalyticMaintenanceRunResponse) Reset() {
 	*x = AnalyticMaintenanceRunResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +1076,7 @@ func (x *AnalyticMaintenanceRunResponse) String() string {
 func (*AnalyticMaintenanceRunResponse) ProtoMessage() {}
 
 func (x *AnalyticMaintenanceRunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[11]
+	mi := &file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,7 +1089,7 @@ func (x *AnalyticMaintenanceRunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyticMaintenanceRunResponse.ProtoReflect.Descriptor instead.
 func (*AnalyticMaintenanceRunResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AnalyticMaintenanceRunResponse) GetDeletedEventLogs() int64 {
@@ -783,22 +1110,28 @@ var File_warehouse_supplier_v1_supplier_analytic_proto protoreflect.FileDescript
 
 const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\n" +
-	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xdc\x03\n" +
+	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xb6\x04\n" +
 	"\x0eSupplierMetric\x12/\n" +
 	"\rrestock_count\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\frestockCount\x127\n" +
-	"\x11restock_valuation\x18\x02 \x01(\x03B\n" +
+	"\x11restock_valuation\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x10restockValuation\x12:\n" +
 	"\x13shipping_lost_count\x18\x03 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x11shippingLostCount\x12B\n" +
-	"\x17shipping_lost_valuation\x18\x04 \x01(\x03B\n" +
+	"\x17shipping_lost_valuation\x18\x04 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15shippingLostValuation\x12>\n" +
 	"\x15shipping_broken_count\x18\x05 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x13shippingBrokenCount\x12F\n" +
-	"\x19shipping_broken_valuation\x18\x06 \x01(\x03B\n" +
+	"\x19shipping_broken_valuation\x18\x06 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x17shippingBrokenValuation\x12-\n" +
 	"\vbroken_rate\x18\a \x01(\x01B\f\x9a\xb5\x18\x04\b\x01\x102\xa0\xb5\x18\x01R\n" +
-	"brokenRate:)\x9a\xb5\x18%\n" +
+	"brokenRate\x12+\n" +
+	"\vsales_count\x18\b \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\n" +
+	"salesCount\x12+\n" +
+	"\vsales_value\x18\t \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\n" +
+	"salesValue:)\x9a\xb5\x18%\n" +
 	"\x04\x01\x04\x06\t\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
 	"\x12SupplierMetricByID\x12J\n" +
 	"\x05items\x18\x01 \x03(\v24.warehouse.supplier.v1.SupplierMetricByID.ItemsEntryR\x05items\x1a_\n" +
@@ -837,9 +1170,36 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x0esupplier_by_id\x18\x01 \x01(\v2).warehouse.supplier.v1.SupplierMetricByIDH\x00R\fsupplierById\x12T\n" +
 	"\x0fsupplier_by_day\x18\x02 \x01(\v2*.warehouse.supplier.v1.SupplierMetricByDayH\x00R\rsupplierByDay\x12R\n" +
 	"\x10supplier_summary\x18\x03 \x01(\v2%.warehouse.supplier.v1.SupplierMetricH\x00R\x0fsupplierSummaryB\x03\n" +
-	"\x01m\"Z\n" +
+	"\x01m\"x\n" +
 	"\x12MetricDataResponse\x12D\n" +
-	"\fmetric_datas\x18\x01 \x03(\v2!.warehouse.supplier.v1.MetricDataR\vmetricDatas\"l\n" +
+	"\fmetric_datas\x18\x01 \x03(\v2!.warehouse.supplier.v1.MetricDataR\vmetricDatas\x12\x1c\n" +
+	"\n" +
+	"as_of_unix\x18\x02 \x01(\x03R\basOfUnix\"\xf2\x01\n" +
+	"\x1bSupplierFigureExportRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12R\n" +
+	"\bgroup_by\x18\x02 \x01(\x0e2%.warehouse.analytic_base.v1.GroupTypeB\x10\xbaH\r\x82\x01\n" +
+	"\x10\x01\x18\x02\x18\x04\x18\x05\x18\x06R\agroupBy\x12L\n" +
+	"\afilters\x18\x03 \x03(\v2&.warehouse.analytic_base.v1.FilterItemB\n" +
+	"\xbaH\a\x92\x01\x04\b\x02\x10\x06R\afilters:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xa1\x01\n" +
+	"\x1cSupplierFigureExportResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
+	"\x04done\x18\x02 \x01(\x03R\x04done\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\x12!\n" +
+	"\fdownload_url\x18\x04 \x01(\tR\vdownloadUrl\x12\x1a\n" +
+	"\bfilename\x18\x05 \x01(\tR\bfilename\"\xe2\x01\n" +
+	"\x1bSupplierReportExportRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12L\n" +
+	"\afilters\x18\x02 \x03(\v2&.warehouse.analytic_base.v1.FilterItemB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x03R\afilters\x12B\n" +
+	"\x04sort\x18\x03 \x01(\v2&.warehouse.analytic_base.v1.MetricSortB\x06\xbaH\x03\xc8\x01\x01R\x04sort:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xa1\x01\n" +
+	"\x1cSupplierReportExportResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
+	"\x04done\x18\x02 \x01(\x03R\x04done\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\x12!\n" +
+	"\fdownload_url\x18\x04 \x01(\tR\vdownloadUrl\x12\x1a\n" +
+	"\bfilename\x18\x05 \x01(\tR\bfilename\"l\n" +
 	"\x1cAnalyticReplayComputeRequest\x12B\n" +
 	"\n" +
 	"start_date\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\tstartDate:\b\x92\xb5\x18\x04\n" +
@@ -853,11 +1213,13 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\x02\x01\x02\"f\n" +
 	"\x1eAnalyticMaintenanceRunResponse\x12,\n" +
 	"\x12deleted_event_logs\x18\x01 \x01(\x03R\x10deletedEventLogs\x12\x16\n" +
-	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff2\xe5\x01\n" +
-	"\x17SupplierAnalyticService\x12g\n" +
-	"\fMetricSearch\x12*.warehouse.supplier.v1.MetricSearchRequest\x1a+.warehouse.supplier.v1.MetricSearchResponse\x12a\n" +
+	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff2\xf7\x03\n" +
+	"\x17SupplierAnalyticService\x12l\n" +
+	"\fMetricSearch\x12*.warehouse.supplier.v1.MetricSearchRequest\x1a+.warehouse.supplier.v1.MetricSearchResponse\"\x03\x90\x02\x01\x12f\n" +
 	"\n" +
-	"MetricData\x12(.warehouse.supplier.v1.MetricDataRequest\x1a).warehouse.supplier.v1.MetricDataResponse2\xb1\x02\n" +
+	"MetricData\x12(.warehouse.supplier.v1.MetricDataRequest\x1a).warehouse.supplier.v1.MetricDataResponse\"\x03\x90\x02\x01\x12\x81\x01\n" +
+	"\x14SupplierFigureExport\x122.warehouse.supplier.v1.SupplierFigureExportRequest\x1a3.warehouse.supplier.v1.SupplierFigureExportResponse0\x01\x12\x81\x01\n" +
+	"\x14SupplierReportExport\x122.warehouse.supplier.v1.SupplierReportExportRequest\x1a3.warehouse.supplier.v1.SupplierReportExportResponse0\x012\xb1\x02\n" +
 	"\"SupplierAnalyticMaintenanceService\x12\x82\x01\n" +
 	"\x15AnalyticReplayCompute\x123.warehouse.supplier.v1.AnalyticReplayComputeRequest\x1a4.warehouse.supplier.v1.AnalyticReplayComputeResponse\x12\x85\x01\n" +
 	"\x16AnalyticMaintenanceRun\x124.warehouse.supplier.v1.AnalyticMaintenanceRunRequest\x1a5.warehouse.supplier.v1.AnalyticMaintenanceRunResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"
@@ -874,7 +1236,7 @@ func file_warehouse_supplier_v1_supplier_analytic_proto_rawDescGZIP() []byte {
 	return file_warehouse_supplier_v1_supplier_analytic_proto_rawDescData
 }
 
-var file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_warehouse_supplier_v1_supplier_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_warehouse_supplier_v1_supplier_analytic_proto_goTypes = []any{
 	(*SupplierMetric)(nil),                 // 0: warehouse.supplier.v1.SupplierMetric
 	(*SupplierMetricByID)(nil),             // 1: warehouse.supplier.v1.SupplierMetricByID
@@ -884,48 +1246,60 @@ var file_warehouse_supplier_v1_supplier_analytic_proto_goTypes = []any{
 	(*MetricDataRequest)(nil),              // 5: warehouse.supplier.v1.MetricDataRequest
 	(*MetricData)(nil),                     // 6: warehouse.supplier.v1.MetricData
 	(*MetricDataResponse)(nil),             // 7: warehouse.supplier.v1.MetricDataResponse
-	(*AnalyticReplayComputeRequest)(nil),   // 8: warehouse.supplier.v1.AnalyticReplayComputeRequest
-	(*AnalyticReplayComputeResponse)(nil),  // 9: warehouse.supplier.v1.AnalyticReplayComputeResponse
-	(*AnalyticMaintenanceRunRequest)(nil),  // 10: warehouse.supplier.v1.AnalyticMaintenanceRunRequest
-	(*AnalyticMaintenanceRunResponse)(nil), // 11: warehouse.supplier.v1.AnalyticMaintenanceRunResponse
-	nil,                                    // 12: warehouse.supplier.v1.SupplierMetricByID.ItemsEntry
-	nil,                                    // 13: warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry
-	(v1.GroupType)(0),                      // 14: warehouse.analytic_base.v1.GroupType
-	(*v1.FilterItem)(nil),                  // 15: warehouse.analytic_base.v1.FilterItem
-	(*v1.MetricSort)(nil),                  // 16: warehouse.analytic_base.v1.MetricSort
-	(*v1.PaginationFilter)(nil),            // 17: warehouse.analytic_base.v1.PaginationFilter
-	(*v1.MetricKeys)(nil),                  // 18: warehouse.analytic_base.v1.MetricKeys
+	(*SupplierFigureExportRequest)(nil),    // 8: warehouse.supplier.v1.SupplierFigureExportRequest
+	(*SupplierFigureExportResponse)(nil),   // 9: warehouse.supplier.v1.SupplierFigureExportResponse
+	(*SupplierReportExportRequest)(nil),    // 10: warehouse.supplier.v1.SupplierReportExportRequest
+	(*SupplierReportExportResponse)(nil),   // 11: warehouse.supplier.v1.SupplierReportExportResponse
+	(*AnalyticReplayComputeRequest)(nil),   // 12: warehouse.supplier.v1.AnalyticReplayComputeRequest
+	(*AnalyticReplayComputeResponse)(nil),  // 13: warehouse.supplier.v1.AnalyticReplayComputeResponse
+	(*AnalyticMaintenanceRunRequest)(nil),  // 14: warehouse.supplier.v1.AnalyticMaintenanceRunRequest
+	(*AnalyticMaintenanceRunResponse)(nil), // 15: warehouse.supplier.v1.AnalyticMaintenanceRunResponse
+	nil,                                    // 16: warehouse.supplier.v1.SupplierMetricByID.ItemsEntry
+	nil,                                    // 17: warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry
+	(v1.GroupType)(0),                      // 18: warehouse.analytic_base.v1.GroupType
+	(*v1.FilterItem)(nil),                  // 19: warehouse.analytic_base.v1.FilterItem
+	(*v1.MetricSort)(nil),                  // 20: warehouse.analytic_base.v1.MetricSort
+	(*v1.PaginationFilter)(nil),            // 21: warehouse.analytic_base.v1.PaginationFilter
+	(*v1.MetricKeys)(nil),                  // 22: warehouse.analytic_base.v1.MetricKeys
 }
 var file_warehouse_supplier_v1_supplier_analytic_proto_depIdxs = []int32{
-	12, // 0: warehouse.supplier.v1.SupplierMetricByID.items:type_name -> warehouse.supplier.v1.SupplierMetricByID.ItemsEntry
-	13, // 1: warehouse.supplier.v1.SupplierMetricByDay.items:type_name -> warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry
-	14, // 2: warehouse.supplier.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	15, // 3: warehouse.supplier.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	16, // 4: warehouse.supplier.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
-	17, // 5: warehouse.supplier.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
-	18, // 6: warehouse.supplier.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
-	14, // 7: warehouse.supplier.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	15, // 8: warehouse.supplier.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	18, // 9: warehouse.supplier.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	16, // 0: warehouse.supplier.v1.SupplierMetricByID.items:type_name -> warehouse.supplier.v1.SupplierMetricByID.ItemsEntry
+	17, // 1: warehouse.supplier.v1.SupplierMetricByDay.items:type_name -> warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry
+	18, // 2: warehouse.supplier.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	19, // 3: warehouse.supplier.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	20, // 4: warehouse.supplier.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
+	21, // 5: warehouse.supplier.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
+	22, // 6: warehouse.supplier.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	18, // 7: warehouse.supplier.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	19, // 8: warehouse.supplier.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	22, // 9: warehouse.supplier.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
 	1,  // 10: warehouse.supplier.v1.MetricData.supplier_by_id:type_name -> warehouse.supplier.v1.SupplierMetricByID
 	2,  // 11: warehouse.supplier.v1.MetricData.supplier_by_day:type_name -> warehouse.supplier.v1.SupplierMetricByDay
 	0,  // 12: warehouse.supplier.v1.MetricData.supplier_summary:type_name -> warehouse.supplier.v1.SupplierMetric
 	6,  // 13: warehouse.supplier.v1.MetricDataResponse.metric_datas:type_name -> warehouse.supplier.v1.MetricData
-	0,  // 14: warehouse.supplier.v1.SupplierMetricByID.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierMetric
-	0,  // 15: warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierMetric
-	3,  // 16: warehouse.supplier.v1.SupplierAnalyticService.MetricSearch:input_type -> warehouse.supplier.v1.MetricSearchRequest
-	5,  // 17: warehouse.supplier.v1.SupplierAnalyticService.MetricData:input_type -> warehouse.supplier.v1.MetricDataRequest
-	8,  // 18: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:input_type -> warehouse.supplier.v1.AnalyticReplayComputeRequest
-	10, // 19: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:input_type -> warehouse.supplier.v1.AnalyticMaintenanceRunRequest
-	4,  // 20: warehouse.supplier.v1.SupplierAnalyticService.MetricSearch:output_type -> warehouse.supplier.v1.MetricSearchResponse
-	7,  // 21: warehouse.supplier.v1.SupplierAnalyticService.MetricData:output_type -> warehouse.supplier.v1.MetricDataResponse
-	9,  // 22: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:output_type -> warehouse.supplier.v1.AnalyticReplayComputeResponse
-	11, // 23: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:output_type -> warehouse.supplier.v1.AnalyticMaintenanceRunResponse
-	20, // [20:24] is the sub-list for method output_type
-	16, // [16:20] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	18, // 14: warehouse.supplier.v1.SupplierFigureExportRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	19, // 15: warehouse.supplier.v1.SupplierFigureExportRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	19, // 16: warehouse.supplier.v1.SupplierReportExportRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	20, // 17: warehouse.supplier.v1.SupplierReportExportRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
+	0,  // 18: warehouse.supplier.v1.SupplierMetricByID.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierMetric
+	0,  // 19: warehouse.supplier.v1.SupplierMetricByDay.ItemsEntry.value:type_name -> warehouse.supplier.v1.SupplierMetric
+	3,  // 20: warehouse.supplier.v1.SupplierAnalyticService.MetricSearch:input_type -> warehouse.supplier.v1.MetricSearchRequest
+	5,  // 21: warehouse.supplier.v1.SupplierAnalyticService.MetricData:input_type -> warehouse.supplier.v1.MetricDataRequest
+	8,  // 22: warehouse.supplier.v1.SupplierAnalyticService.SupplierFigureExport:input_type -> warehouse.supplier.v1.SupplierFigureExportRequest
+	10, // 23: warehouse.supplier.v1.SupplierAnalyticService.SupplierReportExport:input_type -> warehouse.supplier.v1.SupplierReportExportRequest
+	12, // 24: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:input_type -> warehouse.supplier.v1.AnalyticReplayComputeRequest
+	14, // 25: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:input_type -> warehouse.supplier.v1.AnalyticMaintenanceRunRequest
+	4,  // 26: warehouse.supplier.v1.SupplierAnalyticService.MetricSearch:output_type -> warehouse.supplier.v1.MetricSearchResponse
+	7,  // 27: warehouse.supplier.v1.SupplierAnalyticService.MetricData:output_type -> warehouse.supplier.v1.MetricDataResponse
+	9,  // 28: warehouse.supplier.v1.SupplierAnalyticService.SupplierFigureExport:output_type -> warehouse.supplier.v1.SupplierFigureExportResponse
+	11, // 29: warehouse.supplier.v1.SupplierAnalyticService.SupplierReportExport:output_type -> warehouse.supplier.v1.SupplierReportExportResponse
+	13, // 30: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticReplayCompute:output_type -> warehouse.supplier.v1.AnalyticReplayComputeResponse
+	15, // 31: warehouse.supplier.v1.SupplierAnalyticMaintenanceService.AnalyticMaintenanceRun:output_type -> warehouse.supplier.v1.AnalyticMaintenanceRunResponse
+	26, // [26:32] is the sub-list for method output_type
+	20, // [20:26] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_supplier_v1_supplier_analytic_proto_init() }
@@ -944,7 +1318,7 @@ func file_warehouse_supplier_v1_supplier_analytic_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc), len(file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

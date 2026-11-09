@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"testing"
 
@@ -15,6 +16,15 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
+// testShipmentChannelID is the courier every order placed here names — create requires one (no-order-without-a-courier).
+const testShipmentChannelID uint64 = 1
+
+// newOrderKey mints the key a submit carries (every-submit-mints-a-new-key) — a fresh random one per call, so two
+// requests built by one helper never share a key and the second is never refused as a used one.
+func newOrderKey() string {
+	return "test-" + rand.Text()
+}
+
 // ONE PRODUCT ON TWO LINES, THROUGH THE REAL TAKE. The take refuses a product listed twice, so before placeOrder merged
 // them an order carrying a bundle's product beside the same product picked by hand could never be placed. Here selling's
 // placeOrder meets inventory's real OrderTransactionCreate through the composition root's adapter: the order is placed,
@@ -27,8 +37,8 @@ func TestOrderCreate_OneProductOnTwoLinesThroughTheRealTake(t *testing.T) {
 	)
 
 	db := san_testdb.DB(t)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 5)
 	shop := shopForOrders(t, db, team)
@@ -46,7 +56,7 @@ func TestOrderCreate_OneProductOnTwoLinesThroughTheRealTake(t *testing.T) {
 	}
 
 	if order.GetGoodsCost() != 30_000 || items[0].GetUnitCost() != 10_000 {
-		t.Fatalf("goods_cost %d, unit cost %d — want the one draw of 3 × 10.000", order.GetGoodsCost(), items[0].GetUnitCost())
+		t.Fatalf("goods_cost %v, unit cost %v — want the one draw of 3 × 10.000", order.GetGoodsCost(), items[0].GetUnitCost())
 	}
 
 	if left := ledgerUnits(t, db, warehouse, product); left != 2 {
@@ -64,8 +74,8 @@ func TestOrderCreate_AShortRealTakeKeepsItsCodeAndDetail(t *testing.T) {
 	)
 
 	db := san_testdb.DB(t)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 2)
 	shop := shopForOrders(t, db, team)
@@ -107,11 +117,13 @@ func TestOrderCreate_AShortRealTakeKeepsItsCodeAndDetail(t *testing.T) {
 // twoLinesOf is an order of one product on two lines — 2 picked by hand, 1 from a bundle — agreeing on everything else.
 func twoLinesOf(team, shop, warehouse, product uint64) *sellingv1.OrderCreateRequest {
 	line := func(quantity uint32) *sellingv1.OrderItem {
-		return &sellingv1.OrderItem{ProductId: product, Sku: "SKU", Name: "Kaos", Quantity: quantity}
+		return &sellingv1.OrderItem{ProductId: product, ProductCode: "SKU", Name: "Kaos", Quantity: quantity}
 	}
 
 	return &sellingv1.OrderCreateRequest{
-		TeamId: team, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
+		ShipmentChannelId: testShipmentChannelID,
+		IdempotencyKey:    newOrderKey(),
+		TeamId:            team, ShopId: shop, WarehouseId: warehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 40_000,
 		Items: []*sellingv1.OrderItem{line(2), line(1)},
 	}

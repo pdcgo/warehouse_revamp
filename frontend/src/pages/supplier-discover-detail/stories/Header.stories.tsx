@@ -68,15 +68,20 @@ export const AnEmptySupplierShowsItsNameAndTeam: Story = {
   },
 };
 
-// GUDANG TERKAIT, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — over the tabs, marked 4 and 5.
+// GUDANG TERKAIT, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — over the tabs, real; the pick
+// marked 4.
 export const TheWarehousesScopeThePage: Story = {
   name: "Warehouses over the tabs",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const row = await canvas.findByTestId("supplier-warehouses");
-    await expect(within(row).getByTestId("not-implemented-warehouses")).toHaveTextContent("4");
-    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("5");
+    await expect(within(row).queryByTestId("not-implemented-warehouses")).toBeNull();
+    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("4");
+    await waitFor(() =>
+      expect(within(row).getByTestId("supplier-warehouses-chips")).toHaveTextContent(/^AllGudang Cabang$/),
+    );
+    await expect(within(row).getByTestId("supplier-warehouse-summary-sold")).toHaveTextContent(/640 units.*from 52 orders · last /);
     await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       canvas.getByTestId("supplier-tabs").getBoundingClientRect().top,
     );

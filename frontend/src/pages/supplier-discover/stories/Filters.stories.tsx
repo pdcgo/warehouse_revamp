@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { pickTeam } from "../../../../.storybook/pageStory";
 import { teams } from "../../../../.storybook/fixtures";
 import { supplierFixture, supplierFixtures } from "../../../../.storybook/supplierFixtures";
+import { supplierListBandCalls } from "../../../../.storybook/supplierGoodsStub";
 import { SUPPLIER_DISCOVER_META, LIVE, NUSANTARA, SUMBER, loaded, rows } from "./kit";
 
 // DISCOVER SUPPLIERS — the warehouse, the team (discover-filters-team-before-store), the Sold and Ready ranges and
@@ -92,14 +93,14 @@ export const TheStoreTypeIsChips: Story = {
 };
 
 // THE WAREHOUSE FILTERS BEFORE THE TEAM (the-warehouse-filters-before-the-team) — right after the search, left of the
-// team, its mark (5) beside it: not wired yet.
+// team, its mark (1) beside it: not wired yet.
 export const TheWarehouseFiltersBeforeTheTeam: Story = {
   name: "Warehouse before team",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const warehouse = canvas.getByTestId("supplier-warehouse-filter");
-    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("5");
+    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("1");
     await expect(within(warehouse).getByRole("combobox")).toHaveAttribute("placeholder", "All warehouses");
     const team = canvas.getByTestId("discover-suppliers-team-filter").getBoundingClientRect();
     const search = canvas.getByTestId("discover-suppliers-search").getBoundingClientRect();
@@ -108,8 +109,8 @@ export const TheWarehouseFiltersBeforeTheTeam: Story = {
   },
 };
 
-// THE SAME RANGE FILTERS — Terjual and Siap after the team, a panel each, marked 3 and 4. A pick is held, the trigger
-// reads the band, and the cards do not move for it; Clear takes it back.
+// THE SAME RANGE FILTERS — Terjual and Siap after the team, a panel each, unmarked. A pick narrows the cards on the server
+// (the-range-pills-are-a-fixed-set): Siap 100–250 is PT Sumber Makmur (151) and PT Banyak Toko (155); Clear takes it back.
 export const TheFiguresFilterByRangePills: Story = {
   name: "Sold and Ready ranges",
   play: async ({ canvasElement }) => {
@@ -117,8 +118,8 @@ export const TheFiguresFilterByRangePills: Story = {
     await waitFor(() => expect(rows(canvas)).toHaveLength(Math.min(LIVE.length, 20)));
     const before = rows(canvas).length;
 
-    await expect(within(canvas.getByTestId("supplier-range-sold")).getByTestId("not-implemented-soldRange")).toHaveTextContent("3");
-    await expect(within(canvas.getByTestId("supplier-range-ready")).getByTestId("not-implemented-readyRange")).toHaveTextContent("4");
+    await expect(within(canvas.getByTestId("supplier-range-sold")).queryByTestId("not-implemented-soldRange")).toBeNull();
+    await expect(within(canvas.getByTestId("supplier-range-ready")).queryByTestId("not-implemented-readyRange")).toBeNull();
     const team = canvas.getByTestId("discover-suppliers-team-filter").getBoundingClientRect();
     await expect(canvas.getByTestId("supplier-range-sold").getBoundingClientRect().left).toBeGreaterThan(team.left);
 
@@ -127,10 +128,12 @@ export const TheFiguresFilterByRangePills: Story = {
     await waitFor(() => expect(panel).toBeVisible());
     await userEvent.click(within(panel).getByRole("button", { name: "100–250" }));
     await expect(canvas.getByTestId("supplier-range-ready-trigger")).toHaveTextContent("Ready: 100–250");
-    await expect(rows(canvas)).toHaveLength(before);
+    await waitFor(() => expect(rows(canvas)).toHaveLength(2));
+    await expect(supplierListBandCalls.at(-1)?.ready).toEqual({ min: 100n, max: 250n });
 
     await userEvent.click(canvas.getByTestId("discover-suppliers-filter-clear"));
     await waitFor(() => expect(canvas.getByTestId("supplier-range-ready-trigger")).toHaveTextContent(/^Ready$/));
+    await waitFor(() => expect(rows(canvas)).toHaveLength(before));
   },
 };
 

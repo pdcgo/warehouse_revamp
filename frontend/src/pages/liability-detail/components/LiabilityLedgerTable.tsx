@@ -1,13 +1,15 @@
 import { useTranslation } from "react-i18next";
-import { Badge, Flex, Table, Text } from "@chakra-ui/react";
+import { Badge, Box, Flex, HStack, Stack, Table, Text } from "@chakra-ui/react";
 import { Handshake } from "lucide-react";
 
 import type { LiabilityLog } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../../lib/money";
-import { causeKey, fmtDate } from "../format";
+import { causeKey } from "../format";
+import { formatUnixDateTimeShort } from "../../../lib/datetime";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
 
-// ONE DIRECTION OF ONE RELATIONSHIP'S LEDGER — the receivable or the payable tab of the liability detail.
+// ONE RELATIONSHIP'S LEDGER — the All tab's whole running ledger, or one direction of it (the receivable or the payable
+// tab) on the liability detail.
 //
 // Lifted out of the page so it can be reviewed on its own beside the other ledgers (settlement's,
 // a financial account's, the stock's): they answer the same questions — when · what · how much · and
@@ -15,16 +17,67 @@ import { EmptyHint } from "../../../components/feedback/EmptyHint";
 export function LiabilityLedgerTable({
   rows,
   emptyText,
+  phone = false,
 }: {
   rows: LiabilityLog[];
   /** The tab's own way of saying nothing is owed in this direction. */
   emptyText: string;
+  /**
+   * Each entry as a BLOCK on a phone (a-phone-reads-each-line-as-a-block, the-team-balance-phone-layout-is-accepted):
+   * the cause and the movement on the first line, the day and the balance it left on the second. The pair page passes
+   * its `useIsMobile()`; off a phone it is the table.
+   */
+  phone?: boolean;
 }) {
   const { t } = useTranslation();
 
   if (rows.length === 0) {
     return (
       <EmptyHint icon={Handshake} size="sm" title={emptyText} testId="liability-ledger-empty" />
+    );
+  }
+
+  if (phone) {
+    return (
+      <Stack gap="0" data-testid="liability-ledger-table" data-layout="blocks">
+        {rows.map((e) => (
+          // A block that opens nothing does not light up (a-table-row-lights-up).
+          <Box
+            key={e.id.toString()}
+            py="2.5"
+            px="1"
+            borderBottomWidth="1px"
+            borderColor="border.muted"
+            bg={e.reversal ? "bg.muted" : undefined}
+            data-testid={`liability-detail-entry-${e.id}`}
+          >
+            <Flex justify="space-between" align="baseline" gap="3">
+              <Text fontSize="sm" fontWeight="medium" minW="0">
+                {t(causeKey(e.sourceType), { id: e.sourceId.toString() })}
+              </Text>
+              <Text fontSize="sm" fontWeight="bold" whiteSpace="nowrap">
+                {e.amount > 0n ? "+" : "−"}
+                {formatRupiah(e.amount < 0n ? -e.amount : e.amount)}
+              </Text>
+            </Flex>
+            <Flex justify="space-between" align="center" gap="3" mt="0.5">
+              <HStack gap="2" minW="0">
+                <Text fontSize="xs" color="fg.muted" whiteSpace="nowrap">
+                  {formatUnixDateTimeShort(e.createdAtUnix)}
+                </Text>
+                {e.reversal && (
+                  <Badge size="sm" colorPalette="warning" data-testid={`liability-detail-reversal-${e.id}`}>
+                    {t("liabilityDetail.reversal")}
+                  </Badge>
+                )}
+              </HStack>
+              <Text fontSize="xs" color="fg.muted" whiteSpace="nowrap" data-testid={`liability-detail-balance-after-${e.id}`}>
+                {t("liabilityDetail.balanceAfterLine", { amount: formatRupiah(e.balanceAfter) })}
+              </Text>
+            </Flex>
+          </Box>
+        ))}
+      </Stack>
     );
   }
 
@@ -45,7 +98,8 @@ export function LiabilityLedgerTable({
             bg={e.reversal ? "bg.muted" : undefined}
             data-testid={`liability-detail-entry-${e.id}`}
           >
-            <Table.Cell whiteSpace="nowrap">{fmtDate(e.createdAtUnix)}</Table.Cell>
+            {/* A table date is short and Jakarta time (a-table-date-is-short-and-every-time-is-wib). */}
+            <Table.Cell whiteSpace="nowrap">{formatUnixDateTimeShort(e.createdAtUnix)}</Table.Cell>
             <Table.Cell>
               <Flex align="center" gap="2">
                 <Text>{t(causeKey(e.sourceType), { id: e.sourceId.toString() })}</Text>
@@ -63,7 +117,12 @@ export function LiabilityLedgerTable({
               {e.amount > 0n ? "+" : "−"}
               {formatRupiah(e.amount < 0n ? -e.amount : e.amount)}
             </Table.Cell>
-            <Table.Cell textAlign="end" color="fg.muted" whiteSpace="nowrap">
+            <Table.Cell
+              textAlign="end"
+              color="fg.muted"
+              whiteSpace="nowrap"
+              data-testid={`liability-detail-balance-after-${e.id}`}
+            >
               {formatRupiah(e.balanceAfter)}
             </Table.Cell>
           </Table.Row>

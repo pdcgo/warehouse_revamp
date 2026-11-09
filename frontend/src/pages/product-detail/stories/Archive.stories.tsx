@@ -3,8 +3,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { AtArchivedPack, PRODUCT_DETAIL_META, loaded } from "./kit";
 
-// PRODUCT DETAIL — an archived product: reached by URL it says so, Archive confirms first, Restore asks for a new SKU
-// when its own is taken, and Back returns to the archive. The page's stories are grouped by the part of the screen they
+// PRODUCT DETAIL — an archived product: reached by URL it says so, Archive confirms first, Unarchive brings it back
+// under the code it kept, and Back returns to the archive. The page's stories are grouped by the part of the screen they
 // are about (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -37,7 +37,7 @@ export const ArchiveConfirmsFirst: Story = {
     await userEvent.click(canvas.getByTestId("product-detail-archive"));
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
-    await expect(dialog).toHaveTextContent("SKU-ANG-001");
+    await expect(dialog).toHaveTextContent("SL-03-ANG-001");
 
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
     await waitFor(() => expect(canvas.getByTestId("product-detail-archived")).toBeVisible());
@@ -45,21 +45,19 @@ export const ArchiveConfirmsFirst: Story = {
   },
 };
 
-/** Restoring the older pack collides — its SKU is now SKU-ANG-001's live product — and restores under a new one. */
-export const RestoreCollidesAndAsksForANewSku: Story = {
-  name: "Restore, new SKU",
+/** Unarchiving the older pack brings it back under the code it KEPT — nothing could take it while it was archived, so
+ * there is no dialog to answer (the-field-is-product-code-composed-on-write). */
+export const UnarchiveComesBackUnderTheCodeItKept: Story = {
+  name: "Unarchive, same code",
   render: () => <AtArchivedPack />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("product-detail-restore"));
-    const dialog = await screen.findByTestId("restore-conflict-dialog");
-    await waitFor(() => expect(dialog).toBeVisible());
-    await userEvent.type(within(dialog).getByTestId("restore-new-sku"), "SKU-ANG-001-L", { delay: 20 });
-    await userEvent.click(within(dialog).getByTestId("restore-with-new-sku"));
 
     await waitFor(() => expect(canvas.queryByTestId("product-detail-archived")).toBeNull());
-    await expect(canvas.getByTestId("product-detail-page")).toHaveTextContent("SKU-ANG-001-L");
+    await expect(screen.queryByRole("dialog")).toBeNull();
+    await expect(canvas.getByTestId("product-detail-sku")).toHaveTextContent("SL-03-ANG-001-L");
   },
 };
 

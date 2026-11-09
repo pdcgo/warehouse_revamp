@@ -66,6 +66,7 @@ func NewWarehouseFeeServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+WarehouseFeeServiceWarehouseFeeDetailProcedure,
 			connect.WithSchema(warehouseFeeServiceMethods.ByName("WarehouseFeeDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		warehouseFeeSet: connect.NewClient[v1.WarehouseFeeSetRequest, v1.WarehouseFeeSetResponse](
@@ -78,6 +79,7 @@ func NewWarehouseFeeServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+WarehouseFeeServiceWarehouseFeeCalculateProcedure,
 			connect.WithSchema(warehouseFeeServiceMethods.ByName("WarehouseFeeCalculate")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -124,6 +126,7 @@ func NewWarehouseFeeServiceHandler(svc WarehouseFeeServiceHandler, opts ...conne
 		WarehouseFeeServiceWarehouseFeeDetailProcedure,
 		svc.WarehouseFeeDetail,
 		connect.WithSchema(warehouseFeeServiceMethods.ByName("WarehouseFeeDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	warehouseFeeServiceWarehouseFeeSetHandler := connect.NewUnaryHandler(
@@ -136,6 +139,7 @@ func NewWarehouseFeeServiceHandler(svc WarehouseFeeServiceHandler, opts ...conne
 		WarehouseFeeServiceWarehouseFeeCalculateProcedure,
 		svc.WarehouseFeeCalculate,
 		connect.WithSchema(warehouseFeeServiceMethods.ByName("WarehouseFeeCalculate")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.warehouse.v1.WarehouseFeeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

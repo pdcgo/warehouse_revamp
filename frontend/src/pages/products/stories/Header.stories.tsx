@@ -37,9 +37,9 @@ export const TheCatalogueAndItsFigures: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("products-total-value")).toHaveTextContent(/^44$/));
     await waitFor(() => expect(canvas.getByTestId("products-ready-stock")).toHaveTextContent("pcs"));
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("79 pcs"));
-    await expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
-    await expect(canvas.getByTestId("product-row-SKU-ANG-003")).toHaveTextContent("0 pcs");
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("79 pcs"));
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-003")).toHaveTextContent("0 pcs");
   },
 };
 

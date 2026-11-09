@@ -39,3 +39,29 @@ sequenceDiagram
 | where the rates came from | each warehouse's own `WarehouseFeeSet`. Before step 5 dropped the flat fee, step 2's carry-over (`san warehouse carry-over-fees`, removed with it) turned each warehouse's default flat fee into a rate — 0%, floor = cap = the fee ([docs/tools/san.md](../../tools/san.md#warehouse-carry-over-fees)). `san seed dev` gives Dev Warehouse the worked example when it has none |
 
 `WarehouseFeeDetail` and `WarehouseFeeSet` are single-table reads and an upsert, and need no flow here.
+
+## The closed-day warning — `WarehouseReceivingStatus`
+
+The warehouse profile — both weekly grids, the location, the one-off closures — is this service's
+([the-warehouse-profile-lives-in-warehouse-service](../../business/teams/warehouse/context_decision.md#the-warehouse-profile-lives-in-warehouse-service)). The order form asks, for the warehouse on screen,
+whether it receives orders NOW; a closed one is MARKED and the order is created as usual
+([a-closed-day-warns-and-never-refuses](../../business/teams/warehouse/context_decision.md#a-closed-day-warns-and-never-refuses)).
+
+```mermaid
+sequenceDiagram
+  participant UI as the order form
+  participant W as warehouse_service
+  participant DB as warehouse_infos, warehouse_closures
+  UI->>W: WarehouseReceivingStatus — the warehouse ids on screen
+  W->>DB: the receiving grids, and the closures whose last day is today or later
+  W->>W: now in Asia/Jakarta — in a closure? inside today's slot?
+  W-->>UI: per warehouse — receiving now, or the next opening and the closure's reason
+  UI->>UI: a warning under the picker, a Closed badge on the option — Save stays on
+```
+
+| | |
+| --- | --- |
+| in a closure today | closed, its reason, and the first slot of the grid after every closure day |
+| inside today's slot | receiving now — `open_time` inclusive, `close_time` exclusive |
+| otherwise | closed, and the next slot that falls on no closure day — within 60 days, else none |
+| refuses | nothing — no order is ever refused for the hours |

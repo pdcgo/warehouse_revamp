@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { Alert, Badge, Box, Flex, Heading, HStack, Link, Stack, Text } from "@chakra-ui/react";
@@ -6,7 +7,7 @@ import { Alert, Badge, Box, Flex, Heading, HStack, Link, Stack, Text } from "@ch
 import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
-import { DateRangePicker, type DateRange, ALL_DATES, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, type DateRange, ALL_DATES, isAllDates } from "../../components/datetime/DateRangePicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import {
   type FinancialAccountChangeType,
@@ -17,10 +18,10 @@ import { ProviderBadge } from "../../features/financialAccount/badges";
 import { useAccountBalances, useAccountLogs, useFinancialAccount } from "../../features/financialAccount/queries";
 import { CHANGE_TYPES, TYPE_KEY, accountName, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { useIsMobile } from "../../layouts/shell";
-import { toDateInputValue } from "../../lib/datetime";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { canMoveAccountMoney, canTransferMoney } from "../../lib/roles";
 import { dateRangeCodec, enumCodec, listCodec, useUrlState } from "../../lib/urlState";
 import { AccountLogTable } from "./components/AccountLogTable";
@@ -32,17 +33,6 @@ import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 const CHANGE_TYPES_CODEC = listCodec(enumCodec(CHANGE_TYPES));
-
-// A DateRange → the inclusive `yyyy-mm-dd` pair the log filters on; "" is an open end. Formatted back
-// in LOCAL time, as the settlement report does — `toISOString` would shift the boundary a day.
-function windowOf(range: DateRange): { from: string; to: string } {
-  const { fromUnix, toUnix } = resolveRange(range);
-
-  return {
-    from: fromUnix > 0n ? toDateInputValue(new Date(Number(fromUnix) * 1000)) : "",
-    to: toUnix > 0n ? toDateInputValue(new Date(Number(toUnix) * 1000)) : "",
-  };
-}
 
 // FinancialAccountDetailPage — one account: its balance, where its money comes from, and its statement
 // (docs/business/financial_account).
@@ -74,7 +64,8 @@ export function FinancialAccountDetailPage() {
   const teamId = current?.teamId;
   const accountQuery = useFinancialAccount(teamId, accountId);
   const balances = useAccountBalances(teamId, accountId > 0n ? [accountId] : []);
-  const { from, to } = windowOf(range);
+  // The log's days are JAKARTA days (the-system-runs-on-jakarta-time, backlog #37) — never the viewer's midnight.
+  const { from, to } = jakartaWindowOf(range);
   const logs = useAccountLogs({
     teamId,
     accountId,
@@ -110,13 +101,13 @@ export function FinancialAccountDetailPage() {
   const b = balances.data?.get(id);
   const archived = account.status === FinancialAccountStatus.ARCHIVED;
   const unknown = isUnknown(account);
-  const canMove = canMoveAccountMoney(current.role);
+  const canMove = canWrite(current) && canMoveAccountMoney(current.role);
   const nameOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId)?.name;
   const shopName = (shopId: bigint) => nameOf(shopId) ?? `#${shopId}`;
   const shopOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId);
   // An unknown account is named after its shop by id — shown by the shop's name.
   const shown = { ...account, name: accountName(account, nameOf) };
-  const actorName = (actorId: bigint) => actors.data?.get(actorId.toString())?.name ?? `#${actorId}`;
+  const actorName = (actorId: bigint) => personName(actors.data?.get(actorId.toString()), `#${actorId}`);
   // A picked type and a bounded window — each is a filter Clear puts back.
   const filtering = [changeTypes.length > 0, !isAllDates(range)].filter(Boolean).length;
 

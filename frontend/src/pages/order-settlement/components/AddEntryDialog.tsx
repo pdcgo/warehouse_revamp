@@ -56,8 +56,8 @@ import { manualTypesFor, type OrderSettlement, type PostingRole, type Settlement
 // (`a-chosen-option-is-in-the-main-tone`, set in theme.ts, not here).
 export interface EntryDraft {
   settlementType: SettlementType;
-  /** Signed, whole rupiah — direction already applied. */
-  change: bigint;
+  /** Signed rupiah, a double on the wire (settlement 00010) — direction already applied. Posting rounds it to whole. */
+  change: number;
   occurredOn: string;
   note: string;
 }
@@ -104,9 +104,10 @@ export function AddEntryDialog({
   const [occurredOn, setOccurredOn] = useState(today);
   const [note, setNote] = useState("");
 
-  const magnitude = amount === "" ? 0n : BigInt(amount);
+  const typed = amount === "" ? 0 : Number(amount);
+  const magnitude = Number.isFinite(typed) ? typed : 0;
   const change = direction === "in" ? magnitude : -magnitude;
-  const valid = magnitude > 0n && occurredOn !== "";
+  const valid = magnitude > 0 && occurredOn !== "";
 
   function reset() {
     setSettlementType("marketplace_adjustment");

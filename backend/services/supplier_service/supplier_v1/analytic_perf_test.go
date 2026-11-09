@@ -196,7 +196,20 @@ ORDER BY d.day, x.h`,
 		t.Fatalf("seed figures: %v", err)
 	}
 
-	for _, table := range []string{"supplier_product_daily_reports", "suppliers", "supplier_channels"} {
+	// PENJUALAN beside the restocks (00004): every restock row mirrored as a sale row of the same key, so the reads'
+	// UNION ALL sums twice the rows. PERF_FIG_SALES=0 leaves the sales table empty — the before/after check.
+	if os.Getenv("PERF_FIG_SALES") != "0" {
+		err = quiet.Exec(`
+INSERT INTO supplier_sale_daily_reports (day, supplier_id, product_id, team_id, sales_count, sales_value, last_updated)
+SELECT day, supplier_id, product_id, team_id, restock_count, restock_valuation * 1.3, NOW()
+FROM supplier_product_daily_reports
+ORDER BY day, id`).Error
+		if err != nil {
+			t.Fatalf("seed sales: %v", err)
+		}
+	}
+
+	for _, table := range []string{"supplier_product_daily_reports", "supplier_sale_daily_reports", "suppliers", "supplier_channels"} {
 		err = quiet.Exec("ANALYZE " + table).Error
 		if err != nil {
 			t.Fatalf("analyze %s: %v", table, err)
@@ -252,7 +265,7 @@ ORDER BY d.day, x.h`,
 		t.Logf("PLAN_CACHE force_%s_plan", mode)
 	}
 
-	b.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil)
+	b.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil, nil, nil)
 
 	return b
 }

@@ -22,10 +22,14 @@ func (f fakeRoles) Roles(_ context.Context, userID, teamID uint64) (role_basev1.
 	return f[[2]uint64{userID, teamID}], f[[2]uint64{userID, san_auth.RootTeamID}], nil
 }
 
+func (f fakeRoles) Member(_ context.Context, userID, teamID uint64) (selling_v1.TeamMember, error) {
+	return selling_v1.TeamMember{Role: f[[2]uint64{userID, teamID}]}, nil
+}
+
 func newServiceWithRoles(t *testing.T, db *gorm.DB, roles selling_v1.RoleReader) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, roles, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, roles, nil, nil, nil, nil)
 }
 
 func accessCheck(t *testing.T, svc *selling_v1.Service, teamID, shopID, userID uint64) *sellingv1.ShopAccessCheckResponse {
@@ -116,27 +120,54 @@ func TestShopAccessCheck_AShopWithNoGrantHasNoPrimary(t *testing.T) {
 	}
 }
 
-// Another team's shop, and a deleted one, are not found — the scope check, and delete hiding a shop
-// from every read.
-func TestShopAccessCheck_AnotherTeamsOrADeletedShopIsNotFound(t *testing.T) {
+// Another team's shop is not found — the scope check (every-shop-call-is-scoped-to-its-team).
+func TestShopAccessCheck_AnotherTeamsShopIsNotFound(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithRoles(t, db, nil)
 	ctx := context.Background()
 
 	foreign := insertShop(t, db, 3, "Other", "O1", "shopee")
-	deleted := insertShop(t, db, 2, "Gone", "G1", "shopee")
 
-	_, err := svc.ShopDelete(ctx, connect.NewRequest(&sellingv1.ShopDeleteRequest{TeamId: 2, ShopId: deleted}))
-	if err != nil {
-		t.Fatalf("ShopDelete: %v", err)
-	}
-
-	for name, shopID := range map[string]uint64{"another team's shop": foreign, "a deleted shop": deleted} {
+	for name, shopID := range map[string]uint64{"another team's shop": foreign, "a shop that never existed": foreign + 1000} {
 		_, err := svc.ShopAccessCheck(ctx, connect.NewRequest(&sellingv1.ShopAccessCheckRequest{
 			TeamId: 2, ShopId: shopID, UserId: 10,
 		}))
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			t.Errorf("%s: code = %v, want NotFound", name, connect.CodeOf(err))
 		}
+	}
+}
+
+// A closed shop is ANSWERED, with its status, its primary CS and the user's access — so its last statements still
+// import and its rows still find their primary (a-closed-shop-refuses-only-new-selling). Each caller decides; the order
+// writes refuse it (shop_write_gate_test.go).
+func TestShopAccessCheck_AClosedShopIsAnsweredWithItsStatus(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newServiceWithRoles(t, db, nil)
+	ctx := context.Background()
+
+	const (
+		team    = 2
+		primary = 10
+	)
+
+	closed := insertShop(t, db, team, "Gone", "G1", "shopee")
+	grantShop(t, db, closed, primary, true)
+
+	_, err := svc.ShopClose(ctx, connect.NewRequest(&sellingv1.ShopCloseRequest{TeamId: team, ShopId: closed}))
+	if err != nil {
+		t.Fatalf("ShopClose: %v", err)
+	}
+
+	got := accessCheck(t, svc, team, closed, primary)
+
+	if got.GetShop().GetStatus() != sellingv1.ShopStatus_SHOP_STATUS_CLOSED || got.GetShop().GetClosedAtUnix() == 0 {
+		t.Errorf("the closed shop should be answered closed, with its close date: status %v, closed at %d",
+			got.GetShop().GetStatus(), got.GetShop().GetClosedAtUnix())
+	}
+
+	if got.GetShop().GetName() != "Gone" || got.GetPrimaryUserId() != primary || !got.GetIsHaveAccess() {
+		t.Errorf("got shop %q, primary %d, access %v — want Gone, %d, true",
+			got.GetShop().GetName(), got.GetPrimaryUserId(), got.GetIsHaveAccess(), primary)
 	}
 }

@@ -17,10 +17,10 @@ import (
 // fail.
 type positionSummary struct {
 	// Σ of positive balances — what the whole world owes this team.
-	TotalReceivable int64
+	TotalReceivable float64
 	// Σ of negative balances AS A MAGNITUDE. Direction is words on this screen, never a sign
 	// (features/liability/direction.ts), so the negation happens once here rather than in every reader.
-	TotalPayable int64
+	TotalPayable float64
 	// Whose debt is oldest, and when it was posted. 0/0 when nothing is outstanding.
 	OldestCounterpartyID  uint64
 	OldestUnsettledAtUnix int64
@@ -48,8 +48,8 @@ func summarizePositions(scope func() *gorm.DB) (positionSummary, error) {
 	// ⚠ `SUM` OVER NO ROWS IS NULL, not 0 — COALESCE is not decoration here. A team with no
 	// counterparties would otherwise fail to scan rather than report zero.
 	var sums struct {
-		TotalReceivable int64
-		TotalPayable    int64
+		TotalReceivable float64
+		TotalPayable    float64
 	}
 
 	err := scope().

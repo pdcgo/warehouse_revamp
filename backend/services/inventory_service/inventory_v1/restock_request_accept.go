@@ -3,8 +3,6 @@ package inventory_v1
 import (
 	"context"
 	"fmt"
-	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -40,7 +39,10 @@ func (s *Service) RestockRequestAccept(
 		return nil, restockErr(errRestockCostNoteMissing)
 	}
 
-	var rr inventory_service_models.Restock
+	var (
+		rr        inventory_service_models.Restock
+		acceptLog inventory_service_models.RestockLog
+	)
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
@@ -159,6 +161,7 @@ func (s *Service) RestockRequestAccept(
 		}
 
 		actor := actorFrom(ctx)
+		override := overrideFrom(ctx)
 
 		// THE FREIGHT every unit carries: the shipping and the courier's charge — part of what the goods cost to get here
 		// (the-couriers-ask-is-in-the-unit-price), outside the restock's total, inside the unit price.
@@ -273,6 +276,7 @@ func (s *Service) RestockRequestAccept(
 			WarehouseID: rr.WarehouseID,
 			TeamID:      rr.TeamID,
 			ActorID:     actor,
+			IsOverride:  override,
 			Lines:       ledgerLines,
 		})
 		if ledgerErr != nil {
@@ -319,7 +323,11 @@ func (s *Service) RestockRequestAccept(
 			return statusErr
 		}
 
-		logErr := recordRestockLog(tx, rr.ID, from, restockStatusAccepted, actor, acceptDescription(rr, courierCharge), acceptedAt)
+		var logErr error
+
+		// Kept: the event reads the accept's override stamp from this row (an-override-is-stamped-in-every-service).
+		acceptLog, logErr = recordRestockLogRow(tx, rr.ID, from, restockStatusAccepted, actor, override,
+			acceptDescription(rr, courierCharge), acceptedAt)
 		if logErr != nil {
 			return logErr
 		}
@@ -334,7 +342,7 @@ func (s *Service) RestockRequestAccept(
 	}
 
 	// AFTER the commit, never inside: downstream folds must not be able to fail the accept.
-	s.publishAccepted(ctx, &rr)
+	s.publishAccepted(ctx, &rr, acceptLog)
 
 	return connect.NewResponse(&inventoryv1.RestockRequestAcceptResponse{
 		Request: restockRequestToProto(&rr),
@@ -354,28 +362,10 @@ func acceptDescription(rr inventory_service_models.Restock, courierCharge float6
 
 	parts := []string{fmt.Sprintf("%d broken, %d missing", broken, missing)}
 	if courierCharge > 0 {
-		parts = append(parts, "courier's charge "+rupiahText(courierCharge))
+		parts = append(parts, "courier's charge "+san_money.Text(courierCharge))
 	}
 
 	return restockLogAccepted + " — " + strings.Join(parts, "; ")
-}
-
-// rupiahText is an amount as a person reads it, to the rupiah: "Rp 5.000". Rounded for the words only — the amount
-// itself is stored as it was typed.
-func rupiahText(v float64) string {
-	digits := strconv.FormatInt(int64(math.Round(v)), 10)
-
-	var b strings.Builder
-
-	for i, c := range digits {
-		if i > 0 && (len(digits)-i)%3 == 0 {
-			b.WriteByte('.')
-		}
-
-		b.WriteRune(c)
-	}
-
-	return "Rp " + b.String()
 }
 
 // derefID reads an optional id: 0 when the line names none.

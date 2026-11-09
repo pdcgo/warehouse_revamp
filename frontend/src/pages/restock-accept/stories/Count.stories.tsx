@@ -145,7 +145,7 @@ export const ProblemUnitsCarryTheLandedPrice: Story = {
     await expect(canvas.queryByTestId(`accept-goods-${COFFEE.productId}`)).toBeNull();
     // 400.000 ÷ 12 + 15.000 ÷ 17 — every unit ordered, not the good ones.
     const coffee = await lineOf(canvasElement, COFFEE.productId);
-    await expect(coffee.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.216");
+    await expect(coffee.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
 
     // 325.000 ÷ 5 + 15.000 ÷ 17 — the missing unit carries the rice's landed price.
     const rice = await lineOf(canvasElement, RICE.productId);

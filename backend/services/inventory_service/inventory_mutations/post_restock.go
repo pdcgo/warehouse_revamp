@@ -33,9 +33,10 @@ type RestockPlacement struct {
 type Restock struct {
 	WarehouseID uint64
 	// The requesting selling team — the owner of every batch minted (a-batch-carries-its-owner).
-	TeamID  uint64
-	ActorID uint64
-	Lines   []RestockLine
+	TeamID     uint64
+	ActorID    uint64
+	IsOverride bool
+	Lines      []RestockLine
 }
 
 // LandedPrice is a restock line's unit price: the line's price per unit ordered, plus every cost of getting the box
@@ -65,6 +66,7 @@ func PostRestock(tx *gorm.DB, r Restock) (models.InventoryTransaction, error) {
 		TeamID:      r.TeamID,
 		TxType:      models.TxRestock,
 		ActorID:     r.ActorID,
+		IsOverride:  r.IsOverride,
 	})
 	if err != nil {
 		return t, err

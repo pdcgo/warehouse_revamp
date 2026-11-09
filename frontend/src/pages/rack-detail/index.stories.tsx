@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { lastRackWrite, rackShelf, rackStubScenario } from "../../../.storybook/rackStub";
+import { lastRackWrite, rackHistoryByForStory, rackShelf, rackStubScenario } from "../../../.storybook/rackStub";
+import { FORMER_USER_ID } from "../../../.storybook/fixtures";
+import { reportScenario } from "../../../.storybook/foundRequestStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { RackDetailPage } from "./index";
@@ -82,7 +84,7 @@ async function openSample() {
 }
 
 // The rack as staff read it: the code, each product's team and stock count (a-rack-shows-its-stock-count-for-now), and
-// the two actions. The pending strip names what the prototype has not settled.
+// the two actions.
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -109,7 +111,8 @@ export const Default: Story = {
   },
 };
 
-// A PHONE (every-page-has-a-mobile-story) — the title's row is one row and the two acts are their icons
+// A PHONE (every-page-has-a-mobile-story) — the title's row is one row and its acts fold into `⋯`: a staff member has
+// three — Report Found (staff-may-report-a-found) beside Record Sample and Move Goods — and past two they all fold
 // (a-phone-header-action-is-an-icon); the tabs run across the top; each product is a block, no headings
 // (a-phone-reads-each-line-as-a-block); nothing runs past the screen's edge (nothing-runs-past-a-phones-edge).
 export const Mobile: Story = {
@@ -119,8 +122,13 @@ export const Mobile: Story = {
     const canvas = within(canvasElement);
     await canvas.findByTestId("rack-detail-stock", {}, { timeout: 4000 });
 
-    await expect(canvas.getByTestId("rack-action-move")).toHaveAccessibleName("Move Goods");
-    await expect(canvas.getByTestId("rack-action-move")).toHaveTextContent("");
+    await expect(canvas.queryByTestId("rack-action-move")).toBeNull();
+    await userEvent.click(canvas.getByTestId("rack-actions"));
+    const move = await screen.findByTestId("rack-action-move");
+    await waitFor(() => expect(move).toBeVisible());
+    await expect(move).toHaveTextContent("Move Goods");
+    await expect(screen.getByTestId("rack-action-report-found")).toBeVisible();
+    await userEvent.keyboard("{Escape}");
     await expect(canvas.getByTestId("rack-tabs")).toHaveAttribute("data-orientation", "horizontal");
     await expect(within(canvas.getByTestId("rack-detail-stock")).queryAllByRole("columnheader")).toHaveLength(0);
     await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("12"));
@@ -162,6 +170,13 @@ export const MoveToOneRack: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openMove();
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — as tall as its lines, never held to the window's height (full screen
+    // is the phone's, by the JS breakpoint; a responsive `size` once kept full's min-height here).
+    await waitFor(() => {
+      const box = screen.getByTestId("move-goods-dialog");
+      expect(box.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.95);
+      expect(parseFloat(getComputedStyle(box).minHeight) || 0).toBeLessThan(window.innerHeight * 0.5);
+    });
 
     await pickRack("move-default-to", 42n);
     await type(screen.getByTestId("move-qty-71-0"), "4");
@@ -279,8 +294,8 @@ export const RefusedWholeWhenALineChanged: Story = {
   },
 };
 
-// A product being counted is LOCKED AT 0 — shown, not hidden, with the pending mark: what a count's lock blocks is
-// opname Q4.
+// A product being counted is LOCKED AT 0 — shown, not hidden, and the server refuses moving it too (RackMove answers
+// "being counted"; a-lock-stops-sales-and-cancels-too).
 export const ACountedProductIsLocked: Story = {
   name: "Counted product locked",
   render: () => <At42 />,
@@ -300,6 +315,13 @@ export const RecordSample: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openSample();
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — as tall as its lines, never held to the window's height (full screen
+    // is the phone's, by the JS breakpoint; a responsive `size` once kept full's min-height here).
+    await waitFor(() => {
+      const box = screen.getByTestId("record-sample-dialog");
+      expect(box.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.95);
+      expect(parseFloat(getComputedStyle(box).minHeight) || 0).toBeLessThan(window.innerHeight * 0.5);
+    });
 
     await expect(screen.getByTestId("sample-final")).toHaveTextContent(/final/i);
     await type(await screen.findByTestId("sample-qty-71"), "2");
@@ -351,5 +373,93 @@ export const PlacementHistoryNamesWhoMovedIt: Story = {
     await expect(table).toHaveTextContent("Kopi Arabika 250g");
     await expect(table).toHaveTextContent("Ani Rahayu");
     await expect(table).toHaveTextContent("-4");
+  },
+};
+
+// A FORMER USER (erase-keeps-the-row): the history still names whoever moved the goods after their account was erased —
+// as "Former user #69", never the synthetic username `erased69`.
+export const HistoryNamesAFormerUser: Story = {
+  beforeEach: () => rackHistoryByForStory(FORMER_USER_ID),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByTestId("rack-tab-stock-history", {}, { timeout: 4000 }));
+    const table = await canvas.findByTestId("rack-stock-history-table");
+
+    await waitFor(() => expect(table).toHaveTextContent("Former user #69"));
+    await expect(table).not.toHaveTextContent("erased69");
+  },
+};
+
+async function pickProduct(query: string, productCode: string) {
+  const dialog = await screen.findByTestId("report-found-dialog");
+  const input = within(dialog).getByRole("combobox");
+  await userEvent.click(input);
+  await userEvent.type(input, query, { delay: 20 });
+  const option = await within(dialog).findByTestId(`product-select-option-${productCode}`);
+  await waitFor(() => expect(option).toBeVisible());
+  await userEvent.click(option);
+}
+
+// REPORT FOUND (staff-may-report-a-found): staff report units found on THIS shelf — the rack is set, they pick the
+// product — and it waits for the Owner or Admin, posting nothing. Its place here was accepted 2026-11-03.
+export const StaffReportFoundHere: Story = {
+  render: () => <At41 />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("rack-action-report-found"));
+    const dialog = await screen.findByTestId("report-found-dialog");
+    await expect(dialog).toHaveTextContent("Report Found on A-01-1");
+    await expect(within(dialog).getByTestId("report-found-waits")).toHaveTextContent("Nothing changes until one of them approves it");
+    await expect(within(dialog).getByTestId("report-found-submit")).toBeDisabled();
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — its own height, well short of the window (full screen is the phone's,
+    // by the JS breakpoint; a responsive `size` once stretched it to the window).
+    await waitFor(() => expect(dialog.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.8));
+
+    await pickProduct("beras", "SKU-BERAS-5K");
+    await type(within(dialog).getByTestId("report-found-amount"), "2");
+    await userEvent.type(within(dialog).getByTestId("report-found-note"), "Behind the scale", { delay: 20 });
+    await userEvent.click(within(dialog).getByTestId("report-found-submit"));
+
+    await expect(await screen.findByText("2 × SKU-BERAS-5K sent for approval")).toBeInTheDocument();
+    await expect(reportScenario.last).toEqual({ productId: 74n, rackId: 41n, quantity: 2n, note: "Behind the scale" });
+  },
+};
+
+// The picker offers only what this warehouse holds or has held (a-warehouse-picks-only-what-it-has-held): "gula" finds
+// Gula Pasir, with its owner beside it — and not Gula Merah's carton, whose team never had it in Gudang Pusat, so a found
+// of it would be refused at the report (a-found-never-stocked-here-is-refused-at-the-report).
+export const ReportFoundOffersOnlyWhatWasHeldHere: Story = {
+  render: () => <At41 />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("rack-action-report-found"));
+    const dialog = await screen.findByTestId("report-found-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("Only products this warehouse holds or has held");
+
+    const input = within(dialog).getByRole("combobox");
+    await userEvent.click(input);
+    await userEvent.type(input, "gula", { delay: 20 });
+    const option = await within(dialog).findByTestId("product-select-option-SKU-GULA-1K");
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(option).toHaveTextContent("Gula Pasir 1kg · Toko Kenanga");
+    await waitFor(() => expect(within(dialog).getAllByRole("option")).toHaveLength(1));
+    await expect(within(dialog).queryByTestId("product-select-option-SL-03-ANG-006")).toBeNull();
+  },
+};
+
+// The Owner and Admin report from the shelf too — the same request, approved by somebody else.
+export const TheOwnerReportsFoundToo: Story = {
+  render: () => <At41 />,
+  beforeEach: () => {
+    asTeam(11n)();
+    asRole(Role.WAREHOUSE_OWNER)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("rack-action-report-found")).toBeInTheDocument();
   },
 };

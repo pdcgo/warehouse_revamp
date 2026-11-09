@@ -22,14 +22,18 @@ type FinancialAccountLog struct {
 	TeamID           uint64
 	AccountID        uint64
 	ChangeType       string
-	Change           float64 `gorm:"type:numeric(20,2)"`
-	BalanceAfter     float64 `gorm:"type:numeric(20,2)"`
+	Change           float64 `gorm:"type:double precision"`
+	BalanceAfter     float64 `gorm:"type:double precision"`
 	Description      string
 	ActorID          uint64
 	OccurredAt       time.Time
 	GroupID          uint64
 	CounterAccountID uint64
 	CreatedAt        time.Time
+
+	// Root or the Administrator posted it inside a team they hold no role in (an-override-is-stamped-in-every-service).
+	// A listener's row carries the flag its event names beside the actor (`actor_is_override`).
+	IsOverride bool
 }
 
 func (FinancialAccountLog) TableName() string {

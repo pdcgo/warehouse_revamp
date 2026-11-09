@@ -19,7 +19,7 @@
 > my *build on today's tables*. 🔄 [Q23](#question): now **b**, the rule you gave opname for a unit nobody brought in
 > ([a-unit-never-stocked-here-comes-in-by-restock](./opname_decision.md#a-unit-never-stocked-here-comes-in-by-restock)). ⚠ The
 > accept prototype does not yet refuse a rack that is being counted, which opname requires
-> ([a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)). **Open now: Q23.**
+> ([a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)) — ✅ *(2026-11-03)* built: the put-away refuses a counted rack (`PutOnPlacements` → `RefuseCounted`, `inventory_ledgers/placement_ledger.go`). **Open now: Q23.**
 >
 > **Re-examined after your answer *"b"* (2026-10-14).** ✅ [Q22](#question): *all qty* is every unit ordered, and a broken or
 > missing unit carries the landed price — [all-qty-is-every-unit-ordered](./restock_decision.md#all-qty-is-every-unit-ordered),

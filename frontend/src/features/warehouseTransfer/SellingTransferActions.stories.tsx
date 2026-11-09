@@ -2,9 +2,10 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { WarehouseTransferStatus } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
+import { archiveAccountForStory } from "../../../.storybook/financialAccountStub";
 import { transferWire } from "../../../.storybook/warehouseTransferStub";
 import { SellingTransferActions } from "./SellingTransferActions";
-import { STORY_PENDING, storyTransfer } from "./storyTransfer";
+import { storyTransfer } from "./storyTransfer";
 
 // WHAT THE SELLING TEAM MAY DO, by status (cancel-before-processed-lost-only-in-transit): created → Edit Cost, Cancel;
 // shipped → Edit Cost, Mark Lost; process, arrived, lost → Edit Cost; accepted and cancelled → nothing — never a
@@ -13,7 +14,7 @@ const meta = {
   title: "Features/WarehouseTransfer/SellingTransferActions",
   component: SellingTransferActions,
   parameters: { signedIn: true },
-  args: { teamId: 12n, variant: "buttons", pending: STORY_PENDING, transfer: storyTransfer(601n) },
+  args: { teamId: 12n, variant: "buttons", transfer: storyTransfer(601n) },
 } satisfies Meta<typeof SellingTransferActions>;
 
 export default meta;
@@ -79,7 +80,38 @@ export const ACostNeedsAnAccount: Story = {
     await userEvent.type(await screen.findByTestId("transfer-cost-amount"), "18000", { delay: 20 });
 
     await waitFor(() => expect(screen.getByTestId("confirm-action")).toBeDisabled());
-    // The cost reaches no account until its listener is built — the dialog says so on the field.
-    await expect(screen.getByTestId("not-implemented-costEvent")).toBeInTheDocument();
+    // The cost posts into the paying account (built), so the field carries no pending mark.
+    await expect(screen.queryByTestId("not-implemented-costEvent")).toBeNull();
+  },
+};
+
+// Moving the shipping to another account is judged like a restock's: it must be one of the team's ACTIVE OPERATIONAL
+// accounts (a-transfer-names-its-paying-account). ShopeePay Melati is picked, then an admin unmarks it before Save: the
+// server refuses, naming it, and the transfer keeps no cost and no account.
+export const ARefusedPayingAccountIsSaid: Story = {
+  play: async ({ canvasElement }) => {
+    const SHOPEEPAY = 1303n;
+
+    await userEvent.click(within(canvasElement).getByTestId("transfer-action-edit-cost-601"));
+    await userEvent.type(await screen.findByTestId("transfer-cost-amount"), "18000", { delay: 20 });
+
+    await userEvent.click(screen.getByTestId("transfer-cost-account"));
+    const option = await screen.findByTestId(`transfer-cost-account-option-${SHOPEEPAY}`, {}, { timeout: 4000 });
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    archiveAccountForStory(SHOPEEPAY);
+
+    await waitFor(() => expect(screen.getByTestId("confirm-action")).toBeEnabled());
+    await userEvent.click(screen.getByTestId("confirm-action"));
+
+    await expect(
+      await screen.findByText(
+        "ShopeePay Melati is archived — it is not one of the team's active accounts",
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeInTheDocument();
+    await expect(transferWire(601n).financeAccountId).toBe(0n);
+    await expect(transferWire(601n).shipmentCost).toBe(0);
   },
 };

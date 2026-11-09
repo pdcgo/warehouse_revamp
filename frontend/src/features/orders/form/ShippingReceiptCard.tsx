@@ -19,7 +19,7 @@ import { ExternalLink, FileText, Paperclip } from "lucide-react";
 import { documentClient, rpcError } from "../../../api/clients";
 import { ReceiptUpload, hasReceipt, useReceiptUpload } from "../../../components/orders/ReceiptUpload";
 import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
-import { ShippingSelect } from "../../../components/pickers/ShippingSelect";
+import { ShipmentChannelSelect } from "../../../components/pickers/ShipmentChannelSelect";
 import type { LabelResult } from "../../shipment/receiptCheck";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
@@ -53,9 +53,16 @@ interface ShippingReceiptCardProps {
   /** The courier's tracking number, raw: what is typed is what is stored. */
   trackingCode: string;
   onTrackingCodeChange: (value: string) => void;
-  /** A `Shipping.code` from the shared courier catalogue (`jne`, `sicepat`), never a typed name. */
-  shippingCode: string;
-  onShippingCodeChange: (value: string) => void;
+  /** The courier — a shipment channel's ID (shipment-channel-is-an-id-into-shipment-service), never a code or a name.
+   * 0n = none picked. */
+  shipmentChannelId: bigint;
+  onShipmentChannelChange: (channelId: bigint) => void;
+  /**
+   * Mark the courier REQUIRED — the red `*` and the hint under the field (no-order-without-a-courier,
+   * the-courier-required-look-is-accepted). The order form passes it; the server refuses an order with no courier either
+   * way.
+   */
+  courierRequired?: boolean;
   /** True once the file has been read and something was filled in from it. */
   filledFromFile?: boolean;
   /** What the label check made of the file — `undefined` while unread, or when it was not checked. */
@@ -79,8 +86,9 @@ export function ShippingReceiptCard({
   onOrderRefIdChange,
   trackingCode,
   onTrackingCodeChange,
-  shippingCode,
-  onShippingCodeChange,
+  shipmentChannelId,
+  onShipmentChannelChange,
+  courierRequired = false,
   filledFromFile,
   scanResult,
   onReceiptFile,
@@ -254,9 +262,21 @@ export function ShippingReceiptCard({
               />
             </Field.Root>
 
-            <Field.Root>
-              <Field.Label>{t("orders.shipping")}</Field.Label>
-              <ShippingSelect value={shippingCode} onChange={onShippingCodeChange} />
+            {/* THE COURIER (no-order-without-a-courier): seeded from the draft when the app converted one. Marked
+                required on the order form (the-courier-required-look-is-accepted). */}
+            <Field.Root
+              required={courierRequired}
+              invalid={courierRequired && shipmentChannelId === 0n}
+              data-testid="order-create-courier-field"
+            >
+              <Field.Label>
+                {t("orders.shipping")}
+                {courierRequired && <Field.RequiredIndicator />}
+              </Field.Label>
+              <ShipmentChannelSelect value={shipmentChannelId} onChange={onShipmentChannelChange} />
+              {courierRequired && shipmentChannelId === 0n && (
+                <Field.ErrorText data-testid="order-create-courier-required">{t("orderForm.courierRequired")}</Field.ErrorText>
+              )}
             </Field.Root>
 
             <Text fontSize="xs" color={missingHalf ? "warning.fg" : "fg.muted"} data-testid="order-create-resi-hint">

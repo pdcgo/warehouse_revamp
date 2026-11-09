@@ -23,6 +23,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1/liabilityv1connect"
+	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 )
 
@@ -43,22 +44,38 @@ func (noAccounts) PaymentAccount(context.Context, uint64, uint64) (bool, error) 
 	return false, nil
 }
 
-// TeamNamer names teams for a GENERAL slice that promises a name — LiabilityCreditByIds' creditors. A team is
-// team_service's, so the name is asked of it, under the caller's token, and only when the slice is requested.
+// TeamNamer names teams for a GENERAL slice that promises a name — LiabilityCreditByIds' creditors — and tells the
+// pair list's search what each counterparty is called and what kind of team it is (backlog #34). A team is
+// team_service's, so both are asked of it through the composition root's in-process seam, only when needed, and
+// never by joining its table.
 //
 // ⚠ The other reads' GENERAL slices carry the id alone and leave the name to the screen. That predates this one and
 // is not changed by it.
 type TeamNamer interface {
 	// TeamNames answers the ids it knows; an unknown or deleted team is ABSENT, never an error.
 	TeamNames(ctx context.Context, ids []uint64) (map[uint64]string, error)
+	// TeamFacts answers the name, code and type of the ids it knows — what the pair list searches and filters on.
+	// An unknown or deleted team is ABSENT, never an error, and so never matches a search.
+	TeamFacts(ctx context.Context, ids []uint64) (map[uint64]TeamFact, error)
 }
 
-// noNames knows no team — a GENERAL slice then carries the ids alone. The default for tests and any caller that
-// never asks for names.
+// TeamFact is what the pair list's filters read about a counterparty team.
+type TeamFact struct {
+	Name string
+	Code string
+	Type teamv1.TeamType
+}
+
+// noNames knows no team — a GENERAL slice then carries the ids alone, and a search finds nothing. The default for
+// tests and any caller that never asks for names.
 type noNames struct{}
 
 func (noNames) TeamNames(context.Context, []uint64) (map[uint64]string, error) {
 	return map[uint64]string{}, nil
+}
+
+func (noNames) TeamFacts(context.Context, []uint64) (map[uint64]TeamFact, error) {
+	return map[uint64]TeamFact{}, nil
 }
 
 type Service struct {

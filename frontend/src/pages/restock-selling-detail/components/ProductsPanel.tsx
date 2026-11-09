@@ -141,7 +141,7 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
                         <ProductListItem
                           product={{
                             id: item.productId,
-                            sku: item.sku,
+                            productCode: item.productCode,
                             name: item.name,
                             defaultImageUrl: cover?.defaultImageUrl,
                             defaultImageThumbnailUrl: cover?.defaultImageThumbnailUrl,
@@ -308,7 +308,7 @@ function AdjustmentDialog({ item, photoMark }: { item: RestockRequestItem; photo
             <Stack gap="0.5" minW="0">
               <Dialog.Title>{t("restock.detail.adjustment")}</Dialog.Title>
               <Text fontSize="sm" color="fg.muted" truncate>
-                {item.name} · {item.sku}
+                {item.name} · {item.productCode}
               </Text>
             </Stack>
           </Dialog.Header>
@@ -382,7 +382,7 @@ function LineBlock({
       <ProductListItem
         product={{
           id: pid,
-          sku: item.sku,
+          productCode: item.productCode,
           name: item.name,
           defaultImageUrl: cover?.defaultImageUrl,
           defaultImageThumbnailUrl: cover?.defaultImageThumbnailUrl,

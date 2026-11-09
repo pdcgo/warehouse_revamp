@@ -7,7 +7,7 @@ interface StockFigure {
   /** Units. */
   qty: bigint;
   /** What those units are worth AT COST. Never a selling price — a product has no catalogue price. */
-  value: bigint;
+  value: number;
 }
 
 interface ProductStatsProps {

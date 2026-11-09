@@ -23,8 +23,9 @@ import { rpcError } from "../../api/clients";
 import { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { isExpiringSoon } from "../../lib/expiry";
 import { formatRupiah } from "../../lib/money";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import {
   useCostLayers,
@@ -53,11 +54,6 @@ function formatDateUnix(unix: bigint): string {
     month: "short",
     year: "numeric",
   });
-}
-
-// A batch is flagged amber when it expires within 30 days — the "expiring soon" window the server uses.
-function isExpiringSoon(unix: bigint): boolean {
-  return Number(unix) * 1000 <= Date.now() + 30 * 24 * 60 * 60 * 1000;
 }
 
 // A shelf's count reads amber once its last opname is more than two weeks old — overdue for a re-count.
@@ -236,7 +232,7 @@ export function WarehouseProductPage() {
         <Stack gap="0">
           <Heading size="md">{product.name}</Heading>
           <Text fontSize="sm" color="fg.muted">
-            {product.sku}
+            {product.productCode}
           </Text>
         </Stack>
         <Spacer />
@@ -246,22 +242,26 @@ export function WarehouseProductPage() {
             receive would create batch-less, cost-unknown stock and undo the whole cost-layer model.
             Both are the dialogs the stock list already uses — a second set scoped to one product would
             be a second place for "adjust to a counted figure" to mean something slightly different. */}
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="wp-action-move"
-          onClick={() => setMoving(true)}
-        >
-          {t("inventory.move")}
-        </Button>
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="wp-action-adjust"
-          onClick={() => setAdjusting(true)}
-        >
-          {t("inventory.adjust")}
-        </Button>
+        {canWrite(current) && (
+          <>
+            <Button
+              size="xs"
+              variant="outline"
+              data-testid="wp-action-move"
+              onClick={() => setMoving(true)}
+            >
+              {t("inventory.move")}
+            </Button>
+            <Button
+              size="xs"
+              variant="outline"
+              data-testid="wp-action-adjust"
+              onClick={() => setAdjusting(true)}
+            >
+              {t("inventory.adjust")}
+            </Button>
+          </>
+        )}
       </Flex>
 
       {warehouseId !== undefined && (

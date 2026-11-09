@@ -65,19 +65,19 @@ export const ReadOnly: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-/** AT THE MINIMUM IS LOCKED (owner: *"stoknya <= min"*, `the-minimum-closes-at-the-minimum`) — 20 ready against a minimum
- * of 20 is closed to other teams; 21 is open. */
-export const AtTheMinimumIsLocked: Story = {
+/** AT THE MINIMUM IS OPEN (`a-minimum-closes-only-under-it`, from `exactly-the-reserve-stays-open`) — 20 ready against a
+ * minimum of 20 is still open to other teams, as the order take says; 19 is locked. */
+export const AtTheMinimumIsOpen: Story = {
   args: { product: { crossLocked: false, reservedStock: 20 }, totalReady: 20n },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByTestId("lock-now")).toHaveTextContent("Locked");
+    await expect(within(canvasElement).queryByTestId("lock-now")).toBeNull();
   },
 };
 
-export const OneAboveTheMinimumIsOpen: Story = {
-  args: { product: { crossLocked: false, reservedStock: 20 }, totalReady: 21n },
+export const OneUnderTheMinimumIsLocked: Story = {
+  args: { product: { crossLocked: false, reservedStock: 20 }, totalReady: 19n },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).queryByTestId("lock-now")).toBeNull();
+    await expect(within(canvasElement).getByTestId("lock-now")).toHaveTextContent("Locked");
   },
 };
 

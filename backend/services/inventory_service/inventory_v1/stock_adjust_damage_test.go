@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
@@ -104,7 +106,7 @@ func TestStockAdjust_DamageMakesTheWarehouseOweTheOwner(t *testing.T) {
 
 	// 5 units at the batch's frozen 40.000.
 	if got.amount != 200000 {
-		t.Fatalf("amount = %d, want 200000 (5 × the batch's frozen 40.000)", got.amount)
+		t.Fatalf("amount = %v, want 200000 (5 × the batch's frozen 40.000)", got.amount)
 	}
 
 	if got.reversal() {
@@ -130,12 +132,39 @@ func TestStockAdjust_LostReimbursesToo(t *testing.T) {
 	}
 }
 
-// ⚠ FOUND GIVES THE REIMBURSEMENT BACK (balance_context 5) — as a REVERSAL, never by deleting the
-// entry that charged it. The history has to read as one story: reimbursed, then given back.
-func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
+// damageFacts says product 100 is team 2's — the team acceptOne restocks as — so a found's request names the owner whose
+// loss it claims back.
+func damageFacts() fakeFacts {
+	return fakeFacts{100: {TeamID: damageOwnerTeam, ProductCode: "KH-01", Name: "Kaos"}}
+}
+
+// approveFound reports n units found on the rack — the one door, FoundRequestCreate — and has another person approve
+// them (an-adjust-found-waits-for-the-owner-or-admin).
+func approveFound(t *testing.T, svc *inventory_v1.Service, warehouse, product, rackID uint64, n int64) uint64 {
+	t.Helper()
+
+	reported, err := svc.FoundRequestCreate(ctxAs(41, warehouse, role_basev1.Role_ROLE_WAREHOUSE_STAFF),
+		connect.NewRequest(&inventoryv1.FoundRequestCreateRequest{TeamId: warehouse, ProductId: product, RackId: rackID, Quantity: n}))
+	if err != nil {
+		t.Fatalf("report a found: %v", err)
+	}
+
+	approved, err := svc.FoundRequestApprove(ctxAs(43, warehouse, role_basev1.Role_ROLE_WAREHOUSE_ADMIN),
+		connect.NewRequest(&inventoryv1.FoundRequestApproveRequest{TeamId: warehouse, FoundRequestId: reported.Msg.GetFoundRequest().GetId()}))
+	if err != nil {
+		t.Fatalf("approve the found: %v", err)
+	}
+
+	return approved.Msg.GetTransactionId()
+}
+
+// ⚠ A FOUND GIVES THE REIMBURSEMENT BACK (balance_context 5) — as a REVERSAL, never by deleting the entry that charged
+// it. The history has to read as one story: reimbursed, then given back. The found waits for approval and its approval
+// claims the loss (an-adjust-found-waits-for-the-owner-or-admin).
+func TestStockAdjust_AFoundGivesTheReimbursementBack(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithLiability(t, db, poster)
+	svc := inventory_v1.NewService(db, poster, nil, nil, nil, damageFacts(), nil, nil)
 
 	const warehouse uint64 = 5
 
@@ -143,8 +172,7 @@ func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
 
 	adjustBatch(t, svc, warehouse, product, rackID, batchID,
 		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_LOST, 5)
-	adjustBatch(t, svc, warehouse, product, rackID, batchID,
-		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND, 5)
+	approveFound(t, svc, warehouse, product, rackID, 5)
 
 	if len(poster.damaged) != 2 {
 		t.Fatalf("%d postings, want 2 — the find did not give the reimbursement back", len(poster.damaged))
@@ -157,14 +185,14 @@ func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
 	}
 
 	if found.amount != poster.damaged[0].amount {
-		t.Fatalf("the reversal is %d against a debt of %d — they must cancel",
+		t.Fatalf("the reversal is %v against a debt of %v — they must cancel",
 			found.amount, poster.damaged[0].amount)
 	}
 
-	// ⚠ Different movements, so the ledger's idempotency key differs and BOTH can post. Keying the
-	// reversal on the damage's own movement would collide with it.
+	// ⚠ Different transactions, so the ledger's idempotency key differs and BOTH can post. Keying the
+	// reversal on the loss's own transaction would collide with it.
 	if found.movementID == poster.damaged[0].movementID {
-		t.Fatal("the find reused the damage's movement id — one of the two entries cannot exist")
+		t.Fatal("the find reused the loss's transaction id — one of the two entries cannot exist")
 	}
 }
 
@@ -197,10 +225,29 @@ func TestStockAdjust_DamageIsKeyedOnItsMovement(t *testing.T) {
 	}
 }
 
-// A RECOUNT REIMBURSES NOBODY. It names no batch, so it can point at no cost layer and no owner — the
-// same reason it writes off no expense. (That this differs from StockOpname is a known, recorded
-// contradiction, not something this change decides.)
-func TestStockAdjust_RecountReimbursesNobody(t *testing.T) {
+// recount corrects the fixture's rack TO a counted figure — the RECOUNT reason, no batch named.
+func recount(t *testing.T, svc *inventory_v1.Service, warehouse, product, rackID uint64, onHand int64) *inventoryv1.StockAdjustResponse {
+	t.Helper()
+
+	res, err := svc.StockAdjust(context.Background(), connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouse,
+		ProductId:   product,
+		Place:       &inventoryv1.StockAdjustRequest_RackId{RackId: rackID},
+		ReasonType:  inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_RECOUNT,
+		OnHand:      onHand,
+		Reason:      "shelf recount",
+	}))
+	if err != nil {
+		t.Fatalf("recount: %v", err)
+	}
+
+	return res.Msg
+}
+
+// A RECOUNT SHORTFALL IS OWED (a-recount-shortfall-is-written-off-and-owed). The rack held 100 and the count says 95:
+// the 5 missing units left the owner's batch at its 40.000, so the warehouse owes the owner 200.000 — as a LOST unit,
+// keyed by the adjustment. Recording the loss as a recount no longer avoids the charge.
+func TestStockAdjust_ARecountShortfallIsOwed(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
 	svc := newServiceWithLiability(t, db, poster)
@@ -209,19 +256,60 @@ func TestStockAdjust_RecountReimbursesNobody(t *testing.T) {
 
 	rackID, _, product := damageFixture(t, db, svc, warehouse)
 
-	_, err := svc.StockAdjust(context.Background(), connect.NewRequest(&inventoryv1.StockAdjustRequest{
-		WarehouseId: warehouse,
-		ProductId:   product,
-		Place:       &inventoryv1.StockAdjustRequest_RackId{RackId: rackID},
-		ReasonType:  inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_RECOUNT,
-		OnHand:      95,
-	}))
-	if err != nil {
-		t.Fatalf("recount: %v", err)
+	res := recount(t, svc, warehouse, product, rackID, 95)
+
+	if len(poster.damaged) != 1 {
+		t.Fatalf("a recount shortfall posted %d debts, want 1", len(poster.damaged))
 	}
 
+	got := poster.damaged[0]
+
+	if got.warehouseID != warehouse || got.ownerTeamID != damageOwnerTeam || got.amount != 200000 {
+		t.Fatalf("posted %+v, want warehouse %d owing owner %d 200000", got, warehouse, damageOwnerTeam)
+	}
+
+	if got.kind != inventory_v1.StockDamageLost {
+		t.Fatalf("kind = %v, want lost — a recount shortfall is shrinkage", got.kind)
+	}
+
+	if got.movementID != res.GetMovement().GetId() {
+		t.Fatalf("source id = %d, want the adjustment %d", got.movementID, res.GetMovement().GetId())
+	}
+}
+
+// A SURPLUS AND AN EXACT COUNT MOVE NO MONEY — only a shortfall is a loss.
+func TestStockAdjust_ARecountSurplusOwesNothing(t *testing.T) {
+	db := san_testdb.DB(t)
+	poster := &recordingPoster{}
+	svc := newServiceWithLiability(t, db, poster)
+
+	const warehouse uint64 = 5
+
+	rackID, _, product := damageFixture(t, db, svc, warehouse)
+
+	recount(t, svc, warehouse, product, rackID, 100)
+	recount(t, svc, warehouse, product, rackID, 104)
+
 	if len(poster.damaged) != 0 {
-		t.Fatalf("a recount posted %d debts, want 0", len(poster.damaged))
+		t.Fatalf("an exact count and a surplus posted %+v, want no debt", poster.damaged)
+	}
+}
+
+// A WAREHOUSE RECOUNTING ITS OWN GOODS owes nobody — its shortfall is its own loss, written off, never a debt to itself.
+func TestStockAdjust_ARecountOfTheWarehousesOwnGoodsOwesNobody(t *testing.T) {
+	db := san_testdb.DB(t)
+	poster := &recordingPoster{}
+	svc := newServiceWithLiability(t, db, poster)
+
+	// acceptOne raises the restock as team 2, so making the warehouse team 2 makes it its own owner.
+	const warehouse uint64 = damageOwnerTeam
+
+	rackID, _, product := damageFixture(t, db, svc, warehouse)
+
+	recount(t, svc, warehouse, product, rackID, 90)
+
+	if len(poster.damaged) != 0 {
+		t.Fatalf("a warehouse recounting its OWN goods posted %+v, want no debt", poster.damaged)
 	}
 }
 
@@ -254,7 +342,8 @@ func TestStockAdjust_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 // thing a fake can agree with while production has it backwards.
 func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db, nil, nil, nil)})
+	svc := inventory_v1.NewService(db, &realPoster{liability: liability_v1.NewService(db, nil, nil, nil)}, nil, nil, nil,
+		damageFacts(), nil, nil)
 
 	const warehouse uint64 = 5
 
@@ -276,7 +365,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	}
 
 	if ownerBalance.Balance != 200000 {
-		t.Fatalf("the owner is owed %d, want +200000 — a negative here means the victim was charged",
+		t.Fatalf("the owner is owed %v, want +200000 — a negative here means the victim was charged",
 			ownerBalance.Balance)
 	}
 
@@ -297,9 +386,11 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 		t.Fatalf("entry source = %q, want broken_good", entry.SourceType)
 	}
 
-	// FINDING THE GOODS SQUARES IT — the debt nets back to zero, and both entries remain.
+	// A BROKEN UNIT IS THROWN AWAY (a-broken-unit-is-thrown-away) — only a LOST one comes back. Five more go missing,
+	// then turn up: the found's approval claims the loss and squares THAT debt; the broken one stays owed.
 	adjustBatch(t, svc, warehouse, product, rackID, batchID,
-		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND, 5)
+		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_LOST, 5)
+	approveFound(t, svc, warehouse, product, rackID, 5)
 
 	err = db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).
@@ -309,18 +400,19 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 		t.Fatalf("re-read the owner's balance: %v", err)
 	}
 
-	if ownerBalance.Balance != 0 {
-		t.Fatalf("balance = %d after the goods turned up, want 0", ownerBalance.Balance)
+	if ownerBalance.Balance != 200000 {
+		t.Fatalf("balance = %v after the lost goods turned up, want 200000 — the broken ones are still owed", ownerBalance.Balance)
 	}
 
-	// BOTH ENTRIES REMAIN, and since the vocabulary split they no longer share a source type: the loss
-	// is `broken_good` and the find is `found`. Counting them separately is a STRONGER check than the
-	// old `stock_damage = 2` — that count could have been satisfied by two losses and no find at all.
+	// EVERY ENTRY REMAINS, each under its own source type: the breakage `broken_good`, the loss `lost_good`, the find
+	// `found`. Counting them separately is a STRONGER check than the old `stock_damage = 2` — that count could have been
+	// satisfied by two losses and no find at all.
 	for _, want := range []struct {
 		sourceType string
 		count      int64
 	}{
 		{"broken_good", 1},
+		{"lost_good", 1},
 		{"found", 1},
 	} {
 		var entries int64
@@ -337,5 +429,57 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 			t.Fatalf("%d %s entries, want %d — the reimbursement was edited rather than "+
 				"compensated", entries, want.sourceType, want.count)
 		}
+	}
+}
+
+// A LOSS AT A FRACTIONAL UNIT COST REACHES THE LEDGERS EXACT (the-backend-never-rounds-money). Three units cost 10.000,
+// so a unit is 3.333,33…; two thrown away are worth 6.666,66…. Inventory hands that double on as it is — to the expense
+// (the warehouse's write-off) and to liability (what it owes the owner) — and the ledger posts it as it is. Nothing
+// rounds it, anywhere.
+func TestStockAdjust_AFractionalLossReachesTheLedgersExact(t *testing.T) {
+	db := san_testdb.DB(t)
+	expense := &recordingExpense{}
+	svc := inventory_v1.NewService(db, &realPoster{liability: liability_v1.NewService(db, nil, nil, nil)}, expense, nil, nil,
+		damageFacts(), nil, nil)
+
+	const warehouse uint64 = 5
+
+	ctx := ctxUser(1)
+
+	rack, err := svc.RackCreate(ctx, connect.NewRequest(&inventoryv1.RackCreateRequest{TeamId: warehouse, Code: "A-01-9"}))
+	if err != nil {
+		t.Fatalf("rack: %v", err)
+	}
+
+	acceptOne(t, svc, warehouse, rack.Msg.GetRack().GetId(), 100, 3, 10_000)
+
+	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{
+		TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: 100}, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("BatchList: %v", err)
+	}
+
+	batch := batchRows(batches.Msg)[0]
+	if !san_money.Equal(batch.GetUnitCost(), 10_000.0/3) {
+		t.Fatalf("the read unit cost = %v, want the unrounded 3333,3333…", batch.GetUnitCost())
+	}
+
+	adjustBatch(t, svc, warehouse, 100, rack.Msg.GetRack().GetId(), batch.GetId(),
+		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_DAMAGED, 2)
+
+	if len(expense.posted) != 1 || !san_money.Equal(expense.posted[0].amount, 20_000.0/3) {
+		t.Fatalf("the write-off handed to the expense = %+v, want the unrounded 6666,666…", expense.posted)
+	}
+
+	var owed liability_service_models.LiabilityBalance
+
+	err = db.Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).Take(&owed).Error
+	if err != nil {
+		t.Fatalf("read the owner's balance: %v", err)
+	}
+
+	if !san_money.Equal(owed.Balance, 20_000.0/3) {
+		t.Fatalf("the owner is owed %v, want the exact 6.666,666… — the ledger never rounds", owed.Balance)
 	}
 }

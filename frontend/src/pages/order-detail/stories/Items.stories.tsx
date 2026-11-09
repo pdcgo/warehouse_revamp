@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, waitFor, within } from "storybook/test";
 
-import { products } from "../../../../.storybook/fixtures";
+import { orderDetailExtras, products } from "../../../../.storybook/fixtures";
 import { FULL, ORDER_DETAIL_META, Routed } from "./kit";
 
-// ONE ORDER — the lines — the price with its owner's markup, the picture, the placeholder.
+// ONE ORDER — the lines — the price with its owner's markup, an unfrozen fraction to three decimals, the picture, the
+// placeholder.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -43,6 +44,38 @@ export const ABorrowedLineIsPricedWithItsMarkup: Story = {
 };
 
 /**
+ * AN UNFROZEN FRACTION SHOWS TO THREE DECIMALS (a-fraction-of-a-rupiah-shows-three-decimals).
+ *
+ * `unit_cost_with_markup` is never rounded — it is the take's total over the quantity — so a borrowed line of three units
+ * whose total is 189.440 costs 63.146,666… a unit. On screen that is "Rp 63.146,667" (3 places, half away from zero),
+ * while the frozen goods_cost beside it stays whole. The rounding is display only: the line total is still the frozen
+ * 189.440, not 3 × 63.146,667.
+ */
+export const AnUnfrozenUnitCostShowsThreeDecimals: Story = {
+  name: "Unit cost, three decimals",
+  render: () => <AtBorrowed />,
+  beforeEach: () => {
+    const line = orderDetailExtras["105"]!.items![0]!;
+    const before = { ...line };
+    Object.assign(line, { quantity: 3, unitCost: 52_622, unitCostWithMarkup: 189_440 / 3, markupTotal: 31_574 });
+    return () => {
+      Object.assign(line, before);
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-item-1")).toBeInTheDocument());
+
+    const line = canvas.getByTestId("order-item-1");
+    await expect(line).toHaveTextContent("Rp 63.146,667");
+    // The frozen line total and the order's goods_cost stay whole.
+    await expect(line).toHaveTextContent("Rp 189.440");
+    await expect(canvas.getByTestId("tile-system")).toHaveTextContent("Rp 191.440");
+  },
+};
+
+/**
  * A LINE SHOWS ITS PRODUCT — "gambar nama sku": the picture, the name, the SKU.
  *
  * `OrderItem` carries no picture; the page reads it off `Product` with one batched `ProductByIds` for every line. 106's
@@ -63,7 +96,7 @@ export const ALineShowsItsProductPicture: Story = {
 
     await waitFor(() => expect(within(line).getByRole("img")).toHaveAttribute("src", BERAS.defaultImageThumbnailUrl));
     await expect(line).toHaveTextContent(BERAS.name);
-    await expect(line).toHaveTextContent(BERAS.sku);
+    await expect(line).toHaveTextContent(BERAS.productCode);
   },
 };
 
@@ -77,7 +110,7 @@ export const ALineWithNoPictureKeepsThePlaceholder: Story = {
     for (const item of FULL.items) {
       const line = canvas.getByTestId(`order-item-${item.id}`);
       await expect(line).toHaveTextContent(item.name);
-      await expect(line).toHaveTextContent(item.sku);
+      await expect(line).toHaveTextContent(item.productCode);
       await expect(within(line).queryByRole("img")).toBeNull();
     }
   },

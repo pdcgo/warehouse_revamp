@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -19,7 +20,7 @@ import (
 // come back empty.
 //
 // A line's product may belong to ANOTHER team's catalogue — a selling team's restock puts its product
-// on this warehouse's shelf — so only the id is returned here. Resolving sku/name is the caller's job,
+// on this warehouse's shelf — so only the id is returned here. Resolving product code/name is the caller's job,
 // via product_service's ProductByIds: this service
 // owns stock, not the catalogue, and inventing a name for a product it does not own would be guessing.
 func (s *Service) RackStock(
@@ -78,6 +79,18 @@ func (s *Service) RackStock(
 		return nil, rackDBError(err)
 	}
 
+	// Which of them a stock count holds on this rack — the Move and Sample dialogs lock those at 0
+	// (a-lock-stops-sales-and-cancels-too). One read for the page.
+	keys := make([]inventory_ledgers.RackKey, 0, len(levels))
+	for i := range levels {
+		keys = append(keys, inventory_ledgers.RackKey{ProductID: levels[i].ProductID, PlacementID: rackID})
+	}
+
+	counting, err := inventory_ledgers.CountLocks(s.db.WithContext(ctx), keys)
+	if err != nil {
+		return nil, rackDBError(err)
+	}
+
 	lines := make([]*inventoryv1.RackStockLine, 0, len(levels))
 
 	for i := range levels {
@@ -90,12 +103,13 @@ func (s *Service) RackStock(
 			// to infer it from a zero would show a shelf of never-restocked goods as worthless.
 			UnitCost:  unitCost,
 			CostKnown: known,
+			Counting:  isCounting(counting, levels[i].ProductID, rackID),
 		}
 
 		if known {
 			// Multiplied HERE rather than in the client, so a line and the header tile cannot disagree
 			// about the same arithmetic.
-			line.Value = levels[i].StockCount * unitCost
+			line.Value = float64(levels[i].StockCount) * unitCost
 		}
 
 		lines = append(lines, line)

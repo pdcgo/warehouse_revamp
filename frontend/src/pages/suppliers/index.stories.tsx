@@ -9,7 +9,7 @@ import { SUPPLIERS_META, SINAR, SUMBER, loaded } from "./stories/kit";
 // (stories-are-grouped-by-the-part-of-the-screen):
 //
 //   Actions  New Supplier, a row's Edit and its Delete
-//   Figures  Sold and Ready — the columns, marked sample, and their range filters
+//   Figures  Sold and Ready — the columns, real, and their range filters
 //   Filters  the search, the store type, the warehouse, and the filters in the URL
 //   Rows     the columns and what a row shows — whose suppliers, the stores, the contact, the sort, the pager
 //   States   a warehouse team's page, which keeps no suppliers

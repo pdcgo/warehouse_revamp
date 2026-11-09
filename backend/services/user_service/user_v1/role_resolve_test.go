@@ -40,3 +40,22 @@ func TestRoleResolve_ReturnsRoleAndRootRole(t *testing.T) {
 		t.Error("suspended = true, want false")
 	}
 }
+
+// It carries the admin-team role too, so a service on the RPC resolver lets the admin team monitor exactly as the DB
+// resolver does (the-admin-team-monitors-read-only) — asked about a team the caller is not in.
+func TestRoleResolve_ReturnsTheAdminTeamRole(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	uid := insertUser(t, db, "monitorme", "pw12345678")
+	grantRole(t, db, 9, uid, role_basev1.Role_ROLE_ADMIN_OWNER)
+
+	res, err := svc.RoleResolve(ctxWithIdentity(uid, "monitorme"), connect.NewRequest(&userv1.RoleResolveRequest{TeamId: 5}))
+	if err != nil {
+		t.Fatalf("RoleResolve: %v", err)
+	}
+
+	if res.Msg.GetAdminTeamRole() != role_basev1.Role_ROLE_ADMIN_OWNER || res.Msg.GetRole() != role_basev1.Role_ROLE_UNSPECIFIED {
+		t.Errorf("admin_team_role = %v, role = %v; want ADMIN_OWNER, UNSPECIFIED", res.Msg.GetAdminTeamRole(), res.Msg.GetRole())
+	}
+}

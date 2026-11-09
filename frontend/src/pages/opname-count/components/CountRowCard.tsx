@@ -101,7 +101,7 @@ export function CountRowCard({
             <ProductListItem
               product={{
                 id: row.productId,
-                sku: row.productSku,
+                productCode: row.productCode,
                 name: row.productName,
                 defaultImageUrl: imageUrl,
                 defaultImageThumbnailUrl: thumbnailUrl,

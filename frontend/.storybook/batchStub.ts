@@ -37,10 +37,10 @@ interface BatchFixture {
   deliveryId: bigint;
   receiptNo: string;
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   supplierId: bigint;
-  unitCost: bigint;
+  unitCost: number;
   costKnown: boolean;
   arrived: bigint;
   broken: bigint;
@@ -76,12 +76,12 @@ function batch(f: Omit<BatchFixture, "warehouseId" | "costKnown" | "broken" | "l
 
 const BATCHES: BatchFixture[] = [
   // A return carries no restock number — the server reads 0 there (batch_detail.go: COALESCE(r.id, 0)).
-  batch({ id: 9101n, deliveryId: 0n, productId: 71n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", unitCost: 40500n, arrived: 2n, ready: 2n, expiresIn: 0, age: 3, origin: BatchOrigin.RETURN, shelves: [[43n, 2n]] }),
-  batch({ id: 5031n, deliveryId: 503n, receiptNo: "SCP5544332211", productId: 74n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", supplierId: 31n, unitCost: 66167n, arrived: 10n, broken: 2n, lost: 1n, ready: 7n, expiresIn: 20, age: 6, shelves: [[41n, 5n], [43n, 2n]] }),
-  batch({ id: 5032n, deliveryId: 503n, receiptNo: "SCP5544332211", productId: 72n, sku: "SKU-TEH-100", name: "Teh Melati 100g", supplierId: 31n, unitCost: 16167n, arrived: 20n, used: 3n, ready: 17n, expiresIn: 150, age: 6, shelves: [[42n, 20n]] }),
-  batch({ id: 5071n, deliveryId: 507n, receiptNo: "JNE5555666677", productId: 72n, sku: "SKU-TEH-100", name: "Teh Melati 100g", supplierId: 31n, unitCost: 15667n, arrived: 15n, used: 15n, ready: 0n, expiresIn: 0, age: 27, shelves: [[42n, 15n]] }),
-  batch({ id: 3982n, deliveryId: 398n, receiptNo: "JNE1112223334", productId: 71n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", supplierId: 33n, unitCost: 40500n, arrived: 24n, used: 6n, ready: 18n, expiresIn: 9, age: 40, shelves: [[41n, 12n], [42n, 12n]] }),
-  batch({ id: 3981n, deliveryId: 398n, receiptNo: "JNE1112223334", productId: 73n, sku: "SKU-GULA-1K", name: "Gula Pasir 1kg", supplierId: 34n, unitCost: 16400n, arrived: 50n, used: 45n, ready: 5n, expiresIn: -3, age: 40, shelves: [[41n, 50n]] }),
+  batch({ id: 9101n, deliveryId: 0n, productId: 71n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g", unitCost: 40500, arrived: 2n, ready: 2n, expiresIn: 0, age: 3, origin: BatchOrigin.RETURN, shelves: [[43n, 2n]] }),
+  batch({ id: 5031n, deliveryId: 503n, receiptNo: "SCP5544332211", productId: 74n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", supplierId: 31n, unitCost: 66167, arrived: 10n, broken: 2n, lost: 1n, ready: 7n, expiresIn: 20, age: 6, shelves: [[41n, 5n], [43n, 2n]] }),
+  batch({ id: 5032n, deliveryId: 503n, receiptNo: "SCP5544332211", productId: 72n, productCode: "SKU-TEH-100", name: "Teh Melati 100g", supplierId: 31n, unitCost: 16167, arrived: 20n, used: 3n, ready: 17n, expiresIn: 150, age: 6, shelves: [[42n, 20n]] }),
+  batch({ id: 5071n, deliveryId: 507n, receiptNo: "JNE5555666677", productId: 72n, productCode: "SKU-TEH-100", name: "Teh Melati 100g", supplierId: 31n, unitCost: 15667, arrived: 15n, used: 15n, ready: 0n, expiresIn: 0, age: 27, shelves: [[42n, 15n]] }),
+  batch({ id: 3982n, deliveryId: 398n, receiptNo: "JNE1112223334", productId: 71n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g", supplierId: 33n, unitCost: 40500, arrived: 24n, used: 6n, ready: 18n, expiresIn: 9, age: 40, shelves: [[41n, 12n], [42n, 12n]] }),
+  batch({ id: 3981n, deliveryId: 398n, receiptNo: "JNE1112223334", productId: 73n, productCode: "SKU-GULA-1K", name: "Gula Pasir 1kg", supplierId: 34n, unitCost: 16400, arrived: 50n, used: 45n, ready: 5n, expiresIn: -3, age: 40, shelves: [[41n, 50n]] }),
 ];
 
 /** The batches a story may change — reset in preview's `beforeEach`, as the other stubs are. */
@@ -110,7 +110,7 @@ function toWire(b: BatchFixture) {
     deliveryId: b.deliveryId,
     receiptNo: b.receiptNo,
     productId: b.productId,
-    sku: b.sku,
+    productCode: b.productCode,
     name: b.name,
     supplierId: b.supplierId,
     unitCost: b.unitCost,
@@ -120,8 +120,8 @@ function toWire(b: BatchFixture) {
     lost: b.lost,
     used: b.used,
     ready: b.ready,
-    lineCost: b.arrived * b.unitCost,
-    readyValue: b.ready * b.unitCost,
+    lineCost: Number(b.arrived) * b.unitCost,
+    readyValue: Number(b.ready) * b.unitCost,
     expiresOnUnix: expiresOn(b),
     createdAtUnix: at,
     acceptedAtUnix: at,
@@ -197,7 +197,7 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
           b.id.toString() === q ||
           b.deliveryId.toString() === q ||
           b.receiptNo.toLowerCase().includes(q) ||
-          b.sku.toLowerCase().includes(q) ||
+          b.productCode.toLowerCase().includes(q) ||
           b.name.toLowerCase().includes(q),
       )
       .filter((b) => {
@@ -221,7 +221,7 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
       items: [{ d: { case: "batch" as const, value: { mapData } } }],
       ids: page.map((b) => b.id),
       pageInfo,
-      readyValueTotal: matched.reduce((s, b) => s + (b.costKnown ? b.ready * b.unitCost : 0n), 0n),
+      readyValueTotal: matched.reduce((s, b) => s + (b.costKnown ? Number(b.ready) * b.unitCost : 0), 0),
       expiringSoonCount: BigInt(matched.filter(expiringSoon).length),
     };
   },

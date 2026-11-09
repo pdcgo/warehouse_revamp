@@ -18,7 +18,7 @@ func recordPayment(
 	t *testing.T,
 	svc *liability_v1.Service,
 	payer, creditor uint64,
-	amount int64,
+	amount float64,
 ) *liabilityv1.LiabilityPayment {
 	t.Helper()
 
@@ -56,7 +56,7 @@ func confirmPayment(
 }
 
 // owed reads what `team` owes `counterparty`, as a positive number.
-func owed(t *testing.T, db *gorm.DB, team, counterparty uint64) int64 {
+func owed(t *testing.T, db *gorm.DB, team, counterparty uint64) float64 {
 	t.Helper()
 
 	return -balanceOf(t, db, team, counterparty)
@@ -72,7 +72,7 @@ func TestPaymentRecord_MovesNoMoney(t *testing.T) {
 	recordPayment(t, svc, selling, warehouse, 15000)
 
 	if got := owed(t, db, selling, warehouse); got != 15000 {
-		t.Fatalf("debt = %d after merely RECORDING a payment, want 15000 — recording must not post",
+		t.Fatalf("debt = %v after merely RECORDING a payment, want 15000 — recording must not post",
 			got)
 	}
 }
@@ -96,12 +96,12 @@ func TestPaymentConfirm_SettlesTheDebt(t *testing.T) {
 	}
 
 	if debt := owed(t, db, selling, warehouse); debt != 0 {
-		t.Fatalf("debt = %d after paying it in full, want 0", debt)
+		t.Fatalf("debt = %v after paying it in full, want 0", debt)
 	}
 
 	// And the creditor's mirror leg moved too — both sides or neither.
 	if got := balanceOf(t, db, warehouse, selling); got != 0 {
-		t.Fatalf("the creditor still reads a receivable of %d, want 0", got)
+		t.Fatalf("the creditor still reads a receivable of %v, want 0", got)
 	}
 }
 
@@ -120,7 +120,7 @@ func TestPaymentConfirm_PartialPaymentLeavesTheRemainder(t *testing.T) {
 	}
 
 	if debt := owed(t, db, selling, warehouse); debt != 10000 {
-		t.Fatalf("debt = %d after paying 5000 of 15000, want 10000", debt)
+		t.Fatalf("debt = %v after paying 5000 of 15000, want 10000", debt)
 	}
 }
 
@@ -145,7 +145,7 @@ func TestPaymentConfirm_ThePayerCannotConfirmTheirOwnPayment(t *testing.T) {
 	}
 
 	if debt := owed(t, db, selling, warehouse); debt != 15000 {
-		t.Fatalf("debt = %d, want 15000 — the refused confirm still moved money", debt)
+		t.Fatalf("debt = %v, want 15000 — the refused confirm still moved money", debt)
 	}
 }
 
@@ -174,7 +174,7 @@ func TestPaymentConfirm_CannotBeConfirmedTwice(t *testing.T) {
 	}
 
 	if debt := owed(t, db, selling, warehouse); debt != 0 {
-		t.Fatalf("debt = %d, want 0 — a double confirm overpaid the debt", debt)
+		t.Fatalf("debt = %v, want 0 — a double confirm overpaid the debt", debt)
 	}
 }
 
@@ -302,7 +302,7 @@ func TestPaymentConfirm_RefusesAnAccountThatIsNotTheCreditors(t *testing.T) {
 	}
 
 	if debt := owed(t, db, selling, warehouse); debt != 15000 {
-		t.Fatalf("debt = %d, want 15000 — a refused accept moved money", debt)
+		t.Fatalf("debt = %v, want 15000 — a refused accept moved money", debt)
 	}
 
 	if len(sent.sent) != 0 {

@@ -85,7 +85,7 @@ export const TheStoreTypeFilters: Story = {
 };
 
 // THE WAREHOUSE IS THE FIRST PICKER (the-warehouse-filters-before-the-team) — right after the search, before the store
-// type, where Discover's sits left of its team; its mark (5) beside it, not wired yet. A warehouse team has no list, so
+// type, where Discover's sits left of its team; its mark (1) beside it, not wired yet. A warehouse team has no list, so
 // no warehouse filter either.
 export const TheWarehouseIsTheFirstPicker: Story = {
   name: "Warehouse first",
@@ -93,7 +93,7 @@ export const TheWarehouseIsTheFirstPicker: Story = {
     const canvas = await loaded(canvasElement);
 
     const warehouse = canvas.getByTestId("supplier-warehouse-filter");
-    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("5");
+    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("1");
     await expect(warehouse.getBoundingClientRect().right).toBeLessThanOrEqual(
       canvas.getByTestId("suppliers-type-filter").getBoundingClientRect().left,
     );

@@ -37,6 +37,8 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) | writing on a shop — an order, a draft, an import — needs a grant for it, or the team's owner or admin role · reads stay team-wide · every current CS is granted on rollout | owner | [Q6](./context_clarify.md#question) — a grant outliving its holder is now real access |
 | [the-primary-cs-is-a-flag-on-a-grant](#the-primary-cs-is-a-flag-on-a-grant) | the primary CS is one of the shop's granted users, flagged — the first grant becomes it, the owner or admin moves it with Make primary, removing that grant leaves none | owner | [Q6](./context_clarify.md#question) — a primary who left the team |
 | [the-shop-gets-its-own-service](#the-shop-gets-its-own-service) | shops and shop access leave `selling_service` for `shop_service` — every other service calls it, and it calls only `user_service` | owner | ⚠ moving the shops that exist — a technical item |
+| [the-close-shop-prototype-is-accepted](#the-close-shop-prototype-is-accepted) | the Close Shop prototype is the design; closed shops show by a Status filter | owner, as recommended | — |
+| [report-filters-offer-closed-shops](#report-filters-offer-closed-shops) | report and list filters offer closed shops after the open ones, badged Closed | owner, as recommended | — |
 
 ## access-is-given-per-user-per-shop
 
@@ -392,6 +394,10 @@ flowchart LR
 | filtering orders | `OrderList` takes a `shop_id`, `0` = every shop ([order.proto:438](../../../proto/warehouse/selling/v1/order.proto#L438)) |
 | ⚠ the person | not checked against the shop's grants — [Q1](./context_clarify.md#question) |
 
+✅ Built 2026-11-05 — the person half: the shop check is now the write gate — granted, or the team's owner or admin, or root or admin (`refuseShopWrite` in `placeOrder`, before the take); a deleted shop answers *"the shop is closed"* (FailedPrecondition).
+
+✅ Built 2026-11-06 — a live shop is an OPEN one (`shops.status`, selling `00043`): `refuseShopWrite` refuses a closed shop before the take and `placeOrder` re-reads it `FOR SHARE` inside its transaction (`refuseClosedShopInTx`), so no order commits after its shop's close. Tests `TestOrderCreate_AShopClosedDuringTheTakeIsRefused`, race `TestRace_ShopClose_OrderCreate`.
+
 ## other-services-keep-a-shop-id-unchecked
 
 > 🏗 As built — [expense_create.go:30](../../../backend/services/expense_service/expense_v1/expense_create.go#L30),
@@ -491,6 +497,9 @@ shop's granted users, the first grant becomes it. What the list below asked is k
 - What the importer does with it. ✅ **Answered in the importer doc** (2026-09-29): a row with no order is counted for
   the shop's primary CS — [user-id-is-the-orders-creator-else-the-shops-primary-cs](../settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs).
 
+✅ **Built 2026-09-29** (verified in code 2026-11-05) — `shop_users.is_primary` (selling `00014`) and `ShopUserSetPrimary`, read by the importer as `primary_user_id`.
+
+
 ## one-call-answers-the-shop-and-the-access
 
 > `context.md` §Rpc That Must Exist that Used by Settlement Importer Service *(owner, 2026-09-29)* —
@@ -579,6 +588,10 @@ flowchart TD
 - ⚠ **An app that pushes drafts** writes too — its login needs a grant, or a manager role.
 - ⚠ **Other writes that name a shop** — a hand-posted settlement row, an expense — were not in the question. They stay
   gated by the team role alone unless you extend this.
+
+✅ Built 2026-11-05 — the order writes: `OrderCreate` (a draft's Promote is OrderCreate; `OrderDraftPromote` no longer exists), `OrderDraftPush` naming a shop and `OrderDraftUpdate` setting one ask `ShopAccessCheck`'s rule in-process (`refuseShopWrite`, `selling_v1/shop_write_gate.go`) and refuse `PermissionDenied`, *"You have no access to <shop> — ask the team's owner or admin for it"*; the order form's shop picker (the draft page is the same form) and the statement import's offer only writable shops (`ShopListFilter.writable`), filters still every shop. Tests `shop_write_gate_test.go`, e2e `writes_need_a_shop_grant.spec.ts`. ⛔ Not built: the rollout grant of every current CS. Not gated: the order imports and hand moves — outside the spec's list.
+
+✅ Built 2026-11-05 — the rollout: `san shop grant-current-cs [--dry-run]` (`tools/san/shop.go`, [docs/tools/san.md](../../tools/san.md#shop-grant-current-cs)) grants every current CS (role CS, not suspended or erased) of every live selling team every live shop of that team, through `ShopUserAdd` — owners and admins get none, an existing grant is skipped (a second run adds nothing), an existing primary is untouched and a shop with none gets the first CS granted. Test `tools/san/shop_test.go`. To be run in the release that turns the gate on.
 
 ## the-primary-cs-is-a-flag-on-a-grant
 
@@ -706,6 +719,8 @@ stateDiagram-v2
 | shops already deleted | become `closed`, `closed_at` = their `updated_at` — their payouts unblock, and report rows get their names back |
 | still open in Q3 | what a closed shop refuses (3b), its drafts (3c), its code (3d), who closes and what stays editable (3e) |
 
+✅ Built 2026-11-06 — selling `00043`: `status` (`open`·`closed`) + `closed_at` replaced `deleted`, every deleted shop filled in as closed at its `updated_at`; `ShopClose` / `ShopReopen` (owner, admin, root, Administrator; idempotent) replaced `ShopDelete`; `ShopList` `status` (open by default · closed · all); `/shops` and the shop page Close and Reopen, no Delete. Tests `shop_close_test.go`, `shop_reopen_test.go`, `shop_status_migration_test.go`, e2e `the_closed_shop.spec.ts`.
+
 ---
 
 ## a-closed-shop-refuses-only-new-selling
@@ -736,6 +751,10 @@ flowchart LR
 | grants and the primary CS | 3e, still open |
 | `ShopAccessCheck` | returns a closed shop with `status`; `NotFound` only for a shop that does not exist or is another team's |
 
+✅ Built 2026-11-05 — the `ShopAccessCheck` half: it answers a deleted shop with `deleted = true` (NotFound only for another team's or a missing one); the settlement importer and settlement's primary-CS lookup accept it; order create, a draft push and a draft's shop refuse it, *"<shop>: the shop is closed"*; the order form's picker never lists it. Until the close is built a closed shop is a deleted one — `status`, Close/Reopen and the list's *closed* filter are not built, so the import dialog cannot pick a closed shop yet. Tests `TestShopAccessCheck_ADeletedShopIsAnsweredFlagged`, `TestShopCheckers_AClosedShopImportsButIsNotLinked`.
+
+✅ Built 2026-11-06 — on `status`: the order writes refuse a closed shop; its statements import (the dialog offers it after the open shops, badged), its placed orders still move and the order import accepts it, the expense form offers it badged. e2e `the_closed_shop.spec.ts`, `TestShopeeOrderImport_AClosedShopsOrdersStillMove`.
+
 ---
 
 ## a-close-leaves-the-drafts-waiting
@@ -764,6 +783,8 @@ flowchart LR
 | the drafts | kept, never deleted by the close — nothing a buyer paid for disappears unseen |
 | finalizing one | refused while the shop is closed |
 | the way out | customer service deletes the draft, or the owner reopens the shop |
+
+✅ Built 2026-11-06 — the close touches no draft; the order form keeps a waiting draft's closed shop (`ShopSelect keepClosed`, badged), says it is closed and holds Create; after a reopen it promotes. Tests `shop_close_test.go` (drafts wait, then promote), story `ADraftOnAClosedShopKeepsItAndRefusesCreate`.
 
 ---
 
@@ -794,6 +815,8 @@ flowchart LR
 | why a label may be reused | orders, settlement and expenses keep the shop's id, never its code; `ShopUpdate` already edits it |
 | the migration | rewrites no codes — those reused after a delete stay as they are |
 
+✅ Built 2026-11-06 — `shops_team_code_open_unique (team_id, shop_code) WHERE status = 'open'` (selling `00043`); a reopen is refused while an open shop holds the code, FailedPrecondition naming it, the index the backstop for two at once. The fill renamed no code. Tests `shop_reopen_test.go`, race `TestRace_ShopReopen_TwoShopsOneCode`.
+
 ---
 
 ## a-closed-shop-locks-all-but-its-grants
@@ -823,6 +846,8 @@ flowchart LR
 | grants, the primary CS | editable on a closed shop |
 | `ShopUpdate` on a closed shop | refused — *"reopen the shop first"* |
 | Q3, whole | [a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted) · [a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling) · [a-close-leaves-the-drafts-waiting](#a-close-leaves-the-drafts-waiting) · [a-shop-code-is-unique-among-open-shops](#a-shop-code-is-unique-among-open-shops) · this |
+
+✅ Built 2026-11-06 — `ShopUpdate` refuses a closed shop, *"the shop is closed — reopen the shop first"*; the grants and the primary CS stay editable; the pages offer Reopen only. Tests `TestShopUpdate_AClosedShopIsRefused`, `shop_user_test.go`, race `TestRace_ShopUpdate_ShopClose`.
 
 ---
 
@@ -909,3 +934,53 @@ flowchart LR
 | leaving the team | drops the person's grants in it — already built |
 | rejoining | starts with no grants; access is given again, on purpose |
 | *Make primary* | the primary CS is a grant, so the same rule holds |
+
+---
+
+## order-moves-stay-team-wide
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: should importing orders and moving an order by hand also need a grant on its shop?
+
+**The verdict.** No. The shop grant of [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) gates **creating** selling on a shop — `OrderCreate` (and so a draft's promote), `OrderDraftPush`, setting a draft's shop — and the statement imports. Writes on orders that already exist stay gated by **team role alone**: `ShopeeOrderImport`, `TiktokOrderImport`, `OrderStatusChange`, `OrderCancel`, `OrderReceiptUpdate`. An import makes the same moves a CS can already make by hand on any shop of the team, so gating only the import would add nothing.
+
+---
+
+## a-closed-shop-takes-no-new-account-link
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: can a financial account be newly linked to a deleted (closed) shop?
+
+**The verdict.** No. Linking an account to a closed shop is refused — financial_account's shop check (`ShopOfTeam`) reads a closed shop as one that does not exist. Links made while the shop was open stay, and payouts on them keep working ([a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling)).
+
+✅ **Built 2026-11-05** — `backend/cmd/app_development/financial_account_deps.go` (`ShopOfTeam` treats a deleted shop as NotFound); test `shop_checkers_test.go`.
+
+✅ Built 2026-11-06 — `ShopOfTeam` reads `status`: `SHOP_STATUS_CLOSED` is NotFound; the shop page offers no link on a closed shop.
+
+---
+
+## the-close-shop-prototype-is-accepted
+
+> In chat *(owner, 2026-11-06)* — *"A"*, replying to the Storybook screenshots of Close Shop (`Pages/Shops/CloseShop`: the list with All, the Status filter, the Close confirm, a closed shop's page, the import picker, phone list and confirm). Asked with one confirm-or-reverse: [a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted) shows closed shops *"by a filter"*, while the account archive later became its own view (`the-archive-is-its-own-view`) — **confirmed: a filter.**
+
+**The verdict.** The prototype is the design for [a-shop-is-closed-never-deleted](#a-shop-is-closed-never-deleted), [a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling), [a-close-leaves-the-drafts-waiting](#a-close-leaves-the-drafts-waiting), [a-closed-shop-locks-all-but-its-grants](#a-closed-shop-locks-all-but-its-grants), [a-shop-code-is-unique-among-open-shops](#a-shop-code-is-unique-among-open-shops) and [a-closed-shop-takes-no-new-account-link](#a-closed-shop-takes-no-new-account-link):
+
+| | |
+| --- | --- |
+| the list | a **Status** filter — Open (default), Closed, All — kept in the URL; a *Closed · date* badge |
+| Close | replaces Delete, for the team's owner and admin (and root / the Administrator); a confirm naming what stops and what keeps working, that the code is freed, and a warning when the shop has no primary CS |
+| Reopen | no confirm (not destructive); refused while an open shop of the team holds the code, naming it |
+| a closed shop's page | a badge and a banner; Reopen Shop only; access and primary CS stay editable; no account link offered |
+| statement import | closed shops offered after the open ones, badged |
+| the order form | never offers a closed shop; a waiting draft **keeps** its closed shop, badged, and Create is refused (the shop is no longer silently cleared) |
+| also offering closed shops, badged | the expense form and the order-import dialog — expenses and placed orders keep running (assistant's reading, from the decisions above) |
+
+✅ Built 2026-11-06 — the prototype is the app: the story-only seam (`closePrototype.tsx`) is gone, the screens call `ShopList` `status`, `ShopClose` and `ShopReopen`; the *TheLive…* stories pin the live Close.
+
+---
+
+## report-filters-offer-closed-shops
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: should the shop filters on the report and list screens also offer closed shops? (Proposed in [context_clarify](./context_clarify.md) §The screens — *"every report and filter: closed shops too, marked closed"* — but not adopted by a decision until now.)
+
+**The verdict.** Every **filter** that picks a shop to read by — Orders, Returns, Order Settlement, Statement Imports, Analytic, Financial Accounts, and any later report — offers **closed shops too, after the open ones, badged *Closed***, so a closed shop's history stays reachable. Forms that **write** new selling still offer open shops only ([a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling)). ⚠ Not built.
+
+✅ Built 2026-11-06 — `ShopSelect asFilter` (closed shops after the open ones, badged; a picked closed shop keeps its badge in the field) on the Orders, Returns, Order Settlement, Statement Imports, Analytic and Financial Accounts filters; the order form and an account's shop link stay open-only.

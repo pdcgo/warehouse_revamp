@@ -58,8 +58,8 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse, ShipmentCost: 80000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "KPH-001", Name: "Kaos Polos Hitam", Count: 100, Total: 4000000},
-			{ProductId: 200, Sku: "TTM-207", Name: "Topi Trucker Merah", Count: 30, Total: 840000},
+			{ProductId: 100, ProductCode: "KPH-001", Name: "Kaos Polos Hitam", Count: 100, Total: 4000000},
+			{ProductId: 200, ProductCode: "TTM-207", Name: "Topi Trucker Merah", Count: 30, Total: 840000},
 		},
 	}))
 	if err != nil {
@@ -137,8 +137,8 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 		t.Fatalf("two racks of one line must share its batch, and the hats have their own: got %d/%d/%d",
 			shirtA.GetBatchId(), shirtB.GetBatchId(), hats.GetBatchId())
 	}
-	if shirtA.GetSku() != "KPH-001" {
-		t.Fatalf("sku = %q, want KPH-001", shirtA.GetSku())
+	if shirtA.GetProductCode() != "KPH-001" {
+		t.Fatalf("sku = %q, want KPH-001", shirtA.GetProductCode())
 	}
 
 	// The hats went to the staging placement — a label a picker can walk to, never a blank code
@@ -174,7 +174,7 @@ func TestRestockLabels_OngoingIsRefused(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 5000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 5000},
 		},
 	}))
 	if err != nil {
@@ -199,7 +199,7 @@ func TestRestockLabels_CrossWarehouseIsNotFound(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 5000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 5000},
 		},
 	}))
 	if err != nil {

@@ -170,7 +170,7 @@ flowchart LR
 ```
 
 **The spec.** `SupplierCreate` refuses a team whose type is not SELLING, with one lookup in `team_service`. Today it
-writes into any team it is given ([supplier_create.go:12](../../../backend/services/inventory_service/inventory_v1/supplier_create.go#L12)).
+writes into any team it is given ([supplier_create.go:12](../../../backend/services/supplier_service/supplier_v1/supplier_create.go)).
 The selling roles on its policy keep out a warehouse's own people, but Root and the Administrator bypass the scope, and
 they can create one in a warehouse team.
 
@@ -554,6 +554,9 @@ flowchart LR
 | the menu | ⚠ my spec: **My Supplier** and **Discover Supplier** under Inventories for a selling team — the same pair as My Product and Discover Product |
 | ⚠ the data | **SAMPLE** (`features/suppliers/discover.ts`): no server searches every team's suppliers yet. supplier_service's `SupplierList` needs a cross-team scope and `SupplierDetail` / `SupplierChannelList` must answer for another team's supplier |
 
+✅ **Built 2026-10-07** (verified in code 2026-11-05) — the data is real: `features/suppliers/discover.ts` calls `SupplierList` with `SupplierListScope.EVERY_TEAM`, and `SupplierDetail` / `SupplierChannelList` answer for any team's supplier.
+
+
 ## restock-accepted-links-the-product-to-its-channel
 
 🔄 **Its readings are decided** (2026-10-07): [every-accepted-line-links-its-own-product](#every-accepted-line-links-its-own-product) · [a-store-delete-is-soft-too](#a-store-delete-is-soft-too) · [a-link-remembers-its-last-restock](#a-link-remembers-its-last-restock) — a redelivered event now raises `last_restocked_at` at most, instead of writing nothing.
@@ -782,6 +785,8 @@ sequenceDiagram
 | deleted | moved with `deleted_at` set — from the row's `updated_at`, the built `deleted` flag has no time |
 | run twice | inserts nothing it already has |
 | ⚠ the drop | **a later pass**, after the move has run on every database. Shipped together, a fresh `migrate up-all` would drop the rows before the command could copy them |
+
+✅ Built 2026-11-06 — a row an earlier run moved is recognised by its origin (same team, or a store's same supplier, and the same `created_at`), so one edited in supplier_service since is skipped and named, never overwritten and never a failure; only an unrelated row under a moving id still refuses (backlog #26, `tools/san/supplier_move.go`).
 
 ## every-accepted-line-links-its-own-product
 

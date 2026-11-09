@@ -1,9 +1,12 @@
-import { lazy } from "react";
+import { Suspense, lazy } from "react";
+import type { ReactElement } from "react";
+import { Center, Spinner } from "@chakra-ui/react";
 import { createBrowserRouter, redirect } from "react-router-dom";
 import { AuthGate, ProtectedRoute } from "./features/auth/AuthGate";
 import { LoginPage } from "./pages/login/index";
 import { Layout } from "./layouts/Layout";
 import { TeamProvider, useTeam } from "./features/team/TeamContext";
+import { WriteRoute } from "./features/team/WriteRoute";
 import { TeamType } from "./gen/warehouse/team/v1/team_pb";
 import { labelsPath } from "./features/restock/labelsPath";
 
@@ -71,6 +74,10 @@ const SettlementReportPage = lazy(() =>
   import("./pages/settlement-report").then((m) => ({ default: m.SettlementReportPage })),
 );
 // The platform statements that feed that ledger — the file list, and one file's page.
+// A shop's own settlement rows — the-shop-entries-page-is-accepted.
+const SettlementShopEntriesPage = lazy(() =>
+  import("./pages/settlement-shop-entries").then((m) => ({ default: m.SettlementShopEntriesPage })),
+);
 const SettlementImportsPage = lazy(() =>
   import("./pages/settlement-imports").then((m) => ({ default: m.SettlementImportsPage })),
 );
@@ -94,17 +101,16 @@ const LiabilityDetailPage = lazy(() =>
 const InventoryPage = lazy(() =>
   import("./pages/inventory").then((m) => ({ default: m.InventoryPage })),
 );
+const StockForward = lazy(() =>
+  import("./pages/inventory/StockForward").then((m) => ({ default: m.StockForward })),
+);
 const ReturnsPage = lazy(() =>
   import("./pages/returns").then((m) => ({ default: m.ReturnsPage })),
 );
 const ReturnDetailPage = lazy(() =>
   import("./pages/return-detail").then((m) => ({ default: m.ReturnDetailPage })),
 );
-const OpnamePage = lazy(() =>
-  import("./pages/opname").then((m) => ({ default: m.OpnamePage })),
-);
-// The stock count's sessions — a PROTOTYPE until design_accept (docs/business/inventory/opname.md). They sit BESIDE the
-// one-rack page above, which keeps working on the real backend until the backend step replaces it.
+// The stock count's sessions (docs/business/inventory/opname.md) — they replaced the one-rack count page.
 const OpnameSessionsPage = lazy(() =>
   import("./pages/opname-sessions").then((m) => ({ default: m.OpnameSessionsPage })),
 );
@@ -116,6 +122,11 @@ const OpnameCountPage = lazy(() =>
 );
 const OpnameFinalizePage = lazy(() =>
   import("./pages/opname-finalize").then((m) => ({ default: m.OpnameFinalizePage })),
+);
+// Found stock waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin) — in the menu as
+// Inventories ▸ Found Stock (found-stock-sits-after-stock-opname-with-its-count).
+const FoundRequestsPage = lazy(() =>
+  import("./pages/found-requests").then((m) => ({ default: m.FoundRequestsPage })),
 );
 const SuppliersPage = lazy(() =>
   import("./pages/suppliers").then((m) => ({ default: m.SuppliersPage })),
@@ -211,6 +222,37 @@ const SettingsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import("./pages/profile").then((m) => ({ default: m.ProfilePage })),
 );
+// Where an AI agent's OAuth login lands (our-server-hosts-the-mcp). Code-split like every page: almost nobody opens it,
+// and never twice a day.
+const ConnectAgentPage = lazy(() =>
+  import("./pages/connect-agent").then((m) => ({ default: m.ConnectAgentPage })),
+);
+
+// THE CONNECT PAGE'S FRAME: signed in, OUTSIDE the shell. It needs an identity — the agent's credential is minted for a
+// person — but no sidebar and no current team: the page loads the person's teams itself, and the team it connects is
+// picked on it. Its own Suspense boundary, since the shell's (around Layout's <Outlet/>) is not above it.
+function ConnectAgentRoute() {
+  return (
+    <ProtectedRoute>
+      <Suspense
+        fallback={
+          <Center minH="100dvh">
+            <Spinner size="lg" colorPalette="brand" />
+          </Center>
+        }
+      >
+        <ConnectAgentPage />
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
+// A route that exists only to CHANGE something — a create or edit form, an accept, a count, a finalize. While the admin
+// team monitors the team it says read-only instead (WriteRoute, the-admin-team-monitors-read-only). A route that reads
+// is never wrapped.
+function write(page: ReactElement) {
+  return <WriteRoute>{page}</WriteRoute>;
+}
 
 // TeamProvider sits INSIDE the protected route: memberships are only loadable once there is an
 // identity, and TeamAccessList requires a token.
@@ -288,6 +330,17 @@ export const router = createBrowserRouter([
       </AuthGate>
     ),
   },
+  // Top-level, beside /login — not a child of the shell. The authorize endpoint sends the browser here with the agent's
+  // client_id, redirect_uri, state and PKCE challenge; a signed-out visitor is sent to /login and comes back with them
+  // (ProtectedRoute carries the search, the login page returns to it).
+  {
+    path: "/connect-agent",
+    element: (
+      <AuthGate>
+        <ConnectAgentRoute />
+      </AuthGate>
+    ),
+  },
   {
     path: "/",
     element: (
@@ -301,7 +354,7 @@ export const router = createBrowserRouter([
       { path: "teams/:teamId", element: <TeamDetailPage backTo="/teams" /> },
       // The warehouse edit surface is a dedicated page (it carries the weekly hours); every team
       // type reaches it under /teams. Non-warehouse teams edit in a dialog instead (#59).
-      { path: "teams/:teamId/edit", element: <WarehouseEditPage /> },
+      { path: "teams/:teamId/edit", element: write(<WarehouseEditPage />) },
       { path: "categories", element: <CategoriesPage /> },
       // The courier catalogue — shipment_service (docs/business/shipment). Root only, from the nav.
       { path: "shipping", element: <ShipmentChannelsPage /> },
@@ -310,15 +363,15 @@ export const router = createBrowserRouter([
       { path: "products/archived", element: <ProductsPage archived /> },
       { path: "products/discover", element: <DiscoverProductsPage /> },
       { path: "products/discover/:productId", element: <DiscoverProductDetailPage /> },
-      { path: "products/new", element: <ProductEditPage /> },
+      { path: "products/new", element: write(<ProductEditPage />) },
       // A selling team's bundles (docs/business/product/product_bundle.md). The
       // static segment outranks `products/:productId`, so "bundles" is never read as a product id.
       { path: "products/bundles", element: <BundlesPage /> },
-      { path: "products/bundles/new", element: <BundleEditPage /> },
+      { path: "products/bundles/new", element: write(<BundleEditPage />) },
       { path: "products/bundles/:bundleId", element: <BundleDetailPage /> },
-      { path: "products/bundles/:bundleId/edit", element: <BundleEditPage /> },
+      { path: "products/bundles/:bundleId/edit", element: write(<BundleEditPage />) },
       { path: "products/:productId", element: <ProductDetailPage /> },
-      { path: "products/:productId/edit", element: <ProductEditPage /> },
+      { path: "products/:productId/edit", element: write(<ProductEditPage />) },
       { path: "shops", element: <ShopsPage /> },
       { path: "shops/:shopId", element: <ShopDetailPage /> },
       { path: "orders", element: <OrdersPage /> },
@@ -327,7 +380,7 @@ export const router = createBrowserRouter([
       // ⚠ /revenue and /profit are GONE with `revenue_service`, and there is deliberately no redirect:
       // both were made entirely of its expected margin, so there is nowhere truthful to send a reader.
       { path: "statement", element: <DailyStatementPage /> },
-      { path: "orders/new", element: <OrderCreatePage /> },
+      { path: "orders/new", element: write(<OrderCreatePage />) },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
       // The WAREHOUSE's orders (#151) — the ones shipping FROM this building, and the screen where the
       // crew records what it has done to each. Top-level and order-named, beside the selling team's
@@ -372,6 +425,7 @@ export const router = createBrowserRouter([
       // per order), the route for what the screen is to the person opening it.
       { path: "settlement", element: <SettlementListRoute /> },
       { path: "settlement/report", element: <SettlementReportPage /> },
+      { path: "settlement/shop-entries", element: <SettlementShopEntriesPage /> },
       { path: "settlement/imports", element: <SettlementImportsPage /> },
       { path: "settlement/imports/:fileId", element: <SettlementImportDetailPage /> },
       // ⚠ "report" is a static segment, so it outranks :accountId — an account is never read as "report".
@@ -383,10 +437,11 @@ export const router = createBrowserRouter([
       // "terms" would otherwise look like a counterparty id to anyone scanning the file.
       // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row (#222).
       { path: "liability/:counterpartyId", element: <LiabilityDetailPage /> },
+      // Root and the admin team's Inventory: what a picked warehouse holds. A warehouse reads the same list as its own
+      // Products (a-warehouses-products-is-what-it-holds).
       { path: "inventory", element: <InventoryPage /> },
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122), and it is now TWO
-      // screens behind ONE path — see RestockRoute. The on-hand list is "Stock" (it was only ever
-      // called Restock under the superseded "pick a warehouse and receive there" design).
+      // screens behind ONE path — see RestockRoute.
       { path: "inventories/restock", element: <RestockRoute /> },
       // `new` is static and `:requestId` is dynamic, so React Router ranks `new` first regardless of
       // the order here — /inventories/restock/new stays the create form, not a detail of id "new".
@@ -395,11 +450,11 @@ export const router = createBrowserRouter([
       // distinct `key`s so that switching between them REMOUNTS rather than reconciles — same component
       // type at the same position otherwise keeps its state, which would carry a loaded request's
       // fields into a blank create form.
-      { path: "inventories/restock/new", element: <RestockFormPage key="create" /> },
+      { path: "inventories/restock/new", element: write(<RestockFormPage key="create" />) },
       { path: "inventories/restock/:requestId", element: <RestockDetailRoute /> },
-      { path: "inventories/restock/:requestId/edit", element: <RestockFormPage key="edit" /> },
+      { path: "inventories/restock/:requestId/edit", element: write(<RestockFormPage key="edit" />) },
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
-      { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
+      { path: "inventories/restock/:requestId/accept", element: write(<RestockAcceptPage />) },
       // THE LABELS HAVE ONE ADDRESS (owner: *"pakai 1 alamat saja"*, the-labels-have-one-address) — one restock or
       // several, `?ids=503` or `?ids=503,502` (labels-print-several-restocks). `labels` is static, so it ranks above
       // :requestId whatever the order here.
@@ -420,11 +475,13 @@ export const router = createBrowserRouter([
       // A selling team moving its own stock between warehouses — one path, two screens (WarehouseTransferRoute).
       // `new` is static, so it ranks above :transferId whatever the order here. Create only: lines are never edited.
       { path: "inventories/transfer", element: <WarehouseTransferRoute /> },
-      { path: "inventories/transfer/new", element: <WarehouseTransferFormPage /> },
+      { path: "inventories/transfer/new", element: write(<WarehouseTransferFormPage />) },
       { path: "inventories/transfer/:transferId", element: <WarehouseTransferDetailRoute /> },
       // Warehouse B counts the box in — a page, not a dialog.
-      { path: "inventories/transfer/:transferId/accept", element: <WarehouseTransferAcceptPage /> },
-      { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
+      { path: "inventories/transfer/:transferId/accept", element: write(<WarehouseTransferAcceptPage />) },
+      // The old Stock address FORWARDS — a warehouse to its Products, anyone else to /inventory (StockForward). Not a
+      // loader redirect: where it goes depends on the current team, which only TeamProvider knows.
+      { path: "inventories/stock", element: <StockForward /> },
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.
       { path: "inventories/products/:productId", element: <WarehouseProductPage /> },
@@ -432,12 +489,17 @@ export const router = createBrowserRouter([
       // One return's receive & inspect record (#163) — reached by clicking a row; a PAGE, not a
       // dialog (CLAUDE.md).
       { path: "inventories/returns/:returnId", element: <ReturnDetailPage /> },
-      { path: "inventories/opname", element: <OpnamePage /> },
-      // Under /inventories/opname, so the menu's Opname stays lit (nav.ts matches the longest prefix).
+      // Where the retired one-rack count lived: an old link or bookmark lands on the counts — a loader redirect, as above.
+      { path: "inventories/opname", loader: () => redirect("/inventories/opname/sessions") },
+      // Under /inventories/opname/sessions — where the menu's Opname points — so it stays lit on every count screen
+      // (nav.ts matches the longest prefix).
       { path: "inventories/opname/sessions", element: <OpnameSessionsPage /> },
       { path: "inventories/opname/sessions/:sessionId", element: <OpnameSessionDetailPage /> },
-      { path: "inventories/opname/sessions/:sessionId/count", element: <OpnameCountPage /> },
-      { path: "inventories/opname/sessions/:sessionId/finalize", element: <OpnameFinalizePage /> },
+      { path: "inventories/opname/sessions/:sessionId/count", element: write(<OpnameCountPage />) },
+      { path: "inventories/opname/sessions/:sessionId/finalize", element: write(<OpnameFinalizePage />) },
+      // A prototype until design_accept: the server answers Unimplemented. Its menu entry — Inventories, beside the
+      // stock counts — comes with the backend step.
+      { path: "inventories/found-stock", element: <FoundRequestsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Every team's suppliers, searched across teams — independent of the team's own list above

@@ -119,12 +119,14 @@ func TestOrderNoteCreate_BothEndsWritesFromSelling(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S1", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: 2,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {

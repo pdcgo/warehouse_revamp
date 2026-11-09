@@ -30,7 +30,7 @@ func acceptLine(
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse, Receipt: "GRN-BK",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "KPH-001", Name: "Kaos", Count: good + broken + missing, Total: float64(total)},
+			{ProductId: product, ProductCode: "KPH-001", Name: "Kaos", Count: good + broken + missing, Total: float64(total)},
 		},
 	}))
 	if err != nil {
@@ -188,7 +188,7 @@ func TestBatchDetail_ReturnAggregate(t *testing.T) {
 
 	before := time.Now().Add(-time.Minute)
 
-	for key, qty := range map[string]int64{"order:1": 4, "order:2": 1} {
+	for key, qty := range map[string]int64{"key-1": 4, "key-2": 1} {
 		takeForOrder(t, svc, 2, warehouse, product, qty, key)
 
 		_, err = svc.OrderTransactionRelease(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{

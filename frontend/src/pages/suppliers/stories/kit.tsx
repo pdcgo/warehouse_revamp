@@ -43,6 +43,14 @@ export async function loaded(canvasElement: HTMLElement) {
 
 export const BANYAK = supplierFixture("PT Banyak Toko");
 
+// The supplier ids on the page, in id order — what one SupplierGoods call must have asked for.
+export const rowIds = (canvas: ReturnType<typeof within>) =>
+  within(canvas.getByTestId("suppliers-table"))
+    .getAllByRole("row")
+    .slice(1)
+    .map((r) => r.getAttribute("data-testid")!.replace("supplier-row-", ""))
+    .sort();
+
 export const rowNames = (canvas: ReturnType<typeof within>) =>
   within(canvas.getByTestId("suppliers-table"))
     .getAllByRole("row")

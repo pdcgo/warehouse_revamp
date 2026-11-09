@@ -20,6 +20,7 @@ import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { AddEntryDialog, type EntryDraft } from "./AddEntryDialog";
 import { MarginBreakdown } from "./MarginBreakdown";
 import { useIsMobile } from "../../../layouts/shell";
+import { todayWibDateInput } from "../../../lib/datetime";
 import { formatRupiah, formatSignedRupiah } from "../../../lib/money";
 import {
   direction,
@@ -57,7 +58,10 @@ export interface OrderLedgerPanelProps {
   role?: PostingRole;
   onAddEntry?: (draft: EntryDraft) => void;
   onReverse?: (entry: SettlementEntry) => void;
-  /** Today, as `yyyy-mm-dd`. Passed in so a story is deterministic. */
+  /**
+   * Today, as `yyyy-mm-dd` — JAKARTA's (the-system-runs-on-jakarta-time). Passed in so a story is deterministic. Never
+   * the `toISOString` day: that is UTC, which pre-filled the entry with yesterday from 00:00 to 07:00 WIB.
+   */
   today?: string;
   /**
    * No card of its own — for a host that already frames it. The order detail's Settlement section is
@@ -75,7 +79,7 @@ export interface OrderLedgerPanelProps {
    * recorded) neither appears — a margin with no cost behind it would be the whole payout passed off as
    * earned.
    */
-  totalBeli?: bigint;
+  totalBeli?: number;
 }
 
 export function OrderLedgerPanel({
@@ -84,7 +88,7 @@ export function OrderLedgerPanel({
   role = "team_admin",
   onAddEntry,
   onReverse,
-  today = new Date().toISOString().slice(0, 10),
+  today = todayWibDateInput(),
   bare = false,
   totalBeli,
 }: OrderLedgerPanelProps) {
@@ -96,7 +100,7 @@ export function OrderLedgerPanel({
   // ⚠ 0 means NOT RECORDED, not "worth nothing" (order.proto:224). Every figure on this panel is
   // relative to the estimate, so with no estimate there is nothing to be relative to — the panel
   // says so instead of printing a loss of minus-everything, which would read as pure profit.
-  const unknownEstimate = settlement.initialTotal === 0n;
+  const unknownEstimate = settlement.initialTotal === 0;
   // An entry's original, by id — a reversal names what it undoes.
   const byId = new Map(settlement.entries.map((e) => [e.id, e]));
   // A PHONE READS EACH ENTRY AS A BLOCK (`a-phone-reads-each-line-as-a-block`) — a JS breakpoint, never
@@ -229,7 +233,7 @@ export function OrderLedgerPanel({
         role={role}
       />
 
-      {totalBeli !== undefined && totalBeli > 0n && (
+      {totalBeli !== undefined && totalBeli > 0 && (
         <MarginBreakdown
           open={breakdownOpen}
           onOpenChange={setBreakdownOpen}
@@ -308,11 +312,11 @@ function SettlementSummary({
   leadWide = false,
   onBreakdown,
 }: {
-  estimate: bigint;
-  received: bigint;
-  lost: bigint;
+  estimate: number;
+  received: number;
+  lost: number;
   /** The host's complete cost; undefined or 0 = not known, and both margins stay off. */
-  totalBeli?: bigint;
+  totalBeli?: number;
   /** How many entries moved the money after the sale — see `movingEntries`. */
   movedBy: number;
   /** The lead card across the whole strip — a phone, where it would otherwise sit alone in half a row. */
@@ -322,12 +326,15 @@ function SettlementSummary({
 }) {
   const { t } = useTranslation();
   const adjustment = -lost;
-  const costKnown = totalBeli !== undefined && totalBeli > 0n;
+  const costKnown = totalBeli !== undefined && totalBeli > 0;
+  // The cost is an exact double (goods_cost frozen exact, the-backend-never-rounds-money), like the ledger's figures
+  // since settlement 00010, so the two meet without conversion.
+  const beli = totalBeli ?? 0;
   // A share of the SALE, every one of them — the order list measures its margin against the marketplace
   // price too (`the-margin-is-mp-minus-total-beli`).
-  const ofSale = (part: bigint) =>
-    estimate > 0n
-      ? t("orderSettlement.stat.ofSales", { pct: ((Number(part) * 100) / Number(estimate)).toFixed(2) })
+  const ofSale = (part: number) =>
+    estimate > 0
+      ? t("orderSettlement.stat.ofSales", { pct: ((part * 100) / estimate).toFixed(2) })
       : undefined;
 
   return (
@@ -352,7 +359,7 @@ function SettlementSummary({
       <SummaryCard
         label={t("orderSettlement.lost")}
         value={
-          <Text as="span" color={adjustment < 0n ? "fg.error" : adjustment > 0n ? "fg.success" : undefined}>
+          <Text as="span" color={adjustment < 0 ? "fg.error" : adjustment > 0 ? "fg.success" : undefined}>
             {formatSignedRupiah(adjustment)}
           </Text>
         }
@@ -364,8 +371,8 @@ function SettlementSummary({
       {costKnown && (
         <SummaryCard
           label={t("orderSettlement.estimatedMargin")}
-          value={formatRupiah(estimate - totalBeli)}
-          line={ofSale(estimate - totalBeli)}
+          value={formatRupiah(estimate - beli)}
+          line={ofSale(estimate - beli)}
           note={t("orderSettlement.stat.estimatedMarginNote")}
           testId="estimated-margin"
         />
@@ -396,8 +403,8 @@ function SettlementSummary({
               </Button>
             )
           }
-          value={formatRupiah(received - totalBeli)}
-          line={ofSale(received - totalBeli)}
+          value={formatRupiah(received - beli)}
+          line={ofSale(received - beli)}
           note={t("orderSettlement.stat.marginNote")}
           emphasis
           wide={leadWide}
@@ -575,8 +582,8 @@ function LedgerRow({
             dir === "in" ? "fg.success" : dir === "out" ? "fg.error" : undefined
           }
         >
-          {entry.change >= 0n ? "+" : "−"}
-          {formatRupiah(entry.change >= 0n ? entry.change : -entry.change)}
+          {entry.change >= 0 ? "+" : "−"}
+          {formatRupiah(Math.abs(entry.change))}
         </Text>
       </Table.Cell>
 

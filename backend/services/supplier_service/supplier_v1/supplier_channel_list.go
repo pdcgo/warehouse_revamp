@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
@@ -28,17 +29,7 @@ func (s *Service) SupplierChannelList(
 		return nil, err
 	}
 
-	query := db.
-		Model(&supplier_service_models.SupplierChannel{}).
-		Where("supplier_id = ? AND deleted_at IS NULL", filter.GetSupplierId())
-
-	if pattern := likePattern(filter.GetQ()); pattern != "" {
-		query = query.Where("name ILIKE ? OR uri ILIKE ? OR description ILIKE ?", pattern, pattern, pattern)
-	}
-
-	if channelType := filter.GetChannelType(); channelType != marketplacev1.Marketplace_MARKETPLACE_UNSPECIFIED {
-		query = query.Where("channel_type = ?", san_marketplace.ToText(channelType))
-	}
+	query := channelListQuery(db, filter)
 
 	var total int64
 
@@ -66,4 +57,22 @@ func (s *Service) SupplierChannelList(
 		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
+}
+
+// channelListQuery is the Toko tab's set — one supplier's live stores, narrowed by the search and the type. The list
+// and its export (SupplierChannelExport) read it, so the file holds exactly the rows the tab pages through.
+func channelListQuery(db *gorm.DB, filter *supplierv1.SupplierChannelListFilter) *gorm.DB {
+	query := db.
+		Model(&supplier_service_models.SupplierChannel{}).
+		Where("supplier_id = ? AND deleted_at IS NULL", filter.GetSupplierId())
+
+	if pattern := likePattern(filter.GetQ()); pattern != "" {
+		query = query.Where("name ILIKE ? OR uri ILIKE ? OR description ILIKE ?", pattern, pattern, pattern)
+	}
+
+	if channelType := filter.GetChannelType(); channelType != marketplacev1.Marketplace_MARKETPLACE_UNSPECIFIED {
+		query = query.Where("channel_type = ?", san_marketplace.ToText(channelType))
+	}
+
+	return query
 }

@@ -2,6 +2,7 @@ package selling_v1_test
 
 import (
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -43,21 +44,6 @@ func pushRef(t *testing.T, svc *selling_v1.Service, userID uint64, ref string) u
 	return push(t, svc, userID, msg).GetDraft().GetId()
 }
 
-// mapLine is what OrderDraftUpdate (#193) will do — written directly so the unmapped count can be
-// tested before that RPC exists.
-func mapLine(t *testing.T, db *gorm.DB, draftID uint64, sku string, productID uint64) {
-	t.Helper()
-
-	err := db.
-		Model(&selling_service_models.OrderDraftItem{}).
-		Where("draft_id = ? AND external_sku = ?", draftID, sku).
-		Update("product_id", productID).
-		Error
-	if err != nil {
-		t.Fatalf("map line: %v", err)
-	}
-}
-
 // A DRAFT IS PERSONAL (§6.3). Two people in the same team, each pushing their own scrape, must not
 // see each other's — and the team scope alone would not do that, since both hold a role in team 2.
 func TestOrderDraftList_ShowsOnlyTheCallersOwnDrafts(t *testing.T) {
@@ -84,14 +70,14 @@ func TestOrderDraftList_ShowsOnlyTheCallersOwnDrafts(t *testing.T) {
 	}
 }
 
-// The list carries no lines, so these counts are the only thing on the list screen (#195) that says
-// how much work is left on a draft.
-func TestOrderDraftList_CountsTheUnmappedLines(t *testing.T) {
+// The list carries no lines, so the count is what the list screen (#195) says of them — the line count only, since a
+// draft stores no mapping (the-drafts-list-counts-no-mapping). The buyer and the address come from each draft's one
+// address row.
+func TestOrderDraftList_CountsTheLinesAndNamesTheBuyer(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	draftID := pushRef(t, svc, 7, "SHP-100")
-	mapLine(t, db, draftID, "MP-1", 42)
+	pushRef(t, svc, 7, "SHP-100")
 
 	got := draftRows(listDrafts(t, svc, 7, 2, ""))[0]
 
@@ -99,9 +85,9 @@ func TestOrderDraftList_CountsTheUnmappedLines(t *testing.T) {
 		t.Fatalf("item_count = %d, want 2", got.GetItemCount())
 	}
 
-	if got.GetUnmappedItemCount() != 1 {
-		t.Fatalf("unmapped_item_count = %d, want 1 — one of the two lines was mapped",
-			got.GetUnmappedItemCount())
+	if got.GetCustomerName() != "Budi" || got.GetAddress().GetAddressLine() != "Jl. Merdeka 1" {
+		t.Fatalf("buyer %q at %q — want the address row's Budi at Jl. Merdeka 1",
+			got.GetCustomerName(), got.GetAddress().GetAddressLine())
 	}
 
 	// Summaries only: the list must not carry lines, or paginating it would be pointless.
@@ -124,9 +110,8 @@ func TestOrderDraftList_ADraftWithNoLinesCountsZero(t *testing.T) {
 
 	got := draftRows(listDrafts(t, svc, 7, 2, ""))[0]
 
-	if got.GetItemCount() != 0 || got.GetUnmappedItemCount() != 0 {
-		t.Fatalf("counts = %d/%d on a draft with no lines, want 0/0",
-			got.GetItemCount(), got.GetUnmappedItemCount())
+	if got.GetItemCount() != 0 {
+		t.Fatalf("item_count = %d on a draft with no lines, want 0", got.GetItemCount())
 	}
 }
 
@@ -166,5 +151,90 @@ func TestOrderDraftList_IsScopedToTheTeam(t *testing.T) {
 
 	if len(draftRows(msg)) != 0 {
 		t.Fatalf("got %d drafts in a team that has none", len(draftRows(msg)))
+	}
+}
+
+// finishDraft fills in everything Create needs that a scrape does not carry — written directly. The scrape already
+// carries the buyer and the address line; nothing maps the lines (a-draft-stores-no-mapping).
+func finishDraft(t *testing.T, db *gorm.DB, draftID uint64) {
+	t.Helper()
+
+	err := db.
+		Model(&selling_service_models.OrderDraft{}).
+		Where("id = ?", draftID).
+		Updates(map[string]any{
+			"shop_id":             21,
+			"warehouse_id":        11,
+			"platform_total":      135000,
+			"platform_created_at": time.Now().Add(-time.Hour),
+			"shipment_channel_id": 1,
+		}).
+		Error
+	if err != nil {
+		t.Fatalf("finish draft: %v", err)
+	}
+}
+
+// #16 — THE READY COUNT IS THE WHOLE SET'S (the-draft-summary-is-three-cards). Two of seven drafts are ready; asked
+// one row a page, every page still answers 2 — the card no longer counts the page on screen. Each other draft misses
+// exactly one rule of draftGaps, so a rule dropped from readyDrafts shows up as a 3. No line of any draft is mapped —
+// a draft stores no mapping, and none keeps it from Ready (the-drafts-list-counts-no-mapping).
+func TestOrderDraftList_ReadyCountIsTheWholeSets(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	readyA := pushRef(t, svc, 7, "SHP-R1")
+	readyB := pushRef(t, svc, 7, "SHP-R2")
+	noPrice := pushRef(t, svc, 7, "SHP-P1")
+	noDate := pushRef(t, svc, 7, "SHP-D1")
+	noCourier := pushRef(t, svc, 7, "SHP-C1")
+	noAddress := pushRef(t, svc, 7, "SHP-A1")
+	noCustomer := pushRef(t, svc, 7, "SHP-N1")
+
+	for _, id := range []uint64{readyA, readyB, noPrice, noDate, noCourier, noAddress, noCustomer} {
+		finishDraft(t, db, id)
+	}
+
+	db.Model(&selling_service_models.OrderDraft{}).Where("id = ?", noPrice).Update("platform_total", 0)
+	db.Model(&selling_service_models.OrderDraft{}).Where("id = ?", noDate).Update("platform_created_at", nil)
+	db.Model(&selling_service_models.OrderDraft{}).Where("id = ?", noCourier).Update("shipment_channel_id", 0)
+	db.Model(&selling_service_models.OrderDraftAddress{}).Where("order_draft_id = ?", noAddress).Update("address_line", "")
+	db.Model(&selling_service_models.OrderDraftAddress{}).Where("order_draft_id = ?", noCustomer).Update("customer_name", "")
+
+	// A colleague's ready draft is not the caller's backlog.
+	other := pushRef(t, svc, 9, "SHP-X1")
+	finishDraft(t, db, other)
+
+	for page := uint32(1); page <= 7; page++ {
+		res, err := svc.OrderDraftList(asUser(7), connect.NewRequest(&sellingv1.OrderDraftListRequest{
+			TeamId: 2,
+			Page:   &commonv1.CommonPagination{Page: page, Limit: 1},
+		}))
+		if err != nil {
+			t.Fatalf("page %d: %v", page, err)
+		}
+
+		if res.Msg.GetReadyCount() != 2 {
+			t.Fatalf("page %d: ready = %d, want 2 — the count must be the set's, not the page's", page, res.Msg.GetReadyCount())
+		}
+
+		if len(draftRows(res.Msg)) != 1 || res.Msg.GetPageInfo().GetTotalItems() != 7 {
+			t.Fatalf("page %d: rows = %d, total = %d — the count leaked into the page query",
+				page, len(draftRows(res.Msg)), res.Msg.GetPageInfo().GetTotalItems())
+		}
+	}
+
+	// It follows the list's own filter: another app's drafts are none of this set.
+	msg := listDrafts(t, svc, 7, 2, "another-app")
+	if msg.GetReadyCount() != 0 {
+		t.Fatalf("ready under another source = %d, want 0", msg.GetReadyCount())
+	}
+
+	// A manual draft is never ready on the list: its order ref is still to be typed (orderDrafts.gapRef).
+	db.Model(&selling_service_models.OrderDraft{}).Where("id = ?", readyB).Update("source", "manual")
+
+	msg = listDrafts(t, svc, 7, 2, "")
+	if msg.GetReadyCount() != 1 {
+		t.Fatalf("ready with a manual draft = %d, want 1", msg.GetReadyCount())
 	}
 }

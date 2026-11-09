@@ -6,7 +6,7 @@ import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OpnameCountPage } from "./index";
 
-// ⚠ PROTOTYPE for implementation_analysis — counting at the shelf, on a phone (opname.md §How Staff Work On Session),
+// The stock count (accepted 2026-11-02) — counting at the shelf, on a phone (opname.md §How Staff Work On Session),
 // laid out like Accept Delivery: rack tiles, then one three-column card per product.
 //
 // Count #15 at Gudang Pusat, as STAFF. Rak A-01-1 holds Beras (counted by Budi), Minyak (not counted — book 6) and
@@ -157,9 +157,10 @@ export const EmptyRack: Story = {
   },
 };
 
-// A product its team never had here is not counted: take it off the rack, tell the team
-// (a-unit-never-stocked-here-comes-in-by-restock).
-export const FoundButNeverStockedHere: Story = {
+// A found is picked from what this warehouse holds or has held (a-warehouse-picks-only-what-it-has-held): "karton" finds
+// the two cartons held here, both at 0 now, and not Gula Merah's, whose team never had it here — it is not stock here yet
+// (a-unit-never-stocked-here-comes-in-by-restock). Tepung's carton joins the count on this rack.
+export const FoundPicksOnlyWhatWasHeldHere: Story = {
   render: () => <RackA1 />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -169,15 +170,23 @@ export const FoundButNeverStockedHere: Story = {
     const dialog = await screen.findByTestId("opname-found-dialog");
     // The dialog animates in — until it is visible, a click and the keys typed after it go nowhere.
     await waitFor(() => expect(dialog).toBeVisible());
+    // ON A DESKTOP IT IS A DIALOG, NOT A SHEET — its own height, well short of the window (full screen is the phone's,
+    // by the JS breakpoint; a responsive `size` once stretched it to the window).
+    await waitFor(() => expect(dialog.getBoundingClientRect().height).toBeLessThan(window.innerHeight * 0.8));
     const input = within(dialog).getByRole("combobox");
     await userEvent.click(input);
-    await userEvent.type(input, "gula merah", { delay: 20 });
-    await waitFor(() => expect(input).toHaveValue("gula merah"));
-    const option = await screen.findByTestId("product-select-option-SKU-ANG-006", {}, { timeout: 4000 });
+    await userEvent.type(input, "karton", { delay: 20 });
+    await waitFor(() => expect(input).toHaveValue("karton"));
+    const option = await within(dialog).findByTestId("product-select-option-SL-03-ANG-004", {}, { timeout: 4000 });
     await waitFor(() => expect(option).toBeVisible());
+    await expect(option).toHaveTextContent("Toko Anggrek");
+    await expect(within(dialog).getByTestId("product-select-option-SL-03-ANG-002")).toBeVisible();
+    await waitFor(() => expect(within(dialog).getAllByRole("option")).toHaveLength(2));
+    await expect(within(dialog).queryByTestId("product-select-option-SL-03-ANG-006")).toBeNull();
     await userEvent.click(option);
 
     await userEvent.click(within(dialog).getByTestId("opname-found-submit"));
-    await within(dialog).findByTestId("opname-found-never-here");
+    await expect(await screen.findByText("Tepung Terigu Serbaguna 1kg — Karton added to A-01-1")).toBeInTheDocument();
+    await expect(within(dialog).queryByTestId("opname-found-never-here")).toBeNull();
   },
 };

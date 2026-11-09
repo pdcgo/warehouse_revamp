@@ -41,6 +41,7 @@ import { OrderDetailPage } from "../index";
 //   | TheTimelineKeepsStatusRowsOnly    | a note is not a step; a hand-back's reason stays on it    |
 //   | WarehouseDetailShowsTheNotes…     | the warehouse reads the notes and writes as the warehouse |
 //   | WarehouseTimelineKeepsStatus…     | the warehouse's Timeline tab drops the notes too          |
+//   | WarehouseForcesAReturn            | completed → Force Return, confirmed → Accept Return       |
 
 export const SELLER = teams[1]!; // Toko Melati (12)
 export const WAREHOUSE = teams[0]!; // Gudang Pusat (11)

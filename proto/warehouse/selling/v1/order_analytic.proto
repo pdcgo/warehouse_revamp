@@ -9,7 +9,8 @@ import "warehouse/role_base/v1/role.proto";
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
 
 // THE ORDER METRICS (docs/business/order/order_statistic_metric.md) — five, each counting WHOLE ORDERS on the day of its
-// own move (a-fact-counts-on-the-day-it-happened), served through the analytic pattern
+// own move (a-fact-counts-on-the-day-it-happened) — and WAREHOUSE FEE, the fee frozen on those orders, net of cancels
+// (the-warehouse-fee-prototype-is-accepted). All six are served through the analytic pattern
 // (docs/business/analytic/rpc_provide.md): `MetricSearch` ranks the keys, `MetricData` fills them.
 //
 // ⚠ EVERY NUMBER IS READ FROM A FOLDED TABLE — `order_daily_reports`, built by selling_service's own webhook from
@@ -18,13 +19,23 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sel
 //
 // WHO READS WHAT (a-warehouse-reads-the-orders-it-ships): `team_id` is the caller's scope. A selling team reads its own
 // orders, a warehouse the orders it ships, the root team every order. ⚠ A WAREHOUSE GETS COUNTS ONLY
-// (a-warehouse-sees-no-seller-money): every money field is `optional` and left UNSET for it — never 0 — and a sort on
-// one is refused. The service decides from the scope's team type; the screen only drops a column that came back unset.
+// (a-warehouse-sees-no-seller-money): every money field of the five order metrics is `optional` and left UNSET for it —
+// never 0 — and a sort on one is refused. Warehouse Fee's `amount` is the one exception: the warehouse's own income, set
+// for it (a-warehouse-sees-its-own-fee-amount). The service decides from the scope's team type; the screen only drops a
+// column that came back unset.
 service OrderAnalyticService {
   // The keys of a page of the table, ranked by one field of one order metric.
-  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse);
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
-  rpc MetricData(MetricDataRequest) returns (MetricDataResponse);
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Every metric here has the same shape (the-four-group-by-team-shop-warehouse-user-and-time):
@@ -74,7 +85,7 @@ message OrderCreatedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 mp_total = 3 [
+  optional double mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -126,7 +137,7 @@ message OrderCancelMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 mp_total = 3 [
+  optional double mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -178,7 +189,7 @@ message OrderReturnCreatedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 return_created_mp_total = 3 [
+  optional double return_created_mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -230,7 +241,7 @@ message OrderReturnArrivedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 return_arrived_mp_total = 3 [
+  optional double return_arrived_mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -282,7 +293,7 @@ message OrderLostCreatedMetric {
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // Σ their `platform_total`. Unset for a warehouse.
-  optional int64 lost_created_mp_total = 3 [
+  optional double lost_created_mp_total = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -296,6 +307,63 @@ message OrderLostCreatedMetricByID {
 // A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
 message OrderLostCreatedMetricByDay {
   map<string, OrderLostCreatedMetric> items = 1;
+}
+
+// WAREHOUSE FEE (the-warehouse-fee-prototype-is-accepted) — the fee frozen on each order (the-event-carries-the-warehouse-fee),
+// NET, each on its own day (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day): an order counts
+// +1 and + its fee on its placement day, and a cancel takes both back on the cancel's day. An earlier day never changes,
+// so a period can read NEGATIVE when it holds more cancels than placements. Under Expense on the screen.
+//
+// Its keys are the order metrics' (warehouse-fee-groups-like-the-order-metrics): TEAM the seller charged, WAREHOUSE the
+// warehouse that charged, SHOP, USER the order's creator, and the four periods.
+//
+// ⚠ A WAREHOUSE SEES THE AMOUNT (a-warehouse-sees-its-own-fee-amount): the fee is the warehouse's own income, not the
+// seller's money, so a-warehouse-sees-no-seller-money does not hide it — `amount` is set for every reader and sortable by
+// a warehouse too. An order priced with no fee (a server built without a pricer) is not a fee transaction.
+message WarehouseFeeMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/warehouse_fee"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SHOP,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_USER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_SHOP,
+      GROUP_TYPE_WAREHOUSE,
+      GROUP_TYPE_USER
+    ]
+  };
+
+  // Fee transactions: orders placed with a fee, less those cancelled — each on its own day.
+  int64 transaction_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Fee amount: Σ their frozen `warehouse_fee`, less the cancelled ones'. Set for a warehouse too.
+  double amount = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+message WarehouseFeeMetricByID {
+  map<uint64, WarehouseFeeMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message WarehouseFeeMetricByDay {
+  map<string, WarehouseFeeMetric> items = 1;
 }
 
 message MetricSearchRequest {
@@ -327,7 +395,8 @@ message MetricSearchRequest {
   // At most one of each FilterType.
   repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 5];
 
-  // Names ONE of this service's metrics and one of its fields. A money field is refused for a warehouse.
+  // Names ONE of this service's metrics and one of its fields. An order metric's money field is refused for a warehouse
+  // (Warehouse Fee's `amount` is not — a-warehouse-sees-its-own-fee-amount).
   warehouse.analytic_base.v1.MetricSort sort = 4 [(buf.validate.field).required = true];
 
   warehouse.analytic_base.v1.PaginationFilter page = 5 [(buf.validate.field).required = true];
@@ -371,10 +440,10 @@ message MetricDataRequest {
   // IDs for TEAM, SHOP, WAREHOUSE and USER, days for a period; none for SUMMARY. At most a page.
   warehouse.analytic_base.v1.MetricKeys keys = 4;
 
-  // Any of the five, in any order; the answer keeps it.
+  // Any of the six, in any order; the answer keeps it.
   repeated string metric_ids = 5 [(buf.validate.field).repeated = {
     min_items: 1
-    max_items: 5
+    max_items: 6
     unique: true
   }];
 }
@@ -398,9 +467,20 @@ message MetricData {
     OrderLostCreatedMetricByID lost_created_by_id = 13;
     OrderLostCreatedMetricByDay lost_created_by_day = 14;
     OrderLostCreatedMetric lost_created_summary = 15;
+    WarehouseFeeMetricByID warehouse_fee_by_id = 16;
+    WarehouseFeeMetricByDay warehouse_fee_by_day = 17;
+    WarehouseFeeMetric warehouse_fee_summary = 18;
   }
 }
 
 message MetricDataResponse {
   repeated MetricData metric_datas = 1;
+  // AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+  // `order_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+  // behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+  // every metric it serves shares it. 0 = nothing folded yet.
+  //
+  // ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+  // dead-letter topic and the lease's log.
+  int64 as_of_unix = 2;
 }

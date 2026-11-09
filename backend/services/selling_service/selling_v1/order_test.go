@@ -19,6 +19,8 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S1", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
@@ -30,9 +32,8 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 			DesaCode: "11.01.01.2001", DesaName: "Keude Bakongan",
 			KodePos: "23773", AddressLine: "Jl. Test 1",
 		},
-		ShippingCode: "jne",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
 		},
 	}))
 	if err != nil {
@@ -49,23 +50,28 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 		t.Fatalf("OrderDetail: %v", err)
 	}
 
-	// The address is FROZEN onto the order — codes AND names — so a past order renders without
-	// region_service and survives the desa being renamed or merged (#118).
+	// The address is FROZEN onto the order as NAMES ONLY (an-address-is-plain-names) — its one order_addresses row — so a
+	// past order renders without region_service and survives the desa being renamed or merged. The picker's codes are
+	// discarded on write.
 	addr := resp.Msg.GetOrder().GetAddress()
 	if addr.GetProvinsiName() != "Aceh" || addr.GetKabupatenName() != "Kabupaten Aceh Selatan" ||
 		addr.GetKecamatanName() != "Bakongan" || addr.GetDesaName() != "Keude Bakongan" {
 		t.Fatalf("address names did not round-trip: %+v", addr)
 	}
-	if addr.GetDesaCode() != "11.01.01.2001" || addr.GetKodePos() != "23773" ||
-		addr.GetAddressLine() != "Jl. Test 1" {
-		t.Fatalf("address codes/detail did not round-trip: %+v", addr)
+	if addr.GetKodePos() != "23773" || addr.GetAddressLine() != "Jl. Test 1" {
+		t.Fatalf("address postcode/line did not round-trip: %+v", addr)
+	}
+
+	if addr.GetProvinsiCode() != "" || addr.GetKabupatenCode() != "" || addr.GetKecamatanCode() != "" ||
+		addr.GetDesaCode() != "" {
+		t.Fatalf("the order kept region codes %+v — an order keeps names only", addr)
 	}
 
 	got := resp.Msg.GetOrder()
 	if got.GetCustomerName() != "Budi" || got.GetPlatformTotal() != testPlatformTotal || got.GetShopId() != shopID {
 		t.Fatalf("unexpected order: %+v", got)
 	}
-	if len(got.GetItems()) != 1 || got.GetItems()[0].GetSku() != "SKU1" || got.GetItems()[0].GetQuantity() != 2 {
+	if len(got.GetItems()) != 1 || got.GetItems()[0].GetProductCode() != "SKU1" || got.GetItems()[0].GetQuantity() != 2 {
 		t.Fatalf("unexpected items: %+v", got.GetItems())
 	}
 }
@@ -81,13 +87,15 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S-NOADDR", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Tanpa Alamat", ShippingCode: "jne",
+		CustomerName: "Tanpa Alamat",
 
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -120,12 +128,14 @@ func TestOrder_CreateWithNote(t *testing.T) {
 		t.Helper()
 
 		created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+			ShipmentChannelId:     testShipmentChannel,
+			IdempotencyKey:        newOrderKey(),
 			PlatformCreatedAtUnix: testPlatformDate,
 			PlatformTotal:         testPlatformTotal,
 			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 			CustomerName: customer, Note: note,
 			Items: []*sellingv1.OrderItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 			},
 		}))
 		if err != nil {
@@ -188,13 +198,15 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 	const ref = "250815ABCD1234"
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", OrderExternalRefId: ref,
 
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -219,12 +231,14 @@ func TestOrder_CreateWithExternalRef(t *testing.T) {
 	// An order taken over the phone has NO marketplace reference, and "" is how it says so — not a
 	// placeholder, and nothing to back-fill.
 	phone, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Lewat Telepon",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -275,13 +289,15 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 	}
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Receipt: receipt,
 
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -304,12 +320,14 @@ func TestOrder_CreateWithReceipt(t *testing.T) {
 
 	// No receipt is an EMPTY message, never nil — the same convention the address follows.
 	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Tanpa Resi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -333,10 +351,12 @@ func TestOrder_CreateShopNotInTeam(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S2", "shopee")
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X",
-		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1}},
+		Items: []*sellingv1.OrderItem{{ProductId: 1, ProductCode: "S", Name: "N", Quantity: 1}},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-team create code = %v, want NotFound", connect.CodeOf(err))
@@ -352,10 +372,12 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 
 	create := func(name string) uint64 {
 		r, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+			ShipmentChannelId:     testShipmentChannel,
+			IdempotencyKey:        newOrderKey(),
 			PlatformCreatedAtUnix: testPlatformDate,
 			PlatformTotal:         testPlatformTotal,
 			TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name,
-			Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1}},
+			Items: []*sellingv1.OrderItem{{ProductId: 1, ProductCode: "S", Name: "N", Quantity: 1}},
 		}))
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
@@ -396,12 +418,14 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -427,12 +451,14 @@ func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
 	// An order that names no warehouse is refused. Proto validation rejects it at the boundary, but
 	// unit tests bypass the interceptor — which is exactly why the handler re-checks.
 	_, err = svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shop,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {

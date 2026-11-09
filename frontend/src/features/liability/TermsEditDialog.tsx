@@ -97,7 +97,7 @@ export function TermsEditDialog({
     if (editing) {
       setCounterpartyId(editing.counterpartyId.toString());
       setLimitMode(limitStateOf(editing.creditLimit));
-      setLimit(editing.creditLimit && editing.creditLimit > 0n ? editing.creditLimit.toString() : "");
+      setLimit(editing.creditLimit && editing.creditLimit > 0 ? String(editing.creditLimit) : "");
       return;
     }
 
@@ -118,7 +118,7 @@ export function TermsEditDialog({
     // The three states, mapped to the wire exactly once. `undefined` is UNLIMITED and `0n` is
     // FROZEN — never let a blank input decide which.
     const creditLimit =
-      limitMode === "unlimited" ? undefined : limitMode === "frozen" ? 0n : BigInt(limit || "0");
+      limitMode === "unlimited" ? undefined : limitMode === "frozen" ? 0 : Number(limit || "0");
 
     try {
       await setTerms.mutateAsync({
@@ -155,9 +155,11 @@ export function TermsEditDialog({
                     <Field.Label>{t("terms.counterparty")}</Field.Label>
                     {isEdit || pinned ? (
                       <Text data-testid="terms-counterparty-fixed">
+                        {/* The team's NAME — the caller passes it in `options` — and the id only when nothing named it. */}
                         {BigInt(counterpartyId) === 0n
                           ? t("terms.defaultRow")
-                          : t("terms.teamFallback", { id: counterpartyId })}
+                          : (options.find((o) => o.id.toString() === counterpartyId)?.name ??
+                            t("terms.teamFallback", { id: counterpartyId }))}
                       </Text>
                     ) : (
                       <NativeSelect.Root>
@@ -228,6 +230,7 @@ export function TermsEditDialog({
                     <Textarea
                       value={reason}
                       disabled={busy}
+                      placeholder={t("terms.reasonPlaceholder")}
                       data-testid="terms-reason"
                       onChange={(e) => setReason(e.target.value)}
                     />

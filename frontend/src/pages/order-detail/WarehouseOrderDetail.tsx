@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Flex, Heading, Icon, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
-import { ArrowLeft, Ban } from "lucide-react";
+import { ArrowLeft, Ban, PackageCheck, Undo2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useOrder, useCancelOrder } from "../../features/orders/queries";
 import { SettlementTab } from "./components/SettlementTab";
 import { useActors } from "../../features/users/queries";
@@ -15,6 +16,8 @@ import { InfoPanel } from "./components/InfoPanel";
 import { NotesSection, noteWriter } from "./components/NotesSection";
 import { TimelinePanel } from "./components/TimelinePanel";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { AcceptReturnDialog } from "../../features/orders/AcceptReturnDialog";
+import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -39,6 +42,10 @@ export function WarehouseOrderDetailPage() {
 
   const query = useOrder({ teamId, orderId: id });
   const cancelMutation = useCancelOrder();
+  // THE RETURN, from the warehouse's side (a-return-is-received-by-search-then-forced, A): Force Return for an order that
+  // left the building, confirmed — then the order re-reads in `return` and Accept Return is offered, as on the pick screen.
+  const forceReturn = useForceReturn({ teamId });
+  const [accepting, setAccepting] = useState(false);
 
   const order = query.data ?? null;
   const loading = query.isPending && id !== 0n;
@@ -151,7 +158,7 @@ export function WarehouseOrderDetailPage() {
             still this team's decision, from PENDING only: a processed or picked order is handed back to
             pending by the warehouse first (who-may-cancel-a-pending-order). */}
 
-        {order.status === OrderStatus.PENDING && (
+        {order.status === OrderStatus.PENDING && canWrite(current) && (
           <ConfirmDialog
             title={t("orders.cancelOrder")}
             message={t("orders.cancelMessage", { id: order.id.toString() })}
@@ -165,7 +172,34 @@ export function WarehouseOrderDetailPage() {
             }
           />
         )}
+
+        {canForceReturn(order.status) && canWrite(current) && (
+          <Button
+            variant="outline"
+            colorPalette="error"
+            loading={forceReturn.busy}
+            onClick={() => forceReturn.ask({ id: order.id, status: order.status })}
+            data-testid="order-force-return"
+          >
+            <Icon as={Undo2} boxSize="4" />
+            {t("picking.action.forceReturn")}
+          </Button>
+        )}
+
+        {order.status === OrderStatus.RETURN && canWrite(current) && (
+          <Button colorPalette="brand" onClick={() => setAccepting(true)} data-testid="order-accept-return">
+            <Icon as={PackageCheck} boxSize="4" />
+            {t("picking.action.acceptReturn")}
+          </Button>
+        )}
       </Flex>
+
+      {forceReturn.dialog}
+      {/* Mounted whatever the status, as on the pick screen: the accept re-reads the order as return_completed, and a
+          dialog under the button would vanish with the labels it is about to show. */}
+      {teamId !== undefined && (
+        <AcceptReturnDialog open={accepting} onOpenChange={setAccepting} teamId={teamId} order={order} />
+      )}
 
       {/* VERTICAL tabs down the left, content beside them (owner) — the same shape the product, rack,
           batch and restock detail pages use, because they are the same kind of screen: one record,

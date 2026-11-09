@@ -1,7 +1,7 @@
 # Receipt Reader package.
 
 ## General.
-1. its have submodule repo `https://github.com/pdcgo/san_receipt_readers` live in `backend/packages/san_receipt_readers`
+1. its have submodule repo `https://github.com/pdcgo/san_receipt_readers` live in `backend/pkgs/san_receipt_readers`
 
 ## Contracts.
 ```go

@@ -19,6 +19,9 @@ type Document struct {
 	ThumbnailURL string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+
+	// The uploader was Root or the Administrator, outside the team (an-override-is-stamped-in-every-service).
+	IsOverride bool
 }
 
 func (Document) TableName() string {

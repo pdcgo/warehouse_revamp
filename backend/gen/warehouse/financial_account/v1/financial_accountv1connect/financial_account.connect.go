@@ -23,9 +23,6 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// FinancialAccountServiceName is the fully-qualified name of the FinancialAccountService service.
 	FinancialAccountServiceName = "warehouse.financial_account.v1.FinancialAccountService"
-	// FinancialAccountAnalyticServiceName is the fully-qualified name of the
-	// FinancialAccountAnalyticService service.
-	FinancialAccountAnalyticServiceName = "warehouse.financial_account.v1.FinancialAccountAnalyticService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -78,15 +75,6 @@ const (
 	// FinancialAccountServiceFinancialAccountOperationalSetProcedure is the fully-qualified name of the
 	// FinancialAccountService's FinancialAccountOperationalSet RPC.
 	FinancialAccountServiceFinancialAccountOperationalSetProcedure = "/warehouse.financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet"
-	// FinancialAccountAnalyticServiceAnalyticTimeSearchProcedure is the fully-qualified name of the
-	// FinancialAccountAnalyticService's AnalyticTimeSearch RPC.
-	FinancialAccountAnalyticServiceAnalyticTimeSearchProcedure = "/warehouse.financial_account.v1.FinancialAccountAnalyticService/AnalyticTimeSearch"
-	// FinancialAccountAnalyticServiceAnalyticGroupSearchProcedure is the fully-qualified name of the
-	// FinancialAccountAnalyticService's AnalyticGroupSearch RPC.
-	FinancialAccountAnalyticServiceAnalyticGroupSearchProcedure = "/warehouse.financial_account.v1.FinancialAccountAnalyticService/AnalyticGroupSearch"
-	// FinancialAccountAnalyticServiceAnalyticGroupMetricProcedure is the fully-qualified name of the
-	// FinancialAccountAnalyticService's AnalyticGroupMetric RPC.
-	FinancialAccountAnalyticServiceAnalyticGroupMetricProcedure = "/warehouse.financial_account.v1.FinancialAccountAnalyticService/AnalyticGroupMetric"
 )
 
 // FinancialAccountServiceClient is a client for the
@@ -131,24 +119,28 @@ func NewFinancialAccountServiceClient(httpClient connect.HTTPClient, baseURL str
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountListProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountByIds: connect.NewClient[v1.FinancialAccountByIdsRequest, v1.FinancialAccountByIdsResponse](
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountByIdsProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountOverview: connect.NewClient[v1.FinancialAccountOverviewRequest, v1.FinancialAccountOverviewResponse](
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountOverviewProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountOverview")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountLogList: connect.NewClient[v1.FinancialAccountLogListRequest, v1.FinancialAccountLogListResponse](
 			httpClient,
 			baseURL+FinancialAccountServiceFinancialAccountLogListProcedure,
 			connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountLogList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		financialAccountCreate: connect.NewClient[v1.FinancialAccountCreateRequest, v1.FinancialAccountCreateResponse](
@@ -353,24 +345,28 @@ func NewFinancialAccountServiceHandler(svc FinancialAccountServiceHandler, opts 
 		FinancialAccountServiceFinancialAccountListProcedure,
 		svc.FinancialAccountList,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountByIdsHandler := connect.NewUnaryHandler(
 		FinancialAccountServiceFinancialAccountByIdsProcedure,
 		svc.FinancialAccountByIds,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountOverviewHandler := connect.NewUnaryHandler(
 		FinancialAccountServiceFinancialAccountOverviewProcedure,
 		svc.FinancialAccountOverview,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountOverview")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountLogListHandler := connect.NewUnaryHandler(
 		FinancialAccountServiceFinancialAccountLogListProcedure,
 		svc.FinancialAccountLogList,
 		connect.WithSchema(financialAccountServiceMethods.ByName("FinancialAccountLogList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	financialAccountServiceFinancialAccountCreateHandler := connect.NewUnaryHandler(
@@ -526,138 +522,4 @@ func (UnimplementedFinancialAccountServiceHandler) FinancialAccountShopSet(conte
 
 func (UnimplementedFinancialAccountServiceHandler) FinancialAccountOperationalSet(context.Context, *connect.Request[v1.FinancialAccountOperationalSetRequest]) (*connect.Response[v1.FinancialAccountOperationalSetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOperationalSet is not implemented"))
-}
-
-// FinancialAccountAnalyticServiceClient is a client for the
-// warehouse.financial_account.v1.FinancialAccountAnalyticService service.
-type FinancialAccountAnalyticServiceClient interface {
-	// A metric series — daily, monthly or yearly — for the team, or one account.
-	AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error)
-	// The RANKING of groups — accounts, providers or change types — over a window. Keys only, sorted.
-	AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error)
-	// The metrics for the keys the caller already ranked.
-	AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error)
-}
-
-// NewFinancialAccountAnalyticServiceClient constructs a client for the
-// warehouse.financial_account.v1.FinancialAccountAnalyticService service. By default, it uses the
-// Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
-// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
-// connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewFinancialAccountAnalyticServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) FinancialAccountAnalyticServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	financialAccountAnalyticServiceMethods := v1.File_warehouse_financial_account_v1_financial_account_proto.Services().ByName("FinancialAccountAnalyticService").Methods()
-	return &financialAccountAnalyticServiceClient{
-		analyticTimeSearch: connect.NewClient[v1.AnalyticTimeSearchRequest, v1.AnalyticTimeSearchResponse](
-			httpClient,
-			baseURL+FinancialAccountAnalyticServiceAnalyticTimeSearchProcedure,
-			connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
-			connect.WithClientOptions(opts...),
-		),
-		analyticGroupSearch: connect.NewClient[v1.AnalyticGroupSearchRequest, v1.AnalyticGroupSearchResponse](
-			httpClient,
-			baseURL+FinancialAccountAnalyticServiceAnalyticGroupSearchProcedure,
-			connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
-			connect.WithClientOptions(opts...),
-		),
-		analyticGroupMetric: connect.NewClient[v1.AnalyticGroupMetricRequest, v1.AnalyticGroupMetricResponse](
-			httpClient,
-			baseURL+FinancialAccountAnalyticServiceAnalyticGroupMetricProcedure,
-			connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
-			connect.WithClientOptions(opts...),
-		),
-	}
-}
-
-// financialAccountAnalyticServiceClient implements FinancialAccountAnalyticServiceClient.
-type financialAccountAnalyticServiceClient struct {
-	analyticTimeSearch  *connect.Client[v1.AnalyticTimeSearchRequest, v1.AnalyticTimeSearchResponse]
-	analyticGroupSearch *connect.Client[v1.AnalyticGroupSearchRequest, v1.AnalyticGroupSearchResponse]
-	analyticGroupMetric *connect.Client[v1.AnalyticGroupMetricRequest, v1.AnalyticGroupMetricResponse]
-}
-
-// AnalyticTimeSearch calls
-// warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticTimeSearch.
-func (c *financialAccountAnalyticServiceClient) AnalyticTimeSearch(ctx context.Context, req *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error) {
-	return c.analyticTimeSearch.CallUnary(ctx, req)
-}
-
-// AnalyticGroupSearch calls
-// warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupSearch.
-func (c *financialAccountAnalyticServiceClient) AnalyticGroupSearch(ctx context.Context, req *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error) {
-	return c.analyticGroupSearch.CallUnary(ctx, req)
-}
-
-// AnalyticGroupMetric calls
-// warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupMetric.
-func (c *financialAccountAnalyticServiceClient) AnalyticGroupMetric(ctx context.Context, req *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error) {
-	return c.analyticGroupMetric.CallUnary(ctx, req)
-}
-
-// FinancialAccountAnalyticServiceHandler is an implementation of the
-// warehouse.financial_account.v1.FinancialAccountAnalyticService service.
-type FinancialAccountAnalyticServiceHandler interface {
-	// A metric series — daily, monthly or yearly — for the team, or one account.
-	AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error)
-	// The RANKING of groups — accounts, providers or change types — over a window. Keys only, sorted.
-	AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error)
-	// The metrics for the keys the caller already ranked.
-	AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error)
-}
-
-// NewFinancialAccountAnalyticServiceHandler builds an HTTP handler from the service implementation.
-// It returns the path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewFinancialAccountAnalyticServiceHandler(svc FinancialAccountAnalyticServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	financialAccountAnalyticServiceMethods := v1.File_warehouse_financial_account_v1_financial_account_proto.Services().ByName("FinancialAccountAnalyticService").Methods()
-	financialAccountAnalyticServiceAnalyticTimeSearchHandler := connect.NewUnaryHandler(
-		FinancialAccountAnalyticServiceAnalyticTimeSearchProcedure,
-		svc.AnalyticTimeSearch,
-		connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
-		connect.WithHandlerOptions(opts...),
-	)
-	financialAccountAnalyticServiceAnalyticGroupSearchHandler := connect.NewUnaryHandler(
-		FinancialAccountAnalyticServiceAnalyticGroupSearchProcedure,
-		svc.AnalyticGroupSearch,
-		connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
-		connect.WithHandlerOptions(opts...),
-	)
-	financialAccountAnalyticServiceAnalyticGroupMetricHandler := connect.NewUnaryHandler(
-		FinancialAccountAnalyticServiceAnalyticGroupMetricProcedure,
-		svc.AnalyticGroupMetric,
-		connect.WithSchema(financialAccountAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/warehouse.financial_account.v1.FinancialAccountAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case FinancialAccountAnalyticServiceAnalyticTimeSearchProcedure:
-			financialAccountAnalyticServiceAnalyticTimeSearchHandler.ServeHTTP(w, r)
-		case FinancialAccountAnalyticServiceAnalyticGroupSearchProcedure:
-			financialAccountAnalyticServiceAnalyticGroupSearchHandler.ServeHTTP(w, r)
-		case FinancialAccountAnalyticServiceAnalyticGroupMetricProcedure:
-			financialAccountAnalyticServiceAnalyticGroupMetricHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
-}
-
-// UnimplementedFinancialAccountAnalyticServiceHandler returns CodeUnimplemented from all methods.
-type UnimplementedFinancialAccountAnalyticServiceHandler struct{}
-
-func (UnimplementedFinancialAccountAnalyticServiceHandler) AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticTimeSearch is not implemented"))
-}
-
-func (UnimplementedFinancialAccountAnalyticServiceHandler) AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupSearch is not implemented"))
-}
-
-func (UnimplementedFinancialAccountAnalyticServiceHandler) AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupMetric is not implemented"))
 }

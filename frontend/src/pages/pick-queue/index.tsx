@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
+  Button,
   Flex,
+  HStack,
   Heading,
   Icon,
   Spacer,
@@ -13,7 +15,7 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { PackageSearch } from "lucide-react";
+import { PackageOpen, PackageSearch } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -21,8 +23,11 @@ import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { usePickQueue } from "../../features/picking/queries";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { useIsMobile } from "../../layouts/shell";
+import { ReceiveReturnDialog } from "./components/ReceiveReturnDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -41,6 +46,9 @@ const STATUS_TABS = [
   { value: "topick", labelKey: "picking.tab.toPick", status: OrderStatus.PROCESSED },
   { value: "picked", labelKey: "picking.tab.picked", status: OrderStatus.PICKED },
   { value: "handover", labelKey: "picking.tab.handover", status: OrderStatus.SHIPPING },
+  // THE RETURNS COMING BACK (the-accept-is-the-status-return-completed) — claimed by customer service, not yet in the
+  // crew's hands. The warehouse's working queue for the accept: a parcel arrives, its order is here, the crew accepts it.
+  { value: "return", labelKey: "picking.tab.return", status: OrderStatus.RETURN },
   { value: "all", labelKey: "picking.tab.all", status: OrderStatus.UNSPECIFIED },
 ];
 
@@ -57,6 +65,9 @@ export function PickQueuePage() {
   const [tab, setTab] = useState("new");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  // RECEIVE A RETURN (a-return-is-received-by-search-then-forced) — the parcel came back to the door; search, force, accept.
+  const [receiving, setReceiving] = useState(false);
+  const isMobile = useIsMobile();
 
   // Only a WAREHOUSE team has a pick queue. A selling team has orders but no shelves and nobody to walk
   // to them, so the screen says so rather than showing an empty table that looks like a quiet day.
@@ -104,13 +115,54 @@ export function PickQueuePage() {
     );
   }
 
+  // The shipping warehouse's Owner, Admin and Staff receive a return; the admin team's monitor reads only.
+  const mayReceive = canWrite(current);
+
   return (
     <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("picking.title")}</Heading>
-        <Badge colorPalette="brand">{current.teamName}</Badge>
-        <Spacer />
-      </Flex>
+      {/* A PHONE'S HEADER IS ONE ROW (the-phone-header-is-one-row): the title, the team, and Receive a Return as its
+          icon (a-phone-header-action-is-an-icon). The desktop keeps the labelled button. */}
+      {isMobile ? (
+        <Flex align="center" gap="2" wrap="nowrap" data-testid="pick-queue-header">
+          <HStack gap="2" flex="1" minW="0">
+            <Heading size="md" flexShrink={0}>
+              {t("picking.title")}
+            </Heading>
+            <Badge colorPalette="brand" truncate minW="0">
+              {current.teamName}
+            </Badge>
+          </HStack>
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            actions={[
+              mayReceive && {
+                id: "receive",
+                label: t("picking.action.receiveReturn"),
+                icon: PackageOpen,
+                primary: true,
+                testId: "pick-queue-receive",
+                onClick: () => setReceiving(true),
+              },
+            ]}
+          />
+        </Flex>
+      ) : (
+        <Flex align="center" gap="card" data-testid="pick-queue-header">
+          <Heading size="md">{t("picking.title")}</Heading>
+          <Badge colorPalette="brand">{current.teamName}</Badge>
+          <Spacer />
+          {mayReceive && (
+            <Button colorPalette="brand" data-testid="pick-queue-receive" onClick={() => setReceiving(true)}>
+              <Icon as={PackageOpen} boxSize="4" />
+              {t("picking.action.receiveReturn")}
+            </Button>
+          )}
+        </Flex>
+      )}
+
+      {mayReceive && (
+        <ReceiveReturnDialog open={receiving} onOpenChange={setReceiving} warehouseId={current.teamId} />
+      )}
 
       <Tabs.Root value={tab} onValueChange={(e) => selectTab(e.value)}>
         <Tabs.List>

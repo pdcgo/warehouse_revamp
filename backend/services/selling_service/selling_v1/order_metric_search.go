@@ -19,8 +19,9 @@ import (
 //     (the-rows-are-the-keys-step-one-sends).
 //   - ⚠ An id of 0 — a row with no creator, or none of the others recorded — is LEFT OUT of an id group: the contract
 //     cannot send 0 back as a key (IDList's ids are > 0), so a row keyed 0 would be a row nobody can fill.
-//   - A warehouse may not sort by money (a-warehouse-sees-no-seller-money): a sort that would rank by figures it is
-//     not shown is refused.
+//   - A warehouse may not sort an order metric by money (a-warehouse-sees-no-seller-money): a sort that would rank by
+//     figures it is not shown is refused. Warehouse Fee's amount it is shown, and may sort by
+//     (a-warehouse-sees-its-own-fee-amount).
 //   - No total: it reads limit + 1 and says whether another page follows (a-page-says-whether-another-follows).
 //
 // ONE statement, after the reader's team type: the scope grouped by the key, ordered, a page plus one.
@@ -57,7 +58,7 @@ func (a *Analytic) MetricSearch(
 		return nil, err
 	}
 
-	if !reader.money && isMoney(field) {
+	if !metric.showsMoney(reader) && isMoney(field) {
 		return nil, invalidMetric("a warehouse reads the orders it ships without their money — %s cannot be sorted by",
 			field.Name())
 	}

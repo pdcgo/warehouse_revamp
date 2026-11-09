@@ -24,7 +24,7 @@ func quoteStocked(t *testing.T) (*inventory_v1.Service, *gorm.DB) {
 	t.Helper()
 
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
 
 	rakA := newRack(t, svc, otWarehouse, "rak-a")
 

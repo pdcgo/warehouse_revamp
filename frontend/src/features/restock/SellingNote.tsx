@@ -129,7 +129,7 @@ function unchangedBut(request: RestockRequest, teamId: bigint, note: string) {
     items: request.items.map((item) => ({
       id: item.id,
       productId: item.productId,
-      sku: item.sku,
+      productCode: item.productCode,
       name: item.name,
       count: item.count,
       total: item.total,

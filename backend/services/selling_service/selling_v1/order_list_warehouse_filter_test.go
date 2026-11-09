@@ -12,18 +12,26 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
+// Two couriers, as shipment channel ids — opaque to selling (shipment-channel-is-an-id-into-shipment-service).
+const (
+	jne uint64 = 1
+	jnt uint64 = 2
+)
+
 // courierOrder places an order for `teamID` on `shopID`, with a courier and `qty` units over two lines.
-func courierOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, courier string, qty uint32) uint64 {
+func courierOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64, courier uint64, qty uint32) uint64 {
 	t.Helper()
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     courier,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
-		CustomerName: "Budi", ShippingCode: courier,
+		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: qty},
-			{ProductId: 2, Sku: "SKU2", Name: "Gadget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: qty},
+			{ProductId: 2, ProductCode: "SKU2", Name: "Gadget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -43,20 +51,20 @@ func TestOrderList_TheWarehouseFiltersBySellerMarketplaceAndCourier(t *testing.T
 	melatiTiktok := insertShop(t, db, 2, "Melati TikTok", "MEL-T", "tiktok")
 	kenangaShopee := insertShop(t, db, 3, "Kenanga Shopee", "KEN-S", "shopee")
 
-	a := courierOrder(t, svc, 2, melatiShopee, "jne", 1)
-	b := courierOrder(t, svc, 2, melatiTiktok, "jnt", 1)
-	c := courierOrder(t, svc, 3, kenangaShopee, "jne", 1)
+	a := courierOrder(t, svc, 2, melatiShopee, jne, 1)
+	b := courierOrder(t, svc, 2, melatiTiktok, jnt, 1)
+	c := courierOrder(t, svc, 3, kenangaShopee, jne, 1)
 
 	wantOrders(t, listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{}), a, b, c)
 	wantOrders(t, listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{SellerTeamId: 3}), c)
 	wantOrders(t, listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{
 		Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE,
 	}), a, c)
-	wantOrders(t, listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{ShippingCode: "jne"}), a, c)
+	wantOrders(t, listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{ShipmentChannelId: jne}), a, c)
 
 	// They compose.
 	wantOrders(t, listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{
-		SellerTeamId: 2, Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE, ShippingCode: "jne",
+		SellerTeamId: 2, Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE, ShipmentChannelId: jne,
 	}), a)
 
 	// The seller's own list takes them too: a seller filtering its orders by marketplace.
@@ -73,9 +81,9 @@ func TestOrderStat_TakesTheWarehouseFilters(t *testing.T) {
 	melatiShopee := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
 	kenangaShopee := insertShop(t, db, 3, "Kenanga Shopee", "KEN-S", "shopee")
 
-	courierOrder(t, svc, 2, melatiShopee, "jne", 1)
-	courierOrder(t, svc, 3, kenangaShopee, "jnt", 1)
-	courierOrder(t, svc, 3, kenangaShopee, "jne", 1)
+	courierOrder(t, svc, 2, melatiShopee, jne, 1)
+	courierOrder(t, svc, 3, kenangaShopee, jnt, 1)
+	courierOrder(t, svc, 3, kenangaShopee, jne, 1)
 
 	pending := func(filter *sellingv1.OrderStatFilter) int64 {
 		t.Helper()
@@ -100,7 +108,7 @@ func TestOrderStat_TakesTheWarehouseFilters(t *testing.T) {
 		t.Fatalf("pending for seller team 3 = %d, want 2", got)
 	}
 
-	if got := pending(&sellingv1.OrderStatFilter{ShippingCode: "jne"}); got != 2 {
+	if got := pending(&sellingv1.OrderStatFilter{ShipmentChannelId: jne}); got != 2 {
 		t.Fatalf("pending for courier jne = %d, want 2", got)
 	}
 
@@ -116,7 +124,7 @@ func TestOrderList_TheRowCarriesItsUnitCount(t *testing.T) {
 	svc := newService(t, db)
 
 	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
-	orderID := courierOrder(t, svc, 2, shop, "jne", 4) // 4 + 1
+	orderID := courierOrder(t, svc, 2, shop, jne, 4) // 4 + 1
 
 	rows := orderRows(listFiltered(t, svc, testWarehouse, &sellingv1.OrderListFilter{}))
 	if len(rows) != 1 || rows[0].GetItemQuantity() != 5 {
@@ -148,7 +156,7 @@ func TestOrderList_TheSellerFiltersByWarehouse(t *testing.T) {
 
 	const otherWarehouse uint64 = 901
 
-	here := courierOrder(t, svc, 2, shop, "jne", 1)
+	here := courierOrder(t, svc, 2, shop, jne, 1)
 
 	req := feeOrderReq(shop)
 	req.WarehouseId = otherWarehouse
@@ -184,7 +192,7 @@ func TestOrderList_TheRowCarriesWhenItEnteredItsStatus(t *testing.T) {
 	svc := newService(t, db)
 	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
 
-	id := courierOrder(t, svc, 2, shop, "jne", 1)
+	id := courierOrder(t, svc, 2, shop, jne, 1)
 
 	rows := orderRows(listFiltered(t, svc, 2, &sellingv1.OrderListFilter{}))
 	if len(rows) != 1 || rows[0].GetStatusAtUnix() == 0 || rows[0].GetStatusAtUnix() != rows[0].GetCreatedAtUnix() {

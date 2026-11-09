@@ -95,18 +95,21 @@ func NewSettlementImporterServiceClient(httpClient connect.HTTPClient, baseURL s
 			httpClient,
 			baseURL+SettlementImporterServiceUploadedFileListProcedure,
 			connect.WithSchema(settlementImporterServiceMethods.ByName("UploadedFileList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		uploadedFileByIds: connect.NewClient[v1.UploadedFileByIdsRequest, v1.UploadedFileByIdsResponse](
 			httpClient,
 			baseURL+SettlementImporterServiceUploadedFileByIdsProcedure,
 			connect.WithSchema(settlementImporterServiceMethods.ByName("UploadedFileByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		uploadedFileLineList: connect.NewClient[v1.UploadedFileLineListRequest, v1.UploadedFileLineListResponse](
 			httpClient,
 			baseURL+SettlementImporterServiceUploadedFileLineListProcedure,
 			connect.WithSchema(settlementImporterServiceMethods.ByName("UploadedFileLineList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -190,18 +193,21 @@ func NewSettlementImporterServiceHandler(svc SettlementImporterServiceHandler, o
 		SettlementImporterServiceUploadedFileListProcedure,
 		svc.UploadedFileList,
 		connect.WithSchema(settlementImporterServiceMethods.ByName("UploadedFileList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	settlementImporterServiceUploadedFileByIdsHandler := connect.NewUnaryHandler(
 		SettlementImporterServiceUploadedFileByIdsProcedure,
 		svc.UploadedFileByIds,
 		connect.WithSchema(settlementImporterServiceMethods.ByName("UploadedFileByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	settlementImporterServiceUploadedFileLineListHandler := connect.NewUnaryHandler(
 		SettlementImporterServiceUploadedFileLineListProcedure,
 		svc.UploadedFileLineList,
 		connect.WithSchema(settlementImporterServiceMethods.ByName("UploadedFileLineList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.settlement_importer.v1.SettlementImporterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

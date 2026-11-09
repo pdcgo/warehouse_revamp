@@ -21,14 +21,15 @@ import { useTranslation } from "react-i18next";
 
 import { Logo } from "../../components/chrome/Logo";
 import { useAuth } from "../../features/auth/AuthContext";
+import { useFoundWaitingCount } from "../../features/inventory/foundRequests";
 import { useLiabilityAwaiting } from "../../features/liability/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { useCurrentRoleLabel, useTeam } from "../../features/team/TeamContext";
 import { useLanguage } from "../../i18n/language";
 import { setColorMode, useColorMode } from "../../lib/colorMode";
-import { roleLabel } from "../../lib/roles";
 import { LanguageSwitch, ThemeSwitch } from "../PreferenceSwitches";
 import { TeamSwitcher } from "../TeamSwitcher";
-import { PROFILE, activeRoute, flattenMenu, isMenuGroup, menuFor, menuSectionsFor, owningGroupLabel } from "../nav";
+import { canDecideFound } from "../../lib/roles";
+import { FOUND_STOCK, PROFILE, activeRoute, flattenMenu, isMenuGroup, menuFor, menuSectionsFor, owningGroupLabel } from "../nav";
 import type { MenuGroup, MenuItem, MenuSection } from "../nav";
 
 // THE DESKTOP SIDEBAR — brand, team switcher, navigation, and the user card at the foot.
@@ -55,6 +56,7 @@ import type { MenuGroup, MenuItem, MenuSection } from "../nav";
 //   | a group: an accordion        | the icon and a dot; a CLICK opens a flyout of its children, by    |
 //   |                              | name — never a hover, which a narrow corridor and a touch defeat  |
 //   | Kewajiban (3)                | a small 3 on the icon's corner                                   |
+//   | Found Stock (2)              | the same, for the waiting found requests                         |
 //   | the user card                | the avatar — the same menu                                       |
 //
 // ⚠ ALWAYS IN FLOW, NEVER A DRAWER (`the-desktop-shell-has-no-top-bar`). This shell mounts only at 768px and
@@ -63,6 +65,7 @@ import type { MenuGroup, MenuItem, MenuSection } from "../nav";
 export function Sidebar() {
   const { identity, logout } = useAuth();
   const { current } = useTeam();
+  const roleText = useCurrentRoleLabel();
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
   const colorMode = useColorMode();
@@ -96,7 +99,29 @@ export function Sidebar() {
       void refetchAwaiting({ cancelRefetch: false });
     }
   }, [location.pathname, offersLiability, refetchAwaiting]);
-  const countOf = (item: MenuItem) => (item.to === "/liability" ? (awaiting.data ?? 0) : 0);
+
+  // THE COUNT ON FOUND STOCK — the warehouse's waiting found requests (owner,
+  // `found-stock-sits-after-stock-opname-with-its-count`), read and re-asked exactly as Kewajiban's. Only for those who
+  // decide them — the Owner and Admin (and Root, the Administrator, the monitor's Owner screen role); Staff see the item
+  // with NO number: their list is their own reports, and a warehouse-wide figure is not theirs to act on.
+  const countsFound = canDecideFound(current?.role) && flattenMenu(menu).some((item) => item.to === FOUND_STOCK.to);
+  const foundWaiting = useFoundWaitingCount(current?.teamId, countsFound);
+  const { refetch: refetchFoundWaiting } = foundWaiting;
+  useEffect(() => {
+    if (countsFound) {
+      void refetchFoundWaiting({ cancelRefetch: false });
+    }
+  }, [location.pathname, countsFound, refetchFoundWaiting]);
+
+  const countOf = (item: MenuItem) =>
+    item.to === "/liability"
+      ? (awaiting.data ?? 0)
+      : item.to === FOUND_STOCK.to && countsFound
+        ? (foundWaiting.data ?? 0)
+        : 0;
+  // What a collapsed item's tooltip says its count counts.
+  const countTip = (item: MenuItem, count: number) =>
+    item.to === FOUND_STOCK.to ? t("foundRequest.waitingNav", { count }) : t("liability.awaitingNav", { count });
   // A GROUP CARRIES ITS CHILDREN'S COUNT while it is shut (`the-accounts-hold-what-moves-them`) — Kewajiban sits in the
   // accounts group now, and a count hidden in a closed drawer is a count nobody acts on.
   const countOfGroup = (group: MenuGroup) => group.children.reduce((sum, child) => sum + countOf(child), 0);
@@ -178,7 +203,7 @@ export function Sidebar() {
     }
 
     // The name, and what the count counts, beside the icon.
-    const tip = count > 0 ? `${t(item.label)} · ${t("liability.awaitingNav", { count })}` : t(item.label);
+    const tip = count > 0 ? `${t(item.label)} · ${countTip(item, count)}` : t(item.label);
 
     return (
       <Tip key={item.to} label={tip}>
@@ -459,7 +484,7 @@ export function Sidebar() {
                     {identity?.username}
                   </Text>
                   <Text fontSize="xs" color="fg.subtle" truncate>
-                    {roleLabel(current?.role)}
+                    {roleText}
                   </Text>
                 </Box>
 

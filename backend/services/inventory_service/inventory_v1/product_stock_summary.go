@@ -34,10 +34,10 @@ func (s *Service) ProductStockSummary(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	var readyValue int64
+	var readyValue float64
 
 	err = db.Raw(`
-		SELECT COALESCE(ROUND(SUM(stock_valuation)), 0)::BIGINT
+		SELECT COALESCE(SUM(stock_valuation), 0)
 		FROM batches
 		WHERE warehouse_id = ? AND product_id = ?`,
 		warehouseID, productID).Scan(&readyValue).Error
@@ -48,13 +48,13 @@ func (s *Service) ProductStockSummary(
 	// ONGOING — inbound on restocks not yet accepted, and the estimated cost of those lines.
 	type ongoing struct {
 		Qty   int64
-		Value int64
+		Value float64
 	}
 
 	var o ongoing
 
 	err = db.Raw(`
-		SELECT COALESCE(SUM(i.count), 0) AS qty, ROUND(COALESCE(SUM(i.total), 0))::bigint AS value
+		SELECT COALESCE(SUM(i.count), 0) AS qty, COALESCE(SUM(i.total), 0) AS value
 		FROM restock_items i
 		JOIN restocks r ON r.id = i.restock_id
 		WHERE r.warehouse_id = ? AND i.product_id = ? AND r.status IN ?`,
@@ -63,12 +63,16 @@ func (s *Service) ProductStockSummary(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// Last counted — the most recent count (an `adjustment` rack row) on any rack. NULL when never counted, so a
-	// nullable scan target: a plain *time.Time cannot hold the NULL a MAX over no rows returns.
+	// Last counted — the most recent count on any rack: a recount's `adjustment` rack row, or a finished stock count
+	// that held a row of it. NULL when never counted, so a nullable scan target: a plain *time.Time cannot hold the NULL
+	// a MAX over no rows returns.
 	var lastCounted sql.NullTime
 
-	err = db.Raw(`SELECT MAX(created_at) FROM product_placement_logs WHERE warehouse_id = ? AND product_id = ? AND change_type = ?`,
-		warehouseID, productID, string(inventory_service_models.TxAdjustment)).Scan(&lastCounted).Error
+	err = db.Raw(`SELECT GREATEST(
+		    (SELECT MAX(created_at) FROM product_placement_logs WHERE warehouse_id = ? AND product_id = ? AND change_type = ?),
+		    (SELECT MAX(o.finalized_at) FROM opname_session_snapshots ss JOIN opname_sessions o ON o.id = ss.opname_session_id
+		       WHERE ss.warehouse_id = ? AND ss.product_id = ? AND o.status = 'finish'))`,
+		warehouseID, productID, string(inventory_service_models.TxAdjustment), warehouseID, productID).Scan(&lastCounted).Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

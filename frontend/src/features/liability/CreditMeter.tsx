@@ -1,7 +1,7 @@
 import { Badge, Progress, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { formatRupiah } from "../../lib/money";
+import { formatRupiah, isZeroRupiah, type Rupiah, rupiahNumber } from "../../lib/money";
 
 // The threshold at which the screen warns, from
 // docs/business/balance/context_decision.md#the-threshold-warns-at-eighty-percent.
@@ -20,12 +20,12 @@ export const WARN_AT = 0.8;
 // ⚠ `absent` and `0` are OPPOSITES. Rendering a missing limit as "0" would show a team with infinite
 // credit as one that has been frozen, and the reverse is worse: the day somebody genuinely wants to
 // freeze a team, a UI that writes 0 for "no limit" grants them unlimited credit instead. That is why
-// `limit` here is `bigint | undefined` rather than a number with a sentinel.
+// `limit` here is `Rupiah | undefined` rather than a number with a sentinel.
 export type LimitState = "unlimited" | "frozen" | "capped";
 
-export function limitStateOf(limit: bigint | undefined): LimitState {
+export function limitStateOf(limit: Rupiah | undefined): LimitState {
   if (limit === undefined) return "unlimited";
-  if (limit === 0n) return "frozen";
+  if (isZeroRupiah(limit)) return "frozen";
   return "capped";
 }
 
@@ -37,10 +37,10 @@ export function limitStateOf(limit: bigint | undefined): LimitState {
  * re-type `debt * 10000 >= limit * WARN_AT * 10000`, and a second copy of a threshold is a threshold
  * that drifts — the meter would warn at 80% while the row beside it warned at something else.
  *
- * Integer maths up to the comparison: these are rupiah in bigint, and `Number()` on a real balance is
- * exactly where a money bug hides.
+ * On the exact doubles the server stores (the-backend-never-rounds-money) — the same figures, the same comparison the
+ * credit check makes; nothing is rounded first.
  */
-export function creditWarning(limit: bigint | undefined, debt: bigint): {
+export function creditWarning(limit: Rupiah | undefined, debtAmount: Rupiah): {
   near: boolean;
   over: boolean;
 } {
@@ -50,20 +50,21 @@ export function creditWarning(limit: bigint | undefined, debt: bigint): {
     return { near: false, over: false };
   }
 
-  const cap = limit!;
-  const owed = debt > 0n ? debt : 0n;
+  const cap = rupiahNumber(limit!);
+  const debt = rupiahNumber(debtAmount);
+  const owed = debt > 0 ? debt : 0;
 
   return {
-    near: owed * 10000n >= cap * BigInt(Math.round(WARN_AT * 10000)),
+    near: owed >= cap * WARN_AT,
     over: owed >= cap,
   };
 }
 
 interface CreditMeterProps {
-  /** undefined = unlimited, 0n = frozen, n = the ceiling. */
-  limit: bigint | undefined;
+  /** undefined = unlimited, 0 = frozen, n = the ceiling. */
+  limit: Rupiah | undefined;
   /** What this debtor owes the creditor right now. Never negative here — the caller flips the sign. */
-  debt: bigint;
+  debt: Rupiah;
   testId?: string;
   /**
    * Drop the "Near limit" / "Over limit" badge, for a caller that marks the row ITSELF (owner) — e.g.
@@ -109,13 +110,13 @@ export function CreditMeter({ limit, debt, testId, hideWarningBadge, setBy }: Cr
     );
   }
 
-  const cap = limit!;
-  const owed = debt > 0n ? debt : 0n;
+  const cap = rupiahNumber(limit!);
+  const debtAmount = rupiahNumber(debt);
+  const owed = debtAmount > 0 ? debtAmount : 0;
 
-  // Integer maths up to the ratio: these are rupiah in bigint, and Number() on a balance large
-  // enough to matter is exactly where a money bug hides. Only the RATIO becomes a float, and only
-  // for the width of a bar.
-  const pct = Number((owed * 10000n) / cap) / 100;
+  // The exact figures (the-backend-never-rounds-money); the RATIO is cut to hundredths of a percent, for the width
+  // of a bar and the words beside it only.
+  const pct = Math.floor((owed * 10000) / cap) / 100;
   // The two thresholds come from the exported helper, so the meter and any row marking itself beside
   // it can never disagree about what "near" means.
   const { near: warning, over } = creditWarning(limit, owed);

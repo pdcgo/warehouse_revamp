@@ -22,31 +22,18 @@ type Order struct {
 	// DB CHECK (the mapper + proto validation guard it; cf. #80).
 	Status string
 
-	CustomerName  string
-	CustomerPhone string
+	// ⚠ NO CUSTOMER OR ADDRESS COLUMNS (00045): who the parcel is for and where it goes are the order's ONE
+	// `order_addresses` row (one-address-per-order-and-per-draft), names only (an-address-is-plain-names) — Address below.
 
 	// THE BUYER'S USERNAME on the marketplace (00021, the-buyers-username-is-optional) — the name the buyer goes by in
 	// the marketplace chat. Not CustomerName, which is who the parcel is addressed to. Trimmed at placement; '' = none,
 	// which is a valid order on both doors.
 	BuyerUsername string
 
-	// The delivery address, FROZEN at order time (#118) — codes AND names, so a past order renders
-	// without region_service and survives a desa being renamed or merged. The codes are opaque
-	// region_service ids; no FK (HARD RULE 3). AddressLine is the free text (jalan, no. rumah, RT/RW)
-	// that no dataset supplies — it is what the old `customer_address` column held.
-	ProvinsiCode  string
-	ProvinsiName  string
-	KabupatenCode string
-	KabupatenName string
-	KecamatanCode string
-	KecamatanName string
-	DesaCode      string
-	DesaName      string
-	KodePos       string
-	AddressLine   string
-	// A courier code (opaque) — a shipment_service channel's `code`. Moves to shipment_channel_id with
-	// the order redesign (the-old-catalogue-bridges-by-code).
-	ShippingCode string
+	// THE COURIER (00044) — an OPAQUE shipment_service channel id, no FK (shipment-channel-is-an-id-into-shipment-service),
+	// and nothing else about the channel is stored (the-channel-name-is-not-frozen): screens resolve the name at read
+	// time. Required at create (no-order-without-a-courier); 0 only on a developer's order from before 00044.
+	ShipmentChannelID uint64
 
 	// THE MARKETPLACE'S OWN ID for this order (owner) — read off the storefront and typed in beside
 	// the shop that took it. The only name this order has that a buyer, a payout report or the
@@ -59,14 +46,23 @@ type Order struct {
 	// evidence of where an order came from, not a key.
 	OrderExternalRefID string
 
+	// THE KEY THE ORDER WAS CREATED WITH (00035, the-order-stores-its-idempotency-key) — minted by the form inside every
+	// submit (every-submit-mints-a-new-key) and UNIQUE (the-idempotency-key-is-unique, orders_idempotency_key_idx).
+	// Required: OrderCreate refuses an empty one, a used one (the-order-refuses-a-used-key) and one starting `order:`,
+	// the shape the migration filled a developer's older rows with (revamp-has-no-real-orders-yet).
+	IdempotencyKey string
+	// The inventory transaction the take wrote — the take's answer, stored in the transaction that inserts the order
+	// (the-placement-page-reads-racks-by-transaction-id). nil = none recorded (a developer's row from before 00036).
+	TransactionID *uint64
+
 	// THE ORDER'S MONEY — the owner's three header figures (00027), and nothing else: no subtotal, no shipping
 	// (an-order-records-no-shipping-cost).
 	//
 	// GoodsCost is the owner's `goods_cost`: Σ the lines' frozen Total — a borrowed line WITH its owner's markup, what
-	// the goods cost the seller (the-cross-charge-lives-on-the-line) — rounded once to whole rupiah. The warehouse fee
+	// the goods cost the seller (the-cross-charge-lives-on-the-line) — exact, never rounded, a double since 00042 (the-backend-never-rounds-money). The warehouse fee
 	// is priced on it (the-fee-is-priced-on-goods-cost). Denormalised onto the header because OrderList returns a
 	// summary without lines. 0 means unknown, not free.
-	GoodsCost int64
+	GoodsCost float64
 	// The owner's `total_cost`: GoodsCost + WarehouseFee, frozen beside them — what the order cost the seller ("total
 	// beli"). Unrounded rupiah, like the fee. A never-priced fee counts as nothing here.
 	TotalCost float64
@@ -74,8 +70,9 @@ type Order struct {
 	// WHAT THE BUYER PAID on the platform — the owner's `platform_total` (00026,
 	// the-total-is-ours-the-platform-total-is-theirs): what the storefront actually took once its vouchers and
 	// subsidies had been applied. A fact read off the storefront, required at placement since 00022; 0 = not recorded,
-	// on an order placed before that. margin = PlatformTotal − TotalCost.
-	PlatformTotal int64
+	// on an order placed before that. margin = PlatformTotal − TotalCost. A double since 00041, frozen exact as
+	// typed at placement (the-backend-never-rounds-money).
+	PlatformTotal float64
 
 	// The SHIPPING RECEIPT attached to this order (owner) — the courier's slip or the marketplace's
 	// PDF. A REFERENCE to a document_service document: the id is opaque (no FK across services), and
@@ -112,6 +109,16 @@ type Order struct {
 	// recorded.
 	CreatedByUserID uint64
 
+	// WHETHER THAT CREATOR WAS OUTSIDE THE TEAM (00033) — Root or the Administrator placing it through the root-team
+	// bypass, not a membership (an-override-is-stamped-in-every-service). Read from the access interceptor's resolved
+	// role at placement (san_auth.IsOverride), never from the request, and never updated.
+	IsOverride bool
+
+	// WHEN ITS SETTLEMENT ACCOUNT OPENED (00040, a-missing-account-is-found-by-its-opened-at) — stamped once, by
+	// settlement through the in-process seam (Service.SettlementOpened), at its first `initial_total`. nil = NOT YET: the
+	// open failed, is dead-lettered, or never ran — the order committed all the same. Never written by placement.
+	SettlementOpenedAt *time.Time
+
 	// HOW MANY UNITS — the sum of the lines' quantities (the-warehouse-row-fills-from-shop-and-user-by-ids). Not a
 	// column: OrderList selects it with a subquery, and OrderDetail sums the lines it loads. Read-only to GORM.
 	ItemQuantity int64 `gorm:"->;-:migration"`
@@ -121,8 +128,17 @@ type Order struct {
 	// off the timeline it loads. nil = no row records the move. Read-only to GORM.
 	StatusAt *time.Time `gorm:"->;-:migration"`
 
+	// WHEN IT FIRST ENTERED THE STATUS THE LIST'S DATE FILTER READS (the-order-list-filters-by-seven-dates). Not a
+	// column: OrderList selects it only when the filter dates a status. nil = not asked, or no row records it.
+	DateEnteredAt *time.Time `gorm:"->;-:migration"`
+
 	// The lines; loaded on demand (OrderDetail).
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
+
+	// THE BUYER AND WHERE THE PARCEL GOES — the order's one `order_addresses` row (00045), loaded on demand
+	// (loadOrderAddresses / Preload). nil = not loaded, or a developer's row seeded without one; read through the
+	// nil-safe getters below.
+	Address *OrderAddress `gorm:"foreignKey:OrderID"`
 
 	// The order's timeline, oldest first; loaded on demand (OrderDetail), like Items
 	// (order-timeline-logs-replaces-order-events).
@@ -139,4 +155,22 @@ type Order struct {
 
 func (Order) TableName() string {
 	return "orders"
+}
+
+// Customer is the order's customer name, from its address row — "" when the row is not loaded.
+func (o *Order) Customer() string {
+	if o.Address == nil {
+		return ""
+	}
+
+	return o.Address.CustomerName
+}
+
+// Phone is the order's customer phone, from its address row — "" when the row is not loaded.
+func (o *Order) Phone() string {
+	if o.Address == nil {
+		return ""
+	}
+
+	return o.Address.CustomerPhone
 }

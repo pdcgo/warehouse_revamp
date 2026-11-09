@@ -1,3 +1,5 @@
+import { Text } from "@chakra-ui/react";
+import { useParams } from "react-router-dom";
 import { within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../../.storybook/pageStory";
@@ -12,17 +14,29 @@ import { ProductsPage } from "../index";
 // THE PRODUCTS LIST — a selling team's catalogue: the stat row, the search and the warehouse lens, a row per product
 // with its stock, cost and sales figures, the lock in the row, Edit and Archive — and the ARCHIVE, a page of its own
 // opened from the header's Arsip button (the-archive-is-a-page-of-its-own), each row there offering Restore. The stub is
-// productStub.ts, writeable, with the server's rules — a SKU once among the live, archive is soft, restore can collide.
+// productStub.ts, writeable, with the server's rules — a code composed under the team's code (SL-03) and held once over
+// every row, archive keeps the code, so unarchive cannot collide.
 //
 // Toko Anggrek (team 15) holds 44 live products with invented but consistent figures:
 //
-//   SKU-ANG-001  Minyak Goreng Sawit 2L — Satuan     79 ready (30 + 24 in Gudang Pusat, 25 in Gudang Cabang)
-//   SKU-ANG-003  Tepung Terigu Serbaguna 1kg — Satuan nothing on a shelf
-//   archived:    SKU-ANG-001 (an older pack — its SKU now taken by the live one), SKU-ANG-LAMA
+//   SL-03-ANG-001  Minyak Goreng Sawit 2L — Satuan     79 ready (30 + 24 in Gudang Pusat, 25 in Gudang Cabang)
+//   SL-03-ANG-003  Tepung Terigu Serbaguna 1kg — Satuan nothing on a shelf
+//   archived:    SL-03-ANG-001-L (an older pack, under the code it kept), SL-03-ANG-LAMA
+//
+// A WAREHOUSE's Products is a different screen on the same path (a-warehouses-products-is-what-it-holds): what Gudang
+// Pusat (11) HOLDS — every product with a batch there, any team's, at 0 too — with its owner and its units on hand
+// (warehouseStockListStub.ts), a row opening the warehouse product page. The seller's columns are not on it. Its
+// stories are ./Warehouse.stories.tsx.
 
 function asAnggrekOwner() {
   asTeam(15n)();
   asRole(Role.SELLING_OWNER)();
+}
+
+// Where a warehouse's row lands — the warehouse product page, its id on screen so a story can say WHICH product opened.
+function AtWarehouseProduct() {
+  const { productId } = useParams();
+  return <Text data-testid="at-warehouse-product">{productId}</Text>;
 }
 
 const routes = [
@@ -31,6 +45,7 @@ const routes = [
   marker("/products/new", "at-product-new"),
   marker("/products/:productId", "at-product-detail"),
   marker("/products/:productId/edit", "at-product-edit"),
+  { path: "/inventories/products/:productId", element: <AtWarehouseProduct /> },
 ];
 export const At = (path: string) => routedPage(routes, path);
 export const AtProducts = At("/products");
@@ -44,6 +59,6 @@ export const PRODUCTS_META = {
 
 export async function loaded(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  await canvas.findByTestId("product-row-SKU-ANG-001", {}, { timeout: 5000 });
+  await canvas.findByTestId("product-row-SL-03-ANG-001", {}, { timeout: 5000 });
   return canvas;
 }

@@ -24,7 +24,7 @@ import (
 )
 
 // payTeam delivers one acceptance — payer's `from` out, creditor's `to` in.
-func payTeam(svc *financial_account_v1.Service, eventID string, payer, creditor, from, to uint64, amount int64) error {
+func payTeam(svc *financial_account_v1.Service, eventID string, payer, creditor, from, to uint64, amount float64) error {
 	return svc.TeamPaymentHandler()(context.Background(), &eventsv1.Event{
 		EventId:     eventID,
 		OccurredAt:  timestamppb.Now(),
@@ -44,7 +44,7 @@ func payTeam(svc *financial_account_v1.Service, eventID string, payer, creditor,
 // the two teams' accounts are locked in id order like a transfer's — and the money is conserved.
 func TestRace_TeamPayment_OppositeDirectionsNeverDeadlock(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Seller BCA", "R000201", 1_000_000))
 	y := mustCreate(t, svc, bca(teamB, "Gudang BCA", "R000202", 1_000_000))
 
@@ -76,7 +76,7 @@ func TestRace_TeamPayment_OppositeDirectionsNeverDeadlock(t *testing.T) {
 // posts ONCE. A delivery that lost the claim may fail and be redelivered; it never posts a second time.
 func TestRace_TeamPayment_OneEventFourDeliveries(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Seller BCA", "R000211", 500_000))
 	y := mustCreate(t, svc, bca(teamB, "Gudang BCA", "R000212", 0))
 
@@ -98,7 +98,7 @@ func TestRace_TeamPayment_OneEventFourDeliveries(t *testing.T) {
 // balance — lockOwnedAccounts takes the same row lock every other write takes.
 func TestInterleave_TeamPayment_WaitsForAPostOnTheCreditorsAccount(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "Seller BCA", "R000221", 500_000))
 	y := mustCreate(t, svc, bca(teamB, "Gudang BCA", "R000222", 0))
 

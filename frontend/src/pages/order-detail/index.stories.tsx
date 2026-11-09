@@ -8,11 +8,11 @@ import { FULL, ORDER_DETAIL_META } from "./stories/kit";
 // leading it. Its rules are grouped by the part of the screen they are about, one file each in ./stories
 // (stories-are-grouped-by-the-part-of-the-screen):
 //
-//   Actions   the header's actions — Cancel, Edit Resi
-//   Items     the lines: the price with its markup, the picture, the placeholder
+//   Actions   the header's actions — Cancel, Edit Resi, Force Return
+//   Items     the lines: the price with its markup, three decimals, the picture, the placeholder
 //   Money     the two totals, and the settlement ledger
 //   Notes     Catatan — the notes, newest first, and Add Note
-//   Shipping  the buyer's username under the customer, and the order's own leg
+//   Shipping  the buyer's username under the customer, the order's own leg, and the shipping label
 //   States    without the marks, a warehouse reading another team's order, not found, a bad id, every gap marked
 //   Timeline  the status rows and the people on them
 

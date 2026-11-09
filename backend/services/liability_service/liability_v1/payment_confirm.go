@@ -67,23 +67,25 @@ func (s *Service) LiabilityPaymentConfirm(
 
 		found.Status = paymentConfirmed
 		found.ConfirmedBy = actorUserID(ctx)
+		found.ConfirmedIsOverride = isOverride(ctx)
 		found.ConfirmedAt = &now
 		found.ToAccountID = req.Msg.GetToAccountId()
 
 		updateErr := tx.Model(&liability_service_models.LiabilityPayment{}).
 			Where("id = ?", found.ID).
 			Updates(map[string]any{
-				"status":        found.Status,
-				"confirmed_by":  found.ConfirmedBy,
-				"confirmed_at":  now,
-				"to_account_id": found.ToAccountID,
-				"updated_at":    now,
+				"status":                found.Status,
+				"confirmed_by":          found.ConfirmedBy,
+				"confirmed_is_override": found.ConfirmedIsOverride,
+				"confirmed_at":          now,
+				"to_account_id":         found.ToAccountID,
+				"updated_at":            now,
 			}).Error
 		if updateErr != nil {
 			return updateErr
 		}
 
-		_, postErr := s.PostEntry(ctx, tx, paymentPosting(found, found.ConfirmedBy))
+		_, postErr := s.PostEntry(ctx, tx, paymentPosting(found, found.ConfirmedBy, found.ConfirmedIsOverride))
 		if postErr != nil {
 			return postErr
 		}
@@ -120,6 +122,7 @@ func (s *Service) LiabilityPaymentConfirm(
 func paymentPosting(
 	p *liability_service_models.LiabilityPayment,
 	actorID uint64,
+	override bool,
 ) Posting {
 	return Posting{
 		DebtorTeamID:   p.CreditorTeamID,
@@ -128,6 +131,7 @@ func paymentPosting(
 		SourceType:     SourceTypePayment,
 		SourceID:       p.ID,
 		ActorID:        actorID,
+		IsOverride:     override,
 	}
 }
 

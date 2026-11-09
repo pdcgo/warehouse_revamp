@@ -41,14 +41,14 @@ func ownerService(t *testing.T) *inventory_v1.Service {
 	t.Helper()
 
 	return inventory_v1.NewService(san_testdb.DB(t), nil, nil, nil, nil,
-		fakeOwners{melatisProduct: ownerMelati, sinarsProduct: ownerSinar})
+		fakeOwners{melatisProduct: ownerMelati, sinarsProduct: ownerSinar}, nil, nil)
 }
 
 func createFor(svc *inventory_v1.Service, team, product uint64) error {
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: team, WarehouseId: ownerWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "Kaos", Count: 1, Total: 1000},
+			{ProductId: product, ProductCode: "SKU", Name: "Kaos", Count: 1, Total: 1000},
 		},
 	}))
 
@@ -83,7 +83,7 @@ func TestRestockUpdate_AddingAnotherTeamsProductIsRefused(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: ownerMelati, WarehouseId: ownerWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: melatisProduct, Sku: "SKU", Name: "Kaos", Count: 1, Total: 1000},
+			{ProductId: melatisProduct, ProductCode: "SKU", Name: "Kaos", Count: 1, Total: 1000},
 		},
 	}))
 	if err != nil {
@@ -95,7 +95,7 @@ func TestRestockUpdate_AddingAnotherTeamsProductIsRefused(t *testing.T) {
 	_, err = svc.RestockRequestUpdate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
 		TeamId: ownerMelati, RequestId: r.GetId(),
 		Items: append(r.GetItems(), &inventoryv1.RestockRequestItem{
-			ProductId: sinarsProduct, Sku: "SKU", Name: "Kaos", Count: 1, Total: 1000,
+			ProductId: sinarsProduct, ProductCode: "SKU", Name: "Kaos", Count: 1, Total: 1000,
 		}),
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {

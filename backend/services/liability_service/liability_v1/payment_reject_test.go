@@ -55,7 +55,7 @@ func TestPaymentReject_MovesNoMoney(t *testing.T) {
 	}
 
 	if after := owed(t, db, selling, warehouse); after != before {
-		t.Fatalf("debt = %d after rejecting, want %d unchanged — a rejection must post nothing",
+		t.Fatalf("debt = %v after rejecting, want %v unchanged — a rejection must post nothing",
 			after, before)
 	}
 
@@ -175,6 +175,6 @@ func TestPaymentReject_IsTerminal(t *testing.T) {
 	}
 
 	if debt := owed(t, db, selling, warehouse); debt != 15000 {
-		t.Fatalf("debt = %d, want 15000 — a rejected claim must never settle anything", debt)
+		t.Fatalf("debt = %v, want 15000 — a rejected claim must never settle anything", debt)
 	}
 }

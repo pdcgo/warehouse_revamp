@@ -45,7 +45,7 @@ flowchart TD
 ⚠ **The same edit contradicts itself two paragraphs later.** `## Streaming Processing` now names **three
 specific report tables** — team, shop, supplier — which is exactly the *"what report that we have"* the
 sentence above disclaims. See
-[the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#the-doc-disclaims-reports-and-then-names-three).
+[the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#contradiction).
 
 ---
 
@@ -90,7 +90,7 @@ flowchart LR
 
 ⚠ **The contradiction gets sharper, not smaller.** A doc whose stated responsibility is *a pattern* still
 names three concrete business report tables — team, shop, supplier — in `## Streaming Processing`.
-See [the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#the-doc-disclaims-reports-and-then-names-three).
+See [the-doc-disclaims-reports-and-then-names-three](./context_clarify.md#contradiction).
 
 ---
 
@@ -128,7 +128,7 @@ flowchart LR
 | | |
 | --- | --- |
 | ⏸ **parked** | *which consumer goes first* · the settlement event and its publisher · when the analytic service gets built |
-| ⛔ **NOT parked — it is now the whole job** | the contract itself: what a source must promise, what the fold must promise, what a report must promise ([C17](./context_clarify.md#critique) → [what-the-pattern-owes-an-implementer](./context_clarify.md#what-the-pattern-owes-an-implementer)) |
+| ⛔ **NOT parked — it is now the whole job** | the contract itself: what a source must promise, what the fold must promise, what a report must promise ([C17](./context_clarify.md#critique) → [what-the-pattern-owes-an-implementer](./context_clarify.md#question)) |
 | ⛔ **also NOT parked** | the three named report tables still contradict the doc's stated responsibility, and a **pattern** is exactly the wrong place for them ([C15](./context_clarify.md#critique)) |
 
 ---
@@ -159,7 +159,7 @@ flowchart LR
 | a lost publish | the report is wrong until noticed; with [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted), that is an accepted cost |
 | the repair | whatever [settlement's drift question](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) settles — it now covers every lost event |
 | the nightly reconcile | not built — [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) item 2 still promises it: [the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other](./context_clarify.md#the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other) |
-| later | the catch-up path ([what-the-pattern-owes-an-implementer](./context_clarify.md#what-the-pattern-owes-an-implementer)) needs no change to a source log, only a way to read one from row N |
+| later | the catch-up path ([what-the-pattern-owes-an-implementer](./context_clarify.md#question)) needs no change to a source log, only a way to read one from row N |
 
 ---
 
@@ -186,7 +186,7 @@ flowchart LR
 | an expense row | never changes after it is saved. `ExpenseUpdate` is removed |
 | a correction | a new row: another expense to add cost, or an adjustment to correct one. Proposed: the adjustment names the expense it corrects |
 | the reports | each new row publishes its event, so the events-only reports ([a-report-is-fed-by-events-only-for-now](#a-report-is-fed-by-events-only-for-now)) need nothing special |
-| ⛔ today | `ExpenseUpdate` overwrites `amount` and `occurred_at` in place and publishes nothing ([expense_update.go](../../../backend/services/expense_service/expense_v1/expense_update.go)) |
+| ✅ built *(2026-11-02)* | `ExpenseUpdate` is gone — see [every-correction-is-a-signed-adjustment](#every-correction-is-a-signed-adjustment). Was: `ExpenseUpdate` overwrote `amount` and `occurred_at` in place and published nothing (`expense_update.go`, deleted) |
 | still open, in [Q6](./context_clarify.md#question) | ~~the adjustment's date~~ ✅ [an-adjustment-counts-on-the-day-it-fixes](#an-adjustment-counts-on-the-day-it-fixes) · whether `ExpenseVoid` stays · how an adjustment that reduces is written, since amounts are always positive today |
 
 ---
@@ -214,3 +214,72 @@ flowchart LR
 | when it was made | its own timestamp and its maker, shown on the row |
 | the report | the event carries the expense's day, so the fold lands it in that day ([a-report-is-fed-by-events-only-for-now](#a-report-is-fed-by-events-only-for-now)) |
 | the month's list | shows the expense and its adjustment together |
+
+## every-correction-is-a-signed-adjustment
+
+> Owner, in chat (2026-10-31): *"whats void, its seems weird"*, then *"for 1, 2, 3, 4 yes"* — answering
+> [what-a-void-and-a-reducing-adjustment-write](./context_clarify.md#question). Against my first recommendation, which
+> kept Void as its own button; on *"weird"* I recommended dropping it, and that was taken.
+
+**The verdict.** There is **one** way to correct an expense: an **adjustment**. It carries a **signed** amount, never 0,
+names the expense it fixes, and counts on that expense's day
+([an-adjustment-counts-on-the-day-it-fixes](#an-adjustment-counts-on-the-day-it-fixes)). **Void is not a concept any
+more** — nothing marks a row voided, because the row never changes
+([an-expense-is-never-edited](#an-expense-is-never-edited)). **Batalkan** stays on the screen as a shortcut: it writes an
+adjustment of minus the whole amount, so nobody types it. `ExpenseUpdate` is removed; the page's **Edit** becomes
+**Adjust**.
+
+```
+expense 77           28 Sep   +5.000.000
+adjustment for 77    28 Sep   −4.500.000   Adjust, made 3 Oct by ani
+September                      500.000
+
+expense 78           28 Sep   +1.200.000
+adjustment for 78    28 Sep   −1.200.000   Batalkan, the whole amount pre-filled
+September                            0     every row still visible
+```
+
+```mermaid
+flowchart LR
+  E["an expense - positive, never changed"] --> R["the report and the account"]
+  A["Adjust - a signed amount, names the expense"] --> R
+  B["Batalkan - an adjustment of minus the whole amount"] --> A
+  U["ExpenseUpdate, voided_at"] -.->|"removed"| X["nothing"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| an expense | amount **> 0**, never changed after it is saved |
+| an adjustment | a row of its own kind: amount **signed, ≠ 0**; names the expense it fixes; its day is that expense's day, copied |
+| Batalkan | the screen's shortcut for an adjustment of **−(the expense's amount)** |
+| Edit | becomes **Adjust** — the person types the correction, not the new total |
+| removed | `ExpenseUpdate`; `voided_at` and Void as a state |
+| the events | an adjustment publishes like any new row — the reports and the account receive it with its sign |
+| ⚠ my spec — the floor | an expense and its adjustments never sum below 0 — a correction cannot turn a cost into income |
+| ⚠ my spec — no chains | an adjustment names an EXPENSE, never another adjustment — a mistaken adjustment is fixed by a second one on the same expense |
+| ⚠ my spec — rows voided today | dev data only, so the build turns each into its expense plus an adjustment of minus its amount |
+
+**What it ripples** (HARD RULE 11) — sites that say *void* and become stale when this is built:
+
+| site | says | becomes |
+| --- | --- | --- |
+| [an-expense-must-name-the-account-that-paid](../financial_account/context_decision.md#an-expense-must-name-the-account-that-paid) | *"a void publishes the reversal — the account gets its money back"* | a negative adjustment gives the money back; a positive one takes more — reported in the [financial_account clarify](../financial_account/context_clarify.md#an-expense-void-is-now-a-negative-adjustment) |
+| [financial_account clarify](../financial_account/context_clarify.md) types table | `expense`, `ads_expense`: *"a void reverses it"* | the same, by an adjustment's sign |
+| [expense_service/rpc.md](../../services/expense_service/rpc.md) §Voided rows | voided rows excluded and struck through | updated by the build, in the same commit |
+| [database-schema.md](../../database-schema.md) `expense_records` | `voided_at` | updated by the build's migration, in the same commit |
+
+✅ **Built 2026-11-02.**
+
+| | |
+| --- | --- |
+| the contract | `ExpenseAdjust` replaces `ExpenseUpdate` and `ExpenseVoid`; a row carries `adjusts_expense_id` and, on an expense, `net_amount` ([expense.proto](../../../proto/warehouse/expense/v1/expense.proto)) |
+| the table | migration `00002`: `adjusts_expense_id`, a CHECK per kind of row, `voided_at` dropped, every voided row turned into its expense plus an adjustment of minus its amount |
+| the floor | [expense_adjust.go](../../../backend/services/expense_service/expense_v1/expense_adjust.go) locks the expense row, refuses an adjustment of an adjustment and a net below 0 |
+| Batalkan | ⚠ my build detail: it writes minus the expense's **net**, not its original amount — on an expense already corrected down, minus the original would cross the floor and be refused |
+| the screen | *Edit* is **Adjust** — a direction (Reduce / Add) and an amount, showing what it will count for; **Batalkan** confirms, then adjusts by minus the net; an adjustment is its own muted row with its sign; an expense shows *now Rp …* once corrected |
+| tests | `expense_adjust_test.go` (the example above, Batalkan, adding, the floor, no chains, the refusals), the schema CHECK, the daily day at 0, and `e2e/expenses.spec.ts` |
+| ⛔ still not built | the events — `expense_service` publishes nothing yet, so no report or account hears an adjustment |
+
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — the events: expense_service publishes `ExpenseCreated` / `ExpenseAdjusted` (events 600/601, `expense_v1/expense_events.go`), and the paying account hears both (`financial_account_v1/expense_payment_listener.go`). ⚠ No analytic report folds an expense yet.

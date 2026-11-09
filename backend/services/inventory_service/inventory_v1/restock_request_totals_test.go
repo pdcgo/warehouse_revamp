@@ -89,7 +89,7 @@ func TestRestockRequest_StoresItsTotalsAndEachLinesUnitPrice(t *testing.T) {
 	arrivedLines[1].Count = 6
 	arrivedLines[1].Total = 180000
 	arrivedLines = append(arrivedLines, &inventoryv1.RestockRequestItem{
-		ProductId: 300, Sku: "SKU-TOPI", Name: "Topi", Count: 4, Total: 10000,
+		ProductId: 300, ProductCode: "SKU-TOPI", Name: "Topi", Count: 4, Total: 10000,
 	})
 	edit(arrivedLines, 5000)
 

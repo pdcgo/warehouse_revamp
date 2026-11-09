@@ -70,7 +70,10 @@ shared model. That successor question is open in
 
 ---
 
-## a-product-files-under-many-categories
+## superseded-a-product-files-under-many-categories
+
+> ⚠ **Superseded 2026-10-31** by [a-product-has-one-category](#a-product-has-one-category): a product has exactly one
+> category. Kept as written below.
 
 > *"categories is plural"* (owner, 2026-09-12)
 
@@ -204,7 +207,10 @@ flowchart TB
 
 ---
 
-## deleting-a-product-requires-zero-stock
+## superseded-deleting-a-product-requires-zero-stock
+
+> ⚠ **Superseded 2026-10-31** by [a-used-product-is-archived-never-deleted](#a-used-product-is-archived-never-deleted): a
+> product that ever had stock is archived, never deleted. Kept as written below.
 
 > *"for \"Can a product be deleted while it still has stock?\" no"* (owner, 2026-09-12)
 
@@ -280,7 +286,7 @@ flowchart LR
 | the balance | unchanged — a warehouse receivable ([the-warehouse-receivable-is-order-fee-cod-fee-and-found](../balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found)) |
 | the arithmetic | floating point ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)) |
 | a mistyped ask | corrected by revaluing the batch — [batch.md §Change Price Flow](../inventory/batch.md#change-price-flow-example) |
-| the build | already includes it — `freight := rr.ShippingCost + costLineTotal` ([restock_request_fulfill.go:206](../../../backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L206)). ⚠ But `freightPerUnit` is **integer** division, so a Rp 5.000 ask over 1.000 units adds **0** — against the arithmetic row |
+| the build | already includes it — `freight := rr.ShippingCost + costLineTotal` (`restock_request_fulfill.go:206` then; ✅ *(2026-11-02)* now [restock_request_accept.go:165](../../../backend/services/inventory_service/inventory_v1/restock_request_accept.go#L165), `freight := rr.ShipmentCost + courierCharge`, and money is `float64`, so the integer division below is gone). ⚠ But `freightPerUnit` is **integer** division, so a Rp 5.000 ask over 1.000 units adds **0** — against the arithmetic row |
 
 **What it does NOT settle:** whether the divisor is the ordered or the arrived quantity ([Q2](./context_clarify.md#question)),
 and how freight and the ask split across a restock's lines — by quantity or by value
@@ -323,3 +329,306 @@ flowchart LR
 
 **What it costs — accepted.** A borrowed order can end below the reserve — by its own quantity, or by another borrower's in
 the same moment. The line stops the **next** borrower, not this one.
+
+## exactly-the-reserve-stays-open
+
+> Owner, in chat (2026-10-31): *"follow your recomendation"* — answering [Q13](./context_clarify.md#question), *at
+> exactly the minimum, may another team still order?* Yes, as recommended — which reversed my own earlier ≤ in the clarify.
+
+**The verdict.** A product whose total stock is **exactly** its reserve is still **open** to other teams; it closes only
+**under** it. This keeps [the-reserve-stops-other-teams-at-low-stock](#the-reserve-stops-other-teams-at-low-stock)'s
+`total stock ≥ reserve` and [context.md](./context.md) §Cross/Shared Products Rule 1 (*"when stock < several, its cannot
+be shared"*) as written, and the screens follow them.
+
+**Why.** The reserve is a low-stock **line**, not a floor — the quantity wanted is not counted, so a borrower at 20 against
+20 may take 15 and leave 5 either way. *"The minimum is what the owner keeps"* was the floor argument again, and it is the
+one the line already refused.
+
+```
+reserve 20      total 19 → closed      total 20 → OPEN      total 21 → open
+```
+
+| | |
+| --- | --- |
+| the test | `total stock ≥ reserve` — open; `<` — closed. Unchanged |
+| the order take | already `>=` ([order_transaction_create.go](../../../backend/services/inventory_service/inventory_v1/order_transaction_create.go)) — unchanged |
+| the screens | `lockedByMinimumNow` ([ProductLock.tsx](../../../frontend/src/features/products/ProductLock.tsx)) goes from `<=` back to `<` — the **Terkunci** badge on the product list and the product's page, and Discover's **Kunci** filter, which reads the same comparison |
+| what it replaces | the screens' [superseded-the-minimum-closes-at-the-minimum](../../technical/frontend/products_decision.md#superseded-the-minimum-closes-at-the-minimum) (≤, 2026-10-30) |
+
+**What it resolved** (HARD RULE 11): the clarify's contradiction *the screens close a product at its minimum, the business
+rule opens it there* — the badge said *Terkunci* on a product the take still let another team order.
+
+```mermaid
+flowchart LR
+  R["exactly-the-reserve-stays-open - at the reserve, open"] --> T["the take, total at or above the reserve - already so"]
+  R --> S["the badge and the Kunci filter, closed only under it - changed"]
+  R -.->|"left for its own pass"| C["Discover detail Bisa Anda ambil - the shelf less the reserve, a floor reading, still pending"]
+```
+
+⚠ **Left standing:** Discover detail's *can take* column subtracts the reserve from each shelf
+([product-discover-detail/index.tsx](../../../frontend/src/pages/product-discover-detail/index.tsx), pending `canTake`) —
+a floor reading of what is a line. It was already marked an unsettled rule and is not changed by this.
+
+## superseded-a-delete-waits-until-nothing-needs-the-product
+
+> ⚠ **Superseded the same day** by [a-used-product-is-archived-never-deleted](#a-used-product-is-archived-never-deleted) —
+> the owner: *"im rethink its lead to over enginered"*. Kept as written below.
+
+> Owner, in chat (2026-10-31): *"yes, i follow your recomendation"* — answering [Q11](./context_clarify.md#question),
+> *does "zero stock" mean zero on hand, or no references at all?* As recommended.
+
+**The verdict.** [deleting-a-product-requires-zero-stock](#superseded-deleting-a-product-requires-zero-stock)'s *"zero stock"*
+means **nothing on hand AND nothing on the way**: a product is deleted only when no shelf holds it, no restock is still
+bringing it, and no order that carries it is unfinished. A shelf can be empty while units are still coming to it, and
+those units need the product exactly as much as a full shelf does.
+
+| SKU-1, 0 on the shelf, and… | the delete |
+| --- | --- |
+| a restock of 50 arriving tomorrow | **refused** — *"restock #812 is still coming"* |
+| 2 units shipped, the order not finished | **refused** — *"order #5521 is still open"* |
+| nothing on the way | deleted |
+
+```mermaid
+flowchart LR
+  D["delete SKU-1"] --> S{"on any shelf?"}
+  S -->|"yes"| R1["refused - where it is"]
+  S -->|"no"| T{"a restock still coming?"}
+  T -->|"yes"| R2["refused - which restock"]
+  T -->|"no"| O{"an unfinished order carries it?"}
+  O -->|"yes"| R3["refused - which order"]
+  O -->|"no"| OK["deleted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| on hand | any unit of it on any shelf, every warehouse — inventory's count |
+| a restock still coming | a restock with a line of it, still `ONGOING` or `ARRIVED` — on its way, or in the building and not yet counted |
+| an unfinished order | an order with a line of it, of **any** team — a borrowed line names the owner's product — whose status is not finished |
+| finished | `CANCEL`, `LOST`, `RETURN_COMPLETED` are terminal. ⚠ **`COMPLETED` is open** — it can still become a `RETURN` ([order_transition.go](../../../backend/services/selling_service/selling_v1/order_transition.go)), asked in [Q14](./context_clarify.md#question) |
+| the reads | inventory (stock, restocks) and the order side (open orders) — RPCs, **never cached**, as [deleting-a-product-requires-zero-stock](#superseded-deleting-a-product-requires-zero-stock) already says |
+| the refusal | names every blocker — where the stock is, which restock, which order — so the person knows what to finish first |
+| a bundle | never blocks — a deleted product leaves its bundle line unavailable ([a-borrowed-product-never-blocks-its-owner](./product_bundle_decision.md#a-borrowed-product-never-blocks-its-owner)) |
+
+⛔ **Not built.** [product_delete.go](../../../backend/services/product_service/product_v1/product_delete.go) checks nothing
+today.
+
+## a-used-product-is-archived-never-deleted
+
+> Owner, in chat (2026-10-31): *"im rethink its lead to over enginered, what about product just can be deleted if there is
+> no stock, order and other ops before. and if its happen, product only can be archived and unarchived"*, then *"yes"*
+> to *"can a product be archived while it still has stock on a shelf?"*. The owner's own design, against my
+> [superseded-a-delete-waits-until-nothing-needs-the-product](#superseded-a-delete-waits-until-nothing-needs-the-product).
+
+**The verdict.** Two actions, split by whether the product has a **history**:
+
+```
+never used — a typo, a duplicate   → Delete     gone for good; its code is free again
+has any history                    → Archive    out of lists and pickers; Unarchive brings it back, same id and code
+```
+
+**Delete** strands nothing, because nothing ever pointed at the product. **Archive** needs no guard, because it can be
+undone: it stops anything NEW from using the product, while everything already on its way still lands. This replaces
+both earlier delete rules — there is no "is that order finished yet" to answer, and no [Q14](./context_clarify.md#question).
+
+```mermaid
+flowchart LR
+  P["a product"] --> H{"ever in a stock movement, an order line or a restock line?"}
+  H -->|"never"| D["Delete - the row is gone, the code is free"]
+  H -->|"yes"| R["Delete refused - archive it instead"]
+  P --> A["Archive - any time, even with stock on a shelf"]
+  A --> U["Unarchive - same id, same code"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| history | any stock movement of it (restock, transfer, count, adjustment, order take), any order line of it in any team's order — a borrowed line names the owner's product — and any restock line of it, ever. Read from inventory and the order side at delete time |
+| Delete | only with no history; the product's row and its own data go. Refused otherwise, the refusal pointing at Archive |
+| Archive | any time, **even with stock on a shelf** — out of the product list and every picker, so no new order, restock or transfer takes it |
+| what is on its way | still lands: an open order ships, a restock is accepted, a return comes back — on the archived product |
+| an archived product, read by id | resolves, with its name and an archived mark — a shelf, an old order and a report all still name it ([Q12](./context_clarify.md#question)) |
+| the archive page | lists and searches archived products, and offers **Unarchive** ([the-archive-is-a-page-of-its-own](../../technical/frontend/products_decision.md#the-archive-is-a-page-of-its-own)) |
+| the code | an archived product **keeps** its code, so Unarchive needs nothing; a deleted one frees it. No `[code]_deleted_ts` rename |
+| a bundle | an archived or deleted product leaves its bundle line unavailable, as before ([a-borrowed-product-never-blocks-its-owner](./product_bundle_decision.md#a-borrowed-product-never-blocks-its-owner)) |
+
+**What it replaces** (HARD RULE 11):
+
+| was | now |
+| --- | --- |
+| [superseded-deleting-a-product-requires-zero-stock](#superseded-deleting-a-product-requires-zero-stock) — no delete while stock is left | a product that ever had stock has history, so it is archived, never deleted |
+| [superseded-a-delete-waits-until-nothing-needs-the-product](#superseded-a-delete-waits-until-nothing-needs-the-product) — on hand, restocks, unfinished orders | one question, *ever used?* |
+| [a-deleted-product-is-unfindable](#a-deleted-product-is-unfindable) — *"not in ProductList"* | an ARCHIVED product is out of the list and the pickers, and on the archive page; a deleted one is gone |
+| [context.md](./context.md) line 26 — *"the code is updated to `[code]_deleted_ts`"* | stale — reported in the clarify's [the-doc-renames-the-code-of-a-product-it-only-archives](./context_clarify.md#the-doc-renames-the-code-of-a-product-it-only-archives) |
+
+**Built today, and what changes.** Today's **Delete** is already a soft delete (`deleted = true`) and the archive page
+already has **Restore** — that IS archive under another name. ✅ **Built 2026-11-02:**
+
+| | |
+| --- | --- |
+| the contract | `ProductArchive` / `ProductUnarchive` (yesterday's Delete / Restore) and a new `ProductDelete`; `Product.archived`, was `deleted`, same field numbers |
+| the column | `products.archived`, renamed from `deleted` (product migration `00007`) — a row that is merely archived no longer says "deleted" |
+| the history | asked at the delete, under the product row's lock: inventory's restock lines and problem units, batches, placements and their log, stock transactions, transfer lines and problem units, warehouse registrations; selling's order lines (any team's), draft lines, return maps. Each service answers for its own rows through a plain function; the composition root joins them (`product_history.go`) |
+| ⚠ my build detail — a bundle | a product a bundle still names is refused too: the line holds it by a foreign key, and taking it out of the bundle is the owner's choice, never a side effect |
+| ⚠ my build detail — where Delete is | the Archived view (beside Unarchive) and an archived product's own page — a typo is archived, then deleted. The active list keeps its two inline actions |
+| the code | unchanged by this build; [the-field-is-product-code-composed-on-write](#the-field-is-product-code-composed-on-write), built the same day, made it `product_code`, unique over every row |
+| tests | delete of a never-used product (active or archived) and its code freed; a used one, a bundled one and another team's refused; the real history adapter against inventory's and selling's tables; the `DeleteRemovesOnlyANeverUsedProduct` story |
+
+## a-product-has-one-category
+
+> Owner, in chat (2026-10-31): *"product just have 1 category"* — to [Q9](./context_clarify.md#question), *with several
+> categories, which is the primary, and how many may a product have?* It reverses the owner's own *"categories is
+> plural"* (2026-09-12), [superseded-a-product-files-under-many-categories](#superseded-a-product-files-under-many-categories).
+
+**The verdict.** A product is filed under **exactly one** category — a node anywhere in the category tree. There is no
+primary to choose and no cap to set: the one category IS the breadcrumb, the card's label and the report's group.
+
+```
+SKU-1   Fashion › Kaos      ← its one category: the breadcrumb, the card, the report group
+```
+
+```mermaid
+flowchart LR
+  P["products - category_id, one"] -.->|"opaque id, no FK - HARD RULE 3"| C["categories - category_service"]
+  L["product_categories - a link table"] -.->|"not built, now not wanted"| X["dropped"]
+```
+
+| | |
+| --- | --- |
+| the column | `products.category_id`, one `BIGINT` — as built today |
+| required | yes, on create and update, as today (`category_id` > 0 in the proto) |
+| the link table | `product_categories` is **not** built — the decided migration is cancelled |
+| the proto | unchanged — `category_id` stays singular; no `repeated` |
+| the category screen's product count | a count of products by their one `category_id`; whether a branch includes its sub-categories stays the screen's question |
+| ✅ built | nothing to build — this is what runs today |
+
+**What it replaces** (HARD RULE 11): [superseded-a-product-files-under-many-categories](#superseded-a-product-files-under-many-categories);
+and [context.md](./context.md) line 16, *"4. `categories`"*, is now stale — reported in the clarify's
+[the-field-list-says-categories](./context_clarify.md#the-field-list-says-categories).
+
+## the-product-writes-drop-the-warehouse-roles
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q8](./context_clarify.md#question), *how does product_service make sure only a
+> selling team owns products?*, on my recommendation to build the narrowing [only-a-selling-team-owns-a-catalogue](#only-a-selling-team-owns-a-catalogue)
+> already decided, and nothing more. Against my first recommendation, a team-type read at write time.
+
+**The verdict.** No warehouse role may write a product. `ProductCreate`, `ProductUpdate`, `ProductDelete` and
+`ProductRestore` drop `ROLE_WAREHOUSE_OWNER` and `ROLE_WAREHOUSE_ADMIN`. That is the whole enforcement: a selling role is
+held only inside a selling team, so a team-scoped product write can only land in a selling team. No team-type read is
+added.
+
+| who | may write a product into… |
+| --- | --- |
+| a selling owner / admin | their selling team — the only kind of team a selling role exists in ([member_rules.go](../../../backend/services/user_service/user_v1/member_rules.go)) |
+| a warehouse owner / admin | nothing — refused by the policy |
+| root / administrator | any team — the bypass every team-scoped write has |
+
+```mermaid
+flowchart LR
+  W["a warehouse owner"] -.->|"refused - the policy has no warehouse role"| P["ProductCreate"]
+  S["a selling owner"] -->|"scope is always a selling team"| P
+  R["root"] -->|"bypasses the scope, as everywhere"| P
+```
+
+| | |
+| --- | --- |
+| the writes | Create, Update, Delete, Restore: `ROOT`, `ADMINISTRATOR`, `SELLING_OWNER`, `SELLING_ADMIN` |
+| the reads | List, Detail, ByIds keep the warehouse roles — a warehouse sees the products it stocks |
+| the screen | unchanged — the products page already gives a warehouse no create, archive or figures |
+| accepted | root may still file a product under a warehouse team; it is trusted, as for every other write |
+| ✅ built *(2026-10-31)* | [product.proto](../../../proto/warehouse/product/v1/product.proto); pinned by `TestProductWrites_AreTheSellingTeamsAlone` ([product_writes_selling_only_test.go](../../../backend/services/user_service/access_interceptors/product_writes_selling_only_test.go)), which fails eight ways on the old policy |
+
+## a-lock-stops-new-orders-only
+
+> Owner, in chat (2026-10-31): *"i follow your recomendation"* — to [Q4](./context_clarify.md#question), *does turning the
+> shared lock on affect orders already placed?* As recommended.
+
+**The verdict.** A lock — the owner's *always locked*, or a minimum it falls under — stops **new** orders from other
+teams. An order another team placed before the lock goes on: its units were taken when it was placed. A lock says *do
+not sell me any more*, never *take back what is sold*.
+
+```
+Mon 10:00  Team B orders 5 of SKU-1 → stock taken
+Mon 14:00  the owner locks SKU-1
+           → Team B's order goes on; Team C's new order is refused
+```
+
+| | |
+| --- | --- |
+| where the lock is read | at the take, when an order is placed ([order_transaction_create.go](../../../backend/services/inventory_service/inventory_v1/order_transaction_create.go)) |
+| an order already placed | untouched — picked, shipped and finished as usual |
+| ✅ built | nothing changes — this is what runs |
+
+## the-field-is-product-code-composed-on-write
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q7](./context_clarify.md#question), *should `sku` become `product_code`,
+> composed on write as `ABC-SHOE-42`, as your doc says?* As recommended — the second time; I had first recommended
+> keeping `sku` beside it.
+
+**The verdict.** A product has **one** code, named **`product_code`**, as [context.md](./context.md) names it. It is
+**composed on write** ([the-code-is-composed-from-the-team-code](#the-code-is-composed-from-the-team-code)): the team
+types its own part, and what is stored — on the sticker, at the scan, everywhere — is `<team_code>-<that part>`.
+`sku` goes, from the wire, the database and the code.
+
+```
+team ABC types   SHOE-42
+stored           product_code = ABC-SHOE-42      globally unique, one code everywhere
+```
+
+```mermaid
+flowchart LR
+  T["team_code ABC - team_service, immutable"] --> C["product_code ABC-SHOE-42"]
+  U["what the team types - SHOE-42"] --> C
+  C --> S["the sticker, the scan, every screen"]
+```
+
+| | |
+| --- | --- |
+| the field | `product_code`, replacing `sku` in the proto, the `products` table, Go and TypeScript |
+| composed | `<team_code>-<the team's part>`, on create, by product_service — `team_code` read from team_service; it is immutable, so a composed code never goes stale |
+| unique | **globally**, every row — an archived product keeps its code ([a-used-product-is-archived-never-deleted](#a-used-product-is-archived-never-deleted)), so today's partial index (`WHERE deleted = FALSE`, per team) becomes one unique index over all rows |
+| freed | only by a Delete, which removes a never-used product's row |
+| the form | the team prefix shown fixed, the team typing the rest |
+| ⚠ my spec — editing it | the team's part may be corrected only while the product has no history, the same line Delete uses — once a sticker can exist, the code is fixed |
+| ⚠ my spec — today's rows | dev data only: re-entered, or recomposed once by a `san` command that reads each team's code through team_service — no migration reads another service's table (HARD RULE 3) |
+| the screen | already says *Product code* ([the-screen-says-product-code](../../technical/frontend/products_decision.md#the-screen-says-product-code)) |
+
+✅ **Built 2026-11-02:**
+
+| | |
+| --- | --- |
+| the contract | `product_code` replaces `sku` on `Product`, `ProductRowItem`, the order, restock, transfer, batch and opname lines (same field numbers); `ProductCreateRequest.product_code_part` and `ProductUpdateRequest.product_code_part` carry the team's part; the sort is `PRODUCT_ROW_SORT_PRODUCT_CODE`; `ProductUnarchiveRequest` lost its code (field 3 reserved) |
+| the columns | `products.product_code` (product `00008`), `order_items.product_code` (selling `00032`), `restock_items.product_code` and `warehouse_transfer_items.product_code` (inventory `00033`) — each renamed in its own service |
+| unique | `products_product_code_unique`, over every row, replacing `(team_id, sku) WHERE archived = FALSE` |
+| composed | by ProductCreate: `<team_code>-<part>`, the team code read from team_service through `product_v1.TeamCodes` — TeamByIds asked as the caller ([product_team_codes.go](../../../backend/cmd/app_development/product_team_codes.go)) |
+| a correction | ProductUpdate re-composes the part under the row's lock, only when the history reader says there is none; FailedPrecondition otherwise |
+| Unarchive | takes no code and cannot collide — the restore-conflict dialog is gone |
+| the form | the team code an addon in front of the field, the box takes the part; an untouched part is not sent |
+| today's rows | [`san product recompose-codes`](../../tools/san.md#product-recompose-codes), the team codes read through team_service's TeamByIds handler; `dev setup` runs it |
+| ⚠ my build detail — the part is trimmed | `" SHOE-42 "` composes as `ABC-SHOE-42`; a part of only spaces is InvalidArgument |
+| ⚠ my build detail — the same part is no correction | ProductUpdate with the part the product already has changes nothing and is not refused, so a form that always sends it can still save a used product's name |
+| ⚠ my build detail — shared codes before the index | `00008` suffixes `-<id>` onto every row but the oldest of a code two rows shared (an active and an archived product of one team, or two teams), so the global index can be built on any dev database |
+| ⚠ my build detail — line limits | an order line's and a restock line's `product_code` take up to 75 characters — a team code (10), the dash, the part (64) |
+| ⚠ my build detail — dev setup | runs the recompose after the supplier steps; it changes nothing on a database already recomposed |
+| ⚠ my build detail — a team code with a dash | `AB` + `C-1` and `AB-C` + `1` compose alike; the index refuses the second as AlreadyExists, and the recompose refuses it with both named |
+| tests | create composes, trims, refuses a blank part, a team with no code and a missing reader; an archived product's code stays taken; the same part in two teams is two codes; a correction of a never-used product lands, of a used one is refused with nothing else landing, the same part is no correction, a taken one is AlreadyExists; Unarchive keeps the code; the recompose (once, idempotent, a collision writes nothing) in `product_v1` and through team_service in `tools/san`; the stories `TheTeamsCodeStandsInFront`, `AUsedProductsCodeIsFixed`, `ATakenCodeIsSaidUnderTheCode`, `UnarchiveComesBackUnderTheCodeItKept` |
+
+## the-shared-lock-is-cross-locked
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q10](./context_clarify.md#question), *is `is_private`
+> the shared lock, or a second switch?*
+
+**The verdict.** There is no `is_private`. The one switch that keeps a product from other teams is **`cross_locked`**,
+one setting with three ways ([one-lock-three-ways](../../technical/frontend/products_decision.md#one-lock-three-ways)).
+Nothing in the proto, the services or the screens carries `is_private`.
+
+```
+is_private      nowhere — not in the proto, the schema or the screens
+cross_locked    the product's one sharing lock
+```
+
+| | |
+| --- | --- |
+| ✅ built | nothing changes |

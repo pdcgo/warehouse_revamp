@@ -16,8 +16,16 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sel
 // like the rest of selling_service; OrderCreate does NOT touch inventory (that is #69).
 service OrderService {
   rpc OrderCreate(OrderCreateRequest) returns (OrderCreateResponse);
-  rpc OrderList(OrderListRequest) returns (OrderListResponse);
-  rpc OrderDetail(OrderDetailRequest) returns (OrderDetailResponse);
+  rpc OrderList(OrderListRequest) returns (OrderListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc OrderDetail(OrderDetailRequest) returns (OrderDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Cancel: PENDING -> CANCEL (terminal), and only the SELLING team (who-may-cancel-a-pending-order). The
   // warehouse hands a processed or picked order back to PENDING first. It returns the stock, publishes
@@ -32,11 +40,25 @@ service OrderService {
   //   pending → processed → picked → shipping → shipped → completed
   //   shipping / shipped / problem / completed → return · shipped / problem / return → lost
   //
-  // Cancel and the return accept do more than move a status, so they keep their own RPCs.
+  // Cancel and the return accept do more than move a status, so they keep their own RPCs (OrderCancel,
+  // OrderReturnAccept).
   // THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
   // .xlsx. A server stream — progress, then an expiring link.
   rpc OrderExport(OrderExportRequest) returns (stream OrderExportResponse);
   rpc OrderStatusChange(OrderStatusChangeRequest) returns (OrderStatusChangeResponse);
+  // THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
+  // `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
+  // not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
+  // and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
+  // than move a status, which is why OrderStatusChange refuses
+  // that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
+  // timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
+  // product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
+  // courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
+  //
+  // ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
+  // inventory's return transaction is designed, so a completed return under-reads stock by them.
+  rpc OrderReturnAccept(OrderReturnAcceptRequest) returns (OrderReturnAcceptResponse);
   // A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
   // Never edited and never deleted — a correction is a new note.
   rpc OrderNoteCreate(OrderNoteCreateRequest) returns (OrderNoteCreateResponse);
@@ -44,6 +66,11 @@ service OrderService {
   // file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
   // courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
   rpc OrderReceiptUpdate(OrderReceiptUpdateRequest) returns (OrderReceiptUpdateResponse);
+  // THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
+  // export from the platform moves each order it names along customer service's moves after handover, and every other
+  // order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
+  rpc ShopeeOrderImport(ShopeeOrderImportRequest) returns (stream ShopeeOrderImportResponse);
+  rpc TiktokOrderImport(TiktokOrderImportRequest) returns (stream TiktokOrderImportResponse);
 
   // ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
   //
@@ -53,8 +80,16 @@ service OrderService {
   //
   // Both are team-scoped like every other read here, so they can only ever describe the caller's own
   // orders.
-  rpc OrderProductActivityByIds(OrderProductActivityByIdsRequest) returns (OrderProductActivityByIdsResponse);
-  rpc OrderActivityStat(OrderActivityStatRequest) returns (OrderActivityStatResponse);
+  rpc OrderProductActivityByIds(OrderProductActivityByIdsRequest) returns (OrderProductActivityByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc OrderActivityStat(OrderActivityStatRequest) returns (OrderActivityStatResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // ── The ORDER LIST's own stat ──────────────────────────────────────────────────────────────────
   //
@@ -66,7 +101,11 @@ service OrderService {
   // on every page turn and every sort, for numbers that do not change when you turn a page — and it
   // would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
   // decide which tab to open.
-  rpc OrderStat(OrderStatRequest) returns (OrderStatResponse);
+  rpc OrderStat(OrderStatRequest) returns (OrderStatResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // ── A statement's refs, resolved ───────────────────────────────────────────────────────────────
   //
@@ -74,11 +113,30 @@ service OrderService {
   // file (settlement_importer critique 4): the order, its shop — a ref in another shop fails the file
   // (a-file-with-another-shops-orders-is-refused) — and its creator, whom the row counts for
   // (user-id-is-the-orders-creator-else-the-shops-primary-cs).
-  rpc OrderByExternalRefs(OrderByExternalRefsRequest) returns (OrderByExternalRefsResponse);
+  rpc OrderByExternalRefs(OrderByExternalRefsRequest) returns (OrderByExternalRefsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The people the list's "created by" filter offers: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows).
-  rpc OrderCreatorList(OrderCreatorListRequest) returns (OrderCreatorListResponse);
+  rpc OrderCreatorList(OrderCreatorListRequest) returns (OrderCreatorListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
+  // ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
+  // link is minted under its own identity, so a label is never shared document by document.
+  //
+  // ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+  rpc OrderLabels(OrderLabelsRequest) returns (OrderLabelsResponse) {
+    // A READ — it writes no row and moves no file; it signs a link (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // An order's status: the eleven of the order context's status diagram
@@ -137,9 +195,13 @@ message OrderTimelineLog {
   // snapshotted — a person's name is theirs to change.
   uint64 actor_id = 5;
   int64 created_at_unix = 6;
+  // WHERE A RETURN WAS ACCEPTED (the-accept-records-where-it-was-accepted) — the warehouse team whose staff accepted it,
+  // on the `return_completed` row only; 0 on every other row. When it is not the selling team's configured return
+  // warehouse, the parcel came to an old address — visible here, fixed by a warehouse transfer.
+  uint64 accepting_warehouse_id = 7;
 }
 
-// OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name are a SNAPSHOT
+// OrderItem is one order line. product_id is an OPAQUE product_service id; product code/name are a SNAPSHOT
 // taken at order time, so later catalogue edits never rewrite an order's history. Used for both input
 // (create; `id` and every money field ignored) and output.
 //
@@ -149,9 +211,10 @@ message OrderTimelineLog {
 message OrderItem {
   uint64 id = 1;
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  string sku = 3 [(buf.validate.field).string = {
+  // At most 75: a team code (10) + "-" + the team's part (64) — the composed code (the-field-is-product-code-composed-on-write).
+  string product_code = 3 [(buf.validate.field).string = {
     min_len: 1
-    max_len: 64
+    max_len: 75
   }];
   string name = 4 [(buf.validate.field).string = {
     min_len: 1
@@ -165,7 +228,7 @@ message OrderItem {
 
   // What this product COST us, per unit, frozen when the order was placed (#74) — the owner's
   // `unit_cost`: the units the take drew ÷ the quantity (an-order-is-costed-at-what-leaves-the-shelf),
-  // whole rupiah.
+  // exact (the-backend-never-rounds-money).
   //
   // SERVER-SET AND IGNORED ON INPUT. A client supplying it would be writing its own margin, which is
   // the one number nobody placing an order should get to choose.
@@ -173,7 +236,7 @@ message OrderItem {
   // 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
   // say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
   // flag that the number is not to be trusted rather than a value to compute with.
-  int64 unit_cost = 7;
+  double unit_cost = 7;
 
   // The line's frozen TOTAL — the owner's `total`, `unit_cost_with_markup × quantity`: the goods the take
   // drew plus, on another team's product, that product's own cross markup (inventory-computes-the-markup).
@@ -251,9 +314,10 @@ message Order {
   // was `string customer_address` — free text, replaced by the structured snapshot `address` (#118).
   reserved 7;
   reserved "customer_address";
-  // A courier code (opaque; no FK) — a shipment_service channel's `code`. Moves to
-  // shipment_channel_id with the order redesign (the-old-catalogue-bridges-by-code).
-  string shipping_code = 8;
+  // 8 was `shipping_code` — the courier CODE the bridge stored (the-old-catalogue-bridges-by-code), replaced by
+  // `shipment_channel_id` below (selling 00044).
+  reserved 8;
+  reserved "shipping_code";
 
   // 9, 10, 11 were `subtotal`, `shipping_cost` and `total`. The owner's `orders` has none of them: our side of the
   // trade is `goods_cost` and `total_cost` below, and an order records no shipping (an-order-records-no-shipping-cost).
@@ -270,7 +334,10 @@ message Order {
   // survives on an order placed before that, and means "not recorded", never "sold for nothing".
   //
   //   margin = platform_total − total_cost        (an-order-records-no-shipping-cost)
-  int64 platform_total = 17;
+  //
+  // A double, frozen EXACT when the order is placed (the-backend-never-rounds-money) — settlement's `initial_total`
+  // carries that same figure.
+  double platform_total = 17;
 
   // The lines — populated by OrderDetail (OrderList returns a summary without them).
   repeated OrderItem items = 12;
@@ -289,15 +356,15 @@ message Order {
 
   // WHAT THE GOODS COST THE SELLER — the owner's `goods_cost`, "goods only, used for warehouse fee charge
   // calculation": Σ the lines' frozen `total`, so a borrowed line counts WITH its owner's markup
-  // (the-cross-charge-lives-on-the-line). The warehouse fee is priced on it (the-fee-is-priced-on-goods-cost). Whole
-  // rupiah, rounded once. Frozen at create (a-lines-money-is-frozen-at-finalize); an order placed before selling 00027
+  // (the-cross-charge-lives-on-the-line). The warehouse fee is priced on it (the-fee-is-priced-on-goods-cost). Exact,
+  // never rounded (the-backend-never-rounds-money). Frozen at create (a-lines-money-is-frozen-at-finalize); an order placed before selling 00027
   // keeps the drawn cost it was frozen with, the same figure on any order with no borrowed line.
   //
   // Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that wants to show
   // margin would otherwise have to load every order's items.
   //
   // 0 means the goods' cost is unknown (the take valued nothing), not that they were free.
-  int64 goods_cost = 16;
+  double goods_cost = 16;
 
   // GOODS + THE WAREHOUSE'S FEE — the owner's `total_cost`, what the order cost the seller ("total beli"). Frozen at
   // create beside the two it adds; unrounded rupiah, like the fee (rupiah-is-floating-point). An order whose fee was
@@ -375,8 +442,8 @@ message Order {
   // once by warehouse_service's WarehouseFeeCalculate on the order's goods cost (the-fee-is-priced-on-goods-cost) and
   // never recomputed, so a rate changed later cannot rewrite what an order cost. The owner's `warehouse_fee`.
   //
-  // Unrounded rupiah, a double like the rate it came from (rupiah-is-floating-point) — when a frozen figure is rounded
-  // is not decided, so it is not rounded.
+  // Exact rupiah, a double like the rate it came from (rupiah-is-floating-point) — never rounded
+  // (the-backend-never-rounds-money): 2,5% of 12.666,99 is 316,67475.
   //
   // ABSENT = never priced: an order placed before fees were frozen. Never 0 for that — 0 is a warehouse that chose to
   // charge nothing, which is a price.
@@ -401,6 +468,39 @@ message Order {
   //
   // "" = none, which is a valid order on both doors. Stored as typed, trimmed.
   string buyer_username = 30;
+
+  // WHEN IT FIRST ENTERED THE STATUS THE LIST'S DATE FILTER READS (the-order-list-filters-by-seven-dates) — set by
+  // OrderList only when the filter's `date_field` names a status (ORDER_DATE_FIELD_ENTERED_*), so the date column can
+  // show the date the window was applied to. The FIRST row into that status: an order bounced back into Diproses
+  // keeps the day it was first processed. Unlike `status_at_unix`, the order need not be IN that status now.
+  //
+  // 0 = the filter reads no status, or no timeline row records the order entering it.
+  int64 date_entered_at_unix = 32;
+
+  // THE KEY THIS ORDER WAS CREATED WITH — minted by the form at the submit that placed it
+  // (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key) and kept on the order
+  // (the-order-stores-its-idempotency-key), UNIQUE across all orders (the-idempotency-key-is-unique).
+  //
+  // A row from a developer's database that predates the column reads `order:<id>` — the migration's fill
+  // (revamp-has-no-real-orders-yet); no new order can carry that shape.
+  string idempotency_key = 33;
+
+  // THE INVENTORY TRANSACTION ITS STOCK WAS TAKEN IN — the take's answer, stored with the order
+  // (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded: an order from a developer's database that
+  // predates the column (revamp-has-no-real-orders-yet).
+  uint64 transaction_id = 34;
+
+  // WHEN THE ORDER'S SETTLEMENT ACCOUNT OPENED (a-missing-account-is-found-by-its-opened-at) — stamped by settlement,
+  // through an in-process seam, the first time an `initial_total` is posted for the order (from Order Placed, by hand on
+  // the order page, or from an imported statement). 0 = NOT YET: the open failed, is dead-lettered, or never ran — the
+  // order still committed. OrderListFilter.settlement_not_opened lists exactly those.
+  int64 settlement_opened_at_unix = 35;
+
+  // THE COURIER carrying it — an OPAQUE id into shipment_service (shipment-channel-is-an-id-into-shipment-service), no FK
+  // and nothing else about the channel stored (the-channel-name-is-not-frozen): a screen resolves the name by
+  // ShipmentChannelByIds, which answers a deleted channel too, flagged (a-deleted-channel-still-resolves-by-id).
+  // Required at create (no-order-without-a-courier); 0 only on a developer's order from before selling 00044.
+  uint64 shipment_channel_id = 36;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -412,6 +512,16 @@ enum OrderDateField {
   ORDER_DATE_FIELD_CREATED = 1;
   // `platform_created_at` — when the buyer ordered on the storefront.
   ORDER_DATE_FIELD_PLATFORM_CREATED = 2;
+
+  // THE FIRST TIME THE ORDER ENTERED A STATUS (the-order-list-filters-by-seven-dates), read from its timeline — an
+  // order bounced back into Diproses keeps the day it was first processed. An order that never entered the status
+  // matches no window. The five statuses a person asks "when" about: Diproses, Sudah diambil, Sudah diserahkan,
+  // Selesai, Retur. The rest are not offered, and are not here.
+  ORDER_DATE_FIELD_ENTERED_PROCESSED = 3;
+  ORDER_DATE_FIELD_ENTERED_PICKED = 4;
+  ORDER_DATE_FIELD_ENTERED_SHIPPING = 5;
+  ORDER_DATE_FIELD_ENTERED_COMPLETED = 6;
+  ORDER_DATE_FIELD_ENTERED_RETURN = 7;
 }
 
 message OrderCreateRequest {
@@ -446,7 +556,9 @@ message OrderCreateRequest {
   // was `string customer_address` — free text, replaced by `address` below (#118).
   reserved 5;
   reserved "customer_address";
-  string shipping_code = 6 [(buf.validate.field).string.max_len = 40];
+  // 6 was `shipping_code`, the courier CODE (the-old-catalogue-bridges-by-code) — replaced by `shipment_channel_id`.
+  reserved 6;
+  reserved "shipping_code";
 
   // 7, 8, 9 were `subtotal`, `shipping_cost` and `total` — the order's money is the take's, frozen by the server
   // (goods_cost, warehouse_fee, total_cost), and it records no shipping (an-order-records-no-shipping-cost).
@@ -455,8 +567,11 @@ message OrderCreateRequest {
 
   // What the buyer PAID on the platform. REQUIRED at finalize (platform-total-is-required-at-finalize) — refused
   // when 0 by the placement rule both doors share, so the message names what is missing rather than a field number.
-  // See Order.platform_total.
-  int64 platform_total = 13 [(buf.validate.field).int64.gte = 0];
+  // See Order.platform_total. A fraction is kept exact as the order is placed; NaN and infinities are refused.
+  double platform_total = 13 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 
   // The shipping receipt, already uploaded to document_service by the client. Optional.
   //
@@ -516,6 +631,24 @@ message OrderCreateRequest {
   // leaves it, and a draft already turned into an order refuses the second one. Everything the order says comes from
   // the fields above, never from the draft — the page sends what is on its screen.
   uint64 order_draft_id = 21;
+
+  // THE SUBMIT'S OWN KEY — minted by the browser inside every submit and never reused
+  // (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key). REQUIRED from the start
+  // (revamp-has-no-real-orders-yet): the order stores it, and it is UNIQUE (the-idempotency-key-is-unique).
+  //
+  // A key already on an order is REFUSED as a used key — AlreadyExists with inventory's OrderTransactionRefusal
+  // KEY_USED detail — never answered with that order (the-order-refuses-a-used-key). A key starting `order:` is
+  // refused too: that shape is reserved for the rows the migration filled. Capped at 128, like the ref.
+  string idempotency_key = 22 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // THE COURIER — a shipment channel's id (shipment-channel-is-an-id-into-shipment-service), as the form's courier picker
+  // emits it or the draft carried it. REQUIRED (no-order-without-a-courier): the placement rule both doors share refuses
+  // 0, naming what is missing, so the proto leaves it unconstrained the way it does `platform_total`. Opaque: the
+  // server does not look the channel up — the picker offers live channels only.
+  uint64 shipment_channel_id = 23;
 }
 
 message OrderCreateResponse {
@@ -529,6 +662,9 @@ message OrderListRequest {
   // One RPC rather than two, following RestockRequestList: it is the same order approached from
   // whichever end you stand at, and two RPCs would drift apart. So `team_id` means "the team you hold a
   // role in", and the handler matches it against EITHER side — not "the team whose orders you get".
+  //
+  // …and one narrow third reader: a selling team's CONFIGURED RETURN WAREHOUSE sees that team's orders in `return` and
+  // `return_completed` — the parcels coming back to it, which it accepts (a-return-may-land-in-another-warehouse).
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -607,8 +743,11 @@ message OrderListFilter {
   uint64 seller_team_id = 8;
   // Only orders whose shop is on this marketplace. UNSPECIFIED = any.
   warehouse.marketplace.v1.Marketplace marketplace = 9 [(buf.validate.field).enum.defined_only = true];
-  // Only orders with this courier — `shipping_code` (jne, jnt …). Empty = any.
-  string shipping_code = 10 [(buf.validate.field).string.max_len = 50];
+  // 10 was `shipping_code`, the courier CODE — replaced by `shipment_channel_id` (selling 00044).
+  reserved 10;
+  reserved "shipping_code";
+  // Only orders with this courier — the order's `shipment_channel_id`. 0 = any.
+  uint64 shipment_channel_id = 14;
 
   // Only orders shipping FROM this warehouse — the order's `warehouse_id`. 0 = any.
   //
@@ -621,6 +760,11 @@ message OrderListFilter {
   // their names; this says which column they are measured against. An order with no platform date never matches a
   // platform-date window — it has no date there to fall inside.
   OrderDateField date_field = 12 [(buf.validate.field).enum.defined_only = true];
+
+  // Only orders whose settlement account has NOT opened — `settlement_opened_at IS NULL`
+  // (a-missing-account-is-found-by-its-opened-at). false = no filter. A person fixes each by hand on the order page
+  // (a-missing-account-is-fixed-by-hand). Mirrored on OrderStatFilter, so the tabs count the same set.
+  bool settlement_not_opened = 13;
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -630,11 +774,16 @@ enum OrderListDataType {
   ORDER_LIST_DATA_TYPE_ORDER = 2;
 }
 
-// OrderRowSort is the sort selection paired with the ORDER slice.
+// OrderRowSort is the sort selection paired with the ORDER slice. Ties on a figure fall back to the order id, in the
+// same direction (the-total-sort-is-ours-and-the-platform-total-sorts-apart).
 enum OrderRowSort {
   ORDER_ROW_SORT_UNSPECIFIED = 0;
   ORDER_ROW_SORT_ID = 1;
+  // TOTAL — `total_cost`: what the order cost the seller, goods cost + warehouse fee. Ours, never the platform's.
   ORDER_ROW_SORT_TOTAL = 2;
+  // PLATFORM TOTAL — `platform_total`: what the storefront took from the buyer. Its own sort, never mixed with TOTAL
+  // (the-total-is-ours-the-platform-total-is-theirs).
+  ORDER_ROW_SORT_PLATFORM_TOTAL = 3;
 }
 
 message OrderListFilterSort {
@@ -775,6 +924,97 @@ message OrderExportResponse {
   string filename = 5;
 }
 
+// ── The order import ─────────────────────────────────────────────────────────────────────────────
+//
+// The platform is the RPC (the-order-import-is-one-rpc-per-platform): the dialog picks it first, then a shop of it.
+// The shop must be this team's, not deleted and on the RPC's platform — otherwise one ERROR line ends the stream and
+// nothing is read.
+
+// What a line says about its order — the screen colours it, and lists the WARN ones as not applied.
+enum OrderImportLogLevel {
+  ORDER_IMPORT_LOG_LEVEL_UNSPECIFIED = 0;
+  // A step, a move, or an order already where the file says.
+  ORDER_IMPORT_LOG_LEVEL_INFO = 1;
+  // An order NOT applied, with its reason — customer service's to-do list.
+  ORDER_IMPORT_LOG_LEVEL_WARN = 2;
+  // The import ended without touching an order: the shop, or the file.
+  ORDER_IMPORT_LOG_LEVEL_ERROR = 3;
+}
+
+// What became of the file's orders. The three sum to the orders in the file.
+message OrderImportTally {
+  uint32 moved = 1;
+  // Already where the file says — nothing written, so importing the same file twice changes nothing.
+  uint32 already_there = 2;
+  uint32 not_applied = 3;
+}
+
+message ShopeeOrderImportRequest {
+  // Who may make customer service's moves by hand.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The shop the file was exported from — its orders are the ones a ref is matched against.
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The export as downloaded, .xlsx or .csv. 10 MB, as the settlement import.
+  bytes file_content = 3 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 10485760
+  }];
+}
+
+// One step of the import (code-implementation-guideline.md): a leveled line, the progress, and on the last the tally.
+message ShopeeOrderImportResponse {
+  OrderImportLogLevel level = 1;
+  string message = 2;
+  // Orders handled so far, of the orders in the file — 0 until the file has been read.
+  uint32 step = 3;
+  uint32 count = 4;
+  // Set on the LAST message only.
+  OrderImportTally tally = 5;
+}
+
+message TiktokOrderImportRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  bytes file_content = 3 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 10485760
+  }];
+}
+
+message TiktokOrderImportResponse {
+  OrderImportLogLevel level = 1;
+  string message = 2;
+  uint32 step = 3;
+  uint32 count = 4;
+  OrderImportTally tally = 5;
+}
+
 // OrderStatusChange makes one plain move for many orders (one-status-change-for-every-plain-move).
 message OrderStatusChangeRequest {
   // Write: both ends of an order. The warehouse crew makes its moves (staff included — they are the
@@ -805,7 +1045,8 @@ message OrderStatusChangeRequest {
     unique: true,
     items: {uint64: {gt: 0}}
   }];
-  // The status to move INTO. Cancel and return_completed have their own actions and are refused here.
+  // The status to move INTO. Cancel and return_completed have their own actions (OrderCancel, OrderReturnAccept) and
+  // are refused here.
   OrderStatus to = 3 [(buf.validate.field).enum = {
     defined_only: true,
     not_in: [0]
@@ -828,6 +1069,78 @@ message OrderStatusChangeResult {
   OrderStatus status = 3;
   // Why it did not move, for a person to read. Empty when moved.
   string refused_reason = 4;
+}
+
+// OrderReturnAccept — the warehouse has the returned parcel in its hands (the-accept-is-the-status-return-completed).
+message OrderReturnAcceptRequest {
+  // Write: a WAREHOUSE's crew — the people holding the goods (both-cs-and-the-warehouse-can-return-an-order). Customer
+  // service claims the return; it cannot say the goods are here.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The ACCEPTING warehouse — whichever holds the parcel: the order's own, the selling team's configured return
+  // warehouse, or one an old label still names (the-accept-records-where-it-was-accepted). Any warehouse may accept an
+  // order in `return`; it is recorded on the accept's row, and the courier's charge is owed to it. An order not in
+  // `return` reads NotFound unless this team may read it (its two ends, or its team's configured return warehouse), and
+  // the order's own selling team is refused — it claims a return, it does not accept one.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The units that did NOT come back (a-short-return-is-accepted-and-the-gap-written-off). Empty — the common case —
+  // when the parcel is whole. The return stays whole either way (a-return-is-never-partial): each named unit is written
+  // on one timeline note from the warehouse, for customer service to claim from the platform. One entry per line, never
+  // above the line's quantity.
+  repeated OrderReturnMissingLine missing_lines = 3 [(buf.validate.field).repeated.max_items = 200];
+  // What the courier asked at the door, exact; 0 = nothing, the common case (a-return-may-carry-the-couriers-ask).
+  // Above 0, the order's selling team owes the ACCEPTING warehouse that amount — it paid at its door — and liability
+  // posts it from OrderReturnAccepted.
+  double courier_charge = 4 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  // What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
+  // checks, since a rule across two fields is not written here. Ignored when there is no charge.
+  string courier_charge_note = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+// One line's units missing from the returned parcel.
+message OrderReturnMissingLine {
+  // The order line (OrderItem.id).
+  uint64 order_item_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // How many of its units did not come back — 1 to the line's quantity.
+  uint32 quantity = 2 [(buf.validate.field).uint32.gt = 0];
+}
+
+message OrderReturnAcceptResponse {
+  // The order as it now is — `return_completed`.
+  Order order = 1;
+  // The labels to print (a-returned-borrowed-unit-is-relabelled-at-the-accept): one per BORROWED line with units in
+  // hand, in line order. Empty for an order of the team's own products, whose units keep their label.
+  repeated OrderReturnLabel labels = 2;
+}
+
+// What to print and stick over a returned borrowed unit's label, so a later pick scan matches.
+message OrderReturnLabel {
+  // The order line it is for.
+  uint64 order_item_id = 1;
+  // The lender's product, as the line froze it — the label being covered.
+  uint64 borrowed_product_id = 2;
+  string borrowed_product_code = 3;
+  // The selling team's OWN product the unit comes back as (product_return_maps) — the label to print.
+  uint64 own_product_id = 4;
+  string own_product_code = 5;
+  string own_product_name = 6;
+  // How many to print: the line's units in hand — its quantity less the units named missing.
+  uint32 quantity = 7;
 }
 
 // Write: both ends of an order, as a status move (OrderStatusChangeRequest). The side the note is from follows from
@@ -1027,13 +1340,19 @@ message OrderStatFilter {
   // The warehouse's three filters, as on OrderListFilter.
   uint64 seller_team_id = 7;
   warehouse.marketplace.v1.Marketplace marketplace = 8 [(buf.validate.field).enum.defined_only = true];
-  string shipping_code = 9 [(buf.validate.field).string.max_len = 50];
+  // 9 was `shipping_code` — replaced by `shipment_channel_id`, as on OrderListFilter.
+  reserved 9;
+  reserved "shipping_code";
+  uint64 shipment_channel_id = 13;
 
   // The seller list's warehouse filter, as on OrderListFilter.
   uint64 warehouse_id = 10;
 
   // Which date the window reads, as on OrderListFilter — so the tab counts total what the table shows.
   OrderDateField date_field = 11 [(buf.validate.field).enum.defined_only = true];
+
+  // Only orders whose settlement account has not opened, as on OrderListFilter.
+  bool settlement_not_opened = 12;
 }
 
 message OrderStatRequest {
@@ -1068,10 +1387,10 @@ message OrderStatRequest {
 message OrderStatusCount {
   OrderStatus status = 1;
   int64 count = 2;
-  // The sum of those orders' `platform_total`, whole rupiah — what the buyers paid the platform for them. Every order in
+  // The sum of those orders' `platform_total` — what the buyers paid the platform for them. Every order in
   // the pile, measurable or not (an order placed before platform-total-is-required-at-finalize adds its 0). It summed
-  // `total` until selling 00027 dropped that column.
-  int64 value = 3;
+  // `total` until selling 00027 dropped that column. A double since selling 00041, a sum of whole-rupiah figures.
+  double value = 3;
 
   // Σ line quantity over EVERY order in the pile — units, not lines, because units are what UPT counts
   // (the-summary-follows-the-tab: UPT = item_count ÷ count).
@@ -1086,10 +1405,10 @@ message OrderStatusCount {
   //
   //   total beli = goods_cost + fees        margin = mp_value − total beli        % = margin ÷ mp_value
 
-  // Σ platform_total — what the buyers paid the platform.
-  int64 mp_value = 5;
+  // Σ platform_total — what the buyers paid the platform. A double, like the figure it sums.
+  double mp_value = 5;
   // Σ goods_cost — what the goods cost the seller, borrowed lines with their markup.
-  int64 goods_cost = 6;
+  double goods_cost = 6;
   // Σ warehouse_fee — what fulfilling them cost. Unrounded rupiah, like the frozen fees it adds.
   double fees = 7;
   // How many of `count` are NOT measurable, so the reader is told what the three sums above left out.
@@ -1108,7 +1427,7 @@ message OrderStatusCount {
 message OrderStatPreview {
   int64 orders_30d = 1;
   // Σ `platform_total` over the window — what the buyers paid. It summed `total` until selling 00027 dropped it.
-  int64 revenue_30d = 2;
+  double revenue_30d = 2;
 }
 
 message OrderStatResponse {
@@ -1170,6 +1489,9 @@ message OrderRefItem {
   // Who placed it — 0 on an order placed before the creator was recorded.
   uint64 created_by_user_id = 3;
   OrderStatus status = 4;
+  // When it was typed in — the order form's duplicate-ref warning dates each order it names with it
+  // (the-duplicate-ref-warning-is-accepted), in one read rather than an OrderDetail per order.
+  int64 created_at_unix = 5;
 }
 
 message OrderRefMapItem {
@@ -1272,4 +1594,62 @@ message OrderCreatorListResponse {
   // User ids, in the sort's order.
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── The labels a warehouse prints (a-warehouse-prints-the-labels-of-orders-it-ships) ───────────────────────────────
+
+message OrderLabelsRequest {
+  // The warehouse that ships the orders — and Root and the Administrator, who open any order's label. The seller keeps
+  // reading its own labels with document_service's GetDownloadUrl.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — the scope. Each order must ship from it.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // In print order. ⚠ One for now: merging several labels into one PDF is step 2.
+  repeated uint64 order_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+// Why an order's label is not behind the link.
+enum OrderLabelReason {
+  ORDER_LABEL_REASON_UNSPECIFIED = 0;
+  // The order does not ship from this warehouse — or there is no such order. The two read alike, so ids cannot be
+  // probed.
+  ORDER_LABEL_REASON_NOT_SHIPPED_HERE = 1;
+  // The seller has not attached a label file to the order.
+  ORDER_LABEL_REASON_NO_LABEL = 2;
+}
+
+// One asked order, and whether its label is behind the link.
+message OrderLabelResult {
+  uint64 order_id = 1;
+  bool included = 2;
+  // UNSPECIFIED when included.
+  OrderLabelReason reason = 3;
+}
+
+message OrderLabelsResponse {
+  // The label file behind a short-lived signed link. Empty when no asked order's label is included.
+  string url = 1;
+  // When the link stops working, unix seconds. 0 with no link.
+  int64 expires_at_unix = 2;
+  // One per asked order, in the asked order.
+  repeated OrderLabelResult results = 3;
 }

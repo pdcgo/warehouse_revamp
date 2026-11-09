@@ -27,8 +27,8 @@ import { formatRupiah } from "../../../lib/money";
 export interface InvoiceRow {
   teamId: bigint;
   name: string;
-  /** The goods at HPP, before the owner's markup. Zero on a fee row. */
-  base: bigint;
+  /** The goods at HPP, before the owner's markup, exact. Zero on a fee row. */
+  base: number;
   /**
    * The markup in basis points, when every line of this owner carries the SAME one — each product has its own
    * (the-cross-markup-belongs-to-the-product). `undefined` = the lines carry different rates, so no one figure is
@@ -36,16 +36,16 @@ export interface InvoiceRow {
    */
   markupBp: bigint | undefined;
   /** What this creditor is owed: Σ each line × (1 + its product's markup), or the warehouse's fee. */
-  owed: bigint;
+  owed: number;
   kind: "product" | "fee";
 }
 
 interface TotalsInvoicePanelProps {
-  productsTotal: bigint;
-  warehouseFee: bigint;
-  orderTotal: bigint;
+  productsTotal: number;
+  warehouseFee: number;
+  orderTotal: number;
   invoice: InvoiceRow[];
-  invoiceTotal: bigint;
+  invoiceTotal: number;
   /** Collapse the explanations, leaving the figures. */
   compact?: boolean;
 }
@@ -134,14 +134,14 @@ export function TotalsInvoicePanel({
                 {/* ⚠ THE UNKNOWN-COST LINE SURVIVES COMPACT MODE. Collapsing hides EXPLANATION,
                     never a warning about the figure beside it: "Rp 0" with nothing under it reads as
                     goods given away. Only the ordinary markup note goes. */}
-                {(!compact || (row.kind === "product" && row.base === 0n)) && (
+                {(!compact || (row.kind === "product" && row.base === 0)) && (
                 <Text
                   fontSize="xs"
-                  color={row.kind === "product" && row.base === 0n ? "warning.fg" : "fg.subtle"}
+                  color={row.kind === "product" && row.base === 0 ? "warning.fg" : "fg.subtle"}
                 >
                   {row.kind === "fee"
                     ? t("orderForm.totals.feeNote")
-                    : row.base === 0n
+                    : row.base === 0
                       ? t("orderForm.totals.costUnknown")
                       : row.markupBp !== undefined
                         ? t("orderForm.totals.markupNote", {

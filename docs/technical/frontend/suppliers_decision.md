@@ -68,6 +68,8 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [each-supplier-tab-exports-its-own-table](#each-supplier-tab-exports-its-own-table) | each tab of the supplier's page has its own *Ekspor* at the right of its filter strip; on a phone, in the Filter sheet — not built yet |
 | [the-report-export-folds-on-a-phone](#the-report-export-folds-on-a-phone) | on a phone the Supplier Report's header is one row — the title and ⋯, with *Ekspor* inside |
 | [the-warehouse-filter-shows-its-name-alone](#the-warehouse-filter-shows-its-name-alone) | a picked warehouse in the supplier screens' warehouse filter reads as its name, without the [Gudang] badge |
+| [penjualan-is-the-selling-value-on-the-order-day](#penjualan-is-the-selling-value-on-the-order-day) | Penjualan is the selling value of the supplier's goods, on the day the order was placed | owner, as recommended | — |
+| [the-range-pills-are-a-fixed-set](#the-range-pills-are-a-fixed-set) | the Terjual and Siap filter pills are a fixed set of bands | owner, as recommended | — |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -854,6 +856,8 @@ Pemasok mana yang paling banyak direstok, …
 | not built | marked `dropped` in `pages/supplier-report/pending.ts` — nothing builds a file; whether it carries the ranking with its figures, this page or the whole ranking, is open |
 | the header | the title and its subtitle one block, the action beside it; the subtitle wraps under on a phone |
 
+✅ Built 2026-11-07 — the open content was settled by [a-report-export-is-the-whole-view-as-a-file](context_decision.md#a-report-export-is-the-whole-view-as-a-file): Ekspor writes the whole ranking as narrowed (`SupplierReportExport`); the ⚠1 mark and `pages/supplier-report/pending.ts` are gone. On a phone it stays the header's icon ([the-report-export-folds-on-a-phone](#the-report-export-folds-on-a-phone)).
+
 ## the-supplier-list-shows-sales-and-ready-stock
 
 > Owner, in chat (2026-10-13): *"sekarang ke suppliers, di situ ada harusnya penjualan dan stock ready"* — told the per-
@@ -880,6 +884,8 @@ Terjual 30 hari 167 · Siap 155  ⚠1 ⚠2
 | a phone | one line under the stores, *Terjual 30 hari 167 · Siap 155*, with both marks; none for a store-less supplier |
 | a warehouse team | no strip — it has no supplier list to mark |
 | the figures | invented per supplier id (`pages/suppliers/sampleFigures.ts`), the same every render — deleted the day the sum exists |
+
+✅ Built 2026-11-07 — Siap is real: `InventoryService.SupplierGoods` sums every team's batches from the supplier (`features/suppliers/goods.ts`); its `sample` mark is gone. A dash now means none of its goods ever arrived.
 
 ## the-contact-sits-right-of-the-supplier
 
@@ -924,6 +930,8 @@ Siap 155 · restok 30 Sep 2026       ⚠2
 | still | both `sample`, both marked — the figures and both dates are invented per supplier id until the store-product link sums them |
 | supersedes | the *Terjual 30 hari* column of [the-supplier-list-shows-sales-and-ready-stock](#the-supplier-list-shows-sales-and-ready-stock) — the rest of it stands |
 
+✅ Built 2026-11-07 — Terjual (all time, a cancelled order counted back) with the last order, and Siap with the last restock, are real on the supplier list (`InventoryService.SupplierGoods`); both `sample` marks removed.
+
 ## supplier-figures-filter-by-range-pills
 
 > Owner, in chat (2026-10-13): *"karena kita ada sold dan ready, di sini kita akan ada filter untuk keduanya, tentu masih
@@ -950,6 +958,8 @@ on a phone — the Filter sheet: Semua jenis toko · Terjual (pills) · Siap (pi
 | a warehouse team | no trigger — it has no figures |
 | **open: the bands' source** | two schemes — **drawn from the totals** (the bands made from the figures themselves) or **a ready-made set**. Today a fixed placeholder set per figure (`pages/suppliers/figureRanges.ts`). **→ Recommend:** a ready-made set, one per figure — a pill then means the same thing every day and on every team, so *"Terjual ≥ 1.000"* can be said between the pair at the shelf; bands drawn from the totals move as sales grow, and need the totals before the panel can draw |
 
+✅ Built 2026-11-07 — the bands' source closed by the-range-pills-are-a-fixed-set; a pick narrows the list on the server and is no longer `dropped`.
+
 ## the-figure-filters-are-two-panels
 
 > Owner, in chat (2026-10-13), on the figures panel: *"pisahkan aja panelnya, terlalu lebar juga panelnya"*.
@@ -970,6 +980,8 @@ on a phone — the Filter sheet: Semua jenis toko · Terjual (pills) · Siap (pi
 | the panel | narrow (at most 320px): the pills wrap, three to a line, *Semua* first. A pick closes it — one choice, as a select's |
 | on a phone | unchanged — each figure a label over its pills in the Filter sheet |
 | supersedes | the trigger and the panel of [supplier-figures-filter-by-range-pills](#supplier-figures-filter-by-range-pills); its pills, the `dropped` marks and the open question of the bands stand |
+
+✅ Built 2026-11-07 — the two triggers narrow the list on the server (the-range-pills-are-a-fixed-set); their ⚠3 / ⚠4 marks removed.
 
 ## discover-shows-the-same-figures-and-filters
 
@@ -1002,6 +1014,8 @@ Siap 803 · restok 18 Sep 2026       ⚠2
 | shared | the figures (`SupplierFigures`), the filters (`SupplierRangeFilter`), the bands and the sample figures moved to `features/suppliers/` — two pages use them, each with its story under *Features/Suppliers* |
 | extends | the card of [a-discover-card-reads-who-whose-where](#a-discover-card-reads-who-whose-where) gains the figures between its stores and its contact |
 
+✅ Built 2026-11-07 — Discover's figures are real (one `SupplierGoods` read per page, every team's goods); the range pills and the warehouse filter stay `dropped` (renumbered 1–3).
+
 ## a-card-reads-its-figures-as-icons
 
 > Owner, in chat (2026-10-13), on Discover's card: *"di card tidak ada ordered dan restocked date, terjual dan ready icon
@@ -1020,6 +1034,8 @@ Siap 803 · restok 18 Sep 2026       ⚠2
 | the words | for a screen reader and on hover only |
 | a store-less supplier | a dash for each, unmarked — every card has the row |
 | supersedes | the card's two lines of [discover-shows-the-same-figures-and-filters](#discover-shows-the-same-figures-and-filters); the table and the supplier list's phone block keep their dates |
+
+✅ Built 2026-11-07 — the card's two badges carry the real units, unmarked.
 
 ## a-card-figure-is-a-pale-badge
 
@@ -1095,6 +1111,8 @@ Produk       Produk         Tim          Toko pemasok   Terakhir dibeli      Ter
 | the marks | `sample`, numbered in **each page's own** pending list: *Produk* ⚠1, *Terjual* ⚠2, *Siap* ⚠3. The figure pieces now take the page's marks rather than the supplier list's, since a badge's number is its position in its page's list |
 | not built | invented per store and per product (`sampleStoreFigures`, `sampleProductFigures`) — nothing records which products were bought at which store. They are not summed from each other, so a store's figure is not its products' total |
 
+✅ Built 2026-11-07 — per STORE only: the Toko tab's Terjual and Siap are real (`SupplierGoods` by store), unmarked. The Produk tab's product figures stay `sample` with its invented rows.
+
 ## a-supplier-page-is-scoped-by-its-warehouses
 
 > Owner, in chat (2026-10-13): *"di detail ini harusnya ada daftar gudang terkait yang sudah digunakan untuk restok, jadi
@@ -1123,6 +1141,8 @@ Toko · Produk ⚠1 · Statistik
 | not built | the warehouses and their counts **`sample`** (⚠4), the pick **`dropped`** (⚠5) — nothing records where a supplier's goods are received, and no tab narrows by a warehouse yet |
 | the meaning | the list pages' *Gudang* filter's ([the-warehouse-filters-before-the-team](#the-warehouse-filters-before-the-team)): where the restocks were received |
 | shared | `SupplierWarehouseChips` in `features/suppliers/` with its story; `FilterChips` gained a hover title per chip and a `trailing` slot (the *+N Lagi*) |
+
+✅ Built 2026-11-07 — the warehouses are real (`SupplierGoods` by warehouse, named by `TeamByIds`, the most restocked first); the pick still only switches the summary (`dropped`).
 
 ## the-warehouse-number-is-explained
 
@@ -1196,6 +1216,8 @@ a phone   ┌ Terjual           ┐ ┌ Siap               ┐
 | Semua | the units, orders and restocks summed; the latest of each date |
 | supersedes | the five cards of [a-warehouse-chip-is-its-name-and-the-summary-follows-it](#a-warehouse-chip-is-its-name-and-the-summary-follows-it) — *Jumlah restok*, *Restok terakhir* and *Pesanan terakhir* folded into these two lines. The chips and the strip's place stand |
 
+✅ Built 2026-11-07 — the two cards are real: units sold from N orders · the last, units ready from N restocks · the last; Semua sums them. A warehouse that never sold shows the count alone.
+
 ## sales-sit-beside-restocked
 
 > Owner, in chat (2026-10-14): *"di sebelah restocked ada penjualan, jumlah transaksi bawahnya unit, hal yang sama ada di
@@ -1224,6 +1246,8 @@ a phone      Direstok 40 · Rp 2.000.000
 | the sample | four in five of the row's units restocked, at 30% over their cost (`sampleSales.ts`) — **one fixed ratio**, so a card's total is its rows' sum, as Direstok's is. A ratio varying by row made the report's card read 242 units over rows adding up to 372 |
 | not taken | the first wording — the transactions over the units — was replaced by *"sama saja formatnya"* before it was built |
 
+✅ Built 2026-11-07 — Penjualan is real on the Statistik tab (both supplier pages, Per Periode and Per Produk) and on the Supplier Report, right after Direstok in the same format (`metrics/suppliers`' `sales_count` / `sales_value`); the sample and every page's `sales` mark removed.
+
 ## each-supplier-tab-exports-its-own-table
 
 > Owner, in chat (2026-10-14): *"di detail ada export untuk table di bawah, di taruh mana?"* — on the proposal of one
@@ -1248,6 +1272,8 @@ a phone    [Cari nama…] [⚙ Filter] [+ Tambah Toko]
 | both pages | the manage detail and the Discover detail (read-only: the Export is the Toko strip's only action) |
 | not built | **`dropped`**, ⚠7 in each page's list — nothing builds a file; the button holds the action's place |
 | shared | `SupplierTabExport` in `features/suppliers/` with its story; each tab places it — the strip's actions on a desktop, a child of the FilterBar (so, the sheet) on a phone |
+
+✅ Built 2026-11-07 — the Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport — the tab's own filter, every page, its columns in Indonesian, .xlsx streamed with progress then downloaded, as the order list's export); both pages, the phone's in the Filter sheet. The Produk tab's Export keeps its mark: its rows are still invented, and a file cannot carry the ⚠.
 
 ## the-report-export-folds-on-a-phone
 
@@ -1283,3 +1309,30 @@ before                                   now
 | how | `TeamSelect`'s `showType={false}` — the badge stays on by default, so a picker over every type keeps `name [Type]` |
 | where | `SupplierWarehouseFilter` — the supplier list and Discover. The options keep their `TeamItem` rows |
 | still open | Discover's team filter offers selling teams only and still shows [Penjual] on its pick — the same argument; asked, not changed |
+
+---
+
+## penjualan-is-the-selling-value-on-the-order-day
+
+> In chat *(owner, 2026-11-07)* — *"A"*, as recommended, to: [sales-sit-beside-restocked](#sales-sit-beside-restocked) placed *Penjualan* (rupiah, units under it) but not which rupiah or which day.
+
+**The verdict.** *Penjualan* is the **selling value**: each order line's value for the supplier's goods (its share of what the order sold them for), counted on the **Jakarta day the order was placed**; a cancel takes it back **on its own day**, the shape of the order metrics and the warehouse fee ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)). The units under it are the units sold. Not the cost of the units sold — that could never exceed *Direstok*, and the preview's 104 units at Rp 4.576.000 sit above their restock price. Scope as the other figures ([every-selling-team-sees-every-teams-figures](#every-selling-team-sees-every-teams-figures)). ⚠ Not built.
+
+✅ Built 2026-11-07 — supplier_service's sales fold of OrderPlaced / OrderCancelled: the units the order's take drew from batches carrying the supplier (asked of inventory in-process), at each line's share of the order's platform total, on the order's Jakarta day; a cancel takes them back on its own day. Every team's goods, a team filter narrows to whose.
+
+---
+
+## the-range-pills-are-a-fixed-set
+
+> In chat *(owner, 2026-11-07)* — *"A"*, as recommended (after *"It's about filter ?"* — yes, only the list's Terjual / Siap filter), to the open point *the bands' source* of [supplier-figures-filter-by-range-pills](#supplier-figures-filter-by-range-pills): drawn from the totals, or a ready-made set?
+
+**The verdict.** A **fixed set per figure**, so a pill means the same every day and can live in the URL ([a-lists-filters-live-in-the-url](context_decision.md#a-lists-filters-live-in-the-url)):
+
+| figure | pills |
+| --- | --- |
+| Terjual (units sold, all time) | Semua · < 500 · 500–1.000 · 1.000–2.500 · 2.500–5.000 · ≥ 5.000 |
+| Siap (units ready) | Semua · < 50 · 50–100 · 100–250 · 250–500 · ≥ 500 |
+
+A band is lower-inclusive, upper-exclusive. The filter narrows on the server, before paging. Closes the open point; the placeholder set in `pages/suppliers/figureRanges.ts` becomes the real one. ⚠ Not built.
+
+✅ Built 2026-11-07 — `SupplierList` takes `sold` / `ready` bands (lower-inclusive, upper-exclusive) and narrows on the server before the page, asking inventory for the suppliers in the band; the supplier list and Discover send the URL's pick; the `dropped` marks removed.

@@ -182,7 +182,7 @@ stateDiagram-v2
 **coordinate** — `<big_context>/<small_context>.md`, the same coordinates as the owner's two trees,
 so one context is one lookup in three files. A per-person file is a **second index over the same
 facts**. How the two coexist is proposed, not decided:
-[member_clarify.md](./member_clarify.md#the-progress-report-and-the-state-file-are-different-tenses).
+[member_clarify.md](./member_clarify.md#the-progress-report---decided-and-the-audience-moved-it).
 
 ## a-report-fires-per-slice
 
@@ -223,3 +223,135 @@ flowchart LR
 took A knowing this: the question being answered is *"what did each person ship"*, not *"how is it
 going right now"*. If the second question is ever asked, the answer is the `## Now` block from
 option C, not a move to daily entries.
+
+## ledger-is-retired-as-a-context
+
+> Owner, in chat (2026-10-31): *"yes"* — to *"should `ledger` be retired as a context?"*, the ledger half of
+> [Q1](./member_clarify.md#question), *who owns `ledger`?* As recommended, against my earlier *"→ Toni"*, whose
+> premise — analytic is ledger's only reader, and Toni's — no longer held.
+
+**The verdict.** `ledger` is **not a context** any more, so nobody owns it. There is no central book: every service keeps
+its own ledger ([the-template-is-an-index](../../technical/ledger/mutation_and_ledger_decision.md#the-template-is-an-index)),
+and the financial statistics the doc drew are served by each service's metrics
+([the-pattern-replaces-the-shipped-analytics](../analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)).
+A central copy would be a second source of truth to keep in step.
+
+```mermaid
+flowchart LR
+  subgraph "the ledger doc drew"
+    S1["settlement log"] --> B["one central book"]
+    P1["purchasing log"] --> B
+    I1["inventory log"] --> B
+    E1["expense log"] --> B
+  end
+  subgraph "what stands"
+    S2["settlement's ledger"] --> M["each service's metrics"]
+    L2["liability's ledger"] --> M
+    I2["inventory's ledgers"] --> M
+    F2["financial accounts"] --> M
+  end
+```
+
+| | |
+| --- | --- |
+| the ledger context | retired — [ledger/context.md](../ledger/context.md) describes a book that will not be built; reported in its clarify |
+| its open questions | Q5, who reconciles the logs against the book — closed: there is no book. Q7, what lag a money screen may show — moved to the metric pattern ([a-money-figure-says-how-current-it-is](../analytic/rpc_provide_decision.md#a-money-metric-says-as-of-when)) |
+| purchasing | not a context either — the restock is inventory's ([inventory-owns-the-restock-end-to-end](../inventory/context_decision.md#inventory-owns-the-restock-end-to-end)) |
+| the technical template | [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) stays — it is how each service builds ITS ledger |
+| still open in Q1 | the two riders: does `category` go with Products, and `team` with Users & Roles? |
+
+**What it ripples** (HARD RULE 11) — the sites that name the retired book: [settlement context.md](../settlement/context.md)
+line 33 and [settlement-publishes-to-the-book](../settlement/context_decision.md#settlement-publishes-to-the-book)'s *Financial
+Ledger* consumer, reported in [settlement-posts-to-a-retired-book](../settlement/context_clarify.md#settlement-posts-to-a-retired-book).
+
+## category-goes-with-products-and-team-with-users
+
+> Owner, in chat (2026-10-31): *"yes"* — to the two riders left in [Q1](./member_clarify.md#question): *does `category` go
+> with Products, and `team` with Users & Roles?* As recommended.
+
+**The verdict.** Each goes with the context that is its only reason to exist: **`category`** with **Products** — a
+category exists to file a product ([a-product-has-one-category](../product/context_decision.md#a-product-has-one-category)) —
+and **`team`** with **Users & Roles** — a team exists to hold people and their roles.
+
+| context | goes with | so, by [member.md](./member.md) |
+| --- | --- | --- |
+| `category` (4 RPCs) | Products | Toni's |
+| `team` (9 RPCs) | Users & Roles | Heri's |
+
+```mermaid
+flowchart LR
+  C["category"] --> P["Products"]
+  T["team"] --> U["Users and Roles"]
+```
+
+⚠ **What it does not settle:** whether ownership follows member.md or practice — on this branch Heri decides Products
+too ([Q2](./member_clarify.md#question), in the overtaken list).
+
+## each-branch-decides-its-own-design
+
+> Owner, in chat (2026-11-02): *"toni like custom our subsystem in inventory related, but in same time i have one to."*, then
+> *"left the main. im active develop on this"* — to [Q3](./member_clarify.md#question) *(who settles a boundary?)* and
+> [Q4](./member_clarify.md#question) *(who breaks a tie?)*, and [Q2](./member_clarify.md#question) with them.
+
+**The verdict.** Two people each develop their own design of the inventory subsystem, one per branch
+([the-two-inventory-designs-live-on-separate-branches](../inventory/context_decision.md#the-two-inventory-designs-live-on-separate-branches)),
+and on each branch its developer decides **everything** — every boundary between contexts, every tie, every
+cross-cutting call. [member.md](./member.md)'s lanes say who builds what; they do not move a decision off its branch.
+
+```
+backup/inventory  →  Heri's design   →  Heri settles every boundary and breaks every tie
+thoni             →  Toni's design   →  Toni does, for that design
+```
+
+```mermaid
+flowchart LR
+  H["backup/inventory - Heri, developing now"] --> HD["Heri decides everything here"]
+  T["thoni - Toni"] --> TD["Toni decides his design there"]
+  M["which design reaches main"] -.->|"not asked - left for later"| X["no question opened"]
+```
+
+| | |
+| --- | --- |
+| Q3 — a boundary | on this branch, Heri settles it |
+| Q4 — a tie | on this branch, Heri breaks it |
+| Q2 — does member.md grant decision authority? | not across branches: on each, its developer decides |
+| `main` | left aside — the owner is developing on `backup/inventory`; no question is opened about which design reaches it |
+
+## each-developer-works-on-their-own-branch
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q5](./member_clarify.md#question), *does the
+> single-`dev`-branch rule survive two people?* Earlier the same day: *"left the main. im active develop on this branch"*.
+
+**The verdict.** There is no single shared `dev` branch any more. Each developer works on a long-lived branch of their
+own and decides its design ([each-branch-decides-its-own-design](#each-branch-decides-its-own-design)). `dev` has been
+idle since 2026-10-12. Which work reaches `main`, and how, is left aside — not asked.
+
+```
+backup/inventory   Heri — active
+thoni              Toni
+frada, hfrada      merged across when wanted (5739fd0e: frada into backup/inventory)
+dev                idle since 2026-10-12
+```
+
+| | |
+| --- | --- |
+| where work lands | the developer's own branch, committed only when they say so |
+| between branches | a merge by hand, when asked |
+| `main` | left aside |
+| ✅ CLAUDE.md §Git workflow | updated 2026-11-02 on the owner's ask, with the FAQ's branch entry — it had said *commit straight to `dev`* ([claude-md-still-sends-every-commit-to-dev](./member_clarify.md#claude-md-still-sends-every-commit-to-dev)) |
+| also closes | [workflow Q3](../../technical/development/workflow_clarify.md#question), *how many people build on `dev` at once?* |
+| ✅ built | nothing to build |
+
+---
+
+## heri-owns-the-ledger-area
+
+> Owner (Heri), in chat (2026-11-07): *"I own the ledger area, not toni"* — answering the assistant's question *"who owns the ledger, you or Toni?"*, asked from a stale *Next* line in `heri.md` without reading [ledger-is-retired-as-a-context](#ledger-is-retired-as-a-context) first.
+
+**The verdict.** The **ledger area is Heri's**. It amends one line of [ledger-is-retired-as-a-context](#ledger-is-retired-as-a-context) — *"nobody owns it"* — and keeps the rest: there is still **no central book**; every service keeps its own ledger and the statistics come from each service's metrics.
+
+| | |
+| --- | --- |
+| Heri decides | the ledger docs ([ledger/context.md](../ledger/context.md) and its clarify), the technical template every service builds its ledger by ([mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md)), and any question that spans more than one service's ledger |
+| unchanged | a ledger inside a service stays that service's; the earlier *"→ Toni"* recommendation in [member_clarify](./member_clarify.md) is overruled |
+| should the central book come back | not implied by this — it stays retired unless Heri says so |

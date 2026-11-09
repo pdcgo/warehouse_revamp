@@ -29,6 +29,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-transfer-links-its-products-to-the-receiver](#a-transfer-links-its-products-to-the-receiver) | a transfer's create upserts its products into `warehouse_products` for the receiving warehouse, as a restock's create does |
 | [expiry-is-a-report](#expiry-is-a-report) | `expired_at` drives a report of what expires soon and where; the take keeps oldest batch first, and a rack does not track batches |
 | [order-returns-calls-are-return-mds-brief](#order-returns-calls-are-return-mds-brief) | only inventory's half of a return is unplanned; order_return.md stands, and its three calls into inventory are return.md's brief |
+| [the-stock-screen-lists-what-the-warehouse-has-held](#the-stock-screen-lists-what-the-warehouse-has-held) | Inventories ▸ Stock lists every product with a batch in this warehouse — any team's, at 0 or not — with its owner and on-hand, searchable by name or SKU |
+| [superseded-stock-opens-a-warehouses-inventories](#superseded-stock-opens-a-warehouses-inventories) | ⛔ WITHDRAWN the same night — **Stock** was to be the first item of a warehouse's Inventories group, before Restock, for its Owner, Admin and Staff |
+| [a-warehouses-products-is-what-it-holds](#a-warehouses-products-is-what-it-holds) | a warehouse's **Products** menu IS the list of what it holds — the Stock screen's list, a row opening the warehouse product page; no separate Stock item, the old address forwards there |
 
 ---
 
@@ -185,8 +188,11 @@ flowchart LR
 shelf, and two shelves holding the same count (11d) · whether the pick list prints the shelf, and a pick from another
 shelf (11b) · a count before the pick (11c). The lock order is [Q15b](./context_clarify.md#question).
 
-🔄 *(2026-10-13)* **Amended by [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)**: the lowest shelf first, among the **unlocked**
+🔄 *(2026-10-13)* **Amended by [superseded-a-lock-stops-units-moving-not-sales](./opname_decision.md#superseded-a-lock-stops-units-moving-not-sales)**: the lowest shelf first, among the **unlocked**
 shelves; a shelf being counted comes last.
+
+🔄 *(2026-11-03)* **Amended again by [a-lock-stops-sales-and-cancels-too](./opname_decision.md#a-lock-stops-sales-and-cancels-too)**: a shelf being counted is never
+taken from; what the unlocked shelves cannot fill refuses the order. ✅ Built 2026-11-03.
 
 ---
 
@@ -767,3 +773,116 @@ flowchart LR
 | inventory, until return.md is written | designs nothing for a return — unchanged |
 | order_return.md | not parked — its order-side rules stand |
 | already decided that return.md must keep | `return` is a `tx_type` and a ledger `change_type`; a return is a stock-in, never rolled back ([a-rollback-only-undoes-a-take](./transaction_decision.md#a-rollback-only-undoes-a-take)); it comes back to the warehouse that shipped it, already linked ([a-transfer-links-its-products-to-the-receiver](#a-transfer-links-its-products-to-the-receiver)) |
+
+---
+
+## the-stock-screen-lists-what-the-warehouse-has-held
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to *what should the Stock screen list?*, asked after a live check found it empty:
+> a warehouse holding 10 Kaos Temuan on Rak A read *"No products in this warehouse's catalogue"*.
+
+**Why it was empty.** The screen listed the products the WAREHOUSE TEAM owns (`ProductList` scoped to the warehouse),
+written while storing other teams' stock was still open. A warehouse owns no products — the selling teams do — so for a
+real warehouse the list is always empty.
+
+**The verdict.** Inventories ▸ Stock lists **every product with a batch in this warehouse** — any team's, archived ones
+labelled, and those at 0 today — each with its owner team and its units on hand, searchable by name or SKU on the
+server. A product emptied to 0 stays on the list, so it can still be found and adjusted. It is the same set the warehouse
+picker searches ([a-warehouse-picks-only-what-it-has-held](./opname_decision.md#a-warehouse-picks-only-what-it-has-held)).
+
+```mermaid
+flowchart LR
+  B["batches in this warehouse - any team"] --> L["Stock - one row per product"]
+  L --> R["Kaos Temuan - Toko Melati - 10 on hand"]
+  L --> Z["Kaos Lama - Toko Sinar - 0 on hand"]
+```
+
+| | |
+| --- | --- |
+| lists | every product with a batch in this warehouse, at 0 or not, archived ones labelled |
+| each row | the product, its owner team, its units on hand here |
+| search | name or SKU, on the server; a growing list, paged |
+| unchanged | the screen's actions — adjust, move — and its other columns |
+
+⛔ **Not built.** Building now.
+
+✅ **Built 2026-11-03.** `InventoryService.WarehouseStockList` (NO_SIDE_EFFECTS; StockList's policy): the held ids from
+`batches`, named and searched in product_service among those ids only (`SearchAmong`, now with a list mode for an empty
+search), and on hand by StockList's own formula (`warehouseOnHand`, shared). 3 statements a page, ~20 ms at 10,000
+products held. The screen gains an Owner column and an *Archived* label, a server-side search, a growing pager and a
+phone layout; its actions are unchanged. Also: a warehouse member's first visit no longer asks to pick a warehouse, and
+the warehouse picker (root and admin) offers warehouse teams only. e2e: a warehouse Admin sees its stock with its
+owner. Its place in the menu is the warehouse's Products — [a-warehouses-products-is-what-it-holds](#a-warehouses-products-is-what-it-holds).
+
+---
+
+## superseded-stock-opens-a-warehouses-inventories
+
+> ⛔ **WITHDRAWN** *(2026-11-03, minutes later, before it was built or committed)*: *"Sorry, I change my mind"* — then
+> *"Is warehouse have product menu ?"*, *"Why not in product menu, instead of this ?"*. Replaced by
+> [a-warehouses-products-is-what-it-holds](#a-warehouses-products-is-what-it-holds).
+
+> Owner, in chat *(2026-11-03)*: *"A"* — to *where does the Stock screen sit in a warehouse's menu?*, asked when the
+> rebuilt screen ([the-stock-screen-lists-what-the-warehouse-has-held](#the-stock-screen-lists-what-the-warehouse-has-held)) turned out to have no menu item for a warehouse — reached only by its address.
+
+**The verdict.** **Stock** opens a warehouse's **Inventories** group, before Restock: it is the warehouse's *what do we
+hold* screen, and every other child — Restock, Transfers, Returns, Racks, Batches, Stock Opname, Found Stock — is work
+that moves or checks what it lists. Every member of the warehouse sees it: Owner, Admin and Staff. Root and the admin
+team keep their own top-level *Inventory* item, the same screen with a warehouse to pick.
+
+```mermaid
+flowchart TB
+  I["Inventories"] --> S["Stock"]
+  I --> R["Restock"]
+  I --> T["Transfers"]
+  I --> O["... Stock Opname, Found Stock"]
+```
+
+| | |
+| --- | --- |
+| where | Inventories ▸ Stock, the group's first item, warehouse teams only |
+| who | the warehouse's Owner, Admin and Staff |
+| phone | in the More sheet with the rest of the group; the bottom bar is unchanged |
+| unchanged | root and the admin team's top-level *Inventory* |
+
+---
+
+## a-warehouses-products-is-what-it-holds
+
+> Owner, in chat *(2026-11-03)*: *"Yes, A"* — to *what should the warehouse's Products menu show?*, after asking *"Why not
+> in product menu, instead of this ?"* and being shown the warehouse's Products page live: a warehouse holding 12 Kaos
+> Temuan read Ready, Ongoing, Cost range and Stock age as *—*, showed the seller's Cross markup and Lock, named the owner
+> *Team #1*, had no search, and listed what it was asked to hold rather than what it holds.
+
+**The verdict.** A warehouse has ONE screen for its products, and it is the **Products** item it already has: the list
+of [the-stock-screen-lists-what-the-warehouse-has-held](#the-stock-screen-lists-what-the-warehouse-has-held) — every product with a batch in this warehouse, any team's, at 0 too, archived ones labelled — each with
+its owner, its units on hand and its Adjust and Move; searchable by name or SKU. A row opens the warehouse product page
+(`/inventories/products/:id`). The seller's columns — Cross markup, Lock, the catalogue's figures — are not a warehouse's
+and leave its view. There is no separate *Stock* item ([superseded-stock-opens-a-warehouses-inventories](#superseded-stock-opens-a-warehouses-inventories)); `/inventories/stock`
+forwards to Products. Root and the admin team keep their top-level *Inventory*, the same list with a warehouse to pick.
+
+```mermaid
+flowchart LR
+  M["warehouse menu - Products"] --> L["what this warehouse holds - owner, on hand, search"]
+  L -->|"a row"| P["the warehouse product page"]
+  S["/inventories/stock"] -.->|"forwards"| M
+```
+
+| | |
+| --- | --- |
+| the item | Products, where a warehouse's menu has it today |
+| lists | every product with a batch here — [the-stock-screen-lists-what-the-warehouse-has-held](#the-stock-screen-lists-what-the-warehouse-has-held) |
+| a row | opens `/inventories/products/:id`; Adjust and Move stay in its actions |
+| leaves the warehouse's view | Cross markup, Lock, cost range, the selling catalogue's figures |
+| `/inventories/stock` | forwards to Products for a warehouse |
+| unchanged | a selling team's Products; root and the admin team's *Inventory* |
+
+⛔ **Not built.** Building now.
+
+✅ **Built 2026-11-03.** A warehouse's `/products` is `WarehouseProductsPage`: the shared `features/inventory/WarehouseStockList`
+with `opensProduct` — a row or a phone block opens `/inventories/products/:id`, the ⋯ actions do not. No picker, no seller
+columns, no New Product or archive. `/inventories/stock` is `StockForward`: a warehouse to `/products`, anyone else to
+`/inventory`. Root and the admin team's `/inventory` keep the same list with its picker, rows opening nothing. A selling
+team's catalogue is unchanged. The old warehouse branch of the products table (`WarehouseProductList` + `ProductByIds`)
+is gone from the screen; the RPC stays, uncalled. e2e: the warehouse Admin opens Products, sees Kaos Temuan with its
+owner and 12 on hand, a row opens its page, and the old address forwards.

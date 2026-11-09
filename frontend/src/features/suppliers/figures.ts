@@ -6,22 +6,30 @@ import type { SupplierMetric } from "../../gen/warehouse/supplier/v1/supplier_an
 export interface SupplierFigures {
   /** Units accepted as good stock. */
   restockCount: number;
-  restockValue: bigint;
+  restockValue: number;
   /** Units short in an accepted parcel. */
   lostCount: number;
-  lostValue: bigint;
+  lostValue: number;
   /** Units that arrived broken. */
   brokenCount: number;
-  brokenValue: bigint;
+  brokenValue: number;
+  /**
+   * PENJUALAN — units sold to a buyer from the supplier's goods, and their selling value, on the order's day; a cancel
+   * taken back on its own day, so a period may read below zero (penjualan-is-the-selling-value-on-the-order-day).
+   */
+  salesCount: number;
+  salesValue: number;
 }
 
 export const NO_FIGURES: SupplierFigures = {
   restockCount: 0,
-  restockValue: 0n,
+  restockValue: 0,
   lostCount: 0,
-  lostValue: 0n,
+  lostValue: 0,
   brokenCount: 0,
-  brokenValue: 0n,
+  brokenValue: 0,
+  salesCount: 0,
+  salesValue: 0,
 };
 
 /** One wire metric as the screens read it. A missing metric is all zero. */
@@ -35,10 +43,12 @@ export function figuresOf(metric: SupplierMetric | undefined): SupplierFigures {
     lostValue: metric.shippingLostValuation,
     brokenCount: Number(metric.shippingBrokenCount),
     brokenValue: metric.shippingBrokenValuation,
+    salesCount: Number(metric.salesCount),
+    salesValue: metric.salesValue,
   };
 }
 
-/** All six are movements, so every rollup is a plain sum. */
+/** Every figure is a movement, so every rollup is a plain sum. */
 export function addFigures(a: SupplierFigures, b: SupplierFigures): SupplierFigures {
   return {
     restockCount: a.restockCount + b.restockCount,
@@ -47,6 +57,8 @@ export function addFigures(a: SupplierFigures, b: SupplierFigures): SupplierFigu
     lostValue: a.lostValue + b.lostValue,
     brokenCount: a.brokenCount + b.brokenCount,
     brokenValue: a.brokenValue + b.brokenValue,
+    salesCount: a.salesCount + b.salesCount,
+    salesValue: a.salesValue + b.salesValue,
   };
 }
 

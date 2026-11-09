@@ -41,6 +41,13 @@ func (s *Service) UserList(
 			Where("user_team_roles.team_id = ?", teamID)
 	}
 
+	// A picker that GIVES something (a shop grant) never offers a suspended or an erased account
+	// (a-suspended-user-is-never-picked). Asked for by that picker alone: the member list and a "who" filter keep them,
+	// badged (a-filter-keeps-former-and-suspended-people).
+	if req.Msg.GetFilter().GetExcludeSuspended() {
+		query = query.Where("NOT users.is_suspended AND users.erased_at IS NULL")
+	}
+
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("users.username ILIKE ? OR users.name ILIKE ? OR users.email ILIKE ?",

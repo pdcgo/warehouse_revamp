@@ -25,7 +25,7 @@ export const TheOwnersPageShape: Story = {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.getByTestId("discover-detail-name")).toHaveTextContent(GULA.name);
-    await expect(canvas.getByTestId("discover-detail-sku")).toHaveTextContent(GULA.sku);
+    await expect(canvas.getByTestId("discover-detail-sku")).toHaveTextContent(GULA.productCode);
     await expect(canvas.getByTestId("discover-detail-back")).toHaveAccessibleName("Back to Discover Products");
     // The same row in small waits in the sticky bar, hidden while the title is on screen (useStickyTitle — the owner's
     // page's stories scroll it into view).

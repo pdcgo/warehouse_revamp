@@ -38,7 +38,7 @@ flowchart LR
 | which team's numbers | the top-level `team_id`, `use_scope` — ROOT/ADMINISTRATOR in team 1 see every team's |
 | `MetricOption` | `metric_id`, `supported_filters`, `required_filters` — **no** `roles` |
 | why I give way | the scope already narrows every metric to the caller's own team, so the shared role list only matters for a metric that some roles **of the same team** must not see |
-| still open | that one case — [a-metric-some-roles-must-not-see](./rpc_provide_clarify.md#a-metric-some-roles-must-not-see), [Q1](./rpc_provide_clarify.md#question) |
+| still open | that one case — [a-metric-some-roles-must-not-see](./rpc_provide_clarify.md#question), [Q1](./rpc_provide_clarify.md#question) |
 
 ---
 
@@ -126,13 +126,15 @@ flowchart LR
 | kept | `AnalyticReplayCompute` and `AnalyticMaintenanceRun` — they repair the fold, they do not read it |
 | the order | supplier → settlement → financial account |
 | one shape per service | the old reads go in the same change that moves the screen — never two paths to one number |
-| each report's own rules | carried over, never dropped in the move — see [a-rate-needs-a-minimum-sample](./rpc_provide_clarify.md#a-rate-needs-a-minimum-sample) |
+| each report's own rules | carried over, never dropped in the move — see [a-rate-needs-a-minimum-sample](#a-rate-ranks-only-above-its-minimum-sample) |
 | the guideline | [service-guideline.md](../../../guidelines/service-guideline.md) is the owner's: a pointer from it to this doc is theirs to add |
 
 **Is it more robust?** As a system, yes: one provider, one rule for ties, totals, pages and missing keys, and a table
 can mix services, which no shipped report can. It is weaker in **one** place unless guarded: a metric id or a sort
 field is a string, so a typo fails at run time instead of at build. The guard is to never type one by hand — the
 frontend reads both off the generated schema, and the server refuses an unknown one by reflection.
+
+✅ Built 2026-11-05 — financial account, the last of the three: `AnalyticTimeSearch` / `AnalyticGroupSearch` / `AnalyticGroupMetric` removed with their callers, tests and docs; the Financial Account Report moved onto `MetricSearch` / `MetricData`.
 
 ---
 
@@ -195,7 +197,7 @@ flowchart LR
 
 > Owner (2026-10-26), in [rpc_provide.md](./rpc_provide.md) `### Service RPC Contracts.` — `MetricDataResponse` became
 > `repeated MetricData metric_datas`, each a `oneof m`. Resolves the contradiction
-> [one-metric-out-many-asked](./rpc_provide_clarify.md#one-metric-out-many-asked), as first recommended.
+> [one-metric-out-many-asked](#one-call-answers-every-asked-metric), as first recommended.
 
 **The verdict.** One `MetricData` call answers **every** metric it was asked for: the response is a list, one item per
 asked `metrics_ids` entry, and each item is a `oneof` holding that one metric's map.
@@ -291,7 +293,7 @@ sequenceDiagram
 > Owner (2026-10-26), in chat — *"for pagination, yes"* — and in [rpc_provide.md](./rpc_provide.md):
 > `FILTER_TYPE_PAGINATION` removed from `FilterType`, and `PaginationFilter pagination` added to `MetricSearchResponse`.
 > As recommended for the filter; where the page sits is still open
-> ([the-page-is-on-the-response](./rpc_provide_clarify.md#the-page-is-on-the-response)).
+> ([the-page-is-on-the-response](#a-page-is-not-a-filter)).
 
 **The verdict.** Paging is **not** a filter. A metric does not declare it, so adding a metric can never switch paging
 off — every `MetricSearch` pages, always (HARD RULE 9).
@@ -477,7 +479,7 @@ flowchart LR
 
 > Owner (2026-10-26), in [rpc_provide.md](./rpc_provide.md) `## Proto Contracts.` — `MetricSort` became
 > `{ metric_id, field, sort_type }`, and `SortOption.sort_key` became `field_sort_key`. To the contradiction
-> [metric-key-means-three-things](./rpc_provide_clarify.md#metric-key-means-three-things). The sort as recommended;
+> [metric-key-means-three-things](#a-sort-names-its-metric-and-field). The sort as recommended;
 > the sort key **kept**, against my *"the field's name is the key"*.
 
 **The verdict.** A sort names **which metric** and **which field** — two metrics can both carry `order_count`, and the
@@ -496,7 +498,7 @@ flowchart LR
 | --- | --- |
 | `MetricSort` | `string metric_id` · `string field` · `SortType sort_type` |
 | `SortOption` | `bool can_sort` · `string field_sort_key` |
-| what `MetricSort.field` carries | still open — [the-sort-field-has-two-names](./rpc_provide_clarify.md#the-sort-field-has-two-names) |
+| what `MetricSort.field` carries | still open — [the-sort-field-has-two-names](#a-sort-field-is-its-proto-name) |
 
 **Also in the same edit:** `DateRangeFilter` is now `string date_min` / `string date_max`. That is
 [a-day-is-a-jakarta-date-string](#a-day-is-a-jakarta-date-string) under **your** field names — `date_min` / `date_max`
@@ -507,7 +509,7 @@ replace the `start_date` / `end_date` written there, and every rule of that entr
 ## a-sort-field-is-its-proto-name
 
 > Owner (2026-10-26), in chat — *"okey, i remove field_sort_key"* — and in [rpc_provide.md](./rpc_provide.md):
-> `SortOption` is now `{ can_sort }` alone. To [the-sort-field-has-two-names](./rpc_provide_clarify.md#the-sort-field-has-two-names),
+> `SortOption` is now `{ can_sort }` alone. To [the-sort-field-has-two-names](#a-sort-field-is-its-proto-name),
 > after comparing the two. As recommended. Supersedes the `field_sort_key` row of
 > [a-sort-names-its-metric-and-field](#a-sort-names-its-metric-and-field).
 
@@ -537,7 +539,7 @@ flowchart LR
 ## a-metric-page-has-no-total
 
 > Owner, in chat (2026-10-26): *"returning total is expensive, so frontend just call next and next, and if data empty,
-> its reach end of page. and its okay"* — to [the-page-is-on-the-response](./rpc_provide_clarify.md#the-page-is-on-the-response),
+> its reach end of page. and its okay"* — to [the-page-is-on-the-response](#a-page-is-not-a-filter),
 > *"the asked page on the request, `PageInfo` with the totals on the response?"*. Against my recommendation on the
 > totals.
 
@@ -567,13 +569,13 @@ sequenceDiagram
 | the end | a page with no keys |
 | the pager | `GrowingPager` ([every-list-pages-with-the-growing-pager](../../technical/frontend/context_decision.md#every-list-pages-with-the-growing-pager)) — never `Pagination`, which needs a total |
 | ⚠ HARD RULE 9 | [CLAUDE.md](../../../CLAUDE.md) says a growing list *"returns a `warehouse.common.v1.PageInfo page_info`"*. A metric search does not — an exception, the owner's to write into the rule |
-| the last full page | open — [the-last-page-is-an-empty-click](./rpc_provide_clarify.md#the-last-page-is-an-empty-click) |
+| the last full page | open — [the-last-page-is-an-empty-click](#a-page-says-whether-another-follows) |
 
 ---
 
 ## a-page-says-whether-another-follows
 
-> Owner, in chat (2026-10-26): *"ok"* — to [the-last-page-is-an-empty-click](./rpc_provide_clarify.md#the-last-page-is-an-empty-click),
+> Owner, in chat (2026-10-26): *"ok"* — to [the-last-page-is-an-empty-click](#a-page-says-whether-another-follows),
 > *"a `bool has_next`, found by reading limit + 1 rows?"*. As recommended. Refines the end of
 > [a-metric-page-has-no-total](#a-metric-page-has-no-total): the end is `has_next = false`, not an empty page.
 
@@ -602,7 +604,7 @@ flowchart LR
 
 ## a-rate-ranks-only-above-its-minimum-sample
 
-> Owner, in chat (2026-10-26): *"ok"* — to [a-rate-needs-a-minimum-sample](./rpc_provide_clarify.md#a-rate-needs-a-minimum-sample),
+> Owner, in chat (2026-10-26): *"ok"* — to [a-rate-needs-a-minimum-sample](#a-rate-ranks-only-above-its-minimum-sample),
 > *"declare a minimum on rate fields, named `rank_min_sample`?"*, after asking whether it is for performance (it is
 > not — it is for the ranking to mean something). As recommended.
 
@@ -641,7 +643,7 @@ double broken_rate  [(metric_sort) = { can_sort: true, rank_min_sample: 50 }]
 ## the-key-breaks-every-tie
 
 > Owner, in chat (2026-10-26): *"we default sort by desc"*, then — after *"why we add shop_id in order?"* was walked
-> through — *"okey i accept it"*. To [ties-move-rows-between-pages](./rpc_provide_clarify.md#ties-move-rows-between-pages).
+> through — *"okey i accept it"*. To [ties-move-rows-between-pages](#the-key-breaks-every-tie).
 > As recommended, with the direction the owner's: DESC.
 
 **The verdict.** Every `MetricSearch` ends its `ORDER BY` with the row's **key, descending**. Rows that tie on the
@@ -817,7 +819,7 @@ flowchart LR
 | a metric id | `metrics/orders` — the group is no longer in it. Supersedes the *last segment is the key* row of [a-metric-id-is-a-name-not-a-route](#a-metric-id-is-a-name-not-a-route); its other rules stand |
 | one key per table | [a-metric-has-one-key](#a-metric-has-one-key) holds **per table**: one `group_by`, never shop × day |
 | a grain | a `group_by` value — supersedes [superseded-one-metric-per-grain](#superseded-one-metric-per-grain). A week is still Monday–Sunday ([a-week-is-monday-to-sunday-jakarta](#a-week-is-monday-to-sunday-jakarta)) |
-| the body's key | proposed, not decided: the body carries no key field (`metric_key` goes); two map wrappers per metric, by id and by day — [group-by-belongs-to-the-table](./rpc_provide_clarify.md#group-by-belongs-to-the-table) |
+| the body's key | proposed, not decided: the body carries no key field (`metric_key` goes); two map wrappers per metric, by id and by day — [group-by-belongs-to-the-table](#the-key-lives-in-the-map) |
 
 ---
 
@@ -959,6 +961,8 @@ flowchart LR
 | the key | a number in `IDList` for every non-time group — an id, or an enum value |
 | `TEAM` across teams | only for a caller scoped to the **root** team; any other scope yields its own team alone — carried over from settlement's shipped rule |
 | `USER` | the user the fact is booked to — each metric's doc says which user that is |
+
+✅ Built 2026-11-05 — `GROUP_TYPE_ACCOUNT`, `GROUP_TYPE_PROVIDER`, `GROUP_TYPE_CHANGE_TYPE` (12–14) joined `analytic_base` with the Finance metrics.
 
 ---
 
@@ -1203,7 +1207,9 @@ flowchart LR
 | `FilterType` | `UNSPECIFIED` · `DATE_RANGE` · `PRODUCT` · `TEAM` · `SHOP` · `SUPPLIER` |
 | the number 2 | reserved in `FilterType` and in `FilterItem`, so case N stays `FilterType` N ([a-filter-names-one-id-and-shares-its-types-number](#a-filter-names-one-id-and-shares-its-types-number)) |
 | the code it removes | `KeywordFilter` in `analytic_base`; `FILTER_TYPE_KEYWORD` on `metrics/suppliers`, its keyword join and their tests |
-| ⚠ still open | the Supplier Report's search is sent as that keyword — [the-supplier-search-loses-its-filter](./rpc_provide_clarify.md#the-supplier-search-loses-its-filter). The code waits for it |
+| ⚠ still open | the Supplier Report's search is sent as that keyword — [the-supplier-search-loses-its-filter](#the-supplier-report-keeps-its-search). The code waits for it |
+
+✅ **Built 2026-10-30** (verified in code 2026-11-05) — the Supplier Report's search is back as a typed `FILTER_TYPE_SUPPLIER_KEYWORD` (`analytic_base/v1/analytic.proto` 9, `supplier_analytic.proto`), per [the-supplier-report-keeps-its-search](#the-supplier-report-keeps-its-search).
 
 ---
 
@@ -1301,7 +1307,7 @@ extend google.protobuf.FieldOptions {
 | | |
 | --- | --- |
 | replaces | the screen's own `kind: "count" \| "money"` in `features/analytic/catalogue.ts` — that copy goes when the provider reads the descriptor |
-| open | whether every field must carry it, and what checks it — [a-stat-type-is-checked-at-startup](./rpc_provide_clarify.md#a-stat-type-is-checked-at-startup) |
+| open | whether every field must carry it, and what checks it — [a-stat-type-is-checked-at-startup](#every-number-field-carries-a-stat-type) |
 
 ---
 
@@ -1339,7 +1345,7 @@ flowchart LR
 | `SUMMARY` | no graph, because the headline already shows it. ⚠ My reading of A, not asked |
 | not this graph | one line per shop over the days ([a-metric-has-one-key](#a-metric-has-one-key)), a line per key rather than per column. It is a different chart |
 | when | the chart pass ([the-chart-waits-for-a-chart-component](#the-chart-waits-for-a-chart-component)), which still starts with a chart component. The cap on lines per graph is decided there |
-| depends on | every number field carrying its stat type, since a field without one has no graph to go into ([a-stat-type-is-checked-at-startup](./rpc_provide_clarify.md#a-stat-type-is-checked-at-startup)) |
+| depends on | every number field carrying its stat type, since a field without one has no graph to go into ([a-stat-type-is-checked-at-startup](#every-number-field-carries-a-stat-type)) |
 
 ---
 
@@ -1661,3 +1667,402 @@ flowchart LR
 | the screen | `frada`'s: the search box in the filter bar, in the URL as `q`, its own empty hint (*No supplier matches.*), counted by Clear |
 | the Analytic screen | does not offer it — no metric there is about suppliers yet |
 | tests | `TestMetricSearch_TheKeywordFindsSuppliersAsTheListDoes`; the stories `TheSearchNarrowsTheRankingAndTheHeadline` and `FiltersLiveInTheUrl` |
+
+## a-metric-is-added-whole-for-now
+
+> Owner, in chat (2026-10-31): *"for now, just metric is enough"* — to [the-picker-ticks-fields](./rpc_provide_clarify.md#question),
+> *may a metric open one level further so its fields can be ticked one by one?* Against my A, and **for now** — as
+> [compare-in-another-tab-for-now](#compare-in-another-tab-for-now) deferred the A / B view.
+
+**The verdict.** Add Metric adds a metric **whole** — every field a column — as it does today. The picker does not open a
+metric into its fields. The tree's third level (`fields :` in §Metric That Exist in Analytic) says what a metric
+carries; it is not a picker level.
+
+```
+Add Metric
+  Settlement
+    ☑ Settlement by type    → its 10 fields, 10 columns — as today
+```
+
+| | |
+| --- | --- |
+| the picker | category → metric; ticking a metric adds all its fields |
+| the cost, accepted for now | a wide metric draws all its columns — settlement by type's 10 do not fit a phone |
+| ✅ built | nothing to build — this is what runs today ([MetricPicker.tsx](../../../frontend/src/pages/analytic/components/MetricPicker.tsx)) |
+| when it comes back | a metric too wide to read, or a person who wants two of its fields — then the picker opens a metric into its fields, as the tree draws them; ticking the metric still takes them all |
+
+## a-metric-reads-at-most-a-year
+
+> Owner, in chat (2026-10-31): *"yes, i follow your recomendation"* — to [supplier Q19](../supplier/context_clarify.md#question),
+> *how far back may the Supplier Report rank?*, asked as a rule for every metric: order and settlement share the gap. As
+> recommended.
+
+**The verdict.** A metric's date range is **at most 366 days**, on every metric of every service. A longer range is
+refused, with a message naming the limit. A ranking reads every daily row in its window, so an unlimited range is one
+that gets slower every day the business runs — a year is 63 ms for `metrics/suppliers`, three years ~600 ms
+([MetricSearch.md](../../../audits/services/supplier_service/performances/MetricSearch.md)).
+
+```mermaid
+flowchart LR
+  W["a metric's date range"] --> C{"366 days or fewer?"}
+  C -->|"yes"| R["read - about 63 ms for a year"]
+  C -->|"no"| X["refused - pick a year at most"]
+  M["later, only on request - a monthly summary table"] -.-> L["multi-year rankings"]
+```
+
+| | |
+| --- | --- |
+| the limit | `date_max − date_min` of at most 366 days, both days inclusive — a leap year fits |
+| where | each service's metric filter parse — `selling`, `settlement`, `supplier` — beside its *range backwards* check, as `InvalidArgument` |
+| ⚠ my spec — no range at all | refused too: a request with no date range is *since the start*, the very read the cap exists to stop |
+| the screen | the analytic date picker offers no range over a year, and shows the refusal's message if one is sent |
+| the cost, accepted | *which supplier was best over two years?* is two one-year rankings |
+| when it comes back | someone asks for a multi-year ranking — then a monthly summary table, written by the same fold |
+
+✅ **Built 2026-11-02.**
+
+| | |
+| --- | --- |
+| the rule, once | [san_metric.CheckRange](../../../backend/pkgs/san_metric/range.go) — 366 days, both ends counted; each service answers it as `InvalidArgument` beside its *range backwards* check (`selling`, `settlement`, `supplier`) |
+| no range at all | already refused: every metric lists `FILTER_TYPE_DATE_RANGE` as required |
+| the screens | Analytic, the Settlement Report and the Supplier Report do not send a range over a year, and say so — *That range covers 367 days. A report reads at most 366* — the daily statement's pattern |
+| ⚠ my build detail — the picker | the date picker itself still lets a person pick a longer range by hand; its quick ranges stop at *Last 1 year* (365 or 366 days), and a longer hand-picked one is answered by the line above, never sent |
+| tests | `range_test.go` (a leap year fits, 367 does not), one 367-day refusal per service, the `ARangeOverAYearIsNotSent` story |
+
+## a-money-metric-says-as-of-when
+
+> Owner, in chat (2026-10-31): *"tell more"*, then *"i follow your recomendation"* — to
+> [a-money-figure-says-how-current-it-is](./rpc_provide_clarify.md#question), moved here from the retired ledger. As
+> recommended — for honesty, not diagnosis.
+
+**The verdict.** Every money metric says **as of when**: the time of the newest event its service has folded. A figure
+is a projection, seconds behind its source normally and longer while a retry or a replay holds an event back; a screen
+that shows the time is honest about that, where one that shows nothing reads as live.
+
+```
+an order settles → event published → the fold applies it, stamping settlement_event_logs
+                                      → the metric reads the report rows → "as of 14:04"
+```
+
+```mermaid
+flowchart LR
+  E["an event"] --> F["the service's fold"]
+  F --> L["its event log - stamped"]
+  F --> T["the report rows"]
+  T --> R["MetricData"]
+  L -->|"the newest stamp"| R
+  R --> S["the screen - as of 14:04"]
+```
+
+| | |
+| --- | --- |
+| the time | the newest `created_at` in the service's event log — `settlement_event_logs`, and its peers in order and supplier |
+| per | service, not metric — one fold per service, so all of its metrics share one *as of* |
+| the contract | one field on the metric response, added — not a breaking change |
+| the screen | *as of 14:04* under the table, in Jakarta time |
+| what it tells | everything up to that time is in the figure |
+| ⚠ what it cannot tell | a quiet day from a stuck fold — both stop the time moving; that is the operator's, through the dead-letter topic and the lease's loud log ([a-dead-replays-lock-expires-after-a-minute](../settlement/meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute)) |
+
+✅ **Built 2026-11-02.**
+
+| | |
+| --- | --- |
+| the contract | `int64 as_of_unix = 2` on the `MetricDataResponse` of `selling`, `settlement` and `supplier` — added, not breaking; 0 = nothing folded yet |
+| the read | `MAX(created_at)` of the service's event log, one index read — `order_event_logs` gained the `created_at` index its two peers already had (selling migration `00031`) |
+| the screens | the Settlement Report and the Supplier Report under their headline, and the Analytic composer under its table — *As of 7 Oct 14:04 WIB* (`formatUnixDateTimeShort`, so the day is said when it is not today) |
+| ⚠ my build detail — two services | the composer reads several services; it shows the **oldest** of their times, the one every figure on the table is complete up to |
+| ⚠ not on | a supplier's own page (`SupplierStatistics`) and the daily statement — neither is a metric-pattern report screen; each is a one-line addition if wanted |
+| tests | one per service (0 before any claim, then the newest claim's time whatever order they landed in) and a `SaysAsOfWhen` story on each of the three screens |
+
+---
+
+## a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: when an order is cancelled, what happens to its warehouse fee in the Warehouse Fee figures?
+
+**The verdict.** Warehouse Fee is **net, each on the day it happened**: an order's fee counts on the day it was placed, and a cancel takes it back on the day of the cancel. Past days never change, and the figures match what the Team Balance actually charged ([the-event-carries-the-warehouse-fee](../teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee) — frozen on the order, carried by `OrderPlaced`, reversed on cancel).
+
+| | |
+| --- | --- |
+| placed | `transaction_count` +1, `amount` + the fee, on the placement day |
+| cancelled | `transaction_count` −1, `amount` − the fee, on the cancel day |
+| an earlier day | never re-folded by a later cancel |
+
+✅ Built 2026-11-05 — selling's order metrics fold writes a signed `warehouse_fee` row of `order_daily_reports` (00038) in the same claim as the `created` / `cancelled` row: +1 / + the frozen fee on the placement day, −1 / − the fee on the cancel's day (`order_analytic_fold.go`).
+
+---
+
+## warehouse-fee-groups-like-the-order-metrics
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: which groupings should Warehouse Fee offer?
+
+**The verdict.** Warehouse Fee offers the order metrics' eight groups — **seller, shop, warehouse, created by, and daily, weekly, monthly, yearly** — because the fee is a fact of the order and carries the same keys (the order's selling team, shop, warehouse and creator). *Seller* is the selling team and *Warehouse* the warehouse for every reader ([the-warehouse-is-its-own-group](#the-warehouse-is-its-own-group)). The filters are the owner's tree's: team, shop, warehouse, user, date range.
+
+✅ Built 2026-11-05 — `WarehouseFeeMetric` in `order_analytic.proto` declares the order metrics' filters and groups; served by `OrderAnalyticService.MetricSearch` / `MetricData` over the same report rows.
+
+---
+
+## a-warehouse-sees-its-own-fee-amount
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: does a warehouse see the Warehouse Fee amount?
+
+**The verdict.** Yes. A warehouse reading Warehouse Fee sees both `transaction_count` and `amount`: the fee is the warehouse's own income, not the seller's money, so [a-warehouse-sees-no-seller-money](../order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money) — which leaves a warehouse counts only on the order metrics — does not hide it. A seller sees the same two fields for what it paid.
+
+✅ Built 2026-11-05 — `amount` is set (and sortable) for a warehouse reader (`orderMetric.warehouseMoney`); the order metrics' money stays unset for it.
+
+---
+
+## the-warehouse-fee-prototype-is-accepted
+
+> In chat *(owner, 2026-11-05)* — *"A"*, replying to the six Storybook screenshots of Warehouse Fee (Add Metric under Expense; a seller by warehouse; a warehouse by seller; by shop; phone by warehouse and by shop).
+
+**The verdict.** The prototype is the design: **Warehouse fee** under *Expense*, two fields — *Fee transactions* (`transaction_count`) and *Fee amount* (`amount`) — with the filters team, shop, warehouse, user and date range, and the groups of [warehouse-fee-groups-like-the-order-metrics](#warehouse-fee-groups-like-the-order-metrics). Accepted with it: the metric id **`metrics/warehouse_fee`**, and *Created by* is **the person who created the order**.
+
+✅ Built 2026-11-05 — `metrics/warehouse_fee` moved from `PROTOTYPE_METRICS` into the live catalogue (`WAREHOUSE_FEE_METRIC`, read off the proto); the Storybook stub serves it; e2e place → cancel nets the figure back.
+
+---
+
+## financial-accounts-serve-their-changes-and-their-types
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: when the financial-account figures move onto the metric shape ([the-pattern-replaces-the-shipped-analytics](#the-pattern-replaces-the-shipped-analytics)), what do they contain?
+
+**The verdict.** Two metrics, like settlement's headline and breakdown ([settlement-serves-its-headline-and-its-breakdown](../settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown)):
+
+| metric | fields | groups |
+| --- | --- | --- |
+| `metrics/financial_accounts` | one money field per change type (restock, expense, transfer, …) plus `change` (the net); `opening_balance` and `closing_balance` as positions — the balance at the start and the end of each period, never summed | summary, daily / weekly / monthly / yearly, Account, Provider |
+| `metrics/financial_accounts/types` | `amount` | Change type (with time, Account, Provider) |
+
+Together they cover every grouping already decided for the move — Account, Provider, Change type ([the-group-enum-grows-with-the-reports](#the-group-enum-grows-with-the-reports)) and time.
+
+✅ Built 2026-11-05 — `AccountChangeMetric` (`metrics/financial_accounts`) and `AccountChangeTypeMetric` (`metrics/financial_accounts/types`) in `financial_account_analytic.proto`, served by `FinancialAccountAnalyticService.MetricSearch` / `MetricData` (`financial_account_v1/metric_*.go`) from `financial_account_daily_reports`.
+
+---
+
+## analytic-gains-a-finance-category
+
+> In chat *(owner, 2026-11-05)* — *"B"* (not the recommended A, which kept them off the screen until the tree had a Finance category), to: where do the financial-account metrics appear?
+
+**The verdict.** The Analytic composer gains a **Finance** category now, holding the two metrics of [financial-accounts-serve-their-changes-and-their-types](#financial-accounts-serve-their-changes-and-their-types); the Financial Account Report moves onto the same reads. The owner's tree in `rpc_provide.md` has no Finance category yet — this adds it. A visible change, so a Storybook prototype comes first and the owner accepts it before the backend.
+
+✅ Built 2026-11-05 — Finance is a live category of the composer (`FINANCE_METRICS` in `features/analytic/catalogue.ts`, read off the proto); the Financial Account Report reads the same two RPCs (`features/financialAccount/analytics.ts`).
+
+---
+
+## the-balance-series-is-a-running-sum
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: should the financial-account move also fix the slow balance-over-time read?
+
+**The verdict.** Yes, in the same move. The balance per period is **one running sum** over the account's changes in date order — the balance before the range read once, then each period's change added — instead of re-deriving the balance from all history for every period (the `AnalyticTimeSearch` perf audit finding). The `opening_balance` / `closing_balance` positions of [financial-accounts-serve-their-changes-and-their-types](#financial-accounts-serve-their-changes-and-their-types) are read this way.
+
+✅ Built 2026-11-05 — each account's last daily row before the window is read once, the window's rows summed per day, then a running sum per period (`metric_shared.go` `series`); a year daily at a page of 200 went from 1 482 ms to 11 ms (`TestPerf_FinanceMetric`, audit `AnalyticTimeSearch.md` marked resolved).
+
+---
+
+## inventory-lost-counts-the-warehouses-custody-losses
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: what counts as lost in Inventory Lost?
+
+**The verdict.** Inventory Lost counts losses **in the warehouse's custody**: a shortage a stock count found, and stock a Stock Adjust marked *lost* — each valued at its batch price, which is what the warehouse owes. Not counted: broken stock, a transfer lost on the way, a restock parcel lost before it arrived.
+
+| field | what |
+| --- | --- |
+| `lost_count` | units lost |
+| `lost_amount` | those units at their batch price |
+
+The losses are recorded per batch in `warehouse_stock_problems`; no event publishes them yet, so the build adds one before a report can fold them.
+
+✅ Built 2026-11-05 — `inventory_lost_daily_reports` (inventory 00037), folded in-process in the loss's own transaction from a count's shortage and a Stock Adjust "lost" at the batch price (`inventory_mutations.foldLost`); no event — inventory owns both the register and the report (reasoned in docs/development_state/analytic/rpc_provide.md).
+
+---
+
+## inventory-lost-is-gross
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: when lost stock is later found, does Inventory Lost go down?
+
+**The verdict.** No. Inventory Lost counts **every loss on the day it happened** ([inventory-lost-counts-the-warehouses-custody-losses](#inventory-lost-counts-the-warehouses-custody-losses)); a Found Stock claim never subtracts from it, and past days never change. *Found* becomes its own figure later, so both can be read side by side.
+
+✅ Built 2026-11-05 — the fold only adds; a Found claim updates the problem row, never the report (`TestMetricData_AFoundClaimDoesNotSubtract`).
+
+---
+
+## inventory-lost-groups-and-sits-under-inventory
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: how is Inventory Lost grouped, and where does it sit?
+
+**The verdict.** Inventory Lost (`lost_count`, `lost_amount` — [inventory-lost-counts-the-warehouses-custody-losses](#inventory-lost-counts-the-warehouses-custody-losses), [inventory-lost-is-gross](#inventory-lost-is-gross)) groups by **product, supplier, seller** (the team that owns the stock), **warehouse**, and **daily / weekly / monthly / yearly**. No shop: lost stock belongs to no shop, so the shop filter is removed ([a-new-metric-removes-the-filters-it-cannot-use](#a-new-metric-removes-the-filters-it-cannot-use)). It sits in the composer as a new leaf **Inventory › Lost**, which the owner's tree (Transfer, Ready, Restock, Return) did not list. A visible change, so a Storybook prototype and the owner's accept come before the backend.
+
+✅ Built 2026-11-05 — `InventoryLostMetric` groups product, supplier, seller (`TEAM`), warehouse and time, no shop; Inventory › Lost stock in the composer.
+
+---
+
+## the-finance-prototype-is-accepted
+
+> In chat *(owner, 2026-11-05)* — *"A"*, replying to the Storybook screenshots of the Finance category (picker, Account changes daily / by account / graph / phone, Change types by change type).
+
+**The verdict.** The prototype is the design for [analytic-gains-a-finance-category](#analytic-gains-a-finance-category) and [financial-accounts-serve-their-changes-and-their-types](#financial-accounts-serve-their-changes-and-their-types), with the calls drawn in it:
+
+| | |
+| --- | --- |
+| place | Finance is the last category, with a bank icon |
+| Account changes | reads as a statement: opening balance, one column per change type (all nine, in the proto's order, even when 0), net change, closing balance |
+| sign | money out is negative, so the type columns add up to the net change |
+| the type named like the balance | `OPENING_BALANCE` reads **Account opened** (`account_opening`) |
+| a period cut by the range | its edges are at the range boundary |
+| a quiet account | shown, with its balance |
+| summary cards | the range's opening and closing balance — positions, never summed ([a-position-is-its-own-stat-type](#a-position-is-its-own-stat-type)) |
+| Change types | `amount`, grouped by change type; Account changes is greyed under that group |
+
+Built with it: the highlighted summary card no longer cuts a nine-digit Rp figure, and the by-account table fits a 1440 screen.
+
+✅ Built 2026-11-05 — the statement columns, signs, `account_opening`, the cut period, the quiet account and the summary positions served by the backend and asserted in `metric_data_test.go`; the lead headline card takes two columns of a crowded strip and the composer's table wraps headings to two lines, so both fit 1440 (story `FitsA1440Screen`).
+
+---
+
+## finance-filters-by-account
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: which filters should Finance have? (the prototype drew the date range only)
+
+**The verdict.** Both Finance metrics take the **date range** and an **Account** filter — one account or several — under every group. No Provider filter (grouping by Provider stays).
+
+✅ Built 2026-11-05 — `FILTER_TYPE_ACCOUNT` (`AccountFilter{account_ids}`, one to 200) in `analytic_base`, listed by both Finance metrics; the composer's multi-account `AccountsFilter` (`acc=` in the URL).
+
+---
+
+## every-team-reads-its-own-finance
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: who can read Finance?
+
+**The verdict.** **Every team reads its own accounts** in Finance — selling teams and warehouses alike (a warehouse has accounts too, e.g. *Kas Gudang*, and the financial-account analytics already let a warehouse read its own). No team reads another team's accounts. Root reads within its own scope; an admin reads only — Finance has nothing to change.
+
+✅ Built 2026-11-05 — both reads are scoped to `team_id` always (the root team to its own), the warehouse roles are on both policies, and another team's account id in the filter matches nothing (`TestMetric_AnotherTeamReadsNothing`, `TestMetric_AWarehouseReadsItsOwnAccounts`, e2e `finance_metrics.spec.ts`).
+
+---
+
+## the-inventory-lost-prototype-is-accepted
+
+> In chat *(owner, 2026-11-05)* — *"A"*, replying to the Storybook screenshots of Inventory › Lost (picker, by product, by supplier, by warehouse, the shop filter removed, phone).
+
+**The verdict.** The prototype is the design for [inventory-lost-groups-and-sits-under-inventory](#inventory-lost-groups-and-sits-under-inventory): `metrics/inventory/lost` under *Inventory*, fields **Lost units** (`lost_count`) and **Lost amount** (`lost_amount`); filters date, seller, warehouse, product, supplier; groups product, supplier, seller, warehouse and time; adding it drops a shop filter with a toast saying why. Accepted with it: the leaf is named **Lost stock** (id *Stok hilang*) — so the rows line reads "suppliers with lost stock in this period".
+
+✅ Built 2026-11-05 — served by `InventoryAnalyticService` (`inventory_analytic.proto`), live in the composer as **Lost stock / Stok hilang**, replacing the *Stock lost* sample; filters date, seller, warehouse, product, supplier.
+
+---
+
+## a-warehouse-sees-its-lost-amount
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: can a warehouse see the Lost amount?
+
+**The verdict.** Yes. A warehouse reading Lost stock sees **Lost units and Lost amount**: the amount is what the warehouse owes for stock lost in its custody — its own money — so [a-warehouse-sees-no-seller-money](../order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money) does not hide it. The seller owning the stock sees both too; a team that is neither reads nothing.
+
+✅ Built 2026-11-05 — the reader is `warehouse_id = team OR team_id = team`: the warehouse and the owning seller read both fields, any other team nothing (`TestMetricData_TheWarehouseAndTheOwnerReadItAnotherTeamNothing`).
+
+---
+
+## root-reads-every-teams-lost-stock
+
+> In chat *(owner, 2026-11-05)* — *"Yes I follow your recommendation, A"*, to: does root see every team's Lost stock, or only its own?
+
+**The verdict.** Root reads **every team's** Lost stock, as it reads the order metrics. Finance stays root's own accounts only ([every-team-reads-its-own-finance](#every-team-reads-its-own-finance)) — an account is one team's money, a loss is a warehouse's and a seller's shared fact.
+
+✅ **Built 2026-11-05** — `inventory_v1/lost_metric_shared.go` scoping.
+
+---
+
+## lost-stock-is-not-backfilled
+
+> In chat *(owner, 2026-11-05)* — *"Yes I follow your recommendation, A"*, to: are losses recorded before the Lost stock report (inventory migration 00037) replayed into it?
+
+**The verdict.** No backfill. Lost stock counts from the day the report was built; losses already in `warehouse_stock_problems` before it are not replayed. Revamp has no real counts yet ([revamp-has-no-real-orders-yet](../order/context_decision.md#revamp-has-no-real-orders-yet)), so nothing real is missed.
+
+---
+
+## expense-has-ads-and-expenses
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: which expense metrics, and where in the tree? (Storybook prototype `Pages/Analytic/Expense`, screenshots sent the same day.)
+
+**The verdict.** The *Expense* category holds, beside Warehouse Fee, two leaves:
+
+| leaf | id | fields | why its own leaf |
+| --- | --- | --- | --- |
+| **Ads expense** | `metrics/ads` | `amount` (the tree's) | only ads name a shop ([an-expense-names-a-shop-only-for-ads](../financial_account/context_decision.md#an-expense-names-a-shop-only-for-ads)), so only it filters by shop |
+| **Expenses** | `metrics/expenses` | one money field per kind — Ads, Payroll, Operational, Other, Stock loss — plus **Total** | one tick shows all money out, matching the Expenses page and the statement |
+
+The owner's tree listed Ads Expense only; this adds *Expenses*. Groups, filters, sources and readers are decided one by one after this.
+
+✅ Built 2026-11-06 — `ExpenseAnalyticService` (`expense_analytic.proto`): *Ads expense* `metrics/ads` (`amount`) and *Expenses* `metrics/expenses` (`ads`, `payroll`, `operational`, `other`, `total`), live under Expense in the composer beside Warehouse fee; the old `ads_spend` / `expense_total` samples are gone.
+
+---
+
+## expense-figures-are-read-from-its-own-records
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: build the expense metrics from `ExpenseCreated` / `ExpenseAdjusted` events, or from expense_service's own records?
+
+**The verdict.** expense_service keeps the figures **from its own `expense_records`** — a report written in the same transaction as the expense, as Lost stock is kept inside inventory. Every expense counts: *Stock loss* (which publishes no event), and expenses made before *Paid from* (no paying account, so no event). Analytic's Expenses then equal the Expenses page and the statement. The events stay for the paying account only.
+
+✅ Built 2026-11-06 — `expense_metric_daily_reports` (expense 00006), written by `ExpenseCreate` / `ExpenseAdjust` in the expense row's own transaction (`expense_v1/metric_fold.go`); no event is read (`TestExpenseCreate_AFailedFoldKeepsNoExpense`).
+
+---
+
+## an-expense-correction-counts-on-the-day-it-is-made
+
+> In chat *(owner, 2026-11-06)* — *"B"* (**not** the recommended A, which confirmed [an-adjustment-counts-on-the-day-it-fixes](./context_decision.md#an-adjustment-counts-on-the-day-it-fixes)), to: which day does an expense correction count on in Analytic? Asked with the example — an ad of Rp 500.000 on 14 Oct corrected by −450.000 on 20 Oct — and the cost: Analytic would then disagree with the Expenses page, the statement and the paying account.
+
+**The verdict.** In Analytic's expense metrics ([expense-has-ads-and-expenses](#expense-has-ads-and-expenses)) a correction counts **on the day it is made**, like a Warehouse Fee cancel ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)): 14 Oct keeps Rp 500.000, 20 Oct reads −450.000, and **past days never change**. A cancel takes the whole expense back on the cancel day.
+
+| | the day |
+| --- | --- |
+| Analytic — Ads expense, Expenses | **the correction's own day** (this decision) |
+| the Expenses page, `/statement`, the paying account | unchanged — the expense's day ([an-expense-posts-on-its-own-day](../financial_account/context_decision.md#an-expense-posts-on-its-own-day)) |
+
+**Supersedes** [an-adjustment-counts-on-the-day-it-fixes](./context_decision.md#an-adjustment-counts-on-the-day-it-fixes) for Analytic. ⚠ A day or month in Analytic can differ from the same period on the Expenses page by the corrections made later — accepted. ⚠ Not built.
+
+✅ Built 2026-11-06 — an expense on its `occurred_at`, a correction and a cancel on the Jakarta day they are made; `expense_records` keeps the expense's day for the Expenses page, the statement and the account (`TestMetricData_ACorrectionCountsOnTheDayItIsMade`, e2e `the_expense_metrics.spec.ts`).
+
+---
+
+## stock-loss-stays-out-of-analytic-expenses
+
+> In chat *(owner, 2026-11-06)* — *"B"*, to: does Analytic's *Expenses* ([expense-has-ads-and-expenses](#expense-has-ads-and-expenses)) show the warehouse's stock-loss expense? The loss itself was already decided twice — the warehouse owes the owning team ([the-warehouse-payable-is-broken-and-lost](../balance/context_decision.md#the-warehouse-payable-is-broken-and-lost)) and writes it off as its stock-loss expense ([a-recount-shortfall-is-written-off-and-owed](../inventory/adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed)); only its place in Analytic was open.
+
+**The verdict.** Analytic's **Expenses** carries only the kinds a person types — **Ads, Payroll, Operational, Other** — and **Total** over those. The `STOCK_LOSS` expense rows are **not** in it. In Analytic a loss is read as [Lost stock](#inventory-lost-counts-the-warehouses-custody-losses), and as money owed in Team Balance. Nothing changes in how inventory records a loss.
+
+✅ Built 2026-11-06 — the fold skips `STOCK_LOSS` and the report's `CHECK (kind BETWEEN 1 AND 4)` refuses it (`TestMetricData_AStockLossIsNeverCounted`).
+
+---
+
+## the-expense-metrics-follow-the-decisions-already-made
+
+> Settled 2026-11-06 by the assistant **from decisions the owner had already made** — not asked again. The owner pointed out that already-decided points were being re-asked; each row names the decision it follows. ⚠ marks a reading the owner may correct.
+
+| point | settled as | follows |
+| --- | --- | --- |
+| who reads | every member of a team, CS included, reads its own team's expense figures | [every-member-reads-every-metric-of-their-team](#every-member-reads-every-metric-of-their-team) |
+| root | ⚠ reads every team's — the tree's `team` filter only means something across teams, as for the order metrics and Lost stock | the tree (`Ads Expense — fiter: team, shop, user, date range`), [root-reads-every-teams-lost-stock](#root-reads-every-teams-lost-stock) |
+| filters | Ads expense: team, shop, user, date range (the tree). Expenses: the same without shop | the tree; [a-new-metric-removes-the-filters-it-cannot-use](#a-new-metric-removes-the-filters-it-cannot-use) |
+| groups | ⚠ seller, warehouse, created by, daily / weekly / monthly / yearly; Ads expense also by shop. A warehouse team's expense groups under *Warehouse* | [the-warehouse-is-its-own-group](#the-warehouse-is-its-own-group); the order metrics' groups |
+| settlement's ads fee | **not** in Ads expense — typed `ADS` expenses only | [settlement-ads-and-accounts-are-independent](../financial_account/context_decision.md#settlement-ads-and-accounts-are-independent) |
+| a transfer's shipping | **not** in Expenses — it is a paying-account row, and the Expenses screen lists only what a person typed | [a-transfers-shipping-posts-as-an-expense](../financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense) |
+| ids and fields | `metrics/ads` (`amount`, the tree's), `metrics/expenses` (one field per typed kind + `total`) | the tree; [expense-has-ads-and-expenses](#expense-has-ads-and-expenses), [stock-loss-stays-out-of-analytic-expenses](#stock-loss-stays-out-of-analytic-expenses) |
+
+✅ Built 2026-11-06 — readers (every member incl. CS and warehouse staff its own team, root every team's), the filters and groups as in the table; a selling team's expense under Seller, a warehouse team's under Warehouse (`expense_team_sides.go`).
+
+---
+
+## an-expense-correction-counts-for-who-made-it
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: in *Created by*, whose figure does an expense correction count under?
+
+**The verdict.** A correction counts for **the person who made it**, on the day it was made ([an-expense-correction-counts-on-the-day-it-is-made](#an-expense-correction-counts-on-the-day-it-is-made)). The original expense stays under the person who typed it, on its day. A person who only corrects can read negative for that day — accepted: it shows who changed what. A cancel counts the same way, for the person who cancelled.
+
+✅ Built 2026-11-06 — the report row's person is the row's `created_by`: the typer of an expense, the maker of a correction or cancel (`TestMetricData_CreatedByCountsTheCorrector`; the e2e reads the corrector's −450.000 by Created by).
+
+---
+
+## the-expense-prototype-is-accepted
+
+> In chat *(owner, 2026-11-06)* — *"A"*, replying to the Storybook screenshots of the expense metrics (`expense_metrics_v2/`: picker, Ads daily with the 20 Oct correction, Expenses by kind monthly, Created by with the corrector, a warehouse team, root by Seller, phone).
+
+**The verdict.** The prototype is the design for [expense-has-ads-and-expenses](#expense-has-ads-and-expenses) and the decisions after it, with one rule settled with it: **when the figures are grouped by Seller, the headline counts only the sellers' rows** — a warehouse team's expenses (grouped under *Warehouse*) are not in a Seller headline, so the top always equals the rows. Grouped by Warehouse, the headline is the warehouses'. Ungrouped (summary / time only), the headline is every expense the reader can see. ⚠ Not built.
+
+✅ Built 2026-11-06 — the 18 accepted stories pass through the real wire path (stub `expenseAnalyticStub.ts`); the headline rule is `MetricDataRequest.rows_group` — the provider sends the table's group, and by Seller / Warehouse the server sums only that group's rows (`TestMetricData_TheHeadlineCountsOnlyTheGroupsRows`, story `RootReadsEveryTeamsExpenses`).

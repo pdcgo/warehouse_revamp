@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	productv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_service_models"
@@ -15,6 +16,11 @@ import (
 // `images` wrapper REPLACES the whole gallery (and re-denormalises the cover), while a nil wrapper
 // leaves the images untouched. The team_id clause scopes the write — another team's product is
 // NotFound.
+//
+// The team's part of the CODE may be corrected only while the product has NO HISTORY — the line ProductDelete uses
+// (the-field-is-product-code-composed-on-write): once it has been in a stock movement, an order line or a restock line a
+// sticker can exist, and the code is fixed (FailedPrecondition). Sending the part it already has is not a correction, so
+// a form that always sends it can still save a used product's name.
 func (s *Service) ProductUpdate(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductUpdateRequest],
@@ -24,8 +30,17 @@ func (s *Service) ProductUpdate(
 
 	updates := map[string]any{}
 
-	if req.Msg.Sku != nil {
-		updates["sku"] = req.Msg.GetSku()
+	// Composed before the transaction: the team's code is a call to team_service, and it is immutable, so nothing can
+	// change it between this read and the write.
+	newCode := ""
+
+	if req.Msg.ProductCodePart != nil {
+		var err error
+
+		newCode, err = s.productCodeFor(ctx, teamID, req.Msg.GetProductCodePart())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if req.Msg.Name != nil {
@@ -81,6 +96,13 @@ func (s *Service) ProductUpdate(
 			return errProductMissing
 		}
 
+		if newCode != "" {
+			err = s.correctCode(ctx, tx, teamID, productID, newCode, updates)
+			if err != nil {
+				return err
+			}
+		}
+
 		if len(updates) > 0 {
 			err = tx.
 				Model(&product_service_models.Product{}).
@@ -124,12 +146,61 @@ func (s *Service) ProductUpdate(
 			Error
 	})
 	if err != nil {
-		if errors.Is(err, errProductMissing) {
+		switch {
+		case errors.Is(err, errProductMissing):
 			return nil, notFound()
+		case errors.Is(err, errCodeFixedByHistory):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		case errors.Is(err, errNoHistoryReader):
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
 		return nil, dbError(err)
 	}
 
 	return connect.NewResponse(&productv1.ProductUpdateResponse{Product: toProto(&product)}), nil
+}
+
+// correctCode adds the composed code to the update when it CHANGES the product's code and the product has no history.
+// The row is locked first, so a correction and a delete — or two corrections — of one product serialise, and the history
+// is asked under that lock, as ProductDelete asks it.
+func (s *Service) correctCode(
+	ctx context.Context,
+	tx *gorm.DB,
+	teamID, productID uint64,
+	newCode string,
+	updates map[string]any,
+) error {
+	var current product_service_models.Product
+
+	err := tx.
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Select("id", "product_code").
+		Where("id = ? AND team_id = ?", productID, teamID).
+		Take(&current).
+		Error
+	if err != nil {
+		return err
+	}
+
+	if current.ProductCode == newCode {
+		return nil
+	}
+
+	if s.history == nil {
+		return errNoHistoryReader
+	}
+
+	used, err := s.history.ProductHasHistory(ctx, productID)
+	if err != nil {
+		return err
+	}
+
+	if used {
+		return errCodeFixedByHistory
+	}
+
+	updates["product_code"] = newCode
+
+	return nil
 }

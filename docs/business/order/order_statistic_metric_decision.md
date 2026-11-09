@@ -360,6 +360,8 @@ stateDiagram-v2
 | fed by | the Order Status Change event, which is not built yet, the same as the two returns |
 | Completed | not a metric. The *"four"* in earlier entries now means these five order metrics |
 
+✅ **Built 2026-10-29** (verified in code 2026-11-05) — the Order Status Change event is built: selling publishes `OrderStatusChanged` (`selling_v1/order_status_changed_event.go`), and the order fold counts a move to `lost` as `lost_created` (`selling_v1/order_analytic_fold.go`).
+
 ---
 
 ## the-order-metrics-count-from-the-fold-onward

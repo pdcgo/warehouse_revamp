@@ -2,7 +2,6 @@ package liability_service
 
 import (
 	"context"
-	"math"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
@@ -29,6 +28,12 @@ const (
 	// The courier's charge at a restock's door, posted from *Restock Accepted*
 	// (balance-posts-the-couriers-debt-from-the-event). Its OWN subscription beside supplier's fold on the same topic.
 	RestockAcceptedSubscription = "liability-restock-accepted"
+	// The courier's charge at a RETURN's door, posted from *Order Return Accepted* (a-return-may-carry-the-couriers-ask). Its
+	// OWN subscription beside selling's fold on the same topic.
+	OrderReturnAcceptedSubscription = "liability-order-return-accepted"
+	// The courier's charge at a TRANSFER's receiving door, posted from *Warehouse Transfer Accepted*
+	// (balance-posts-the-transfers-on-site-debt-from-the-event, a-transfer-charge-is-a-transfer-fee).
+	WarehouseTransferAcceptedSubscription = "liability-warehouse-transfer-accepted"
 )
 
 // NewLiabilityPushHandler charges an order's fees on placement and reverses them on cancellation
@@ -73,6 +78,9 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				OrderID:     placed.GetOrderId(),
 				Lines:       lines,
 				ActorID:     placed.GetActorId(),
+				// ...and whether that placement was an override — carried by the event, because this push has no caller
+				// to read it from (an-override-is-stamped-in-every-service).
+				ActorIsOverride: placed.GetActorIsOverride(),
 				// The order's frozen fee, nil when the order predates it (the-event-carries-the-warehouse-fee).
 				WarehouseFee: placed.WarehouseFee,
 			})
@@ -82,21 +90,55 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 
 			// The cancel carries only ids, and needs no more: the ledger already knows what it
 			// charged, so reversing reads its own entries rather than recomputing fees from rates
-			// that may have changed since.
-			return svc.ReverseOrder(ctx, cancelled.GetTeamId(), cancelled.GetOrderId(), cancelled.GetActorId())
+			// that may have changed since. The reversal names the CANCEL's actor, so it carries the cancel's override
+			// flag — never the placement's (an-override-is-stamped-in-every-service).
+			return svc.ReverseOrder(ctx, cancelled.GetTeamId(), cancelled.GetOrderId(),
+				cancelled.GetActorId(), cancelled.GetActorIsOverride())
 
 		case *eventsv1.Event_RestockAccepted:
 			accepted := variant.RestockAccepted
 
 			// The selling team owes the warehouse the courier's charge (balance-posts-the-couriers-debt-from-the-event).
 			// ActorID is the VARIANT's — who counted the box in, from the stored restock — never the envelope's. The charge
-			// arrives as inventory stores it, a double (money-is-double-in-the-api-too); liability's entries are whole
-			// rupiah, so it is rounded here, at this service's edge.
+			// arrives as inventory stores it, a double (money-is-double-in-the-api-too), and is passed on and posted as it
+			// is — never rounded (the-backend-never-rounds-money).
 			return svc.ChargeRestockCourier(ctx, liability_v1.CourierCharge{
 				RestockID:     accepted.GetRestockId(),
 				SellingTeamID: accepted.GetTeamId(),
 				WarehouseID:   accepted.GetWarehouseId(),
-				Amount:        int64(math.Round(accepted.GetWarehouseAdditionalCost())),
+				Amount:        accepted.GetWarehouseAdditionalCost(),
+				ActorID:       accepted.GetActorId(),
+				// Whether the accept was an override, as inventory stored it beside the actor.
+				ActorIsOverride: accepted.GetActorIsOverride(),
+			})
+
+		case *eventsv1.Event_OrderReturnAccepted:
+			accepted := variant.OrderReturnAccepted
+
+			// The selling team owes the warehouse what the courier asked at the return's door
+			// (a-return-may-carry-the-couriers-ask). A double, as selling froze it — PostEntry posts it exact. ActorID is the
+			// VARIANT's, read from the accept's timeline row, never the envelope's.
+			return svc.ChargeReturnCourier(ctx, liability_v1.ReturnCourierCharge{
+				OrderID:         accepted.GetOrderId(),
+				SellingTeamID:   accepted.GetTeamId(),
+				WarehouseID:     accepted.GetWarehouseId(),
+				Amount:          accepted.GetCourierCharge(),
+				ActorID:         accepted.GetActorId(),
+				ActorIsOverride: accepted.GetActorIsOverride(),
+			})
+
+		case *eventsv1.Event_WarehouseTransferAccepted:
+			accepted := variant.WarehouseTransferAccepted
+
+			// The selling team owes the RECEIVING warehouse (B) what the courier asked at its door
+			// (a-transfer-charge-is-a-transfer-fee). Inventory stores it as a double, passed on as the restock's is —
+			// PostEntry posts it exact, never rounded. ActorID is the VARIANT's — who counted it in, from the stored
+			// transfer — never the envelope's.
+			return svc.ChargeTransferCourier(ctx, liability_v1.TransferCourierCharge{
+				TransferID:    accepted.GetTransferId(),
+				SellingTeamID: accepted.GetTeamId(),
+				WarehouseID:   accepted.GetToWarehouseId(),
+				Amount:        accepted.GetWarehouseAdditionalCost(),
 				ActorID:       accepted.GetActorId(),
 			})
 

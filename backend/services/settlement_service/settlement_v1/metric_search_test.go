@@ -49,7 +49,7 @@ func twoShops(t *testing.T, svc *settlement_v1.Service) {
 // DESC. Shop 31 holds 50.000, shop 30 holds 30.000.
 func TestMetricSearch_RanksShopsByTheirPosition(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	twoShops(t, svc)
 
@@ -69,7 +69,7 @@ func TestMetricSearch_RanksShopsByTheirPosition(t *testing.T) {
 // window's end. The ranking by a movement then ties at zero and the key, DESC, breaks it.
 func TestMetricSearch_AQuietShopStillRanksByWhatItCarries(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	twoShops(t, svc)
 
@@ -99,7 +99,7 @@ func TestMetricSearch_AQuietShopStillRanksByWhatItCarries(t *testing.T) {
 // No total: a page reads limit + 1 and says whether another follows.
 func TestMetricSearch_SaysWhetherAnotherPageFollows(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	twoShops(t, svc)
 
@@ -129,7 +129,7 @@ func TestMetricSearch_SaysWhetherAnotherPageFollows(t *testing.T) {
 // A time group ranks EVERY period of the window, a quiet one included — 01-04 moved nothing and still holds 30.000.
 func TestMetricSearch_ATimeGroupRanksEveryPeriod(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -150,7 +150,7 @@ func TestMetricSearch_ATimeGroupRanksEveryPeriod(t *testing.T) {
 // counted everywhere else.
 func TestMetricSearch_TheUnrecordedPersonIsNoKey(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(40, "2026-01-02", shop, 0, 0, 0,
@@ -170,14 +170,57 @@ func TestMetricSearch_TheUnrecordedPersonIsNoKey(t *testing.T) {
 
 	headline := mustData(t, svc, analytic_basev1.GroupType_GROUP_TYPE_SUMMARY, nil, filters, metricSettlement)
 	if position := headline[0].GetSettlementSummary().GetPositionToDate(); position != 35_000 {
-		t.Fatalf("headline position = %d, want 35.000 — the unrecorded row still counts", position)
+		t.Fatalf("headline position = %v, want 35.000 — the unrecorded row still counts", position)
+	}
+}
+
+// A TAKE RATE RANKS ONLY THE SHOPS THAT SOLD AT LEAST RP 1.000.000 in the window — the decision's own example
+// (a-take-rate-ranks-above-one-million-of-sales). Toko C kept nothing of a 20.000 sale, so its rate is 100%, and it
+// still FOLLOWS, whichever way the rate is sorted: under the minimum it is not ranked at all.
+func TestMetricSearch_ATakeRateRanksOnlyAboveAMillionOfSales(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+
+	const tokoA, tokoB, tokoC uint64 = 40, 41, 42
+
+	fold(t, svc,
+		logPosted(101, "2026-01-02", tokoA, 6001, creator, creator,
+			settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -10_000_000),
+		logPosted(102, "2026-01-03", tokoA, 6001, creator, 3,
+			settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 8_500_000), // 15%
+		logPosted(103, "2026-01-02", tokoB, 6002, creator, creator,
+			settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -2_500_000),
+		logPosted(104, "2026-01-03", tokoB, 6002, creator, 3,
+			settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 2_200_000), // 12%
+		logPosted(105, "2026-01-02", tokoC, 6003, creator, creator,
+			settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -20_000), // 100%, under the minimum
+	)
+
+	filters := []*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-04")}
+
+	for _, c := range []struct {
+		sort analytic_basev1.SortType
+		want []uint64
+	}{
+		{analytic_basev1.SortType_SORT_TYPE_DESC, []uint64{tokoA, tokoB, tokoC}},
+		{analytic_basev1.SortType_SORT_TYPE_ASC, []uint64{tokoB, tokoA, tokoC}},
+	} {
+		res, err := metricSearch(svc, analytic_basev1.GroupType_GROUP_TYPE_SHOP, filters,
+			metricSettlement, "take_rate", c.sort, 0, 10)
+		if err != nil {
+			t.Fatalf("MetricSearch by take rate %v: %v", c.sort, err)
+		}
+
+		if ids := res.GetKeys().GetIds().GetIds(); !slices.Equal(ids, c.want) {
+			t.Fatalf("%v by take rate = %v, want %v — Toko C's 100%% follows, under the minimum", c.sort, ids, c.want)
+		}
 	}
 }
 
 // What the search refuses: a span too long to rank, a field that cannot sort, a summary, and a shop with a person.
 func TestMetricSearch_Refuses(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	cases := map[string]struct {
 		group   analytic_basev1.GroupType
@@ -186,13 +229,16 @@ func TestMetricSearch_Refuses(t *testing.T) {
 	}{
 		"two years, daily": {analytic_basev1.GroupType_GROUP_TYPE_DAILY,
 			[]*analytic_basev1.FilterItem{window("2024-01-01", "2026-01-01")}, "sales"},
-		"the take rate": {analytic_basev1.GroupType_GROUP_TYPE_SHOP,
-			[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-04")}, "take_rate"},
+		"a field that cannot sort": {analytic_basev1.GroupType_GROUP_TYPE_SHOP,
+			[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-04")}, "no_such_field"},
 		"a summary": {analytic_basev1.GroupType_GROUP_TYPE_SUMMARY,
 			[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-04")}, "sales"},
 		"by shop, for a person": {analytic_basev1.GroupType_GROUP_TYPE_SHOP,
 			[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-04"), userFilter(creator)}, "sales"},
 		"no window": {analytic_basev1.GroupType_GROUP_TYPE_SHOP, nil, "sales"},
+		// a-metric-reads-at-most-a-year: 2024 is 366 days, a day more is refused.
+		"367 days": {analytic_basev1.GroupType_GROUP_TYPE_SHOP,
+			[]*analytic_basev1.FilterItem{window("2024-01-01", "2025-01-01")}, "sales"},
 	}
 
 	for name, c := range cases {

@@ -45,7 +45,7 @@ func (s *Service) WarehouseTransferCancel(
 			}
 		}
 
-		return moveTransfer(tx, t, models.TransferCancel, actor, msg.GetDescription(), nil)
+		return moveTransfer(tx, t, models.TransferCancel, actor, overrideFrom(ctx), msg.GetDescription(), nil)
 	})
 	if err != nil {
 		return nil, transferErr(err)

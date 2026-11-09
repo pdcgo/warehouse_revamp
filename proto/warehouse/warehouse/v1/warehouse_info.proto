@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+package warehouse.warehouse.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/warehouse/v1;warehousev1";
+
+// WarehouseInfoService is a warehouse's PROFILE — its location, its two weekly grids and its one-off closures — with one
+// owner (the-warehouse-profile-lives-in-warehouse-service). It moved whole from team_service, which keeps only what
+// describes a team; the policies are unchanged.
+// ⚠ The role_base options are written with a LEADING DOT, as in warehouse_fee.proto: inside package warehouse.warehouse,
+// a bare warehouse.role_base would resolve to warehouse.warehouse.role_base.
+service WarehouseInfoService {
+  // A warehouse's profile. Any authenticated caller: a selling team legitimately needs to know when a warehouse can
+  // receive its orders. A warehouse with no profile yet reads as closed every day.
+  rpc WarehouseInfoDetail(WarehouseInfoDetailRequest) returns (WarehouseInfoDetailResponse);
+  // Replaces a warehouse's weekly hours and location. Warehouse managers edit their own.
+  rpc WarehouseInfoUpdate(WarehouseInfoUpdateRequest) returns (WarehouseInfoUpdateResponse);
+
+  // One-off closures — a holiday, a stock-take — edited by whoever edits the hours (a-warehouse-records-its-holidays).
+  rpc WarehouseClosureAdd(WarehouseClosureAddRequest) returns (WarehouseClosureAddResponse);
+  rpc WarehouseClosureDelete(WarehouseClosureDeleteRequest) returns (WarehouseClosureDeleteResponse);
+
+  // Whether each asked warehouse RECEIVES ORDERS now and, if not, its next opening and why — for the order form and the
+  // warehouse picker (a-closed-day-warns-and-never-refuses). It refuses nothing: a closed warehouse is only MARKED.
+  rpc WarehouseReceivingStatus(WarehouseReceivingStatusRequest) returns (WarehouseReceivingStatusResponse);
+}
+
+// Weekday is 1..7 Monday..Sunday. The UNSPECIFIED zero is required by proto3 and is never a
+// valid schedule row.
+enum Weekday {
+  WEEKDAY_UNSPECIFIED = 0;
+  WEEKDAY_MONDAY = 1;
+  WEEKDAY_TUESDAY = 2;
+  WEEKDAY_WEDNESDAY = 3;
+  WEEKDAY_THURSDAY = 4;
+  WEEKDAY_FRIDAY = 5;
+  WEEKDAY_SATURDAY = 6;
+  WEEKDAY_SUNDAY = 7;
+}
+
+// DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
+// Times are "HH:MM" 24-hour local wall-clock, validated by the handler.
+message DayHours {
+  Weekday weekday = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  bool open = 2;
+  string open_time = 3 [(buf.validate.field).string.max_len = 5];
+  string close_time = 4 [(buf.validate.field).string.max_len = 5];
+}
+
+// WarehouseInfo is a warehouse's PROFILE: its two weekly schedules, its location and its upcoming one-off closures.
+message WarehouseInfo {
+  uint64 team_id = 1;
+
+  // When the warehouse is generally open.
+  repeated DayHours operating_hours = 2;
+
+  // When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
+  repeated DayHours receiving_hours = 3;
+
+  // The warehouse's physical location / address (free text).
+  string location = 4;
+
+  // Its ONE-OFF closures still to come or under way — last day today or later, in Asia/Jakarta — earliest first
+  // (a-warehouse-records-its-holidays). Small by nature: a warehouse closes a handful of times a year.
+  repeated WarehouseClosure closures = 5;
+}
+
+message WarehouseInfoDetailRequest {
+  option (.warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  uint64 team_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseInfoDetailResponse {
+  WarehouseInfo info = 1;
+}
+
+message WarehouseInfoUpdateRequest {
+  option (.warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (.warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // A full replacement of each schedule — the editor sends the whole weekly grid. At most one
+  // row per weekday per schedule; the handler rejects duplicates and bad times.
+  repeated DayHours operating_hours = 2 [(buf.validate.field).repeated.max_items = 7];
+  repeated DayHours receiving_hours = 3 [(buf.validate.field).repeated.max_items = 7];
+
+  // The warehouse address — a full replacement, sent by the editor alongside the schedules.
+  string location = 4 [(buf.validate.field).string.max_len = 500];
+}
+
+message WarehouseInfoUpdateResponse {
+  WarehouseInfo info = 1;
+}
+
+// WarehouseClosure — one ONE-OFF closure: whole days, both inclusive, in Asia/Jakarta, with its reason
+// (a-warehouse-records-its-holidays). It only changes the closed-day warning; it refuses nothing.
+message WarehouseClosure {
+  uint64 id = 1;
+  uint64 warehouse_id = 2;
+  // YYYY-MM-DD.
+  string first_day = 3;
+  string last_day = 4;
+  // Shown in the warning — "closed for Idul Fitri".
+  string reason = 5;
+}
+
+message WarehouseClosureAddRequest {
+  option (.warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (.warehouse.role_base.v1.use_scope) = true
+  ];
+  string first_day = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string last_day = 3 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string reason = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+}
+
+message WarehouseClosureAddResponse {
+  WarehouseClosure closure = 1;
+}
+
+message WarehouseClosureDeleteRequest {
+  option (.warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (.warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 closure_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseClosureDeleteResponse {}
+
+message WarehouseReceivingStatusRequest {
+  option (.warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // The warehouses on screen — the one the order names, or a picker's page. Bounded by the caller.
+  repeated uint64 warehouse_ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+  }];
+}
+
+// WarehouseReceivingState — one warehouse's answer, NOW, in Asia/Jakarta.
+message WarehouseReceivingState {
+  uint64 warehouse_id = 1;
+  // Inside today's receiving slot and in no closure.
+  bool receiving_now = 2;
+  // When it receives next, unix seconds — 0 while receiving now, or when no slot opens in the next 60 days.
+  int64 next_opening_unix = 3;
+  // Set when a one-off closure is why it is closed — "Idul Fitri".
+  string closure_reason = 4;
+}
+
+message WarehouseReceivingStatusResponse {
+  // Keyed by warehouse id — every asked id is answered.
+  map<uint64, WarehouseReceivingState> states = 1;
+}

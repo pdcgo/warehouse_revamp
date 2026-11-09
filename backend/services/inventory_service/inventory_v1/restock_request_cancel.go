@@ -71,7 +71,7 @@ func (s *Service) RestockRequestCancel(
 			description = restockLogCancelled + " — money returned"
 		}
 
-		logErr := recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusCancelled, actor, description, now)
+		logErr := recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusCancelled, actor, overrideFrom(ctx), description, now)
 		if logErr != nil {
 			return logErr
 		}

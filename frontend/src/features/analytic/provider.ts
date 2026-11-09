@@ -8,12 +8,20 @@
 //   And the headline: the same metrics read with group SUMMARY and no keys (the-headline-is-the-metric-grouped-by-summary).
 //
 // A metric with a `schema` is SERVED: its service answers MetricSearch / MetricData over the wire — the five order
-// metrics by selling_service, the two settlement metrics by settlement_service. Every other metric is still a SAMPLE
-// (sample.ts), answered here by the same two steps, until its service ships. The steps do not change between the two.
+// metrics and Warehouse Fee by selling_service, the two settlement metrics by settlement_service, the two Finance
+// metrics by financial_account_service, Lost stock by inventory_service, Ads expense and Expenses by expense_service.
+// Every live metric is served; a PROTOTYPE (catalogue.ts) is still a SAMPLE (sample.ts), answered here by the same two
+// steps, until its service ships. The steps do not change between the two.
 
 import type { DescMessage, MessageInitShape } from "@bufbuild/protobuf";
 
-import { orderAnalyticClient, settlementAnalyticClient } from "../../api/clients";
+import {
+  expenseAnalyticClient,
+  financialAccountAnalyticClient,
+  inventoryAnalyticClient,
+  orderAnalyticClient,
+  settlementAnalyticClient,
+} from "../../api/clients";
 import {
   type FilterItemSchema,
   GroupType as PbGroupType,
@@ -40,6 +48,8 @@ export interface ReportFilters {
   team?: string;
   warehouse?: string;
   user?: string;
+  /** The team's own financial accounts, one or several (finance-filters-by-account). */
+  accounts?: string[];
 }
 
 /**
@@ -72,6 +82,12 @@ export interface ReportResult {
   cells: Record<string, Record<ReportKey, MetricBody>>;
   /** metricId → the headline body, group SUMMARY. */
   summary: Record<string, MetricBody>;
+  /**
+   * AS OF WHEN (a-money-metric-says-as-of-when) — the OLDEST of the served services' times: each service's figures hold
+   * what its fold claimed up to its own time, so the table as a whole holds what was claimed up to the oldest. Unset
+   * when no served metric is asked, or no served service has folded anything yet.
+   */
+  asOfUnix?: bigint;
 }
 
 export const EMPTY_REPORT: ReportResult = { keys: [], hasNext: false, cells: {}, summary: {} };
@@ -131,6 +147,11 @@ function compareKeys(a: ReportKey, b: ReportKey, group: TableGroup): number {
 function inScope(def: MetricDef, fact: Fact, filters: ReportFilters): boolean {
   if (fact.day < filters.from || fact.day > filters.to) return false;
 
+  return inEntityScope(def, fact, filters);
+}
+
+/** The filters but the date range. */
+function inEntityScope(def: MetricDef, fact: Fact, filters: ReportFilters): boolean {
   const checks: [FilterType, string | undefined, string | undefined][] = [
     ["shop", filters.shop, fact.shop],
     ["product", filters.product, fact.product],
@@ -147,12 +168,29 @@ function emptyBody(def: MetricDef): MetricBody {
   return Object.fromEntries(def.fields.map((f) => [f.name, 0]));
 }
 
-/** Sum a metric's facts in scope, by key — the fold a real service reads from its report table. */
-function rollUp(def: MetricDef, group: TableGroup | "summary", filters: ReportFilters): Map<ReportKey, MetricBody> {
+/** Root's team (TeamContext's ROOT_TEAM_ID) — it reads every team's (the-expense-metrics-follow-the-decisions-already-made). */
+const ROOT_READER = "1";
+
+/**
+ * May `reader` (the caller's team) read the fact? A fact naming an `owner` (the expense prototypes) is read by that team
+ * and by root alone. Without a reader — the Storybook stubs, which scope their own — every fact counts.
+ */
+function readable(fact: Fact, reader: string | undefined): boolean {
+  return reader === undefined || reader === ROOT_READER || fact.owner === undefined || fact.owner === reader;
+}
+
+/**
+ * Sum a metric's facts in scope, by key — the fold a real service reads from its report table. A fact carrying none of
+ * the metric's fields is another reading of the same id (a prototype's facts beside its live sample's), so it makes no
+ * row.
+ */
+function rollUp(def: MetricDef, group: TableGroup | "summary", filters: ReportFilters, reader?: string): Map<ReportKey, MetricBody> {
   const out = new Map<ReportKey, MetricBody>();
 
   for (const fact of sampleFacts(def.metricId)) {
+    if (!def.fields.some((f) => f.name in fact.values)) continue;
     if (!inScope(def, fact, filters)) continue;
+    if (!readable(fact, reader)) continue;
 
     const key = group === "summary" ? "" : keyOf(fact, group);
     if (key === undefined) continue;
@@ -173,9 +211,9 @@ export const sampleService = {
   /** STEP 1 — only keys it HAS figures for; ranked; the key DESC on a tie; limit + 1. */
   search(
     def: MetricDef,
-    req: { groupBy: TableGroup; filters: ReportFilters; field: string; dir: SortDirection; offset: number; limit: number },
+    req: { groupBy: TableGroup; filters: ReportFilters; field: string; dir: SortDirection; offset: number; limit: number; reader?: string },
   ): { keys: ReportKey[]; hasNext: boolean } {
-    const rows = [...rollUp(def, req.groupBy, req.filters).entries()];
+    const rows = [...rollUp(def, req.groupBy, req.filters, req.reader).entries()];
     const sign = req.dir === "desc" ? -1 : 1;
     rows.sort(([ka, a], [kb, b]) => sign * ((a[req.field] ?? 0) - (b[req.field] ?? 0)) || -compareKeys(ka, kb, req.groupBy));
 
@@ -185,15 +223,28 @@ export const sampleService = {
   },
 
   /** STEP 2 — every asked key, an all-zero body where nothing happened. */
-  data(def: MetricDef, groupBy: TableGroup, filters: ReportFilters, keys: ReportKey[]): Record<ReportKey, MetricBody> {
-    const rolled = rollUp(def, groupBy, filters);
+  data(def: MetricDef, groupBy: TableGroup, filters: ReportFilters, keys: ReportKey[], reader?: string): Record<ReportKey, MetricBody> {
+    const rolled = rollUp(def, groupBy, filters, reader);
 
     return Object.fromEntries(keys.map((key) => [key, rolled.get(key) ?? emptyBody(def)]));
   },
 
-  /** THE HEADLINE — the same metric, group SUMMARY, no keys: equal to the rows by construction. */
-  summary(def: MetricDef, filters: ReportFilters): MetricBody {
-    return rollUp(def, "summary", filters).get("") ?? emptyBody(def);
+  /**
+   * THE HEADLINE — the same metric, group SUMMARY, no keys: equal to the rows by construction. Given the table's id group
+   * (`rowsGroup`, the expense metrics' headline — the-expense-prototype-is-accepted), only the facts that group has a key
+   * for: by Seller a warehouse team's expense is no row, so it is no part of the headline either.
+   */
+  summary(def: MetricDef, filters: ReportFilters, reader?: string, rowsGroup?: TableGroup): MetricBody {
+    if (rowsGroup !== undefined && !isTimeGroup(rowsGroup)) {
+      const body = emptyBody(def);
+      for (const row of rollUp(def, rowsGroup, filters, reader).values()) {
+        for (const field of def.fields) body[field.name] = (body[field.name] ?? 0) + (row[field.name] ?? 0);
+      }
+
+      return body;
+    }
+
+    return rollUp(def, "summary", filters, reader).get("") ?? emptyBody(def);
   },
 };
 
@@ -211,6 +262,9 @@ const PB_GROUP: Record<TableGroup | "summary", PbGroupType> = {
   team: PbGroupType.TEAM,
   warehouse: PbGroupType.WAREHOUSE,
   user: PbGroupType.USER,
+  account: PbGroupType.ACCOUNT,
+  provider: PbGroupType.PROVIDER,
+  change_type: PbGroupType.CHANGE_TYPE,
 };
 
 type Filter = MessageInitShape<typeof FilterItemSchema>;
@@ -226,6 +280,9 @@ function wireFilters(filters: ReportFilters): Filter[] {
   if (filters.team) out.push({ f: { case: "teamFilter", value: { teamId: id(filters.team) } } });
   if (filters.warehouse) out.push({ f: { case: "warehouseFilter", value: { warehouseId: id(filters.warehouse) } } });
   if (filters.user) out.push({ f: { case: "userFilter", value: { userId: id(filters.user) } } });
+  if (filters.accounts && filters.accounts.length > 0) {
+    out.push({ f: { case: "accountFilter", value: { accountIds: filters.accounts.map(id) } } });
+  }
 
   return out;
 }
@@ -296,12 +353,25 @@ interface MetricClient {
     filters: Filter[];
     keys?: MessageInitShape<typeof MetricKeysSchema>;
     metricIds: string[];
-  }): Promise<{ metricDatas: AnyMetricData[] }>;
+    /** The headline's table group — sent to a service that takes it (HEADLINE_OF_ROWS), never to another. */
+    rowsGroup?: PbGroupType;
+  }): Promise<{ metricDatas: AnyMetricData[]; asOfUnix: bigint }>;
 }
+
+/**
+ * THE SERVICES WHOSE HEADLINE FOLLOWS THE TABLE'S GROUP (the-expense-prototype-is-accepted): an expense is one team's, a
+ * seller's OR a warehouse's, so grouped by Seller the headline counts only the sellers' rows, by Warehouse only the
+ * warehouses' — the provider sends the table's group as `rows_group` with the SUMMARY read. Every other service's rows
+ * cover its whole scope under every group, and its request has no such field.
+ */
+const HEADLINE_OF_ROWS = new Set(["expense"]);
 
 function clientOf(def: MetricDef): MetricClient {
   if (def.service === "selling") return orderAnalyticClient;
   if (def.service === "settlement") return settlementAnalyticClient;
+  if (def.service === "financial_account") return financialAccountAnalyticClient;
+  if (def.service === "inventory") return inventoryAnalyticClient;
+  if (def.service === "expense") return expenseAnalyticClient;
 
   throw new Error(`no client for ${def.service}, which serves ${def.metricId}`);
 }
@@ -343,6 +413,7 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
       dir: req.sort.dir,
       offset,
       limit: req.pageSize,
+      reader: String(teamId),
     }));
   } else if (isTimeGroup(req.groupBy)) {
     const spine = timeSpine(req.filters.from, req.filters.to, req.groupBy);
@@ -360,10 +431,11 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
   const summary: ReportResult["summary"] = {};
 
   for (const def of defs.filter((d) => !d.schema)) {
-    cells[def.metricId] = sampleService.data(def, req.groupBy, req.filters, keys);
-    summary[def.metricId] = sampleService.summary(def, req.filters);
+    cells[def.metricId] = sampleService.data(def, req.groupBy, req.filters, keys, String(teamId));
+    summary[def.metricId] = sampleService.summary(def, req.filters, String(teamId));
   }
 
+  const asOfs: bigint[] = [];
   const byService = new Map<string, MetricDef[]>();
   for (const def of defs.filter((d) => d.schema)) byService.set(def.service, [...(byService.get(def.service) ?? []), def]);
 
@@ -373,12 +445,16 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
       const metricIds = served.map((d) => d.metricId);
       const filters = wireFilters(req.filters);
 
+      const rowsGroup = HEADLINE_OF_ROWS.has(served[0]!.service) ? { rowsGroup: PB_GROUP[req.groupBy] } : {};
+
       const [headline, filled] = await Promise.all([
-        client.metricData({ teamId, groupBy: PbGroupType.SUMMARY, filters, metricIds }),
+        client.metricData({ teamId, groupBy: PbGroupType.SUMMARY, filters, metricIds, ...rowsGroup }),
         keys.length > 0
           ? client.metricData({ teamId, groupBy: PB_GROUP[req.groupBy], filters, keys: wireKeys(req.groupBy, keys), metricIds })
           : undefined,
       ]);
+
+      if (headline.asOfUnix > 0n) asOfs.push(headline.asOfUnix);
 
       served.forEach((def, i) => {
         summary[def.metricId] = answerOf(def.schema!, headline.metricDatas[i]!).summary ?? {};
@@ -389,7 +465,9 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
     }),
   );
 
-  return { keys, hasNext, cells, summary };
+  const asOfUnix = asOfs.length > 0 ? asOfs.reduce((a, b) => (b < a ? b : a)) : undefined;
+
+  return { keys, hasNext, cells, summary, asOfUnix };
 }
 
 /**

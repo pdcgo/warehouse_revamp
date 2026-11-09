@@ -1,9 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor } from "storybook/test";
 
-import { REPORT_META, loaded } from "./kit";
+import { accountReportExportScenario } from "../../../../.storybook/financialAccountExportScenario";
+import { asAdminTeam } from "../../../../.storybook/sessionScenario";
+import { GroupType, SortType } from "../../../gen/warehouse/analytic_base/v1/analytic_pb";
+import { FinancialAccountReportView } from "../../../gen/warehouse/financial_account/v1/financial_account_analytic_pb";
+import { BCA_OPS, REPORT_META, loaded, pickAccount } from "./kit";
 
-// ACCOUNT REPORT — the title's row — the screen rules, Export marked, and the Periode / Rincian switch. The page's stories are grouped by the part of the screen they are about
+// ACCOUNT REPORT — the title's row — the screen rules, Export (the view as a file, none while monitoring), and the Periode / Rincian switch. The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -53,16 +57,85 @@ export const TheReportFollowsTheScreenRules: Story = {
   },
 };
 
-// Export is on the screen and marked (owner: *"sama action export, kasih warning unimplemented"*) — the button on the
-// title's row with its ⚠ number, and the folded strip at the top saying what is not built.
-export const ExportIsMarkedNotBuilt: Story = {
-  name: "Export, marked",
+// THE VIEW AS A FILE (a-report-export-is-the-whole-view-as-a-file; owner: *"sama action export"*) — the button on the
+// title's row, no ⚠ any more. On Periode it asks for every period at the grain on screen, in the heading's order: here
+// by month, oldest first. The file downloads as the stream ends.
+export const ExportsThePeriodeView: Story = {
+  name: "Export, Periode",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const exportButton = canvas.getByTestId("account-report-export");
     await expect(exportButton).toHaveTextContent("Export");
-    await expect(within(exportButton).getByTestId("not-implemented-export")).toHaveTextContent("1");
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await expect(canvas.queryByTestId("not-implemented-export")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("account-report-grain-month"));
+    await userEvent.click(canvas.getByTestId("account-report-sort-period"));
+
+    await userEvent.click(exportButton);
+    await waitFor(() => expect(accountReportExportScenario.calls).toHaveLength(1));
+
+    const call = accountReportExportScenario.calls[0]!;
+    await expect(call.teamId).toBe(12n);
+    await expect(call.view).toBe(FinancialAccountReportView.PERIOD);
+    await expect(call.groupBy).toBe(GroupType.MONTHLY);
+    await expect(call.sortType).toBe(SortType.ASC);
+    await expect(call.filters.map((f) => f.f.case)).toEqual(["dateRangeFilter"]);
+    // Every month of the window — the quiet ones too.
+    await expect(call.rows).toBeGreaterThanOrEqual(2);
+    await expect((await screen.findAllByText("Export ready — the file is downloading")).length).toBeGreaterThan(0);
+  },
+};
+
+// On Rincian, with one account picked, Export asks for the breakdowns of THAT account — one sheet each — and no grain.
+export const ExportsTheRincianViewAsFiltered: Story = {
+  name: "Export, Rincian",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await pickAccount(canvas, BCA_OPS.id);
+    await userEvent.click(canvas.getByTestId("account-report-view-breakdown"));
+    await canvas.findByTestId("account-report-breakdown", {}, { timeout: 4000 });
+
+    await userEvent.click(canvas.getByTestId("account-report-export"));
+    await waitFor(() => expect(accountReportExportScenario.calls).toHaveLength(1));
+
+    const call = accountReportExportScenario.calls[0]!;
+    await expect(call.view).toBe(FinancialAccountReportView.BREAKDOWN);
+    await expect(call.groupBy).toBe(GroupType.UNSPECIFIED);
+    await expect(call.filters.map((f) => f.f.case)).toEqual(["dateRangeFilter", "accountFilter"]);
+    await expect(call.filters[1]!.f.value).toMatchObject({ accountIds: [BCA_OPS.id] });
+  },
+};
+
+// the-admin-team-monitors-read-only — the admin team READING the report: every figure, but no Export, which stores a file.
+export const MonitoringOffersNoExport: Story = {
+  name: "Monitoring, no Export",
+  beforeEach: asAdminTeam(),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("account-report-export")).toBeNull();
+  },
+};
+
+// A phone: Export is the header's icon (a-phone-header-action-is-an-icon) — tapped, it exports the view on screen.
+export const MobileExports: Story = {
+  name: "Export, on a phone",
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const exportIcon = canvas.getByRole("button", { name: "Export" });
+    await expect(exportIcon).toHaveAttribute("data-testid", "account-report-export");
+    await expect(exportIcon).not.toHaveTextContent("Export");
+    const title = canvas.getByRole("heading", { name: "Account Report" });
+    await expect(Math.abs(exportIcon.getBoundingClientRect().top - title.getBoundingClientRect().top)).toBeLessThan(16);
+
+    await userEvent.click(exportIcon);
+    await waitFor(() => expect(accountReportExportScenario.calls).toHaveLength(1));
+    await expect(accountReportExportScenario.calls[0]!.view).toBe(FinancialAccountReportView.PERIOD);
+    await expect(accountReportExportScenario.calls[0]!.groupBy).toBe(GroupType.DAILY);
   },
 };

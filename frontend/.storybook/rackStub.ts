@@ -35,8 +35,8 @@ import { SELF_ID } from "./userStub";
 interface ShelfLine {
   productId: bigint;
   onHand: bigint;
-  unitCost: bigint;
-  // A count holds it (a-count-locks-the-product-on-the-rack). The real server never sets this until opname exists.
+  unitCost: number;
+  // A count holds it (a-count-locks-the-product-on-the-rack) — the real server sets it from the open snapshot rows.
   counting: boolean;
 }
 
@@ -62,16 +62,16 @@ export interface RackWrite {
 // (74) — so a move off it writes three transactions. A-01-2 holds tea (72) that a count is holding. B-02-1 is empty.
 const SHELVES: Record<string, ShelfLine[]> = {
   "41": [
-    { productId: 71n, onHand: 12n, unitCost: 18500n, counting: false },
-    { productId: 73n, onHand: 5n, unitCost: 14000n, counting: false },
-    { productId: 74n, onHand: 8n, unitCost: 65000n, counting: false },
+    { productId: 71n, onHand: 12n, unitCost: 18500, counting: false },
+    { productId: 73n, onHand: 5n, unitCost: 14000, counting: false },
+    { productId: 74n, onHand: 8n, unitCost: 65000, counting: false },
   ],
   "42": [
-    { productId: 71n, onHand: 6n, unitCost: 18500n, counting: false },
-    { productId: 72n, onHand: 3n, unitCost: 9000n, counting: true },
+    { productId: 71n, onHand: 6n, unitCost: 18500, counting: false },
+    { productId: 72n, onHand: 3n, unitCost: 9000, counting: true },
   ],
   "43": [],
-  "44": [{ productId: 74n, onHand: 4n, unitCost: 65000n, counting: false }],
+  "44": [{ productId: 74n, onHand: 4n, unitCost: 65000, counting: false }],
   "45": [],
 };
 
@@ -114,6 +114,8 @@ let movements: Movement[] = [];
 let nextMovementId = 9100n;
 let nextTransactionId = 7001n;
 let last: RackWrite | null = null;
+// Who the rack history says moved each unit — the signed-in person, unless a story names someone else.
+let historyActor = SELF_ID;
 
 /**
  * A RACE, armed for the next write only: just before RackMove or RackSample checks the shelf, somebody else has taken
@@ -131,7 +133,13 @@ export function resetRackStub() {
   nextMovementId = 9100n;
   nextTransactionId = 7001n;
   last = null;
+  historyActor = SELF_ID;
   rackStubScenario.raceBeforeNextWrite = null;
+}
+
+/** For a story: who the rack history names on every row — e.g. a former user (erase-keeps-the-row). */
+export function rackHistoryByForStory(userId: bigint) {
+  historyActor = userId;
 }
 
 resetRackStub();
@@ -232,7 +240,7 @@ function write(
     const cost = Object.values(shelves)
       .flat()
       .find((l) => l.productId === productId)?.unitCost;
-    line = { productId, onHand: 0n, unitCost: cost ?? 0n, counting: false };
+    line = { productId, onHand: 0n, unitCost: cost ?? 0, counting: false };
     shelf.push(line);
   }
 
@@ -354,8 +362,8 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
       rack,
       summary: {
         totalOnHand: lines.reduce((acc, l) => acc + l.onHand, 0n),
-        totalValue: lines.reduce((acc, l) => acc + l.onHand * l.unitCost, 0n),
-        unknownCostProducts: lines.filter((l) => l.unitCost === 0n).length,
+        totalValue: lines.reduce((acc, l) => acc + Number(l.onHand) * l.unitCost, 0),
+        unknownCostProducts: lines.filter((l) => l.unitCost === 0).length,
         lastCountedAt: counted ?? "",
       },
     };
@@ -381,8 +389,8 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
                     productId: l.productId,
                     onHand: l.onHand,
                     unitCost: l.unitCost,
-                    costKnown: l.unitCost > 0n,
-                    value: l.onHand * l.unitCost,
+                    costKnown: l.unitCost > 0,
+                    value: Number(l.onHand) * l.unitCost,
                     counting: l.counting,
                   },
                 ]),
@@ -411,7 +419,7 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
             case: "movement",
             value: {
               mapData: Object.fromEntries(
-                rows.map((m) => [m.id.toString(), { ...m, actorUserId: SELF_ID, batchId: 0n }]),
+                rows.map((m) => [m.id.toString(), { ...m, actorUserId: historyActor, batchId: 0n }]),
               ),
             },
           },

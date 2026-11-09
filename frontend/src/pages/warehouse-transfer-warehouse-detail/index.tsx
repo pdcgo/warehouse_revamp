@@ -11,10 +11,8 @@ import { directionFor, parseTransferId } from "../../features/warehouseTransfer/
 import { WarehouseTransferActions } from "../../features/warehouseTransfer/WarehouseTransferActions";
 import { TransferTimeline } from "../../features/warehouseTransfer/TransferTimeline";
 import { ParcelCard, RouteCard, TransferLinesCard } from "../../features/warehouseTransfer/TransferDetailCards";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseTransferStatusBadge";
 import { useIsMobile } from "../../layouts/shell";
-import { TRANSFER_WAREHOUSE_DETAIL_PENDING } from "./pending";
 
 // WarehouseTransferWarehouseDetailPage — one transfer as a WAREHOUSE reads it. Which warehouse decides what it shows:
 //
@@ -99,7 +97,6 @@ export function WarehouseTransferWarehouseDetailPage() {
               transfer={transfer}
               teamId={teamId}
               variant="menu"
-              pending={TRANSFER_WAREHOUSE_DETAIL_PENDING}
             />
           </Flex>
           <Box>{sideBadge}</Box>
@@ -121,13 +118,10 @@ export function WarehouseTransferWarehouseDetailPage() {
               transfer={transfer}
               teamId={teamId}
               variant="buttons"
-              pending={TRANSFER_WAREHOUSE_DETAIL_PENDING}
             />
           </Flex>
         </>
       )}
-
-      <NotImplementedSummary list={TRANSFER_WAREHOUSE_DETAIL_PENDING} />
 
       {showPicks && (
         <Text fontSize="sm" color="fg.muted" data-testid="transfer-detail-pick-hint">

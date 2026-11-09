@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Field, HStack, Icon, IconButton, Input, Menu, Portal, Stack } from "@chakra-ui/react";
 import { ClipboardCheck, MoreHorizontal, PackageCheck, PackageOpen, Truck } from "lucide-react";
@@ -10,8 +11,6 @@ import type { WarehouseTransfer } from "../../gen/warehouse/inventory/v1/warehou
 import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { useArriveWarehouseTransfer, useProcessWarehouseTransfer, useShipWarehouseTransfer } from "./queries";
 import { directionFor } from "./summary";
-import type { PendingList } from "../../features/pending/registry";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { ShipmentChannelSelect } from "../../components/pickers/ShipmentChannelSelect";
@@ -62,17 +61,17 @@ export interface WarehouseTransferActionsProps {
   teamId: bigint;
   /** `row` — small labelled buttons for a list row. `buttons` — a desktop header. `menu` — one ⋯, for a phone header. */
   variant: "row" | "buttons" | "menu";
-  /** The screen's pending list — it must carry `labelPhoto`. */
-  pending: PendingList<string>;
 }
 
-export function WarehouseTransferActions({ transfer, teamId, variant, pending }: WarehouseTransferActionsProps) {
+export function WarehouseTransferActions({ transfer, teamId, variant }: WarehouseTransferActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<"" | "process" | "ship" | "arrive">("");
+  // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
 
   const actions = warehouseTransferActions(transfer.status, directionFor(transfer, teamId));
-  if (actions.length === 0) return null;
+  if (actions.length === 0 || !writable) return null;
 
   const id = transfer.id.toString();
 
@@ -137,7 +136,7 @@ export function WarehouseTransferActions({ transfer, teamId, variant, pending }:
 
       {dialog === "process" && <ProcessDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />}
       {dialog === "ship" && (
-        <ShipDialog transfer={transfer} teamId={teamId} pending={pending} onClose={() => setDialog("")} />
+        <ShipDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />
       )}
       {dialog === "arrive" && <ArriveDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />}
     </>
@@ -187,12 +186,10 @@ function ProcessDialog({
 function ShipDialog({
   transfer,
   teamId,
-  pending,
   onClose,
 }: {
   transfer: WarehouseTransfer;
   teamId: bigint;
-  pending: PendingList<string>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -248,12 +245,7 @@ function ShipDialog({
           />
         </Field.Root>
         <Field.Root>
-          <Field.Label>
-            <HStack gap="1.5">
-              {t("warehouseTransfer.ship.labelPhoto")}
-              <NotImplemented list={pending} id="labelPhoto" />
-            </HStack>
-          </Field.Label>
+          <Field.Label>{t("warehouseTransfer.ship.labelPhoto")}</Field.Label>
           <Box w="full" data-testid="transfer-ship-label">
             <ReceiptUpload teamId={teamId} value={labelPhoto} onChange={setLabelPhoto} />
           </Box>

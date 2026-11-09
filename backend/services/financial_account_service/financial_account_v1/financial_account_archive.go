@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	financial_accountv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 )
 
@@ -30,9 +31,9 @@ func (s *Service) FinancialAccountArchive(
 			return err
 		}
 
-		if account.Balance != 0 {
+		if !san_money.IsZero(account.Balance) {
 			return connect.NewError(connect.CodeFailedPrecondition,
-				fmt.Errorf("%s still holds %s — move it out first; an account is archived only at zero", account.Name, formatRupiah(account.Balance)))
+				fmt.Errorf("%s still holds %s — move it out first; an account is archived only at zero", account.Name, san_money.Text(account.Balance)))
 		}
 
 		err = tx.Where("account_id = ?", account.ID).Delete(&m.OperationalAccount{}).Error
@@ -55,28 +56,4 @@ func (s *Service) FinancialAccountArchive(
 	}
 
 	return connect.NewResponse(&financial_accountv1.FinancialAccountArchiveResponse{Account: account}), nil
-}
-
-// formatRupiah is a figure in a refusal a person reads — "Rp 600.000".
-func formatRupiah(v float64) string {
-	n := int64(rupiah(v))
-	sign := ""
-
-	if n < 0 {
-		sign = "-"
-		n = -n
-	}
-
-	digits := fmt.Sprintf("%d", n)
-	out := ""
-
-	for i, d := range digits {
-		if i > 0 && (len(digits)-i)%3 == 0 {
-			out += "."
-		}
-
-		out += string(d)
-	}
-
-	return "Rp " + sign + out
 }

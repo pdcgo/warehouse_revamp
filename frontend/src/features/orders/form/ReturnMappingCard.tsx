@@ -41,7 +41,7 @@ import type { PreviewTarget } from "./ImagePreview";
 
 export interface CrossLine {
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   ownerTeamId: bigint;
   ownerName: string;
@@ -132,7 +132,7 @@ export function ReturnMappingCard({ teamId, lines, mapping, onMap, checking = fa
         <Stack gap="card">
           {lines.map((line) => {
             const mapped = mapping.get(line.productId.toString());
-            const cover = mockProductImage(line.productId, line.sku);
+            const cover = mockProductImage(line.productId, line.productCode);
 
             return (
               <Flex
@@ -148,13 +148,13 @@ export function ReturnMappingCard({ teamId, lines, mapping, onMap, checking = fa
                   <ProductListItem
                     product={{
                       id: line.productId,
-                      sku: line.sku,
+                      productCode: line.productCode,
                       name: line.name,
                       defaultImageThumbnailUrl: cover,
                     }}
                     teamName={line.ownerName}
                     onImageClick={() =>
-                      setPreview({ src: cover, title: line.name, caption: line.sku })
+                      setPreview({ src: cover, title: line.name, caption: line.productCode })
                     }
                     action={
                       !mapped && !checking ? (

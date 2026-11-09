@@ -98,6 +98,8 @@ when it applies one of these.
 | [an-interim-read-is-marked](#an-interim-read-is-marked) | a part that works and is true but reads one call per row, where one call for all should be, carries a pending mark of a fifth kind, `interim` — *pembacaan sementara* | every pending list — from Cetak Label, 2026-11-06 |
 | [a-day-without-a-time-is-shown-alone](#a-day-without-a-time-is-shown-alone) | a date that is a day with no clock — an expiry — is the day alone, `27 Nov`; beside a moment it is the same size; a limit coming up may say how long is left under it | every table — from the batch list, 2026-11-09 |
 | [a-team-of-a-known-type-shows-no-badge](#a-team-of-a-known-type-shows-no-badge) | where the screen already says what type a team is — a batch's owner, a restock's team — it is the small avatar and the name, `TeamItem size="xs"`; no type badge | the batch screens, Terima — 2026-11-09 |
+| [the-phone-menu-carries-no-count-for-now](#the-phone-menu-carries-no-count-for-now) | the phone shell shows no waiting count — not on a menu item, not on More — for Kewajiban or Found Stock; the counts stay the desktop sidebar's, for now | the phone shell |
+| [a-report-export-is-the-whole-view-as-a-file](#a-report-export-is-the-whole-view-as-a-file) | a report's Ekspor holds everything the report shows as filtered, every page, the screen's columns | the Supplier Report and the Financial Account Report, 2026-11-07 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1637,6 +1639,8 @@ flowchart LR
 | first applied | the order screens' row cells ([OrderRowCells.tsx](../../../frontend/src/features/orders/OrderRowCells.tsx)) |
 | ✅ built *(2026-10-29)* | `APP_TIME_ZONE` on every formatter and `formatUnixDateTimeShort` / `formatRfc3339DateTimeShort` in [lib/datetime.ts](../../../frontend/src/lib/datetime.ts). Short in the table cells of the order rows, the draft list, stock counts, restocks, both transfer lists, the stock movement ledger and the pick queue. Detail pages, timelines and hover titles keep the full form. Pinned by story `TheRowIsRealFieldsOnly` (order drafts). Legacy pages untouched |
 
+✅ Built 2026-11-07 — *a date filter's day* (the ⚠ row above, backlog #37): every range filter now cuts Jakarta days — `lib/jakartaDay.ts` `jakartaWindowOf` / `resolveRange` at WIB midnights, and the range calendar marks Jakarta's today. A `yyyy-mm-dd` ↔ unix bound in `lib/datetime.ts` (`dateInputToUnix`, `unixToDateInput`) reads the Jakarta day too, so a DatePicker's label no longer reads a day early in WITA / WIT. Test `src/lib/jakartaDay.test.ts` ([development_state/architecture](../../development_state/architecture/context.md)).
+
 ## a-picker-dialog-keeps-its-height
 
 > Owner, in chat (2026-10-23), on the order form's bundle picker: *"modal bundelnya heightnya fix kan seperti produk"* —
@@ -2243,3 +2247,46 @@ not restated here: Title Case for titles and actions; a detail view is a page, n
 confirm; three or more row actions fold into an overflow menu; a growing set is a search select; a date is
 `DatePicker` and a quantity `QuantityInput`; never a card inside a card; a screen built ahead of its backend marks
 its gaps, and only Storybook can hide the marks.
+
+---
+
+## the-phone-menu-carries-no-count-for-now
+
+> Owner, in chat *(2026-11-03)*: *"For now, no number at all"* — to *should the phone menu show the waiting numbers?*,
+> shown the desktop sidebar's counts and a mock of the phone menu and its More button carrying them.
+
+**The verdict.** The waiting counts — Kewajiban's payments awaiting confirmation
+([the-sidebar-is-in-sections](#the-sidebar-is-in-sections)) and Found Stock's requests waiting
+([found-stock-sits-after-stock-opname-with-its-count](../../business/inventory/opname_decision.md#found-stock-sits-after-stock-opname-with-its-count))
+— stay on the desktop sidebar. The phone shell shows none: not on an item in the More sheet, not on the More tab. *For
+now*: the owner may ask for them later, and the mock (counts on the items, their total on More) is the shape it was shown.
+
+```mermaid
+flowchart LR
+  D["desktop sidebar"] --> C["Found Stock 2 - Liability 1"]
+  P["phone - More sheet and tab"] --> N["no number"]
+```
+
+| | |
+| --- | --- |
+| desktop | unchanged — the counts on their items, a shut group carrying its children's |
+| phone | no count anywhere — the More sheet's items and the More tab stay bare |
+| later | the owner's call; the shown mock was counts on the items and their total on More |
+
+---
+
+## a-report-export-is-the-whole-view-as-a-file
+
+> In chat *(owner, 2026-11-07)* — *"A"*, as recommended, to: what does a report's Ekspor file hold? Asked for the two reports whose export content was open — the Supplier Report ([the-report-export-is-marked](suppliers_decision.md#the-report-export-is-marked): *"whether it carries the ranking with its figures, this page or the whole ranking, is open"*) and the Financial Account Report (its Ekspor placed and marked `dropped`, content never decided).
+
+**The verdict.** The rule of the order list ([one-export-is-the-list-as-a-file](warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)) holds for **every report**: the file holds **everything the report shows as the reader has it filtered** — the whole ranking or every period, **every page**, not the page on screen — with **the screen's own columns**, exact money (the screen rounds, the file does not), Jakarta days, `.xlsx`, a progress stream ending in a download link.
+
+| report | the file |
+| --- | --- |
+| Supplier Report | the whole ranking as narrowed, each row with its figures |
+| Financial Account Report — *Periode* | every period at the grain on screen, quiet ones included: the nine change types, *Perubahan bersih*, *Saldo akhir* |
+| Financial Account Report — *Rincian* | one sheet per breakdown (*Per Akun · Per Penyedia · Per Jenis*), every row of each |
+
+⚠ Not built for these two.
+
+✅ Built 2026-11-07 — both: the Supplier Report's Ekspor is `SupplierReportExport` (the whole ranking as narrowed, sheet *Peringkat*), the Financial Account Report's is `FinancialAccountReportExport` (Periode: every period at the grain, quiet ones included; Rincian: sheets *Per Akun · Per Penyedia · Per Jenis*); both pages' `pending.ts` deleted. See [supplier state](../../development_state/supplier/context.md), [financial_account state](../../development_state/financial_account/context.md).

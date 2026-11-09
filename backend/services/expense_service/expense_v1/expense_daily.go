@@ -64,9 +64,9 @@ func (s *Service) ExpenseDaily(
 	var rows []expenseDayRow
 
 	err = query.
-		// LIVE rows only — the same predicate `totals` applies, because the days have to add up to the
-		// footer beside them. A cost entered by mistake and voided never counts.
-		Where("voided_at IS NULL").
+		// Every row, as `totals` sums them, so the days add up to the footer beside them — an adjustment counts on its
+		// expense's day, with its sign (an-adjustment-counts-on-the-day-it-fixes).
+		//
 		// `occurred_at` is a DATE column, so there is no cast and no timezone to get wrong here — unlike
 		// the revenue side, which buckets a TIMESTAMPTZ and has to name a zone to do it.
 		Select("occurred_at AS day, kind, COUNT(*) AS entries, COALESCE(SUM(amount), 0) AS total").
@@ -98,7 +98,7 @@ type expenseDayRow struct {
 	Day     time.Time
 	Kind    int32
 	Entries int64
-	Total   int64
+	Total   float64
 }
 
 // foldDays turns (day, kind) pairs into one item per day, preserving the query's ascending order.
@@ -117,7 +117,7 @@ func foldDays(rows []expenseDayRow) []*expensev1.ExpenseDayItem {
 		if current == nil || current.GetDate() != date {
 			current = &expensev1.ExpenseDayItem{
 				Date:   date,
-				ByKind: map[int32]int64{},
+				ByKind: map[int32]float64{},
 			}
 			days = append(days, current)
 		}

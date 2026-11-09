@@ -25,7 +25,10 @@ type Service struct {
 	names WarehouseNamer
 }
 
-var _ warehousev1connect.WarehouseFeeServiceHandler = (*Service)(nil)
+var (
+	_ warehousev1connect.WarehouseFeeServiceHandler  = (*Service)(nil)
+	_ warehousev1connect.WarehouseInfoServiceHandler = (*Service)(nil)
+)
 
 func NewService(db *gorm.DB, names WarehouseNamer) *Service {
 	return &Service{db: db, names: names}

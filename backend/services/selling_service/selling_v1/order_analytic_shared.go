@@ -21,8 +21,9 @@ import (
 // metricDateLayout is a Jakarta day as the analytic contract writes it (a-day-is-a-jakarta-date-string).
 const metricDateLayout = "2006-01-02"
 
-// orderMetric is one of the five order metrics: its row in the report, its message and the option read off it — so the
-// id, the filters, the groups and the sortable fields are stated once, in the proto.
+// orderMetric is one of the six metrics this service serves — the five order metrics and Warehouse Fee: its row in the
+// report, its message and the option read off it — so the id, the filters, the groups and the sortable fields are stated
+// once, in the proto.
 type orderMetric struct {
 	// The report's `metric` value.
 	report string
@@ -32,14 +33,23 @@ type orderMetric struct {
 	prototype proto.Message
 	desc      protoreflect.MessageDescriptor
 	option    *analytic_basev1.MetricOption
+	// Whether a WAREHOUSE reads this metric's money too. False for the five order metrics — their money is the seller's
+	// (a-warehouse-sees-no-seller-money); true for Warehouse Fee, whose amount is the warehouse's own income
+	// (a-warehouse-sees-its-own-fee-amount).
+	warehouseMoney bool
 }
 
-// The three numbers every order metric carries, by FIELD NUMBER — the same on all five messages, so a field is mapped
-// to its report column without a table per metric.
+// showsMoney is whether `reader` is shown this metric's money fields.
+func (m *orderMetric) showsMoney(reader metricReader) bool {
+	return reader.money || m.warehouseMoney
+}
+
+// The numbers every metric here carries, by FIELD NUMBER — the same on all six messages, so a field is mapped to its
+// report column without a table per metric. Warehouse Fee has the first two only: its transactions and its amount.
 const (
 	fieldCount   = 1 // *_count            → order_count
 	fieldTotal   = 2 // *_total            → total      (money)
-	fieldMpTotal = 3 // *_mp_total, mp_total → mp_total (money)
+	fieldMpTotal = 3 // *_mp_total, mp_total → mp_total (money, a double like total since selling 00041)
 )
 
 var reportColumn = map[protoreflect.FieldNumber]string{
@@ -54,13 +64,23 @@ func newOrderMetric(report, oneof string, message proto.Message) *orderMetric {
 	return &orderMetric{report: report, oneof: oneof, prototype: message, desc: desc, option: san_metric.OptionOf(desc)}
 }
 
-// orderMetrics is the five, in the doc's order.
+// orderMetrics is the five order metrics, in the doc's order, then Warehouse Fee.
 var orderMetrics = []*orderMetric{
 	newOrderMetric(reportCreated, "created", &sellingv1.OrderCreatedMetric{}),
 	newOrderMetric(reportCancelled, "cancel", &sellingv1.OrderCancelMetric{}),
 	newOrderMetric(reportReturnCreated, "return_created", &sellingv1.OrderReturnCreatedMetric{}),
 	newOrderMetric(reportReturnArrived, "return_arrived", &sellingv1.OrderReturnArrivedMetric{}),
 	newOrderMetric(reportLostCreated, "lost_created", &sellingv1.OrderLostCreatedMetric{}),
+	warehouseFeeMetric(),
+}
+
+// warehouseFeeMetric is Warehouse Fee (the-warehouse-fee-prototype-is-accepted): its own rows in the report, which every
+// reader reads the money of (a-warehouse-sees-its-own-fee-amount).
+func warehouseFeeMetric() *orderMetric {
+	metric := newOrderMetric(reportWarehouseFee, "warehouse_fee", &sellingv1.WarehouseFeeMetric{})
+	metric.warehouseMoney = true
+
+	return metric
 }
 
 func orderMetricByID(metricID string) (*orderMetric, error) {
@@ -162,6 +182,12 @@ func parseMetricFilters(items []*analytic_basev1.FilterItem, metrics []*orderMet
 
 			if start.After(end) {
 				return filters, connect.NewError(connect.CodeInvalidArgument, errMetricRangeBackwards)
+			}
+
+			// A YEAR AT MOST, both days counted (a-metric-reads-at-most-a-year) — a ranking reads every daily row in its window.
+			err = san_metric.CheckRange(start, end)
+			if err != nil {
+				return filters, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 
 			filters.start, filters.end = start, end
@@ -289,22 +315,32 @@ func periodStart(group analytic_basev1.GroupType, day time.Time) time.Time {
 const reportSums = "COALESCE(SUM(r.order_count), 0) AS order_count, COALESCE(SUM(r.total), 0) AS total, " +
 	"COALESCE(SUM(r.mp_total), 0) AS mp_total"
 
-// isMoney is whether a field is one a warehouse never sees.
+// isMoney is whether a field is a money field — one a warehouse sees only where the metric says so (showsMoney).
 func isMoney(field protoreflect.FieldDescriptor) bool {
 	return field.Number() == fieldTotal || field.Number() == fieldMpTotal
 }
 
-// metricMessage is one key's figures as `metric`'s own message. A warehouse's money fields stay UNSET, never 0
-// (a-warehouse-sees-no-seller-money) — that is what the `optional` is for.
+// metricMessage is one key's figures as `metric`'s own message. A warehouse's money fields on an order metric stay
+// UNSET, never 0 (a-warehouse-sees-no-seller-money) — that is what the `optional` is for. A field number the metric does
+// not declare (Warehouse Fee has no mp total) is skipped.
 func metricMessage(metric *orderMetric, sums selling_service_models.OrderMetricColumns, money bool) protoreflect.Message {
 	msg := metric.prototype.ProtoReflect().New()
 	fields := metric.desc.Fields()
 
 	msg.Set(fields.ByNumber(fieldCount), protoreflect.ValueOfInt64(sums.OrderCount))
 
-	if money {
-		msg.Set(fields.ByNumber(fieldTotal), protoreflect.ValueOfFloat64(sums.Total))
-		msg.Set(fields.ByNumber(fieldMpTotal), protoreflect.ValueOfInt64(sums.MpTotal))
+	if !money {
+		return msg
+	}
+
+	total := fields.ByNumber(fieldTotal)
+	if total != nil {
+		msg.Set(total, protoreflect.ValueOfFloat64(sums.Total))
+	}
+
+	mpTotal := fields.ByNumber(fieldMpTotal)
+	if mpTotal != nil {
+		msg.Set(mpTotal, protoreflect.ValueOfFloat64(sums.MpTotal))
 	}
 
 	return msg

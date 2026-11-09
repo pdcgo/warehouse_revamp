@@ -11,7 +11,8 @@ import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 // count ask this question, and answering it twice is how they start disagreeing about what "ready" means.
 // The detail page's Promote reasons are the fuller list — it holds the lines and the warehouse's fee — and
 // every rule here is one of them, in the same order. ⚠ A rule Promote gains that a summary row can read
-// belongs here too, or the list calls a draft ready that Promote refuses.
+// belongs here too, or the list calls a draft ready that Promote refuses — AND in the server's `readyDrafts`
+// (selling_v1/order_draft_list.go), the SQL twin that counts the summary's set-wide "ready" card (#16).
 export interface DraftGap {
   // An i18n key naming what is missing.
   key: string;
@@ -41,6 +42,18 @@ export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftG
     gaps.push({ key: "orderDrafts.missingCustomer" });
   }
 
+  // THE ADDRESS AND THE COURIER (the-drafts-list-counts-no-mapping: Ready = shop, warehouse, customer, address, courier
+  // and every other gap filled). The address counts as filled by its street line — where the app puts the whole text
+  // when it cannot split the region tiers (a-draft-carries-the-scraped-address) — and the courier by its channel id,
+  // which Create requires (no-order-without-a-courier).
+  if (!draft.address?.addressLine) {
+    gaps.push({ key: "orderDrafts.gapAddress" });
+  }
+
+  if (draft.shipmentChannelId === 0n) {
+    gaps.push({ key: "orderDrafts.gapCourier" });
+  }
+
   if (draft.itemCount === 0) {
     gaps.push({ key: "orderDrafts.missingLines" });
   }
@@ -53,7 +66,7 @@ export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftG
   // platform-total-is-required-at-finalize — the STORED figure, because the list reads only what a draft keeps. The page
   // may still follow the rows' prices and send that, so this can call a draft unfinished that the page could promote —
   // the safe side to be wrong on.
-  if (draft.platformTotal <= 0n) {
+  if (draft.platformTotal <= 0) {
     gaps.push({ key: "orderDrafts.gapSellPrice" });
   }
 
@@ -63,11 +76,8 @@ export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftG
     gaps.push({ key: "orderDrafts.gapRef" });
   }
 
-  // The one gap specific to drafts: an unmapped line is precisely what makes this a draft rather than an order
-  // somebody has not got round to submitting. Only asked of a draft that has lines — "no lines" already says it.
-  if (draft.itemCount > 0 && draft.unmappedItemCount > 0) {
-    gaps.push({ key: "orderDrafts.unmappedLines" });
-  }
+  // NO MAPPING GAP (the-drafts-list-counts-no-mapping): a draft stores no mapping (a-draft-stores-no-mapping), so its
+  // lines are mapped in the order form at Create, and no line keeps a draft from Ready.
 
   // STOCK. Promote IS OrderCreate, so it DRAWS the goods
   // out of the warehouse and refuses the draft when a line is short. Without this gap the shortfall

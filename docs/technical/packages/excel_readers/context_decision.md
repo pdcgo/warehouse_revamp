@@ -20,6 +20,9 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [order-is-fund](#order-is-fund) | TikTok `Order` → `fund`, including the 53 sampled orders that settle ZERO |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
 | [the-built-tiktok-item-is-the-contract](#the-built-tiktok-item-is-the-contract) | the TikTok items as built ARE the TikTok contract — the doc's Shopee-shaped struct is superseded, and every TikTok key hashes their fields |
+| [only-shopee-and-tiktok-for-now](#only-shopee-and-tiktok-for-now) | two readers, Shopee and TikTok, and no third for now; a Tokopedia order inside a TikTok file is that TikTok shop's row |
+| [the-package-keeps-its-name-and-reads-settlements](#the-package-keeps-its-name-and-reads-settlements) | `san_excel_readers` keeps its name and reads settlement files only; order exports live in selling_service |
+| [wderror-is-refused-like-any-unmapped-type](#wderror-is-refused-like-any-unmapped-type) | `wderror` is refused like any unmapped type, and `Order Source = "x"` decides nothing — so whoever typed them, nothing depends on it |
 
 ---
 
@@ -588,3 +591,70 @@ flowchart LR
 
 - **Whether keys survive the 2026-09 layout** — an adjustment's `Type` may follow its respelled Reports label, and no
   period has been downloaded in both layouts to check: [the reader's questions](./context_clarify.md#question).
+
+## only-shopee-and-tiktok-for-now
+
+> Owner, in chat (2026-10-31): *"for now we just supported shopee and tiktok"* — to [Q2](./context_clarify.md#question),
+> *is Tokopedia a third reader, or a column value?*
+
+**The verdict.** For now the importer reads **two** platforms — Shopee and TikTok — and no third. A Tokopedia order that
+arrives inside a TikTok workbook (`Order Source = Tokopedia`) is a row of that **TikTok** shop's file, like any other. A
+shop registered under any other marketplace — Tokopedia included — has no settlement import.
+
+```mermaid
+flowchart LR
+  T["a TikTok workbook - TikTok Shop and Tokopedia orders"] --> S["a TikTok shop - every row imported"]
+  K["a shop registered as Tokopedia"] -.->|"refused - no reader for now"| X["no import"]
+```
+
+| | |
+| --- | --- |
+| readers | `san_excel_readers`' Shopee and TikTok — unchanged |
+| a Tokopedia row in a TikTok file | imported with the file, into the TikTok shop |
+| the shop check | unchanged — a file goes only into a shop of its own platform ([import_run.go](../../../../backend/services/settlement_importer_service/settlement_importer_v1/import_run.go)) |
+| `MARKETPLACE_TOKOPEDIA` | stays in the enum; a shop may still be registered so, it only has no import |
+| ✅ built | nothing to build — this is what runs today |
+| when it comes back | a shop that settles outside Shopee and TikTok — then a reader for that platform's own export |
+
+## the-package-keeps-its-name-and-reads-settlements
+
+> Owner, in chat (2026-11-02): *"yes, leave it"* — to [Q5](./context_clarify.md#question), *does this package read only
+> settlement reports — rename it, or scope by path?* Against my earlier rename, as I recommended the second time.
+
+**The verdict.** `san_excel_readers` keeps its name and reads **settlement files only** — Shopee's and TikTok's
+([only-shopee-and-tiktok-for-now](#only-shopee-and-tiktok-for-now)). A marketplace's ORDER export is read elsewhere, by
+the order service's own readers. The name is broader than the contents; saying what it reads is enough.
+
+```
+backend/pkgs/san_excel_readers/                       settlement files — Shopee, TikTok
+backend/services/selling_service/order_import_readers/   order exports
+```
+
+| | |
+| --- | --- |
+| the name | unchanged — no import moves |
+| what it reads | settlement files; a new settlement platform's reader goes here |
+| what it does not | an order export, or any other report — those live with the service that uses them |
+| ✅ built | nothing changes |
+
+## wderror-is-refused-like-any-unmapped-type
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q4](./context_clarify.md#question), *are `wderror`
+> and `x` real platform values, or hand-edited fixtures?*
+
+**The verdict.** It does not matter, so it is not asked. `wderror` is a `Type` no table maps, and an unmapped type is
+an error ([an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms)) — refused
+the same whether a platform printed it or a person typed it. `Order Source = "x"` is read verbatim and decides
+nothing: a TikTok file's row is that TikTok shop's row, whatever its source
+([only-shopee-and-tiktok-for-now](#only-shopee-and-tiktok-for-now)).
+
+```
+salah_tarik.xlsx   Type = "wderror"       → unmapped → an error, nothing booked
+                   Order Source = "x"     → carried as read, routes nothing
+```
+
+| | |
+| --- | --- |
+| `wderror` | stays on the test's parked list, as *"almost certainly a hand-edited fixture"* |
+| `x` | `Source`, verbatim |
+| ✅ built | nothing changes |

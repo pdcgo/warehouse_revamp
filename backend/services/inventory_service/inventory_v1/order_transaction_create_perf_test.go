@@ -20,7 +20,7 @@ func TestPerf_OrderTransactionCreate(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20))
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
 	racks := []uint64{newRack(t, svc, otWarehouse, "perf-a"), newRack(t, svc, otWarehouse, "perf-b"), newRack(t, svc, otWarehouse, "perf-c")}
 	perfStock(t, db, otWarehouse, 20, 10, 100, racks)
 

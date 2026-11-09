@@ -1,5 +1,9 @@
 # MetricSearch — performance audit
 
+> ✅ **RESOLVED 2026-11-05** — the running sum ([MetricData.md](./MetricData.md)) fixed both findings: shops by position
+> 143 → **13.8 ms** (page 200: 144 → 16.6 ms), people 142 → **10 ms**, 250 daily periods 1 487 → **34 ms**. The verdict
+> below is the 2026-10-30 one, kept as the record.
+
 **Verdict:** 🔴 heavy — ranking the shops or the people of a team reads and sorts its whole history (137 ms), and
 ranking DAILY periods — new with the pattern — pays [MetricData finding 1](./MetricData.md#1-a-periods-position-is-recomputed-over-the-whole-history-once-per-period-)
 for every period of the window (1 550 ms at 250 days). The id ranking is HALF what it replaced
@@ -91,7 +95,7 @@ None — see [MetricData.md](./MetricData.md#proposed-migration).
 
 ## Open questions
 
-- [ ] The running sum — one question for both RPCs, asked in [MetricData.md](./MetricData.md#open-questions).
+- [x] The running sum — ✅ **built 2026-11-05**, one change for both RPCs ([MetricData.md](./MetricData.md#open-questions)).
 
 ---
 
@@ -100,3 +104,5 @@ None — see [MetricData.md](./MetricData.md#proposed-migration).
 | Date | Median | Queries | Change |
 | --- | --- | --- | --- |
 | 2026-10-30 | 138 ms @ shops, page 20 · 142 ms @ page 200 · 1 550 ms @ 250 days | 1 | first audit |
+| 2026-11-05 (before) | 143 ms @ shops, page 20 · 144 ms @ page 200 · 142 ms @ people · 1 487 ms @ 250 days | 1 | re-measured on today's tree |
+| 2026-11-05 (after) | **13.8 ms** @ shops, page 20 (EXPLAIN 15.7 ms) · 16.6 ms @ page 200 · **10 ms** @ people · **34 ms** @ 250 days (EXPLAIN 37 ms) | 1 | ✅ the running sum — not heavy |

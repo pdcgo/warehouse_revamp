@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
+import { closeShopForStory } from "../../../.storybook/shopStub";
+import { METRICS, catalogueMetrics, metricById, tableGroups, TABLE_GROUPS } from "../../features/analytic/catalogue";
 import { AnalyticPage } from "./index";
 
 // The Analytic composer (docs/business/analytic/rpc_provide.md). The five ORDER metrics and the two SETTLEMENT metrics
@@ -30,12 +32,15 @@ const CREATED = "metrics/orders/created";
 
 const ByShop = at(`?g=shop&m=${CREATED},metrics/settlement&s=${CREATED}:created_count:desc`);
 const OrdersAndAdsByShop = at(`?g=shop&m=${CREATED},metrics/ads&s=${CREATED}:created_count:desc`);
+const OrdersAndLostBySeller = at(`?g=team&m=${CREATED},metrics/inventory/lost&s=${CREATED}:created_count:desc`);
 const OrdersByDayForSatria = at(`?g=daily&m=${CREATED}&shop=13&r=2026-10-01..2026-10-07`);
 const OrdersByShopAllRows = at(`?g=shop&m=${CREATED}&n=50`);
 const OrdersBySeller = at(`?g=team&m=${CREATED}`);
 const StockLostByDay = at("?g=daily&m=metrics/inventory/lost&r=2026-10-01..2026-10-07");
 const ByShopAsGraph = at(`?g=shop&m=${CREATED},metrics/settlement&s=${CREATED}:created_count:desc&v=graph`);
 const Nothing = at("?g=shop");
+const OrdersAndSettlementByDay = at(`?g=daily&m=${CREATED},metrics/settlement&r=2026-10-01..2026-10-07`);
+const SettlementByDay = at("?g=daily&m=metrics/settlement&r=2026-10-01..2026-10-07");
 
 const meta = {
   title: "Pages/Analytic/Composer",
@@ -157,6 +162,46 @@ export const AddMetricDrillsIntoACategory: Story = {
   },
 };
 
+// THE LIVE PICKER — no prototype is drawn now (PROTOTYPE_METRICS is empty since Finance and Lost stock went live,
+// 2026-11-05), so the live catalogue is the whole picker: the owner's four categories and Finance last, Inventory's leaf
+// the served Lost stock, Finance's two metrics, and the financial-account groups offered.
+export const TheLivePickerShowsNoPrototype: Story = {
+  render: () => <ByShop />,
+  play: async ({ canvasElement }) => {
+    await expect(catalogueMetrics()).toBe(METRICS);
+    await expect(tableGroups()).toBe(TABLE_GROUPS);
+
+    const canvas = await loaded(canvasElement);
+    const menu = await openMetricMenu(canvas, "inventory");
+
+    for (const c of ["order", "settlement", "inventory", "expense", "finance"]) {
+      await expect(menu.getByTestId(`analytic-category-${c}`)).toBeVisible();
+    }
+    await expect(menu.getByTestId("analytic-metric-metrics-inventory-lost")).toHaveTextContent("Lost stock");
+
+    // Expense holds Warehouse fee and the served Ads expense and Expenses (the-expense-prototype-is-accepted).
+    await userEvent.click(menu.getByTestId("analytic-category-expense"));
+    for (const [id, label] of [
+      ["warehouse_fee", "Warehouse fee"],
+      ["ads", "Ads expense"],
+      ["expenses", "Expenses"],
+    ] as const) {
+      await expect(menu.getByTestId(`analytic-metric-metrics-${id}`)).toHaveTextContent(label);
+      await expect(metricById(`metrics/${id}`)?.schema).toBeDefined();
+    }
+
+    await userEvent.click(menu.getByTestId("analytic-category-finance"));
+    await expect(menu.getByTestId("analytic-metric-metrics-financial_accounts")).toHaveTextContent("Account changes");
+    await expect(menu.getByTestId("analytic-metric-metrics-financial_accounts-types")).toHaveTextContent("Change types");
+
+    await userEvent.click(menu.getByTestId("analytic-metric-done"));
+    await userEvent.click(canvas.getByTestId("analytic-group"));
+    await waitFor(() => expect(canvas.getByTestId("analytic-group-option-shop")).toBeVisible());
+    await expect(canvas.getByTestId("analytic-group-option-account")).toBeVisible();
+    await expect(canvas.getByTestId("analytic-group-option-change_type")).toBeVisible();
+  },
+};
+
 // SEARCH FINDS A METRIC IN ANY CATEGORY — each match named by its path, greyed the same way when it cannot follow the group.
 export const AddMetricSearchesEveryCategory: Story = {
   render: () => <ByShop />,
@@ -168,13 +213,13 @@ export const AddMetricSearchesEveryCategory: Story = {
 
     const results = await menu.findByTestId("analytic-metric-search-results");
     const stockLost = within(results).getByTestId("analytic-metric-metrics-inventory-lost");
-    await expect(stockLost).toHaveTextContent("Inventory › Stock lost");
+    await expect(stockLost).toHaveTextContent("Inventory › Lost stock");
     await expect(stockLost).toHaveAttribute("data-disabled");
   },
 };
 
 // INVENTORY IS GREYED WHILE GROUPED BY SHOP (a-metric-that-cannot-group-is-greyed) — stock is lost in the warehouse and has
-// no shop, so Stock lost is shown, cannot be ticked, and says why.
+// no shop, so Lost stock is shown, cannot be ticked, and says why.
 export const InventoryGreyedByShop: Story = {
   render: () => <ByShop />,
   play: async ({ canvasElement }) => {
@@ -191,20 +236,36 @@ export const InventoryGreyedByShop: Story = {
 };
 
 // A GROUP CHANGE REMOVES THE COLUMNS THAT CANNOT FOLLOW (a-group-change-drops-the-columns-that-cannot-follow).
-// Ads expense has no seller group, so switching to Seller takes it off the table and a toast says why; Orders created
-// stays, and its one row is named by TeamByIds (the-team-group-is-the-seller).
-export const SwitchGroupToSeller: Story = {
+// Lost stock has no shop group (lost stock belongs to no shop), so switching to Shop takes it off the table and a toast
+// says why; Orders created stays, its rows the shops.
+export const SwitchGroupToShop: Story = {
+  render: () => <OrdersAndLostBySeller />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("analytic-chip-metrics-inventory-lost")).toBeVisible();
+
+    await pick(canvas, "analytic-group", "shop");
+
+    await waitFor(() => expect(canvas.queryByTestId("analytic-chip-metrics-inventory-lost")).toBeNull());
+    await expect(canvas.getByTestId("analytic-chip-metrics-orders-created")).toBeVisible();
+    const toast = await screen.findByText("Lost stock removed");
+    await waitFor(() => expect(toast).toBeVisible());
+    await waitFor(() => expect(canvas.getAllByTestId(/^analytic-row-/).length).toBeGreaterThan(0));
+  },
+};
+
+// ADS EXPENSE FOLLOWS A SWITCH TO SELLER — served with the Seller group (expense-has-ads-and-expenses), it stays on the
+// table beside Orders created, and the seller row is named by TeamByIds (the-team-group-is-the-seller).
+export const AdsFollowsASwitchToSeller: Story = {
   render: () => <OrdersAndAdsByShop />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await pick(canvas, "analytic-group", "team");
 
-    await waitFor(() => expect(canvas.queryByTestId("analytic-chip-metrics-ads")).toBeNull());
-    await expect(canvas.getByTestId("analytic-chip-metrics-orders-created")).toBeVisible();
-    const toast = await screen.findByText("Ads expense removed");
-    await waitFor(() => expect(toast).toBeVisible());
     await waitFor(() => expect(canvas.getByTestId("analytic-row-12")).toHaveTextContent("Toko Melati"));
+    await expect(canvas.getByTestId("analytic-chip-metrics-ads")).toBeVisible();
+    await expect(canvas.getByTestId("analytic-chip-metrics-orders-created")).toBeVisible();
   },
 };
 
@@ -251,6 +312,87 @@ export const AddingStockLostRemovesTheShopFilter: Story = {
     const toast = await screen.findByText("Shop filter removed");
     await waitFor(() => expect(toast).toBeVisible());
     await expect(canvas.getByTestId("analytic-chip-metrics-inventory-lost")).toBeVisible();
+  },
+};
+
+// A CLOSED SHOP STAYS A FILTER (report-filters-offer-closed-shops): Melati Store (22), closed, is offered after the
+// team's open shops, badged Closed — picked, it is the report's `shop=` and the field keeps the badge, so a closed
+// shop's history stays one pick away.
+const OrdersByShopProbed = routedPage(
+  [
+    {
+      path: "/analytic",
+      element: (
+        <>
+          <AnalyticPage />
+          <LocationProbe />
+        </>
+      ),
+    },
+  ],
+  `/analytic?g=shop&m=${CREATED}`,
+);
+
+export const TheShopFilterOffersAClosedShopLastBadged: Story = {
+  beforeEach: () => {
+    closeShopForStory(22n);
+  },
+  render: () => <OrdersByShopProbed />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const field = canvas.getByTestId("analytic-filter-shop");
+
+    await userEvent.click(within(field).getByTestId("shop-select"));
+    const option = await within(field).findByTestId("shop-select-option-22");
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(within(option).getByTestId("shop-select-closed-22")).toHaveTextContent("Closed");
+    const listed = within(option.closest('[role="listbox"]') as HTMLElement)
+      .getAllByRole("option")
+      .map((o) => o.getAttribute("data-testid"));
+    await expect(listed.length).toBeGreaterThan(1);
+    await expect(listed[listed.length - 1]).toBe("shop-select-option-22");
+
+    await userEvent.click(option);
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("shop=22"));
+    await expect(within(field).getByTestId("shop-select")).toHaveValue("Melati Store");
+    await expect(within(field).getByTestId("shop-select-value-closed")).toBeVisible();
+  },
+};
+
+/** Open the "created by" field and wait for its options — they are portalled, so read off `screen`. */
+async function openPeople(canvas: ReturnType<typeof within>) {
+  const field = await canvas.findByTestId("analytic-filter-user", {}, { timeout: 4000 });
+  await userEvent.click(within(field).getByRole("combobox"));
+  await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(0), { timeout: 4000 });
+}
+
+// a-who-filter-lists-the-people-on-its-rows: the "created by" field offers the people on the chosen metrics' own rows —
+// selling's order creators (Eko 65, Budi 62, Citra 63) and settlement's people (Ani 61, Budi 62), UNIONED: Budi once.
+// Never the system-wide user search, which only Root may call — the field was dead for a seller before.
+export const CreatedByOffersThePeopleOnTheRows: Story = {
+  render: () => <OrdersAndSettlementByDay />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openPeople(canvas);
+
+    for (const id of [65, 62, 63, 61]) {
+      await waitFor(() => expect(screen.getAllByTestId(`person-filter-option-${id}`)).toHaveLength(1));
+    }
+    await expect(screen.getAllByRole("option")).toHaveLength(4);
+  },
+};
+
+// A settlement metric alone offers settlement's people only: Eko typed orders in, but no settlement row counts for him.
+export const CreatedByForSettlementIsSettlementsPeople: Story = {
+  render: () => <SettlementByDay />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openPeople(canvas);
+
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
+    await expect(screen.getByTestId("person-filter-option-61")).toBeVisible();
+    await expect(screen.getByTestId("person-filter-option-62")).toBeVisible();
+    await expect(screen.queryByTestId("person-filter-option-65")).toBeNull();
   },
 };
 
@@ -390,5 +532,29 @@ export const Empty: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByTestId("analytic-empty")).toHaveTextContent("Add a metric to start");
+  },
+};
+
+const MoreThanAYear = at(`?g=shop&m=${CREATED}&r=2024-01-01..2025-01-01`);
+
+// A YEAR AT MOST (a-metric-reads-at-most-a-year): a range of 367 days is never sent — the server would refuse it — and
+// the line under the filters says how long it is and what the most is, rather than showing a refusal.
+export const ARangeOverAYearIsNotSent: Story = {
+  render: () => <MoreThanAYear />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTestId("analytic-range-invalid")).toHaveTextContent("That range covers 367 days");
+    await expect(canvas.getByTestId("analytic-range-invalid")).toHaveTextContent("at most 366");
+  },
+};
+
+// AS OF WHEN (a-money-metric-says-as-of-when): orders and settlement are two folds, so the table says the OLDER of their
+// two times — everything up to it is in every figure.
+export const SaysAsOfWhen: Story = {
+  render: () => <ByShop />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(await canvas.findByTestId("analytic-as-of")).toHaveTextContent("14:04 WIB");
   },
 };

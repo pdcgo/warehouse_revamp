@@ -3,8 +3,8 @@ package liability_v1
 import (
 	"context"
 	"errors"
-	"math"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
@@ -37,6 +37,11 @@ type PlacedOrder struct {
 	// redelivery hours later must still name the person who placed the order, not whoever happens to
 	// be around when it is retried.
 	ActorID uint64
+
+	// Whether that person placed it as Root or the Administrator from outside the selling team
+	// (an-override-is-stamped-in-every-service). Carried by the event for the same reason as ActorID — there is no
+	// caller here to ask — and stamped on both legs of every fee the order posts.
+	ActorIsOverride bool
 }
 
 // ChargeOrder posts an order's fees (#186): the WAREHOUSE FEE to the fulfilling warehouse, and a PRODUCT
@@ -68,8 +73,8 @@ func (s *Service) ChargeOrder(ctx context.Context, order PlacedOrder) error {
 // the-flat-rate-is-dropped-last, the switch-over day — so a rate edited between the sale and this delivery cannot
 // charge a number the order never saw.
 //
-// ⚠ ROUNDED HERE, ONCE. The fee arrives as a double (rupiah-is-floating-point) and a ledger entry is whole rupiah —
-// the same edge the product fee and the restock courier charge are rounded at.
+// ⚠ POSTED EXACT. The fee arrives as a double (rupiah-is-floating-point), often a fraction of a percentage, and the
+// ledger stores it as it is — never rounded (the-backend-never-rounds-money).
 //
 // No fee (an order placed before fees were frozen) and a fee of 0 both post nothing: a zero entry would consume this
 // pair's idempotency key for the order.
@@ -84,13 +89,15 @@ func (s *Service) chargeWarehouseFee(ctx context.Context, order PlacedOrder) err
 		return nil
 	}
 
-	fee := int64(math.Round(*order.WarehouseFee))
-	if fee <= 0 {
+	// Posted exactly as the order froze it — a double, often a fraction of a percentage fee (the-backend-never-rounds-
+	// money). A fee of nothing (0, or float dust) is no movement, so it is skipped here rather than refused.
+	fee := *order.WarehouseFee
+	if !san_money.Positive(fee) {
 		return nil
 	}
 
 	return s.postOrderFee(ctx, order.TeamID, order.WarehouseID, fee,
-		SourceTypeOrderFee, order.ActorID, order.OrderID)
+		SourceTypeOrderFee, order.ActorID, order.ActorIsOverride, order.OrderID)
 }
 
 // chargeProductFees bills each OWNING TEAM for its goods that this order sold.
@@ -110,9 +117,8 @@ func (s *Service) chargeWarehouseFee(ctx context.Context, order PlacedOrder) err
 // ONE FEE PER OWNING TEAM, not per line: two lines of the same team's goods are one debt, and the
 // idempotency key is (source_type, source_id, counterparty), so per-line postings would collide.
 //
-// ⚠ ROUNDED HERE, ONCE, on the SUM. The totals arrive as doubles (rupiah-is-floating-point) and a ledger entry is
-// whole rupiah — the same edge the restock courier charge is rounded at. Summing first and rounding once means a
-// team's fee is never a pile of per-line roundings.
+// ⚠ POSTED EXACT, on the SUM. The totals arrive as doubles (rupiah-is-floating-point) and the sum of the lines is
+// posted as it is, never rounded (the-backend-never-rounds-money) — one entry per owner, the exact Σ of its lines.
 func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) error {
 	totalByOwner := map[uint64]float64{}
 
@@ -139,7 +145,7 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 	sortUint64s(owners)
 
 	for _, owner := range owners {
-		fee := int64(math.Round(totalByOwner[owner]))
+		fee := totalByOwner[owner]
 
 		// ⚠ A TOTAL OF ZERO MEANS UNKNOWN, NOT FREE — goods whose take valued nothing (received with no
 		// recorded cost), or an order placed before its lines froze a total. Either way the owning team is
@@ -149,12 +155,12 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 		// than refuse a real sale over a bookkeeping gap. Nothing is posted, because a zero-amount
 		// entry would consume this pair's idempotency key for this order — so the real fee, if the
 		// total were ever backfilled, could never be posted afterwards.
-		if fee <= 0 {
+		if !san_money.Positive(fee) {
 			continue
 		}
 
 		err := s.postOrderFee(ctx, order.TeamID, owner, fee, SourceTypeProductFee, order.ActorID,
-			order.OrderID)
+			order.ActorIsOverride, order.OrderID)
 		if err != nil {
 			return err
 		}
@@ -167,9 +173,10 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 func (s *Service) postOrderFee(
 	ctx context.Context,
 	debtorID, creditorID uint64,
-	amount int64,
+	amount float64,
 	sourceType SourceType,
 	actorID uint64,
+	actorIsOverride bool,
 	orderID uint64,
 ) error {
 	_, err := s.PostEntry(ctx, nil, Posting{
@@ -179,6 +186,7 @@ func (s *Service) postOrderFee(
 		SourceType:     sourceType,
 		SourceID:       orderID,
 		ActorID:        actorID,
+		IsOverride:     actorIsOverride,
 	})
 	if errors.Is(err, ErrAlreadyPosted) {
 		return nil
@@ -199,8 +207,9 @@ func (s *Service) postOrderFee(
 // what an audit needs to see.
 // ⚠ `actorID` IS WHOEVER CANCELLED, not whoever placed. The reversal is a second act and often a
 // second person, and the ledger records who caused each movement rather than who caused the
-// original (every-entry-names-who-posted-it).
-func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uint64) error {
+// original (every-entry-names-who-posted-it). `actorIsOverride` is that same canceller's flag, for the same reason: the
+// reversal is stamped by the act that caused it, never by the placement it undoes (an-override-is-stamped-in-every-service).
+func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uint64, actorIsOverride bool) error {
 	var charged []liability_service_models.LiabilityLog
 
 	// The DEBTOR'S legs only. Both sides of a movement are stored, so reading every row for this
@@ -234,6 +243,7 @@ func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uin
 			SourceID:       entry.SourceID,
 			Reversal:       true,
 			ActorID:        actorID,
+			IsOverride:     actorIsOverride,
 		})
 		if err != nil && !errors.Is(err, ErrAlreadyPosted) {
 			return err

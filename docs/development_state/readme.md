@@ -57,5 +57,7 @@ pair drifts.
 > working" and "stopped" look identical here. That is the trade taken with
 > [a-report-fires-per-slice](../business/project/member_decision.md#a-report-fires-per-slice).
 
+**What is incomplete, ranked:** [backlog.md](backlog.md) — re-ranked after every slice ([the-backlog-is-reranked-after-every-slice](../development_lifecycle_decision.md#the-backlog-is-reranked-after-every-slice)).
+
 **The reports:** [heri.md](heri.md) · [toni.md](toni.md). Hendra has none yet — he is on legacy and
 [joins later](../business/project/member_decision.md#hendra-joins-later).

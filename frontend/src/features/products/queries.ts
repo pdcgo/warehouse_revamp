@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { categoryClient, inventoryClient, orderClient, productClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
+import {
+  WarehouseProductSearchDataType,
+  type WarehouseProductSearchItem,
+  type WarehouseProductSearchResponse,
+} from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { ProductListDataType, ProductRowSort, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
 import type { SortState } from "../../components/chrome/SortableHeader";
+import { teamsByIdsQuery } from "../teams/queries";
 import {
   activityFromByIds,
   batchesFromList,
@@ -24,7 +31,6 @@ import type { OwnerStockRow, ProductActivityRow } from "./adapt";
 
 interface ProductListArgs {
   teamId: bigint | undefined;
-  isWarehouse: boolean;
   q: string;
   page: number;
   pageSize: number;
@@ -46,19 +52,12 @@ export type ProductSortKey = "name";
 
 const SORT_COLUMN: Record<ProductSortKey, ProductRowSort> = { name: ProductRowSort.NAME };
 
-// The team's catalogue — or, for a WAREHOUSE, what it has been asked to hold.
+// The team's catalogue, with the stock and the sales behind each row.
 //
-// A warehouse owns no products (they belong to selling teams), so `ProductList` scoped to it
-// correctly returns nothing. What it should see is inventory's arrangement list, resolved to names
-// by product_service. Two calls on purpose: mirroring the catalogue into inventory would put a
-// product's name in two places, and the copy would go stale the first time anyone renamed it.
-//
-// `isWarehouse` is in the key even though it is derived from the team. It changes WHICH RPC answers,
-// so two cache entries that disagree about that must not collide — and a key that reads
-// `{ isWarehouse: true }` says why the entry exists without tracing it back through team type.
+// A WAREHOUSE never asks this: it owns no products, and its Products is what it holds — useWarehouseStock
+// (a-warehouses-products-is-what-it-holds).
 export function useProducts({
   teamId,
-  isWarehouse,
   q,
   page,
   pageSize,
@@ -70,7 +69,6 @@ export function useProducts({
     // `status` is in the key because the two tabs are two different answers: caching the archived
     // page under the active one would show a dead SKU where the live catalogue belongs.
     queryKey: key.products(teamId, {
-      isWarehouse,
       q,
       page,
       pageSize,
@@ -81,28 +79,6 @@ export function useProducts({
     ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
-      if (isWarehouse) {
-        const arrangement = await inventoryClient.warehouseProductList({
-          warehouseId: teamId!,
-          page: { page, limit: pageSize },
-        });
-
-        const totalItems = Number(arrangement.pageInfo?.totalItems ?? 0n);
-
-        // No ids means no second call — ProductByIds with an empty list is a request for nothing.
-        if (arrangement.ids.length === 0) {
-          return { products: [], totalItems };
-        }
-
-        const resolved = await productClient.productByIds({
-          teamId: teamId!,
-          filter: { ids: arrangement.ids },
-          dataRequest: productByIdsRowData(),
-        });
-
-        return { products: productsFromByIds(resolved), totalItems };
-      }
-
       const res = await productClient.productList({
         teamId: teamId!,
         filter: { q, status },
@@ -216,9 +192,10 @@ export function useProductStats(args: { teamId: bigint | undefined; warehouseId?
 // after its name.
 export type DiscoverSort = "newest" | "name" | "sku";
 
+// "sku" is the sort's KEY — its i18n label and the select's value — and keeps that name; it sorts by the product code.
 const DISCOVER_SORT: Record<Exclude<DiscoverSort, "newest">, ProductRowSort> = {
   name: ProductRowSort.NAME,
-  sku: ProductRowSort.SKU,
+  sku: ProductRowSort.PRODUCT_CODE,
 };
 
 export function useDiscoverProducts(args: {
@@ -601,15 +578,24 @@ export function useSaveProduct() {
   });
 }
 
-// ARCHIVE. The RPC is still called ProductDelete on the wire, but nothing is deleted: the row keeps
-// its id, its stock outlives it, and its past orders still name it — so every word the user reads
-// says Archive, and the Archived tab is where it goes.
+// ARCHIVE (a-used-product-is-archived-never-deleted) — any time, even with stock on a shelf: the row keeps its id, its
+// stock outlives it, and its past orders still name it. The Archived tab is where it goes.
 export function useArchiveProduct() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
-    mutationFn: (vars: Parameters<typeof productClient.productDelete>[0]) =>
-      productClient.productDelete(vars),
+    mutationFn: (vars: Parameters<typeof productClient.productArchive>[0]) => productClient.productArchive(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// DELETE — for good, and ONLY a product with no history: never stocked, ordered or restocked. The server refuses any
+// other with FailedPrecondition, and its reason is what the screen shows: archive it instead.
+export function useDeleteProduct() {
+  const invalidate = useInvalidateProducts();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof productClient.productDelete>[0]) => productClient.productDelete(vars),
     onSuccess: () => invalidate(),
   });
 }
@@ -637,24 +623,22 @@ export function useSetProductLock() {
   });
 }
 
-// RESTORE — the way back out of the Archived tab, and the one write on these screens that can fail
-// for a reason the user must act on: archiving FREES the SKU, so another product may hold it by now.
-// The server refuses and names the holder; `sku` is how the caller then restores under a free one.
-export function useRestoreProduct() {
+// UNARCHIVE — the way back out of the Archived tab. It cannot collide: an archived product KEEPS its code, which nothing
+// else can take while it is away (the-field-is-product-code-composed-on-write), so it comes back under the same one.
+export function useUnarchiveProduct() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
-    mutationFn: (vars: Parameters<typeof productClient.productRestore>[0]) =>
-      productClient.productRestore(vars),
+    mutationFn: (vars: Parameters<typeof productClient.productUnarchive>[0]) => productClient.productUnarchive(vars),
     onSuccess: () => invalidate(),
   });
 }
 
 // The product PICKER's search (ProductSelect).
 //
-// `scope` chooses the RPC — the team's own catalogue, or every team's (#106) — and is in the key for
-// the same reason `isWarehouse` is above: it decides which question was asked, and one answer must
-// not be served under the other.
+// `scope` chooses the RPC — the team's own catalogue, every team's (#106), or what a WAREHOUSE has held
+// (a-warehouse-picks-only-what-it-has-held) — and is in the key because it decides which question was asked, and one
+// answer must not be served under the other.
 //
 // A catalogue is too large to load whole, which is why this searches rather than listing. Through
 // the cache a transient failure retries instead of turning into "no products found", and backing up
@@ -662,16 +646,38 @@ export function useRestoreProduct() {
 export function useProductSearch(args: {
   teamId: bigint;
   q: string;
-  scope: "team" | "all";
+  scope: ProductSearchScope;
 }) {
   const { teamId, q, scope } = args;
+  const client = useQueryClient();
 
   return useQuery({
     queryKey: key.products(teamId, { search: q, scope }),
     ...referenceQuery,
     // Nothing typed is a browse of the first page (a-search-select-reopens-whole); one character waits for a second.
     enabled: (q === "" || q.length >= 2) && teamId > 0n,
-    queryFn: async () => {
+    queryFn: async (): Promise<SearchedProduct[]> => {
+      // A warehouse picks only what has had a batch in it — inventory's read, named by product_service on the server. A
+      // warehouse role may not call ProductDiscover, and a warehouse never browses every team's catalogue.
+      if (scope === "warehouse") {
+        const res = await inventoryClient.warehouseProductSearch({
+          warehouseId: teamId,
+          filter: { q },
+          dataRequest: [WarehouseProductSearchDataType.PRODUCT],
+          page: { page: 1, limit: 10 },
+        });
+        const found = productsFromWarehouseSearch(res);
+        const owners = await ownerNames(client, found.map((p) => p.teamId));
+
+        return found.map((p) => ({
+          id: p.id,
+          productCode: p.productCode,
+          name: p.name,
+          ownerName: owners[p.teamId.toString()] ?? "",
+          archived: p.archived,
+        }));
+      }
+
       const req = {
         teamId,
         filter: { q },
@@ -683,17 +689,58 @@ export function useProductSearch(args: {
           ? await productClient.productDiscover(req)
           : await productClient.productList(req);
 
-      return productsFromList(res.items, res.ids);
+      return productsFromList(res.items, res.ids).map((p) => ({ id: p.id, productCode: p.productCode, name: p.name }));
     },
   });
+}
+
+/** Which catalogue a picker searches: the team's own, every team's, or what this warehouse has held. */
+export type ProductSearchScope = "team" | "all" | "warehouse";
+
+/**
+ * A product a picker search found. `ownerName` — the selling team that owns it — and `archived` only in the warehouse
+ * scope: a warehouse is offered an archived product it holds, labelled (an-archived-product-held-here-can-be-picked).
+ */
+export interface SearchedProduct {
+  id: bigint;
+  productCode: string;
+  name: string;
+  ownerName?: string;
+  archived?: boolean;
+}
+
+// The PRODUCT slice of a warehouse search, in the server's order (by name, then code).
+function productsFromWarehouseSearch(res: WarehouseProductSearchResponse): WarehouseProductSearchItem[] {
+  let map: { [id: string]: WarehouseProductSearchItem } = {};
+  for (const item of res.items) {
+    if (item.d.case === "product") map = item.d.value.mapData;
+  }
+
+  return res.ids.map((id) => map[id.toString()]).filter((p): p is WarehouseProductSearchItem => p !== undefined);
+}
+
+// Owner team id → name, best-effort: a name is a label, so a failed lookup leaves the option with its code alone rather
+// than failing the search. Through teamsByIdsQuery, so it shares the team-name cache. The warehouse Stock screen names
+// its rows' owners with it too (features/inventory/queries.ts, useWarehouseStock).
+export async function ownerNames(client: QueryClient, teamIds: bigint[]): Promise<{ [id: string]: string }> {
+  if (!teamIds.some((id) => id > 0n)) return {};
+
+  try {
+    const teams = await client.fetchQuery(teamsByIdsQuery(teamIds));
+    const out: { [id: string]: string } = {};
+    for (const [id, team] of Object.entries(teams)) out[id] = team.name;
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 // Broad on purpose, for the same reason as expenses: a delete changes the page it was on and every
 // page after it, and the counts with them.
 //
 // It also clears `["inventory"]`, for the reason given above the writes: the warehouse stock screen
-// loads the product list INSIDE its inventory query, so the catalogue rows it renders would otherwise
-// survive a rename or a delete that every other screen had already noticed.
+// reads its products' names and codes INSIDE its inventory query, so the rows it renders would otherwise
+// survive a rename or an archive that every other screen had already noticed.
 export function useInvalidateProducts() {
   const client = useQueryClient();
 

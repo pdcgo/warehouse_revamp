@@ -7,13 +7,17 @@ What I read out of [meta_context.md](./meta_context.md). **That doc is yours —
 > pauses the fold by switching its subscription to pull. That reverses my own recommendation
 > (configuration) and the doc's *"Used when Developer need maintain the event processing"*
 > ([Contradiction](#contradiction)). What is left is what happens when the replay dies holding it.
+>
+> 🔄 **2026-10-31** — answered: a one-minute lease
+> ([a-dead-replays-lock-expires-after-a-minute](./meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute)).
+> **No question is open.** Decisions about this doc are now recorded in [meta_context_decision.md](./meta_context_decision.md).
 
 ## Critique
 
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | ✅ **Resolved by the build** — `value` stays text, and an unparseable or missing value is an **error** the webhook surfaces, never *unlocked*. | — |
-| **2** | ⛔ **The lock has no lease.** A row, unlike `pg_advisory_lock`, outlives the session that set it. The replay releases it on a context its caller cannot cancel — but a process that DIES between taking and releasing it (a deploy mid-replay) leaves it on for good. Every event is then refused and, after its retries — 5 attempts from a 10 s backoff, a few minutes — dead-lettered. With [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built), nothing notices but a stale report. | **Give it a lease** — [Q2](#question). |
+| **2** | ✅ **Decided 2026-10-31, built 2026-11-02** (`event_lock.go`) — [a-dead-replays-lock-expires-after-a-minute](./meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute). Was: ⛔ **The lock has no lease.** A row, unlike `pg_advisory_lock`, outlives the session that set it. The replay releases it on a context its caller cannot cancel — but a process that DIES between taking and releasing it (a deploy mid-replay) leaves it on for good. Every event is then refused and, after its retries — 5 attempts from a 10 s backoff, a few minutes — dead-lettered. With [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built), nothing notices but a stale report. | **Give it a lease** — [Q2](#question). |
 | **3** | ✅ **Resolved by the decision** — nobody writes the row but the replay, so no role policy is needed for it. | — |
 | **4** | ✅ **Resolved by the build** — the fold reads the lock inside its own transaction, under a share lock. | — |
 
@@ -23,13 +27,9 @@ What I read out of [meta_context.md](./meta_context.md). **That doc is yours —
    [only-the-replay-holds-the-lock](./context_decision.md#only-the-replay-holds-the-lock). Kept as a line so
    the numbers hold.
 
-2. 🆕 **What releases a lock the replay died holding?**
-   **→ I recommend a one-minute lease**: the replay stamps the lock when it takes it, and the fold treats a
-   lock older than a minute as released — and logs it loudly. A minute is far above the replay's window (a
-   delete and a seek call: seconds) and well inside the retry budget (a few minutes), so a crashed replay
-   costs each event one delayed retry instead of filling the dead-letter topic with good ones. No person and
-   no command is needed, which keeps [the decision](./context_decision.md#only-the-replay-holds-the-lock)
-   true.
+2. ✅ **Answered 2026-10-31 — a one-minute lease**, for the fold and for the next replay:
+   [a-dead-replays-lock-expires-after-a-minute](./meta_context_decision.md#a-dead-replays-lock-expires-after-a-minute).
+   ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 
 ## Awaiting
 

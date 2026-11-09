@@ -181,7 +181,7 @@ export function BatchesPage() {
     );
   };
 
-  const money = (b: StockBatch, v: bigint) => (b.costKnown ? formatRupiah(v) : t("batches.costUnknown"));
+  const money = (b: StockBatch, v: number) => (b.costKnown ? formatRupiah(v) : t("batches.costUnknown"));
 
   // READY — what is left of the batch; at 0 it says so (a depleted batch keeps its row: its history is still there).
   const ready = (b: StockBatch) => (
@@ -258,7 +258,7 @@ export function BatchesPage() {
                   {b.name}
                 </Text>
                 <Text as="span" fontSize="xs" color="fg.muted">
-                  <CopyText value={b.sku} fontSize="xs" testId={`batches-sku-${b.id}`} />
+                  <CopyText value={b.productCode} fontSize="xs" testId={`batches-sku-${b.id}`} />
                 </Text>
               </Stack>
               {team(b)}
@@ -320,7 +320,7 @@ export function BatchesPage() {
                     {b.name}
                   </Text>
                   <Text as="span" fontSize="xs" color="fg.muted">
-                    <CopyText value={b.sku} fontSize="xs" testId={`batches-sku-${b.id}`} />
+                    <CopyText value={b.productCode} fontSize="xs" testId={`batches-sku-${b.id}`} />
                   </Text>
                 </Table.Cell>
                 {/* The catalogue OWNER (#142) — a warehouse holds several teams' goods; shown the way a team is
@@ -383,7 +383,7 @@ export function BatchesPage() {
         />
         <SummaryCard
           label={t("batches.statReadyValue")}
-          value={<Span data-testid="batches-stat-value">{loading ? "—" : formatRupiah(res?.readyValueTotal ?? 0n)}</Span>}
+          value={<Span data-testid="batches-stat-value">{loading ? "—" : formatRupiah(res?.readyValueTotal ?? 0)}</Span>}
           note={t("batches.statReadyValueNote")}
           testId="batches-stat-ready-value"
         />

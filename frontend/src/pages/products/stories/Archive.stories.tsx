@@ -4,7 +4,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { PRODUCTS_META, loaded } from "./kit";
 
 // PRODUCTS — the archive (the-archive-is-a-page-of-its-own): its own page from the header's Arsip, Archive confirming
-// first, and Restore — at once with a free SKU, under a new one when it collides. The page's stories are grouped by the
+// first, Unarchive bringing a product back under the code it kept, and Delete — for good, and only for a product never
+// used. The page's stories are grouped by the
 // part of the screen they are about (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -19,7 +20,7 @@ type Story = StoryObj<typeof meta>;
 async function openArchived(canvas: ReturnType<typeof within>) {
   await userEvent.click(canvas.getByTestId("open-archived-products"));
   await canvas.findByTestId("products-archive-page");
-  await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-LAMA")).toBeVisible());
+  await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-LAMA")).toBeVisible());
 }
 
 /** THE ARCHIVE IS A PAGE OF ITS OWN (the-archive-is-a-page-of-its-own) — Arsip in the header opens it, with its own title,
@@ -37,16 +38,16 @@ export const TheArchiveIsAPageOfItsOwn: Story = {
     await expect(canvas.queryByTestId("product-lock-filter")).toBeNull();
     await expect(canvas.queryByTestId("open-create-product")).toBeNull();
 
-    await expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("Kemasan Lama");
-    await expect(canvas.queryByTestId("product-row-SKU-ANG-002")).toBeNull();
-    await expect(canvas.getByTestId("restore-SKU-ANG-LAMA")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-001-L")).toHaveTextContent("Kemasan Lama");
+    await expect(canvas.queryByTestId("product-row-SL-03-ANG-002")).toBeNull();
+    await expect(canvas.getByTestId("restore-SL-03-ANG-LAMA")).toBeVisible();
     // The lock only READS on an archived row — no button to open its editor.
-    await expect(canvas.getByTestId("lock-SKU-ANG-LAMA")).toHaveTextContent("Open");
-    await expect(canvas.getByTestId("lock-SKU-ANG-LAMA").tagName).not.toBe("BUTTON");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-LAMA")).toHaveTextContent("Open");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-LAMA").tagName).not.toBe("BUTTON");
 
     await userEvent.click(canvas.getByTestId("products-archive-back"));
     await waitFor(() => expect(canvas.getByTestId("products-page")).toBeInTheDocument());
-    await expect(canvas.getByTestId("product-row-SKU-ANG-002")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-002")).toBeVisible();
   },
 };
 
@@ -56,47 +57,54 @@ export const ArchiveConfirmsFirst: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("delete-SKU-ANG-002"));
+    await userEvent.click(canvas.getByTestId("archive-SL-03-ANG-002"));
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
-    await expect(dialog).toHaveTextContent("SKU-ANG-002");
+    await expect(dialog).toHaveTextContent("SL-03-ANG-002");
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-002")).toBeNull());
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-002")).toBeNull());
 
     await openArchived(canvas);
-    await expect(canvas.getByTestId("product-row-SKU-ANG-002")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-002")).toBeVisible();
   },
 };
 
-/** Restoring under a SKU a live product took meanwhile is refused, naming the holder — and the screen asks for a new
- * SKU and restores under that. */
-export const RestoreCollidesAndAsksForANewSku: Story = {
-  name: "Restore, new SKU",
+/** UNARCHIVE COMES BACK UNDER THE CODE IT KEPT (the-field-is-product-code-composed-on-write) — an archived product holds its
+ * code, so nothing can have taken it and there is nothing to resolve: one click, no dialog, and it is live again under
+ * the same code. */
+export const UnarchiveComesBackUnderTheCodeItKept: Story = {
+  name: "Unarchive, same code",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await openArchived(canvas);
 
-    await userEvent.click(canvas.getByTestId("restore-SKU-ANG-001"));
-    const dialog = await screen.findByTestId("restore-conflict-dialog");
+    await userEvent.click(canvas.getByTestId("restore-SL-03-ANG-001-L"));
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-001-L")).toBeNull());
+    await expect(screen.queryByRole("dialog")).toBeNull();
+    await expect(await screen.findByText(/"SL-03-ANG-001-L" unarchived/)).toBeVisible();
+  },
+};
+
+/** DELETE, for good (a-used-product-is-archived-never-deleted) — offered on the Archived view, confirmed first. The edition
+ * nobody ever stocked goes; one with a history is refused, and the toast says why: archive it instead. */
+export const DeleteRemovesOnlyANeverUsedProduct: Story = {
+  name: "Delete, never used only",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openArchived(canvas);
+
+    await userEvent.click(canvas.getByTestId("delete-SL-03-ANG-001-L"));
+    let dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
-    await expect(dialog).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await expect(await screen.findByText(/has a history/)).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-001-L")).toBeVisible();
 
-    await userEvent.type(within(dialog).getByTestId("restore-new-sku"), "SKU-ANG-001-L", { delay: 20 });
-    await userEvent.click(within(dialog).getByTestId("restore-with-new-sku"));
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-001")).toBeNull());
-    await expect(canvas.getByTestId("product-row-SKU-ANG-LAMA")).toBeVisible();
-  },
-};
-
-/** A free SKU restores at once — the product leaves the Archived tab. */
-export const RestoreWithAFreeSku: Story = {
-  name: "Restore, free SKU",
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await openArchived(canvas);
-
-    await userEvent.click(canvas.getByTestId("restore-SKU-ANG-LAMA"));
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-LAMA")).toBeNull());
-    await expect(screen.queryByTestId("restore-conflict-dialog")).toBeNull();
+    await userEvent.click(canvas.getByTestId("delete-SL-03-ANG-LAMA"));
+    dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("SL-03-ANG-LAMA");
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-LAMA")).toBeNull());
   },
 };

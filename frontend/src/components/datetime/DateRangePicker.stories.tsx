@@ -219,34 +219,45 @@ export const Interactive: Story = {
 };
 
 // `resolveRange` is what a caller turns the value into for an RPC, so its edges are pinned directly:
-// 0n is an OPEN end on either side, and a relative window spans whole local days.
+// 0n is an OPEN end on either side, and a relative window spans whole JAKARTA days (backlog #37) — every instant below
+// is written in WIB, so the story reads the same on a runner in any zone (lib/jakartaDay.test.ts runs the zones).
+const wib = (iso: string): Date => new Date(`${iso}+07:00`);
+const wibUnix = (iso: string): bigint => BigInt(Math.floor(wib(iso).getTime() / 1000));
+
 export const ResolveRangeRules: Story = {
   render: () => <p data-testid="resolve">See the assertions in this story's play function.</p>,
   play: async () => {
-    const now = new Date(2026, 7, 15, 13, 45); // 15 Aug 2026, local
+    const now = wib("2026-08-15T13:45:00"); // 15 Aug 2026, 13:45 WIB
 
-    // "Today" is N=1: the start of today through the end of today.
+    // "Today" is N=1: the start of today through the end of today, in WIB.
     const today = resolveRange({ kind: "relative", days: 1 }, now);
-    await expect(today.fromUnix).toBe(BigInt(Math.floor(new Date(2026, 7, 15, 0, 0, 0, 0).getTime() / 1000)));
+    await expect(today.fromUnix).toBe(wibUnix("2026-08-15T00:00:00"));
+    await expect(today.toUnix).toBe(wibUnix("2026-08-15T23:59:59"));
+
+    // 00:30 WIB is still the day before on a UTC clock — Jakarta's today has already turned.
+    await expect(resolveRange({ kind: "relative", days: 1 }, wib("2026-08-16T00:30:00")).fromUnix).toBe(
+      wibUnix("2026-08-16T00:00:00"),
+    );
 
     // A 7-day window starts 6 days back — inclusive of today, not 7 days before it.
     const week = resolveRange({ kind: "relative", days: 7 }, now);
-    await expect(week.fromUnix).toBe(BigInt(Math.floor(new Date(2026, 7, 9, 0, 0, 0, 0).getTime() / 1000)));
+    await expect(week.fromUnix).toBe(wibUnix("2026-08-09T00:00:00"));
 
     // MONTHS ARE THE CALENDAR'S (the-quick-ranges-are-days-then-months-then-years): a month back on 15 Aug starts on
     // 16 Jul — the day after the same date — and a year (twelve months) on 16 Aug 2025.
     const month = resolveRange({ kind: "relative", months: 1 }, now);
-    await expect(month.fromUnix).toBe(BigInt(Math.floor(new Date(2026, 6, 16, 0, 0, 0, 0).getTime() / 1000)));
+    await expect(month.fromUnix).toBe(wibUnix("2026-07-16T00:00:00"));
     await expect(month.toUnix).toBe(today.toUnix);
     const year = resolveRange({ kind: "relative", months: 12 }, now);
-    await expect(year.fromUnix).toBe(BigInt(Math.floor(new Date(2025, 7, 16, 0, 0, 0, 0).getTime() / 1000)));
+    await expect(year.fromUnix).toBe(wibUnix("2025-08-16T00:00:00"));
     // A month back from the 31st lands on the shorter month's last day: 31 Mar − 1 month is 28 Feb, so the window
     // starts on 1 Mar — never on 3 Mar, where an unclamped Feb 31 would overflow to.
-    const endOfMarch = resolveRange({ kind: "relative", months: 1 }, new Date(2026, 2, 31, 9, 0));
-    await expect(endOfMarch.fromUnix).toBe(BigInt(Math.floor(new Date(2026, 2, 1, 0, 0, 0, 0).getTime() / 1000)));
+    const endOfMarch = resolveRange({ kind: "relative", months: 1 }, wib("2026-03-31T09:00:00"));
+    await expect(endOfMarch.fromUnix).toBe(wibUnix("2026-03-01T00:00:00"));
 
     // An empty side is an OPEN end — 0n, not the epoch.
     const openEnded = resolveRange({ kind: "absolute", from: "2026-08-01", to: "" });
+    await expect(openEnded.fromUnix).toBe(wibUnix("2026-08-01T00:00:00"));
     await expect(openEnded.toUnix).toBe(0n);
 
     const all = resolveRange(ALL_DATES);

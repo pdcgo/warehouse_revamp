@@ -51,8 +51,8 @@ func TestBatchReceipt(t *testing.T) {
 		t.Errorf("kaos arrived/damaged/accepted = %d/%d/%d, want 100/0/100",
 			kaos.GetArrived(), kaos.GetDamaged(), kaos.GetAccepted())
 	}
-	if !kaos.GetCostKnown() || kaos.GetLineCost() != kaos.GetArrived()*kaos.GetUnitCost() {
-		t.Errorf("kaos cost: known=%v line=%d unit=%d", kaos.GetCostKnown(), kaos.GetLineCost(), kaos.GetUnitCost())
+	if !kaos.GetCostKnown() || kaos.GetLineCost() != float64(kaos.GetArrived())*kaos.GetUnitCost() {
+		t.Errorf("kaos cost: known=%v line=%v unit=%v", kaos.GetCostKnown(), kaos.GetLineCost(), kaos.GetUnitCost())
 	}
 	if len(kaos.GetRackIds()) == 0 || kaos.GetRackIds()[0] == 0 {
 		t.Errorf("kaos should sit on a real rack, got %v", kaos.GetRackIds())
@@ -74,7 +74,7 @@ func TestBatchReceipt(t *testing.T) {
 		t.Errorf("total accepted = %d, want 128", msg.GetTotalAccepted())
 	}
 	if msg.GetTotalValue() != kaos.GetLineCost()+topi.GetLineCost() {
-		t.Errorf("total value = %d, want %d", msg.GetTotalValue(), kaos.GetLineCost()+topi.GetLineCost())
+		t.Errorf("total value = %v, want %v", msg.GetTotalValue(), kaos.GetLineCost()+topi.GetLineCost())
 	}
 
 	// Accepted-by is captured at fulfil (the person who accepted the delivery). Created-by (who RAISED

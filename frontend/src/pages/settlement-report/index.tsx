@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, Flex, Group, Heading, Spacer, Stack, Text } from "@chakra-ui/react";
 
@@ -15,7 +16,7 @@ import {
   useSettlementSummary,
   type SettlementGroupBy,
 } from "../../features/settlement/analytics";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
@@ -25,6 +26,8 @@ import { GroupTable } from "./components/GroupTable";
 import { ReportSummary } from "./components/ReportSummary";
 import { SeriesTable } from "./components/SeriesTable";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 
 const PAGE_SIZE = 20;
 
@@ -80,8 +83,14 @@ export function SettlementReportPage() {
   };
 
   const teamId = current?.teamId;
-  const { from, to } = windowOf(range);
-  const valid = from !== "" && to !== "" && from <= to;
+  // THE WINDOW IS JAKARTA DAYS (backlog #36, the-system-runs-on-jakarta-time): the report buckets by `posted_on`, a
+  // Jakarta day, so a relative range counts back from Jakarta's today — never the viewer's midnight.
+  const { from, to } = jakartaWindowOf(range);
+  // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
+  // under the picker says why rather than showing a refusal.
+  const span = spanDays(from, to);
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   const summary = useSettlementSummary({ teamId, from, to, valid });
   const series = useSettlementSeries({
@@ -116,7 +125,7 @@ export function SettlementReportPage() {
       return shops.data?.find((shop) => shop.id === id)?.name ?? `#${id}`;
     }
 
-    return actors.data?.get(id.toString())?.name ?? `#${id}`;
+    return personName(actors.data?.get(id.toString()), `#${id}`);
   };
 
   if (!current) {
@@ -152,7 +161,9 @@ export function SettlementReportPage() {
 
       {!valid && (
         <Text fontSize="sm" color="fg.error" data-testid="report-range-invalid">
-          {t("settlementReport.rangeInvalid")}
+          {tooLong
+            ? t("settlementReport.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS })
+            : t("settlementReport.rangeInvalid")}
         </Text>
       )}
 
@@ -165,6 +176,13 @@ export function SettlementReportPage() {
       <RefreshOverlay busy={summary.isFetching && !summary.isPending}>
         <ReportSummary measure={summary.data} />
       </RefreshOverlay>
+
+      {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — a fold is a projection, never live. */}
+      {summary.data?.asOfUnix !== undefined && summary.data?.asOfUnix > 0n && (
+        <Text fontSize="xs" color="fg.muted" data-testid="report-as-of">
+          {t("common.asOf", { time: formatUnixDateTimeShort(summary.data?.asOfUnix) })}
+        </Text>
+      )}
 
       <Stack gap="field">
         <Heading size="sm">{t("settlementReport.overTime")}</Heading>

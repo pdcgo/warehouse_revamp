@@ -34,3 +34,5 @@ development_data/
 .san/
 
 app_development.exe
+# go build ./tools/san from the repo root
+/san.exe

@@ -32,8 +32,8 @@ func ledgerRestock(t *testing.T, svc *inventory_v1.Service, shipment int64) *inv
 		TeamId: ledgerSellingTeam, WarehouseId: ledgerWarehouse,
 		ShipmentCost: float64(shipment),
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: ledgerKaosHitam, Sku: "KH", Name: "Kaos Hitam", Count: 10, Total: 100000},
-			{ProductId: ledgerKaosPolos, Sku: "KP", Name: "Kaos Polos", Count: 5, Total: 60000},
+			{ProductId: ledgerKaosHitam, ProductCode: "KH", Name: "Kaos Hitam", Count: 10, Total: 100000},
+			{ProductId: ledgerKaosPolos, ProductCode: "KP", Name: "Kaos Polos", Count: 5, Total: 60000},
 		},
 	}))
 	if err != nil {

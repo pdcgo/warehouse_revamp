@@ -22,6 +22,9 @@ import (
 // open for no reason, so the creditor must be able to ask "what needs me" without hunting. It means
 // RECORDED payments where THIS team is the creditor — never the ones it recorded itself, which are
 // waiting on somebody else.
+//
+// THE PERIOD AND THE SIDE NARROW BEFORE THE PAGE (backlog #34): the pair page's My payments and Their payments are
+// each their own filtered page now, not a cut of one 50-row read made in the browser.
 func (s *Service) LiabilityPaymentList(
 	ctx context.Context,
 	req *connect.Request[liabilityv1.LiabilityPaymentListRequest],
@@ -30,11 +33,14 @@ func (s *Service) LiabilityPaymentList(
 	filter := req.Msg.GetFilter()
 	page := req.Msg.GetPage()
 
-	query := s.paymentScope(ctx, teamID, filter)
+	query, err := s.paymentScope(ctx, teamID, filter)
+	if err != nil {
+		return nil, err
+	}
 
 	var total int64
 
-	err := query.Count(&total).Error
+	err = query.Count(&total).Error
 	if err != nil {
 		return nil, dbError(err)
 	}
@@ -82,7 +88,12 @@ func (s *Service) paymentScope(
 	ctx context.Context,
 	teamID uint64,
 	filter *liabilityv1.LiabilityPaymentListFilter,
-) *gorm.DB {
+) (*gorm.DB, error) {
+	start, end, err := listPeriod(filter.GetFrom(), filter.GetTo())
+	if err != nil {
+		return nil, err
+	}
+
 	query := s.db.
 		WithContext(ctx).
 		Model(&liability_service_models.LiabilityPayment{})
@@ -105,5 +116,23 @@ func (s *Service) paymentScope(
 		)
 	}
 
-	return query
+	// WHICH SIDE this team was on. Each narrows inside the OR above — `payer = team` or `creditor = team` alone — so it
+	// can only ever take away from this team's own payments, never reach another pair's.
+	switch filter.GetSide() {
+	case liabilityv1.LiabilityPaymentSide_LIABILITY_PAYMENT_SIDE_PAID:
+		query = query.Where("payer_team_id = ?", teamID)
+	case liabilityv1.LiabilityPaymentSide_LIABILITY_PAYMENT_SIDE_RECEIVED:
+		query = query.Where("creditor_team_id = ?", teamID)
+	}
+
+	// The day it was RECORDED, as the rows show it — Jakarta days (the-liability-day-is-the-jakarta-day).
+	if start != nil {
+		query = query.Where("created_at >= ?", *start)
+	}
+
+	if end != nil {
+		query = query.Where("created_at < ?", *end)
+	}
+
+	return query, nil
 }

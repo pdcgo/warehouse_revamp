@@ -22,7 +22,10 @@ import { CopyText } from "../../../components/chrome/CopyText";
 //
 // None is a status — the warning role — and the way out is the accounts page, where a shop is linked to an account.
 // An archived account is still the shop's link, so it is read too.
-export function WithdrawalAccountCard({ teamId, shop }: { teamId: bigint; shop: Shop }) {
+//
+// `closed`: a closed shop takes no NEW account link (a-closed-shop-takes-no-new-account-link), so with none linked the
+// card says so instead of sending the person to link one; a link made while it was open stays and reads as above.
+export function WithdrawalAccountCard({ teamId, shop, closed = false }: { teamId: bigint; shop: Shop; closed?: boolean }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -44,6 +47,19 @@ export function WithdrawalAccountCard({ teamId, shop }: { teamId: bigint; shop: 
         <Text color="error.fg" fontSize="sm" data-testid="shop-withdrawal-error">
           {rpcError(query.error)}
         </Text>
+      );
+    }
+
+    if (!account && closed) {
+      return (
+        <Stack gap="2" align="start" data-testid="shop-withdrawal-none">
+          <Text color="fg.muted" fontWeight="bold">
+            {t("shops.withdrawal.none")}
+          </Text>
+          <Text fontSize="sm" color="fg.muted" data-testid="shop-withdrawal-closed">
+            {t("shops.withdrawal.closedNone")}
+          </Text>
+        </Stack>
       );
     }
 

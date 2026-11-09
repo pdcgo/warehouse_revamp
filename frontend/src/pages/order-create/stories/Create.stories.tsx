@@ -1,12 +1,24 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { products, shops } from "../../../../.storybook/fixtures";
-import { withTakeRefusal } from "../../../../.storybook/sessionScenario";
+import { orderKeyScenario, takeRefusalScenario, withTakeRefusal } from "../../../../.storybook/sessionScenario";
 import { OrderTransactionRefusalReason } from "../../../gen/warehouse/inventory/v1/order_transaction_pb";
-import { ORDER_CREATE_META, fillOrderRef, fillSellPrice, pickOrderDate, pickProduct } from "./kit";
+import {
+  ORDER_CREATE_META,
+  RoutedFromDraft202,
+  asMelatiWithMaps,
+  fillOrderRef,
+  fillPlaceableOrder,
+  fillSellPrice,
+  mapDraftLines,
+  passTheChecks,
+  pickCourier,
+  pickOrderDate,
+  pickProduct,
+} from "./kit";
 
-// ORDER CREATE — what Create needs, the checks it asks, and where it goes.
+// ORDER CREATE — what Create needs, the checks it asks, where it goes, and the idempotency key every submit mints.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -49,6 +61,7 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     // Product 71: 40 on the shelf against a quantity of 1, so nothing is short.
     await pickProduct(canvasElement, products[0]!.id);
@@ -85,6 +98,7 @@ export const ARefusedTakeNamesItsReasonAndTheLine: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
@@ -124,6 +138,7 @@ export const TheSameNumberInBothBoxesPlaces: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
@@ -168,6 +183,7 @@ export const AThinMarginAsksFirstAndThenPlaces: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
 
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
@@ -202,6 +218,7 @@ export const TheMarketplaceOrderDateIsRequiredToPlace: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await fillSellPrice(canvasElement);
     await fillOrderRef(canvasElement);
@@ -229,6 +246,7 @@ export const CreateStaysOffUntilTheSellPriceIsFilled: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillOrderRef(canvasElement);
@@ -262,6 +280,7 @@ export const TheMarketplaceRefIsRequiredToPlace: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillSellPrice(canvasElement);
@@ -278,5 +297,94 @@ export const TheMarketplaceRefIsRequiredToPlace: Story = {
     await userEvent.clear(ref);
     await fillOrderRef(canvasElement);
     await waitFor(() => expect(create).toBeEnabled());
+  },
+};
+
+// ── THE ORDER'S IDEMPOTENCY KEY (backlog #10, slice 1) ─────────────────────────────────────────────────────────────
+//
+// The form mints a key INSIDE every submit (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key) and
+// sends it with OrderCreate; the order stores it, and a key an order already holds is refused with the take's *key
+// already used* refusal (the-order-refuses-a-used-key — ⚠ the refusal's shape awaits the owner, #10 Q9).
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+// EVERY SUBMIT MINTS A NEW KEY — a resubmit after a refusal included. The first Create is refused at the take; the
+// second, once the shelf has it, places the order. Both carried a key, and never the same one.
+export const EverySubmitMintsANewKey: Story = {
+  name: "New key per submit",
+  beforeEach: withTakeRefusal(OrderTransactionRefusalReason.NOT_ENOUGH_STOCK, [
+    { productId: products[0]!.id, wanted: 1n, available: 0n },
+  ]),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const create = await fillPlaceableOrder(canvasElement, "SP-KEY-0001");
+    await userEvent.click(create);
+    await passTheChecks();
+    await expect(await canvas.findByTestId("order-create-refusal")).toHaveAttribute("data-reason", "notEnoughStock");
+
+    // The shelf has it now: the same form, submitted again.
+    takeRefusalScenario.refusal = undefined;
+    await waitFor(() => expect(create).toBeEnabled());
+    await userEvent.click(create);
+    await passTheChecks();
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+
+    const [first, second] = orderKeyScenario.sent;
+    await expect(orderKeyScenario.sent).toHaveLength(2);
+    await expect(first).toMatch(UUID);
+    await expect(second).toMatch(UUID);
+    await expect(second).not.toEqual(first);
+  },
+};
+
+// A DRAFT'S FINALIZE MINTS ITS OWN KEY TOO — it is the same submit (a-draft-becomes-an-order-through-order-create).
+export const FinalizingADraftSendsItsOwnKey: Story = {
+  name: "Draft sends its own key",
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: asMelatiWithMaps,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
+      timeout: 4000,
+    });
+    await mapDraftLines(canvasElement);
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled(), { timeout: 4000 });
+    await userEvent.click(create);
+    await passTheChecks();
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toHaveAttribute("data-order", "902"));
+    await expect(orderKeyScenario.sent).toHaveLength(1);
+    await expect(orderKeyScenario.sent[0]).toMatch(UUID);
+  },
+};
+
+// A USED KEY IS REFUSED, WITH THE TAKE'S *KEY ALREADY USED* MESSAGE. No honest form sends one — every submit mints its
+// own — so the browser's minting is pinned to a key an order already holds, as a bug would. The server refuses it
+// before anything is taken; the form shows the same alert it shows for the take's own KEY_USED, and nothing navigates.
+const USED_KEY = "11111111-2222-4333-8444-555555555555";
+
+export const AUsedKeyIsRefused: Story = {
+  name: "Used key refused",
+  beforeEach: () => {
+    orderKeyScenario.used = [USED_KEY];
+    const minted = spyOn(crypto, "randomUUID").mockReturnValue(USED_KEY);
+
+    return () => minted.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await fillPlaceableOrder(canvasElement, "SP-KEY-0002"));
+    await passTheChecks();
+
+    const refusal = await canvas.findByTestId("order-create-refusal");
+    await expect(refusal).toHaveAttribute("data-reason", "keyUsed");
+    await expect(refusal).toHaveTextContent("This order was already placed");
+    await expect(refusal).not.toHaveTextContent(/already_exists|internal/i);
+    await expect(canvas.queryByTestId("order-create-error")).toBeNull();
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
+    await expect(orderKeyScenario.sent).toEqual([USED_KEY]);
   },
 };

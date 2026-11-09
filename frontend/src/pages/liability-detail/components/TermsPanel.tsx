@@ -24,6 +24,7 @@ import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { CreditMeter } from "../../../features/liability/CreditMeter";
 import { TermsEditDialog } from "../../../features/liability/TermsEditDialog";
 import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
+import { useCanWrite } from "../../../features/team/TeamContext";
 
 // Big enough to hold every counterparty this creditor has terms for. There is no counterparty filter
 // on `LiabilityTermsList` yet, so the pair's row and the DEFAULT row are both picked out of one read
@@ -51,7 +52,7 @@ export interface TermsPanelProps {
    * What the counterparty owes RIGHT NOW, positive. The caller flips the sign: this page holds a
    * signed balance from the creditor's side, and a meter wants a magnitude.
    */
-  debt: bigint;
+  debt: number;
 }
 
 // TermsPanel — where this pair's credit limit and order fee are SET
@@ -74,6 +75,8 @@ export function TermsPanel({
   debt,
 }: TermsPanelProps) {
   const { t } = useTranslation();
+  // Terms are READ while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const mayEdit = useCanWrite() && canSetLiabilityTerms(role);
 
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -118,7 +121,7 @@ export function TermsPanel({
 
           {/* Only those who may set terms are offered to — the warehouse Admin is not
               (the-warehouse-admin-equals-the-owner-except-money). */}
-          {canSetLiabilityTerms(role) && (
+          {mayEdit && (
             <Button
               size="xs"
               variant="outline"
@@ -134,7 +137,7 @@ export function TermsPanel({
               every other pair at once, which is not what "remove this pair's terms" means — and
               removing a limit is deleting the row, never zeroing it
               (the-threshold-defaults-to-unlimited). */}
-          {own && canSetLiabilityTerms(role) && (
+          {own && mayEdit && (
             <Button
               size="xs"
               variant="ghost"
@@ -170,8 +173,10 @@ export function TermsPanel({
         onOpenChange={setEditOpen}
         teamId={teamId}
         editing={own}
-        // The counterparty is fixed by the page, so the picker has exactly this one to offer — it is
-        // not a choice here the way it was on the list screen.
+        // The counterparty is fixed by the page — and PINNED, so the dialog shows its name rather than a picker. A
+        // picker would also offer the DEFAULT row, and a pair's terms live on the pair while the default lives on the
+        // list (the-default-terms-row-is-a-dialog-on-the-list).
+        fixedCounterpartyId={counterpartyId}
         options={[{ id: counterpartyId, name: counterpartyName }]}
         overrideWriter={isOverrideWriter(role)}
       />

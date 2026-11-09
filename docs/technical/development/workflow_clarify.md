@@ -97,22 +97,19 @@ flowchart LR
 
 ## Question
 
-1. **Fold into [development_level.md](./level.md), or keep separate?**
-   ([Critique 2](#critique)) **→ I recommend folding — same layer, same subject, 53 lines.**
-2. **Is `CLAUDE.md` the derived projection of this doc, and must it be updated in the same commit?**
-   ([Critique 1](#critique)) **→ I recommend yes, stated in one line. It is the same rule a schema change
-   already carries.**
-3. **How many people build on `dev` at once?** ([G1](#what-is-genuinely-missing--not-covered-by-any-of-the-four)) **→ I recommend writing down whatever the
-   answer is today, even if it is "one". The workflow is only sound under an assumption nothing states.**
-4. **Does production exist yet as an environment?** ([G2, G3](#what-is-genuinely-missing--not-covered-by-any-of-the-four)) **→ If not, "there is no production
-   yet" is a complete and useful answer — and it explains why `deploy` is a tool requirement with no
-   workflow behind it.**
+1. ✅ *(2026-11-02)* **Answered: nothing to fold** — [the-workflow-lives-in-the-development-lifecycle](./workflow_decision.md#the-workflow-lives-in-the-development-lifecycle). Kept as a line so the numbers hold.
+2. ✅ *(2026-11-02)* **Answered: CLAUDE.md derives from the lifecycle doc** — [the-workflow-lives-in-the-development-lifecycle](./workflow_decision.md#the-workflow-lives-in-the-development-lifecycle). Kept as a line so the numbers hold.
+3. ✅ *(2026-11-02)* **Answered: each developer on their own branch** — [each-developer-works-on-their-own-branch](../../business/project/member_decision.md#each-developer-works-on-their-own-branch). Kept as a line so the numbers hold.
+4. ✅ **Answered — [no-switch-over-the-ledgers-replace-todays-tables](../stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)**: no — nothing runs in production yet (owner, 2026-10-15: *"we not on production yet"*). Kept as a line so the numbers hold.
 
 ---
 
 # Contradiction
 
 ## What must be green before a commit — the two homes already disagree
+
+✅ *(2026-11-02)* **Resolved at source.** CLAUDE.md §Git workflow now reads *"the Playwright spec for the work in hand
+should pass at each commit"* — the FAQ's version. Kept below as it was found.
 
 **The example, quoted:**
 

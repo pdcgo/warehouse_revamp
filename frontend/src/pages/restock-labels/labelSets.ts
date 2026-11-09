@@ -34,7 +34,7 @@ function arrivedLabels(restock: RestockRequest): RestockLabel[] {
   return restock.items.map((item) =>
     create(RestockLabelSchema, {
       productId: item.productId,
-      sku: item.sku,
+      productCode: item.productCode,
       name: item.name,
       quantity: item.count,
       placementCode: "",

@@ -4,7 +4,7 @@
 //
 // A row arrives two ways and no other (a-row-comes-by-hand-or-from-the-broker): a manager on the account
 // screens — opening_balance, transfer, capital, adjustment — or a listener on another service's event —
-// withdrawal and team payment today, restock and expense when their events exist (one-way-in-per-type). There
+// withdrawal, team payment and restock today, expense when its event exists (one-way-in-per-type). There
 // is no write RPC for other services.
 //
 // Every write goes through ONE path, `post` in ledger.go: lock the account, append the log row, move the
@@ -43,6 +43,9 @@ type Service struct {
 	dedup san_event.EventDedup
 	// now is the clock — a picked day is refused when it is after today, in Jakarta.
 	now func() time.Time
+	// Where the report's export goes, and the shop names its account rows need (export_store.go). nil = the export is
+	// Unimplemented.
+	exports ExportStore
 }
 
 // compile-time proof Service serves both proto services.
@@ -51,7 +54,7 @@ var (
 	_ financial_accountv1connect.FinancialAccountAnalyticServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, shops ShopChecker) *Service {
+func NewService(db *gorm.DB, shops ShopChecker, exports ExportStore) *Service {
 	// With no shop to ask, every ShopSet is REFUSED rather than trusted.
 	if shops == nil {
 		shops = noShopChecker{}
@@ -63,7 +66,7 @@ func NewService(db *gorm.DB, shops ShopChecker) *Service {
 		panic(err)
 	}
 
-	return &Service{db: db, shops: shops, dedup: dedup, now: time.Now}
+	return &Service{db: db, shops: shops, dedup: dedup, now: time.Now, exports: exports}
 }
 
 type noShopChecker struct{}
@@ -131,6 +134,14 @@ func actorFrom(ctx context.Context) uint64 {
 	return identity.GetIdentityId()
 }
 
+// overrideFrom is whether actorFrom is Root or the Administrator moving money inside a team they hold no role in —
+// through the root-team bypass, not a membership (an-override-is-stamped-in-every-service). Stamped beside actor_id. A
+// listener has no person in ctx, so its row takes the flag from the event instead — `actor_is_override`, beside the
+// event's `actor_id`.
+func overrideFrom(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
+}
+
 // today is the Jakarta date now.
 func (s *Service) today() string {
 	return s.now().In(jakarta).Format(dateLayout)
@@ -159,12 +170,6 @@ func (s *Service) pickedDay(raw string) (time.Time, error) {
 	}
 
 	return day.Add(12 * time.Hour), nil
-}
-
-// rupiah rounds a figure to whole rupiah as it posts (rupiah-is-floating-point's mitigation), so balances
-// compare exactly.
-func rupiah(v float64) float64 {
-	return math.Round(v)
 }
 
 // validAmount is a positive, finite figure — the proto's `gt: 0, finite: true`, re-checked because a handler

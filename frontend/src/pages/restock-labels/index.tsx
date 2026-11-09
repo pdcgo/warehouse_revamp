@@ -226,7 +226,7 @@ export function RestockLabelsPage() {
   /** How many of one restock's labels print — its counts summed. */
   const printedOf = (id: bigint) => entries.filter((e) => e.set.id === id).reduce((s, e) => s + countOf(e), 0);
 
-  const productCount = useMemo(() => new Set(labels.map((l) => l.sku)).size, [labels]);
+  const productCount = useMemo(() => new Set(labels.map((l) => l.productCode)).size, [labels]);
   // The run this print sends — `limit` labels, the `page`-th of them — cut into papers.
   const run = runOf(job, settings.limit, page);
   const papers = papersOf(run.items, settings);

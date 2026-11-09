@@ -20,14 +20,14 @@ An ordinary page is 3–8 ms, and `status_at` costs about 0.1 ms of a 20-row pag
 | **root · search a tracking number · 20** | **119 ms** | 2 | 🔴 [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
 | **root · search digits · 20** | **112 ms** | 2 | 🔴 [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
 | warehouse 900 · search a tracking number · 20 | 47 ms | 2 | 🟡 the same read over 16 667 orders |
-| **root · all · 200 · last page (offset 49 800)** | **252 ms** | 2 | 🔴 [finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips-) |
+| **root · all · 200 · last page (offset 49 800)** | **252 ms** | 2 | 🔴 [finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22) |
 | root · all · 20 · sort by total | 37 ms | 2 | 🟡 [finding 3](#3-sorting-by-total-sorts-every-order-in-scope-) |
 
 ✅ **No N+1.** Every case makes 2 queries, at 20 rows and at 200.
 ✅ **`status_at` is cheap on an ordinary page.** It adds 0.04–0.11 ms at 20 rows and 0.3–0.6 ms at 200 (EXPLAIN with it
 and without it). The plan is an Index Scan Backward on `order_timeline_logs_order_idx` (`Index Cond: order_id = orders.id`,
 `Filter: status = orders.status`, 0–1 rows removed), taking the newest matching row as `Limit 1`. Only
-[finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips-) makes it material.
+[finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22) makes it material.
 
 The table is the quietest of five full runs. A peer session shared the Postgres, so the small cases moved between 3
 and 11 ms from run to run. Across all five runs, root's search took 112–158 ms and the last page 237–275 ms.
@@ -51,7 +51,8 @@ pie showData
 | 2 | `SELECT orders.*, (item_quantity), (status_at) … ORDER BY id DESC LIMIT n` | 20 / 200 | 0.15 / 0.75 ms | Index Scan Backward `orders_pkey`. SubPlans: `order_items_order_idx`, `order_timeline_logs_order_idx` | ok |
 | 2s | the same, with the search | ≤ 20 | 47–73 ms root | **Seq Scan** → Sort. The SubPlans run for the matches only | 🔴 |
 | 2d | the same, `LIMIT 200 OFFSET 49800` | 200 | 147–275 ms | Index Scan Backward over all 50 000. **Both SubPlans `loops=50000`**, 112 ms of JIT | 🔴 |
-| 2t | the same, `ORDER BY total DESC` | 20 | 34–48 ms | Seq Scan → top-N heapsort. The SubPlans run after the sort (`loops=20`) | 🟡 |
+| 2t | the same, `ORDER BY total_cost DESC, id DESC` (Total) or `platform_total DESC, id DESC` (Platform total) | 20 | 35 ms root · 8 ms team 2 | Seq Scan (root) / BitmapOr (team) → top-N heapsort. The SubPlans run after the sort (`loops=20`) | 🟡 |
+| 2n | `… AND settlement_opened_at IS NULL ORDER BY id DESC LIMIT 20` (*not opened*) | 20 | 0.12–0.15 ms | Index Scan Backward `orders_settlement_not_opened_idx` (the partial index); its count 0.27 ms | ok |
 
 EXPLAIN times. The handler's own query times are within these ranges.
 
@@ -126,6 +127,45 @@ Only the CTE form was measured. Inside `scopedOrders` the same fence would be
 `id IN (SELECT id FROM orders WHERE <match> OFFSET 0)`, which fits the `Where` chain and also serves the count and
 OrderStat. That form needs one measurement before it is adopted.
 
+> 🔄 **Re-measured 2026-11-06 — the customer moved to `order_addresses` (selling `00045`,
+> [one-address-per-order-and-per-draft](../../../../docs/business/order/context_decision.md#one-address-per-order-and-per-draft)).**
+> The name and phone are no longer columns of `orders`, so the search reads them as `orders.id IN (SELECT a.order_id FROM
+> order_addresses a WHERE a.customer_name ILIKE … OR a.customer_phone ILIKE …)` beside the order's ref and receipt — a
+> hashed SubPlan that scans every address row once. Same seed, every order with its address row (`TestPerf_OrderList_Root`):
+>
+> | Case | before (2026-10-22) | now, `IN` (built) | a correlated `EXISTS` (measured, not built) | now + trigram on both tables (probed, rolled back) |
+> | --- | --- | --- | --- | --- |
+> | root · search a tracking number · 20 | 119 ms | **142 ms** | 160 ms | 80–84 ms |
+> | root · search digits · 20 | 112 ms | **128 ms** | 146 ms | 75–84 ms |
+> | warehouse 900 · search a tracking number · 20 | 47 ms | **118 ms** 🔴 | 111 ms | 58–83 ms |
+>
+> **What got worse:** a WAREHOUSE's search now reads every team's address rows (the subquery has no scope), so 16 667
+> orders in scope cost as much as 50 000. **→ Recommend (not applied):** the same GIN trigram fix, split over the two
+> tables — `order_addresses (customer_name gin_trgm_ops, customer_phone gin_trgm_ops)` and `orders (order_external_ref_id
+> gin_trgm_ops, receipt gin_trgm_ops)` — which the probe measures at 58 ms for the warehouse and 80 ms for root under the
+> generic plan; an index migration is the owning service's and the owner's call (HARD RULE 2).
+>
+> ✅ **Applied 2026-11-06 — the index half, as recommended** (selling `00048_order_search_trigram.sql`): `pg_trgm`,
+> `order_addresses_customer_trgm_idx (customer_name, customer_phone)` and `orders_ref_receipt_trgm_idx
+> (order_external_ref_id, receipt)`, GIN `gin_trgm_ops`. Re-measured on the same seed (`TestPerf_OrderList_Root`, median of 5,
+> nothing else on the machine). Rows seeded inside the test's transaction sit in the GIN pending list with no statistics,
+> which the planner prices as a scan and skips — so the probe now flushes the lists (`gin_clean_pending_list`) and runs
+> `ANALYZE` first, as autovacuum leaves a live database:
+>
+> | Case | before the index (00045) | with 00048, `auto` | custom plan | generic plan |
+> | --- | --- | --- | --- | --- |
+> | root · search a tracking number · 20 | 133–143 ms | **77 ms** | 77 ms | 83 ms |
+> | root · search digits · 20 | 123–129 ms | **73 ms** | 72 ms | 80 ms |
+> | warehouse 900 · search a tracking number · 20 | 112–118 ms | **55 ms** | 55 ms | 84 ms |
+>
+> The address side now reads through its index (the hashed SubPlan's seq scan of every address row, ~30 ms, is a Bitmap
+> Index Scan), and the count of a generic plan halved (80 → 42 ms). **Still 🔴 for root, 🟡 for a warehouse:** the
+> orders side cannot BitmapOr an `IN (subquery)` with the two `ILIKE`s, so the ref and receipt are still FILTERED over
+> every order in scope — the remaining cost. The ids-first page measured here (`page ids-first`, 48–56 ms generic) does
+> not beat the built shape any more. **→ Recommend (not applied):** the match as a `UNION` of three index-served id
+> sets (address rows, refs, receipts) fenced before the scope — a query change in `scopedOrders` that needs its own
+> measurement; the owner's call.
+
 ### 2. An OFFSET page runs both subqueries for every row it skips ✅ fixed 2026-10-22
 
 > ✅ **Applied 2026-10-22, as recommended below**, by the pass that added `status_at` — the regression was its own,
@@ -175,8 +215,15 @@ Root takes 37–48 ms: a Seq Scan, then a top-N heapsort of 50 000 rows. There i
 nothing here, because the SubPlans run after the sort. The query is under the 50 ms line, but it is linear: root passes
 50 ms at ~70 000 orders.
 
-**→ Recommend: nothing yet.** An index on `orders (total)` would serve root's sort alone, because a team's scope is an
-`OR` and is narrowed first. Add it when root's sort-by-total starts to hurt.
+🔄 *(2026-11-05, [the-total-sort-is-ours-and-the-platform-total-sorts-apart](../../../../docs/business/order/context_decision.md#the-total-sort-is-ours-and-the-platform-total-sorts-apart).)*
+The sort named a `total` column that 00027 had replaced, so it had stopped working: *Total* now orders by `total_cost`,
+a new *Platform total* by `platform_total`, each with `id` as the tie-break in the same direction. Re-measured over
+50 000 orders with distinct figures (`order_list_sort_settlement_perf_test.go`): root **37.2 / 37.1 ms** wall
+(35.3 / 35.0 ms EXPLAIN), team 2 **10.8 / 10.7 ms**, warehouse 900 **15.8 ms** (Platform total) — the same shape and
+cost as before; the tie-break adds a sort key, not a pass.
+
+**→ Recommend: nothing yet.** An index on `orders (total_cost, id)` or `(platform_total, id)` would serve root's sort
+alone, because a team's scope is an `OR` and is narrowed first. Add it when root's sort starts to hurt.
 
 ### 4. Root's count still reads the whole table 🟡
 
@@ -186,6 +233,52 @@ A status tab scans too (3.2 ms), because `status` has no index. A team is narrow
 **→ Recommend: accept it until ~500 000 orders.** Then give root's *unfiltered* view an estimated total
 (`pg_class.reltuples`) and keep the exact count once a filter narrows it. The alternative is a "has more" pager, which
 would need an exception to the-pager-is-always-on-screen.
+
+### 6. *Settlement not opened* reads only the missing ones ✅
+
+*(2026-11-05, [a-missing-account-is-found-by-its-opened-at](../../../../docs/business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at).)*
+`settlement_not_opened` adds `settlement_opened_at IS NULL`. Once things run, those orders are FEW — each one is a failed
+open a person is about to fix — so selling 00040 gives them a partial index, `orders (id) WHERE settlement_opened_at IS
+NULL`. Measured over 50 000 orders with 1 in 100 missing (500), with the index and, in the same transaction, without:
+
+| case | with the index | without |
+| --- | --- | --- |
+| root · not opened · 20 | **1.6 ms** wall · count 0.27 ms · page 0.12 ms (Index Scan Backward on the partial index) | 9.8 ms · count 9.5 ms (Seq Scan, 49 500 removed) |
+| team 2 · not opened · 20 | 1.8 ms | 4.5 ms |
+| warehouse 900 · not opened · 20 | 1.6 ms | 6.4 ms |
+| root · not opened · sort Total · 20 | 1.7 ms | 17.4 ms |
+
+The stat's mirror (OrderStat with the same filter) reads the same index. Cost: one entry per order until its account
+opens, then the entry leaves the index — the index stays the size of the backlog, not of the table.
+
+---
+
+### 5. A status-date window seq-scans the timeline 🔴
+
+*(2026-10-30, the status dates of [the-order-list-filters-by-seven-dates](../../../../docs/technical/frontend/order_list_decision.md#the-order-list-filters-by-seven-dates).)*
+A window on the first entry into a status is `orders.id IN (SELECT order_id FROM order_timeline_logs WHERE status = ? AND
+created_at BETWEEN … AND NOT EXISTS (an earlier row into it))`. `order_timeline_logs` has one index,
+`(order_id, created_at, id)`, and nothing that starts with `status`. So the subquery reads **every team's whole
+timeline** to find one week. Measured over 50 000 orders and 150 000 timeline rows, with one week of `completed` for
+team 2 (137 orders):
+
+| | as built | with `(status, created_at)` |
+| --- | --- | --- |
+| OrderList (count + page) | **50.6 ms**, 2 queries | **7.0 ms** |
+| OrderStat | **25.3 ms**, 1 query | **4.0 ms** |
+| the subquery | `Parallel Seq Scan on order_timeline_logs`, 149 041 rows removed | `Bitmap Index Scan` on the new index |
+
+```
+->  Parallel Seq Scan on order_timeline_logs tl  (actual time=1.410..11.198 rows=959 loops=1)
+      Rows Removed by Filter: 149041
+```
+
+The time is under every threshold today. It is 🔴 by the plan rule: the table holds every team's history and only grows,
+so this window gets slower with every status change anyone makes. The earlier-row check (`NOT EXISTS`) already uses
+`order_timeline_logs_order_idx`. The row's own date (`date_entered_at`, a MIN per page row) uses it too, for ~0.1 ms.
+
+**→ Recommend:** the index below. It is one b-tree on two narrow columns. It also serves any later "moves into X between
+A and B" read, such as the order metrics, should they ever read the timeline directly.
 
 ---
 
@@ -213,6 +306,20 @@ Cost:
 - **Short terms.** A 1–2 character term cannot use trigrams and still scans. `search` has `max_len 100` and no
   `min_len`.
 
+
+```sql
+-- backend/services/selling_service/db_migrations/00031_order_timeline_status_created_idx.sql — finding 5
+-- +goose NO TRANSACTION
+-- +goose Up
+CREATE INDEX CONCURRENTLY order_timeline_logs_status_created_idx ON order_timeline_logs (status, created_at);
+
+-- +goose Down
+DROP INDEX CONCURRENTLY IF EXISTS order_timeline_logs_status_created_idx;
+```
+
+Cost: one more b-tree write for every timeline row (every move and every note). A note row has `status = ''`, so it
+lands in one large `''` bucket that no window reads.
+
 ---
 
 ## Not measured
@@ -237,8 +344,9 @@ Cost:
   adopt it: a label scan is the warehouse's most frequent search, and the index serves three RPCs.
 - [ ] **Ids-first in `scopedOrders`, or `force_custom_plan` in the DSN?** I would take ids-first, as AnalyticGroupSearch
   took literals over the DSN option.
-- [ ] **Defer the subqueries past the LIMIT ([finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips-))?**
+- [ ] **Defer the subqueries past the LIMIT ([finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22))?**
   It is a handler change with no contract change, and it is my pick.
+- [ ] **Add `order_timeline_logs (status, created_at)` for the status-date window ([finding 5](#5-a-status-date-window-seq-scans-the-timeline-))?** My pick: yes. It is the only thing between that window and a full read of every team's history.
 - [ ] At ~500 000 orders: an estimated total for root's unfiltered list, or a "has more" pager? The estimate is my pick
   ([finding 4](#4-roots-count-still-reads-the-whole-table-)). Nothing to decide today.
 
@@ -252,3 +360,5 @@ Cost:
 | 2026-10-21 | 3.7 ms | 2 | the row's `item_quantity` added — a correlated sum per row on `order_items_order_idx`, 0.002 ms a row; the page is still 0.08 ms in Postgres, measured over 100 000 lines |
 | 2026-10-22 | 4.0 ms | 2 | re-audit: `status_at` (a correlated MAX over 246 206 timeline rows), the `warehouse_id` filter, the tracking number in the search. `status_at` adds ~0.1 ms to a 20-row page. Now 🔴 on the search (112–158 ms, first measured here; the tracking number adds 8–21 ms per query) and on a deep OFFSET page (252 ms, two-thirds of it `status_at`) |
 | 2026-10-22 | 4.2 ms | 2 | finding 2 fixed — the page is chosen bare in a derived table and the two facts computed for its rows only: the last 200-row page **252 → 20.5 ms**. The search (finding 1) is unchanged at 112–120 ms and waits on the proposed migration |
+| 2026-10-30 | — | 2 | the status-date window (`ENTERED_*`) measured: 50.6 ms for the list and 25.3 ms for OrderStat at 150 000 timeline rows, by a seq scan of the timeline. 7.0 / 4.0 ms with the proposed `(status, created_at)` index — not applied (finding 5) |
+| 2026-11-05 | — | 2 | the two money sorts (Total = `total_cost`, Platform total = `platform_total`, id tie-break): root 37 ms, team 10.8 ms — finding 3 unchanged. `settlement_not_opened` with its partial index (00040): 1.6–1.8 ms; without it 4.5–17.4 ms (finding 6) |

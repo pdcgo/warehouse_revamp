@@ -24,7 +24,7 @@ type ShopSettlement struct {
 	// same ShopID and fold into the same daily report, so the report's `close_balance` is a different
 	// and larger number. Two figures, one word — use this one only where "what moved outside the
 	// orders" is what is meant.
-	LastBalance int64
+	LastBalance float64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

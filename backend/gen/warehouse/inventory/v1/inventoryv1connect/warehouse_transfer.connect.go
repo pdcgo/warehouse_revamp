@@ -63,6 +63,9 @@ const (
 	// WarehouseTransferServiceWarehouseTransferAcceptProcedure is the fully-qualified name of the
 	// WarehouseTransferService's WarehouseTransferAccept RPC.
 	WarehouseTransferServiceWarehouseTransferAcceptProcedure = "/warehouse.inventory.v1.WarehouseTransferService/WarehouseTransferAccept"
+	// WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure is the fully-qualified name of the
+	// WarehouseTransferService's WarehouseTransferLabelPhoto RPC.
+	WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure = "/warehouse.inventory.v1.WarehouseTransferService/WarehouseTransferLabelPhoto"
 )
 
 // WarehouseTransferServiceClient is a client for the
@@ -95,6 +98,10 @@ type WarehouseTransferServiceClient interface {
 	// (the-receiver-mints-one-batch-per-source-batch). The courier's on-site charge is saved on the transfer, and balance
 	// posts the team's debt to B from Warehouse Transfer Accepted (balance-posts-the-transfers-on-site-debt-from-the-event).
 	WarehouseTransferAccept(context.Context, *connect.Request[v1.WarehouseTransferAcceptRequest]) (*connect.Response[v1.WarehouseTransferAcceptResponse], error)
+	// Any side opens the label photo A attached at ship (every-side-of-a-transfer-opens-its-label-photo): the caller's
+	// team must be the sender, the receiver or the owning selling team — checked here, then document_service signs A's
+	// file in-process, no share.
+	WarehouseTransferLabelPhoto(context.Context, *connect.Request[v1.WarehouseTransferLabelPhotoRequest]) (*connect.Response[v1.WarehouseTransferLabelPhotoResponse], error)
 }
 
 // NewWarehouseTransferServiceClient constructs a client for the
@@ -119,12 +126,14 @@ func NewWarehouseTransferServiceClient(httpClient connect.HTTPClient, baseURL st
 			httpClient,
 			baseURL+WarehouseTransferServiceWarehouseTransferListProcedure,
 			connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		warehouseTransferDetail: connect.NewClient[v1.WarehouseTransferDetailRequest, v1.WarehouseTransferDetailResponse](
 			httpClient,
 			baseURL+WarehouseTransferServiceWarehouseTransferDetailProcedure,
 			connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		warehouseTransferUpdate: connect.NewClient[v1.WarehouseTransferUpdateRequest, v1.WarehouseTransferUpdateResponse](
@@ -169,21 +178,29 @@ func NewWarehouseTransferServiceClient(httpClient connect.HTTPClient, baseURL st
 			connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferAccept")),
 			connect.WithClientOptions(opts...),
 		),
+		warehouseTransferLabelPhoto: connect.NewClient[v1.WarehouseTransferLabelPhotoRequest, v1.WarehouseTransferLabelPhotoResponse](
+			httpClient,
+			baseURL+WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure,
+			connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferLabelPhoto")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // warehouseTransferServiceClient implements WarehouseTransferServiceClient.
 type warehouseTransferServiceClient struct {
-	warehouseTransferCreate   *connect.Client[v1.WarehouseTransferCreateRequest, v1.WarehouseTransferCreateResponse]
-	warehouseTransferList     *connect.Client[v1.WarehouseTransferListRequest, v1.WarehouseTransferListResponse]
-	warehouseTransferDetail   *connect.Client[v1.WarehouseTransferDetailRequest, v1.WarehouseTransferDetailResponse]
-	warehouseTransferUpdate   *connect.Client[v1.WarehouseTransferUpdateRequest, v1.WarehouseTransferUpdateResponse]
-	warehouseTransferCancel   *connect.Client[v1.WarehouseTransferCancelRequest, v1.WarehouseTransferCancelResponse]
-	warehouseTransferMarkLost *connect.Client[v1.WarehouseTransferMarkLostRequest, v1.WarehouseTransferMarkLostResponse]
-	warehouseTransferProcess  *connect.Client[v1.WarehouseTransferProcessRequest, v1.WarehouseTransferProcessResponse]
-	warehouseTransferShip     *connect.Client[v1.WarehouseTransferShipRequest, v1.WarehouseTransferShipResponse]
-	warehouseTransferArrive   *connect.Client[v1.WarehouseTransferArriveRequest, v1.WarehouseTransferArriveResponse]
-	warehouseTransferAccept   *connect.Client[v1.WarehouseTransferAcceptRequest, v1.WarehouseTransferAcceptResponse]
+	warehouseTransferCreate     *connect.Client[v1.WarehouseTransferCreateRequest, v1.WarehouseTransferCreateResponse]
+	warehouseTransferList       *connect.Client[v1.WarehouseTransferListRequest, v1.WarehouseTransferListResponse]
+	warehouseTransferDetail     *connect.Client[v1.WarehouseTransferDetailRequest, v1.WarehouseTransferDetailResponse]
+	warehouseTransferUpdate     *connect.Client[v1.WarehouseTransferUpdateRequest, v1.WarehouseTransferUpdateResponse]
+	warehouseTransferCancel     *connect.Client[v1.WarehouseTransferCancelRequest, v1.WarehouseTransferCancelResponse]
+	warehouseTransferMarkLost   *connect.Client[v1.WarehouseTransferMarkLostRequest, v1.WarehouseTransferMarkLostResponse]
+	warehouseTransferProcess    *connect.Client[v1.WarehouseTransferProcessRequest, v1.WarehouseTransferProcessResponse]
+	warehouseTransferShip       *connect.Client[v1.WarehouseTransferShipRequest, v1.WarehouseTransferShipResponse]
+	warehouseTransferArrive     *connect.Client[v1.WarehouseTransferArriveRequest, v1.WarehouseTransferArriveResponse]
+	warehouseTransferAccept     *connect.Client[v1.WarehouseTransferAcceptRequest, v1.WarehouseTransferAcceptResponse]
+	warehouseTransferLabelPhoto *connect.Client[v1.WarehouseTransferLabelPhotoRequest, v1.WarehouseTransferLabelPhotoResponse]
 }
 
 // WarehouseTransferCreate calls
@@ -246,6 +263,12 @@ func (c *warehouseTransferServiceClient) WarehouseTransferAccept(ctx context.Con
 	return c.warehouseTransferAccept.CallUnary(ctx, req)
 }
 
+// WarehouseTransferLabelPhoto calls
+// warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto.
+func (c *warehouseTransferServiceClient) WarehouseTransferLabelPhoto(ctx context.Context, req *connect.Request[v1.WarehouseTransferLabelPhotoRequest]) (*connect.Response[v1.WarehouseTransferLabelPhotoResponse], error) {
+	return c.warehouseTransferLabelPhoto.CallUnary(ctx, req)
+}
+
 // WarehouseTransferServiceHandler is an implementation of the
 // warehouse.inventory.v1.WarehouseTransferService service.
 type WarehouseTransferServiceHandler interface {
@@ -276,6 +299,10 @@ type WarehouseTransferServiceHandler interface {
 	// (the-receiver-mints-one-batch-per-source-batch). The courier's on-site charge is saved on the transfer, and balance
 	// posts the team's debt to B from Warehouse Transfer Accepted (balance-posts-the-transfers-on-site-debt-from-the-event).
 	WarehouseTransferAccept(context.Context, *connect.Request[v1.WarehouseTransferAcceptRequest]) (*connect.Response[v1.WarehouseTransferAcceptResponse], error)
+	// Any side opens the label photo A attached at ship (every-side-of-a-transfer-opens-its-label-photo): the caller's
+	// team must be the sender, the receiver or the owning selling team — checked here, then document_service signs A's
+	// file in-process, no share.
+	WarehouseTransferLabelPhoto(context.Context, *connect.Request[v1.WarehouseTransferLabelPhotoRequest]) (*connect.Response[v1.WarehouseTransferLabelPhotoResponse], error)
 }
 
 // NewWarehouseTransferServiceHandler builds an HTTP handler from the service implementation. It
@@ -295,12 +322,14 @@ func NewWarehouseTransferServiceHandler(svc WarehouseTransferServiceHandler, opt
 		WarehouseTransferServiceWarehouseTransferListProcedure,
 		svc.WarehouseTransferList,
 		connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	warehouseTransferServiceWarehouseTransferDetailHandler := connect.NewUnaryHandler(
 		WarehouseTransferServiceWarehouseTransferDetailProcedure,
 		svc.WarehouseTransferDetail,
 		connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	warehouseTransferServiceWarehouseTransferUpdateHandler := connect.NewUnaryHandler(
@@ -345,6 +374,13 @@ func NewWarehouseTransferServiceHandler(svc WarehouseTransferServiceHandler, opt
 		connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferAccept")),
 		connect.WithHandlerOptions(opts...),
 	)
+	warehouseTransferServiceWarehouseTransferLabelPhotoHandler := connect.NewUnaryHandler(
+		WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure,
+		svc.WarehouseTransferLabelPhoto,
+		connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferLabelPhoto")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.WarehouseTransferService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WarehouseTransferServiceWarehouseTransferCreateProcedure:
@@ -367,6 +403,8 @@ func NewWarehouseTransferServiceHandler(svc WarehouseTransferServiceHandler, opt
 			warehouseTransferServiceWarehouseTransferArriveHandler.ServeHTTP(w, r)
 		case WarehouseTransferServiceWarehouseTransferAcceptProcedure:
 			warehouseTransferServiceWarehouseTransferAcceptHandler.ServeHTTP(w, r)
+		case WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure:
+			warehouseTransferServiceWarehouseTransferLabelPhotoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -414,4 +452,8 @@ func (UnimplementedWarehouseTransferServiceHandler) WarehouseTransferArrive(cont
 
 func (UnimplementedWarehouseTransferServiceHandler) WarehouseTransferAccept(context.Context, *connect.Request[v1.WarehouseTransferAcceptRequest]) (*connect.Response[v1.WarehouseTransferAcceptResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept is not implemented"))
+}
+
+func (UnimplementedWarehouseTransferServiceHandler) WarehouseTransferLabelPhoto(context.Context, *connect.Request[v1.WarehouseTransferLabelPhotoRequest]) (*connect.Response[v1.WarehouseTransferLabelPhotoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto is not implemented"))
 }

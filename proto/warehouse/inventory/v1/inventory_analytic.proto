@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/analytic_base/v1/analytic.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// LOST STOCK on the Analytic composer (docs/business/analytic/rpc_provide_decision.md —
+// inventory-lost-counts-the-warehouses-custody-losses, inventory-lost-is-gross,
+// inventory-lost-groups-and-sits-under-inventory, the-inventory-lost-prototype-is-accepted,
+// a-warehouse-sees-its-lost-amount). Read from `inventory_lost_daily_reports`, folded in the transaction that writes the
+// loss (a stock count's shortage written off as lost, a Stock Adjust "lost").
+service InventoryAnalyticService {
+  // The keys of one group, ranked by one field of `metrics/inventory/lost`, a page at a time — whether another page
+  // follows, never a total (a-page-says-whether-another-follows); the key breaks every tie (the-key-breaks-every-tie).
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // The figures of given keys — a key with no loss reads 0. The filters scope the numbers, never the keys
+  // (the-fill-step-scopes-its-numbers-by-the-filters).
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// LOST STOCK — the units lost in a warehouse's custody and their value at the batch's price. GROSS: a Found claim never
+// subtracts, a past day never changes (inventory-lost-is-gross). Seller is the team that owns the stock, Warehouse the
+// warehouse that held it. No shop: lost stock belongs to none.
+//
+// Who reads: the warehouse that held the stock and the seller that owns it — both fields, the amount being what the
+// warehouse owes (a-warehouse-sees-its-lost-amount); the root team every team's; any other team nothing.
+message InventoryLostMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/inventory/lost"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_PRODUCT,
+      FILTER_TYPE_SUPPLIER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_PRODUCT,
+      GROUP_TYPE_SUPPLIER,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_WAREHOUSE
+    ]
+  };
+
+  // Units lost.
+  int64 lost_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Those units at their batch's price, rupiah.
+  double lost_amount = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+message InventoryLostMetricByID {
+  map<uint64, InventoryLostMetric> items = 1;
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+message InventoryLostMetricByDay {
+  map<string, InventoryLostMetric> items = 1;
+}
+
+message MetricSearchRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The reader: every member of the scoped team reads it (every-member-reads-every-metric-of-their-team).
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // A group with keys — never SUMMARY, which has none.
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0, 1]
+  }];
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 6];
+  warehouse.analytic_base.v1.MetricSort sort = 4 [(buf.validate.field).required = true];
+  warehouse.analytic_base.v1.PaginationFilter page = 5 [(buf.validate.field).required = true];
+}
+
+message MetricSearchResponse {
+  warehouse.analytic_base.v1.MetricKeys keys = 1;
+  bool has_next = 2;
+}
+
+message MetricDataRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 6];
+  // The keys to read — none under SUMMARY.
+  warehouse.analytic_base.v1.MetricKeys keys = 4;
+  // One metric only here, `metrics/inventory/lost`; repeated to keep the pattern's shape.
+  repeated string metric_ids = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    unique: true
+  }];
+}
+
+message MetricData {
+  oneof m {
+    InventoryLostMetricByID lost_by_id = 1;
+    InventoryLostMetricByDay lost_by_day = 2;
+    InventoryLostMetric lost_summary = 3;
+  }
+}
+
+message MetricDataResponse {
+  repeated MetricData metric_datas = 1;
+  // The read's own time: the report is written in the loss's own transaction, so nothing lags.
+  int64 as_of_unix = 2;
+}

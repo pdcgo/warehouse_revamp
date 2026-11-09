@@ -4,7 +4,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { dayKey, expenseDays, revenueDays, liabilityDays, teams } from "../../../.storybook/fixtures";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
-import { formatRupiah } from "../../lib/money";
+import { jakartaToday } from "../../lib/jakartaDay";
+import { formatRupiah, type Rupiah } from "../../lib/money";
 import { DailyStatementPage } from "./index";
 
 // THE MONEY, DAY BY DAY — and the one screen in the app that subtracts one service from another.
@@ -35,7 +36,9 @@ const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 // The window the page opens on — a rolling 30 days, which is `DEFAULT_RANGE` in index.tsx.
 const WINDOW_DAYS = 30;
 
-const sum = (xs: bigint[]) => xs.reduce((a, b) => a + b, 0n);
+// Every figure is summed as a number — the expense and liability series are doubles since part 2 of the money change;
+// the revenue fixture still holds bigints, taken exactly.
+const sum = (xs: Rupiah[]) => xs.reduce<number>((a, b) => a + Number(b), 0);
 // A relative range of N days runs from the start of the day N−1 back through the end of today, so
 // `ago` 0…N−1 is what lands inside it. Same arithmetic `resolveRange` does.
 const inWindow = (ago: number, days: number) => ago <= days - 1;
@@ -52,7 +55,7 @@ const sellingExpenses = expenseDays.filter((d) => d.teamId === SELLING.id);
 const warehouseFees = liabilityDays.filter((d) => d.teamId === WAREHOUSE.id);
 const warehouseExpenses = expenseDays.filter((d) => d.teamId === WAREHOUSE.id);
 
-const dayTotal = (d: { byKind: Record<number, bigint> }) => sum(Object.values(d.byKind));
+const dayTotal = (d: { byKind: Record<number, number> }) => sum(Object.values(d.byKind));
 
 // …what the DAILY view (a rolling 30 days) can see.
 const revenue30 = sellingRevenue.filter((d) => inWindow(d.ago, WINDOW_DAYS));
@@ -62,7 +65,7 @@ const MARGIN = sum(revenue30.map((d) => d.expectedMargin));
 const SPENT = sum(expenses30.map(dayTotal));
 const PROFIT = MARGIN - SPENT;
 
-const ADS_SPENT = sum(expenses30.map((d) => d.byKind[ExpenseKind.ADS] ?? 0n));
+const ADS_SPENT = sum(expenses30.map((d) => d.byKind[ExpenseKind.ADS] ?? 0));
 
 // …and what the MONTHLY view (the last twelve months) can. Every fixture row is inside it by
 // construction — the furthest back is 200 days, and the window's near edge is at least 334 — which the
@@ -76,7 +79,7 @@ const PROFIT_12M = MARGIN_12M - SPENT_12M;
 const FEES = sum(warehouseFees.map((d) => d.handlingFee));
 const COD = sum(warehouseFees.map((d) => d.codFee));
 const WAREHOUSE_STOCK_LOSS = sum(
-  warehouseExpenses.map((d) => d.byKind[ExpenseKind.STOCK_LOSS] ?? 0n),
+  warehouseExpenses.map((d) => d.byKind[ExpenseKind.STOCK_LOSS] ?? 0),
 );
 
 // The days ANYTHING happened on inside the daily window, either side — the rows that survive "hide
@@ -89,7 +92,7 @@ const QUIET_AGO = 4;
 // The day the fixtures make a LOSS: 170.000 of expected margin against 500.000 of ads and operational.
 const LOSS_AGO = 5;
 const LOSS_PROFIT =
-  (sellingRevenue.find((d) => d.ago === LOSS_AGO)?.expectedMargin ?? 0n) -
+  Number(sellingRevenue.find((d) => d.ago === LOSS_AGO)?.expectedMargin ?? 0n) -
   dayTotal(sellingExpenses.find((d) => d.ago === LOSS_AGO)!);
 
 // A month the DAILY view cannot reach — the one that proves a monthly rollup is reading more than the
@@ -284,12 +287,12 @@ export const ALosingDayIsVisibleInsideAProfitablePeriod: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(LOSS_PROFIT < 0n).toBe(true);
+    await expect(LOSS_PROFIT < 0).toBe(true);
     const row = await canvas.findByTestId(`statement-row-${dayKey(LOSS_AGO)}`);
     await waitFor(() => expect(row).toHaveTextContent(formatRupiah(LOSS_PROFIT)));
 
     // …while the period itself is ahead, and says so without the loss caption.
-    await expect(PROFIT > 0n).toBe(true);
+    await expect(PROFIT > 0).toBe(true);
     await expect(canvas.getByTestId("statement-total-profit")).toHaveTextContent(
       formatRupiah(PROFIT),
     );
@@ -526,7 +529,7 @@ export const TheAverageFollowsTheGrain: Story = {
 
     await waitFor(() =>
       expect(canvas.getByTestId("statement-per-day")).toHaveTextContent(
-        formatRupiah(PROFIT / BigInt(WINDOW_DAYS)),
+        formatRupiah(Math.trunc(PROFIT / WINDOW_DAYS)),
       ),
     );
     await expect(canvas.getByText(/per day/i)).toBeInTheDocument();
@@ -535,7 +538,7 @@ export const TheAverageFollowsTheGrain: Story = {
 
     await waitFor(() =>
       expect(canvas.getByTestId("statement-per-day")).toHaveTextContent(
-        formatRupiah(PROFIT_12M / BigInt(MONTHLY_BUCKETS)),
+        formatRupiah(Math.trunc(PROFIT_12M / MONTHLY_BUCKETS)),
       ),
     );
     await expect(canvas.getByText(/per month/i)).toBeInTheDocument();
@@ -560,7 +563,8 @@ export const AYearlyViewIsOneRowAndSaysWhyItCannotBeTwo: Story = {
 
     // With ONE bucket, the row IS the period — so the running total, the row's profit and the footer are
     // three renderings of a single number, and any of them drifting shows up here.
-    const year = new Date().getFullYear().toString();
+    // this year in JAKARTA — the year the page opens on (defaultRangeFor), whatever the runner's clock says
+    const year = jakartaToday().slice(0, 4);
     const row = canvas.getByTestId(`statement-row-${year}`);
     const total = canvas.getByTestId("statement-total-profit").textContent!;
 

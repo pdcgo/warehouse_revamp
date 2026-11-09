@@ -47,6 +47,7 @@ func (s *Service) FinancialAccountCreate(
 	}
 
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 
 	var created m.FinancialAccount
 
@@ -90,6 +91,7 @@ func (s *Service) FinancialAccountCreate(
 			description: "Opening balance",
 			occurredAt:  occurredAt,
 			actorID:     actor,
+			isOverride:  override,
 		})
 
 		return err

@@ -49,18 +49,18 @@ export function sampleDivision(productId: bigint): ProductDivision | undefined {
 }
 
 /** A plausible unit cost range for a product — one price, or two a few thousand apart. */
-export function sampleCostRange(productId: bigint): { min: bigint; max: bigint } {
+export function sampleCostRange(productId: bigint): { min: number; max: number } {
   const n = Number(productId % 9973n);
-  const min = BigInt(8 + (n % 83)) * 1_000n; // Rp 8.000 … Rp 90.000
-  const spread = n % 3 === 0 ? 0n : BigInt(1 + (n % 4)) * 500n; // a third of them have a single price
+  const min = (8 + (n % 83)) * 1_000; // Rp 8.000 … Rp 90.000
+  const spread = n % 3 === 0 ? 0 : (1 + (n % 4)) * 500; // a third of them have a single price
 
   return { min, max: min + spread };
 }
 
-/** A price range, both ends. */
+/** A price range, both ends — money is a `number` (exact double) everywhere. */
 export interface PriceRange {
-  min: bigint;
-  max: bigint;
+  min: number;
+  max: number;
 }
 
 /**
@@ -108,13 +108,14 @@ export function sampleWarehouseCross(
 ): Map<string, PriceRange> {
   const { min, max } = sampleCostRange(productId);
   const ids = [...stocked].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  const k = BigInt(ids.length);
-  const at = (j: bigint) => min + ((max - min) * j) / k;
+  const k = ids.length;
+  // Whole rupiah per slice, as the bigint slices were — the stories assert these figures.
+  const at = (j: number) => min + Math.floor(((max - min) * j) / k);
 
   return new Map(
     ids.map((id, i) => {
-      const lo = at(BigInt(i));
-      const hi = at(BigInt(i + 1));
+      const lo = at(i);
+      const hi = at(i + 1);
 
       return [id.toString(), { min: withMarkup(lo, markupBps), max: withMarkup(hi, markupBps) }];
     }),

@@ -71,7 +71,7 @@ flowchart LR
 ```
 
 ✅ **Unblocked 2026-09-29.** All five types settlement gained on 2026-09-24 are types this service produces, and
-`SettlementPost` refused every one — 🔨 they join the contract in this build
+`SettlementPost` refused every one — ✅ they joined the contract in that build (2026-09-29)
 ([the type list grew to thirteen](./context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight)).
 And `withdrawal` counts in the position, by your answer to settlement Q1
 ([withdrawal-counts-in-the-position](./context_decision.md#withdrawal-counts-in-the-position)).
@@ -82,7 +82,7 @@ And `withdrawal` counts in the position, by your answer to settlement Q1
 [revert](./settlement_importer_decision.md#an-upload-is-never-reverted), [dry run](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)), #2 makes every choice about a row permanent at its first post, so
 each question below costs a sentence now and a hand-posted correction per row later. What guards an import is
 the two decided checks — the shop before the upload, the file's orders before the first post. ⛔ **And the
-interceptor change lands before the first handler** — decided ([a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)), not built: until it
+interceptor change lands before the first handler** — decided ([a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)), ✅ built 2026-09-29 (19c9a95); before that, until it
 is, both imports answer `Unimplemented` to everyone. Give the service one name before a row carries the old
 one ([Contradiction](#contradiction)).
 

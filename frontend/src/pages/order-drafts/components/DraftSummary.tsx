@@ -1,11 +1,8 @@
 import { useTranslation } from "react-i18next";
 
 import type { OrderDraft } from "../../../gen/warehouse/selling/v1/order_draft_pb";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { formatUnixDate } from "../../../lib/datetime";
-import { draftGaps } from "../../../features/orderDrafts/draftReadiness";
 import { SummaryCard, SummaryStrip } from "../../../features/orders/SummaryCard";
-import { ORDER_DRAFTS_PENDING } from "../pending";
 
 // THREE NUMBERS ABOVE THE DRAFTS (owner: *"3 teratas saja"*) — the three the data can carry, drawn with
 // the order list's own `SummaryCard` in its own strip, so a card here is the same shape as a card there,
@@ -14,24 +11,22 @@ import { ORDER_DRAFTS_PENDING } from "../pending";
 //   Draft      the whole set — `page_info.total_items`, real
 //   Tertua     how long the oldest draft has waited — one ASC row off the same RPC, real. The pruning
 //              signal: nothing expires, so the age of the oldest is how you know it is time to clear
-//   Siap       ⚠ counted over THIS PAGE only, and the card's own line says so. `draftGaps` is per draft and the
-//              list is paginated; the whole set needs an aggregate the server does not have yet
+//   Siap       the whole set's ready drafts — OrderDraftList's `ready_count` (#16), the server's SQL twin of
+//              `draftGaps`, so it reads the backlog and not the page on screen. Out of the same total as the first card
 //
 // Like the order list's cards, none of them is a control.
 
 export function DraftSummary({
   total,
   oldest,
-  page,
+  ready,
 }: {
   total: number;
   oldest: OrderDraft | null | undefined;
-  /** The drafts on screen — what "ready" is counted over. */
-  page: OrderDraft[];
+  /** How many of the WHOLE set are ready (OrderDraftList's `ready_count`), not of the page on screen. */
+  ready: number;
 }) {
   const { t } = useTranslation();
-
-  const ready = page.filter((draft) => draftGaps(draft).length === 0).length;
 
   return (
     <SummaryStrip testId="draft-summary">
@@ -44,13 +39,10 @@ export function DraftSummary({
         testId="draft-summary-oldest"
       />
 
-      {/* The scope is on the card's own line, not left to the ⚠'s tooltip — a reader who never hovers
-          must still not take "1 of 2" for the whole backlog. */}
+      {/* Out of the whole set, as the first card counts it — the server counts both. */}
       <SummaryCard
         label={t("orderDrafts.summary.ready")}
-        mark={<NotImplemented list={ORDER_DRAFTS_PENDING} id="readyCount" />}
-        value={t("orderDrafts.summary.readyValue", { ready, total: page.length })}
-        line={t("orderDrafts.summary.onThisPage")}
+        value={t("orderDrafts.summary.readyValue", { ready, total })}
         testId="draft-summary-ready"
       />
     </SummaryStrip>

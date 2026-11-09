@@ -143,7 +143,7 @@ export function DiscoverProductDetailPage() {
   const [startingOrder, setStartingOrder] = useState(false);
 
   // Only worth asking while the product is on offer — an archived or locked one has nothing to take.
-  const offered = product !== null && !product.deleted && !product.crossLocked;
+  const offered = product !== null && !product.archived && !product.crossLocked;
   const availability = useAvailabilityByWarehouse({
     teamId,
     productId: offered ? id : 0n,
@@ -284,7 +284,7 @@ export function DiscoverProductDetailPage() {
   // or a minimum in force (the badge beside the name says which). The team's own orders are never stopped by its lock.
   // NOTHING READY IN ANY WAREHOUSE holds it back too, the team's own product included (an-empty-product-cannot-start-an-
   // order): the take draws at creation, so the form would only refuse it.
-  const orderBlockedBy = product.deleted
+  const orderBlockedBy = product.archived
     ? t("discoverDetail.archived")
     : own
       ? ready === 0n
@@ -313,7 +313,7 @@ export function DiscoverProductDetailPage() {
         onBack={() => navigate("/products/discover")}
         name={product.name}
         titleRef={stick.title}
-        sku={product.sku}
+        sku={product.productCode}
         badges={
           <HStack gap="1.5" flexShrink={0}>
             {/* THE LOCK IS THIS BADGE (the-lock-is-the-title-badge) — no Penjualan Tim Lain card repeats it; given the
@@ -324,7 +324,7 @@ export function DiscoverProductDetailPage() {
               totalReady={ready}
               testIdPrefix={stuck ? "discover-detail-sticky" : "discover-detail"}
             />
-            {product.deleted && (
+            {product.archived && (
               <Badge colorPalette="gray" data-testid={tid("discover-detail-archived-badge")}>
                 {t("products.tab.archived")}
               </Badge>
@@ -393,7 +393,7 @@ export function DiscoverProductDetailPage() {
   // ── WHY NOTHING IS ON OFFER — an archived or locked product says so where the ready figure would stand: it is the one
   // thing worth saying about it, and the figure would be a dash. A locked product is on Discover with its badge
   // (a-locked-product-shows-on-discover); an archived one only by an old link. ──────────────────────────────────────────
-  const notOffered = product.deleted ? (
+  const notOffered = product.archived ? (
     <Alert.Root status="warning" data-testid="discover-detail-archived">
       <Alert.Indicator />
       <Alert.Title>{t("discoverDetail.archived")}</Alert.Title>
@@ -497,7 +497,7 @@ export function DiscoverProductDetailPage() {
   // ditampilkan"*). ──────────────────────────────────────────────────────────────────────────────────────────────────
   const derivedSection = section(
     "derived",
-    <DerivedSection derived={sampleDerived(product.id, product.name, product.sku, product.defaultImageThumbnailUrl || cover)} />,
+    <DerivedSection derived={sampleDerived(product.id, product.name, product.productCode, product.defaultImageThumbnailUrl || cover)} />,
     mark("derived"),
   );
 

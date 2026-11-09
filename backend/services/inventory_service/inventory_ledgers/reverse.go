@@ -64,7 +64,8 @@ func ReverseBatchLogs(tx *gorm.DB, t inventory_service_models.InventoryTransacti
 }
 
 // ReversePlacementLogs is ReverseBatchLogs for the racks: one flipped row per rack row the transaction wrote, the rack
-// rows locked in id order first.
+// rows locked in id order first. A rack row a stock count holds refuses the whole rollback with a *CountedError — a cancel
+// would put units back into a book the count is being compared with (a-lock-stops-sales-and-cancels-too).
 func ReversePlacementLogs(tx *gorm.DB, t inventory_service_models.InventoryTransaction, actorID uint64) error {
 	var logs []inventory_service_models.ProductPlacementLog
 
@@ -90,6 +91,17 @@ func ReversePlacementLogs(tx *gorm.DB, t inventory_service_models.InventoryTrans
 		Find(&rows).Error
 	if err != nil {
 		return fmt.Errorf("lock rack rows of transaction %d: %w", t.ID, err)
+	}
+
+	// THE COUNT LOCK, read after the rows are locked and in a statement of its own (see count_lock.go).
+	keys := make([]RackKey, 0, len(logs))
+	for _, l := range logs {
+		keys = append(keys, RackKey{l.ProductID, l.PlacementID})
+	}
+
+	err = RefuseCounted(tx, keys)
+	if err != nil {
+		return err
 	}
 
 	byKey := make(map[RackKey]*inventory_service_models.ProductPlacement, len(rows))

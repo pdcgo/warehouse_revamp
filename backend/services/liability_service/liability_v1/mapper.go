@@ -37,6 +37,14 @@ const (
 	SourceTypeLostGood
 	// Goods reimbursed and then FOUND AGAIN. Posted as a REVERSAL against the find's own movement.
 	SourceTypeFound
+	// What the courier asked at the warehouse's door for a RETURNED parcel (a-return-may-carry-the-couriers-ask). SourceID
+	// is the ORDER. Its own type rather than SourceTypeIncidentalFee, whose SourceID is a restock: an order id and a
+	// restock id can be the same number, and the idempotency key would take one for a redelivery of the other.
+	SourceTypeReturnIncidentalFee
+	// What the courier asked at the RECEIVING warehouse's door for a warehouse transfer (a-transfer-charge-is-a-transfer-fee).
+	// SourceID is the TRANSFER — its own type for SourceTypeReturnIncidentalFee's reason: a transfer id and a restock id
+	// can be the same number.
+	SourceTypeTransferFee
 )
 
 // The text stored in `liability_logs.source_type`. No DB CHECK guards these (the mapper and the
@@ -50,6 +58,10 @@ const (
 	sourceBrokenGood    = "broken_good"
 	sourceLostGood      = "lost_good"
 	sourceFound         = "found"
+	// The courier's ask at a return's door — an incidental fee, at a return.
+	sourceReturnIncidentalFee = "return_incidental_fee"
+	// The courier's ask at a transfer's receiving door (a-transfer-charge-is-a-transfer-fee).
+	sourceTransferFee = "transfer_fee"
 )
 
 // sourceTypeText maps to storage. An UNSPECIFIED source returns "" and PostEntry refuses it: an entry
@@ -70,6 +82,10 @@ func sourceTypeText(t SourceType) string {
 		return sourceLostGood
 	case SourceTypeFound:
 		return sourceFound
+	case SourceTypeReturnIncidentalFee:
+		return sourceReturnIncidentalFee
+	case SourceTypeTransferFee:
+		return sourceTransferFee
 	default:
 		return ""
 	}
@@ -94,6 +110,10 @@ func sourceTypeProto(text string) liabilityv1.LiabilitySourceType {
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_LOST_GOOD
 	case sourceFound:
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_FOUND
+	case sourceReturnIncidentalFee:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE
+	case sourceTransferFee:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_TRANSFER_FEE
 	default:
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_UNSPECIFIED
 	}
@@ -117,6 +137,10 @@ func sourceTypeFromText(text string) SourceType {
 		return SourceTypeLostGood
 	case sourceFound:
 		return SourceTypeFound
+	case sourceReturnIncidentalFee:
+		return SourceTypeReturnIncidentalFee
+	case sourceTransferFee:
+		return SourceTypeTransferFee
 	default:
 		return SourceTypeUnspecified
 	}

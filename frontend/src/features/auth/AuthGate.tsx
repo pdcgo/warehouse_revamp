@@ -2,6 +2,7 @@ import { Center, Spinner } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { returnState } from "./returnTo";
 
 // AuthGate blocks the first render until CheckAccess has settled.
 //
@@ -29,8 +30,10 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { identity } = useAuth();
   const location = useLocation();
 
+  // `from` carries the QUERY as well as the path: the connect page an agent's OAuth opened is nothing without its
+  // client_id, redirect_uri, state and challenge, and signing in must come back to all of it.
   if (!identity) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/login" replace state={returnState(location)} />;
   }
 
   return <>{children}</>;

@@ -25,8 +25,19 @@ var jakarta = time.FixedZone("WIB", 7*60*60)
 // ⚠ A PUBLISH FAILURE DOES NOT FAIL THE ACCEPT. The goods are on the shelf and that is the truth; the event is how a
 // supplier's figures learn of it (no-outbox-the-publish-is-trusted). A lost publish is logged with its event_id —
 // the figures are then short that restock until a replay or an adjustment, never wrong in the other direction.
-func (s *Service) publishAccepted(ctx context.Context, rr *inventory_service_models.Restock) {
-	event := RestockAcceptedEvent(rr)
+//
+// `acceptLog` is the trail row the accept just wrote. It rides on a COPY of the restock, so the event reads the
+// accept's override stamp from the stored row exactly as the backfill does, and the response still shows the restock
+// as it was loaded.
+func (s *Service) publishAccepted(
+	ctx context.Context,
+	rr *inventory_service_models.Restock,
+	acceptLog inventory_service_models.RestockLog,
+) {
+	announced := *rr
+	announced.Logs = []inventory_service_models.RestockLog{acceptLog}
+
+	event := RestockAcceptedEvent(&announced)
 
 	err := s.events(ctx, publishIdentity(ctx), event)
 	if err != nil {
@@ -38,9 +49,9 @@ func (s *Service) publishAccepted(ctx context.Context, rr *inventory_service_mod
 	}
 }
 
-// RestockAcceptedEvent builds the event an ACCEPTED restock announces — its items and its problem rows loaded.
-// Pure, and exported: the accept sends it, and `san supplier backfill-figures` builds the very same event for a restock
-// accepted before the event existed (past-accepts-are-backfilled-once), so the two cannot disagree.
+// RestockAcceptedEvent builds the event an ACCEPTED restock announces — its items, its problem rows and its accept's
+// trail row loaded. Pure, and exported: the accept sends it, and `san supplier backfill-figures` builds the very same
+// event for a restock accepted before the event existed (past-accepts-are-backfilled-once), so the two cannot disagree.
 func RestockAcceptedEvent(rr *inventory_service_models.Restock) *eventsv1.Event {
 	acceptedAt := rr.UpdatedAt
 	if rr.AcceptedAt != nil {
@@ -94,19 +105,38 @@ func RestockAcceptedEvent(rr *inventory_service_models.Restock) *eventsv1.Event 
 				WarehouseAdditionalCost:     rr.WarehouseAdditionalCost,
 				WarehouseAdditionalCostNote: rr.WarehouseAdditionalCostNote,
 				ActorId:                     rr.AcceptedByUserID,
+				// Whether that person counted it in as an override — the accept's trail row, the one place inventory stores
+				// it for this act (an-override-is-stamped-in-every-service).
+				ActorIsOverride: acceptIsOverride(rr),
 			},
 		},
 	}
 }
 
+// acceptIsOverride is the override stamp on the accept's own trail row — the one that moved the restock INTO accepted.
+// The restock row carries one actor per act and no flag, so the trail is where the accept's answer lives (00034). False
+// when that row is not loaded, or predates the column.
+func acceptIsOverride(rr *inventory_service_models.Restock) bool {
+	for i := range rr.Logs {
+		row := rr.Logs[i]
+		if row.ToStatus == restockStatusAccepted && row.FromStatus != restockStatusAccepted {
+			return row.IsOverride
+		}
+	}
+
+	return false
+}
+
 // AcceptedRestocks is every ACCEPTED restock that names a supplier, oldest first, loaded the way RestockAcceptedEvent
-// needs it — its items in order, and its problem rows. For `san supplier backfill-figures`
-// (past-accepts-are-backfilled-once): what "accepted" is stored as stays inventory's to know.
+// needs it — its items in order, its problem rows, and the accept's trail row (its override stamp). For
+// `san supplier backfill-figures` (past-accepts-are-backfilled-once): what "accepted" is stored as stays inventory's to
+// know.
 func AcceptedRestocks(db *gorm.DB) *gorm.DB {
 	return db.
 		Model(&inventory_service_models.Restock{}).
 		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Problems").
+		Preload("Logs", "to_status = ? AND from_status <> ?", restockStatusAccepted, restockStatusAccepted).
 		Where("status = ?", restockStatusAccepted).
 		Where("EXISTS (SELECT 1 FROM restock_items i " +
 			"WHERE i.restock_id = restocks.id AND i.supplier_id IS NOT NULL)").

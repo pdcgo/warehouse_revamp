@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
@@ -30,12 +31,12 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	events := &recorder{}
 	twoLines := &fakePicker{draw: draw}
-	svc := selling_v1.NewService(db, twoLines, events.send, &fakeCatalog{}, &fakeCredit{}, nil, nil, &fakeFees{percent: 10})
+	svc := selling_v1.NewService(db, twoLines, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 10}, nil, nil)
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 	}
 
 	merged, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
@@ -56,11 +57,11 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 
 	// THE SAME ORDER, TYPED AS ONE LINE OF 3 — what the merged order must be indistinguishable from.
 	oneLine := &fakePicker{draw: draw}
-	single := selling_v1.NewService(db, oneLine, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, &fakeFees{percent: 10})
+	single := selling_v1.NewService(db, oneLine, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, &fakeFees{percent: 10}, nil, nil)
 
 	singleReq := orderReq(shop)
 	singleReq.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 3},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 3},
 	}
 
 	typed, err := single.OrderCreate(context.Background(), connect.NewRequest(singleReq))
@@ -76,25 +77,25 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 	}
 
 	line := got.Items[0]
-	if line.ProductID != 100 || line.Quantity != 3 || line.UnitCost != 11_333 ||
+	if line.ProductID != 100 || line.Quantity != 3 || !san_money.Equal(line.UnitCost, 34_000.0/3) ||
 		line.Total == nil || *line.Total != 34_000 {
-		t.Fatalf("stored line %+v — want product 100 × 3 at unit cost 11333, total 34000", line)
+		t.Fatalf("stored line %+v — want product 100 × 3 at the exact unit cost 11.333,33…, total 34000", line)
 	}
 
 	if got.GoodsCost != 34_000 || got.WarehouseFee == nil || *got.WarehouseFee != 3_400 {
-		t.Fatalf("stored goods_cost %d, fee %v — want the draw's 34000 and 10%% of it", got.GoodsCost, got.WarehouseFee)
+		t.Fatalf("stored goods_cost %v, fee %v — want the draw's 34000 and 10%% of it", got.GoodsCost, got.WarehouseFee)
 	}
 
 	// Every figure a single line of 3 stores, the merged order stores too.
 	if got.GoodsCost != want.GoodsCost || *got.WarehouseFee != *want.WarehouseFee || got.TotalCost != want.TotalCost {
-		t.Fatalf("merged header goods_cost %d fee %v total_cost %v — single line %d %v %v",
+		t.Fatalf("merged header goods_cost %v fee %v total_cost %v — single line %v %v %v",
 			got.GoodsCost, *got.WarehouseFee, got.TotalCost,
 			want.GoodsCost, *want.WarehouseFee, want.TotalCost)
 	}
 
 	other := want.Items[0]
 	if line.Quantity != other.Quantity || line.UnitCost != other.UnitCost ||
-		*line.Total != *other.Total || line.SKU != other.SKU || line.Name != other.Name {
+		*line.Total != *other.Total || line.ProductCode != other.ProductCode || line.Name != other.Name {
 		t.Fatalf("merged line %+v — the single line stored %+v", line, other)
 	}
 
@@ -109,14 +110,14 @@ func TestOrderCreate_OneProductOnTwoLinesIsPlacedAsOneLine(t *testing.T) {
 // disagree about but their label: they are ONE line, placed, holding the take's unit cost.
 func TestOrderCreate_OneProductOnTwoLinesIsOneLineAtTheTakesCost(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	picker := &fakePicker{costs: map[uint64]float64{100: 6000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 	}
 
 	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
@@ -139,14 +140,14 @@ func TestOrderCreate_OneProductOnTwoLinesIsOneLineAtTheTakesCost(t *testing.T) {
 // them, so the order is refused — naming the product — before anything is taken.
 func TestOrderCreate_OneProductUnderTwoNamesIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	picker := &fakePicker{costs: map[uint64]float64{100: 6000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	req := orderReq(shop)
 	req.Items = []*sellingv1.OrderItem{
-		{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2},
-		{ProductId: 100, Sku: "SKU1", Name: "Widget Merah", Quantity: 1},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+		{ProductId: 100, ProductCode: "SKU1", Name: "Widget Merah", Quantity: 1},
 	}
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
@@ -169,14 +170,14 @@ func TestOrderCreate_OneProductUnderTwoNamesIsRefused(t *testing.T) {
 // so it is placed as one line of the summed quantity, at the take's cost.
 func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{41: 20_000}}
+	picker := &fakePicker{costs: map[uint64]float64{41: 20_000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
-	// Both rows mapped to product 41, at one marketplace price — 2 + 1 units.
+	// Both rows mapped to product 41 in the form, at one marketplace price — 2 + 1 units.
 	draftID := draftOfOneProduct(t, svc, shop, 50_000, 50_000)
 
-	order, err := promote(t, svc, 7, 2, draftID)
+	order, err := promoteMapped(t, svc, 7, 2, draftID, 41, 41)
 	if err != nil {
 		t.Fatalf("a draft mapping two rows to one product was refused: %v", err)
 	}
@@ -200,7 +201,7 @@ func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T)
 
 	// 3 × 20.000 drawn — the header is the take's too, never the rows' 3 × 50.000.
 	if stored.GoodsCost != 60_000 {
-		t.Fatalf("stored goods_cost %d — want 60000", stored.GoodsCost)
+		t.Fatalf("stored goods_cost %v — want 60000", stored.GoodsCost)
 	}
 }
 
@@ -209,13 +210,13 @@ func TestOrderCreateFromDraft_OneProductOnTwoRowsIsPlacedAsOneLine(t *testing.T)
 // until the draft goes, and nothing on the order sums them.
 func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(t *testing.T) {
 	db := san_testdb.DB(t)
-	picker := &fakePicker{costs: map[uint64]int64{41: 20_000}}
+	picker := &fakePicker{costs: map[uint64]float64{41: 20_000}}
 	svc := newServiceWithPicker(t, db, picker)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	draftID := draftOfOneProduct(t, svc, shop, 50_000, 35_000)
 
-	order, err := promote(t, svc, 7, 2, draftID)
+	order, err := promoteMapped(t, svc, 7, 2, draftID, 41, 41)
 	if err != nil {
 		t.Fatalf("two rows of one product at two marketplace prices were refused: %v", err)
 	}
@@ -237,7 +238,7 @@ func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(
 
 	// The take's 3 × 20.000 — never the rows' 2 × 50.000 + 1 × 35.000.
 	if stored.GoodsCost != 60_000 {
-		t.Fatalf("stored goods_cost %d, want the take's 60000", stored.GoodsCost)
+		t.Fatalf("stored goods_cost %v, want the take's 60000", stored.GoodsCost)
 	}
 
 	var drafts int64
@@ -252,9 +253,9 @@ func TestOrderCreateFromDraft_OneProductAtTwoMarketplacePricesIsPlacedAsOneLine(
 	}
 }
 
-// draftOfOneProduct is a finished draft whose two scraped rows (2 × and 1 ×) are BOTH mapped to product 41, each at
-// the unit price given.
-func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, first, second int64) uint64 {
+// draftOfOneProduct is a finished draft of two scraped rows (2 × and 1 ×), each at the unit price given — the person
+// maps BOTH to product 41 in the form (promoteMapped), since a draft stores no mapping.
+func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, first, second float64) uint64 {
 	t.Helper()
 
 	draftID := pushRef(t, svc, 7, "SHP-100")
@@ -276,11 +277,11 @@ func draftOfOneProduct(t *testing.T, svc *selling_v1.Service, shopID uint64, fir
 		WarehouseId:  u64(testWarehouse),
 		CustomerName: str("Budi"),
 		Items: &sellingv1.OrderDraftLines{Lines: []*sellingv1.OrderDraftLineEdit{
-			{Id: items[0].GetId(), ProductId: 41, Quantity: items[0].GetQuantity(), UnitPrice: first},
-			{Id: items[1].GetId(), ProductId: 41, Quantity: items[1].GetQuantity(), UnitPrice: second},
+			{Id: items[0].GetId(), Quantity: items[0].GetQuantity(), UnitPrice: first},
+			{Id: items[1].GetId(), Quantity: items[1].GetQuantity(), UnitPrice: second},
 		}},
 		PlatformCreatedAtUnix: i64(testPlatformDate),
-		PlatformTotal:         i64(testPlatformTotal),
+		PlatformTotal:         f64(testPlatformTotal),
 	})
 
 	return draftID

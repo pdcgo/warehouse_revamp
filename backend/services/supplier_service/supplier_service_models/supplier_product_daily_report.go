@@ -30,9 +30,9 @@ func (SupplierProductDailyReport) TableName() string {
 // at zero without an error.
 type SupplierMetricColumns struct {
 	RestockCount            int64
-	RestockValuation        int64
+	RestockValuation        float64
 	ShippingLostCount       int64
-	ShippingLostValuation   int64
+	ShippingLostValuation   float64
 	ShippingBrokenCount     int64
-	ShippingBrokenValuation int64
+	ShippingBrokenValuation float64
 }

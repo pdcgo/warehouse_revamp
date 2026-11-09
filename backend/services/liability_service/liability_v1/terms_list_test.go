@@ -58,7 +58,7 @@ func TestTermsList_IsKeyedByCounterparty(t *testing.T) {
 	}
 
 	if row.GetCreditLimit() != 50_000_000 {
-		t.Fatalf("credit_limit = %d, want 50000000", row.GetCreditLimit())
+		t.Fatalf("credit_limit = %v, want 50000000", row.GetCreditLimit())
 	}
 }
 
@@ -96,7 +96,7 @@ func TestTermsList_UnlimitedStaysAbsent(t *testing.T) {
 	rows := termsRows(termsList(t, svc, warehouse))
 
 	if rows[selling].CreditLimit != nil {
-		t.Fatalf("unlimited read back as %d, want ABSENT", rows[selling].GetCreditLimit())
+		t.Fatalf("unlimited read back as %v, want ABSENT", rows[selling].GetCreditLimit())
 	}
 
 	if rows[productOwner].CreditLimit == nil {

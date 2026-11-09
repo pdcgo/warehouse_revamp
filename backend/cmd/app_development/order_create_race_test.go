@@ -102,27 +102,30 @@ func seedTwoBatches(t *testing.T, db *gorm.DB) uint64 {
 
 // orderService is selling wired to the REAL take and the REAL fee, through the composition root's own adapters.
 func orderService(db *gorm.DB, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
 
 	if fees == nil {
 		fees = NewWarehouseFeePricer(warehouse_v1.NewService(db, nil))
 	}
 
-	return selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, nil, nil, fees)
+	return selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, fees, nil, nil)
 }
 
 func twoUnits(shop uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
-		TeamId: ocTeam, ShopId: shop, WarehouseId: ocWarehouse, CustomerName: "Budi",
+		ShipmentChannelId: testShipmentChannelID,
+		IdempotencyKey:    newOrderKey(),
+		TeamId:            ocTeam, ShopId: shop, WarehouseId: ocWarehouse, CustomerName: "Budi",
 		PlatformCreatedAtUnix: 1_790_000_000, PlatformTotal: 60_000,
-		Items: []*sellingv1.OrderItem{{ProductId: ocProduct, Sku: "KAOS", Name: "Kaos", Quantity: 2}},
+		Items: []*sellingv1.OrderItem{{ProductId: ocProduct, ProductCode: "KAOS", Name: "Kaos", Quantity: 2}},
 	}
 }
 
 // EIGHT CREATES OVER A FOUR-UNIT SHELF, each wanting 2: exactly two win, and each freezes THE DRAW IT MADE — one the
 // January pair (20.000), the other the March pair (28.000). Their goods_cost add up to the 48.000 the goods were bought for,
 // each fee is 10% of its own goods_cost (an own product: no markup), each line's unit cost is its own batch's, and each order's goods_cost is exactly what its
-// inventory transaction took. A loser's take is given back. The data, not the errors, is asserted.
+// inventory transaction took — found by the order's own key AND its stored transaction_id (backlog #10 slice 3). A loser's
+// take is refused and its key released. The data, not the errors, is asserted.
 func TestRace_OrderCreate_EachOrderFreezesItsOwnDraw(t *testing.T) {
 	h := san_race.New(t, orderRaceTables...)
 	db := h.DB()
@@ -144,7 +147,7 @@ func TestRace_OrderCreate_EachOrderFreezesItsOwnDraw(t *testing.T) {
 
 		var orders []struct {
 			ID           uint64
-			GoodsCost    int64
+			GoodsCost    float64
 			WarehouseFee *float64
 		}
 
@@ -155,13 +158,13 @@ func TestRace_OrderCreate_EachOrderFreezesItsOwnDraw(t *testing.T) {
 		}
 
 		if orders[0].GoodsCost != 20_000 || orders[1].GoodsCost != 28_000 {
-			t.Fatalf("round %d: goods_cost %d and %d, want the January 20000 and the March 28000 — each its own draw",
+			t.Fatalf("round %d: goods_cost %v and %v, want the January 20000 and the March 28000 — each its own draw",
 				round, orders[0].GoodsCost, orders[1].GoodsCost)
 		}
 
 		for _, o := range orders {
-			if o.WarehouseFee == nil || math.Abs(*o.WarehouseFee-float64(o.GoodsCost)/10) > 0.0001 {
-				t.Fatalf("round %d: order %d fee %v on goods_cost %d, want 10%% of its own goods_cost", round, o.ID, o.WarehouseFee, o.GoodsCost)
+			if o.WarehouseFee == nil || math.Abs(*o.WarehouseFee-o.GoodsCost/10) > 0.0001 {
+				t.Fatalf("round %d: order %d fee %v on goods_cost %v, want 10%% of its own goods_cost", round, o.ID, o.WarehouseFee, o.GoodsCost)
 			}
 
 			var taken float64
@@ -169,13 +172,14 @@ func TestRace_OrderCreate_EachOrderFreezesItsOwnDraw(t *testing.T) {
 			db.Raw(`
 				SELECT COALESCE(SUM(i.total), 0) FROM inventory_transaction_items i
 				JOIN idempotency_order_check k ON k.transaction_id = i.transaction_id
-				WHERE k.idempotency_key = ?`, "order:"+itoa(o.ID)).Scan(&taken)
+				JOIN orders o ON o.idempotency_key = k.idempotency_key AND o.transaction_id = k.transaction_id
+				WHERE o.id = ?`, o.ID).Scan(&taken)
 
-			if int64(math.Round(taken)) != o.GoodsCost {
-				t.Fatalf("round %d: order %d froze goods_cost %d, its take drew %v", round, o.ID, o.GoodsCost, taken)
+			if math.Round(taken) != o.GoodsCost {
+				t.Fatalf("round %d: order %d froze goods_cost %v, its take drew %v", round, o.ID, o.GoodsCost, taken)
 			}
 
-			var unitCosts []int64
+			var unitCosts []float64
 
 			db.Raw(`SELECT unit_cost FROM order_items WHERE order_id = ?`, o.ID).Scan(&unitCosts)
 			if len(unitCosts) != 1 || unitCosts[0]*2 != o.GoodsCost {
@@ -260,7 +264,7 @@ func TestRace_OrderCreate_TheFeeCallHoldsTheShopKeyShareOnly(t *testing.T) {
 		t.Fatalf("the parked create, released: %v", err)
 	}
 
-	var goodsCosts []int64
+	var goodsCosts []float64
 
 	db.Raw(`SELECT goods_cost FROM orders ORDER BY goods_cost`).Scan(&goodsCosts)
 	sort.Slice(goodsCosts, func(i, j int) bool { return goodsCosts[i] < goodsCosts[j] })

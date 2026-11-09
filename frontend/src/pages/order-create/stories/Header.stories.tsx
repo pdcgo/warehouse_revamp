@@ -7,9 +7,10 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { products } from "../../../../.storybook/fixtures";
 import { asTeam } from "../../../../.storybook/pageStory";
-import { ORDER_CREATE_META, routes } from "./kit";
+import { closeShopForStory } from "../../../../.storybook/shopStub";
+import { ORDER_CREATE_META, RoutedFromDraft, RoutedFromDraft202, asMelatiWithMaps, routes } from "./kit";
 
-// ORDER CREATE — Back and its guard; the form opened from a draft or from a product's page.
+// ORDER CREATE — Back and its guard; the form opened from a draft (and a draft on a closed shop) or from a product's page.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -58,16 +59,9 @@ export const ConfirmingTheDiscardLeaves: Story = {
 
 // ── A draft opens in this form (`the-draft-opens-in-the-order-form`) ──────────────────────────────────────
 
-// The form opened FROM A DRAFT — `?draft=201`: three scraped lines, two of them mapped to products 71 and 72, one not.
-function RoutedFromDraft() {
-  const router = useMemo(() => createMemoryRouter(routes, { initialEntries: ["/order-create?draft=201"] }), []);
-
-  return <RouterProvider router={router} />;
-}
-
-// SEEDED FROM THE DRAFT — the buyer, the shop, the warehouse; its mapped lines arrive as the products they name; its
-// scraped lines are a list of TEXT above the products (the unmapped mug included, which is on no line); the header says
-// which draft, with Delete Draft beside it; and there is no Save as Draft — a draft is finished here, not drafted again.
+// SEEDED FROM THE DRAFT — the buyer, the shop, the warehouse; NO line (a draft stores no mapping, a-draft-stores-no-mapping
+// — the person picks our products); its scraped lines are a list of TEXT above the products; the header says which
+// draft, with Delete Draft beside it; and there is no Save as Draft — a draft is finished here, not drafted again.
 export const ADraftOpensInTheForm: Story = {
   name: "From a draft",
   render: () => <RoutedFromDraft />,
@@ -95,10 +89,9 @@ export const ADraftOpensInTheForm: Story = {
     await expect(hints).toHaveTextContent("Products to Send");
     await expect(canvas.getByTestId("draft-product-hints-source")).toHaveTextContent("From ScraperX");
 
-    // The two mapped lines are on the order; the mug is not.
-    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
-    await expect(canvas.getByTestId("order-line-1")).toBeInTheDocument();
-    await expect(canvas.queryByTestId("order-line-2")).toBeNull();
+    // Nothing scraped is on the order: the lines are the person's to pick.
+    await expect(canvas.getByTestId("order-create-no-products")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-line-0")).toBeNull();
   },
 };
 
@@ -136,6 +129,34 @@ export const DeletingTheDraftGoesBackToTheList: Story = {
 
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
     await waitFor(() => expect(canvas.getByTestId("at-drafts")).toBeInTheDocument());
+  },
+};
+
+// A WAITING DRAFT ON A CLOSED SHOP (a-close-leaves-the-drafts-waiting, the-close-shop-prototype-is-accepted): draft 202's
+// Melati Store was closed. The form keeps the shop — badged, never cleared — says at the top that the shop is closed and
+// what the ways out are, and holds Create; Delete Draft is still there.
+export const ADraftOnAClosedShopKeepsItAndRefusesCreate: Story = {
+  name: "Draft on a closed shop",
+  render: () => <RoutedFromDraft202 />,
+  beforeEach: [asMelatiWithMaps, () => closeShopForStory(22n)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Pak Mamat"), {
+      timeout: 4000,
+    });
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue("Melati Store"), { timeout: 4000 });
+
+    const alert = await canvas.findByTestId("order-create-shop-closed");
+    await expect(alert).toHaveTextContent("Melati Store is closed");
+    await expect(alert).toHaveTextContent(/Delete the draft, or ask the team's owner or admin to reopen the shop/);
+    await expect(canvas.getByTestId("order-create-save")).toBeDisabled();
+    await expect(canvas.getByTestId("order-create-delete-draft")).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const kept = await canvas.findByTestId("shop-select-option-22");
+    await waitFor(() => expect(kept).toBeVisible());
+    await expect(within(kept).getByTestId("shop-select-closed-22")).toBeVisible();
   },
 };
 

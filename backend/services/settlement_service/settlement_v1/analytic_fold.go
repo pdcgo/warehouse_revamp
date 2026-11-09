@@ -2,11 +2,9 @@ package settlement_v1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -14,7 +12,6 @@ import (
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_event"
-	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
 // errFoldLocked is the webhook's answer while `process_event_lock` is held. It is an ERROR on purpose:
@@ -126,16 +123,23 @@ func (s *Service) fold(ctx context.Context, event *eventsv1.Event, posted *event
 		}
 
 		// 4 · THE TWO GRAINS.
-		err = foldScope(tx, shopDaily, "shop_settlement_reports", posted.GetShopId(), posted.GetTeamId(), day, column, posted.GetChange())
+		err = foldScope(tx, shopDaily, "shop_settlement_reports", false, posted.GetShopId(), posted.GetTeamId(), day, column, posted.GetChange())
 		if err != nil {
 			return err
 		}
 
-		return foldScope(tx, userDaily, "user_settlement_reports", user, posted.GetTeamId(), day, column, posted.GetChange())
+		return foldScope(tx, userDaily, "user_settlement_reports", true, user, posted.GetTeamId(), day, column, posted.GetChange())
 	})
 }
 
 // foldScope applies one movement to one scope: the day's row, every later day, and the scope's state row.
+//
+// ⚠ THE CHANGE IS ADDED AS POSTED, never rounded (the-backend-never-rounds-money): posting froze it exact, so every day
+// row, carry and position is a sum of exact doubles and equals the log's running sum within the tolerance
+// (san_money.Equal) — compared that way, never with ==.
+//
+// keepsLastDay is the person grain's: its state row also carries `last_day`, the newest day the scope has a row on
+// (#the-person-list-reads-the-last-day-from-the-user-report).
 //
 // The statements are analytic_context.md §How we computed balance, verbatim in shape. ⚠ The day is bound
 // as a STRING cast to date everywhere — a Go time.Time is a timestamptz, and comparing a date against it
@@ -144,9 +148,10 @@ func foldScope(
 	tx *gorm.DB,
 	grain reportGrain,
 	stateTable string,
+	keepsLastDay bool,
 	keyID, teamID uint64,
 	day, column string,
-	change int64,
+	change float64,
 ) error {
 	args := map[string]any{
 		"day":    day,
@@ -181,6 +186,25 @@ SET %[3]s         = d.%[3]s + EXCLUDED.%[3]s,
 	}
 
 	// EVERY LATER DAY — a SHIFT, never a recomputation. This is what keeps a late event's carry true.
+	_, err = shiftLaterDays(tx, grain, keyID, teamID, day, change)
+	if err != nil {
+		return fmt.Errorf("settlement fold: %s later days: %w", grain.table, err)
+	}
+
+	// THE STATE ROW — the scope's NEWEST daily close, DERIVED rather than incremented, so a replay's
+	// redelivery re-derives it instead of doubling it.
+	err = deriveState(tx, grain, stateTable, keepsLastDay, lastDayRaised, keyID, teamID)
+	if err != nil {
+		return fmt.Errorf("settlement fold: %s: %w", stateTable, err)
+	}
+
+	return nil
+}
+
+// shiftLaterDays moves every later day's carried position — `open_balance` and `close_balance`, never a movement column
+// — by delta, and says how many rows it moved. The fold shifts by a late event's change; the day re-fold by how far its
+// corrected day's close moved (a-refold-shifts-the-later-days). One statement, one definition of the carry.
+func shiftLaterDays(tx *gorm.DB, grain reportGrain, keyID, teamID uint64, day string, delta float64) (int64, error) {
 	shift := fmt.Sprintf(`
 UPDATE %[1]s
 SET open_balance  = open_balance + @change,
@@ -188,13 +212,39 @@ SET open_balance  = open_balance + @change,
     last_updated  = NOW()
 WHERE %[2]s = @key AND team_id = @team AND day > CAST(@day AS date)`, grain.table, grain.key)
 
-	err = tx.Exec(shift, args).Error
-	if err != nil {
-		return fmt.Errorf("settlement fold: %s later days: %w", grain.table, err)
+	result := tx.Exec(shift, map[string]any{
+		"day":    day,
+		"key":    keyID,
+		"team":   teamID,
+		"change": delta,
+	})
+	if result.Error != nil {
+		return 0, result.Error
 	}
 
-	// THE STATE ROW — the scope's NEWEST daily close, DERIVED rather than incremented, so a replay's
-	// redelivery re-derives it instead of doubling it.
+	return result.RowsAffected, nil
+}
+
+// lastDayRule is how the person grain's state row moves `last_day`.
+type lastDayRule int
+
+const (
+	// lastDayRaised is the fold's: it only ever adds a day, so an older event leaves `last_day` where it is. GREATEST
+	// skips a NULL, which is what a replay leaves on a scope it cut to nothing.
+	lastDayRaised lastDayRule = iota
+	// lastDayRecomputed is the day re-fold's: it may remove the newest day, so `last_day` is the newest row's, lowered too.
+	lastDayRecomputed
+)
+
+// deriveState re-derives a scope's state row from its newest daily row — `close_balance`, and on the person grain
+// (keepsLastDay) `last_day` (#the-person-list-reads-the-last-day-from-the-user-report). A scope with no daily row
+// writes nothing here.
+func deriveState(tx *gorm.DB, grain reportGrain, stateTable string, keepsLastDay bool, rule lastDayRule, keyID, teamID uint64) error {
+	args := map[string]any{
+		"key":  keyID,
+		"team": teamID,
+	}
+
 	state := fmt.Sprintf(`
 INSERT INTO %[3]s (%[2]s, team_id, close_balance, last_updated)
 SELECT r.%[2]s, r.team_id, r.close_balance, NOW()
@@ -206,12 +256,26 @@ ON CONFLICT (%[2]s, team_id) DO UPDATE
 SET close_balance = EXCLUDED.close_balance,
     last_updated  = NOW()`, grain.table, grain.key, stateTable)
 
-	err = tx.Exec(state, args).Error
-	if err != nil {
-		return fmt.Errorf("settlement fold: %s: %w", stateTable, err)
+	if keepsLastDay {
+		lastDay := "GREATEST(s.last_day, EXCLUDED.last_day)"
+		if rule == lastDayRecomputed {
+			lastDay = "EXCLUDED.last_day"
+		}
+
+		state = fmt.Sprintf(`
+INSERT INTO %[3]s AS s (%[2]s, team_id, close_balance, last_day, last_updated)
+SELECT r.%[2]s, r.team_id, r.close_balance, r.day, NOW()
+FROM %[1]s r
+WHERE r.%[2]s = @key AND r.team_id = @team
+ORDER BY r.day DESC
+LIMIT 1
+ON CONFLICT (%[2]s, team_id) DO UPDATE
+SET close_balance = EXCLUDED.close_balance,
+    last_day      = %[4]s,
+    last_updated  = NOW()`, grain.table, grain.key, stateTable, lastDay)
 	}
 
-	return nil
+	return tx.Exec(state, args).Error
 }
 
 func advisoryLock(tx *gorm.DB, key string) error {
@@ -221,47 +285,4 @@ func advisoryLock(tx *gorm.DB, key string) error {
 	}
 
 	return nil
-}
-
-// eventLockValue is the ONE encoding of `process_event_lock`.
-type eventLockValue struct {
-	Lock *bool `json:"lock"`
-}
-
-var (
-	lockOn  = `{"lock":true}`
-	lockOff = `{"lock":false}`
-)
-
-// readEventLock reads the maintenance switch.
-//
-// ⚠ A MISSING OR UNPARSEABLE VALUE IS AN ERROR, never "unlocked". For a lock, failing open is the wrong
-// direction: the guard would silently stop existing at exactly the moment it is misconfigured.
-func readEventLock(tx *gorm.DB) (bool, error) {
-	var meta settlement_service_models.SettlementServiceMetadata
-
-	err := tx.
-		Where("key = ?", settlement_service_models.MetadataProcessEventLock).
-		Take(&meta).
-		Error
-	if err != nil {
-		return false, fmt.Errorf("settlement: cannot read %s: %w", settlement_service_models.MetadataProcessEventLock, err)
-	}
-
-	return parseEventLock(meta.Value)
-}
-
-func parseEventLock(value string) (bool, error) {
-	decoded := eventLockValue{}
-
-	decoder := json.NewDecoder(strings.NewReader(value))
-	decoder.DisallowUnknownFields()
-
-	err := decoder.Decode(&decoded)
-	if err != nil || decoded.Lock == nil {
-		return false, fmt.Errorf("settlement: %s is %q, not {\"lock\":true|false}",
-			settlement_service_models.MetadataProcessEventLock, value)
-	}
-
-	return *decoded.Lock, nil
 }

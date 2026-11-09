@@ -45,7 +45,7 @@ func list(
 // ⚠ The keys are per-order. `unique_id` is unique across the WHOLE log (#00002), not scoped to the
 // order, so a fixture reusing one literal for every order collides on the second one — which is the
 // same mistake a real caller makes when its recipe does not identify what it is recording.
-func settleOrder(t *testing.T, svc *settlement_v1.Service, orderID uint64, shopID uint64, balance int64) {
+func settleOrder(t *testing.T, svc *settlement_v1.Service, orderID uint64, shopID uint64, balance float64) {
 	t.Helper()
 
 	_, err := post(t, svc, settlement_v1.PostInput{
@@ -80,7 +80,7 @@ func settleOrder(t *testing.T, svc *settlement_v1.Service, orderID uint64, shopI
 // worst order is the smallest number.
 func TestOrderSettlementList_RanksWorstLossFirstByDefault(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -104,7 +104,7 @@ func TestOrderSettlementList_RanksWorstLossFirstByDefault(t *testing.T) {
 // pages would be reporting the page, which nobody asked about.
 func TestOrderSettlementList_TotalsCoverEveryPage(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -119,11 +119,11 @@ func TestOrderSettlementList_TotalsCoverEveryPage(t *testing.T) {
 	}
 
 	if firstPage.GetTotalLastBalance() != -57_000 {
-		t.Errorf("total_last_balance = %d, want -57000 — the card must sum every row, not this page", firstPage.GetTotalLastBalance())
+		t.Errorf("total_last_balance = %v, want -57000 — the card must sum every row, not this page", firstPage.GetTotalLastBalance())
 	}
 
 	if firstPage.GetTotalInitialTotal() != 3*sale {
-		t.Errorf("total_initial_total = %d, want %d", firstPage.GetTotalInitialTotal(), 3*sale)
+		t.Errorf("total_initial_total = %v, want %v", firstPage.GetTotalInitialTotal(), 3*sale)
 	}
 
 	if firstPage.GetPageInfo().GetTotalItems() != 3 {
@@ -135,7 +135,7 @@ func TestOrderSettlementList_TotalsCoverEveryPage(t *testing.T) {
 // at once.
 func TestOrderSettlementList_ScopesToTheTeam(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 
@@ -168,7 +168,7 @@ func TestOrderSettlementList_ScopesToTheTeam(t *testing.T) {
 // The shop filter is not the scope — `team_id` is — but it is what every real read uses.
 func TestOrderSettlementList_FiltersByShop(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop+1, -40_000)
@@ -186,7 +186,7 @@ func TestOrderSettlementList_FiltersByShop(t *testing.T) {
 // whenever a client forgets the enum, which reads as "this team has never settled anything".
 func TestOrderSettlementList_ReturnsAccountsWithoutADataRequest(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 
@@ -198,13 +198,13 @@ func TestOrderSettlementList_ReturnsAccountsWithoutADataRequest(t *testing.T) {
 
 	settlements := got.GetItems()[0].GetSettlement().GetMapData()
 	if settlements[1].GetLastBalance() != -5_000 {
-		t.Errorf("account 1 balance = %d, want -5000", settlements[1].GetLastBalance())
+		t.Errorf("account 1 balance = %v, want -5000", settlements[1].GetLastBalance())
 	}
 }
 
 // openUnrecorded opens an account whose sale was never recorded: a payout arrives with no
 // `initial_total` before it, so the account holds `initial_total = 0` and a POSITIVE balance.
-func openUnrecorded(t *testing.T, svc *settlement_v1.Service, orderID uint64, payout int64) {
+func openUnrecorded(t *testing.T, svc *settlement_v1.Service, orderID uint64, payout float64) {
 	t.Helper()
 
 	_, err := post(t, svc, settlement_v1.PostInput{
@@ -240,7 +240,7 @@ func wantIDs(t *testing.T, got []uint64, want []uint64, why string) {
 // (#the-settlement-list-sorts-by-its-headings).
 func TestOrderSettlementList_SortsByReceivedEitherWay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -258,7 +258,7 @@ func TestOrderSettlementList_SortsByReceivedEitherWay(t *testing.T) {
 // to the balance, so "ASC" meant the biggest loss — a contract that read backwards.
 func TestOrderSettlementList_LossDirectionIsTheLossNotTheBalance(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -276,7 +276,7 @@ func TestOrderSettlementList_LossDirectionIsTheLossNotTheBalance(t *testing.T) {
 // of an ascending sort is exactly where it would land without the rule.
 func TestOrderSettlementList_AnUnrecordedSaleSortsLastEitherWay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -303,7 +303,7 @@ func TestOrderSettlementList_AnUnrecordedSaleSortsLastEitherWay(t *testing.T) {
 // on two requests.
 func TestOrderSettlementList_TiesBreakOnTheOrderID(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 5, shop, -10_000)
 	settleOrder(t, svc, 7, shop, -10_000)
@@ -317,7 +317,7 @@ func TestOrderSettlementList_TiesBreakOnTheOrderID(t *testing.T) {
 // the loss by money that was never a gain.
 func TestOrderSettlementList_TotalsSkipAnUnrecordedSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	settleOrder(t, svc, 1, shop, -5_000)
 	settleOrder(t, svc, 2, shop, -40_000)
@@ -327,11 +327,11 @@ func TestOrderSettlementList_TotalsSkipAnUnrecordedSale(t *testing.T) {
 	got := list(t, svc, &settlementv1.OrderSettlementListRequest{})
 
 	if got.GetTotalLastBalance() != -57_000 {
-		t.Errorf("total_last_balance = %d, want -57000 — the unrecorded payout must not offset the loss", got.GetTotalLastBalance())
+		t.Errorf("total_last_balance = %v, want -57000 — the unrecorded payout must not offset the loss", got.GetTotalLastBalance())
 	}
 
 	if got.GetTotalInitialTotal() != 3*sale {
-		t.Errorf("total_initial_total = %d, want %d", got.GetTotalInitialTotal(), 3*sale)
+		t.Errorf("total_initial_total = %v, want %v", got.GetTotalInitialTotal(), 3*sale)
 	}
 
 	if got.GetTotalUnrecorded() != 1 {
@@ -340,5 +340,34 @@ func TestOrderSettlementList_TotalsSkipAnUnrecordedSale(t *testing.T) {
 
 	if got.GetPageInfo().GetTotalItems() != 4 {
 		t.Errorf("total_items = %d, want 4 — the unrecorded account is still listed", got.GetPageInfo().GetTotalItems())
+	}
+}
+
+// THE PERIOD'S DAYS ARE JAKARTA DAYS (the-system-runs-on-jakarta-time). An account that last moved at 18:00 UTC on
+// 4 Nov moved at 01:00 WIB on 5 Nov — so it is in 5 Nov's list and not in 4 Nov's. A day parsed as UTC midnight
+// put it on the 4th.
+func TestSettlementList_ThePeriodIsJakartaDays(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+
+	settleOrder(t, svc, order, shop, -1_000)
+
+	err := db.Exec(`UPDATE order_settlements SET updated_at = TIMESTAMPTZ '2026-11-04 18:00:00+00' WHERE order_id = ?`, order).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	on := func(day string) int {
+		return len(list(t, svc, &settlementv1.OrderSettlementListRequest{
+			Filter: &settlementv1.OrderSettlementListFilter{From: day, To: day},
+		}).GetIds())
+	}
+
+	if got := on("2026-11-05"); got != 1 {
+		t.Fatalf("5 Nov lists %d accounts, want 1 — 18:00 UTC on the 4th is 01:00 WIB on the 5th", got)
+	}
+
+	if got := on("2026-11-04"); got != 0 {
+		t.Fatalf("4 Nov lists %d accounts, want 0", got)
 	}
 }

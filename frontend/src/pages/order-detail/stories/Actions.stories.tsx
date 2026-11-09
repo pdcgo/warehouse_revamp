@@ -2,10 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam } from "../../../../.storybook/pageStory";
-import { receiptUpdateScenario } from "../../../../.storybook/sessionScenario";
-import { AtCancelled, FULL, ORDER_DETAIL_META, WAREHOUSE } from "./kit";
+import { receiptUpdateScenario, withOrderStatus } from "../../../../.storybook/sessionScenario";
+import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
+import { AtCancelled, FULL, ORDER_DETAIL_META, Routed, WAREHOUSE } from "./kit";
 
-// ONE ORDER — the header's actions — no Cancel on a cancelled order, and Edit Resi.
+// ONE ORDER — the header's actions — no Cancel on a cancelled order, Edit Resi, and the warehouse's Force Return.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -71,5 +72,35 @@ export const TheWarehouseHasNoEditResi: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
     await expect(canvas.queryByTestId("order-action-editReceipt")).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * THE WAREHOUSE FORCES A RETURN FROM ITS ORDER DETAIL (a-return-is-received-by-search-then-forced, A) — 106 read as
+ * completed: the buyer sent it back after delivery. Force Return confirms, the order re-reads in `return`, and Accept
+ * Return is offered on the same header.
+ */
+const AtCompleted = Routed("/orders/106");
+
+export const WarehouseForcesAReturn: Story = {
+  name: "Warehouse forces a return",
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    withOrderStatus(106n, OrderStatus.COMPLETED)();
+  },
+  render: () => <AtCompleted />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.queryByTestId("order-accept-return")).toBeNull();
+    await userEvent.click(await canvas.findByTestId("order-force-return"));
+
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await expect(screen.getByText('Order #106 is "Completed". Mark it as returned so you can accept it?')).toBeInTheDocument();
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(canvas.getByTestId("order-accept-return")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("order-force-return")).toBeNull();
   },
 };

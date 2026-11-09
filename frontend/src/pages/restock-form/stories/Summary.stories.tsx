@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { unmarkOperationalForStory } from "../../../../.storybook/financialAccountStub";
 import { pickTeam } from "../../../../.storybook/pageStory";
 import { BERAS, CAHAYA, CAHAYA_STORE, type Canvas, EditOngoing, FORM_META, connectSupplier, loaded, pickProducts } from "./kit";
 
@@ -85,6 +86,36 @@ export const TheChecksRunProductsWarehouseAccountResi: Story = {
 
     await userEvent.click(canvas.getByTestId("submit-restock"));
     await canvas.findByTestId("at-restock-list", {}, { timeout: 4000 });
+  },
+};
+
+// a-restock-names-its-paying-account: BCA Operasional is picked, then an admin unmarks it before Buat Restok. The server
+// refuses — FailedPrecondition, naming the account — and its words are said on the form, which stays where it is. Nothing
+// is raised.
+export const ARefusedPayingAccountIsSaid: Story = {
+  name: "Paying account refused",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-create-page");
+    const button = canvas.getByTestId("submit-restock");
+
+    await pickProducts(canvas, [BERAS]);
+    await userEvent.click(canvas.getByTestId("restock-line-0-picker-trigger"));
+    await connectSupplier("restock-line-0-picker", "Cahaya", CAHAYA.id, CAHAYA_STORE);
+    await userEvent.type(canvas.getByTestId("restock-total-price-0"), "650000", { delay: 20 });
+    await pickTeam(canvas.getByTestId("restock-warehouse"), "WH-01");
+    await pickAccount(canvas, BCA_OPS);
+    await pickCourier(canvas, "jne");
+    await userEvent.type(canvas.getByTestId("restock-receipt"), "JNE7000000002", { delay: 20 });
+    await waitFor(() => expect(button).toBeEnabled(), { timeout: 4000 });
+
+    unmarkOperationalForStory(BCA_OPS);
+    await userEvent.click(button);
+
+    await expect(await canvas.findByTestId("restock-create-error", {}, { timeout: 4000 })).toHaveTextContent(
+      "BCA Operasional is not one of the team's active operational accounts — pick another, or ask an admin to mark it operational",
+    );
+    await expect(canvas.queryByTestId("at-restock-list")).toBeNull();
+    await expect(canvas.getByTestId("submit-restock")).toBeInTheDocument();
   },
 };
 

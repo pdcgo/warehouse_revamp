@@ -20,13 +20,37 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sup
 // webhook consuming `RestockAccepted` (the-report-is-processed-like-settlement). A figure can lag the accept by the
 // broker's delivery time, and never by more than that.
 //
+// PENJUALAN (penjualan-is-the-selling-value-on-the-order-day) is folded beside them, into its OWN table
+// `supplier_sale_daily_reports`, by the same service's webhook consuming `OrderPlaced` and `OrderCancelled` — the units
+// the order's stock take drew from batches carrying the supplier (read from inventory through an in-process seam), at
+// their share of what the order sold them for, on the order's Jakarta day; a cancel takes them back on its own day.
+//
 // ⚠ EVERY SELLING TEAM READS EVERY TEAM'S FIGURES (every-selling-team-sees-every-teams-figures). `team_id` is the
 // CALLER's scope, as on every read; a TeamFilter narrows to whose restocks are counted.
 service SupplierAnalyticService {
   // The keys of a page of the table, ranked by one field of `metrics/suppliers` — suppliers, products or periods.
-  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse);
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
-  rpc MetricData(MetricDataRequest) returns (MetricDataResponse);
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // THE STATISTIK TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): the view
+  // on screen — Per Periode (every period of the window at its grain, newest first, the quiet ones included) or Per
+  // Produk (every product, ranked as the tab ranks them) — over the tab's own filters, every page, in the tab's columns,
+  // as .xlsx. A server stream: progress, then an expiring link. Not a read: it stores a file, so a monitor and an agent
+  // are refused (the-admin-team-monitors-read-only).
+  rpc SupplierFigureExport(SupplierFigureExportRequest) returns (stream SupplierFigureExportResponse);
+  // THE SUPPLIER REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+  // WHOLE ranking as narrowed — the report's own window, team and search, in its own order — every page, each supplier
+  // with its figures in the report's columns, as .xlsx. A server stream: progress, then an expiring link. Not a read: it
+  // stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+  rpc SupplierReportExport(SupplierReportExportRequest) returns (stream SupplierReportExportResponse);
 }
 
 // The two operations a DEVELOPER runs on the fold — settlement's, read for the supplier
@@ -73,7 +97,7 @@ message SupplierMetric {
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
   ];
-  int64 restock_valuation = 2 [
+  double restock_valuation = 2 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -82,7 +106,7 @@ message SupplierMetric {
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
   ];
-  int64 shipping_lost_valuation = 4 [
+  double shipping_lost_valuation = 4 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -91,7 +115,7 @@ message SupplierMetric {
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
   ];
-  int64 shipping_broken_valuation = 6 [
+  double shipping_broken_valuation = 6 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -105,6 +129,20 @@ message SupplierMetric {
       rank_min_sample: 50
     },
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_RATIO
+  ];
+
+  // PENJUALAN — units SOLD to a buyer from the supplier's goods (batches carrying its id), counted on the Jakarta day
+  // the order was placed; a cancel takes them back on the cancel's day, so a day may read negative
+  // (penjualan-is-the-selling-value-on-the-order-day). TEAM is the team that owns the goods — the restocking team.
+  int64 sales_count = 8 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Their SELLING value, rupiah, exact: each order line's share of the order's `platform_total` (by the line's frozen
+  // total), spread over the line's units — the units from this supplier's batches at that price.
+  double sales_value = 9 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
 }
 
@@ -200,6 +238,102 @@ message MetricData {
 
 message MetricDataResponse {
   repeated MetricData metric_datas = 1;
+  // AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+  // `supplier_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+  // behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+  // every metric it serves shares it. 0 = nothing folded yet.
+  //
+  // ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+  // dead-letter topic and the lease's log.
+  int64 as_of_unix = 2;
+}
+
+// THE STATISTIK TAB AS A FILE — the view's own read, every page (each-supplier-tab-exports-its-own-table).
+message SupplierFigureExportRequest {
+  // MetricData's readers.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // THE VIEW: DAILY, MONTHLY or YEARLY is Per Periode at that grain; PRODUCT is Per Produk. The Supplier Report's
+  // ranking (SUPPLIER) is not offered here — its file is SupplierReportExport.
+  warehouse.analytic_base.v1.GroupType group_by = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [2, 4, 5, 6]
+  }];
+
+  // The tab's own filters — the window (required), the supplier (required), and whose restocks when one team is picked.
+  repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated = {
+    min_items: 2
+    max_items: 6
+  }];
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message SupplierFigureExportResponse {
+  // A sentence about the step.
+  string message = 1;
+  // Rows written so far, of the total the view holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
+}
+
+// THE SUPPLIER REPORT AS A FILE — the ranking's own reads, every page (a-report-export-is-the-whole-view-as-a-file).
+message SupplierReportExportRequest {
+  // MetricSearch's readers — the ranking's.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The report's own filters — the window (required), whose restocks when one team is picked, and the search. Never a
+  // supplier: a file of one supplier is its Statistik tab's (SupplierFigureExport).
+  repeated warehouse.analytic_base.v1.FilterItem filters = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 3
+  }];
+
+  // The report's order — `metrics/suppliers` by restock_valuation or broken_rate, as its "Urutkan" picks; the server
+  // ranks exactly as MetricSearch does (the rate's minimum sample included).
+  warehouse.analytic_base.v1.MetricSort sort = 3 [(buf.validate.field).required = true];
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message SupplierReportExportResponse {
+  // A sentence about the step.
+  string message = 1;
+  // Rows written so far, of the total the ranking holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
 }
 
 // ── maintenance ─────────────────────────────────────────────────────────────────────────────────

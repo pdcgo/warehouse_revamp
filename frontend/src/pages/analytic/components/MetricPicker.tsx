@@ -1,24 +1,24 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Button, Checkbox, Flex, HStack, Icon, Input, Popover, Stack, Text } from "@chakra-ui/react";
-import { ChevronRight, type LucideIcon, Package, Plus, Receipt, ShoppingCart, Wallet } from "lucide-react";
+import { ChevronRight, Landmark, type LucideIcon, Package, Plus, Receipt, ShoppingCart, Wallet } from "lucide-react";
 
 import {
-  METRICS,
   METRIC_CATEGORIES,
   type MetricCategory,
   type MetricDef,
   type TableGroup,
+  catalogueMetrics,
+  metricCategories,
   metricSlug,
 } from "../../../features/analytic/catalogue";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ANALYTIC_PENDING } from "../pending";
 
 export const CATEGORY_ICON: Record<MetricCategory, LucideIcon> = {
   order: ShoppingCart,
   settlement: Wallet,
   inventory: Package,
   expense: Receipt,
+  finance: Landmark,
 };
 
 // ADD METRIC — picked the way a category is (owner: *"add metric is popup like selecting category"*): a popup with a
@@ -49,7 +49,7 @@ export function MetricPicker({
   const labelOf = (def: MetricDef) => t(`analytic.metric.${def.labelKey}`);
   const q = query.trim().toLowerCase();
   const matches = q
-    ? METRICS.filter((def) => `${t(`analytic.category.${def.category}`)} ${labelOf(def)}`.toLowerCase().includes(q))
+    ? catalogueMetrics().filter((def) => `${t(`analytic.category.${def.category}`)} ${labelOf(def)}`.toLowerCase().includes(q))
     : [];
 
   const row = (def: MetricDef, withPath: boolean) => {
@@ -100,7 +100,6 @@ export function MetricPicker({
         <Button variant="outline" colorPalette="gray" data-testid="analytic-add-metric">
           <Icon as={Plus} boxSize="4" />
           {t("analytic.addMetric")}
-          <NotImplemented list={ANALYTIC_PENDING} id="catalogue" />
         </Button>
       </Popover.Trigger>
 
@@ -131,7 +130,7 @@ export function MetricPicker({
                   {/* THE CATEGORIES — the chosen one in rose opens its metrics beside it. */}
                   <Box minW="180px" maxH="280px" overflowY="auto" borderRightWidth="1px" borderColor="border">
                     <Stack gap="0" p="1">
-                      {METRIC_CATEGORIES.map((c) => (
+                      {metricCategories().map((c) => (
                         <Button
                           key={c}
                           variant="ghost"
@@ -155,7 +154,7 @@ export function MetricPicker({
 
                   {/* THE CHOSEN CATEGORY'S METRICS — ticked when on the table. */}
                   <Box minW="220px" maxH="280px" overflowY="auto" data-testid={`analytic-category-${category}-metrics`}>
-                    <Stack gap="0" p="1">{METRICS.filter((def) => def.category === category).map((def) => row(def, false))}</Stack>
+                    <Stack gap="0" p="1">{catalogueMetrics().filter((def) => def.category === category).map((def) => row(def, false))}</Stack>
                   </Box>
                 </HStack>
               )}

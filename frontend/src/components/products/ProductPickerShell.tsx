@@ -56,7 +56,7 @@ export const SEARCH_RESOLVE_LIMIT = 200;
 export function pickedOf(p: Product): PickedProduct {
   return {
     id: p.id,
-    sku: p.sku,
+    productCode: p.productCode,
     name: p.name,
     defaultImageUrl: p.defaultImageUrl,
     defaultImageThumbnailUrl: p.defaultImageThumbnailUrl,
@@ -564,7 +564,7 @@ export function ProductPickerShell({
     }
 
     const picked = [...ticked].map(
-      (key) => lookup.get(key) ?? { id: BigInt(key), sku: "", name: "" },
+      (key) => lookup.get(key) ?? { id: BigInt(key), productCode: "", name: "" },
     );
 
     onChange(picked);
@@ -689,7 +689,7 @@ export function ProductPickerShell({
                   <Checkbox.Root
                     checked={checked}
                     onCheckedChange={(e) => toggle(p.id, !!e.checked)}
-                    aria-label={p.name || p.sku || key}
+                    aria-label={p.name || p.productCode || key}
                   >
                     <Checkbox.HiddenInput />
                     <Checkbox.Control />

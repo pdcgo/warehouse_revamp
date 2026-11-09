@@ -28,8 +28,16 @@ service OrderDraftService {
 
   // Reading drafts (#192) — used by our UI and by the app that pushed them (§6.6). Both narrow to
   // the AUTHOR, in addition to the team scope.
-  rpc OrderDraftList(OrderDraftListRequest) returns (OrderDraftListResponse);
-  rpc OrderDraftDetail(OrderDraftDetailRequest) returns (OrderDraftDetailResponse);
+  rpc OrderDraftList(OrderDraftListRequest) returns (OrderDraftListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc OrderDraftDetail(OrderDraftDetailRequest) returns (OrderDraftDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // The human edit path (#193). ALWAYS WINS, and marks every field it writes as touched — which is
   // what OrderDraftPush then refuses to overwrite.
@@ -37,17 +45,26 @@ service OrderDraftService {
   // Pruning, which is entirely manual (nothing expires) — so it takes several at once.
   rpc OrderDraftDelete(OrderDraftDeleteRequest) returns (OrderDraftDeleteResponse);
 
+  // The duplicate-ref warning's draft half (the-duplicate-warning-reads-drafts-too, settled in
+  // the-duplicate-ref-warning-is-accepted): the TEAM's drafts in one shop carrying any of these marketplace refs —
+  // shaped like OrderService.OrderByExternalRefs. ⚠ Team-wide, not the caller's own: a colleague's scrape of the
+  // same ref is exactly the double the warning exists to name. The drafts list keeps its own-drafts rule.
+  rpc OrderDraftByExternalRefs(OrderDraftByExternalRefsRequest) returns (OrderDraftByExternalRefsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   // ⚠ NO PROMOTE. A draft becomes an order through OrderCreate with `order_draft_id`
   // (a-draft-becomes-an-order-through-order-create) — one door into `orders`, so a promoted order cannot skip a
   // field the typed one is held to. OrderDraftPromote was removed for exactly that: it rebuilt the order by hand
   // and never copied the marketplace ref.
 }
 
-// One scraped line of a draft.
+// One scraped line of a draft — the platform's reference: what the marketplace said, never what we resolved it to.
 //
-// It carries BOTH what the marketplace said and what we resolved it to. A marketplace scraper knows
-// the marketplace's product TITLE, not our `product_id` — so the title is stored verbatim and a
-// person maps it later. The unmapped line IS the incompleteness that makes this a draft.
+// A DRAFT STORES NO MAPPING (a-draft-stores-no-mapping): a marketplace scraper knows the platform's product TITLE, not
+// our product, so the title is stored verbatim and the CS maps it in the order form, straight into the order's lines.
 message OrderDraftItem {
   uint64 id = 1;
 
@@ -57,18 +74,15 @@ message OrderDraftItem {
   string external_sku = 2 [(buf.validate.field).string.max_len = 128];
   string external_name = 3 [(buf.validate.field).string.max_len = 500];
 
-  // Our catalogue id, 0 until a person maps it.
-  //
-  // ⚠ IGNORED ON PUSH. The app does not know our ids, and a client guessing them by matching titles
-  // against our catalogue — silently, on its own — is exactly the design §6.4 rejected. Mapping is a
-  // human act performed through OrderDraftUpdate.
-  uint64 product_id = 4;
+  // 4 was `product_id`, the stored mapping — dropped by selling 00047 (a-draft-stores-no-mapping).
+  reserved 4;
+  reserved "product_id";
 
   // Unconstrained, unlike OrderItem's `quantity >= 1`: a scrape may not have been able to read
   // either. Refusing a whole push over one unreadable line would lose the other nine — promote is
   // where every requirement lands.
   uint32 quantity = 5;
-  int64 unit_price = 6;
+  double unit_price = 6;
 }
 
 message OrderDraft {
@@ -93,11 +107,15 @@ message OrderDraft {
   uint64 shop_id = 7;
   uint64 warehouse_id = 8;
 
+  // The buyer and the address live in the draft's ONE `order_draft_addresses` row (selling 00046,
+  // one-address-per-order-and-per-draft), as NAMES only (an-address-is-plain-names): the address's four `_code` fields
+  // are always empty here, and any a caller sends is discarded. Best effort — every part may be empty.
   string customer_name = 9;
   string customer_phone = 10;
-  // The same frozen-address shape an order carries (#118), so promote copies rather than translates.
   OrderAddress address = 11;
-  string shipping_code = 12;
+  // 12 was `shipping_code`, the courier CODE — replaced by `shipment_channel_id` (selling 00044).
+  reserved 12;
+  reserved "shipping_code";
 
   // 13 was `shipping_cost` — a draft is the platform's header and lines, and an order records no shipping
   // (an-order-records-no-shipping-cost). Selling 00027 dropped the column.
@@ -110,17 +128,13 @@ message OrderDraft {
   int64 created_at_unix = 15;
   int64 updated_at_unix = 16;
 
-  // How far along this draft is, WITHOUT its lines (#192). Both are computed by the server on every
-  // read, list and detail alike.
-  //
-  // They exist because the list deliberately does not return items, and "how much work is left on
-  // this one" is the only question the list screen (#195) is really asking. Counting client-side
-  // would mean loading every draft's lines to render one page of a list — the exact shape of the
-  // slow query pagination is there to prevent.
+  // How many lines the draft holds, WITHOUT its lines (#192) — computed by the server on every read, list and detail
+  // alike, because the list deliberately returns no items.
   uint32 item_count = 17;
-  // Lines still carrying product_id = 0. Non-zero means this draft CANNOT be promoted: an unmapped
-  // line is precisely what makes it a draft.
-  uint32 unmapped_item_count = 18;
+  // 18 was `unmapped_item_count` — a draft stores no mapping, so the list counts none
+  // (the-drafts-list-counts-no-mapping).
+  reserved 18;
+  reserved "unmapped_item_count";
 
   // WHEN THE BUYER ORDERED on the storefront (platform-created-at-is-required-at-finalize). 0 = not known yet: a draft
   // may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto the order.
@@ -133,11 +147,23 @@ message OrderDraft {
   // way through. Promote copies it.
   string buyer_username = 21;
 
-  // WHAT THE BUYER PAID on the platform, whole rupiah — the owner's `order_drafts.platform_total`
+  // WHAT THE BUYER PAID on the platform, a double (the-backend-never-rounds-money) — the owner's `order_drafts.platform_total`
   // (platform-total-is-required-at-finalize), the figure settlement opens the order's account on. 0 = not known yet: a
   // draft may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto
-  // Order.platform_total.
-  int64 platform_total = 22;
+  // Order.platform_total, exact as the order is placed — a draft keeps what was read or typed, and so does the order.
+  double platform_total = 22;
+
+  // THE COURIER, as the app converted it (the-app-converts-the-courier-to-a-channel-id) or a person picked it — a
+  // shipment channel's id. 0 = not known: the app could not map the platform's courier, and the person picks it in the
+  // order form, where it is required (no-order-without-a-courier).
+  uint64 shipment_channel_id = 23;
+
+  // THE ADDRESS PICKER'S PRE-FILL (the-cs-edits-the-whole-address-before-create, *Pre-filled when certain*): when the
+  // draft's four region names match EXACTLY ONE region_service place (RegionMatch), that place — codes, the region
+  // list's own names, its kode pos; `address_line` empty. Unset when they match none or several, or a level is empty:
+  // the form's dropdowns then open empty and the person picks, reading `address` as text. OrderDraftDetail only, worked
+  // out on every read and never stored — the draft keeps names (an-address-is-plain-names).
+  OrderAddress region_match = 24;
 }
 
 message OrderDraftListRequest {
@@ -195,7 +221,7 @@ message OrderDraftListFilterSort {
 }
 
 // The ORDER_DRAFT slice reuses the OrderDraft message directly (a list summary leaves items empty,
-// but carries item_count / unmapped_item_count).
+// but carries item_count).
 message OrderDraftRowMapItem {
   map<uint64, OrderDraft> map_data = 1;
 }
@@ -211,6 +237,12 @@ message OrderDraftListResponse {
   repeated OrderDraftListResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+  // How many drafts of the WHOLE filtered set (every page, not this one) have nothing left before Create — the
+  // list's own readiness rule (the frontend's draftGaps, the-drafts-list-counts-no-mapping): a shop, a warehouse, a
+  // customer, an address line, a courier, at least one line, an order date, a sell price, and not a `manual` draft (its
+  // order ref is still to be typed). No mapping: the lines are mapped in the order form at Create. Stock is not in it:
+  // only the order form can read the warehouse's availability.
+  uint64 ready_count = 4;
 }
 
 message OrderDraftDetailRequest {
@@ -232,12 +264,12 @@ message OrderDraftDetailRequest {
 }
 
 message OrderDraftDetailResponse {
-  // WITH its lines — each carrying both the scraped text and the product it has been mapped to, so
-  // the mapping screen (#196) can show one beside the other.
+  // WITH its lines (the scraped text the order form shows above its products) and its `region_match`.
   OrderDraft draft = 1;
 }
 
-// One line as a PERSON edits it (#193) — the mapping act, and the small corrections around it.
+// One line as a PERSON edits it (#193) — a quantity or price correction; a draft stores no mapping
+// (a-draft-stores-no-mapping).
 //
 // The scraped text is deliberately absent. `external_sku` / `external_name` are the evidence of what
 // the buyer ordered and are never overwritten by anybody; a request that could carry them would be a
@@ -247,12 +279,15 @@ message OrderDraftLineEdit {
   // scrape never saw — such a line has no external text, and its emptiness truthfully says so.
   uint64 id = 1;
 
-  // The mapping. 0 leaves the line unmapped, which keeps the draft unpromotable — that is a legal
-  // state to save, because half-finished work is the whole point of a draft.
-  uint64 product_id = 2;
+  // 2 was `product_id`, the mapping — dropped with the column (a-draft-stores-no-mapping).
+  reserved 2;
+  reserved "product_id";
 
   uint32 quantity = 3;
-  int64 unit_price = 4 [(buf.validate.field).int64.gte = 0];
+  double unit_price = 4 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 }
 
 // The complete desired set of lines. Its own message so it has PRESENCE: an absent `lines` means
@@ -264,8 +299,8 @@ message OrderDraftLines {
   repeated OrderDraftLineEdit lines = 1;
 }
 
-// OrderDraftUpdate is the person's edit, made in our UI (#193) — mapping a scraped line to a real
-// product, fixing the address, choosing the shop and warehouse.
+// OrderDraftUpdate is the person's edit, made in our UI (#193) — correcting a line, fixing the address, choosing the
+// shop and warehouse. A draft stores no mapping (a-draft-stores-no-mapping).
 //
 // ⚠ IT ALWAYS WINS, and marks every field it writes as TOUCHED. That mark is what OrderDraftPush
 // reads to know what it may not overwrite, so this RPC and that one are two halves of one rule.
@@ -297,7 +332,9 @@ message OrderDraftUpdateRequest {
   optional string customer_phone = 6 [(buf.validate.field).string.max_len = 40];
   // The address is ONE field, whole. Somebody who corrects a kecamatan has corrected the address.
   OrderAddress address = 7;
-  optional string shipping_code = 8 [(buf.validate.field).string.max_len = 40];
+  // 8 was `shipping_code`, the courier CODE — replaced by `shipment_channel_id` (selling 00044).
+  reserved 8;
+  reserved "shipping_code";
   // 9 was `shipping_cost` (an-order-records-no-shipping-cost).
   reserved 9;
   reserved "shipping_cost";
@@ -316,7 +353,14 @@ message OrderDraftUpdateRequest {
 
   // What the buyer paid on the platform, as a person read it or typed it (platform-total-is-required-at-finalize).
   // Set = edited and marked touched, so the app's next push leaves it alone; 0 clears it.
-  optional int64 platform_total = 14 [(buf.validate.field).int64.gte = 0];
+  optional double platform_total = 14 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+
+  // The courier, as a person picked it — a shipment channel's id. Set = edited and marked touched, so the app's next push
+  // leaves it alone; 0 clears it.
+  optional uint64 shipment_channel_id = 15;
 }
 
 message OrderDraftUpdateResponse {
@@ -412,7 +456,9 @@ message OrderDraftPushRequest {
   string customer_name = 6 [(buf.validate.field).string.max_len = 200];
   string customer_phone = 7 [(buf.validate.field).string.max_len = 40];
   OrderAddress address = 8;
-  string shipping_code = 9 [(buf.validate.field).string.max_len = 40];
+  // 9 was `shipping_code`, the courier CODE — replaced by `shipment_channel_id` (selling 00044).
+  reserved 9;
+  reserved "shipping_code";
   // 10 was `shipping_cost` — an order records no shipping (an-order-records-no-shipping-cost). ⚠ A JSON client still
   // sending `shippingCost` has it DISCARDED silently (Connect ignores unknown JSON fields), never refused.
   reserved 10;
@@ -442,7 +488,15 @@ message OrderDraftPushRequest {
   // (platform-total-is-required-at-finalize). Renamed from `marketplace_total` on 2026-10-23 with its number kept, so a
   // binary client is unaffected — ⚠ but a JSON client still sending `marketplaceTotal` has it DISCARDED silently, and
   // its drafts reach Promote with 0.
-  int64 platform_total = 15 [(buf.validate.field).int64.gte = 0];
+  double platform_total = 15 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+
+  // THE COURIER, converted by the app from the platform's text to our channel id — the app reads ShipmentChannelList and
+  // maps onto it (the-app-converts-the-courier-to-a-channel-id). 0 = the app could not map it; the draft keeps none and
+  // the person picks one in the order form. Not looked up: a wrong mapping is the app's defect, corrected on the draft.
+  uint64 shipment_channel_id = 16;
 }
 
 message OrderDraftPushResponse {
@@ -452,4 +506,78 @@ message OrderDraftPushResponse {
   // the only caller, and it is the one that cannot otherwise tell a successful retry from a new
   // scrape — the id alone looks identical either way.
   bool created = 2;
+}
+
+// ── OrderDraftByExternalRefs ─────────────────────────────────────────────────────────────────────
+
+message OrderDraftByExternalRefsFilter {
+  // The shop the order is being created in — another shop's draft on the same ref is not this order's double.
+  uint64 shop_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The marketplace refs as the form holds them. A form asks for one; the cap keeps the read bounded.
+  repeated string refs = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
+}
+
+enum OrderDraftByExternalRefsDataType {
+  ORDER_DRAFT_BY_EXTERNAL_REFS_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_DRAFT_BY_EXTERNAL_REFS_DATA_TYPE_DRAFT_REF = 1;
+}
+
+message OrderDraftByExternalRefsRequest {
+  // Read: the people who may create orders — the warning runs before OrderCreate, for the same callers.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OrderDraftByExternalRefsFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OrderDraftByExternalRefsDataType data_request = 3;
+}
+
+// One of the team's drafts carrying the ref, in the asked shop.
+message OrderDraftRefItem {
+  uint64 draft_id = 1;
+  uint64 shop_id = 2;
+  // Whose draft it is — the caller can open only their own (OrderDraftDetail narrows to the author).
+  uint64 author_user_id = 3;
+  int64 created_at_unix = 4;
+}
+
+message OrderDraftRefMapItem {
+  // Keyed by draft id. One per app (source) at most, since a draft is unique on (team, source, ref).
+  map<uint64, OrderDraftRefItem> map_data = 1;
+}
+
+message OrderDraftByExternalRefsResponseItem {
+  oneof d {
+    OrderDraftRefMapItem draft_ref = 1;
+  }
+}
+
+message OrderDraftByExternalRefsResponseList {
+  repeated OrderDraftByExternalRefsResponseItem items = 1;
+}
+
+message OrderDraftByExternalRefsResponse {
+  // Keyed by ref. A ref no draft of the team in that shop carries is ABSENT. A `manual` draft (saved from the order
+  // form) is never answered: its external id is a minted form id, not a marketplace ref.
+  map<string, OrderDraftByExternalRefsResponseList> items = 1;
 }

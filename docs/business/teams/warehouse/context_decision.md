@@ -15,6 +15,11 @@ the old one, never an edit to it (HARD RULE 12). The open set lives in [context_
 | [the-flat-rate-is-dropped-last](#the-flat-rate-is-dropped-last) | `liability_terms.handling_fee` is dropped, as the last of five steps. Tech balance Q8 is moot |
 | [an-empty-cap-means-no-cap](#an-empty-cap-means-no-cap) | `max_fee` is optional: empty = no cap, and a cap of 0 is refused when saved |
 | [the-event-carries-the-warehouse-fee](#the-event-carries-the-warehouse-fee) | `OrderPlaced` carries the frozen `warehouse_fee`; balance posts it and computes nothing |
+| [the-warehouse-profile-lives-in-warehouse-service](#the-warehouse-profile-lives-in-warehouse-service) | location and both weekly grids move whole from `team_service` to `warehouse_service`, so one service owns the warehouse profile |
+| [a-closed-day-warns-and-never-refuses](#a-closed-day-warns-and-never-refuses) | an order into a closed warehouse is created, with a warning naming the next opening; nothing refuses it, and the hours gate no restock |
+| [a-warehouse-records-its-holidays](#a-warehouse-records-its-holidays) | a warehouse keeps a list of one-off closures — a date range and a reason — read by the closed-day warning beside the weekly grid |
+| [one-warehouse-team-is-one-building](#one-warehouse-team-is-one-building) | a warehouse team is one building; a second site is a second warehouse team |
+| [the-warehouse-service-owns-the-profile-and-the-fee](#the-warehouse-service-owns-the-profile-and-the-fee) | the warehouse service owns the profile, the closures and the fee — never stock, money owed, membership or orders |
 
 ---
 
@@ -23,7 +28,7 @@ the old one, never an edit to it (HARD RULE 12). The open set lives in [context_
 **Decided 2026-09-16**, written into `context.md` §Responsbility 2:
 
 > *"for `warehouse_fee` warehouse service just give rpc for calculate. how the fee handle and recorded is
-> responsbility of [balance](../balance/context.md) and called by [order](../order/context.md)"*
+> responsbility of [balance](../../balance/context.md) and called by [order](../../order/context.md)"*
 
 It settles the fork this context opened with — three services, three jobs, no overlap.
 
@@ -356,3 +361,175 @@ flowchart LR
 | `min_fee` above `max_fee` | refused when saved, as decided; equal is a flat fee |
 | why not 0 = no cap | `liability_terms.credit_limit` already carries that trap — nil is unlimited, 0 is nothing — and it is the one field in that table that needed a warning comment |
 | ✅ built *(2026-10-21)* | `max_fee` is `optional double` with `gt: 0` in the proto and `CHECK (max_fee > 0)` in `warehouse_fees`; the settings card refuses a 0 before sending and sends an empty cap as no cap |
+
+## the-warehouse-profile-lives-in-warehouse-service
+
+> Owner, in chat (2026-10-31): *"yes, i follow your recomendation"* — to
+> [does-the-warehouse-profile-move-out-of-team-service](./context_clarify.md#question). As recommended.
+
+**The verdict.** The whole warehouse profile lives in `warehouse_service`, as [context.md](./context.md) §Responsbility
+and §Property or Field that must Have say: location, the open and close days, and the fee configuration, one owner.
+`warehouse_infos` — the location and both weekly grids — moves out of `team_service`, which keeps only what describes a
+TEAM.
+
+```mermaid
+flowchart LR
+  subgraph "today"
+    T1["team_service - warehouse_infos: location, receiving and operating hours"]
+    W1["warehouse_service - warehouse_fees"]
+  end
+  subgraph "decided"
+    W2["warehouse_service - location, both weekly grids, fees"]
+    T2["team_service - teams, a selling team's default warehouse"]
+  end
+  T1 -->|"moves whole"| W2
+  W1 --> W2
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| moves to `warehouse_service` | the `warehouse_infos` table (location, `receiving_hours`, `operating_hours`) and `WarehouseInfoDetail` / `WarehouseInfoUpdate` |
+| stays in `team_service` | the team itself, and a selling team's `default_warehouse_id` (`00006`) — it describes the selling team, not the warehouse |
+| the migrations | `warehouse_service` creates its table in its own migration; `team_service` drops `warehouse_infos` in its own — no service migrates another's table (HARD RULE 3) |
+| existing rows | dev data only ([no-switch-over-the-ledgers-replace-todays-tables](../../../technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)) — re-entered or re-seeded, never copied across services by a migration |
+| the screens | the warehouse edit page and the team detail's warehouse section call `warehouse_service` instead of `team_service` |
+| the proto | the two RPCs move to `warehouse.warehouse.v1`, their policies unchanged |
+| what it unblocks | [what-does-a-closed-day-actually-do](./context_clarify.md#question) — the hours then have one owner to read them from |
+
+✅ **Built 2026-11-02.** `WarehouseInfoService` in [warehouse_info.proto](../../../../proto/warehouse/warehouse/v1/warehouse_info.proto)
+serves `WarehouseInfoDetail` / `WarehouseInfoUpdate`, policies unchanged; warehouse migration `00002` creates
+`warehouse_infos` (keyed `warehouse_id`), team migration `00010` drops team's; the warehouse edit page and the team
+detail read the new client. ⚠ my build detail: it no longer asks whether a team IS a warehouse — that would read
+team_service's table — so the update is gated by a warehouse role alone, which exists only on a warehouse team, and a
+team with no profile reads as closed every day.
+
+## a-closed-day-warns-and-never-refuses
+
+> Owner, in chat (2026-10-31): *"yes, i follow your recomendation"* — to
+> [what-does-a-closed-day-actually-do](./context_clarify.md#question), on my recommendation to warn and allow — which
+> reversed my own earlier *refuse* ([closed-means-refused](./context_clarify.md#closed-means-refused) in the clarify).
+
+**The verdict.** A closed day **warns, never refuses**. Marketplace orders arrive around the clock, and a paid order
+has to be recorded whether the warehouse is open or not — a refusal does not stop the order existing, it only makes the
+seller type it again in the morning or name a warehouse they do not ship from. The order is created as usual, and the
+screen says when the warehouse will handle it.
+
+```
+an order for Gudang Bekasi at 22:00 Friday, receiving 08:00–17:00 Mon–Sat
+  → created, as usual
+  → the form: "Gudang Bekasi is closed — handled from Saturday 08:00"
+```
+
+```mermaid
+flowchart LR
+  O["a seller records an order"] --> H{"the warehouse's receiving hours, now"}
+  H -->|"open"| A["created"]
+  H -->|"closed"| W["created - with a warning naming the next opening"]
+  R["a restock arrives"] --> S["signed in by a person in the building - so only while it is open"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `receiving_hours` | read by the order form and the warehouse picker: a closed warehouse is **marked**, with its next opening — still selectable |
+| the order | created whatever the hours say; no server check refuses it |
+| the next opening | the next slot in the weekly grid, in Asia/Jakarta |
+| `operating_hours` | shown on the warehouse's profile; gates nothing — a restock or a return is signed in by a person in the building, so it can only happen while it is open |
+| who reads the hours | `warehouse_service`, once the profile has moved there ([the-warehouse-profile-lives-in-warehouse-service](#the-warehouse-profile-lives-in-warehouse-service)) |
+| one-off closures | still open — [are-there-one-off-closures](./context_clarify.md#question): a holiday list would only add a reason to the warning |
+
+✅ **Built 2026-11-02.** `WarehouseReceivingStatus` answers per warehouse — receiving now, or the next opening and a
+closure's reason, in Asia/Jakarta, looking 60 days ahead ([receiving.go](../../../../backend/services/warehouse_service/warehouse_v1/receiving.go)).
+The order form's warehouse band says it under the picker — *"Closed for Idul Fitri — the order is still recorded, and
+handled from 7 Apr 08:00 WIB"* — and the picker badges a closed warehouse, still selectable; Save is never held for it.
+Tests: the grid and the closure cases as pure functions, the handler against Postgres, the `Features/Orders/WarehouseBand`
+stories.
+
+## a-warehouse-records-its-holidays
+
+> Owner, in chat (2026-10-31): *"i follow your recomendation"* — to
+> [are-there-one-off-closures](./context_clarify.md#question), *can a warehouse record one-off closures, like a holiday?*
+> As recommended.
+
+**The verdict.** A warehouse keeps a list of **one-off closures** — a date range and a reason — beside its weekly grid.
+The closed-day warning reads both ([a-closed-day-warns-and-never-refuses](#a-closed-day-warns-and-never-refuses)), so it
+names a holiday the grid cannot say. It never refuses anything.
+
+```
+Gudang Bekasi   weekly: Mon–Sat 08:00–17:00
+                closures: 30 Mar – 6 Apr, "Idul Fitri"
+an order on 31 Mar → "Gudang Bekasi is closed for Idul Fitri — handled from 7 Apr 08:00"
+```
+
+```mermaid
+flowchart LR
+  O["an order, now"] --> C{"in a closure?"}
+  C -->|"yes"| W1["warn - the reason and the next opening after it"]
+  C -->|"no"| G{"inside the weekly grid?"}
+  G -->|"no"| W2["warn - the next opening"]
+  G -->|"yes"| A["no warning"]
+```
+
+| | |
+| --- | --- |
+| the table | `warehouse_closures` in `warehouse_service`, beside the profile ([the-warehouse-profile-lives-in-warehouse-service](#the-warehouse-profile-lives-in-warehouse-service)) — warehouse id, first day, last day, reason |
+| the days | whole days, both inclusive, Asia/Jakarta |
+| who edits | whoever edits the warehouse's hours — the warehouse page |
+| the next opening | the first slot of the weekly grid after the closure's last day |
+| refuses | nothing — it only changes the warning |
+
+✅ **Built 2026-11-02.** `warehouse_closures` (warehouse migration `00002`), `WarehouseClosureAdd` / `WarehouseClosureDelete`,
+the closures still to come on `WarehouseInfoDetail`, and a *Closures* card on the warehouse edit page — each added or
+deleted on its own, outside the hours form.
+
+## one-warehouse-team-is-one-building
+
+> Owner, in chat (2026-10-31): *"yes, one team per building site"* — to
+> [is-a-warehouse-ever-two-buildings](./context_clarify.md#question). As recommended.
+
+**The verdict.** A warehouse team is **one building**. A business that opens a second site gets a **second warehouse
+team** — its own stock, racks, staff, fee, hours and closures. A building is where stock physically sits, and the team
+is already what holds stock, racks and staff, so nothing in the design needs a building inside a team.
+
+```mermaid
+flowchart LR
+  B["one owner, two sites"] --> W1["Gudang Bekasi - a warehouse team"]
+  B --> W2["Gudang Surabaya - another warehouse team"]
+  W1 --> S1["its stock, racks, staff, fee, hours"]
+  W2 --> S2["its stock, racks, staff, fee, hours"]
+```
+
+| | |
+| --- | --- |
+| `warehouse_id` | is a warehouse team's id, everywhere — stock, racks, orders, the fee |
+| a second site | a second warehouse team, made like the first |
+| ✅ built | nothing changes — this is what runs |
+
+## the-warehouse-service-owns-the-profile-and-the-fee
+
+> Owner, in chat (2026-10-31): *"yes"* — to [what-is-NOT-the-warehouse-services-job](./context_clarify.md#question), on the
+> split recommended. As recommended.
+
+**The verdict.** The warehouse service owns three things, and names four it does not, so it never grows into
+*everything about the warehouse*.
+
+| **owns** | **not its job — whose it is** |
+| --- | --- |
+| the profile: location, receiving and operating hours ([the-warehouse-profile-lives-in-warehouse-service](#the-warehouse-profile-lives-in-warehouse-service)) | stock, racks, the stock count — **inventory** |
+| one-off closures ([a-warehouse-records-its-holidays](#a-warehouse-records-its-holidays)) | what teams owe each other, and posting it — **liability** |
+| the fee, and `WarehouseFeeCalculate` | the team, its members and roles — **team** / **user** |
+| | the orders it ships — **selling** |
+
+```mermaid
+flowchart LR
+  W["warehouse_service"] --> P["profile, hours, closures"]
+  W --> F["the fee"]
+  W -.->|"not its job"| X["stock, money owed, members, orders"]
+```
+
+**What it leaves** (HARD RULE 11): [context.md](./context.md) §Responsbility 1, *"we must have warehouse service that manage
+warehouse teams"* — managing teams is team_service's — and the doc has no *Whats Not*; reported in the clarify's
+[responsibility-names-team-services-job](./context_clarify.md#responsibility-names-team-services-job).

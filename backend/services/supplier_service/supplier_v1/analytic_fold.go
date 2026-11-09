@@ -2,11 +2,8 @@ package supplier_v1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
-	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -226,7 +223,9 @@ WHERE EXCLUDED.value < supplier_service_metadata.value`,
 //     share those rows; locked in each restock's typed order they DEADLOCK — proved, then fixed
 //     (audits/services/supplier_service/concurrency/FoldHandler.md). In product order the second waits behind the first.
 func foldLines(tx *gorm.DB, day string, supplierID, teamID uint64, lines []*eventsv1.RestockAcceptedLine) error {
-	var products, rc, rv, lc, lv, bc, bv []int64
+	var products, rc, lc, bc []int64
+
+	var rv, lv, bv []float64
 
 	for _, line := range lines {
 		accepted, lost, broken := line.GetAcceptedCount(), line.GetMissingCount(), line.GetBrokenCount()
@@ -260,8 +259,8 @@ INSERT INTO supplier_product_daily_reports AS d (
 SELECT CAST(@day AS date), @supplier, l.product_id, @team,
        SUM(l.rc), SUM(l.rv), SUM(l.lc), SUM(l.lv), SUM(l.bc), SUM(l.bv), NOW()
 FROM unnest(
-    CAST(@products AS bigint[]), CAST(@rc AS bigint[]), CAST(@rv AS bigint[]),
-    CAST(@lc AS bigint[]), CAST(@lv AS bigint[]), CAST(@bc AS bigint[]), CAST(@bv AS bigint[])
+    CAST(@products AS bigint[]), CAST(@rc AS bigint[]), CAST(@rv AS double precision[]),
+    CAST(@lc AS bigint[]), CAST(@lv AS double precision[]), CAST(@bc AS bigint[]), CAST(@bv AS double precision[])
 ) AS l(product_id, rc, rv, lc, lv, bc, bv)
 GROUP BY l.product_id
 ORDER BY l.product_id
@@ -279,11 +278,11 @@ SET restock_count             = d.restock_count + EXCLUDED.restock_count,
 			"team":     teamID,
 			"products": int64Array(products),
 			"rc":       int64Array(rc),
-			"rv":       int64Array(rv),
+			"rv":       float64Array(rv),
 			"lc":       int64Array(lc),
-			"lv":       int64Array(lv),
+			"lv":       float64Array(lv),
 			"bc":       int64Array(bc),
-			"bv":       int64Array(bv),
+			"bv":       float64Array(bv),
 		},
 	).Error
 	if err != nil {
@@ -297,17 +296,17 @@ SET restock_count             = d.restock_count + EXCLUDED.restock_count,
 // through a rounded unit price, so a line's figures add back to what the supplier charged. A line with nothing
 // ordered has no price, and its units are worth 0.
 //
-// The event carries the total as inventory stores it, a double (money-is-double-in-the-api-too); the figures are
-// still whole rupiah, so the value is rounded HERE, at this service's edge, and nowhere upstream.
-func lineValue(line *eventsv1.RestockAcceptedLine) func(units int64) int64 {
+// The event carries the total as inventory stores it, a double (money-is-double-in-the-api-too). The report's figures
+// are doubles too (00003), the exact value — never rounded (the-backend-never-rounds-money).
+func lineValue(line *eventsv1.RestockAcceptedLine) func(units int64) float64 {
 	total, ordered := line.GetTotalPrice(), line.GetOrderedCount()
 
-	return func(units int64) int64 {
+	return func(units int64) float64 {
 		if ordered <= 0 {
 			return 0
 		}
 
-		return int64(math.Round(total * float64(units) / float64(ordered)))
+		return total * float64(units) / float64(ordered)
 	}
 }
 
@@ -325,46 +324,4 @@ func (s *Service) metadataValue(tx *gorm.DB, key string) (string, error) {
 	}
 
 	return rows[0].Value, nil
-}
-
-// eventLockValue is the ONE encoding of `process_event_lock`.
-type eventLockValue struct {
-	Lock *bool `json:"lock"`
-}
-
-var (
-	lockOn  = `{"lock":true}`
-	lockOff = `{"lock":false}`
-)
-
-// readEventLock reads the maintenance switch.
-//
-// ⚠ A MISSING OR UNPARSEABLE VALUE IS AN ERROR, never "unlocked". For a lock, failing open is the wrong direction.
-func readEventLock(tx *gorm.DB) (bool, error) {
-	var meta supplier_service_models.SupplierServiceMetadata
-
-	err := tx.
-		Where("key = ?", supplier_service_models.MetadataProcessEventLock).
-		Take(&meta).
-		Error
-	if err != nil {
-		return false, fmt.Errorf("supplier: cannot read %s: %w", supplier_service_models.MetadataProcessEventLock, err)
-	}
-
-	return parseEventLock(meta.Value)
-}
-
-func parseEventLock(value string) (bool, error) {
-	decoded := eventLockValue{}
-
-	decoder := json.NewDecoder(strings.NewReader(value))
-	decoder.DisallowUnknownFields()
-
-	err := decoder.Decode(&decoded)
-	if err != nil || decoded.Lock == nil {
-		return false, fmt.Errorf("supplier: %s is %q, not {\"lock\":true|false}",
-			supplier_service_models.MetadataProcessEventLock, value)
-	}
-
-	return *decoded.Lock, nil
 }

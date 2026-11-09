@@ -50,6 +50,13 @@ type Config struct {
 	// `warehouse-dev`; the e2e server runs on `warehouse-e2e`, so the two never receive each other's events
 	// now that the emulator PUSHES to each server (the-emulator-pushes-locally).
 	PubsubProject string `env:"PUBSUB_PROJECT" yaml:"pubsub_project"`
+
+	// PublicURL is this API as an AI AGENT on the internet reaches it (our-server-hosts-the-mcp) — the OAuth issuer, its
+	// endpoints, and the MCP endpoint at /mcp. Behind a proxy or a tunnel it is that public address, never localhost.
+	PublicURL string `env:"PUBLIC_URL" yaml:"public_url"`
+
+	// AppURL is the web app's public base: an agent's OAuth sends the person's browser to its /connect-agent page.
+	AppURL string `env:"APP_URL" yaml:"app_url"`
 }
 
 func NewConfig() (*Config, error) {
@@ -65,6 +72,9 @@ func NewConfig() (*Config, error) {
 		DocumentBaseURL:     "http://localhost:8080/local-storage",
 		DocumentTokenSecret: "dev-document-secret-do-not-use-in-production",
 		PubsubProject:       devProjectID,
+
+		PublicURL: "http://localhost:8080",
+		AppURL:    "http://localhost:5174",
 	}
 
 	err := san_config.NewConfiguration(&cfg,

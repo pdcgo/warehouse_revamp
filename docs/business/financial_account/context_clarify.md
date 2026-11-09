@@ -40,7 +40,7 @@ and the service, the withdrawal listener and the screens are implemented, tested
 | ✅ answered in chat | Q8 — for now the whole team sees, and admin and up move the money: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) · the seeing half against my recommendation |
 | ✅ answered in chat | Q10 — every type has one way in: [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then [one-way-in-per-type](./context_decision.md#one-way-in-per-type) · 🔄 [Q1](#question) and [Q3](#question) narrow with it, to which account a withdrawal and an expense name |
 | ✅ answered in chat | Q4's last half — an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
-| ✅ your log section | `last_balance` is `balance_after`, as critique 5 recommended — [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after) · ⚠ the log still has no account column, so the [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) stands — and no cause (critique 1), no date (critique 7) |
+| ✅ your log section | `last_balance` is `balance_after`, as critique 5 recommended — [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after) · ✅ the log carries `account_id` now (`financial_account_logs`, `00001`), the account half of the [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) — and no cause (critique 1), no date (critique 7) |
 | ✅ your list | `opening_balance`, `transfer`, `team_payment`, then `capital`, joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [capital-joins-the-types](./context_decision.md#capital-joins-the-types) |
 | ✅ answered in chat | Q5, Q6, Q7 — each as recommended: [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) · [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) · [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused) |
 | ✅ closed with Q6 | the contradiction *account_number is unique, and a cash box has none* — the rule has its scope now. ⚠ Line 45 still reads *"its unique"* — yours to carry into the doc |
@@ -460,6 +460,28 @@ flowchart LR
 
 ⚠ **One in another of yours:** `technical/architecture/context.md` §Microservice lists no financial account
 service — reported in [its clarify](../../technical/architecture/context_clarify.md).
+
+## an-expense-void-is-now-a-negative-adjustment
+
+**The example.** [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid):
+*"a void publishes the reversal — the account gets its money back"*, and the types table above: *"a void reverses it"*.
+[every-correction-is-a-signed-adjustment](../analytic/context_decision.md#every-correction-is-a-signed-adjustment)
+(2026-10-31) removes the void: every correction is an adjustment with a signed amount, and **Batalkan** writes minus the
+whole amount.
+
+**Which is stale:** the *void* lines — the newer decision is yours. The money does the same thing; only the word and its
+reach change: a negative adjustment gives money back, and a **positive** one, which a void never could, takes more.
+**→ Recommend:** when the expense event is built, this service posts an adjustment by its sign to **the account of the
+expense it names** — one rule, no reversal case of its own.
+
+🔄 *(2026-11-02)* **The adjustment is built** — `ExpenseAdjust`, with no void left anywhere. The expense **event** is not,
+so nothing reaches this service yet in either form; this stays open until it is.
+
+```mermaid
+flowchart LR
+  E["expense 77 - paid from BCA - +5.000.000"] --> A["BCA - minus 5.000.000"]
+  J["adjustment for 77 - minus 4.500.000"] -->|"the expense's account"| A2["BCA - plus 4.500.000 back"]
+```
 
 # Awaiting
 

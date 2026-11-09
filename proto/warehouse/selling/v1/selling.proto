@@ -16,13 +16,29 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sel
 // orders too (the #23 decomposition); shops are the first piece.
 service ShopService {
   rpc ShopCreate(ShopCreateRequest) returns (ShopCreateResponse);
-  rpc ShopList(ShopListRequest) returns (ShopListResponse);
-  rpc ShopDetail(ShopDetailRequest) returns (ShopDetailResponse);
+  rpc ShopList(ShopListRequest) returns (ShopListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ShopDetail(ShopDetailRequest) returns (ShopDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ShopUpdate(ShopUpdateRequest) returns (ShopUpdateResponse);
-  rpc ShopDelete(ShopDeleteRequest) returns (ShopDeleteResponse);
+  // A shop is CLOSED, never deleted (a-shop-is-closed-never-deleted) — there is no ShopDelete. Close stops new selling
+  // on it (a-closed-shop-refuses-only-new-selling) and frees its code; Reopen gives it back, refused while an open shop
+  // of the team holds the code (a-shop-code-is-unique-among-open-shops).
+  rpc ShopClose(ShopCloseRequest) returns (ShopCloseResponse);
+  rpc ShopReopen(ShopReopenRequest) returns (ShopReopenResponse);
 
   // Shop access — which users may work on a shop (#86). Scoped to the shop's team.
-  rpc ShopUserList(ShopUserListRequest) returns (ShopUserListResponse);
+  rpc ShopUserList(ShopUserListRequest) returns (ShopUserListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ShopUserAdd(ShopUserAddRequest) returns (ShopUserAddResponse);
   rpc ShopUserRemove(ShopUserRemoveRequest) returns (ShopUserRemoveResponse);
 
@@ -33,7 +49,11 @@ service ShopService {
   // For other services — the shop, its primary CS, and whether a user may WRITE on it, in one answer
   // (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
   // settlement asks it for an imported shop row's primary CS.
-  rpc ShopAccessCheck(ShopAccessCheckRequest) returns (ShopAccessCheckResponse);
+  rpc ShopAccessCheck(ShopAccessCheckRequest) returns (ShopAccessCheckResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Shops by id, across teams — the warehouse's order row names each order's shop
   // (the-warehouse-row-fills-from-shop-and-user-by-ids).
   rpc ShopByIds(ShopByIdsRequest) returns (ShopByIdsResponse);
@@ -46,10 +66,25 @@ message Shop {
   string shop_code = 4;
   warehouse.marketplace.v1.Marketplace marketplace = 5;
   string description = 6;
-  bool deleted = 7;
+  // `deleted` was replaced by `status` + `closed_at_unix` (a-shop-is-closed-never-deleted).
+  reserved 7;
+  reserved "deleted";
   // The shop's primary CS — one of its granted users, flagged (the-primary-cs-is-a-flag-on-a-grant).
   // 0 = none: the shop cannot import until someone is made primary.
   uint64 primary_user_id = 8;
+  // Open, or closed (a-shop-is-closed-never-deleted). A closed shop takes no new selling but its money still runs
+  // (a-closed-shop-refuses-only-new-selling); only its grants and primary CS stay editable
+  // (a-closed-shop-locks-all-but-its-grants).
+  ShopStatus status = 9;
+  // When it closed, unix seconds — 0 for an open shop.
+  int64 closed_at_unix = 10;
+}
+
+// A shop's life (a-shop-is-closed-never-deleted): created open, closed and reopened, never deleted.
+enum ShopStatus {
+  SHOP_STATUS_UNSPECIFIED = 0;
+  SHOP_STATUS_OPEN = 1;
+  SHOP_STATUS_CLOSED = 2;
 }
 
 message ShopCreateRequest {
@@ -111,6 +146,28 @@ message ShopListRequest {
 
 message ShopListFilter {
   string q = 1 [(buf.validate.field).string.max_len = 100];
+  // Only the shops on this marketplace; UNSPECIFIED = every marketplace. A shop's marketplace never changes.
+  warehouse.marketplace.v1.Marketplace marketplace = 2 [(buf.validate.field).enum.defined_only = true];
+  // Only the shops whose PRIMARY CS is this person (the-primary-cs-is-a-flag-on-a-grant); 0 = anybody.
+  uint64 primary_user_id = 3;
+  // Only the shops with NO primary CS — the ones that cannot import a statement yet. Asking for a person and for
+  // nobody at once is refused (InvalidArgument): the two cannot both hold.
+  bool no_primary = 4;
+  // Only the shops the CALLER may write on (a-write-needs-a-grant-or-a-manager): every shop for the team's owner or
+  // admin and for root or admin, otherwise the shops granted to them. The order form's and the imports' pickers ask
+  // it; a filter over orders or reports does not, and still offers every shop.
+  bool writable = 5;
+  // Which shops by status (a-shop-is-closed-never-deleted, the-close-shop-prototype-is-accepted): UNSPECIFIED is OPEN,
+  // the default list; CLOSED the closed ones; ALL both.
+  ShopListStatus status = 6 [(buf.validate.field).enum.defined_only = true];
+}
+
+// ShopList's status filter. UNSPECIFIED reads as OPEN — a list that does not ask shows the open shops.
+enum ShopListStatus {
+  SHOP_LIST_STATUS_UNSPECIFIED = 0;
+  SHOP_LIST_STATUS_OPEN = 1;
+  SHOP_LIST_STATUS_CLOSED = 2;
+  SHOP_LIST_STATUS_ALL = 3;
 }
 
 enum ShopListDataType {
@@ -152,6 +209,7 @@ message ShopListResponse {
   warehouse.common.v1.PageInfo page_info = 3;
 }
 
+// A shop of the team, OPEN OR CLOSED — a closed shop's page still reads (a-closed-shop-locks-all-but-its-grants).
 message ShopDetailRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
@@ -174,6 +232,7 @@ message ShopDetailResponse {
   Shop shop = 1;
 }
 
+// Refused on a CLOSED shop — FailedPrecondition, "reopen the shop first" (a-closed-shop-locks-all-but-its-grants).
 message ShopUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
@@ -210,7 +269,13 @@ message ShopUpdateResponse {
   Shop shop = 1;
 }
 
-message ShopDeleteRequest {
+// --- Close and reopen (a-shop-is-closed-never-deleted) ---
+
+// Closes a shop of the team: `status = closed`, `closed_at` now. Never refused for its drafts — they stay waiting
+// (a-close-leaves-the-drafts-waiting). Frees its code (a-shop-code-is-unique-among-open-shops). Idempotent: an already
+// closed shop is answered as it is, its close date unchanged. The team's owner and admin, and root or the
+// administrator (a-closed-shop-locks-all-but-its-grants).
+message ShopCloseRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -227,7 +292,33 @@ message ShopDeleteRequest {
   uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
 }
 
-message ShopDeleteResponse {}
+message ShopCloseResponse {
+  Shop shop = 1;
+}
+
+// Reopens a closed shop of the team. Refused — FailedPrecondition, naming that shop — while an OPEN shop of the team
+// holds its code (a-shop-code-is-unique-among-open-shops): rename one, then reopen. Idempotent: an open shop is answered
+// as it is. Same roles as ShopClose.
+message ShopReopenRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopReopenResponse {
+  Shop shop = 1;
+}
 
 // --- Shop access (#86): the users who may work on a shop. user_id is an OPAQUE user_service id. ---
 
@@ -378,7 +469,9 @@ message ShopAccessCheckRequest {
 }
 
 message ShopAccessCheckResponse {
-  // A live shop of the request's team. Another team's shop, or a deleted one, is NotFound.
+  // A shop of the request's team — a CLOSED one included, with its `status`, and each caller decides
+  // (a-closed-shop-refuses-only-new-selling): a statement import still passes, a new order does not. Another team's
+  // shop, or one that never existed, is NotFound.
   Shop shop = 1;
   // The shop's primary CS — 0 = none (a-shop-with-no-primary-cs-cannot-import).
   uint64 primary_user_id = 2;
@@ -393,7 +486,7 @@ message ShopAccessCheckResponse {
 // orders, and its row names each order's shop and marketplace. One call per page, never one per row.
 //
 // BASIC FIELDS ONLY — id, name, marketplace, owning team. Never members, grants or settings: an unscoped read must
-// not become a way into another team's shop. A DELETED shop is still returned, so an old order still names its
+// not become a way into another team's shop. A CLOSED shop is still returned, so an old order still names its
 // shop; an id that never existed is absent.
 message ShopByIdsRequest {
   // Deliberately UNSCOPED, like TeamByIds and UserByIDs: a cross-team bulk lookup.

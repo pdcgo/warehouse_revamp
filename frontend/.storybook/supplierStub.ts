@@ -21,6 +21,7 @@
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
+import { goodsTotalsOf, inBand, recordSupplierListBands } from "./supplierGoodsStub";
 import { SupplierListDataType, SupplierListScope, SupplierRowSort, SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import { getOption } from "@bufbuild/protobuf";
@@ -28,9 +29,10 @@ import { SupplierAnalyticService, SupplierMetricSchema } from "../src/gen/wareho
 import { type FilterItem, GroupType, SortType, metric_sort } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
 import { CommonSortType, GeneralSort } from "../src/gen/warehouse/common/v1/list_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
-import { teams } from "./fixtures";
+import { teams, FOLDED_AS_OF } from "./fixtures";
 import { type ChannelFixture, type SupplierFixture, channelFixtures, supplierFixtures } from "./supplierFixtures";
 import { type FigureFixture, dayAgo, figureFixtures } from "./supplierFigureFixtures";
+import { resetSupplierExportScenario, supplierExportScenario } from "./supplierExportScenario";
 
 // ── The tables ──────────────────────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,7 @@ let channels: ChannelFixture[] = [];
 export function resetSupplierStub() {
   suppliers = supplierFixtures.map((s) => ({ ...s }));
   channels = channelFixtures.map((c) => ({ ...c }));
+  resetSupplierExportScenario();
 }
 
 resetSupplierStub();
@@ -134,13 +137,19 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
     const channelType = req.filter?.channelType ?? Marketplace.UNSPECIFIED;
     // Discover's Team filter — the team that keeps the supplier. 0 = any team.
     const ownerTeamId = req.filter?.ownerTeamId ?? 0n;
+    // The range pills (the-range-pills-are-a-fixed-set) — over the goods stub's all-time figures, every team's, before
+    // the page, lower-inclusive and upper-exclusive; a supplier with no goods reads 0.
+    const sold = req.filter?.sold;
+    const ready = req.filter?.ready;
+    recordSupplierListBands(sold, ready);
 
     const found = newestFirst(
       suppliers
         .filter((s) => !s.deleted && (everyTeam || s.teamId === req.teamId))
         .filter((s) => ownerTeamId === 0n || s.teamId === ownerTeamId)
         .filter((s) => channelType === Marketplace.UNSPECIFIED || liveStoresOf(s.id).some((c) => c.channelType === channelType))
-        .filter((s) => matches(q, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name))),
+        .filter((s) => matches(q, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name)))
+        .filter((s) => inBand(goodsTotalsOf(s.id).sold, sold) && inBand(goodsTotalsOf(s.id).ready, ready)),
     );
     // By name when asked — the server's order (supplierOrderClause): the name, then the id to break a tie.
     const byName =
@@ -241,6 +250,22 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
 
 // ── SupplierChannelService ──────────────────────────────────────────────────────────────────────
 
+/** The Toko tab's set — one live supplier's live stores, searched and typed, newest first; the list and its export. */
+function storeRows(filter: { supplierId: bigint; q: string; channelType: Marketplace } | undefined): ChannelFixture[] {
+  const supplier = live(filter?.supplierId ?? 0n);
+  const q = (filter?.q ?? "").trim().toLowerCase();
+  const channelType = filter?.channelType ?? Marketplace.UNSPECIFIED;
+
+  return newestFirst(
+    liveStoresOf(supplier.id)
+      .filter((c) => channelType === Marketplace.UNSPECIFIED || c.channelType === channelType)
+      .filter((c) => matches(q, c.name, c.uri, c.description)),
+  );
+}
+
+/** An export's link in Storybook: an empty data: URL, so the download a story triggers goes nowhere. */
+const EMPTY_XLSX = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,";
+
 export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelService>> = {
   // Stores by id, DELETED ONES INCLUDED and marked — what a restock line reads to show its store, badged when it is
   // gone (a-deleted-supplier-still-shows-with-a-badge). An unknown id is simply absent.
@@ -255,15 +280,7 @@ export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelS
 
   // Any team's live supplier's live stores — searched, filtered and paged here, as the server does.
   supplierChannelList: (req) => {
-    const supplier = live(req.filter?.supplierId ?? 0n);
-    const q = (req.filter?.q ?? "").trim().toLowerCase();
-    const channelType = req.filter?.channelType ?? Marketplace.UNSPECIFIED;
-
-    const rows = newestFirst(
-      liveStoresOf(supplier.id)
-        .filter((c) => channelType === Marketplace.UNSPECIFIED || c.channelType === channelType)
-        .filter((c) => matches(q, c.name, c.uri, c.description)),
-    );
+    const rows = storeRows(req.filter);
     const { rows: page, pageInfo } = pageOf(rows, req.page as PageReq);
 
     const mapData: Record<string, ReturnType<typeof wireChannel>> = {};
@@ -276,6 +293,24 @@ export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelS
       ids: page.map((c) => c.id),
       pageInfo,
     };
+  },
+
+  // THE TOKO TAB AS A FILE (each-supplier-tab-exports-its-own-table): the list's own set, every page — progress, then the
+  // link. What was asked is kept for the story to read (supplierExportScenario).
+  supplierChannelExport: async function* (req) {
+    const rows = storeRows(req.filter);
+    const total = BigInt(rows.length);
+
+    supplierExportScenario.stores.push({
+      teamId: req.teamId,
+      supplierId: req.filter?.supplierId ?? 0n,
+      q: req.filter?.q ?? "",
+      channelType: req.filter?.channelType ?? Marketplace.UNSPECIFIED,
+      rows: rows.length,
+    });
+
+    yield { message: "exporting supplier stores", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "toko-pemasok.xlsx" };
   },
 
   supplierChannelCreate: (req) => {
@@ -340,11 +375,13 @@ type Metric = Omit<FigureFixture, "daysAgo" | "supplierId" | "productId" | "team
 
 const zeroMetric = (): Metric => ({
   restockCount: 0n,
-  restockValuation: 0n,
+  restockValuation: 0,
   shippingLostCount: 0n,
-  shippingLostValuation: 0n,
+  shippingLostValuation: 0,
   shippingBrokenCount: 0n,
-  shippingBrokenValuation: 0n,
+  shippingBrokenValuation: 0,
+  salesCount: 0n,
+  salesValue: 0,
   brokenRate: 0,
 });
 
@@ -359,6 +396,8 @@ function addRow(m: Metric, r: FigureFixture): Metric {
     shippingLostValuation: m.shippingLostValuation + r.shippingLostValuation,
     shippingBrokenCount: m.shippingBrokenCount + r.shippingBrokenCount,
     shippingBrokenValuation: m.shippingBrokenValuation + r.shippingBrokenValuation,
+    salesCount: m.salesCount + r.salesCount,
+    salesValue: m.salesValue + r.salesValue,
     brokenRate: 0,
   };
   const units = unitsOf(next);
@@ -456,6 +495,42 @@ const keyDesc = (a: string, b: string) => (a.length !== b.length ? b.length - a.
 const camel = (field: string) => field.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()) as keyof Metric;
 
 export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyticService>> = {
+  // THE STATISTIK TAB AS A FILE (each-supplier-tab-exports-its-own-table): the view on screen over the tab's filters —
+  // one supplier, Per Periode at a day, month or year, or Per Produk. Refused as the server refuses: no supplier, or a
+  // group the tab never shows. What was asked is kept for the story to read.
+  supplierFigureExport: async function* (req) {
+    if (!req.filters.some((f) => f.f.case === "supplierFilter")) {
+      throw new ConnectError("the Statistik tab is one supplier's — a supplier filter is required", Code.InvalidArgument);
+    }
+    if (![GroupType.DAILY, GroupType.MONTHLY, GroupType.YEARLY, GroupType.PRODUCT].includes(req.groupBy)) {
+      throw new ConnectError("group_by: value must be in list [2, 4, 5, 6]", Code.InvalidArgument);
+    }
+
+    supplierExportScenario.figures.push({ teamId: req.teamId, groupBy: req.groupBy, filters: req.filters });
+
+    const total = BigInt(grouped(req.filters, req.groupBy).size);
+
+    yield { message: "exporting", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "statistik-pemasok.xlsx" };
+  },
+
+  // THE SUPPLIER REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file): the whole ranking over the report's own
+  // filters and order. Refused as the server refuses: one supplier (that is its Statistik tab). What was asked is kept
+  // for the story to read.
+  supplierReportExport: async function* (req) {
+    if (req.filters.some((f) => f.f.case === "supplierFilter")) {
+      throw new ConnectError("the Supplier Report ranks every supplier", Code.InvalidArgument);
+    }
+
+    const rows = grouped(req.filters, GroupType.SUPPLIER).size;
+    supplierExportScenario.reports.push({ teamId: req.teamId, filters: req.filters, sort: req.sort, rows });
+
+    const total = BigInt(rows);
+
+    yield { message: "exporting the ranking", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "laporan-pemasok.xlsx" };
+  },
+
   metricSearch: (req) => {
     const field = req.sort?.field ?? "";
     const sortable = SupplierMetricSchema.fields.find((f) => f.name === field);
@@ -493,7 +568,7 @@ export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyti
       let total = zeroMetric();
       for (const r of figureRowsFor(req.filters)) total = addRow(total, r);
 
-      return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierSummary" as const, value: total } })) };
+      return { asOfUnix: FOLDED_AS_OF, metricDatas: req.metricIds.map(() => ({ m: { case: "supplierSummary" as const, value: total } })) };
     }
 
     const byKey = grouped(req.filters, req.groupBy);
@@ -502,7 +577,7 @@ export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyti
       const items: Record<string, Metric> = {};
       for (const day of req.keys.k.value.days) items[day] = byKey.get(day) ?? zeroMetric();
 
-      return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierByDay" as const, value: { items } } })) };
+      return { asOfUnix: FOLDED_AS_OF, metricDatas: req.metricIds.map(() => ({ m: { case: "supplierByDay" as const, value: { items } } })) };
     }
 
     const items: Record<string, Metric> = {};
@@ -510,6 +585,6 @@ export const supplierAnalyticService: Partial<ServiceImpl<typeof SupplierAnalyti
       items[id.toString()] = byKey.get(id.toString()) ?? zeroMetric();
     }
 
-    return { metricDatas: req.metricIds.map(() => ({ m: { case: "supplierById" as const, value: { items } } })) };
+    return { asOfUnix: FOLDED_AS_OF, metricDatas: req.metricIds.map(() => ({ m: { case: "supplierById" as const, value: { items } } })) };
   },
 };

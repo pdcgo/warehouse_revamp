@@ -14,7 +14,7 @@ go run ./tools/san user reset-password --username ani
 
 ---
 
-## One CLI, five jobs
+## One CLI, six jobs
 
 `san` covers the whole life of the project's data and the environment around it.
 
@@ -22,9 +22,10 @@ go run ./tools/san user reset-password --username ani
 | --- | --- | --- |
 | **the schema** | [`migrate`](#migrate) | goose, per service (HARD RULE 3) |
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
-| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) | acts on real data, through the real services |
+| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) · [`shop grant-current-cs`](#shop-grant-current-cs) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
 | **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
+| **the deployment** | [`deploy`](#deploy) | ship one service to Cloud Run — built by Cloud Build, never migrated |
 
 ```mermaid
 flowchart LR
@@ -34,6 +35,7 @@ flowchart LR
         U["user reset-password · user root"]
         R["remote · remote mcp · refresh-token"]
         V["dev setup · dev run"]
+        D["deploy"]
     end
     M -->|"shapes the schema"| DB[(Postgres)]
     S -->|"puts rows in it"| DB
@@ -41,6 +43,8 @@ flowchart LR
     R -->|"runs shell commands in the checkout"| WS[/"the working tree"/]
     V -->|"starts the API and the UI from"| WS
     V -->|"setup migrates and seeds the LOCAL one"| DB
+    D -->|"uploads backend/ from"| WS
+    D -->|"Cloud Build, then a new revision"| CR["Cloud Run"]
 ```
 
 > **This used to be two binaries.** `migrate`, `seed`, `db` and `region` lived in
@@ -84,19 +88,26 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
 | [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
+| [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
+| [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
+| [`report refold`](#report-refold) | Rebuild ONE shop's or ONE person's day of a settlement report from the log — the repair for a day that is wrong while the log is right; every later day's carry follows. `--dry-run` prints it first. Safe to re-run — a second run changes nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
+| [`pubsub releases`](#pubsub-releases) | List and replay the dead-lettered stock releases (`InventoryTxCancel`, `OrderCancelled`) through inventory's own listener |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
 | [`remote mcp`](#remote-mcp) | Serve this checkout as **MCP tools** — the command for Claude Web and any other client we did not write, behind a tunnel |
 | [`remote refresh-token`](#remote-refresh-token) | Push the stored token's deadline out — same token, so nothing has to be re-pasted |
 | [`remote exec`](#remote-exec) | The client: run one command on a `remote` server and stream its output |
 | [`remote get` · `remote put`](#remote-get--remote-put) | The client: move a file to or from the server, byte for byte |
+| [`deploy`](#deploy) | Build one service with Cloud Build and deploy it to Cloud Run — today `shipment_service`. Never migrates |
 
 *(Every new one is added to this table — see [Adding a command](#adding-a-command).)*
 
-**`remote`, `pubsub` and `dev run` touch no database**, so they never ask Local/Production and need
+**`remote`, `pubsub`, `dev run` and `deploy` touch no database**, so they never ask Local/Production and need
 no Postgres running (`dev run` starts the containers, and that is all). `--dsn` is meaningless to all
-three. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker.
+four. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker;
+`deploy` has `--project` and `--region`. The one exception is **`pubsub releases replay`** (without `--dry-run`): it
+releases stock in inventory's tables, so it asks Local/Production (or takes `--dsn`) like any command that writes.
 
 **`dev setup` touches only the local one, and never asks.** It refuses to run at all when `--dsn` or
 `DATABASE_URL` is set — see [local only](#dev-setup).
@@ -148,7 +159,7 @@ go run ./tools/san migrate status --service user_service
 
 | Flag | Notes |
 | --- | --- |
-| `--service` / `-s` | Which service. **Prompts when omitted.** Discovered from the filesystem, so the list never goes stale |
+| `--service` / `-s` | Which service. **Prompts when omitted.** Discovered from the filesystem, so the list never goes stale — every `backend/services/*` with a `db_migrations` of its own; a service that owns no table (`mcp_service`) has nothing to migrate and is not offered |
 | `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt. Not needed for `create` |
 
 **Two prompts, in this order: database, then service.** The dangerous choice comes first, so
@@ -192,7 +203,7 @@ A test pins the order (`TestMigrationOrderPinsTheDependencies`).
 
 | Message | Cause |
 | --- | --- |
-| `unknown service "x" — have: [...]` | Typo. The list is the filesystem, so anything missing from it does not exist |
+| `unknown service "x" — have: [...]` | Typo — or a service with no `db_migrations` (`mcp_service`). The list is the filesystem, so anything missing from it does not exist |
 | `not inside a warehouse_revamp checkout: no go.mod beside backend/services …` | Run from outside the repo |
 | `a goose command is required (up, down, status, create, ...)` | `san migrate` with no goose verb |
 | `create needs a name: migrate create <name> --service <svc>` | `create` with no migration name |
@@ -298,6 +309,7 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
 | 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
 | 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
+| 6b | the product codes written before a code was composed — each team's code put in front, once | [`product recompose-codes`](#product-recompose-codes) |
 | 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller`, and Dev Warehouse's fee while it has none | [`seed dev`](#seed) |
 | 8 | the product-category tree | [`seed categories`](#seed) |
 | 9 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
@@ -482,7 +494,8 @@ every screen but placing an order works without it.
 
 Copies every supplier and store out of inventory_service and into supplier_service, **keeping each id** — restocks
 and batches hold those ids ([existing-suppliers-move-with-their-ids](../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)).
-One-shot, and safe to run again: a row already moved is skipped. [`dev setup`](#dev-setup) runs it after migrating.
+One-shot, and safe to run again: a row already moved is skipped — also when it was edited in supplier_service
+since, which the run names and never overwrites. [`dev setup`](#dev-setup) runs it after migrating.
 
 ```sh
 go run ./tools/san supplier move                     # prompts: Local or Production
@@ -511,9 +524,10 @@ sequenceDiagram
   SAN->>L: read every row — deleted ones too
   Note over SAN: fold — city and province into the address, an offline store into its supplier, code dropped
   SAN->>S: read what already sits under the moving ids
-  alt a DIFFERENT row under a moving id
+  alt an UNRELATED row under a moving id
     SAN-->>SAN: refuse, the clash named — nothing written
   else
+    Note over SAN: a row moved before is skipped — named when edited since
     SAN->>S: INSERT each row not there yet, its id kept
     SAN->>S: set both id sequences past the largest id
   end
@@ -528,7 +542,11 @@ sequenceDiagram
 | an **online** store | a store: marketplace → `channel_type` (`other` when it had none), `url` → `uri`, its contact and location kept in `description` |
 | an **offline** store | folded into its supplier: contact and location fill the supplier's when empty, else are appended to its description ([the-supplier-lists-only-its-online-stores](../business/supplier/context_decision.md#the-supplier-lists-only-its-online-stores)) |
 
-A row is "already there" when the same id holds the same supplier (team and name) or store (supplier and name).
+A row is "already there" — moved by an earlier run — when the same id holds a row of the same **origin**: the
+same team (a store: the same supplier) and the same `created_at`. The move copies `created_at` and no edit changes
+it or the team, so a supplier renamed or given a new contact since it moved is still the row it moved: skipped, kept
+as it is, and named in the output. Any other row under a moving id — even one with the same team and name — was
+created in supplier_service, not moved, and refuses the run.
 
 ### Output
 
@@ -537,12 +555,21 @@ A row is "already there" when the same id holds the same supplier (team and name
 [Database Local] stores: 21 moved, 0 already there, 3 offline folded into their supplier
 ```
 
+A re-run after edits in supplier_service:
+
+```
+[Database Local] suppliers: 0 moved (0 of them deleted), 14 already there
+[Database Local] stores: 0 moved, 21 already there, 0 offline folded into their supplier
+[Database Local] store 3 moved before and edited since (legacy "asdasd", now "Sumber Official") — kept as it is
+[Database Local] supplier 7 moved before and edited since (legacy "Sumber", now "PT Sumber Makmur") — kept as it is
+```
+
 ### Errors you should expect
 
 | Error | Cause |
 | --- | --- |
 | `read legacy_suppliers (has inventory_service migrated to 00023?)` | The database is behind. Run [`migrate up-all`](#migrate) first |
-| `supplier_service already holds a different row under a moving id — nothing was written: supplier 7 (legacy "Sumber", now "…")` | A supplier was created in supplier_service before the move ran, under an id a legacy row needs. Nothing was moved. The clashing row has to be re-numbered or removed by hand — decide which with the owner |
+| `supplier_service already holds a different row under a moving id — nothing was written: supplier 7 (legacy "Sumber" of team 12 created 2026-07-16 13:59, now "…" of team 89 created 2026-10-12 18:03)` | A supplier (or store) was created in supplier_service before the move ran, under an id a legacy row needs — its team or creation time is not the legacy row's, so it is not an earlier move edited since. Nothing was moved. The clashing row has to be re-numbered or removed by hand — decide which with the owner |
 
 ---
 
@@ -602,6 +629,153 @@ therefore refuses any start on or before the live fold's first day.
 | --- | --- |
 | `supplier: event processing is locked (process_event_lock)` | A replay is running — the fold refuses while it holds the lock. Run the backfill after it finishes |
 | `relation "supplier_product_daily_reports" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first |
+
+---
+
+## `product recompose-codes`
+
+Puts each team's code in front of the product codes written before a code was **composed on write**
+([the-field-is-product-code-composed-on-write](../business/product/context_decision.md#the-field-is-product-code-composed-on-write)):
+`SHOE-42` of team `ABC` becomes `ABC-SHOE-42`. Archived products too — they keep their code. **Safe to re-run**: a code
+that already begins with its team's code and a dash is left alone. [`dev setup`](#dev-setup) runs it after the supplier
+steps.
+
+```sh
+go run ./tools/san product recompose-codes                      # prompts: Local or Production
+go run ./tools/san product recompose-codes --dsn "$DATABASE_URL"
+```
+
+| Flag | |
+| --- | --- |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+The team codes are read through **team_service's `TeamByIds` handler**, validated as the interceptor would — never its
+table, and no migration could have done it (HARD RULE 3). The write is product_service's own
+`product_v1.RecomposeProductCodes`, so the composition (`<team_code>-<part>`) is the one ProductCreate uses.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san product recompose-codes
+  participant PROD as product_service — RecomposeProductCodes
+  participant TEAM as team_service — TeamByIds handler
+  SAN->>PROD: run, in ONE transaction
+  PROD->>PROD: every product, locked, oldest first
+  PROD->>TEAM: the owning teams' codes, 200 ids a call
+  TEAM-->>PROD: id to team_code — a deleted or unknown team is omitted
+  PROD->>PROD: per row — no team code, leave it and name it, already prefixed, leave it, else compose
+  PROD->>PROD: a code two rows would share, refuse the whole run and name both
+  PROD->>PROD: park each changed row on a placeholder unique by id, then set its composed code
+  PROD-->>SAN: recomposed, already composed, left without a team code
+```
+
+| guard | stops |
+| --- | --- |
+| `<team_code>-` prefix check | a second run prefixing twice (`ABC-ABC-SHOE-42`) |
+| the collision check, before any write | two products ending up on one code — the run is refused with both named, nothing written |
+| the placeholder step | two rows trading codes tripping the unique index half way through |
+
+⚠ **Order, restock and transfer lines keep the code they were written under** — they are snapshots, and the command
+does not touch them. ⚠ A code a person typed with the team's prefix already, before composition existed, reads as
+composed and is left as it is — it is exactly the string composition would have produced.
+
+### Output
+
+```
+[Database Local] product codes: 12 recomposed, 0 already composed
+[Database Local] product codes: 1 left as they were — their team has no code: products [57]
+```
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `two products would carry one code: product 9 would become "ABC-SHOE-42", which product 4 already carries …` | Two of today's rows compose to one code. Rename one in the product form, then run it again |
+| `column "product_code" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first — product `00008` renames the column |
+
+---
+
+## `shop grant-current-cs`
+
+The rollout of [a-write-needs-a-grant-or-a-manager](../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager):
+*"in the release that turns the gate on, every current CS is granted every shop of their team — nobody loses order-taking
+on day one, and the owner trims afterwards."* **Run it in the release that ships the gate** (`selling_v1/shop_write_gate.go`)
+— dry first, then for real. **Safe to re-run**: a grant that exists is skipped, so a second run adds nothing.
+
+```sh
+go run ./tools/san shop grant-current-cs --dry-run                  # prompts: Local or Production — writes nothing
+go run ./tools/san shop grant-current-cs                            # the real run
+go run ./tools/san shop grant-current-cs --dsn "$DATABASE_URL" --dry-run
+```
+
+| Flag | |
+| --- | --- |
+| `--dry-run` | Walk everything and print each grant it **would** add, and the summary — write nothing |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+| who | gets |
+| --- | --- |
+| a **current CS** — role `SELLING_CS` in a live selling team, not suspended, not erased | every live shop of that team they do not hold yet |
+| the team's owner and admin | nothing — they write on every shop without a grant |
+| a suspended or erased CS | nothing — the grant picker never offers them (a-suspended-user-is-never-picked) |
+| a closed shop (`status = closed`, since selling `00043`) · another team's shop · a deleted team | nothing |
+
+Every read and the write go through the **owning service's handler**, validated first as the interceptor would — team_service
+`TeamList` (live selling teams), user_service `UserList` (members, `exclude_suspended`, with their role), selling_service
+`ShopList` (open shops — `status` OPEN, each with its primary) and `ShopUserList` (who already holds it), then **`ShopUserAdd`** for each missing
+pair. No migration could do it: CS roles are user_service's tables, grants are selling_service's (HARD RULE 3). Going through
+`ShopUserAdd` keeps its own rules: membership and suspension are checked again (`refuseUngrantable`), and **the primary rule
+applies** — a shop's existing primary is never touched; a shop with **none** gets the first CS granted, lowest user id, as its
+primary ([the-primary-cs-is-a-flag-on-a-grant](../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)). The
+line says so (`— becomes its primary CS`).
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san shop grant-current-cs
+  participant TEAM as team_service — TeamList
+  participant USER as user_service — UserList
+  participant SELL as selling_service — ShopList, ShopUserList, ShopUserAdd
+  SAN->>SAN: refuse a database without teams, user_team_roles, shops, shop_users
+  SAN->>TEAM: live selling teams, 200 a page, by id
+  loop each team
+    SAN->>USER: members, not suspended, with their role — keep role CS, lowest id first
+    SAN->>SELL: ShopList — the team's live shops, each with its primary
+    loop each shop
+      SAN->>SELL: ShopUserList — who already holds it
+      SAN->>SAN: a CS already granted, skipped
+      SAN->>SELL: ShopUserAdd for each CS missing — unless --dry-run
+      SELL-->>SAN: granted — the first grant on a shop with no primary becomes it
+    end
+  end
+  SAN-->>SAN: one line per grant, then the summary
+```
+
+### Output
+
+The dev database's first dry run (2026-11-05):
+
+```
+team 14 Dev Selling: 0 CS, 1 live shops
+team 89 Selling Srengat: 0 CS, 2 live shops
+team 91 Selling Developer: 1 CS, 1 live shops
+  would grant sutoni (#254) on shoshoseee (#4) — becomes its primary CS
+[explicit --dsn] shop grant-current-cs DRY RUN, nothing written: 3 teams, 1 CS users, 4 live shops — 1 grants would be added (1 would become a shop's primary CS), 0 skipped (already granted)
+```
+
+The real run prints `granted …` and `… — 1 grants added (1 became a shop's primary CS), 0 skipped`. A CS in two teams is
+counted in each. Each grant line is printed as it is written, so an interrupted run still says what it did — and simply
+runs again.
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `no database selected (use --dsn to run non-interactively)` | No `--dsn` / `DATABASE_URL` and no terminal to prompt on — nothing is run |
+| ``this database has no selling/user/team schema — wrong --dsn, or run `san migrate up-all` first (no teams table)`` | The DSN points at a database without the services' tables. Refused, rather than "succeeding" with 0 teams |
+| `grant <user> (#id) on <shop> (#id): … is not a member of this shop's team` / `… is suspended` | `ShopUserAdd` refused one between the list and the write — someone changed the team meanwhile. The grants before it are written; run it again |
 
 ---
 
@@ -754,6 +928,162 @@ sequenceDiagram
 | `a suspended or erased account is never made Root` | `add` on a suspended or erased account |
 | `name the account: --username, --email or --user-id` | No selector, or more than one |
 
+## `report refold`
+
+[a-wrong-day-is-refolded-from-the-log](../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log):
+*"one report, one shop, one date — re-read that day's log rows and rewrite that day's report row."* The repair for a
+report day that is wrong while the log is right — a lost event, a fold that did not run. It **adds no log row**; the broker
+replay stays for range rebuilds. **Run it when a person notices a wrong day** — nothing detects one. Dry first, then for
+real. **Safe to re-run**: a row that already matches the log is left as it is, and a second run shifts nothing.
+
+Two reports ([the-person-report-refolds-too](../business/settlement/context_decision.md#the-person-report-refolds-too)):
+
+```sh
+go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date 2026-10-10 --dry-run   # prompts Local/Production
+go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date 2026-10-10             # the real run
+go run ./tools/san report refold --report settlement-user-daily --user 7 --date 2026-10-10 --dry-run    # one person's day
+go run ./tools/san report refold --report settlement-user-daily --user 7 --date 2026-10-10
+```
+
+| Flag | |
+| --- | --- |
+| `--report` | **`settlement-shop-daily`** — `shop_settlement_daily_reports`, by shop · **`settlement-user-daily`** — `user_settlement_daily_reports`, by person |
+| `--shop` | The shop id — the shop report's scope, and only its |
+| `--user` | The person's user id — the person report's scope, and only its. `--user 0` is the person report's row of "not recorded" |
+| `--date` | The **Jakarta** day, `yyyy-mm-dd` — the log rows' `posted_on` |
+| `--dry-run` | Compute and write everything inside the transaction, print it, **roll it back** |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+It calls settlement_service's own `DayRefold` (`settlement_v1/day_refold.go`) — the fold's lock, its claim table, its
+advisory keys, its later-day shift and its state-row statement — never a hand-written UPDATE.
+
+| a log row of the day | counted? |
+| --- | --- |
+| its event is claimed in `settlement_event_logs` — by the fold, or by the other report's re-fold | ✅ — rebuilt from the log, either way |
+| never claimed, written **over an hour ago** | ✅ — its event was lost. The re-fold **claims** it, so a late redelivery folds nothing |
+| never claimed, written **within the hour** | ❌ — in flight. Left to the fold, which adds it after the re-fold commits |
+
+**Whose rows a person's day holds** — the person the fold counts each row for: an order row's **creator** (stamped on the
+order's account when it opened), an imported shop row's **primary CS** (`user_id`), else the row's **actor**.
+
+The day's row is REPLACED: each type column, `change`, `open_balance` (the scope's last row before the day, as the fold
+opens a day) and `close_balance` = open + change. A day the log holds nothing countable on has no row — a stray one is
+removed. Then **every later day of the scope shifts** its `open_balance` and `close_balance` by exactly how far the day's
+close moved ([a-refold-shifts-the-later-days](../business/settlement/context_decision.md#a-refold-shifts-the-later-days))
+— the fold's own shift for a late event; their movement columns are not touched. The state row (`shop_settlement_reports`
+/ `user_settlement_reports`, with the person's `last_day`) is re-derived from the newest daily row after the shift; a scope
+left with no row at all reads 0 (and no `last_day`).
+
+⚠ **One claim feeds two reports.** A lost row the re-fold claims is in its own report now, and its redelivery folds nothing
+— so the **other** report is still short by it. The output names the other report's scopes and prints the command for
+each; run it. That re-fold counts the claimed row like any other.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san report refold
+  participant SET as settlement_service — DayRefold, one transaction
+  participant DB as Postgres
+  SAN->>SET: report, a shop or a person, day, dry-run
+  SET->>DB: process_event_lock FOR SHARE — a running replay refuses it
+  SET->>DB: the scope's settlement_logs rows of the day, each with its claim, its age, its key in the other report
+  SET->>DB: claim every lost row — before any advisory lock, as the fold claims before its locks
+  SET->>DB: advisory lock settlement-shop or settlement-user per team, in team order — the fold's own key
+  SET->>DB: re-read the claims — what is claimed now counts, the rest is in flight
+  SET->>DB: replace the day's row, or remove it
+  SET->>DB: shift every later day's open and close by how far the day's close moved
+  SET->>DB: re-derive the state row — close, and the person's last_day
+  SET-->>SAN: before and after per team, the shift, counted, claimed, in flight, the other report's short scopes
+  SAN-->>SAN: print it — a dry run rolls the transaction back
+```
+
+### Output
+
+The dev database (2026-11-05), every report day it holds, dry run then the real run — the log and both reports already
+agree, so nothing moves:
+
+```
+$ san report refold --report settlement-shop-daily --shop 3 --date 2026-10-30 --dry-run
+[explicit --dsn] settlement-shop-daily · shop 3 · 2026-10-30 · DRY RUN — nothing written
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    column                           before          after
+    initial_total                   -123333        -123333
+    marketplace_adjustment           100000         100000
+    change                           -23333         -23333
+    close_balance                    -23333         -23333
+$ san report refold --report settlement-shop-daily --shop 3 --date 2026-10-30
+[explicit --dsn] settlement-shop-daily · shop 3 · 2026-10-30 · re-folded
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    (the same table)
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-30 --dry-run
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-30 · DRY RUN — nothing written
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    column                           before          after
+    initial_total                   -123333        -123333
+    marketplace_adjustment           100000         100000
+    change                           -23333         -23333
+    close_balance                    -23333         -23333
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-30
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-30 · re-folded
+  log rows counted 2 · lost and now claimed 0 · in flight, left to the fold 0
+  team 89: unchanged
+    (the same table)
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-26 --dry-run
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-26 · DRY RUN — nothing written
+  log rows counted 1 · lost and now claimed 0 · in flight, left to the fold 0
+  team 91: unchanged
+    column                           before          after
+    initial_total                   -123323        -123323
+    change                          -123323        -123323
+    close_balance                   -123323        -123323
+$ san report refold --report settlement-user-daily --user 1 --date 2026-10-26
+[explicit --dsn] settlement-user-daily · user 1 · 2026-10-26 · re-folded
+  (the same lines)
+```
+
+A repair — a lost row on a shop's day (`tools/san/report_test.go`, the test database), then the person re-fold it names:
+
+```
+[test] settlement-shop-daily · shop 41 · 2026-02-03 · re-folded
+  log rows counted 1 · lost and now claimed 1 · in flight, left to the fold 0
+  team 9: row added
+    column                           before          after
+    fund                                  0          25000  ←
+    change                                0          25000  ←
+    close_balance                         0          25000  ←
+    later days: none — the close moved by +25000
+  ⚠ 1 row(s) were never folded: settlement-user-daily is still short by them — a redelivery no longer folds them. Run:
+      go run ./tools/san report refold --report settlement-user-daily --user 3 --date 2026-02-03
+[test] settlement-user-daily · user 3 · 2026-02-03 · re-folded
+  log rows counted 1 · lost and now claimed 0 · in flight, left to the fold 0
+  team 9: row added
+    ...
+```
+
+| line | means |
+| --- | --- |
+| `later days: N shifted by +X — open/close only, their movement untouched` | the day's close moved by X, and so did every later day's carry |
+| `⚠ the next day, D, opens +X off this day's close — its carry was off before this re-fold; re-fold D to close it` | the next row's carry was already broken (a shift keeps a break). Re-folding D re-opens it from this day's close |
+| `⚠ N row(s) were never folded: <other report> is still short by them … Run:` | the lost rows are claimed now; run each printed command so the other report counts them too |
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `the re-fold rebuilds settlement-shop-daily (by shop) or settlement-user-daily (by user)` | another `--report` |
+| `settlement-shop-daily re-folds one shop: a shop id is required` | the shop report with no `--shop` (or `--shop 0`) |
+| `settlement-user-daily re-folds one person: a user id is required` | the person report with no `--user` |
+| `--report settlement-shop-daily re-folds one shop: give --shop, not --user` (and the person report's mirror) | both scopes, or the other report's flag |
+| `date must be YYYY-MM-DD` | `--date` is not a day |
+| `a replay holds the fold's lock (process_event_lock) — run the re-fold after it` | `AnalyticReplayCompute` is running. Wait for it (the lease is a minute) and run again |
+| `settlement re-fold: log row N has settlement_type "x", which has no report column` | a type the fold cannot file either — the fold dead-letters the same row |
+
+---
+
 ## `pubsub ensure`
 
 ```sh
@@ -816,9 +1146,24 @@ constant beside the handler that serves it):
 | `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
 | `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
 | `supplier-fold` | `restock-accepted` | a supplier's figures fold — push route `/event/supplier-fold/push` ([the-report-is-processed-like-settlement](../business/supplier/context_decision.md#the-report-is-processed-like-settlement)) |
+| `supplier-order-placed` | `order-placed` | Penjualan — the sales fold adds an order's sale of each supplier's goods on its Jakarta day ([penjualan-is-the-selling-value-on-the-order-day](../technical/frontend/suppliers_decision.md#penjualan-is-the-selling-value-on-the-order-day)) — push route `/event/supplier-order-placed/push`. Not seeked by any replay |
+| `supplier-order-cancelled` | `order-cancelled` | Penjualan — the same fold takes the sale back on the cancel's own day — push route `/event/supplier-order-cancelled/push` |
 | `liability-restock-accepted` | `restock-accepted` | the selling team owes the warehouse the courier's charge at a restock's door, posted once per restock ([balance-posts-the-couriers-debt-from-the-event](../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)) — push route `/event/liability-restock-accepted/push` |
+| `liability-order-return-accepted` | `order-return-accepted` | the selling team owes the warehouse the courier's charge at a return's door, posted once per order as a `return_incidental_fee` ([a-return-may-carry-the-couriers-ask](../business/balance/context_decision.md#a-return-may-carry-the-couriers-ask)) — push route `/event/liability-order-return-accepted/push` |
+| `selling-order-fold-return-accepted` | `order-return-accepted` | the order metrics count Return Arrived from the warehouse's accept ([the-accept-is-the-status-return-completed](../business/order/context_decision.md#the-accept-is-the-status-return-completed)) — push route `/event/selling-order-fold-return-accepted/push` |
 | `selling-member-removed` | `member-removed` | a person removed from a team loses their grants on its shops ([removing-a-member-drops-their-shop-access](../business/user/context_decision.md#removing-a-member-drops-their-shop-access)) — push route `/event/selling-member-removed/push` |
 | `financial-account-team-payment` | `liability-payment-accepted` | an accepted team payment posts out of the payer's account and into the creditor's ([a-team-payment-posts-on-accept](../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) — push route `/event/financial-account-team-payment/push` |
+| `financial-account-restock-created` | `restock-created` | a restock's payment, goods plus shipping, out of the account it names ([a-created-restock-tells-the-financial-account](../business/inventory/restock_decision.md#a-created-restock-tells-the-financial-account)) — push route `/event/financial-account-restock-created/push` |
+| `financial-account-restock-updated` | `restock-updated` | an edit's difference, or the whole payment moved to another account ([an-edit-sends-the-difference](../business/inventory/restock_decision.md#an-edit-sends-the-difference), [an-edit-may-move-the-payment-to-another-account](../business/inventory/restock_decision.md#an-edit-may-move-the-payment-to-another-account)) — push route `/event/financial-account-restock-updated/push` |
+| `financial-account-restock-cancelled` | `restock-cancelled` | the refund when the money came back ([a-restock-names-its-paying-account](../business/inventory/restock_decision.md#a-restock-names-its-paying-account)) — push route `/event/financial-account-restock-cancelled/push` |
+| `financial-account-expense-created` | `expense-created` | an expense out of the account that paid it — `ads_expense` for an ADS expense, `expense` for the rest; nothing for a STOCK_LOSS or an expense with no account ([an-expense-must-name-the-account-that-paid](../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid), [ads-expense-joins-the-types](../business/financial_account/context_decision.md#ads-expense-joins-the-types)) — push route `/event/financial-account-expense-created/push` |
+| `financial-account-expense-adjusted` | `expense-adjusted` | an expense's correction — its signed difference on the ORIGINAL expense's account, a cancel giving the net back ([a-correction-follows-the-expenses-account](../business/financial_account/context_decision.md#a-correction-follows-the-expenses-account)) — push route `/event/financial-account-expense-adjusted/push` |
+| `liability-warehouse-transfer-accepted` | `warehouse-transfer-accepted` | the selling team owes the receiving warehouse the courier's charge at its door, posted once per transfer as a `transfer_fee` ([a-transfer-charge-is-a-transfer-fee](../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)) — push route `/event/liability-warehouse-transfer-accepted/push` |
+| `financial-account-warehouse-transfer-created` | `warehouse-transfer-created` | a warehouse transfer's shipping cost, as `expense`, out of the account it names ([a-transfers-shipping-posts-as-an-expense](../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)) — push route `/event/financial-account-warehouse-transfer-created/push` |
+| `financial-account-warehouse-transfer-updated` | `warehouse-transfer-updated` | a cost edit's difference, or the whole cost moved to another account ([the-shipping-expense-reaches-the-account-by-event](../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event)) — push route `/event/financial-account-warehouse-transfer-updated/push` |
+| `financial-account-warehouse-transfer-cancelled` | `warehouse-transfer-cancelled` | the refund of whatever was posted for the trip — push route `/event/financial-account-warehouse-transfer-cancelled/push` |
+| `inventory-tx-cancel` | `inventory-tx-cancel` | inventory releases the stock take of an order create that failed after it, by the order's key — the backup of the order's direct release ([the-compensation-event-is-inventory-tx-cancel](../business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel), [the-release-is-direct-then-the-event](../business/order/context_decision.md#the-release-is-direct-then-the-event)). A cancel that meets a stock count is NACKed on purpose and redelivered until the count ends, so its dead-letter holds the ones that outlasted the retry limit — give them back with [`pubsub releases replay`](#pubsub-releases) ([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san), [a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-tx-cancel/push` |
+| `inventory-order-cancelled` | `order-cancelled` | inventory releases a cancelled order's stock take by the order's key — the cancel no longer releases inside its own flow ([inventory-returns-stock-on-order-cancelled](../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled), [every-release-goes-by-the-key](../business/order/context_decision.md#every-release-goes-by-the-key)). A release that meets a stock count (a cancel that slipped past the order's count check) is NACKed on purpose and redelivered until the count ends; the dead-letter holds the ones that outlasted the retry limit — give them back with [`pubsub releases replay`](#pubsub-releases) once the count is over, which leaves the other consumers' dead-letters on the same `.dlq` alone ([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san), [a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-order-cancelled/push` |
 
 ⚠ **`settlement-fold` and `supplier-fold` are SEEKED by their service's `AnalyticReplayCompute`**, which reaches back as far as the topic's
 31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other
@@ -863,6 +1208,121 @@ anything that did get through the first time is a duplicate the second.
 not be decoded never gets there: the receiver records it and acks
 ([reject-never-nacks](../../guidelines/architectures/event_library.md#reject-never-nacks)), so redrive
 is not where you look for those.
+
+## `pubsub releases`
+
+```sh
+# what is stuck — touches nothing
+go run ./tools/san pubsub --project warehouse-dev --emulator releases list
+# what a replay would give back — touches nothing
+go run ./tools/san pubsub --project warehouse-dev --emulator releases replay --dry-run
+# give it back: asks Local/Production (or takes --dsn), then releases through inventory's own listener
+go run ./tools/san pubsub --project warehouse-dev --emulator releases replay
+```
+
+A **stuck release** is a stock release that kept failing and was dead-lettered, so the stock stays taken
+([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san)).
+Inventory gives an order's stock back from two events — `InventoryTxCancel` (a create that failed after its take) and
+`OrderCancelled` (a cancelled order) — and a release that meets a stock count past the retry limit, or a database outage
+longer than the backoff, ends in `inventory-tx-cancel.dlq` / `order-cancelled.dlq`. This command reads both triage
+subscriptions and gives those releases back.
+
+| Flag | |
+| --- | --- |
+| `--project`, `--emulator` | on `pubsub`, as for every `pubsub` command |
+| `--quiet` | stop reading a dead-letter after this long with no NEW message (default `5s`) — Pub/Sub has no "is it empty" |
+| `--dry-run` (`replay`) | print what would be replayed; release nothing, remove nothing, ask for no database |
+| `--dsn` (root) | the database `replay` writes to; without it the Local/Production prompt (`san_dbtarget`) |
+
+**The replay calls INVENTORY'S OWN LISTENER in-process** — `inventory_service.NewInventoryPushHandler`, the handler behind
+`/event/inventory-tx-cancel/push` and `/event/inventory-order-cancelled/push` — so a replay is judged exactly as the
+delivery that failed (HARD RULE 3b: a command calls the handler, never a hand-written UPDATE).
+
+- **Safe to run twice.** The release goes by the order's key, and a key is released once
+  ([a-used-key-is-never-cancelled](../business/order/context_decision.md#a-used-key-is-never-cancelled)): a second replay
+  of the same event finds it released (or claimed) and does nothing.
+- **Acked only on success.** A message leaves the dead-letter only when the release answered nil; one that still fails
+  (the count is still open) is left where it was, said `STILL FAILS`, and the command exits non-zero.
+- **Only inventory's dead-letters.** `order-cancelled` has four subscribers sharing one `.dlq`. Pub/Sub stamps each
+  dead-letter with `CloudPubSubDeadLetterSourceSubscription` (the short id) and `…SubscriptionProject`; a message from
+  settlement, liability or the order fold is **left untouched** for that consumer's own [`pubsub redrive`](#pubsub-redrive).
+  A message with no source named was put there by hand and is taken as a release.
+- **Not `pubsub redrive`**, which republishes to the SOURCE topic and so redelivers an `OrderCancelled` to every
+  subscriber. This command only ever releases stock.
+
+```mermaid
+sequenceDiagram
+    participant P as operator
+    participant S as san pubsub releases
+    participant Q as topic.dlq.triage
+    participant I as inventory listener, in-process
+    P->>S: list, replay --dry-run, or replay
+    S->>Q: pull inventory-tx-cancel.dlq.triage, then order-cancelled.dlq.triage
+    Q-->>S: each dead-letter once, until quiet
+    alt another consumer's dead-letter, or not a release
+        S->>Q: NACK - left
+    else list or dry-run
+        S->>Q: NACK - left, printed
+    else replay
+        S->>I: the event, as the push route hands it
+        alt released, or already released
+            I-->>S: nil
+            S->>Q: ACK - removed
+        else still fails
+            I-->>S: the error
+            S->>Q: NACK - left, said
+        end
+    end
+```
+
+### Output — a real run against the dev emulator (2026-11-05)
+
+Two releases were made to fail for real: an `InventoryTxCancel` and an `OrderCancelled` published while the dev API
+was down, so every push failed and the emulator dead-lettered them after five attempts — the `OrderCancelled` from all
+four of its subscribers.
+
+```text
+$ go run ./tools/san pubsub --project warehouse-dev --emulator releases list
+inventory-tx-cancel.dlq (inventory's inventory-tx-cancel):
+  3  InventoryTxCancel key=dev-stuck-tx-1793865195 team=2 warehouse=3 (inventory-tx-cancel:dev-stuck-tx-1793865195) · 0 attempts
+order-cancelled.dlq (inventory's inventory-order-cancelled):
+  4  dead-lettered by selling-order-fold-cancelled — not a release, left for that consumer's redrive
+  7  dead-lettered by liability-order-cancelled — not a release, left for that consumer's redrive
+  5  dead-lettered by settlement-order-cancelled — not a release, left for that consumer's redrive
+  6  OrderCancelled order=9001 key=dev-stuck-cancel-1793865195 team=2 warehouse=3 (order-cancelled:9001) · 0 attempts
+2 stuck releases, nothing replayed; 3 other messages left
+
+$ go run ./tools/san pubsub --project warehouse-dev --emulator releases replay --dry-run
+…the same two · would replay — 2 stuck releases, nothing replayed; 3 other messages left
+
+$ go run ./tools/san --dsn "<local>" pubsub --project warehouse-dev --emulator releases replay
+replaying into explicit --dsn
+inventory-tx-cancel.dlq (inventory's inventory-tx-cancel):
+INFO InventoryTxCancel handled idempotency_key=dev-stuck-tx-1793865195 team_id=2 transaction_id=0 released=false
+  3  InventoryTxCancel key=dev-stuck-tx-1793865195 … · replayed, removed from the dead-letter
+order-cancelled.dlq (inventory's inventory-order-cancelled):
+  4  dead-lettered by selling-order-fold-cancelled — not a release, left for that consumer's redrive
+  7  dead-lettered by liability-order-cancelled — not a release, left for that consumer's redrive
+INFO OrderCancelled handled order_id=9001 idempotency_key=dev-stuck-cancel-1793865195 team_id=2 transaction_id=0 released=false
+  6  OrderCancelled order=9001 key=dev-stuck-cancel-1793865195 … · replayed, removed from the dead-letter
+  5  dead-lettered by settlement-order-cancelled — not a release, left for that consumer's redrive
+2 stuck releases: 2 replayed, 0 still failing; 3 other messages left
+```
+
+Both keys had no take behind them (`released=false`, `transaction_id=0`), so inventory **claimed** each with none — a
+take arriving late under either key is refused. The same `InventoryTxCancel` put back into the dead-letter by hand and
+replayed again was handled once more as a no-op, and inventory still holds ONE claim per key. (`0 attempts` there is
+from before the count was read off `CloudPubSubDeadLetterSourceDeliveryCount`; the triage subscription itself never
+sets a delivery attempt.)
+
+### Errors you should expect
+
+| Message | Meaning |
+| --- | --- |
+| `reading <topic>.dlq.triage: … Subscription does not exist` | the topics were never ensured on this broker — run [`pubsub ensure`](#pubsub-ensure) (the emulator forgets them on a restart) |
+| `STILL FAILS, left in the dead-letter: … waits for the stock count` | the count holding the rack is still open; finish it, then replay again |
+| `N releases still fail — fix the cause … and run again` | the exit error after a replay that left any failure |
+| `cannot be decoded … — left` | not an event this build reads; nothing is done with it |
 
 ---
 
@@ -1408,6 +1868,118 @@ echo "package main" | go run ./tools/san remote put src/main.go
 
 ---
 
+## `deploy`
+
+Ship **one service** to Cloud Run: Cloud Build compiles its own entry point from source, and Cloud Run serves it
+([san-deploy-ships-one-service-to-cloud-run](../technical/development/workflow_decision.md#san-deploy-ships-one-service-to-cloud-run)).
+
+```sh
+go run ./tools/san deploy                                   # pick the service, check, confirm, deploy
+go run ./tools/san deploy --service shipment_service
+go run ./tools/san deploy --service shipment_service --dry-run   # the plan and the gcloud commands; runs nothing
+```
+
+> ⚠ **This acts on production.** It shows the whole plan, checks it, and makes you type `production` before
+> anything is built.
+
+**Deployable today: `shipment_service` only** — the one service with an entry point of its own
+([backend/cmd/shipment_service](../../backend/cmd/shipment_service/)). Every other service still runs only inside
+the dev server, which mounts them all.
+
+| service | entry point | Cloud Run service | secrets (env ← Secret Manager, `:latest`) |
+| --- | --- | --- | --- |
+| `shipment_service` | `./backend/cmd/shipment_service` | `revamp-shipment-service` | `DATABASE_URL` ← `revamp-database-url` · `JWT_SECRET` ← `revamp-jwt-secret` |
+
+```mermaid
+flowchart TD
+    P["pick the service"] --> T["project and region: flags, else the active gcloud config"]
+    T --> G{"uncommitted changes?"}
+    G -->|"yes, no --allow-dirty"| X["refuse"]
+    G -->|"no, or --allow-dirty"| S["print the plan"]
+    S --> D{"--dry-run?"}
+    D -->|"yes"| C["print the gcloud commands, stop"]
+    D -->|"no"| F["preflight: every secret exists, and the Cloud Run service is ours"]
+    F --> Y["type production"]
+    Y --> B["gcloud run deploy --source . — Cloud Build compiles backend/cmd/service"]
+    B --> H["GET the new URL /healthz"]
+```
+
+### What it does
+
+1. **Picks the service** — `--service`, or a picker. A service with no entry point of its own is refused by name.
+2. **Reads the target** — `--project` / `SAN_DEPLOY_PROJECT` and `--region` / `SAN_DEPLOY_REGION`, else the active
+   gcloud config (`gcloud config get-value project`, `run/region`). Nothing about the target is written in this
+   repository: it is public.
+3. **Refuses a dirty tree** unless `--allow-dirty`. `--source .` uploads the **working tree**, so a dirty deploy runs
+   code no commit holds; with the flag the revision is labelled `<commit>-dirty`.
+4. **Prints the plan**, then with `--dry-run` the exact gcloud commands, and stops there.
+5. **Preflight**, before the confirmation:
+   - every secret in the service's row exists (`gcloud secrets describe`) — all missing ones named at once;
+   - the Cloud Run service is **ours**: it does not exist yet, or carries the label `app=warehouse-revamp`. The
+     project is **shared with other systems**, a deploy replaces the service it names, so a same-named service
+     without our label is refused.
+6. **Confirms** — type `production` (the same guard `san_dbtarget` puts on every database command).
+7. **Deploys** — `gcloud run deploy <name> --source=.` with buildpacks: `GOOGLE_BUILDABLE` is the service's entry
+   point, `GOOGLE_GO_VERSION` is go.mod's `go` line (not the buildpack's "latest"). The secrets are mapped to env
+   by `--set-secrets`, the revision labelled `app`, `service`, `commit`. gcloud runs on san's console, so it may
+   ask to create the `cloud-run-source-deploy` repository or enable an API on a first run.
+8. **Checks** `GET <url>/healthz` and prints the URL. A deploy that already succeeded is not failed by this.
+
+**What goes up** is decided by [.gcloudignore](../../.gcloudignore) — a whitelist of `go.mod`, `go.sum` and
+`backend/` (no binaries, no test files, no PDFs, no `examples/` — nothing the build does not read). Check the list
+with `gcloud meta list-files-for-upload` (≈ 830 files, ≈ 10 MB).
+
+### Flags
+
+| Flag | Env | |
+| --- | --- | --- |
+| `--service` | | the service; omitted = a picker |
+| `--project` | `SAN_DEPLOY_PROJECT` | default: the gcloud config's `project` |
+| `--region` | `SAN_DEPLOY_REGION` | default: the gcloud config's `run/region` |
+| `--cloudsql-instance` | `SAN_DEPLOY_CLOUDSQL_INSTANCE` | `project:region:instance`, mounted at `/cloudsql/<it>` — the DSN in the secret then uses `host=/cloudsql/<it>` |
+| `--allowed-origins` | `SAN_DEPLOY_ALLOWED_ORIGINS` | comma-separated CORS origins (`ALLOWED_ORIGINS`). Omitted = left as deployed |
+| `--allow-dirty` | | deploy uncommitted changes, labelled `<commit>-dirty` |
+| `--dry-run` | | the plan and the commands; nothing runs, nothing is asked |
+
+### What it does NOT do
+
+- **Migrate.** Migrations stay their own manual step (owner, 2026-11-03): run
+  `go run ./tools/san migrate up --service shipment_service` against that database first — and **user_service**'s,
+  because the access interceptor reads `user_team_roles` from the same database.
+- **Create secrets or grant IAM.** Once, per project:
+  `gcloud secrets create revamp-database-url --data-file=-` (and `revamp-jwt-secret`), and the Cloud Run runtime
+  service account needs *Secret Manager Secret Accessor* and, for the socket, *Cloud SQL Client*.
+- **Touch a database.** It never asks Local/Production, and `--dsn` means nothing to it.
+
+### The deployed service
+
+`backend/cmd/shipment_service` is shipment_service **alone** — `ShipmentChannelService` and `ReceiptService` behind
+the dev server's own chain (protovalidate, then the access interceptor), on `PORT` (Cloud Run's), `/healthz` for
+the probe. Run it locally with `go run ./backend/cmd/shipment_service` (`:8090`, the docker-compose database).
+
+- **It refuses to start on Cloud Run with a dev default** for `JWT_SECRET` or `DATABASE_URL` (`K_SERVICE` set): a
+  missing secret would otherwise make every signed-in call Unauthenticated. Cloud Run keeps the old revision.
+- **`JWT_SECRET` must be user_service's**: this service verifies tokens it does not mint.
+- ⚠ **No sign-in is deployed yet.** The channel reads are public and work; the label check and the channel writes
+  need a token from user_service, which still runs only in the dev server.
+- ⚠ **No agent verifier, no team kinds**: an AI-agent bearer (`wha_…`) answers Unauthenticated here.
+- ⚠ **Cache is in-process** unless `REDIS_ADDR` is set: with more than one instance, a revoked role stays cached on
+  the others until its TTL lapses. `ReceiptCheck`'s two-at-once limit is per instance too.
+
+### Errors you should expect
+
+| Message | Meaning |
+| --- | --- |
+| `the working tree has uncommitted changes` | commit, or `--allow-dirty` |
+| `"x" cannot be deployed — deployable: …` | that service has no entry point of its own yet |
+| `gcloud is not on PATH` | install the Google Cloud CLI, `gcloud auth login` |
+| `no project` / `no region` | pass the flag, or set it in the gcloud config |
+| `secrets missing (or not readable) in <project>: …` | create them — or the account lacks access |
+| `the Cloud Run service … is NOT labelled app=warehouse-revamp` | a same-named service belongs to something else; refused |
+| `deployed with a dev default for JWT_SECRET` (in Cloud Run's log) | the revision would not start; check the secret mapping |
+
+---
+
 ## Adding a command
 
 ```mermaid
@@ -1481,7 +2053,12 @@ this document in the same commit.
 | [`dev_setup.go`](../../tools/san/dev_setup.go) | `dev setup`: the local-only guard, the submodule check, the data steps in order |
 | [`dev_run.go`](../../tools/san/dev_run.go) | `dev run`: the stack, the supervisor, the line prefixer |
 | [`proctree/`](../../tools/san/proctree/) | start a child in its own group, kill its whole tree. Shared by `remote` and `dev run` |
+| [`deploy.go`](../../tools/san/deploy.go) | `deploy`: the deployable services, the plan, the preflight, the gcloud calls |
+| [`backend/cmd/shipment_service`](../../backend/cmd/shipment_service/) | the entry point `deploy` builds for shipment_service — its own Wire, config and chain |
+| [`.gcloudignore`](../../.gcloudignore) | what `deploy` uploads: `go.mod`, `go.sum`, `backend/` |
 | [`pkgs/san_dbtarget`](../../backend/pkgs/san_dbtarget/) | the Local/Production choice, shared with `cmd/tool` |
+| [`pkgs/san_dbsession`](../../backend/pkgs/san_dbsession/) | opens every handle — `NewDatabase` and `openDatabase` — with the session on **Jakarta time** (`TimeZone=Asia/Jakarta`, [the-system-runs-on-jakarta-time](../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)), the server's and the tests' calendar |
+| [`report.go`](../../tools/san/report.go) | `report refold` — the shop and the person report, through settlement_service's `DayRefold` |
 
 **`remote/` is a Connect service that deliberately does NOT live in `backend/services/`.** Every
 warehouse service does, and is mounted into the application mux by `service_api.go` — this one must

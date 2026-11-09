@@ -22,7 +22,7 @@ import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../../../features/auth/AuthContext";
-import { useTeam } from "../../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../../features/team/TeamContext";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { UserItem } from "../../../components/entity/UserItem";
@@ -300,6 +300,8 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                       </Table.Cell>
 
                       <Table.Cell textAlign="end">
+                        {/* Every row action is a write — none while the admin team monitors the team. */}
+                        {canWrite(current) && (
                         <Menu.Root>
                           <Menu.Trigger asChild>
                             <IconButton
@@ -400,6 +402,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                             </Menu.Positioner>
                           </Portal>
                         </Menu.Root>
+                        )}
                       </Table.Cell>
                     </Table.Row>
                   );

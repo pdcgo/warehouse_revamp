@@ -29,17 +29,19 @@ func createMarketplaceOrder(
 	svc *selling_v1.Service,
 	ctx context.Context,
 	shopID uint64,
-	marketplaceTotal int64,
+	marketplaceTotal float64,
 ) *sellingv1.Order {
 	t.Helper()
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName:  "Budi",
 		PlatformTotal: marketplaceTotal,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {

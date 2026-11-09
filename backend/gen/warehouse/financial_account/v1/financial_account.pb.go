@@ -632,167 +632,6 @@ func (CapitalDirection) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{10}
 }
 
-type AnalyticTimeframe int32
-
-const (
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_UNSPECIFIED AnalyticTimeframe = 0
-	// One point per day. Span capped at 366 days.
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_DAILY AnalyticTimeframe = 1
-	// One point per calendar month. Span capped at 60 months.
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_MONTHLY AnalyticTimeframe = 2
-	// One point per calendar year. Span capped at 20 years.
-	AnalyticTimeframe_ANALYTIC_TIMEFRAME_YEARLY AnalyticTimeframe = 3
-)
-
-// Enum value maps for AnalyticTimeframe.
-var (
-	AnalyticTimeframe_name = map[int32]string{
-		0: "ANALYTIC_TIMEFRAME_UNSPECIFIED",
-		1: "ANALYTIC_TIMEFRAME_DAILY",
-		2: "ANALYTIC_TIMEFRAME_MONTHLY",
-		3: "ANALYTIC_TIMEFRAME_YEARLY",
-	}
-	AnalyticTimeframe_value = map[string]int32{
-		"ANALYTIC_TIMEFRAME_UNSPECIFIED": 0,
-		"ANALYTIC_TIMEFRAME_DAILY":       1,
-		"ANALYTIC_TIMEFRAME_MONTHLY":     2,
-		"ANALYTIC_TIMEFRAME_YEARLY":      3,
-	}
-)
-
-func (x AnalyticTimeframe) Enum() *AnalyticTimeframe {
-	p := new(AnalyticTimeframe)
-	*p = x
-	return p
-}
-
-func (x AnalyticTimeframe) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AnalyticTimeframe) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_financial_account_v1_financial_account_proto_enumTypes[11].Descriptor()
-}
-
-func (AnalyticTimeframe) Type() protoreflect.EnumType {
-	return &file_warehouse_financial_account_v1_financial_account_proto_enumTypes[11]
-}
-
-func (x AnalyticTimeframe) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AnalyticTimeframe.Descriptor instead.
-func (AnalyticTimeframe) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{11}
-}
-
-// The three groupings in the owner's metric list (line 126–131 of context.md).
-type AnalyticGroupType int32
-
-const (
-	AnalyticGroupType_ANALYTIC_GROUP_TYPE_UNSPECIFIED AnalyticGroupType = 0
-	// Read from the account when grouping, never copied onto the daily row — an `unknown` account filled
-	// in moves its history to its new provider.
-	AnalyticGroupType_ANALYTIC_GROUP_TYPE_PROVIDER    AnalyticGroupType = 1
-	AnalyticGroupType_ANALYTIC_GROUP_TYPE_CHANGE_TYPE AnalyticGroupType = 2
-	// (account-grouped-joins-the-metrics) — archived accounts included; their past still happened.
-	AnalyticGroupType_ANALYTIC_GROUP_TYPE_ACCOUNT AnalyticGroupType = 3
-)
-
-// Enum value maps for AnalyticGroupType.
-var (
-	AnalyticGroupType_name = map[int32]string{
-		0: "ANALYTIC_GROUP_TYPE_UNSPECIFIED",
-		1: "ANALYTIC_GROUP_TYPE_PROVIDER",
-		2: "ANALYTIC_GROUP_TYPE_CHANGE_TYPE",
-		3: "ANALYTIC_GROUP_TYPE_ACCOUNT",
-	}
-	AnalyticGroupType_value = map[string]int32{
-		"ANALYTIC_GROUP_TYPE_UNSPECIFIED": 0,
-		"ANALYTIC_GROUP_TYPE_PROVIDER":    1,
-		"ANALYTIC_GROUP_TYPE_CHANGE_TYPE": 2,
-		"ANALYTIC_GROUP_TYPE_ACCOUNT":     3,
-	}
-)
-
-func (x AnalyticGroupType) Enum() *AnalyticGroupType {
-	p := new(AnalyticGroupType)
-	*p = x
-	return p
-}
-
-func (x AnalyticGroupType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AnalyticGroupType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_financial_account_v1_financial_account_proto_enumTypes[12].Descriptor()
-}
-
-func (AnalyticGroupType) Type() protoreflect.EnumType {
-	return &file_warehouse_financial_account_v1_financial_account_proto_enumTypes[12]
-}
-
-func (x AnalyticGroupType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AnalyticGroupType.Descriptor instead.
-func (AnalyticGroupType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{12}
-}
-
-type AnalyticMetricSort int32
-
-const (
-	AnalyticMetricSort_ANALYTIC_METRIC_SORT_UNSPECIFIED AnalyticMetricSort = 0
-	// The default: the largest movement first, by absolute value.
-	AnalyticMetricSort_ANALYTIC_METRIC_SORT_CHANGE        AnalyticMetricSort = 1
-	AnalyticMetricSort_ANALYTIC_METRIC_SORT_CLOSE_BALANCE AnalyticMetricSort = 2
-)
-
-// Enum value maps for AnalyticMetricSort.
-var (
-	AnalyticMetricSort_name = map[int32]string{
-		0: "ANALYTIC_METRIC_SORT_UNSPECIFIED",
-		1: "ANALYTIC_METRIC_SORT_CHANGE",
-		2: "ANALYTIC_METRIC_SORT_CLOSE_BALANCE",
-	}
-	AnalyticMetricSort_value = map[string]int32{
-		"ANALYTIC_METRIC_SORT_UNSPECIFIED":   0,
-		"ANALYTIC_METRIC_SORT_CHANGE":        1,
-		"ANALYTIC_METRIC_SORT_CLOSE_BALANCE": 2,
-	}
-)
-
-func (x AnalyticMetricSort) Enum() *AnalyticMetricSort {
-	p := new(AnalyticMetricSort)
-	*p = x
-	return p
-}
-
-func (x AnalyticMetricSort) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AnalyticMetricSort) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_financial_account_v1_financial_account_proto_enumTypes[13].Descriptor()
-}
-
-func (AnalyticMetricSort) Type() protoreflect.EnumType {
-	return &file_warehouse_financial_account_v1_financial_account_proto_enumTypes[13]
-}
-
-func (x AnalyticMetricSort) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AnalyticMetricSort.Descriptor instead.
-func (AnalyticMetricSort) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{13}
-}
-
 // One place the team holds money. NO balance on it — balances are FinancialAccountOverview's.
 type FinancialAccount struct {
 	state    protoimpl.MessageState   `protogen:"open.v1"`
@@ -3991,875 +3830,6 @@ func (x *FinancialAccountOperationalSetResponse) GetAccount() *FinancialAccount 
 	return nil
 }
 
-// One window's movement, by change type, and the balance at its two edges — the fields of
-// `financial_account_daily_reports` (the-daily-row-is-one-account-one-day). Each type column is SIGNED,
-// positive into the account.
-type FinancialAccountMetric struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Expense        float64                `protobuf:"fixed64,1,opt,name=expense,proto3" json:"expense,omitempty"`
-	AdsExpense     float64                `protobuf:"fixed64,2,opt,name=ads_expense,json=adsExpense,proto3" json:"ads_expense,omitempty"`
-	Adjustment     float64                `protobuf:"fixed64,3,opt,name=adjustment,proto3" json:"adjustment,omitempty"`
-	Withdrawal     float64                `protobuf:"fixed64,4,opt,name=withdrawal,proto3" json:"withdrawal,omitempty"`
-	Restock        float64                `protobuf:"fixed64,5,opt,name=restock,proto3" json:"restock,omitempty"`
-	OpeningBalance float64                `protobuf:"fixed64,6,opt,name=opening_balance,json=openingBalance,proto3" json:"opening_balance,omitempty"`
-	// Nets to zero for a team — both legs are its own accounts.
-	Transfer    float64 `protobuf:"fixed64,7,opt,name=transfer,proto3" json:"transfer,omitempty"`
-	TeamPayment float64 `protobuf:"fixed64,8,opt,name=team_payment,json=teamPayment,proto3" json:"team_payment,omitempty"`
-	Capital     float64 `protobuf:"fixed64,9,opt,name=capital,proto3" json:"capital,omitempty"`
-	// The sum of the nine — `close_balance − open_balance`.
-	Change        float64 `protobuf:"fixed64,10,opt,name=change,proto3" json:"change,omitempty"`
-	OpenBalance   float64 `protobuf:"fixed64,11,opt,name=open_balance,json=openBalance,proto3" json:"open_balance,omitempty"`
-	CloseBalance  float64 `protobuf:"fixed64,12,opt,name=close_balance,json=closeBalance,proto3" json:"close_balance,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *FinancialAccountMetric) Reset() {
-	*x = FinancialAccountMetric{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[48]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FinancialAccountMetric) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FinancialAccountMetric) ProtoMessage() {}
-
-func (x *FinancialAccountMetric) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[48]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use FinancialAccountMetric.ProtoReflect.Descriptor instead.
-func (*FinancialAccountMetric) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{48}
-}
-
-func (x *FinancialAccountMetric) GetExpense() float64 {
-	if x != nil {
-		return x.Expense
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetAdsExpense() float64 {
-	if x != nil {
-		return x.AdsExpense
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetAdjustment() float64 {
-	if x != nil {
-		return x.Adjustment
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetWithdrawal() float64 {
-	if x != nil {
-		return x.Withdrawal
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetRestock() float64 {
-	if x != nil {
-		return x.Restock
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetOpeningBalance() float64 {
-	if x != nil {
-		return x.OpeningBalance
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetTransfer() float64 {
-	if x != nil {
-		return x.Transfer
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetTeamPayment() float64 {
-	if x != nil {
-		return x.TeamPayment
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetCapital() float64 {
-	if x != nil {
-		return x.Capital
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetChange() float64 {
-	if x != nil {
-		return x.Change
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetOpenBalance() float64 {
-	if x != nil {
-		return x.OpenBalance
-	}
-	return 0
-}
-
-func (x *FinancialAccountMetric) GetCloseBalance() float64 {
-	if x != nil {
-		return x.CloseBalance
-	}
-	return 0
-}
-
-// A window over `occurred_at`'s Jakarta day, inclusive at both ends, YYYY-MM-DD.
-type AnalyticDateRange struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StartDate     string                 `protobuf:"bytes,1,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
-	EndDate       string                 `protobuf:"bytes,2,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticDateRange) Reset() {
-	*x = AnalyticDateRange{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[49]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticDateRange) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticDateRange) ProtoMessage() {}
-
-func (x *AnalyticDateRange) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[49]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticDateRange.ProtoReflect.Descriptor instead.
-func (*AnalyticDateRange) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{49}
-}
-
-func (x *AnalyticDateRange) GetStartDate() string {
-	if x != nil {
-		return x.StartDate
-	}
-	return ""
-}
-
-func (x *AnalyticDateRange) GetEndDate() string {
-	if x != nil {
-		return x.EndDate
-	}
-	return ""
-}
-
-type AnalyticTimeSearchFilter struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	DateRange *AnalyticDateRange     `protobuf:"bytes,1,opt,name=date_range,json=dateRange,proto3" json:"date_range,omitempty"`
-	// One account, or 0 for the whole team.
-	AccountId     uint64 `protobuf:"varint,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticTimeSearchFilter) Reset() {
-	*x = AnalyticTimeSearchFilter{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[50]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticTimeSearchFilter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticTimeSearchFilter) ProtoMessage() {}
-
-func (x *AnalyticTimeSearchFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[50]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticTimeSearchFilter.ProtoReflect.Descriptor instead.
-func (*AnalyticTimeSearchFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{50}
-}
-
-func (x *AnalyticTimeSearchFilter) GetDateRange() *AnalyticDateRange {
-	if x != nil {
-		return x.DateRange
-	}
-	return nil
-}
-
-func (x *AnalyticTimeSearchFilter) GetAccountId() uint64 {
-	if x != nil {
-		return x.AccountId
-	}
-	return 0
-}
-
-type AnalyticTimeSearchRequest struct {
-	state     protoimpl.MessageState    `protogen:"open.v1"`
-	TeamId    uint64                    `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Timeframe AnalyticTimeframe         `protobuf:"varint,2,opt,name=timeframe,proto3,enum=warehouse.financial_account.v1.AnalyticTimeframe" json:"timeframe,omitempty"`
-	Filter    *AnalyticTimeSearchFilter `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
-	// Over the bucket's date. Unspecified reads ASCENDING, oldest first.
-	SortType v1.CommonSortType `protobuf:"varint,4,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
-	// Pages over BUCKETS — a quiet day is a point too, carrying the balance forward.
-	Page          *v1.CommonPagination `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticTimeSearchRequest) Reset() {
-	*x = AnalyticTimeSearchRequest{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[51]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticTimeSearchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticTimeSearchRequest) ProtoMessage() {}
-
-func (x *AnalyticTimeSearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[51]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticTimeSearchRequest.ProtoReflect.Descriptor instead.
-func (*AnalyticTimeSearchRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{51}
-}
-
-func (x *AnalyticTimeSearchRequest) GetTeamId() uint64 {
-	if x != nil {
-		return x.TeamId
-	}
-	return 0
-}
-
-func (x *AnalyticTimeSearchRequest) GetTimeframe() AnalyticTimeframe {
-	if x != nil {
-		return x.Timeframe
-	}
-	return AnalyticTimeframe_ANALYTIC_TIMEFRAME_UNSPECIFIED
-}
-
-func (x *AnalyticTimeSearchRequest) GetFilter() *AnalyticTimeSearchFilter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *AnalyticTimeSearchRequest) GetSortType() v1.CommonSortType {
-	if x != nil {
-		return x.SortType
-	}
-	return v1.CommonSortType(0)
-}
-
-func (x *AnalyticTimeSearchRequest) GetPage() *v1.CommonPagination {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-type TimeframeMetric struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The bucket's first day, YYYY-MM-DD.
-	At            string                  `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
-	Metric        *FinancialAccountMetric `protobuf:"bytes,2,opt,name=metric,proto3" json:"metric,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TimeframeMetric) Reset() {
-	*x = TimeframeMetric{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[52]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TimeframeMetric) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TimeframeMetric) ProtoMessage() {}
-
-func (x *TimeframeMetric) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[52]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TimeframeMetric.ProtoReflect.Descriptor instead.
-func (*TimeframeMetric) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{52}
-}
-
-func (x *TimeframeMetric) GetAt() string {
-	if x != nil {
-		return x.At
-	}
-	return ""
-}
-
-func (x *TimeframeMetric) GetMetric() *FinancialAccountMetric {
-	if x != nil {
-		return x.Metric
-	}
-	return nil
-}
-
-type AnalyticTimeSearchResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Datas         []*TimeframeMetric     `protobuf:"bytes,1,rep,name=datas,proto3" json:"datas,omitempty"`
-	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticTimeSearchResponse) Reset() {
-	*x = AnalyticTimeSearchResponse{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[53]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticTimeSearchResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticTimeSearchResponse) ProtoMessage() {}
-
-func (x *AnalyticTimeSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[53]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticTimeSearchResponse.ProtoReflect.Descriptor instead.
-func (*AnalyticTimeSearchResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{53}
-}
-
-func (x *AnalyticTimeSearchResponse) GetDatas() []*TimeframeMetric {
-	if x != nil {
-		return x.Datas
-	}
-	return nil
-}
-
-func (x *AnalyticTimeSearchResponse) GetPageInfo() *v1.PageInfo {
-	if x != nil {
-		return x.PageInfo
-	}
-	return nil
-}
-
-// ⚠ A TYPED KEY, where settlement's group search returns `repeated uint64 ids` (my spec). Two of the three
-// groupings here are an enum, not an id — a uint64 carrying a provider's enum number would read as an
-// account id to anyone who did not know.
-type AnalyticGroupKey struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Key:
-	//
-	//	*AnalyticGroupKey_AccountId
-	//	*AnalyticGroupKey_Provider
-	//	*AnalyticGroupKey_ChangeType
-	Key           isAnalyticGroupKey_Key `protobuf_oneof:"key"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupKey) Reset() {
-	*x = AnalyticGroupKey{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[54]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupKey) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupKey) ProtoMessage() {}
-
-func (x *AnalyticGroupKey) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[54]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupKey.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupKey) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{54}
-}
-
-func (x *AnalyticGroupKey) GetKey() isAnalyticGroupKey_Key {
-	if x != nil {
-		return x.Key
-	}
-	return nil
-}
-
-func (x *AnalyticGroupKey) GetAccountId() uint64 {
-	if x != nil {
-		if x, ok := x.Key.(*AnalyticGroupKey_AccountId); ok {
-			return x.AccountId
-		}
-	}
-	return 0
-}
-
-func (x *AnalyticGroupKey) GetProvider() FinancialAccountProvider {
-	if x != nil {
-		if x, ok := x.Key.(*AnalyticGroupKey_Provider); ok {
-			return x.Provider
-		}
-	}
-	return FinancialAccountProvider_FINANCIAL_ACCOUNT_PROVIDER_UNSPECIFIED
-}
-
-func (x *AnalyticGroupKey) GetChangeType() FinancialAccountChangeType {
-	if x != nil {
-		if x, ok := x.Key.(*AnalyticGroupKey_ChangeType); ok {
-			return x.ChangeType
-		}
-	}
-	return FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_UNSPECIFIED
-}
-
-type isAnalyticGroupKey_Key interface {
-	isAnalyticGroupKey_Key()
-}
-
-type AnalyticGroupKey_AccountId struct {
-	AccountId uint64 `protobuf:"varint,1,opt,name=account_id,json=accountId,proto3,oneof"`
-}
-
-type AnalyticGroupKey_Provider struct {
-	Provider FinancialAccountProvider `protobuf:"varint,2,opt,name=provider,proto3,enum=warehouse.financial_account.v1.FinancialAccountProvider,oneof"`
-}
-
-type AnalyticGroupKey_ChangeType struct {
-	ChangeType FinancialAccountChangeType `protobuf:"varint,3,opt,name=change_type,json=changeType,proto3,enum=warehouse.financial_account.v1.FinancialAccountChangeType,oneof"`
-}
-
-func (*AnalyticGroupKey_AccountId) isAnalyticGroupKey_Key() {}
-
-func (*AnalyticGroupKey_Provider) isAnalyticGroupKey_Key() {}
-
-func (*AnalyticGroupKey_ChangeType) isAnalyticGroupKey_Key() {}
-
-type AnalyticGroupFilter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	DateRange     *AnalyticDateRange     `protobuf:"bytes,1,opt,name=date_range,json=dateRange,proto3" json:"date_range,omitempty"`
-	GroupType     AnalyticGroupType      `protobuf:"varint,2,opt,name=group_type,json=groupType,proto3,enum=warehouse.financial_account.v1.AnalyticGroupType" json:"group_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupFilter) Reset() {
-	*x = AnalyticGroupFilter{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[55]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupFilter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupFilter) ProtoMessage() {}
-
-func (x *AnalyticGroupFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[55]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupFilter.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{55}
-}
-
-func (x *AnalyticGroupFilter) GetDateRange() *AnalyticDateRange {
-	if x != nil {
-		return x.DateRange
-	}
-	return nil
-}
-
-func (x *AnalyticGroupFilter) GetGroupType() AnalyticGroupType {
-	if x != nil {
-		return x.GroupType
-	}
-	return AnalyticGroupType_ANALYTIC_GROUP_TYPE_UNSPECIFIED
-}
-
-type AnalyticGroupSearchRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Filter        *AnalyticGroupFilter   `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
-	Sort          AnalyticMetricSort     `protobuf:"varint,3,opt,name=sort,proto3,enum=warehouse.financial_account.v1.AnalyticMetricSort" json:"sort,omitempty"`
-	SortType      v1.CommonSortType      `protobuf:"varint,4,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
-	Page          *v1.CommonPagination   `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupSearchRequest) Reset() {
-	*x = AnalyticGroupSearchRequest{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[56]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupSearchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupSearchRequest) ProtoMessage() {}
-
-func (x *AnalyticGroupSearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[56]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupSearchRequest.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupSearchRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{56}
-}
-
-func (x *AnalyticGroupSearchRequest) GetTeamId() uint64 {
-	if x != nil {
-		return x.TeamId
-	}
-	return 0
-}
-
-func (x *AnalyticGroupSearchRequest) GetFilter() *AnalyticGroupFilter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *AnalyticGroupSearchRequest) GetSort() AnalyticMetricSort {
-	if x != nil {
-		return x.Sort
-	}
-	return AnalyticMetricSort_ANALYTIC_METRIC_SORT_UNSPECIFIED
-}
-
-func (x *AnalyticGroupSearchRequest) GetSortType() v1.CommonSortType {
-	if x != nil {
-		return x.SortType
-	}
-	return v1.CommonSortType(0)
-}
-
-func (x *AnalyticGroupSearchRequest) GetPage() *v1.CommonPagination {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-type AnalyticGroupSearchResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// RANKED. Every key of the group type that has a row in the team — a provider with no account is absent.
-	Keys          []*AnalyticGroupKey `protobuf:"bytes,1,rep,name=keys,proto3" json:"keys,omitempty"`
-	PageInfo      *v1.PageInfo        `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupSearchResponse) Reset() {
-	*x = AnalyticGroupSearchResponse{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[57]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupSearchResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupSearchResponse) ProtoMessage() {}
-
-func (x *AnalyticGroupSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[57]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupSearchResponse.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupSearchResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{57}
-}
-
-func (x *AnalyticGroupSearchResponse) GetKeys() []*AnalyticGroupKey {
-	if x != nil {
-		return x.Keys
-	}
-	return nil
-}
-
-func (x *AnalyticGroupSearchResponse) GetPageInfo() *v1.PageInfo {
-	if x != nil {
-		return x.PageInfo
-	}
-	return nil
-}
-
-type AnalyticGroupMetricRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Filter *AnalyticGroupFilter   `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
-	// The page AnalyticGroupSearch returned — capped like a page, because it is one.
-	Keys          []*AnalyticGroupKey `protobuf:"bytes,3,rep,name=keys,proto3" json:"keys,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupMetricRequest) Reset() {
-	*x = AnalyticGroupMetricRequest{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[58]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupMetricRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupMetricRequest) ProtoMessage() {}
-
-func (x *AnalyticGroupMetricRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[58]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupMetricRequest.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupMetricRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{58}
-}
-
-func (x *AnalyticGroupMetricRequest) GetTeamId() uint64 {
-	if x != nil {
-		return x.TeamId
-	}
-	return 0
-}
-
-func (x *AnalyticGroupMetricRequest) GetFilter() *AnalyticGroupFilter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *AnalyticGroupMetricRequest) GetKeys() []*AnalyticGroupKey {
-	if x != nil {
-		return x.Keys
-	}
-	return nil
-}
-
-type AnalyticGroupMetricItem struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Key   *AnalyticGroupKey      `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// For a CHANGE_TYPE key: that type's column and `change` only — a balance belongs to an account, not to
-	// a type, so `open_balance` and `close_balance` are 0.
-	Metric        *FinancialAccountMetric `protobuf:"bytes,2,opt,name=metric,proto3" json:"metric,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupMetricItem) Reset() {
-	*x = AnalyticGroupMetricItem{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[59]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupMetricItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupMetricItem) ProtoMessage() {}
-
-func (x *AnalyticGroupMetricItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[59]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupMetricItem.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupMetricItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{59}
-}
-
-func (x *AnalyticGroupMetricItem) GetKey() *AnalyticGroupKey {
-	if x != nil {
-		return x.Key
-	}
-	return nil
-}
-
-func (x *AnalyticGroupMetricItem) GetMetric() *FinancialAccountMetric {
-	if x != nil {
-		return x.Metric
-	}
-	return nil
-}
-
-type AnalyticGroupMetricResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// In the request's key order. A key with no movement in the window still gets a metric — its balance
-	// carried in from before the window.
-	Items         []*AnalyticGroupMetricItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnalyticGroupMetricResponse) Reset() {
-	*x = AnalyticGroupMetricResponse{}
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[60]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnalyticGroupMetricResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnalyticGroupMetricResponse) ProtoMessage() {}
-
-func (x *AnalyticGroupMetricResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_financial_account_v1_financial_account_proto_msgTypes[60]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnalyticGroupMetricResponse.ProtoReflect.Descriptor instead.
-func (*AnalyticGroupMetricResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP(), []int{60}
-}
-
-func (x *AnalyticGroupMetricResponse) GetItems() []*AnalyticGroupMetricItem {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
 var File_warehouse_financial_account_v1_financial_account_proto protoreflect.FileDescriptor
 
 const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
@@ -5131,85 +4101,7 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\voperational\x18\x03 \x01(\bR\voperational:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"t\n" +
 	"&FinancialAccountOperationalSetResponse\x12J\n" +
-	"\aaccount\x18\x01 \x01(\v20.warehouse.financial_account.v1.FinancialAccountR\aaccount\"\x8f\x03\n" +
-	"\x16FinancialAccountMetric\x12\x18\n" +
-	"\aexpense\x18\x01 \x01(\x01R\aexpense\x12\x1f\n" +
-	"\vads_expense\x18\x02 \x01(\x01R\n" +
-	"adsExpense\x12\x1e\n" +
-	"\n" +
-	"adjustment\x18\x03 \x01(\x01R\n" +
-	"adjustment\x12\x1e\n" +
-	"\n" +
-	"withdrawal\x18\x04 \x01(\x01R\n" +
-	"withdrawal\x12\x18\n" +
-	"\arestock\x18\x05 \x01(\x01R\arestock\x12'\n" +
-	"\x0fopening_balance\x18\x06 \x01(\x01R\x0eopeningBalance\x12\x1a\n" +
-	"\btransfer\x18\a \x01(\x01R\btransfer\x12!\n" +
-	"\fteam_payment\x18\b \x01(\x01R\vteamPayment\x12\x18\n" +
-	"\acapital\x18\t \x01(\x01R\acapital\x12\x16\n" +
-	"\x06change\x18\n" +
-	" \x01(\x01R\x06change\x12!\n" +
-	"\fopen_balance\x18\v \x01(\x01R\vopenBalance\x12#\n" +
-	"\rclose_balance\x18\f \x01(\x01R\fcloseBalance\"\x97\x01\n" +
-	"\x11AnalyticDateRange\x12B\n" +
-	"\n" +
-	"start_date\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\tstartDate\x12>\n" +
-	"\bend_date\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\aendDate\"\x93\x01\n" +
-	"\x18AnalyticTimeSearchFilter\x12X\n" +
-	"\n" +
-	"date_range\x18\x01 \x01(\v21.warehouse.financial_account.v1.AnalyticDateRangeB\x06\xbaH\x03\xc8\x01\x01R\tdateRange\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x02 \x01(\x04R\taccountId\"\x8d\x03\n" +
-	"\x19AnalyticTimeSearchRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12[\n" +
-	"\ttimeframe\x18\x02 \x01(\x0e21.warehouse.financial_account.v1.AnalyticTimeframeB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\ttimeframe\x12X\n" +
-	"\x06filter\x18\x03 \x01(\v28.warehouse.financial_account.v1.AnalyticTimeSearchFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12@\n" +
-	"\tsort_type\x18\x04 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12A\n" +
-	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
-	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"q\n" +
-	"\x0fTimeframeMetric\x12\x0e\n" +
-	"\x02at\x18\x01 \x01(\tR\x02at\x12N\n" +
-	"\x06metric\x18\x02 \x01(\v26.warehouse.financial_account.v1.FinancialAccountMetricR\x06metric\"\x9f\x01\n" +
-	"\x1aAnalyticTimeSearchResponse\x12E\n" +
-	"\x05datas\x18\x01 \x03(\v2/.warehouse.financial_account.v1.TimeframeMetricR\x05datas\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xf1\x01\n" +
-	"\x10AnalyticGroupKey\x12\x1f\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\x04H\x00R\taccountId\x12V\n" +
-	"\bprovider\x18\x02 \x01(\x0e28.warehouse.financial_account.v1.FinancialAccountProviderH\x00R\bprovider\x12]\n" +
-	"\vchange_type\x18\x03 \x01(\x0e2:.warehouse.financial_account.v1.FinancialAccountChangeTypeH\x00R\n" +
-	"changeTypeB\x05\n" +
-	"\x03key\"\xcd\x01\n" +
-	"\x13AnalyticGroupFilter\x12X\n" +
-	"\n" +
-	"date_range\x18\x01 \x01(\v21.warehouse.financial_account.v1.AnalyticDateRangeB\x06\xbaH\x03\xc8\x01\x01R\tdateRange\x12\\\n" +
-	"\n" +
-	"group_type\x18\x02 \x01(\x0e21.warehouse.financial_account.v1.AnalyticGroupTypeB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\tgroupType\"\xfe\x02\n" +
-	"\x1aAnalyticGroupSearchRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12S\n" +
-	"\x06filter\x18\x02 \x01(\v23.warehouse.financial_account.v1.AnalyticGroupFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12P\n" +
-	"\x04sort\x18\x03 \x01(\x0e22.warehouse.financial_account.v1.AnalyticMetricSortB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04sort\x12@\n" +
-	"\tsort_type\x18\x04 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12A\n" +
-	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
-	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x9f\x01\n" +
-	"\x1bAnalyticGroupSearchResponse\x12D\n" +
-	"\x04keys\x18\x01 \x03(\v20.warehouse.financial_account.v1.AnalyticGroupKeyR\x04keys\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xfa\x01\n" +
-	"\x1aAnalyticGroupMetricRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12S\n" +
-	"\x06filter\x18\x02 \x01(\v23.warehouse.financial_account.v1.AnalyticGroupFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12Q\n" +
-	"\x04keys\x18\x03 \x03(\v20.warehouse.financial_account.v1.AnalyticGroupKeyB\v\xbaH\b\x92\x01\x05\b\x01\x10\xc8\x01R\x04keys:\x0e\x92\xb5\x18\n" +
-	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xad\x01\n" +
-	"\x17AnalyticGroupMetricItem\x12B\n" +
-	"\x03key\x18\x01 \x01(\v20.warehouse.financial_account.v1.AnalyticGroupKeyR\x03key\x12N\n" +
-	"\x06metric\x18\x02 \x01(\v26.warehouse.financial_account.v1.FinancialAccountMetricR\x06metric\"l\n" +
-	"\x1bAnalyticGroupMetricResponse\x12M\n" +
-	"\x05items\x18\x01 \x03(\v27.warehouse.financial_account.v1.AnalyticGroupMetricItemR\x05items*\xcf\x01\n" +
+	"\aaccount\x18\x01 \x01(\v20.warehouse.financial_account.v1.FinancialAccountR\aaccount*\xcf\x01\n" +
 	"\x14FinancialAccountType\x12&\n" +
 	"\"FINANCIAL_ACCOUNT_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dFINANCIAL_ACCOUNT_TYPE_WALLET\x10\x01\x12'\n" +
@@ -5266,26 +4158,12 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x10CapitalDirection\x12!\n" +
 	"\x1dCAPITAL_DIRECTION_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14CAPITAL_DIRECTION_IN\x10\x01\x12\x19\n" +
-	"\x15CAPITAL_DIRECTION_OUT\x10\x02*\x94\x01\n" +
-	"\x11AnalyticTimeframe\x12\"\n" +
-	"\x1eANALYTIC_TIMEFRAME_UNSPECIFIED\x10\x00\x12\x1c\n" +
-	"\x18ANALYTIC_TIMEFRAME_DAILY\x10\x01\x12\x1e\n" +
-	"\x1aANALYTIC_TIMEFRAME_MONTHLY\x10\x02\x12\x1d\n" +
-	"\x19ANALYTIC_TIMEFRAME_YEARLY\x10\x03*\xa0\x01\n" +
-	"\x11AnalyticGroupType\x12#\n" +
-	"\x1fANALYTIC_GROUP_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
-	"\x1cANALYTIC_GROUP_TYPE_PROVIDER\x10\x01\x12#\n" +
-	"\x1fANALYTIC_GROUP_TYPE_CHANGE_TYPE\x10\x02\x12\x1f\n" +
-	"\x1bANALYTIC_GROUP_TYPE_ACCOUNT\x10\x03*\x83\x01\n" +
-	"\x12AnalyticMetricSort\x12$\n" +
-	" ANALYTIC_METRIC_SORT_UNSPECIFIED\x10\x00\x12\x1f\n" +
-	"\x1bANALYTIC_METRIC_SORT_CHANGE\x10\x01\x12&\n" +
-	"\"ANALYTIC_METRIC_SORT_CLOSE_BALANCE\x10\x022\xbe\x11\n" +
-	"\x17FinancialAccountService\x12\x91\x01\n" +
-	"\x14FinancialAccountList\x12;.warehouse.financial_account.v1.FinancialAccountListRequest\x1a<.warehouse.financial_account.v1.FinancialAccountListResponse\x12\x94\x01\n" +
-	"\x15FinancialAccountByIds\x12<.warehouse.financial_account.v1.FinancialAccountByIdsRequest\x1a=.warehouse.financial_account.v1.FinancialAccountByIdsResponse\x12\x9d\x01\n" +
-	"\x18FinancialAccountOverview\x12?.warehouse.financial_account.v1.FinancialAccountOverviewRequest\x1a@.warehouse.financial_account.v1.FinancialAccountOverviewResponse\x12\x9a\x01\n" +
-	"\x17FinancialAccountLogList\x12>.warehouse.financial_account.v1.FinancialAccountLogListRequest\x1a?.warehouse.financial_account.v1.FinancialAccountLogListResponse\x12\x97\x01\n" +
+	"\x15CAPITAL_DIRECTION_OUT\x10\x022\xd2\x11\n" +
+	"\x17FinancialAccountService\x12\x96\x01\n" +
+	"\x14FinancialAccountList\x12;.warehouse.financial_account.v1.FinancialAccountListRequest\x1a<.warehouse.financial_account.v1.FinancialAccountListResponse\"\x03\x90\x02\x01\x12\x99\x01\n" +
+	"\x15FinancialAccountByIds\x12<.warehouse.financial_account.v1.FinancialAccountByIdsRequest\x1a=.warehouse.financial_account.v1.FinancialAccountByIdsResponse\"\x03\x90\x02\x01\x12\xa2\x01\n" +
+	"\x18FinancialAccountOverview\x12?.warehouse.financial_account.v1.FinancialAccountOverviewRequest\x1a@.warehouse.financial_account.v1.FinancialAccountOverviewResponse\"\x03\x90\x02\x01\x12\x9f\x01\n" +
+	"\x17FinancialAccountLogList\x12>.warehouse.financial_account.v1.FinancialAccountLogListRequest\x1a?.warehouse.financial_account.v1.FinancialAccountLogListResponse\"\x03\x90\x02\x01\x12\x97\x01\n" +
 	"\x16FinancialAccountCreate\x12=.warehouse.financial_account.v1.FinancialAccountCreateRequest\x1a>.warehouse.financial_account.v1.FinancialAccountCreateResponse\x12\x97\x01\n" +
 	"\x16FinancialAccountUpdate\x12=.warehouse.financial_account.v1.FinancialAccountUpdateRequest\x1a>.warehouse.financial_account.v1.FinancialAccountUpdateResponse\x12\x9d\x01\n" +
 	"\x18FinancialAccountIdentify\x12?.warehouse.financial_account.v1.FinancialAccountIdentifyRequest\x1a@.warehouse.financial_account.v1.FinancialAccountIdentifyResponse\x12\x9a\x01\n" +
@@ -5295,11 +4173,7 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x17FinancialAccountCapital\x12>.warehouse.financial_account.v1.FinancialAccountCapitalRequest\x1a?.warehouse.financial_account.v1.FinancialAccountCapitalResponse\x12\xa0\x01\n" +
 	"\x19FinancialAccountReconcile\x12@.warehouse.financial_account.v1.FinancialAccountReconcileRequest\x1aA.warehouse.financial_account.v1.FinancialAccountReconcileResponse\x12\x9a\x01\n" +
 	"\x17FinancialAccountShopSet\x12>.warehouse.financial_account.v1.FinancialAccountShopSetRequest\x1a?.warehouse.financial_account.v1.FinancialAccountShopSetResponse\x12\xaf\x01\n" +
-	"\x1eFinancialAccountOperationalSet\x12E.warehouse.financial_account.v1.FinancialAccountOperationalSetRequest\x1aF.warehouse.financial_account.v1.FinancialAccountOperationalSetResponse2\xd1\x03\n" +
-	"\x1fFinancialAccountAnalyticService\x12\x8b\x01\n" +
-	"\x12AnalyticTimeSearch\x129.warehouse.financial_account.v1.AnalyticTimeSearchRequest\x1a:.warehouse.financial_account.v1.AnalyticTimeSearchResponse\x12\x8e\x01\n" +
-	"\x13AnalyticGroupSearch\x12:.warehouse.financial_account.v1.AnalyticGroupSearchRequest\x1a;.warehouse.financial_account.v1.AnalyticGroupSearchResponse\x12\x8e\x01\n" +
-	"\x13AnalyticGroupMetric\x12:.warehouse.financial_account.v1.AnalyticGroupMetricRequest\x1a;.warehouse.financial_account.v1.AnalyticGroupMetricResponseBbZ`github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1;financial_accountv1b\x06proto3"
+	"\x1eFinancialAccountOperationalSet\x12E.warehouse.financial_account.v1.FinancialAccountOperationalSetRequest\x1aF.warehouse.financial_account.v1.FinancialAccountOperationalSetResponseBbZ`github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1;financial_accountv1b\x06proto3"
 
 var (
 	file_warehouse_financial_account_v1_financial_account_proto_rawDescOnce sync.Once
@@ -5313,8 +4187,8 @@ func file_warehouse_financial_account_v1_financial_account_proto_rawDescGZIP() [
 	return file_warehouse_financial_account_v1_financial_account_proto_rawDescData
 }
 
-var file_warehouse_financial_account_v1_financial_account_proto_enumTypes = make([]protoimpl.EnumInfo, 14)
-var file_warehouse_financial_account_v1_financial_account_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
+var file_warehouse_financial_account_v1_financial_account_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
+var file_warehouse_financial_account_v1_financial_account_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
 var file_warehouse_financial_account_v1_financial_account_proto_goTypes = []any{
 	(FinancialAccountType)(0),                      // 0: warehouse.financial_account.v1.FinancialAccountType
 	(FinancialAccountProvider)(0),                  // 1: warehouse.financial_account.v1.FinancialAccountProvider
@@ -5327,212 +4201,167 @@ var file_warehouse_financial_account_v1_financial_account_proto_goTypes = []any{
 	(FinancialAccountLogListDataType)(0),           // 8: warehouse.financial_account.v1.FinancialAccountLogListDataType
 	(FinancialAccountLogSort)(0),                   // 9: warehouse.financial_account.v1.FinancialAccountLogSort
 	(CapitalDirection)(0),                          // 10: warehouse.financial_account.v1.CapitalDirection
-	(AnalyticTimeframe)(0),                         // 11: warehouse.financial_account.v1.AnalyticTimeframe
-	(AnalyticGroupType)(0),                         // 12: warehouse.financial_account.v1.AnalyticGroupType
-	(AnalyticMetricSort)(0),                        // 13: warehouse.financial_account.v1.AnalyticMetricSort
-	(*FinancialAccount)(nil),                       // 14: warehouse.financial_account.v1.FinancialAccount
-	(*FinancialAccountListRequest)(nil),            // 15: warehouse.financial_account.v1.FinancialAccountListRequest
-	(*FinancialAccountListFilter)(nil),             // 16: warehouse.financial_account.v1.FinancialAccountListFilter
-	(*FinancialAccountListFilterSort)(nil),         // 17: warehouse.financial_account.v1.FinancialAccountListFilterSort
-	(*FinancialAccountRowMapItem)(nil),             // 18: warehouse.financial_account.v1.FinancialAccountRowMapItem
-	(*FinancialAccountListResponseItem)(nil),       // 19: warehouse.financial_account.v1.FinancialAccountListResponseItem
-	(*FinancialAccountListResponse)(nil),           // 20: warehouse.financial_account.v1.FinancialAccountListResponse
-	(*FinancialAccountByIdsRequest)(nil),           // 21: warehouse.financial_account.v1.FinancialAccountByIdsRequest
-	(*FinancialAccountByIdsFilter)(nil),            // 22: warehouse.financial_account.v1.FinancialAccountByIdsFilter
-	(*FinancialAccountByIdsResponseItem)(nil),      // 23: warehouse.financial_account.v1.FinancialAccountByIdsResponseItem
-	(*FinancialAccountByIdsResponseList)(nil),      // 24: warehouse.financial_account.v1.FinancialAccountByIdsResponseList
-	(*FinancialAccountByIdsResponse)(nil),          // 25: warehouse.financial_account.v1.FinancialAccountByIdsResponse
-	(*FinancialAccountOverviewRequest)(nil),        // 26: warehouse.financial_account.v1.FinancialAccountOverviewRequest
-	(*FinancialAccountOverviewFilter)(nil),         // 27: warehouse.financial_account.v1.FinancialAccountOverviewFilter
-	(*FinancialAccountBalanceItem)(nil),            // 28: warehouse.financial_account.v1.FinancialAccountBalanceItem
-	(*FinancialAccountBalanceMapItem)(nil),         // 29: warehouse.financial_account.v1.FinancialAccountBalanceMapItem
-	(*FinancialAccountTypeTotalItem)(nil),          // 30: warehouse.financial_account.v1.FinancialAccountTypeTotalItem
-	(*FinancialAccountTypeTotalList)(nil),          // 31: warehouse.financial_account.v1.FinancialAccountTypeTotalList
-	(*FinancialAccountOverviewResponseItem)(nil),   // 32: warehouse.financial_account.v1.FinancialAccountOverviewResponseItem
-	(*FinancialAccountOverviewResponse)(nil),       // 33: warehouse.financial_account.v1.FinancialAccountOverviewResponse
-	(*FinancialAccountLog)(nil),                    // 34: warehouse.financial_account.v1.FinancialAccountLog
-	(*FinancialAccountLogListRequest)(nil),         // 35: warehouse.financial_account.v1.FinancialAccountLogListRequest
-	(*FinancialAccountLogListFilter)(nil),          // 36: warehouse.financial_account.v1.FinancialAccountLogListFilter
-	(*FinancialAccountLogListFilterSort)(nil),      // 37: warehouse.financial_account.v1.FinancialAccountLogListFilterSort
-	(*FinancialAccountLogMapItem)(nil),             // 38: warehouse.financial_account.v1.FinancialAccountLogMapItem
-	(*FinancialAccountLogListResponseItem)(nil),    // 39: warehouse.financial_account.v1.FinancialAccountLogListResponseItem
-	(*FinancialAccountLogListResponse)(nil),        // 40: warehouse.financial_account.v1.FinancialAccountLogListResponse
-	(*FinancialAccountCreateRequest)(nil),          // 41: warehouse.financial_account.v1.FinancialAccountCreateRequest
-	(*FinancialAccountCreateResponse)(nil),         // 42: warehouse.financial_account.v1.FinancialAccountCreateResponse
-	(*FinancialAccountUpdateRequest)(nil),          // 43: warehouse.financial_account.v1.FinancialAccountUpdateRequest
-	(*FinancialAccountUpdateResponse)(nil),         // 44: warehouse.financial_account.v1.FinancialAccountUpdateResponse
-	(*FinancialAccountIdentifyRequest)(nil),        // 45: warehouse.financial_account.v1.FinancialAccountIdentifyRequest
-	(*FinancialAccountIdentity)(nil),               // 46: warehouse.financial_account.v1.FinancialAccountIdentity
-	(*FinancialAccountIdentifyResponse)(nil),       // 47: warehouse.financial_account.v1.FinancialAccountIdentifyResponse
-	(*FinancialAccountArchiveRequest)(nil),         // 48: warehouse.financial_account.v1.FinancialAccountArchiveRequest
-	(*FinancialAccountArchiveResponse)(nil),        // 49: warehouse.financial_account.v1.FinancialAccountArchiveResponse
-	(*FinancialAccountRestoreRequest)(nil),         // 50: warehouse.financial_account.v1.FinancialAccountRestoreRequest
-	(*FinancialAccountRestoreResponse)(nil),        // 51: warehouse.financial_account.v1.FinancialAccountRestoreResponse
-	(*FinancialAccountTransferRequest)(nil),        // 52: warehouse.financial_account.v1.FinancialAccountTransferRequest
-	(*FinancialAccountTransferResponse)(nil),       // 53: warehouse.financial_account.v1.FinancialAccountTransferResponse
-	(*FinancialAccountCapitalRequest)(nil),         // 54: warehouse.financial_account.v1.FinancialAccountCapitalRequest
-	(*FinancialAccountCapitalResponse)(nil),        // 55: warehouse.financial_account.v1.FinancialAccountCapitalResponse
-	(*FinancialAccountReconcileRequest)(nil),       // 56: warehouse.financial_account.v1.FinancialAccountReconcileRequest
-	(*FinancialAccountReconcileResponse)(nil),      // 57: warehouse.financial_account.v1.FinancialAccountReconcileResponse
-	(*FinancialAccountShopSetRequest)(nil),         // 58: warehouse.financial_account.v1.FinancialAccountShopSetRequest
-	(*FinancialAccountShopSetResponse)(nil),        // 59: warehouse.financial_account.v1.FinancialAccountShopSetResponse
-	(*FinancialAccountOperationalSetRequest)(nil),  // 60: warehouse.financial_account.v1.FinancialAccountOperationalSetRequest
-	(*FinancialAccountOperationalSetResponse)(nil), // 61: warehouse.financial_account.v1.FinancialAccountOperationalSetResponse
-	(*FinancialAccountMetric)(nil),                 // 62: warehouse.financial_account.v1.FinancialAccountMetric
-	(*AnalyticDateRange)(nil),                      // 63: warehouse.financial_account.v1.AnalyticDateRange
-	(*AnalyticTimeSearchFilter)(nil),               // 64: warehouse.financial_account.v1.AnalyticTimeSearchFilter
-	(*AnalyticTimeSearchRequest)(nil),              // 65: warehouse.financial_account.v1.AnalyticTimeSearchRequest
-	(*TimeframeMetric)(nil),                        // 66: warehouse.financial_account.v1.TimeframeMetric
-	(*AnalyticTimeSearchResponse)(nil),             // 67: warehouse.financial_account.v1.AnalyticTimeSearchResponse
-	(*AnalyticGroupKey)(nil),                       // 68: warehouse.financial_account.v1.AnalyticGroupKey
-	(*AnalyticGroupFilter)(nil),                    // 69: warehouse.financial_account.v1.AnalyticGroupFilter
-	(*AnalyticGroupSearchRequest)(nil),             // 70: warehouse.financial_account.v1.AnalyticGroupSearchRequest
-	(*AnalyticGroupSearchResponse)(nil),            // 71: warehouse.financial_account.v1.AnalyticGroupSearchResponse
-	(*AnalyticGroupMetricRequest)(nil),             // 72: warehouse.financial_account.v1.AnalyticGroupMetricRequest
-	(*AnalyticGroupMetricItem)(nil),                // 73: warehouse.financial_account.v1.AnalyticGroupMetricItem
-	(*AnalyticGroupMetricResponse)(nil),            // 74: warehouse.financial_account.v1.AnalyticGroupMetricResponse
-	nil,                                            // 75: warehouse.financial_account.v1.FinancialAccountRowMapItem.MapDataEntry
-	nil,                                            // 76: warehouse.financial_account.v1.FinancialAccountByIdsResponse.ItemsEntry
-	nil,                                            // 77: warehouse.financial_account.v1.FinancialAccountBalanceMapItem.MapDataEntry
-	nil,                                            // 78: warehouse.financial_account.v1.FinancialAccountLogMapItem.MapDataEntry
-	(*timestamppb.Timestamp)(nil),                  // 79: google.protobuf.Timestamp
-	(*v1.CommonPagination)(nil),                    // 80: warehouse.common.v1.CommonPagination
-	(v1.CommonSortType)(0),                         // 81: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),                            // 82: warehouse.common.v1.GeneralSort
-	(*v1.GeneralMapItem)(nil),                      // 83: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                            // 84: warehouse.common.v1.PageInfo
+	(*FinancialAccount)(nil),                       // 11: warehouse.financial_account.v1.FinancialAccount
+	(*FinancialAccountListRequest)(nil),            // 12: warehouse.financial_account.v1.FinancialAccountListRequest
+	(*FinancialAccountListFilter)(nil),             // 13: warehouse.financial_account.v1.FinancialAccountListFilter
+	(*FinancialAccountListFilterSort)(nil),         // 14: warehouse.financial_account.v1.FinancialAccountListFilterSort
+	(*FinancialAccountRowMapItem)(nil),             // 15: warehouse.financial_account.v1.FinancialAccountRowMapItem
+	(*FinancialAccountListResponseItem)(nil),       // 16: warehouse.financial_account.v1.FinancialAccountListResponseItem
+	(*FinancialAccountListResponse)(nil),           // 17: warehouse.financial_account.v1.FinancialAccountListResponse
+	(*FinancialAccountByIdsRequest)(nil),           // 18: warehouse.financial_account.v1.FinancialAccountByIdsRequest
+	(*FinancialAccountByIdsFilter)(nil),            // 19: warehouse.financial_account.v1.FinancialAccountByIdsFilter
+	(*FinancialAccountByIdsResponseItem)(nil),      // 20: warehouse.financial_account.v1.FinancialAccountByIdsResponseItem
+	(*FinancialAccountByIdsResponseList)(nil),      // 21: warehouse.financial_account.v1.FinancialAccountByIdsResponseList
+	(*FinancialAccountByIdsResponse)(nil),          // 22: warehouse.financial_account.v1.FinancialAccountByIdsResponse
+	(*FinancialAccountOverviewRequest)(nil),        // 23: warehouse.financial_account.v1.FinancialAccountOverviewRequest
+	(*FinancialAccountOverviewFilter)(nil),         // 24: warehouse.financial_account.v1.FinancialAccountOverviewFilter
+	(*FinancialAccountBalanceItem)(nil),            // 25: warehouse.financial_account.v1.FinancialAccountBalanceItem
+	(*FinancialAccountBalanceMapItem)(nil),         // 26: warehouse.financial_account.v1.FinancialAccountBalanceMapItem
+	(*FinancialAccountTypeTotalItem)(nil),          // 27: warehouse.financial_account.v1.FinancialAccountTypeTotalItem
+	(*FinancialAccountTypeTotalList)(nil),          // 28: warehouse.financial_account.v1.FinancialAccountTypeTotalList
+	(*FinancialAccountOverviewResponseItem)(nil),   // 29: warehouse.financial_account.v1.FinancialAccountOverviewResponseItem
+	(*FinancialAccountOverviewResponse)(nil),       // 30: warehouse.financial_account.v1.FinancialAccountOverviewResponse
+	(*FinancialAccountLog)(nil),                    // 31: warehouse.financial_account.v1.FinancialAccountLog
+	(*FinancialAccountLogListRequest)(nil),         // 32: warehouse.financial_account.v1.FinancialAccountLogListRequest
+	(*FinancialAccountLogListFilter)(nil),          // 33: warehouse.financial_account.v1.FinancialAccountLogListFilter
+	(*FinancialAccountLogListFilterSort)(nil),      // 34: warehouse.financial_account.v1.FinancialAccountLogListFilterSort
+	(*FinancialAccountLogMapItem)(nil),             // 35: warehouse.financial_account.v1.FinancialAccountLogMapItem
+	(*FinancialAccountLogListResponseItem)(nil),    // 36: warehouse.financial_account.v1.FinancialAccountLogListResponseItem
+	(*FinancialAccountLogListResponse)(nil),        // 37: warehouse.financial_account.v1.FinancialAccountLogListResponse
+	(*FinancialAccountCreateRequest)(nil),          // 38: warehouse.financial_account.v1.FinancialAccountCreateRequest
+	(*FinancialAccountCreateResponse)(nil),         // 39: warehouse.financial_account.v1.FinancialAccountCreateResponse
+	(*FinancialAccountUpdateRequest)(nil),          // 40: warehouse.financial_account.v1.FinancialAccountUpdateRequest
+	(*FinancialAccountUpdateResponse)(nil),         // 41: warehouse.financial_account.v1.FinancialAccountUpdateResponse
+	(*FinancialAccountIdentifyRequest)(nil),        // 42: warehouse.financial_account.v1.FinancialAccountIdentifyRequest
+	(*FinancialAccountIdentity)(nil),               // 43: warehouse.financial_account.v1.FinancialAccountIdentity
+	(*FinancialAccountIdentifyResponse)(nil),       // 44: warehouse.financial_account.v1.FinancialAccountIdentifyResponse
+	(*FinancialAccountArchiveRequest)(nil),         // 45: warehouse.financial_account.v1.FinancialAccountArchiveRequest
+	(*FinancialAccountArchiveResponse)(nil),        // 46: warehouse.financial_account.v1.FinancialAccountArchiveResponse
+	(*FinancialAccountRestoreRequest)(nil),         // 47: warehouse.financial_account.v1.FinancialAccountRestoreRequest
+	(*FinancialAccountRestoreResponse)(nil),        // 48: warehouse.financial_account.v1.FinancialAccountRestoreResponse
+	(*FinancialAccountTransferRequest)(nil),        // 49: warehouse.financial_account.v1.FinancialAccountTransferRequest
+	(*FinancialAccountTransferResponse)(nil),       // 50: warehouse.financial_account.v1.FinancialAccountTransferResponse
+	(*FinancialAccountCapitalRequest)(nil),         // 51: warehouse.financial_account.v1.FinancialAccountCapitalRequest
+	(*FinancialAccountCapitalResponse)(nil),        // 52: warehouse.financial_account.v1.FinancialAccountCapitalResponse
+	(*FinancialAccountReconcileRequest)(nil),       // 53: warehouse.financial_account.v1.FinancialAccountReconcileRequest
+	(*FinancialAccountReconcileResponse)(nil),      // 54: warehouse.financial_account.v1.FinancialAccountReconcileResponse
+	(*FinancialAccountShopSetRequest)(nil),         // 55: warehouse.financial_account.v1.FinancialAccountShopSetRequest
+	(*FinancialAccountShopSetResponse)(nil),        // 56: warehouse.financial_account.v1.FinancialAccountShopSetResponse
+	(*FinancialAccountOperationalSetRequest)(nil),  // 57: warehouse.financial_account.v1.FinancialAccountOperationalSetRequest
+	(*FinancialAccountOperationalSetResponse)(nil), // 58: warehouse.financial_account.v1.FinancialAccountOperationalSetResponse
+	nil,                           // 59: warehouse.financial_account.v1.FinancialAccountRowMapItem.MapDataEntry
+	nil,                           // 60: warehouse.financial_account.v1.FinancialAccountByIdsResponse.ItemsEntry
+	nil,                           // 61: warehouse.financial_account.v1.FinancialAccountBalanceMapItem.MapDataEntry
+	nil,                           // 62: warehouse.financial_account.v1.FinancialAccountLogMapItem.MapDataEntry
+	(*timestamppb.Timestamp)(nil), // 63: google.protobuf.Timestamp
+	(*v1.CommonPagination)(nil),   // 64: warehouse.common.v1.CommonPagination
+	(v1.CommonSortType)(0),        // 65: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),           // 66: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),     // 67: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),           // 68: warehouse.common.v1.PageInfo
 }
 var file_warehouse_financial_account_v1_financial_account_proto_depIdxs = []int32{
-	0,   // 0: warehouse.financial_account.v1.FinancialAccount.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
-	1,   // 1: warehouse.financial_account.v1.FinancialAccount.provider:type_name -> warehouse.financial_account.v1.FinancialAccountProvider
-	2,   // 2: warehouse.financial_account.v1.FinancialAccount.status:type_name -> warehouse.financial_account.v1.FinancialAccountStatus
-	79,  // 3: warehouse.financial_account.v1.FinancialAccount.created_at:type_name -> google.protobuf.Timestamp
-	79,  // 4: warehouse.financial_account.v1.FinancialAccount.updated_at:type_name -> google.protobuf.Timestamp
-	16,  // 5: warehouse.financial_account.v1.FinancialAccountListRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountListFilter
-	17,  // 6: warehouse.financial_account.v1.FinancialAccountListRequest.sort:type_name -> warehouse.financial_account.v1.FinancialAccountListFilterSort
-	4,   // 7: warehouse.financial_account.v1.FinancialAccountListRequest.data_request:type_name -> warehouse.financial_account.v1.FinancialAccountListDataType
-	80,  // 8: warehouse.financial_account.v1.FinancialAccountListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	0,   // 9: warehouse.financial_account.v1.FinancialAccountListFilter.types:type_name -> warehouse.financial_account.v1.FinancialAccountType
-	81,  // 10: warehouse.financial_account.v1.FinancialAccountListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	82,  // 11: warehouse.financial_account.v1.FinancialAccountListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	5,   // 12: warehouse.financial_account.v1.FinancialAccountListFilterSort.account:type_name -> warehouse.financial_account.v1.FinancialAccountRowSort
-	75,  // 13: warehouse.financial_account.v1.FinancialAccountRowMapItem.map_data:type_name -> warehouse.financial_account.v1.FinancialAccountRowMapItem.MapDataEntry
-	83,  // 14: warehouse.financial_account.v1.FinancialAccountListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	18,  // 15: warehouse.financial_account.v1.FinancialAccountListResponseItem.account:type_name -> warehouse.financial_account.v1.FinancialAccountRowMapItem
-	19,  // 16: warehouse.financial_account.v1.FinancialAccountListResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountListResponseItem
-	84,  // 17: warehouse.financial_account.v1.FinancialAccountListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	22,  // 18: warehouse.financial_account.v1.FinancialAccountByIdsRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsFilter
-	6,   // 19: warehouse.financial_account.v1.FinancialAccountByIdsRequest.data_request:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsDataType
-	83,  // 20: warehouse.financial_account.v1.FinancialAccountByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	18,  // 21: warehouse.financial_account.v1.FinancialAccountByIdsResponseItem.account:type_name -> warehouse.financial_account.v1.FinancialAccountRowMapItem
-	23,  // 22: warehouse.financial_account.v1.FinancialAccountByIdsResponseList.items:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsResponseItem
-	76,  // 23: warehouse.financial_account.v1.FinancialAccountByIdsResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsResponse.ItemsEntry
-	27,  // 24: warehouse.financial_account.v1.FinancialAccountOverviewRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountOverviewFilter
-	7,   // 25: warehouse.financial_account.v1.FinancialAccountOverviewRequest.metric_request:type_name -> warehouse.financial_account.v1.FinancialAccountMetricDataType
-	79,  // 26: warehouse.financial_account.v1.FinancialAccountBalanceItem.reconciled_at:type_name -> google.protobuf.Timestamp
-	77,  // 27: warehouse.financial_account.v1.FinancialAccountBalanceMapItem.map_data:type_name -> warehouse.financial_account.v1.FinancialAccountBalanceMapItem.MapDataEntry
-	0,   // 28: warehouse.financial_account.v1.FinancialAccountTypeTotalItem.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
-	30,  // 29: warehouse.financial_account.v1.FinancialAccountTypeTotalList.items:type_name -> warehouse.financial_account.v1.FinancialAccountTypeTotalItem
-	29,  // 30: warehouse.financial_account.v1.FinancialAccountOverviewResponseItem.balance:type_name -> warehouse.financial_account.v1.FinancialAccountBalanceMapItem
-	31,  // 31: warehouse.financial_account.v1.FinancialAccountOverviewResponseItem.type_total:type_name -> warehouse.financial_account.v1.FinancialAccountTypeTotalList
-	32,  // 32: warehouse.financial_account.v1.FinancialAccountOverviewResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountOverviewResponseItem
-	3,   // 33: warehouse.financial_account.v1.FinancialAccountLog.change_type:type_name -> warehouse.financial_account.v1.FinancialAccountChangeType
-	79,  // 34: warehouse.financial_account.v1.FinancialAccountLog.occurred_at:type_name -> google.protobuf.Timestamp
-	79,  // 35: warehouse.financial_account.v1.FinancialAccountLog.created_at:type_name -> google.protobuf.Timestamp
-	36,  // 36: warehouse.financial_account.v1.FinancialAccountLogListRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountLogListFilter
-	37,  // 37: warehouse.financial_account.v1.FinancialAccountLogListRequest.sort:type_name -> warehouse.financial_account.v1.FinancialAccountLogListFilterSort
-	8,   // 38: warehouse.financial_account.v1.FinancialAccountLogListRequest.data_request:type_name -> warehouse.financial_account.v1.FinancialAccountLogListDataType
-	80,  // 39: warehouse.financial_account.v1.FinancialAccountLogListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	3,   // 40: warehouse.financial_account.v1.FinancialAccountLogListFilter.change_types:type_name -> warehouse.financial_account.v1.FinancialAccountChangeType
-	81,  // 41: warehouse.financial_account.v1.FinancialAccountLogListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	9,   // 42: warehouse.financial_account.v1.FinancialAccountLogListFilterSort.log:type_name -> warehouse.financial_account.v1.FinancialAccountLogSort
-	78,  // 43: warehouse.financial_account.v1.FinancialAccountLogMapItem.map_data:type_name -> warehouse.financial_account.v1.FinancialAccountLogMapItem.MapDataEntry
-	38,  // 44: warehouse.financial_account.v1.FinancialAccountLogListResponseItem.log:type_name -> warehouse.financial_account.v1.FinancialAccountLogMapItem
-	39,  // 45: warehouse.financial_account.v1.FinancialAccountLogListResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountLogListResponseItem
-	84,  // 46: warehouse.financial_account.v1.FinancialAccountLogListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	0,   // 47: warehouse.financial_account.v1.FinancialAccountCreateRequest.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
-	1,   // 48: warehouse.financial_account.v1.FinancialAccountCreateRequest.provider:type_name -> warehouse.financial_account.v1.FinancialAccountProvider
-	14,  // 49: warehouse.financial_account.v1.FinancialAccountCreateResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
-	14,  // 50: warehouse.financial_account.v1.FinancialAccountUpdateResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
-	46,  // 51: warehouse.financial_account.v1.FinancialAccountIdentifyRequest.fill_in:type_name -> warehouse.financial_account.v1.FinancialAccountIdentity
-	0,   // 52: warehouse.financial_account.v1.FinancialAccountIdentity.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
-	1,   // 53: warehouse.financial_account.v1.FinancialAccountIdentity.provider:type_name -> warehouse.financial_account.v1.FinancialAccountProvider
-	14,  // 54: warehouse.financial_account.v1.FinancialAccountIdentifyResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
-	14,  // 55: warehouse.financial_account.v1.FinancialAccountArchiveResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
-	14,  // 56: warehouse.financial_account.v1.FinancialAccountRestoreResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
-	34,  // 57: warehouse.financial_account.v1.FinancialAccountTransferResponse.logs:type_name -> warehouse.financial_account.v1.FinancialAccountLog
-	10,  // 58: warehouse.financial_account.v1.FinancialAccountCapitalRequest.direction:type_name -> warehouse.financial_account.v1.CapitalDirection
-	34,  // 59: warehouse.financial_account.v1.FinancialAccountCapitalResponse.log:type_name -> warehouse.financial_account.v1.FinancialAccountLog
-	34,  // 60: warehouse.financial_account.v1.FinancialAccountReconcileResponse.log:type_name -> warehouse.financial_account.v1.FinancialAccountLog
-	79,  // 61: warehouse.financial_account.v1.FinancialAccountReconcileResponse.reconciled_at:type_name -> google.protobuf.Timestamp
-	14,  // 62: warehouse.financial_account.v1.FinancialAccountShopSetResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
-	14,  // 63: warehouse.financial_account.v1.FinancialAccountOperationalSetResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
-	63,  // 64: warehouse.financial_account.v1.AnalyticTimeSearchFilter.date_range:type_name -> warehouse.financial_account.v1.AnalyticDateRange
-	11,  // 65: warehouse.financial_account.v1.AnalyticTimeSearchRequest.timeframe:type_name -> warehouse.financial_account.v1.AnalyticTimeframe
-	64,  // 66: warehouse.financial_account.v1.AnalyticTimeSearchRequest.filter:type_name -> warehouse.financial_account.v1.AnalyticTimeSearchFilter
-	81,  // 67: warehouse.financial_account.v1.AnalyticTimeSearchRequest.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	80,  // 68: warehouse.financial_account.v1.AnalyticTimeSearchRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	62,  // 69: warehouse.financial_account.v1.TimeframeMetric.metric:type_name -> warehouse.financial_account.v1.FinancialAccountMetric
-	66,  // 70: warehouse.financial_account.v1.AnalyticTimeSearchResponse.datas:type_name -> warehouse.financial_account.v1.TimeframeMetric
-	84,  // 71: warehouse.financial_account.v1.AnalyticTimeSearchResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	1,   // 72: warehouse.financial_account.v1.AnalyticGroupKey.provider:type_name -> warehouse.financial_account.v1.FinancialAccountProvider
-	3,   // 73: warehouse.financial_account.v1.AnalyticGroupKey.change_type:type_name -> warehouse.financial_account.v1.FinancialAccountChangeType
-	63,  // 74: warehouse.financial_account.v1.AnalyticGroupFilter.date_range:type_name -> warehouse.financial_account.v1.AnalyticDateRange
-	12,  // 75: warehouse.financial_account.v1.AnalyticGroupFilter.group_type:type_name -> warehouse.financial_account.v1.AnalyticGroupType
-	69,  // 76: warehouse.financial_account.v1.AnalyticGroupSearchRequest.filter:type_name -> warehouse.financial_account.v1.AnalyticGroupFilter
-	13,  // 77: warehouse.financial_account.v1.AnalyticGroupSearchRequest.sort:type_name -> warehouse.financial_account.v1.AnalyticMetricSort
-	81,  // 78: warehouse.financial_account.v1.AnalyticGroupSearchRequest.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	80,  // 79: warehouse.financial_account.v1.AnalyticGroupSearchRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	68,  // 80: warehouse.financial_account.v1.AnalyticGroupSearchResponse.keys:type_name -> warehouse.financial_account.v1.AnalyticGroupKey
-	84,  // 81: warehouse.financial_account.v1.AnalyticGroupSearchResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	69,  // 82: warehouse.financial_account.v1.AnalyticGroupMetricRequest.filter:type_name -> warehouse.financial_account.v1.AnalyticGroupFilter
-	68,  // 83: warehouse.financial_account.v1.AnalyticGroupMetricRequest.keys:type_name -> warehouse.financial_account.v1.AnalyticGroupKey
-	68,  // 84: warehouse.financial_account.v1.AnalyticGroupMetricItem.key:type_name -> warehouse.financial_account.v1.AnalyticGroupKey
-	62,  // 85: warehouse.financial_account.v1.AnalyticGroupMetricItem.metric:type_name -> warehouse.financial_account.v1.FinancialAccountMetric
-	73,  // 86: warehouse.financial_account.v1.AnalyticGroupMetricResponse.items:type_name -> warehouse.financial_account.v1.AnalyticGroupMetricItem
-	14,  // 87: warehouse.financial_account.v1.FinancialAccountRowMapItem.MapDataEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccount
-	24,  // 88: warehouse.financial_account.v1.FinancialAccountByIdsResponse.ItemsEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsResponseList
-	28,  // 89: warehouse.financial_account.v1.FinancialAccountBalanceMapItem.MapDataEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccountBalanceItem
-	34,  // 90: warehouse.financial_account.v1.FinancialAccountLogMapItem.MapDataEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccountLog
-	15,  // 91: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountList:input_type -> warehouse.financial_account.v1.FinancialAccountListRequest
-	21,  // 92: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountByIds:input_type -> warehouse.financial_account.v1.FinancialAccountByIdsRequest
-	26,  // 93: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOverview:input_type -> warehouse.financial_account.v1.FinancialAccountOverviewRequest
-	35,  // 94: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountLogList:input_type -> warehouse.financial_account.v1.FinancialAccountLogListRequest
-	41,  // 95: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCreate:input_type -> warehouse.financial_account.v1.FinancialAccountCreateRequest
-	43,  // 96: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountUpdate:input_type -> warehouse.financial_account.v1.FinancialAccountUpdateRequest
-	45,  // 97: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountIdentify:input_type -> warehouse.financial_account.v1.FinancialAccountIdentifyRequest
-	48,  // 98: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountArchive:input_type -> warehouse.financial_account.v1.FinancialAccountArchiveRequest
-	50,  // 99: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountRestore:input_type -> warehouse.financial_account.v1.FinancialAccountRestoreRequest
-	52,  // 100: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountTransfer:input_type -> warehouse.financial_account.v1.FinancialAccountTransferRequest
-	54,  // 101: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCapital:input_type -> warehouse.financial_account.v1.FinancialAccountCapitalRequest
-	56,  // 102: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountReconcile:input_type -> warehouse.financial_account.v1.FinancialAccountReconcileRequest
-	58,  // 103: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountShopSet:input_type -> warehouse.financial_account.v1.FinancialAccountShopSetRequest
-	60,  // 104: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOperationalSet:input_type -> warehouse.financial_account.v1.FinancialAccountOperationalSetRequest
-	65,  // 105: warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticTimeSearch:input_type -> warehouse.financial_account.v1.AnalyticTimeSearchRequest
-	70,  // 106: warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupSearch:input_type -> warehouse.financial_account.v1.AnalyticGroupSearchRequest
-	72,  // 107: warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupMetric:input_type -> warehouse.financial_account.v1.AnalyticGroupMetricRequest
-	20,  // 108: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountList:output_type -> warehouse.financial_account.v1.FinancialAccountListResponse
-	25,  // 109: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountByIds:output_type -> warehouse.financial_account.v1.FinancialAccountByIdsResponse
-	33,  // 110: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOverview:output_type -> warehouse.financial_account.v1.FinancialAccountOverviewResponse
-	40,  // 111: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountLogList:output_type -> warehouse.financial_account.v1.FinancialAccountLogListResponse
-	42,  // 112: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCreate:output_type -> warehouse.financial_account.v1.FinancialAccountCreateResponse
-	44,  // 113: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountUpdate:output_type -> warehouse.financial_account.v1.FinancialAccountUpdateResponse
-	47,  // 114: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountIdentify:output_type -> warehouse.financial_account.v1.FinancialAccountIdentifyResponse
-	49,  // 115: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountArchive:output_type -> warehouse.financial_account.v1.FinancialAccountArchiveResponse
-	51,  // 116: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountRestore:output_type -> warehouse.financial_account.v1.FinancialAccountRestoreResponse
-	53,  // 117: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountTransfer:output_type -> warehouse.financial_account.v1.FinancialAccountTransferResponse
-	55,  // 118: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCapital:output_type -> warehouse.financial_account.v1.FinancialAccountCapitalResponse
-	57,  // 119: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountReconcile:output_type -> warehouse.financial_account.v1.FinancialAccountReconcileResponse
-	59,  // 120: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountShopSet:output_type -> warehouse.financial_account.v1.FinancialAccountShopSetResponse
-	61,  // 121: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOperationalSet:output_type -> warehouse.financial_account.v1.FinancialAccountOperationalSetResponse
-	67,  // 122: warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticTimeSearch:output_type -> warehouse.financial_account.v1.AnalyticTimeSearchResponse
-	71,  // 123: warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupSearch:output_type -> warehouse.financial_account.v1.AnalyticGroupSearchResponse
-	74,  // 124: warehouse.financial_account.v1.FinancialAccountAnalyticService.AnalyticGroupMetric:output_type -> warehouse.financial_account.v1.AnalyticGroupMetricResponse
-	108, // [108:125] is the sub-list for method output_type
-	91,  // [91:108] is the sub-list for method input_type
-	91,  // [91:91] is the sub-list for extension type_name
-	91,  // [91:91] is the sub-list for extension extendee
-	0,   // [0:91] is the sub-list for field type_name
+	0,  // 0: warehouse.financial_account.v1.FinancialAccount.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
+	1,  // 1: warehouse.financial_account.v1.FinancialAccount.provider:type_name -> warehouse.financial_account.v1.FinancialAccountProvider
+	2,  // 2: warehouse.financial_account.v1.FinancialAccount.status:type_name -> warehouse.financial_account.v1.FinancialAccountStatus
+	63, // 3: warehouse.financial_account.v1.FinancialAccount.created_at:type_name -> google.protobuf.Timestamp
+	63, // 4: warehouse.financial_account.v1.FinancialAccount.updated_at:type_name -> google.protobuf.Timestamp
+	13, // 5: warehouse.financial_account.v1.FinancialAccountListRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountListFilter
+	14, // 6: warehouse.financial_account.v1.FinancialAccountListRequest.sort:type_name -> warehouse.financial_account.v1.FinancialAccountListFilterSort
+	4,  // 7: warehouse.financial_account.v1.FinancialAccountListRequest.data_request:type_name -> warehouse.financial_account.v1.FinancialAccountListDataType
+	64, // 8: warehouse.financial_account.v1.FinancialAccountListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	0,  // 9: warehouse.financial_account.v1.FinancialAccountListFilter.types:type_name -> warehouse.financial_account.v1.FinancialAccountType
+	65, // 10: warehouse.financial_account.v1.FinancialAccountListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	66, // 11: warehouse.financial_account.v1.FinancialAccountListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	5,  // 12: warehouse.financial_account.v1.FinancialAccountListFilterSort.account:type_name -> warehouse.financial_account.v1.FinancialAccountRowSort
+	59, // 13: warehouse.financial_account.v1.FinancialAccountRowMapItem.map_data:type_name -> warehouse.financial_account.v1.FinancialAccountRowMapItem.MapDataEntry
+	67, // 14: warehouse.financial_account.v1.FinancialAccountListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	15, // 15: warehouse.financial_account.v1.FinancialAccountListResponseItem.account:type_name -> warehouse.financial_account.v1.FinancialAccountRowMapItem
+	16, // 16: warehouse.financial_account.v1.FinancialAccountListResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountListResponseItem
+	68, // 17: warehouse.financial_account.v1.FinancialAccountListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	19, // 18: warehouse.financial_account.v1.FinancialAccountByIdsRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsFilter
+	6,  // 19: warehouse.financial_account.v1.FinancialAccountByIdsRequest.data_request:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsDataType
+	67, // 20: warehouse.financial_account.v1.FinancialAccountByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	15, // 21: warehouse.financial_account.v1.FinancialAccountByIdsResponseItem.account:type_name -> warehouse.financial_account.v1.FinancialAccountRowMapItem
+	20, // 22: warehouse.financial_account.v1.FinancialAccountByIdsResponseList.items:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsResponseItem
+	60, // 23: warehouse.financial_account.v1.FinancialAccountByIdsResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsResponse.ItemsEntry
+	24, // 24: warehouse.financial_account.v1.FinancialAccountOverviewRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountOverviewFilter
+	7,  // 25: warehouse.financial_account.v1.FinancialAccountOverviewRequest.metric_request:type_name -> warehouse.financial_account.v1.FinancialAccountMetricDataType
+	63, // 26: warehouse.financial_account.v1.FinancialAccountBalanceItem.reconciled_at:type_name -> google.protobuf.Timestamp
+	61, // 27: warehouse.financial_account.v1.FinancialAccountBalanceMapItem.map_data:type_name -> warehouse.financial_account.v1.FinancialAccountBalanceMapItem.MapDataEntry
+	0,  // 28: warehouse.financial_account.v1.FinancialAccountTypeTotalItem.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
+	27, // 29: warehouse.financial_account.v1.FinancialAccountTypeTotalList.items:type_name -> warehouse.financial_account.v1.FinancialAccountTypeTotalItem
+	26, // 30: warehouse.financial_account.v1.FinancialAccountOverviewResponseItem.balance:type_name -> warehouse.financial_account.v1.FinancialAccountBalanceMapItem
+	28, // 31: warehouse.financial_account.v1.FinancialAccountOverviewResponseItem.type_total:type_name -> warehouse.financial_account.v1.FinancialAccountTypeTotalList
+	29, // 32: warehouse.financial_account.v1.FinancialAccountOverviewResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountOverviewResponseItem
+	3,  // 33: warehouse.financial_account.v1.FinancialAccountLog.change_type:type_name -> warehouse.financial_account.v1.FinancialAccountChangeType
+	63, // 34: warehouse.financial_account.v1.FinancialAccountLog.occurred_at:type_name -> google.protobuf.Timestamp
+	63, // 35: warehouse.financial_account.v1.FinancialAccountLog.created_at:type_name -> google.protobuf.Timestamp
+	33, // 36: warehouse.financial_account.v1.FinancialAccountLogListRequest.filter:type_name -> warehouse.financial_account.v1.FinancialAccountLogListFilter
+	34, // 37: warehouse.financial_account.v1.FinancialAccountLogListRequest.sort:type_name -> warehouse.financial_account.v1.FinancialAccountLogListFilterSort
+	8,  // 38: warehouse.financial_account.v1.FinancialAccountLogListRequest.data_request:type_name -> warehouse.financial_account.v1.FinancialAccountLogListDataType
+	64, // 39: warehouse.financial_account.v1.FinancialAccountLogListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	3,  // 40: warehouse.financial_account.v1.FinancialAccountLogListFilter.change_types:type_name -> warehouse.financial_account.v1.FinancialAccountChangeType
+	65, // 41: warehouse.financial_account.v1.FinancialAccountLogListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	9,  // 42: warehouse.financial_account.v1.FinancialAccountLogListFilterSort.log:type_name -> warehouse.financial_account.v1.FinancialAccountLogSort
+	62, // 43: warehouse.financial_account.v1.FinancialAccountLogMapItem.map_data:type_name -> warehouse.financial_account.v1.FinancialAccountLogMapItem.MapDataEntry
+	35, // 44: warehouse.financial_account.v1.FinancialAccountLogListResponseItem.log:type_name -> warehouse.financial_account.v1.FinancialAccountLogMapItem
+	36, // 45: warehouse.financial_account.v1.FinancialAccountLogListResponse.items:type_name -> warehouse.financial_account.v1.FinancialAccountLogListResponseItem
+	68, // 46: warehouse.financial_account.v1.FinancialAccountLogListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	0,  // 47: warehouse.financial_account.v1.FinancialAccountCreateRequest.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
+	1,  // 48: warehouse.financial_account.v1.FinancialAccountCreateRequest.provider:type_name -> warehouse.financial_account.v1.FinancialAccountProvider
+	11, // 49: warehouse.financial_account.v1.FinancialAccountCreateResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
+	11, // 50: warehouse.financial_account.v1.FinancialAccountUpdateResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
+	43, // 51: warehouse.financial_account.v1.FinancialAccountIdentifyRequest.fill_in:type_name -> warehouse.financial_account.v1.FinancialAccountIdentity
+	0,  // 52: warehouse.financial_account.v1.FinancialAccountIdentity.type:type_name -> warehouse.financial_account.v1.FinancialAccountType
+	1,  // 53: warehouse.financial_account.v1.FinancialAccountIdentity.provider:type_name -> warehouse.financial_account.v1.FinancialAccountProvider
+	11, // 54: warehouse.financial_account.v1.FinancialAccountIdentifyResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
+	11, // 55: warehouse.financial_account.v1.FinancialAccountArchiveResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
+	11, // 56: warehouse.financial_account.v1.FinancialAccountRestoreResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
+	31, // 57: warehouse.financial_account.v1.FinancialAccountTransferResponse.logs:type_name -> warehouse.financial_account.v1.FinancialAccountLog
+	10, // 58: warehouse.financial_account.v1.FinancialAccountCapitalRequest.direction:type_name -> warehouse.financial_account.v1.CapitalDirection
+	31, // 59: warehouse.financial_account.v1.FinancialAccountCapitalResponse.log:type_name -> warehouse.financial_account.v1.FinancialAccountLog
+	31, // 60: warehouse.financial_account.v1.FinancialAccountReconcileResponse.log:type_name -> warehouse.financial_account.v1.FinancialAccountLog
+	63, // 61: warehouse.financial_account.v1.FinancialAccountReconcileResponse.reconciled_at:type_name -> google.protobuf.Timestamp
+	11, // 62: warehouse.financial_account.v1.FinancialAccountShopSetResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
+	11, // 63: warehouse.financial_account.v1.FinancialAccountOperationalSetResponse.account:type_name -> warehouse.financial_account.v1.FinancialAccount
+	11, // 64: warehouse.financial_account.v1.FinancialAccountRowMapItem.MapDataEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccount
+	21, // 65: warehouse.financial_account.v1.FinancialAccountByIdsResponse.ItemsEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccountByIdsResponseList
+	25, // 66: warehouse.financial_account.v1.FinancialAccountBalanceMapItem.MapDataEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccountBalanceItem
+	31, // 67: warehouse.financial_account.v1.FinancialAccountLogMapItem.MapDataEntry.value:type_name -> warehouse.financial_account.v1.FinancialAccountLog
+	12, // 68: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountList:input_type -> warehouse.financial_account.v1.FinancialAccountListRequest
+	18, // 69: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountByIds:input_type -> warehouse.financial_account.v1.FinancialAccountByIdsRequest
+	23, // 70: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOverview:input_type -> warehouse.financial_account.v1.FinancialAccountOverviewRequest
+	32, // 71: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountLogList:input_type -> warehouse.financial_account.v1.FinancialAccountLogListRequest
+	38, // 72: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCreate:input_type -> warehouse.financial_account.v1.FinancialAccountCreateRequest
+	40, // 73: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountUpdate:input_type -> warehouse.financial_account.v1.FinancialAccountUpdateRequest
+	42, // 74: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountIdentify:input_type -> warehouse.financial_account.v1.FinancialAccountIdentifyRequest
+	45, // 75: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountArchive:input_type -> warehouse.financial_account.v1.FinancialAccountArchiveRequest
+	47, // 76: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountRestore:input_type -> warehouse.financial_account.v1.FinancialAccountRestoreRequest
+	49, // 77: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountTransfer:input_type -> warehouse.financial_account.v1.FinancialAccountTransferRequest
+	51, // 78: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCapital:input_type -> warehouse.financial_account.v1.FinancialAccountCapitalRequest
+	53, // 79: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountReconcile:input_type -> warehouse.financial_account.v1.FinancialAccountReconcileRequest
+	55, // 80: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountShopSet:input_type -> warehouse.financial_account.v1.FinancialAccountShopSetRequest
+	57, // 81: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOperationalSet:input_type -> warehouse.financial_account.v1.FinancialAccountOperationalSetRequest
+	17, // 82: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountList:output_type -> warehouse.financial_account.v1.FinancialAccountListResponse
+	22, // 83: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountByIds:output_type -> warehouse.financial_account.v1.FinancialAccountByIdsResponse
+	30, // 84: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOverview:output_type -> warehouse.financial_account.v1.FinancialAccountOverviewResponse
+	37, // 85: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountLogList:output_type -> warehouse.financial_account.v1.FinancialAccountLogListResponse
+	39, // 86: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCreate:output_type -> warehouse.financial_account.v1.FinancialAccountCreateResponse
+	41, // 87: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountUpdate:output_type -> warehouse.financial_account.v1.FinancialAccountUpdateResponse
+	44, // 88: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountIdentify:output_type -> warehouse.financial_account.v1.FinancialAccountIdentifyResponse
+	46, // 89: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountArchive:output_type -> warehouse.financial_account.v1.FinancialAccountArchiveResponse
+	48, // 90: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountRestore:output_type -> warehouse.financial_account.v1.FinancialAccountRestoreResponse
+	50, // 91: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountTransfer:output_type -> warehouse.financial_account.v1.FinancialAccountTransferResponse
+	52, // 92: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountCapital:output_type -> warehouse.financial_account.v1.FinancialAccountCapitalResponse
+	54, // 93: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountReconcile:output_type -> warehouse.financial_account.v1.FinancialAccountReconcileResponse
+	56, // 94: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountShopSet:output_type -> warehouse.financial_account.v1.FinancialAccountShopSetResponse
+	58, // 95: warehouse.financial_account.v1.FinancialAccountService.FinancialAccountOperationalSet:output_type -> warehouse.financial_account.v1.FinancialAccountOperationalSetResponse
+	82, // [82:96] is the sub-list for method output_type
+	68, // [68:82] is the sub-list for method input_type
+	68, // [68:68] is the sub-list for extension type_name
+	68, // [68:68] is the sub-list for extension extendee
+	0,  // [0:68] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_financial_account_v1_financial_account_proto_init() }
@@ -5566,20 +4395,15 @@ func file_warehouse_financial_account_v1_financial_account_proto_init() {
 		(*FinancialAccountIdentifyRequest_FillIn)(nil),
 		(*FinancialAccountIdentifyRequest_MoveIntoAccountId)(nil),
 	}
-	file_warehouse_financial_account_v1_financial_account_proto_msgTypes[54].OneofWrappers = []any{
-		(*AnalyticGroupKey_AccountId)(nil),
-		(*AnalyticGroupKey_Provider)(nil),
-		(*AnalyticGroupKey_ChangeType)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_financial_account_v1_financial_account_proto_rawDesc), len(file_warehouse_financial_account_v1_financial_account_proto_rawDesc)),
-			NumEnums:      14,
-			NumMessages:   65,
+			NumEnums:      11,
+			NumMessages:   52,
 			NumExtensions: 0,
-			NumServices:   2,
+			NumServices:   1,
 		},
 		GoTypes:           file_warehouse_financial_account_v1_financial_account_proto_goTypes,
 		DependencyIndexes: file_warehouse_financial_account_v1_financial_account_proto_depIdxs,

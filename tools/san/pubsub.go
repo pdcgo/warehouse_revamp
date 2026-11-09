@@ -24,6 +24,7 @@ import (
 //
 //	go run ./tools/san pubsub ensure --project warehouse-dev --emulator
 //	go run ./tools/san pubsub redrive --project warehouse-dev --topic order-placed --emulator
+//	go run ./tools/san pubsub --project warehouse-dev --emulator releases list
 func pubsubCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "pubsub",
@@ -42,6 +43,7 @@ func pubsubCommand() *cli.Command {
 		Commands: []*cli.Command{
 			pubsubEnsureCommand(),
 			pubsubRedriveCommand(),
+			pubsubReleasesCommand(),
 		},
 	}
 }
@@ -278,6 +280,19 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "order-status-changed",
 			Filter: `attributes.event_type = "warehouse.events.v1.OrderStatusChanged"`,
 		},
+		// Return Arrived — the return accept's own event (the-accept-is-the-status-return-completed).
+		{
+			ID:     "selling-order-fold-return-accepted",
+			Topic:  "order-return-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderReturnAccepted"`,
+		},
+		// liability_service's courier charge at a RETURN — mirrors liability_service.OrderReturnAcceptedSubscription. The
+		// SAME topic as selling's fold, its OWN subscription (a-return-may-carry-the-couriers-ask).
+		{
+			ID:     "liability-order-return-accepted",
+			Topic:  "order-return-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderReturnAccepted"`,
+		},
 		// financial_account_service's withdrawal listener — mirrors financial_account_service.WithdrawalSubscription.
 		// The SAME topic as settlement's fold, its OWN subscription: each consumer keeps its own delivery state.
 		{
@@ -291,6 +306,93 @@ func declaredSubscriptions() []event_source.Subscription {
 			ID:     "financial-account-team-payment",
 			Topic:  "liability-payment-accepted",
 			Filter: `attributes.event_type = "warehouse.events.v1.LiabilityPaymentAccepted"`,
+		},
+		// financial_account_service's restock-payment listener — mirrors financial_account_service.Restock*Subscription
+		// (a-created-restock-tells-the-financial-account, a-restock-names-its-paying-account). One per topic, all three
+		// to the one listener: the payment out at create, the difference or the move on an edit, the refund on cancel.
+		{
+			ID:     "financial-account-restock-created",
+			Topic:  "restock-created",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockCreated"`,
+		},
+		{
+			ID:     "financial-account-restock-updated",
+			Topic:  "restock-updated",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockUpdated"`,
+		},
+		{
+			ID:     "financial-account-restock-cancelled",
+			Topic:  "restock-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockCancelled"`,
+		},
+		// financial_account_service's expense-payment listener — mirrors financial_account_service.Expense*Subscription
+		// (an-expense-must-name-the-account-that-paid, a-correction-follows-the-expenses-account): the expense out of the
+		// account that paid, `ads_expense` or `expense`, and each correction's signed difference on that same account.
+		{
+			ID:     "financial-account-expense-created",
+			Topic:  "expense-created",
+			Filter: `attributes.event_type = "warehouse.events.v1.ExpenseCreated"`,
+		},
+		{
+			ID:     "financial-account-expense-adjusted",
+			Topic:  "expense-adjusted",
+			Filter: `attributes.event_type = "warehouse.events.v1.ExpenseAdjusted"`,
+		},
+		// liability_service's courier charge at a TRANSFER's door — mirrors
+		// liability_service.WarehouseTransferAcceptedSubscription (balance-posts-the-transfers-on-site-debt-from-the-event,
+		// a-transfer-charge-is-a-transfer-fee): the selling team owes the receiving warehouse, a `transfer_fee`.
+		{
+			ID:     "liability-warehouse-transfer-accepted",
+			Topic:  "warehouse-transfer-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferAccepted"`,
+		},
+		// financial_account_service's transfer-shipping listener — mirrors
+		// financial_account_service.WarehouseTransfer*Subscription (the-shipping-expense-reaches-the-account-by-event,
+		// a-transfers-shipping-posts-as-an-expense): the shipping cost out of the paying account as `expense`, the
+		// difference or the move on an edit, the refund on cancel.
+		{
+			ID:     "financial-account-warehouse-transfer-created",
+			Topic:  "warehouse-transfer-created",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferCreated"`,
+		},
+		{
+			ID:     "financial-account-warehouse-transfer-updated",
+			Topic:  "warehouse-transfer-updated",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferUpdated"`,
+		},
+		{
+			ID:     "financial-account-warehouse-transfer-cancelled",
+			Topic:  "warehouse-transfer-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferCancelled"`,
+		},
+		// inventory_service's compensation listener — mirrors inventory_service.InventoryTxCancelSubscription
+		// (the-compensation-event-is-inventory-tx-cancel, inventory-tx-cancel-is-an-order-event): the take of an order
+		// create that failed after it is released by its key. Its only subscriber. Its dead-letter is what catches a
+		// cancel that kept meeting a stock count past the retry limit (a-cancel-still-meets-the-count-first).
+		{
+			ID:     "inventory-tx-cancel",
+			Topic:  "inventory-tx-cancel",
+			Filter: `attributes.event_type = "warehouse.events.v1.InventoryTxCancel"`,
+		},
+		// inventory_service's cancelled-order listener — mirrors inventory_service.InventoryOrderCancelledSubscription
+		// (inventory-returns-stock-on-order-cancelled): the cancelled order's take released by its key. Its dead-letter
+		// catches a release that kept meeting a stock count past the retry limit (a-cancel-still-meets-the-count-first).
+		{
+			ID:     "inventory-order-cancelled",
+			Topic:  "order-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
+		},
+		// supplier_service's sales fold — mirrors supplier_service.SalesPlacedSubscription and SalesCancelledSubscription
+		// (penjualan-is-the-selling-value-on-the-order-day): Penjualan added on the order's day, taken back on the cancel's.
+		{
+			ID:     "supplier-order-placed",
+			Topic:  "order-placed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderPlaced"`,
+		},
+		{
+			ID:     "supplier-order-cancelled",
+			Topic:  "order-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
 		},
 	}
 }

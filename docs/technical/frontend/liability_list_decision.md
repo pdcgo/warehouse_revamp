@@ -71,6 +71,8 @@ The **80% warning** is a per-row badge, not a tile ([Q9](../balance/team_balance
 still open on where the debtor's half lives). A tile that said *"3 teams near their limit"* would be a
 fifth summary number nobody asked for.
 
+✅ Built 2026-11-07 — the four tiles are the order list's `SummaryStrip` of `SummaryCard`s ([a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip)), still read from the server's whole-set summary; the list pages with `GrowingPager`.
+
 ---
 
 ## the-default-terms-row-is-a-dialog-on-the-list
@@ -113,7 +115,7 @@ Verified against the shipped contract — both halves already exist and are alre
 | trigger | one toolbar action on `/liability`, beside the search — **not** a row, because the default is not a counterparty |
 | body | `TermsEditDialog` with no `editing` counterparty and no `options` picker — the counterparty is fixed at 0 |
 | wording | the dialog says *"terms for any team without their own"*. It must never read as *"terms for team 0"* |
-| ⚠ file move | `TermsEditDialog` currently lives in [pages/liability-detail/components/](../../../frontend/src/pages/liability-detail/components/TermsEditDialog.tsx). A second page importing it makes it a domain component — it moves to **`features/liability/`**, per CLAUDE.md's placement rule. `CreditMeter` moves with it: the dialog imports `limitStateOf` from it |
+| ⚠ file move | `TermsEditDialog` currently lives in [pages/liability-detail/components/](../../../frontend/src/features/liability/TermsEditDialog.tsx). A second page importing it makes it a domain component — it moves to **`features/liability/`**, per CLAUDE.md's placement rule. `CreditMeter` moves with it: the dialog imports `limitStateOf` from it |
 | the pair section | shows the inherited value with a **"using the default"** marker until somebody overrides it — an exception to a rule should look like one |
 
 ### ⛔ A synthetic `/liability/0` route stays refused

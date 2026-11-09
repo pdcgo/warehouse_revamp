@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { TEH, TEPUNG, bundleFixture } from "../../../.storybook/bundleFixtures";
-import { users } from "../../../.storybook/fixtures";
+import { FORMER_USER_ID, users } from "../../../.storybook/fixtures";
+import { bundleCreatedByForStory } from "../../../.storybook/bundleStub";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { withProductState } from "../../../.storybook/productScenario";
 import { asRole } from "../../../.storybook/sessionScenario";
@@ -52,6 +53,18 @@ async function loaded(canvasElement: HTMLElement) {
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 export const Default: Story = {};
+
+// A FORMER USER (erase-keeps-the-row): a bundle made by somebody since erased still names its maker — "Former user
+// #69", never the synthetic username `erased69`.
+export const MadeByAFormerUser: Story = {
+  beforeEach: () => bundleCreatedByForStory(DAPUR.id, FORMER_USER_ID),
+  play: async ({ canvasElement }) => {
+    const row = (await loaded(canvasElement)).getByTestId(`bundle-row-${DAPUR.id}`);
+
+    await waitFor(() => expect(row).toHaveTextContent("Former user #69"));
+    await expect(row).not.toHaveTextContent("erased69");
+  },
+};
 
 // A PHONE READS EACH BUNDLE AS A BLOCK (a-phone-reads-each-line-as-a-block): its name, what is in it, its actions at
 // the foot. No headings, so the sort is the Filter sheet's.
@@ -165,7 +178,7 @@ export const ALockedBorrowedLine: Story = {
 export const AnArchivedLine: Story = {
   beforeEach: () => {
     standingAs(Role.SELLING_OWNER)();
-    withProductState(TEH, { deleted: true })();
+    withProductState(TEH, { archived: true })();
   },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);

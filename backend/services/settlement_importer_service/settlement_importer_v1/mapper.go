@@ -1,6 +1,9 @@
 package settlement_importer_v1
 
 import (
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -31,6 +34,7 @@ var reasonEnum = map[string]settlement_importerv1.UploadedFileLineReason{
 	reasonRefused:             settlement_importerv1.UploadedFileLineReason_UPLOADED_FILE_LINE_REASON_REFUSED,
 	reasonRepeatsOrderDetails: settlement_importerv1.UploadedFileLineReason_UPLOADED_FILE_LINE_REASON_REPEATS_ORDER_DETAILS,
 	reasonFailedWithdrawal:    settlement_importerv1.UploadedFileLineReason_UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL,
+	reasonSeveralOrders:       settlement_importerv1.UploadedFileLineReason_UPLOADED_FILE_LINE_REASON_SEVERAL_ORDERS,
 }
 
 var reasonText = reverseOf(reasonEnum)
@@ -153,6 +157,7 @@ func lineToProto(line *settlement_importer_service_models.UploadedFileLine) *set
 		Reason:          reasonEnum[line.Reason],
 		Detail:          line.Detail,
 		SettlementLogId: line.SettlementLogID,
+		FoundOrderIds:   parseIDs(line.FoundOrderIDs),
 	}
 
 	if line.OccurredOn != nil {
@@ -160,6 +165,41 @@ func lineToProto(line *settlement_importer_service_models.UploadedFileLine) *set
 	}
 
 	return out
+}
+
+// joinIDs writes order ids as found_order_ids stores them — ascending, comma-joined; empty for none.
+func joinIDs(ids []uint64) string {
+	sorted := append([]uint64(nil), ids...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+
+	parts := make([]string, 0, len(sorted))
+	for _, id := range sorted {
+		parts = append(parts, formatID(id))
+	}
+
+	return strings.Join(parts, ",")
+}
+
+// parseIDs reads found_order_ids back. A part that is not a number is dropped — the column is only ever written by
+// joinIDs.
+func parseIDs(text string) []uint64 {
+	if text == "" {
+		return nil
+	}
+
+	parts := strings.Split(text, ",")
+	ids := make([]uint64, 0, len(parts))
+
+	for _, part := range parts {
+		id, err := strconv.ParseUint(part, 10, 64)
+		if err != nil {
+			continue
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids
 }
 
 // lineName is the GENERAL slice's name — the line's order ref, or its description when it has none.

@@ -20,6 +20,9 @@ type RestockLog struct {
 	// WHO, as an opaque user_service id (no FK). 0 = not recorded — true of a backfilled row whose actor nobody
 	// captured.
 	ActorUserID uint64
+	// The actor was Root or the Administrator, acting in a team they hold no role in (an-override-is-stamped-in-every-service,
+	// 00034). It sits HERE and not on the restock, which carries one actor per act and so could not say which act it meant.
+	IsOverride  bool
 	Description string
 
 	// WHEN IT HAPPENED. The writer sets it to the instant of the change it records, so the trail and the column the

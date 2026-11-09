@@ -42,11 +42,11 @@ export const TheStockChipRules: Story = {
   play: async () => {
     const stock = (readyQty: bigint): OwnerStockRow => ({
       readyQty,
-      readyValue: 0n,
+      readyValue: 0,
       ongoingQty: 0n,
-      ongoingValueEst: 0n,
-      costMin: 0n,
-      costMax: 0n,
+      ongoingValueEst: 0,
+      costMin: 0,
+      costMax: 0,
       costKnown: false,
       oldestBatchUnix: 1n,
       lastRestockUnix: 0n,

@@ -167,7 +167,7 @@ flowchart LR
 | the read | one call to product_service, every line's product by id, **before** the transaction opens |
 | what is checked | private · reserved stock — your §What We Should Check |
 | a line not allowed | the take returns *Product Not Allowed* and writes nothing |
-| where the rules live | inventory's take, beside the stock they protect — the order's finalize question is narrowed to match ([finalize-enforces-every-rule-on-both-doors](../order/context_clarify.md#finalize-enforces-every-rule-on-both-doors)) |
+| where the rules live | inventory's take, beside the stock they protect — the order's finalize question is narrowed to match ([finalize-enforces-every-rule-on-both-doors](../order/context_decision.md#the-debt-check-runs-before-the-take)) |
 
 **What it does NOT settle** — all in [order_clarify](./order_clarify.md):
 
@@ -319,6 +319,9 @@ flowchart LR
 | still true later | a move leaves sold units where they are ([a-move-leaves-sold-units-on-their-rack](./placement_decision.md#a-move-leaves-sold-units-on-their-rack)) |
 | the receipt | the shipping label customer service uploaded — printed for the parcel, carries no racks |
 | the build | ⚠ `StockPickLocations` takes `ref = "order:<id>"` — to change when the take is built |
+
+✅ **Built 2026-11-04.** `StockPickLocations` takes `transaction_id` (required) and reads `product_placement_logs` by it and the caller's warehouse; `ref` is removed (reserved). The pick page sends `order.transactionId` (selling 00036). Tests `stock_pick_locations_test.go`; perf 1 query ≈0.5 ms.
+
 
 ## missing-goods-send-the-order-back-to-pending
 

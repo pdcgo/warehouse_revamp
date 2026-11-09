@@ -30,7 +30,7 @@ yours; this one is mine. Answered points are **deleted**, so this is always the 
 
 ## ⛔ `# Statistic Design.` item 1 links to a file that no longer exists
 
-*"we rely [event_library](../event/library.md) for processing event."* — `mutation_and_ledger.md:154`.
+*"we rely `[event_library](../event/library.md)` for processing event."* — `mutation_and_ledger.md:154`.
 
 `docs/technical/event/library.md` was **deleted** on the owner's instruction
 ([the-library-doc-is-absorbed](../event_architecture/context_decision.md#the-library-doc-is-absorbed)),

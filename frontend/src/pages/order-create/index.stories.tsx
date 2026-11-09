@@ -7,13 +7,15 @@ import { ORDER_CREATE_META } from "./stories/kit";
 // stories leading it. Its rules are grouped by the part of the screen they are about, one file each in ./stories
 // (stories-are-grouped-by-the-part-of-the-screen):
 //
-//   Bundles    the bundle card: its dialog, items OR bundles, a bundle's products as real lines
-//   Create     what Create needs, the checks it asks, and where it goes
-//   Header     Back and its guard; the form opened from a draft or from a product's page
-//   Lines      the product lines: none to start, stock and HPP, a short line, two batches
-//   Receipt    the receipt file and its two numbers, and the label read back
-//   Totals     the warehouse fee, the debt limits, what the invoice charges
-//   Warehouse  the band that leads the form: the team's default, a warehouse with no rate
+//   Address       the draft's address: pre-filled on one match, still editable, empty on none
+//   Bundles       the bundle card: its dialog, items OR bundles, a bundle's products as real lines
+//   Create        what Create needs, the checks it asks, where it goes, and the key every submit mints
+//   DuplicateRef  a live order or a draft on this shop + ref, named before Create: Create Anyway or Go Back
+//   Header        Back and its guard; the form opened from a draft (one on a closed shop too) or from a product's page
+//   Lines         the product lines: none to start, stock and HPP, a short line, two batches
+//   Receipt       the receipt file and its two numbers, and the label read back
+//   Totals        the warehouse fee, the debt limits and the warning at one, what the invoice charges
+//   Warehouse     the band that leads the form: the team's default, a warehouse with no rate
 
 const meta = {
   title: "Pages/Order/OrderCreate",

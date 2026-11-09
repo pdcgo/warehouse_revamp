@@ -28,8 +28,7 @@ file is always the current open set, never a log.
 
 Siblings: [user_context](./user/context_clarify.md) · [product_context](./product/context_clarify.md) ·
 [balance_context](./balance/context_clarify.md) · [order_context](./order/context_clarify.md) ·
-[inventory_context](./inventory/context_clarify.md) ·
-[systems/systems_product_context](./product/systems_clarify.md).
+[inventory_context](./inventory/context_clarify.md).
 
 ---
 
@@ -167,7 +166,7 @@ negative half — the doc that defines the four teams' responsibilities says who
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **"provide transparency accounting" (§covered 3) is the project's third stated purpose and has no definition, no audience and no test.** Transparent *to whom* — the selling team reading what the warehouse charged it, or the owner reading the whole business? It cannot be satisfied ambiguously: it is the thing the warehouse and the selling team will argue about, the debt threshold gives that argument teeth, and [admin-team-manages-all-resource](#admin-team-manages-all-resource) now adds a third party who can change the numbers being argued over. | State it as a **provable claim**: "any team can see, for any charge against it, the event that caused it, the amount frozen at that moment, and **who** recorded it — including when that person was not on their team." Testable, and it drives the `actor` field every ledger then needs. |
+| **1** | ✅ **Resolved 2026-10-31** — [transparency-is-every-charge-traceable](./business_level_decision.md#transparency-is-every-charge-traceable), the claim as recommended. Was: **"provide transparency accounting" (§covered 3) is the project's third stated purpose and has no definition, no audience and no test.** Transparent *to whom* — the selling team reading what the warehouse charged it, or the owner reading the whole business? It cannot be satisfied ambiguously: it is the thing the warehouse and the selling team will argue about, the debt threshold gives that argument teeth, and [admin-team-manages-all-resource](#admin-team-manages-all-resource) now adds a third party who can change the numbers being argued over. | State it as a **provable claim**: "any team can see, for any charge against it, the event that caused it, the amount frozen at that moment, and **who** recorded it — including when that person was not on their team." Testable, and it drives the `actor` field every ledger then needs. |
 | **2** | **"Responsibility" is still used for two different things and the money hangs on the difference.** §Warehouse 3 says the warehouse *handles* returns, broken and lost. §Warehouse 6 says it has no *responsibility* for broken/lost at receiving. The first means "does the work", the second means "bears the cost". `inventory/context.md` has adopted the sharper word — *"its shortfall a warehouse **liability**"* — and this doc still has not. | Use both words here: **handles** (does the physical work) vs **liable for** (pays). §3 is *handles*, §5 and §6 are *liable*. |
 | **3** | **[warehouse-reimburses-unit-price](#warehouse-reimburses-unit-price) now names a price and still not WHICH ONE.** A team's stock is FIFO layers at different unit prices — that is the whole point of [batch-fifo-pricing](./product/context_clarify.md#batch-fifo-pricing) — so "Unit Price" singular has no referent until the broken unit is tied to a **batch**. The cheap layer and the dear layer can differ by a lot, and the warehouse is paying the difference. Worse, a unit found short at opname is by definition **untraceable to a layer**, so the rule has no number at all in the case that produces the most losses. | Say which layer: **the batch the unit actually came from**, when it is known — the warehouse pays for what it broke. When it is **not** known (an opname shortfall), name a fallback rather than leaving it undefined: I would draw the shortfall **FIFO from the oldest layers**, the same order a sale would have consumed them, so the stock that remains is the stock the books say remains. |
 | **4** | **§Admin now says "manage all resource" and that is a very large sentence.** It answers whether Admin acts — it does — but not *what*. Managing a team's users is one thing; adjusting a stock count, editing a cross markup, or posting a balance entry are each a different order of power, and the third would make Admin a second set of books. | Enumerate it in §Admin: I would allow **manage users and roles · override a control · unblock · read everything**, and forbid **posting money** and **changing a count** — the two acts that would let a non-owner rewrite what another team owes. And every admin act is **recorded with actor and reason**, which is [Critique 1](#critique) again. |
@@ -179,20 +178,13 @@ negative half — the doc that defines the four teams' responsibilities says who
 
 ## Question
 
-1. **What exactly may the Admin team manage — users and controls, or also counts and money?**
-   ([Critique 4](#critique)) **→ I recommend users, roles, overrides and reads — never a posting or a count.**
-2. **WHICH batch's Unit Price does the warehouse reimburse** — the broken unit's own layer, or a
-   fallback when an opname shortfall cannot be traced to one? ([Critique 3](#critique))
-   **→ I recommend the unit's own batch when known, and FIFO from the oldest layers when it is not.**
-3. **Can a TEAM be two types?** — the person half is now answered (`user_context.md` §General: yes).
-   ([Critique 5](#critique)) **→ I recommend exactly one type per team.**
-4. **Who bears a parcel lost after handover to the courier?** ([Critique 6](#critique))
-   **→ I recommend the selling team.**
-5. **What does "transparency accounting" have to prove, and to whom?** ([Critique 1](#critique))
-6. **Is §Warehouse 8 a PROMOTION of placement to a first-class capability, or a restatement of the clause
-   already in §Warehouse 4?** ([Critique 7](#critique))
-   **→ I recommend promotion, with the clause folded out of item 4 — and if it is a restatement, delete one
-   rather than leaving both.**
+1. ✅ **Answered — [the-admin-team-monitors-all-and-manages-its-own](./user/context_decision.md#the-admin-team-monitors-all-and-manages-its-own)**: monitor all, manage own — it reads every warehouse and selling team, and writes only inside itself. Kept as a line so the numbers hold.
+2. ✅ **Answered — [a-shortage-writes-a-row-per-batch](./inventory/opname_decision.md#a-shortage-writes-a-row-per-batch)**: oldest batch first, as a sale takes — one row per batch, each at that batch's own price. Kept as a line so the numbers hold.
+3. ✅ *(2026-11-02)* **Answered: exactly one** — [a-team-has-exactly-one-type](./business_level_decision.md#a-team-has-exactly-one-type). Kept as a line so the numbers hold.
+4. ✅ **Answered — [a-lost-parcel-is-settled-by-hand](./order/context_decision.md#a-lost-parcel-is-settled-by-hand)**: not the warehouse — custody ends at handover; CS enters the platform's claim by hand on the order's settlement. Kept as a line so the numbers hold.
+5. ✅ *(2026-10-31)* **Answered: every charge a team bears is traceable** — [transparency-is-every-charge-traceable](./business_level_decision.md#transparency-is-every-charge-traceable):
+   its cause, its frozen amount and who recorded it, never overwritten. Kept as a line so the numbers hold.
+6. ✅ *(2026-11-02)* **Answered: a promotion** — [placement-is-a-context-of-its-own](./business_level_decision.md#placement-is-a-context-of-its-own). Kept as a line so the numbers hold.
 
 ---
 

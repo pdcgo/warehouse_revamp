@@ -15,8 +15,10 @@ import { OrderDraftsPage } from "./index";
 //   | story                           | the rule it pins                                           |
 //   | ------------------------------- | ---------------------------------------------------------- |
 //   | Default                         | the stage strip with Drafts active, one row per draft       |
-//   | EachRowSaysWhatIsLeft           | "1 of 3 unmapped" / "Ready" — not a bare yes/no              |
+//   | EachRowSaysWhatIsLeft           | the gaps / "Ready" — not a bare yes/no; Baris a plain count  |
 //   | NoDateOrNoPriceIsNotReady       | Promote refuses both, so the list never calls either ready   |
+//   | NoAddressOrNoCourierIsNotReady  | the address line and the courier are gaps too                |
+//   | TheListCountsNoMapping          | no "unmapped" count and no Unmapped lines gap — ever         |
 //   | TheSummaryCountsWhatItCan       | total and oldest are real; ready is this page, and marked    |
 //   | WhatIsLeftSitsUnderTheReference | first gap named, the rest counted, all on the title          |
 //   | TheRowIsRealFieldsOnly          | shop and author are the draft's own — no invented cell       |
@@ -31,11 +33,26 @@ import { OrderDraftsPage } from "./index";
 const SELLER = teams[1]!; // Toko Melati (12) — the only team with drafts
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 
-const UNMAPPED = orderDrafts.find((d) => d.unmappedItemCount > 0)!; // 201
-const READY = orderDrafts.find((d) => d.unmappedItemCount === 0)!; // 202
+// A draft stores no mapping (a-draft-stores-no-mapping), so the list counts none (the-drafts-list-counts-no-mapping):
+// what keeps a draft from Ready is a field it lacks, never a line.
+const OPEN = orderDrafts.find((d) => d.id === 201n)!; // no order date, no sell price
+const READY = orderDrafts.find((d) => d.id === 202n)!;
 // Each one field short of READY — the two Promote refusals a summary row can read.
-const NO_DATE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platformCreatedAtUnix === 0n)!; // 203
-const NO_PRICE = orderDrafts.find((d) => d.unmappedItemCount === 0 && d.platformTotal === 0n)!; // 204
+const NO_DATE = orderDrafts.find((d) => d.id === 203n)!; // a `manual` draft: its ref too
+const NO_PRICE = orderDrafts.find((d) => d.id === 204n)!;
+
+// Draft 202 with one more field taken away, for the story that needs it — restored after.
+function draft202Without(change: (d: typeof READY) => void) {
+  return () => {
+    const was = { shipmentChannelId: READY.shipmentChannelId, address: READY.address };
+    change(READY);
+
+    return () => {
+      READY.shipmentChannelId = was.shipmentChannelId;
+      READY.address = was.address;
+    };
+  };
+}
 
 const Routed = routedPage(
   [
@@ -76,7 +93,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId(`draft-row-${UNMAPPED.id}`)).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId(`draft-row-${OPEN.id}`)).toBeInTheDocument());
     await expect(canvas.getByTestId(`draft-row-${READY.id}`)).toBeInTheDocument();
   },
 };
@@ -94,26 +111,65 @@ export const Mobile: Story = {
 /**
  * WHAT IS LEFT TO DO, SPELLED OUT — not reduced to ready / not-ready.
  *
- * Somebody scanning forty drafts is choosing which to open next, and "one line unmapped" is a
- * different amount of work from "needs a warehouse". A draft with nothing left says Ready.
+ * Somebody scanning forty drafts is choosing which to open next, and "no sell price" is a different amount of work
+ * from "needs a warehouse". A draft with nothing left says Ready. *Baris* is the line count only.
  */
 export const EachRowSaysWhatIsLeft: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const unmapped = await canvas.findByTestId(`draft-unmapped-${UNMAPPED.id}`);
-    await expect(unmapped).toHaveTextContent(
-      `${UNMAPPED.unmappedItemCount} of ${UNMAPPED.itemCount}`,
-    );
+    await expect(await canvas.findByTestId(`draft-gaps-${OPEN.id}`)).toHaveTextContent("Order date");
     await expect(canvas.getByTestId(`draft-ready-${READY.id}`)).toBeInTheDocument();
-    await expect(canvas.queryByTestId(`draft-ready-${UNMAPPED.id}`)).toBeNull();
+    await expect(canvas.queryByTestId(`draft-ready-${OPEN.id}`)).toBeNull();
+    await expect(canvas.getByTestId(`draft-lines-${OPEN.id}`)).toHaveTextContent(String(OPEN.itemCount));
+    await expect(canvas.getByTestId(`draft-lines-${READY.id}`)).toHaveTextContent(String(READY.itemCount));
+  },
+};
+
+/**
+ * NO MAPPING ON THE LIST (the-drafts-list-counts-no-mapping): a draft stores none, so no row says "N of M unmapped" and
+ * no gap says *Unmapped lines* — the lines are mapped in the order form at Create, and READY (202, whose lines no one
+ * has mapped) is Ready.
+ */
+export const TheListCountsNoMapping: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId(`draft-ready-${READY.id}`)).toBeInTheDocument();
+    await expect(canvas.queryByTestId(/^draft-unmapped-/)).toBeNull();
+    await expect(canvas.getByTestId("order-drafts-table")).not.toHaveTextContent(/unmapped/i);
+
+    for (const d of orderDrafts.filter((x) => x.teamId === SELLER.id && x.id !== READY.id)) {
+      await expect(canvas.getByTestId(`draft-gaps-${d.id}`).getAttribute("title")).not.toMatch(/unmapped/i);
+    }
+  },
+};
+
+/**
+ * NOT READY WITHOUT AN ADDRESS OR A COURIER (the-drafts-list-counts-no-mapping: Ready = shop, warehouse, customer,
+ * address, courier, and every other gap filled). Draft 202 with its courier taken away names *Courier*; with its street
+ * line emptied, *Address*.
+ */
+export const NoAddressOrNoCourierIsNotReady: Story = {
+  beforeEach: draft202Without((d) => {
+    d.shipmentChannelId = 0n;
+    d.address = { ...d.address, addressLine: "" };
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const gaps = await canvas.findByTestId(`draft-gaps-${READY.id}`);
+    await expect(gaps).toHaveTextContent("Address +1");
+    await expect(gaps).toHaveAttribute("title", "Address · Courier");
+    await expect(canvas.queryByTestId(`draft-ready-${READY.id}`)).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId("draft-summary-ready-value")).toHaveTextContent(`0 of ${orderDrafts.length}`));
   },
 };
 
 /**
  * NOT READY WITHOUT THE ORDER DATE OR THE SELL PRICE — Promote refuses both
  * (platform-created-at-is-required-at-finalize, platform-total-is-required-at-finalize), so a list that called either
- * draft Ready would send somebody to a button that turns them away. Every line mapped. 204 is an app's draft, one field
+ * draft Ready would send somebody to a button that turns them away. 204 is an app's draft, one field
  * short. 203 is a `manual` one, so its ref is still to be typed too — its second gap
  * (an-order-ref-is-required-by-the-rpc).
  */
@@ -146,14 +202,13 @@ export const AWarehouseHasNoDrafts: Story = {
     const canvas = within(canvasElement);
 
     await waitFor(() => expect(canvas.getByTestId("order-drafts-empty")).toBeInTheDocument());
-    await expect(canvas.queryByTestId(`draft-row-${UNMAPPED.id}`)).toBeNull();
+    await expect(canvas.queryByTestId(`draft-row-${OPEN.id}`)).toBeNull();
   },
 };
 
 /**
- * THREE NUMBERS, and only the third is partial. The total is the server's page count, the oldest is one
- * ASC row off the same RPC (201 was written first), and "ready" counts the page on screen — which its
- * label says, and which carries a ⚠.
+ * THREE NUMBERS, all of the whole set. The total is the server's page count, the oldest is one ASC row off the same
+ * RPC (201 was written first), and "ready" is OrderDraftList's `ready_count` (#16) — no ⚠ and no "on this page" left.
  */
 export const TheSummaryCountsWhatItCan: Story = {
   play: async ({ canvasElement }) => {
@@ -169,24 +224,26 @@ export const TheSummaryCountsWhatItCan: Story = {
     await expect(within(ready).getByTestId("draft-summary-ready-value")).toHaveTextContent(
       `1 of ${orderDrafts.length}`,
     );
-    await expect(within(ready).getByTestId("not-implemented-readyCount")).toBeInTheDocument();
+    await expect(within(ready).queryByTestId("not-implemented-readyCount")).toBeNull();
+    await expect(ready).not.toHaveTextContent("on this page");
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
   },
 };
 
 /**
  * WHAT IS LEFT SITS UNDER THE REFERENCE — where the order list puts the stage. The first gap is named
- * and the rest counted, so the cell stays two lines; every gap is on the badge's title. 201 is short of three,
- * named in the order the detail page's Promote reasons list them.
+ * and the rest counted, so the cell stays two lines; every gap is on the badge's title. 201 is short of two,
+ * named in the order draftGaps lists them.
  */
 export const WhatIsLeftSitsUnderTheReference: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const row = await canvas.findByTestId(`draft-row-${UNMAPPED.id}`);
+    const row = await canvas.findByTestId(`draft-row-${OPEN.id}`);
 
-    const gaps = within(row).getByTestId(`draft-gaps-${UNMAPPED.id}`);
-    await expect(gaps).toHaveTextContent("Order date +2");
-    await expect(gaps).toHaveAttribute("title", "Order date · Sell price · Unmapped lines");
-    await expect(within(row).getByTestId("order-ref")).toHaveTextContent(UNMAPPED.externalId);
+    const gaps = within(row).getByTestId(`draft-gaps-${OPEN.id}`);
+    await expect(gaps).toHaveTextContent("Order date +1");
+    await expect(gaps).toHaveAttribute("title", "Order date · Sell price");
+    await expect(within(row).getByTestId("order-ref")).toHaveTextContent(OPEN.externalId);
   },
 };
 
@@ -197,9 +254,9 @@ export const WhatIsLeftSitsUnderTheReference: Story = {
 export const TheRowIsRealFieldsOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const row = await canvas.findByTestId(`draft-row-${UNMAPPED.id}`);
-    const shop = shops.find((item) => item.id === UNMAPPED.shopId)!;
-    const author = users.find((item) => item.id === UNMAPPED.authorUserId)!;
+    const row = await canvas.findByTestId(`draft-row-${OPEN.id}`);
+    const shop = shops.find((item) => item.id === OPEN.shopId)!;
+    const author = users.find((item) => item.id === OPEN.authorUserId)!;
 
     await waitFor(() => expect(row).toHaveTextContent(shop.name));
     await waitFor(() =>
@@ -209,7 +266,7 @@ export const TheRowIsRealFieldsOnly: Story = {
 
     // the-draft-row-names-the-person-and-the-app: the person and the app share ONE line, whole on hover.
     const by = within(row).getByTestId("order-placed-by");
-    await expect(by).toHaveTextContent(`${author.name} via ${UNMAPPED.source}`);
+    await expect(by).toHaveTextContent(`${author.name} via ${OPEN.source}`);
     await expect(by).toHaveAttribute("title", by.textContent ?? "");
 
     // a-table-date-is-short-and-every-time-is-wib: a cell's date is "29 Okt 13:05" — the year only when it is not this
@@ -227,9 +284,9 @@ export const TheRowOpensTheDraft: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(await canvas.findByTestId(`draft-updated-${UNMAPPED.id}`));
+    await userEvent.click(await canvas.findByTestId(`draft-updated-${OPEN.id}`));
     await waitFor(() => expect(canvas.getByTestId("at-order-form")).toBeInTheDocument());
-    await expect(canvas.getByTestId("location-search")).toHaveTextContent(`?draft=${UNMAPPED.id}`);
+    await expect(canvas.getByTestId("location-search")).toHaveTextContent(`?draft=${OPEN.id}`);
   },
 };
 
@@ -237,7 +294,7 @@ export const TheRowOpensTheDraft: Story = {
 export const CopyingTheReferenceStaysHere: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const row = await canvas.findByTestId(`draft-row-${UNMAPPED.id}`);
+    const row = await canvas.findByTestId(`draft-row-${OPEN.id}`);
 
     await userEvent.click(within(row).getByTestId("order-ref"));
     await expect(canvas.queryByTestId("at-order-form")).toBeNull();
@@ -254,7 +311,7 @@ export const ItsOwnList: Story = {
 
     await expect(await canvas.findByTestId("order-drafts-heading")).toHaveTextContent("Order Drafts");
     await expect(canvas.getByTestId("order-drafts-subtitle")).toHaveTextContent("Open one to finish it in the order form");
-    await waitFor(() => expect(canvas.getByTestId(`draft-row-${UNMAPPED.id}`)).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId(`draft-row-${OPEN.id}`)).toBeInTheDocument());
     await expect(canvas.queryByTestId("orders-tab-all")).toBeNull();
     await expect(canvas.queryByTestId("orders-tab-drafts")).toBeNull();
     await expect(canvas.queryByTestId("open-create-order")).toBeNull();

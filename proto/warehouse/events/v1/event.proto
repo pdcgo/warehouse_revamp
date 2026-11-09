@@ -11,6 +11,7 @@ package warehouse.events.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/timestamp.proto";
+import "warehouse/expense/v1/expense.proto";
 import "warehouse/role_base/v1/role.proto";
 import "warehouse/settlement/v1/settlement.proto";
 
@@ -92,12 +93,14 @@ message Event {
     option (buf.validate.oneof).required = true;
 
     // Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-    // inventory 400–499, liability 500–599.
+    // inventory 400–499, liability 500–599, expense 600–699.
     MemberRemoved member_removed = 100;
 
     OrderPlaced order_placed = 200;
     OrderCancelled order_cancelled = 201;
     OrderStatusChanged order_status_changed = 202;
+    OrderReturnAccepted order_return_accepted = 203;
+    InventoryTxCancel inventory_tx_cancel = 204;
 
     SettlementLogPosted settlement_log_posted = 300;
 
@@ -111,6 +114,9 @@ message Event {
     WarehouseTransferAccepted warehouse_transfer_accepted = 407;
 
     LiabilityPaymentAccepted liability_payment_accepted = 500;
+
+    ExpenseCreated expense_created = 600;
+    ExpenseAdjusted expense_adjusted = 601;
   }
 }
 
@@ -161,6 +167,10 @@ message SettlementLogPosted {
   uint64 team_id = 5;
   // Who is answerable for the row (#actor-id-is-the-pic).
   uint64 actor_id = 6;
+  // Whether that actor was Root or the Administrator writing inside a team they hold no role in — the row's own
+  // `is_override`, carried as stored (an-override-is-stamped-in-every-service). A consumer that writes a row naming
+  // `actor_id` stamps this beside it; it never re-derives it, because it has no caller to read one from.
+  bool actor_is_override = 17;
 
   // WHO CREATED THE ORDER — `order_settlements.created_by_user_id`, 0 on a shop-addressed row or an
   // account opened without one. The per-user report attributes an order row to this person and a shop
@@ -170,10 +180,12 @@ message SettlementLogPosted {
   warehouse.settlement.v1.SettlementType settlement_type = 8;
   warehouse.settlement.v1.SourceType source_type = 9;
 
-  // Signed, whole rupiah. POSITIVE IS MONEY TOWARD US.
-  int64 change = 10;
+  // Signed rupiah, a double — exact as posted, never rounded (the-backend-never-rounds-money).
+  // POSITIVE IS MONEY TOWARD US. An event published while it was an int64 still reads: protojson carried it as a
+  // quoted number, which a double field accepts.
+  double change = 10;
   // The account's position after this row. Audit only — no report folds it.
-  int64 balance = 11;
+  double balance = 11;
 
   // YYYY-MM-DD. The day the report BUCKETS on (#posted-on-buckets-the-report) — a string, so no
   // consumer re-derives a day from an instant in some other timezone.
@@ -215,9 +227,9 @@ message OrderPlaced {
   reserved 3, 5;
   reserved "revenue", "shipping_cost";
 
-  // The order's frozen `goods_cost`, whole rupiah — Σ its lines' `total`, borrowed lines with their markup
+  // The order's frozen `goods_cost`, exact rupiah — Σ its lines' `total`, borrowed lines with their markup
   // (the-cross-charge-lives-on-the-line). Renamed from `cogs`, same number.
-  int64 goods_cost = 4;
+  double goods_cost = 4;
 
   // Whether the goods' cost was actually KNOWN (#74). A goods_cost of 0 is ambiguous on its own — it means
   // "free" and "never recorded" equally — so the distinction travels as its own field rather than
@@ -244,15 +256,20 @@ message OrderPlaced {
   // envelope's identity says who caused THAT PUBLISH — the operator running the backfill. A consumer
   // folding the fact reads this one.
   uint64 actor_id = 9;
+  // Whether that person placed it as Root or the Administrator from outside the selling team — the placement's own
+  // stamp, as `orders.is_override` holds it (an-override-is-stamped-in-every-service). The fee and the opening row a
+  // consumer posts for `actor_id` carry it beside the actor.
+  bool actor_is_override = 13;
 
-  // The shop it was sold on, and what the PLATFORM says the buyer paid, whole rupiah — 0 = not recorded.
+  // The shop it was sold on, and what the PLATFORM says the buyer paid — 0 = not recorded. A double, frozen exact
+  // when the order was placed (the-backend-never-rounds-money).
   // settlement_service opens the order's account from these (settlement-opens-the-sale-from-the-order-event):
   // its `initial_total` is the platform total with the sign flipped, on the shop's account. The order never
   // calls settlement, so the event has to carry everything the account needs.
   uint64 shop_id = 10;
   // The order's `platform_total` (the-total-is-ours-the-platform-total-is-theirs) — renamed from
   // `marketplace_total`, same number.
-  int64 platform_total = 11;
+  double platform_total = 11;
 
   // THE WAREHOUSE'S FEE, as the order froze it at create (the-event-carries-the-warehouse-fee): `orders.warehouse_fee`,
   // rupiah (rupiah-is-floating-point), copied as stored and never recomputed. liability_service posts it to the
@@ -261,11 +278,19 @@ message OrderPlaced {
   // Unset = an order placed before fees were frozen, charged nothing rather than guessed at. 0 = a warehouse that
   // charges nothing.
   optional double warehouse_fee = 12;
+
+  // THE KEY THE ORDER WAS PLACED UNDER — `orders.idempotency_key`, the submit's own key, which is also the key its
+  // stock was taken under (the-order-stores-its-idempotency-key). Carried so a consumer can name the take; nothing
+  // that releases stock needs it from here (every-release-goes-by-the-key).
+  string idempotency_key = 14;
+  // The inventory transaction the take wrote — `orders.transaction_id`, what the placement page reads the racks by
+  // (the-placement-page-reads-racks-by-transaction-id). 0 = none recorded.
+  uint64 transaction_id = 15;
 }
 
 // One line of a placed order, as liability_service needs it (#186).
 //
-// Deliberately not the whole OrderItem: an event carries what its consumers need, and sku, name and
+// Deliberately not the whole OrderItem: an event carries what its consumers need, and product code, name and
 // the buyer-paid price are none of liability_service's business. What it needs is who owns the goods
 // and what the line came to.
 message OrderPlacedLine {
@@ -283,7 +308,7 @@ message OrderPlacedLine {
   //
   // ⚠ NOT WHAT THE PRODUCT FEE IS COMPUTED FROM any more — that is `total` below
   // (the-ledger-charges-the-frozen-line-total).
-  int64 unit_cost = 4;
+  double unit_cost = 4;
 
   // THE LINE'S FROZEN TOTAL, rupiah (rupiah-is-floating-point) — what inventory's take priced it at: the goods it drew
   // plus, on another team's product, that product's own cross markup (inventory-computes-the-markup). Frozen on
@@ -315,18 +340,68 @@ message OrderCancelled {
   // ledger movement, and it is a different person's act from the placement it undoes — so it carries
   // its own actor rather than reusing the one on the entries being reversed.
   uint64 actor_id = 3;
+  // Whether the CANCEL was Root or the Administrator from outside the selling team — the cancel's own stamp, as its
+  // timeline row holds it (an-override-is-stamped-in-every-service). The reversal names its own actor, so it carries
+  // this flag, never the placement's.
+  bool actor_is_override = 5;
 
   // The shop it was sold on — settlement cancels the sale on that shop's account
   // (settlement-opens-the-sale-from-the-order-event).
   uint64 shop_id = 4;
+
+  // The order's own key K — the key its stock take was filed under (every-release-goes-by-the-key). Inventory releases
+  // that take by it, on this event and no longer inside the cancel (inventory-returns-stock-on-order-cancelled): checked
+  // against `team_id` (the-cancel-event-names-the-team); while a stock count holds a rack the take came from, the
+  // release errors and the event is redelivered until the count ends (a-cancel-still-meets-the-count-first). Empty only
+  // on an order that never took stock — nothing to release, acknowledged.
+  string idempotency_key = 6;
+  // The warehouse the order shipped from — where the stock goes back to. 0 only on an order that never took stock.
+  uint64 warehouse_id = 7;
 }
 
-// OrderStatusChanged announces one order's PLAIN status move — every move but the placement and the cancel, which have
-// their own events because they do more than move a status (docs/business/order/event_context.md §Order Status Change).
+// InventoryTxCancel is the compensation of an order create that FAILED AFTER ITS STOCK TAKE WAS CALLED
+// (the-compensation-event-is-inventory-tx-cancel): give back whatever was taken under `idempotency_key`.
+//
+// Published by selling_service — an ORDER event (inventory-tx-cancel-is-an-order-event) — and only as the BACKUP: the
+// order first releases the take directly, in-process, with a context the browser leaving cannot cancel, and then
+// publishes this (the-release-is-direct-then-the-event). Inventory is its only subscriber; a release that finds the take
+// already released does nothing, so the direct call and this event never give stock back twice. NEVER published after
+// the take was refused as KEY ALREADY USED — that key is another order's live take (a-used-key-is-never-cancelled).
+//
+// The listener releases through the same TEAM-CHECKED release as OrderTransactionRelease
+// (the-cancel-event-names-the-team): another team's key is acknowledged and logged, never released. A rack a stock count
+// holds makes the listener refuse, and the broker redelivers until the count ends (a-cancel-still-meets-the-count-first).
+// A key inventory has not seen yet is claimed with no take, so a take that arrives late is refused
+// (every-release-goes-by-the-key).
+//
+// `event_id` is `inventory-tx-cancel:<idempotency_key>` — one compensation per key, so a retried publish collides.
+message InventoryTxCancel {
+  option (event_config).topic = "inventory-tx-cancel";
+
+  // The key the take was asked under — the order's own (the-frontend-mints-the-idempotency-key).
+  string idempotency_key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  // The SELLING team the take was made for — the release is checked against it.
+  uint64 team_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The warehouse the take was asked of. For the log and the dead-letter triage; the key finds the take.
+  uint64 warehouse_id = 3;
+  // Who placed the failed order — the person the release's ledger rows name (every-entry-names-who-posted-it). 0 when
+  // the caller was unidentifiable.
+  uint64 actor_id = 4;
+  // Why the create failed, in words, for whoever reads a dead-lettered message. Nothing branches on it.
+  string reason = 5;
+}
+
+// OrderStatusChanged announces one order's PLAIN status move — every move but the placement, the cancel and the return
+// accept, which have their own events because they do more than move a status (docs/business/order/event_context.md
+// §Order Status Change).
 //
 // Published by selling_service after OrderStatusChange commits, ONE PER ORDER moved: a handover scan of 30 parcels is
-// 30 events. selling_service's own fold reads it for the order metrics — Return Created, Return Arrived and Lost
-// Created count the moves into `return`, `return_completed` and `lost` (the-status-changes-publish-nothing).
+// 30 events. selling_service's own fold reads it for the order metrics — Return Created and Lost Created count the
+// moves into `return` and `lost` (the-status-changes-publish-nothing). Return Arrived counts OrderReturnAccepted: the
+// move into `return_completed` is the accept's own event, never this one.
 //
 // It carries the move, not the order: the fold runs in the service that owns the orders and reads the rest off the row.
 // The envelope's event_id is derived from the move's timeline row, so a redelivery and a replay collide, and its
@@ -348,6 +423,42 @@ message OrderStatusChanged {
 
   // The order_timeline_logs row the move wrote — what the event id is derived from.
   uint64 timeline_log_id = 6;
+}
+
+// OrderReturnAccepted announces that a WAREHOUSE accepted an order's returned parcel — `return → return_completed`
+// (the-accept-is-the-status-return-completed) — and the accept COMMITTED.
+//
+// Published by selling_service after OrderReturnAccept's transaction commits, after the commit and non-fatal, as
+// OrderCancelled is. Two consumers, each its own subscription: selling_service's fold counts Return Arrived from it, and
+// liability_service posts the courier's charge, when there is one, as a debt of the selling team to the warehouse
+// (a-return-may-carry-the-couriers-ask) — the restock's courier charge is the model (RestockAccepted).
+//
+// ⚠ `event_id` is `order-return-accepted:<order_id>` — `return_completed` is terminal, so an order is accepted once, and a
+// redelivery and a replay collide in every consumer's dedup. `occurred_at` is the accept's timeline row's time.
+message OrderReturnAccepted {
+  option (event_config).topic = "order-return-accepted";
+
+  // The SELLING team that owns the order — the debtor of the courier's charge — and the order.
+  uint64 team_id = 1;
+  uint64 order_id = 2;
+  // The warehouse that ACCEPTED it — whichever held the parcel, recorded on the accept's row
+  // (the-accept-records-where-it-was-accepted): the configured return warehouse, or one an old label named, not always the
+  // one the order shipped from. The courier was paid at its door, so it is the creditor of the courier's charge.
+  uint64 warehouse_id = 3;
+
+  // WHO ACCEPTED IT (every-entry-names-who-posted-it) — the charge's actor. 0 when unattended.
+  uint64 actor_id = 4;
+  // Whether that person accepted it as Root or the Administrator from outside the warehouse — as the accept's timeline
+  // row was stamped (an-override-is-stamped-in-every-service). Stamped on the charge's legs beside the actor.
+  bool actor_is_override = 5;
+
+  // The `return_completed` row of order_timeline_logs the accept wrote.
+  uint64 timeline_log_id = 6;
+
+  // What the courier asked at the door, exact rupiah; 0 = nothing, which posts nothing — the common case.
+  double courier_charge = 7;
+  // What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
+  string courier_charge_note = 8;
 }
 
 // RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.
@@ -391,6 +502,9 @@ message RestockAccepted {
   // Who counted the box in — the debt's actor (every-entry-names-who-posted-it). Read from the stored restock, never
   // from the envelope's identity.
   uint64 actor_id = 10;
+  // Whether that person counted it in as Root or the Administrator from outside the warehouse — read, like the actor,
+  // from what the accept stored: its `restock_logs` row (an-override-is-stamped-in-every-service).
+  bool actor_is_override = 11;
 }
 
 // One line as the accept counted it. Lost and broken sit BESIDE accepted, never inside it, so
@@ -543,9 +657,9 @@ message WarehouseTransferCancelled {
 // (balance-posts-the-transfers-on-site-debt-from-the-event). Published after EVERY accept, a charge of 0 included; the
 // selling team owes B the charge, and nothing for 0.
 //
-// `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. ⚠ Balance does not listen
-// yet: the source type it posts under is open (balance context Q13) — never INCIDENTAL_FEE keyed by the transfer id,
-// which collides with a restock's of the same number.
+// `event_id` is `warehouse-transfer-accepted:<transfer_id>` — a transfer is accepted once. Balance posts it as a
+// TRANSFER_FEE keyed by the transfer (a-transfer-charge-is-a-transfer-fee) — never INCIDENTAL_FEE, which is keyed by a
+// restock and would collide with a restock of the same number.
 message WarehouseTransferAccepted {
   option (event_config).topic = "warehouse-transfer-accepted";
 
@@ -577,12 +691,70 @@ message LiabilityPaymentAccepted {
   uint64 payment_id = 1;
   uint64 payer_team_id = 2;
   uint64 creditor_team_id = 3;
-  // Whole rupiah, always positive — direction is the two accounts, never a sign.
-  int64 amount = 4;
+  // Exact rupiah, always positive — direction is the two accounts, never a sign.
+  double amount = 4;
   // The payer's account. 0 on a payment recorded before *Paid from* existed: only the `to` leg posts.
   uint64 from_account_id = 5;
   // The creditor's account, named on accept. Never 0.
   uint64 to_account_id = 6;
   // Who accepted — the creditor's person, read from the payment row. The person who decided the money landed.
   uint64 actor_id = 7;
+  // Whether they accepted as Root or the Administrator from outside the creditor team — the payment row's
+  // `confirmed_is_override`, read beside `confirmed_by` (an-override-is-stamped-in-every-service).
+  bool actor_is_override = 8;
+}
+
+// ExpenseCreated announces an expense a person typed, and the account that paid it (an-expense-must-name-the-account-that-paid).
+//
+// Published by expense_service after ExpenseCreate commits; financial_account_service posts `amount` OUT of
+// `finance_account_id` — as `ads_expense` when the kind is ADS, `expense` for the rest (ads-expense-joins-the-types).
+// Never published for a STOCK_LOSS (inventory posts it, it moves no cash) and never for an account 0. `event_id` is
+// `expense-created:<expense_id>` — an expense is created once (a row never changes, an-expense-is-never-edited).
+message ExpenseCreated {
+  option (event_config).topic = "expense-created";
+
+  uint64 expense_id = 1;
+  uint64 team_id = 2;
+  warehouse.expense.v1.ExpenseKind kind = 3;
+  // The account that paid — one of the team's operational accounts when the expense was recorded.
+  uint64 finance_account_id = 4;
+  // Exact rupiah (the-backend-never-rounds-money), always positive: the money that went out.
+  double amount = 5;
+  // The day the expense belongs to (YYYY-MM-DD), as the person chose it — the day the account's row counts on.
+  string occurred_on = 6;
+  // The shop an ADS expense ran for; 0 on every other kind.
+  uint64 shop_id = 7;
+  // Who typed it, and whether as Root or the Administrator from outside the team (an-override-is-stamped-in-every-service).
+  uint64 actor_id = 8;
+  bool actor_is_override = 9;
+  int64 created_at_unix = 10;
+}
+
+// ExpenseAdjusted announces a correction of an expense — an adjustment, or the screen's Batalkan, which is an adjustment
+// of minus what the expense still counts for (every-correction-is-a-signed-adjustment).
+//
+// It names the ORIGINAL expense's account, copied onto the adjustment, never typed (a-correction-follows-the-expenses-account):
+// financial_account_service posts the signed `amount` there with the opposite sign — a correction down gives money
+// back, a correction up takes more, a cancel gives the net back. Never published for an expense with no account (made
+// before *Paid from*) nor for a STOCK_LOSS. `event_id` is `expense-adjusted:<adjustment_id>` — one per adjustment row.
+message ExpenseAdjusted {
+  option (event_config).topic = "expense-adjusted";
+
+  // The adjustment row, and the expense it corrects.
+  uint64 adjustment_id = 1;
+  uint64 expense_id = 2;
+  uint64 team_id = 3;
+  // The expense's kind, copied — ADS posts as `ads_expense`.
+  warehouse.expense.v1.ExpenseKind kind = 4;
+  // The expense's account, copied.
+  uint64 finance_account_id = 5;
+  // Exact rupiah, SIGNED, never 0 — the correction itself, not a new total: minus is less was spent.
+  double amount = 6;
+  // The corrected expense's day, copied (an-adjustment-counts-on-the-day-it-fixes).
+  string occurred_on = 7;
+  uint64 shop_id = 8;
+  // Who corrected it, and whether as Root or the Administrator from outside the team.
+  uint64 actor_id = 9;
+  bool actor_is_override = 10;
+  int64 created_at_unix = 11;
 }

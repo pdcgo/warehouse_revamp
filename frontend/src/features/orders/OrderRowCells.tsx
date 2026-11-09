@@ -5,7 +5,7 @@ import { Clock } from "lucide-react";
 
 import { ShopItem } from "../../components/entity/ShopItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { OrderCourierBadge } from "./OrderCourierBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -244,8 +244,8 @@ export function DateCell({ unix, testId }: { unix?: bigint; testId?: string }) {
  * ⚠ TWO WAYS TO BE UNKNOWN, AND EITHER REFUSES. A `goods_cost` of 0 is unknown, not free (`order.proto`), and a `null` fee is
  * an order placed before fees were frozen — printing the half that IS known would read as a suspiciously cheap order.
  */
-export function SpendCell({ goodsCost, fees }: { goodsCost: bigint; fees: bigint | null }) {
-  const spend = orderSpend(goodsCost, fees ?? 0n, goodsCost > 0n && fees !== null);
+export function SpendCell({ goodsCost, fees }: { goodsCost: number; fees: number | null }) {
+  const spend = orderSpend(goodsCost, fees ?? 0, goodsCost > 0 && fees !== null);
 
   return (
     <Text whiteSpace="nowrap" data-testid="order-spend">
@@ -276,18 +276,19 @@ export function MpTotalCell({
   goodsCost,
   fees,
 }: {
-  platformTotal: bigint;
-  goodsCost: bigint;
+  /** A double since selling 00041, frozen exact at placement. 0 = not recorded. */
+  platformTotal: number;
+  goodsCost: number;
   /** The order's frozen fee, or `null` when it was never priced — then there is no total beli to take a margin from. */
-  fees: bigint | null;
+  fees: number | null;
 }) {
-  const spend = orderSpend(goodsCost, fees ?? 0n, goodsCost > 0n && fees !== null);
+  const spend = orderSpend(goodsCost, fees ?? 0, goodsCost > 0 && fees !== null);
   const margin = orderMargin(platformTotal, spend);
   const pct = formatMarginPct(orderMarginPct(platformTotal, spend));
 
   return (
     <Stack gap="0.5" minW="0" align="end">
-      {platformTotal > 0n ? (
+      {platformTotal > 0 ? (
         <Text whiteSpace="nowrap" data-testid="order-total-mp">
           {formatRupiah(platformTotal)}
         </Text>
@@ -438,12 +439,12 @@ export function ShopRefCell({
  * THE AIR WAYBILL — the courier over the tracking number (copyable). The column packing and handover are
  * done by: parcels are grouped by courier, and the number is what the courier scans.
  */
-export function AwbCell({ courier, code, mark }: { courier: string; code?: string; mark?: ReactNode }) {
+export function AwbCell({ channelId, code, mark }: { channelId: bigint; code?: string; mark?: ReactNode }) {
   const value = (code ?? "").trim();
 
   return (
     <Stack gap="0.5" minW="0" align="start">
-      {courier ? <ShippingBadge code={courier} /> : <Nothing testId="order-courier-none" />}
+      {channelId > 0n ? <OrderCourierBadge channelId={channelId} /> : <Nothing testId="order-courier-none" />}
       <Flex align="center" gap="1">
         {value === "" ? <Nothing testId="order-receipt-none" /> : <CopyText value={value} mono fontSize="xs" testId="order-receipt" />}
         {mark}

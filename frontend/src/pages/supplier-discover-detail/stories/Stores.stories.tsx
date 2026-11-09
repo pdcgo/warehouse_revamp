@@ -28,7 +28,8 @@ export const ReadOnly: Story = {
 };
 
 // A STORE SHOWS ITS SOLD AND READY, as on the manage detail (the-detail-tabs-show-sold-and-ready) — read-only, so the
-// two columns are the table's last; marked 2 and 3 in THIS page's list.
+// two columns are the table's last; real and unmarked — another team's supplier's goods, all of them
+// (every-selling-team-sees-every-teams-figures). A store nothing was bought at reads a dash.
 export const AStoreShowsItsSoldAndReady: Story = {
   name: "Sold and Ready",
   play: async ({ canvasElement }) => {
@@ -39,8 +40,10 @@ export const AStoreShowsItsSoldAndReady: Story = {
     const headers = within(table).getAllByRole("columnheader");
     await expect(headers.at(-2)).toHaveTextContent(/^Sold/);
     await expect(headers.at(-1)).toHaveTextContent(/^Ready/);
-    await expect(within(headers.at(-2)!).getByTestId("not-implemented-sold")).toHaveTextContent("2");
-    await expect(within(headers.at(-1)!).getByTestId("not-implemented-ready")).toHaveTextContent("3");
+    await expect(within(headers.at(-2)!).queryByTestId("not-implemented-sold")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId("channel-sold-371")).toHaveTextContent(/^640ordered /));
+    await expect(canvas.getByTestId("channel-ready-371")).toHaveTextContent(/^90restocked /);
+    await expect(canvas.getByTestId("channel-sold-372")).toHaveTextContent("—");
   },
 };
 

@@ -51,6 +51,7 @@ func (s *Service) FinancialAccountCapital(
 	}
 
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 
 	var row m.FinancialAccountLog
 
@@ -80,10 +81,11 @@ func (s *Service) FinancialAccountCapital(
 
 		row, err = post(tx, account, entry{
 			changeType:  m.ChangeCapital,
-			change:      sign * rupiah(msg.GetAmount()),
+			change:      sign * msg.GetAmount(),
 			description: description,
 			occurredAt:  occurredAt,
 			actorID:     actor,
+			isOverride:  override,
 		})
 
 		return err

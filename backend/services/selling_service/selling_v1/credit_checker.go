@@ -11,9 +11,9 @@ type CreditBlock struct {
 	CreditorTeamID uint64
 	// What this team owes that creditor, as a POSITIVE number — the ledger's sign convention stops at
 	// this boundary rather than reaching a screen.
-	Debt int64
+	Debt float64
 	// The limit that was hit. 0 is a real value: no credit at all.
-	Limit int64
+	Limit float64
 }
 
 // CreditChecker asks liability_service whether this team may take on more debt (#189).

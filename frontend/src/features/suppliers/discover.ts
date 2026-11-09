@@ -1,6 +1,6 @@
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supplierClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
 import { teamsByIdsQuery } from "../teams/queries";
@@ -8,10 +8,13 @@ import {
   type SupplierChannelRecord,
   type SupplierRecord,
   supplierChannelsFromList,
+  supplierListRowData,
   supplierListWithChannelsData,
   supplierRecord,
   suppliersFromList,
 } from "./adapt";
+import { figureBand } from "./figureRanges";
+import { type FigureRangePicks, NO_FIGURE_RANGES } from "./SupplierRangeFilter";
 
 // DISCOVER SUPPLIERS — every selling team's suppliers, searched across teams (discover-searches-every-teams-suppliers,
 // another-team-sees-everything-of-a-supplier). The manage page lists the suppliers a team keeps; this is the
@@ -43,6 +46,8 @@ export interface DiscoverQuery {
   channelType: Marketplace;
   /** The team that keeps the supplier; `0n` = any team. */
   ownerTeamId: bigint;
+  /** Terjual and Siap's range pills, the supplier list's (discover-shows-the-same-figures-and-filters); absent = Semua. */
+  ranges?: FigureRangePicks;
   page: number;
   pageSize: number;
 }
@@ -75,10 +80,19 @@ export async function fetchDiscoverPage(
   query: DiscoverQuery,
 ): Promise<{ suppliers: DiscoverSupplier[]; totalItems: number }> {
   const { q, channelType, ownerTeamId, page, pageSize } = query;
+  const ranges = query.ranges ?? NO_FIGURE_RANGES;
 
   const res = await supplierClient.supplierList({
     teamId,
-    filter: { q, scope: SupplierListScope.EVERY_TEAM, channelType, ownerTeamId },
+    filter: {
+      q,
+      scope: SupplierListScope.EVERY_TEAM,
+      channelType,
+      ownerTeamId,
+      // Narrowed on the server, before the page (the-range-pills-are-a-fixed-set).
+      sold: figureBand("sold", ranges.sold),
+      ready: figureBand("ready", ranges.ready),
+    },
     dataRequest: supplierListWithChannelsData(),
     page: { page, limit: pageSize },
   });
@@ -98,6 +112,7 @@ export async function fetchDiscoverPage(
 
 export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & DiscoverQuery) {
   const { teamId, q, channelType, ownerTeamId, page, pageSize } = args;
+  const ranges = args.ranges ?? NO_FIGURE_RANGES;
   const client = useQueryClient();
 
   return useQuery({
@@ -110,11 +125,13 @@ export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & Disc
       q,
       channelType,
       ownerTeamId: ownerTeamId.toString(),
+      sold: ranges.sold,
+      ready: ranges.ready,
       page,
       pageSize,
     }),
     enabled: teamId !== undefined,
-    queryFn: () => fetchDiscoverPage(client, teamId!, { q, channelType, ownerTeamId, page, pageSize }),
+    queryFn: () => fetchDiscoverPage(client, teamId!, { q, channelType, ownerTeamId, ranges, page, pageSize }),
   });
 }
 
@@ -137,6 +154,35 @@ export function useDiscoverSupplier(args: { teamId: bigint | undefined; supplier
       const names = await teamNames(client, [supplier.teamId]);
 
       return { ...supplier, teamName: names[supplier.teamId.toString()] ?? "" };
+    },
+  });
+}
+
+/**
+ * A SUPPLIER PICKER'S SEARCH across every team (the EVERY_TEAM scope, Discover's) — for a reader with no suppliers of its
+ * own that still meets other teams' ones: a warehouse holds several sellers' stock, each batch naming its seller's
+ * supplier (only-a-selling-team-has-suppliers). Server-side, at least 2 characters, ten at a time, each with the team
+ * that keeps it; a pickers' read (`referenceQuery`), so nobody works from it.
+ */
+export function useSupplierSearch(args: { teamId: bigint; q: string }) {
+  const { teamId, q } = args;
+  const client = useQueryClient();
+
+  return useQuery({
+    ...referenceQuery,
+    queryKey: key.suppliers(teamId, { discover: true, search: q }),
+    enabled: q.length >= 2 && teamId > 0n,
+    queryFn: async (): Promise<OwnedSupplier[]> => {
+      const res = await supplierClient.supplierList({
+        teamId,
+        filter: { q, scope: SupplierListScope.EVERY_TEAM },
+        dataRequest: supplierListRowData(),
+        page: { page: 1, limit: 10 },
+      });
+      const rows = suppliersFromList(res.items, res.ids);
+      const names = await teamNames(client, rows.map((s) => s.teamId));
+
+      return rows.map((s) => ({ ...s, teamName: names[s.teamId.toString()] ?? "" }));
     },
   });
 }

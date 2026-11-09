@@ -65,6 +65,8 @@ func (s *Service) OrderNoteCreate(
 		Note:    note,
 		From:    noteFrom(&order, teamID),
 		ActorID: eventActor(ctx),
+		// From outside the team the note was scoped to (an-override-is-stamped-in-every-service).
+		IsOverride: eventOverride(ctx),
 		// Stamped here, as every timeline writer stamps its own row — the row is written at the moment it describes.
 		CreatedAt: time.Now(),
 	}}

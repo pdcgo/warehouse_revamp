@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Combobox, Portal, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
-import { formerUserId } from "../../lib/users";
+import { personName } from "../../lib/users";
 import { UserItem } from "../entity/UserItem";
 
 export interface PersonFilterSelectProps {
@@ -52,19 +52,11 @@ export function PersonFilterSelect({
   const all = people ?? NOBODY;
   const loaded = people !== undefined;
 
-  // What the closed field shows, and what typing is matched against first: a former user is "Former user #57",
-  // never the synthetic username.
-  const label = useMemo(() => {
-    return (person: PublicUser) => {
-      const formerId = formerUserId(person);
-
-      return formerId ? t("users.formerUser", { id: formerId }) : person.name || person.username;
-    };
-  }, [t]);
-
+  // What the closed field shows, and what typing is matched against first (`itemToString`): a former user is
+  // "Former user #57", never the synthetic username.
   const { collection, filter, set } = useListCollection<PublicUser>({
     initialItems: [],
-    itemToString: (person) => label(person),
+    itemToString: (person) => personName(person),
     itemToValue: (person) => person.id.toString(),
     filter: (itemText, filterText, person) => {
       const needle = filterText.trim().toLowerCase();

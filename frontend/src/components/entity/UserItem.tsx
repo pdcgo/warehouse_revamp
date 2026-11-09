@@ -5,7 +5,7 @@ import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { roleLabel } from "../../lib/roles";
-import { formerUserId } from "../../lib/users";
+import { formerUserId, personName } from "../../lib/users";
 
 export interface UserItemProps {
   // Any user-shaped object — a PublicUser, a User, whatever carries these fields.
@@ -28,11 +28,12 @@ export const description =
   "The shared way to show a user — avatar (or initials), display name, and @username. An erased account reads as a former user.";
 
 export function UserItem({ user, role, teamType, action, size = "sm" }: UserItemProps) {
-  const { t } = useTranslation();
+  // Subscribed for the re-render on a language change: personName reads the app's i18next itself.
+  useTranslation();
 
   // An erased account (erase-keeps-the-row) is "Former user #57": its username is synthetic, so it is not shown.
   const formerId = formerUserId(user);
-  const display = formerId ? t("users.formerUser", { id: formerId }) : user.name || user.username;
+  const display = personName(user);
   const showRole = role !== undefined && role !== Role.UNSPECIFIED;
 
   // THE SMALL ONE (owner, on a restock's timeline: *"riwayat usernya terlalu besar, gambar kecil dan nama saja"*) — the

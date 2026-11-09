@@ -70,7 +70,7 @@ Deduction). The details are in [rpc.md](../../services/settlement_importer_servi
 | | |
 | --- | --- |
 | a skipped Earnings / GMV Pay Deduction line is INFO, a failed withdrawal WARN | the accepted prototype showed routine skips outside the closing summary; the withdrawal decision says WARN |
-| the order a ref finds, among several in the shop | a live order before a cancelled one, then the newest — the uniqueness rule is not built, so duplicates can exist |
+| the order a ref finds, among several in the shop | ✅ *(2026-11-04)* one live order is the line's, a cancelled one never beats it; **two or more live → the shop**, `several_orders` ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)); none live → still the newest cancelled, as built (my reading, unasked) |
 | a new grant on a shop left with NO primary becomes it | the recorded reading of *first* — re-adding an existing grant changes nothing |
 | `ShopAccessCheck` keeps the owner's field name `is_have_access` | critique 10 had suggested `has_access` |
 | the handler's read cap is 15 MB | the browser sends JSON: 10 MB of file is ~13.4 MB of base64. The file itself is held to 10 MB |
@@ -80,10 +80,10 @@ Deduction). The details are in [rpc.md](../../services/settlement_importer_servi
 
 | | owner |
 | --- | --- |
-| **the order ref** — 🔄 *(2026-10-15)* required on every order, but **two live orders may share it** ([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)) | decided: two live orders post to the **shop**, naming both ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)) — ⚠ not built: `orderInShop` still pays the newest |
+| **the order ref** — 🔄 *(2026-10-15)* required on every order, but **two live orders may share it** ([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)) | decided: two live orders post to the **shop**, naming both ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)) — ✅ built 2026-11-04, see below |
 | **the write gate on the order RPCs** and the rollout grants — [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager) | the shop context — only the imports are gated |
 | **the move to `shop_service`** — [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service) | the shop context — only `NewShopClient` and the adapters in `cmd/app_development` change |
-| **a closed shop's statements** — a deleted shop answers `NotFound`, so it cannot import | [shop Q3](../../business/shop/context_clarify.md#question) |
+| ✅ **a closed shop's statements** — *(2026-11-06)* a closed shop is answered flagged and its statements import; the dialog offers it after the open shops, badged ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)) | decided and built |
 | **whether a TikTok period re-downloaded in the 2026-09 layout keeps its keys** | the reader — [its questions](../../technical/packages/excel_readers/context_clarify.md#question) |
 | `auto_import.md` — an empty heading beside the doc | [critique 11](../../business/settlement/settlement_importer_clarify.md#critique) |
 | a screen listing a shop's OWN rows — so a wrong imported shop row has no screen to offset it from | settlement |
@@ -131,11 +131,45 @@ Every RPC this pass wrote or widened, audited for performance and every write fo
   stops a racing removal from leaving the shop with no primary.
 - ⚠ **The `raceaudit` and `perfaudit` tests are outside CI.** A shop-grain race test stayed red for a day
   unnoticed. After touching a write path, run `go test -tags raceaudit ./backend/services/<service>/...`.
-  `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsAnswersInternal` fails **by design** until the owner
-  answers the 23505 mapping.
+  `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsIsRefusedTheSame` (was `…AnswersInternal`, red by design)
+  is green since 2026-11-05: a 23505 at the insert maps to `errUniqueIDTaken`
+  ([a-colliding-key-at-once-is-refused-the-same](../../business/settlement/context_decision.md#a-colliding-key-at-once-is-refused-the-same)).
 - ⚠ **Two people per imported row** — `actor_id` is the uploader, `user_id` the primary CS on a shop row. Never write
   one into the other.
 - ⚠ **The commission is on the DETAIL, never the item**, and a file with no `Affiliate…` column is refused.
 - ⚠ **Look a TikTok row up by `Related order ID`**, never `Order/adjustment ID`.
 - ⚠ **A re-import cannot correct anything** — a repeat key returns the stored row, a key on another account is refused.
 - ⚠ **The owner's `tools/report_withdrawal/` is theirs** — read it, never edit it.
+
+## 2026-11-04 — a ref on two live orders posts to the shop, built
+
+| | |
+| --- | --- |
+| decision | [two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop) — was: `orderInShop` credited the NEWEST of two live orders |
+| contract | `UploadedFileLineReason.SEVERAL_ORDERS = 7` (POSTED to the shop), `UploadedFileLine.found_order_ids = 15`, the line filter's `reasons` max 6 → 7 |
+| schema | settlement_importer `00003` — `uploaded_file_lines.found_order_ids TEXT NOT NULL DEFAULT ''`, comma-joined ascending (no array precedent in the repo); [database-schema.md](../../database-schema.md) |
+| the pick | `orderInShop(orders, shop) (order, live ids, ok)`: one live → it · none live → newest cancelled (as built) · ≥ 2 live → none; `postLine` posts to the shop (OrderID 0, CreatedByUserID 0 — settlement counts it for the primary CS), reason `several_orders`, the WARN *"SHP-1 is on 2 live orders (#9001, #9002) — posted to the shop"*; `tally` counts it into `rows_posted_to_shop` (and the race helper's re-count) |
+| screen | `pages/settlement-import-detail` — the *Posted to the shop* view asks for NO_ORDER **and** SEVERAL_ORDERS; the reason reads *"On several live orders — none was credited"* and the found ids are links to `/orders/:id`; the note and the tally help say *no single order found*. en + id |
+| tests | `TestOrderInShop` (9 cases) · `TestFoundOrderIDs` · `TestShopeeSettlementImport_TwoLiveOrdersOnARefPostToTheShop` (post to the shop, ids, WARN text, tally, list filter by SEVERAL_ORDERS) · `…_ALiveAndACancelledOrderPostToTheLiveOne` · `TestTiktokSettlementImport_TwoLiveOrdersOnARefPostToTheShop` (fund, commission and reimbursement all to the shop). Story `ARefOnSeveralOrdersNamesThem`; stub + fixture line 9017; e2e `settlement_imports.spec.ts` 4/4 |
+| audits | no new query, no new lock — one more column on the line's existing INSERT; the existing `ShopeeSettlementImport` / `TiktokSettlementImport` reports stand |
+
+## 2026-11-06 — the line's amount is a double (money-type change, part 1)
+
+`settlement_importer_service` `00004_line_change_is_double.sql`: `uploaded_file_lines.change bigint → double precision`;
+`UploadedFileLine.change` and `LedgerPost.Change` are doubles, passed to settlement's `double change`
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)).
+A fraction is **still held** (`fractional_amount`, critique 8 — the decision did not reopen it); `wholeRupiah` now asks
+`san_money.IsWhole`, so float dust (99.999,99999) is whole and posts as 100.000. Tests:
+`TestShopeeSettlementImport_AnAmountWithFloatDustPostsWhole`, `TestUploadedFileLineList_TheChangeIsTheStoredDouble`.
+Frontend: the file page's line amounts, the Storybook import lines and the stub importer rows are numbers. Not run on
+dev — `go run ./tools/san migrate up --service settlement_importer_service`.
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+A statement line with a real fraction is still HELD (`fractional_amount`,
+[a-fractional-statement-line-is-still-held](../../business/settlement/context_decision.md#a-fractional-statement-line-is-still-held))
+— `wholeRupiah` keeps its `san_money.IsWhole` check on the file. What changed: a line whose amount is whole within the
+tolerance (reader float dust, 99.999,99999) now posts the READER'S figure exactly instead of the rounded whole number
+(it was `san_money.Whole`). ⚠ awaiting the owner if they want dust snapped to the whole number here (the settlement
+decision says dust "counts as whole and posts"). Test `TestShopeeSettlementImport_AnAmountWithFloatDustPostsAsRead`
+(the 0,5 line is still held).

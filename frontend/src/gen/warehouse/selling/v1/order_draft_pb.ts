@@ -18,14 +18,13 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order_draft.proto.
  */
 export const file_warehouse_selling_v1_order_draft: GenFile = /*@__PURE__*/
-  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilwEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEgoKcHJvZHVjdF9pZBgEIAEoBBIQCghxdWFudGl0eRgFIAEoDRISCgp1bml0X3ByaWNlGAYgASgDIsgECgpPcmRlckRyYWZ0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFgoOYXV0aG9yX3VzZXJfaWQYAyABKAQSDgoGc291cmNlGAQgASgJEhMKC2V4dGVybmFsX2lkGAUgASgJEhYKDnRvdWNoZWRfZmllbGRzGAYgAygJEg8KB3Nob3BfaWQYByABKAQSFAoMd2FyZWhvdXNlX2lkGAggASgEEhUKDWN1c3RvbWVyX25hbWUYCSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYCiABKAkSMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIVCg1zaGlwcGluZ19jb2RlGAwgASgJEjMKBWl0ZW1zGA4gAygLMiQud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdEl0ZW0SFwoPY3JlYXRlZF9hdF91bml4GA8gASgDEhcKD3VwZGF0ZWRfYXRfdW5peBgQIAEoAxISCgppdGVtX2NvdW50GBEgASgNEhsKE3VubWFwcGVkX2l0ZW1fY291bnQYEiABKA0SIAoYcGxhdGZvcm1fY3JlYXRlZF9hdF91bml4GBMgASgDEicKH3BsYXRmb3JtX3NoaXBtZW50X2RlYWRsaW5lX3VuaXgYFCABKAMSFgoOYnV5ZXJfdXNlcm5hbWUYFSABKAkSFgoOcGxhdGZvcm1fdG90YWwYFiABKANKBAgNEA5SDXNoaXBwaW5nX2Nvc3QivQIKFU9yZGVyRHJhZnRMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI6CgZmaWx0ZXIYAiABKAsyKi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0TGlzdEZpbHRlchI8CgRzb3J0GAMgASgLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RGaWx0ZXJTb3J0EkIKDGRhdGFfcmVxdWVzdBgEIAMoDjIsLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgMEBSIvChRPcmRlckRyYWZ0TGlzdEZpbHRlchIXCgZzb3VyY2UYASABKAlCB7pIBHICGEAizAEKGE9yZGVyRHJhZnRMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASPgoLb3JkZXJfZHJhZnQYAyABKA4yJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0Um93U29ydEgAQgMKAXMiswEKFE9yZGVyRHJhZnRSb3dNYXBJdGVtEkkKCG1hcF9kYXRhGAEgAygLMjcud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlAKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSLwoFdmFsdWUYAiABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0OgI4ASKcAQoaT3JkZXJEcmFmdExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABJBCgtvcmRlcl9kcmFmdBgCIAEoCzIqLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRSb3dNYXBJdGVtSABCAwoBZCKYAQoWT3JkZXJEcmFmdExpc3RSZXNwb25zZRI/CgVpdGVtcxgBIAMoCzIwLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIl8KF09yZGVyRHJhZnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCGRyYWZ0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJLChhPcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0ImMKEk9yZGVyRHJhZnRMaW5lRWRpdBIKCgJpZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhsKCnVuaXRfcHJpY2UYBCABKANCB7pIBCICKAAiSgoPT3JkZXJEcmFmdExpbmVzEjcKBWxpbmVzGAEgAygLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpbmVFZGl0Iu8FChdPcmRlckRyYWZ0VXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghkcmFmdF9pZBgCIAEoBEIHukgEMgIgABIUCgdzaG9wX2lkGAMgASgESACIAQESGQoMd2FyZWhvdXNlX2lkGAQgASgESAGIAQESJAoNY3VzdG9tZXJfbmFtZRgFIAEoCUIIukgFcgMYyAFIAogBARIkCg5jdXN0b21lcl9waG9uZRgGIAEoCUIHukgEcgIYKEgDiAEBEjMKB2FkZHJlc3MYByABKAsyIi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckFkZHJlc3MSIwoNc2hpcHBpbmdfY29kZRgIIAEoCUIHukgEcgIYKEgEiAEBEjQKBWl0ZW1zGAogASgLMiUud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpbmVzEi4KGHBsYXRmb3JtX2NyZWF0ZWRfYXRfdW5peBgLIAEoA0IHukgEIgIoAEgFiAEBEjUKH3BsYXRmb3JtX3NoaXBtZW50X2RlYWRsaW5lX3VuaXgYDCABKANCB7pIBCICKABIBogBARIkCg5idXllcl91c2VybmFtZRgNIAEoCUIHukgEcgIYZEgHiAEBEiQKDnBsYXRmb3JtX3RvdGFsGA4gASgDQge6SAQiAigASAiIAQE6C5K1GAcKBQECAwQFQgoKCF9zaG9wX2lkQg8KDV93YXJlaG91c2VfaWRCEAoOX2N1c3RvbWVyX25hbWVCEQoPX2N1c3RvbWVyX3Bob25lQhAKDl9zaGlwcGluZ19jb2RlQhsKGV9wbGF0Zm9ybV9jcmVhdGVkX2F0X3VuaXhCIgogX3BsYXRmb3JtX3NoaXBtZW50X2RlYWRsaW5lX3VuaXhCEQoPX2J1eWVyX3VzZXJuYW1lQhEKD19wbGF0Zm9ybV90b3RhbEoECAkQClINc2hpcHBpbmdfY29zdCJLChhPcmRlckRyYWZ0VXBkYXRlUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0ImMKF09yZGVyRHJhZnREZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KCWRyYWZ0X2lkcxgCIAMoBEIKukgHkgEECAEQZDoLkrUYBwoFAQIDBAUiKwoYT3JkZXJEcmFmdERlbGV0ZVJlc3BvbnNlEg8KB2RlbGV0ZWQYASABKA0ipQQKFU9yZGVyRHJhZnRQdXNoUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCgZzb3VyY2UYAiABKAlCCbpIBnIEEAEYQBIfCgtleHRlcm5hbF9pZBgDIAEoCUIKukgHcgUQARiAARIPCgdzaG9wX2lkGAQgASgEEhQKDHdhcmVob3VzZV9pZBgFIAEoBBIfCg1jdXN0b21lcl9uYW1lGAYgASgJQgi6SAVyAxjIARIfCg5jdXN0b21lcl9waG9uZRgHIAEoCUIHukgEcgIYKBIzCgdhZGRyZXNzGAggASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBZGRyZXNzEh4KDXNoaXBwaW5nX2NvZGUYCSABKAlCB7pIBHICGCgSMwoFaXRlbXMYCyADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIpChhwbGF0Zm9ybV9jcmVhdGVkX2F0X3VuaXgYDCABKANCB7pIBCICKAASMAofcGxhdGZvcm1fc2hpcG1lbnRfZGVhZGxpbmVfdW5peBgNIAEoA0IHukgEIgIoABIfCg5idXllcl91c2VybmFtZRgOIAEoCUIHukgEcgIYZBIfCg5wbGF0Zm9ybV90b3RhbBgPIAEoA0IHukgEIgIoADoLkrUYBwoFAQIDBAVKBAgKEAtSDXNoaXBwaW5nX2Nvc3QiWgoWT3JkZXJEcmFmdFB1c2hSZXNwb25zZRIvCgVkcmFmdBgBIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQSDwoHY3JlYXRlZBgCIAEoCCqYAQoWT3JkZXJEcmFmdExpc3REYXRhVHlwZRIqCiZPUkRFUl9EUkFGVF9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiYKIk9SREVSX0RSQUZUX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIqCiZPUkRFUl9EUkFGVF9MSVNUX0RBVEFfVFlQRV9PUkRFUl9EUkFGVBACKlYKEU9yZGVyRHJhZnRSb3dTb3J0EiQKIE9SREVSX0RSQUZUX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASGwoXT1JERVJfRFJBRlRfUk9XX1NPUlRfSUQQATLGBAoRT3JkZXJEcmFmdFNlcnZpY2USawoOT3JkZXJEcmFmdFB1c2gSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlc3BvbnNlEmsKDk9yZGVyRHJhZnRMaXN0Eisud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXF1ZXN0Giwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXNwb25zZRJxChBPcmRlckRyYWZ0RGV0YWlsEi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdERldGFpbFJlcXVlc3QaLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2UScQoQT3JkZXJEcmFmdFVwZGF0ZRItLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRVcGRhdGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFVwZGF0ZVJlc3BvbnNlEnEKEE9yZGVyRHJhZnREZWxldGUSLS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGVsZXRlUmVxdWVzdBouLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnREZWxldGVSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
+  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilQEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEAoIcXVhbnRpdHkYBSABKA0SEgoKdW5pdF9wcmljZRgGIAEoAUoECAQQBVIKcHJvZHVjdF9pZCKbBQoKT3JkZXJEcmFmdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhYKDmF1dGhvcl91c2VyX2lkGAMgASgEEg4KBnNvdXJjZRgEIAEoCRITCgtleHRlcm5hbF9pZBgFIAEoCRIWCg50b3VjaGVkX2ZpZWxkcxgGIAMoCRIPCgdzaG9wX2lkGAcgASgEEhQKDHdhcmVob3VzZV9pZBgIIAEoBBIVCg1jdXN0b21lcl9uYW1lGAkgASgJEhYKDmN1c3RvbWVyX3Bob25lGAogASgJEjMKB2FkZHJlc3MYCyABKAsyIi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckFkZHJlc3MSMwoFaXRlbXMYDiADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDyABKAMSFwoPdXBkYXRlZF9hdF91bml4GBAgASgDEhIKCml0ZW1fY291bnQYESABKA0SIAoYcGxhdGZvcm1fY3JlYXRlZF9hdF91bml4GBMgASgDEicKH3BsYXRmb3JtX3NoaXBtZW50X2RlYWRsaW5lX3VuaXgYFCABKAMSFgoOYnV5ZXJfdXNlcm5hbWUYFSABKAkSFgoOcGxhdGZvcm1fdG90YWwYFiABKAESGwoTc2hpcG1lbnRfY2hhbm5lbF9pZBgXIAEoBBI4CgxyZWdpb25fbWF0Y2gYGCABKAsyIi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckFkZHJlc3NKBAgMEA1KBAgNEA5KBAgSEBNSDXNoaXBwaW5nX2NvZGVSDXNoaXBwaW5nX2Nvc3RSE3VubWFwcGVkX2l0ZW1fY291bnQivQIKFU9yZGVyRHJhZnRMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI6CgZmaWx0ZXIYAiABKAsyKi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0TGlzdEZpbHRlchI8CgRzb3J0GAMgASgLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RGaWx0ZXJTb3J0EkIKDGRhdGFfcmVxdWVzdBgEIAMoDjIsLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgMEBSIvChRPcmRlckRyYWZ0TGlzdEZpbHRlchIXCgZzb3VyY2UYASABKAlCB7pIBHICGEAizAEKGE9yZGVyRHJhZnRMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASPgoLb3JkZXJfZHJhZnQYAyABKA4yJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0Um93U29ydEgAQgMKAXMiswEKFE9yZGVyRHJhZnRSb3dNYXBJdGVtEkkKCG1hcF9kYXRhGAEgAygLMjcud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlAKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSLwoFdmFsdWUYAiABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0OgI4ASKcAQoaT3JkZXJEcmFmdExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABJBCgtvcmRlcl9kcmFmdBgCIAEoCzIqLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRSb3dNYXBJdGVtSABCAwoBZCKtAQoWT3JkZXJEcmFmdExpc3RSZXNwb25zZRI/CgVpdGVtcxgBIAMoCzIwLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEhMKC3JlYWR5X2NvdW50GAQgASgEIl8KF09yZGVyRHJhZnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCGRyYWZ0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJLChhPcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0ImoKEk9yZGVyRHJhZnRMaW5lRWRpdBIKCgJpZBgBIAEoBBIQCghxdWFudGl0eRgDIAEoDRIkCgp1bml0X3ByaWNlGAQgASgBQhC6SA0SC0ABKQAAAAAAAAAASgQIAhADUgpwcm9kdWN0X2lkIkoKD09yZGVyRHJhZnRMaW5lcxI3CgVsaW5lcxgBIAMoCzIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaW5lRWRpdCKQBgoXT3JkZXJEcmFmdFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIZHJhZnRfaWQYAiABKARCB7pIBDICIAASFAoHc2hvcF9pZBgDIAEoBEgAiAEBEhkKDHdhcmVob3VzZV9pZBgEIAEoBEgBiAEBEiQKDWN1c3RvbWVyX25hbWUYBSABKAlCCLpIBXIDGMgBSAKIAQESJAoOY3VzdG9tZXJfcGhvbmUYBiABKAlCB7pIBHICGChIA4gBARIzCgdhZGRyZXNzGAcgASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBZGRyZXNzEjQKBWl0ZW1zGAogASgLMiUud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpbmVzEi4KGHBsYXRmb3JtX2NyZWF0ZWRfYXRfdW5peBgLIAEoA0IHukgEIgIoAEgEiAEBEjUKH3BsYXRmb3JtX3NoaXBtZW50X2RlYWRsaW5lX3VuaXgYDCABKANCB7pIBCICKABIBYgBARIkCg5idXllcl91c2VybmFtZRgNIAEoCUIHukgEcgIYZEgGiAEBEi0KDnBsYXRmb3JtX3RvdGFsGA4gASgBQhC6SA0SC0ABKQAAAAAAAAAASAeIAQESIAoTc2hpcG1lbnRfY2hhbm5lbF9pZBgPIAEoBEgIiAEBOguStRgHCgUBAgMEBUIKCghfc2hvcF9pZEIPCg1fd2FyZWhvdXNlX2lkQhAKDl9jdXN0b21lcl9uYW1lQhEKD19jdXN0b21lcl9waG9uZUIbChlfcGxhdGZvcm1fY3JlYXRlZF9hdF91bml4QiIKIF9wbGF0Zm9ybV9zaGlwbWVudF9kZWFkbGluZV91bml4QhEKD19idXllcl91c2VybmFtZUIRCg9fcGxhdGZvcm1fdG90YWxCFgoUX3NoaXBtZW50X2NoYW5uZWxfaWRKBAgIEAlKBAgJEApSDXNoaXBwaW5nX2NvZGVSDXNoaXBwaW5nX2Nvc3QiSwoYT3JkZXJEcmFmdFVwZGF0ZVJlc3BvbnNlEi8KBWRyYWZ0GAEgASgLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdCJjChdPcmRlckRyYWZ0RGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCglkcmFmdF9pZHMYAiADKARCCrpIB5IBBAgBEGQ6C5K1GAcKBQECAwQFIisKGE9yZGVyRHJhZnREZWxldGVSZXNwb25zZRIPCgdkZWxldGVkGAEgASgNIsAEChVPcmRlckRyYWZ0UHVzaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoGc291cmNlGAIgASgJQgm6SAZyBBABGEASHwoLZXh0ZXJuYWxfaWQYAyABKAlCCrpIB3IFEAEYgAESDwoHc2hvcF9pZBgEIAEoBBIUCgx3YXJlaG91c2VfaWQYBSABKAQSHwoNY3VzdG9tZXJfbmFtZRgGIAEoCUIIukgFcgMYyAESHwoOY3VzdG9tZXJfcGhvbmUYByABKAlCB7pIBHICGCgSMwoHYWRkcmVzcxgIIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIzCgVpdGVtcxgLIAMoCzIkLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRJdGVtEikKGHBsYXRmb3JtX2NyZWF0ZWRfYXRfdW5peBgMIAEoA0IHukgEIgIoABIwCh9wbGF0Zm9ybV9zaGlwbWVudF9kZWFkbGluZV91bml4GA0gASgDQge6SAQiAigAEh8KDmJ1eWVyX3VzZXJuYW1lGA4gASgJQge6SARyAhhkEigKDnBsYXRmb3JtX3RvdGFsGA8gASgBQhC6SA0SC0ABKQAAAAAAAAAAEhsKE3NoaXBtZW50X2NoYW5uZWxfaWQYECABKAQ6C5K1GAcKBQECAwQFSgQICRAKSgQIChALUg1zaGlwcGluZ19jb2RlUg1zaGlwcGluZ19jb3N0IloKFk9yZGVyRHJhZnRQdXNoUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0Eg8KB2NyZWF0ZWQYAiABKAgiXwoeT3JkZXJEcmFmdEJ5RXh0ZXJuYWxSZWZzRmlsdGVyEhgKB3Nob3BfaWQYASABKARCB7pIBDICIAASIwoEcmVmcxgCIAMoCUIVukgSkgEPCAEQMhgBIgdyBRABGIABIugBCh9PcmRlckRyYWZ0QnlFeHRlcm5hbFJlZnNSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkwKBmZpbHRlchgCIAEoCzI0LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRCeUV4dGVybmFsUmVmc0ZpbHRlckIGukgDyAEBEkwKDGRhdGFfcmVxdWVzdBgDIAMoDjI2LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRCeUV4dGVybmFsUmVmc0RhdGFUeXBlOguStRgHCgUBAgMEBSJnChFPcmRlckRyYWZ0UmVmSXRlbRIQCghkcmFmdF9pZBgBIAEoBBIPCgdzaG9wX2lkGAIgASgEEhYKDmF1dGhvcl91c2VyX2lkGAMgASgEEhcKD2NyZWF0ZWRfYXRfdW5peBgEIAEoAyK6AQoUT3JkZXJEcmFmdFJlZk1hcEl0ZW0SSQoIbWFwX2RhdGEYASADKAsyNy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UmVmTWFwSXRlbS5NYXBEYXRhRW50cnkaVwoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI2CgV2YWx1ZRgCIAEoCzInLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRSZWZJdGVtOgI4ASJsCiRPcmRlckRyYWZ0QnlFeHRlcm5hbFJlZnNSZXNwb25zZUl0ZW0SPwoJZHJhZnRfcmVmGAEgASgLMioud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFJlZk1hcEl0ZW1IAEIDCgFkInEKJE9yZGVyRHJhZnRCeUV4dGVybmFsUmVmc1Jlc3BvbnNlTGlzdBJJCgVpdGVtcxgBIAMoCzI6LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRCeUV4dGVybmFsUmVmc1Jlc3BvbnNlSXRlbSLeAQogT3JkZXJEcmFmdEJ5RXh0ZXJuYWxSZWZzUmVzcG9uc2USUAoFaXRlbXMYASADKAsyQS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0QnlFeHRlcm5hbFJlZnNSZXNwb25zZS5JdGVtc0VudHJ5GmgKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEkkKBXZhbHVlGAIgASgLMjoud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdEJ5RXh0ZXJuYWxSZWZzUmVzcG9uc2VMaXN0OgI4ASqYAQoWT3JkZXJEcmFmdExpc3REYXRhVHlwZRIqCiZPUkRFUl9EUkFGVF9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiYKIk9SREVSX0RSQUZUX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIqCiZPUkRFUl9EUkFGVF9MSVNUX0RBVEFfVFlQRV9PUkRFUl9EUkFGVBACKlYKEU9yZGVyRHJhZnRSb3dTb3J0EiQKIE9SREVSX0RSQUZUX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASGwoXT1JERVJfRFJBRlRfUk9XX1NPUlRfSUQQASqQAQogT3JkZXJEcmFmdEJ5RXh0ZXJuYWxSZWZzRGF0YVR5cGUSNgoyT1JERVJfRFJBRlRfQllfRVhURVJOQUxfUkVGU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABI0CjBPUkRFUl9EUkFGVF9CWV9FWFRFUk5BTF9SRUZTX0RBVEFfVFlQRV9EUkFGVF9SRUYQATLhBQoRT3JkZXJEcmFmdFNlcnZpY2USawoOT3JkZXJEcmFmdFB1c2gSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlc3BvbnNlEnAKDk9yZGVyRHJhZnRMaXN0Eisud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXF1ZXN0Giwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXNwb25zZSIDkAIBEnYKEE9yZGVyRHJhZnREZXRhaWwSLS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGV0YWlsUmVxdWVzdBouLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnREZXRhaWxSZXNwb25zZSIDkAIBEnEKEE9yZGVyRHJhZnRVcGRhdGUSLS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0VXBkYXRlUmVxdWVzdBouLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRVcGRhdGVSZXNwb25zZRJxChBPcmRlckRyYWZ0RGVsZXRlEi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdERlbGV0ZVJlcXVlc3QaLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGVsZXRlUmVzcG9uc2USjgEKGE9yZGVyRHJhZnRCeUV4dGVybmFsUmVmcxI1LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRCeUV4dGVybmFsUmVmc1JlcXVlc3QaNi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0QnlFeHRlcm5hbFJlZnNSZXNwb25zZSIDkAIBQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
 
 /**
- * One scraped line of a draft.
+ * One scraped line of a draft — the platform's reference: what the marketplace said, never what we resolved it to.
  *
- * It carries BOTH what the marketplace said and what we resolved it to. A marketplace scraper knows
- * the marketplace's product TITLE, not our `product_id` — so the title is stored verbatim and a
- * person maps it later. The unmapped line IS the incompleteness that makes this a draft.
+ * A DRAFT STORES NO MAPPING (a-draft-stores-no-mapping): a marketplace scraper knows the platform's product TITLE, not
+ * our product, so the title is stored verbatim and the CS maps it in the order form, straight into the order's lines.
  *
  * @generated from message warehouse.selling.v1.OrderDraftItem
  */
@@ -50,17 +49,6 @@ export type OrderDraftItem = Message<"warehouse.selling.v1.OrderDraftItem"> & {
   externalName: string;
 
   /**
-   * Our catalogue id, 0 until a person maps it.
-   *
-   * ⚠ IGNORED ON PUSH. The app does not know our ids, and a client guessing them by matching titles
-   * against our catalogue — silently, on its own — is exactly the design §6.4 rejected. Mapping is a
-   * human act performed through OrderDraftUpdate.
-   *
-   * @generated from field: uint64 product_id = 4;
-   */
-  productId: bigint;
-
-  /**
    * Unconstrained, unlike OrderItem's `quantity >= 1`: a scrape may not have been able to read
    * either. Refusing a whole push over one unreadable line would lose the other nine — promote is
    * where every requirement lands.
@@ -70,9 +58,9 @@ export type OrderDraftItem = Message<"warehouse.selling.v1.OrderDraftItem"> & {
   quantity: number;
 
   /**
-   * @generated from field: int64 unit_price = 6;
+   * @generated from field: double unit_price = 6;
    */
-  unitPrice: bigint;
+  unitPrice: number;
 };
 
 /**
@@ -140,6 +128,10 @@ export type OrderDraft = Message<"warehouse.selling.v1.OrderDraft"> & {
   warehouseId: bigint;
 
   /**
+   * The buyer and the address live in the draft's ONE `order_draft_addresses` row (selling 00046,
+   * one-address-per-order-and-per-draft), as NAMES only (an-address-is-plain-names): the address's four `_code` fields
+   * are always empty here, and any a caller sends is discarded. Best effort — every part may be empty.
+   *
    * @generated from field: string customer_name = 9;
    */
   customerName: string;
@@ -150,16 +142,9 @@ export type OrderDraft = Message<"warehouse.selling.v1.OrderDraft"> & {
   customerPhone: string;
 
   /**
-   * The same frozen-address shape an order carries (#118), so promote copies rather than translates.
-   *
    * @generated from field: warehouse.selling.v1.OrderAddress address = 11;
    */
   address?: OrderAddress | undefined;
-
-  /**
-   * @generated from field: string shipping_code = 12;
-   */
-  shippingCode: string;
 
   /**
    * The lines — populated by OrderDraftDetail (the list returns a summary without them).
@@ -179,25 +164,12 @@ export type OrderDraft = Message<"warehouse.selling.v1.OrderDraft"> & {
   updatedAtUnix: bigint;
 
   /**
-   * How far along this draft is, WITHOUT its lines (#192). Both are computed by the server on every
-   * read, list and detail alike.
-   *
-   * They exist because the list deliberately does not return items, and "how much work is left on
-   * this one" is the only question the list screen (#195) is really asking. Counting client-side
-   * would mean loading every draft's lines to render one page of a list — the exact shape of the
-   * slow query pagination is there to prevent.
+   * How many lines the draft holds, WITHOUT its lines (#192) — computed by the server on every read, list and detail
+   * alike, because the list deliberately returns no items.
    *
    * @generated from field: uint32 item_count = 17;
    */
   itemCount: number;
-
-  /**
-   * Lines still carrying product_id = 0. Non-zero means this draft CANNOT be promoted: an unmapped
-   * line is precisely what makes it a draft.
-   *
-   * @generated from field: uint32 unmapped_item_count = 18;
-   */
-  unmappedItemCount: number;
 
   /**
    * WHEN THE BUYER ORDERED on the storefront (platform-created-at-is-required-at-finalize). 0 = not known yet: a draft
@@ -224,14 +196,34 @@ export type OrderDraft = Message<"warehouse.selling.v1.OrderDraft"> & {
   buyerUsername: string;
 
   /**
-   * WHAT THE BUYER PAID on the platform, whole rupiah — the owner's `order_drafts.platform_total`
+   * WHAT THE BUYER PAID on the platform, a double (the-backend-never-rounds-money) — the owner's `order_drafts.platform_total`
    * (platform-total-is-required-at-finalize), the figure settlement opens the order's account on. 0 = not known yet: a
    * draft may hold it empty while it is worked on, and Promote refuses until it is set. Promote copies it onto
-   * Order.platform_total.
+   * Order.platform_total, exact as the order is placed — a draft keeps what was read or typed, and so does the order.
    *
-   * @generated from field: int64 platform_total = 22;
+   * @generated from field: double platform_total = 22;
    */
-  platformTotal: bigint;
+  platformTotal: number;
+
+  /**
+   * THE COURIER, as the app converted it (the-app-converts-the-courier-to-a-channel-id) or a person picked it — a
+   * shipment channel's id. 0 = not known: the app could not map the platform's courier, and the person picks it in the
+   * order form, where it is required (no-order-without-a-courier).
+   *
+   * @generated from field: uint64 shipment_channel_id = 23;
+   */
+  shipmentChannelId: bigint;
+
+  /**
+   * THE ADDRESS PICKER'S PRE-FILL (the-cs-edits-the-whole-address-before-create, *Pre-filled when certain*): when the
+   * draft's four region names match EXACTLY ONE region_service place (RegionMatch), that place — codes, the region
+   * list's own names, its kode pos; `address_line` empty. Unset when they match none or several, or a level is empty:
+   * the form's dropdowns then open empty and the person picks, reading `address` as text. OrderDraftDetail only, worked
+   * out on every read and never stored — the draft keeps names (an-address-is-plain-names).
+   *
+   * @generated from field: warehouse.selling.v1.OrderAddress region_match = 24;
+   */
+  regionMatch?: OrderAddress | undefined;
 };
 
 /**
@@ -341,7 +333,7 @@ export const OrderDraftListFilterSortSchema: GenMessage<OrderDraftListFilterSort
 
 /**
  * The ORDER_DRAFT slice reuses the OrderDraft message directly (a list summary leaves items empty,
- * but carries item_count / unmapped_item_count).
+ * but carries item_count).
  *
  * @generated from message warehouse.selling.v1.OrderDraftRowMapItem
  */
@@ -406,6 +398,17 @@ export type OrderDraftListResponse = Message<"warehouse.selling.v1.OrderDraftLis
    * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo | undefined;
+
+  /**
+   * How many drafts of the WHOLE filtered set (every page, not this one) have nothing left before Create — the
+   * list's own readiness rule (the frontend's draftGaps, the-drafts-list-counts-no-mapping): a shop, a warehouse, a
+   * customer, an address line, a courier, at least one line, an order date, a sell price, and not a `manual` draft (its
+   * order ref is still to be typed). No mapping: the lines are mapped in the order form at Create. Stock is not in it:
+   * only the order form can read the warehouse's availability.
+   *
+   * @generated from field: uint64 ready_count = 4;
+   */
+  readyCount: bigint;
 };
 
 /**
@@ -442,8 +445,7 @@ export const OrderDraftDetailRequestSchema: GenMessage<OrderDraftDetailRequest> 
  */
 export type OrderDraftDetailResponse = Message<"warehouse.selling.v1.OrderDraftDetailResponse"> & {
   /**
-   * WITH its lines — each carrying both the scraped text and the product it has been mapped to, so
-   * the mapping screen (#196) can show one beside the other.
+   * WITH its lines (the scraped text the order form shows above its products) and its `region_match`.
    *
    * @generated from field: warehouse.selling.v1.OrderDraft draft = 1;
    */
@@ -458,7 +460,8 @@ export const OrderDraftDetailResponseSchema: GenMessage<OrderDraftDetailResponse
   messageDesc(file_warehouse_selling_v1_order_draft, 9);
 
 /**
- * One line as a PERSON edits it (#193) — the mapping act, and the small corrections around it.
+ * One line as a PERSON edits it (#193) — a quantity or price correction; a draft stores no mapping
+ * (a-draft-stores-no-mapping).
  *
  * The scraped text is deliberately absent. `external_sku` / `external_name` are the evidence of what
  * the buyer ordered and are never overwritten by anybody; a request that could carry them would be a
@@ -476,22 +479,14 @@ export type OrderDraftLineEdit = Message<"warehouse.selling.v1.OrderDraftLineEdi
   id: bigint;
 
   /**
-   * The mapping. 0 leaves the line unmapped, which keeps the draft unpromotable — that is a legal
-   * state to save, because half-finished work is the whole point of a draft.
-   *
-   * @generated from field: uint64 product_id = 2;
-   */
-  productId: bigint;
-
-  /**
    * @generated from field: uint32 quantity = 3;
    */
   quantity: number;
 
   /**
-   * @generated from field: int64 unit_price = 4;
+   * @generated from field: double unit_price = 4;
    */
-  unitPrice: bigint;
+  unitPrice: number;
 };
 
 /**
@@ -526,8 +521,8 @@ export const OrderDraftLinesSchema: GenMessage<OrderDraftLines> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_order_draft, 11);
 
 /**
- * OrderDraftUpdate is the person's edit, made in our UI (#193) — mapping a scraped line to a real
- * product, fixing the address, choosing the shop and warehouse.
+ * OrderDraftUpdate is the person's edit, made in our UI (#193) — correcting a line, fixing the address, choosing the
+ * shop and warehouse. A draft stores no mapping (a-draft-stores-no-mapping).
  *
  * ⚠ IT ALWAYS WINS, and marks every field it writes as TOUCHED. That mark is what OrderDraftPush
  * reads to know what it may not overwrite, so this RPC and that one are two halves of one rule.
@@ -578,11 +573,6 @@ export type OrderDraftUpdateRequest = Message<"warehouse.selling.v1.OrderDraftUp
   address?: OrderAddress | undefined;
 
   /**
-   * @generated from field: optional string shipping_code = 8;
-   */
-  shippingCode?: string | undefined;
-
-  /**
    * The lines, if this edit touches them at all.
    *
    * @generated from field: warehouse.selling.v1.OrderDraftLines items = 10;
@@ -614,9 +604,17 @@ export type OrderDraftUpdateRequest = Message<"warehouse.selling.v1.OrderDraftUp
    * What the buyer paid on the platform, as a person read it or typed it (platform-total-is-required-at-finalize).
    * Set = edited and marked touched, so the app's next push leaves it alone; 0 clears it.
    *
-   * @generated from field: optional int64 platform_total = 14;
+   * @generated from field: optional double platform_total = 14;
    */
-  platformTotal?: bigint | undefined;
+  platformTotal?: number | undefined;
+
+  /**
+   * The courier, as a person picked it — a shipment channel's id. Set = edited and marked touched, so the app's next push
+   * leaves it alone; 0 clears it.
+   *
+   * @generated from field: optional uint64 shipment_channel_id = 15;
+   */
+  shipmentChannelId?: bigint | undefined;
 };
 
 /**
@@ -764,11 +762,6 @@ export type OrderDraftPushRequest = Message<"warehouse.selling.v1.OrderDraftPush
   address?: OrderAddress | undefined;
 
   /**
-   * @generated from field: string shipping_code = 9;
-   */
-  shippingCode: string;
-
-  /**
    * The scraped lines. NO minimum: a push carrying a customer and an address but no readable lines
    * is still worth keeping — refusing it would throw away everything the app COULD see over the one
    * thing it could not.
@@ -810,9 +803,18 @@ export type OrderDraftPushRequest = Message<"warehouse.selling.v1.OrderDraftPush
    * binary client is unaffected — ⚠ but a JSON client still sending `marketplaceTotal` has it DISCARDED silently, and
    * its drafts reach Promote with 0.
    *
-   * @generated from field: int64 platform_total = 15;
+   * @generated from field: double platform_total = 15;
    */
-  platformTotal: bigint;
+  platformTotal: number;
+
+  /**
+   * THE COURIER, converted by the app from the platform's text to our channel id — the app reads ShipmentChannelList and
+   * maps onto it (the-app-converts-the-courier-to-a-channel-id). 0 = the app could not map it; the draft keeps none and
+   * the person picks one in the order form. Not looked up: a wrong mapping is the app's defect, corrected on the draft.
+   *
+   * @generated from field: uint64 shipment_channel_id = 16;
+   */
+  shipmentChannelId: bigint;
 };
 
 /**
@@ -847,6 +849,174 @@ export type OrderDraftPushResponse = Message<"warehouse.selling.v1.OrderDraftPus
  */
 export const OrderDraftPushResponseSchema: GenMessage<OrderDraftPushResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_order_draft, 17);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftByExternalRefsFilter
+ */
+export type OrderDraftByExternalRefsFilter = Message<"warehouse.selling.v1.OrderDraftByExternalRefsFilter"> & {
+  /**
+   * The shop the order is being created in — another shop's draft on the same ref is not this order's double.
+   *
+   * @generated from field: uint64 shop_id = 1;
+   */
+  shopId: bigint;
+
+  /**
+   * The marketplace refs as the form holds them. A form asks for one; the cap keeps the read bounded.
+   *
+   * @generated from field: repeated string refs = 2;
+   */
+  refs: string[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftByExternalRefsFilter.
+ * Use `create(OrderDraftByExternalRefsFilterSchema)` to create a new message.
+ */
+export const OrderDraftByExternalRefsFilterSchema: GenMessage<OrderDraftByExternalRefsFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 18);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftByExternalRefsRequest
+ */
+export type OrderDraftByExternalRefsRequest = Message<"warehouse.selling.v1.OrderDraftByExternalRefsRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.selling.v1.OrderDraftByExternalRefsFilter filter = 2;
+   */
+  filter?: OrderDraftByExternalRefsFilter | undefined;
+
+  /**
+   * @generated from field: repeated warehouse.selling.v1.OrderDraftByExternalRefsDataType data_request = 3;
+   */
+  dataRequest: OrderDraftByExternalRefsDataType[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftByExternalRefsRequest.
+ * Use `create(OrderDraftByExternalRefsRequestSchema)` to create a new message.
+ */
+export const OrderDraftByExternalRefsRequestSchema: GenMessage<OrderDraftByExternalRefsRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 19);
+
+/**
+ * One of the team's drafts carrying the ref, in the asked shop.
+ *
+ * @generated from message warehouse.selling.v1.OrderDraftRefItem
+ */
+export type OrderDraftRefItem = Message<"warehouse.selling.v1.OrderDraftRefItem"> & {
+  /**
+   * @generated from field: uint64 draft_id = 1;
+   */
+  draftId: bigint;
+
+  /**
+   * @generated from field: uint64 shop_id = 2;
+   */
+  shopId: bigint;
+
+  /**
+   * Whose draft it is — the caller can open only their own (OrderDraftDetail narrows to the author).
+   *
+   * @generated from field: uint64 author_user_id = 3;
+   */
+  authorUserId: bigint;
+
+  /**
+   * @generated from field: int64 created_at_unix = 4;
+   */
+  createdAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftRefItem.
+ * Use `create(OrderDraftRefItemSchema)` to create a new message.
+ */
+export const OrderDraftRefItemSchema: GenMessage<OrderDraftRefItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 20);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftRefMapItem
+ */
+export type OrderDraftRefMapItem = Message<"warehouse.selling.v1.OrderDraftRefMapItem"> & {
+  /**
+   * Keyed by draft id. One per app (source) at most, since a draft is unique on (team, source, ref).
+   *
+   * @generated from field: map<uint64, warehouse.selling.v1.OrderDraftRefItem> map_data = 1;
+   */
+  mapData: { [key: string]: OrderDraftRefItem };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftRefMapItem.
+ * Use `create(OrderDraftRefMapItemSchema)` to create a new message.
+ */
+export const OrderDraftRefMapItemSchema: GenMessage<OrderDraftRefMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 21);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftByExternalRefsResponseItem
+ */
+export type OrderDraftByExternalRefsResponseItem = Message<"warehouse.selling.v1.OrderDraftByExternalRefsResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.selling.v1.OrderDraftByExternalRefsResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.selling.v1.OrderDraftRefMapItem draft_ref = 1;
+     */
+    value: OrderDraftRefMapItem;
+    case: "draftRef";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftByExternalRefsResponseItem.
+ * Use `create(OrderDraftByExternalRefsResponseItemSchema)` to create a new message.
+ */
+export const OrderDraftByExternalRefsResponseItemSchema: GenMessage<OrderDraftByExternalRefsResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 22);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftByExternalRefsResponseList
+ */
+export type OrderDraftByExternalRefsResponseList = Message<"warehouse.selling.v1.OrderDraftByExternalRefsResponseList"> & {
+  /**
+   * @generated from field: repeated warehouse.selling.v1.OrderDraftByExternalRefsResponseItem items = 1;
+   */
+  items: OrderDraftByExternalRefsResponseItem[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftByExternalRefsResponseList.
+ * Use `create(OrderDraftByExternalRefsResponseListSchema)` to create a new message.
+ */
+export const OrderDraftByExternalRefsResponseListSchema: GenMessage<OrderDraftByExternalRefsResponseList> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 23);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftByExternalRefsResponse
+ */
+export type OrderDraftByExternalRefsResponse = Message<"warehouse.selling.v1.OrderDraftByExternalRefsResponse"> & {
+  /**
+   * Keyed by ref. A ref no draft of the team in that shop carries is ABSENT. A `manual` draft (saved from the order
+   * form) is never answered: its external id is a minted form id, not a marketplace ref.
+   *
+   * @generated from field: map<string, warehouse.selling.v1.OrderDraftByExternalRefsResponseList> items = 1;
+   */
+  items: { [key: string]: OrderDraftByExternalRefsResponseList };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftByExternalRefsResponse.
+ * Use `create(OrderDraftByExternalRefsResponseSchema)` to create a new message.
+ */
+export const OrderDraftByExternalRefsResponseSchema: GenMessage<OrderDraftByExternalRefsResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 24);
 
 /**
  * @generated from enum warehouse.selling.v1.OrderDraftListDataType
@@ -894,6 +1064,27 @@ export enum OrderDraftRowSort {
  */
 export const OrderDraftRowSortSchema: GenEnum<OrderDraftRowSort> = /*@__PURE__*/
   enumDesc(file_warehouse_selling_v1_order_draft, 1);
+
+/**
+ * @generated from enum warehouse.selling.v1.OrderDraftByExternalRefsDataType
+ */
+export enum OrderDraftByExternalRefsDataType {
+  /**
+   * @generated from enum value: ORDER_DRAFT_BY_EXTERNAL_REFS_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ORDER_DRAFT_BY_EXTERNAL_REFS_DATA_TYPE_DRAFT_REF = 1;
+   */
+  DRAFT_REF = 1,
+}
+
+/**
+ * Describes the enum warehouse.selling.v1.OrderDraftByExternalRefsDataType.
+ */
+export const OrderDraftByExternalRefsDataTypeSchema: GenEnum<OrderDraftByExternalRefsDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_selling_v1_order_draft, 2);
 
 /**
  * OrderDraftService owns `order_drafts` + `order_draft_items` (#190) — an INCOMPLETE order pushed in
@@ -961,6 +1152,19 @@ export const OrderDraftService: GenService<{
     methodKind: "unary";
     input: typeof OrderDraftDeleteRequestSchema;
     output: typeof OrderDraftDeleteResponseSchema;
+  },
+  /**
+   * The duplicate-ref warning's draft half (the-duplicate-warning-reads-drafts-too, settled in
+   * the-duplicate-ref-warning-is-accepted): the TEAM's drafts in one shop carrying any of these marketplace refs —
+   * shaped like OrderService.OrderByExternalRefs. ⚠ Team-wide, not the caller's own: a colleague's scrape of the
+   * same ref is exactly the double the warning exists to name. The drafts list keeps its own-drafts rule.
+   *
+   * @generated from rpc warehouse.selling.v1.OrderDraftService.OrderDraftByExternalRefs
+   */
+  orderDraftByExternalRefs: {
+    methodKind: "unary";
+    input: typeof OrderDraftByExternalRefsRequestSchema;
+    output: typeof OrderDraftByExternalRefsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_selling_v1_order_draft, 0);

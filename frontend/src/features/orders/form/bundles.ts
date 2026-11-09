@@ -24,7 +24,7 @@ export interface PickedBundle {
   name: string;
   slots: {
     productId: bigint;
-    sku: string;
+    productCode: string;
     name: string;
     ruleQty: number;
     /** Locked by its owner, or archived — the slot starts EMPTY, for the CS to fill with something else. */
@@ -43,7 +43,7 @@ export function pickedBundle(bundle: BundleRecord, products: Map<string, Product
 
       return {
         productId: line.productId,
-        sku: product?.sku ?? "",
+        productCode: product?.productCode ?? "",
         name: product?.name ?? `#${line.productId}`,
         ruleQty: line.quantity,
         unavailable: unavailable(state) ? (state as "locked" | "archived") : undefined,
@@ -97,7 +97,7 @@ export function bundleFor(picked: PickedBundle, key: string): BundleDraft {
         ? []
         : [
             {
-              ...lineFor({ id: slot.productId, sku: slot.sku, name: slot.name }),
+              ...lineFor({ id: slot.productId, productCode: slot.productCode, name: slot.name }),
               quantity: String(slot.ruleQty),
             },
           ],

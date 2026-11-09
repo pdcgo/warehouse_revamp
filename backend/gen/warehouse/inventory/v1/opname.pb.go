@@ -459,6 +459,62 @@ func (OpnameFinalizeBlock) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_inventory_v1_opname_proto_rawDescGZIP(), []int{7}
 }
 
+// Which of a team's up to three finalize transactions (problem-and-found-replace-opname). APPEND ONLY.
+type OpnameTransactionType int32
+
+const (
+	OpnameTransactionType_OPNAME_TRANSACTION_TYPE_UNSPECIFIED OpnameTransactionType = 0
+	// Units out, broken or lost — with the stock-problem rows.
+	OpnameTransactionType_OPNAME_TRANSACTION_TYPE_PROBLEM OpnameTransactionType = 1
+	// Units in, a surplus — claims of old losses, then a minted batch.
+	OpnameTransactionType_OPNAME_TRANSACTION_TYPE_FOUND OpnameTransactionType = 2
+	// Units only on the wrong rack — rack rows, no batch row, no money.
+	OpnameTransactionType_OPNAME_TRANSACTION_TYPE_MOVE OpnameTransactionType = 3
+)
+
+// Enum value maps for OpnameTransactionType.
+var (
+	OpnameTransactionType_name = map[int32]string{
+		0: "OPNAME_TRANSACTION_TYPE_UNSPECIFIED",
+		1: "OPNAME_TRANSACTION_TYPE_PROBLEM",
+		2: "OPNAME_TRANSACTION_TYPE_FOUND",
+		3: "OPNAME_TRANSACTION_TYPE_MOVE",
+	}
+	OpnameTransactionType_value = map[string]int32{
+		"OPNAME_TRANSACTION_TYPE_UNSPECIFIED": 0,
+		"OPNAME_TRANSACTION_TYPE_PROBLEM":     1,
+		"OPNAME_TRANSACTION_TYPE_FOUND":       2,
+		"OPNAME_TRANSACTION_TYPE_MOVE":        3,
+	}
+)
+
+func (x OpnameTransactionType) Enum() *OpnameTransactionType {
+	p := new(OpnameTransactionType)
+	*p = x
+	return p
+}
+
+func (x OpnameTransactionType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OpnameTransactionType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_opname_proto_enumTypes[8].Descriptor()
+}
+
+func (OpnameTransactionType) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_opname_proto_enumTypes[8]
+}
+
+func (x OpnameTransactionType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OpnameTransactionType.Descriptor instead.
+func (OpnameTransactionType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_opname_proto_rawDescGZIP(), []int{8}
+}
+
 type OpnameRackListDataType int32
 
 const (
@@ -492,11 +548,11 @@ func (x OpnameRackListDataType) String() string {
 }
 
 func (OpnameRackListDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_inventory_v1_opname_proto_enumTypes[8].Descriptor()
+	return file_warehouse_inventory_v1_opname_proto_enumTypes[9].Descriptor()
 }
 
 func (OpnameRackListDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_inventory_v1_opname_proto_enumTypes[8]
+	return &file_warehouse_inventory_v1_opname_proto_enumTypes[9]
 }
 
 func (x OpnameRackListDataType) Number() protoreflect.EnumNumber {
@@ -505,7 +561,7 @@ func (x OpnameRackListDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OpnameRackListDataType.Descriptor instead.
 func (OpnameRackListDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_opname_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_inventory_v1_opname_proto_rawDescGZIP(), []int{9}
 }
 
 type OpnameSession struct {
@@ -723,8 +779,8 @@ type OpnameRow struct {
 	// The owning (selling) team.
 	TeamId    uint64 `protobuf:"varint,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ProductId uint64 `protobuf:"varint,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// sku/name snapshot at the snapshot step.
-	ProductSku    string          `protobuf:"bytes,5,opt,name=product_sku,json=productSku,proto3" json:"product_sku,omitempty"`
+	// product code/name snapshot at the snapshot step.
+	ProductCode   string          `protobuf:"bytes,5,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
 	ProductName   string          `protobuf:"bytes,6,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
 	PlacementId   uint64          `protobuf:"varint,7,opt,name=placement_id,json=placementId,proto3" json:"placement_id,omitempty"`
 	PlacementCode string          `protobuf:"bytes,8,opt,name=placement_code,json=placementCode,proto3" json:"placement_code,omitempty"`
@@ -804,9 +860,9 @@ func (x *OpnameRow) GetProductId() uint64 {
 	return 0
 }
 
-func (x *OpnameRow) GetProductSku() string {
+func (x *OpnameRow) GetProductCode() string {
 	if x != nil {
-		return x.ProductSku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -1583,7 +1639,7 @@ type OpnameRowListFilter struct {
 	Status OpnameRowStatus `protobuf:"varint,3,opt,name=status,proto3,enum=warehouse.inventory.v1.OpnameRowStatus" json:"status,omitempty"`
 	// Only rows whose count stands apart from the book.
 	OnlyDifferences bool `protobuf:"varint,4,opt,name=only_differences,json=onlyDifferences,proto3" json:"only_differences,omitempty"`
-	// Free text over the product's SKU or name.
+	// Free text over the product's code or name.
 	Q             string `protobuf:"bytes,5,opt,name=q,proto3" json:"q,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1990,16 +2046,20 @@ func (x *OpnameFinalizePreviewRequest) GetSessionId() uint64 {
 	return 0
 }
 
-// One posting line, per batch (a-shortage-writes-a-row-per-batch, broken-takes-its-batch-before-lost).
+// One posting line, per batch (a-shortage-writes-a-row-per-batch, broken-takes-its-batch-before-lost). Broken and lost
+// post in the team's `problem` transaction, a claim and a mint in its `found` one.
 type OpnamePostLine struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  OpnamePostType         `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.inventory.v1.OpnamePostType" json:"type,omitempty"`
 	// The batch taken from, claimed back into, or 0 for a mint.
 	BatchId    uint64 `protobuf:"varint,2,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 	StockCount int64  `protobuf:"varint,3,opt,name=stock_count,json=stockCount,proto3" json:"stock_count,omitempty"`
-	// Rupiah: the batch's price; a mint's is the team's newest batch price here (last-price-is-the-teams-newest-batch-here).
-	PriceUnit int64 `protobuf:"varint,4,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
-	Amount    int64 `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	// Rupiah, double (money-is-double-in-the-api-too): the batch's price; a claim's is the lost row's; a mint's is the
+	// team's newest batch price here (last-price-is-the-teams-newest-batch-here).
+	PriceUnit float64 `protobuf:"fixed64,4,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
+	// Rupiah: broken and lost — the value the batch gives up (an-emptying-take-takes-all-the-value); a claim or a mint —
+	// units × price_unit.
+	Amount float64 `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
 	// A claim: the lost problem it claims.
 	ProblemId     uint64 `protobuf:"varint,6,opt,name=problem_id,json=problemId,proto3" json:"problem_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2057,14 +2117,14 @@ func (x *OpnamePostLine) GetStockCount() int64 {
 	return 0
 }
 
-func (x *OpnamePostLine) GetPriceUnit() int64 {
+func (x *OpnamePostLine) GetPriceUnit() float64 {
 	if x != nil {
 		return x.PriceUnit
 	}
 	return 0
 }
 
-func (x *OpnamePostLine) GetAmount() int64 {
+func (x *OpnamePostLine) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
@@ -2083,7 +2143,7 @@ type OpnameFinalizeProduct struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	TeamId      uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ProductId   uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	ProductSku  string                 `protobuf:"bytes,3,opt,name=product_sku,json=productSku,proto3" json:"product_sku,omitempty"`
+	ProductCode string                 `protobuf:"bytes,3,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
 	ProductName string                 `protobuf:"bytes,4,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
 	// The book, summed over its rows.
 	BookCount int64 `protobuf:"varint,5,opt,name=book_count,json=bookCount,proto3" json:"book_count,omitempty"`
@@ -2096,8 +2156,11 @@ type OpnameFinalizeProduct struct {
 	// How many of its racks change.
 	RackChangeCount int64             `protobuf:"varint,9,opt,name=rack_change_count,json=rackChangeCount,proto3" json:"rack_change_count,omitempty"`
 	Lines           []*OpnamePostLine `protobuf:"bytes,10,rep,name=lines,proto3" json:"lines,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Units only on the wrong rack: what the team's `move` transaction carries off the racks it corrects down — no batch,
+	// no money (a-count-nets-each-product-across-the-session). 0 when every rack change is the problem's or the found's.
+	MovedCount    int64 `protobuf:"varint,11,opt,name=moved_count,json=movedCount,proto3" json:"moved_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OpnameFinalizeProduct) Reset() {
@@ -2144,9 +2207,9 @@ func (x *OpnameFinalizeProduct) GetProductId() uint64 {
 	return 0
 }
 
-func (x *OpnameFinalizeProduct) GetProductSku() string {
+func (x *OpnameFinalizeProduct) GetProductCode() string {
 	if x != nil {
-		return x.ProductSku
+		return x.ProductCode
 	}
 	return ""
 }
@@ -2200,16 +2263,23 @@ func (x *OpnameFinalizeProduct) GetLines() []*OpnamePostLine {
 	return nil
 }
 
+func (x *OpnameFinalizeProduct) GetMovedCount() int64 {
+	if x != nil {
+		return x.MovedCount
+	}
+	return 0
+}
+
 type OpnameFinalizePreviewResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Every product with a difference or a rack change, by team then name. A product whose racks all match is left out.
 	Products []*OpnameFinalizeProduct `protobuf:"bytes,1,rep,name=products,proto3" json:"products,omitempty"`
-	// Rupiah: broken + lost — the warehouse owes the teams.
-	OwedAmount int64 `protobuf:"varint,2,opt,name=owed_amount,json=owedAmount,proto3" json:"owed_amount,omitempty"`
-	// Rupiah: claims — the teams pay the warehouse back.
-	ClaimedAmount int64 `protobuf:"varint,3,opt,name=claimed_amount,json=claimedAmount,proto3" json:"claimed_amount,omitempty"`
-	// Rupiah: what the minted batches are worth.
-	MintedAmount  int64               `protobuf:"varint,4,opt,name=minted_amount,json=mintedAmount,proto3" json:"minted_amount,omitempty"`
+	// Rupiah: broken + lost — the `problem` transactions; the warehouse owes the teams.
+	OwedAmount float64 `protobuf:"fixed64,2,opt,name=owed_amount,json=owedAmount,proto3" json:"owed_amount,omitempty"`
+	// Rupiah: claims — part of the `found` transactions; the teams pay the warehouse back.
+	ClaimedAmount float64 `protobuf:"fixed64,3,opt,name=claimed_amount,json=claimedAmount,proto3" json:"claimed_amount,omitempty"`
+	// Rupiah: what the minted batches are worth — the rest of the `found` transactions; no money moves.
+	MintedAmount  float64             `protobuf:"fixed64,4,opt,name=minted_amount,json=mintedAmount,proto3" json:"minted_amount,omitempty"`
 	Block         OpnameFinalizeBlock `protobuf:"varint,5,opt,name=block,proto3,enum=warehouse.inventory.v1.OpnameFinalizeBlock" json:"block,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2252,21 +2322,21 @@ func (x *OpnameFinalizePreviewResponse) GetProducts() []*OpnameFinalizeProduct {
 	return nil
 }
 
-func (x *OpnameFinalizePreviewResponse) GetOwedAmount() int64 {
+func (x *OpnameFinalizePreviewResponse) GetOwedAmount() float64 {
 	if x != nil {
 		return x.OwedAmount
 	}
 	return 0
 }
 
-func (x *OpnameFinalizePreviewResponse) GetClaimedAmount() int64 {
+func (x *OpnameFinalizePreviewResponse) GetClaimedAmount() float64 {
 	if x != nil {
 		return x.ClaimedAmount
 	}
 	return 0
 }
 
-func (x *OpnameFinalizePreviewResponse) GetMintedAmount() int64 {
+func (x *OpnameFinalizePreviewResponse) GetMintedAmount() float64 {
 	if x != nil {
 		return x.MintedAmount
 	}
@@ -2332,11 +2402,13 @@ func (x *OpnameSessionFinalizeRequest) GetSessionId() uint64 {
 	return 0
 }
 
-// One owning team's share of a finalize: one opname transaction per team (a-snapshot-row-names-its-transaction).
+// One transaction a finalize wrote — listed by the session (a-session-lists-its-final-transactions). An owning team has
+// up to three: problem, found, move.
 type OpnameTransaction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TransactionId uint64                 `protobuf:"varint,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
 	TeamId        uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Type          OpnameTransactionType  `protobuf:"varint,3,opt,name=type,proto3,enum=warehouse.inventory.v1.OpnameTransactionType" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2385,10 +2457,18 @@ func (x *OpnameTransaction) GetTeamId() uint64 {
 	return 0
 }
 
+func (x *OpnameTransaction) GetType() OpnameTransactionType {
+	if x != nil {
+		return x.Type
+	}
+	return OpnameTransactionType_OPNAME_TRANSACTION_TYPE_UNSPECIFIED
+}
+
 type OpnameSessionFinalizeResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// FailedPrecondition for any OpnameFinalizeBlock.
-	Session       *OpnameSession       `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	Session *OpnameSession `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	// By team, then problem · found · move.
 	Transactions  []*OpnameTransaction `protobuf:"bytes,2,rep,name=transactions,proto3" json:"transactions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3309,16 +3389,15 @@ const file_warehouse_inventory_v1_opname_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\x0e2'.warehouse.inventory.v1.OpnameDraftTypeR\x04type\x12\x1f\n" +
 	"\vstock_count\x18\x02 \x01(\x03R\n" +
 	"stockCount\x12\x12\n" +
-	"\x04note\x18\x03 \x01(\tR\x04note\"\xdd\x04\n" +
+	"\x04note\x18\x03 \x01(\tR\x04note\"\xdf\x04\n" +
 	"\tOpnameRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\x04R\tsessionId\x12\x17\n" +
 	"\ateam_id\x18\x03 \x01(\x04R\x06teamId\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x04 \x01(\x04R\tproductId\x12\x1f\n" +
-	"\vproduct_sku\x18\x05 \x01(\tR\n" +
-	"productSku\x12!\n" +
+	"product_id\x18\x04 \x01(\x04R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x05 \x01(\tR\vproductCode\x12!\n" +
 	"\fproduct_name\x18\x06 \x01(\tR\vproductName\x12!\n" +
 	"\fplacement_id\x18\a \x01(\x04R\vplacementId\x12%\n" +
 	"\x0eplacement_code\x18\b \x01(\tR\rplacementCode\x12?\n" +
@@ -3425,16 +3504,15 @@ const file_warehouse_inventory_v1_opname_proto_rawDesc = "" +
 	"\vstock_count\x18\x03 \x01(\x03R\n" +
 	"stockCount\x12\x1d\n" +
 	"\n" +
-	"price_unit\x18\x04 \x01(\x03R\tpriceUnit\x12\x16\n" +
-	"\x06amount\x18\x05 \x01(\x03R\x06amount\x12\x1d\n" +
+	"price_unit\x18\x04 \x01(\x01R\tpriceUnit\x12\x16\n" +
+	"\x06amount\x18\x05 \x01(\x01R\x06amount\x12\x1d\n" +
 	"\n" +
-	"problem_id\x18\x06 \x01(\x04R\tproblemId\"\x85\x03\n" +
+	"problem_id\x18\x06 \x01(\x04R\tproblemId\"\xa8\x03\n" +
 	"\x15OpnameFinalizeProduct\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\x04R\tproductId\x12\x1f\n" +
-	"\vproduct_sku\x18\x03 \x01(\tR\n" +
-	"productSku\x12!\n" +
+	"product_id\x18\x02 \x01(\x04R\tproductId\x12!\n" +
+	"\fproduct_code\x18\x03 \x01(\tR\vproductCode\x12!\n" +
 	"\fproduct_name\x18\x04 \x01(\tR\vproductName\x12\x1d\n" +
 	"\n" +
 	"book_count\x18\x05 \x01(\x03R\tbookCount\x12%\n" +
@@ -3444,23 +3522,26 @@ const file_warehouse_inventory_v1_opname_proto_rawDesc = "" +
 	"rest_count\x18\b \x01(\x03R\trestCount\x12*\n" +
 	"\x11rack_change_count\x18\t \x01(\x03R\x0frackChangeCount\x12<\n" +
 	"\x05lines\x18\n" +
-	" \x03(\v2&.warehouse.inventory.v1.OpnamePostLineR\x05lines\"\x9a\x02\n" +
+	" \x03(\v2&.warehouse.inventory.v1.OpnamePostLineR\x05lines\x12\x1f\n" +
+	"\vmoved_count\x18\v \x01(\x03R\n" +
+	"movedCount\"\x9a\x02\n" +
 	"\x1dOpnameFinalizePreviewResponse\x12I\n" +
 	"\bproducts\x18\x01 \x03(\v2-.warehouse.inventory.v1.OpnameFinalizeProductR\bproducts\x12\x1f\n" +
-	"\vowed_amount\x18\x02 \x01(\x03R\n" +
+	"\vowed_amount\x18\x02 \x01(\x01R\n" +
 	"owedAmount\x12%\n" +
-	"\x0eclaimed_amount\x18\x03 \x01(\x03R\rclaimedAmount\x12#\n" +
-	"\rminted_amount\x18\x04 \x01(\x03R\fmintedAmount\x12A\n" +
+	"\x0eclaimed_amount\x18\x03 \x01(\x01R\rclaimedAmount\x12#\n" +
+	"\rminted_amount\x18\x04 \x01(\x01R\fmintedAmount\x12A\n" +
 	"\x05block\x18\x05 \x01(\x0e2+.warehouse.inventory.v1.OpnameFinalizeBlockR\x05block\"x\n" +
 	"\x1cOpnameSessionFinalizeRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tsessionId:\n" +
 	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x06\t\"S\n" +
+	"\x04\x01\x02\x06\t\"\x96\x01\n" +
 	"\x11OpnameTransaction\x12%\n" +
 	"\x0etransaction_id\x18\x01 \x01(\x04R\rtransactionId\x12\x17\n" +
-	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\"\xaf\x01\n" +
+	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12A\n" +
+	"\x04type\x18\x03 \x01(\x0e2-.warehouse.inventory.v1.OpnameTransactionTypeR\x04type\"\xaf\x01\n" +
 	"\x1dOpnameSessionFinalizeResponse\x12?\n" +
 	"\asession\x18\x01 \x01(\v2%.warehouse.inventory.v1.OpnameSessionR\asession\x12M\n" +
 	"\ftransactions\x18\x02 \x03(\v2).warehouse.inventory.v1.OpnameTransactionR\ftransactions\"\xae\x02\n" +
@@ -3569,22 +3650,27 @@ const file_warehouse_inventory_v1_opname_proto_rawDesc = "" +
 	"!OPNAME_FINALIZE_BLOCK_UNSPECIFIED\x10\x00\x12$\n" +
 	" OPNAME_FINALIZE_BLOCK_NOT_ACTIVE\x10\x01\x12*\n" +
 	"&OPNAME_FINALIZE_BLOCK_ROWS_NOT_COUNTED\x10\x02\x12#\n" +
-	"\x1fOPNAME_FINALIZE_BLOCK_OWN_COUNT\x10\x03*\x91\x01\n" +
+	"\x1fOPNAME_FINALIZE_BLOCK_OWN_COUNT\x10\x03*\xaa\x01\n" +
+	"\x15OpnameTransactionType\x12'\n" +
+	"#OPNAME_TRANSACTION_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fOPNAME_TRANSACTION_TYPE_PROBLEM\x10\x01\x12!\n" +
+	"\x1dOPNAME_TRANSACTION_TYPE_FOUND\x10\x02\x12 \n" +
+	"\x1cOPNAME_TRANSACTION_TYPE_MOVE\x10\x03*\x91\x01\n" +
 	"\x16OpnameRackListDataType\x12*\n" +
 	"&OPNAME_RACK_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"OPNAME_RACK_LIST_DATA_TYPE_GENERAL\x10\x01\x12#\n" +
-	"\x1fOPNAME_RACK_LIST_DATA_TYPE_RACK\x10\x022\xd3\f\n" +
-	"\rOpnameService\x12x\n" +
-	"\x11OpnameSessionList\x120.warehouse.inventory.v1.OpnameSessionListRequest\x1a1.warehouse.inventory.v1.OpnameSessionListResponse\x12~\n" +
-	"\x13OpnameSessionCreate\x122.warehouse.inventory.v1.OpnameSessionCreateRequest\x1a3.warehouse.inventory.v1.OpnameSessionCreateResponse\x12~\n" +
-	"\x13OpnameSessionDetail\x122.warehouse.inventory.v1.OpnameSessionDetailRequest\x1a3.warehouse.inventory.v1.OpnameSessionDetailResponse\x12~\n" +
-	"\x13OpnameSessionCancel\x122.warehouse.inventory.v1.OpnameSessionCancelRequest\x1a3.warehouse.inventory.v1.OpnameSessionCancelResponse\x12l\n" +
-	"\rOpnameRowList\x12,.warehouse.inventory.v1.OpnameRowListRequest\x1a-.warehouse.inventory.v1.OpnameRowListResponse\x12x\n" +
-	"\x11OpnameRowSendBack\x120.warehouse.inventory.v1.OpnameRowSendBackRequest\x1a1.warehouse.inventory.v1.OpnameRowSendBackResponse\x12\x84\x01\n" +
-	"\x15OpnameFinalizePreview\x124.warehouse.inventory.v1.OpnameFinalizePreviewRequest\x1a5.warehouse.inventory.v1.OpnameFinalizePreviewResponse\x12\x84\x01\n" +
-	"\x15OpnameSessionFinalize\x124.warehouse.inventory.v1.OpnameSessionFinalizeRequest\x1a5.warehouse.inventory.v1.OpnameSessionFinalizeResponse\x12o\n" +
-	"\x0eOpnameRackList\x12-.warehouse.inventory.v1.OpnameRackListRequest\x1a..warehouse.inventory.v1.OpnameRackListResponse\x12r\n" +
-	"\x0fOpnameRackCount\x12..warehouse.inventory.v1.OpnameRackCountRequest\x1a/.warehouse.inventory.v1.OpnameRackCountResponse\x12o\n" +
+	"\x1fOPNAME_RACK_LIST_DATA_TYPE_RACK\x10\x022\xf2\f\n" +
+	"\rOpnameService\x12}\n" +
+	"\x11OpnameSessionList\x120.warehouse.inventory.v1.OpnameSessionListRequest\x1a1.warehouse.inventory.v1.OpnameSessionListResponse\"\x03\x90\x02\x01\x12~\n" +
+	"\x13OpnameSessionCreate\x122.warehouse.inventory.v1.OpnameSessionCreateRequest\x1a3.warehouse.inventory.v1.OpnameSessionCreateResponse\x12\x83\x01\n" +
+	"\x13OpnameSessionDetail\x122.warehouse.inventory.v1.OpnameSessionDetailRequest\x1a3.warehouse.inventory.v1.OpnameSessionDetailResponse\"\x03\x90\x02\x01\x12~\n" +
+	"\x13OpnameSessionCancel\x122.warehouse.inventory.v1.OpnameSessionCancelRequest\x1a3.warehouse.inventory.v1.OpnameSessionCancelResponse\x12q\n" +
+	"\rOpnameRowList\x12,.warehouse.inventory.v1.OpnameRowListRequest\x1a-.warehouse.inventory.v1.OpnameRowListResponse\"\x03\x90\x02\x01\x12x\n" +
+	"\x11OpnameRowSendBack\x120.warehouse.inventory.v1.OpnameRowSendBackRequest\x1a1.warehouse.inventory.v1.OpnameRowSendBackResponse\x12\x89\x01\n" +
+	"\x15OpnameFinalizePreview\x124.warehouse.inventory.v1.OpnameFinalizePreviewRequest\x1a5.warehouse.inventory.v1.OpnameFinalizePreviewResponse\"\x03\x90\x02\x01\x12\x84\x01\n" +
+	"\x15OpnameSessionFinalize\x124.warehouse.inventory.v1.OpnameSessionFinalizeRequest\x1a5.warehouse.inventory.v1.OpnameSessionFinalizeResponse\x12t\n" +
+	"\x0eOpnameRackList\x12-.warehouse.inventory.v1.OpnameRackListRequest\x1a..warehouse.inventory.v1.OpnameRackListResponse\"\x03\x90\x02\x01\x12w\n" +
+	"\x0fOpnameRackCount\x12..warehouse.inventory.v1.OpnameRackCountRequest\x1a/.warehouse.inventory.v1.OpnameRackCountResponse\"\x03\x90\x02\x01\x12o\n" +
 	"\x0eOpnameRowCount\x12-.warehouse.inventory.v1.OpnameRowCountRequest\x1a..warehouse.inventory.v1.OpnameRowCountResponse\x12\x81\x01\n" +
 	"\x14OpnameRowMarkCounted\x123.warehouse.inventory.v1.OpnameRowMarkCountedRequest\x1a4.warehouse.inventory.v1.OpnameRowMarkCountedResponse\x12x\n" +
 	"\x11OpnameRowAddFound\x120.warehouse.inventory.v1.OpnameRowAddFoundRequest\x1a1.warehouse.inventory.v1.OpnameRowAddFoundResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
@@ -3601,7 +3687,7 @@ func file_warehouse_inventory_v1_opname_proto_rawDescGZIP() []byte {
 	return file_warehouse_inventory_v1_opname_proto_rawDescData
 }
 
-var file_warehouse_inventory_v1_opname_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
+var file_warehouse_inventory_v1_opname_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
 var file_warehouse_inventory_v1_opname_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_warehouse_inventory_v1_opname_proto_goTypes = []any{
 	(OpnameSessionStatus)(0),              // 0: warehouse.inventory.v1.OpnameSessionStatus
@@ -3612,138 +3698,140 @@ var file_warehouse_inventory_v1_opname_proto_goTypes = []any{
 	(OpnameRowListDataType)(0),            // 5: warehouse.inventory.v1.OpnameRowListDataType
 	(OpnamePostType)(0),                   // 6: warehouse.inventory.v1.OpnamePostType
 	(OpnameFinalizeBlock)(0),              // 7: warehouse.inventory.v1.OpnameFinalizeBlock
-	(OpnameRackListDataType)(0),           // 8: warehouse.inventory.v1.OpnameRackListDataType
-	(*OpnameSession)(nil),                 // 9: warehouse.inventory.v1.OpnameSession
-	(*OpnameDraft)(nil),                   // 10: warehouse.inventory.v1.OpnameDraft
-	(*OpnameRow)(nil),                     // 11: warehouse.inventory.v1.OpnameRow
-	(*OpnameSessionListRequest)(nil),      // 12: warehouse.inventory.v1.OpnameSessionListRequest
-	(*OpnameSessionListFilter)(nil),       // 13: warehouse.inventory.v1.OpnameSessionListFilter
-	(*OpnameSessionMapItem)(nil),          // 14: warehouse.inventory.v1.OpnameSessionMapItem
-	(*OpnameSessionListResponseItem)(nil), // 15: warehouse.inventory.v1.OpnameSessionListResponseItem
-	(*OpnameSessionListResponse)(nil),     // 16: warehouse.inventory.v1.OpnameSessionListResponse
-	(*OpnameSessionCreateRequest)(nil),    // 17: warehouse.inventory.v1.OpnameSessionCreateRequest
-	(*OpnameSessionCreateResponse)(nil),   // 18: warehouse.inventory.v1.OpnameSessionCreateResponse
-	(*OpnameSessionDetailRequest)(nil),    // 19: warehouse.inventory.v1.OpnameSessionDetailRequest
-	(*OpnameSessionDetailResponse)(nil),   // 20: warehouse.inventory.v1.OpnameSessionDetailResponse
-	(*OpnameSessionCancelRequest)(nil),    // 21: warehouse.inventory.v1.OpnameSessionCancelRequest
-	(*OpnameSessionCancelResponse)(nil),   // 22: warehouse.inventory.v1.OpnameSessionCancelResponse
-	(*OpnameRowListRequest)(nil),          // 23: warehouse.inventory.v1.OpnameRowListRequest
-	(*OpnameRowListFilter)(nil),           // 24: warehouse.inventory.v1.OpnameRowListFilter
-	(*OpnameRowMapItem)(nil),              // 25: warehouse.inventory.v1.OpnameRowMapItem
-	(*OpnameRowListResponseItem)(nil),     // 26: warehouse.inventory.v1.OpnameRowListResponseItem
-	(*OpnameRowListResponse)(nil),         // 27: warehouse.inventory.v1.OpnameRowListResponse
-	(*OpnameRowSendBackRequest)(nil),      // 28: warehouse.inventory.v1.OpnameRowSendBackRequest
-	(*OpnameRowSendBackResponse)(nil),     // 29: warehouse.inventory.v1.OpnameRowSendBackResponse
-	(*OpnameFinalizePreviewRequest)(nil),  // 30: warehouse.inventory.v1.OpnameFinalizePreviewRequest
-	(*OpnamePostLine)(nil),                // 31: warehouse.inventory.v1.OpnamePostLine
-	(*OpnameFinalizeProduct)(nil),         // 32: warehouse.inventory.v1.OpnameFinalizeProduct
-	(*OpnameFinalizePreviewResponse)(nil), // 33: warehouse.inventory.v1.OpnameFinalizePreviewResponse
-	(*OpnameSessionFinalizeRequest)(nil),  // 34: warehouse.inventory.v1.OpnameSessionFinalizeRequest
-	(*OpnameTransaction)(nil),             // 35: warehouse.inventory.v1.OpnameTransaction
-	(*OpnameSessionFinalizeResponse)(nil), // 36: warehouse.inventory.v1.OpnameSessionFinalizeResponse
-	(*OpnameRackListRequest)(nil),         // 37: warehouse.inventory.v1.OpnameRackListRequest
-	(*OpnameRackListFilter)(nil),          // 38: warehouse.inventory.v1.OpnameRackListFilter
-	(*OpnameRack)(nil),                    // 39: warehouse.inventory.v1.OpnameRack
-	(*OpnameRackMapItem)(nil),             // 40: warehouse.inventory.v1.OpnameRackMapItem
-	(*OpnameRackListResponseItem)(nil),    // 41: warehouse.inventory.v1.OpnameRackListResponseItem
-	(*OpnameRackListResponse)(nil),        // 42: warehouse.inventory.v1.OpnameRackListResponse
-	(*OpnameRackCountRequest)(nil),        // 43: warehouse.inventory.v1.OpnameRackCountRequest
-	(*OpnameRackCountResponse)(nil),       // 44: warehouse.inventory.v1.OpnameRackCountResponse
-	(*OpnameRowCountRequest)(nil),         // 45: warehouse.inventory.v1.OpnameRowCountRequest
-	(*OpnameRowCountResponse)(nil),        // 46: warehouse.inventory.v1.OpnameRowCountResponse
-	(*OpnameRowMarkCountedRequest)(nil),   // 47: warehouse.inventory.v1.OpnameRowMarkCountedRequest
-	(*OpnameRowMarkCountedResponse)(nil),  // 48: warehouse.inventory.v1.OpnameRowMarkCountedResponse
-	(*OpnameRowAddFoundRequest)(nil),      // 49: warehouse.inventory.v1.OpnameRowAddFoundRequest
-	(*OpnameRowAddFoundResponse)(nil),     // 50: warehouse.inventory.v1.OpnameRowAddFoundResponse
-	nil,                                   // 51: warehouse.inventory.v1.OpnameSessionMapItem.MapDataEntry
-	nil,                                   // 52: warehouse.inventory.v1.OpnameRowMapItem.MapDataEntry
-	nil,                                   // 53: warehouse.inventory.v1.OpnameRackMapItem.MapDataEntry
-	(*v1.CommonPagination)(nil),           // 54: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),             // 55: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                   // 56: warehouse.common.v1.PageInfo
+	(OpnameTransactionType)(0),            // 8: warehouse.inventory.v1.OpnameTransactionType
+	(OpnameRackListDataType)(0),           // 9: warehouse.inventory.v1.OpnameRackListDataType
+	(*OpnameSession)(nil),                 // 10: warehouse.inventory.v1.OpnameSession
+	(*OpnameDraft)(nil),                   // 11: warehouse.inventory.v1.OpnameDraft
+	(*OpnameRow)(nil),                     // 12: warehouse.inventory.v1.OpnameRow
+	(*OpnameSessionListRequest)(nil),      // 13: warehouse.inventory.v1.OpnameSessionListRequest
+	(*OpnameSessionListFilter)(nil),       // 14: warehouse.inventory.v1.OpnameSessionListFilter
+	(*OpnameSessionMapItem)(nil),          // 15: warehouse.inventory.v1.OpnameSessionMapItem
+	(*OpnameSessionListResponseItem)(nil), // 16: warehouse.inventory.v1.OpnameSessionListResponseItem
+	(*OpnameSessionListResponse)(nil),     // 17: warehouse.inventory.v1.OpnameSessionListResponse
+	(*OpnameSessionCreateRequest)(nil),    // 18: warehouse.inventory.v1.OpnameSessionCreateRequest
+	(*OpnameSessionCreateResponse)(nil),   // 19: warehouse.inventory.v1.OpnameSessionCreateResponse
+	(*OpnameSessionDetailRequest)(nil),    // 20: warehouse.inventory.v1.OpnameSessionDetailRequest
+	(*OpnameSessionDetailResponse)(nil),   // 21: warehouse.inventory.v1.OpnameSessionDetailResponse
+	(*OpnameSessionCancelRequest)(nil),    // 22: warehouse.inventory.v1.OpnameSessionCancelRequest
+	(*OpnameSessionCancelResponse)(nil),   // 23: warehouse.inventory.v1.OpnameSessionCancelResponse
+	(*OpnameRowListRequest)(nil),          // 24: warehouse.inventory.v1.OpnameRowListRequest
+	(*OpnameRowListFilter)(nil),           // 25: warehouse.inventory.v1.OpnameRowListFilter
+	(*OpnameRowMapItem)(nil),              // 26: warehouse.inventory.v1.OpnameRowMapItem
+	(*OpnameRowListResponseItem)(nil),     // 27: warehouse.inventory.v1.OpnameRowListResponseItem
+	(*OpnameRowListResponse)(nil),         // 28: warehouse.inventory.v1.OpnameRowListResponse
+	(*OpnameRowSendBackRequest)(nil),      // 29: warehouse.inventory.v1.OpnameRowSendBackRequest
+	(*OpnameRowSendBackResponse)(nil),     // 30: warehouse.inventory.v1.OpnameRowSendBackResponse
+	(*OpnameFinalizePreviewRequest)(nil),  // 31: warehouse.inventory.v1.OpnameFinalizePreviewRequest
+	(*OpnamePostLine)(nil),                // 32: warehouse.inventory.v1.OpnamePostLine
+	(*OpnameFinalizeProduct)(nil),         // 33: warehouse.inventory.v1.OpnameFinalizeProduct
+	(*OpnameFinalizePreviewResponse)(nil), // 34: warehouse.inventory.v1.OpnameFinalizePreviewResponse
+	(*OpnameSessionFinalizeRequest)(nil),  // 35: warehouse.inventory.v1.OpnameSessionFinalizeRequest
+	(*OpnameTransaction)(nil),             // 36: warehouse.inventory.v1.OpnameTransaction
+	(*OpnameSessionFinalizeResponse)(nil), // 37: warehouse.inventory.v1.OpnameSessionFinalizeResponse
+	(*OpnameRackListRequest)(nil),         // 38: warehouse.inventory.v1.OpnameRackListRequest
+	(*OpnameRackListFilter)(nil),          // 39: warehouse.inventory.v1.OpnameRackListFilter
+	(*OpnameRack)(nil),                    // 40: warehouse.inventory.v1.OpnameRack
+	(*OpnameRackMapItem)(nil),             // 41: warehouse.inventory.v1.OpnameRackMapItem
+	(*OpnameRackListResponseItem)(nil),    // 42: warehouse.inventory.v1.OpnameRackListResponseItem
+	(*OpnameRackListResponse)(nil),        // 43: warehouse.inventory.v1.OpnameRackListResponse
+	(*OpnameRackCountRequest)(nil),        // 44: warehouse.inventory.v1.OpnameRackCountRequest
+	(*OpnameRackCountResponse)(nil),       // 45: warehouse.inventory.v1.OpnameRackCountResponse
+	(*OpnameRowCountRequest)(nil),         // 46: warehouse.inventory.v1.OpnameRowCountRequest
+	(*OpnameRowCountResponse)(nil),        // 47: warehouse.inventory.v1.OpnameRowCountResponse
+	(*OpnameRowMarkCountedRequest)(nil),   // 48: warehouse.inventory.v1.OpnameRowMarkCountedRequest
+	(*OpnameRowMarkCountedResponse)(nil),  // 49: warehouse.inventory.v1.OpnameRowMarkCountedResponse
+	(*OpnameRowAddFoundRequest)(nil),      // 50: warehouse.inventory.v1.OpnameRowAddFoundRequest
+	(*OpnameRowAddFoundResponse)(nil),     // 51: warehouse.inventory.v1.OpnameRowAddFoundResponse
+	nil,                                   // 52: warehouse.inventory.v1.OpnameSessionMapItem.MapDataEntry
+	nil,                                   // 53: warehouse.inventory.v1.OpnameRowMapItem.MapDataEntry
+	nil,                                   // 54: warehouse.inventory.v1.OpnameRackMapItem.MapDataEntry
+	(*v1.CommonPagination)(nil),           // 55: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),             // 56: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),                   // 57: warehouse.common.v1.PageInfo
 }
 var file_warehouse_inventory_v1_opname_proto_depIdxs = []int32{
 	0,  // 0: warehouse.inventory.v1.OpnameSession.status:type_name -> warehouse.inventory.v1.OpnameSessionStatus
 	1,  // 1: warehouse.inventory.v1.OpnameSession.plan:type_name -> warehouse.inventory.v1.OpnamePlan
 	3,  // 2: warehouse.inventory.v1.OpnameDraft.type:type_name -> warehouse.inventory.v1.OpnameDraftType
 	2,  // 3: warehouse.inventory.v1.OpnameRow.status:type_name -> warehouse.inventory.v1.OpnameRowStatus
-	10, // 4: warehouse.inventory.v1.OpnameRow.drafts:type_name -> warehouse.inventory.v1.OpnameDraft
-	13, // 5: warehouse.inventory.v1.OpnameSessionListRequest.filter:type_name -> warehouse.inventory.v1.OpnameSessionListFilter
+	11, // 4: warehouse.inventory.v1.OpnameRow.drafts:type_name -> warehouse.inventory.v1.OpnameDraft
+	14, // 5: warehouse.inventory.v1.OpnameSessionListRequest.filter:type_name -> warehouse.inventory.v1.OpnameSessionListFilter
 	4,  // 6: warehouse.inventory.v1.OpnameSessionListRequest.data_request:type_name -> warehouse.inventory.v1.OpnameSessionListDataType
-	54, // 7: warehouse.inventory.v1.OpnameSessionListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	55, // 7: warehouse.inventory.v1.OpnameSessionListRequest.page:type_name -> warehouse.common.v1.CommonPagination
 	0,  // 8: warehouse.inventory.v1.OpnameSessionListFilter.status:type_name -> warehouse.inventory.v1.OpnameSessionStatus
-	51, // 9: warehouse.inventory.v1.OpnameSessionMapItem.map_data:type_name -> warehouse.inventory.v1.OpnameSessionMapItem.MapDataEntry
-	55, // 10: warehouse.inventory.v1.OpnameSessionListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	14, // 11: warehouse.inventory.v1.OpnameSessionListResponseItem.session:type_name -> warehouse.inventory.v1.OpnameSessionMapItem
-	15, // 12: warehouse.inventory.v1.OpnameSessionListResponse.items:type_name -> warehouse.inventory.v1.OpnameSessionListResponseItem
-	56, // 13: warehouse.inventory.v1.OpnameSessionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	52, // 9: warehouse.inventory.v1.OpnameSessionMapItem.map_data:type_name -> warehouse.inventory.v1.OpnameSessionMapItem.MapDataEntry
+	56, // 10: warehouse.inventory.v1.OpnameSessionListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	15, // 11: warehouse.inventory.v1.OpnameSessionListResponseItem.session:type_name -> warehouse.inventory.v1.OpnameSessionMapItem
+	16, // 12: warehouse.inventory.v1.OpnameSessionListResponse.items:type_name -> warehouse.inventory.v1.OpnameSessionListResponseItem
+	57, // 13: warehouse.inventory.v1.OpnameSessionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	1,  // 14: warehouse.inventory.v1.OpnameSessionCreateRequest.plan:type_name -> warehouse.inventory.v1.OpnamePlan
-	9,  // 15: warehouse.inventory.v1.OpnameSessionCreateResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
-	9,  // 16: warehouse.inventory.v1.OpnameSessionDetailResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
-	9,  // 17: warehouse.inventory.v1.OpnameSessionCancelResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
-	24, // 18: warehouse.inventory.v1.OpnameRowListRequest.filter:type_name -> warehouse.inventory.v1.OpnameRowListFilter
+	10, // 15: warehouse.inventory.v1.OpnameSessionCreateResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
+	10, // 16: warehouse.inventory.v1.OpnameSessionDetailResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
+	10, // 17: warehouse.inventory.v1.OpnameSessionCancelResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
+	25, // 18: warehouse.inventory.v1.OpnameRowListRequest.filter:type_name -> warehouse.inventory.v1.OpnameRowListFilter
 	5,  // 19: warehouse.inventory.v1.OpnameRowListRequest.data_request:type_name -> warehouse.inventory.v1.OpnameRowListDataType
-	54, // 20: warehouse.inventory.v1.OpnameRowListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	55, // 20: warehouse.inventory.v1.OpnameRowListRequest.page:type_name -> warehouse.common.v1.CommonPagination
 	2,  // 21: warehouse.inventory.v1.OpnameRowListFilter.status:type_name -> warehouse.inventory.v1.OpnameRowStatus
-	52, // 22: warehouse.inventory.v1.OpnameRowMapItem.map_data:type_name -> warehouse.inventory.v1.OpnameRowMapItem.MapDataEntry
-	55, // 23: warehouse.inventory.v1.OpnameRowListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	25, // 24: warehouse.inventory.v1.OpnameRowListResponseItem.row:type_name -> warehouse.inventory.v1.OpnameRowMapItem
-	26, // 25: warehouse.inventory.v1.OpnameRowListResponse.items:type_name -> warehouse.inventory.v1.OpnameRowListResponseItem
-	56, // 26: warehouse.inventory.v1.OpnameRowListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	11, // 27: warehouse.inventory.v1.OpnameRowSendBackResponse.row:type_name -> warehouse.inventory.v1.OpnameRow
+	53, // 22: warehouse.inventory.v1.OpnameRowMapItem.map_data:type_name -> warehouse.inventory.v1.OpnameRowMapItem.MapDataEntry
+	56, // 23: warehouse.inventory.v1.OpnameRowListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	26, // 24: warehouse.inventory.v1.OpnameRowListResponseItem.row:type_name -> warehouse.inventory.v1.OpnameRowMapItem
+	27, // 25: warehouse.inventory.v1.OpnameRowListResponse.items:type_name -> warehouse.inventory.v1.OpnameRowListResponseItem
+	57, // 26: warehouse.inventory.v1.OpnameRowListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	12, // 27: warehouse.inventory.v1.OpnameRowSendBackResponse.row:type_name -> warehouse.inventory.v1.OpnameRow
 	6,  // 28: warehouse.inventory.v1.OpnamePostLine.type:type_name -> warehouse.inventory.v1.OpnamePostType
-	31, // 29: warehouse.inventory.v1.OpnameFinalizeProduct.lines:type_name -> warehouse.inventory.v1.OpnamePostLine
-	32, // 30: warehouse.inventory.v1.OpnameFinalizePreviewResponse.products:type_name -> warehouse.inventory.v1.OpnameFinalizeProduct
+	32, // 29: warehouse.inventory.v1.OpnameFinalizeProduct.lines:type_name -> warehouse.inventory.v1.OpnamePostLine
+	33, // 30: warehouse.inventory.v1.OpnameFinalizePreviewResponse.products:type_name -> warehouse.inventory.v1.OpnameFinalizeProduct
 	7,  // 31: warehouse.inventory.v1.OpnameFinalizePreviewResponse.block:type_name -> warehouse.inventory.v1.OpnameFinalizeBlock
-	9,  // 32: warehouse.inventory.v1.OpnameSessionFinalizeResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
-	35, // 33: warehouse.inventory.v1.OpnameSessionFinalizeResponse.transactions:type_name -> warehouse.inventory.v1.OpnameTransaction
-	38, // 34: warehouse.inventory.v1.OpnameRackListRequest.filter:type_name -> warehouse.inventory.v1.OpnameRackListFilter
-	8,  // 35: warehouse.inventory.v1.OpnameRackListRequest.data_request:type_name -> warehouse.inventory.v1.OpnameRackListDataType
-	54, // 36: warehouse.inventory.v1.OpnameRackListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	53, // 37: warehouse.inventory.v1.OpnameRackMapItem.map_data:type_name -> warehouse.inventory.v1.OpnameRackMapItem.MapDataEntry
-	55, // 38: warehouse.inventory.v1.OpnameRackListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	40, // 39: warehouse.inventory.v1.OpnameRackListResponseItem.rack:type_name -> warehouse.inventory.v1.OpnameRackMapItem
-	41, // 40: warehouse.inventory.v1.OpnameRackListResponse.items:type_name -> warehouse.inventory.v1.OpnameRackListResponseItem
-	56, // 41: warehouse.inventory.v1.OpnameRackListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	39, // 42: warehouse.inventory.v1.OpnameRackCountResponse.rack:type_name -> warehouse.inventory.v1.OpnameRack
-	11, // 43: warehouse.inventory.v1.OpnameRackCountResponse.rows:type_name -> warehouse.inventory.v1.OpnameRow
-	11, // 44: warehouse.inventory.v1.OpnameRowCountResponse.row:type_name -> warehouse.inventory.v1.OpnameRow
-	11, // 45: warehouse.inventory.v1.OpnameRowMarkCountedResponse.row:type_name -> warehouse.inventory.v1.OpnameRow
-	11, // 46: warehouse.inventory.v1.OpnameRowAddFoundResponse.rows:type_name -> warehouse.inventory.v1.OpnameRow
-	9,  // 47: warehouse.inventory.v1.OpnameSessionMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.OpnameSession
-	11, // 48: warehouse.inventory.v1.OpnameRowMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.OpnameRow
-	39, // 49: warehouse.inventory.v1.OpnameRackMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.OpnameRack
-	12, // 50: warehouse.inventory.v1.OpnameService.OpnameSessionList:input_type -> warehouse.inventory.v1.OpnameSessionListRequest
-	17, // 51: warehouse.inventory.v1.OpnameService.OpnameSessionCreate:input_type -> warehouse.inventory.v1.OpnameSessionCreateRequest
-	19, // 52: warehouse.inventory.v1.OpnameService.OpnameSessionDetail:input_type -> warehouse.inventory.v1.OpnameSessionDetailRequest
-	21, // 53: warehouse.inventory.v1.OpnameService.OpnameSessionCancel:input_type -> warehouse.inventory.v1.OpnameSessionCancelRequest
-	23, // 54: warehouse.inventory.v1.OpnameService.OpnameRowList:input_type -> warehouse.inventory.v1.OpnameRowListRequest
-	28, // 55: warehouse.inventory.v1.OpnameService.OpnameRowSendBack:input_type -> warehouse.inventory.v1.OpnameRowSendBackRequest
-	30, // 56: warehouse.inventory.v1.OpnameService.OpnameFinalizePreview:input_type -> warehouse.inventory.v1.OpnameFinalizePreviewRequest
-	34, // 57: warehouse.inventory.v1.OpnameService.OpnameSessionFinalize:input_type -> warehouse.inventory.v1.OpnameSessionFinalizeRequest
-	37, // 58: warehouse.inventory.v1.OpnameService.OpnameRackList:input_type -> warehouse.inventory.v1.OpnameRackListRequest
-	43, // 59: warehouse.inventory.v1.OpnameService.OpnameRackCount:input_type -> warehouse.inventory.v1.OpnameRackCountRequest
-	45, // 60: warehouse.inventory.v1.OpnameService.OpnameRowCount:input_type -> warehouse.inventory.v1.OpnameRowCountRequest
-	47, // 61: warehouse.inventory.v1.OpnameService.OpnameRowMarkCounted:input_type -> warehouse.inventory.v1.OpnameRowMarkCountedRequest
-	49, // 62: warehouse.inventory.v1.OpnameService.OpnameRowAddFound:input_type -> warehouse.inventory.v1.OpnameRowAddFoundRequest
-	16, // 63: warehouse.inventory.v1.OpnameService.OpnameSessionList:output_type -> warehouse.inventory.v1.OpnameSessionListResponse
-	18, // 64: warehouse.inventory.v1.OpnameService.OpnameSessionCreate:output_type -> warehouse.inventory.v1.OpnameSessionCreateResponse
-	20, // 65: warehouse.inventory.v1.OpnameService.OpnameSessionDetail:output_type -> warehouse.inventory.v1.OpnameSessionDetailResponse
-	22, // 66: warehouse.inventory.v1.OpnameService.OpnameSessionCancel:output_type -> warehouse.inventory.v1.OpnameSessionCancelResponse
-	27, // 67: warehouse.inventory.v1.OpnameService.OpnameRowList:output_type -> warehouse.inventory.v1.OpnameRowListResponse
-	29, // 68: warehouse.inventory.v1.OpnameService.OpnameRowSendBack:output_type -> warehouse.inventory.v1.OpnameRowSendBackResponse
-	33, // 69: warehouse.inventory.v1.OpnameService.OpnameFinalizePreview:output_type -> warehouse.inventory.v1.OpnameFinalizePreviewResponse
-	36, // 70: warehouse.inventory.v1.OpnameService.OpnameSessionFinalize:output_type -> warehouse.inventory.v1.OpnameSessionFinalizeResponse
-	42, // 71: warehouse.inventory.v1.OpnameService.OpnameRackList:output_type -> warehouse.inventory.v1.OpnameRackListResponse
-	44, // 72: warehouse.inventory.v1.OpnameService.OpnameRackCount:output_type -> warehouse.inventory.v1.OpnameRackCountResponse
-	46, // 73: warehouse.inventory.v1.OpnameService.OpnameRowCount:output_type -> warehouse.inventory.v1.OpnameRowCountResponse
-	48, // 74: warehouse.inventory.v1.OpnameService.OpnameRowMarkCounted:output_type -> warehouse.inventory.v1.OpnameRowMarkCountedResponse
-	50, // 75: warehouse.inventory.v1.OpnameService.OpnameRowAddFound:output_type -> warehouse.inventory.v1.OpnameRowAddFoundResponse
-	63, // [63:76] is the sub-list for method output_type
-	50, // [50:63] is the sub-list for method input_type
-	50, // [50:50] is the sub-list for extension type_name
-	50, // [50:50] is the sub-list for extension extendee
-	0,  // [0:50] is the sub-list for field type_name
+	8,  // 32: warehouse.inventory.v1.OpnameTransaction.type:type_name -> warehouse.inventory.v1.OpnameTransactionType
+	10, // 33: warehouse.inventory.v1.OpnameSessionFinalizeResponse.session:type_name -> warehouse.inventory.v1.OpnameSession
+	36, // 34: warehouse.inventory.v1.OpnameSessionFinalizeResponse.transactions:type_name -> warehouse.inventory.v1.OpnameTransaction
+	39, // 35: warehouse.inventory.v1.OpnameRackListRequest.filter:type_name -> warehouse.inventory.v1.OpnameRackListFilter
+	9,  // 36: warehouse.inventory.v1.OpnameRackListRequest.data_request:type_name -> warehouse.inventory.v1.OpnameRackListDataType
+	55, // 37: warehouse.inventory.v1.OpnameRackListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	54, // 38: warehouse.inventory.v1.OpnameRackMapItem.map_data:type_name -> warehouse.inventory.v1.OpnameRackMapItem.MapDataEntry
+	56, // 39: warehouse.inventory.v1.OpnameRackListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	41, // 40: warehouse.inventory.v1.OpnameRackListResponseItem.rack:type_name -> warehouse.inventory.v1.OpnameRackMapItem
+	42, // 41: warehouse.inventory.v1.OpnameRackListResponse.items:type_name -> warehouse.inventory.v1.OpnameRackListResponseItem
+	57, // 42: warehouse.inventory.v1.OpnameRackListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	40, // 43: warehouse.inventory.v1.OpnameRackCountResponse.rack:type_name -> warehouse.inventory.v1.OpnameRack
+	12, // 44: warehouse.inventory.v1.OpnameRackCountResponse.rows:type_name -> warehouse.inventory.v1.OpnameRow
+	12, // 45: warehouse.inventory.v1.OpnameRowCountResponse.row:type_name -> warehouse.inventory.v1.OpnameRow
+	12, // 46: warehouse.inventory.v1.OpnameRowMarkCountedResponse.row:type_name -> warehouse.inventory.v1.OpnameRow
+	12, // 47: warehouse.inventory.v1.OpnameRowAddFoundResponse.rows:type_name -> warehouse.inventory.v1.OpnameRow
+	10, // 48: warehouse.inventory.v1.OpnameSessionMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.OpnameSession
+	12, // 49: warehouse.inventory.v1.OpnameRowMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.OpnameRow
+	40, // 50: warehouse.inventory.v1.OpnameRackMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.OpnameRack
+	13, // 51: warehouse.inventory.v1.OpnameService.OpnameSessionList:input_type -> warehouse.inventory.v1.OpnameSessionListRequest
+	18, // 52: warehouse.inventory.v1.OpnameService.OpnameSessionCreate:input_type -> warehouse.inventory.v1.OpnameSessionCreateRequest
+	20, // 53: warehouse.inventory.v1.OpnameService.OpnameSessionDetail:input_type -> warehouse.inventory.v1.OpnameSessionDetailRequest
+	22, // 54: warehouse.inventory.v1.OpnameService.OpnameSessionCancel:input_type -> warehouse.inventory.v1.OpnameSessionCancelRequest
+	24, // 55: warehouse.inventory.v1.OpnameService.OpnameRowList:input_type -> warehouse.inventory.v1.OpnameRowListRequest
+	29, // 56: warehouse.inventory.v1.OpnameService.OpnameRowSendBack:input_type -> warehouse.inventory.v1.OpnameRowSendBackRequest
+	31, // 57: warehouse.inventory.v1.OpnameService.OpnameFinalizePreview:input_type -> warehouse.inventory.v1.OpnameFinalizePreviewRequest
+	35, // 58: warehouse.inventory.v1.OpnameService.OpnameSessionFinalize:input_type -> warehouse.inventory.v1.OpnameSessionFinalizeRequest
+	38, // 59: warehouse.inventory.v1.OpnameService.OpnameRackList:input_type -> warehouse.inventory.v1.OpnameRackListRequest
+	44, // 60: warehouse.inventory.v1.OpnameService.OpnameRackCount:input_type -> warehouse.inventory.v1.OpnameRackCountRequest
+	46, // 61: warehouse.inventory.v1.OpnameService.OpnameRowCount:input_type -> warehouse.inventory.v1.OpnameRowCountRequest
+	48, // 62: warehouse.inventory.v1.OpnameService.OpnameRowMarkCounted:input_type -> warehouse.inventory.v1.OpnameRowMarkCountedRequest
+	50, // 63: warehouse.inventory.v1.OpnameService.OpnameRowAddFound:input_type -> warehouse.inventory.v1.OpnameRowAddFoundRequest
+	17, // 64: warehouse.inventory.v1.OpnameService.OpnameSessionList:output_type -> warehouse.inventory.v1.OpnameSessionListResponse
+	19, // 65: warehouse.inventory.v1.OpnameService.OpnameSessionCreate:output_type -> warehouse.inventory.v1.OpnameSessionCreateResponse
+	21, // 66: warehouse.inventory.v1.OpnameService.OpnameSessionDetail:output_type -> warehouse.inventory.v1.OpnameSessionDetailResponse
+	23, // 67: warehouse.inventory.v1.OpnameService.OpnameSessionCancel:output_type -> warehouse.inventory.v1.OpnameSessionCancelResponse
+	28, // 68: warehouse.inventory.v1.OpnameService.OpnameRowList:output_type -> warehouse.inventory.v1.OpnameRowListResponse
+	30, // 69: warehouse.inventory.v1.OpnameService.OpnameRowSendBack:output_type -> warehouse.inventory.v1.OpnameRowSendBackResponse
+	34, // 70: warehouse.inventory.v1.OpnameService.OpnameFinalizePreview:output_type -> warehouse.inventory.v1.OpnameFinalizePreviewResponse
+	37, // 71: warehouse.inventory.v1.OpnameService.OpnameSessionFinalize:output_type -> warehouse.inventory.v1.OpnameSessionFinalizeResponse
+	43, // 72: warehouse.inventory.v1.OpnameService.OpnameRackList:output_type -> warehouse.inventory.v1.OpnameRackListResponse
+	45, // 73: warehouse.inventory.v1.OpnameService.OpnameRackCount:output_type -> warehouse.inventory.v1.OpnameRackCountResponse
+	47, // 74: warehouse.inventory.v1.OpnameService.OpnameRowCount:output_type -> warehouse.inventory.v1.OpnameRowCountResponse
+	49, // 75: warehouse.inventory.v1.OpnameService.OpnameRowMarkCounted:output_type -> warehouse.inventory.v1.OpnameRowMarkCountedResponse
+	51, // 76: warehouse.inventory.v1.OpnameService.OpnameRowAddFound:output_type -> warehouse.inventory.v1.OpnameRowAddFoundResponse
+	64, // [64:77] is the sub-list for method output_type
+	51, // [51:64] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_opname_proto_init() }
@@ -3768,7 +3856,7 @@ func file_warehouse_inventory_v1_opname_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_opname_proto_rawDesc), len(file_warehouse_inventory_v1_opname_proto_rawDesc)),
-			NumEnums:      9,
+			NumEnums:      10,
 			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   1,

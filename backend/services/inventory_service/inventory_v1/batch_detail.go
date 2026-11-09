@@ -3,7 +3,6 @@ package inventory_v1
 import (
 	"context"
 	"errors"
-	"math"
 	"time"
 
 	"connectrpc.com/connect"
@@ -15,7 +14,7 @@ import (
 )
 
 // THE BATCH, READ FROM THE BATCH LEDGER. A batch knows its own price, units and value; what it came in on — the
-// delivery, its receipt, the line's broken and missing units, a sku and name — is the transaction that minted it: a
+// delivery, its receipt, the line's broken and missing units, a product code and name — is the transaction that minted it: a
 // restock's accept (`restocks.transaction_id`) or a transfer's in-leg (`warehouse_transfers.inbound_transaction_id`).
 // A product appears once per restock (a-product-appears-once-per-restock), so a batch finds its restock line by product.
 
@@ -27,7 +26,7 @@ type batchRow struct {
 	WarehouseID    uint64
 	ReceiptNo      string
 	ProductID      uint64
-	SKU            string
+	ProductCode    string
 	Name           string
 	SupplierID     uint64
 	PriceUnit      float64
@@ -53,7 +52,7 @@ const (
 // batchSelect is the projection over batchQuery. The caller adds the WHERE and the paging.
 const batchSelect = `
 	b.id, COALESCE(r.id, 0) AS delivery_id, b.warehouse_id, COALESCE(r.receipt, '') AS receipt_no,
-	b.product_id, COALESCE(i.sku, wti.sku, '') AS sku, COALESCE(i.name, wti.name, '') AS name, b.supplier_id,
+	b.product_id, COALESCE(i.product_code, wti.product_code, '') AS product_code, COALESCE(i.name, wti.name, '') AS name, b.supplier_id,
 	b.price_unit, b.init_stock_count, b.stock_count AS ready, b.stock_valuation,
 	` + brokenExpr + ` AS broken,
 	` + lostExpr + ` AS lost,
@@ -72,8 +71,8 @@ func batchQuery(db *gorm.DB) *gorm.DB {
 }
 
 // batchRowToProto maps a batch. Arrived = broken + lost + used + ready: the good units minted plus what the door found
-// wrong; used is what has left since. Every batch carries its price, so the cost is always known. Money is whole rupiah
-// on this contract until it turns `double` (money-is-double-in-the-api-too).
+// wrong; used is what has left since. Every batch carries its price, so the cost is always known. Money is the stored
+// double, unrounded (money-is-double-in-the-api-too, the-backend-never-rounds-money).
 func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 	arrived := r.InitStockCount + r.Broken + r.Lost
 
@@ -83,18 +82,18 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 		WarehouseId:    r.WarehouseID,
 		ReceiptNo:      r.ReceiptNo,
 		ProductId:      r.ProductID,
-		Sku:            r.SKU,
+		ProductCode:    r.ProductCode,
 		Name:           r.Name,
 		SupplierId:     r.SupplierID,
-		UnitCost:       int64(math.Round(r.PriceUnit)),
+		UnitCost:       r.PriceUnit,
 		CostKnown:      true,
 		Arrived:        arrived,
 		Broken:         r.Broken,
 		Lost:           r.Lost,
 		Ready:          r.Ready,
 		Used:           r.InitStockCount - r.Ready,
-		LineCost:       int64(math.Round(float64(arrived) * r.PriceUnit)),
-		ReadyValue:     int64(math.Round(r.StockValuation)),
+		LineCost:       float64(arrived) * r.PriceUnit,
+		ReadyValue:     r.StockValuation,
 		CreatedAtUnix:  r.CreatedAt.Unix(),
 		AcceptedAtUnix: r.CreatedAt.Unix(),
 		CreatedBy:      r.CreatedBy,
@@ -211,8 +210,12 @@ func (s *Service) BatchPlacementList(
 
 	err = base().
 		Select(`l.placement_id AS rack_id, l.stock_change AS qty,
-			(SELECT MAX(c.created_at) FROM product_placement_logs c
-			   WHERE c.product_id = l.product_id AND c.placement_id = l.placement_id AND c.change_type = ?) AS last_opname`,
+			GREATEST(
+			    (SELECT MAX(c.created_at) FROM product_placement_logs c
+			       WHERE c.product_id = l.product_id AND c.placement_id = l.placement_id AND c.change_type = ?),
+			    (SELECT MAX(o.finalized_at) FROM opname_session_snapshots ss JOIN opname_sessions o ON o.id = ss.opname_session_id
+			       WHERE ss.product_id = l.product_id AND ss.placement_id = l.placement_id AND o.status = 'finish')
+			) AS last_opname`,
 			string(inventory_service_models.TxAdjustment)).
 		Order("l.placement_id ASC").
 		Offset(offset).

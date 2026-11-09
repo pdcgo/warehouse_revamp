@@ -8,7 +8,7 @@ import { REPORT_META, loaded } from "./stories/kit";
 // Storybook draws Report as a folder with these two stories leading it. Its rules are grouped by the part of the
 // screen they are about, one file each in ./stories (stories-are-grouped-by-the-part-of-the-screen):
 //
-//   Header     the title's row — the screen rules, Export marked, and the Periode / Rincian switch
+//   Header     the title's row — the screen rules, Export (and none while monitoring), and the Periode / Rincian switch
 //   Filters    the account, the window and the grain — the search, Clear, the URL, and a phone's sheet
 //   Cards      the five cards — what each says, the net change's breakdown, and what moved it
 //   Movers     a ranking card's Details › — by account, by provider, and an account's row opening it

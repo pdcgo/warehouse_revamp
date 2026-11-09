@@ -28,6 +28,9 @@ export interface UserSelectProps {
   // This is the "scope by team or all user" option (#56). Both are role-gated on the server. A list's
   // "who" filter is neither: it is PersonFilterSelect (a-who-filter-lists-the-people-on-its-rows).
   teamId?: bigint;
+  // Leave out suspended and erased members — for a picker that GIVES something inside a team (a shop grant), which
+  // never offers them (a-suspended-user-is-never-picked). Off by default: picking within a team to READ keeps them.
+  excludeSuspended?: boolean;
   // Drop the picker's OWN border and corner rounding so it can sit INSIDE a bordered group — a type
   // segment fused to it, as the restock list's [ Raised by ▾ │ person ] group has it. Without
   // it the group draws a box and the picker draws a second one inside it.
@@ -41,7 +44,7 @@ export interface UserSelectProps {
 // shared UserItem. Search is SERVER-side so it scales; it emits the selected user id. Pass `teamId`
 // to scope the search to one team's members — offered on a click, nothing typed — or omit it to
 // search everyone, from 2 characters.
-export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser at the root team, for Root and the Administrator, from 2 characters) by default, or to one team's members when given a teamId (UserList) — then a click shows the first 20 members with nothing typed, narrowed as you type. Not for a list's who filter — that is PersonFilterSelect. Pass `flush` to drop its own border so it can sit inside a bordered group, e.g. fused to a role segment.";
+export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser at the root team, for Root and the Administrator, from 2 characters) by default, or to one team's members when given a teamId (UserList) — then a click shows the first 20 members with nothing typed, narrowed as you type. Not for a list's who filter — that is PersonFilterSelect. Pass `excludeSuspended` where the pick GIVES something (a shop grant) to leave out suspended and erased members. Pass `flush` to drop its own border so it can sit inside a bordered group, e.g. fused to a role segment.";
 
 export function UserSelect({
   value,
@@ -49,6 +52,7 @@ export function UserSelect({
   placeholder = "Search users by name or username",
   disabled,
   teamId,
+  excludeSuspended,
   flush,
 }: UserSelectProps) {
   const [input, setInput] = useState("");
@@ -66,7 +70,7 @@ export function UserSelect({
   // hand-rolled version turned any hiccup into "no users found", which is a different and wrong
   // answer to the question asked.
   const q = useDebounced(input.trim());
-  const results = useUserSearch({ teamId, q });
+  const results = useUserSearch({ teamId, q, excludeSuspended });
 
   // A team's members are offered with nothing typed (useUserSearch); everyone needs 2 characters first.
   const inTeam = teamId !== undefined && teamId > 0n;

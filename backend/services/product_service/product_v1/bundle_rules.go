@@ -93,7 +93,7 @@ func checkLines(tx *gorm.DB, teamID uint64, lines []*productv1.BundleLine, kept 
 	var products []product_service_models.Product
 
 	err := tx.
-		Select("id", "team_id", "name", "deleted", "cross_locked").
+		Select("id", "team_id", "name", "archived", "cross_locked").
 		Where("id IN ?", added).
 		Find(&products).
 		Error
@@ -108,7 +108,7 @@ func checkLines(tx *gorm.DB, teamID uint64, lines []*productv1.BundleLine, kept 
 
 	for _, id := range added {
 		p, ok := found[id]
-		if !ok || p.Deleted {
+		if !ok || p.Archived {
 			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("product %d does not exist", id))
 		}
 

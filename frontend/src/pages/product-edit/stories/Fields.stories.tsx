@@ -3,8 +3,8 @@ import { expect, userEvent, waitFor } from "storybook/test";
 
 import { AtEditMinyak, PRODUCT_FORM_META, loaded, loadedMinyak, retype } from "./kit";
 
-// PRODUCT FORM — the fields: an edit arriving filled, every field's example and its limit, and the lock — its three ways
-// and its minimum. The page's stories are grouped by the part of the screen they are about
+// PRODUCT FORM — the fields: an edit arriving filled, every field's example and its limit, the team's code standing in
+// front of the product code, and the lock — its three ways and its minimum. The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -48,7 +48,7 @@ export const EveryFieldShowsAnExample: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("product-edit-sku")).toHaveAttribute("placeholder", "e.g. SKU-KOPI-250");
+    await expect(canvas.getByTestId("product-edit-sku")).toHaveAttribute("placeholder", "e.g. KOPI-250");
     await expect(canvas.getByTestId("product-edit-name")).toHaveAttribute("placeholder", "e.g. Arabica Coffee 250g");
     await expect(canvas.getByTestId("product-edit-description").getAttribute("placeholder")).toMatch(/^e\.g\. /);
     await expect(canvas.getByTestId("product-edit-cross-markup")).toHaveAttribute("placeholder", "0");
@@ -59,15 +59,29 @@ export const EveryFieldShowsAnExample: Story = {
   },
 };
 
-/** EVERY LIMIT IS SHOWN (a-limited-field-shows-its-count) — "5/64" under the SKU, the name and the description, the box
- * stopping at the server's limit; an edit counts what it arrived with. */
+/** THE TEAM'S CODE STANDS FIXED IN FRONT (the-field-is-product-code-composed-on-write) — "SL-03-" beside the box, not in
+ * it, so it cannot be typed over; the box takes the team's own part, and what is stored is the two together. On an edit
+ * the part arrives with the prefix taken off. */
+export const TheTeamsCodeStandsInFront: Story = {
+  name: "Team code in front",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("product-edit-sku-prefix")).toHaveTextContent("SL-03-"));
+    await expect(canvas.getByTestId("product-edit-sku")).toHaveValue("");
+    await expect(canvas.getByTestId("product-edit-sku-help")).toHaveTextContent("Your team's code is put in front");
+  },
+};
+
+/** EVERY LIMIT IS SHOWN (a-limited-field-shows-its-count) — "5/64" under the code's part, the name and the description,
+ * the box stopping at the server's limit; an edit counts what it arrived with — the part, the team's code not counted. */
 export const EveryLimitIsShown: Story = {
   name: "Limits shown",
   render: () => <AtEditMinyak />,
   play: async ({ canvasElement }) => {
     const canvas = await loadedMinyak(canvasElement);
 
-    await expect(canvas.getByTestId("product-edit-sku-count")).toHaveTextContent("11/64");
+    await expect(canvas.getByTestId("product-edit-sku-count")).toHaveTextContent("7/64");
     await expect(canvas.getByTestId("product-edit-name-count")).toHaveTextContent(
       `${"Minyak Goreng Sawit 2L — Satuan".length}/200`,
     );

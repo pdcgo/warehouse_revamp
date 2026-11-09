@@ -11,7 +11,6 @@ import (
 	"gorm.io/gorm"
 
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
 // ReplayBroker is what a replay needs from the message broker, in this service's own terms. The
@@ -82,7 +81,13 @@ func (s *Service) AnalyticReplayCompute(
 			earliest.Format(dateLayout), start.Format(dateLayout)))
 	}
 
-	acquired, err := s.swapEventLock(ctx, lockOff, lockOn)
+	// A lock on for longer than its lease is a dead replay's, and is taken over
+	// (a-dead-replays-lock-expires-after-a-minute).
+	takenAt, acquired, err := s.takeEventLock(ctx)
+	if errors.Is(err, errEventLockUnreadable) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
 	if err != nil {
 		return nil, dbError(err)
 	}
@@ -94,7 +99,12 @@ func (s *Service) AnalyticReplayCompute(
 	// Released whatever happens below, and on a context the caller's cancellation cannot abandon — a lock
 	// left held stops every report in the service from updating.
 	defer func() {
-		_, releaseErr := s.swapEventLock(context.WithoutCancel(ctx), lockOn, lockOff)
+		released, releaseErr := s.releaseEventLock(context.WithoutCancel(ctx), takenAt)
+		if releaseErr == nil && !released {
+			slog.WarnContext(ctx, "replay finished after its lock's lease — another replay holds it now, so it was left to that one",
+				"taken_at", takenAt)
+		}
+
 		if releaseErr != nil {
 			slog.ErrorContext(ctx, "replay finished but process_event_lock was NOT released — "+
 				"the fold is stopped until it is set back to {\"lock\":false}",
@@ -124,6 +134,21 @@ func (s *Service) AnalyticReplayCompute(
 		logs := tx.Exec(`DELETE FROM settlement_event_logs WHERE day >= CAST(? AS date)`, day)
 		if logs.Error != nil {
 			return logs.Error
+		}
+
+		// THE PERSON'S LAST DAY, recomputed for every scope the cut reached
+		// (#the-person-list-reads-the-last-day-from-the-user-report). The fold only raises it, so a day the replay
+		// removed and the redelivery never brings back would otherwise stay on the list. MAX of the rows left — NULL
+		// when none are, and the redelivery raises it again from there. Same transaction: never a list that orders
+		// by days the daily table no longer has.
+		lastDays := tx.Exec(`
+UPDATE user_settlement_reports u
+SET last_day     = (SELECT MAX(d.day) FROM user_settlement_daily_reports d
+                    WHERE d.user_id = u.user_id AND d.team_id = u.team_id),
+    last_updated = NOW()
+WHERE u.last_day >= CAST(? AS date)`, day)
+		if lastDays.Error != nil {
+			return lastDays.Error
 		}
 
 		shopDays = shop.RowsAffected
@@ -163,21 +188,4 @@ func earliestReplayDay(now time.Time, window time.Duration) time.Time {
 	}
 
 	return time.Date(midnight.Year(), midnight.Month(), midnight.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-// swapEventLock moves `process_event_lock` from one value to another, and reports whether it did. A
-// compare-and-set, so two replays cannot both believe they took the lock.
-func (s *Service) swapEventLock(ctx context.Context, from, to string) (bool, error) {
-	result := s.db.WithContext(ctx).
-		Model(&settlement_service_models.SettlementServiceMetadata{}).
-		Where("key = ? AND value = ?", settlement_service_models.MetadataProcessEventLock, from).
-		Updates(map[string]any{
-			"value":      to,
-			"updated_at": gorm.Expr("NOW()"),
-		})
-	if result.Error != nil {
-		return false, result.Error
-	}
-
-	return result.RowsAffected == 1, nil
 }

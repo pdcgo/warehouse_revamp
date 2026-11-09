@@ -24,6 +24,9 @@ export interface SupplierSelectProps {
   onChange?: (supplierId: bigint) => void;
   placeholder?: string;
   disabled?: boolean;
+  /** Render the list in a portal (the default) or inline — pass `false` inside a modal Dialog or a Drawer, where a
+   * portalled listbox lands outside the modal and is inert. */
+  portalled?: boolean;
 }
 
 // SupplierSelect is the shared supplier picker for a team (#109). A Chakra Combobox so the list is
@@ -37,6 +40,7 @@ export function SupplierSelect({
   onChange,
   placeholder,
   disabled,
+  portalled = true,
 }: SupplierSelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("suppliers.select.placeholder");
@@ -146,7 +150,7 @@ export function SupplierSelect({
         </Combobox.IndicatorGroup>
       </Combobox.Control>
 
-      <Portal>
+      <Portal disabled={!portalled}>
         <Combobox.Positioner>
           <Combobox.Content>
             {loading ? (

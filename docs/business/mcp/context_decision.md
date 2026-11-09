@@ -7,9 +7,15 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | decision | what it decided | from | under review |
 | --- | --- | --- | --- |
 | [an-agent-only-reads-for-now](#an-agent-only-reads-for-now) | an AI agent reads and never writes — the server refuses any write made with an agent's credential | owner | [Q3](./context_clarify.md#question) — the credential · [Q6](./context_clarify.md#question) — which reads |
-| [the-mcp-uses-the-official-go-sdk](#the-mcp-uses-the-official-go-sdk) | every MCP piece is built on the protocol's official Go SDK, whichever side it runs on | owner | ✅ the app's side — [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) · [Q8](./context_clarify.md#question) may add the server's |
-| [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) | the tools live in the app shipped to users, which calls our RPC API — our server serves no MCP | owner | ⛔ [Q8](./context_clarify.md#question) — it cannot reach ChatGPT |
-| [chatgpt-and-claude-are-the-agents-for-now](#chatgpt-and-claude-are-the-agents-for-now) | the agents to serve, for now, are ChatGPT and Claude | owner | ⛔ [Q8](./context_clarify.md#question) — ChatGPT cannot reach the shipped app |
+| [the-mcp-uses-the-official-go-sdk](#the-mcp-uses-the-official-go-sdk) | every MCP piece is built on the protocol's official Go SDK, whichever side it runs on | owner | ✅ the app's side — [the-tools-live-in-the-shipped-app](#superseded-the-tools-live-in-the-shipped-app) · [Q8](./context_clarify.md#question) may add the server's |
+| [superseded-the-tools-live-in-the-shipped-app](#superseded-the-tools-live-in-the-shipped-app) | ~~the tools live in the app shipped to users~~ — reversed by [our-server-hosts-the-mcp](#our-server-hosts-the-mcp) | owner | — |
+| [our-server-hosts-the-mcp](#our-server-hosts-the-mcp) | the MCP is served by our server at a public URL, behind an OAuth login; nothing is installed, and the shipped app goes | owner | — |
+| [an-agent-gets-its-own-team-credential](#an-agent-gets-its-own-team-credential) | the login mints the agent its own credential — named, one team, 90 days, revoked on its own; never the password or the session token | owner | — |
+| [a-roots-agent-reads-every-team](#a-roots-agent-reads-every-team) | an agent connected by root keeps root's bypass and reads every team; everyone else's agent reads one | owner | — |
+| [the-owner-decides-who-connects-an-agent](#the-owner-decides-who-connects-an-agent) | the team's owner and admin may connect an agent; CS and staff only once the owner turns it on; the owner sees and revokes every connection | owner | — |
+| [the-agent-reads-through-the-metric-pattern](#the-agent-reads-through-the-metric-pattern) | the first tools are the metric pattern — list the metrics, read a metric — plus a product search, an order by its ref, and the balance positions | owner | — |
+| [buyer-data-reaches-the-agent](#buyer-data-reaches-the-agent) | an order reaches the agent whole, the buyer's name, phone and address included — nothing is cleared | owner | — |
+| [chatgpt-and-claude-are-the-agents-for-now](#chatgpt-and-claude-are-the-agents-for-now) | the agents to serve, for now, are ChatGPT and Claude | owner | ✅ reached by [our-server-hosts-the-mcp](#our-server-hosts-the-mcp) |
 
 ## an-agent-only-reads-for-now
 
@@ -35,7 +41,7 @@ flowchart TD
 
 | | |
 | --- | --- |
-| what counts as a read | ⚠ my spec: an RPC declared `option idempotency_level = NO_SIDE_EFFECTS;` — the standard proto marker. **No proto carries it today**, so each read is marked as it is offered to agents |
+| what counts as a read | ⚠ my spec: an RPC declared `option idempotency_level = NO_SIDE_EFFECTS;` — the standard proto marker. each read is marked as it is offered to agents — ✅ built 2026-11-02 on the RPCs the tools call; the interceptor refuses an agent's call to anything else |
 | where it is enforced | the access interceptor, on every call: an agent's credential on an RPC not so declared → `PermissionDenied`, before the handler runs. A person's session is unaffected |
 | a read with a side effect | is not a read, and stays unmarked — `CheckAccess` renews a token · beside settlement's report reads, `AnalyticReplayCompute` rebuilds the reports and `AnalyticMaintenanceRun` prunes a table |
 | what the agent is told | every tool is listed with MCP's `readOnlyHint: true`. A hint that lets the agent skip asking the person, never the enforcement |
@@ -54,7 +60,7 @@ flowchart TD
 
 > `context.md` §General 3 *(owner, 2026-09-29)* — *"we use `https://github.com/modelcontextprotocol/go-sdk`"*.
 
-> 🔄 *(2026-09-29, later)* [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) put the tools in
+> 🔄 *(2026-09-29, later)* [the-tools-live-in-the-shipped-app](#superseded-the-tools-live-in-the-shipped-app) put the tools in
 > the shipped app: the piece used is `StdioTransport`, and there is no `/mcp` for `auth.RequireBearerToken` to guard —
 > our access interceptor checks the credential. [Q8](./context_clarify.md#question) may bring `/mcp` back.
 
@@ -83,7 +89,10 @@ flowchart LR
 - **Which protocol crosses to us, and so where the tools live** — [Q2](./context_clarify.md#question). The SDK builds
   every option alike.
 
-## the-tools-live-in-the-shipped-app
+## superseded-the-tools-live-in-the-shipped-app
+
+> ⚠ **Superseded 2026-10-31** by [our-server-hosts-the-mcp](#our-server-hosts-the-mcp): ChatGPT reaches only a public URL,
+> so the tools moved to our server. Kept as written below.
 
 > Chat *(owner, 2026-09-29)* — *"for 2a, we use A"*, to [Q2](./context_clarify.md#question) — against my
 > recommendation, B. ⛔ It conflicts with [chatgpt-and-claude-are-the-agents-for-now](#chatgpt-and-claude-are-the-agents-for-now),
@@ -120,7 +129,7 @@ flowchart LR
 ## chatgpt-and-claude-are-the-agents-for-now
 
 > Chat *(owner, 2026-09-29)* — *"for 2b for now we use chatgpt and claude"*, to [Q2](./context_clarify.md#question).
-> ⛔ It conflicts with [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) — [Q8](./context_clarify.md#question).
+> ⛔ It conflicts with [the-tools-live-in-the-shipped-app](#superseded-the-tools-live-in-the-shipped-app) — [Q8](./context_clarify.md#question).
 
 **The verdict.** For now, the agents the MCP has to serve are **ChatGPT** and **Claude**. Checked against both
 vendors' docs (2026-09-29), they reach an MCP server in different ways:
@@ -143,3 +152,205 @@ flowchart LR
 ### What it does NOT settle
 
 - ⛔ **How ChatGPT is reached** — the shipped app cannot be: [Q8](./context_clarify.md#question).
+
+## our-server-hosts-the-mcp
+
+> Owner, in chat (2026-10-31): *"C"* — to [Q8](./context_clarify.md#question), *ChatGPT cannot reach the shipped app —
+> which gives way?* As recommended. It reverses [superseded-the-tools-live-in-the-shipped-app](#superseded-the-tools-live-in-the-shipped-app)
+> and keeps [chatgpt-and-claude-are-the-agents-for-now](#chatgpt-and-claude-are-the-agents-for-now).
+
+**The verdict.** The MCP is served by **our server**, at a public HTTPS URL, behind an **OAuth login**. ChatGPT and every
+Claude surface — web, Desktop, phone — connect by that URL; nothing is installed on the user's machine. The shipped local
+app goes: an agent that can only reach the internet decides where the tools live, and Claude Desktop takes the same URL.
+
+```mermaid
+flowchart LR
+  CG["ChatGPT"] -->|"HTTPS and OAuth"| M["our MCP endpoint - the tools"]
+  CL["Claude - web, Desktop, phone"] -->|"HTTPS and OAuth"| M
+  M --> I["the access interceptor"]
+  I --> H["the RPC handlers"]
+  CG -.->|"once, in the browser"| O["our login - the person picks the team, the credential is minted"]
+```
+
+| | |
+| --- | --- |
+| where the tools run | on our server, beside the RPC handlers, through the same access interceptor — read-only ([an-agent-only-reads-for-now](#an-agent-only-reads-for-now)) |
+| how an agent connects | by URL; the first call sends the person to our login in the browser, which mints the agent's credential |
+| the login | ours — OAuth; the SDK issues no token. The biggest piece of work here |
+| the SDK | the protocol's official Go SDK, unchanged ([the-mcp-uses-the-official-go-sdk](#the-mcp-uses-the-official-go-sdk)) |
+| the shipped app | not built, and now not wanted |
+| still open | what the login mints and its limits ([Q3](./context_clarify.md#question)), one team or the root bypass (Q4), who may connect (Q5), the first tools (Q6), buyer data (Q7) |
+
+**What it replaces** (HARD RULE 11): [superseded-the-tools-live-in-the-shipped-app](#superseded-the-tools-live-in-the-shipped-app);
+and [context.md](./context.md) §General 1 (*"we have local mcp app that shipped to user"*) and its flow's *Local MCP* box
+are now stale — reported in the clarify's [the-doc-ships-a-local-app](./context_clarify.md#the-doc-ships-a-local-app).
+
+✅ **Built 2026-11-02.** Our server serves the MCP at `/mcp` behind our OAuth — discovery
+(`/.well-known/oauth-authorization-server`, `…/oauth-protected-resource/mcp`), dynamic registration (`/oauth/register`),
+`/oauth/authorize` sending the browser to the app's `/connect-agent`, and `/oauth/token` with PKCE
+([user_service/agent_oauth](../../../backend/services/user_service/agent_oauth/)). `PUBLIC_URL` and `APP_URL` say where they
+are; the endpoint is stateless Streamable HTTP. Verified end to end against a running server — connect, token, every
+tool, a refused write, a revoke refused at once. Nothing is shipped to the user's machine.
+
+## an-agent-gets-its-own-team-credential
+
+> Owner, in chat (2026-10-31): *"i follow your recomendation"* — to [Q3](./context_clarify.md#question), *what does the
+> login give the agent?* As recommended.
+
+**The verdict.** The OAuth login ([our-server-hosts-the-mcp](#our-server-hosts-the-mcp)) mints the agent **its own
+credential** — never the person's password, never their session token, which carries every write an agent may not
+make ([an-agent-only-reads-for-now](#an-agent-only-reads-for-now)).
+
+```
+ChatGPT → "add connector" → our URL
+  → the browser opens our login → the person signs in and picks a team
+  → we mint the agent's own credential → ChatGPT reads that team's data
+```
+
+| | |
+| --- | --- |
+| whose | the agent's own — read-only, refused on any write |
+| named | by the person, at the login — *"ChatGPT, Heri's laptop"* |
+| scope | **one team**, picked at the login ([Q4](./context_clarify.md#question) asks about root) |
+| lifetime | **90 days**, then the person logs in again |
+| revoke | each one on its own, from `/profile` — revoking one agent signs the person out of nothing else |
+
+```mermaid
+flowchart LR
+  P["a person"] -->|"signs in, picks team A"| L["our login"]
+  L -->|"mints"| C["the agent's credential - named, team A, 90 days"]
+  C --> R["read-only calls for team A"]
+  X["/profile - revoke"] -.-> C
+```
+
+✅ **Built 2026-11-02.** `AgentService` ([agent.proto](../../../proto/warehouse/user/v1/agent.proto)) and user_service
+`00011`: the connect page mints a one-time code (`AgentConnect`), the agent trades it with its PKCE verifier at
+`/oauth/token` for a bearer `wha_…` kept only as its SHA-256 — named, one team, 90 days, no refresh. Revoked from
+/profile (`AgentConnectionRevoke`), at once: the next call is a 401. ⚠ my build details: a code lives 5 minutes and is
+spent by the statement that reads it (a wrong verifier spends it too); the last use is stamped at most once a minute.
+
+## a-roots-agent-reads-every-team
+
+> Owner, in chat (2026-10-31): *"no, root read all team is okay"* — to [Q4](./context_clarify.md#question), *does a
+> credential read one team, and never with the root bypass?* Against my recommendation, one team for everyone.
+
+**The verdict.** An agent connected by **root** keeps root's bypass: it reads **every team**, as root does everywhere
+else. Everyone else's agent reads the **one team** picked at the login
+([an-agent-gets-its-own-team-credential](#an-agent-gets-its-own-team-credential)). Still read-only, for root too
+([an-agent-only-reads-for-now](#an-agent-only-reads-for-now)).
+
+```mermaid
+flowchart LR
+  R["root connects ChatGPT"] --> A["the agent - every team, read-only"]
+  O["a selling owner connects ChatGPT"] -->|"picks team A"| B["the agent - team A, read-only"]
+```
+
+| | |
+| --- | --- |
+| root | the login offers *every team*; the credential carries the bypass |
+| ⚠ my reading — the administrator | the root team's `ADMINISTRATOR` bypasses scope beside `ROOT` everywhere, so its agent does too |
+| everyone else | one team, picked at the login |
+| an owner of two selling teams | two connections — one per team |
+| the cost, accepted | a root agent's credential reaches the whole business; it is still read-only, expires in 90 days and is revoked on its own |
+
+✅ **Built 2026-11-02.** A credential minted for team 0 reads every team — only root or the root team's administrator may
+pick it (`AgentConnect`), and the interceptor lets it read only while its person still holds that bypass. A root
+person's ONE-team credential stays in its team, and is refused an unscoped root-only RPC too.
+
+## the-owner-decides-who-connects-an-agent
+
+> Owner, in chat (2026-10-31): *"i follow your recomendation"* — to [Q5](./context_clarify.md#question), *who may connect a
+> team's data to an agent?* As recommended.
+
+**The verdict.** Connecting an agent sends the team's data to the agent's provider, so it is the **owner's** decision. The
+team's **owner and admin** may connect one; **CS and staff** only once the owner turns it on for the team. The owner sees
+every connection reading the team and can revoke any — a member's too.
+
+| who | may connect an agent to the team |
+| --- | --- |
+| the owner | yes |
+| the admin | yes |
+| CS, staff | only when the owner has turned it on for the team |
+| root | yes — and its agent reads every team ([a-roots-agent-reads-every-team](#a-roots-agent-reads-every-team)) |
+
+```mermaid
+flowchart LR
+  M["a team member logs in to connect"] --> Q{"owner or admin?"}
+  Q -->|"yes"| C["connected"]
+  Q -->|"no"| T{"has the owner turned it on?"}
+  T -->|"yes"| C
+  T -->|"no"| X["refused - ask the owner"]
+  O["the owner"] -.->|"sees and revokes any"| C
+```
+
+**Why not every member**, though [every-member-reads-every-metric-of-their-team](../analytic/rpc_provide_decision.md#every-member-reads-every-metric-of-their-team):
+reading on the screen keeps the data inside the system; an agent sends it to a third party.
+
+✅ **Built 2026-11-02.** `AgentConnect` lets the owner and admin connect, CS and staff once
+`TeamAgentPolicySet` turned it on (`team_agent_policies`, no row = off); the owner lists and revokes every connection
+reading the team (`AgentConnectionTeamList`, `AgentConnectionTeamRevoke`) from the team's Settings. ⚠ my build detail: root's
+every-team connections are not in a team's list — no team's owner may revoke them.
+
+## the-agent-reads-through-the-metric-pattern
+
+> Owner, in chat (2026-10-31): *"i follow your recomendation"* — to [Q6](./context_clarify.md#question), *which data does the
+> agent read first?* As recommended, against the list of 11 reads on file.
+
+**The verdict.** The agent asks what the Analytic screen can answer, through the same pattern: **one pair of tools** —
+*list the metrics* and *read a metric* — over every service that serves `MetricSearch` / `MetricData`. A metric describes
+itself (its id, filters, groups and field stat types), so a new metric reaches the agent with **no new tool**. Beside the
+pair, three reads the pattern has no seat for yet.
+
+```mermaid
+flowchart LR
+  A["the agent"] --> L["list the metrics - id, filters, groups, fields"]
+  A --> R["read a metric - filters, a group, a date range"]
+  R --> O["order metrics"]
+  R --> S["settlement metrics"]
+  R --> U["supplier metrics"]
+  A --> P["a product search"]
+  A --> F["an order by its marketplace ref"]
+  A --> B["the team balance positions"]
+```
+
+| | |
+| --- | --- |
+| the metric tools | the pattern of [rpc_provide.md](../analytic/rpc_provide.md), every service that serves it — order, settlement, supplier today |
+| beside them | a product search and an order by its marketplace ref — the lookups that turn a name into an id; `LiabilityPositionList` — what the team owes and is owed |
+| the rules | read-only; one team, or every team for root ([a-roots-agent-reads-every-team](#a-roots-agent-reads-every-team)); a year at most per range ([a-metric-reads-at-most-a-year](../analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year)); a rate limit per credential |
+| not yet | stock and expenses — they reach the agent when each has a metric |
+| replaces | the 11 reads in the clarify's *The first tools* (`OrderStat`, `ProductStockSummary`, `ExpenseDaily`, …) |
+
+✅ **Built 2026-11-02.** [mcp_service](../../../backend/services/mcp_service/) at `/mcp` — `list_metrics` (read off the
+descriptors, every metric of the order, settlement and supplier services), `read_metric` (`MetricSearch` then
+`MetricData`, or the headline), `search_products`, `find_orders` (by marketplace refs, each order whole),
+`balance_positions`. Every tool calls our RPCs with the agent's bearer, so the interceptor holds it to reading and to its
+team. Rate: 120 calls a minute per connection, 20 at once, per instance. ⚠ my build detail: a sixth tool, `list_teams` —
+root's every-team connection must name a team on every read, and nothing else turns a name into an id.
+[docs/services/mcp_service/rpc.md](../../services/mcp_service/rpc.md).
+
+## buyer-data-reaches-the-agent
+
+> Owner, in chat (2026-10-31): *"buyer data is okay. no cleared. its not public system. its company system."* — to
+> [Q7](./context_clarify.md#question), *may a buyer's name, phone or address reach the agent?* Against my recommendation, to
+> clear them before anything leaves.
+
+**The verdict.** Nothing is cleared. An order reaches the agent as the order holds it — the buyer's `customer_name`,
+`customer_phone` and delivery address included. The people connecting an agent are the company's own, through a
+login, to its own data; the system is not public.
+
+```mermaid
+flowchart LR
+  O["an order - ref, items, totals, buyer name, phone, address"] -->|"whole"| A["the agent"]
+  A --> P["the agent's provider"]
+```
+
+| | |
+| --- | --- |
+| what reaches the agent | the order as it is read on the screen, buyer fields included |
+| who can send it | only a credential the owner allowed ([the-owner-decides-who-connects-an-agent](#the-owner-decides-who-connects-an-agent)) — read-only, revocable |
+| a lookup by name | possible — *"Budi's order"* can be asked |
+| the cost, accepted | the buyers' details go to the agent's provider (OpenAI, Anthropic), which the buyers did not agree to — a personal-data exposure the company carries |
+
+✅ **Built 2026-11-02.** `find_orders` answers `OrderDetail` as the screen reads it — the buyer's name, phone and address
+included; nothing is cleared.

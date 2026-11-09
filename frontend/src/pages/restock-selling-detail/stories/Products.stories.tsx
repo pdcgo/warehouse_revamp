@@ -47,10 +47,10 @@ export const TheMissingColumn: Story = {
     await expect(within(dialog).getByTestId("restock-detail-received-74")).toHaveTextContent("9");
     await expect(within(dialog).getByTestId("restock-detail-good-74")).toHaveTextContent("7");
     await expect(within(dialog).getByTestId("restock-detail-broken-74-count")).toHaveTextContent("2");
-    await expect(within(dialog).getByTestId("restock-detail-broken-74-value")).toHaveTextContent("Rp 132.333");
+    await expect(within(dialog).getByTestId("restock-detail-broken-74-value")).toHaveTextContent("Rp 132.333,333");
     await expect(within(dialog).getByTestId("restock-detail-broken-74-note")).toHaveTextContent("Karung sobek");
     await expect(within(dialog).getByTestId("restock-detail-missing-74-count")).toHaveTextContent("1");
-    await expect(within(dialog).getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.167");
+    await expect(within(dialog).getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.166,667");
     await expect(canvas.getByTestId("restock-detail-missing")).toHaveTextContent("1 missing");
   },
 };
@@ -180,7 +180,7 @@ export const OnAPhoneEachLineIsABlock: Story = {
     await expect(within(rice).getByTestId("restock-detail-received-74")).toHaveTextContent("9");
     await expect(within(rice).getByTestId("restock-detail-good-74")).toHaveTextContent("7");
     await expect(within(rice).getByTestId("restock-detail-broken-74-note")).toHaveTextContent("Karung sobek");
-    await expect(within(rice).getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.167");
+    await expect(within(rice).getByTestId("restock-detail-missing-74-value")).toHaveTextContent("Rp 66.166,667");
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

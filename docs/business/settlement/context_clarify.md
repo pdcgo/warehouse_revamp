@@ -70,7 +70,7 @@ reverse would not have been.
 
 ## ⛔ `system_adjustment` in the LOG repairs one class of damage and cannot repair the other
 
-✅ *(2026-10-19)* **Decided — the day re-fold, as recommended**: [a-wrong-day-is-refolded-from-the-log](./context_decision.md#a-wrong-day-is-refolded-from-the-log), an operator command in `tools/san`. Since [a-report-is-fed-by-events-only-for-now](../analytic/context_decision.md#a-report-is-fed-by-events-only-for-now) it is the repair for every lost event. ⚠ Not built.
+✅ *(2026-10-19)* **Decided — the day re-fold, as recommended**: [a-wrong-day-is-refolded-from-the-log](./context_decision.md#a-wrong-day-is-refolded-from-the-log), an operator command in `tools/san`. Since [a-report-is-fed-by-events-only-for-now](../analytic/context_decision.md#a-report-is-fed-by-events-only-for-now) it is the repair for every lost event. ✅ Built 2026-11-05 — `san report refold` ([san.md](../../tools/san.md#report-refold)).
 
 **Q5 is answered** — it is a `settlement_type`, so it is a ledger row, shop-addressed, and it reaches the
 report through the broker like everything else. ⚠ **My report-column recommendation is withdrawn as the
@@ -516,7 +516,7 @@ excellence — worth one row, since the table is what a reader copies.
 > cites settlement pointing at analytic *"for the principle"* — the line withdrawn here. That decision may
 > still be right, but its evidence is gone.
 >
-> ⚠ **And `open_balance` is elaborated in full** — [snapshot, carry, and what I would actually build](#open_balance--snapshot-carry-and-what-i-would-actually-build).
+> ⚠ **And `open_balance` is elaborated in full** — and since decided: [the-carry-is-stored-not-derived](./context_decision.md#the-carry-is-stored-not-derived).
 > The short version: the snapshot is the definition, the carry is the implementation, genesis must never
 > be `0` for a shop that already trades, and a reconcile is the only thing that can notice the chain
 > breaking.
@@ -825,8 +825,8 @@ flowchart TB
 
 | | state today | |
 | --- | --- | --- |
-| **the amount** | ✅ **`orders.MarketplaceTotal` exists** — on the model ([order.go:71](backend/services/selling_service/selling_service_models/order.go#L71)) and in the contract ([order.proto:228](proto/warehouse/selling/v1/order.proto#L228)). Nothing to build | |
-| **the creator** | ⛔ **`OrderPlace` never reads who is calling** — no actor, no identity, nothing. But `san_auth.GetIdentity(ctx)` is right there and **three services already use it** ([document_service](backend/services/document_service/document_v1/request_upload.go#L45), [expense_service](backend/services/expense_service/expense_v1/service.go#L75)) | it is one read and one column, following a pattern already established |
+| **the amount** | ✅ **`orders.MarketplaceTotal` exists** — on the model ([order.go:71](../../../backend/services/selling_service/selling_service_models/order.go#L71)) and in the contract ([order.proto:228](../../../proto/warehouse/selling/v1/order.proto#L228)). Nothing to build | |
+| **the creator** | ⛔ **`OrderPlace` never reads who is calling** — no actor, no identity, nothing. But `san_auth.GetIdentity(ctx)` is right there and **three services already use it** ([document_service](../../../backend/services/document_service/document_v1/request_upload.go#L45), [expense_service](../../../backend/services/expense_service/expense_v1/service.go#L75)) | it is one read and one column, following a pattern already established |
 | **the idempotency key** | ✅ **already solved by accident.** `SettlementPostRequest.unique_id` is caller-supplied ([the-recipe-is-the-callers-problem](./context_decision.md#the-recipe-is-the-callers-problem)), and `order_place.go` already derives a stable one for its event — `"order-placed:" + order_id`, explicitly *"DERIVED from the order, never a fresh UUID: a redelivery and a replay are the same logical fact and must collide"* | **use the same recipe** — a retry then cannot double-open an account |
 | **the call** | ⛔ does not exist. Nothing in `selling_service` imports `settlement_v1` | |
 | **the failure rule** | ⛔ **unwritten — this is the question** | |
@@ -960,8 +960,8 @@ outright that nothing listens:
 
 | shipped today | carries | settlement would write |
 | --- | --- | --- |
-| [`OrderPlacedEvent`](../../../proto/warehouse/selling/v1/events.proto) — topic `order-placed` | `team_id`, `order_id`, `revenue`, `cogs`, `shipping_cost`, `warehouse_id`, actor | `initial_total` |
-| [`OrderCancelledEvent`](../../../proto/warehouse/selling/v1/events.proto) — topic `order-cancelled` | `team_id`, `order_id`, `actor_id` | `initial_total_cancel` |
+| [`OrderPlaced`](../../../proto/warehouse/events/v1/event.proto) — topic `order-placed` | `team_id`, `order_id`, `revenue`, `cogs`, `shipping_cost`, `warehouse_id`, actor | `initial_total` |
+| [`OrderCancelled`](../../../proto/warehouse/events/v1/event.proto) — topic `order-cancelled` | `team_id`, `order_id`, `actor_id` | `initial_total_cancel` |
 
 > *"⚠ IT CURRENTLY HAS NO CONSUMER, AND IS PUBLISHED ANYWAY — deliberately … **Do not stop publishing
 > it because nothing listens.**"* — `events.proto`
@@ -997,7 +997,7 @@ the cheapest moment it will ever be to choose.
 
 ## Question
 
-**Four open here**, and none is about the ledger's mechanics — those are all settled. ⚠ **Numbering was
+**None open here.** ⚠ **Numbering was
 compacted** when eight questions were answered or moved in one week; older references in this file's
 narrative point at the numbers they had then, and every answer lives in
 [context_decision.md](./context_decision.md).
@@ -1008,67 +1008,70 @@ narrative point at the numbers they had then, and every answer lives in
    ([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date)). Kept as
    a line so the numbers hold.
 
-2. **Is `problem funding` from `§2` the same as `marketplace_adjustment`?** Your worked example uses that
-   type for a *reimbursement*, which is what I would call problem funding.
-   **→ I recommend yes, one type covers both** — but if it is a claim **we file** rather than one the
-   platform pays unprompted, it needs a screen to file it from, and that is a different thing to build.
+2. ✅ **Answered 2026-10-31 — what the platform pays, under its own label**: [problem-funding-is-what-the-platform-pays](./context_decision.md#problem-funding-is-what-the-platform-pays)
+   — no type of its own, no claim screen. Kept as a line so the numbers hold.
 
-3. ⛔ **Who publishes a ledger change, and does `SettlementPost` become the publisher?** ➡ **Re-routed
-   here** (RULE 7b) from [analytic Q1](./analytic_context_clarify.md#question) — the owner scoped that
-   doc to *receiving*: *"who send it is other service responsbility and out of this context topic"*. This
-   is the doc for the write path, so the question lands here.
-   ⛔ **Checked in the checkout: nothing publishes anything.** There is no event message in
-   [settlement.proto](../../../proto/warehouse/settlement/v1/settlement.proto), no `EventSender` in
-   `settlement_v1.Service`, and nothing emitted from
-   [post_entry.go](../../../backend/services/settlement_service/settlement_v1/post_entry.go).
-   ⚠ **And *"other service"* is worth confirming** — **nothing but `SettlementPost` writes
-   `settlement_logs`**, so if a service outside settlement is meant to publish ledger changes, that is new
-   and belongs in the architecture clarify.
-   **→ I recommend `SettlementPost` publish, after commit, carrying the ROW.**
-   ⚠ **This REVERSES my own earlier recommendation of a thin id-only event**, which rested on *"everything
-   else is readable in-process"*. That is true of the fold and **false of every other consumer**: the
-   Financial Ledger (`context.md` §General Brief 2) is a **different service** and cannot read
-   `settlement_logs` at all (HARD RULE 3), so a thin event forces a cross-service RPC per event and
-   rebuilds the coupling the event removes. And `order_created_by_user_id` — which the user report keys
-   on — **is on no settlement table**, so it must ride regardless. Once one field must travel, the
-   log-is-the-source-of-truth purity is already spent, and Pub/Sub's **1 KB minimum per delivery** makes
-   the rest free.
-   ⚠ **What was RIGHT in the thin argument, and does not apply here**: a fat event normally risks a
-   replay folding *current* state — but `settlement_logs` is **append-only and immutable**, so reading a
-   row back later returns exactly what it said. That hazard is absent, which is why this had to be argued
-   on the other consumers rather than on the replay.
-   ⚠ **Same precedent as `OrderPlacedEvent`** — [order_place.go:285](../../../backend/services/selling_service/selling_v1/order_place.go#L285) already
-   publishes with *"a publish failure does NOT fail the order"*. That is the right trade here too, and it
-   is what made the reconcile pass necessary rather than optional — and you declined it
-   ([the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built)). A dropped publish is a movement the report
-   never sees, and nothing now detects it: the same trust
-   [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)
-   already places in the publish.
-   🔨 **BUILT as recommended (2026-09-14)** — kept open only for your yes, because the answer is now in
-   the code: re-posting the same `unique_id` republishes, which is the repair for a lost publish.
+3. ✅ **Answered 2026-08-27 — settlement publishes**: [settlement-publishes-to-the-book](./context_decision.md#settlement-publishes-to-the-book) —
+   it writes its log row, then publishes the frozen money; the Financial Ledger projects from the event. Kept as a
+   line so the numbers hold.
 
-4. **An order with `marketplace_total = 0` opens NO account — is that right?** 🆕 from the build.
-   `order.proto` says 0 is *not recorded* — a phone order has no marketplace sale — and the screens
-   already refuse to compute against an `initial_total` of 0. So `OrderPlace` posts nothing for it, and a
-   person can still open the account by hand from the order page.
-   ⚠ **The cost**: if a marketplace total is ever typed in AFTER placement, nothing opens the account
-   automatically. No order edit path exists today, so this is latent.
-   **→ I recommend keeping it** — an account opened at 0 would be permanently "not recorded" and would
-   block nothing, while cluttering the list with rows that can never compute.
+4. ✅ **Answered 2026-09-16 — a 0 total cannot be placed**: [platform-total-is-required-at-finalize](../order/context_decision.md#platform-total-is-required-at-finalize),
+   [settlement-opens-the-sale-from-the-order-event](./context_decision.md#settlement-opens-the-sale-from-the-order-event) —
+   create refuses it; settlement's skip stays only for older orders. Kept as a line so the numbers hold.
 
-5. **A cancel undoes the LIVE sale, whatever it now is — is that the reading you meant?** 🆕 from the
-   build. [a-cancel-is-an-opposite-row](./context_decision.md#a-cancel-is-an-opposite-row) says *"the
-   exact opposite of `initial_total`"*, which has two readings the moment a person corrects the sale by
-   reverse-then-repost: the opposite of the **original** row, or of the **live** sale.
-   | a 120.000 sale corrected to 110.000, then cancelled | cancel by the original | cancel by the live sale |
-   | --- | --- | --- |
-   | the cancel row | +120.000 | +110.000 |
-   | live sale after | **−10.000** ⛔ | 0 ✅ |
-   **→ I recommend the live sale** — built that way: `CancelSale` reads the amount under the account's
-   lock, a cancel above the live sale is refused, and a cancel with nothing live writes no row.
+5. ✅ *(2026-11-02)* **Answered: the live sale, as built** — [a-cancel-reverses-the-live-sale](./context_decision.md#a-cancel-reverses-the-live-sale). Kept as a line so the numbers hold.
 
 
 # Contradiction
+
+## the-doc-links-to-a-deleted-rpc-context
+
+**The example.** Links in your doc that point at a file that is not there:
+
+| line | the link | the file now |
+| --- | --- | --- |
+| 6 | `[read this](./rpc_context.md)` | none — a one-line file, deleted on 2026-10-01. How the reports are served is [analytic_context.md](./analytic_context.md) and [rpc_provide.md](../analytic/rpc_provide.md) |
+
+**→ Recommend:** drop line 6, or point it at `../analytic/rpc_provide.md`. Found by a link check over every doc (2026-11-02); reported, not edited.
+
+```mermaid
+flowchart LR
+  L["a link in the doc"] -.->|"the file moved or went"| X["nothing there"]
+  L -->|"repointed"| F["the file as it is now"]
+```
+
+## the-doc-still-names-export-service
+
+**The example.** [context.md](./context.md) line 34: *"this `settlement_service` not covered automatic importing file. its
+`export_service` responsbility [defer for now, talk later]"*. The importer was built on 2026-09-29 as
+**`settlement_importer_service`**, from your own [settlement_importer.md](./settlement_importer.md)
+([export-service-is-the-settlement-importer](../../technical/architecture/context_decision.md#export-service-is-the-settlement-importer)).
+
+**Which is stale:** line 34 — the name and the *defer*. **→ Recommend:** line 34 points at
+[settlement_importer.md](./settlement_importer.md).
+
+```mermaid
+flowchart LR
+  D["context.md line 34, export_service, deferred"] -.->|"stale"| I["settlement_importer_service, built 2026-09-29"]
+```
+
+## settlement-posts-to-a-retired-book
+
+**The example.** [context.md](./context.md) line 33: *"we have `Settlement Log` part of `ledger_context` and it publish to
+the broker and post to the Financial Ledger"*; and [settlement-publishes-to-the-book](./context_decision.md#settlement-publishes-to-the-book)
+draws that book as the event's consumer. [ledger-is-retired-as-a-context](../project/member_decision.md#ledger-is-retired-as-a-context)
+(2026-10-31): there is no Financial Ledger and no `ledger_context`.
+
+**Which is stale:** the book, in both — the retirement is yours and newer. **What still holds:** settlement writes its
+log and publishes `SettlementLogPosted`; its own report fold and every other consumer read it. Only the book is gone.
+**→ Recommend:** line 33 reads *"`Settlement Log` is settlement's own ledger; it publishes each row to the broker"*.
+
+```mermaid
+flowchart LR
+  L["settlement log"] --> B["the broker"]
+  B --> F["settlement's report fold"]
+  B -.->|"retired"| X["the Financial Ledger"]
+```
 
 ## my own two clarify files specified the same event two different ways
 
@@ -1161,7 +1164,7 @@ flowchart LR
 >
 > Shipped — those three **plus `team_id`, `shop_id`, `created_at`, `updated_at`**. And
 > [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
-> owes it a sixth, `created_by_user_id`, which is **not built in either place**.
+> owes it a sixth, `created_by_user_id`, which was **not built in either place** — ✅ built 2026-09-14 (`00004_order_settlement_creator.sql`).
 
 **The dangerous one is not a missing column — it is one name meaning two opposite things.**
 
@@ -1271,7 +1274,7 @@ order — and it is the same argument: the ledger is evidence, the report is a v
 > `settlement_context.md` `## Settlement State` — *"we have settlement state, we called
 > **`order_settlements`**"*
 >
-> shipped: [order_settlement.go](backend/services/settlement_service/settlement_service_models/order_settlement.go)
+> shipped: [order_settlement.go](../../../backend/services/settlement_service/settlement_service_models/order_settlement.go)
 > — `TableName() = "order_settlements"`, the proto message is `OrderSettlement`, and
 > [the-state-holds-initial-total-and-last-balance](./context_decision.md#the-state-holds-initial-total-and-last-balance)
 > recorded that name.
@@ -1571,7 +1574,7 @@ flowchart LR
   records that *"no policy" is not a buildable state* — a message with none is DENIED to everybody. A
   reader following §Access Role literally ships an RPC nobody can call. **Yours to update** (RULE 7b).
 
-- ⛔ **`created_by_user_id` is decided, unbuilt, and it is THIS doc's table.**
+- ✅ *(built 2026-09-14, `00004_order_settlement_creator.sql`)* **`created_by_user_id` was decided, unbuilt, and it is THIS doc's table.**
   [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
   puts it on `order_settlements` — §Settlement State's table, not the analytic doc's — so the shape
   belongs here even though the column exists for `user_settlement_daily_reports`. The model has no user

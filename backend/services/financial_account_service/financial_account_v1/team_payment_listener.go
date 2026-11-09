@@ -43,7 +43,7 @@ func (s *Service) postTeamPayment(ctx context.Context, event *eventsv1.Event, ac
 	// The day the creditor accepted — the envelope's clock, the one liability stamped (my spec, recorded in
 	// a-team-payment-posts-on-accept).
 	occurredAt := event.GetOccurredAt().AsTime()
-	amount := float64(accepted.GetAmount())
+	amount := accepted.GetAmount()
 	ref := fmt.Sprintf("Team payment #%d", accepted.GetPaymentId())
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -82,6 +82,7 @@ func (s *Service) postTeamPayment(ctx context.Context, event *eventsv1.Event, ac
 				description:      fmt.Sprintf("%s to team #%d", ref, accepted.GetCreditorTeamId()),
 				occurredAt:       occurredAt,
 				actorID:          accepted.GetActorId(),
+				isOverride:       accepted.GetActorIsOverride(),
 				groupID:          group,
 				counterAccountID: to.ID,
 			})
@@ -96,6 +97,7 @@ func (s *Service) postTeamPayment(ctx context.Context, event *eventsv1.Event, ac
 			description:      fmt.Sprintf("%s from team #%d", ref, accepted.GetPayerTeamId()),
 			occurredAt:       occurredAt,
 			actorID:          accepted.GetActorId(),
+			isOverride:       accepted.GetActorIsOverride(),
 			groupID:          group,
 			counterAccountID: accepted.GetFromAccountId(),
 		})

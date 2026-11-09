@@ -74,10 +74,10 @@ func (s *Service) OwnerStockByIds(
 type ownerReadyScan struct {
 	ProductID uint64
 	Qty       int64
-	Value     int64
+	Value     float64
 	// Nullable: a product can have ready units and no recorded cost on any of them (#74).
-	CostMin *int64
-	CostMax *int64
+	CostMin *float64
+	CostMax *float64
 	// Nullable: no ready units at all means no oldest batch.
 	OldestUnix *int64
 }
@@ -98,9 +98,9 @@ func ownerReadyRows(
 		Table("batches AS b").
 		Select(`b.product_id AS product_id,
 		        COALESCE(SUM(b.stock_count), 0) AS qty,
-		        ROUND(COALESCE(SUM(b.stock_valuation), 0))::bigint AS value,
-		        ROUND(MIN(b.price_unit))::bigint AS cost_min,
-		        ROUND(MAX(b.price_unit))::bigint AS cost_max,
+		        COALESCE(SUM(b.stock_valuation), 0) AS value,
+		        MIN(b.price_unit) AS cost_min,
+		        MAX(b.price_unit) AS cost_max,
 		        EXTRACT(EPOCH FROM MIN(b.created_at))::bigint AS oldest_unix`).
 		Where("b.team_id = ?", teamID).
 		Where("b.product_id IN ?", productIDs).
@@ -138,12 +138,12 @@ func ownerReadyRows(
 type ownerOngoingScan struct {
 	ProductID uint64
 	Qty       int64
-	Value     int64
+	Value     float64
 }
 
 // ownerOngoingRows fills ongoing_qty / ongoing_value_est from restock lines the warehouse has not
 // accepted yet. `total` is the LINE total, which is exactly what "what will this cost me" means here — no per-unit
-// division. Rounded to the rupiah only because this contract is still whole rupiah; the restock's own is double.
+// division. The exact double, never rounded (the-backend-never-rounds-money).
 func ownerOngoingRows(
 	db *gorm.DB,
 	teamID, warehouseID uint64,
@@ -156,7 +156,7 @@ func ownerOngoingRows(
 		Table("restock_items AS ri").
 		Select(`ri.product_id AS product_id,
 		        COALESCE(SUM(ri.count), 0) AS qty,
-		        ROUND(COALESCE(SUM(ri.total), 0))::bigint AS value`).
+		        COALESCE(SUM(ri.total), 0) AS value`).
 		Joins("JOIN restocks r ON r.id = ri.restock_id").
 		Where("r.team_id = ?", teamID).
 		Where("r.status IN ?", restockInboundStatuses).

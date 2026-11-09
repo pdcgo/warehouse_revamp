@@ -46,7 +46,7 @@ export interface LineDraft {
   /** The stored line's id; 0n for a line added in this edit. */
   itemId: bigint;
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   /** How many were ordered (a-line-is-typed-as-its-total). */
   count: string;
@@ -78,7 +78,7 @@ export function lineFromPicked(p: PickedProduct): LineDraft {
   return {
     itemId: 0n,
     productId: p.id,
-    sku: p.sku,
+    productCode: p.productCode,
     name: p.name,
     count: "1",
     total: "",
@@ -96,7 +96,7 @@ export function lineFromItem(item: RestockRequestItem): LineDraft {
   return {
     itemId: item.id,
     productId: item.productId,
-    sku: item.sku,
+    productCode: item.productCode,
     name: item.name,
     count: String(item.count),
     total: String(item.total),

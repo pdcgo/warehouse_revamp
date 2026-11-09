@@ -1,0 +1,211 @@
+package inventory_v1
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"connectrpc.com/connect"
+	"gorm.io/gorm"
+
+	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
+	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
+)
+
+// OpnameSessionFinalize posts a count. Finalizing IS the agreement (finalizing-is-the-agreement): whoever finalizes —
+// the warehouse's Owner or Admin, or Root and the root Administrator as an override (root-finalizes-only-as-an-override,
+// stamped on every transaction it writes) — agrees the debt, and is never a person who counted a row of it
+// (nobody-finalizes-their-own-count). Every row must be counted.
+//
+// ONE database transaction (the-lock-is-the-open-snapshot-row): the session locked FOR UPDATE, so no row write passes it;
+// every found request still waiting for a product on a rack the count held, locked and closed as settled by the count —
+// it counted those units and posts them itself (a-count-settles-the-found-it-counted, settleFoundByCount); then the
+// settlement posted per product (inventory_mutations.PostCountFinalize) — up to three transactions per owning
+// team, `problem`, `found`, `move` (problem-and-found-replace-opname); what the warehouse owes each team for the broken
+// and the lost units, and what a claim gives back, posted to liability inside the transaction; the transactions listed
+// (a-session-lists-its-final-transactions); every row released; the session `finish`. The stock-loss expense follows the
+// commit, once for the count, as every write-off here does.
+func (s *Service) OpnameSessionFinalize(
+	ctx context.Context,
+	req *connect.Request[inventoryv1.OpnameSessionFinalizeRequest],
+) (*connect.Response[inventoryv1.OpnameSessionFinalizeResponse], error) {
+	warehouseID := req.Msg.GetTeamId()
+	actor := actorFrom(ctx)
+
+	if actor == 0 {
+		return nil, opnameErr(errOpnameNoPerson)
+	}
+
+	var (
+		session models.OpnameSession
+		posted  inventory_mutations.CountPosted
+	)
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var lockErr error
+
+		now := time.Now()
+
+		session, lockErr = opnameSessionOf(tx, warehouseID, req.Msg.GetSessionId(), "UPDATE")
+		if lockErr != nil {
+			return lockErr
+		}
+
+		count, readErr := readOpnameCount(tx, session.ID, false)
+		if readErr != nil {
+			return readErr
+		}
+
+		switch opnameFinalizeBlock(session, count, actor) {
+		case inventoryv1.OpnameFinalizeBlock_OPNAME_FINALIZE_BLOCK_NOT_ACTIVE:
+			return errOpnameNotActive
+		case inventoryv1.OpnameFinalizeBlock_OPNAME_FINALIZE_BLOCK_ROWS_NOT_COUNTED:
+			return errOpnameRowsLeft
+		case inventoryv1.OpnameFinalizeBlock_OPNAME_FINALIZE_BLOCK_OWN_COUNT:
+			return errOpnameOwnCount
+		}
+
+		// THE FOUNDS IT COUNTED (a-count-settles-the-found-it-counted): every request still waiting for a product on a
+		// rack this count held is closed as settled by it — the count counted those units on the shelf and posts them
+		// below, so they post once. Locked here, after the session and before the register, the batches and the racks:
+		// the order an approval takes them in (its request row first).
+		_, settleErr := settleFoundByCount(tx, warehouseID, session.ID, actor, now)
+		if settleErr != nil {
+			return settleErr
+		}
+
+		var postErr error
+
+		posted, postErr = inventory_mutations.PostCountFinalize(tx, inventory_mutations.CountFinalize{
+			WarehouseID: warehouseID,
+			ActorID:     actor,
+			IsOverride:  overrideFrom(ctx),
+			Description: opnameNote(session.ID),
+			Products:    count.products,
+		})
+		if postErr != nil {
+			return postErr
+		}
+
+		debtErr := s.postCountDebts(ctx, tx, warehouseID, actor, posted.Transactions)
+		if debtErr != nil {
+			return debtErr
+		}
+
+		listed := make([]models.OpnameSessionFinalTransaction, 0, len(posted.Transactions))
+		for _, ct := range posted.Transactions {
+			listed = append(listed, models.OpnameSessionFinalTransaction{OpnameSessionID: session.ID, TransactionID: ct.Transaction.ID})
+		}
+
+		if len(listed) > 0 {
+			listErr := tx.Create(&listed).Error
+			if listErr != nil {
+				return listErr
+			}
+		}
+
+		session.Status = models.OpnameFinish
+		session.FinalizedByID = &actor
+		session.FinalizedAt = &now
+
+		updateErr := tx.Model(&models.OpnameSession{}).Where("id = ?", session.ID).Updates(map[string]any{
+			"status": models.OpnameFinish, "finalized_by_id": actor, "finalized_at": now,
+		}).Error
+		if updateErr != nil {
+			return updateErr
+		}
+
+		return tx.Model(&models.OpnameSessionSnapshot{}).
+			Where("opname_session_id = ? AND released_at IS NULL", session.ID).
+			Update("released_at", now).Error
+	})
+	if err != nil {
+		return nil, opnameErr(err)
+	}
+
+	// The warehouse's own loss, written off AFTER the stock left the books — best-effort, one line for the count.
+	var loss float64
+	for _, ct := range posted.Transactions {
+		loss += ct.BrokenValue + ct.LostValue
+	}
+
+	// Passed as the exact double it is (the-backend-never-rounds-money). A loss of nothing (0, or float dust) is no
+	// expense.
+	if san_money.Positive(loss) {
+		_ = s.expense.PostStockLoss(ctx, warehouseID, loss, opnameNote(session.ID))
+	}
+
+	progress, err := opnameProgressOf(s.db.WithContext(ctx), []models.OpnameSession{session})
+	if err != nil {
+		return nil, opnameErr(err)
+	}
+
+	res := &inventoryv1.OpnameSessionFinalizeResponse{Session: opnameSessionProto(session, progress[session.ID], false)}
+
+	for _, ct := range posted.Transactions {
+		res.Transactions = append(res.Transactions, &inventoryv1.OpnameTransaction{
+			TransactionId: ct.Transaction.ID,
+			TeamId:        ct.Transaction.TeamID,
+			Type:          opnameTransactionTypeProto(ct.TxType),
+		})
+	}
+
+	return connect.NewResponse(res), nil
+}
+
+// opnameNote is what a count's transactions and its write-off say they were.
+func opnameNote(sessionID uint64) string {
+	return fmt.Sprintf("stock count #%d", sessionID)
+}
+
+func opnameTransactionTypeProto(t models.TxType) inventoryv1.OpnameTransactionType {
+	switch t {
+	case models.TxProblem:
+		return inventoryv1.OpnameTransactionType_OPNAME_TRANSACTION_TYPE_PROBLEM
+	case models.TxFound:
+		return inventoryv1.OpnameTransactionType_OPNAME_TRANSACTION_TYPE_FOUND
+	case models.TxMove:
+		return inventoryv1.OpnameTransactionType_OPNAME_TRANSACTION_TYPE_MOVE
+	default:
+		return inventoryv1.OpnameTransactionType_OPNAME_TRANSACTION_TYPE_UNSPECIFIED
+	}
+}
+
+// postCountDebts posts what the warehouse owes each owning team for the units it threw away and lost, and what a claim
+// gives back (a-loss-in-custody-is-a-stock-problem), inside the caller's transaction — keyed by the transaction, so the
+// broken and the lost of one problem transaction are two entries and a retry is refused by the ledger. A team cannot owe
+// itself. A count's finalize and a found request's approval both call it, so a found posts the same money whichever
+// door it came through.
+func (s *Service) postCountDebts(
+	ctx context.Context,
+	tx *gorm.DB,
+	warehouseID, actor uint64,
+	posted []inventory_mutations.CountTransaction,
+) error {
+	for _, ct := range posted {
+		if ct.Transaction.TeamID == warehouseID {
+			continue
+		}
+
+		for _, money := range []struct {
+			amount float64
+			kind   StockDamageKind
+		}{{ct.BrokenValue, StockDamageBroken}, {ct.LostValue, StockDamageLost}, {ct.ClaimedValue, StockDamageFound}} {
+			// As the count valued it, the exact double; the ledger posts it unrounded.
+			amount := money.amount
+			if !san_money.Positive(amount) {
+				continue
+			}
+
+			err := s.liability.PostStockDamage(ctx, tx, ct.Transaction.TeamID, warehouseID, ct.Transaction.ID,
+				actor, amount, money.kind)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}

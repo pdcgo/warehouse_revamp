@@ -3,6 +3,7 @@ package user_v1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -10,6 +11,7 @@ import (
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 )
 
 func TestUserList_ScopedToTeam(t *testing.T) {
@@ -143,4 +145,55 @@ func membershipRoles(res *userv1.UserListResponse) map[uint64]role_basev1.Role {
 	}
 
 	return roles
+}
+
+// a-suspended-user-is-never-picked, for the shop-grant picker: exclude_suspended leaves out a suspended and an erased
+// member. Without it the list keeps them (a-filter-keeps-former-and-suspended-people) — the member list badges them.
+func TestUserList_ExcludeSuspendedLeavesOutSuspendedAndErased(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	active := insertUser(t, db, "activecs", "pw12345678")
+	suspended := insertUser(t, db, "suspendedcs", "pw12345678")
+	erased := insertUser(t, db, "erasedcs", "pw12345678")
+
+	for _, id := range []uint64{active, suspended, erased} {
+		grantRole(t, db, 78, id, role_basev1.Role_ROLE_SELLING_CS)
+	}
+
+	err := db.Model(&user_service_models.User{}).Where("id IN ?", []uint64{suspended, erased}).Update("is_suspended", true).Error
+	if err != nil {
+		t.Fatalf("suspend: %v", err)
+	}
+
+	err = db.Model(&user_service_models.User{}).Where("id = ?", erased).Update("erased_at", time.Now()).Error
+	if err != nil {
+		t.Fatalf("erase: %v", err)
+	}
+
+	list := func(exclude bool) []string {
+		res, err := svc.UserList(context.Background(), connect.NewRequest(&userv1.UserListRequest{
+			TeamId: 78,
+			Filter: &userv1.UserListFilter{ExcludeSuspended: exclude},
+			Page:   &commonPage,
+		}))
+		if err != nil {
+			t.Fatalf("UserList(exclude=%v): %v", exclude, err)
+		}
+
+		if exclude && res.Msg.GetPageInfo().GetTotalItems() != 1 {
+			t.Fatalf("total = %d, want 1 — the count must apply the filter too", res.Msg.GetPageInfo().GetTotalItems())
+		}
+
+		return usernames(userRows(res.Msg))
+	}
+
+	got := list(true)
+	if len(got) != 1 || got[0] != "activecs" {
+		t.Fatalf("exclude_suspended = %v, want [activecs]", got)
+	}
+
+	if got := list(false); len(got) != 3 {
+		t.Fatalf("the default keeps everyone, got %v", got)
+	}
 }

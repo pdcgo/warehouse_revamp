@@ -24,7 +24,7 @@ import { SupplierReportPage } from "../index";
 //   ──────────────────────────────────────────────────────────────
 //   the window — 378 good, Rp 9.680.000 restocked, 3 short (Rp 80.000), 18 broken (Rp 365.000)
 
-const MELATI = teams.find((t) => t.id === 12n)!;
+export const MELATI = teams.find((t) => t.id === 12n)!;
 
 export const rp = (amount: bigint) => formatRupiah(amount).replace(/\s/g, " ");
 

@@ -1,4 +1,5 @@
 import { LiabilitySourceType } from "../../gen/warehouse/liability/v1/liability_pb";
+import { formatUnixDate } from "../../lib/datetime";
 
 // WHAT CAUSED an entry, in words, from the typed `(source_type, source_id)` pair — never free text. A
 // line reads "Product fee · order #412", so "why do I owe this?" is answerable, filterable and
@@ -9,6 +10,13 @@ export function causeKey(type: LiabilitySourceType): string {
       return "liabilityDetail.causeOrderFee";
     case LiabilitySourceType.INCIDENTAL_FEE:
       return "liabilityDetail.causeIncidentalFee";
+    // The courier's ask at a RETURN's door (a-return-may-carry-the-couriers-ask) — its own type because its source is an
+    // ORDER, where the restock's names a restock: "restock #<order>" would send the reader to the wrong record.
+    case LiabilitySourceType.RETURN_INCIDENTAL_FEE:
+      return "liabilityDetail.causeReturnIncidentalFee";
+    // The courier B paid at its door on a warehouse transfer (a-transfer-charge-is-a-transfer-fee) — keyed by the transfer.
+    case LiabilitySourceType.TRANSFER_FEE:
+      return "liabilityDetail.causeTransferFee";
     case LiabilitySourceType.PRODUCT_FEE:
       return "liabilityDetail.causeProductFee";
     case LiabilitySourceType.PAYMENT:
@@ -29,8 +37,10 @@ export function causeKey(type: LiabilitySourceType): string {
   }
 }
 
-/** A unix instant as the viewer's local date; 0 is no date. */
+/**
+ * A unix instant as its Jakarta date, in the app's language (a-date-speaks-the-apps-language,
+ * a-table-date-is-short-and-every-time-is-wib) — never the browser's locale or zone. 0 is no date.
+ */
 export function fmtDate(unix: bigint): string {
-  if (unix === 0n) return "—";
-  return new Date(Number(unix) * 1000).toLocaleDateString();
+  return formatUnixDate(unix);
 }

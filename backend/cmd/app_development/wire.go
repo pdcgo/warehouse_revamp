@@ -45,9 +45,19 @@ func InitializeApp() (*App, error) {
 
 		user_v1.NewAuthService,
 		user_v1.NewService,
+		// AI agents (our-server-hosts-the-mcp) — the credential store, its RPCs, the OAuth and /mcp; see agent_deps.go.
+		NewAgentStore,
+		user_v1.NewAgentService,
+		NewAgentEndpoints,
+		// Which teams the admin team monitors — see team_kinds.go.
+		NewTeamKinds,
 		team_v1.NewService,
 		shipment_v1.NewService,
 		product_v1.NewService,
+		// What product_service's Delete asks first — see product_history.go.
+		NewProductHistory,
+		// The team code every product code is composed from, asked of team_service — see product_team_codes.go.
+		NewProductTeamCodes,
 		selling_v1.NewService,
 		// Whether a user runs a team, for ShopAccessCheck — see role_reader.go.
 		NewRoleReader,
@@ -55,6 +65,11 @@ func InitializeApp() (*App, error) {
 		NewStockPicker,
 		NewProductCatalog,
 		NewInventoryProductReader,
+		// The link to an order's label, for the warehouse that ships it — see order_label_linker.go.
+		NewOrderLabelLinker,
+		NewDraftRegionMatcher,
+		// The link to a restock's label photo, for the warehouse it is going to — see restock_photo_linker.go.
+		NewRestockPhotoLinker,
 		// Where the order events go (#153) — see event_sender.go. Dev publishes to the local
 		// EMULATOR, not an in-process loopback (dev-runs-the-emulator).
 		NewPubsubClient,
@@ -78,6 +93,13 @@ func InitializeApp() (*App, error) {
 		// caller's token. See shop_primary.go.
 		NewShopClient,
 		NewShopPrimary,
+		// Where the order learns its settlement account opened — orders.settlement_opened_at, stamped in-process by
+		// the order service (a-missing-account-is-found-by-its-opened-at). See settlement_opened_marker.go.
+		NewSettlementOpenedMarker,
+		// Shop Entries' statement (the importer's line) and names (the user read), in-process — see
+		// settlement_shop_entries.go.
+		NewSettlementStatementSources,
+		NewSettlementUserNames,
 		// The subscription settlement's replay seeks — see replay_broker.go.
 		NewReplayBroker,
 		// The settlement importer, and its four services as clients under the uploader's token — see
@@ -99,14 +121,29 @@ func InitializeApp() (*App, error) {
 		// Joins inventory to expense (#211) — writing off the value of damaged/lost stock. See
 		// expense_poster.go.
 		NewExpensePoster,
+		// Expense's one outside question, whether the account an expense names may pay it, is asked of
+		// financial_account in-process — see expense_accounts.go.
+		NewExpensePayingAccounts,
+		// And which side of Analytic a team's expenses sit on, Seller or Warehouse — a local read of the team's type,
+		// see expense_team_sides.go.
+		NewExpenseTeamSides,
+		// The restock's paying account is asked the same question of the same service — see restock_accounts.go.
+		NewRestockPayingAccounts,
 		// The money a team holds — its accounts, their logs, the withdrawal listener. Its one outside question,
 		// whether a shop is the team's, is asked of the shop — see financial_account_deps.go.
 		financial_account_v1.NewService,
 		NewFinancialAccountShopChecker,
+		// Where the account report's export goes, and the shops its accounts are named by — see
+		// financial_account_exports.go.
+		NewFinancialAccountExportStore,
 		// The suppliers a selling team buys from, and their stores. Its one outside question, whether a team
 		// is a selling team, is asked of team_service — see supplier_deps.go.
 		supplier_v1.NewService,
 		NewSupplierSellingTeams,
+		// What inventory knows of a supplier's goods — Penjualan's take, the range pills' sets. In-process, see
+		// supplier_goods_reader.go.
+		NewSupplierGoodsReader,
+		NewSupplierExportStore,
 		// What a warehouse charges per order (warehouse-prices-balance-records); its one outside question, a warehouse's
 		// name for a refusal, is asked of team_service — see warehouse_deps.go.
 		warehouse_v1.NewService,

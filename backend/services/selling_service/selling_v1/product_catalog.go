@@ -6,8 +6,8 @@ import "context"
 // the order was placed. Money is not here — what the buyer pays comes from the order, and what we
 // paid comes from the warehouse's take (`StockPicker.Pick`).
 type ProductSnapshot struct {
-	SKU  string
-	Name string
+	ProductCode string
+	Name        string
 	// The team that OWNS this product (#186). An order selling another team's goods owes that team
 	// money, and the owner is resolved AT PLACEMENT so the answer is frozen: a product moved to a
 	// different team next month must not rewrite who was owed for a sale that happened today.
@@ -17,7 +17,7 @@ type ProductSnapshot struct {
 // ProductCatalog is how selling_service reads product LABELS (#194).
 //
 // It exists because promote must build an order's lines from a draft, and a draft line stores only a
-// `product_id` — the sku and name an order freezes are not in it. The client cannot supply them
+// `product_id` — the product code and name an order freezes are not in it. The client cannot supply them
 // either: promote's request names a draft, not a basket, so there is nowhere honest for them to come
 // from except the catalogue itself. (OrderCreate takes them from the request because the person
 // typing the order has the catalogue open in front of them.)

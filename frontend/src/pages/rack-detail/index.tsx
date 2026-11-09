@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Box, Button, Flex, HStack, Heading, Icon, IconButton, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
-import { ArrowLeft, ArrowRightLeft, Gift, History, PackageOpen } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Gift, History, PackageOpen, PackageSearch } from "lucide-react";
+import { personName } from "../../lib/users";
 import { productClient, rackClient, rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
@@ -12,7 +13,7 @@ import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
@@ -27,6 +28,8 @@ import { formatRupiah } from "../../lib/money";
 import { useIsMobile } from "../../layouts/shell";
 import { fetchActors } from "../../features/users/queries";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ReportFoundDialog } from "../../features/inventory/ReportFoundDialog";
+import { canReportFound } from "../../lib/roles";
 import { MoveGoodsDialog } from "./components/MoveGoodsDialog";
 import { RecordSampleDialog } from "./components/RecordSampleDialog";
 import { RACK_DETAIL_PENDING } from "./pending";
@@ -105,7 +108,7 @@ export function RackDetailPage() {
   // The two writes off this rack (placement_decision.md): Move Goods, and Record Sample
   // (a-sample-is-recorded-on-rack-detail). The reads below are hand-rolled effects rather than query hooks, so a
   // write bumps `reloadKey` and every read on the page — header, contents, both histories — asks again.
-  const [dialog, setDialog] = useState<"move" | "sample" | null>(null);
+  const [dialog, setDialog] = useState<"move" | "sample" | "found" | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
   const isMobile = useIsMobile();
@@ -332,12 +335,29 @@ export function RackDetailPage() {
     />
   );
 
-  // THE TWO ACTS OFF THIS RACK, each with its icon (an-action-button-carries-its-icon) — on a phone their icons alone, two
-  // stay out of `⋯` (a-phone-header-action-is-an-icon).
-  const actions = isMobile ? (
+  // REPORT FOUND (staff-may-report-a-found): units found on this shelf, sent for the Owner's or Admin's approval. Its
+  // place here was accepted 2026-11-03 (the-staff-found-screens-are-accepted).
+  const reportsFound = canReportFound(current?.role);
+
+  // THE ACTS OFF THIS RACK, each with its icon (an-action-button-carries-its-icon) — on a phone their icons alone, two
+  // stay out of `⋯` and three fold into it (a-phone-header-action-is-an-icon). None while the admin team monitors the
+  // warehouse (the-admin-team-monitors-read-only).
+  const actions = !canWrite(current) ? null : isMobile ? (
     <CompactActions
       menuLabel={t("racks.detail.actions")}
+      menuTestId="rack-actions"
       actions={[
+        ...(reportsFound
+          ? [
+              {
+                id: "found",
+                label: t("racks.reportFound.action"),
+                icon: PackageSearch,
+                testId: "rack-action-report-found",
+                onClick: () => setDialog("found"),
+              },
+            ]
+          : []),
         {
           id: "sample",
           label: t("racks.sample.action"),
@@ -357,6 +377,12 @@ export function RackDetailPage() {
     />
   ) : (
     <HStack gap="2" flexShrink={0}>
+      {reportsFound && (
+        <Button variant="outline" data-testid="rack-action-report-found" onClick={() => setDialog("found")}>
+          <Icon as={PackageSearch} boxSize="4" />
+          {t("racks.reportFound.action")}
+        </Button>
+      )}
       <Button variant="outline" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
         <Icon as={Gift} boxSize="4" />
         {t("racks.sample.action")}
@@ -409,7 +435,7 @@ export function RackDetailPage() {
           }
           line={
             <>
-              <Span data-testid="rack-summary-value">{formatRupiah(summary?.totalValue ?? 0n)}</Span>
+              <Span data-testid="rack-summary-value">{formatRupiah(summary?.totalValue ?? 0)}</Span>
               {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds nothing to it,
                   so a shelf of never-restocked goods would otherwise read as a confident small number. */}
               {unknownCost > 0 && (
@@ -549,6 +575,15 @@ export function RackDetailPage() {
             onOpenChange={(open) => setDialog(open ? "sample" : null)}
             onRecorded={reload}
           />
+          {reportsFound && (
+            <ReportFoundDialog
+              warehouseId={teamId}
+              rackId={rack.id}
+              rackCode={rack.code}
+              open={dialog === "found"}
+              onOpenChange={(open) => setDialog(open ? "found" : null)}
+            />
+          )}
         </>
       )}
     </Stack>
@@ -650,7 +685,7 @@ function RackStockTable({
 
   // ⚠ UNKNOWN IS NOT FREE. A dash-like word rather than "Rp 0", because a zero would say the goods cost nothing — and
   // the difference is the whole reason the server sends `cost_known` rather than letting a screen infer it.
-  const money = (line: RackStockLine, v: bigint) => (line.costKnown ? formatRupiah(v) : t("racks.detail.costUnknown"));
+  const money = (line: RackStockLine, v: number) => (line.costKnown ? formatRupiah(v) : t("racks.detail.costUnknown"));
 
   if (isMobile) {
     // A PHONE READS EACH PRODUCT AS A BLOCK (a-phone-reads-each-line-as-a-block) — the product at full width, whose it
@@ -838,7 +873,7 @@ function RackHistory({ teamId, rackId, kinds, reloadKey, testId }: RackHistoryPr
 
         const people = new Map<string, string>();
         for (const [id, user] of actors) {
-          people.set(id, user.name || user.username);
+          people.set(id, personName(user));
         }
 
         setMovements(rows);

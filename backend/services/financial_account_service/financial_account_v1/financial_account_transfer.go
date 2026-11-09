@@ -43,6 +43,7 @@ func (s *Service) FinancialAccountTransfer(
 	}
 
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 	out := []*financial_accountv1.FinancialAccountLog{}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -64,7 +65,7 @@ func (s *Service) FinancialAccountTransfer(
 			}
 		}
 
-		legs, err := transferLegs(tx, from, to, rupiah(msg.GetAmount()), occurredAt, msg.GetNote(), actor)
+		legs, err := transferLegs(tx, from, to, msg.GetAmount(), occurredAt, msg.GetNote(), actor, override)
 		if err != nil {
 			return err
 		}

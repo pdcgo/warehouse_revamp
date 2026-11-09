@@ -35,6 +35,12 @@ func (s *Service) WarehouseTransferUpdate(
 
 	cost := msg.GetShipmentCost()
 
+	// Asked BEFORE the transaction (a call to another service never holds a lock), judged under it: only a CHANGED
+	// account must be one of the team's active accounts (a-transfers-shipping-is-paid-from-any-active-account), and whether it changed is known only once the row
+	// is locked. An unchanged one keeps what the transfer already holds — re-checking it would freeze the cost of a
+	// transfer whose account was archived since (the restock's edit rule, restock_request_update.go).
+	answer := s.askPayingAccount(ctx, msg.GetTeamId(), account)
+
 	var (
 		t          *models.WarehouseTransfer
 		oldAccount uint64
@@ -55,6 +61,13 @@ func (s *Service) WarehouseTransferUpdate(
 			models.TransferCreated, models.TransferProcess, models.TransferShipped, models.TransferArrived, models.TransferLost)
 		if statusErr != nil {
 			return statusErr
+		}
+
+		if account != t.FinanceAccountID {
+			accountErr := answer.checkActive()
+			if accountErr != nil {
+				return accountErr
+			}
 		}
 
 		oldAccount, oldCost = t.FinanceAccountID, t.ShipmentCost

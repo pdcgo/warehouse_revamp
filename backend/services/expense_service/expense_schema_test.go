@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	expense_service_models "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
 )
@@ -46,9 +48,9 @@ func TestExpenseRecord_RoundTrips(t *testing.T) {
 		t.Fatalf("occurred_at = %s, want the chosen 2026-06-30", got)
 	}
 
-	// A live row: voided is an absence, not a false.
-	if back.VoidedAt != nil {
-		t.Fatalf("a new cost is already voided: %v", back.VoidedAt)
+	// An expense, not an adjustment: it corrects nothing.
+	if back.AdjustsExpenseID != 0 {
+		t.Fatalf("a new cost adjusts expense %d", back.AdjustsExpenseID)
 	}
 
 	// The shop is optional on every kind (owner) — this payroll row names none.
@@ -57,7 +59,7 @@ func TestExpenseRecord_RoundTrips(t *testing.T) {
 	}
 }
 
-// #167 — AMOUNT IS ALWAYS POSITIVE, enforced by the database.
+// #167 — AN EXPENSE'S AMOUNT IS ALWAYS POSITIVE, enforced by the database.
 //
 // The kind already says the money is going out. A signed amount would let a negative cost silently
 // become revenue, which is the one arithmetic mistake this table must not permit — so it is a CHECK
@@ -65,13 +67,45 @@ func TestExpenseRecord_RoundTrips(t *testing.T) {
 func TestExpenseRecord_RefusesANonPositiveAmount(t *testing.T) {
 	db := san_testdb.DB(t)
 
-	for name, amount := range map[string]int64{"negative": -1, "zero": 0} {
+	for name, amount := range map[string]float64{"negative": -1, "zero": 0} {
 		row := aCost()
 		row.Amount = amount
 
 		err := db.Create(&row).Error
 		if err == nil {
 			t.Fatalf("a %s amount was accepted — it would read as revenue", name)
+		}
+	}
+}
+
+// AN ADJUSTMENT IS SIGNED AND NEVER 0, enforced by the database (every-correction-is-a-signed-adjustment) — a
+// correction of nothing is not one. That an expense and its adjustments never sum below 0 is the handler's: a CHECK
+// cannot see the other rows.
+func TestExpenseRecord_AnAdjustmentIsSignedAndNeverZero(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	expense := aCost()
+
+	err := db.Create(&expense).Error
+	if err != nil {
+		t.Fatalf("create the expense: %v", err)
+	}
+
+	for name, c := range map[string]struct {
+		amount float64
+		ok     bool
+	}{"a reduction": {-2_000_000, true}, "an addition": {500_000, true}, "zero": {0, false}} {
+		row := aCost()
+		row.Amount = c.amount
+		row.AdjustsExpenseID = expense.ID
+
+		// A SAVEPOINT per case: the refused insert aborts the test's one transaction otherwise, and map order decides
+		// whether the cases after it ever reach the database.
+		err := db.Transaction(func(tx *gorm.DB) error {
+			return tx.Create(&row).Error
+		})
+		if (err == nil) != c.ok {
+			t.Fatalf("%s: err = %v, want accepted %v", name, err, c.ok)
 		}
 	}
 }

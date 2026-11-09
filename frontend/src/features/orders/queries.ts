@@ -33,8 +33,8 @@ export interface OrderFilters {
   sellerTeamId?: bigint;
   /** Only orders whose shop is on this marketplace. UNSPECIFIED or absent = any. */
   marketplace?: Marketplace;
-  /** Only orders with this courier (`shipping_code`). "" or absent = any. */
-  shippingCode?: string;
+  /** Only orders with this courier — its `shipment_channel_id`. 0n or absent = any. */
+  shipmentChannelId?: bigint;
   /** Only orders shipping from this warehouse — the seller list's filter. 0n or absent = any. */
   warehouseId?: bigint;
   /**
@@ -42,6 +42,12 @@ export interface OrderFilters {
    * storefront (the-date-filter-switches-created-or-platform). Absent = created.
    */
   dateField?: OrderDateField;
+  /**
+   * Only orders whose settlement account never opened — `settlement_opened_at IS NULL`
+   * (a-missing-account-is-found-by-its-opened-at). Absent or false = no filter. ⚠ PROTOTYPE: only the Storybook
+   * preview of the order list sets it until its design is accepted.
+   */
+  settlementNotOpened?: boolean;
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -61,9 +67,10 @@ const filterKey = (f: OrderFilters) => ({
   createdByUserId: (f.createdByUserId ?? 0n).toString(),
   sellerTeamId: (f.sellerTeamId ?? 0n).toString(),
   marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
-  shippingCode: f.shippingCode ?? "",
+  shipmentChannelId: (f.shipmentChannelId ?? 0n).toString(),
   warehouseId: (f.warehouseId ?? 0n).toString(),
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
+  settlementNotOpened: f.settlementNotOpened ?? false,
 });
 
 const filterMsg = (f: OrderFilters) => orderListFilterMsg(f);
@@ -77,9 +84,10 @@ export const orderListFilterMsg = (f: OrderFilters) => ({
   createdByUserId: f.createdByUserId ?? 0n,
   sellerTeamId: f.sellerTeamId ?? 0n,
   marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
-  shippingCode: f.shippingCode ?? "",
+  shipmentChannelId: f.shipmentChannelId ?? 0n,
   warehouseId: f.warehouseId ?? 0n,
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
+  settlementNotOpened: f.settlementNotOpened ?? false,
 });
 
 export function useOrders(args: {
@@ -153,13 +161,13 @@ export function useOrderStat(args: {
 // (whoever-reads-a-list-may-filter-it).
 //
 // `referenceQuery`: it LABELS a picker, and is re-read whenever one mounts.
-export function useOrderCreators(args: { teamId: bigint | undefined }) {
-  const { teamId } = args;
+export function useOrderCreators(args: { teamId: bigint | undefined; enabled?: boolean }) {
+  const { teamId, enabled = true } = args;
 
   return useQuery({
     queryKey: key.orders(teamId, { creators: 1 }),
     ...referenceQuery,
-    enabled: teamId !== undefined,
+    enabled: enabled && teamId !== undefined,
     queryFn: async () => {
       const res = await orderClient.orderCreatorList({
         teamId: teamId!,
@@ -262,6 +270,23 @@ export function useOrderStatusChange() {
     mutationFn: async (vars: Parameters<typeof orderClient.orderStatusChange>[0]) =>
       (await orderClient.orderStatusChange(vars)).results,
     onSuccess: () => Promise.all([invalidateOrders(), invalidateStock()]),
+  });
+}
+
+// THE RETURN ACCEPT (the-accept-is-the-status-return-completed) — the order's warehouse has the returned parcel in its
+// hands: `return → return_completed`, with the missing units noted and the courier's charge, if any, announced. It resolves
+// to the response, whose `labels` are what the crew prints for a borrowed line
+// (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+//
+// ⚠ IT INVALIDATES THE ORDERS ONLY. It moves no stock (the-return-accept-is-built-before-its-stock-half), and the
+// courier's charge reaches the balance through an event, after this resolves — re-reading the ledger here would read it
+// before the charge lands.
+export function useAcceptReturn() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderClient.orderReturnAccept>[0]) => orderClient.orderReturnAccept(vars),
+    onSuccess: () => invalidate(),
   });
 }
 

@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    # The per-developer long-lived branches (CLAUDE.md rule 12) get CI on every push too.
+    branches: [main, dev, "backup/**", thoni]
   pull_request:
 
 permissions:
@@ -14,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # fetch-depth: 2 is for `buf breaking` below — the default shallow clone has no HEAD~1.
-      # submodules: go.mod replaces san_receipt_readers with backend/packages/, and every go command
+      # submodules: go.mod replaces san_receipt_readers with backend/pkgs/, and every go command
       # reads that folder's go.mod — an empty folder fails the build before it starts.
       - uses: actions/checkout@v4
         with:
@@ -157,9 +158,10 @@ jobs:
 
       # A submodule is a module of its own, and `./...` from the root never enters a nested module —
       # so its tests run from inside it. Its real-label samples are untracked, so that test skips here.
-      - name: go test (backend/packages/*)
+      # Every submodule is listed by .gitmodules, wherever its folder is (san_receipt_readers: backend/pkgs/).
+      - name: go test (submodules)
         run: |
-          for m in backend/packages/*/; do
+          for m in $(git config --file .gitmodules --get-regexp '\.path$' | awk '{print $2}'); do
             (cd "$m" && go vet ./... && go test ./...)
           done
 

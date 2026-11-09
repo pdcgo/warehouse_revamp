@@ -118,3 +118,12 @@ export function courierName(couriers: ShipmentChannel[], code: string): string {
   const match = couriers.find((courier) => courier.code === code);
   return match?.name ?? code;
 }
+
+// courierCodeOf is an ORDER's courier code, from the `shipment_channel_id` it stores
+// (shipment-channel-is-an-id-into-shipment-service) — for the screens that print the courier as its code. "" for no
+// courier, and for any id while the catalogue is still loading; `#id` for an id the catalogue does not hold — never a
+// borrowed code.
+export function courierCodeOf(couriers: ShipmentChannel[], channelId: bigint, loading = false): string {
+  if (channelId === 0n || loading) return "";
+  return couriers.find((courier) => courier.id === channelId)?.code ?? `#${channelId}`;
+}

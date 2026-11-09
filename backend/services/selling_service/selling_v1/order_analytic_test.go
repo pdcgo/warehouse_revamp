@@ -70,6 +70,17 @@ func movedEvent(orderID, logID uint64, to string, at time.Time) *eventsv1.Event 
 	}
 }
 
+// returnAcceptedEvent is the return accept's own event — what Return Arrived counts, since the move into
+// return_completed is never an OrderStatusChanged.
+func returnAcceptedEvent(orderID uint64, at time.Time) *eventsv1.Event {
+	ref := strconv.FormatUint(orderID, 10)
+
+	return &eventsv1.Event{
+		EventId: "order-return-accepted:" + ref, OccurredAt: timestamppb.New(at), AggregateId: "order:" + ref,
+		Message: &eventsv1.Event_OrderReturnAccepted{OrderReturnAccepted: &eventsv1.OrderReturnAccepted{OrderId: orderID}},
+	}
+}
+
 func foldEvent(t *testing.T, analytic *selling_v1.Analytic, event *eventsv1.Event) {
 	t.Helper()
 
@@ -147,7 +158,8 @@ func TestOrderMetricFold_EachMoveCountsOnceForItsMetric(t *testing.T) {
 	foldEvent(t, analytic, movedEvent(orderID, 50, "processed", foldAt))
 	foldEvent(t, analytic, movedEvent(orderID, 51, "return", foldAt))
 	foldEvent(t, analytic, movedEvent(orderID, 52, "lost", foldAt))
-	foldEvent(t, analytic, movedEvent(orderID, 53, "return_completed", foldAt))
+	foldEvent(t, analytic, returnAcceptedEvent(orderID, foldAt))
+	foldEvent(t, analytic, returnAcceptedEvent(orderID, foldAt)) // the redelivery
 	foldEvent(t, analytic, cancelledEvent(orderID, foldAt))
 
 	datas, err := metricData(analytic, 2, analytic_basev1.GroupType_GROUP_TYPE_SUMMARY, nil,
@@ -176,8 +188,9 @@ func TestOrderMetricFold_EachMoveCountsOnceForItsMetric(t *testing.T) {
 	var rows int64
 
 	err = db.Raw(`SELECT count(*) FROM order_daily_reports`).Scan(&rows).Error
-	if err != nil || rows != 5 {
-		t.Fatalf("%d report rows (err %v), want 5 — the confirm counts for no metric", rows, err)
+	// Five moves' rows, and Warehouse Fee's one: the placement and the cancel fell on the same day, so they share it.
+	if err != nil || rows != 6 {
+		t.Fatalf("%d report rows (err %v), want 6 — the confirm counts for no metric", rows, err)
 	}
 }
 
@@ -311,6 +324,17 @@ func TestOrderMetricData_RefusesABadAsk(t *testing.T) {
 
 	_, err = analytic.MetricSearch(context.Background(), connect.NewRequest(&sellingv1.MetricSearchRequest{
 		TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP,
+		Sort: &analytic_basev1.MetricSort{MetricId: metricCreated, Field: "created_count"},
+		Page: &analytic_basev1.PaginationFilter{Limit: 10},
+	}))
+	wantCode(t, err, connect.CodeInvalidArgument)
+
+	// A YEAR AT MOST (a-metric-reads-at-most-a-year): 2024 is 366 days, a day more is refused.
+	_, err = analytic.MetricSearch(context.Background(), connect.NewRequest(&sellingv1.MetricSearchRequest{
+		TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP,
+		Filters: []*analytic_basev1.FilterItem{{F: &analytic_basev1.FilterItem_DateRangeFilter{
+			DateRangeFilter: &analytic_basev1.DateRangeFilter{DateMin: "2024-01-01", DateMax: "2025-01-01"},
+		}}},
 		Sort: &analytic_basev1.MetricSort{MetricId: metricCreated, Field: "created_count"},
 		Page: &analytic_basev1.PaginationFilter{Limit: 10},
 	}))

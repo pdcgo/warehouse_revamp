@@ -1,12 +1,16 @@
-// The month a money screen opens on: this one.
+import { todayWibDateInput } from "./datetime";
+
+// The month a money screen opens on: this one — IN JAKARTA TIME (a-table-date-is-short-and-every-time-is-wib).
 //
 // A revenue or cost list without a period is a wall of everything ever recorded, so both start
 // somewhere real — and both start on the SAME period, because the profit screen (#172) subtracts one
 // from the other and two screens disagreeing about "this month" would make that arithmetic nonsense.
-export function thisMonth(): string {
-  const now = new Date();
-
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+//
+// ⚠ The business's month, not the browser's: the Record dialog pre-fills today in WIB (todayWibDateInput), so a
+// browser on another clock (a laptop left on UTC: 00:00–07:00 WIB on the 1st is still last month there) would open
+// the list on a month the new cost does not land in. `now` is a parameter so the boundary can be pinned.
+export function thisMonth(now: Date = new Date()): string {
+  return todayWibDateInput(now).slice(0, 7);
 }
 
 // A "YYYY-MM" month becomes the INCLUSIVE day range both list RPCs filter on (#168/#171).

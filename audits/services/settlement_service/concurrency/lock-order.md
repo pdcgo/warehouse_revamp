@@ -7,7 +7,7 @@ invisible from inside any one handler.
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-09-29 — the imported shop row's ask ([settlement-asks-the-shop-for-its-primary-cs](../../../../docs/business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) |
+| Last swept | 2026-11-05 — the person re-fold and the later-day shift (`DayRefold` on `settlement-user-daily`, [the-person-report-refolds-too](../../../../docs/business/settlement/context_decision.md#the-person-report-refolds-too), [a-refold-shifts-the-later-days](../../../../docs/business/settlement/context_decision.md#a-refold-shifts-the-later-days)) · 2026-11-05 — the day re-fold (`DayRefold`, `san report refold`, [a-wrong-day-is-refolded-from-the-log](../../../../docs/business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)) · 2026-11-05 — the opening stamped on the order after the commit (`markOpened` → `SettlementOpened`, [a-missing-account-is-found-by-its-opened-at](../../../../docs/business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at)) · 2026-09-29 — the imported shop row's ask ([settlement-asks-the-shop-for-its-primary-cs](../../../../docs/business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) |
 
 **Verdict: two disjoint lock domains, one row lock per post, a fixed advisory order in the fold — no inversion.**
 
@@ -28,6 +28,11 @@ flowchart LR
     useradv --> rows["report rows — shop tables, then user tables"]
   end
   key -. "after COMMIT — SettlementLogPosted" .-> meta
+  subgraph "the day re-fold — DayRefold, san report refold"
+    rmeta["process_event_lock FOR SHARE"] --> rclaim["settlement_event_logs — the lost rows' claims, log id order"]
+    rclaim --> radv["advisory lock — settlement-shop, team, shop — OR settlement-user, team, user — team order"]
+    radv --> rrows["that report's day row, its later days' carry, its state row"]
+  end
 ```
 
 ---
@@ -37,9 +42,12 @@ flowchart LR
 | Handler | Locks, in order | Row order within the table |
 | --- | --- | --- |
 | `SettlementPost` / `PostEntry` / `CancelSale` — an **order** row | `order_settlements` (insert-if-absent, then `FOR UPDATE`) → `settlement_logs` key → the same account row, `UPDATE` | one row — n/a |
+| …and its `initial_total`, after the commit | *(the transaction has ended — nothing held)* → the order service's `SettlementOpened`, in-process: `orders` (1 row, `UPDATE … WHERE settlement_opened_at IS NULL`, autocommit) | one row — n/a. Never inside the ledger's transaction, so the order row is never held with the account (a-missing-account-is-found-by-its-opened-at) |
 | `SettlementPost` — a **shop** row, hand-posted | `shop_settlements` (insert-if-absent, then `FOR UPDATE`) → `settlement_logs` key → the same row, `UPDATE` | one row — n/a |
 | `SettlementPost` — an **imported shop** row | *the ask — no lock* → then exactly the hand-posted shop row's order | one row — n/a |
 | the fold — `/event/settlement-fold/push` | `settlement_service_metadata` `FOR SHARE` → `settlement_event_logs` claim (PK) → advisory `settlement-shop:{team}:{shop}` → advisory `settlement-user:{team}:{user}` → `shop_settlement_daily_reports`, `shop_settlement_reports` → `user_settlement_daily_reports`, `user_settlement_reports` | the day's row, then every later day in one `UPDATE`, then the state row |
+| `DayRefold` — `san report refold`, the shop report | `settlement_service_metadata` `FOR SHARE` → `settlement_event_logs` claims of the day's LOST rows (PK, `ON CONFLICT DO NOTHING`), in log-id order → advisory `settlement-shop:{team}:{shop}` per team, in team order → `shop_settlement_daily_reports` (the day: upsert or delete, then every later day in one `UPDATE` — the fold's shift), `shop_settlement_reports` | the claims by log id, so two re-folds claim in one order; never a user key, so the fold's shop → user order is never crossed |
+| `DayRefold` — the person report (`settlement-user-daily`) | `settlement_service_metadata` `FOR SHARE` → the same claims, log-id order → advisory `settlement-user:{team}:{user}` per team, in team order → `user_settlement_daily_reports` (the day, then the later days), `user_settlement_reports` | never a shop key: it holds only the fold's SECOND key, which a fold takes last, so a fold waiting on it holds nothing the person re-fold wants |
 | `AnalyticReplayCompute` | `settlement_service_metadata` compare-and-set (its own statement) → one transaction: `DELETE` shop days → user days → `settlement_event_logs` → the metadata row back | set-based deletes |
 | `AnalyticMaintenanceRun` | `DELETE settlement_event_logs` — one statement | set-based |
 | `OrderSettlementList`, `OrderSettlementDetail`, `Analytic*` | none — reads | — |
@@ -56,7 +64,19 @@ flowchart LR
    after a user key, so two folds can share a key but never wait on each other in a circle. Since 9f20652 an
    imported shop row folds under its **primary CS**, so one person's user key is shared by every shop they are
    primary of — more contention on that key, and still no cycle (crossed and raced, below).
-4. **The replay gates the fold through one row.** Its compare-and-set waits for every in-flight fold's
+4. **The day re-fold takes the fold's shape, minus one key.** Claims before advisory locks — the fold's order — so a
+   fold waiting on the re-fold's claim of the same row holds no advisory lock, and the re-fold waiting on a fold's claim
+   holds none either. The shop re-fold takes only shop keys, the person re-fold only user keys — each one of the fold's
+   two, never both, so neither can cross the fold's shop → user order; and nobody waits on a claim while holding an
+   advisory key. Two re-folds of either report claim in log-id order, so they never cross each other. Proved by
+   `TestRace_Refold_AFoldRacingItCountsEveryRowOnce` (two re-folds, the folds of two in-flight rows and the redeliveries
+   of two lost rows, 10 rounds, both orderings hit: every row counted once, no 40P01),
+   `TestRace_Refold_TheLaterDaysTakeEveryShiftOnce` (two re-folds of the middle day beside in-flight folds on it, a late
+   event on the day before and a new one on the day after: every day equals its log and opens at the close before it,
+   10 rounds) and `TestRace_Refold_TheShopAndPersonRefoldsCountEveryRowOnce` (the shop and the person re-fold of one
+   day at once with the folds: both reports hold every row once — the lost rows claimed by the shop re-fold 10, by the
+   person re-fold 2, by their redelivery the rest).
+5. **The replay gates the fold through one row.** Its compare-and-set waits for every in-flight fold's
    `FOR SHARE`; every fold after it reads the lock and leaves — the replay's delete never meets a fold.
 
 ---
@@ -76,8 +96,10 @@ flowchart LR
 ## ⚠ One key across two accounts
 
 `settlement_logs.unique_id` is unique across the whole log (00002). Two accounts inserting one key at once: the
-second waits on the first's key, then fails 23505. No cycle — it holds only its own account — but the answer is
-`internal`: [SettlementPost concurrency finding 1](SettlementPost.md#1-a-key-colliding-across-accounts-at-once-answers-internal-).
+second waits on the first's key, then fails 23505. No cycle — it holds only its own account. The answer was
+`internal` ([SettlementPost concurrency finding 1](SettlementPost.md#1-a-key-colliding-across-accounts-at-once-answers-internal----fixed));
+✅ since 2026-11-05 the 23505 maps to `errUniqueIDTaken`, `invalid_argument`, like a collision one at a time
+([a-colliding-key-at-once-is-refused-the-same](../../../../docs/business/settlement/context_decision.md#a-colliding-key-at-once-is-refused-the-same)).
 
 ---
 
@@ -93,8 +115,8 @@ second waits on the first's key, then fails 23505. No cycle — it holds only it
 | `TestRace_ImportedShopRow_FoldsCrossingShopsAndPrimariesNeverDeadlock` | 20 of 20 — 0 deadlocks |
 | `TestRace_Fold_ConcurrentDaysKeepTheCarryTrue`, `TestRace_Fold_ARedeliveryStormFoldsOnce` | 20 of 20 |
 | `TestRace_SettlementPost_DoesNotLoseAnUpdate`, `…AbsorbsConcurrentRetries` | 20 of 20 — the order grain |
-| ⚠ `TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate` | **red since 9f20652** — 8 of 8 `unavailable`, a nil `ShopPrimary`. Proves nothing now |
-| ⚠ `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsAnswersInternal` | **red by design** — the regression test of finding 1 |
+| `TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate` | ✅ repaired (a `ShopPrimary` stub, SettlementPost finding 2) — green 2026-11-05 |
+| `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsIsRefusedTheSame` | ✅ green 2026-11-05 (`-count=10`; was `…AnswersInternal`, red by design) — both orders answer `invalid_argument`, 20 of 20 real collisions |
 
 ```sh
 go test -tags raceaudit -run "TestRace_ImportedShopRow|TestInterleave_ImportedShopRow|TestRace_Fold_|TestRace_SettlementPost_" ./backend/services/settlement_service/settlement_v1/

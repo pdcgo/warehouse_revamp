@@ -42,7 +42,7 @@ func TestTermsDelete_FallsBackToTheDefaultRow(t *testing.T) {
 	}
 
 	if rows[0].GetCreditLimit() != 10_000_000 {
-		t.Fatalf("default credit_limit = %d, want 10000000 — the default must survive", rows[0].GetCreditLimit())
+		t.Fatalf("default credit_limit = %v, want 10000000 — the default must survive", rows[0].GetCreditLimit())
 	}
 }
 
@@ -91,6 +91,6 @@ func TestTermsDelete_LeavesPostedEntriesAlone(t *testing.T) {
 	deleteTerms(t, svc, warehouse, selling)
 
 	if got := history(t, svc, warehouse, selling).GetBalance(); got != 15000 {
-		t.Fatalf("balance = %d after deleting terms, want 15000 — the ledger was rewritten", got)
+		t.Fatalf("balance = %v after deleting terms, want 15000 — the ledger was rewritten", got)
 	}
 }

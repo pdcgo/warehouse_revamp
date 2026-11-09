@@ -7,8 +7,9 @@ import { ArrowLeft, History, Pencil, Warehouse } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { BatchOrigin } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import { isExpiringSoon } from "../../lib/expiry";
 import { formatRupiah } from "../../lib/money";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { BatchExplainer } from "../../features/inventory/BatchExplainer";
 import { BatchSource } from "../../features/inventory/BatchSource";
@@ -42,11 +43,6 @@ function parseId(raw: string | undefined): bigint {
   } catch {
     return 0n;
   }
-}
-
-// A batch is flagged amber when it expires within 30 days — the "expiring soon" window the server uses.
-function isExpiringSoon(unix: bigint): boolean {
-  return Number(unix) * 1000 <= Date.now() + 30 * 24 * 60 * 60 * 1000;
 }
 
 // A shelf's count reads amber once its last opname is more than two weeks old — overdue for a re-count.
@@ -192,14 +188,14 @@ export function BatchDetailPage() {
     );
   }
 
-  const cost = (v: bigint) => (batch.costKnown ? formatRupiah(v) : t("batchDetail.costUnknown"));
+  const cost = (v: number) => (batch.costKnown ? formatRupiah(v) : t("batchDetail.costUnknown"));
   // A lifecycle figure's value = its count × the frozen unit cost (Unknown when the cost isn't known).
-  const amount = (count: bigint) => cost(count * batch.unitCost);
+  const amount = (count: bigint) => cost(Number(count) * batch.unitCost);
   const isReturn = batch.origin === BatchOrigin.RETURN;
 
   // Koreksi carries its icon — on a phone, its icon alone (a-phone-header-action-is-an-icon). It acts on THIS batch via
-  // the shared stock dialog (#218).
-  const actions = isMobile ? (
+  // the shared stock dialog (#218). Not while the admin team monitors the warehouse (the-admin-team-monitors-read-only).
+  const actions = !canWrite(current) ? null : isMobile ? (
     <CompactActions
       menuLabel={t("batchDetail.actions")}
       actions={[
@@ -249,13 +245,13 @@ export function BatchDetailPage() {
         <Stack gap="1" ps={isMobile ? "0" : "10"}>
           <Flex align="center" gap="card" wrap="wrap">
             <Box data-testid="batch-detail-product-name">
-              {/* The SKU copies (sku-is-copyable). */}
+              {/* The product code copies (sku-is-copyable). */}
               <ProductListItem
-                skuCopyable
+                productCodeCopyable
                 product={
                   product
                     ? { ...product, teamId: undefined }
-                    : { id: batch.productId, name: batch.name, sku: batch.sku }
+                    : { id: batch.productId, name: batch.name, productCode: batch.productCode }
                 }
               />
             </Box>

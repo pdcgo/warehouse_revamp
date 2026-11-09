@@ -5,9 +5,9 @@ import { Minus, TriangleAlert } from "lucide-react";
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { ExpenseTotals } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { LiabilityDailyTotals } from "../../../gen/warehouse/liability/v1/liability_pb";
-import { LiabilitySourceType } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../../lib/money";
 import type { PeriodGrain } from "../../../lib/period";
+import { courierAsks } from "../queries";
 import type { StatementMode } from "../queries";
 
 export interface StatementSummaryProps {
@@ -15,7 +15,7 @@ export interface StatementSummaryProps {
   /** Which unit the average below is per — the table's row grain, so the two agree. */
   grain: PeriodGrain;
   /** The period's income — the handling fees it charged. */
-  income: bigint;
+  income: number;
   liability: LiabilityDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
   /** How many BUCKETS the period covers — the divisor for the per-period average. */
@@ -47,11 +47,11 @@ export function StatementSummary({
   // the one shape that is right in both without the copy knowing which language it is in.
   const unit = (count: number) => t(`statement.unit.${grain}`, { count });
 
-  const spent = expenses?.total ?? 0n;
+  const spent = expenses?.total ?? 0;
   const profit = income - spent;
 
-  const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
-  const codFees = liability?.bySource[LiabilitySourceType.INCIDENTAL_FEE] ?? 0n;
+  const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0;
+  const codFees = courierAsks(liability?.bySource);
 
   // AN AVERAGE PER ROW, because that is the number a statement is for: "we clear about 400.000 a day" is
   // a sentence somebody can act on, where a period total is only comparable against another period of
@@ -64,11 +64,11 @@ export function StatementSummary({
   // Divided by the buckets in the RANGE, not by the ones that traded — a quiet Sunday is part of the
   // week's average, not an absence from it.
   //
-  // BigInt division truncates toward zero, which is right here: this is a headline figure, and a rupiah
-  // of rounding on an average of hundreds of thousands is invisible.
-  const perBucket = buckets > 0 ? profit / BigInt(buckets) : 0n;
+  // EXACT, as every figure (the-backend-never-rounds-money): the screen's formatter rounds it, to up to 3 decimals
+  // (a-fraction-of-a-rupiah-shows-three-decimals). `|| 0` keeps a −0 from reading "−Rp 0".
+  const perBucket = buckets > 0 ? profit / buckets || 0 : 0;
 
-  const money = (amount: bigint) => (loading ? "—" : formatRupiah(amount));
+  const money = (amount: number) => (loading ? "—" : formatRupiah(amount));
 
   return (
     <Card.Root data-testid="statement-summary">
@@ -107,7 +107,7 @@ export function StatementSummary({
             <Text fontSize="xs" color="fg.muted" data-testid="statement-total-stock-loss">
               {loading
                 ? "—"
-                : stockLoss > 0n
+                : stockLoss > 0
                   ? t("statement.ofWhichStockLoss", { amount: formatRupiah(stockLoss) })
                   : t("statement.expensesSource")}
             </Text>
@@ -122,12 +122,12 @@ export function StatementSummary({
             <Text
               fontSize="2xl"
               fontWeight="bold"
-              color={!loading && profit < 0n ? "error.fg" : undefined}
+              color={!loading && profit < 0 ? "error.fg" : undefined}
               data-testid="statement-total-profit"
             >
               {money(profit)}
             </Text>
-            {!loading && profit < 0n && (
+            {!loading && profit < 0 && (
               <Text fontSize="xs" color="error.fg" data-testid="statement-loss">
                 {t("statement.loss")}
               </Text>
@@ -143,7 +143,7 @@ export function StatementSummary({
             <Text
               fontSize="xl"
               fontWeight="medium"
-              color={!loading && perBucket < 0n ? "error.fg" : undefined}
+              color={!loading && perBucket < 0 ? "error.fg" : undefined}
               data-testid="statement-per-day"
             >
               {money(perBucket)}
@@ -159,7 +159,7 @@ export function StatementSummary({
             back — so it is a reimbursement of cash already gone, not something earned. It is shown
             because the warehouse is genuinely owed it, and excluded from profit because counting it
             would inflate income against an outflow that was never recorded as an expense. */}
-        {!loading && mode === "warehouse" && codFees !== 0n && (
+        {!loading && mode === "warehouse" && codFees !== 0 && (
           <Flex align="center" gap="2" mt="card" color="fg.muted" data-testid="statement-cod-notice">
             <Icon as={TriangleAlert} boxSize="4" />
             <Text fontSize="sm">{t("statement.codNotice", { amount: formatRupiah(codFees) })}</Text>

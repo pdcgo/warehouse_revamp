@@ -65,7 +65,7 @@ export const EveryGapIsMarked: Story = {
     }
     await expect(within(canvas.getByTestId("discover-division")).getByTestId("not-implemented-division")).toBeInTheDocument();
     await expect(
-      within(canvas.getByTestId(`discover-card-${KOPI.sku}`)).getByTestId("not-implemented-crossPrice"),
+      within(canvas.getByTestId(`discover-card-${KOPI.productCode}`)).getByTestId("not-implemented-crossPrice"),
     ).toBeInTheDocument();
   },
 };
@@ -94,14 +94,14 @@ export const HideMineLeavesOtherTeams: Story = {
   name: "Hide mine",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.getByTestId(`discover-card-${BERAS.sku}`)).toBeInTheDocument();
+    await expect(canvas.getByTestId(`discover-card-${BERAS.productCode}`)).toBeInTheDocument();
 
     await userEvent.click(canvas.getByText("Hide my products"));
 
     await expect(within(canvas.getByTestId("discover-filter-hide-mine")).getByRole("checkbox")).toBeChecked();
     await expect(screen.queryByRole("listbox")).toBeNull();
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${BERAS.sku}`)).toBeNull());
-    await expect(canvas.getByTestId(`discover-card-${KOPI.sku}`)).toBeInTheDocument();
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${BERAS.productCode}`)).toBeNull());
+    await expect(canvas.getByTestId(`discover-card-${KOPI.productCode}`)).toBeInTheDocument();
   },
 };
 

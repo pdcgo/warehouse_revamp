@@ -38,8 +38,8 @@ function DerivedLine({ item, testId }: { item: SampleDerived; testId: string }) 
         <Badge size="sm" colorPalette="gray" flexShrink={0}>
           {item.teamName}
         </Badge>
-        <Text fontSize="xs" color="fg.muted" truncate title={item.sku}>
-          {item.sku}
+        <Text fontSize="xs" color="fg.muted" truncate title={item.productCode}>
+          {item.productCode}
         </Text>
       </HStack>
       <Tooltip.Root openDelay={100} closeDelay={80}>
@@ -163,7 +163,7 @@ export function DerivedSection({ derived }: { derived: { from?: SampleDerived; t
                                 <Stack gap="0" minW="0">
                                   <Text lineClamp={1}>{item.name}</Text>
                                   <Text fontSize="xs" color="fg.muted">
-                                    {item.sku}
+                                    {item.productCode}
                                   </Text>
                                 </Stack>
                               </HStack>

@@ -3,7 +3,7 @@ import { Avatar, Button, FileUpload, HStack, Icon, Stack, Text } from "@chakra-u
 import { Camera } from "lucide-react";
 import { documentClient, rpcError } from "../../../api/clients";
 import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
-import { useTeam } from "../../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../../features/team/TeamContext";
 import { useTeamDetail, useUpdateTeam } from "../../../features/teams/queries";
 import { toaster } from "../../../components/feedback/Toaster";
 import { isTeamManager } from "../../../lib/roles";
@@ -24,7 +24,7 @@ export function TeamPicture() {
   const [busy, setBusy] = useState(false);
 
   const teamId = current?.teamId;
-  const canEdit = isTeamManager(current?.role);
+  const canEdit = canWrite(current) && isTeamManager(current?.role);
   const noTeam = !current;
   const name = current?.teamName || "Team";
 

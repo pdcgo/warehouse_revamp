@@ -5,8 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/jackc/pgx/v5/stdlib" // postgres driver
-
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbsession"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbtarget"
 )
 
@@ -41,9 +40,10 @@ func resolveDatabase(ctx context.Context, dsnFlag string) (*sql.DB, string, erro
 }
 
 // openDatabase connects to a DSN that has already been chosen, and pings it so a database that is
-// down fails here — naming the target — rather than on the first query.
+// down fails here — naming the target — rather than on the first query. Its sessions are on the Jakarta calendar
+// (san_dbsession), like the server's.
 func openDatabase(ctx context.Context, dsn, label string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dsn)
+	db, err := san_dbsession.OpenSQL(dsn)
 	if err != nil {
 		return nil, err
 	}

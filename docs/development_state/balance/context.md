@@ -1,5 +1,95 @@
 # Development state — balance
 
+✅ **2026-11-07: the Team Balance filters are the server's (backlog #34)** — uncommitted.
+
+| | |
+| --- | --- |
+| proto | `LiabilityPositionListFilter` + `q`, `counterparty_type`, `awaiting_only`; `LiabilityLogListFilter` + `from`, `to`, `direction` (new enum `LiabilityLogDirection`); `LiabilityPaymentListFilter` + `from`, `to`, `side` (new enum `LiabilityPaymentSide`); `LiabilityTermsHistoryListFilter` + `from`, `to`. All applied before the page; rules in [rpc.md](../../services/liability_service/rpc.md#the-team-balance-lists-filter-before-the-page-backlog-34) |
+| backend | `liability_v1/list_filters.go` (`listPeriod` — Jakarta midnights, [the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day); `teamMatches`); `position_list.go` `positionRows` (summary unnarrowed); the seam `TeamNamer.TeamFacts` (name, code, type) — `cmd/app_development/liability_deps.go` now calls team_service's `TeamByIds` handler in-process (Wire regenerated), batches of 200. No migration, no index |
+| screens | list: `q` sent debounced (`useDebounced`, as every list), team type and *awaiting only* sent; the client-side narrowing is gone; every filter resets the page and the `GrowingPager`. Detail: the date range (`liabilityPeriod`, URL unchanged) and the open tab's direction / side go with each read, each tab draws its own server page (a tab's skeleton while its cut loads; rows kept only within the same pair), pagers reset on a range / tab change; `ChangeLogPanel` sends the range |
+| tests | Go: `TestPositionList_ASearchFindsAPairOnPage2`, `…TheKindFilterNarrowsBeforeThePage`, `…TheSummaryIgnoresTheSearch`, `…AnUnknownTeamNeverMatchesAFilter`, `…AwaitingOnlyNarrowsBeforeThePage`, `…OnlyASearchAsksTeamService`; `TestEntryList_ADateRangeFindsEntriesOnPage2`, `…ARangeReadsJakartaDays` (00:30 / 06:30 WIB, the process clock set to UTC; mutation-checked), `…AFilteredPageCarriesTheTrueRunningBalance`, `…ABadPeriodIsRefused`; `TestPaymentList_EachSideIsItsOwnPage`, `…ADateRangeNarrowsBeforeThePage`; `TestTermsHistory_ADateRangeNarrowsBeforeThePage`; `TestLiabilityTeamNamer_ReadsNamesAndFactsFromTeamService` (cmd). Stories (stub filters as the server does; requests recorded in `.storybook/liabilityScenario.ts`): PairList `ASearchFindsATeamByNameOrCodeOnTheServer`, request asserts in `FiltersLiveInTheUrl` / `TheTeamTypeFilterNarrowsAndClearsFromItsX`; PairDetail `EachTabReadsItsOwnServerPage`, range asserts in `FiltersLiveInTheUrl`. e2e `liability.spec.ts` *a search finds a team and a date range narrows the ledger* |
+| perf | probes `-tags perfaudit` for all four; none heavy except `LiabilityPositionList` by query count (7 with a search, 6 unfiltered — the old probe's bound of 5 was red at HEAD) → [audit](../../../audits/services/liability_service/performances/LiabilityPositionList.md) |
+
+✅ **2026-11-07: the phone layout is live; the list's team filter is Chakra's Select** — uncommitted.
+
+| | |
+| --- | --- |
+| phone | [the-team-balance-phone-layout-is-accepted](../../technical/balance/team_balance_design_decision.md#the-team-balance-phone-layout-is-accepted): `features/liability/phonePrototype.tsx` (provider + `useLiabilityPhoneLayout`) is deleted; `pages/liability-list` and `pages/liability-detail` read `phone = useIsMobile()` (the pair page's desktop header lost its `isMobile` branch, now unreachable). The #32 row below describes the arrangement itself, unchanged |
+| stories | the `PhonePrototype*` stories ARE the `Mobile*` stories now (no decorator): PairList `Mobile`, `MobileFiltersFromASheet`; PairDetail `Mobile` (also keeps the old Mobile's creditor checks: balance, Request Payment only), `MobileFiltersFromASheet`, `MobilePaymentsAreBlocks`, `MobileTheDebtorPays`, `MobileLimitChangesAreBlocks`. The old "live phone unchanged" `Mobile` assertions (no `data-layout`, ledger a `TABLE`) are gone |
+| team filter (#33 leftover) | [chakra-first-whenever-it-has-the-component](../../technical/frontend/context_decision.md#chakra-first-whenever-it-has-the-component): the desktop team-type filter was a `NativeSelect`; it is `ChoiceFilter` (Chakra's composable `Select`, inline) — *All teams* as its placeholder, Warehouse / Selling as options, a pick's × back to all ([every-filter-clears-from-its-own-x](../../technical/frontend/context_decision.md#every-filter-clears-from-its-own-x)); URL `kind` unchanged. `ChoiceFilter` moved from `pages/products/components/` to `components/pickers/` (a second page uses it) with `description` and its own story `Components/Pickers/ChoiceFilter` (3 plays). Stories: PairList `TheTeamTypeFilterNarrowsAndClearsFromItsX`; `FiltersLiveInTheUrl` reads the trigger's text. The phone sheet keeps its `RadioPills` |
+| e2e | no phone check: the suite has no phone-viewport pattern (one project, `Desktop Chrome`; the only `setViewportSize` widens a desktop) |
+| checks | `npm run typecheck` ✅; `test:unit` 54/54; stories full run 2057 passed + 10 failed to LOAD ("Failed to fetch dynamically imported module" / browser connection closed on 6 files + order-create) → those 7 files alone 160/160; `e2e/liability.spec.ts` 5/5 (temporary config on :5195 — :5175 held by another project's dev server; deleted after) |
+
+✅ **2026-11-07 (follow-up to the accept): the All tab, Make Payment is the debtor's, the shared parts; a phone
+PROTOTYPE** — uncommitted.
+
+| | |
+| --- | --- |
+| All tab | [the-team-balance-screens-are-accepted](../../technical/balance/team_balance_design_decision.md#the-team-balance-screens-are-accepted): *All* is the first tab and the default on `/liability/:id` — every movement of the pair in the ledger's order, *Balance after* on every row (`liability-detail-all`, `liability-detail-balance-after-<id>`); *Receivable* / *Payable* / payments / limit changes / terms unchanged. Tabs are `lazyMount unmountOnExit` now (All and the cuts draw the same entries) |
+| #31 | [the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides): `LiabilityPaymentRecord` refuses a payer whose side of the pair is not negative (creditor, square, no row, float dust) — `FailedPrecondition`, *"your team owes this team nothing right now, so there is no payment to record — only the team that owes records a payment"* (the code `LiabilityPaymentRequestSend` uses for nothing owed). The balance row is read `FOR SHARE` in the claim's tx (`payerOwes`). Screen: Make Payment only while `signOfRupiah(balance) < 0` (desktop button and phone icon). Flow: [rpc.md](../../services/liability_service/rpc.md#only-the-debtor-records--and-only-while-it-owes) |
+| #33 | the proof field is Chakra's `FileUpload` (trigger *Attach Proof* / *Attach Another*, `record-proof-pick`; hidden input `record-proof-input`) — `components/MakePaymentDialog.tsx`; the list's four tiles and the pair's three figures are `SummaryStrip`/`SummaryCard` (the pair's net figure leads, its direction the card's line: `liability-detail-balance` = the figure, `liability-detail-direction` = the words); every pager on both pages and `ChangeLogPanel` is `GrowingPager` (always on screen) — [a-list-summary-is-the-order-lists-card-strip](../../technical/frontend/context_decision.md#a-list-summary-is-the-order-lists-card-strip), [every-list-pages-with-the-growing-pager](../../technical/frontend/context_decision.md#every-list-pages-with-the-growing-pager), [chakra-first-whenever-it-has-the-component](../../technical/frontend/context_decision.md#chakra-first-whenever-it-has-the-component) |
+| #32 ⚠ PROTOTYPE | phone layouts for both pages behind ONE gate, `features/liability/phonePrototype.tsx` (`LiabilityPhonePrototypeProvider`, mounted only by the `PhonePrototype*` stories; `useLiabilityPhoneLayout()` = `useIsMobile() && provider`). List: blocks (`PairBlock`), `FilterBar` sheet (team type as `RadioPills`, the two ticks), Default Terms as the header icon. Detail: one-row header, the position card across the row, date range in the sheet, seven tabs scrolling in one row (picked one kept in view), ledger / payments / limit changes as blocks (`phone` prop on `LiabilityLedgerTable`, `PaymentTable`, `ChangeLogPanel`). The live phone (`Mobile` stories) is unchanged. Screenshots 390 px: `D:/hermes/cache/scratch/balance_phone/01…09` (+ `10`, `11` desktop). On accept: delete the provider and read `useIsMobile()` |
+| stub | `liabilityPaymentRecord` refuses a payer that owes nothing; the pair ledger and payment list are scoped to the asking team's pair (a third team read Melati's legs) |
+| tests | Go: `TestPaymentRecord_TheCreditorCannotRecordAPayment`, `…_ASquarePairHasNothingToPay`, `…_TheCheckIsThisPairs` (mutation-checked); payment-list tests reseeded with debts; raceaudit `TestInterleave_RecordWaitsForTheConfirmThatSquaresThePair` (304 ms block, fails without `FOR SHARE`) and `…_RecordTwoClaimsDoNotQueue`. Stories: PairDetail `TheAllTabRunsTheWholeLedger`, `TheCreditorIsNotOfferedMakePayment`, `ASquarePairOffersNoPayment`, `PhonePrototype`, `…FiltersFromASheet`, `…PaymentsAreBlocks`, `…TheDebtorPays`, `…LimitChangesAreBlocks`; PairList `PhonePrototype`, `…FiltersFromASheet`; Ledger Table `TheWholeLedgerRunsRowToRow`, `OnAPhoneEachEntryIsABlock`; the payment stories now run as the debtor (Melati). e2e `liability.spec.ts`: All selected and the accepted payment's row (`+Rp 5.000`, balance after `−Rp 20.000`), the creditor refused (`failed_precondition`) and not offered Make Payment |
+| perf / audit | the record gains one lookup on `liability_balances`' `(team_id, counterparty_id)` unique index — not heavy, no file; [lock-order.md](../../../audits/services/liability_service/concurrency/lock-order.md) row updated |
+| still open | the list's search / team filter narrow only the loaded page of 20, the detail's date range only the loaded 50 rows; the list's desktop team filter is a `NativeSelect` (chakra-first) — not touched |
+
+✅ **2026-11-07: prepared for review** (the `design_accept` gate — the owner has still not looked; nothing here is
+accepted). No new feature; uncommitted. Screens, in viewing order, as Storybook stories — screenshots (desktop 1440,
+phone 390) in `D:/hermes/cache/scratch/balance_review/` (scratch, not committed):
+
+| screen | story | decisions it shows |
+| --- | --- | --- |
+| `/liability` pair list — tiles, rows, 80% / over / frozen badges, Default Terms | `Pages/Liability/PairList` Default, Mobile, BlockedAndFrozenTeamsAreBadgedUnlimitedIsNot | the-summary-is-tiles-on-the-list, the-threshold-warns-at-eighty-percent, the-threshold-defaults-to-unlimited, the-default-terms-row-is-a-dialog-on-the-list, a-creditor-may-request-payment |
+| `/liability/:id` pair detail — position, 4 ledger cuts, Limit changes, Terms | `Pages/Liability/PairDetail` Default, Mobile; `Pages/Liability/Ledger Table` EveryCauseReadsInItsBusinessWords | the-pair-detail-shows-both-logs, the-ledger-speaks-the-business-words, terms-live-on-the-pair-detail |
+| Make Payment (amount, Paid from, proof) · Accept Payment (Received into) · Reject Payment (reason) | PairDetail TheDebtorSeesTheRequest / TheCreditorCanOpenTheProof, driven by hand | the-debtor-claims-the-creditor-decides, a-payment-must-carry-proof, a-team-payment-posts-on-accept, an-accepted-payment-is-final |
+| the debtor's side — Limit set on you, the request notice | PairDetail TheDebtorSeesTheLimitSetOnIt / TheDebtorSeesTheRequest | the-debtor-sees-the-limits-set-on-it, a-creditor-may-request-payment |
+| the order form's Debt Limits at the limit | `Pages/Order/OrderCreate` ACreditorAtItsLimitSaysTheOrderIsRefused; `Features/Orders/CreditLimitPanel` AtTheLimitTheOrderIsRefused | over-the-limit-refuses-the-create, the-block-stops-orders-only |
+| the warehouse daily statement (deferred, still served) | `Pages/Statements/DailyStatementPage` Warehouse (`!test`) | the-daily-report-is-deferred |
+| the limit edit | PairDetail Terms tab → Edit Terms | a-limit-change-is-recorded, three-roles-edit-the-threshold |
+
+`pages/balance/` (BalanceSheetPage) is NOT Team Balance — an accounting balance-sheet design mock with no route.
+
+**Fixed in this pass** (each follows a decision): the stub served the pair ledger as slice `entry` (the oneof case is
+`log` since two-logs-two-names), so every ledger tab drew EMPTY in Storybook — now `log`, the debtor reads the mirrored
+legs, and `Default` asserts a row; positions had no oldest-unsettled day (the list read "Square" beside a 8.7m debt) —
+fixtures now relative days, the pair ledger carries one row of every warehouse-pair cause with a running balance that
+ties; the list's 80% badge uses `creditWarning` (one threshold), says *their next order is refused* when over, and a
+FROZEN pair is badged (it was pinned unbadged — a limit of 0 refuses the next order); payment wording follows the
+owner's lifecycle — Pending / Accept / Accepted (was Recorded / Confirm / Confirmed), the accept dialog says it is
+final; `incidental_fee` reads *Courier at a restock* (was *Delivery costs*); stale *fee / markup* words gone from Terms;
+Edit Terms names the team (was *Team #12*) and is pinned to the pair (it offered the default row on a pair page);
+dates are the app's language and Jakarta time; empty payment tabs / limit log use `EmptyHint`; action buttons carry
+icons; example placeholders on the payment note and the terms reason; the order form's Debt Limits row says *at the
+limit — this order will be refused* when the committed debt is at or over the limit (or frozen); id *"{{count}}
+dikonfirmasi"* (meant the opposite) fixed. New stories: PairList/PairDetail `Mobile`, Ledger Table
+`EveryCauseReadsInItsBusinessWords`, CreditLimitPanel `AtTheLimitTheOrderIsRefused`, OrderCreate
+`ACreditorAtItsLimitSaysTheOrderIsRefused`.
+
+**Open, not fixed** (bigger than a wording fix): no phone arrangement on the list or the detail (tables squeezed and
+clipped, six tabs overlap — a-phone-reads-each-line-as-a-block, a-phone-filters-from-a-sheet); tiles are `Stat`, not
+the SummaryStrip (a-list-summary-is-the-order-lists-card-strip); `Pagination`, not `GrowingPager`; Make Payment is
+offered to the CREDITOR and `LiabilityPaymentRecord` accepts a payment from a team that owes nothing
+(the-debtor-claims-the-creditor-decides: never the creditor); the proof field is the browser's native file input
+(chakra-first-whenever-it-has-the-component); the list's search and team filter narrow only the loaded page of 20; the
+detail's date range filters only the loaded 50 rows; the daily statement still says *COD* and *Handling fees*
+(the-ledger-speaks-the-business-words — left alone, the report is deferred). Owner question: the Receivable / Payable
+cuts split by the SIGN of a movement, so a payment received and a reversal land under *Payable* and *Balance after*
+skips rows — add an *All* tab with the full running ledger?
+
+Checks 2026-11-07: `npm run typecheck` ✅; stories on the touched dirs ✅; `e2e/liability.spec.ts` ✅ 5/5 (before and
+after the edits) — the RED note of 2026-10-14 below is stale.
+
+✅ **2026-11-04: a transfer's courier charge posts** — uncommitted. `LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10`
+(`transfer_fee`, `source_id` = the transfer) and `ChargeTransferCourier`
+([transfer_courier_charge.go](../../../backend/services/liability_service/liability_v1/transfer_courier_charge.go)), fed by the
+push handler's `WarehouseTransferAccepted` case on subscription `liability-warehouse-transfer-accepted`: the selling team owes
+the RECEIVING warehouse, once per transfer, nothing for 0 or to oneself
+([a-transfer-charge-is-a-transfer-fee](../../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)).
+No migration (`source_type` has no CHECK). 4 unit + 2 push-handler tests, 2 race tests, perf 6 statements ~1.6 ms (FAST).
+✅ Frontend follow-up done (verified 2026-11-07): the `TRANSFER_FEE` label is in `liability-detail/format.ts`,
+`daily-statement/queries.ts` and en/id.json, beside `RETURN_INCIDENTAL_FEE`'s.
+
 **Pass:** implementation of `balance_context.md`, end to end (2026-08-31). Everything the owner's doc
 promises that has been DECIDED is now built, tested and documented.
 
@@ -32,6 +122,7 @@ active, never `unknown` (what the picker offers). Confirm publishes `LiabilityPa
 deleted; the Storybook stub refuses a missing account as the contract does. Flow:
 [rpc.md](../../services/liability_service/rpc.md#where-the-money-left-and-where-it-landed--the-accounts).
 `NewService(db, events, accounts)` — nil events is `EmptySender`, nil accounts refuses every named account.
+✅ *(2026-11-07: green, 5/5 — the seed was rewritten to `RestockRequestCreate`/`Accept` + the pushed *Restock Accepted*.)*
 ⚠ **`e2e/liability.spec.ts` is RED on this branch, not from this change**: its seed step creates the COD debt
 through `RestockRequestFulfill` with `quantity` and cost lines, and the restock rework (`723ab03`) replaced that
 with `Arrive`/`Accept`, `count`, and a required `finance_account_id`. The payment test is updated for the account
@@ -70,7 +161,8 @@ yet and frozen, a third team's limit never returned, self dropped, names, two qu
 `Features/Liability/CreditMeter`, `Features/Orders/CreditLimitPanel`, and one each on the create page and the pair detail.
 
 **Lifecycle position:** `Run Testing` complete — unit, integration and e2e all green for the first
-time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at the running screens.
+time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at the running screens — prepared for review
+2026-11-07 (top of this file).
 
 > ⚠ **Read this first if you are picking the context up.** The business word is `balance`, the code
 > word is `liability` — same thing. And since `0d4cbc4` *settlement* names a **different** service, so
@@ -204,3 +296,59 @@ cd frontend && npm run dev                     # :5174
 
 `/liability` — the tiles, the badges, the Default Terms dialog. Click a row for the pair detail — the
 five tabs, the proof links, Confirm and Reject.
+
+**2026-11-02:** ✅ **the payment request is built** — [a-creditor-may-request-payment](../../business/balance/context_decision.md#a-creditor-may-request-payment).
+
+| | |
+| --- | --- |
+| contract | `LiabilityPaymentService.LiabilityPaymentRequestSend` (creditor's owner and admin, `team_id` = the creditor); `LiabilityPaymentRequest`; `LiabilityPosition.payment_request` (5) |
+| schema | liability `00012_payment_requests.sql` — one per pair, `amount > 0`, indexed by debtor |
+| handlers | `payment_request_send.go` (upsert, FailedPrecondition when nothing is owed); `position_list.go` attaches the open request either way; `payment_record.go` deletes it in the payment's transaction |
+| screens | pair detail: **Request Payment** (confirm, toast, then a muted line) and the debtor's warning (`PaymentRequestNotice`); list: a badge on the row. `useLiabilityPosition` reads one pair, `useRequestPayment` sends |
+| tests | `payment_request_send_test.go`; stories `TheCreditorAsksADebtorToPay`, `TheDebtorSeesTheRequest`, `TheWarehouseAdminMayAskToPay`, `ARequestedPairIsMarked`. The stub now reads positions from the asking team's side (a debtor sees its pair with Gudang Pusat, mirrored) |
+| dev DB | ⚠ **not migrated by this pass** — `go run ./tools/san migrate up --service liability_service` |
+
+**2026-11-05:** ✅ **the liability daily view is on Jakarta days** — [the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day).
+
+| | |
+| --- | --- |
+| handler | `liability_v1/liability_daily.go`: groups by `(created_at AT TIME ZONE 'Asia/Jakarta')::date`; `parsePeriod` reads both dates as Jakarta midnights (`jakarta`, fixed +7), so the half-open bounds are `[from 00:00 WIB, to+1 00:00 WIB)` |
+| tests | `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay` (00:00 and 06:00 WIB on their WIB day, 23:59 WIB the evening before outside the period), `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` moved to WIB times (23:30 WIB in, 00:05 WIB next day out — one UTC day); both red on the UTC code |
+| perf | `liability_daily_perf_test.go` (`-tags perfaudit`): 1 query, 10.7 ms (31 days) / 30 ms (366 days) median at 50 000 legs for the team among 500 000; plan unchanged from the UTC grouping (bitmap on `liability_logs_pair_idx`, `team_id` prefix). Not heavy — [rpc.md](../../services/liability_service/rpc.md#bucketing--the-jakarta-day) |
+| screens | none changed — the daily statement (`pages/daily-statement`) already sends Jakarta date strings (✅ for any viewer since 2026-11-07, backlog #37: it and the Team Balance detail cut their window with `lib/jakartaDay.ts` `jakartaWindowOf`; they cut it at the viewer's midnight before) |
+
+## 2026-11-06 — the team-balance ledger is a double, frozen whole by `PostEntry` (money-type change, part 2)
+
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen).
+
+| | |
+| --- | --- |
+| schema | `liability_service` `00014_liability_money_is_double.sql` — 10 columns `BIGINT` → `double precision`: `liability_logs.amount` / `balance_after`, `liability_balances.balance`, `liability_payment_requests.amount`, `liability_payments.amount`, `liability_terms.credit_limit`, `liability_terms_logs.old_/new_credit_limit`, `old_/new_handling_fee`. Applied on `warehouse_test` (the harness re-applies every migration from scratch); not run on dev — `go run ./tools/san migrate up`. |
+| wire | `liability.proto` — every position/credit/daily/summary figure and the `by_source` maps, `credit_limit` (`gte 0`, finite) ×3, `LiabilityPaymentRecordRequest.amount` (`gt 0`, finite); `LiabilityPaymentAccepted.amount` on the event |
+| freeze | `PostEntry` is THE freeze point — refuses NaN/±Inf, `san_money.Whole`, then requires `> 0`; the order-fee, courier and stock-loss posters hand it doubles and skip a figure whose whole is ≤ 0. `LiabilityPaymentRecord` freezes the claim and refuses one under Rp 1; `LiabilityTermsSet` freezes a limit (`wholeLimit`) |
+| tests | `TestPostEntry_RoundsAFractionOnceToWholeRupiah`, `TestPostEntry_RefusesAnAmountThatFreezesToNothingOrIsNotFinite`, `TestPaymentRecord_FreezesAFractionalClaimToWholeRupiah`; raceaudit `TestRace|TestInterleave` green |
+| frontend | the liability pages, `CreditMeter` (whole-rupiah ratio from `wholeRupiah`), `ChangeLogPanel`, direction words take a `Rupiah`; the order form's credit panel takes the doubles through `wholeRupiah` (`figuresOf`) |
+| MCP | `balance_positions` answers the figures as JSON numbers — asserted by `TestMCP_AnotherTeamIsRefusedThroughTheTool` |
+
+## 2026-11-06 — the backend never rounds money ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money))
+
+Supersedes the *freeze* row above: `PostEntry` stores the posting EXACT — it refuses NaN/±Inf and anything not above 0
+(`san_money.Positive`; float dust counts as 0) and no longer rounds. A 2,5% fee of Rp 12.666,99 posts Rp 316,67475 on
+both legs (the screen shows Rp 316,675). `LiabilityPaymentRecord` stores the claim as typed (refuses one not above 0,
+*"a payment must be more than Rp 0"*); `LiabilityTermsSet` stores a limit as set (`wholeLimit` is gone); the order-fee,
+courier and stock-loss posters skip a figure that is not above 0. "Square" is a tolerance test in SQL
+(`abs(balance) < 0.00005` in the `oldest_unsettled_at` CASE and `unsettled_only`), and `LiabilityPaymentRequestSend`
+refuses "nothing owed" with `Positive`. Frontend: `CreditMeter`/`creditWarning`, `directionOf` and `ChangeLogPanel`
+read the exact doubles with the server's 4-place tolerance (`isZeroRupiah` / `signOfRupiah`) — no `wholeRupiah`.
+Tests `TestPostEntry_StoresAFractionExact`, `TestPostEntry_RefusesDustOrAnAmountThatIsNotFinite`,
+`TestPaymentRecord_StoresAFractionalClaimExact`, `TestChargeOrder_TheFrozenFeeIsPostedExact`,
+`TestChargeOrder_AFractionalTotalIsPostedExactOnTheSum`, the push transfer test (5.000,4).
+
+**Found and fixed in the same pass — the order's fees never reached the ledger in a running app.** `register.go` mounted
+the restock / return / transfer push routes but not `/event/liability-order-placed/push` or
+`/event/liability-order-cancelled/push`, while `san pubsub ensure` declares both subscriptions: every *Order Placed*
+push 404'd and dead-lettered (the e2e emulator's `order-placed.dlq.triage` held them), so no warehouse fee or product fee
+was ever charged outside the unit tests, which call `ChargeOrder` directly. Both routes are mounted now (the same push
+handler); test `TestRegister_TheOrderEventsReachTheLedger` drives them through the real mux. Orders placed on a dev
+database before this fix have no fee entries — revamp has no real orders (revamp-has-no-real-orders-yet), so nothing is
+backfilled; a dev DB's dead-lettered events can be redriven with `san pubsub redrive --topic order-placed`.

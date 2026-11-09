@@ -10,7 +10,7 @@ import { CreditMeter } from "./CreditMeter";
 const meta = {
   title: "Features/Liability/CreditMeter",
   component: CreditMeter,
-  args: { limit: 10_000_000n, debt: 8_700_000n, testId: "meter" },
+  args: { limit: 10_000_000n, debt: 8_700_000, testId: "meter" },
 } satisfies Meta<typeof CreditMeter>;
 
 export default meta;
@@ -38,7 +38,7 @@ export const TheDebtorsView: Story = {
 
 // At the limit, from the debtor's side — the next order drawing on this creditor is refused.
 export const TheDebtorAtTheLimit: Story = {
-  args: { setBy: "Toko Anggrek", limit: 1_000_000n, debt: 1_000_000n },
+  args: { setBy: "Toko Anggrek", limit: 1_000_000n, debt: 1_000_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -48,7 +48,7 @@ export const TheDebtorAtTheLimit: Story = {
 
 // Below 80% there is no badge on either side — the warning is a warning, not a decoration.
 export const BelowTheThreshold: Story = {
-  args: { setBy: "Toko Anggrek", limit: 2_000_000n, debt: 400_000n },
+  args: { setBy: "Toko Anggrek", limit: 2_000_000n, debt: 400_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -59,7 +59,7 @@ export const BelowTheThreshold: Story = {
 
 // ⚠ FROZEN IS WORDS, NOT A PERCENTAGE — and from the debtor's side it names who froze it.
 export const FrozenFromTheDebtorsSide: Story = {
-  args: { setBy: "Gudang Pusat", limit: 0n, debt: 0n },
+  args: { setBy: "Gudang Pusat", limit: 0n, debt: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -69,7 +69,7 @@ export const FrozenFromTheDebtorsSide: Story = {
 
 // ⚠ UNLIMITED IS WORDS, NOT A FULL BAR.
 export const Unlimited: Story = {
-  args: { setBy: "Gudang Cabang", limit: undefined, debt: 860_000n },
+  args: { setBy: "Gudang Cabang", limit: undefined, debt: 860_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

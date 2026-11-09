@@ -7,8 +7,10 @@ import (
 	"connectrpc.com/connect"
 
 	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 )
@@ -90,7 +92,7 @@ func mustData(
 // ⚠ AND THE BREAKDOWN EXPLAINS IT: Settlement by type's fields add up to `received`, by construction.
 func TestMetricData_SummaryIsTheHeadlineAndTheBreakdownExplainsIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -120,14 +122,14 @@ func TestMetricData_SummaryIsTheHeadlineAndTheBreakdownExplainsIt(t *testing.T) 
 		types.GetShipmentAdjustment() + types.GetLogisticReimbursement() + types.GetPlatformReimbursement() +
 		types.GetMarketplaceProgram() + types.GetOther() + types.GetSystemAdjustment()
 	if sum != headline.GetReceived() {
-		t.Fatalf("the types add up to %d, received is %d — the breakdown must explain the headline", sum, headline.GetReceived())
+		t.Fatalf("the types add up to %v, received is %v — the breakdown must explain the headline", sum, headline.GetReceived())
 	}
 }
 
 // A withdrawal is not received — it is our own money moving on — but it IS in the position.
 func TestMetricData_AWithdrawalMovesThePositionNotReceived(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(30, "2026-01-04", shop, 0, 0, 3,
@@ -145,7 +147,7 @@ func TestMetricData_AWithdrawalMovesThePositionNotReceived(t *testing.T) {
 // take rate: it is UNSET, never 0.
 func TestMetricData_DailyCarriesTheQuietDay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -153,7 +155,7 @@ func TestMetricData_DailyCarriesTheQuietDay(t *testing.T) {
 		dayKeys("2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04"),
 		[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-04")}, metricSettlement)[0].GetSettlementByDay().GetItems()
 
-	want := map[string]struct{ sales, received, position int64 }{
+	want := map[string]struct{ sales, received, position float64 }{
 		"2026-01-01": {sale, 0, 120_000},
 		"2026-01-02": {0, -10_000, 130_000},
 		"2026-01-03": {0, 100_000, 30_000},
@@ -173,11 +175,33 @@ func TestMetricData_DailyCarriesTheQuietDay(t *testing.T) {
 	}
 }
 
+// THE RUNNING SUM (MetricData.md finding 1): a page's positions come from the history before its first asked day,
+// read once, plus each day's change in date order — so asked days out of order and with gaps between them still read
+// the position the carry holds on each, and a day before the window's first row carries what came before the window.
+func TestMetricData_APageOfDaysReadsOneRunningSum(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+
+	fold(t, svc, workedExample()...)
+
+	items := mustData(t, svc, analytic_basev1.GroupType_GROUP_TYPE_DAILY,
+		dayKeys("2026-01-04", "2026-01-02"),
+		[]*analytic_basev1.FilterItem{window("2026-01-02", "2026-01-04")}, metricSettlement)[0].GetSettlementByDay().GetItems()
+
+	if got := items["2026-01-02"]; got.GetPositionToDate() != 130_000 || got.GetReceived() != -10_000 {
+		t.Fatalf("01-02 = %+v — 01-01's 120.000 is carried in from before the window, then the -10.000 fee", got)
+	}
+
+	if got := items["2026-01-04"]; got.GetPositionToDate() != 30_000 || got.GetReceived() != 0 {
+		t.Fatalf("01-04 = %+v — quiet, carrying 01-03's close", got)
+	}
+}
+
 // A month is the window's part of it: the movement over its days IN THE WINDOW, the position at the window's end. A
 // period the window does not meet is zero.
 func TestMetricData_APeriodIsClippedToTheWindow(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -196,7 +220,7 @@ func TestMetricData_APeriodIsClippedToTheWindow(t *testing.T) {
 // A period is keyed by its FIRST day — any other day names no row.
 func TestMetricData_RefusesADayThatStartsNoPeriod(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	_, err := metricData(svc, team, analytic_basev1.GroupType_GROUP_TYPE_WEEKLY, dayKeys("2026-01-01"),
 		[]*analytic_basev1.FilterItem{window("2026-01-01", "2026-01-31")}, metricSettlement)
@@ -209,7 +233,7 @@ func TestMetricData_RefusesADayThatStartsNoPeriod(t *testing.T) {
 // ends the window on, its movement only the window's.
 func TestMetricData_ByShopFillsEveryAskedKey(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(20, "2026-01-02", otherShop, otherOrder, 8, 8,
@@ -235,7 +259,7 @@ func TestMetricData_ByShopFillsEveryAskedKey(t *testing.T) {
 // by someone else.
 func TestMetricData_ByUserReadsThePersonTable(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -255,7 +279,7 @@ func TestMetricData_ByUserReadsThePersonTable(t *testing.T) {
 // that combination (one-settlement-metric-reads-both-tables).
 func TestMetricData_RefusesAShopAndAPersonTogether(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	cases := map[string]struct {
 		group   analytic_basev1.GroupType
@@ -281,7 +305,7 @@ func TestMetricData_RefusesAShopAndAPersonTogether(t *testing.T) {
 // A team reads its own figures and nothing of another team's; the root team reads every team's.
 func TestMetricData_TheScopeIsTheCallersTeam(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -304,5 +328,79 @@ func TestMetricData_TheScopeIsTheCallersTeam(t *testing.T) {
 
 	if m := root[0].GetSettlementById().GetItems()[team]; m.GetSales() != sale || m.GetPositionToDate() != 30_000 {
 		t.Fatalf("the root team's read of team %d = %+v", team, m)
+	}
+}
+
+// THE REPORTS ARE THE LOG (the-backend-never-rounds-money): fractional inputs post exact, the fold adds the posted rows as
+// they are, and so the headline, the breakdown and the position equal the log's sums within the tolerance
+// (san_money.Equal) — exact doubles summed in another order may differ by float dust, never by a rounding.
+func TestMetricData_TheSumsAndThePositionEqualTheLog(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+
+	inputs := []settlement_v1.PostInput{
+		initialTotal("order-5001-initial"),
+		{UniqueID: "fund-1", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, SourceType: settlementv1.SourceType_SOURCE_TYPE_IMPORTER, Change: 33_333.4},
+		{UniqueID: "fund-2", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, SourceType: settlementv1.SourceType_SOURCE_TYPE_IMPORTER, Change: 33_333.4},
+		{UniqueID: "fund-3", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, SourceType: settlementv1.SourceType_SOURCE_TYPE_IMPORTER, Change: 33_333.5},
+		{UniqueID: "ads-1", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_EXTERNAL_ADS_FEE, SourceType: settlementv1.SourceType_SOURCE_TYPE_IMPORTER, Change: -10_000.5},
+	}
+
+	var (
+		events             = []*eventsv1.Event{}
+		logSales, received float64
+		last               settlement_v1.PostResult
+	)
+
+	for _, in := range inputs {
+		result, err := post(t, svc, in)
+		if err != nil {
+			t.Fatalf("post %s: %v", in.UniqueID, err)
+		}
+
+		last = result
+
+		// The fold's input is the row AS POSTED — the event carries the exact change.
+		events = append(events, logPosted(result.Entry.ID, "2026-08-28", shop, order, creator, creator,
+			in.SettlementType, result.Entry.Change))
+
+		if in.SettlementType == settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL {
+			logSales -= result.Entry.Change
+		} else {
+			received += result.Entry.Change
+		}
+	}
+
+	fold(t, svc, events...)
+
+	// 33.333,4 + 33.333,4 + 33.333,5 − 10.000,5 — every input exact.
+	if !san_money.Equal(received, 89_999.8) {
+		t.Fatalf("the log received %v, want 89.999,8", received)
+	}
+
+	datas := mustData(t, svc, analytic_basev1.GroupType_GROUP_TYPE_SUMMARY, nil,
+		[]*analytic_basev1.FilterItem{window("2026-08-01", "2026-08-31")}, metricSettlement, metricTypes)
+
+	headline := datas[0].GetSettlementSummary()
+	if !san_money.Equal(headline.GetSales(), logSales) || !san_money.Equal(headline.GetReceived(), received) ||
+		!san_money.Equal(headline.GetGap(), logSales-received) {
+		t.Fatalf("headline = %+v — sales %v, received %v, straight off the log", headline, logSales, received)
+	}
+
+	// THE POSITION is the account's balance, negated — the same rows, folded.
+	if !san_money.Equal(headline.GetPositionToDate(), -last.State.LastBalance) {
+		t.Fatalf("position = %v, the account's balance is %v", headline.GetPositionToDate(), last.State.LastBalance)
+	}
+
+	types := datas[1].GetTypesSummary()
+	if !san_money.Equal(types.GetFund(), 100_000.3) || types.GetExternalAdsFee() != -10_000.5 {
+		t.Fatalf("types = %+v — fund 100.000,3, ads −10.000,5", types)
+	}
+
+	// THE DAY ROW closes on the same figure.
+	days, _ := shopDays(t, db, shop)
+	if len(days) != 1 || !san_money.Equal(days[0].CloseBalance, last.State.LastBalance) ||
+		!san_money.Equal(days[0].Change, last.State.LastBalance) {
+		t.Fatalf("day rows = %+v, want one closing on %v", days, last.State.LastBalance)
 	}
 }

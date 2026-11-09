@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Flex, HStack, Icon, Spacer, Spinner, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
@@ -7,7 +8,7 @@ import { ArrowRight } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { WarehouseTransferStatus } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeamsByIds } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useWarehouseTransfers } from "../../features/warehouseTransfer/queries";
@@ -15,7 +16,6 @@ import { TRANSFER_STATUS_TABS, transferTab } from "../../features/warehouseTrans
 import { problemUnits } from "../../features/warehouseTransfer/summary";
 import { TransferItemsCell } from "../../features/warehouseTransfer/TransferItemsCell";
 import { SellingTransferActions } from "../../features/warehouseTransfer/SellingTransferActions";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -25,7 +25,6 @@ import { TeamSelect } from "../../components/teams/TeamSelect";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
-import { TRANSFER_SELLING_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -93,7 +92,7 @@ export function WarehouseTransferSellingPage() {
     if (id === 0n) return "";
     const user = actors?.get(id.toString());
 
-    return user ? user.name || user.username : t("warehouseTransfer.table.userRef", { id: id.toString() });
+    return personName(user, t("warehouseTransfer.table.userRef", { id: id.toString() }));
   }
 
   if (!current) {
@@ -106,19 +105,20 @@ export function WarehouseTransferSellingPage() {
 
   return (
     <Stack gap="section">
-      <NotImplementedSummary list={TRANSFER_SELLING_PENDING} />
 
-      <Flex align="center" gap="card">
-        <Spacer />
-        <Button
-          size="xs"
-          colorPalette="brand"
-          data-testid="open-create-transfer"
-          onClick={() => navigate("/inventories/transfer/new")}
-        >
-          {t("warehouseTransfer.newTransfer")}
-        </Button>
-      </Flex>
+      {canWrite(current) && (
+        <Flex align="center" gap="card">
+          <Spacer />
+          <Button
+            size="xs"
+            colorPalette="brand"
+            data-testid="open-create-transfer"
+            onClick={() => navigate("/inventories/transfer/new")}
+          >
+            {t("warehouseTransfer.newTransfer")}
+          </Button>
+        </Flex>
+      )}
 
       <FilterBar
         active={filtered}
@@ -250,7 +250,6 @@ export function WarehouseTransferSellingPage() {
                                   transfer={transfer}
                                   teamId={teamId}
                                   variant="menu"
-                                  pending={TRANSFER_SELLING_PENDING}
                                 />
                               )}
                             </Table.Cell>

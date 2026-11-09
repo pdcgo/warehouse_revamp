@@ -7,6 +7,7 @@ import { rpcError } from "../../../api/clients";
 import { ProductSelect } from "../../../components/products/ProductSelect";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useAddFoundOpnameRow } from "../../../features/opname/queries";
+import { useIsMobile } from "../../../layouts/shell";
 
 // ADD A PRODUCT FOUND HERE — a product on the rack that the list does not name (a-counter-may-add-a-product-found-here).
 // It joins the session at a book figure of 0 on this rack, and its other racks join too, so a move nets out.
@@ -29,6 +30,9 @@ export function AddFoundDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
+  // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
+  // `{ base: "full", md: ... }` kept full's min-height on desktop and stretched the dialog to the window's height.
+  const isMobile = useIsMobile();
   const add = useAddFoundOpnameRow();
 
   const [product, setProduct] = useState<{ id: bigint; name: string } | null>(null);
@@ -67,7 +71,7 @@ export function AddFoundDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => close(e.open)} size={{ base: "full", md: "md" }}>
+    <Dialog.Root open={open} onOpenChange={(e) => close(e.open)} size={isMobile ? "full" : "md"}>
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -85,9 +89,11 @@ export function AddFoundDialog({
                     {t("opnameSession.found.product")}
                     <Field.RequiredIndicator />
                   </Field.Label>
+                  {/* What this warehouse holds or has held (a-warehouse-picks-only-what-it-has-held) — a product its team
+                      never had here is not stock here yet, so it is not offered; the refusal below stays as the backstop. */}
                   <ProductSelect
                     teamId={warehouseId}
-                    scope="all"
+                    scope="warehouse"
                     portalled={false}
                     value={product?.id ?? 0n}
                     placeholder={t("opnameSession.found.productPlaceholder")}
@@ -96,6 +102,7 @@ export function AddFoundDialog({
                       setNeverHere(false);
                     }}
                   />
+                  <Field.HelperText>{t("inventory.pickHeldHelp")}</Field.HelperText>
                 </Field.Root>
                 {neverHere && (
                   <Alert.Root status="warning" data-testid="opname-found-never-here">

@@ -8,8 +8,10 @@ import { SHOPS_META, loaded } from "./stories/kit";
 // are grouped by the part of the screen they are about, one file each in ./stories
 // (stories-are-grouped-by-the-part-of-the-screen):
 //
-//   Actions     New Shop, Edit and Delete
-//   Filters     the search, the marketplace and primary CS filters, the URL, the empty hint
+//   Actions     New Shop, Edit and Close
+//   Filters     the search, the marketplace and primary CS filters (each narrows the list), the URL, the empty hint
+//
+// Closing and reopening a shop, and where a closed shop still shows, are ./CloseShop.stories.tsx.
 //   Primary CS  its column, and Change Primary CS from the row's ⋯
 //   Rows        what a row shows, its sort, and how it opens the shop
 

@@ -9,11 +9,10 @@ import (
 	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
 // SHOPS ACROSS TEAMS, BASIC FIELDS (the-warehouse-row-fills-from-shop-and-user-by-ids): two teams' shops in one call,
-// a deleted shop still named, an unknown id absent.
+// a closed shop still named, an unknown id absent.
 func TestShopByIds_AcrossTeamsBasicOnly(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -22,9 +21,9 @@ func TestShopByIds_AcrossTeamsBasicOnly(t *testing.T) {
 	kenanga := insertShop(t, db, 3, "Kenanga Official", "KEN-T", "tiktok")
 	closed := insertShop(t, db, 2, "Melati Lama", "MEL-OLD", "tokopedia")
 
-	err := db.Model(&selling_service_models.Shop{}).Where("id = ?", closed).Update("deleted", true).Error
+	_, err := svc.ShopClose(context.Background(), connect.NewRequest(&sellingv1.ShopCloseRequest{TeamId: 2, ShopId: closed}))
 	if err != nil {
-		t.Fatalf("delete the shop: %v", err)
+		t.Fatalf("close the shop: %v", err)
 	}
 
 	res, err := svc.ShopByIds(context.Background(), connect.NewRequest(&sellingv1.ShopByIdsRequest{
@@ -47,7 +46,7 @@ func TestShopByIds_AcrossTeamsBasicOnly(t *testing.T) {
 	}{
 		melati:  {2, "Melati Official", marketplacev1.Marketplace_MARKETPLACE_SHOPEE},
 		kenanga: {3, "Kenanga Official", marketplacev1.Marketplace_MARKETPLACE_TIKTOK},
-		// Deleted, and still named — an old order still names its shop.
+		// Closed, and still named — an old order still names its shop.
 		closed: {2, "Melati Lama", marketplacev1.Marketplace_MARKETPLACE_TOKOPEDIA},
 	}
 

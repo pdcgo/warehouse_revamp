@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { SupplierChannelRecord } from "./adapt";
 import { ProductBrowser } from "./ProductBrowser";
-import { LIST_FIGURE_MARKS } from "./SupplierFigures";
+import { NO_FIGURE_MARKS } from "./SupplierFigures";
 import { sampleProductsFor } from "./sampleProducts";
 import { formatUnixDate } from "../../lib/datetime";
 import { LocationProbe, pickTeam, routedPage } from "../../../.storybook/pageStory";
@@ -29,7 +29,7 @@ const meta = {
   title: "Features/Suppliers/ProductBrowser",
   component: ProductBrowser,
   // Any page's marks will do here — the page numbers them; the story only needs them drawn.
-  args: { channels: TWO, figureMarks: LIST_FIGURE_MARKS, exportMark: null },
+  args: { channels: TWO, figureMarks: NO_FIGURE_MARKS, exportMark: null },
 } satisfies Meta<typeof ProductBrowser>;
 
 export default meta;
@@ -49,7 +49,7 @@ export const ProductsNameTheirChannel: Story = {
   },
 };
 
-export const SearchesProductSkuOrChannel: Story = {
+export const SearchesProductCodeOrChannel: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -199,7 +199,7 @@ const AtFilteredUrl = routedPage(
       path: "/inventories/suppliers/:supplierId",
       element: (
         <>
-          <ProductBrowser channels={TWO} figureMarks={LIST_FIGURE_MARKS} exportMark={null} />
+          <ProductBrowser channels={TWO} figureMarks={NO_FIGURE_MARKS} exportMark={null} />
           <LocationProbe />
         </>
       ),

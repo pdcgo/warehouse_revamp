@@ -20,4 +20,4 @@ export const YourOwnProduct: Story = { render: () => <AtBeras /> };
 
 export const Locked: Story = { beforeEach: tehIs("crossLocked"), render: () => <AtTeh /> };
 
-export const Archived: Story = { beforeEach: tehIs("deleted"), render: () => <AtTeh /> };
+export const Archived: Story = { beforeEach: tehIs("archived"), render: () => <AtTeh /> };

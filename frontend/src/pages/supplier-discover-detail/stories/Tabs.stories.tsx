@@ -68,13 +68,18 @@ export const TheProductsAndTheFiguresAreSample: Story = {
 };
 
 // EACH TAB EXPORTS ITS OWN TABLE, as on the manage detail (each-supplier-tab-exports-its-own-table) — read-only, so the
-// Export is the strip's only action; marked 7 in THIS page's list.
+// Export is the Toko strip's only action. It exports (no mark); the Produk tab's, over invented rows, keeps THIS page's
+// mark (5).
 export const EachTabExportsItsOwnTable: Story = {
-  name: "Export marked",
+  name: "Export per tab",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const button = await canvas.findByTestId("channels-export");
-    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("7");
+    await expect(within(button).queryByTestId("not-implemented-export")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("supplier-tab-products"));
+    const products = await canvas.findByTestId("products-export");
+    await expect(within(products).getByTestId("not-implemented-export")).toHaveTextContent("5");
   },
 };

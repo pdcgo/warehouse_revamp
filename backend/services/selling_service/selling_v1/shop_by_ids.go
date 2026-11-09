@@ -14,8 +14,8 @@ import (
 // ShopByIds resolves shops by id ACROSS TEAMS (the-warehouse-row-fills-from-shop-and-user-by-ids): a warehouse ships
 // other teams' orders, and its row names each order's shop and marketplace. Unscoped, like TeamByIds and UserByIDs.
 //
-// BASIC FIELDS ONLY — id, name, marketplace, owning team — never members, grants or settings. A DELETED shop is still
-// returned, so an old order still names its shop; an id that never existed is absent. One query.
+// BASIC FIELDS ONLY — id, name, marketplace, owning team — never members, grants or settings. A CLOSED shop is still
+// returned, so an old order still names its shop (a-shop-is-closed-never-deleted); an id that never existed is absent. One query.
 func (s *Service) ShopByIds(
 	ctx context.Context,
 	req *connect.Request[sellingv1.ShopByIdsRequest],

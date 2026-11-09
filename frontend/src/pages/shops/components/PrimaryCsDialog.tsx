@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, CloseButton, Dialog, Icon, Portal, RadioCard, Stack, Text } from "@chakra-ui/react";
@@ -55,7 +56,7 @@ export function PrimaryCsDialog({ shop, onClose }: { shop: Shop; onClose: () => 
         onSuccess: () => {
           toaster.create({
             type: "success",
-            title: t("shops.primary.saved", { user: person?.name || person?.username || `#${picked}`, shop: shop.name }),
+            title: t("shops.primary.saved", { user: personName(person, `#${picked}`), shop: shop.name }),
           });
           onClose();
         },

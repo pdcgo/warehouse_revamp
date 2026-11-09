@@ -98,7 +98,8 @@ export const WhatIsNotRealYetIsMarked: Story = {
 };
 
 // EACH TAB EXPORTS ITS OWN TABLE — a grey Export at the right end of the tab's filter strip, left of the tab's primary
-// action (Tambah Toko), carrying THIS page's mark (7): nothing builds a file yet.
+// action (Tambah Toko). The Toko and Statistik tabs export (no mark); the Produk tab's rows are invented, so its Export
+// still carries THIS page's mark (5) and builds nothing.
 export const EachTabExportsItsOwnTable: Story = {
   name: "Export per tab",
   play: async ({ canvasElement }) => {
@@ -106,8 +107,8 @@ export const EachTabExportsItsOwnTable: Story = {
     await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
 
     const channels = canvas.getByTestId("channels-export");
-    await expect(channels).toHaveTextContent(/^Export/);
-    await expect(within(channels).getByTestId("not-implemented-export")).toHaveTextContent("7");
+    await expect(channels).toHaveTextContent(/^Export$/);
+    await expect(within(channels).queryByTestId("not-implemented-export")).toBeNull();
     await expect(channels.getBoundingClientRect().right).toBeLessThanOrEqual(
       canvas.getByTestId("add-channel").getBoundingClientRect().left,
     );
@@ -116,10 +117,14 @@ export const EachTabExportsItsOwnTable: Story = {
     );
 
     await openProducts(canvas);
-    await expect(await canvas.findByTestId("products-export")).toHaveTextContent(/^Export/);
+    const products = await canvas.findByTestId("products-export");
+    await expect(products).toHaveTextContent(/^Export/);
+    await expect(within(products).getByTestId("not-implemented-export")).toHaveTextContent("5");
 
     await userEvent.click(canvas.getByTestId("supplier-tab-statistics"));
-    await expect(await canvas.findByTestId("statistics-export", {}, { timeout: 3000 })).toHaveTextContent(/^Export/);
+    const statistics = await canvas.findByTestId("statistics-export", {}, { timeout: 3000 });
+    await expect(statistics).toHaveTextContent(/^Export$/);
+    await expect(within(statistics).queryByTestId("not-implemented-export")).toBeNull();
   },
 };
 
@@ -137,7 +142,7 @@ export const APhoneExportIsInTheSheet: Story = {
     const sheet = await screen.findByTestId("channels-filter-sheet");
     await waitFor(() => expect(sheet).toBeVisible());
     const button = within(sheet).getByTestId("channels-export");
-    await expect(button).toHaveTextContent(/^Export/);
-    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("7");
+    await expect(button).toHaveTextContent(/^Export$/);
+    await expect(button.getBoundingClientRect().width).toBeGreaterThan(200);
   },
 };

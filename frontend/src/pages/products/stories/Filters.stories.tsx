@@ -21,24 +21,24 @@ export const TheWarehouseLensRestatesTheStock: Story = {
   name: "Warehouse lens",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("79 pcs"));
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("79 pcs"));
 
     await pickTeam(canvas.getByTestId("product-warehouse-filter"), "WH-02");
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toHaveTextContent("25 pcs"));
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("25 pcs"));
     await expect(canvas.getByTestId("products-total-value")).toHaveTextContent(/^44$/);
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("warehouse=14"));
   },
 };
 
 /** The search reads the name and the SKU, on the live tab. */
-export const SearchesByNameOrSku: Story = {
-  name: "Search, name or SKU",
+export const SearchesByNameOrProductCode: Story = {
+  name: "Search, name or code",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await userEvent.type(canvas.getByTestId("product-search"), "lada", { delay: 40 });
-    await waitFor(() => expect(canvas.queryByTestId("product-row-SKU-ANG-001")).toBeNull());
-    await expect(canvas.getByTestId("product-row-SKU-ANG-010")).toHaveTextContent("Lada Bubuk");
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-001")).toBeNull());
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-010")).toHaveTextContent("Lada Bubuk");
   },
 };
 
@@ -54,7 +54,7 @@ export const NothingMatchesAndClears: Story = {
     await expect(empty).toHaveTextContent("No products found.");
 
     await userEvent.click(within(empty).getByRole("button", { name: "Clear Filters" }));
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-001")).toBeVisible());
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toBeVisible());
     await expect(canvas.getByTestId("product-search")).toHaveValue("");
   },
 };
@@ -83,7 +83,7 @@ export const LockAndAgeFiltersAreHeldAndMarked: Story = {
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("age=60"));
 
     // Thrown away: an open product, and a young one, still show.
-    await expect(canvas.getByTestId("product-row-SKU-ANG-002")).toBeVisible();
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-002")).toBeVisible();
 
     await userEvent.click(within(canvas.getByTestId("products-filter")).getByRole("button", { name: "Clear Filters" }));
     await waitFor(() => expect(canvas.getByTestId("location-search")).not.toHaveTextContent("lock="));
@@ -100,7 +100,7 @@ export const TheSearchComesBackFromTheUrl: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByTestId("product-search", {}, { timeout: 5000 })).toHaveValue("lada");
-    await waitFor(() => expect(canvas.getByTestId("product-row-SKU-ANG-010")).toBeVisible());
-    await expect(canvas.queryByTestId("product-row-SKU-ANG-001")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-010")).toBeVisible());
+    await expect(canvas.queryByTestId("product-row-SL-03-ANG-001")).toBeNull();
   },
 };

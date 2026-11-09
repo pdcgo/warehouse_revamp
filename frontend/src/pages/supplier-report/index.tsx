@@ -26,7 +26,7 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import {
   RATE_MIN_UNITS,
   type SupplierRankBy,
@@ -36,18 +36,15 @@ import {
 } from "../../features/suppliers/analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "../../features/suppliers/FigureParts";
 import { unitsReceived } from "../../features/suppliers/figures";
-import { useTeam } from "../../features/team/TeamContext";
+import { useReportExport } from "../../features/suppliers/exports";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { SUPPLIER_REPORT_PENDING } from "./pending";
 import { CompactActions } from "../../components/chrome/CompactActions";
-
-// Penjualan beside Direstok carries THIS page's mark (`sales-sit-beside-restocked`).
-const SALES_MARK = <NotImplemented list={SUPPLIER_REPORT_PENDING} id="sales" />;
+import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 
 const PAGE_SIZE = 20;
 
@@ -121,8 +118,12 @@ export function SupplierReportPage() {
     setPage(1);
   };
 
-  const { from, to } = windowOf(range);
-  const valid = from !== "" && to !== "" && from <= to;
+  const { from, to } = jakartaWindowOf(range);
+  // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
+  // under the picker says why rather than showing a refusal.
+  const span = spanDays(from, to);
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   const ranking = useSupplierRanking({
     teamId: current?.teamId,
@@ -137,6 +138,13 @@ export function SupplierReportPage() {
   });
   // Every supplier the search finds, together — keyed without the page or the order, neither of which changes it.
   const headline = useSupplierHeadline({ teamId: current?.teamId, from, to, valid, restockTeamId, q: term });
+
+  // THE REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file): the whole ranking as narrowed — the window, the
+  // team, the settled search and the order on screen — every page, each supplier with its figures. It stores a file, so
+  // a monitored team's reader has no Export (the-admin-team-monitors-read-only).
+  const writable = canWrite(current);
+  const exporter = useReportExport(current?.teamId);
+  const runExport = () => void exporter.start({ from, to, restockTeamId, q: term, rankBy });
 
   // The order the rows ON SCREEN are in. A new order keeps the old rows up while its page loads (HARD RULE 10), so the
   // fade is keyed on this rather than on the pick — it plays when the re-ordered rows land, not on the click.
@@ -206,7 +214,6 @@ export function SupplierReportPage() {
         <Stack gap="2" data-testid="supplier-report-table">
           {rows.map((row) => (
             <FigureBlock
-              salesMark={SALES_MARK}
               key={row.supplier.id.toString()}
               title={t("supplierReport.rankedName", { rank: row.rank, name: nameOf(row) })}
               sub={
@@ -232,7 +239,7 @@ export function SupplierReportPage() {
               <Table.ColumnHeader w="3rem">{t("supplierReport.col.rank")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("supplierReport.col.supplier")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("supplierReport.col.keptBy")}</Table.ColumnHeader>
-              <FigureHeaders salesMark={SALES_MARK} />
+              <FigureHeaders />
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -291,7 +298,7 @@ export function SupplierReportPage() {
         // A PHONE'S HEADER IS ONE ROW (owner: *"export di report mobile kurang bagus"*, `the-report-export-folds-on-a-phone`,
         // the-phone-header-is-one-row): the title and the export's icon — wrapped under the subtitle it stood alone, a
         // button belonging to nothing; it was a ⋯ of one line until a-phone-header-action-is-an-icon. The subtitle under
-        // the row.
+        // the row. Pressed, it streams the file; the toast says when it downloads.
         <Stack gap="1">
           <Flex align="center" gap="2">
             <Heading size="md" flex="1" minW="0" truncate>
@@ -302,12 +309,13 @@ export function SupplierReportPage() {
               menuLabel={t("supplierReport.actions")}
               menuTestId="supplier-report-menu"
               actions={[
-                {
+                writable && {
                   id: "export",
                   label: t("supplierReport.export"),
                   icon: Download,
-                  mark: <NotImplemented list={SUPPLIER_REPORT_PENDING} id="export" />,
                   testId: "supplier-report-export",
+                  disabled: !valid || exporter.running,
+                  onClick: runExport,
                 },
               ]}
             />
@@ -324,18 +332,29 @@ export function SupplierReportPage() {
               {t("supplierReport.subtitle")}
             </Text>
           </Stack>
-          {/* EXPORT, NOT BUILT (owner: *"ada export di sini, kasih unimplemented jadinya"*, `the-report-export-is-marked`)
-              — a grey outline with its icon (an-action-button-carries-its-icon); it takes nothing out of the screen yet,
-              and the ⚠ number points at why. */}
-          <Button variant="outline" colorPalette="gray" data-testid="supplier-report-export">
-            <Icon as={Download} boxSize="4" />
-            {t("supplierReport.export")}
-            <NotImplemented list={SUPPLIER_REPORT_PENDING} id="export" />
-          </Button>
+          {/* EXPORT (`the-report-export-is-marked` placed it; a-report-export-is-the-whole-view-as-a-file built it) — a grey
+              outline with its icon (an-action-button-carries-its-icon). Pressed, it streams the whole ranking as narrowed
+              and reads its progress (Exporting 200 / 456) until the download starts. */}
+          {writable && (
+            <Button
+              variant="outline"
+              colorPalette="gray"
+              data-testid="supplier-report-export"
+              disabled={!valid}
+              loading={exporter.running}
+              loadingText={
+                exporter.progress
+                  ? t("common.export.running", { done: exporter.progress.done, total: exporter.progress.total })
+                  : undefined
+              }
+              onClick={runExport}
+            >
+              <Icon as={Download} boxSize="4" />
+              {t("supplierReport.export")}
+            </Button>
+          )}
         </Flex>
       )}
-
-      <NotImplementedSummary list={SUPPLIER_REPORT_PENDING} />
 
       <FilterBar
         testId="supplier-report-filter"
@@ -362,7 +381,9 @@ export function SupplierReportPage() {
 
       {!valid && (
         <Text fontSize="sm" color="error.fg" data-testid="supplier-report-range-invalid">
-          {t("supplierFigures.rangeInvalid")}
+          {tooLong
+            ? t("supplierFigures.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS })
+            : t("supplierFigures.rangeInvalid")}
         </Text>
       )}
 
@@ -373,8 +394,15 @@ export function SupplierReportPage() {
       )}
 
       <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
-        <FiguresSummary figures={headline.data} salesMark={SALES_MARK} testId="supplier-report-summary" />
+        <FiguresSummary figures={headline.data} testId="supplier-report-summary" />
       </RefreshOverlay>
+
+      {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — a fold is a projection, never live. */}
+      {headline.data?.asOfUnix !== undefined && headline.data?.asOfUnix > 0n && (
+        <Text fontSize="xs" color="fg.muted" data-testid="supplier-report-as-of">
+          {t("common.asOf", { time: formatUnixDateTimeShort(headline.data?.asOfUnix) })}
+        </Text>
+      )}
 
       <Stack gap="field">
         <Flex align="center" gap="card" wrap="wrap">

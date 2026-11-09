@@ -19,7 +19,7 @@ type Story = StoryObj<typeof meta>;
  * (each-date-rides-under-its-stock): when it was last ordered under Reserved, when stock last arrived under Ongoing; only
  * the stock's age, in days, keeps a column. Old stock is in the warning tone.
  *
- * Only what holds on any later day is asserted: an age grows, so SKU-ANG-020 (its oldest units in since 20 Aug) is past
+ * Only what holds on any later day is asserted: an age grows, so SL-03-ANG-020 (its oldest units in since 20 Aug) is past
  * the 60 days now and stays past them. */
 export const TheDatesRideUnderTheirStock: Story = {
   name: "Dates under their stock",
@@ -33,20 +33,20 @@ export const TheDatesRideUnderTheirStock: Story = {
     await expect(header).not.toHaveTextContent("Oldest batch");
     await expect(header).not.toHaveTextContent("Reserved");
 
-    await waitFor(() => expect(canvas.getByTestId("stock-age-SKU-ANG-001")).toHaveTextContent(/^\d+ days?$/));
-    await expect(canvas.getByTestId("stock-age-SKU-ANG-020").firstElementChild).toHaveAttribute("data-stale", "true");
+    await waitFor(() => expect(canvas.getByTestId("stock-age-SL-03-ANG-001")).toHaveTextContent(/^\d+ days?$/));
+    await expect(canvas.getByTestId("stock-age-SL-03-ANG-020").firstElementChild).toHaveAttribute("data-stale", "true");
 
     // Under Reserved, its last order — or that it has none; under Ongoing, its last restock. As DATES, never "… ago"
     // (a-row-date-reads-as-a-date); only the stock's age is in days.
-    const row = canvas.getByTestId("product-row-SKU-ANG-002");
+    const row = canvas.getByTestId("product-row-SL-03-ANG-002");
     // The line is the date alone; what it is, is its tooltip (a-second-line-names-itself-in-a-tooltip).
-    await expect(within(row).getByTestId("last-order-SKU-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
-    await expect(within(row).getByTestId("last-restock-SKU-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+    await expect(within(row).getByTestId("last-order-SL-03-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+    await expect(within(row).getByTestId("last-restock-SL-03-ANG-002")).toHaveTextContent(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
     await expect(row).not.toHaveTextContent("ago");
-    await expect(canvas.getByTestId("last-order-SKU-ANG-001")).toHaveTextContent("No order yet");
+    await expect(canvas.getByTestId("last-order-SL-03-ANG-001")).toHaveTextContent("No order yet");
 
-    await userEvent.hover(within(row).getByTestId("last-restock-SKU-ANG-002"));
-    const hint = await screen.findByTestId("last-restock-SKU-ANG-002-hint");
+    await userEvent.hover(within(row).getByTestId("last-restock-SL-03-ANG-002"));
+    const hint = await screen.findByTestId("last-restock-SL-03-ANG-002-hint");
     await waitFor(() => expect(hint).toBeVisible());
     await expect(hint).toHaveTextContent("Last restock");
   },
@@ -59,20 +59,21 @@ export const TheCostRangeReadsAsARange: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     // Product, Cross, then the cost (the-cross-price-rides-under-the-markup).
-    const costOf = (sku: string) => within(canvas.getByTestId(`product-row-${sku}`)).getAllByRole("cell")[2]!;
+    const costOf = (productCode: string) => within(canvas.getByTestId(`product-row-${productCode}`)).getAllByRole("cell")[2]!;
 
     // The cost is the cell's first line; the cross price is the line under it.
-    const rangeOf = (sku: string) => costOf(sku).querySelector("p")!;
-    await waitFor(() => expect(rangeOf("SKU-ANG-001")).toHaveTextContent(/^Rp 45\.700 – Rp 47\.200$/));
-    // SKU-ANG-006 came in one delivery — one price, no dash.
-    await expect(rangeOf("SKU-ANG-006")).toHaveTextContent(/^Rp [\d.]+$/);
-    await expect(costOf("SKU-ANG-003")).toHaveTextContent(/^—$/);
+    const rangeOf = (productCode: string) => costOf(productCode).querySelector("p")!;
+    await waitFor(() => expect(rangeOf("SL-03-ANG-001")).toHaveTextContent(/^Rp 45\.700 – Rp 47\.200$/));
+    // SL-03-ANG-006 came in one delivery — one price, no dash.
+    await expect(rangeOf("SL-03-ANG-006")).toHaveTextContent(/^Rp [\d.]+$/);
+    await expect(costOf("SL-03-ANG-003")).toHaveTextContent(/^—$/);
   },
 };
 
 /** CROSS COMES BEFORE THE COST, and UNDER THE COST what another team pays (the-cross-price-rides-under-the-cost) — the
- * cost range with the markup on both ends, said "Cross …". 700 costs Rp 45.700 – Rp 47.200 at 12.5%; a 0% product's price
- * is its cost; nothing on a shelf has neither. The lock follows the cost. */
+ * cost range with the markup on both ends, said "Cross …". 700 costs Rp 45.700 – Rp 47.200 at 12.5% — EXACT, as the take
+ * prices it (the-backend-never-rounds-money): Rp 51.412,5, never floored to Rp 51.412; a 0% product's price is its cost;
+ * nothing on a shelf has neither. The lock follows the cost. */
 export const TheCrossPriceRidesUnderTheCost: Story = {
   name: "Cross price under the cost",
   play: async ({ canvasElement }) => {
@@ -84,34 +85,34 @@ export const TheCrossPriceRidesUnderTheCost: Story = {
     await expect(headings.indexOf("Cost range")).toBe(headings.indexOf("Cross") + 1);
     await expect(headings.indexOf("Lock")).toBe(headings.indexOf("Cost range") + 1);
 
-    await expect(canvas.getByTestId("cross-SKU-ANG-001")).toHaveTextContent(/^12\.5%$/);
+    await expect(canvas.getByTestId("cross-SL-03-ANG-001")).toHaveTextContent(/^12\.5%$/);
 
     // The cross price sits in the COST's cell, under the range.
-    const costCell = within(canvas.getByTestId("product-row-SKU-ANG-001")).getAllByRole("cell")[2]!;
+    const costCell = within(canvas.getByTestId("product-row-SL-03-ANG-001")).getAllByRole("cell")[2]!;
     await waitFor(() =>
-      expect(within(costCell).getByTestId("cross-price-SKU-ANG-001")).toHaveTextContent(/^Rp 51\.412 – Rp 53\.100$/),
+      expect(within(costCell).getByTestId("cross-price-SL-03-ANG-001")).toHaveTextContent(/^Rp 51\.412,5 – Rp 53\.100$/),
     );
-    await expect(canvas.getByTestId("cross-price-SKU-ANG-006")).toHaveTextContent(/^Rp 10\.255$/);
-    await expect(canvas.queryByTestId("cross-price-SKU-ANG-003")).toBeNull();
+    await expect(canvas.getByTestId("cross-price-SL-03-ANG-006")).toHaveTextContent(/^Rp 10\.255$/);
+    await expect(canvas.queryByTestId("cross-price-SL-03-ANG-003")).toBeNull();
 
     // The line names itself on hover, not in its text (a-second-line-names-itself-in-a-tooltip).
-    await userEvent.hover(canvas.getByTestId("cross-price-SKU-ANG-001"));
-    const hint = await screen.findByTestId("cross-price-SKU-ANG-001-hint");
+    await userEvent.hover(canvas.getByTestId("cross-price-SL-03-ANG-001"));
+    const hint = await screen.findByTestId("cross-price-SL-03-ANG-001-hint");
     await waitFor(() => expect(hint).toBeVisible());
     await expect(hint).toHaveTextContent("Cross price");
   },
 };
 
 /** The SKU copies on a click — and the click does not open the row it sits on. */
-export const TheSkuCopiesWithoutOpeningTheRow: Story = {
-  name: "SKU copies",
+export const TheProductCodeCopiesWithoutOpeningTheRow: Story = {
+  name: "Code copies",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const sku = within(canvas.getByTestId("product-row-SKU-ANG-001")).getByTestId("product-list-item-sku-700");
+    const productCode = within(canvas.getByTestId("product-row-SL-03-ANG-001")).getByTestId("product-list-item-sku-700");
 
-    await expect(sku).toHaveAccessibleName(/SKU-ANG-001/);
-    await userEvent.click(sku);
-    await waitFor(() => expect(sku.hasAttribute("data-copied") || sku.hasAttribute("data-copy-failed")).toBe(true));
+    await expect(productCode).toHaveAccessibleName(/SL-03-ANG-001/);
+    await userEvent.click(productCode);
+    await waitFor(() => expect(productCode.hasAttribute("data-copied") || productCode.hasAttribute("data-copy-failed")).toBe(true));
     await expect(canvas.queryByTestId("at-product-detail")).toBeNull();
   },
 };
@@ -137,7 +138,7 @@ export const TheWholeRowLightsUp: Story = {
   name: "Lights up",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const row = canvas.getByTestId("product-row-SKU-ANG-001");
+    const row = canvas.getByTestId("product-row-SL-03-ANG-001");
     const cells = within(row).getAllByRole("cell");
 
     const resting = getComputedStyle(cells[0]!).backgroundColor;

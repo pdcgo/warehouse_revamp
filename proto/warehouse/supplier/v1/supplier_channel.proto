@@ -17,13 +17,26 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sup
 // As SupplierService: READS CROSS TEAMS, WRITES DO NOT, and DELETE IS SOFT (a-store-delete-is-soft-too) — a
 // restock line names its store, so a deleted store still finds its supplier.
 service SupplierChannelService {
-  rpc SupplierChannelList(SupplierChannelListRequest) returns (SupplierChannelListResponse);
+  rpc SupplierChannelList(SupplierChannelListRequest) returns (SupplierChannelListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SupplierChannelCreate(SupplierChannelCreateRequest) returns (SupplierChannelCreateResponse);
   rpc SupplierChannelUpdate(SupplierChannelUpdateRequest) returns (SupplierChannelUpdateResponse);
   rpc SupplierChannelDelete(SupplierChannelDeleteRequest) returns (SupplierChannelDeleteResponse);
+  // THE TOKO TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): exactly the
+  // stores SupplierChannelList holds with this filter and order, every page of them, in the tab's columns — Terjual and
+  // Siap with their dates beside each store — as .xlsx. A server stream: progress, then an expiring link. Not a read:
+  // it stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+  rpc SupplierChannelExport(SupplierChannelExportRequest) returns (stream SupplierChannelExportResponse);
   // Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
   // (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
-  rpc SupplierChannelByIds(SupplierChannelByIdsRequest) returns (SupplierChannelByIdsResponse);
+  rpc SupplierChannelByIds(SupplierChannelByIdsRequest) returns (SupplierChannelByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message SupplierChannel {
@@ -75,6 +88,43 @@ message SupplierChannelListFilter {
   string q = 2 [(buf.validate.field).string.max_len = 100];
   // UNSPECIFIED = every type.
   warehouse.marketplace.v1.Marketplace channel_type = 3 [(buf.validate.field).enum.defined_only = true];
+}
+
+// THE TOKO TAB AS A FILE — the tab's own filter and order (each-supplier-tab-exports-its-own-table).
+message SupplierChannelExportRequest {
+  // Whoever may read the tab WITH its figures: SupplierChannelList's readers that inventory's SupplierGoods also answers
+  // — the selling side (only-a-selling-team-has-suppliers). A warehouse reads the stores but not their figures.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The list's own filter — the search and the type.
+  SupplierChannelListFilter filter = 2 [(buf.validate.field).required = true];
+  // The list's own order; none = the newest store first, as the list.
+  SupplierChannelListFilterSort sort = 3;
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message SupplierChannelExportResponse {
+  // A sentence about the step.
+  string message = 1;
+  // Rows written so far, of the total the filter holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
 }
 
 enum SupplierChannelListDataType {

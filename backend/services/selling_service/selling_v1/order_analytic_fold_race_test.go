@@ -3,8 +3,11 @@
 // Concurrency audit for the order metrics' fold (the audit-sql skill) — a-report-is-fed-by-events-only-for-now.
 //
 // The fold is one transaction: the claim (INSERT … ON CONFLICT DO NOTHING on order_event_logs), one read of the order,
-// one upsert into order_daily_reports. Two things could go wrong: two folds into ONE report row losing an increment,
-// and two deliveries of ONE event both counting. Pub/Sub delivers at least once and in parallel, so both are normal.
+// one upsert into order_daily_reports — and, for a placement or a cancel of an order with a fee, a SECOND upsert into
+// the day's Warehouse Fee row (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day). Three things
+// could go wrong: two folds into ONE report row losing an increment, two deliveries of ONE event both counting, and a
+// placement and a cancel deadlocking on the fee row they share. Pub/Sub delivers at least once and in parallel, so all
+// three are normal.
 //
 //	go test -tags raceaudit -count=20 -run 'TestRace_OrderMetricFold' -v ./backend/services/selling_service/selling_v1/
 package selling_v1_test
@@ -12,6 +15,8 @@ package selling_v1_test
 import (
 	"context"
 	"testing"
+
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_race"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
@@ -122,5 +127,82 @@ func TestRace_OrderMetricFold_ARedeliveryCountsOnce(t *testing.T) {
 		if got := foldCount(t, h, "cancelled"); got != int64(round+1) {
 			t.Fatalf("round %d: %d cancels counted, want %d — a redelivery counted twice", round, got, round+1)
 		}
+	}
+}
+
+// PLACEMENTS AND CANCELS INTO ONE FEE ROW AT ONCE, × 10 rounds: four new orders' placements and the previous round's
+// four cancels fold together, all on one day, shop, warehouse and creator — so each locks its own move's row (created
+// or cancelled) and then the ONE shared fee row. The fee row is always the second lock, so no cycle: no deadlock, and the
+// fee row is exactly the net of what folded — a fee of 100 per order, 4 transactions and 400 standing after each round.
+func TestRace_WarehouseFeeFold_PlacementsAndCancelsIntoOneFeeRow(t *testing.T) {
+	h := orderRaceHarness(t)
+	cleanFold(t, h)
+
+	svc := newService(t, h.DB())
+	analytic := selling_v1.NewAnalytic(h.DB(), fakeTeamTypes{})
+	shopID := insertShop(t, h.DB(), raceOrderTeam, "Race Fee", "RF-3", "shopee")
+
+	const orders = 4
+
+	// newOrders places `orders` orders with a frozen fee of 100 each — committed, as OrderCreate leaves them.
+	newOrders := func() []uint64 {
+		ids := make([]uint64, orders)
+		for i := range ids {
+			ids[i] = raceOrder(t, svc, shopID)
+		}
+
+		err := h.DB().Exec(`UPDATE orders SET warehouse_fee = 100 WHERE id IN ?`, ids).Error
+		if err != nil {
+			t.Fatalf("pricing the race orders: %v", err)
+		}
+
+		return ids
+	}
+
+	standing := newOrders()
+	for _, id := range standing {
+		err := analytic.FoldHandler()(context.Background(), placedEvent(id, foldAt))
+		if err != nil {
+			t.Fatalf("placing %d: %v", id, err)
+		}
+	}
+
+	for round := range 10 {
+		placing := newOrders()
+
+		events := make([]*eventsv1.Event, 0, 2*orders)
+		for i := range orders {
+			events = append(events, placedEvent(placing[i], foldAt), cancelledEvent(standing[i], foldAt))
+		}
+
+		res := h.Race(t, len(events), func(i int) error {
+			return analytic.FoldHandler()(context.Background(), events[i])
+		})
+
+		if round == 0 {
+			res.Report(t)
+		}
+
+		if res.Failed() > 0 {
+			t.Fatalf("round %d: %d folds failed — deadlocks %d", round, res.Failed(), res.Count(san_race.Deadlock))
+		}
+
+		var fee struct {
+			OrderCount int64
+			Total      float64
+		}
+
+		err := h.DB().Raw(`SELECT order_count, total FROM order_daily_reports WHERE team_id = ? AND metric = 'warehouse_fee'`,
+			raceOrderTeam).Scan(&fee).Error
+		if err != nil {
+			t.Fatalf("the fee row: %v", err)
+		}
+
+		if fee.OrderCount != orders || fee.Total != orders*100 {
+			t.Fatalf("round %d: the fee row reads %d transactions, %v — want %d and %d, the net of every fold",
+				round, fee.OrderCount, fee.Total, orders, orders*100)
+		}
+
+		standing = placing
 	}
 }

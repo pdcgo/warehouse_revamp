@@ -36,10 +36,10 @@ func shopDayRows(teamID uint64, firstShop uint64) []settlement_service_models.Sh
 	rows := make([]settlement_service_models.ShopSettlementDailyReport, 0, perfShops*perfDays)
 
 	for s := uint64(0); s < perfShops; s++ {
-		var close int64
+		var close float64
 
 		for d := 0; d < perfDays; d++ {
-			change := int64(-(int(s)%7+1)*1_000 + d%5*300)
+			change := float64(-(int(s)%7+1)*1_000 + d%5*300)
 			rows = append(rows, settlement_service_models.ShopSettlementDailyReport{
 				Day:    perfStart.AddDate(0, 0, d),
 				ShopID: firstShop + s,
@@ -64,10 +64,10 @@ func userDayRows(teamID uint64) []settlement_service_models.UserSettlementDailyR
 	rows := make([]settlement_service_models.UserSettlementDailyReport, 0, perfShops*perfDays)
 
 	for u := uint64(0); u < perfShops; u++ {
-		var close int64
+		var close float64
 
 		for d := 0; d < perfDays; d++ {
-			change := int64(-1_000)
+			change := float64(-1_000)
 			rows = append(rows, settlement_service_models.UserSettlementDailyReport{
 				Day:    perfStart.AddDate(0, 0, d),
 				UserID: 1_000 + u,
@@ -122,7 +122,7 @@ func TestPerf_Settlement(t *testing.T) {
 	san_perf.SeedRows(t, base, userDayRows(team))
 
 	db, probe := san_perf.Wrap(base)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	lastDay := perfStart.AddDate(0, 0, perfDays-1).Format(time.DateOnly)
@@ -220,7 +220,7 @@ func TestPerf_SettlementPost(t *testing.T) {
 	san_perf.SeedRows(t, base, logs)
 
 	db, probe := san_perf.Wrap(base)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	n := 0
 

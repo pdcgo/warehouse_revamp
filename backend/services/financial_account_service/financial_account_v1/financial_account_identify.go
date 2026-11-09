@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	financial_accountv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 )
@@ -41,6 +42,7 @@ func (s *Service) FinancialAccountIdentify(
 ) (*connect.Response[financial_accountv1.FinancialAccountIdentifyResponse], error) {
 	msg := req.Msg
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 	resultID := msg.GetAccountId()
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -115,8 +117,8 @@ func (s *Service) FinancialAccountIdentify(
 				return errArchived(real.Name)
 			}
 
-			if unknown.Balance != 0 {
-				_, err = transferLegs(tx, unknown, real, unknown.Balance, s.now(), "the bank was named", actor)
+			if !san_money.IsZero(unknown.Balance) {
+				_, err = transferLegs(tx, unknown, real, unknown.Balance, s.now(), "the bank was named", actor, override)
 				if err != nil {
 					return err
 				}

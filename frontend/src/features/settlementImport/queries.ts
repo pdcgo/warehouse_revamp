@@ -82,8 +82,12 @@ export type LineView = "held" | "skipped" | "toShop";
 const LINE_FILTER: Record<LineView, { outcomes: UploadedFileLineOutcome[]; reasons: UploadedFileLineReason[] }> = {
   held: { outcomes: [UploadedFileLineOutcome.HELD], reasons: [] },
   skipped: { outcomes: [UploadedFileLineOutcome.SKIPPED], reasons: [] },
-  // Posted — but to the shop, because the order its ref names was not found (an-unmatched-ref-posts-to-the-shop).
-  toShop: { outcomes: [UploadedFileLineOutcome.POSTED], reasons: [UploadedFileLineReason.NO_ORDER] },
+  // Posted — but to the shop: the order its ref names was not found (an-unmatched-ref-posts-to-the-shop), or the ref is
+  // on several live orders (two-live-orders-on-a-ref-post-to-the-shop).
+  toShop: {
+    outcomes: [UploadedFileLineOutcome.POSTED],
+    reasons: [UploadedFileLineReason.NO_ORDER, UploadedFileLineReason.SEVERAL_ORDERS],
+  },
 };
 
 export function useUploadedFileLines(args: {

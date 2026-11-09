@@ -11,10 +11,11 @@ import { PRODUCTS_META, loaded } from "./stories/kit";
 //   States   the archive
 //   Header   the page's name, the catalogue's figures, the card strip
 //   Filters  the warehouse lens, the search, the lock and age filters, the empty hint, the URL
-//   Rows     what a row shows — the dates, the cost range, the cross price, the SKU — its sort and its hover
+//   Rows     what a row shows — the dates, the cost range, the cross price, the product code — its sort and its hover
 //   Lock     the lock, edited in the row
-//   Archive  the archive's own page, Archive and Restore
-//   Actions  the row, Edit and New Product opening their pages
+//   Archive  the archive's own page, Archive, Unarchive and Delete
+//   Actions  the row, Edit and New Product opening their pages — and none of them while monitoring
+//   Warehouse  a warehouse's Products — what it holds, a different screen on the same path
 
 const meta = {
   title: "Pages/Products/Products",

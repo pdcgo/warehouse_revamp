@@ -21,12 +21,16 @@ so this file is always the current open set.
 > [only-a-selling-team-owns-a-catalogue](./context_decision.md#only-a-selling-team-owns-a-catalogue). `## General.` 1 stands, and
 > four write policies narrow to match. ⚠ **Its successor is open below ([Q9](#question))**: the ACL narrowing does not
 > enforce the rule, because nothing stops `ROLE_SELLING_OWNER` being granted inside a warehouse team.
+> 🔄 **Closed 2026-10-31** — a selling role is now held only in a selling team, and the four writes drop the warehouse
+> roles: [the-product-writes-drop-the-warehouse-roles](./context_decision.md#the-product-writes-drop-the-warehouse-roles).
 >
 > ✅ **Closed by your decision:** *is `categories` plural?* — **yes**, recorded as
-> [a-product-files-under-many-categories](./context_decision.md#a-product-files-under-many-categories). `products.category_id` becomes a link table
+> [a-product-files-under-many-categories](./context_decision.md#superseded-a-product-files-under-many-categories). `products.category_id` becomes a link table
 > and four proto sites go `repeated`. ⚠ **I had it backwards**: I argued one → many is additive later, which is true of
 > the schema and false of the contract — `buf breaking` makes the proto change equally breaking whenever it happens, so
 > the cheap moment is now. Its successor is [Q8](#question): with several, which one is THE one.
+> 🔄 **Reversed 2026-10-31** — [a-product-has-one-category](./context_decision.md#a-product-has-one-category): one
+> category per product, as built; the link table is not wanted.
 >
 > **Re-examined after you added `### Whats is `product_code`` and three attributes** (`reserved_stock`, `is_private`,
 > `is_deleted`). ✅ **Two of my open points shrink**: the list now carries the reserve, so only the **owning team** is
@@ -41,9 +45,10 @@ so this file is always the current open set.
 > [a-deleted-product-is-unfindable](./context_decision.md#a-deleted-product-is-unfindable).
 >
 > ✅ **Decided, and it settles the hardest thing in this file:** *a product cannot be deleted while it still has
-> stock* — [deleting-a-product-requires-zero-stock](./context_decision.md#deleting-a-product-requires-zero-stock). The contradiction below is
+> stock* — [superseded-deleting-a-product-requires-zero-stock](./context_decision.md#superseded-deleting-a-product-requires-zero-stock). The contradiction below is
 > **resolved**: with no shelf holding a deleted product, *unfindable anywhere* and *a rack should name what it holds*
-> stop competing.
+> stop competing. 🔄 **Replaced 2026-10-31** by [a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted):
+> a used product is archived and still named by id, so it stays resolved.
 >
 > 🔄 **It also retires my own argument for burning a code.** I said a re-typed code would make an old sticker scan as
 > a new product — with zero stock required, no such sticker survives. **Reuse is safe**, and what remains is only
@@ -64,8 +69,7 @@ so this file is always the current open set.
 > [Question 1](#question) · [Contradiction](#the-return-path-prices-the-unit-as-the-borrowers-while-the-order-path-leaves-it-the-owners).
 
 Siblings: [business_level](../business_level_clarify.md) · [user_context](../user/context_clarify.md) ·
-[balance_context](../balance/context_clarify.md) · [inventory_context](../inventory/context_clarify.md) ·
-[systems/systems_product_context](./systems_clarify.md).
+[balance_context](../balance/context_clarify.md) · [inventory_context](../inventory/context_clarify.md).
 
 ---
 
@@ -238,108 +242,90 @@ flowchart LR
 | **8** | **Two divisions and a percentage, and no rounding rule anywhere.** `(ShipmentFee + AdditionalWarehouseFee) / AllProductQtyRestock` rarely divides evenly into whole rupiah, and `UnitPrice × markup` almost never does. Rounding per unit versus per line changes the total on a line of 7, and two teams reconciling to the rupiah will find that difference. | Round **once, half-up, on the line total**, never per unit, and store whole rupiah. Keep the rate a percent — the rate is not the money. And say where the remainder goes when freight does not divide evenly: I would put it on the **first** unit rather than lose it. |
 | **9** | **A return is now neither priced NOR placed.** The price rule was deleted this round ([Contradiction](#the-return-path-prices-the-unit-as-the-borrowers-while-the-order-path-leaves-it-the-owners)), and even before that nothing said **whose stock** the unit re-enters, whether the **fee reverses**, or what happens when it comes back **unsellable** — which per [receiving-losses-are-not-the-warehouses](../business_level_clarify.md#receiving-losses-are-not-the-warehouses) the warehouse does not bear, and per `inventory/context.md` may be borne by nobody. | Answer it with the loan-vs-sale question below, in one place: if a cross order is a **loan**, the unit returns to the **owner** at the owner's cost and the fee reverses. And say **which** selling team eats an unsellable cross return — I would say the **borrower**, because it chose the customer. |
 | **10** | **Two teams selling the same physical item are two products, and the doc does not say what that means on the shelf.** [product-is-a-selling-teams-catalogue](#product-is-a-selling-teams-catalogue) makes a product team-scoped, so identical goods are different rows with different batches and owners. If the warehouse commingles them the FIFO layers are a fiction — and so is the reserve in [Critique 5](#critique), because you cannot protect a reserve you cannot tell apart. **Warehouse Staff are the people this instruction is for**, and no rule reaches them. | State the physical rule: **stock is segregated by owning team** — a shelf may hold two owners' units side by side, never mixed into one count. |
-| **11** | **§System Requirements still links to an empty file whose one line is about a different subject.** | See [systems/systems_product_context_clarity](./systems_clarify.md). |
+| **11** | **§System Requirements still links to an empty file whose one line is about a different subject.** | Overtaken: the file was deleted on 2026-09-12 — [there-is-no-systems-tree](../../technical/architecture/context_decision.md#there-is-no-systems-tree). |
 | **12** | **`## Responsbility.` says what the service DOES and not what it does NOT** — *"provide product service that can manage the team products"* is circular, and the useful half is the boundary. Under HARD RULE 3 the catalogue, the stock and the cost are three services, and this doc carries rules for all three (§Unit Pricing System is batch/stock, not catalogue). | **One boundary sentence: product_service owns the catalogue entry and its sharing terms — never a quantity, never a price.** That also settles which markup the ledger charges from, which is a live discrepancy today ([biggest_question #5](../../biggest_question.md)). |
 | **13** | **The doc and the wire disagree on two names — and one of them is now a name the CODE has outgrown.** `product_code` is shipped as `sku`, and `cross_markup_percent` as `cross_markup_bps` (integer basis points, 1250 = 12.50%). | 🔄 **Reversed this round: rename `sku` → `product_code`.** An SKU is a *stock-keeping unit* — a seller's own code, per-seller by definition — and `### Whats is `product_code`` 2 just made it **globally unique**. The shipped name would describe the opposite of the rule. **`cross_markup_bps` stays**: a markup is a *percent* to a person and basis points on the wire, because an integer is the only safe thing to multiply rupiah by. Asked as [Q7](#question). |
 | **14** | ✅ **Shrunk — the list gained `reserved_stock`, `is_private` and `is_deleted`.** What it still omits is the **owning team**, which is the most load-bearing attribute in the doc: §Pricing Behavior splits every order line on it. | **Add the owner, or say the list is a MINIMUM.** ⚠ And `is_deleted` is shipped as `deleted` — a third name mismatch, trivial next to [Critique 13](#critique) but the same kind. |
 | **15** | **`is_private` and the shared lock look like one switch with two names.** §Cross/Shared Products Rule 2 already decided *"shared lock. when its turn on, its prevent product to be shared to other team"* — shipped as `cross_locked`. If `is_private` is that switch, there are three names for it. If it is a **second** switch, nothing says how they interact or which wins. | **One switch, and I would keep the shipped `cross_locked`** — it names what it does (no *cross*-team use) where `is_private` suggests the product is hidden from its own team too. ⚠ Whichever wins, the other two names go in the same commit. Asked as [Q11](#question). |
-| **16** | **`[code]_deleted_ts` mutates an identity that has been PRINTED, and the index already frees the code.** ✅ The reuse question itself is settled — [deleting-a-product-requires-zero-stock](./context_decision.md#deleting-a-product-requires-zero-stock) means no sticker for a deleted product survives, so re-typing its code is safe. What is left is the mechanism. The live index is `UNIQUE (team_id, sku) WHERE deleted = FALSE`, which frees the code with the row's own string left intact — and the rename collides with itself when one code is created and deleted twice inside a single `ts` tick, which fails the **delete**. | **Keep the code immutable, keep the partial index.** Same outcome, no mutation, no self-collision. If a rename is wanted anyway, suffix the row **id**, never a timestamp. |
+| **16** | ✅ **Resolved 2026-10-31 by [a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted)** — an archived product keeps its code, a deleted one is removed: no rename, as recommended. Was: **`[code]_deleted_ts` mutates an identity that has been PRINTED, and the index already frees the code.** ✅ The reuse question itself is settled — [superseded-deleting-a-product-requires-zero-stock](./context_decision.md#superseded-deleting-a-product-requires-zero-stock) means no sticker for a deleted product survives, so re-typing its code is safe. What is left is the mechanism. The live index is `UNIQUE (team_id, sku) WHERE deleted = FALSE`, which frees the code with the row's own string left intact — and the rename collides with itself when one code is created and deleted twice inside a single `ts` tick, which fails the **delete**. | **Keep the code immutable, keep the partial index.** Same outcome, no mutation, no self-collision. If a rename is wanted anyway, suffix the row **id**, never a timestamp. |
 
 ---
 
 ## Question
 
-1. **WHOSE SHELF does a returned cross-sold unit land on — the borrower's or the owner's?** The price is
-   now decided (*what the ordering team paid*); the custody is not, and it is what makes that price
-   coherent or not.
-   ([Contradiction](#the-return-path-prices-the-unit-as-the-borrowers-while-the-order-path-leaves-it-the-owners))
-   **→ I recommend the BORROWER's stock, because that is the only shelf on which your chosen price is what
-   its owner paid.** If you mean it to go home to the owner, the price clause needs the owner's cost instead
-   — the two answers travel together and cannot be picked separately.
+1. ✅ *(2026-10-19)* **Answered: the borrower's shelf** — [a-return-never-clones-a-product](../order/context_decision.md#a-return-never-clones-a-product),
+   [a-borrowed-line-needs-its-map-at-create](../order/context_decision.md#a-borrowed-line-needs-its-map-at-create): a borrowed
+   line comes back as the borrowing team's own mapped product. Kept as a line so the numbers hold.
 2. ✅ *(2026-10-14)* **Answered: ordered** — [all-qty-is-every-unit-ordered](../inventory/restock_decision.md#all-qty-is-every-unit-ordered), and a
    broken or missing unit carries the same landed price. As first asked: **Is `AllProductQtyRestock` the ordered or the arrived quantity?** ([Critique 1](#critique))
 3. ✅ *(2026-10-15)* **Answered: a low-stock line — `total stock ≥ reserve`, every warehouse, other teams only** — [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock). Kept as a line so the numbers hold.
-4. **Does turning on the shared lock affect orders already placed?** ([Critique 6](#critique))
-   **→ I recommend no — new orders only.**
-5. **What moment consumes a FIFO layer, and is the fee frozen there too?**
-   ([Critique 3](#critique), [Critique 7](#critique)) **→ I recommend at commitment, both frozen on the line.**
-   ⚠ **Now also a boundary question:** the layers are `inventory_service`'s and COGS is `ledger_service`'s,
-   so *where the frozen number is stored and who owns it* travels with this answer —
-   [architectures Q3](../../technical/architecture/context_clarify.md#question).
+4. ✅ *(2026-10-31)* **Answered: new orders only** — [a-lock-stops-new-orders-only](./context_decision.md#a-lock-stops-new-orders-only).
+   Kept as a line so the numbers hold.
+5. ✅ *(2026-09-17)* **Answered: the take at order create (= finalize), cost and fee frozen on the line** —
+   [a-take-reduces-stock-and-placement](../order/context_decision.md#a-take-reduces-stock-and-placement),
+   [a-lines-money-is-frozen-at-finalize](../order/context_decision.md#a-lines-money-is-frozen-at-finalize),
+   [inventory-computes-the-markup](../order/context_decision.md#inventory-computes-the-markup): inventory prices the draw,
+   `order_items` stores it. Kept as a line so the numbers hold.
 6. ✅ *(2026-10-07)* **Answered — the courier's ask stays IN the unit price**, against my recommendation:
    [the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price).
 
-7. **Is `product_code` the real field name?** ([Critique 13](#critique))
-   🔄 **→ I now recommend RENAMING `sku` → `product_code`, reversing what I said last round.** *Globally unique*
-   is not what an SKU is — a stock-keeping unit is a seller's own code — so the shipped name would describe the
-   opposite of your rule. `cross_markup_bps` stays as it is: percent to a person, basis points on the wire.
-8. **🆕 How does product_service learn a team's TYPE?** The successor to
-   [only-a-selling-team-owns-a-catalogue](./context_decision.md#only-a-selling-team-owns-a-catalogue): narrowing the four
-   write policies is not enforcement, because `ROLE_SELLING_OWNER` can be held inside a warehouse team and no grant
-   path checks `teams.type`. product_service has no read path to team_service today, and HARD RULE 3 makes it an
-   RPC, not a shared model.
-   **→ I recommend a team-type read at write time, cached** — a team's type changes approximately never, so the
-   read is cheap and the check belongs where the row is written. The alternative — trusting the caller to pass a
-   team type — is an ACL the client can lie about.
-9. **🆕 With several categories, which one is THE one — and how many may a product have?** The successor to
-   [a-product-files-under-many-categories](./context_decision.md#a-product-files-under-many-categories). Anything that needs exactly one — a
-   breadcrumb, a card's label, a report grouped by category — now has no answer, and a cap decides whether a
-   product can be filed under forty nodes to game discovery.
-   **→ I recommend the pattern this table already uses for images: an ORDERED list, first = primary** — that is
-   `position 0 = cover` again, so a reader who knows one knows the other. **And min 1, max 5**, the same cap as
-   the gallery: required because a product with no category cannot be found, capped because an uncapped tag list
-   is a spam surface.
-10. **🆕 Is `is_private` the shared lock, or a second switch?** ([Critique 15](#critique))
-    **→ I recommend it is the same switch, under the shipped name `cross_locked`** — three names for one flag is how
-    two screens start disagreeing about what it does.
-11. **🆕 Does "zero stock" mean zero ON HAND, or no references at all?** The successor to
-    [deleting-a-product-requires-zero-stock](./context_decision.md#deleting-a-product-requires-zero-stock). A product can sit at zero on the shelf
-    while an open order line promises it and a restock is in transit toward it — deleting there passes a quantity
-    check and strands two live documents.
-    **→ I recommend zero on hand AND no open order line or in-flight restock** — the rule exists so the catalogue
-    never goes away under something that still needs it, and a pending arrival needs it exactly as much as a shelf
-    does.
-12. **🆕 Does *unfindable anywhere* reach a lookup by a KNOWN id — for HISTORY?** Zero stock removes the *shelf*
-    case, not the *past* one: a closed order line, a settled batch and a month-old report all name a product that
-    may since have been deleted.
-    **→ I recommend `ProductByIds` keeps resolving deleted products.** A lookup by an id the caller already holds is
-    not a search, and a report that renders a blank where a product name was is worse than one that says *(archived)*.
-13. **🆕 At EXACTLY the minimum — may another team still order?** The frontend now closes a product whose ready stock
-    is **at or under** its minimum (≤) — the screens' owner decided it on 2026-10-30
-    ([the-minimum-closes-at-the-minimum](../../technical/frontend/products_decision.md#the-minimum-closes-at-the-minimum)) —
-    while this context opens it there.
-    ([Contradiction](#the-screens-close-a-product-at-its-minimum-the-business-rule-opens-it-there))
-    **→ I recommend ≤, closed at the minimum:** the minimum is what the owner keeps for itself, so a product holding
-    exactly that much has nothing left for another team. Then line 86 of context.md and
-    [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock) read
-    *"total stock > reserve"* — and the order path's check follows.
+7. ✅ *(2026-10-31)* **Answered: `product_code`, composed on write** — [the-field-is-product-code-composed-on-write](./context_decision.md#the-field-is-product-code-composed-on-write);
+   `sku` goes. ✅ Built 2026-11-02. Kept as a line so the numbers hold.
+8. ✅ *(2026-10-31)* **Answered and built: the four writes drop the warehouse roles** —
+   [the-product-writes-drop-the-warehouse-roles](./context_decision.md#the-product-writes-drop-the-warehouse-roles); no team-type read,
+   since a selling role exists only in a selling team. Kept as a line so the numbers hold.
+9. ✅ *(2026-10-31)* **Answered: one category, not several** — [a-product-has-one-category](./context_decision.md#a-product-has-one-category),
+   reversing *"categories is plural"*; no primary and no cap to choose. Kept as a line so the numbers hold.
+10. ✅ *(2026-11-02)* **Answered: there is no `is_private`** — [the-shared-lock-is-cross-locked](./context_decision.md#the-shared-lock-is-cross-locked). Kept as a line so the numbers hold.
+11. ✅ *(2026-10-31)* **Answered, then replaced the same day: a used product is archived, never deleted** —
+    [a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted), your
+    redesign of [superseded-a-delete-waits-until-nothing-needs-the-product](./context_decision.md#superseded-a-delete-waits-until-nothing-needs-the-product).
+    Kept as a line so the numbers hold.
+12. ✅ *(2026-10-31)* **Answered: an archived product resolves by id** —
+    [a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted): a shelf,
+    an old order and a report still name it, with an archived mark; a deleted product never had a history to look up.
+    Kept as a line so the numbers hold.
+13. ✅ *(2026-10-31)* **Answered: open at exactly the reserve, closed only under it** —
+    [exactly-the-reserve-stays-open](./context_decision.md#exactly-the-reserve-stays-open), against my ≤; the screens
+    follow `<`, and the contradiction it raised is resolved. Kept as a line so the numbers hold.
+14. ✅ *(2026-10-31)* **Withdrawn — it no longer arises:** a product with any order is archived, never deleted
+    ([a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted)), so
+    whether a completed order is finished does not matter to a delete. Kept as a line so the numbers hold.
 
 ---
 
 # Contradiction
 
-## the screens close a product at its minimum, the business rule opens it there
+## the-field-list-says-categories
 
-> [`context.md`](./context.md) line 86: *"reserved stock, So when stock < several, its cannot be shared."*
->
-> [the-reserve-stops-other-teams-at-low-stock](./context_decision.md#the-reserve-stops-other-teams-at-low-stock):
-> *"total stock ≥ reserve"* lets another team order.
->
-> The screens' owner, 2026-10-26: *"terkunci itu yang kena dikunci dan stoknya <= min"*, then on 2026-10-30 *"iya"* to ≤ for both the
-> Terkunci badge and Discover's filter ([the-minimum-closes-at-the-minimum](../../technical/frontend/products_decision.md#the-minimum-closes-at-the-minimum)).
+**The example.** [context.md](./context.md) line 16, §Attribute / Field That Product Must Have: *"4. `categories`"*.
+[a-product-has-one-category](./context_decision.md#a-product-has-one-category) (2026-10-31): a product has exactly one.
 
-They disagree at ONE stock level — exactly the minimum. With a minimum of 20 and 20 ready, this context lets another team
-order and the screens say the product is locked. The screens already follow ≤ (`lockedByMinimumNow`); whatever enforces the
-reserve on an order follows this context. Left so, a seller sees *Terkunci* on a product the server would still sell them.
-**→ Recommend:** settle it in Q13, and name the comparison once in this context so the badge, the filter and the order
-check all read the same line.
+**Which is stale:** the doc's plural — the decision is yours and newer, and it matches the built `category_id`.
+**→ Recommend:** line 16 reads *"4. `category`"* — one node in the category tree.
 
 ```mermaid
 flowchart LR
-  S["ready stock = minimum, 20 of 20"] --> F["screens — locked, at or under the minimum"]
-  S --> B["this context — open, total stock is not under the reserve"]
-  F -.->|"a seller sees Terkunci"| X["on a product an order would still take"]
-  B -.-> X
+  D["context.md, categories"] -.->|"stale"| O["one category_id, as built"]
+```
+
+## the-doc-renames-the-code-of-a-product-it-only-archives
+
+**The example.** [context.md](./context.md) line 26: *"when the product deleted, the code is updated to
+`[code]_deleted_ts`"*, and line 21's field `is_deleted`.
+[a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted) (2026-10-31):
+a used product is **archived** and keeps its code so Unarchive needs nothing; only a never-used product is deleted, and
+it is gone.
+
+**Which is stale:** the doc's two lines — the decision is yours and newer. Renaming an archived product's code would
+break Unarchive and the code printed on its stickers.
+**→ Recommend:** line 21 reads `is_archived`, and line 26 says *"an archived product keeps its code; a deleted product
+is removed, and its code is free"*.
+
+```mermaid
+flowchart LR
+  D["context.md, delete renames the code"] -.->|"stale"| A["archive keeps the code"]
+  D -.->|"stale"| X["delete removes the row"]
 ```
 
 ## the return path prices the unit as the borrower's while the order path leaves it the owner's
@@ -431,10 +417,12 @@ flowchart LR
 disagree over is not an edge: a product with four hundred units on a shelf can be deleted today, in one call, and
 the only thing that then names those units is the lookup the new rule removes.
 
-✅ **RESOLVED by [deleting-a-product-requires-zero-stock](./context_decision.md#deleting-a-product-requires-zero-stock)** — the owner took the
+✅ **RESOLVED by [superseded-deleting-a-product-requires-zero-stock](./context_decision.md#superseded-deleting-a-product-requires-zero-stock)** — the owner took the
 recommendation. There is no shelf holding a deleted product, so *unfindable anywhere* costs nothing and the two
 statements stop competing. ⚠ **Kept, not deleted**, because the PAST case survives the fix: a closed order line still
-names a product that may since have been archived ([Q12](#question)).
+names a product that may since have been archived ([Q12](#question)). 🔄 **Now** by
+[a-used-product-is-archived-never-deleted](./context_decision.md#a-used-product-is-archived-never-deleted): a shelf
+may hold an archived product, which still resolves by id — Q12 is answered with it.
 
 **What stops this recurring:** the rule was written about a *catalogue* and lands on a *warehouse*. Every product
 rule now has a second audience — the person holding the physical unit — and `deleted`, `is_private` and the code

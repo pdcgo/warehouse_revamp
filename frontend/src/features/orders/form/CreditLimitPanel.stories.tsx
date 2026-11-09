@@ -8,7 +8,7 @@ import type { CreditRow } from "./CreditLimitPanel";
 // the ordering team and the debt already carried (the-debtor-sees-the-limits-set-on-it). Shared by the new order and
 // the draft being finished, so its rules are pinned here rather than on either page.
 
-const row = (teamId: bigint, name: string, figures: CreditRow["figures"], adds = 120_000n): CreditRow => ({
+const row = (teamId: bigint, name: string, figures: CreditRow["figures"], adds = 120_000): CreditRow => ({
   teamId,
   name,
   roles: ["owner"],
@@ -17,10 +17,10 @@ const row = (teamId: bigint, name: string, figures: CreditRow["figures"], adds =
 });
 
 const READ: CreditRow[] = [
-  { ...row(11n, "Gudang Pusat", { state: "ready", debt: 8_700_000n, limit: 10_000_000n }, 2_000n), roles: ["warehouse", "owner"] },
-  row(13n, "Toko Kenanga", { state: "ready", debt: 400_000n, limit: 2_000_000n }),
-  row(14n, "Gudang Cabang", { state: "ready", debt: 860_000n, limit: undefined }),
-  row(15n, "Toko Anggrek", { state: "ready", debt: 870_000n, limit: 1_000_000n }, 200_000n),
+  { ...row(11n, "Gudang Pusat", { state: "ready", debt: 8_700_000, limit: 10_000_000 }, 2_000), roles: ["warehouse", "owner"] },
+  row(13n, "Toko Kenanga", { state: "ready", debt: 400_000, limit: 2_000_000 }),
+  row(14n, "Gudang Cabang", { state: "ready", debt: 860_000, limit: undefined }),
+  row(15n, "Toko Anggrek", { state: "ready", debt: 870_000, limit: 1_000_000 }, 200_000),
 ];
 
 const meta = {
@@ -54,7 +54,7 @@ export const Read: Story = {
 // says it is reading, and states only what this order adds.
 export const StillReading: Story = {
   args: {
-    rows: [row(11n, "Gudang Pusat", { state: "loading" }, 2_000n), row(15n, "Toko Anggrek", { state: "loading" })],
+    rows: [row(11n, "Gudang Pusat", { state: "loading" }, 2_000), row(15n, "Toko Anggrek", { state: "loading" })],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -77,5 +77,29 @@ export const TheReadFailed: Story = {
     await expect(canvas.getByTestId("credit-failed-15")).toBeInTheDocument();
     await expect(canvas.queryByText("Unlimited")).toBeNull();
     await expect(canvas.queryByTestId("credit-warn-15")).toBeNull();
+  },
+};
+
+// ⚠ ALREADY AT THE LIMIT — THE CREATE WILL BE REFUSED (over-the-limit-refuses-the-create). The check compares the debt
+// already committed, so Gudang Pusat at 10.400.000 of 10.000.000 refuses this order whatever it adds, and a frozen
+// creditor (no credit at all) refuses it too. Said in words on the row, folded rail or not — a red bar alone does not
+// tell customer service the order cannot go through.
+export const AtTheLimitTheOrderIsRefused: Story = {
+  args: {
+    compact: true,
+    rows: [
+      { ...row(11n, "Gudang Pusat", { state: "ready", debt: 10_400_000, limit: 10_000_000 }, 2_000), roles: ["warehouse"] },
+      row(13n, "Toko Kenanga", { state: "ready", debt: 0, limit: 0 }),
+      row(15n, "Toko Anggrek", { state: "ready", debt: 870_000, limit: 1_000_000 }, 200_000),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("credit-after-11")).toHaveTextContent("this order will be refused");
+    await expect(canvas.getByTestId("credit-after-13")).toHaveTextContent("this order will be refused");
+    // Under the limit today, over it after this order: it goes through, and the NEXT one is stopped.
+    await expect(canvas.getByTestId("credit-after-15")).toHaveTextContent("over the limit after this order");
+    await expect(canvas.getByTestId("credit-after-15")).not.toHaveTextContent("refused");
   },
 };

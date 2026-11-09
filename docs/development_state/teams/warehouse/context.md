@@ -44,18 +44,17 @@ cd frontend && npm run test:stories -- src/pages/settings
 ⚠ **Dev DB:** only Dev Warehouse (13) had a default flat fee, so it is the only warehouse with a rate. Every other
 warehouse there refuses orders until it sets one on Settings.
 
-## Decided, not built — the rest of the rollout
+## ✅ The rollout is built — nothing decided is left
 
 | step | what |
 | --- | --- |
-| 5 | `liability_terms.handling_fee` dropped, with its Credit Terms field |
+| 5 | ✅ built 2026-10-29 — `liability_terms.handling_fee` dropped (liability `00011_drop_terms_handling_fee.sql`), with its Credit Terms field; see *Step 5* below |
 
 ## Open
 
 | | |
 | --- | --- |
-| the warehouse profile | does `warehouse_infos` move from team_service into this service — [does-the-warehouse-profile-move-out-of-team-service](../../../business/teams/warehouse/context_clarify.md#does-the-warehouse-profile-move-out-of-team-service) |
-| rounding | when a frozen fee is rounded to whole rupiah — [rupiah-is-floating-point](../../../business/order/context_decision.md#rupiah-is-floating-point)'s mitigations are not decided |
+| rounding | decided 2026-11-06: never — the fee is stored and posted exact, only the screen rounds ([the-backend-never-rounds-money](../../../business/order/context_decision.md#the-backend-never-rounds-money)) |
 
 ## Step 5 — built 2026-10-29, the rollout is complete
 
@@ -68,5 +67,20 @@ warehouse there refuses orders until it sets one on Settings.
 | ⚠ | a database that never ran the carry-over loses its flat fees at `00011`; its warehouses take no orders until each sets a rate on Settings |
 | dev DB | ⚠ **not migrated by this pass** — the owner's review database. `go run ./tools/san migrate up --service liability_service` applies `00011`; the code runs against it either way, since nothing writes the column |
 
-**Next agent:** the fee rollout is done. Open in this context: the warehouse profile's home and when a frozen fee is
-rounded (above).
+**Next agent:** the fee rollout is done. Open in this context: when a frozen fee is rounded (above).
+
+## The profile, closures and the closed-day warning — built 2026-11-02
+
+| | |
+| --- | --- |
+| the move | [the-warehouse-profile-lives-in-warehouse-service](../../../business/teams/warehouse/context_decision.md#the-warehouse-profile-lives-in-warehouse-service) — `WarehouseInfoService` ([warehouse_info.proto](../../../../proto/warehouse/warehouse/v1/warehouse_info.proto)): `WarehouseInfoDetail` / `WarehouseInfoUpdate`, policies unchanged. Warehouse `00002` creates `warehouse_infos` keyed `warehouse_id`; team `00010` drops team's (rows are not copied across services — dev data, re-entered on the edit page) |
+| closures | [a-warehouse-records-its-holidays](../../../business/teams/warehouse/context_decision.md#a-warehouse-records-its-holidays) — `warehouse_closures` (`00002`), `WarehouseClosureAdd` / `WarehouseClosureDelete`, the ones still to come on the detail; a *Closures* card on the warehouse edit page, each saved on its own |
+| the warning | [a-closed-day-warns-and-never-refuses](../../../business/teams/warehouse/context_decision.md#a-closed-day-warns-and-never-refuses) — `WarehouseReceivingStatus` ([receiving.go](../../../../backend/services/warehouse_service/warehouse_v1/receiving.go)): Asia/Jakarta, open inclusive / close exclusive, 60 days ahead. The order form's `WarehouseBand` says it under the picker and badges the option through `TeamSelect`'s new `optionNote`; Save is never held |
+| ⚠ build detail | the update no longer asks whether the team IS a warehouse (that read team_service's table) — the warehouse roles in its policy exist only on a warehouse team |
+| tests | `receiving_test.go` (the grid and closure cases as pure functions), `warehouse_info_test.go` (handlers on Postgres), stories `Features/Orders/WarehouseBand` and `TeamSelect/WithAnOptionNote`, e2e `warehouses.spec.ts` |
+| dev DB | ⚠ **not migrated by this pass** — `go run ./tools/san migrate up --service warehouse_service` then `--service team_service` |
+
+```sh
+go test ./backend/services/warehouse_service/... ./backend/services/team_service/...
+cd frontend && npx vitest run --project=storybook src/features/orders/form src/components/teams
+```

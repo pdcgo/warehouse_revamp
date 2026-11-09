@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
@@ -39,7 +40,7 @@ func (p *liabilityPoster) PostStockDamage(
 	ctx context.Context,
 	tx *gorm.DB,
 	ownerTeamID, warehouseID, movementID, actorID uint64,
-	amount int64,
+	amount float64,
 	kind inventory_v1.StockDamageKind,
 ) error {
 	sourceType := liability_v1.SourceTypeBrokenGood
@@ -64,6 +65,9 @@ func (p *liabilityPoster) PostStockDamage(
 		Reversal: kind == inventory_v1.StockDamageFound,
 		// The warehouse person who recorded the adjust.
 		ActorID: actorID,
+		// And whether they were Root or the Administrator outside the warehouse (an-override-is-stamped-in-every-service).
+		// ctx is the adjust's own request, so this is the same answer its stock transaction was stamped with.
+		IsOverride: san_auth.IsOverride(ctx),
 	})
 
 	// Already posted is a normal answer here for the same reason it is above: an adjust that somehow

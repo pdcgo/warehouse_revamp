@@ -24,7 +24,7 @@ const backfillBatch = 500
 // NewSupplierFigures is supplier_service as the operations tool needs it: the fold and nothing else. No team service —
 // nothing here creates a supplier — and no broker — nothing here replays.
 func NewSupplierFigures(db *gorm.DB) *supplier_v1.Service {
-	return supplier_v1.NewService(db, nil, nil)
+	return supplier_v1.NewService(db, nil, nil, nil, nil)
 }
 
 // supplierBackfillCommand is `san supplier backfill-figures` (past-accepts-are-backfilled-once).

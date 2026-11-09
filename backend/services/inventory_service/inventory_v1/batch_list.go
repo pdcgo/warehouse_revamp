@@ -19,7 +19,7 @@ import (
 // Newest batch first: the list is read top-down as "what came in recently", while the oldest-first draw is a property
 // of the take, not of how the list is ordered.
 //
-// The delivery and receipt come from the restock whose accept minted the batch, sku and name from its line (or the
+// The delivery and receipt come from the restock whose accept minted the batch, product code and name from its line (or the
 // transfer line, for a batch a transfer minted) — see batchQuery.
 func (s *Service) BatchList(
 	ctx context.Context,
@@ -49,7 +49,7 @@ func (s *Service) BatchList(
 
 		switch filter.GetExpiry() {
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON:
-			q = q.Where("b.expired_at IS NOT NULL AND b.expired_at <= ?", soonCutoff())
+			q = q.Where("b.expired_at IS NOT NULL AND b.expired_at < ?", soonCutoff(time.Now()))
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_NO_EXPIRY:
 			q = q.Where("b.expired_at IS NULL")
 		}
@@ -108,8 +108,8 @@ func (s *Service) BatchList(
 	err = base().
 		Select(`
 			COALESCE(SUM(b.stock_valuation), 0) AS ready_value,
-			COALESCE(SUM(CASE WHEN b.expired_at IS NOT NULL AND b.expired_at <= ? THEN 1 ELSE 0 END), 0) AS expiring_soon`,
-			soonCutoff()).
+			COALESCE(SUM(CASE WHEN b.expired_at IS NOT NULL AND b.expired_at < ? THEN 1 ELSE 0 END), 0) AS expiring_soon`,
+			soonCutoff(time.Now())).
 		Scan(&agg).
 		Error
 	if err != nil {
@@ -131,15 +131,23 @@ func (s *Service) BatchList(
 			TotalPage:   pageCount(total, page.GetLimit()),
 			TotalItems:  uint64(total),
 		},
-		ReadyValueTotal:   int64(math.Round(agg.ReadyValue)),
+		ReadyValueTotal:   agg.ReadyValue,
 		ExpiringSoonCount: uint64(agg.ExpiringSoon),
 	}), nil
 }
 
-// soonCutoff is the "expiring ≤ 30 days" boundary — a batch is soon-to-expire when its date is on or
-// before it. A date, not a timestamp: expiry is a calendar day.
-func soonCutoff() time.Time {
-	return time.Now().AddDate(0, 0, 30)
+// soonCutoff is the "expiring ≤ 30 days" boundary, EXCLUSIVE: the Jakarta midnight that starts the 31st day after
+// today's Jakarta date. A batch is soon-to-expire when it expires before it — on any Jakarta day up to and including
+// today + 30, whatever the hour.
+//
+// A day, not an instant: expiry is a calendar day, so `now + 30 days` (an instant) moved the edge with the hour the
+// list was opened — a batch expiring late on the 30th day was "soon" only after that hour. And the Jakarta calendar,
+// never the host's (the-system-runs-on-jakarta-time): a UTC host's date is the day before from 00:00 to 07:00 WIB.
+// `now` is a parameter so the edge is testable; the handler passes time.Now().
+func soonCutoff(now time.Time) time.Time {
+	today := now.In(jakarta)
+
+	return time.Date(today.Year(), today.Month(), today.Day()+31, 0, 0, 0, 0, jakarta)
 }
 
 // trimHash drops a leading '#', which is how a delivery/batch number reads on screen but not how it is

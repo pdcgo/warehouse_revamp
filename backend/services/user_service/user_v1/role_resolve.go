@@ -36,5 +36,8 @@ func (s *Service) RoleResolve(
 		Role:      access.Role,
 		RootRole:  access.RootRole,
 		Suspended: access.Suspended,
+		// Without it the RPC resolver would answer "no admin-team role" for everyone, and a service on it would
+		// refuse the admin team's monitor reads that the DB resolver lets through (the-admin-team-monitors-read-only).
+		AdminTeamRole: access.AdminTeamRole,
 	}), nil
 }

@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
@@ -46,12 +47,12 @@ func TestChargeOrder_PostsTheWarehouseFeeAndTheProductFee(t *testing.T) {
 	}
 
 	if got := balanceOf(t, db, warehouse, selling); got != 12000 {
-		t.Fatalf("the warehouse is owed %d, want the order's frozen 12000", got)
+		t.Fatalf("the warehouse is owed %v, want the order's frozen 12000", got)
 	}
 
 	// The line's frozen 72.000 — 60.000 of goods at the product's 20%, priced by the take — posted as it came.
 	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
-		t.Fatalf("the product owner is owed %d, want the line's frozen 72000", got)
+		t.Fatalf("the product owner is owed %v, want the line's frozen 72000", got)
 	}
 }
 
@@ -84,11 +85,11 @@ func TestChargeOrder_TheProductFeeIsEachOwnersFrozenLineTotals(t *testing.T) {
 	}
 
 	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
-		t.Fatalf("productOwner is owed %d, want its line's 72000", got)
+		t.Fatalf("productOwner is owed %v, want its line's 72000", got)
 	}
 
 	if got := balanceOf(t, db, secondOwner, selling); got != 26000 {
-		t.Fatalf("secondOwner is owed %d, want 26000 — its two lines at two rates, as frozen", got)
+		t.Fatalf("secondOwner is owed %v, want 26000 — its two lines at two rates, as frozen", got)
 	}
 
 	var fees []liability_service_models.LiabilityLog
@@ -108,10 +109,9 @@ func TestChargeOrder_TheProductFeeIsEachOwnersFrozenLineTotals(t *testing.T) {
 	}
 }
 
-// ROUNDED ONCE, ON THE SUM. The totals arrive as doubles (rupiah-is-floating-point) and an entry is whole rupiah:
-// 33.000,4 + 11.000,4 is 44.000,8, posted as 44.001. Rounding each line first would post 44.000 — a rupiah lost per
-// line, which is how a ledger and an invoice drift apart.
-func TestChargeOrder_AFractionalTotalIsRoundedOnceOnTheSum(t *testing.T) {
+// POSTED EXACT, ON THE SUM (the-backend-never-rounds-money). The totals arrive as doubles (rupiah-is-floating-point):
+// 33.000,4 + 11.000,4 is 44.000,8, and the owner is owed exactly that — one entry, never a rounding.
+func TestChargeOrder_AFractionalTotalIsPostedExactOnTheSum(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
@@ -126,8 +126,8 @@ func TestChargeOrder_AFractionalTotalIsRoundedOnceOnTheSum(t *testing.T) {
 		t.Fatalf("ChargeOrder: %v", err)
 	}
 
-	if got := balanceOf(t, db, productOwner, selling); got != 44001 {
-		t.Fatalf("the owner is owed %d, want 44001 — the sum 44000.8, rounded once", got)
+	if got := balanceOf(t, db, productOwner, selling); !san_money.Equal(got, 44_000.8) {
+		t.Fatalf("the owner is owed %v, want exactly 44.000,8 — the sum, never rounded", got)
 	}
 }
 
@@ -170,11 +170,11 @@ func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 	}
 
 	if got := balanceOf(t, db, warehouse, selling); got != 12000 {
-		t.Fatalf("the warehouse is owed %d after three deliveries, want 12000", got)
+		t.Fatalf("the warehouse is owed %v after three deliveries, want 12000", got)
 	}
 
 	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
-		t.Fatalf("the product owner is owed %d after three deliveries, want 72000", got)
+		t.Fatalf("the product owner is owed %v after three deliveries, want 72000", got)
 	}
 }
 
@@ -206,7 +206,7 @@ func TestChargeOrder_NoFrozenFeeChargesTheWarehouseNothing(t *testing.T) {
 
 	// The goods still left their owner's stock: the line's frozen total, with no terms anywhere.
 	if got := balanceOf(t, db, productOwner, selling); got != 72000 {
-		t.Fatalf("the product owner is owed %d, want the line's frozen 72000", got)
+		t.Fatalf("the product owner is owed %v, want the line's frozen 72000", got)
 	}
 }
 
@@ -228,22 +228,23 @@ func TestChargeOrder_AZeroFeePostsNothing(t *testing.T) {
 	}
 }
 
-// THE WAREHOUSE IS OWED WHAT THE ORDER FROZE (the-event-carries-the-warehouse-fee), rounded once to whole rupiah — there
-// is no rate here to read since the flat handling fee was dropped (the-flat-rate-is-dropped-last, step 5).
-func TestChargeOrder_TheFrozenFeeIsRoundedOnce(t *testing.T) {
+// THE WAREHOUSE IS OWED EXACTLY WHAT THE ORDER FROZE (the-event-carries-the-warehouse-fee, the-backend-never-rounds-money)
+// — 2,5% of Rp 12.666,99 is Rp 316,67475, and Team Balance posts that figure. There is no rate here to read since the
+// flat handling fee was dropped (the-flat-rate-is-dropped-last, step 5).
+func TestChargeOrder_TheFrozenFeeIsPostedExact(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, nil, nil)
 
 	order := anOrder(412)
-	order.WarehouseFee = fee(4300.4)
+	order.WarehouseFee = fee(12_666.99 * 2.5 / 100)
 
 	err := svc.ChargeOrder(context.Background(), order)
 	if err != nil {
 		t.Fatalf("ChargeOrder: %v", err)
 	}
 
-	if got := balanceOf(t, db, warehouse, selling); got != 4300 {
-		t.Fatalf("the warehouse is owed %d, want the order's 4300.4 rounded", got)
+	if got := balanceOf(t, db, warehouse, selling); got != 12_666.99*2.5/100 {
+		t.Fatalf("the warehouse is owed %v, want the order's exact 316,67475", got)
 	}
 
 	half := anOrder(413)
@@ -254,8 +255,8 @@ func TestChargeOrder_TheFrozenFeeIsRoundedOnce(t *testing.T) {
 		t.Fatalf("ChargeOrder: %v", err)
 	}
 
-	if got := balanceOf(t, db, warehouse, selling); got != 4300+1501 {
-		t.Fatalf("the warehouse is owed %d, want 4300 + 1500.5 rounded up", got)
+	if got := balanceOf(t, db, warehouse, selling); !san_money.Equal(got, 316.67475+1500.5) {
+		t.Fatalf("the warehouse is owed %v, want 316,67475 + 1.500,5 exactly", got)
 	}
 }
 
@@ -294,7 +295,7 @@ func TestChargeOrder_TwoLinesOfOneOwnerAreOneFee(t *testing.T) {
 	}
 
 	if got := balanceOf(t, db, productOwner, selling); got != 82000 {
-		t.Fatalf("the owner is owed %d, want 82000 — both lines in one fee", got)
+		t.Fatalf("the owner is owed %v, want 82000 — both lines in one fee", got)
 	}
 
 	var entries int64
@@ -410,17 +411,17 @@ func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 		t.Fatalf("charge: %v", err)
 	}
 
-	err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
+	err = svc.ReverseOrder(context.Background(), selling, 412, canceller, false)
 	if err != nil {
 		t.Fatalf("reverse: %v", err)
 	}
 
 	if got := balanceOf(t, db, warehouse, selling); got != 0 {
-		t.Fatalf("the warehouse is still owed %d after the cancel", got)
+		t.Fatalf("the warehouse is still owed %v after the cancel", got)
 	}
 
 	if got := balanceOf(t, db, productOwner, selling); got != 0 {
-		t.Fatalf("the product owner is still owed %d after the cancel", got)
+		t.Fatalf("the product owner is still owed %v after the cancel", got)
 	}
 
 	// Four entries on the selling team's side: two fees, two reversals. A reversal is a compensating
@@ -452,14 +453,14 @@ func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 	}
 
 	for i := 0; i < 3; i++ {
-		err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
+		err = svc.ReverseOrder(context.Background(), selling, 412, canceller, false)
 		if err != nil {
 			t.Fatalf("cancel %d: %v", i, err)
 		}
 	}
 
 	if got := balanceOf(t, db, warehouse, selling); got != 0 {
-		t.Fatalf("balance = %d after three cancels, want 0 — a reversal ran more than once", got)
+		t.Fatalf("balance = %v after three cancels, want 0 — a reversal ran more than once", got)
 	}
 }
 
@@ -479,12 +480,12 @@ func TestReverseOrder_LeavesTheCODObligationAlone(t *testing.T) {
 		t.Fatalf("charge: %v", err)
 	}
 
-	err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
+	err = svc.ReverseOrder(context.Background(), selling, 412, canceller, false)
 	if err != nil {
 		t.Fatalf("reverse: %v", err)
 	}
 
 	if got := balanceOf(t, db, warehouse, selling); got != 25000 {
-		t.Fatalf("the warehouse is owed %d, want the 25000 COD fee still standing", got)
+		t.Fatalf("the warehouse is owed %v, want the 25000 COD fee still standing", got)
 	}
 }

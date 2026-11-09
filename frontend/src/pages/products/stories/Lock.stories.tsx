@@ -17,9 +17,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Open the lock's popover on a row and wait for it — it portals, so it is found on `screen`. */
-async function openLock(canvas: ReturnType<typeof within>, sku: string) {
-  await userEvent.click(canvas.getByTestId(`lock-${sku}`));
-  const panel = await screen.findByTestId(`lock-${sku}-panel`);
+async function openLock(canvas: ReturnType<typeof within>, productCode: string) {
+  await userEvent.click(canvas.getByTestId(`lock-${productCode}`));
+  const panel = await screen.findByTestId(`lock-${productCode}-panel`);
   await waitFor(() => expect(panel).toBeVisible());
   return within(panel);
 }
@@ -30,41 +30,41 @@ export const TheLockIsEditedInTheRow: Story = {
   name: "Edited in the row",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.getByTestId("lock-SKU-ANG-001")).toHaveTextContent("Min 4 pcs");
-    await expect(canvas.getByTestId("lock-SKU-ANG-002")).toHaveTextContent("Open");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-001")).toHaveTextContent("Min 4 pcs");
+    await expect(canvas.getByTestId("lock-SL-03-ANG-002")).toHaveTextContent("Open");
 
-    const panel = await openLock(canvas, "SKU-ANG-001");
-    await expect(panel.getByTestId("lock-SKU-ANG-001-field-minimum")).toHaveValue("4");
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-001-field-mode-always"));
-    await expect(panel.queryByTestId("lock-SKU-ANG-001-field-minimum")).toBeNull();
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-001-save"));
+    const panel = await openLock(canvas, "SL-03-ANG-001");
+    await expect(panel.getByTestId("lock-SL-03-ANG-001-field-minimum")).toHaveValue("4");
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-001-field-mode-always"));
+    await expect(panel.queryByTestId("lock-SL-03-ANG-001-field-minimum")).toBeNull();
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-001-save"));
 
-    await waitFor(() => expect(canvas.getByTestId("lock-SKU-ANG-001")).toHaveTextContent("Always locked"));
+    await waitFor(() => expect(canvas.getByTestId("lock-SL-03-ANG-001")).toHaveTextContent("Always locked"));
     await expect(canvas.queryByTestId("at-product-detail")).toBeNull();
 
     // Back to the minimum — the 4 was kept.
-    const again = await openLock(canvas, "SKU-ANG-001");
-    await userEvent.click(again.getByTestId("lock-SKU-ANG-001-field-mode-min"));
-    await expect(again.getByTestId("lock-SKU-ANG-001-field-minimum")).toHaveValue("4");
+    const again = await openLock(canvas, "SL-03-ANG-001");
+    await userEvent.click(again.getByTestId("lock-SL-03-ANG-001-field-mode-min"));
+    await expect(again.getByTestId("lock-SL-03-ANG-001-field-minimum")).toHaveValue("4");
   },
 };
 
-/** A minimum above the stock on hand closes the product to other teams NOW — the row says so with a badge. SKU-ANG-002
+/** A minimum above the stock on hand closes the product to other teams NOW — the row says so with a badge. SL-03-ANG-002
  * holds 43 ready; a minimum of 50 is in force. A minimum needs at least 1 to be saved. */
 export const AMinimumAboveTheStockLocksItNow: Story = {
   name: "Minimum above the stock",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.queryByTestId("lock-SKU-ANG-002-now")).toBeNull();
+    await expect(canvas.queryByTestId("lock-SL-03-ANG-002-now")).toBeNull();
 
-    const panel = await openLock(canvas, "SKU-ANG-002");
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-field-mode-min"));
-    await expect(panel.getByTestId("lock-SKU-ANG-002-save")).toBeDisabled();
-    await userEvent.type(panel.getByTestId("lock-SKU-ANG-002-field-minimum"), "50", { delay: 30 });
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-save"));
+    const panel = await openLock(canvas, "SL-03-ANG-002");
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-field-mode-min"));
+    await expect(panel.getByTestId("lock-SL-03-ANG-002-save")).toBeDisabled();
+    await userEvent.type(panel.getByTestId("lock-SL-03-ANG-002-field-minimum"), "50", { delay: 30 });
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-save"));
 
-    await waitFor(() => expect(canvas.getByTestId("lock-SKU-ANG-002")).toHaveTextContent("Min 50 pcs"));
-    await expect(await canvas.findByTestId("lock-SKU-ANG-002-now")).toHaveTextContent("Locked");
+    await waitFor(() => expect(canvas.getByTestId("lock-SL-03-ANG-002")).toHaveTextContent("Min 50 pcs"));
+    await expect(await canvas.findByTestId("lock-SL-03-ANG-002-now")).toHaveTextContent("Locked");
   },
 };
 
@@ -74,14 +74,14 @@ export const TheLensHidesTheBadge: Story = {
   name: "Lens hides the badge",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const panel = await openLock(canvas, "SKU-ANG-002");
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-field-mode-min"));
-    await userEvent.type(panel.getByTestId("lock-SKU-ANG-002-field-minimum"), "50", { delay: 30 });
-    await userEvent.click(panel.getByTestId("lock-SKU-ANG-002-save"));
-    await canvas.findByTestId("lock-SKU-ANG-002-now");
+    const panel = await openLock(canvas, "SL-03-ANG-002");
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-field-mode-min"));
+    await userEvent.type(panel.getByTestId("lock-SL-03-ANG-002-field-minimum"), "50", { delay: 30 });
+    await userEvent.click(panel.getByTestId("lock-SL-03-ANG-002-save"));
+    await canvas.findByTestId("lock-SL-03-ANG-002-now");
 
     await pickTeam(canvas.getByTestId("product-warehouse-filter"), "WH-02");
-    await waitFor(() => expect(canvas.queryByTestId("lock-SKU-ANG-002-now")).toBeNull());
-    await expect(canvas.getByTestId("lock-SKU-ANG-002")).toHaveTextContent("Min 50 pcs");
+    await waitFor(() => expect(canvas.queryByTestId("lock-SL-03-ANG-002-now")).toBeNull());
+    await expect(canvas.getByTestId("lock-SL-03-ANG-002")).toHaveTextContent("Min 50 pcs");
   },
 };

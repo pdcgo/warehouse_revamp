@@ -72,7 +72,7 @@ reads every metric of the team ([every-member-reads-every-metric-of-their-team](
 | --- | --- |
 | the catalogue | `ORDER_METRICS` in `features/analytic/catalogue.ts` are read off the generated descriptors with `getOption` — id, filters, groups, each field's `field_stat_type` and `metric_sort`; `MetricDef.schema` marks a served metric. The other four entries are still a typed mirror |
 | the provider | `loadReport(req, teamId)` is ASYNC: a served metric is ranked and filled by its service (`OrderAnalyticService`, `SettlementAnalyticService` — one MetricData per question for all of a service's metrics; `clientOf` reads each through the shape every service shares), a sample by `sampleService`. `answeredFields` drops a column whose headline came back unset — a warehouse's money ([a-warehouse-sees-no-seller-money](../../business/order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money)) |
-| the page | TanStack Query with `listQuery` and a RefreshOverlay (HARD RULE 10); groups gain Seller (`team`), Warehouse and Created by (`user`), filters the same through ShopSelect, TeamSelect (by team type) and UserSelect; product and supplier keep their sample pickers. A row's id is named by ShopByIds / TeamByIds / UserByIDs (`useKeyNames`), a sample's by `sampleName` |
+| the page | TanStack Query with `listQuery` and a RefreshOverlay (HARD RULE 10); groups gain Seller (`team`), Warehouse and Created by (`user`), filters the same through ShopSelect, TeamSelect (by team type) and — for *created by* — PersonFilterSelect over `useAnalyticPeople` (2026-11-04, below); product and supplier keep their sample pickers (real since 2026-11-05, below). A row's id is named by ShopByIds / TeamByIds / UserByIDs (`useKeyNames`), a sample's by `sampleName` |
 | a shared field name | `fieldLabel` reads `analytic.fieldOf.<metric>.<field>` before `analytic.field.<field>` — Created and Cancel both have the owner's `mp_total` |
 | Storybook | `.storybook/orderAnalyticStub.ts` answers `OrderAnalyticService` from `sampleService`, so stories run the wire path; Gudang Pusat (11) gets counts only. `.storybook/settlementAnalyticStub.ts` answers `SettlementAnalyticService` by folding the settlement book (`fixtures.ts`), since a position is not a sum of samples. 16 stories, two new (`AWarehouseSeesCountsOnly`, `GroupedBySellerNamesTheTeam`) |
 | e2e | `orders.spec.ts` *Analytic: the orders placed today count in Orders created, by shop* — through the emulator's push, the fold and both RPCs |
@@ -151,3 +151,266 @@ Frontend reads them through `features/{suppliers,settlement,financialAccount}/an
 4. ✅ the route and menu entry — with the order metrics, 2026-10-29.
 
 The chart is its own later pass ([the-chart-waits-for-a-chart-component](../../business/analytic/rpc_provide_decision.md#the-chart-waits-for-a-chart-component)).
+
+## 2026-11-02 — the year cap and *as of*, built
+
+| | |
+| --- | --- |
+| [a-metric-reads-at-most-a-year](../../business/analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year) | `san_metric.CheckRange` (`MaxRangeDays = 366`, `ErrRangeTooLong`) in every service's metric read — order, settlement, supplier — refused as InvalidArgument; the Analytic, settlement-report and supplier-report screens refuse a longer range before asking (`rangeTooLong`). A refusal test per service |
+| [a-money-metric-says-as-of-when](../../business/analytic/rpc_provide_decision.md#a-money-metric-says-as-of-when) | `MetricDataResponse.as_of_unix` (2) in each service; selling's `00031` indexes the event log's `created_at` for it. The screens say *"As of {{time}} WIB"* — the OLDEST of the services read. Stories `SaysAsOfWhen` ×3 |
+| the AI agents | the metric pair is what the MCP's `list_metrics` / `read_metric` read ([mcp state](../mcp/context.md)); both RPCs are marked `NO_SIDE_EFFECTS` |
+
+## 2026-11-04 — the *created by* filter lists the people on the rows, built
+
+| | |
+| --- | --- |
+| the bug | the USER filter was `<UserSelect>` with no team — the system-wide `SearchUser`, which only Root and the Administrator may call — so it was dead for every seller |
+| decisions | [a-who-filter-lists-the-people-on-its-rows](../../business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [a-filter-keeps-former-and-suspended-people](../../business/user/context_decision.md#a-filter-keeps-former-and-suspended-people) · [whoever-reads-a-list-may-filter-it](../../business/user/context_decision.md#whoever-reads-a-list-may-filter-it) |
+| step 1 | `features/analytic/people.ts` `useAnalyticPeople(teamId, services)` — `selling` → `useOrderCreators` (gained `enabled`), `settlement` → `useSettlementPeople`; unioned by id (order creators first) when both share the table; a sample-only table offers nobody; asked only while the USER filter shows. The page renders `<PersonFilterSelect people error>` |
+| step 2 | `SettlementAnalyticService.SettlementPersonList` (shaped like `OrderCreatorList`; MetricData's roles; `NO_SIDE_EFFECTS`) — one row per (user, team) of `user_settlement_reports` by its `last_day` (`00008`, raised by the fold, recomputed by the replay — [the-person-list-reads-the-last-day-from-the-user-report](../../business/settlement/context_decision.md#the-person-list-reads-the-last-day-from-the-user-report)), `user_id <> 0`, the team clause dropped for root (a person once, at `MAX(last_day)`); [rpc.md](../../services/settlement_service/rpc.md#who-a-user-filter-offers--settlementpersonlist). 🟢 [audit](../../../audits/services/settlement_service/performances/SettlementPersonList.md): 2 queries, 1.06/1.04 ms at 100 000 person-days (was 28/31 ms, a daily-table scan) |
+| tests | `TestSettlementPersonList_*` (latest first, tie by id, 0 and other teams out, paging, root once per person, orders by the report's `last_day` and skips NULL, policy = MetricData's) · `TestFold_RaisesTheUsersLastDayAndAnOlderDayDoesNotLowerIt` · `TestAnalyticReplayCompute_RecomputesTheUsersLastDay` · `TestRace_Fold_ConcurrentDaysKeepTheCarryTrue` (last_day) · `TestPerf_SettlementPersonList`. Stories `CreatedByOffersThePeopleOnTheRows` (union, Budi once) · `CreatedByForSettlementIsSettlementsPeople`; stub `settlementPersonList` |
+| not done | no metric of ads / expense / inventory names its people yet — a sample metric offers nobody |
+
+## 2026-11-05 — the statistics backlog row, scoped: Warehouse Fee drawn, Inventory Lost and financial account waiting
+
+The backlog's *Statistics: Analytic Warehouse Fee and Inventory Lost (data exists); financial account onto MetricSearch*
+was read against the record. None of the three is decided far enough to build a backend, so nothing on the server
+changed. ⚠ The open point the backlog leaned on — *"where the screen reads the two-team role from … decided with Warehouse
+Fee"* (in [superseded-a-team-group-is-named-by-the-team-it-means](../../business/analytic/rpc_provide_decision.md#superseded-a-team-group-is-named-by-the-team-it-means))
+— is **gone**: [the-warehouse-is-its-own-group](../../business/analytic/rpc_provide_decision.md#the-warehouse-is-its-own-group)
+superseded it, so Seller (`TEAM`) and Warehouse (`WAREHOUSE`) mean one team each for every reader, and there is no role to read.
+
+| item | decided | missing | status |
+| --- | --- | --- | --- |
+| Warehouse Fee | the tree: Expense › Warehouse Fee, filters team · shop · warehouse · user · date range, fields `transaction_count` · `amount` ([rpc_provide.md](../../business/analytic/rpc_provide.md)); `WAREHOUSE` lists it ([the-warehouse-is-its-own-group](../../business/analytic/rpc_provide_decision.md#the-warehouse-is-its-own-group)); the fee is frozen on the order, carried by `OrderPlaced.warehouse_fee`, reversed on cancel ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)) | its groups (the tree lists none — the clarify's critique [the-tree-is-the-catalogue-and-misses-two-things](../../business/analytic/rpc_provide_clarify.md#the-tree-is-the-catalogue-and-misses-two-things)); what a cancel does to the figures; whether a warehouse reads the amount; the id | ⚠ **Storybook prototype only**, awaiting the design accept |
+| Inventory Lost | the owner's example `StockLostMetric` (`lost_count`, `lost_amount`, by day or product) and *"remove shop filter"* ([a-new-metric-removes-the-filters-it-cannot-use](../../business/analytic/rpc_provide_decision.md#a-new-metric-removes-the-filters-it-cannot-use)) | which losses count (opname shortage, Stock Adjust *lost*, broken, transfer lost, restock parcel lost), whether a found claim takes one back, its teams' filters and groups, its place in the tree (Inventory lists Transfer · Ready · Restock · Return). The data is `warehouse_stock_problems` (per batch, priced), but no event feeds a fold | ⛔ blocked — the existing sample `metrics/inventory/lost` is its picture |
+| financial account | the move ([the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics)); `GroupType` gains `ACCOUNT`, `PROVIDER`, `CHANGE_TYPE` with it ([the-group-enum-grows-with-the-reports](../../business/analytic/rpc_provide_decision.md#the-group-enum-grows-with-the-reports)); the old three reads go in the same change | which metrics and fields (settlement needed [settlement-serves-its-headline-and-its-breakdown](../../business/settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown) for the same step); whether the composer lists them (no Finance category in the tree, [the-picker-follows-the-metric-tree](../../business/analytic/rpc_provide_decision.md#the-picker-follows-the-metric-tree)); the 🔴 `AnalyticTimeSearch` running-sum finding | ⛔ blocked |
+
+### The Warehouse Fee prototype
+
+| | |
+| --- | --- |
+| where | `PROTOTYPE_METRICS` in `features/analytic/catalogue.ts` — `metrics/warehouse_fee`, Expense, the tree's five filters, the order metrics' eight groups (recommended), `transaction_count` (count) and `amount` (money). `catalogueMetrics()` adds it only after `showPrototypeMetrics(true)`, which no live code calls — the live picker and `metricById` are unchanged |
+| figures | `sample.ts`: one fee per placed order, 2.5% of its goods, at least Rp 2.500, on the placement day, seller Toko Melati (12), warehouse Gudang Pusat (11); a cancel is not drawn |
+| stories | `pages/analytic/warehouseFee.stories.tsx` — *Pages/Analytic/Warehouse Fee (prototype)*: `WarehouseFeeIsUnderExpense`, `ASellerReadsItsFeesByWarehouse`, `AWarehouseReadsItsFeesBySeller`, `BesideOrdersItKeepsTheShopFilter`, `RankedByAmount`, `Mobile` — 6/6 pass |
+| i18n | `analytic.metric.warehouseFee`, `analytic.field.transaction_count`, `analytic.field.amount` (en + id) |
+| ⚠ awaiting the owner | the design accept, then the groups, the cancel rule, the warehouse's view of the amount, the id — the build after it: a `warehouse_fee` column on selling's `order_daily_reports` (`created` and `cancelled` rows already carry seller, shop, warehouse and creator), `WarehouseFeeMetric` in `order_analytic.proto`, served by `OrderAnalyticService` |
+
+## 2026-11-05 — Warehouse Fee served (`metrics/warehouse_fee`)
+
+Built from the four owner decisions recorded after the prototype:
+[a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day),
+[warehouse-fee-groups-like-the-order-metrics](../../business/analytic/rpc_provide_decision.md#warehouse-fee-groups-like-the-order-metrics),
+[a-warehouse-sees-its-own-fee-amount](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-its-own-fee-amount),
+[the-warehouse-fee-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-warehouse-fee-prototype-is-accepted).
+The prototype's plan said "a `warehouse_fee` column"; the build uses a **sixth `metric` value instead** — reasoned below.
+
+| | |
+| --- | --- |
+| the store | `order_daily_reports`, `metric = 'warehouse_fee'` (selling 00038 widens the CHECK). SIGNED rows: `order_count` = fee transactions, `total` = fee amount, `mp_total` 0 |
+| why a row, not a column | net-by-day needs `created` (+) and `cancelled` (−) on DIFFERENT rows; a column there would need a cross-row net in every read (search sort, fill, summary). A signed row of its own makes the existing generic reads (`reportRows`, `keyOf`, `reportSums`, the sort by field number) serve it unchanged |
+| the fold | `order_analytic_fold.go`: the same claim; after the move's own row, `feeMove` adds +1/+fee (OrderPlaced) or −1/−fee (OrderCancelled) to the event day's fee row via `addToReport`. An order with no fee (no pricer) writes no fee row. The fee row is always the second lock |
+| the reads | `WarehouseFeeMetric` (`transaction_count` QTY, `amount` CURRENCY, not optional) + `WarehouseFeeMetricByID/ByDay`, MetricData oneof 16–18, `metric_ids` max 6. `orderMetric.warehouseMoney` lets a warehouse read and sort `amount`; the order metrics' money stays unset for it |
+| the screen | `catalogue.ts` `WAREHOUSE_FEE_METRIC = servedMetric(WarehouseFeeMetricSchema, "warehouseFee", "selling", "expense")` in `METRICS`; `PROTOTYPE_METRICS` is now empty (the mechanism stays for the next prototype). The live picker lists it under Expense |
+| Storybook | `orderAnalyticStub.ts` serves it (`ONEOF` + `WAREHOUSE_READS_MONEY`) from `sample.ts`'s fee facts (placements only — the sample draws no cancel). `warehouseFee.stories.tsx` — *Pages/Analytic/Warehouse Fee*, no `showPrototypeMetrics`: the six prototype stories plus `AWarehouseSeesItsFeeButNotTheSellersMoney` |
+| backfill | none: the order metrics have no backfill by decision ([the-order-metrics-count-from-the-fold-onward](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward), [revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet)). ⚠ dev orders folded before 00038 are NOT refolded: such an order cancelled later nets its seller's fee below zero on the cancel day |
+| MCP | `list_metrics` / `read_metric` read the descriptors, so the agent lists it with no code change |
+
+### Tests
+
+| test | proves |
+| --- | --- |
+| `TestWarehouseFeeFold_ACancelTakesItBackOnItsOwnDay` | placed 29th +1/+350, cancelled 31st −1/−350, the 30th zero, the month 0, the 29th–30th window still 1/350; redeliveries count nothing; Orders created untouched |
+| `TestWarehouseFeeMetric_EveryGroupSumsTheNetFees` | shop, seller, warehouse, creator, day/week/month/year and the headline each sum to the net; shop+user filters; search by amount |
+| `TestWarehouseFeeMetric_TheWarehouseSeesTheAmountAFourthTeamNothing` | warehouse reads and ranks by `amount` while `created_total` stays unset in the same answer; root and seller read it; a fourth team and another warehouse read 0 and no keys |
+| `TestWarehouseFeeFold_AnOrderWithNoFeeIsNotATransaction` | no pricer → no fee row on place or cancel |
+| `TestRace_WarehouseFeeFold_PlacementsAndCancelsIntoOneFeeRow` (raceaudit) | 4 placements + 4 cancels into one fee row ×10 rounds: 0 deadlocks, the row exactly the net |
+| `TestPerf_OrderMetric` (perfaudit, 120 450 rows) | fee search by team as a warehouse, a year: 2.4 ms on `order_daily_reports_warehouse_idx`; fee by day, 31 days: 1.1 ms; 6 metrics summary as root, a year: 32 ms (the existing root scan). FAST — no write-up |
+| e2e `orders.spec.ts` — *Analytic: an order's warehouse fee counts when placed and nets back when cancelled* (last in the file) | from a settled baseline: place → +1 and + the detail's fee; the warehouse reads the amount by seller; cancel → back to the baseline |
+
+
+## 2026-11-05 — Finance and Inventory › Lost, drawn (Storybook prototype)
+
+Drawn for the owner's design accept from
+[financial-accounts-serve-their-changes-and-their-types](../../business/analytic/rpc_provide_decision.md#financial-accounts-serve-their-changes-and-their-types),
+[analytic-gains-a-finance-category](../../business/analytic/rpc_provide_decision.md#analytic-gains-a-finance-category) and
+[inventory-lost-groups-and-sits-under-inventory](../../business/analytic/rpc_provide_decision.md#inventory-lost-groups-and-sits-under-inventory).
+Storybook only — no Go, proto, migration or e2e change; the live picker is unchanged (story `TheLivePickerShowsNoPrototype`).
+
+| | |
+| --- | --- |
+| where | `PROTOTYPE_METRICS` in `features/analytic/catalogue.ts`, shown only after `showPrototypeMetrics(true)`. Beside it, prototype-only `PROTOTYPE_CATEGORIES` (Finance) and `PROTOTYPE_GROUPS` (Account, Provider, Change type) via `metricCategories()` / `tableGroups()`. A prototype with a live id REPLACES that entry while shown: Inventory › Lost takes the live *Stock lost* sample's place |
+| Finance › Account changes | `metrics/financial_accounts`: `opening_balance` (position), one signed money field per change type in the proto's enum order (`CHANGE_TYPE_FIELDS`; the type OPENING_BALANCE is `account_opening`, *Account opened*), `change` (net), `closing_balance` (position). Groups summary, time, Account, Provider; date range only |
+| Finance › Change types | `metrics/financial_accounts/types`: `amount`, groups Change type, time, Account, Provider. A change-type key is the enum number, labelled as its Account changes column |
+| positions | the sample serves them (`SAMPLE_POSITIONS`, provider.ts `withPositions`): the running sum of `change` to a period's edges, clipped to the window; an id key's and the headline's are the window's edges — never summed over time ([a-position-is-its-own-stat-type](../../business/analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type)). An account with no movement in the window is still a row |
+| Inventory › Lost | `metrics/inventory/lost`, label *Lost*: `lost_count` *Lost units*, `lost_amount` *Lost amount*; filters date, seller, warehouse, product, supplier (no shop); groups product, supplier, seller, warehouse, time |
+| figures | `sample.ts`: Toko Melati's four accounts (ids/names of `financialAccountFixtures.ts`), postings from 2025-01-01; the lost facts gain seller 12 and a warehouse (Gudang Pusat 11 / Gudang Cabang 14) — the live sample's numbers are unchanged |
+| stories | `pages/analytic/finance.stories.tsx` (8) and `inventoryLost.stories.tsx` (7), both with play() assertions; `index.stories.tsx` `TheLivePickerShowsNoPrototype` |
+| i18n | `analytic.category.finance`, `analytic.group/groupPlural.{account,provider,change_type}`, `analytic.metric.{financialAccounts,financialAccountTypes,inventoryLost}`, `analytic.fieldOf.{financialAccounts,financialAccountTypes,inventoryLost}.*` (en + id) |
+| ⚠ awaiting the owner | the design accept, and: the change-type field's name beside the `opening_balance` position; signed outflows; an Account filter; which team types read Finance; the label *Lost* vs *Lost stock*; whether a warehouse reads `lost_amount`; Lost's seller/warehouse filters. Seen while drawing (not fixed — live component): an emphasised headline card truncates a nine-digit Rp figure to "Rp…" at 1440, and Account changes by account overflows 1440 by ~40 px |
+
+## 2026-11-05 — Finance served (`metrics/financial_accounts`, `metrics/financial_accounts/types`)
+
+Built from [financial-accounts-serve-their-changes-and-their-types](../../business/analytic/rpc_provide_decision.md#financial-accounts-serve-their-changes-and-their-types),
+[the-balance-series-is-a-running-sum](../../business/analytic/rpc_provide_decision.md#the-balance-series-is-a-running-sum),
+[the-finance-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-finance-prototype-is-accepted),
+[finance-filters-by-account](../../business/analytic/rpc_provide_decision.md#finance-filters-by-account),
+[every-team-reads-its-own-finance](../../business/analytic/rpc_provide_decision.md#every-team-reads-its-own-finance) and
+[the-pattern-replaces-the-shipped-analytics](../../business/analytic/rpc_provide_decision.md#the-pattern-replaces-the-shipped-analytics).
+The service side is in [financial_account/context.md](../financial_account/context.md) (2026-11-05) and
+[rpc.md](../../services/financial_account_service/rpc.md#the-finance-metrics--metricsearch--metricdata).
+
+| | |
+| --- | --- |
+| contract | `financial_account_analytic.proto` — `FinancialAccountAnalyticService.MetricSearch / MetricData`; `analytic_base` gains `FILTER_TYPE_ACCOUNT = 10` (`AccountFilter{account_ids}` 1–200) and `GROUP_TYPE_ACCOUNT / PROVIDER / CHANGE_TYPE = 12 / 13 / 14` |
+| removed | `AnalyticTimeSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric` + messages, handlers, tests, perf probes. Their only callers — `features/financialAccount/analytics.ts` and the Storybook stub — moved; nothing else used them |
+| positions | one running sum: each account's last daily row before the window once, then the window's daily sums; a period cut by the range has its edges at the boundary; a quiet account a row with its balance; the headline's opening/closing the window's edges |
+| perf | a year daily at a page of 200: **1 482 ms → 11 ms**; a month daily ~120–156 → 2 ms; every read 1–15 ms (`TestPerf_FinanceMetric`; audit `AnalyticTimeSearch.md` marked resolved) |
+| the screen | `FINANCE_METRICS` live (catalogue), the Finance category and the three groups live; `AccountsFilter` (multi-select, `acc=` in the URL); account rows named via `FinancialAccountByIds`; the Financial Account Report reads the same two RPCs (and now caps its range at a year) |
+| display fixes | lead headline card spans two columns of a crowded strip (`SummaryCard double`); headings and id-row names wrap to two lines — Account changes by account fits 1440 (story `FitsA1440Screen`) |
+| Storybook | `financialAccountStub.ts` folds its own ledger with the service's rules; `finance.stories.tsx` (10, *Pages/Analytic/Finance*), `AccountsFilter.stories.tsx` (3); the sample's Finance facts and `SAMPLE_POSITIONS` removed |
+| e2e | `finance_metrics.spec.ts` (5): a seller and a warehouse of their own; opening, transfer, capital out posted via the existing RPCs and read back via MetricSearch/MetricData, the composer (incl. `acc=`) and the report; the warehouse reads only its Kas Gudang |
+| MCP | `mcp_service` source `finance` |
+
+## 2026-11-05 — Lost stock served (`metrics/inventory/lost`)
+
+Built from [inventory-lost-counts-the-warehouses-custody-losses](../../business/analytic/rpc_provide_decision.md#inventory-lost-counts-the-warehouses-custody-losses),
+[inventory-lost-is-gross](../../business/analytic/rpc_provide_decision.md#inventory-lost-is-gross),
+[inventory-lost-groups-and-sits-under-inventory](../../business/analytic/rpc_provide_decision.md#inventory-lost-groups-and-sits-under-inventory),
+[the-inventory-lost-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-inventory-lost-prototype-is-accepted),
+[a-warehouse-sees-its-lost-amount](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-its-lost-amount).
+
+| | |
+| --- | --- |
+| store | inventory 00037 `inventory_lost_daily_reports` — a Jakarta day × warehouse × owning team × product × supplier: `lost_count`, `lost_amount` ([database-schema.md](../../database-schema.md#lost-stock-by-day-00037)) |
+| ⚠ the fold — IN-PROCESS, not an event | the decision said *"no event publishes them yet, so the build adds one"*. By data ownership no event is needed: inventory owns `warehouse_stock_problems` AND the report, and an event exists to cross a service boundary (CLAUDE.md data ownership). So `inventory_mutations.foldLost` adds each lost problem row to its day's row **in the same transaction** — from `PostCountFinalize` (a count's shortage) and `PostShelfProblem` (Stock Adjust "lost") — one `INSERT … ON CONFLICT DO UPDATE`, rows summed per key and written in key order, the transaction's last lock. Never behind, no redelivery to dedupe. If another service ever needs losses, an event is added then |
+| what counts | `problem_type = 'lost'` rows only, at the row's batch price; broken never; a transfer or restock parcel lost writes other tables and never reaches the fold. GROSS: a Found claim updates `claimed_stock_count` on the problem row, never the report |
+| contract | `inventory_analytic.proto` — `InventoryAnalyticService.MetricSearch / MetricData`, `InventoryLostMetric` (`lost_count` QTY, `lost_amount` CURRENCY); filters date (required), team, warehouse, product, supplier; groups summary, time ×4, product, supplier, team, warehouse; the eight selling + warehouse roles |
+| reader | `warehouse_id = T OR team_id = T` — the warehouse that held it and the seller owning it, both fields; root every team's (as the order metrics); any other team nothing |
+| the screen | `INVENTORY_LOST_METRIC` served in `METRICS`, replacing the *Stock lost* sample of the same id (the sample was its placeholder); label **Lost stock / Stok hilang**; the old `stockLost` label removed. `PROTOTYPE_METRICS` is empty again |
+| Storybook | `inventoryAnalyticStub.ts` serves it from the sample's lost facts, scoped like the server; `inventoryLost.stories.tsx` (*Pages/Analytic/Lost stock*, 8 — adds `AWarehouseSeesItsLostAmount` and the accepted rows line); `index.stories.tsx` `TheLivePickerShowsNoPrototype` now pins the full live picker (Finance, Lost stock, the account groups) |
+| MCP | `mcp_service` source `inventory` |
+
+### Tests
+
+| test | proves |
+| --- | --- |
+| `TestMetricData_CountsCountShortagesAndAdjustLostNotBroken` | a count's shortage (6 + 2 at two batch prices) and an adjust lost counted; the count's torn 2 and an adjust damaged not; report = the register's lost rows; product, supplier, seller and day groups |
+| `TestMetricData_AFoundClaimDoesNotSubtract` | a Found approval claims a loss, the figures stay |
+| `TestMetricData_TheWarehouseAndTheOwnerReadItAnotherTeamNothing` | warehouse 9 / Rp 104.000; each seller its own; root all; a stranger 0, even naming the warehouse |
+| `TestMetricData_FiltersNarrowAndAShopIsRefused` · `TestMetricSearch_*` (3) | filters, refusals, paging + has_next, ties, supplier 0 left out of the Supplier group, a stranger gets no keys |
+| `TestMetricData_RestockAndTransferLostAreNotCounted` | a restock parcel and a transfer box marked lost write no report row |
+| `TestRace_LostFold_EveryLossAddsToTheDaysRow` · `TestInterleave_LostFold_ACountAndAnAdjustFoldTogether` (raceaudit) | 12 concurrent adjusts into one day's rows and a count finalizing beside 4 adjusts: 0 failures, report = register. SAFE — no write-up |
+| `TestPerf_LostMetric` (perfaudit, 219 000 rows) | warehouse/seller searches a year 5–6 ms, by day 1 ms, fills 1–4 ms; root over every team a year 30–40 ms (the root scan, as the order metrics); Stock Adjust lost with the fold 7.7 ms. FAST — no write-up |
+| e2e `opname_sessions.spec.ts` — *Lost stock: the count's shortage is read back, its broken unit is not* (last) | the count's 1 lost Kaos B at Rp 20.000 read through MetricSearch/MetricData and the composer; its broken Kaos A absent |
+
+## 2026-11-05 — the product and supplier filters search the real ones (backlog #19)
+
+The composer's *Product* and *Supplier* filters offered the sample's six products and three suppliers (`SAMPLES` in
+`pages/analytic/index.tsx`). Only Lost stock narrows by them, and it is served, so they now pick the team's real
+entities. No proto, Go or migration change.
+
+| | |
+| --- | --- |
+| the filter | `pages/analytic/components/EntityFilter.tsx`: nothing chosen, the app's own picker; chosen, a CHIP named by ProductByIds / SupplierByIds (any team's, archived or deleted included), so a link or a refresh with `product=205` reads the name. The chip's × reads every one again. One id each, as the contract's `ProductFilter` / `SupplierFilter` take one; the URL keeps `product=` / `supplier=` |
+| which products | by the reading team's type (`productScopeOf`): a WAREHOUSE what it holds or has held, any seller's (`ProductSelect scope="warehouse"` → WarehouseProductSearch), a SELLER its own catalogue (ProductList), root and the admin team every team's (ProductDiscover, which refuses warehouse roles). A warehouse's losses are only of what it held, a seller's only of its own stock, so each search covers every product its rows can name |
+| which suppliers | a SELLER its own (`SupplierSelect`, the whole list); any other team — a warehouse keeps none, but its batches name their sellers' suppliers — searches every team's (new `SupplierSearchSelect`: SupplierList `EVERY_TEAM`, server-side `q`, each option naming the team that keeps it). Wider than "suppliers on this warehouse's batches" (no such search exists); a supplier with no loss here simply reads an empty table |
+| the phone | the filters sit in the FilterBar's modal sheet, so both pickers list inline there (`portalled={false}`; `SupplierSelect` gained the prop) |
+| removed | `SAMPLES`, the `pickers` pending mark and its `analytic.pending.pickers` text. No sample metric filters by a product or a supplier (Ads takes a shop, Expenses nothing), so no sample options were kept |
+| Storybook | `entityFilters.stories.tsx` (*Pages/Analytic/Product and supplier filters*, 6): a seller picks a product and a supplier (URL, the Lost stock request's filters via `inventoryLostCalls`, chips, ×), its search is its own catalogue, chips after a reload, a warehouse picks only what it holds and searches every team's suppliers, the phone sheet. `withAnalyticSampleProducts` (productScenario) lists the sample's products 201–206 as Toko Melati's catalogue, held where the sample lost them. `SupplierSearchSelect.stories.tsx` (4) |
+| e2e | `opname_sessions.spec.ts` *Lost stock* test, extended: the warehouse picks Kaos A (no loss → no row), then Kaos B (its row), and after a reload the chip reads "Kaos B" |
+
+
+## 2026-11-06 — expense figures scoped (backlog #22); Ads expense and Expenses drawn (Storybook prototype)
+
+Storybook only — no Go, proto, migration or e2e change; the live picker is unchanged (stories
+`TheLivePickerIsUnchanged`, `TheLivePickerShowsNoPrototype`). Nothing is built on the server until the owner accepts
+the design.
+
+**Redrawn the same day to the owner's answers** — [expense-has-ads-and-expenses](../../business/analytic/rpc_provide_decision.md#expense-has-ads-and-expenses),
+[expense-figures-are-read-from-its-own-records](../../business/analytic/rpc_provide_decision.md#expense-figures-are-read-from-its-own-records),
+[an-expense-correction-counts-on-the-day-it-is-made](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made) (reversing
+the drawn "on its expense's day" for Analytic),
+[stock-loss-stays-out-of-analytic-expenses](../../business/analytic/rpc_provide_decision.md#stock-loss-stays-out-of-analytic-expenses),
+[the-expense-metrics-follow-the-decisions-already-made](../../business/analytic/rpc_provide_decision.md#the-expense-metrics-follow-the-decisions-already-made),
+[an-expense-correction-counts-for-who-made-it](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-for-who-made-it). The rows below
+read as redrawn; screenshots (desktop 1440, phone 390) in `D:/hermes/cache/scratch/expense_metrics_v2/`.
+
+| | |
+| --- | --- |
+| the tree | [rpc_provide.md](../../business/analytic/rpc_provide.md) §Metric That Exist in Analytic: *Expense › Warehouse Fee* (served) and *Ads Expense — fiter: team, shop, user, date range — fields: amount*. No groups, no other expense metric |
+| decided | Ads Expense inside Expense ([the-picker-follows-the-metric-tree](../../business/analytic/rpc_provide_decision.md#the-picker-follows-the-metric-tree)); a correction first drawn on its expense's day ([an-adjustment-counts-on-the-day-it-fixes](../../business/analytic/context_decision.md#an-adjustment-counts-on-the-day-it-fixes)) — superseded for Analytic by [an-expense-correction-counts-on-the-day-it-is-made](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made); the Expenses page, `/statement` and the account keep [an-expense-posts-on-its-own-day](../../business/financial_account/context_decision.md#an-expense-posts-on-its-own-day); one signed adjustment ([every-correction-is-a-signed-adjustment](../../business/analytic/context_decision.md#every-correction-is-a-signed-adjustment)); only ADS names a shop ([an-expense-names-a-shop-only-for-ads](../../business/financial_account/context_decision.md#an-expense-names-a-shop-only-for-ads)); settlement's ads never meet an account ([settlement-ads-and-accounts-are-independent](../../business/financial_account/context_decision.md#settlement-ads-and-accounts-are-independent)); transfer shipping is not an Expenses-screen record ([a-transfers-shipping-posts-as-an-expense](../../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)); every member reads every metric ([every-member-reads-every-metric-of-their-team](../../business/analytic/rpc_provide_decision.md#every-member-reads-every-metric-of-their-team)) |
+| exists | `expense_records` (exact double, `occurred_at` DATE, `created_by`, `adjusts_expense_id`, shop on ADS only, account 0 on STOCK_LOSS and pre-*Paid from*); kinds ADS · PAYROLL · OPERATIONAL · OTHER · STOCK_LOSS (inventory's `expensePoster`: a Stock Adjust damaged/lost, a count's broken + lost, on the WAREHOUSE's team); `ExpenseList` (totals by kind) and `ExpenseDaily` (day × kind, + warehouse roles) feed the Expenses page and `/statement`; events `ExpenseCreated` / `ExpenseAdjusted` heard only by the paying account. Analytic: the live samples `metrics/ads` (`ads_spend`, date + shop) and `metrics/expenses` (`expense_total`, date only — not in the tree); Finance's Account changes already split `expense` / `ads_expense` per account |
+| missing | an expense metric contract, a report, `MetricSearch` / `MetricData` in expense_service, a provider client, a person list for the `user` filter |
+| ⚠ found | (1) the events are never published for a STOCK_LOSS or an account-0 expense, so a fold of them is short by exactly those; expense_service owns the rows, so it can serve from them (Lost stock's in-process precedent). (2) ~~`expensePoster.PostStockLoss` stamps `occurred_at` with `time.Now()` in the HOST zone — on a UTC host a write-off 00:00–07:00 WIB lands a day early (needs a backlog row)~~ — ✅ fixed 2026-11-06 (backlog #29): dated by `expense_v1.JakartaDay(now)`, `TestExpensePoster_AWriteOffAt0030WIBLandsOnItsJakartaDay`. (3) `ExpenseList` / `ExpenseDaily` exclude SELLING_CS; an expense metric under [every-member-reads-every-metric-of-their-team](../../business/analytic/rpc_provide_decision.md#every-member-reads-every-metric-of-their-team) would show CS the payroll total — decided: CS reads it ([the-expense-metrics-follow-the-decisions-already-made](../../business/analytic/rpc_provide_decision.md#the-expense-metrics-follow-the-decisions-already-made)), so the metric must not copy that exclusion. (4) the tree's `amount` is also Warehouse Fee's field: in one table their columns share test ids (labels differ through `fieldOf`) |
+| prototype | `PROTOTYPE_METRICS` (catalogue.ts), replacing the two live samples by id while shown. **Ads expense** `metrics/ads`: filters date, shop, seller, created by; `amount` (*Ads spend*); groups shop, seller, warehouse, created by, time. **Expenses** `metrics/expenses`: `ads`, `payroll`, `operational`, `other`, `total` (`EXPENSE_KIND_FIELDS` — the typed kinds, **no Stock loss**); filters date, seller, created by; groups seller, warehouse, created by, time — adding it drops a shop filter. A correction counts on the day it is made, under who made it; a cancel on the cancel day |
+| figures | `sample.ts`: the live `ads_spend` facts are back to exactly what they were; the prototype's ads are facts of their own (`amount`, seller 12, who typed it, owner 12). Toko Sinar (16): 14 Oct +500.000 by Budi, **20 Oct −450.000 by Dewi** (the correction), 16 Oct +200.000 by Budi, 17 Oct −200.000 (Budi cancels) — October nets 50.000. Toko Melati's payroll (last day), rent (1st), utilities (10th), other; Toko Kenanga (13) rent + payroll; **Gudang Pusat (11) — a warehouse team's typed payroll, rent and power, packing supplies, keyed `warehouse` (not `team`)**; no STOCK_LOSS facts. `provider.ts` `rollUp`: a fact naming an `owner` is read by that team and root (team 1) only; a fact carrying none of a metric's fields makes no row (so a prototype's facts never add Rp 0 rows to its live sample) |
+| stories | `pages/analytic/expense.stories.tsx` — *Pages/Analytic/Expense (prototype)*, 18 with play(): picker (no Stock loss), groups + filters as decided, ads by shop (Sinar 50.000), ads daily, **a correction on the day it is made** (14 Oct 500.000, 17 Oct −200.000, 20 Oct −450.000), **a month nets it** (Oct 50.000, Sep 0), **Created by counts the corrector** (Budi 500.000, Dewi −450.000), **a corrector's negative day** (Dewi: 20 Oct −450.000), expenses by kind monthly and daily, Ads expense = Expenses' Ads, the shop filter dropped, **a warehouse team's expenses under Warehouse** (none under Seller; replaces the stock-loss story), **root reads every team's** (Seller: Melati + Kenanga; Warehouse: Gudang Pusat), **a CS reads its team's**, two phone, the live picker unchanged |
+| i18n | `analytic.fieldOf.ads.amount`, `analytic.fieldOf.expenses.{ads,payroll,operational,other,total}` (en + id); `stock_loss` removed |
+| ⚠ seen while redrawing | (1) As root by **Seller**, the headline also holds the warehouses' expenses, which no Seller row shows (Oct: rows 15.667.778 + 5.500.000, headline 31.201.883 with Gudang Pusat's 10.034.105) — it follows from "a warehouse team's expense groups under Warehouse". (2) Expenses has no warehouse FILTER (the tree's filters), so root can group by Warehouse but not narrow to one. (3) Storybook only: the shop and Created by filter fields read "All shops" / "Everyone" while a URL filter is applied, because the sample's shops (11–16) and people are not the fixture's (the figures are filtered); pre-existing, as for every sample metric |
+| ⚠ awaiting the owner | ~~the design accept~~ — accepted ([the-expense-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-expense-prototype-is-accepted)), with the root-by-Seller headline ⚠ (1) settled there; **served 2026-11-06**, see the next section |
+
+## 2026-11-06 — Ads expense and Expenses are served (backlog #22, the backend step)
+
+[the-expense-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-expense-prototype-is-accepted) built, with every decision before it
+(the 2026-11-06 section above). **Every live metric on the composer is served now**: the last two samples (`ads_spend`,
+`expense_total`) are gone, and so are the screen's two pending marks.
+
+| | |
+| --- | --- |
+| contract | `proto/warehouse/expense/v1/expense_analytic.proto` — `ExpenseAnalyticService` (`MetricSearch`, `MetricData`, both `NO_SIDE_EFFECTS`), `AdsExpenseMetric` (`metrics/ads`, `amount`; filters date·shop·team·user; groups summary·shop·team·warehouse·user·time) and `ExpensesMetric` (`metrics/expenses`, `ads`·`payroll`·`operational`·`other`·`total`; filters date·team·user; no shop). Policies: root, administrator, every selling role incl. CS, every warehouse role. `MetricDataRequest.rows_group` — the headline's table group |
+| report | `expense_metric_daily_reports` (expense **00006**): day × team × kind × shop × person, signed exact `amount`; `seller_id` / `warehouse_id` = the team on its side; `CHECK (kind BETWEEN 1 AND 4)` — STOCK_LOSS can never be written. Unique key starts with `day` (root's read); `(team_id, day)` for a team's. No backfill |
+| the fold | `expense_v1/metric_fold.go`, called in the SAME transaction by `ExpenseCreate` (now a transaction: insert + fold) and `ExpenseAdjust` (after the adjustment's insert, the last lock). An expense counts on its `occurred_at` for its typer; a correction / cancel on the Jakarta day it is MADE (`created_at` in WIB, stamped from `Service.now`) for its maker. `expense_records` is unchanged — the Expenses page, `/statement` and the paying account keep the expense's day |
+| Seller / Warehouse | new seam `expense_v1.TeamSides` (4th `NewService` dep; nil = every team a seller, for tests) → `cmd/app_development/expense_team_sides.go`, a local read of `teams.type` kept per process (teamKinds' shape), asked BEFORE the transaction |
+| headline rule | grouped by Seller the headline counts only sellers' rows, by Warehouse only warehouses' ([the-expense-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-expense-prototype-is-accepted)): the provider sends the table's group as `rows_group` with the SUMMARY read (only to services in `HEADLINE_OF_ROWS` — `expense`); the server then sums only rows whose key under that group is not 0. A time group / unset: every visible expense |
+| frontend | `catalogue.ts` `EXPENSE_METRICS = servedMetric(AdsExpenseMetricSchema, "ads", …)`, `servedMetric(ExpensesMetricSchema, "expenses", …)` in `METRICS` (Expense: Ads expense, Warehouse fee, Expenses); `EXPENSE_KIND_FIELDS` read off the message; `PROTOTYPE_METRICS = []`. `api/clients.ts` `expenseAnalyticClient`; `provider.ts` `clientOf("expense")`. Removed: `pages/analytic/pending.ts` and its two marks (`figures`, `catalogue`) with `analytic.pending.*`, and `analytic.field.{ads_spend,expense_total}`. Row names: shop / team / warehouse / user already had their by-id lookups (`useKeyNames`) |
+| stub | `.storybook/expenseAnalyticStub.ts` (registered in `stubTransport.ts`): the sample's expense facts through `sampleService`, each team its own (`owner`), root every team's, `rowsGroup` honoured (`sampleService.summary(..., rowsGroup)`); `expenseMetricCalls` records each request |
+| stories | `expense.stories.tsx` — *Pages/Analytic/Expense*, 19 (the 18 accepted, now through the wire, `TheLivePickerIsUnchanged` → `TheLivePickerServesThem`; root by Seller asserts headline = rows and `rowsGroup = TEAM`, by Warehouse the warehouse's; new `RootsHeadlineByTimeIsEveryTeams`). `index.stories.tsx`: `TheLivePickerShowsNoPrototype` asserts Expense's three served leaves; `SwitchGroupToSeller` (Ads expense used to drop) → `SwitchGroupToShop` (Lost stock drops) + `AdsFollowsASwitchToSeller` |
+| MCP | source `expense` (`warehouse.expense.v1`) in `mcp_service/tool_metrics.go`, client `ExpenseAnalytic` |
+| ~~⚠ gap~~ ✅ | ~~the composer's **Created by** filter offers nobody when only expense metrics are on the table~~ — ✅ built 2026-11-06 (backlog #30): `ExpensePersonList`, see the next section |
+
+| test | proves |
+| --- | --- |
+| `TestMetricData_ACorrectionCountsOnTheDayItIsMade` | the decision's example: 14 Oct 500.000, 16 Oct 200.000, 17 Oct −200.000 (the cancel), 20 Oct −450.000; the week 50.000; Sep 0 / Oct 50.000; `expense_records` still files it on 14 Oct |
+| `TestMetricData_CreatedByCountsTheCorrector` | Budi 500.000, Dewi −450.000, Ani 100.000, a stranger 0; Dewi's own days |
+| `TestMetricData_ExpensesByKindAndTotal` | kinds + total exact (10.270.000,5); both metrics in one call, asked order; Ads expense = Expenses' ads |
+| `TestMetricData_AStockLossIsNeverCounted` | no report row for a stock loss or its correction; the CHECK refuses kind 5 |
+| `TestMetricData_AWarehouseTeamsExpensesSitUnderWarehouse` · `TestMetricData_TheHeadlineCountsOnlyTheGroupsRows` | a warehouse team's rent under Warehouse, none under Seller; root's headline by Seller = the sellers' rows, by Warehouse the warehouse's, by month / unset everything |
+| `TestMetricData_EveryTeamReadsItsOwnRootEveryTeams` · `TestMetricData_EveryMemberMayRead` | own team only, a seller filter naming another reads 0, root both; policies incl. CS and warehouse staff |
+| `TestMetricData_Refuses` · `TestMetricData_EveryAskedKeyComesBack` · `TestMetricSearch_*` (4) | refusals (shop on Expenses, rows_group on a grouped read, keys under SUMMARY, a mid-month key, no range); paging, ties, ASC, kind sorts, Seller/Warehouse keys |
+| `TestExpenseCreate_FoldsItsAnalyticRow` · `TestExpenseCreate_AFailedFoldKeepsNoExpense` · `TestExpenseAdjust_FoldsOnTheDayItIsMadeForWhoMadeIt` | the row's key and side; one transaction (a failed fold keeps no expense); a correction at 23:30 UTC lands on the next Jakarta day |
+| `TestRegister_TheExpenseMetricsAnswer` · `TestExpenseTeamSides_SellerWarehouseOrNeither` | the route is mounted; the side seam |
+| `TestRace_MetricFold_CreatesAndCorrectionsOnOneDayRow` · `TestInterleave_MetricFold_TheSecondCorrectionQueuesOnTheRow` (raceaudit) | 10 rounds × 16 creates + corrections on ONE row: 0 failures, report = records exactly; a second correction blocks on the row and lands on A's commit. SAFE — `audits/services/expense_service/concurrency/lock-order.md` (matrix only) |
+| `TestPerf_ExpenseMetric` (perfaudit, ~137 000 rows) | every read ONE query: a team's year 1.0–1.6 ms, a team's 30 days 0.5 ms, root's every-team year 23–25 ms (parallel seq scan — the root scan, as the order metrics and Lost stock); ExpenseCreate 3 queries / 1.0 ms, ExpenseAdjust 5 / 1.0 ms with the fold. FAST — no write-up |
+| e2e `the_expense_metrics.spec.ts` (sorts after `statement.spec.ts`, a selling team of its own) | root types an ad 3 days ago + payroll; the team's admin corrects it today: MetricData daily 500.000 … −450.000 today; Created by root 500.000 / the corrector −450.000; headline 50.000 / 2.050.000; ExpenseDaily keeps 2.050.000 on the ad's day; a CS reads it; the composer by Created by names the corrector, by day, by Seller |
+
+## 2026-11-06 — Created by over the expense metrics (backlog #30)
+
+[a-who-filter-lists-the-people-on-its-rows](../../business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows) for
+the two expense metrics, in `SettlementPersonList`'s shape: the composer's *Created by* field now offers the people on the
+expense report's rows when only expense metrics are on the table (it offered nobody).
+
+| | |
+| --- | --- |
+| contract | `ExpenseAnalyticService.ExpensePersonList` (`expense_analytic.proto`, `NO_SIDE_EFFECTS`): `team_id` (use_scope), `filter.metric_ids` (the expense metrics on the table), sort LAST_DAY, `CommonPagination`; answers ids + `ExpensePersonItem {user_id, last_day}` + `PageInfo`. Policy = MetricData's (root, administrator, every selling role incl. CS, every warehouse role) |
+| handler | `expense_v1/expense_person_list.go` — the distinct `user_id <> 0` of `expense_metric_daily_reports` at `MAX(day)`, newest first, id DESC on a tie; a team its own rows, root every team's (`metricReaderOf`); Ads expense alone reads the ADS rows only (`allAds`); ONE statement, the people counted by `COUNT(*) OVER ()` |
+| frontend | `features/expense/queries.ts` `useExpensePeople` (key `expenses`, `referenceQuery`, 200) · `features/analytic/people.ts` `useAnalyticPeople(teamId, metrics)` now takes the chosen metric defs (was their services) and unions order creators, settlement's people, then expense's people · `pages/analytic/index.tsx` passes `defs` while the user filter shows |
+| stub | `.storybook/expenseAnalyticStub.ts` `expensePersonList` — the sample's expense facts (ads facts for Ads alone), each team its own (`owner`), root every team's; `expensePersonCalls` records each request |
+| not bounded by the range | as `SettlementPersonList` / `OrderCreatorList`: the picker loads the set once |
+
+| test | proves |
+| --- | --- |
+| `TestExpensePersonList_ThePeopleOnTheTeamsRowsLatestFirst` | team A: Ani 31 Oct, Dewi 20 Oct (only corrected), Budi 17 Oct (his cancel day); user 0 never; pages 2 + 1, a page past the end still says 3 people; ASC |
+| `TestExpensePersonList_EachTeamItsOwnRootEveryTeams` | team B its own two, Gudang Pusat root (who typed its rent), **a fourth team nobody**, root every team's people in order, Budi once at his latest day on either team |
+| `TestExpensePersonList_AdsExpenseAloneOffersItsAdsPeople` | Ads alone: team A by ADS days (Dewi, Budi, Ani), team B nobody (payroll only), root without the payroll/rent typists; Expenses / both / none → every kind; another service's metric InvalidArgument |
+| `TestExpensePersonList_PolicyIsMetricDatas` | the roles equal MetricData's |
+| mutation checks | dropping the team scope, the ADS kind or `user_id <> 0` each fails a test |
+| `TestPerf_ExpensePersonList` (perfaudit, ~137 000 rows) | 1 query: a seller 1.1–1.6 ms, root 24 ms (Ads alone 14 ms) — root's seq scan, as its metric reads, but over the whole history. ⚠ watch: grows with the report; the fix if it bites is settlement's per-person `last_day` row |
+| stories `expense.stories.tsx` (23) | `CreatedByOffersTheExpensePeople` (Ads + Expenses by Created by, Toko Melati: Ani, Budi, Dewi, Eko named, not Toko Kenanga's Ani Lestari; picking Dewi narrows to her −Rp 450.000), `CreatedByForAdsAloneAsksForTheAdsPeople` (sends `[metrics/ads]`), `AWarehouseIsOfferedItsOwnPeople` (Gudang Pusat: Dewi, Budi, Eko — no Ani), `RootIsOfferedEveryTeamsPeople` (all five) — the four fail with expense left out of `people.ts` |
+| e2e `the_expense_metrics.spec.ts` | `ExpensePersonList names the corrector and the typist, latest first` (as the team's CS: [Dewi today, root 3 days ago]); `The Created by filter offers the corrector, and picking her narrows the table` (Ads + Expenses by Created by: two options, Dewi by name; picked → `user=` in the URL, one row, −Rp 450.000, headline −Rp 450.000) |
+
+## 2026-11-07 — the date range is Jakarta days for any viewer (backlog #37)
+
+The Analytic composer cut its relative range at the VIEWER's midnight (a local `windowOf`), so a browser outside WIB asked for days a
+few hours off the server's Jakarta days. It now reads `jakartaWindowOf` from `frontend/src/lib/jakartaDay.ts`, the one
+helper every range screen shares; tests `src/lib/jakartaDay.test.ts` ([architecture state](../architecture/context.md)).

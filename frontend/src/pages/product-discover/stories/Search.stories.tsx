@@ -18,20 +18,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SearchesSkuAndName: Story = {
-  name: "SKU and name",
+export const SearchesProductCodeAndName: Story = {
+  name: "Product code and name",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const search = canvas.getByTestId("discover-search");
 
     await userEvent.type(search, "gula", { delay: 40 });
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.sku}`)).toBeNull());
-    await expect(canvas.getByTestId(`discover-card-${GULA.sku}`)).toBeVisible();
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.productCode}`)).toBeNull());
+    await expect(canvas.getByTestId(`discover-card-${GULA.productCode}`)).toBeVisible();
 
     await userEvent.clear(search);
-    await userEvent.type(search, TEH.sku, { delay: 40 });
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${GULA.sku}`)).toBeNull());
-    await expect(canvas.getByTestId(`discover-card-${TEH.sku}`)).toBeVisible();
+    await userEvent.type(search, TEH.productCode, { delay: 40 });
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${GULA.productCode}`)).toBeNull());
+    await expect(canvas.getByTestId(`discover-card-${TEH.productCode}`)).toBeVisible();
   },
 };
 
@@ -47,7 +47,7 @@ export const SortsByName: Story = {
     await userEvent.click(byName);
 
     const first = [...liveProducts()].sort((a, b) => a.name.localeCompare(b.name))[0]!;
-    await waitFor(() => expect(cards(canvas)[0]).toHaveAttribute("data-testid", `discover-card-${first.sku}`));
+    await waitFor(() => expect(cards(canvas)[0]).toHaveAttribute("data-testid", `discover-card-${first.productCode}`));
   },
 };
 
@@ -64,12 +64,12 @@ export const FiltersLiveInTheUrl: Story = {
   render: () => <AtFilteredUrl />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByTestId(`discover-card-${GULA.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${GULA.productCode}`, {}, { timeout: 4000 });
     const search = canvas.getByTestId("discover-search");
     const location = canvas.getByTestId("location-search");
 
     await expect(search).toHaveValue("gula");
-    await expect(canvas.queryByTestId(`discover-card-${KOPI.sku}`)).toBeNull();
+    await expect(canvas.queryByTestId(`discover-card-${KOPI.productCode}`)).toBeNull();
 
     await userEvent.clear(search);
     await userEvent.type(search, "kopi", { delay: 40 });
@@ -91,6 +91,6 @@ export const NothingMatches: Story = {
     await expect(cards(canvas)).toHaveLength(0);
 
     await userEvent.click(within(hint).getByRole("button"));
-    await canvas.findByTestId(`discover-card-${KOPI.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${KOPI.productCode}`, {}, { timeout: 4000 });
   },
 };

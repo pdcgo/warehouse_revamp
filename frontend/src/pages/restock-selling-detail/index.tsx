@@ -210,6 +210,9 @@ export function RestockSellingDetailPage() {
     "delivery",
     <DeliveryFacts
       request={request}
+      // The selling team opens its own label photo, as the file's owner.
+      teamId={teamId}
+      opensAs="owner"
       narrow={wide}
       party={{ label: t("restock.detail.destination"), name: warehouseName, testId: "restock-detail-warehouse" }}
     />,

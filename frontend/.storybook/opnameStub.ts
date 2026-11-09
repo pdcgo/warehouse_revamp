@@ -1,5 +1,5 @@
-// inventory_service's OpnameService as Storybook's stub — the ONLY implementation the stock count has until the backend
-// step (the real server answers Unimplemented).
+// inventory_service's OpnameService as Storybook's stub. The real one is inventory_v1/opname_*.go (accepted 2026-11-02);
+// this plays the same rules so the screens are reviewable without a server.
 //
 // It plays the DECIDED rules (docs/business/inventory/opname_decision.md), because the screens must already honour them:
 //   one-active-count-per-warehouse                 a second active session is refused.
@@ -33,6 +33,7 @@ import {
   OpnameService,
   OpnameSessionListDataType,
   OpnameSessionStatus as SS,
+  OpnameTransactionType as TT,
 } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { products, racks } from "./fixtures";
@@ -68,6 +69,26 @@ export function resetOpnameStub() {
 }
 
 resetOpnameStub();
+
+/**
+ * The products with a batch in this warehouse, at 0 or not — the register a count's found refusal reads
+ * (a-unit-never-stocked-here-comes-in-by-restock), and so what the warehouse picker may offer (warehouseProductSearchStub.ts).
+ */
+export function opnameHeldHere(warehouseId: bigint): bigint[] {
+  return batches.filter((b) => b.warehouseId === warehouseId).map((b) => b.productId);
+}
+
+/**
+ * What each product held in this warehouse has left — its batches' stock, summed; an emptied one reads 0. The Stock
+ * screen's on hand (warehouseStockListStub.ts), read off the same register its held set comes from.
+ */
+export function opnameOnHandHere(warehouseId: bigint): Map<bigint, bigint> {
+  const onHand = new Map<bigint, bigint>();
+  for (const b of batches) {
+    if (b.warehouseId === warehouseId) onHand.set(b.productId, (onHand.get(b.productId) ?? 0n) + b.stock);
+  }
+  return onHand;
+}
 
 /** A `beforeEach`: the signed-in person counted one of Gudang Cabang's rows — so they may not finalize session 21. */
 export function opnameSelfCounted() {
@@ -159,7 +180,7 @@ function rowWire(row: OpnameRowFixture, blind: boolean) {
     sessionId: row.sessionId,
     teamId: row.teamId,
     productId: row.productId,
-    productSku: row.sku,
+    productCode: row.productCode,
     productName: row.name,
     placementId: row.placementId,
     placementCode: row.placementCode,
@@ -249,7 +270,7 @@ function snapshotRow(sessionId: bigint, productId: bigint, placementId: bigint, 
     sessionId,
     teamId: product?.teamId ?? 0n,
     productId,
-    sku: product?.sku ?? "",
+    productCode: product?.productCode ?? "",
     name: product?.name ?? `#${productId}`,
     placementId,
     placementCode: rackCode(placementId),
@@ -272,12 +293,13 @@ function snapshotRow(sessionId: bigint, productId: bigint, placementId: bigint, 
 
 // ── Finalize — the settlement per product ──────────────────────────────────────────────────────────────────────────
 
+// Money is double on the wire (money-is-double-in-the-api-too); the fixtures keep whole rupiah as bigint.
 interface PostLine {
   type: PT;
   batchId: bigint;
   stockCount: bigint;
-  priceUnit: bigint;
-  amount: bigint;
+  priceUnit: number;
+  amount: number;
   problemId: bigint;
 }
 
@@ -294,7 +316,7 @@ function takeOldest(warehouseId: bigint, teamId: bigint, productId: bigint, n: b
     if (available <= 0n) continue;
     const q = available < left ? available : left;
     taken.set(b.id.toString(), used + q);
-    lines.push({ type, batchId: b.id, stockCount: q, priceUnit: b.priceUnit, amount: q * b.priceUnit, problemId: 0n });
+    lines.push({ type, batchId: b.id, stockCount: q, priceUnit: Number(b.priceUnit), amount: Number(q * b.priceUnit), problemId: 0n });
     left -= q;
   }
 
@@ -330,7 +352,14 @@ function settle(s: OpnameSessionFixture) {
         const open = p.claimable - p.claimed;
         if (left === 0n || open <= 0n) continue;
         const q = open < left ? open : left;
-        lines.push({ type: PT.CLAIM, batchId: p.batchId, stockCount: q, priceUnit: p.priceUnit, amount: q * p.priceUnit, problemId: p.id });
+        lines.push({
+          type: PT.CLAIM,
+          batchId: p.batchId,
+          stockCount: q,
+          priceUnit: Number(p.priceUnit),
+          amount: Number(q * p.priceUnit),
+          problemId: p.id,
+        });
         left -= q;
       }
       if (left > 0n) {
@@ -338,14 +367,14 @@ function settle(s: OpnameSessionFixture) {
           .filter((x) => x.warehouseId === s.warehouseId && x.teamId === first.teamId && x.productId === first.productId)
           .sort((a, c) => (a.id > c.id ? -1 : 1))[0];
         const price = newest?.priceUnit ?? 0n;
-        lines.push({ type: PT.MINT, batchId: 0n, stockCount: left, priceUnit: price, amount: left * price, problemId: 0n });
+        lines.push({ type: PT.MINT, batchId: 0n, stockCount: left, priceUnit: Number(price), amount: Number(left * price), problemId: 0n });
       }
     }
 
     out.push({
       teamId: first.teamId,
       productId: first.productId,
-      productSku: first.sku,
+      productCode: first.productCode,
       productName: first.name,
       bookCount: book,
       sellableCount: sellable,
@@ -353,10 +382,34 @@ function settle(s: OpnameSessionFixture) {
       restCount: rest,
       rackChangeCount: rackChanges,
       lines,
+      movedCount: movedOf(its, rest),
     });
   }
 
   return out.sort((a, b) => (a.teamId !== b.teamId ? (a.teamId < b.teamId ? -1 : 1) : a.productName < b.productName ? -1 : 1));
+}
+
+// What the team's MOVE carries: each rack's residual once its broken is off; lost comes off the short racks and found
+// goes on the over ones first, in rack order, as the server allocates them — what is left nets to 0 and moves.
+function movedOf(its: OpnameRowFixture[], rest: bigint): bigint {
+  const residual = [...its].sort((a, b) => (a.placementId < b.placementId ? -1 : 1)).map((r) => r.count - r.system + r.broken);
+  let lost = rest < 0n ? -rest : 0n;
+  let found = rest > 0n ? rest : 0n;
+  for (let i = 0; i < residual.length; i++) {
+    const e = residual[i]!;
+    if (lost > 0n && e < 0n) {
+      const n = -e < lost ? -e : lost;
+      residual[i] = e + n;
+      lost -= n;
+    }
+    if (found > 0n && e > 0n) {
+      const n = e < found ? e : found;
+      residual[i] = e - n;
+      found -= n;
+    }
+  }
+
+  return residual.reduce((a, e) => (e < 0n ? a - e : a), 0n);
 }
 
 function blockOf(s: OpnameSessionFixture): FB {
@@ -368,7 +421,7 @@ function blockOf(s: OpnameSessionFixture): FB {
   return FB.UNSPECIFIED;
 }
 
-const sum = (lines: PostLine[], types: PT[]) => lines.filter((l) => types.includes(l.type)).reduce((a, l) => a + l.amount, 0n);
+const sum = (lines: PostLine[], types: PT[]) => lines.filter((l) => types.includes(l.type)).reduce((a, l) => a + l.amount, 0);
 
 // ── The service ────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -455,7 +508,7 @@ export const opnameService: Partial<ServiceImpl<typeof OpnameService>> = {
       .filter((r) => !f.placementId || r.placementId === f.placementId)
       .filter((r) => !f.status || r.status === f.status)
       .filter((r) => !f.onlyDifferences || differs(r))
-      .filter((r) => !q || r.sku.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
+      .filter((r) => !q || r.productCode.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
       .sort((a, b) => (a.placementCode !== b.placementCode ? (a.placementCode < b.placementCode ? -1 : 1) : a.name < b.name ? -1 : 1));
 
     const { rows: window, pageInfo } = pageOf(matched, req.page);
@@ -524,12 +577,18 @@ export const opnameService: Partial<ServiceImpl<typeof OpnameService>> = {
     s.finalizedById = SELF_ID;
     s.finalizedAtUnix = now();
 
-    const teams = [...new Set(rowsOf(s.id).map((r) => r.teamId.toString()))].sort();
+    // Up to three transactions per owning team — problem, found, move (problem-and-found-replace-opname).
+    const transactions: { transactionId: bigint; teamId: bigint; type: TT }[] = [];
+    for (const team of [...new Set(settled.map((p) => p.teamId.toString()))].sort()) {
+      const its = settled.filter((p) => p.teamId.toString() === team);
+      const has = (types: PT[]) => its.some((p) => p.lines.some((l) => types.includes(l.type)));
+      const add = (type: TT) => transactions.push({ transactionId: nextTransactionId++, teamId: BigInt(team), type });
+      if (has([PT.BROKEN, PT.LOST])) add(TT.PROBLEM);
+      if (has([PT.CLAIM, PT.MINT])) add(TT.FOUND);
+      if (its.some((p) => p.movedCount > 0n)) add(TT.MOVE);
+    }
 
-    return {
-      session: sessionWire(s),
-      transactions: teams.map((teamId) => ({ transactionId: nextTransactionId++, teamId: BigInt(teamId) })),
-    };
+    return { session: sessionWire(s), transactions };
   },
 
   opnameRackList(req) {

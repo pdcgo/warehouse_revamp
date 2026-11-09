@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/analytic_base/v1/analytic.proto.
  */
 export const file_warehouse_analytic_base_v1_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Cil3YXJlaG91c2UvYW5hbHl0aWNfYmFzZS92MS9hbmFseXRpYy5wcm90bxIad2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEigwEKCk1ldHJpY1NvcnQSGgoJbWV0cmljX2lkGAEgASgJQge6SARyAhABEhYKBWZpZWxkGAIgASgJQge6SARyAhABEkEKCXNvcnRfdHlwZRgDIAEoDjIkLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlNvcnRUeXBlQgi6SAWCAQIQASJ/Cg9EYXRlUmFuZ2VGaWx0ZXISNQoIZGF0ZV9taW4YASABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEjUKCGRhdGVfbWF4GAIgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JCIsCg1Qcm9kdWN0RmlsdGVyEhsKCnByb2R1Y3RfaWQYASABKARCB7pIBDICIAAiJgoKVGVhbUZpbHRlchIYCgd0ZWFtX2lkGAEgASgEQge6SAQyAiAAIiYKClNob3BGaWx0ZXISGAoHc2hvcF9pZBgBIAEoBEIHukgEMgIgACIuCg5TdXBwbGllckZpbHRlchIcCgtzdXBwbGllcl9pZBgBIAEoBEIHukgEMgIgACIwCg9XYXJlaG91c2VGaWx0ZXISHQoMd2FyZWhvdXNlX2lkGAEgASgEQge6SAQyAiAAIiYKClVzZXJGaWx0ZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACItChVTdXBwbGllcktleXdvcmRGaWx0ZXISFAoBcRgBIAEoCUIJukgGcgQQARhkIuAECgpGaWx0ZXJJdGVtEkgKEWRhdGVfcmFuZ2VfZmlsdGVyGAEgASgLMisud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRGF0ZVJhbmdlRmlsdGVySAASQwoOcHJvZHVjdF9maWx0ZXIYAyABKAsyKS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Qcm9kdWN0RmlsdGVySAASPQoLdGVhbV9maWx0ZXIYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5UZWFtRmlsdGVySAASPQoLc2hvcF9maWx0ZXIYBSABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5TaG9wRmlsdGVySAASRQoPc3VwcGxpZXJfZmlsdGVyGAYgASgLMioud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuU3VwcGxpZXJGaWx0ZXJIABJHChB3YXJlaG91c2VfZmlsdGVyGAcgASgLMisud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuV2FyZWhvdXNlRmlsdGVySAASPQoLdXNlcl9maWx0ZXIYCCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Vc2VyRmlsdGVySAASVAoXc3VwcGxpZXJfa2V5d29yZF9maWx0ZXIYCSABKAsyMS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5TdXBwbGllcktleXdvcmRGaWx0ZXJIAEIKCgFmEgW6SAIIAUoECAIQA1IOa2V5d29yZF9maWx0ZXIiRgoQUGFnaW5hdGlvbkZpbHRlchIXCgZvZmZzZXQYASABKAVCB7pIBBoCKAASGQoFbGltaXQYAiABKAVCCrpIBxoFGMgBKAEi6QEKDE1ldHJpY09wdGlvbhJBChFzdXBwb3J0ZWRfZmlsdGVycxgBIAMoDjImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlclR5cGUSQAoQcmVxdWlyZWRfZmlsdGVycxgCIAMoDjImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlclR5cGUSQQoSc3VwcG9ydGVkX2dyb3VwX2J5GAMgAygOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlEhEKCW1ldHJpY19pZBgEIAEoCSI3CgpTb3J0T3B0aW9uEhAKCGNhbl9zb3J0GAEgASgIEhcKD3JhbmtfbWluX3NhbXBsZRgCIAEoAyIoCgZJRExpc3QSHgoDaWRzGAEgAygEQhG6SA6SAQsQyAEYASIEMgIgACJGCgdEYXlMaXN0EjsKBGRheXMYASADKAlCLbpIKpIBJxDIARgBIiByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JCJ5CgpNZXRyaWNLZXlzEjEKA2lkcxgBIAEoCzIiLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLklETGlzdEgAEjMKBGRheXMYAiABKAsyIy53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5EYXlMaXN0SABCAwoBaypMCghTb3J0VHlwZRIZChVTT1JUX1RZUEVfVU5TUEVDSUZJRUQQABISCg5TT1JUX1RZUEVfREVTQxABEhEKDVNPUlRfVFlQRV9BU0MQAiqSAgoKRmlsdGVyVHlwZRIbChdGSUxURVJfVFlQRV9VTlNQRUNJRklFRBAAEhoKFkZJTFRFUl9UWVBFX0RBVEVfUkFOR0UQARIXChNGSUxURVJfVFlQRV9QUk9EVUNUEAMSFAoQRklMVEVSX1RZUEVfVEVBTRAEEhQKEEZJTFRFUl9UWVBFX1NIT1AQBRIYChRGSUxURVJfVFlQRV9TVVBQTElFUhAGEhkKFUZJTFRFUl9UWVBFX1dBUkVIT1VTRRAHEhQKEEZJTFRFUl9UWVBFX1VTRVIQCBIgChxGSUxURVJfVFlQRV9TVVBQTElFUl9LRVlXT1JEEAkiBAgCEAIqE0ZJTFRFUl9UWVBFX0tFWVdPUkQqpQIKCUdyb3VwVHlwZRIaChZHUk9VUF9UWVBFX1VOU1BFQ0lGSUVEEAASFgoSR1JPVVBfVFlQRV9TVU1NQVJZEAESFAoQR1JPVVBfVFlQRV9EQUlMWRACEhUKEUdST1VQX1RZUEVfV0VFS0xZEAMSFgoSR1JPVVBfVFlQRV9NT05USExZEAQSFQoRR1JPVVBfVFlQRV9ZRUFSTFkQBRIWChJHUk9VUF9UWVBFX1BST0RVQ1QQBhITCg9HUk9VUF9UWVBFX1NIT1AQBxIXChNHUk9VUF9UWVBFX1NVUFBMSUVSEAgSEwoPR1JPVVBfVFlQRV9URUFNEAkSEwoPR1JPVVBfVFlQRV9VU0VSEAoSGAoUR1JPVVBfVFlQRV9XQVJFSE9VU0UQCyqgAQoNRmllbGRTdGF0VHlwZRIfChtGSUVMRF9TVEFUX1RZUEVfVU5TUEVDSUZJRUQQABIZChVGSUVMRF9TVEFUX1RZUEVfUkFUSU8QARIXChNGSUVMRF9TVEFUX1RZUEVfUVRZEAISHAoYRklFTERfU1RBVF9UWVBFX0NVUlJFTkNZEAMSHAoYRklFTERfU1RBVF9UWVBFX1BPU0lUSU9OEAQ6YwoGbWV0cmljEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNOGAyABKAsyKC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNPcHRpb25SBm1ldHJpYzpoCgttZXRyaWNfc29ydBIdLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE9wdGlvbnMY04YDIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlNvcnRPcHRpb25SCm1ldHJpY1NvcnQ6cgoPZmllbGRfc3RhdF90eXBlEh0uZ29vZ2xlLnByb3RvYnVmLkZpZWxkT3B0aW9ucxjUhgMgASgOMikud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmllbGRTdGF0VHlwZVINZmllbGRTdGF0VHlwZUJaWlhnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2FuYWx5dGljX2Jhc2UvdjE7YW5hbHl0aWNfYmFzZXYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_descriptor]);
+  fileDesc("Cil3YXJlaG91c2UvYW5hbHl0aWNfYmFzZS92MS9hbmFseXRpYy5wcm90bxIad2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEigwEKCk1ldHJpY1NvcnQSGgoJbWV0cmljX2lkGAEgASgJQge6SARyAhABEhYKBWZpZWxkGAIgASgJQge6SARyAhABEkEKCXNvcnRfdHlwZRgDIAEoDjIkLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlNvcnRUeXBlQgi6SAWCAQIQASJ/Cg9EYXRlUmFuZ2VGaWx0ZXISNQoIZGF0ZV9taW4YASABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEjUKCGRhdGVfbWF4GAIgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JCIsCg1Qcm9kdWN0RmlsdGVyEhsKCnByb2R1Y3RfaWQYASABKARCB7pIBDICIAAiJgoKVGVhbUZpbHRlchIYCgd0ZWFtX2lkGAEgASgEQge6SAQyAiAAIiYKClNob3BGaWx0ZXISGAoHc2hvcF9pZBgBIAEoBEIHukgEMgIgACIuCg5TdXBwbGllckZpbHRlchIcCgtzdXBwbGllcl9pZBgBIAEoBEIHukgEMgIgACIwCg9XYXJlaG91c2VGaWx0ZXISHQoMd2FyZWhvdXNlX2lkGAEgASgEQge6SAQyAiAAIiYKClVzZXJGaWx0ZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACItChVTdXBwbGllcktleXdvcmRGaWx0ZXISFAoBcRgBIAEoCUIJukgGcgQQARhkIjkKDUFjY291bnRGaWx0ZXISKAoLYWNjb3VudF9pZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAipQUKCkZpbHRlckl0ZW0SSAoRZGF0ZV9yYW5nZV9maWx0ZXIYASABKAsyKy53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5EYXRlUmFuZ2VGaWx0ZXJIABJDCg5wcm9kdWN0X2ZpbHRlchgDIAEoCzIpLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlByb2R1Y3RGaWx0ZXJIABI9Cgt0ZWFtX2ZpbHRlchgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlRlYW1GaWx0ZXJIABI9CgtzaG9wX2ZpbHRlchgFIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlNob3BGaWx0ZXJIABJFCg9zdXBwbGllcl9maWx0ZXIYBiABKAsyKi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5TdXBwbGllckZpbHRlckgAEkcKEHdhcmVob3VzZV9maWx0ZXIYByABKAsyKy53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5XYXJlaG91c2VGaWx0ZXJIABI9Cgt1c2VyX2ZpbHRlchgIIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlVzZXJGaWx0ZXJIABJUChdzdXBwbGllcl9rZXl3b3JkX2ZpbHRlchgJIAEoCzIxLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlN1cHBsaWVyS2V5d29yZEZpbHRlckgAEkMKDmFjY291bnRfZmlsdGVyGAogASgLMikud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuQWNjb3VudEZpbHRlckgAQgoKAWYSBbpIAggBSgQIAhADUg5rZXl3b3JkX2ZpbHRlciJGChBQYWdpbmF0aW9uRmlsdGVyEhcKBm9mZnNldBgBIAEoBUIHukgEGgIoABIZCgVsaW1pdBgCIAEoBUIKukgHGgUYyAEoASLpAQoMTWV0cmljT3B0aW9uEkEKEXN1cHBvcnRlZF9maWx0ZXJzGAEgAygOMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVyVHlwZRJAChByZXF1aXJlZF9maWx0ZXJzGAIgAygOMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVyVHlwZRJBChJzdXBwb3J0ZWRfZ3JvdXBfYnkYAyADKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGUSEQoJbWV0cmljX2lkGAQgASgJIjcKClNvcnRPcHRpb24SEAoIY2FuX3NvcnQYASABKAgSFwoPcmFua19taW5fc2FtcGxlGAIgASgDIigKBklETGlzdBIeCgNpZHMYASADKARCEbpIDpIBCxDIARgBIgQyAiAAIkYKB0RheUxpc3QSOwoEZGF5cxgBIAMoCUItukgqkgEnEMgBGAEiIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kInkKCk1ldHJpY0tleXMSMQoDaWRzGAEgASgLMiIud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuSURMaXN0SAASMwoEZGF5cxgCIAEoCzIjLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkRheUxpc3RIAEIDCgFrKkwKCFNvcnRUeXBlEhkKFVNPUlRfVFlQRV9VTlNQRUNJRklFRBAAEhIKDlNPUlRfVFlQRV9ERVNDEAESEQoNU09SVF9UWVBFX0FTQxACKqsCCgpGaWx0ZXJUeXBlEhsKF0ZJTFRFUl9UWVBFX1VOU1BFQ0lGSUVEEAASGgoWRklMVEVSX1RZUEVfREFURV9SQU5HRRABEhcKE0ZJTFRFUl9UWVBFX1BST0RVQ1QQAxIUChBGSUxURVJfVFlQRV9URUFNEAQSFAoQRklMVEVSX1RZUEVfU0hPUBAFEhgKFEZJTFRFUl9UWVBFX1NVUFBMSUVSEAYSGQoVRklMVEVSX1RZUEVfV0FSRUhPVVNFEAcSFAoQRklMVEVSX1RZUEVfVVNFUhAIEiAKHEZJTFRFUl9UWVBFX1NVUFBMSUVSX0tFWVdPUkQQCRIXChNGSUxURVJfVFlQRV9BQ0NPVU5UEAoiBAgCEAIqE0ZJTFRFUl9UWVBFX0tFWVdPUkQq8gIKCUdyb3VwVHlwZRIaChZHUk9VUF9UWVBFX1VOU1BFQ0lGSUVEEAASFgoSR1JPVVBfVFlQRV9TVU1NQVJZEAESFAoQR1JPVVBfVFlQRV9EQUlMWRACEhUKEUdST1VQX1RZUEVfV0VFS0xZEAMSFgoSR1JPVVBfVFlQRV9NT05USExZEAQSFQoRR1JPVVBfVFlQRV9ZRUFSTFkQBRIWChJHUk9VUF9UWVBFX1BST0RVQ1QQBhITCg9HUk9VUF9UWVBFX1NIT1AQBxIXChNHUk9VUF9UWVBFX1NVUFBMSUVSEAgSEwoPR1JPVVBfVFlQRV9URUFNEAkSEwoPR1JPVVBfVFlQRV9VU0VSEAoSGAoUR1JPVVBfVFlQRV9XQVJFSE9VU0UQCxIWChJHUk9VUF9UWVBFX0FDQ09VTlQQDBIXChNHUk9VUF9UWVBFX1BST1ZJREVSEA0SGgoWR1JPVVBfVFlQRV9DSEFOR0VfVFlQRRAOKqABCg1GaWVsZFN0YXRUeXBlEh8KG0ZJRUxEX1NUQVRfVFlQRV9VTlNQRUNJRklFRBAAEhkKFUZJRUxEX1NUQVRfVFlQRV9SQVRJTxABEhcKE0ZJRUxEX1NUQVRfVFlQRV9RVFkQAhIcChhGSUVMRF9TVEFUX1RZUEVfQ1VSUkVOQ1kQAxIcChhGSUVMRF9TVEFUX1RZUEVfUE9TSVRJT04QBDpjCgZtZXRyaWMSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMY04YDIAEoCzIoLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY09wdGlvblIGbWV0cmljOmgKC21ldHJpY19zb3J0Eh0uZ29vZ2xlLnByb3RvYnVmLkZpZWxkT3B0aW9ucxjThgMgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuU29ydE9wdGlvblIKbWV0cmljU29ydDpyCg9maWVsZF9zdGF0X3R5cGUSHS5nb29nbGUucHJvdG9idWYuRmllbGRPcHRpb25zGNSGAyABKA4yKS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWVsZFN0YXRUeXBlUg1maWVsZFN0YXRUeXBlQlpaWGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvYW5hbHl0aWNfYmFzZS92MTthbmFseXRpY19iYXNldjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_descriptor]);
 
 /**
  * MetricSort — the table's ONE sort (one-sort-field-per-table): a field of a metric, named by its proto name
@@ -200,6 +200,26 @@ export const SupplierKeywordFilterSchema: GenMessage<SupplierKeywordFilter> = /*
   messageDesc(file_warehouse_analytic_base_v1_analytic, 8);
 
 /**
+ * AccountFilter — a team's own financial accounts, one or several (finance-filters-by-account). An id of another team's
+ * account matches nothing: the scope is the request's `team_id`.
+ *
+ * @generated from message warehouse.analytic_base.v1.AccountFilter
+ */
+export type AccountFilter = Message<"warehouse.analytic_base.v1.AccountFilter"> & {
+  /**
+   * @generated from field: repeated uint64 account_ids = 1;
+   */
+  accountIds: bigint[];
+};
+
+/**
+ * Describes the message warehouse.analytic_base.v1.AccountFilter.
+ * Use `create(AccountFilterSchema)` to create a new message.
+ */
+export const AccountFilterSchema: GenMessage<AccountFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 9);
+
+/**
  * FilterItem — one case per FilterType, and each case's NUMBER IS ITS FilterType's, so a set case maps to its type
  * without a table. 2 was the keyword (the-generic-keyword-is-removed) — reserved, so the numbers still match.
  *
@@ -257,6 +277,12 @@ export type FilterItem = Message<"warehouse.analytic_base.v1.FilterItem"> & {
      */
     value: SupplierKeywordFilter;
     case: "supplierKeywordFilter";
+  } | {
+    /**
+     * @generated from field: warehouse.analytic_base.v1.AccountFilter account_filter = 10;
+     */
+    value: AccountFilter;
+    case: "accountFilter";
   } | { case: undefined; value?: undefined };
 };
 
@@ -265,7 +291,7 @@ export type FilterItem = Message<"warehouse.analytic_base.v1.FilterItem"> & {
  * Use `create(FilterItemSchema)` to create a new message.
  */
 export const FilterItemSchema: GenMessage<FilterItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 9);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 10);
 
 /**
  * PaginationFilter — on the search request only. The response says whether another page follows and never how many
@@ -290,7 +316,7 @@ export type PaginationFilter = Message<"warehouse.analytic_base.v1.PaginationFil
  * Use `create(PaginationFilterSchema)` to create a new message.
  */
 export const PaginationFilterSchema: GenMessage<PaginationFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 10);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 11);
 
 /**
  * MetricOption — what a metric declares about itself. Checked at startup by san_metric.ValidateDescriptors.
@@ -330,7 +356,7 @@ export type MetricOption = Message<"warehouse.analytic_base.v1.MetricOption"> & 
  * Use `create(MetricOptionSchema)` to create a new message.
  */
 export const MetricOptionSchema: GenMessage<MetricOption> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 11);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 12);
 
 /**
  * SortOption — on a metric's number field: whether a table may be sorted by it.
@@ -357,10 +383,11 @@ export type SortOption = Message<"warehouse.analytic_base.v1.SortOption"> & {
  * Use `create(SortOptionSchema)` to create a new message.
  */
 export const SortOptionSchema: GenMessage<SortOption> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 12);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 13);
 
 /**
- * IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER, WAREHOUSE. At most a page.
+ * IDList — the keys of an id group: SHOP, PRODUCT, SUPPLIER, TEAM, USER, WAREHOUSE, ACCOUNT — and for PROVIDER and
+ * CHANGE_TYPE the enum's number. At most a page.
  *
  * @generated from message warehouse.analytic_base.v1.IDList
  */
@@ -376,7 +403,7 @@ export type IDList = Message<"warehouse.analytic_base.v1.IDList"> & {
  * Use `create(IDListSchema)` to create a new message.
  */
 export const IDListSchema: GenMessage<IDList> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 13);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 14);
 
 /**
  * DayList — the keys of a time group: each bucket's first day. At most a page.
@@ -395,7 +422,7 @@ export type DayList = Message<"warehouse.analytic_base.v1.DayList"> & {
  * Use `create(DayListSchema)` to create a new message.
  */
 export const DayListSchema: GenMessage<DayList> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 14);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 15);
 
 /**
  * MetricKeys — the rows. Absent for GROUP_TYPE_SUMMARY.
@@ -426,7 +453,7 @@ export type MetricKeys = Message<"warehouse.analytic_base.v1.MetricKeys"> & {
  * Use `create(MetricKeysSchema)` to create a new message.
  */
 export const MetricKeysSchema: GenMessage<MetricKeys> = /*@__PURE__*/
-  messageDesc(file_warehouse_analytic_base_v1_analytic, 15);
+  messageDesc(file_warehouse_analytic_base_v1_analytic, 16);
 
 /**
  * SortType — an unspecified sort reads as DESC, and the key DESC breaks every tie (the-key-breaks-every-tie).
@@ -511,6 +538,13 @@ export enum FilterType {
    * @generated from enum value: FILTER_TYPE_SUPPLIER_KEYWORD = 9;
    */
   SUPPLIER_KEYWORD = 9,
+
+  /**
+   * A team's financial accounts, one or several — the Finance metrics' (finance-filters-by-account).
+   *
+   * @generated from enum value: FILTER_TYPE_ACCOUNT = 10;
+   */
+  ACCOUNT = 10,
 }
 
 /**
@@ -596,6 +630,25 @@ export enum GroupType {
    * @generated from enum value: GROUP_TYPE_WAREHOUSE = 11;
    */
   WAREHOUSE = 11,
+
+  /**
+   * The financial-account groups (the-group-enum-grows-with-the-reports), joined with the Finance metrics: an account
+   * (keyed by its id), its provider and a change type (each keyed by its enum number in warehouse.financial_account.v1 —
+   * FinancialAccountProvider, FinancialAccountChangeType).
+   *
+   * @generated from enum value: GROUP_TYPE_ACCOUNT = 12;
+   */
+  ACCOUNT = 12,
+
+  /**
+   * @generated from enum value: GROUP_TYPE_PROVIDER = 13;
+   */
+  PROVIDER = 13,
+
+  /**
+   * @generated from enum value: GROUP_TYPE_CHANGE_TYPE = 14;
+   */
+  CHANGE_TYPE = 14,
 }
 
 /**

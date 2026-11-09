@@ -1,8 +1,7 @@
 import type { Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { getToken } from "./features/auth/tokenStorage";
-
-const baseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE_URL } from "./api/apiBase";
 
 // The ONLY thing that rides in a header is the token.
 //
@@ -20,6 +19,6 @@ const authInterceptor: Interceptor = (next) => async (req) => {
 };
 
 export const transport = createConnectTransport({
-  baseUrl,
+  baseUrl: API_BASE_URL,
   interceptors: [authInterceptor],
 });

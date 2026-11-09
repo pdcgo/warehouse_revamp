@@ -94,6 +94,8 @@ func timelineLogToProto(log *selling_service_models.OrderTimelineLog) *sellingv1
 		From:          timelineFroms[log.From],
 		ActorId:       log.ActorID,
 		CreatedAtUnix: log.CreatedAt.Unix(),
+		// Where a return was accepted — 0 on every row but the accept's.
+		AcceptingWarehouseId: log.AcceptingWarehouseID,
 	}
 }
 
@@ -111,6 +113,13 @@ func eventActor(ctx context.Context) uint64 {
 	}
 
 	return identity.GetIdentityId()
+}
+
+// eventOverride is whether eventActor is Root or the Administrator acting in a team they hold no role in — through
+// the root-team bypass, not a membership (an-override-is-stamped-in-every-service). Stamped beside every actor this
+// service records; false for a caller with no identity, as eventActor's 0 is.
+func eventOverride(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
 }
 
 // eventIdentity is what the sender's identity PARAMETER takes (identity-is-a-sender-parameter): the
@@ -146,12 +155,12 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		}
 
 		items = append(items, &sellingv1.OrderItem{
-			Id:        o.Items[i].ID,
-			ProductId: o.Items[i].ProductID,
-			Sku:       o.Items[i].SKU,
-			Name:      o.Items[i].Name,
-			Quantity:  o.Items[i].Quantity,
-			UnitCost:  o.Items[i].UnitCost,
+			Id:          o.Items[i].ID,
+			ProductId:   o.Items[i].ProductID,
+			ProductCode: o.Items[i].ProductCode,
+			Name:        o.Items[i].Name,
+			Quantity:    o.Items[i].Quantity,
+			UnitCost:    o.Items[i].UnitCost,
 			// The rest of the line's frozen money, as the take priced it; absent = never frozen, never a 0.
 			Total:              o.Items[i].Total,
 			UnitCostWithMarkup: o.Items[i].UnitCostWithMarkup,
@@ -166,15 +175,17 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 	}
 
 	return &sellingv1.Order{
-		Id:            o.ID,
-		TeamId:        o.TeamID,
-		ShopId:        o.ShopID,
-		WarehouseId:   o.WarehouseID,
-		Status:        orderStatusFromText(o.Status),
-		CustomerName:  o.CustomerName,
-		CustomerPhone: o.CustomerPhone,
+		Id:          o.ID,
+		TeamId:      o.TeamID,
+		ShopId:      o.ShopID,
+		WarehouseId: o.WarehouseID,
+		Status:      orderStatusFromText(o.Status),
+		// From the order's one address row (one-address-per-order-and-per-draft).
+		CustomerName:  o.Customer(),
+		CustomerPhone: o.Phone(),
 		Address:       orderAddressToProto(o),
-		ShippingCode:  o.ShippingCode,
+		// The courier's id; the screen names it from shipment_service (the-channel-name-is-not-frozen).
+		ShipmentChannelId: o.ShipmentChannelID,
 		// No note: an order's notes are its timeline rows with no status (a-note-is-a-timeline-row).
 		Receipt: orderReceiptToProto(o),
 		// The order's frozen money, as placeOrder wrote it — the owner's three header figures.
@@ -199,7 +210,24 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		PlatformShipmentDeadlineUnix: unixOrZero(o.PlatformShipmentDeadline),
 		// The buyer's marketplace username; "" = none.
 		BuyerUsername: o.BuyerUsername,
+		// The first entry into the status the list's date filter reads; 0 = not asked, or not recorded.
+		DateEnteredAtUnix: unixOrZero(o.DateEnteredAt),
+		// The key the order was created with (the-order-stores-its-idempotency-key).
+		IdempotencyKey: o.IdempotencyKey,
+		// The inventory transaction its stock was taken in; 0 = none recorded.
+		TransactionId: uint64OrZero(o.TransactionID),
+		// When its settlement account opened; 0 = not yet (a-missing-account-is-found-by-its-opened-at).
+		SettlementOpenedAtUnix: unixOrZero(o.SettlementOpenedAt),
 	}
+}
+
+// uint64OrZero is a nullable id as the contract spells it — 0 = none.
+func uint64OrZero(id *uint64) uint64 {
+	if id == nil {
+		return 0
+	}
+
+	return *id
 }
 
 // unixOrZero is a nullable moment as unix seconds — 0 when it was never recorded, which is how the contract spells
@@ -248,17 +276,20 @@ func statusAtUnix(o *selling_service_models.Order) int64 {
 // nil): an order with no address is an EMPTY address, not a missing field — that keeps the client
 // from having to null-check a value it will render either way.
 func orderAddressToProto(o *selling_service_models.Order) *sellingv1.OrderAddress {
+	a := o.Address
+	if a == nil {
+		return &sellingv1.OrderAddress{}
+	}
+
+	// NAMES ONLY (an-address-is-plain-names): an order keeps no region codes, so the four `_code` fields are always
+	// empty on an order — a draft's address still carries them until order_draft_addresses lands.
 	return &sellingv1.OrderAddress{
-		ProvinsiCode:  o.ProvinsiCode,
-		ProvinsiName:  o.ProvinsiName,
-		KabupatenCode: o.KabupatenCode,
-		KabupatenName: o.KabupatenName,
-		KecamatanCode: o.KecamatanCode,
-		KecamatanName: o.KecamatanName,
-		DesaCode:      o.DesaCode,
-		DesaName:      o.DesaName,
-		KodePos:       o.KodePos,
-		AddressLine:   o.AddressLine,
+		ProvinsiName:  a.ProvinsiName,
+		KabupatenName: a.KabupatenName,
+		KecamatanName: a.KecamatanName,
+		DesaName:      a.DesaName,
+		KodePos:       a.PostalCode,
+		AddressLine:   a.AddressLine,
 	}
 }
 
@@ -284,10 +315,10 @@ func orderItemModels(in []*sellingv1.OrderItem) []selling_service_models.OrderIt
 	out := make([]selling_service_models.OrderItem, 0, len(in))
 	for _, it := range in {
 		out = append(out, selling_service_models.OrderItem{
-			ProductID: it.GetProductId(),
-			SKU:       it.GetSku(),
-			Name:      it.GetName(),
-			Quantity:  it.GetQuantity(),
+			ProductID:   it.GetProductId(),
+			ProductCode: it.GetProductCode(),
+			Name:        it.GetName(),
+			Quantity:    it.GetQuantity(),
 		})
 	}
 

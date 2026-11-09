@@ -20,7 +20,7 @@ const NONE = RestockRequestStatus.UNSPECIFIED;
 export interface LineFixture {
   id: bigint;
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   count: bigint;
   total: number;
@@ -74,7 +74,7 @@ export interface RestockFixture {
 function line(
   id: number,
   productId: bigint,
-  sku: string,
+  productCode: string,
   name: string,
   count: number,
   total: number,
@@ -83,7 +83,7 @@ function line(
   return {
     id: BigInt(id),
     productId,
-    sku,
+    productCode,
     name,
     count: BigInt(count),
     total,
@@ -190,7 +190,8 @@ export const restockFixtures: RestockFixture[] = [
     status: ACCEPTED,
     createdAtUnix: daysAgo(9),
     receipt: "SCP5544332211",
-    receiptFile: "https://example.test/labels/scp5544332211.jpg",
+    // A document id, as ReceiptUpload stores it — never a URL (the link is minted on click).
+    receiptFile: "doc-restock-503-label",
     shipmentId: 93n,
     invoiceRefId: "INV/2026/09/0412",
     shipmentCost: 30000,

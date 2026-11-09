@@ -47,7 +47,7 @@ var foldTables = []string{
 func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 	h := san_race.New(t, foldTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const n = 8
@@ -55,7 +55,7 @@ func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 	events := make([]*eventsv1.Event, n)
 	for i := 0; i < n; i++ {
 		events[i] = logPosted(uint64(9000+i), fmt.Sprintf("2026-02-%02d", n-i), shop, order, creator, creator,
-			settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, int64(1_000*(i+1)))
+			settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, float64(1_000*(i+1)))
 	}
 
 	res := h.Race(t, n, func(i int) error {
@@ -80,18 +80,18 @@ func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 	}
 
 	// THE DEFINITION, checked row by row: open(D) is everything before D, close(D) everything up to it.
-	var running int64
+	var running float64
 
 	for _, row := range rows {
 		if row.OpenBalance != running {
-			t.Fatalf("%s opens at %d, want %d — a late fold's shift and a live fold's prev lookup interleaved",
+			t.Fatalf("%s opens at %v, want %v — a late fold's shift and a live fold's prev lookup interleaved",
 				row.Day.Format(time.DateOnly), row.OpenBalance, running)
 		}
 
 		running += row.Change
 
 		if row.CloseBalance != running {
-			t.Fatalf("%s closes at %d, want %d", row.Day.Format(time.DateOnly), row.CloseBalance, running)
+			t.Fatalf("%s closes at %v, want %v", row.Day.Format(time.DateOnly), row.CloseBalance, running)
 		}
 	}
 
@@ -103,7 +103,21 @@ func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 	}
 
 	if state.CloseBalance != running {
-		t.Fatalf("shop state close = %d, want the newest day's %d", state.CloseBalance, running)
+		t.Fatalf("shop state close = %v, want the newest day's %v", state.CloseBalance, running)
+	}
+
+	// THE PERSON'S LAST DAY is the newest day whatever order the folds committed in: each raises it with GREATEST
+	// under the person's advisory lock, so a late fold committing last never lowers it.
+	var person settlement_service_models.UserSettlementReport
+
+	err = db.Where("user_id = ? AND team_id = ?", creator, team).Take(&person).Error
+	if err != nil {
+		t.Fatalf("read the person state: %v", err)
+	}
+
+	want := fmt.Sprintf("2026-02-%02d", n)
+	if person.LastDay == nil || person.LastDay.Format(time.DateOnly) != want || person.CloseBalance != running {
+		t.Fatalf("person state = last_day %v, close %v — want %s and %v", person.LastDay, person.CloseBalance, want, running)
 	}
 }
 
@@ -111,7 +125,7 @@ func TestRace_Fold_ConcurrentDaysKeepTheCarryTrue(t *testing.T) {
 func TestRace_Fold_ARedeliveryStormFoldsOnce(t *testing.T) {
 	h := san_race.New(t, foldTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	const n = 8
@@ -136,7 +150,7 @@ func TestRace_Fold_ARedeliveryStormFoldsOnce(t *testing.T) {
 		t.Fatalf("count claims: %v", err)
 	}
 
-	var closeBalance int64
+	var closeBalance float64
 
 	err = db.Raw(`SELECT close_balance FROM shop_settlement_daily_reports WHERE shop_id = ? AND team_id = ? AND day = '2026-02-10'`,
 		shop, team).Scan(&closeBalance).Error
@@ -145,6 +159,6 @@ func TestRace_Fold_ARedeliveryStormFoldsOnce(t *testing.T) {
 	}
 
 	if claims != 1 || closeBalance != 7_000 {
-		t.Fatalf("%d claims and a close of %d after %d deliveries of one event, want 1 and 7000", claims, closeBalance, n)
+		t.Fatalf("%v claims and a close of %v after %v deliveries of one event, want 1 and 7000", claims, closeBalance, n)
 	}
 }

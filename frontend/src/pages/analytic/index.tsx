@@ -12,20 +12,20 @@ import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
-import { UserSelect } from "../../components/pickers/UserSelect";
+import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import {
   type FilterType,
   type MetricDef,
-  TABLE_GROUPS,
   type TableGroup,
   isTimeGroup,
   metricById,
   metricSlug,
   sharedFilters,
+  tableGroups,
 } from "../../features/analytic/catalogue";
+import { useAnalyticPeople } from "../../features/analytic/people";
 import { EMPTY_REPORT, type ReportSort, answeredFields, loadReport } from "../../features/analytic/provider";
-import { SAMPLE_PRODUCTS, SAMPLE_SUPPLIERS, type SampleEntity } from "../../features/analytic/sample";
 import {
   DEFAULT_RANGE,
   PAGE_SIZES,
@@ -35,27 +35,26 @@ import {
   formatReportState,
   parseReportState,
 } from "../../features/analytic/url";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { windowOf } from "../../features/settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { useTeam } from "../../features/team/TeamContext";
+import { AccountsFilter } from "../../features/financialAccount/AccountsFilter";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useIsMobile } from "../../layouts/shell";
+import { EntityFilter, type EntityFilterKind } from "./components/EntityFilter";
 import { CATEGORY_ICON, MetricPicker } from "./components/MetricPicker";
 import { PlainSelect } from "./components/PlainSelect";
 import { ReportGraphs } from "./components/ReportGraphs";
 import { ReportHeadline } from "./components/ReportHeadline";
 import { ReportTable } from "./components/ReportTable";
 import { fieldLabel, keyLabel, useKeyNames } from "./format";
-import { ANALYTIC_PENDING } from "./pending";
-
-/** The filters still picked from SAMPLE entries — no served metric narrows by a product or a supplier yet. */
-type SampleFilter = "product" | "supplier";
-
-const SAMPLES: Record<SampleFilter, SampleEntity[]> = { product: SAMPLE_PRODUCTS, supplier: SAMPLE_SUPPLIERS };
+import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
+import { formatUnixDateTimeShort } from "../../lib/datetime";
 
 /** Every filter naming one entity — what a metric that cannot use one makes the screen drop. */
 const ENTITY_FILTERS = ["shop", "team", "warehouse", "user", "product", "supplier"] as const;
+
+/** No metric asks for people — the "created by" field is not on the screen. */
+const NO_METRICS: MetricDef[] = [];
 
 const isDefaultRange = (state: ReportState) =>
   state.range.kind === "relative" && DEFAULT_RANGE.kind === "relative" && state.range.days === DEFAULT_RANGE.days;
@@ -75,9 +74,8 @@ function sortValue(sort: ReportSort | null): string {
 // table is GROUPED, which METRICS are its columns — from any service — one column to SORT by, and the filters every
 // chosen metric shares. One service ranks the rows; every service fills them (the-two-steps).
 //
-// ⚠ PARTLY BUILT AHEAD OF ITS BACKEND (HARD RULE 6). The five ORDER metrics are served by selling_service and read off
-// its contract; every other metric's figures are still invented (features/analytic/sample.ts) and its entry a mirror of
-// the decided proto options — the pending strip says which.
+// Every metric is SERVED and read off its service's contract (features/analytic/catalogue.ts) — the expense metrics last,
+// 2026-11-06 — so the screen carries no pending mark any more. A new metric is drawn as a Storybook prototype first.
 //
 // The whole state lives in the URL (the-report-lives-in-the-url), so a second tab is the compare view
 // (compare-in-another-tab-for-now).
@@ -91,9 +89,16 @@ export function AnalyticPage() {
 
   const defs = defsOf(state.metricIds);
   const shared: FilterType[] = defs.length > 0 ? sharedFilters(defs) : ["dateRange"];
+  // WHO THE "CREATED BY" FILTER OFFERS — the people on the chosen metrics' own rows, each service answering for its own
+  // (a-who-filter-lists-the-people-on-its-rows), never the system-wide user search. Asked only while the filter shows.
+  const people = useAnalyticPeople(teamId, shared.includes("user") ? defs : NO_METRICS);
   const sort = state.sort ?? defaultSort(state.groupBy, state.metricIds);
-  const { from, to } = windowOf(state.range);
-  const valid = from !== "" && to !== "" && from <= to;
+  const { from, to } = jakartaWindowOf(state.range);
+  // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
+  // under the picker says why rather than showing a refusal.
+  const span = spanDays(from, to);
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   const filters = {
     from,
@@ -104,6 +109,7 @@ export function AnalyticPage() {
     team: shared.includes("team") ? state.team || undefined : undefined,
     warehouse: shared.includes("warehouse") ? state.warehouse || undefined : undefined,
     user: shared.includes("user") ? state.user || undefined : undefined,
+    accounts: shared.includes("account") && state.accounts.length > 0 ? state.accounts : undefined,
   };
 
   // THE REPORT — asked of every service that serves a chosen metric. `listQuery`: a page, a sort or a filter REFINES the
@@ -124,7 +130,7 @@ export function AnalyticPage() {
   // A column the service left unset is not the reader's to see — a warehouse reads no seller money
   // (a-warehouse-sees-no-seller-money) — so it goes, rather than reading 0.
   const shown = answeredFields(defs, report);
-  const names = useKeyNames(state.groupBy, report.keys);
+  const names = useKeyNames(state.groupBy, report.keys, teamId);
 
   const commit = (next: Partial<ReportState>, restart = true) =>
     setParams(formatReportState({ ...state, ...next, ...(restart ? { page: 1 } : {}) }), { replace: true });
@@ -164,11 +170,14 @@ export function AnalyticPage() {
     if (!def || state.metricIds.includes(metricId)) return;
 
     const next = sharedFilters([...defs, def]);
-    const lost = ENTITY_FILTERS.filter((f) => state[f] !== "" && !next.includes(f));
+    const lost: FilterType[] = [
+      ...ENTITY_FILTERS.filter((f) => state[f] !== "" && !next.includes(f)),
+      ...(state.accounts.length > 0 && !next.includes("account") ? (["account"] as const) : []),
+    ];
 
     commit({
       metricIds: [...state.metricIds, metricId],
-      ...Object.fromEntries(lost.map((f) => [f, ""])),
+      ...Object.fromEntries(lost.map((f) => (f === "account" ? ["accounts", []] : [f, ""]))),
     });
 
     if (lost.length > 0) {
@@ -181,7 +190,11 @@ export function AnalyticPage() {
     }
   };
 
-  const filtering = [!isDefaultRange(state), ...ENTITY_FILTERS.map((f) => shared.includes(f) && state[f] !== "")].filter(Boolean).length;
+  const filtering = [
+    !isDefaultRange(state),
+    ...ENTITY_FILTERS.map((f) => shared.includes(f) && state[f] !== ""),
+    shared.includes("account") && state.accounts.length > 0,
+  ].filter(Boolean).length;
 
   const sortOptions = [
     ...(isTimeGroup(state.groupBy)
@@ -208,7 +221,14 @@ export function AnalyticPage() {
     teamId !== undefined && (
       <FilterField key={kind} w="13rem" testId={`analytic-filter-${kind}`}>
         {kind === "shop" && (
-          <ShopSelect teamId={teamId} value={asId(state.shop)} onChange={(id) => commit({ shop: fromId(id) })} placeholder={t("analytic.all.shop")} />
+          // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+          <ShopSelect
+            asFilter
+            teamId={teamId}
+            value={asId(state.shop)}
+            onChange={(id) => commit({ shop: fromId(id) })}
+            placeholder={t("analytic.all.shop")}
+          />
         )}
         {(kind === "team" || kind === "warehouse") && (
           <TeamSelect
@@ -219,29 +239,34 @@ export function AnalyticPage() {
           />
         )}
         {kind === "user" && (
-          <UserSelect value={asId(state.user) || undefined} onChange={(id) => commit({ user: fromId(id) })} placeholder={t("analytic.all.user")} />
+          <PersonFilterSelect
+            people={people.people}
+            error={people.error}
+            value={asId(state.user) || undefined}
+            onChange={(id) => commit({ user: fromId(id) })}
+            placeholder={t("analytic.all.user")}
+          />
         )}
       </FilterField>
     );
 
-  const entityField = (kind: SampleFilter) =>
-    shared.includes(kind) && (
+  // A PRODUCT OR A SUPPLIER — only Lost stock narrows by one today (metrics/inventory/lost, read by the warehouse that
+  // held the stock and the seller that owns it). The team's real entities, searched as that team may search them
+  // elsewhere (EntityFilter: a warehouse what it holds, a seller its own); a pick shows as a chip naming it.
+  const entityField = (kind: EntityFilterKind) =>
+    shared.includes(kind) &&
+    teamId !== undefined && (
       <FilterField key={kind} w="13rem" testId={`analytic-filter-${kind}`}>
-        <HStack gap="2">
-          <Box flex="1" minW="0">
-            <PlainSelect
-              items={[
-                { value: "all", label: t(`analytic.all.${kind}`) },
-                ...SAMPLES[kind].map((e) => ({ value: e.id, label: e.name })),
-              ]}
-              value={state[kind] || "all"}
-              onChange={(v) => commit({ [kind]: v === "all" ? "" : v })}
-              ariaLabel={filterLabel(kind)}
-              testId={`analytic-${kind}`}
-            />
-          </Box>
-          <NotImplemented list={ANALYTIC_PENDING} id="pickers" />
-        </HStack>
+        <EntityFilter
+          kind={kind}
+          teamId={teamId}
+          teamType={current?.teamType}
+          value={state[kind]}
+          onChange={(id) => commit({ [kind]: id })}
+          placeholder={t(`analytic.all.${kind}`)}
+          label={filterLabel(kind).toLowerCase()}
+          portalled={!isMobile}
+        />
       </FilterField>
     );
 
@@ -252,14 +277,11 @@ export function AnalyticPage() {
       <Stack gap="1">
         <HStack gap="2">
           <Heading size="md">{t("analytic.title")}</Heading>
-          <NotImplemented list={ANALYTIC_PENDING} id="figures" />
         </HStack>
         <Text fontSize="sm" color="fg.muted">
           {t("analytic.subtitle")}
         </Text>
       </Stack>
-
-      <NotImplementedSummary list={ANALYTIC_PENDING} />
 
       {/* THE TABLE'S SHAPE — what a row is, and what the columns are. The group is chosen once, for the whole table
           (the-table-picks-one-group); each metric on it is a chip that takes its columns away. */}
@@ -270,7 +292,7 @@ export function AnalyticPage() {
           </Text>
           <Box w="10rem">
             <PlainSelect
-              items={TABLE_GROUPS.map((g) => ({ value: g, label: t(`analytic.group.${g}`) }))}
+              items={tableGroups().map((g) => ({ value: g, label: t(`analytic.group.${g}`) }))}
               value={state.groupBy}
               onChange={(v) => setGroup(v as TableGroup)}
               ariaLabel={t("analytic.groupBy")}
@@ -302,11 +324,24 @@ export function AnalyticPage() {
         active={filtering > 0}
         count={filtering}
         testId="analytic-filters"
-        onClear={() => commit({ range: DEFAULT_RANGE, shop: "", product: "", supplier: "", team: "", warehouse: "", user: "" })}
+        onClear={() =>
+          commit({ range: DEFAULT_RANGE, shop: "", product: "", supplier: "", team: "", warehouse: "", user: "", accounts: [] })
+        }
       >
         <FilterField w="auto">
           <DateRangePicker value={state.range} onChange={(range) => commit({ range })} testId="analytic-range" />
         </FilterField>
+        {/* THE TEAM'S OWN ACCOUNTS, one or several (finance-filters-by-account) — the Finance metrics' filter. */}
+        {shared.includes("account") && teamId !== undefined && (
+          <FilterField w="15rem" testId="analytic-filter-account">
+            <AccountsFilter
+              teamId={teamId}
+              value={state.accounts}
+              onChange={(accounts) => commit({ accounts })}
+              testId="analytic-accounts"
+            />
+          </FilterField>
+        )}
         {realField("shop")}
         {realField("team")}
         {realField("warehouse")}
@@ -331,7 +366,9 @@ export function AnalyticPage() {
 
       {!valid && (
         <Text fontSize="sm" color="fg.error" data-testid="analytic-range-invalid">
-          {t("analytic.rangeInvalid")}
+          {tooLong
+            ? t("analytic.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS })
+            : t("analytic.rangeInvalid")}
         </Text>
       )}
 
@@ -406,6 +443,12 @@ export function AnalyticPage() {
                   labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language, names)}
                 />
               </Tabs.Content>
+              {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — the oldest of the services read. */}
+              {report.asOfUnix !== undefined && report.asOfUnix > 0n && (
+                  <Text fontSize="xs" color="fg.muted" data-testid="analytic-as-of">
+                    {t("common.asOf", { time: formatUnixDateTimeShort(report.asOfUnix) })}
+                  </Text>
+                )}
               {/* No total, only whether another page follows (a-page-says-whether-another-follows) — the growing pager. */}
               <GrowingPager
                 page={state.page}
@@ -417,6 +460,7 @@ export function AnalyticPage() {
                   from,
                   to,
                   ...ENTITY_FILTERS.map((f) => state[f]),
+                  state.accounts.join(","),
                   sortValue(sort),
                   state.pageSize,
                 ].join("|")}

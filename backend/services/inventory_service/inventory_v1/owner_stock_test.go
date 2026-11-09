@@ -26,7 +26,7 @@ func acceptOwnedBy(
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: owner, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: float64(total)},
+			{ProductId: product, ProductCode: "SKU", Name: "P", Count: qty, Total: float64(total)},
 		},
 	}))
 	if err != nil {
@@ -115,7 +115,7 @@ func TestOwnerStockByIds_ReadyOngoingSpread(t *testing.T) {
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: owner, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Count: 30, Total: 900_000},
+			{ProductId: product, ProductCode: "SKU", Name: "P", Count: 30, Total: 900_000},
 		},
 	}))
 	if err != nil {
@@ -128,13 +128,13 @@ func TestOwnerStockByIds_ReadyOngoingSpread(t *testing.T) {
 	}
 
 	if row.GetReadyQty() != 150 || row.GetReadyValue() != 5_250_000 {
-		t.Fatalf("ready = %d/%d, want 150/5250000", row.GetReadyQty(), row.GetReadyValue())
+		t.Fatalf("ready = %v/%v, want 150/5250000", row.GetReadyQty(), row.GetReadyValue())
 	}
 	if row.GetOngoingQty() != 30 || row.GetOngoingValueEst() != 900_000 {
-		t.Fatalf("ongoing = %d/%d, want 30/900000", row.GetOngoingQty(), row.GetOngoingValueEst())
+		t.Fatalf("ongoing = %v/%v, want 30/900000", row.GetOngoingQty(), row.GetOngoingValueEst())
 	}
 	if !row.GetCostKnown() || row.GetCostMin() != 25_000 || row.GetCostMax() != 40_000 {
-		t.Fatalf("cost spread = %d..%d (known=%v), want 25000..40000",
+		t.Fatalf("cost spread = %v..%v (known=%v), want 25000..40000",
 			row.GetCostMin(), row.GetCostMax(), row.GetCostKnown())
 	}
 	if row.GetOldestBatchUnix() == 0 {
@@ -187,7 +187,7 @@ func TestOwnerStockByIds_WarehouseLens(t *testing.T) {
 
 	one := ownerStock(t, svc, owner, jakarta, []uint64{product})[product]
 	if one.GetReadyQty() != 40 || one.GetReadyValue() != 1_600_000 {
-		t.Fatalf("jakarta ready = %d/%d, want 40/1600000", one.GetReadyQty(), one.GetReadyValue())
+		t.Fatalf("jakarta ready = %v/%v, want 40/1600000", one.GetReadyQty(), one.GetReadyValue())
 	}
 }
 
@@ -217,7 +217,7 @@ func TestOwnerStockStat_TotalsAndLens(t *testing.T) {
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: owner, WarehouseId: jakarta,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU", Name: "P", Count: 25, Total: 1_000_000},
+			{ProductId: 100, ProductCode: "SKU", Name: "P", Count: 25, Total: 1_000_000},
 		},
 	}))
 	if err != nil {
@@ -233,10 +233,10 @@ func TestOwnerStockStat_TotalsAndLens(t *testing.T) {
 
 	preview := all.Msg.GetPreview()
 	if preview.GetReadyQty() != 100 || preview.GetReadyValue() != 4_000_000 {
-		t.Fatalf("ready = %d/%d, want 100/4000000", preview.GetReadyQty(), preview.GetReadyValue())
+		t.Fatalf("ready = %v/%v, want 100/4000000", preview.GetReadyQty(), preview.GetReadyValue())
 	}
 	if preview.GetOngoingQty() != 25 || preview.GetOngoingValueEst() != 1_000_000 {
-		t.Fatalf("ongoing = %d/%d, want 25/1000000", preview.GetOngoingQty(), preview.GetOngoingValueEst())
+		t.Fatalf("ongoing = %v/%v, want 25/1000000", preview.GetOngoingQty(), preview.GetOngoingValueEst())
 	}
 	if preview.GetLastRestockUnix() == 0 {
 		t.Fatalf("last restock unset after two accepted deliveries")

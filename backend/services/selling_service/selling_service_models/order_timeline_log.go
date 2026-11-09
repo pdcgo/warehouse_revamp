@@ -22,6 +22,14 @@ type OrderTimelineLog struct {
 	// WHO, as an opaque user_service id (no FK, like every cross-service id here). 0 = not recorded.
 	ActorID uint64
 
+	// Whether that person was OUTSIDE the team the call was scoped to (00033) — Root or the Administrator in by the
+	// root-team bypass (an-override-is-stamped-in-every-service). Derived by the server, never sent by the caller.
+	IsOverride bool
+
+	// WHERE A RETURN WAS ACCEPTED (00034, the-accept-records-where-it-was-accepted) — the warehouse team whose staff
+	// accepted it, on the `return_completed` row only. 0 on every other row. Opaque team_service id.
+	AcceptingWarehouseID uint64
+
 	// When it happened — the row is written at that moment, so the two are one.
 	CreatedAt time.Time
 }

@@ -19,7 +19,7 @@ function Rows() {
       <Table.Body>
         {products.map((p) => (
           <Table.Row key={p.id.toString()}>
-            <Table.Cell>{p.sku}</Table.Cell>
+            <Table.Cell>{p.productCode}</Table.Cell>
             <Table.Cell>{p.name}</Table.Cell>
           </Table.Row>
         ))}
@@ -103,6 +103,6 @@ export const KeepsTheRowsOnScreen: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("refresh-overlay")).toHaveAttribute("data-busy", "true"));
 
-    await expect(canvas.getByText(products[0]!.sku)).toBeInTheDocument();
+    await expect(canvas.getByText(products[0]!.productCode)).toBeInTheDocument();
   },
 };

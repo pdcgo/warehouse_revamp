@@ -348,34 +348,11 @@ message MetricDataResponse {
 Every question is closed, each one in [rpc_provide_decision.md](./rpc_provide_decision.md). The last was the warehouse
 group, asked again from the order metrics and now [the-warehouse-is-its-own-group](./rpc_provide_decision.md#the-warehouse-is-its-own-group).
 
-One is open, raised by settlement's move to the pattern. Closed from it: [a-position-is-its-own-stat-type](./rpc_provide_decision.md#a-position-is-its-own-stat-type)
-([the-move-to-the-metric-pattern](../settlement/analytic_context_clarify.md#the-move-to-the-metric-pattern)).
+None is open. The one moved here from the retired ledger was answered the same day: [a-money-metric-says-as-of-when](./rpc_provide_decision.md#a-money-metric-says-as-of-when).
 
-| open | → Recommend |
-| --- | --- |
-| [the-picker-ticks-fields](#the-picker-ticks-fields) — a 10-field metric draws 10 columns: tick fields in the picker? | yes, as your tree's third level |
+The two raised by settlement's move to the pattern
+([the-move-to-the-metric-pattern](../settlement/analytic_context_clarify.md#the-move-to-the-metric-pattern)) are closed:
+[a-position-is-its-own-stat-type](./rpc_provide_decision.md#a-position-is-its-own-stat-type), and *may the picker tick
+fields?* — no, for now: [a-metric-is-added-whole-for-now](./rpc_provide_decision.md#a-metric-is-added-whole-for-now)
+(2026-10-31).
 
-## the-picker-ticks-fields
-
-Settlement by type has 10 fields ([settlement-serves-its-headline-and-its-breakdown](../settlement/context_decision.md#settlement-serves-its-headline-and-its-breakdown)), and beside Settlement a table
-holds 16. Add Metric adds a metric as **every** field, so one tick draws all ten, which no phone can read. Your tree in §Metric That Exist in Analytic
-already has a third level: category, metric, **fields**.
-
-| | |
-| --- | --- |
-| **A — the picker ticks fields** | Add Metric opens a metric one level further, as your tree draws it. Ticking the metric takes all its fields, and opening it ticks only some. The URL keeps the chosen fields |
-| B — split the wide metrics further | ❌ every new wide metric needs its own split, decided one at a time |
-| C — 16 columns | ❌ unreadable |
-
-**→ Recommend A.** It fixes every wide metric at once, it is the shape your tree already draws, and it changes the
-screen only, never the contract.
-
-```mermaid
-flowchart LR
-  c["Settlement"] --> m["Settlement by type"]
-  m --> f1["external_ads_fee - ticked"]
-  m --> f2["affiliate_fee - ticked"]
-  m --> f3["the other 8 - not ticked"]
-  f1 --> t["two columns, not ten"]
-  f2 --> t
-```

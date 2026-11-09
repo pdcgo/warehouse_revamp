@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 
@@ -15,9 +14,9 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
 import type { PeriodGrain } from "../../lib/period";
 import { dateRangeCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
-import { windowOf } from "../settlement/window";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { formatPeriod } from "../../lib/datetime";
-import { useTeam } from "../team/TeamContext";
+import { useCanWrite, useTeam } from "../team/TeamContext";
 import {
   type SupplierFigurePoint,
   type SupplierProductRow,
@@ -27,6 +26,7 @@ import {
 } from "./analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "./FigureParts";
 import { SupplierTabExport } from "./SupplierTabExport";
+import { useStatisticsExport } from "./exports";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { unitsReceived } from "./figures";
 
@@ -45,10 +45,6 @@ export const description =
 export interface SupplierStatisticsProps {
   /** Any team's supplier — its figures count every team's restocks from it. */
   supplierId: bigint;
-  /** The page's ⚠ for Penjualan (sales-sit-beside-restocked) — numbered in the page's own pending list. */
-  salesMark: ReactNode;
-  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
-  exportMark: ReactNode;
 }
 
 type StatisticsView = "time" | "product";
@@ -71,7 +67,7 @@ type StatisticsView = "time" | "product";
 //
 // ⚠ FOLDED, NOT LIVE: the figures are supplier_service's fold of *Restock Accepted* (the-report-is-processed-like-settlement),
 // so an accept a moment ago can take a moment to appear.
-export function SupplierStatistics({ supplierId, salesMark, exportMark }: SupplierStatisticsProps) {
+export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   const isMobile = useIsMobile();
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -105,7 +101,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
     setProductPage(1);
   };
 
-  const { from, to } = windowOf(range);
+  const { from, to } = jakartaWindowOf(range);
   const valid = from !== "" && to !== "" && from <= to;
 
   const teamId = current?.teamId;
@@ -134,6 +130,19 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
     page: productPage,
     pageSize: PAGE_SIZE,
   });
+
+  // THE VIEW AS A FILE (each-supplier-tab-exports-its-own-table): the view on screen — Per Periode at its grain, or Per
+  // Produk — over the same window and team, every page. It stores a file, so a monitored team's reader has no Export.
+  const writable = useCanWrite();
+  const exporter = useStatisticsExport(teamId);
+  const exportButton = writable ? (
+    <SupplierTabExport
+      testId="statistics-export"
+      disabled={!valid}
+      progress={exporter.progress}
+      onExport={() => void exporter.start({ supplierId, from, to, restockTeamId, view, grain })}
+    />
+  ) : null;
 
   // Nothing at all in the window — said once, instead of a headline of zeroes over a table of zeroes.
   const quiet = headline.data !== undefined && unitsReceived(headline.data) === 0;
@@ -177,7 +186,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
         <FilterBar
           testId="statistics-filter"
           // Exports the view on screen — Per Periode or Per Produk — as narrowed.
-          actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="statistics-export" />}
+          actions={isMobile ? undefined : exportButton}
           active={restockTeamId !== 0n}
           count={restockTeamId !== 0n ? 1 : 0}
           onClear={() => pickTeam(0n)}
@@ -196,7 +205,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
             </FilterField>
           )}
           {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
-          {isMobile && <SupplierTabExport mark={exportMark} testId="statistics-export" />}
+          {isMobile && exportButton}
         </FilterBar>
 
         {!valid && (
@@ -206,7 +215,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
         )}
 
         <RefreshOverlay busy={headline.isFetching && !headline.isPending}>
-          <FiguresSummary figures={headline.data} salesMark={salesMark} testId="statistics-summary" />
+          <FiguresSummary figures={headline.data} testId="statistics-summary" />
         </RefreshOverlay>
 
         <Stack gap="field">
@@ -219,7 +228,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={series.isFetching && !series.isPending}>
-                  <SeriesTable points={series.data?.points ?? []} grain={grain} salesMark={salesMark} />
+                  <SeriesTable points={series.data?.points ?? []} grain={grain} />
                 </RefreshOverlay>
 
                 {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
@@ -243,7 +252,7 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={products.isFetching && !products.isPending}>
-                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} salesMark={salesMark} />}
+                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} />}
                 </RefreshOverlay>
 
                 <GrowingPager
@@ -268,11 +277,9 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
 function SeriesTable({
   points,
   grain,
-  salesMark,
 }: {
   points: SupplierFigurePoint[];
   grain: PeriodGrain;
-  salesMark: ReactNode;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -301,7 +308,7 @@ function SeriesTable({
             </Text>
           ) : (
             <FigureBlock
-              salesMark={salesMark}
+             
               key={point.at}
               title={formatPeriod(point.at, grain)}
               figures={point.figures}
@@ -319,7 +326,7 @@ function SeriesTable({
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.period")}</Table.ColumnHeader>
-            <FigureHeaders salesMark={salesMark} />
+            <FigureHeaders />
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -343,11 +350,9 @@ function SeriesTable({
 function ProductTable({
   rows,
   showTeam,
-  salesMark,
 }: {
   rows: SupplierProductRow[];
   showTeam: boolean;
-  salesMark: ReactNode;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -362,7 +367,7 @@ function ProductTable({
   const productOf = (row: SupplierProductRow) => ({
     id: row.productId,
     name: productLabel(row),
-    sku: row.sku,
+    productCode: row.productCode,
     defaultImageThumbnailUrl: row.thumbnailUrl,
   });
 
@@ -383,7 +388,7 @@ function ProductTable({
       <Stack gap="2" data-testid="statistics-products">
         {rows.map((row) => (
           <FigureBlock
-            salesMark={salesMark}
+           
             key={row.key}
             title={productLabel(row)}
             // The team as a badge beside the SKU — the Produk tab's phone block.
@@ -403,7 +408,7 @@ function ProductTable({
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.product")}</Table.ColumnHeader>
             {showTeam && <Table.ColumnHeader>{t("supplierFigures.col.team")}</Table.ColumnHeader>}
-            <FigureHeaders salesMark={salesMark} />
+            <FigureHeaders />
           </Table.Row>
         </Table.Header>
         <Table.Body>

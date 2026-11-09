@@ -2,7 +2,7 @@ import { Badge, Card, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { formatRupiah } from "../../../lib/money";
-import { MINIMUM_MARGIN_PCT } from "./checks";
+import { MINIMUM_MARGIN_PCT, profitPct } from "./checks";
 
 // IS THIS ORDER WORTH TAKING — the margin between what the customer paid and what the order costs us.
 //
@@ -19,10 +19,10 @@ import { MINIMUM_MARGIN_PCT } from "./checks";
 // form asks before placing it (`checkProfitFloor` in checks.ts, which owns the number) rather than refusing it.
 
 interface ProfitEstimatePanelProps {
-  /** What the customer paid on the marketplace. `0n` = nobody wrote it down. */
-  sellPrice: bigint;
+  /** What the customer paid on the marketplace, exact. `0` = nobody wrote it down. */
+  sellPrice: number;
   /** The products plus the warehouse fee — no shipping term, by design (an-order-records-no-shipping-cost). */
-  orderTotal: bigint;
+  orderTotal: number;
   /** Collapse the explanation, leaving the figures. */
   compact?: boolean;
 }
@@ -30,10 +30,11 @@ interface ProfitEstimatePanelProps {
 export function ProfitEstimatePanel({ sellPrice, orderTotal, compact }: ProfitEstimatePanelProps) {
   const { t } = useTranslation();
 
-  const known = sellPrice > 0n;
+  const known = sellPrice > 0;
   const profit = sellPrice - orderTotal;
-  // Integer maths up to the ratio — rupiah are bigint, and only the percentage becomes a float.
-  const pct = known ? Number((profit * 10000n) / sellPrice) / 100 : 0;
+  // The exact figures the server stores (the-backend-never-rounds-money); the percentage is the one checkProfitFloor
+  // judges, cut to hundredths, so the panel and the check cannot disagree.
+  const pct = known ? profitPct(sellPrice, orderTotal) : 0;
   const below = known && pct < MINIMUM_MARGIN_PCT;
 
   return (

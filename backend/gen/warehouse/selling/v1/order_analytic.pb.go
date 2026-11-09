@@ -32,7 +32,7 @@ type OrderCreatedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	CreatedTotal *float64 `protobuf:"fixed64,2,opt,name=created_total,json=createdTotal,proto3,oneof" json:"created_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	MpTotal       *int64 `protobuf:"varint,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
+	MpTotal       *float64 `protobuf:"fixed64,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,7 +81,7 @@ func (x *OrderCreatedMetric) GetCreatedTotal() float64 {
 	return 0
 }
 
-func (x *OrderCreatedMetric) GetMpTotal() int64 {
+func (x *OrderCreatedMetric) GetMpTotal() float64 {
 	if x != nil && x.MpTotal != nil {
 		return *x.MpTotal
 	}
@@ -186,7 +186,7 @@ type OrderCancelMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	CancelTotal *float64 `protobuf:"fixed64,2,opt,name=cancel_total,json=cancelTotal,proto3,oneof" json:"cancel_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	MpTotal       *int64 `protobuf:"varint,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
+	MpTotal       *float64 `protobuf:"fixed64,3,opt,name=mp_total,json=mpTotal,proto3,oneof" json:"mp_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,7 +235,7 @@ func (x *OrderCancelMetric) GetCancelTotal() float64 {
 	return 0
 }
 
-func (x *OrderCancelMetric) GetMpTotal() int64 {
+func (x *OrderCancelMetric) GetMpTotal() float64 {
 	if x != nil && x.MpTotal != nil {
 		return *x.MpTotal
 	}
@@ -340,7 +340,7 @@ type OrderReturnCreatedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	ReturnCreatedTotal *float64 `protobuf:"fixed64,2,opt,name=return_created_total,json=returnCreatedTotal,proto3,oneof" json:"return_created_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	ReturnCreatedMpTotal *int64 `protobuf:"varint,3,opt,name=return_created_mp_total,json=returnCreatedMpTotal,proto3,oneof" json:"return_created_mp_total,omitempty"`
+	ReturnCreatedMpTotal *float64 `protobuf:"fixed64,3,opt,name=return_created_mp_total,json=returnCreatedMpTotal,proto3,oneof" json:"return_created_mp_total,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -389,7 +389,7 @@ func (x *OrderReturnCreatedMetric) GetReturnCreatedTotal() float64 {
 	return 0
 }
 
-func (x *OrderReturnCreatedMetric) GetReturnCreatedMpTotal() int64 {
+func (x *OrderReturnCreatedMetric) GetReturnCreatedMpTotal() float64 {
 	if x != nil && x.ReturnCreatedMpTotal != nil {
 		return *x.ReturnCreatedMpTotal
 	}
@@ -494,7 +494,7 @@ type OrderReturnArrivedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	ReturnArrivedTotal *float64 `protobuf:"fixed64,2,opt,name=return_arrived_total,json=returnArrivedTotal,proto3,oneof" json:"return_arrived_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	ReturnArrivedMpTotal *int64 `protobuf:"varint,3,opt,name=return_arrived_mp_total,json=returnArrivedMpTotal,proto3,oneof" json:"return_arrived_mp_total,omitempty"`
+	ReturnArrivedMpTotal *float64 `protobuf:"fixed64,3,opt,name=return_arrived_mp_total,json=returnArrivedMpTotal,proto3,oneof" json:"return_arrived_mp_total,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -543,7 +543,7 @@ func (x *OrderReturnArrivedMetric) GetReturnArrivedTotal() float64 {
 	return 0
 }
 
-func (x *OrderReturnArrivedMetric) GetReturnArrivedMpTotal() int64 {
+func (x *OrderReturnArrivedMetric) GetReturnArrivedMpTotal() float64 {
 	if x != nil && x.ReturnArrivedMpTotal != nil {
 		return *x.ReturnArrivedMpTotal
 	}
@@ -648,7 +648,7 @@ type OrderLostCreatedMetric struct {
 	// Σ their `total_cost`. Unset for a warehouse.
 	LostCreatedTotal *float64 `protobuf:"fixed64,2,opt,name=lost_created_total,json=lostCreatedTotal,proto3,oneof" json:"lost_created_total,omitempty"`
 	// Σ their `platform_total`. Unset for a warehouse.
-	LostCreatedMpTotal *int64 `protobuf:"varint,3,opt,name=lost_created_mp_total,json=lostCreatedMpTotal,proto3,oneof" json:"lost_created_mp_total,omitempty"`
+	LostCreatedMpTotal *float64 `protobuf:"fixed64,3,opt,name=lost_created_mp_total,json=lostCreatedMpTotal,proto3,oneof" json:"lost_created_mp_total,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -697,7 +697,7 @@ func (x *OrderLostCreatedMetric) GetLostCreatedTotal() float64 {
 	return 0
 }
 
-func (x *OrderLostCreatedMetric) GetLostCreatedMpTotal() int64 {
+func (x *OrderLostCreatedMetric) GetLostCreatedMpTotal() float64 {
 	if x != nil && x.LostCreatedMpTotal != nil {
 		return *x.LostCreatedMpTotal
 	}
@@ -794,6 +794,161 @@ func (x *OrderLostCreatedMetricByDay) GetItems() map[string]*OrderLostCreatedMet
 	return nil
 }
 
+// WAREHOUSE FEE (the-warehouse-fee-prototype-is-accepted) — the fee frozen on each order (the-event-carries-the-warehouse-fee),
+// NET, each on its own day (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day): an order counts
+// +1 and + its fee on its placement day, and a cancel takes both back on the cancel's day. An earlier day never changes,
+// so a period can read NEGATIVE when it holds more cancels than placements. Under Expense on the screen.
+//
+// Its keys are the order metrics' (warehouse-fee-groups-like-the-order-metrics): TEAM the seller charged, WAREHOUSE the
+// warehouse that charged, SHOP, USER the order's creator, and the four periods.
+//
+// ⚠ A WAREHOUSE SEES THE AMOUNT (a-warehouse-sees-its-own-fee-amount): the fee is the warehouse's own income, not the
+// seller's money, so a-warehouse-sees-no-seller-money does not hide it — `amount` is set for every reader and sortable by
+// a warehouse too. An order priced with no fee (a server built without a pricer) is not a fee transaction.
+type WarehouseFeeMetric struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fee transactions: orders placed with a fee, less those cancelled — each on its own day.
+	TransactionCount int64 `protobuf:"varint,1,opt,name=transaction_count,json=transactionCount,proto3" json:"transaction_count,omitempty"`
+	// Fee amount: Σ their frozen `warehouse_fee`, less the cancelled ones'. Set for a warehouse too.
+	Amount        float64 `protobuf:"fixed64,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseFeeMetric) Reset() {
+	*x = WarehouseFeeMetric{}
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseFeeMetric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseFeeMetric) ProtoMessage() {}
+
+func (x *WarehouseFeeMetric) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseFeeMetric.ProtoReflect.Descriptor instead.
+func (*WarehouseFeeMetric) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *WarehouseFeeMetric) GetTransactionCount() int64 {
+	if x != nil {
+		return x.TransactionCount
+	}
+	return 0
+}
+
+func (x *WarehouseFeeMetric) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+type WarehouseFeeMetricByID struct {
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Items         map[uint64]*WarehouseFeeMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseFeeMetricByID) Reset() {
+	*x = WarehouseFeeMetricByID{}
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseFeeMetricByID) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseFeeMetricByID) ProtoMessage() {}
+
+func (x *WarehouseFeeMetricByID) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseFeeMetricByID.ProtoReflect.Descriptor instead.
+func (*WarehouseFeeMetricByID) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *WarehouseFeeMetricByID) GetItems() map[uint64]*WarehouseFeeMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+type WarehouseFeeMetricByDay struct {
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Items         map[string]*WarehouseFeeMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseFeeMetricByDay) Reset() {
+	*x = WarehouseFeeMetricByDay{}
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseFeeMetricByDay) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseFeeMetricByDay) ProtoMessage() {}
+
+func (x *WarehouseFeeMetricByDay) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseFeeMetricByDay.ProtoReflect.Descriptor instead.
+func (*WarehouseFeeMetricByDay) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *WarehouseFeeMetricByDay) GetItems() map[string]*WarehouseFeeMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 type MetricSearchRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Every member of the scoped team reads every metric of it (every-member-reads-every-metric-of-their-team).
@@ -802,7 +957,8 @@ type MetricSearchRequest struct {
 	GroupBy v1.GroupType `protobuf:"varint,2,opt,name=group_by,json=groupBy,proto3,enum=warehouse.analytic_base.v1.GroupType" json:"group_by,omitempty"`
 	// At most one of each FilterType.
 	Filters []*v1.FilterItem `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
-	// Names ONE of this service's metrics and one of its fields. A money field is refused for a warehouse.
+	// Names ONE of this service's metrics and one of its fields. An order metric's money field is refused for a warehouse
+	// (Warehouse Fee's `amount` is not — a-warehouse-sees-its-own-fee-amount).
 	Sort          *v1.MetricSort       `protobuf:"bytes,4,opt,name=sort,proto3" json:"sort,omitempty"`
 	Page          *v1.PaginationFilter `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -811,7 +967,7 @@ type MetricSearchRequest struct {
 
 func (x *MetricSearchRequest) Reset() {
 	*x = MetricSearchRequest{}
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[15]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -823,7 +979,7 @@ func (x *MetricSearchRequest) String() string {
 func (*MetricSearchRequest) ProtoMessage() {}
 
 func (x *MetricSearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[15]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -836,7 +992,7 @@ func (x *MetricSearchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricSearchRequest.ProtoReflect.Descriptor instead.
 func (*MetricSearchRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *MetricSearchRequest) GetTeamId() uint64 {
@@ -886,7 +1042,7 @@ type MetricSearchResponse struct {
 
 func (x *MetricSearchResponse) Reset() {
 	*x = MetricSearchResponse{}
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[16]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -898,7 +1054,7 @@ func (x *MetricSearchResponse) String() string {
 func (*MetricSearchResponse) ProtoMessage() {}
 
 func (x *MetricSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[16]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -911,7 +1067,7 @@ func (x *MetricSearchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricSearchResponse.ProtoReflect.Descriptor instead.
 func (*MetricSearchResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *MetricSearchResponse) GetKeys() *v1.MetricKeys {
@@ -937,7 +1093,7 @@ type MetricDataRequest struct {
 	Filters []*v1.FilterItem `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
 	// IDs for TEAM, SHOP, WAREHOUSE and USER, days for a period; none for SUMMARY. At most a page.
 	Keys *v1.MetricKeys `protobuf:"bytes,4,opt,name=keys,proto3" json:"keys,omitempty"`
-	// Any of the five, in any order; the answer keeps it.
+	// Any of the six, in any order; the answer keeps it.
 	MetricIds     []string `protobuf:"bytes,5,rep,name=metric_ids,json=metricIds,proto3" json:"metric_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -945,7 +1101,7 @@ type MetricDataRequest struct {
 
 func (x *MetricDataRequest) Reset() {
 	*x = MetricDataRequest{}
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[17]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -957,7 +1113,7 @@ func (x *MetricDataRequest) String() string {
 func (*MetricDataRequest) ProtoMessage() {}
 
 func (x *MetricDataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[17]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -970,7 +1126,7 @@ func (x *MetricDataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricDataRequest.ProtoReflect.Descriptor instead.
 func (*MetricDataRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *MetricDataRequest) GetTeamId() uint64 {
@@ -1029,6 +1185,9 @@ type MetricData struct {
 	//	*MetricData_LostCreatedById
 	//	*MetricData_LostCreatedByDay
 	//	*MetricData_LostCreatedSummary
+	//	*MetricData_WarehouseFeeById
+	//	*MetricData_WarehouseFeeByDay
+	//	*MetricData_WarehouseFeeSummary
 	M             isMetricData_M `protobuf_oneof:"m"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1036,7 +1195,7 @@ type MetricData struct {
 
 func (x *MetricData) Reset() {
 	*x = MetricData{}
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[18]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1048,7 +1207,7 @@ func (x *MetricData) String() string {
 func (*MetricData) ProtoMessage() {}
 
 func (x *MetricData) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[18]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1061,7 +1220,7 @@ func (x *MetricData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricData.ProtoReflect.Descriptor instead.
 func (*MetricData) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{18}
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *MetricData) GetM() isMetricData_M {
@@ -1206,6 +1365,33 @@ func (x *MetricData) GetLostCreatedSummary() *OrderLostCreatedMetric {
 	return nil
 }
 
+func (x *MetricData) GetWarehouseFeeById() *WarehouseFeeMetricByID {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_WarehouseFeeById); ok {
+			return x.WarehouseFeeById
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetWarehouseFeeByDay() *WarehouseFeeMetricByDay {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_WarehouseFeeByDay); ok {
+			return x.WarehouseFeeByDay
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetWarehouseFeeSummary() *WarehouseFeeMetric {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_WarehouseFeeSummary); ok {
+			return x.WarehouseFeeSummary
+		}
+	}
+	return nil
+}
+
 type isMetricData_M interface {
 	isMetricData_M()
 }
@@ -1270,6 +1456,18 @@ type MetricData_LostCreatedSummary struct {
 	LostCreatedSummary *OrderLostCreatedMetric `protobuf:"bytes,15,opt,name=lost_created_summary,json=lostCreatedSummary,proto3,oneof"`
 }
 
+type MetricData_WarehouseFeeById struct {
+	WarehouseFeeById *WarehouseFeeMetricByID `protobuf:"bytes,16,opt,name=warehouse_fee_by_id,json=warehouseFeeById,proto3,oneof"`
+}
+
+type MetricData_WarehouseFeeByDay struct {
+	WarehouseFeeByDay *WarehouseFeeMetricByDay `protobuf:"bytes,17,opt,name=warehouse_fee_by_day,json=warehouseFeeByDay,proto3,oneof"`
+}
+
+type MetricData_WarehouseFeeSummary struct {
+	WarehouseFeeSummary *WarehouseFeeMetric `protobuf:"bytes,18,opt,name=warehouse_fee_summary,json=warehouseFeeSummary,proto3,oneof"`
+}
+
 func (*MetricData_CreatedById) isMetricData_M() {}
 
 func (*MetricData_CreatedByDay) isMetricData_M() {}
@@ -1300,16 +1498,30 @@ func (*MetricData_LostCreatedByDay) isMetricData_M() {}
 
 func (*MetricData_LostCreatedSummary) isMetricData_M() {}
 
+func (*MetricData_WarehouseFeeById) isMetricData_M() {}
+
+func (*MetricData_WarehouseFeeByDay) isMetricData_M() {}
+
+func (*MetricData_WarehouseFeeSummary) isMetricData_M() {}
+
 type MetricDataResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MetricDatas   []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	MetricDatas []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	// AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+	// `order_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+	// behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+	// every metric it serves shares it. 0 = nothing folded yet.
+	//
+	// ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+	// dead-letter topic and the lease's log.
+	AsOfUnix      int64 `protobuf:"varint,2,opt,name=as_of_unix,json=asOfUnix,proto3" json:"as_of_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MetricDataResponse) Reset() {
 	*x = MetricDataResponse{}
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[19]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1321,7 +1533,7 @@ func (x *MetricDataResponse) String() string {
 func (*MetricDataResponse) ProtoMessage() {}
 
 func (x *MetricDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[19]
+	mi := &file_warehouse_selling_v1_order_analytic_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1334,7 +1546,7 @@ func (x *MetricDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricDataResponse.ProtoReflect.Descriptor instead.
 func (*MetricDataResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
@@ -1342,6 +1554,13 @@ func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
 		return x.MetricDatas
 	}
 	return nil
+}
+
+func (x *MetricDataResponse) GetAsOfUnix() int64 {
+	if x != nil {
+		return x.AsOfUnix
+	}
+	return 0
 }
 
 var File_warehouse_selling_v1_order_analytic_proto protoreflect.FileDescriptor
@@ -1354,7 +1573,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\fcreatedCount\x124\n" +
 	"\rcreated_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\fcreatedTotal\x88\x01\x01\x12*\n" +
-	"\bmp_total\x18\x03 \x01(\x03B\n" +
+	"\bmp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\ampTotal\x88\x01\x01:1\x9a\xb5\x18-\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x16metrics/orders/createdB\x10\n" +
@@ -1377,7 +1596,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\vcancelCount\x122\n" +
 	"\fcancel_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\vcancelTotal\x88\x01\x01\x12*\n" +
-	"\bmp_total\x18\x03 \x01(\x03B\n" +
+	"\bmp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\ampTotal\x88\x01\x01:3\x9a\xb5\x18/\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x18metrics/orders/cancelledB\x0f\n" +
@@ -1400,7 +1619,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x12returnCreatedCount\x12A\n" +
 	"\x14return_created_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\x12returnCreatedTotal\x88\x01\x01\x12F\n" +
-	"\x17return_created_mp_total\x18\x03 \x01(\x03B\n" +
+	"\x17return_created_mp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\x14returnCreatedMpTotal\x88\x01\x01:8\x9a\xb5\x184\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x1dmetrics/orders/return_createdB\x17\n" +
@@ -1423,7 +1642,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x12returnArrivedCount\x12A\n" +
 	"\x14return_arrived_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\x12returnArrivedTotal\x88\x01\x01\x12F\n" +
-	"\x17return_arrived_mp_total\x18\x03 \x01(\x03B\n" +
+	"\x17return_arrived_mp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\x14returnArrivedMpTotal\x88\x01\x01:8\x9a\xb5\x184\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x1dmetrics/orders/return_arrivedB\x17\n" +
@@ -1446,7 +1665,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x10lostCreatedCount\x12=\n" +
 	"\x12lost_created_total\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\x10lostCreatedTotal\x88\x01\x01\x12B\n" +
-	"\x15lost_created_mp_total\x18\x03 \x01(\x03B\n" +
+	"\x15lost_created_mp_total\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\x12lostCreatedMpTotal\x88\x01\x01:6\x9a\xb5\x182\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x1bmetrics/orders/lost_createdB\x15\n" +
@@ -1463,7 +1682,26 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12B\n" +
-	"\x05value\x18\x02 \x01(\v2,.warehouse.selling.v1.OrderLostCreatedMetricR\x05value:\x028\x01\"\xf5\x02\n" +
+	"\x05value\x18\x02 \x01(\v2,.warehouse.selling.v1.OrderLostCreatedMetricR\x05value:\x028\x01\"\xa3\x01\n" +
+	"\x12WarehouseFeeMetric\x127\n" +
+	"\x11transaction_count\x18\x01 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x10transactionCount\x12\"\n" +
+	"\x06amount\x18\x02 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x06amount:0\x9a\xb5\x18,\n" +
+	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
+	"\"\x15metrics/warehouse_fee\"\xcb\x01\n" +
+	"\x16WarehouseFeeMetricByID\x12M\n" +
+	"\x05items\x18\x01 \x03(\v27.warehouse.selling.v1.WarehouseFeeMetricByID.ItemsEntryR\x05items\x1ab\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12>\n" +
+	"\x05value\x18\x02 \x01(\v2(.warehouse.selling.v1.WarehouseFeeMetricR\x05value:\x028\x01\"\xcd\x01\n" +
+	"\x17WarehouseFeeMetricByDay\x12N\n" +
+	"\x05items\x18\x01 \x03(\v28.warehouse.selling.v1.WarehouseFeeMetricByDay.ItemsEntryR\x05items\x1ab\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12>\n" +
+	"\x05value\x18\x02 \x01(\v2(.warehouse.selling.v1.WarehouseFeeMetricR\x05value:\x028\x01\"\xf5\x02\n" +
 	"\x13MetricSearchRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
 	"\bgroup_by\x18\x02 \x01(\x0e2%.warehouse.analytic_base.v1.GroupTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\agroupBy\x12J\n" +
@@ -1482,9 +1720,9 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\afilters\x18\x03 \x03(\v2&.warehouse.analytic_base.v1.FilterItemB\b\xbaH\x05\x92\x01\x02\x10\x05R\afilters\x12:\n" +
 	"\x04keys\x18\x04 \x01(\v2&.warehouse.analytic_base.v1.MetricKeysR\x04keys\x12+\n" +
 	"\n" +
-	"metric_ids\x18\x05 \x03(\tB\f\xbaH\t\x92\x01\x06\b\x01\x10\x05\x18\x01R\tmetricIds:\x0e\x92\xb5\x18\n" +
+	"metric_ids\x18\x05 \x03(\tB\f\xbaH\t\x92\x01\x06\b\x01\x10\x06\x18\x01R\tmetricIds:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xa1\v\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xc2\r\n" +
 	"\n" +
 	"MetricData\x12R\n" +
 	"\rcreated_by_id\x18\x01 \x01(\v2,.warehouse.selling.v1.OrderCreatedMetricByIDH\x00R\vcreatedById\x12U\n" +
@@ -1503,14 +1741,19 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\x16return_arrived_summary\x18\f \x01(\v2..warehouse.selling.v1.OrderReturnArrivedMetricH\x00R\x14returnArrivedSummary\x12_\n" +
 	"\x12lost_created_by_id\x18\r \x01(\v20.warehouse.selling.v1.OrderLostCreatedMetricByIDH\x00R\x0flostCreatedById\x12b\n" +
 	"\x13lost_created_by_day\x18\x0e \x01(\v21.warehouse.selling.v1.OrderLostCreatedMetricByDayH\x00R\x10lostCreatedByDay\x12`\n" +
-	"\x14lost_created_summary\x18\x0f \x01(\v2,.warehouse.selling.v1.OrderLostCreatedMetricH\x00R\x12lostCreatedSummaryB\x03\n" +
-	"\x01m\"Y\n" +
+	"\x14lost_created_summary\x18\x0f \x01(\v2,.warehouse.selling.v1.OrderLostCreatedMetricH\x00R\x12lostCreatedSummary\x12]\n" +
+	"\x13warehouse_fee_by_id\x18\x10 \x01(\v2,.warehouse.selling.v1.WarehouseFeeMetricByIDH\x00R\x10warehouseFeeById\x12`\n" +
+	"\x14warehouse_fee_by_day\x18\x11 \x01(\v2-.warehouse.selling.v1.WarehouseFeeMetricByDayH\x00R\x11warehouseFeeByDay\x12^\n" +
+	"\x15warehouse_fee_summary\x18\x12 \x01(\v2(.warehouse.selling.v1.WarehouseFeeMetricH\x00R\x13warehouseFeeSummaryB\x03\n" +
+	"\x01m\"w\n" +
 	"\x12MetricDataResponse\x12C\n" +
-	"\fmetric_datas\x18\x01 \x03(\v2 .warehouse.selling.v1.MetricDataR\vmetricDatas2\xde\x01\n" +
-	"\x14OrderAnalyticService\x12e\n" +
-	"\fMetricSearch\x12).warehouse.selling.v1.MetricSearchRequest\x1a*.warehouse.selling.v1.MetricSearchResponse\x12_\n" +
+	"\fmetric_datas\x18\x01 \x03(\v2 .warehouse.selling.v1.MetricDataR\vmetricDatas\x12\x1c\n" +
 	"\n" +
-	"MetricData\x12'.warehouse.selling.v1.MetricDataRequest\x1a(.warehouse.selling.v1.MetricDataResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"as_of_unix\x18\x02 \x01(\x03R\basOfUnix2\xe8\x01\n" +
+	"\x14OrderAnalyticService\x12j\n" +
+	"\fMetricSearch\x12).warehouse.selling.v1.MetricSearchRequest\x1a*.warehouse.selling.v1.MetricSearchResponse\"\x03\x90\x02\x01\x12d\n" +
+	"\n" +
+	"MetricData\x12'.warehouse.selling.v1.MetricDataRequest\x1a(.warehouse.selling.v1.MetricDataResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_order_analytic_proto_rawDescOnce sync.Once
@@ -1524,7 +1767,7 @@ func file_warehouse_selling_v1_order_analytic_proto_rawDescGZIP() []byte {
 	return file_warehouse_selling_v1_order_analytic_proto_rawDescData
 }
 
-var file_warehouse_selling_v1_order_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_warehouse_selling_v1_order_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_warehouse_selling_v1_order_analytic_proto_goTypes = []any{
 	(*OrderCreatedMetric)(nil),            // 0: warehouse.selling.v1.OrderCreatedMetric
 	(*OrderCreatedMetricByID)(nil),        // 1: warehouse.selling.v1.OrderCreatedMetricByID
@@ -1541,81 +1784,93 @@ var file_warehouse_selling_v1_order_analytic_proto_goTypes = []any{
 	(*OrderLostCreatedMetric)(nil),        // 12: warehouse.selling.v1.OrderLostCreatedMetric
 	(*OrderLostCreatedMetricByID)(nil),    // 13: warehouse.selling.v1.OrderLostCreatedMetricByID
 	(*OrderLostCreatedMetricByDay)(nil),   // 14: warehouse.selling.v1.OrderLostCreatedMetricByDay
-	(*MetricSearchRequest)(nil),           // 15: warehouse.selling.v1.MetricSearchRequest
-	(*MetricSearchResponse)(nil),          // 16: warehouse.selling.v1.MetricSearchResponse
-	(*MetricDataRequest)(nil),             // 17: warehouse.selling.v1.MetricDataRequest
-	(*MetricData)(nil),                    // 18: warehouse.selling.v1.MetricData
-	(*MetricDataResponse)(nil),            // 19: warehouse.selling.v1.MetricDataResponse
-	nil,                                   // 20: warehouse.selling.v1.OrderCreatedMetricByID.ItemsEntry
-	nil,                                   // 21: warehouse.selling.v1.OrderCreatedMetricByDay.ItemsEntry
-	nil,                                   // 22: warehouse.selling.v1.OrderCancelMetricByID.ItemsEntry
-	nil,                                   // 23: warehouse.selling.v1.OrderCancelMetricByDay.ItemsEntry
-	nil,                                   // 24: warehouse.selling.v1.OrderReturnCreatedMetricByID.ItemsEntry
-	nil,                                   // 25: warehouse.selling.v1.OrderReturnCreatedMetricByDay.ItemsEntry
-	nil,                                   // 26: warehouse.selling.v1.OrderReturnArrivedMetricByID.ItemsEntry
-	nil,                                   // 27: warehouse.selling.v1.OrderReturnArrivedMetricByDay.ItemsEntry
-	nil,                                   // 28: warehouse.selling.v1.OrderLostCreatedMetricByID.ItemsEntry
-	nil,                                   // 29: warehouse.selling.v1.OrderLostCreatedMetricByDay.ItemsEntry
-	(v1.GroupType)(0),                     // 30: warehouse.analytic_base.v1.GroupType
-	(*v1.FilterItem)(nil),                 // 31: warehouse.analytic_base.v1.FilterItem
-	(*v1.MetricSort)(nil),                 // 32: warehouse.analytic_base.v1.MetricSort
-	(*v1.PaginationFilter)(nil),           // 33: warehouse.analytic_base.v1.PaginationFilter
-	(*v1.MetricKeys)(nil),                 // 34: warehouse.analytic_base.v1.MetricKeys
+	(*WarehouseFeeMetric)(nil),            // 15: warehouse.selling.v1.WarehouseFeeMetric
+	(*WarehouseFeeMetricByID)(nil),        // 16: warehouse.selling.v1.WarehouseFeeMetricByID
+	(*WarehouseFeeMetricByDay)(nil),       // 17: warehouse.selling.v1.WarehouseFeeMetricByDay
+	(*MetricSearchRequest)(nil),           // 18: warehouse.selling.v1.MetricSearchRequest
+	(*MetricSearchResponse)(nil),          // 19: warehouse.selling.v1.MetricSearchResponse
+	(*MetricDataRequest)(nil),             // 20: warehouse.selling.v1.MetricDataRequest
+	(*MetricData)(nil),                    // 21: warehouse.selling.v1.MetricData
+	(*MetricDataResponse)(nil),            // 22: warehouse.selling.v1.MetricDataResponse
+	nil,                                   // 23: warehouse.selling.v1.OrderCreatedMetricByID.ItemsEntry
+	nil,                                   // 24: warehouse.selling.v1.OrderCreatedMetricByDay.ItemsEntry
+	nil,                                   // 25: warehouse.selling.v1.OrderCancelMetricByID.ItemsEntry
+	nil,                                   // 26: warehouse.selling.v1.OrderCancelMetricByDay.ItemsEntry
+	nil,                                   // 27: warehouse.selling.v1.OrderReturnCreatedMetricByID.ItemsEntry
+	nil,                                   // 28: warehouse.selling.v1.OrderReturnCreatedMetricByDay.ItemsEntry
+	nil,                                   // 29: warehouse.selling.v1.OrderReturnArrivedMetricByID.ItemsEntry
+	nil,                                   // 30: warehouse.selling.v1.OrderReturnArrivedMetricByDay.ItemsEntry
+	nil,                                   // 31: warehouse.selling.v1.OrderLostCreatedMetricByID.ItemsEntry
+	nil,                                   // 32: warehouse.selling.v1.OrderLostCreatedMetricByDay.ItemsEntry
+	nil,                                   // 33: warehouse.selling.v1.WarehouseFeeMetricByID.ItemsEntry
+	nil,                                   // 34: warehouse.selling.v1.WarehouseFeeMetricByDay.ItemsEntry
+	(v1.GroupType)(0),                     // 35: warehouse.analytic_base.v1.GroupType
+	(*v1.FilterItem)(nil),                 // 36: warehouse.analytic_base.v1.FilterItem
+	(*v1.MetricSort)(nil),                 // 37: warehouse.analytic_base.v1.MetricSort
+	(*v1.PaginationFilter)(nil),           // 38: warehouse.analytic_base.v1.PaginationFilter
+	(*v1.MetricKeys)(nil),                 // 39: warehouse.analytic_base.v1.MetricKeys
 }
 var file_warehouse_selling_v1_order_analytic_proto_depIdxs = []int32{
-	20, // 0: warehouse.selling.v1.OrderCreatedMetricByID.items:type_name -> warehouse.selling.v1.OrderCreatedMetricByID.ItemsEntry
-	21, // 1: warehouse.selling.v1.OrderCreatedMetricByDay.items:type_name -> warehouse.selling.v1.OrderCreatedMetricByDay.ItemsEntry
-	22, // 2: warehouse.selling.v1.OrderCancelMetricByID.items:type_name -> warehouse.selling.v1.OrderCancelMetricByID.ItemsEntry
-	23, // 3: warehouse.selling.v1.OrderCancelMetricByDay.items:type_name -> warehouse.selling.v1.OrderCancelMetricByDay.ItemsEntry
-	24, // 4: warehouse.selling.v1.OrderReturnCreatedMetricByID.items:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByID.ItemsEntry
-	25, // 5: warehouse.selling.v1.OrderReturnCreatedMetricByDay.items:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByDay.ItemsEntry
-	26, // 6: warehouse.selling.v1.OrderReturnArrivedMetricByID.items:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByID.ItemsEntry
-	27, // 7: warehouse.selling.v1.OrderReturnArrivedMetricByDay.items:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByDay.ItemsEntry
-	28, // 8: warehouse.selling.v1.OrderLostCreatedMetricByID.items:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByID.ItemsEntry
-	29, // 9: warehouse.selling.v1.OrderLostCreatedMetricByDay.items:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByDay.ItemsEntry
-	30, // 10: warehouse.selling.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	31, // 11: warehouse.selling.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	32, // 12: warehouse.selling.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
-	33, // 13: warehouse.selling.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
-	34, // 14: warehouse.selling.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
-	30, // 15: warehouse.selling.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	31, // 16: warehouse.selling.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	34, // 17: warehouse.selling.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
-	1,  // 18: warehouse.selling.v1.MetricData.created_by_id:type_name -> warehouse.selling.v1.OrderCreatedMetricByID
-	2,  // 19: warehouse.selling.v1.MetricData.created_by_day:type_name -> warehouse.selling.v1.OrderCreatedMetricByDay
-	0,  // 20: warehouse.selling.v1.MetricData.created_summary:type_name -> warehouse.selling.v1.OrderCreatedMetric
-	4,  // 21: warehouse.selling.v1.MetricData.cancel_by_id:type_name -> warehouse.selling.v1.OrderCancelMetricByID
-	5,  // 22: warehouse.selling.v1.MetricData.cancel_by_day:type_name -> warehouse.selling.v1.OrderCancelMetricByDay
-	3,  // 23: warehouse.selling.v1.MetricData.cancel_summary:type_name -> warehouse.selling.v1.OrderCancelMetric
-	7,  // 24: warehouse.selling.v1.MetricData.return_created_by_id:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByID
-	8,  // 25: warehouse.selling.v1.MetricData.return_created_by_day:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByDay
-	6,  // 26: warehouse.selling.v1.MetricData.return_created_summary:type_name -> warehouse.selling.v1.OrderReturnCreatedMetric
-	10, // 27: warehouse.selling.v1.MetricData.return_arrived_by_id:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByID
-	11, // 28: warehouse.selling.v1.MetricData.return_arrived_by_day:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByDay
-	9,  // 29: warehouse.selling.v1.MetricData.return_arrived_summary:type_name -> warehouse.selling.v1.OrderReturnArrivedMetric
-	13, // 30: warehouse.selling.v1.MetricData.lost_created_by_id:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByID
-	14, // 31: warehouse.selling.v1.MetricData.lost_created_by_day:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByDay
-	12, // 32: warehouse.selling.v1.MetricData.lost_created_summary:type_name -> warehouse.selling.v1.OrderLostCreatedMetric
-	18, // 33: warehouse.selling.v1.MetricDataResponse.metric_datas:type_name -> warehouse.selling.v1.MetricData
-	0,  // 34: warehouse.selling.v1.OrderCreatedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCreatedMetric
-	0,  // 35: warehouse.selling.v1.OrderCreatedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCreatedMetric
-	3,  // 36: warehouse.selling.v1.OrderCancelMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCancelMetric
-	3,  // 37: warehouse.selling.v1.OrderCancelMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCancelMetric
-	6,  // 38: warehouse.selling.v1.OrderReturnCreatedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnCreatedMetric
-	6,  // 39: warehouse.selling.v1.OrderReturnCreatedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnCreatedMetric
-	9,  // 40: warehouse.selling.v1.OrderReturnArrivedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnArrivedMetric
-	9,  // 41: warehouse.selling.v1.OrderReturnArrivedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnArrivedMetric
-	12, // 42: warehouse.selling.v1.OrderLostCreatedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderLostCreatedMetric
-	12, // 43: warehouse.selling.v1.OrderLostCreatedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderLostCreatedMetric
-	15, // 44: warehouse.selling.v1.OrderAnalyticService.MetricSearch:input_type -> warehouse.selling.v1.MetricSearchRequest
-	17, // 45: warehouse.selling.v1.OrderAnalyticService.MetricData:input_type -> warehouse.selling.v1.MetricDataRequest
-	16, // 46: warehouse.selling.v1.OrderAnalyticService.MetricSearch:output_type -> warehouse.selling.v1.MetricSearchResponse
-	19, // 47: warehouse.selling.v1.OrderAnalyticService.MetricData:output_type -> warehouse.selling.v1.MetricDataResponse
-	46, // [46:48] is the sub-list for method output_type
-	44, // [44:46] is the sub-list for method input_type
-	44, // [44:44] is the sub-list for extension type_name
-	44, // [44:44] is the sub-list for extension extendee
-	0,  // [0:44] is the sub-list for field type_name
+	23, // 0: warehouse.selling.v1.OrderCreatedMetricByID.items:type_name -> warehouse.selling.v1.OrderCreatedMetricByID.ItemsEntry
+	24, // 1: warehouse.selling.v1.OrderCreatedMetricByDay.items:type_name -> warehouse.selling.v1.OrderCreatedMetricByDay.ItemsEntry
+	25, // 2: warehouse.selling.v1.OrderCancelMetricByID.items:type_name -> warehouse.selling.v1.OrderCancelMetricByID.ItemsEntry
+	26, // 3: warehouse.selling.v1.OrderCancelMetricByDay.items:type_name -> warehouse.selling.v1.OrderCancelMetricByDay.ItemsEntry
+	27, // 4: warehouse.selling.v1.OrderReturnCreatedMetricByID.items:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByID.ItemsEntry
+	28, // 5: warehouse.selling.v1.OrderReturnCreatedMetricByDay.items:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByDay.ItemsEntry
+	29, // 6: warehouse.selling.v1.OrderReturnArrivedMetricByID.items:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByID.ItemsEntry
+	30, // 7: warehouse.selling.v1.OrderReturnArrivedMetricByDay.items:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByDay.ItemsEntry
+	31, // 8: warehouse.selling.v1.OrderLostCreatedMetricByID.items:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByID.ItemsEntry
+	32, // 9: warehouse.selling.v1.OrderLostCreatedMetricByDay.items:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByDay.ItemsEntry
+	33, // 10: warehouse.selling.v1.WarehouseFeeMetricByID.items:type_name -> warehouse.selling.v1.WarehouseFeeMetricByID.ItemsEntry
+	34, // 11: warehouse.selling.v1.WarehouseFeeMetricByDay.items:type_name -> warehouse.selling.v1.WarehouseFeeMetricByDay.ItemsEntry
+	35, // 12: warehouse.selling.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	36, // 13: warehouse.selling.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	37, // 14: warehouse.selling.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
+	38, // 15: warehouse.selling.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
+	39, // 16: warehouse.selling.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	35, // 17: warehouse.selling.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	36, // 18: warehouse.selling.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	39, // 19: warehouse.selling.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	1,  // 20: warehouse.selling.v1.MetricData.created_by_id:type_name -> warehouse.selling.v1.OrderCreatedMetricByID
+	2,  // 21: warehouse.selling.v1.MetricData.created_by_day:type_name -> warehouse.selling.v1.OrderCreatedMetricByDay
+	0,  // 22: warehouse.selling.v1.MetricData.created_summary:type_name -> warehouse.selling.v1.OrderCreatedMetric
+	4,  // 23: warehouse.selling.v1.MetricData.cancel_by_id:type_name -> warehouse.selling.v1.OrderCancelMetricByID
+	5,  // 24: warehouse.selling.v1.MetricData.cancel_by_day:type_name -> warehouse.selling.v1.OrderCancelMetricByDay
+	3,  // 25: warehouse.selling.v1.MetricData.cancel_summary:type_name -> warehouse.selling.v1.OrderCancelMetric
+	7,  // 26: warehouse.selling.v1.MetricData.return_created_by_id:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByID
+	8,  // 27: warehouse.selling.v1.MetricData.return_created_by_day:type_name -> warehouse.selling.v1.OrderReturnCreatedMetricByDay
+	6,  // 28: warehouse.selling.v1.MetricData.return_created_summary:type_name -> warehouse.selling.v1.OrderReturnCreatedMetric
+	10, // 29: warehouse.selling.v1.MetricData.return_arrived_by_id:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByID
+	11, // 30: warehouse.selling.v1.MetricData.return_arrived_by_day:type_name -> warehouse.selling.v1.OrderReturnArrivedMetricByDay
+	9,  // 31: warehouse.selling.v1.MetricData.return_arrived_summary:type_name -> warehouse.selling.v1.OrderReturnArrivedMetric
+	13, // 32: warehouse.selling.v1.MetricData.lost_created_by_id:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByID
+	14, // 33: warehouse.selling.v1.MetricData.lost_created_by_day:type_name -> warehouse.selling.v1.OrderLostCreatedMetricByDay
+	12, // 34: warehouse.selling.v1.MetricData.lost_created_summary:type_name -> warehouse.selling.v1.OrderLostCreatedMetric
+	16, // 35: warehouse.selling.v1.MetricData.warehouse_fee_by_id:type_name -> warehouse.selling.v1.WarehouseFeeMetricByID
+	17, // 36: warehouse.selling.v1.MetricData.warehouse_fee_by_day:type_name -> warehouse.selling.v1.WarehouseFeeMetricByDay
+	15, // 37: warehouse.selling.v1.MetricData.warehouse_fee_summary:type_name -> warehouse.selling.v1.WarehouseFeeMetric
+	21, // 38: warehouse.selling.v1.MetricDataResponse.metric_datas:type_name -> warehouse.selling.v1.MetricData
+	0,  // 39: warehouse.selling.v1.OrderCreatedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCreatedMetric
+	0,  // 40: warehouse.selling.v1.OrderCreatedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCreatedMetric
+	3,  // 41: warehouse.selling.v1.OrderCancelMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCancelMetric
+	3,  // 42: warehouse.selling.v1.OrderCancelMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderCancelMetric
+	6,  // 43: warehouse.selling.v1.OrderReturnCreatedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnCreatedMetric
+	6,  // 44: warehouse.selling.v1.OrderReturnCreatedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnCreatedMetric
+	9,  // 45: warehouse.selling.v1.OrderReturnArrivedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnArrivedMetric
+	9,  // 46: warehouse.selling.v1.OrderReturnArrivedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderReturnArrivedMetric
+	12, // 47: warehouse.selling.v1.OrderLostCreatedMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderLostCreatedMetric
+	12, // 48: warehouse.selling.v1.OrderLostCreatedMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.OrderLostCreatedMetric
+	15, // 49: warehouse.selling.v1.WarehouseFeeMetricByID.ItemsEntry.value:type_name -> warehouse.selling.v1.WarehouseFeeMetric
+	15, // 50: warehouse.selling.v1.WarehouseFeeMetricByDay.ItemsEntry.value:type_name -> warehouse.selling.v1.WarehouseFeeMetric
+	18, // 51: warehouse.selling.v1.OrderAnalyticService.MetricSearch:input_type -> warehouse.selling.v1.MetricSearchRequest
+	20, // 52: warehouse.selling.v1.OrderAnalyticService.MetricData:input_type -> warehouse.selling.v1.MetricDataRequest
+	19, // 53: warehouse.selling.v1.OrderAnalyticService.MetricSearch:output_type -> warehouse.selling.v1.MetricSearchResponse
+	22, // 54: warehouse.selling.v1.OrderAnalyticService.MetricData:output_type -> warehouse.selling.v1.MetricDataResponse
+	53, // [53:55] is the sub-list for method output_type
+	51, // [51:53] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_analytic_proto_init() }
@@ -1628,7 +1883,7 @@ func file_warehouse_selling_v1_order_analytic_proto_init() {
 	file_warehouse_selling_v1_order_analytic_proto_msgTypes[6].OneofWrappers = []any{}
 	file_warehouse_selling_v1_order_analytic_proto_msgTypes[9].OneofWrappers = []any{}
 	file_warehouse_selling_v1_order_analytic_proto_msgTypes[12].OneofWrappers = []any{}
-	file_warehouse_selling_v1_order_analytic_proto_msgTypes[18].OneofWrappers = []any{
+	file_warehouse_selling_v1_order_analytic_proto_msgTypes[21].OneofWrappers = []any{
 		(*MetricData_CreatedById)(nil),
 		(*MetricData_CreatedByDay)(nil),
 		(*MetricData_CreatedSummary)(nil),
@@ -1644,6 +1899,9 @@ func file_warehouse_selling_v1_order_analytic_proto_init() {
 		(*MetricData_LostCreatedById)(nil),
 		(*MetricData_LostCreatedByDay)(nil),
 		(*MetricData_LostCreatedSummary)(nil),
+		(*MetricData_WarehouseFeeById)(nil),
+		(*MetricData_WarehouseFeeByDay)(nil),
+		(*MetricData_WarehouseFeeSummary)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1651,7 +1909,7 @@ func file_warehouse_selling_v1_order_analytic_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_order_analytic_proto_rawDesc), len(file_warehouse_selling_v1_order_analytic_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   30,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -7,7 +7,97 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
-## 2026-10-29 · order — drafts, tracking number, warehouse fee
+## 2026-11-05 · stock never stuck, accounts checked, Analytic figures, shop access
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A failed order never keeps the stock** | every Create carries its own key; if the order isn't saved the stock goes back, and a cancel returns it by event even behind a running count |
+| **The order form waits safely** | while Create waits the form locks; a dropped connection shows *No answer* with **Try Again**, which first checks whether the first try landed |
+| **A ref used before is warned** | the form names the order or draft that already has it — a colleague's draft without a link |
+| **The right account pays** | restocks and expenses only from the team's active operational accounts; a transfer from any active one; *stock loss* can't be typed by hand |
+| **Analytic gained real figures** | **Warehouse fee** (a cancel takes it back on its day; a warehouse sees what it earned), a **Finance** category (account changes and change types, filtered by account, a year in 11 ms instead of 1.5 s), **Lost stock** (count shortages and adjustments, at batch price); product and supplier filters search real items |
+| **Only the shops you were given** | placing or pushing an order checks the person's shop grant; a closed shop still imports its old statements. `san shop grant-current-cs` gives today's CS their team's shops — **run it at release** |
+| **Sorting by Total works** | *Total* is what the order cost the seller; *Platform total* sorts what the buyer paid |
+| **A transfer's label photo opens for every side** | the sending warehouse, the receiving one and the seller |
+| **A stuck stock release is replayed** | `san pubsub releases list / replay` finds a dead-lettered release and gives the stock back, safely twice |
+| **A shop is closed, never deleted** | **Close** and **Reopen** replace Delete; a closed shop takes no new orders, keeps importing statements, settlement, accounts and expenses, and its access stays editable; its code is freed, and reopening is refused while another open shop holds it. Report filters still offer it, badged *Closed* |
+| **Every order names its courier** | the courier is a real link to the catalogue; the form marks it required and holds **Create** until one is picked |
+| **Addresses are names, and drafts open ready to check** | an order's and a draft's address are kept as names; a draft opens with the marketplace's address shown, the regions pre-filled when they match exactly one place, everything editable |
+| **Drafts are Ready without mapping** | a draft keeps no product mapping (lines are mapped at Create); *Ready* means shop, warehouse, customer, address and courier are filled |
+| **Expense figures name their people** | Analytic's *Created by* lists who typed or corrected an expense; a stock loss lands on the Jakarta day |
+| **Team Balance passed your review** | desktop and phone accepted; the pair page opens on **All** — the whole running ledger; only the team that owes can record a payment |
+| **Team Balance filters search everything** | the list's search finds a team by name or code past the first page; the pair's date range and tabs read the whole history, not only what was loaded |
+| **Supplier figures are real** | *Terjual* and *Siap* with their last order and restock dates, per store and per warehouse, on the supplier pages and Discover — every selling team's goods; a cancel takes its sale back. *Penjualan* is the real selling value on the order's day, and the Terjual / Siap pills filter the list |
+| **A shop's own settlement rows have a page** | *Entri Toko* lists withdrawals, adjustments, shop fees and lines that found no order, each with the statement it came from; a wrong one is reversed in place. The report's shop rows open it |
+| **Ekspor gives a real file** | the supplier Toko and Statistik tabs, the Supplier Report and the Account Report download an .xlsx of everything the screen shows as filtered — every page, exact money |
+| **Every date range is the Jakarta day** | lists, reports, Analytic and the date picker cut days at Jakarta's midnight, wherever the reader is |
+| **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
+| **Dialogs fit the desktop** | seven dialogs stop filling the screen |
+| **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |
+
+**Next:** an expense report on Analytic, returns back onto the shelf (waits on `return.md`).
+
+## 2026-11-04 · table mirroring — finding what changed in the old system
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A package that finds every changed row in the old system's database** | the migration job can ask *"what is new, edited or deleted in `users` since last time?"* and copy only that into the new system, on a schedule. Nothing uses it yet — the job that copies is the next step |
+| **It refuses to wipe the copy by accident** | if a run finds more than 50 rows AND more than 10% of a table gone at once (a table caught half-empty during maintenance), it sends nothing and says so; an operator lets a real purge through by raising the limit once |
+| **Two jobs can't run over each other** | a run that starts while the previous one is still going skips that table and says *still running* |
+
+**Next:** the scheduled job that copies the old system's tables into the new one.
+
+## 2026-11-04 (afternoon) · the backlog's bugs, money into accounts, expenses, returns
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Saving your profile keeps your email and phone** | it used to blank them, which broke the phone password reset |
+| **Shop access goes only to active team members** | a non-member, a suspended or an erased person is refused, and the picker no longer offers them |
+| **The admin team's Admin can no longer look up any account** | the exact search stays with the people who manage members |
+| **A warehouse opens the labels it needs** | an order's label from the order page, and a restock's label photo at its door — checked against the warehouse, nothing shared |
+| **Statement money never lands on a guessed order** | two live orders on one marketplace ref post to the shop, marked "several orders" with both ids |
+| **Analytic's "Created by" works for everyone who reads it** | it lists the people on the figures, not a system-wide search |
+| **Money reaches the accounts** | restock payments, a transfer's shipping and every expense leave the account that paid; edits post the difference, cancels give it back; a transfer's courier fee is owed in the team balance |
+| **Expenses name the account that paid** | *Paid from* is required; only Ads names a shop, and must; corrections follow the original's account; a phone layout; dates in WIB |
+| **A warehouse receives a return by scanning** | *Receive a Return* finds the order by ref or tracking number, forces it to return if needed, then accepts it |
+| **Every allowed order move has a button** | Mark as Problem, Mark as Lost, Return Goods where the rules allow them |
+| **Smaller fixes** | shop filters work; the drafts Ready count covers every page; erased people read "Former user #57"; errors read as sentences; stale "not built" marks removed |
+| **One ranked backlog** | [backlog.md](backlog.md), re-ranked after each slice |
+
+**Next:** the backlog's Tier 3 — a duplicate-ref warning on the order form, then stock that stays taken when an order fails.
+
+## 2026-11-04 · inventory — the count locks, found stock, a warehouse's Products; the backlog
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A count stops sales, cancels and moves on what it counts** | while a rack is counted, an order or transfer cannot take from it, and a cancel or rollback says *"being counted in count #12"*; the order stays pending until the count ends. A rack a count holds cannot be deleted |
+| **Found stock waits for the Owner or Admin** | staff report extra units they found; an Owner or Admin who is not the reporter approves or rejects it under *Inventories ▸ Found Stock*. The reporter can withdraw it, and a finished count settles what it counted |
+| **A warehouse picks only what it has held** | the product pickers on warehouse screens offer the products that have stock history in that building, archived ones labelled |
+| **A warehouse's Products is what it holds** | the Products menu of a warehouse lists what is on its shelves, and the product page opens for warehouse staff |
+| **One ranked list of what is incomplete** | [backlog.md](backlog.md) ranks every unfinished feature, screen, API, event and statistic, and is re-ranked after each slice. Top of it now: six bugs, starting with *saving your profile wipes your email and phone* |
+
+**Next:** the backlog's Tier 1 bugs.
+
+## 2026-11-02 · every decided item built
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **An expense can be corrected** | a wrong expense gets an adjustment beside it instead of being edited away; the day's total shows the net |
+| **Reports refuse more than a year, and say how fresh they are** | the Analytic, settlement and supplier reports stop a range over a year, and read *"As of 14:05 WIB"* |
+| **A product is archived, or deleted only if nothing used it** | a used product moves to the Archived tab; one that was never sold or stocked can be deleted |
+| **Product codes come from the team's code** | every code reads `<team code>-<part>` |
+| **A warehouse records its holidays** | the warehouse page takes closures; the order form warns *"Closed for Idul Fitri — handled from 7 Apr"*, and the order is still created |
+| **A recount that finds fewer units charges like a lost unit** | the warehouse's loss is booked and it owes the seller the cost — recording it as a recount no longer avoids that |
+| **A creditor can ask to be paid** | *Request Payment* on the pair detail; the debtor sees *"Gudang Bekasi asks you to pay Rp 700.000"*. Nothing moves until they pay |
+| **ChatGPT and Claude can read the business** | a person connects an AI agent by URL, picks one team and names it; the agent only reads, for 90 days, and is revoked from Profile. The owner decides whether CS and staff may connect, and sees every connection |
+| **The platform's writes inside a team are marked** | when Root or the Administrator acts in a team they are not in, the record says so — orders, stock, expenses, balances, documents |
+| **The admin team can watch any team, read-only** | it picks a team under *All teams*, sees its screens under a *Monitoring — read-only* strip, and every write is hidden and refused |
+| **A returned parcel is accepted** | the warehouse holding it accepts the return, enters what the courier asked at the door (owed back by the seller), notes missing units, and gets the labels to print for borrowed lines. ⚠ The units do not go back on the shelf until the return's stock design exists |
+| **The real stock count** | a count session over all racks, a team, a product or a rack: staff count blind, then see the difference and give reasons; a second person finalizes; losses go to a register the warehouse owes the seller for, and a later surplus claims them back. The old one-rack count is gone |
+
+**Open:** four stock-count questions the build raised ([biggest_question.md](../biggest_question.md)).
+
+ · order — drafts, tracking number, warehouse fee
 
 **The order context has no open question left**, apart from the product barcode you parked.
 
@@ -104,7 +194,7 @@ every entry after it covers one finished slice.
 
 | Area | State | What a person can do with it today |
 | --- | --- | --- |
-| **Team Balance** | ⚠ **built, waiting on you** | Two teams can owe each other and settle up: every pair has two mirrored balances, six kinds of event move them, and a debt above the limit stops the debtor ordering. A payment carries **proof the creditor can open**, and is confirmed, rejected or reversed. Credit limits have a change log — who moved a limit, when, and why |
+| **Team Balance** | ✅ **accepted 2026-11-07** (desktop and phone) | Two teams can owe each other and settle up: every pair has two mirrored balances, six kinds of event move them, and a debt above the limit stops the debtor ordering. A payment carries **proof the creditor can open**; only the team that owes records it, and the creditor accepts (final) or rejects. Credit limits have a change log — who moved a limit, when, and why |
 | **Order Settlement** | ✅ **done, design accepted** | What a marketplace order *actually* paid out — the fees, the deductions, the next-day adjustments — recorded per order, typed in by hand or posted by an external service |
 | **Orders** | ⚠ built, never design-reviewed | Record an order, keep it as a draft and promote it, then confirm → pick → pack → ship. Shops and shop members are managed |
 | **Users & Roles** | ⚠ built, never design-reviewed | Log in, reset a password by OTP, hold a different role in each team. The permission rule for every screen is declared on the request itself, so it cannot drift from the code |
@@ -113,16 +203,16 @@ every entry after it covers one finished slice.
 ```mermaid
 flowchart LR
   s["Order Settlement"] -->|"✅ accepted"| done["done"]
-  b["Team Balance"] -->|"⚠ built, unreviewed screens"| gate["waiting on the PM"]
+  b["Team Balance"] -->|"✅ accepted 2026-11-07"| done
   o["Orders · Users · Support"] -->|"⚠ built before it was designed"| gate2["no design pass yet"]
 ```
 
-### ⛔ The one thing waiting on you
+### ✅ The balance screens are reviewed
 
-**Nobody has looked at the balance screens.** The lifecycle's `design_accept` gate blocks everything
-after it, and it is the only thing between Team Balance and finished. Fifteen minutes with the
-running app closes it — the steps are in
-[balance/context.md](balance/context.md#the-next-agents-first-move).
+You accepted the Team Balance screens on 2026-11-07 — desktop
+([the-team-balance-screens-are-accepted](../technical/balance/team_balance_design_decision.md#the-team-balance-screens-are-accepted))
+and phone ([the-team-balance-phone-layout-is-accepted](../technical/balance/team_balance_design_decision.md#the-team-balance-phone-layout-is-accepted)).
+The `design_accept` gate is passed. Still open there: the warehouse daily statement's old words (#35).
 
 ### What is honest about the rest
 
@@ -140,7 +230,6 @@ end-to-end passing together for the first time. Two concurrency audits are writt
 
 ### Next
 
-1. **Get the balance screens previewed** — it is the only blocked gate in this lane.
-2. **Wire settlement into order creation** — the one piece settlement is missing.
-3. **Decide who owns the ledger** — it is the last unowned area, and both lanes touch it
-   ([member_clarify.md Q1](../business/project/member_clarify.md#question)).
+1. ~~Get the balance screens previewed~~ — ✅ accepted 2026-11-07.
+2. ~~Wire settlement into order creation~~ — ✅ done: settlement opens and cancels each sale from `OrderPlaced` / `OrderCancelled` ([settlement/context.md](settlement/context.md)).
+3. ~~Decide who owns the ledger~~ — ✅ yours ([heri-owns-the-ledger-area](../business/project/member_decision.md#heri-owns-the-ledger-area)); there is still no central book ([ledger-is-retired-as-a-context](../business/project/member_decision.md#ledger-is-retired-as-a-context)).

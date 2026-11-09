@@ -39,9 +39,10 @@ type orderScopeFilter interface {
 	GetCreatedByUserId() uint64
 	GetSellerTeamId() uint64
 	GetMarketplace() marketplacev1.Marketplace
-	GetShippingCode() string
+	GetShipmentChannelId() uint64
 	GetWarehouseId() uint64
 	GetDateField() sellingv1.OrderDateField
+	GetSettlementNotOpened() bool
 }
 
 // A literal `%`, `_` or `\` typed into the search box must match ITSELF, not act as a wildcard.
@@ -59,6 +60,23 @@ func readsEveryTeam(teamID uint64) bool {
 	return teamID == san_auth.RootTeamID
 }
 
+// orderReaders is WHO READS AN ORDER, as one SQL condition on `orders` with the reader's team as @team — the scope every
+// read of an order shares (OrderList, OrderStat, OrderExport, OrderCreatorList, OrderDetail):
+//
+//   - its SELLING team, that placed it;
+//   - its WAREHOUSE, that ships it (#151);
+//   - and, NARROWLY, the selling team's CONFIGURED RETURN WAREHOUSE — for the order in `return` or `return_completed`
+//     only. The parcel comes back to the configured warehouse, not always the one it shipped from
+//     (a-return-may-land-in-another-warehouse), read from team_return_configurations at the moment
+//     (the-return-warehouse-is-read-when-the-return-happens), and that warehouse's crew has to find the order to accept
+//     it. Before a return is claimed, and for every other order, it reads nothing of that team's.
+//
+// ⚠ `= ANY(ARRAY(subquery))`, NOT `IN (subquery)`. The array is computed once, as an InitPlan, so `team_id = ANY(…)` is
+// an index condition and the three arms stay one BitmapOr over the team and warehouse indexes. `IN (subquery)` is a
+// hashed SubPlan the planner can only FILTER with — a sequential scan of every order on every warehouse's list.
+const orderReaders = `(team_id = @team OR warehouse_id = @team OR (status IN ('return', 'return_completed') AND ` +
+	`team_id = ANY(ARRAY(SELECT c.team_id FROM team_return_configurations c WHERE c.warehouse_id = @team))))`
+
 // scopedOrders builds the set of orders a team may see — the WHOLE set, before any status filter.
 //
 // It is shared by OrderList and OrderStat rather than written twice, and that is what makes the stat
@@ -66,7 +84,8 @@ func readsEveryTeam(teamID uint64) bool {
 // table describing a different set of orders, which is worse than no header at all.
 func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.DB {
 	// BOTH SIDES (#151): the team that placed the order, or the warehouse shipping it. The latter is
-	// the pick queue. The root team reads every team's orders and skips the clause.
+	// the pick queue. And the return warehouse, for a return only — orderReaders. The root team reads every team's orders
+	// and skips the clause.
 	//
 	// The parentheses are written explicitly even though GORM does not need them here — it wraps a
 	// chained Where containing an OR before AND-ing the next one, so the generated SQL is already
@@ -75,7 +94,7 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// from THIS line rather than resting on an ORM behaviour: precedence is what makes an OR-plus-
 	// filter go wrong, and hand-built SQL a refactor away would not be so forgiving.
 	if !readsEveryTeam(teamID) {
-		query = query.Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
+		query = query.Where(orderReaders, map[string]any{"team": teamID})
 	}
 
 	// Only orders carrying THIS product on a line (#159). An EXISTS subquery rather than a JOIN: a join
@@ -116,12 +135,18 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		// The TRACKING NUMBER for the same reason, from the other end: a parcel in somebody's hand carries
 		// its slip, and the slip's number is what a scan or a buyer's "where is it" gives you
 		// (a-label-scan-reads-the-ref-or-the-receipt).
-		clause := `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
+		//
+		// The customer's name and phone live on the order's one address row (00045, one-address-per-order-and-per-draft):
+		// `id IN (the matching address rows)`, which Postgres runs ONCE as a hashed SubPlan — a correlated EXISTS probed
+		// the address index for every order in scope and doubled a warehouse's search (47 → 111 ms at 16 667 orders).
+		clause := `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE a.customer_name ILIKE @like ESCAPE '\'` +
+			` OR a.customer_phone ILIKE @like ESCAPE '\')` +
 			` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\')`
 
 		id, err := strconv.ParseUint(term, 10, 64)
 		if err == nil && id > 0 {
-			clause = `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
+			clause = `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE a.customer_name ILIKE @like ESCAPE '\'` +
+				` OR a.customer_phone ILIKE @like ESCAPE '\')` +
 				` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\' OR id = @id)`
 			args["id"] = id
 		}
@@ -133,18 +158,25 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// March") is expressible rather than needing a far-future upper bound.
 	//
 	// WHICH DATE is the filter's choice (the-date-filter-switches-created-or-platform): when we wrote the row, by
-	// default, or when the buyer ordered. The column is picked from a closed set here, never interpolated from input.
-	dateColumn := "created_at"
-	if filter.GetDateField() == sellingv1.OrderDateField_ORDER_DATE_FIELD_PLATFORM_CREATED {
-		dateColumn = "platform_created_at"
-	}
+	// default, or when the buyer ordered — or the first time the order entered a status (dateEnteredWindow). The column
+	// is picked from a closed set here, never interpolated from input.
+	from, to := filter.GetCreatedFromUnix(), filter.GetCreatedToUnix()
 
-	if from := filter.GetCreatedFromUnix(); from > 0 {
-		query = query.Where(dateColumn+" >= ?", time.Unix(from, 0))
-	}
+	if status, ok := dateFieldStatuses[filter.GetDateField()]; ok {
+		query = dateEnteredWindow(query, status, from, to)
+	} else {
+		dateColumn := "created_at"
+		if filter.GetDateField() == sellingv1.OrderDateField_ORDER_DATE_FIELD_PLATFORM_CREATED {
+			dateColumn = "platform_created_at"
+		}
 
-	if to := filter.GetCreatedToUnix(); to > 0 {
-		query = query.Where(dateColumn+" <= ?", time.Unix(to, 0))
+		if from > 0 {
+			query = query.Where(dateColumn+" >= ?", time.Unix(from, 0))
+		}
+
+		if to > 0 {
+			query = query.Where(dateColumn+" <= ?", time.Unix(to, 0))
+		}
 	}
 
 	// WHO TYPED IT IN. An order whose creator was never recorded (0) matches nobody: the guard is the
@@ -164,8 +196,9 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		query = query.Where("shop_id IN (SELECT id FROM shops WHERE marketplace = ?)", san_marketplace.ToText(marketplace))
 	}
 
-	if courier := strings.TrimSpace(filter.GetShippingCode()); courier != "" {
-		query = query.Where("shipping_code = ?", courier)
+	// The courier, by its shipment channel id (shipment-channel-is-an-id-into-shipment-service).
+	if courier := filter.GetShipmentChannelId(); courier > 0 {
+		query = query.Where("shipment_channel_id = ?", courier)
 	}
 
 	// The seller list's warehouse filter — the building the order ships FROM. ANDed with the scope, so a warehouse
@@ -174,16 +207,72 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		query = query.Where("warehouse_id = ?", warehouseID)
 	}
 
+	// The orders whose settlement account never opened (a-missing-account-is-found-by-its-opened-at): NULL is "not yet".
+	// Served by the partial index orders_settlement_not_opened_idx, which holds only those.
+	if filter.GetSettlementNotOpened() {
+		query = query.Where("settlement_opened_at IS NULL")
+	}
+
 	return query
 }
 
-// orderListColumns is what a list row selects: the order, plus the two facts it carries without its children — the
-// unit count over its lines (the-warehouse-row-fills-from-shop-and-user-by-ids) and when it entered its current status
-// (a-filtered-status-shows-its-own-date). Each is one correlated lookup per row of the PAGE, on an index led by
+// dateFieldStatuses is each date the filter can read off the timeline, and the status it is the FIRST entry into
+// (the-order-list-filters-by-seven-dates).
+var dateFieldStatuses = map[sellingv1.OrderDateField]string{
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_PROCESSED: orderStatusProcessed,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_PICKED:    orderStatusPicked,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_SHIPPING:  orderStatusShipping,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_COMPLETED: orderStatusCompleted,
+	sellingv1.OrderDateField_ORDER_DATE_FIELD_ENTERED_RETURN:    orderStatusReturn,
+}
+
+// dateEnteredWindow narrows to the orders whose FIRST row into `status` falls in the window: a timeline row into it,
+// inside the window, with no earlier row into the same status. Driven from the timeline, so a week's window reads that
+// week's rows. With no window at all it narrows nothing — every order, including those that never entered the status.
+//
+// An order bounced back into a status keeps the day it FIRST entered it; a row tied on the second is broken by id.
+func dateEnteredWindow(query *gorm.DB, status string, from, to int64) *gorm.DB {
+	if from <= 0 && to <= 0 {
+		return query
+	}
+
+	clause := "orders.id IN (SELECT tl.order_id FROM order_timeline_logs tl WHERE tl.status = ?"
+	args := []any{status}
+
+	if from > 0 {
+		clause += " AND tl.created_at >= ?"
+		args = append(args, time.Unix(from, 0))
+	}
+
+	if to > 0 {
+		clause += " AND tl.created_at <= ?"
+		args = append(args, time.Unix(to, 0))
+	}
+
+	clause += " AND NOT EXISTS (SELECT 1 FROM order_timeline_logs e WHERE e.order_id = tl.order_id AND e.status = tl.status" +
+		" AND (e.created_at, e.id) < (tl.created_at, tl.id)))"
+
+	return query.Where(clause, args...)
+}
+
+// orderListColumns is what a list row selects: the order, plus the facts it carries without its children — the unit
+// count over its lines (the-warehouse-row-fills-from-shop-and-user-by-ids), when it entered its current status
+// (a-filtered-status-shows-its-own-date) and, when the date filter reads a status, when it FIRST entered that one
+// (the-order-list-filters-by-seven-dates). Each is one correlated lookup per row of the PAGE, on an index led by
 // order_id: order_items_order_idx and order_timeline_logs_order_idx.
-const orderListColumns = "orders.*, " +
-	"(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity, " +
-	"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at"
+func orderListColumns(filter orderScopeFilter) (string, []any) {
+	columns := "orders.*, " +
+		"(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity, " +
+		"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at"
+
+	status, ok := dateFieldStatuses[filter.GetDateField()]
+	if !ok {
+		return columns, nil
+	}
+
+	return columns + ", (SELECT MIN(te.created_at) FROM order_timeline_logs te WHERE te.order_id = orders.id AND te.status = ?) AS date_entered_at",
+		[]any{status}
+}
 
 // OrderList returns the scoped team's orders, newest first, paginated. Summaries only — the lines
 // come from OrderDetail.
@@ -230,13 +319,21 @@ func (s *Service) OrderList(
 		Offset(offset).
 		Limit(int(page.GetLimit()))
 
+	columns, columnArgs := orderListColumns(req.Msg.GetFilter())
+
 	err = s.db.
 		WithContext(ctx).
 		Table("(?) AS orders", pageRows).
-		Select(orderListColumns).
+		Select(columns, columnArgs...).
 		Order(orderOrderClause(req.Msg.GetSort())).
 		Find(&orders).
 		Error
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	// The page's buyers and addresses — one read for the page (attachAddresses).
+	err = attachAddresses(s.db.WithContext(ctx), orders)
 	if err != nil {
 		return nil, dbError(err)
 	}

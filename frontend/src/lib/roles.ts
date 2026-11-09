@@ -256,6 +256,24 @@ export function canManageOpname(role: Role | undefined): boolean {
   );
 }
 
+// canDecideFound mirrors FoundRequestApprove: the warehouse's Owner and Admin, Root and the Administrator
+// (an-adjust-found-waits-for-the-owner-or-admin) — who read every request and reject any. Never the person who REPORTED
+// it — that is the server's answer per request (`block` OWN_REPORT), checked against the person, not the role.
+//
+// ⚠ THIS IS UX ONLY, like every helper here. The access interceptor is the only real boundary.
+export function canDecideFound(role: Role | undefined): boolean {
+  return canManageOpname(role);
+}
+
+// canReportFound mirrors FoundRequestCreate, FoundRequestList and FoundRequestReject: the deciders and the warehouse's
+// Staff (staff-may-report-a-found) — staff report, read only their own and withdraw them
+// (the-reporter-may-withdraw-their-found); the server filters their list.
+//
+// ⚠ THIS IS UX ONLY, like every helper here. The access interceptor is the only real boundary.
+export function canReportFound(role: Role | undefined): boolean {
+  return canDecideFound(role) || role === Role.WAREHOUSE_STAFF;
+}
+
 // canTransferMoney mirrors FinancialAccountTransfer and FinancialAccountCapital: canMoveAccountMoney minus the
 // warehouse Admin — moving money between accounts and capital stay the warehouse Owner's
 // (the-warehouse-admin-equals-the-owner-except-money). The warehouse Admin still reconciles and keeps the accounts.
@@ -264,6 +282,25 @@ export function canManageOpname(role: Role | undefined): boolean {
 // interceptor is the only real boundary. Never move a check from the backend into here.
 export function canTransferMoney(role: Role | undefined): boolean {
   return canMoveAccountMoney(role) && role !== Role.WAREHOUSE_ADMIN;
+}
+
+// canMoveExpenses mirrors ExpenseCreate and ExpenseAdjust (expense.proto): Root, the Administrator, the selling Owner and
+// Admin. Customer service is absent from every expense RPC — a person taking orders has no reason to see or move the
+// payroll number — so it is offered neither Record nor a row's Adjust / Cancel.
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canMoveExpenses(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
+      return true;
+
+    default:
+      return false;
+  }
 }
 
 // canSetLiabilityTerms mirrors LiabilityTermsSet and LiabilityTermsDelete: Root, the Administrator, the selling Owner
@@ -329,4 +366,31 @@ export function canChangeBundle(args: { role: Role | undefined; createdByUserId:
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).
 export function isGlobalAdmin(role: Role | undefined): boolean {
   return role === Role.ROOT || role === Role.ADMINISTRATOR;
+}
+
+// canRequestPayment mirrors LiabilityPaymentRequestSend: the creditor team's owner and admin, warehouse or selling —
+// whichever is owed (a-creditor-may-request-payment). The request posts nothing, so the warehouse Admin may send it.
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canRequestPayment(role: Role | undefined): boolean {
+  return canSetLiabilityTerms(role) || role === Role.WAREHOUSE_ADMIN;
+}
+
+// canOverseeTeamAgents mirrors AgentConnectionTeamList, AgentConnectionTeamRevoke and TeamAgentPolicySet: the team's
+// OWNER, Root and the Administrator — connecting an agent sends the team's data to a third party, so who may is the
+// owner's decision, and the owner sees and revokes every connection reading the team
+// (the-owner-decides-who-connects-an-agent). The team's Admin may connect one, and does not oversee the others.
+//
+// ⚠ THIS IS UX ONLY. Hiding a card hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canOverseeTeamAgents(role: Role | undefined): boolean {
+  return role === Role.ROOT || role === Role.ADMINISTRATOR || role === Role.SELLING_OWNER || role === Role.WAREHOUSE_OWNER;
+}
+
+// connectNeedsOwnersConsent: the roles that may connect an agent to a team ONLY once its owner has turned it on — the
+// selling CS and the warehouse staff (the-owner-decides-who-connects-an-agent). The owner, the admin and Root connect
+// without asking. AgentConnect is the boundary; this only lets the connect page say why before the person tries.
+export function connectNeedsOwnersConsent(role: Role | undefined): boolean {
+  return role === Role.SELLING_CS || role === Role.WAREHOUSE_STAFF;
 }

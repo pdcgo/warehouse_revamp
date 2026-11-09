@@ -19,13 +19,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const AsAFormField: Story = {};
+// On a form: the placeholder, and the five kinds a person may type — never "any".
+export const AsAFormField: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
 
-export const AsAFilter: Story = { args: { filter: true } };
+    await expect(canvas.getByTestId("expense-kind-select")).toHaveTextContent("Choose a kind");
+    await userEvent.click(canvas.getByTestId("expense-kind-select"));
+    await expect(await screen.findByTestId(`expense-kind-select-${ExpenseKind.OTHER}`)).toBeInTheDocument();
+    await expect(screen.queryByTestId("expense-kind-select-any")).toBeNull();
+  },
+};
 
-export const Selected: Story = { args: { value: ExpenseKind.PAYROLL } };
+// As a filter: nothing chosen reads as "Any kind".
+export const AsAFilter: Story = {
+  args: { filter: true },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId("expense-kind-select")).toHaveTextContent("Any kind");
+  },
+};
 
-export const Disabled: Story = { args: { value: ExpenseKind.ADS, disabled: true } };
+export const Selected: Story = {
+  args: { value: ExpenseKind.PAYROLL },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId("expense-kind-select")).toHaveTextContent("Payroll");
+  },
+};
+
+export const Disabled: Story = {
+  args: { value: ExpenseKind.ADS, disabled: true },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByTestId("expense-kind-select");
+
+    await expect(trigger).toHaveTextContent("Ads");
+    await expect(trigger).toBeDisabled();
+  },
+};
 
 // ⚠ STOCK_LOSS IS THE POINT OF THIS COMPONENT'S TWO LISTS (#211). It is not a decision anybody
 // makes — it is what inventory_service posts when a warehouse writes units off. Offering it on the

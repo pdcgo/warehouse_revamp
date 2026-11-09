@@ -71,7 +71,7 @@ func TestRestockAccept_FreezesTheHPPOfWhatArrived(t *testing.T) {
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
 		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -106,7 +106,7 @@ func TestRestockAccept_FreightIsSpreadOverEveryUnitOrdered(t *testing.T) {
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
 		ShipmentCost: 16000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 400000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 400000},
 		},
 	}))
 	if err != nil {
@@ -147,8 +147,8 @@ func TestRestockAccept_FrozenHPPSplitsFreightAcrossLinesByPiece(t *testing.T) {
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
 		ShipmentCost: 10000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Cheap", Count: 4, Total: 40000},
-			{ProductId: productX + 1, Sku: "SKU2", Name: "Dear", Count: 6, Total: 600000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Cheap", Count: 4, Total: 40000},
+			{ProductId: productX + 1, ProductCode: "SKU2", Name: "Dear", Count: 6, Total: 600000},
 		},
 	}))
 	if err != nil {
@@ -184,7 +184,7 @@ func TestRestockAccept_TheRoundingNeverRewritesTheLineTotal(t *testing.T) {
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
 		ShipmentCost: 1000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 3, Total: 10000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 3, Total: 10000},
 		},
 	}))
 	if err != nil {
@@ -249,7 +249,7 @@ func acceptOneLine(
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
 		ShipmentCost: float64(freight),
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: qty, Total: float64(total)},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: qty, Total: float64(total)},
 		},
 	}))
 	if err != nil {

@@ -118,20 +118,3 @@ func logToProto(l m.FinancialAccountLog) *financial_accountv1.FinancialAccountLo
 		CounterAccountId: l.CounterAccountID,
 	}
 }
-
-func metricToProto(c m.MetricColumns) *financial_accountv1.FinancialAccountMetric {
-	return &financial_accountv1.FinancialAccountMetric{
-		Expense:        c.Expense,
-		AdsExpense:     c.AdsExpense,
-		Adjustment:     c.Adjustment,
-		Withdrawal:     c.Withdrawal,
-		Restock:        c.Restock,
-		OpeningBalance: c.OpeningBalance,
-		Transfer:       c.Transfer,
-		TeamPayment:    c.TeamPayment,
-		Capital:        c.Capital,
-		Change:         c.Change,
-		OpenBalance:    c.OpenBalance,
-		CloseBalance:   c.CloseBalance,
-	}
-}

@@ -123,8 +123,8 @@ export const AChargeNeedsItsNote: Story = {
 
     await userEvent.type(canvas.getByTestId("accept-charge-amount"), "5000", { delay: 20 });
     await expect(canvas.getByTestId("accept-submit")).toBeDisabled();
-    // Where the team's debt to B is held is not decided yet — the card says so.
-    await expect(canvas.getByTestId("not-implemented-courierDebt")).toBeInTheDocument();
+    // The team's debt to B is posted to the team balance (built) — the card carries no pending mark.
+    await expect(canvas.queryByTestId("not-implemented-courierDebt")).toBeNull();
   },
 };
 

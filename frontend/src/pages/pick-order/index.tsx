@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,21 +15,23 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, StickyNote, TriangleAlert } from "lucide-react";
+import { ArrowLeft, PackageCheck, StickyNote, TriangleAlert, Undo2 } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import type { StockPickLocation } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { OrderCourierBadge } from "../../features/orders/OrderCourierBadge";
 import { AddressField, Field } from "../../features/orders/components/OrderFields";
 import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { usePickOrder } from "../../features/picking/queries";
 import { useOrderStatusChange } from "../../features/orders/queries";
 import { orderNotes, timelineFromKey } from "../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../lib/datetime";
+import { AcceptReturnDialog } from "../../features/orders/AcceptReturnDialog";
+import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -80,6 +83,11 @@ export function PickOrderPage() {
   const query = usePickOrder({ warehouseId, orderId });
   // The move invalidates the orders and the stock screens together.
   const moveMutation = useOrderStatusChange();
+  // THE RETURN ACCEPT's dialog (the-accept-is-the-status-return-completed).
+  const [accepting, setAccepting] = useState(false);
+  // THE FORCED RETURN (a-return-is-received-by-search-then-forced, A): the parcel is in hand before customer service
+  // claimed it. Once moved, the order re-reads in `return` and Accept Return takes the button's place.
+  const forceReturn = useForceReturn({ teamId: warehouseId });
 
   const order = query.data?.order ?? null;
   const locations = query.data?.locations ?? [];
@@ -185,7 +193,7 @@ export function PickOrderPage() {
         <Heading size="md">{t("picking.detail.title", { id: String(order.id) })}</Heading>
         <OrderStatusBadge status={order.status} />
         <Spacer />
-        {step && (
+        {step && canWrite(current) && (
           <Button
             colorPalette="brand"
             loading={moveMutation.isPending}
@@ -195,7 +203,36 @@ export function PickOrderPage() {
             {t(step.labelKey)}
           </Button>
         )}
+        {/* A RETURN'S ONE STEP IS THE ACCEPT (the-accept-is-the-status-return-completed): the parcel is in the crew's
+            hands. It is not one of NEXT_STEP's plain moves — it asks what is missing and what the courier charged, and
+            answers the labels to print — so it opens its own dialog. */}
+        {order.status === OrderStatus.RETURN && canWrite(current) && (
+          <Button colorPalette="brand" onClick={() => setAccepting(true)} data-testid="pick-order-accept-return">
+            <Icon as={PackageCheck} boxSize="4" />
+            {t("picking.action.acceptReturn")}
+          </Button>
+        )}
+        {/* …and an order that left the building but is not a return yet: Force Return, confirmed, then the accept above. */}
+        {canForceReturn(order.status) && canWrite(current) && (
+          <Button
+            variant="outline"
+            colorPalette="error"
+            loading={forceReturn.busy}
+            onClick={() => forceReturn.ask({ id: order.id, status: order.status })}
+            data-testid="pick-order-force-return"
+          >
+            <Icon as={Undo2} boxSize="4" />
+            {t("picking.action.forceReturn")}
+          </Button>
+        )}
       </Flex>
+      {forceReturn.dialog}
+
+      {/* Mounted whatever the status: the accept re-reads the order as return_completed, and a dialog under the button
+          would vanish with the labels it is about to show. */}
+      {warehouseId !== undefined && (
+        <AcceptReturnDialog open={accepting} onOpenChange={setAccepting} teamId={warehouseId} order={order} />
+      )}
 
       {/* WHERE IT IS GOING — the block this screen was missing entirely (owner).
           It used to show the customer's NAME and nothing else, while the order carried a phone, a frozen
@@ -217,7 +254,7 @@ export function PickOrderPage() {
               <AddressField label={t("orders.address")} address={order.address} />
               <Field
                 label={t("orders.shipping")}
-                value={<ShippingBadge code={order.shippingCode} />}
+                value={<OrderCourierBadge channelId={order.shipmentChannelId} />}
               />
             </SimpleGrid>
           </Stack>
@@ -290,7 +327,7 @@ export function PickOrderPage() {
                         <Stack gap="0">
                           <Text>{item.name}</Text>
                           <Text fontSize="xs" color="fg.muted">
-                            {item.sku}
+                            {item.productCode}
                           </Text>
                         </Stack>
                       </Table.Cell>

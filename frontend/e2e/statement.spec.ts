@@ -74,6 +74,20 @@ async function rowCell(page: Page, date: string, header: string): Promise<number
   return (text.includes("-") ? -1 : 1) * Number(digits);
 }
 
+// THE DEFAULT WINDOW'S LENGTH — the rolling last month ("Last 1 month"), as resolveRange draws it: the day AFTER the
+// same date a month back, through today. That is 28 to 31 days depending on the month just gone, so it is counted,
+// never written down — a literal 30 failed every day that followed a 31-day month.
+function lastMonthDays(): number {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const back = new Date(first.getFullYear(), first.getMonth(), Math.min(now.getDate(), lastDay));
+  const from = new Date(back.getFullYear(), back.getMonth(), back.getDate() + 1);
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
+}
+
 function today(): string {
   const now = new Date();
 
@@ -82,36 +96,75 @@ function today(): string {
   ).padStart(2, "0")}`;
 }
 
-// Records one cost against root's own team, dated TODAY — the last day of the default 30-day window.
-async function recordCost(page: Page, amount: number, note: string) {
-  await page.evaluate(
-    async ([amt, text, on]) => {
+// rpc calls the API with the page's own token, so a seed runs as the person the UI is signed in as.
+async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
+  return page.evaluate(
+    async ([m, b]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch("http://localhost:8081/warehouse.expense.v1.ExpenseService/ExpenseCreate", {
+      const res = await fetch(`http://localhost:8081/warehouse.${m}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          teamId: "1",
-          kind: 3, // EXPENSE_KIND_OPERATIONAL
-          amount: String(amt),
-          occurredAt: on,
-          note: text,
-        }),
+        body: JSON.stringify(b),
       });
 
-      if (!res.ok) throw new Error(`ExpenseCreate: ${res.status} ${await res.text()}`);
+      if (!res.ok) throw new Error(`${m}: ${res.status} ${await res.text()}`);
+
+      return res.json();
     },
-    [amount, note, today()] as const,
-  );
+    [method, body] as const,
+  ) as Promise<T>;
+}
+
+// Every expense names the account that paid it — one of the team's OPERATIONAL accounts
+// (an-expense-must-name-the-account-that-paid). Made once per run, opening at 0 — the costs take it below zero, which
+// is warned, never refused (below-zero-is-warned-never-refused).
+let payingAccountId: string | undefined;
+
+async function payingAccount(page: Page): Promise<string> {
+  if (payingAccountId) return payingAccountId;
+
+  const created = await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+    teamId: "1",
+    type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+    provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+    name: `E2E statement ${SUFFIX}`,
+    holderName: "E2E",
+    accountNumber: `E2E-STM-${SUFFIX}`,
+    openingBalance: 0,
+    openingOn: today(),
+  });
+  // A Paid from may name only an account marked operational (operational-accounts-pay-for-operations).
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: "1",
+    accountId: created.account.id,
+    operational: true,
+  });
+
+  payingAccountId = created.account.id;
+
+  return payingAccountId;
+}
+
+// Records one cost against root's own team, dated TODAY — the last day of the default window. OPERATIONAL, so it names
+// no shop (an-expense-names-a-shop-only-for-ads); an ADS cost would have to name one.
+async function recordCost(page: Page, amount: number, note: string) {
+  await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
+    teamId: "1",
+    kind: 3, // EXPENSE_KIND_OPERATIONAL
+    amount: String(amount),
+    occurredAt: today(),
+    note,
+    financeAccountId: await payingAccount(page),
+  });
 }
 
 test.describe.configure({ mode: "serial" });
 
 // THE DATE SPINE. Both series are sparse, so this is the assertion that the CLIENT is building the
-// calendar: the default window is 30 days, and all 30 must be on screen even though almost none of them
+// calendar: the default window is the rolling last month, and every one of its days must be on screen even though almost none of them
 // have an order or a cost. A missing row cannot tell a reader "nothing happened" apart from "that day
 // did not load", which is the whole reason quiet days are rendered rather than skipped.
 test("Statement: every day of the window has a row, including the quiet ones", async ({ page }) => {
@@ -130,10 +183,11 @@ test("Statement: every day of the window has a row, including the quiet ones", a
   // (the-daily-report-is-deferred) — the same deferral that tagged DailyStatementPage.stories.tsx out
   // of the story run. Restore this line when the selling statement returns.
 
-  await expect(page.getByTestId("statement-day-count")).toHaveText("Showing 30 of 30 days");
-  await expect(page.locator('[data-testid="statement-table"] tbody tr')).toHaveCount(30);
+  const days = lastMonthDays();
+  await expect(page.getByTestId("statement-day-count")).toHaveText(`Showing ${days} of ${days} days`);
+  await expect(page.locator('[data-testid="statement-table"] tbody tr')).toHaveCount(days);
 
-  // Today is the LAST row of a "last 30 days" window, so it is always present — which is what the next
+  // Today is the LAST row of the rolling-month window, so it is always present — which is what the next
   // test relies on when it puts a cost there.
   await expect(page.getByTestId(`statement-row-${today()}`)).toBeVisible();
 });
@@ -257,7 +311,8 @@ test("Statement: hiding quiet days leaves the period total alone", async ({ page
 test("Statement: narrowing the range rebuilds the day spine", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await page.goto("/statement");
-  await expect(page.getByTestId("statement-day-count")).toHaveText("Showing 30 of 30 days");
+  const days = lastMonthDays();
+  await expect(page.getByTestId("statement-day-count")).toHaveText(`Showing ${days} of ${days} days`);
 
   await page.getByTestId("statement-range").click();
   await page.getByTestId("statement-range-quick-7").click();

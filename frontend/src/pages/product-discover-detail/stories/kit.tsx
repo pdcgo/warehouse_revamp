@@ -52,7 +52,7 @@ export const AtTeh = routedAt(TEH.id);
 export const AtBeras = routedAt(BERAS.id);
 
 /** A `beforeEach` that flips one flag on Teh for the story — in the product stub, whose reset puts it back. */
-export function tehIs(flag: "crossLocked" | "deleted") {
+export function tehIs(flag: "crossLocked" | "archived") {
   return () => patchProduct(TEH.id, { [flag]: true });
 }
 

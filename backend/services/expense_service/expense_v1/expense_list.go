@@ -45,7 +45,21 @@ func (s *Service) ExpenseList(
 		return nil, costErr(err)
 	}
 
-	items, ids := expenseListItems(rows, req.Msg.GetDataRequest())
+	// Each expense on the page says what it counts for after its adjustments — wherever they sit in the list, on this
+	// page or another — so Batalkan knows the whole of what is left.
+	expenseIDs := make([]uint64, 0, len(rows))
+	for i := range rows {
+		if rows[i].AdjustsExpenseID == 0 {
+			expenseIDs = append(expenseIDs, rows[i].ID)
+		}
+	}
+
+	adjusted, err := adjustedSums(s.db.WithContext(ctx), expenseIDs)
+	if err != nil {
+		return nil, costErr(err)
+	}
+
+	items, ids := expenseListItems(rows, adjusted, req.Msg.GetDataRequest())
 
 	totals, err := s.totals(ctx, req.Msg)
 	if err != nil {
@@ -92,19 +106,26 @@ func expenseOrderClause(sort *expensev1.ExpenseListFilterSort) string {
 	return col + " " + dir + ", id DESC"
 }
 
-// expenseRowItem is the EXPENSE (row) slice for one record.
-func expenseRowItem(c *expense_service_models.ExpenseRecord) *expensev1.ExpenseRowItem {
+// expenseRowItem is the EXPENSE (row) slice for one record — an expense with its net, or an adjustment.
+func expenseRowItem(c *expense_service_models.ExpenseRecord, adjusted map[uint64]float64) *expensev1.ExpenseRowItem {
+	var net float64
+	if c.AdjustsExpenseID == 0 {
+		net = c.Amount + adjusted[c.ID]
+	}
+
 	return &expensev1.ExpenseRowItem{
-		Id:            c.ID,
-		TeamId:        c.TeamID,
-		ShopId:        c.ShopID,
-		Kind:          expensev1.ExpenseKind(c.Kind),
-		Amount:        c.Amount,
-		OccurredAt:    c.OccurredAt.Format(dateLayout),
-		Note:          c.Note,
-		CreatedBy:     c.CreatedBy,
-		Voided:        c.VoidedAt != nil,
-		CreatedAtUnix: c.CreatedAt.Unix(),
+		Id:               c.ID,
+		TeamId:           c.TeamID,
+		ShopId:           c.ShopID,
+		Kind:             expensev1.ExpenseKind(c.Kind),
+		Amount:           c.Amount,
+		OccurredAt:       c.OccurredAt.Format(dateLayout),
+		Note:             c.Note,
+		CreatedBy:        c.CreatedBy,
+		CreatedAtUnix:    c.CreatedAt.Unix(),
+		AdjustsExpenseId: c.AdjustsExpenseID,
+		NetAmount:        net,
+		FinanceAccountId: c.FinanceAccountID,
 	}
 }
 
@@ -112,6 +133,7 @@ func expenseRowItem(c *expense_service_models.ExpenseRecord) *expensev1.ExpenseR
 // row slice) plus the sorted id list, from rows already in display order.
 func expenseListItems(
 	rows []expense_service_models.ExpenseRecord,
+	adjusted map[uint64]float64,
 	types []expensev1.ExpenseListDataType,
 ) ([]*expensev1.ExpenseListResponseItem, []uint64) {
 	if len(types) == 0 {
@@ -137,7 +159,7 @@ func expenseListItems(
 		case expensev1.ExpenseListDataType_EXPENSE_LIST_DATA_TYPE_EXPENSE:
 			m := make(map[uint64]*expensev1.ExpenseRowItem, len(rows))
 			for i := range rows {
-				m[rows[i].ID] = expenseRowItem(&rows[i])
+				m[rows[i].ID] = expenseRowItem(&rows[i], adjusted)
 			}
 			items = append(items, &expensev1.ExpenseListResponseItem{
 				D: &expensev1.ExpenseListResponseItem_Expense{Expense: &expensev1.ExpenseRowMapItem{MapData: m}},
@@ -156,14 +178,9 @@ func (s *Service) filtered(ctx context.Context, msg *expensev1.ExpenseListReques
 	query := s.db.
 		WithContext(ctx).
 		Model(&expense_service_models.ExpenseRecord{}).
-		// EVERY row, voided ones INCLUDED. The `voided_at IS NULL` predicate belongs to the TOTALS
-		// alone (see totals below), and keeping it out of here is the whole point of voiding rather
-		// than deleting: the list shows the retraction, the totals ignore it.
-		//
-		// It lived here first, and the comment beside it claimed voided rows were "still visible on the
-		// row list" while the code hid them — the same contradiction #164 shipped and had to correct in
-		// revenue. Hiding a voided row makes it exactly as invisible as deleting it, which is the
-		// option the owner did not choose.
+		// EVERY row — the expenses AND the adjustments that correct them. An adjustment carries its expense's day,
+		// kind and shop, so a period, a kind or a shop takes the correction wherever it takes the mistake, and the
+		// month's list shows the two together (an-adjustment-counts-on-the-day-it-fixes).
 		Where("team_id = ?", msg.GetTeamId())
 
 	filter := msg.GetFilter()
@@ -203,7 +220,7 @@ func (s *Service) filtered(ctx context.Context, msg *expensev1.ExpenseListReques
 
 type kindTotalRow struct {
 	Kind  int32
-	Total int64
+	Total float64
 }
 
 // totals sums the WHOLE filtered period, never the page.
@@ -220,11 +237,8 @@ func (s *Service) totals(ctx context.Context, msg *expensev1.ExpenseListRequest)
 	var rows []kindTotalRow
 
 	err = query.
-		// LIVE rows only — and this is the ONLY place that predicate belongs. A voided cost was
-		// entered by mistake and earned its retraction, so it never counts; the list above still shows
-		// it, struck through, because an entry that was made and then withdrawn is exactly what
-		// somebody looking at a changed total wants to see.
-		Where("voided_at IS NULL").
+		// Every row counts: an adjustment's signed amount IS the correction, so the sum is the corrected figure, and the
+		// list above shows each row it is made of.
 		Select("kind, COALESCE(SUM(amount), 0) AS total").
 		Group("kind").
 		Scan(&rows).
@@ -233,7 +247,7 @@ func (s *Service) totals(ctx context.Context, msg *expensev1.ExpenseListRequest)
 		return nil, costErr(err)
 	}
 
-	out := expensev1.ExpenseTotals{ByKind: make(map[int32]int64, len(rows))}
+	out := expensev1.ExpenseTotals{ByKind: make(map[int32]float64, len(rows))}
 
 	for _, r := range rows {
 		out.ByKind[r.Kind] = r.Total

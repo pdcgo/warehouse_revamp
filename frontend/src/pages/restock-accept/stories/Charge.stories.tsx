@@ -84,8 +84,9 @@ export const TheOngkirTheWarehousePaid: Story = {
     await expect(canvas.queryByTestId("accept-grand-total")).toBeNull();
     await expect(canvas.getByTestId("accept-courier-none")).toHaveTextContent("No COD charge paid by the warehouse.");
     await expect(canvas.queryByTestId("accept-courier-charge")).toBeNull();
-    // 400.000 ÷ 12 + 15.000 ÷ 17 units ordered = 34.215,69.
-    await expect(canvas.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.216");
+    // 400.000 ÷ 12 + 15.000 ÷ 17 units ordered = 34.215,686… — an unfrozen unit price, shown to three decimals
+    // (a-fraction-of-a-rupiah-shows-three-decimals).
+    await expect(canvas.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
 
     // Ubah — the form; the charge and its note; Selesai — the text again, with what was paid.
     await askCharge(canvasElement);
@@ -98,7 +99,7 @@ export const TheOngkirTheWarehousePaid: Story = {
     await expect(canvas.getByTestId("accept-courier-paid-line")).toHaveTextContent("Biaya COD · owed back by Toko Melati");
     await expect(canvas.queryByTestId("accept-courier-charge")).toBeNull();
     // (15.000 + 5.000) ÷ 17 — the charge is in the landed price.
-    await expect(canvas.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.510");
+    await expect(canvas.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.509,804");
   },
 };
 

@@ -168,7 +168,8 @@ export const ABusyCheckIsNoCheck: Story = {
 // EVERY PART OF THE FORM IS WIRED (2026-10-23): the receipt file was the last, and ReceiptCheck is built
 // (the-receipt-check-prototype-is-accepted). So a new order carries no strip and no mark — a mark that comes back
 // is a part that stopped being real, and this fails the day it does. Even with a label read, the line that says the
-// boxes filled themselves carries no ⚠.
+// boxes filled themselves carries no ⚠. (The duplicate-ref warning's draft half held one entry for a day, until
+// OrderDraftByExternalRefs was built.)
 export const NothingOnTheFormIsMarkedNotImplemented: Story = {
   name: "Nothing marked",
   play: async ({ canvasElement }) => {

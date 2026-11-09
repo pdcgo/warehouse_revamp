@@ -30,9 +30,9 @@ import { formatRupiah } from "../../../lib/money";
 
 export type CreditRole = "warehouse" | "owner";
 
-/** One creditor's figures — read, still reading, or failed. `limit` undefined = unlimited, 0n = frozen, n = the ceiling. */
+/** One creditor's figures — read, still reading, or failed. `limit` undefined = unlimited, 0 = frozen, n = the ceiling. */
 export type CreditFigures =
-  | { state: "ready"; debt: bigint; limit?: bigint }
+  | { state: "ready"; debt: number; limit?: number }
   | { state: "loading" }
   | { state: "failed" };
 
@@ -51,7 +51,7 @@ export interface CreditRow {
   /** The limit this creditor set on us and what we already owe it — once the read has answered. */
   figures: CreditFigures;
   /** What this order would add to that debt, across every reason it owes this team. */
-  adds: bigint;
+  adds: number;
 }
 
 export function CreditLimitPanel({ rows, compact }: { rows: CreditRow[]; compact?: boolean }) {
@@ -78,7 +78,7 @@ export function CreditLimitPanel({ rows, compact }: { rows: CreditRow[]; compact
             const figures = row.figures;
             const ready = figures.state === "ready";
             const limit = ready ? figures.limit : undefined;
-            const after = ready ? figures.debt + row.adds : 0n;
+            const after = ready ? figures.debt + row.adds : 0;
             const capped = ready && limitStateOf(limit) === "capped";
             // The projection is only a warning where there is a ceiling to cross. Against an
             // unlimited creditor "after this order" is just a bigger number.
@@ -86,6 +86,10 @@ export function CreditLimitPanel({ rows, compact }: { rows: CreditRow[]; compact
             // Where the CURRENT debt stands — the comparison the server will actually make. Nothing is
             // near anything until the figures are read.
             const { near, over } = ready ? creditWarning(limit, figures.debt) : { near: false, over: false };
+            // ALREADY AT THE LIMIT — or frozen, which is no credit at all — so the create WILL be refused
+            // (over-the-limit-refuses-the-create): the check compares the debt already committed, not this order's.
+            // Said in words, because a red bar alone does not tell customer service the order cannot go through.
+            const refused = ready && (over || limitStateOf(limit) === "frozen");
 
             return (
               <Stack key={row.teamId.toString()} gap="1" data-testid={`credit-row-${row.teamId}`}>
@@ -177,10 +181,10 @@ export function CreditLimitPanel({ rows, compact }: { rows: CreditRow[]; compact
 
                     With no figures yet there is no "after" to state, so it says only what this order
                     adds — the one number on the row that does not depend on the read. */}
-                {(!compact || wouldPass) && (
+                {(!compact || wouldPass || refused) && (
                   <Text
                     fontSize="xs"
-                    color={wouldPass ? "error.fg" : "fg.muted"}
+                    color={wouldPass || refused ? "error.fg" : "fg.muted"}
                     data-testid={`credit-after-${row.teamId}`}
                   >
                     {ready
@@ -189,7 +193,9 @@ export function CreditLimitPanel({ rows, compact }: { rows: CreditRow[]; compact
                           after: formatRupiah(after),
                         })
                       : t("orderForm.credit.adds", { adds: formatRupiah(row.adds) })}
-                    {wouldPass && ` · ${t("orderForm.credit.wouldPass")}`}
+                    {refused
+                      ? ` · ${t("orderForm.credit.refused")}`
+                      : wouldPass && ` · ${t("orderForm.credit.wouldPass")}`}
                   </Text>
                 )}
               </Stack>

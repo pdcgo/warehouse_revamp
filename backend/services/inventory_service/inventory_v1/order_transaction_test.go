@@ -65,7 +65,7 @@ func otStocked(t *testing.T) (*inventory_v1.Service, *gorm.DB, uint64, uint64) {
 	t.Helper()
 
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
 
 	rakA := newRack(t, svc, otWarehouse, "rak-a")
 	rakB := newRack(t, svc, otWarehouse, "rak-b")
@@ -85,7 +85,7 @@ func otRestock(t *testing.T, svc *inventory_v1.Service, team, product uint64, co
 
 	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: team, WarehouseId: otWarehouse,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, Sku: "SKU", Name: "Kaos", Count: count, Total: float64(total)}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, ProductCode: "SKU", Name: "Kaos", Count: count, Total: float64(total)}},
 	}))
 	if err != nil {
 		t.Fatalf("restock create: %v", err)
@@ -204,7 +204,7 @@ func TestOrderTransactionCreate_TakesOwnAndBorrowedInOneTransaction(t *testing.T
 // split over two racks, costs the same statements. The audit's N+1, pinned at the RPC.
 func TestOrderTransactionCreate_TheStatementsDoNotGrowWithTheLines(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
 
 	rakA := newRack(t, svc, otWarehouse, "rak-a")
 	rakB := newRack(t, svc, otWarehouse, "rak-b")
@@ -293,7 +293,7 @@ func TestOrderTransactionCreate_NotAllowedNamesEveryRefusedLine(t *testing.T) {
 // reserved lines cost the statements one does.
 func TestOrderTransactionCreate_TheReserveIsReadOnceForEveryLine(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
 
 	rakA := newRack(t, svc, otWarehouse, "rak-a")
 

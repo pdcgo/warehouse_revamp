@@ -32,11 +32,35 @@ export function formatDigits(digits: string): string {
   return Number(digits).toLocaleString("id-ID");
 }
 
+// With `fraction`, a figure may carry a fraction of a rupiah (the-backend-never-rounds-money — e.g. a draft's platform
+// total as the storefront gave it). The RAW value is then "150000.5": digits, at most one "." as the decimal point, so
+// `Number(raw)` still parses it. The person types the Indonesian way: dots group, ONE comma starts the fraction, which
+// keeps up to 3 places (a-fraction-of-a-rupiah-shows-three-decimals). "150.000," while typing stays "150000." so the
+// comma does not vanish under the caret.
+export function toDecimalDigits(raw: string): string {
+  const comma = raw.indexOf(",");
+  const whole = toDigits(comma < 0 ? raw : raw.slice(0, comma));
+  if (comma < 0) return whole;
+
+  const fraction = raw.slice(comma + 1).replace(/\D/g, "").slice(0, 3);
+  return `${whole === "" ? "0" : whole}.${fraction}`;
+}
+
+// formatDecimalDigits is formatDigits for a raw value that may carry a "." fraction: "150000.5" → "150.000,5".
+export function formatDecimalDigits(raw: string): string {
+  const dot = raw.indexOf(".");
+  if (dot < 0) return formatDigits(raw);
+
+  return `${formatDigits(raw.slice(0, dot) || "0")},${raw.slice(dot + 1)}`;
+}
+
 export interface CurrencyInputProps extends Omit<InputProps, "value" | "onChange" | "type"> {
-  /** The RAW value — digits only, no separators. "" means nothing typed yet. */
+  /** The RAW value — digits only, no separators ("150000.5" with `fraction`). "" means nothing typed yet. */
   value: string;
   /** Receives the RAW digits, never the formatted text. */
   onChange: (value: string) => void;
+  /** Accept a fraction of a rupiah after a comma, up to 3 places. Off by default: most money fields are whole. */
+  fraction?: boolean;
 }
 
 // CurrencyInput is the shared money field (#166): it formats as you type and refuses anything that is
@@ -62,7 +86,7 @@ export interface CurrencyInputProps extends Omit<InputProps, "value" | "onChange
 export const description =
   "Money field with an \"Rp\" addon that formats as you type (20000 → 20.000, id-ID grouping) and drops leading zeros. Shows a \"0\" placeholder until something is typed. The caller holds raw digits and never sees the prefix or a separator.";
 
-export function CurrencyInput({ value, onChange, placeholder = "0", ...rest }: CurrencyInputProps) {
+export function CurrencyInput({ value, onChange, placeholder = "0", fraction = false, ...rest }: CurrencyInputProps) {
   return (
     <Box position="relative" w="full">
       <Span
@@ -82,9 +106,9 @@ export function CurrencyInput({ value, onChange, placeholder = "0", ...rest }: C
         placeholder={placeholder}
         // inputMode brings up the numeric keypad on a phone without the type="number" behaviour that
         // would reject the grouped text.
-        inputMode="numeric"
-        value={formatDigits(value)}
-        onChange={(e) => onChange(toDigits(e.target.value))}
+        inputMode={fraction ? "decimal" : "numeric"}
+        value={fraction ? formatDecimalDigits(value) : formatDigits(value)}
+        onChange={(e) => onChange(fraction ? toDecimalDigits(e.target.value) : toDigits(e.target.value))}
         // Room for the addon. After the spread, so a caller cannot reclaim the space and leave the
         // digits sitting under the "Rp".
         ps="2.5rem"

@@ -37,13 +37,13 @@ function rowToProduct(r: ProductRowItem): Product {
   return create(ProductSchema, {
     id: r.id,
     teamId: r.teamId,
-    sku: r.sku,
+    productCode: r.productCode,
     name: r.name,
     description: r.description,
     categoryId: r.categoryId,
     defaultImageUrl: r.defaultImageUrl,
     defaultImageThumbnailUrl: r.defaultImageThumbnailUrl,
-    deleted: r.deleted,
+    archived: r.archived,
     crossMarkupBps: r.crossMarkupBps,
     crossLocked: r.crossLocked,
     reservedStock: r.reservedStock,
@@ -101,11 +101,11 @@ export function productsFromByIds(res: ProductByIdsResponse): Product[] {
 // One product's stock facts, as the LIST renders them.
 export interface OwnerStockRow {
   readyQty: bigint;
-  readyValue: bigint;
+  readyValue: number;
   ongoingQty: bigint;
-  ongoingValueEst: bigint;
-  costMin: bigint;
-  costMax: bigint;
+  ongoingValueEst: number;
+  costMin: number;
+  costMax: number;
   costKnown: boolean;
   oldestBatchUnix: bigint;
   lastRestockUnix: bigint;

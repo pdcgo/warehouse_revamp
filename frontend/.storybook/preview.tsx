@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { Box, ChakraProvider } from "@chakra-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Preview } from "@storybook/react-vite";
+import { MINIMAL_VIEWPORTS } from "storybook/viewport";
 import { MemoryRouter } from "react-router-dom";
 
 import { PendingMarksProvider } from "../src/features/pending/PendingMarks";
@@ -22,20 +23,28 @@ import {
 import { TeamProvider } from "../src/features/team/TeamContext";
 import { resetFinancialAccounts } from "./financialAccountStub";
 import { resetSessionScenario } from "./sessionScenario";
+import { resetDuplicateRefStub } from "./duplicateRefStub";
+import { resetOrderAnswerStub } from "./orderAnswerStub";
 import { resetUserStub } from "./userStub";
 import { resetSupplierStub } from "./supplierStub";
+import { resetSupplierGoodsStub } from "./supplierGoodsStub";
 import { resetShopStub } from "./shopStub";
+import { resetShopEntries } from "./shopEntriesStub";
 import { resetCategoryStub } from "./categoryStub";
 import { resetProductStub } from "./productStub";
 import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
 import { resetOpnameStub } from "./opnameStub";
+import { resetFoundRequestStub } from "./foundRequestStub";
+import { resetExpenseStub } from "./expenseStub";
+import { resetWarehouseStockStub } from "./warehouseStockListStub";
 import { resetBundleStub } from "./bundleStub";
 import { resetProductScenario } from "./productScenario";
 import { resetRackStub } from "./rackStub";
 import { resetBatchStub } from "./batchStub";
 import { resetReturnConfigurationStub, resetReturnMapStub } from "./returnConfigurationStub";
 import { resetWarehouseFeeStub } from "./warehouseFeeStub";
+import { resetAgentStub } from "./agentStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -397,10 +406,17 @@ const preview: Preview = {
     resetFinancialAccounts();
     // …and who is signed in — a story standing as a CS must not leave the next one a CS.
     resetSessionScenario();
+    // …and the duplicate-ref lookup's extra orders, its failure switch and its call log (duplicateRefStub.ts).
+    resetDuplicateRefStub();
+    // …and OrderCreate's scripted answers — a held (slow) Create is dropped, so it never lands in the next story.
+    resetOrderAnswerStub();
     resetUserStub();
     // …and the suppliers and their channels, which a create, an edit or a delete writes to.
     resetSupplierStub();
+    resetSupplierGoodsStub();
     resetShopStub();
+    // …and Shop Entries' book, which a Reverse writes to (shopEntriesStub.ts).
+    resetShopEntries();
     // …and the category tree, which the category screen's create, edit and delete write to.
     resetCategoryStub();
     // …and the catalogue, which a product create, edit, archive or restore writes to.
@@ -410,6 +426,12 @@ const preview: Preview = {
     resetWarehouseTransferStub();
     // …and the stock count, which every count, send-back and finalize writes to.
     resetOpnameStub();
+    // …and the found requests, which an Adjust found, an approval or a rejection writes to.
+    resetFoundRequestStub();
+    // …and the expenses, which a record, an adjust or a cancel writes to.
+    resetExpenseStub();
+    // …and the Stock screen's one switch — a warehouse that has held nothing.
+    resetWarehouseStockStub();
     // …and the bundles, which a create, an edit or a delete writes to — and any product a story locked or archived.
     resetBundleStub();
     resetProductScenario();
@@ -423,6 +445,8 @@ const preview: Preview = {
     resetReturnMapStub();
     // …and the warehouses' fees, which the settings card saves.
     resetWarehouseFeeStub();
+    // …and the AI agents' connections and each team's switch, which a connect, a revoke or the switch writes.
+    resetAgentStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();
@@ -431,6 +455,13 @@ const preview: Preview = {
   parameters: {
     // No frame padding by default — the `Pages/` gutter is added in StoryProviders instead.
     layout: "fullscreen",
+    // Storybook's own sizes, plus the 1440 desktop a story pins a layout at (Finance's `FitsA1440Screen`).
+    viewport: {
+      options: {
+        ...MINIMAL_VIEWPORTS,
+        desktop1440: { name: "Desktop 1440", styles: { width: "1440px", height: "900px" }, type: "desktop" },
+      },
+    },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     options: {
       // The sidebar groups mirror `src/components/<group>/` one-for-one, so "where does this live?"

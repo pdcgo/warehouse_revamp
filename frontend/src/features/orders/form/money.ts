@@ -1,5 +1,6 @@
+import { type Rupiah, rupiahNumber } from "../../../lib/money";
 import type { Costs, LineDraft } from "../lines";
-import { lineTotal } from "../lines";
+import { lineValue } from "../lines";
 import type { CreditFigures, CreditRole, CreditRow } from "./CreditLimitPanel";
 import type { InvoiceRow } from "./TotalsInvoicePanel";
 
@@ -10,7 +11,9 @@ import type { InvoiceRow } from "./TotalsInvoicePanel";
 // read off the same by-ids row that names the line's owner (the-cross-markup-belongs-to-the-product) — and the
 // warehouse fee is the one the warehouse prices (WarehouseFeeCalculate). One owner's lines can carry different rates,
 // so the markup is applied per LINE and the row sums the results, the shape the take freezes and the ledger posts
-// (the-ledger-charges-the-frozen-line-total).
+// (the-ledger-charges-the-frozen-line-total). The lines are summed EXACT and never rounded, as the ledger posts an
+// owner's charge (the-backend-never-rounds-money) — so the preview is the figure the server stores, and only the
+// formatter rounds it, for the screen (a-fraction-of-a-rupiah-shows-three-decimals).
 //
 // THE CREDIT FIGURES ARE REAL TOO: each creditor's limit on this team and the debt it already carries come from
 // LiabilityCreditByIds (the-debtor-sees-the-limits-set-on-it) — the same reading the create's credit check makes.
@@ -28,11 +31,11 @@ export function invoiceRows(args: {
   costs: Costs | undefined;
   teamId: bigint | undefined;
   warehouseId: bigint;
-  warehouseFee: bigint;
+  warehouseFee: number;
   teamName: (id: bigint) => string;
 }): InvoiceRow[] {
   const { lines, owners, costs, teamId, warehouseId, warehouseFee, teamName } = args;
-  const byOwner = new Map<string, { base: bigint; owed: bigint; rates: Set<number> }>();
+  const byOwner = new Map<string, { base: number; owed: number; rates: Set<number> }>();
 
   for (const line of lines) {
     const owner = owners?.get(line.productId.toString());
@@ -40,8 +43,8 @@ export function invoiceRows(args: {
     if (ownerTeamId === 0n || ownerTeamId === teamId) continue;
 
     const key = ownerTeamId.toString();
-    const row = byOwner.get(key) ?? { base: 0n, owed: 0n, rates: new Set<number>() };
-    const base = lineTotal(line, costs);
+    const row = byOwner.get(key) ?? { base: 0, owed: 0, rates: new Set<number>() };
+    const base = lineValue(line, costs);
     const rate = owner?.crossMarkupBps ?? 0;
 
     row.base += base;
@@ -66,11 +69,11 @@ export function invoiceRows(args: {
     };
   });
 
-  if (warehouseId > 0n && warehouseFee > 0n) {
+  if (warehouseId > 0n && warehouseFee > 0) {
     rows.push({
       teamId: warehouseId,
       name: teamName(warehouseId),
-      base: 0n,
+      base: 0,
       markupBp: 0n,
       owed: warehouseFee,
       kind: "fee",
@@ -81,11 +84,11 @@ export function invoiceRows(args: {
 }
 
 /**
- * One line at its owner's markup. Integer maths, per line: basis points over the line's cost, rounded down by the
- * division — then summed, as the frozen line totals are.
+ * One line at its owner's markup — basis points over the line's cost, exact, as the take prices it
+ * (inventory-computes-the-markup). The caller sums the lines exactly; nothing rounds.
  */
-function withMarkup(base: bigint, rateBps: number): bigint {
-  return (base * (10_000n + BigInt(rateBps))) / 10_000n;
+function withMarkup(base: number, rateBps: number): number {
+  return base + (base * rateBps) / 10_000;
 }
 
 /**
@@ -93,22 +96,23 @@ function withMarkup(base: bigint, rateBps: number): bigint {
  * line at its HPP and a borrowed line WITH its product's own markup (the-cross-charge-lives-on-the-line). The warehouse
  * prices its fee on this (the-fee-is-priced-on-goods-cost) and total beli is this plus that fee, so the form asks the
  * fee on it and shows it as the products' total — the same per-line arithmetic as the invoice, so the preview, the
- * fee's basis and the frozen order cannot be three different sums.
+ * fee's basis and the frozen order cannot be three different sums. Summed EXACT, in the order's own product order,
+ * as the order freezes `goods_cost` (the-backend-never-rounds-money) — never rounded.
  */
 export function goodsCostOf(args: {
   lines: LineDraft[];
   owners: Owners;
   costs: Costs | undefined;
   teamId: bigint | undefined;
-}): bigint {
+}): number {
   const { lines, owners, costs, teamId } = args;
-  let sum = 0n;
+  let sum = 0;
 
   for (const line of lines) {
     const owner = owners?.get(line.productId.toString());
     const ownerTeamId = owner?.teamId ?? 0n;
     const borrowed = ownerTeamId !== 0n && ownerTeamId !== teamId;
-    const base = lineTotal(line, costs);
+    const base = lineValue(line, costs);
 
     sum += borrowed ? withMarkup(base, owner?.crossMarkupBps ?? 0) : base;
   }
@@ -116,10 +120,13 @@ export function goodsCostOf(args: {
   return sum;
 }
 
-/** One creditor's figures as LiabilityCreditByIds answers them. `creditLimit` undefined = unlimited, 0n = frozen. */
+/**
+ * One creditor's figures as LiabilityCreditByIds answers them. `creditLimit` undefined = unlimited, 0 = frozen. The
+ * exact doubles the ledger stores (the-backend-never-rounds-money), taken as numbers by the panel (figuresOf).
+ */
 export interface CreditStanding {
-  creditLimit?: bigint;
-  debt: bigint;
+  creditLimit?: Rupiah;
+  debt: Rupiah;
 }
 
 /**
@@ -162,7 +169,7 @@ export function creditRows(args: {
   invoice: InvoiceRow[];
   teamId: bigint | undefined;
   warehouseId: bigint;
-  warehouseFee: bigint;
+  warehouseFee: number;
   teamName: (id: bigint) => string;
   credit: CreditRead;
 }): CreditRow[] {
@@ -177,10 +184,14 @@ export function creditRows(args: {
     const standing = credit.byTeam.get(key);
     if (!standing) return { state: "failed" };
 
-    return { state: "ready", debt: standing.debt, limit: standing.creditLimit };
+    return {
+      state: "ready",
+      debt: rupiahNumber(standing.debt),
+      limit: standing.creditLimit === undefined ? undefined : rupiahNumber(standing.creditLimit),
+    };
   }
 
-  function owe(id: bigint, role: CreditRole, amount: bigint) {
+  function owe(id: bigint, role: CreditRole, amount: number) {
     if (id === teamId) return;
 
     const key = id.toString();

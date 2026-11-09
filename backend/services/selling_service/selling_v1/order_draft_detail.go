@@ -33,10 +33,11 @@ func draftAuthor(ctx context.Context) (uint64, error) {
 	return authorID, nil
 }
 
-// OrderDraftDetail returns one of the caller's own drafts WITH its lines (#192).
-//
-// The lines are the point: each carries both the marketplace's text and the product it has been
-// mapped to, so the mapping screen (#196) can show one beside the other. Nothing else returns them.
+// OrderDraftDetail returns one of the caller's own drafts WITH its lines (#192) — what the order form seeds from
+// (the-draft-opens-in-the-order-form): the scraped lines it shows as text above the products, the buyer and the address
+// from the draft's one address row, and `region_match`, the address picker's pre-fill when the draft's four region
+// names name exactly one place (the-cs-edits-the-whole-address-before-create) — region_service's RegionMatch, asked
+// in-process through the RegionMatcher seam.
 //
 // Somebody else's draft reads as NOT FOUND rather than as a permission error — the caller has a
 // perfectly good role in this team, and the draft is simply not theirs. "Exists but is not yours"
@@ -66,6 +67,11 @@ func (s *Service) OrderDraftDetail(
 		return nil, dbError(err)
 	}
 
+	err = loadDraftAddress(s.db.WithContext(ctx), &draft)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	// Ordered by id, so the lines read in the order the app pushed them — which is the order they
 	// appeared on the marketplace page somebody is comparing against.
 	err = s.db.
@@ -80,12 +86,7 @@ func (s *Service) OrderDraftDetail(
 
 	out := draftToProto(&draft)
 	out.ItemCount = uint32(len(draft.Items))
-
-	for i := range draft.Items {
-		if draft.Items[i].ProductID == 0 {
-			out.UnmappedItemCount++
-		}
-	}
+	out.RegionMatch = s.draftRegionMatch(ctx, draft.Address)
 
 	return connect.NewResponse(&sellingv1.OrderDraftDetailResponse{Draft: out}), nil
 }

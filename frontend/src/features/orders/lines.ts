@@ -57,7 +57,7 @@ export type Costs = Map<string, ProductDraw>;
 //
 export interface LineDraft {
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   imageUrl: string;
   thumbnailUrl: string;
@@ -69,7 +69,7 @@ export interface LineDraft {
 export function lineFor(p: PickedProduct): LineDraft {
   return {
     productId: p.id,
-    sku: p.sku,
+    productCode: p.productCode,
     name: p.name,
     imageUrl: p.defaultImageUrl ?? "",
     thumbnailUrl: p.defaultImageThumbnailUrl ?? "",
@@ -101,11 +101,13 @@ export function byProduct(lines: LineDraft[]): LineDraft[] {
   return [...merged.values()];
 }
 
-// Whole rupiah only: parse an input string to a non-negative int64, treating blank/invalid as 0.
-export function toRupiah(raw: string): bigint {
+// Parse a money input's raw value ("150000" or, with a fraction, "150000.5") to the exact non-negative number it holds,
+// treating blank/invalid as 0 — never truncated or rounded (the-backend-never-rounds-money): the order sends what was
+// typed, and the server stores it as sent.
+export function toRupiah(raw: string): number {
   const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) return 0n;
-  return BigInt(Math.trunc(n));
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n;
 }
 
 export function toQty(raw: string): number {
@@ -129,20 +131,27 @@ function drawOf(line: LineDraft, costs: Costs | undefined): ProductDraw | undefi
 //
 // An UNKNOWN cost (none, or 0) contributes NOTHING rather than guessing. Understating a subtotal is
 // visible and recoverable; inventing a price is neither.
-export function lineTotal(line: LineDraft, costs: Costs | undefined): bigint {
-  if (!costKnown(line, costs)) return 0n;
+export function lineTotal(line: LineDraft, costs: Costs | undefined): number {
+  return lineValue(line, costs);
+}
+
+// The line's value EXACT — the double the take itself prices the line at, never rounded (the-backend-never-rounds-money).
+// A sum of lines adds these exactly as the order sums its goods cost and the ledger an owner's charge, so the preview
+// IS the stored figure; only the formatter rounds, for the screen. 0 when unknown.
+export function lineValue(line: LineDraft, costs: Costs | undefined): number {
+  if (!costKnown(line, costs)) return 0;
 
   const draw = drawOf(line, costs)!;
   const qty = toQty(line.quantity);
 
-  if (BigInt(qty) === draw.quantity) return BigInt(Math.round(draw.total!));
+  if (BigInt(qty) === draw.quantity) return draw.total!;
 
-  return BigInt(Math.round(draw.unitCost! * qty));
+  return draw.unitCost! * qty;
 }
 
-// The HPP for one line — what one of its units costs as the take would draw it, whole rupiah — or 0n when unknown.
-export function unitCost(line: LineDraft, costs: Costs | undefined): bigint {
-  return costKnown(line, costs) ? BigInt(Math.round(drawOf(line, costs)!.unitCost!)) : 0n;
+// The HPP for one line — what one of its units costs as the take would draw it, exact — or 0 when unknown.
+export function unitCost(line: LineDraft, costs: Costs | undefined): number {
+  return costKnown(line, costs) ? drawOf(line, costs)!.unitCost! : 0;
 }
 
 // Whether the warehouse can say what this line costs at all. None, or 0, means UNKNOWN, never free — a short line
@@ -166,7 +175,7 @@ export function costSplit(line: LineDraft, costs: Costs | undefined): DrawBatch[
 }
 
 // A split as a line reads it — "2 × Rp 10.000 + 1 × Rp 14.000", oldest batch first. Arithmetic, so it reads the same
-// in either language; each batch's price is whole rupiah on screen, as every other figure is.
+// in either language; each batch's price is shown as every other figure is (up to 3 decimals).
 export function formatCostSplit(split: DrawBatch[]): string {
   return split.map((b) => `${b.quantity.toString()} × ${formatRupiahNumber(b.unitCost)}`).join(" + ");
 }

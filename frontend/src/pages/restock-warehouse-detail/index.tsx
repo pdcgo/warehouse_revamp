@@ -213,6 +213,10 @@ export function RestockWarehouseDetailPage() {
     "delivery",
     <DeliveryFacts
       request={request}
+      // The photo is the selling team's document: the warehouse opens it through RestockReceiptPhoto, which checks the
+      // restock is coming here (the-restocks-warehouse-opens-its-label-photo).
+      teamId={teamId}
+      opensAs="warehouse"
       narrow={wide}
       party={{ label: t("restock.detail.from"), name: fromName, testId: "restock-detail-from" }}
       withCourierCharge

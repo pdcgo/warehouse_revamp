@@ -2,6 +2,7 @@ package inventory_v1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -11,8 +12,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// The reason drives the model (#211): DAMAGED/LOST/FOUND change a specific batch and the rack; a RECOUNT corrects the
-// rack and takes its shortfall off the oldest batch. Every one keeps the two ledgers equal.
+// The reason drives the model (#211): DAMAGED/LOST change a specific batch and the rack; a RECOUNT corrects the rack and
+// takes its shortfall off the oldest batch; FOUND is refused — it is a request now. Every one keeps the two ledgers equal.
 func TestStockAdjust_ReasonDrivenAndBatchAware(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -64,12 +65,14 @@ func TestStockAdjust_ReasonDrivenAndBatchAware(t *testing.T) {
 		t.Fatalf("after damaged: shelf_batch = %d, want 95", shelfBatch())
 	}
 
-	// FOUND 3 → 98.
-	if e := adjust(inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND, batchID, 3, 0); e != nil {
-		t.Fatalf("found: %v", e)
+	// FOUND is refused here: a found is reported through FoundRequestCreate and waits for the Owner or Admin
+	// (an-adjust-found-waits-for-the-owner-or-admin, staff-may-report-a-found) — nothing moves.
+	if e := adjust(inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND, batchID, 3, 0); connect.CodeOf(e) != connect.CodeInvalidArgument ||
+		!strings.Contains(e.Error(), "FoundRequestCreate") {
+		t.Fatalf("found through StockAdjust: err = %v, want InvalidArgument naming FoundRequestCreate", e)
 	}
-	if shelfBatch() != 98 {
-		t.Fatalf("after found: shelf_batch = %d, want 98", shelfBatch())
+	if shelfBatch() != 95 {
+		t.Fatalf("after a refused found: shelf_batch = %d, want still 95", shelfBatch())
 	}
 
 	// RECOUNT the shelf to 90 → delta -8 lands FIFO on the (only) batch → 90.

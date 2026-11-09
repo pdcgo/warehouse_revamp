@@ -341,33 +341,9 @@ Kept as lines so the numbers hold.
     **→ Recommend a minimum of 50 units.** *What breaks?* A new supplier is not rate-ranked until it has sent 50 units
     in the window — its rate still shows, after the others.
 
-19. 🆕 **How far back may the Supplier Report rank?** — found by the
-    [performance audit](../../../audits/services/supplier_service/performances/AnalyticGroupSearch.md#3-the-cost-is-every-row-in-the-window-and-no-limit-is-placed-on-the-window-),
-    and still true of `metrics/suppliers`, which replaced those reads on 2026-10-27
-    ([MetricSearch.md](../../../audits/services/supplier_service/performances/MetricSearch.md#1-a-year-long-ranking-reads-every-row-of-the-year-)).
-    A ranking reads every daily row in its window, and the report's date range has no limit. One year now takes
-    **63 ms** for the ranking and **61 ms** for its headline, which is its own read; three years of history ~600 ms —
-    and a window "since the start" grows with every day of business. The Statistics tab's per-supplier reads stay fast
-    at any window — 7 ms for a year — and its series lists its own periods, ten to a page. ⚠ The old series' caps (366
-    days daily, 60 months, 20 years) went with `AnalyticTimeSearch`: a cap taken here would be the metric's, for both
-    screens.
-
-    ```mermaid
-    flowchart LR
-      W["the report's window"] --> C{"366 days or less?"}
-      C -->|"yes"| R["ranked — about 63 ms for a year"]
-      C -->|"no"| X["refused, the range named — pick a year at most"]
-      M["later, on request — a monthly rollup written by the fold"] -.-> L["multi-year rankings, 6x fewer rows"]
-    ```
-
-    | option | | |
-    | --- | --- | --- |
-    | **cap the metric's window at 366 days** — the old daily series' cap | a year at most, on both screens; a longer range is refused with a message saying so | ✅ |
-    | a monthly rollup table, written by the same fold | multi-year rankings stay fast; a second table to keep in step, and the replay rebuilds both | later, on request |
-    | no limit | a ranking over the whole history gets slower every day | ❌ |
-
-    **→ Recommend the 366-day cap now, the rollup only when someone asks for a multi-year ranking.** *What breaks?*
-    *"Which supplier was best over the last two years?"* cannot be asked in one go — it is two one-year rankings.
+19. ✅ *(2026-10-31)* **Answered: a year at most, for every metric** —
+    [a-metric-reads-at-most-a-year](../analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year), recorded with the metric
+    pattern because order and settlement share the limit. ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 
 ## Parked — talk later
 

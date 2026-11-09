@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { FORMER_USER_ID } from "../../../../.storybook/fixtures";
+import { restockRaisedByForStory } from "../../../../.storybook/restockStub";
 import { SELLING_META, loaded } from "./kit";
 
-// RESTOCK SELLING — the screen's own rules and what a row shows — its columns, its references, its value and its badges. The page's stories are grouped by the part of the screen they are about
+// RESTOCK SELLING — the screen's own rules and what a row shows — its columns, its references, its value, its badges, and who raised it. The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -31,6 +33,19 @@ export const TheScreenRules: Story = {
     const created = canvas.getByTestId("restock-created-by-501");
     await expect(created).toHaveTextContent("by Ani Rahayu");
     await expect(created.parentElement).toHaveTextContent(/\d{2}:\d{2}by /);
+  },
+};
+
+// A FORMER USER (erase-keeps-the-row): a restock raised by somebody since erased still names them — "by Former user
+// #69", never the synthetic username `erased69`.
+export const RaisedByAFormerUser: Story = {
+  name: "Raised by a former user",
+  beforeEach: () => restockRaisedByForStory(501n, FORMER_USER_ID),
+  play: async ({ canvasElement }) => {
+    const row = (await loaded(canvasElement)).getByTestId("restock-row-501");
+
+    await waitFor(() => expect(row).toHaveTextContent("Former user #69"));
+    await expect(row).not.toHaveTextContent("erased69");
   },
 };
 

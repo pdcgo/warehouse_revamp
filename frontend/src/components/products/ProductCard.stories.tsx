@@ -14,7 +14,7 @@ const meta = {
     docs: { description: { component: description } },
   },
   args: {
-    product: { id: product.id, teamId: product.teamId, sku: product.sku, name: product.name },
+    product: { id: product.id, teamId: product.teamId, productCode: product.productCode, name: product.name },
   },
   decorators: [
     (Story) => (
@@ -55,7 +55,7 @@ export const InAGrid: Story = {
         <ProductCard key={p.id.toString()} product={p} stock={BigInt(p.reservedStock)} />
       ))}
       <ProductCard
-        product={{ id: 99n, sku: "SKU-PANJANG", name: "Nama produk yang sangat panjang sekali untuk menguji tinggi kartu" }}
+        product={{ id: 99n, productCode: "SKU-PANJANG", name: "Nama produk yang sangat panjang sekali untuk menguji tinggi kartu" }}
         stock={7n}
       />
     </SimpleGrid>
@@ -90,7 +90,7 @@ export const SharesProductListItemsVocabulary: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByText(product.name)).toBeInTheDocument();
-    await expect(canvas.getByText(product.sku)).toBeInTheDocument();
+    await expect(canvas.getByText(product.productCode)).toBeInTheDocument();
     await expect(canvas.getByText("Gudang Pusat")).toBeInTheDocument();
   },
 };

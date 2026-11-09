@@ -250,3 +250,14 @@ export const InsideADialog: Story = {
     await waitFor(() => expect(args.onChange).toHaveBeenCalledWith(teams[1]!.id));
   },
 };
+
+/** `optionNote` puts a short note beside an option — the order form's "Closed" on a warehouse that is closed now. */
+export const WithAnOptionNote: Story = {
+  args: { teamType: TeamType.WAREHOUSE, optionNote: (id: bigint) => (id === 14n ? <span data-testid="note-14">Closed</span> : null) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("combobox"));
+    const note = await screen.findByTestId("note-14");
+    await waitFor(() => expect(note).toBeVisible());
+  },
+};

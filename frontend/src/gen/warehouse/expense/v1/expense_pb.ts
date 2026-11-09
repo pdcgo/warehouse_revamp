@@ -16,10 +16,11 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense.proto.
  */
 export const file_warehouse_expense_v1_expense: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSLeAQoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSDgoGdm9pZGVkGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyL5AQoURXhwZW5zZUNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESOwoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgq6SAeCAQQQASAAEhcKBmFtb3VudBgDIAEoA0IHukgEIgIgABI4CgtvY2N1cnJlZF9hdBgEIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgFIAEoBBIWCgRub3RlGAYgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgDEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEi3wEKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgDEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIOCgZ2b2lkZWQYCSABKAgSFwoPY3JlYXRlZF9hdF91bml4GAogASgDIrEBChFFeHBlbnNlUm93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd0l0ZW06AjgBIpIBChdFeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB2V4cGVuc2UYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93TWFwSXRlbUgAQgMKAWQixwEKE0V4cGVuc2VMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYBCABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzIsQBChJFeHBlbnNlRGFpbHlGaWx0ZXISMQoEZnJvbRgBIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSLwoCdG8YAiABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEjkKBGtpbmQYAyABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZEIIukgFggECEAESDwoHc2hvcF9pZBgEIAEoBCKDAQoTRXhwZW5zZURhaWx5UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJACgZmaWx0ZXIYAiABKAsyKC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlGaWx0ZXJCBrpIA8gBAToMkrUYCAoGAQIDBAYJIrABCg5FeHBlbnNlRGF5SXRlbRIMCgRkYXRlGAEgASgJEg8KB2VudHJpZXMYAiABKAQSDQoFdG90YWwYAyABKAMSQQoHYnlfa2luZBgEIAMoCzIwLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYXlJdGVtLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEifwoURXhwZW5zZURhaWx5UmVzcG9uc2USMgoEZGF5cxgBIAMoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYXlJdGVtEjMKBnRvdGFscxgCIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMilgIKFEV4cGVuc2VVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCmV4cGVuc2VfaWQYAiABKARCB7pIBDICIAASOwoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgq6SAeCAQQQASAAEhcKBmFtb3VudBgEIAEoA0IHukgEIgIgABI4CgtvY2N1cnJlZF9hdBgFIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgGIAEoBBIWCgRub3RlGAcgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJNChVFeHBlbnNlVXBkYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiWwoSRXhwZW5zZVZvaWRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCmV4cGVuc2VfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiSwoTRXhwZW5zZVZvaWRSZXNwb25zZRI0CgdleHBlbnNlGAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzKTBAoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmIKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZRJlCgxFeHBlbnNlRGFpbHkSKS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXF1ZXN0Gioud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURhaWx5UmVzcG9uc2USaAoNRXhwZW5zZVVwZGF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VVcGRhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVVwZGF0ZVJlc3BvbnNlEmIKC0V4cGVuc2VWb2lkEigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVZvaWRSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVZvaWRSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSKoAgoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoARITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEhoKEmFkanVzdHNfZXhwZW5zZV9pZBgLIAEoBBISCgpuZXRfYW1vdW50GAwgASgBEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgNIAEoBEoECAkQClIGdm9pZGVkIpMDChRFeHBlbnNlQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARKmAQoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQnW6SHK6AWgKK2V4cGVuc2VfY3JlYXRlLmtpbmQuc3RvY2tfbG9zc19pc19ub3RfdHlwZWQSLnN0b2NrIGxvc3MgaXMgcmVjb3JkZWQgYnkgaW52ZW50b3J5LCBub3QgdHlwZWQaCXRoaXMgIT0gNYIBBBABIAASIAoGYW1vdW50GAMgASgBQhC6SA0SC0ABIQAAAAAAAAAAEjgKC29jY3VycmVkX2F0GAQgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIPCgdzaG9wX2lkGAUgASgEEhYKBG5vdGUYBiABKAlCCLpIBXIDGPQDEiMKEmZpbmFuY2VfYWNjb3VudF9pZBgHIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgBEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAToCOAEiqQIKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgBEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSGgoSYWRqdXN0c19leHBlbnNlX2lkGAsgASgEEhIKCm5ldF9hbW91bnQYDCABKAESGgoSZmluYW5jZV9hY2NvdW50X2lkGA0gASgESgQICRAKUgZ2b2lkZWQisQEKEUV4cGVuc2VSb3dNYXBJdGVtEkYKCG1hcF9kYXRhGAEgAygLMjQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93SXRlbToCOAEikgEKF0V4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASOgoHZXhwZW5zZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtSABCAwoBZCLHAQoTRXhwZW5zZUxpc3RSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgEIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMixAEKEkV4cGVuc2VEYWlseUZpbHRlchIxCgRmcm9tGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIvCgJ0bxgCIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIoMBChNFeHBlbnNlRGFpbHlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseUZpbHRlckIGukgDyAEBOgyStRgICgYBAgMEBgkisAEKDkV4cGVuc2VEYXlJdGVtEgwKBGRhdGUYASABKAkSDwoHZW50cmllcxgCIAEoBBINCgV0b3RhbBgDIAEoARJBCgdieV9raW5kGAQgAygLMjAud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0uQnlLaW5kRW50cnkaLQoLQnlLaW5kRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgBOgI4ASJ/ChRFeHBlbnNlRGFpbHlSZXNwb25zZRIyCgRkYXlzGAEgAygLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0SMwoGdG90YWxzGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscyKXAQoURXhwZW5zZUFkanVzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKZXhwZW5zZV9pZBgCIAEoBEIHukgEMgIgABIgCgZhbW91bnQYAyABKAFCELpIDRILOQAAAAAAAAAAQAESFgoEbm90ZRgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQihgEKFUV4cGVuc2VBZGp1c3RSZXNwb25zZRI3CgphZGp1c3RtZW50GAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZBI0CgdleHBlbnNlGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzK5AwoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmcKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZSIDkAIBEmoKDEV4cGVuc2VEYWlseRIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseVJlcXVlc3QaKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXNwb25zZSIDkAIBEmgKDUV4cGVuc2VBZGp1c3QSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQWRqdXN0UmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VBZGp1c3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
- * One expense. Money is whole rupiah as int64, like every other money field in this system.
+ * One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
+ * (rupiah-is-floating-point, the-backend-never-rounds-money).
  *
  * @generated from message warehouse.expense.v1.ExpenseRecord
  */
@@ -42,33 +43,36 @@ export type ExpenseRecord = Message<"warehouse.expense.v1.ExpenseRecord"> & {
   teamId: bigint;
 
   /**
-   * OPTIONALLY which shop the money was spent on. 0 = not attributed to one shop.
-   *
-   * Optional on EVERY kind (owner, 2026-07-21), not just ads: a team running two shops may want to
-   * split its packing wages or a subscription between them, and "only ads may name a shop" is a rule
-   * somebody would hit and ask to have relaxed.
+   * The shop the ads ran for — an ADS expense names one, every other kind names none
+   * (an-expense-names-a-shop-only-for-ads, which reverses the earlier "optional on every kind"). 0 = no shop. A row
+   * made before that rule keeps whatever shop it carries; an adjustment copies its expense's.
    *
    * @generated from field: uint64 shop_id = 3;
    */
   shopId: bigint;
 
   /**
+   * On an adjustment, the expense's kind, copied — so a kind's total and the daily split take the correction where the
+   * mistake is.
+   *
    * @generated from field: warehouse.expense.v1.ExpenseKind kind = 4;
    */
   kind: ExpenseKind;
 
   /**
-   * Whole rupiah, ALWAYS POSITIVE. The kind already says the money is going out, so a signed amount
-   * would let a negative expense silently become revenue.
+   * Exact rupiah. On an EXPENSE always positive: the kind already says the money is going out, so a signed amount would
+   * let a negative expense silently become revenue. On an ADJUSTMENT signed and never 0 — the correction itself, not a
+   * new total; the expense and its adjustments never sum below 0.
    *
-   * @generated from field: int64 amount = 5;
+   * @generated from field: double amount = 5;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * The date the expense BELONGS TO, as chosen by the person — not the moment the row was inserted.
    * Payroll is paid on the 5th for the month before, and filing it under the 5th would put it in the
-   * wrong month for every report that matters. RFC3339 date (YYYY-MM-DD).
+   * wrong month for every report that matters. RFC3339 date (YYYY-MM-DD). On an adjustment, the expense's day, copied
+   * and never typed (an-adjustment-counts-on-the-day-it-fixes): the month that holds the mistake becomes correct.
    *
    * @generated from field: string occurred_at = 6;
    */
@@ -83,25 +87,42 @@ export type ExpenseRecord = Message<"warehouse.expense.v1.ExpenseRecord"> & {
 
   /**
    * WHO TYPED IT. A person entered this number by hand and it moves profit directly, so the row says
-   * whose number it is. Opaque user_service id.
+   * whose number it is. Opaque user_service id. On an adjustment, who made the correction — and created_at_unix when.
    *
    * @generated from field: uint64 created_by = 8;
    */
   createdBy: bigint;
 
   /**
-   * Whether this row still counts (#164's pattern). An expense entered by mistake is VOIDED, not deleted:
-   * a deleted row cannot tell you an expense was entered and then retracted, and somebody looking at a
-   * profit figure that changed wants to see why.
-   *
-   * @generated from field: bool voided = 9;
-   */
-  voided: boolean;
-
-  /**
    * @generated from field: int64 created_at_unix = 10;
    */
   createdAtUnix: bigint;
+
+  /**
+   * 0 on an EXPENSE. On an ADJUSTMENT, the expense it corrects — always an expense, never another adjustment: a mistaken
+   * adjustment is fixed by a second one on the same expense.
+   *
+   * @generated from field: uint64 adjusts_expense_id = 11;
+   */
+  adjustsExpenseId: bigint;
+
+  /**
+   * On an EXPENSE, what it counts for after every adjustment of it: its amount plus theirs. 0 on an adjustment.
+   *
+   * @generated from field: double net_amount = 12;
+   */
+  netAmount: number;
+
+  /**
+   * WHICH ACCOUNT PAID — a financial_account_service id, one of the team's operational accounts
+   * (an-expense-must-name-the-account-that-paid). 0 on an expense made before *Paid from* existed: nothing posts back
+   * for the past. On an ADJUSTMENT, the expense's account, copied and never typed — a correction posts where the
+   * original did (a-correction-follows-the-expenses-account), so an old expense's corrections name none either.
+   * The account's NAME is the screen's own read (FinancialAccountByIds), as on a restock.
+   *
+   * @generated from field: uint64 finance_account_id = 13;
+   */
+  financeAccountId: bigint;
 };
 
 /**
@@ -121,16 +142,20 @@ export type ExpenseCreateRequest = Message<"warehouse.expense.v1.ExpenseCreateRe
   teamId: bigint;
 
   /**
+   * STOCK_LOSS is never typed: inventory records it when stock is written off, by an internal call that does not pass
+   * the validation interceptor (cmd/app_development/expense_poster.go) — so this rule refuses it from every API caller
+   * and leaves inventory's path open. InvalidArgument, in the person's words.
+   *
    * @generated from field: warehouse.expense.v1.ExpenseKind kind = 2;
    */
   kind: ExpenseKind;
 
   /**
-   * Whole rupiah, POSITIVE. Recording an expense of nothing is not an expense.
+   * Exact rupiah, POSITIVE. Recording an expense of nothing is not an expense.
    *
-   * @generated from field: int64 amount = 3;
+   * @generated from field: double amount = 3;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
@@ -140,7 +165,9 @@ export type ExpenseCreateRequest = Message<"warehouse.expense.v1.ExpenseCreateRe
   occurredAt: string;
 
   /**
-   * Optional on ANY kind. 0 = not attributed to one shop.
+   * REQUIRED on ADS, refused on every other kind (an-expense-names-a-shop-only-for-ads): only an ads expense names the
+   * shop it ran for. InvalidArgument either way — "an ads expense names its shop" / "only an ads expense names a shop".
+   * Checked by the handler, since the rule spans two fields.
    *
    * @generated from field: uint64 shop_id = 5;
    */
@@ -150,6 +177,19 @@ export type ExpenseCreateRequest = Message<"warehouse.expense.v1.ExpenseCreateRe
    * @generated from field: string note = 6;
    */
   note: string;
+
+  /**
+   * REQUIRED — every expense a person types names the account that paid it, one of the team's ACTIVE OPERATIONAL
+   * accounts (an-expense-must-name-the-account-that-paid); the same rule and name as a restock's `finance_account_id`.
+   * Another team's account, an archived one, or one not marked operational is FailedPrecondition, naming it. The
+   * expense is published after its commit and financial_account_service posts it out of this account — `ads_expense`
+   * for ADS, `expense` for the rest.
+   * STOCK_LOSS is outside the rule: inventory posts it by an internal call (no validation interceptor), it moves no
+   * cash, and it is stored with no account and never published. Through the API it is refused outright (`kind`).
+   *
+   * @generated from field: uint64 finance_account_id = 7;
+   */
+  financeAccountId: bigint;
 };
 
 /**
@@ -301,18 +341,18 @@ export type ExpenseTotals = Message<"warehouse.expense.v1.ExpenseTotals"> & {
    * The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
    * (#78). A page total is a different number wearing the same label.
    *
-   * @generated from field: int64 total = 1;
+   * @generated from field: double total = 1;
    */
-  total: bigint;
+  total: number;
 
   /**
    * Per kind, so the summary cards need no second call. A kind with no expenses in the period is simply
    * absent rather than reported as 0 — absent and zero read the same on a card, and building the
    * absent ones would mean this message knowing the enum's members.
    *
-   * @generated from field: map<int32, int64> by_kind = 2;
+   * @generated from field: map<int32, double> by_kind = 2;
    */
-  byKind: { [key: number]: bigint };
+  byKind: { [key: number]: number };
 };
 
 /**
@@ -349,9 +389,9 @@ export type ExpenseRowItem = Message<"warehouse.expense.v1.ExpenseRowItem"> & {
   kind: ExpenseKind;
 
   /**
-   * @generated from field: int64 amount = 5;
+   * @generated from field: double amount = 5;
    */
-  amount: bigint;
+  amount: number;
 
   /**
    * @generated from field: string occurred_at = 6;
@@ -369,14 +409,31 @@ export type ExpenseRowItem = Message<"warehouse.expense.v1.ExpenseRowItem"> & {
   createdBy: bigint;
 
   /**
-   * @generated from field: bool voided = 9;
-   */
-  voided: boolean;
-
-  /**
    * @generated from field: int64 created_at_unix = 10;
    */
   createdAtUnix: bigint;
+
+  /**
+   * As on ExpenseRecord: 0 on an expense, the corrected expense on an adjustment.
+   *
+   * @generated from field: uint64 adjusts_expense_id = 11;
+   */
+  adjustsExpenseId: bigint;
+
+  /**
+   * As on ExpenseRecord: an expense's amount after every adjustment of it; 0 on an adjustment.
+   *
+   * @generated from field: double net_amount = 12;
+   */
+  netAmount: number;
+
+  /**
+   * As on ExpenseRecord: the account that paid; 0 on an expense made before Paid from; an adjustment carries its
+   * expense's.
+   *
+   * @generated from field: uint64 finance_account_id = 13;
+   */
+  financeAccountId: bigint;
 };
 
 /**
@@ -563,19 +620,19 @@ export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
   date: string;
 
   /**
-   * How many LIVE expense rows the day holds. Voided rows are excluded from `total` and `by_kind`, so
-   * this counts what the number is actually made of.
+   * How many rows the day's number is made of — its expenses AND the adjustments that correct them, each counting on
+   * the corrected expense's day.
    *
    * @generated from field: uint64 entries = 2;
    */
   entries: bigint;
 
   /**
-   * The day's spending, whole rupiah.
+   * The day's spending, the exact sum.
    *
-   * @generated from field: int64 total = 3;
+   * @generated from field: double total = 3;
    */
-  total: bigint;
+  total: number;
 
   /**
    * Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
@@ -583,9 +640,9 @@ export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
    * and zero read identically, and building the empty ones would mean this message knowing the enum's
    * members.
    *
-   * @generated from field: map<int32, int64> by_kind = 4;
+   * @generated from field: map<int32, double> by_kind = 4;
    */
-  byKind: { [key: number]: bigint };
+  byKind: { [key: number]: number };
 };
 
 /**
@@ -623,129 +680,79 @@ export const ExpenseDailyResponseSchema: GenMessage<ExpenseDailyResponse> = /*@_
   messageDesc(file_warehouse_expense_v1_expense, 14);
 
 /**
- * ExpenseUpdate corrects an expense (#169).
+ * ExpenseAdjust corrects an expense with a NEW ROW — the one way to correct one
+ * (every-correction-is-a-signed-adjustment). An expense never changes after it is saved
+ * (an-expense-is-never-edited), so a mistake and its fix are both on the list, each saying who wrote it and when.
  *
- * It exists because of the one fact that separated this service from revenue_service (since removed): a revenue row was
- * written by the system from an order and frozen, while an expense row is TYPED BY A PERSON. A person
- * mistypes. Refusing to let them fix it would leave a wrong number moving profit forever, and the
- * workaround — void it and enter another — loses who entered the original and when.
+ * The adjustment copies the expense's team, shop, kind and DAY — never typed — so it counts in the month that holds the
+ * mistake (an-adjustment-counts-on-the-day-it-fixes). The screen's Batalkan is this call with `amount` = −(what the
+ * expense still counts for).
  *
- * A FULL REPLACE, not a patch. The edit form is the record re-opened, so it submits every field back
- * and an empty one means cleared — the same shape RestockRequestUpdate settled on (#131). A patch
- * would need a way to say "leave this alone" that the form has no way to express.
+ * ⚠ A MISSING ROW, or another team's, is NotFound: a person clicked a button, and the honest answer is that it is not
+ * there. Correcting an ADJUSTMENT, or a correction that would sum the expense below 0, is FailedPrecondition.
  *
- * @generated from message warehouse.expense.v1.ExpenseUpdateRequest
+ * @generated from message warehouse.expense.v1.ExpenseAdjustRequest
  */
-export type ExpenseUpdateRequest = Message<"warehouse.expense.v1.ExpenseUpdateRequest"> & {
+export type ExpenseAdjustRequest = Message<"warehouse.expense.v1.ExpenseAdjustRequest"> & {
   /**
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
 
   /**
+   * The EXPENSE corrected — never an adjustment.
+   *
    * @generated from field: uint64 expense_id = 2;
    */
   expenseId: bigint;
 
   /**
-   * @generated from field: warehouse.expense.v1.ExpenseKind kind = 3;
+   * The correction, signed, exact rupiah — not the new total. Never 0: a correction of nothing is not one.
+   *
+   * @generated from field: double amount = 3;
    */
-  kind: ExpenseKind;
+  amount: number;
 
   /**
-   * @generated from field: int64 amount = 4;
-   */
-  amount: bigint;
-
-  /**
-   * @generated from field: string occurred_at = 5;
-   */
-  occurredAt: string;
-
-  /**
-   * @generated from field: uint64 shop_id = 6;
-   */
-  shopId: bigint;
-
-  /**
-   * @generated from field: string note = 7;
+   * Why — what was wrong with the expense.
+   *
+   * @generated from field: string note = 4;
    */
   note: string;
 };
 
 /**
- * Describes the message warehouse.expense.v1.ExpenseUpdateRequest.
- * Use `create(ExpenseUpdateRequestSchema)` to create a new message.
+ * Describes the message warehouse.expense.v1.ExpenseAdjustRequest.
+ * Use `create(ExpenseAdjustRequestSchema)` to create a new message.
  */
-export const ExpenseUpdateRequestSchema: GenMessage<ExpenseUpdateRequest> = /*@__PURE__*/
+export const ExpenseAdjustRequestSchema: GenMessage<ExpenseAdjustRequest> = /*@__PURE__*/
   messageDesc(file_warehouse_expense_v1_expense, 15);
 
 /**
- * @generated from message warehouse.expense.v1.ExpenseUpdateResponse
+ * @generated from message warehouse.expense.v1.ExpenseAdjustResponse
  */
-export type ExpenseUpdateResponse = Message<"warehouse.expense.v1.ExpenseUpdateResponse"> & {
+export type ExpenseAdjustResponse = Message<"warehouse.expense.v1.ExpenseAdjustResponse"> & {
   /**
-   * @generated from field: warehouse.expense.v1.ExpenseRecord expense = 1;
+   * The new row.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseRecord adjustment = 1;
+   */
+  adjustment?: ExpenseRecord | undefined;
+
+  /**
+   * The expense it corrects, its net_amount after this adjustment.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseRecord expense = 2;
    */
   expense?: ExpenseRecord | undefined;
 };
 
 /**
- * Describes the message warehouse.expense.v1.ExpenseUpdateResponse.
- * Use `create(ExpenseUpdateResponseSchema)` to create a new message.
+ * Describes the message warehouse.expense.v1.ExpenseAdjustResponse.
+ * Use `create(ExpenseAdjustResponseSchema)` to create a new message.
  */
-export const ExpenseUpdateResponseSchema: GenMessage<ExpenseUpdateResponse> = /*@__PURE__*/
+export const ExpenseAdjustResponseSchema: GenMessage<ExpenseAdjustResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_expense_v1_expense, 16);
-
-/**
- * ExpenseVoid stops an expense counting (#169) — it was entered by mistake.
- *
- * VOIDED, NOT DELETED, following #164 exactly: a deleted row cannot tell you an expense was entered and
- * then retracted, and somebody looking at a profit figure that changed wants to see why. The row stays
- * on the list, struck through; every total excludes it.
- *
- * ⚠ A MISSING ROW IS NotFound HERE, unlike RevenueVoid where it is success — and the difference is who
- * calls it. RevenueVoid is driven by a Pub/Sub event, so a missing row must ACK or the message is
- * redelivered forever. This is a person clicking a button: if the expense is not there, or belongs to
- * another team, saying so is the honest answer rather than a silent success.
- *
- * @generated from message warehouse.expense.v1.ExpenseVoidRequest
- */
-export type ExpenseVoidRequest = Message<"warehouse.expense.v1.ExpenseVoidRequest"> & {
-  /**
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: uint64 expense_id = 2;
-   */
-  expenseId: bigint;
-};
-
-/**
- * Describes the message warehouse.expense.v1.ExpenseVoidRequest.
- * Use `create(ExpenseVoidRequestSchema)` to create a new message.
- */
-export const ExpenseVoidRequestSchema: GenMessage<ExpenseVoidRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 17);
-
-/**
- * @generated from message warehouse.expense.v1.ExpenseVoidResponse
- */
-export type ExpenseVoidResponse = Message<"warehouse.expense.v1.ExpenseVoidResponse"> & {
-  /**
-   * @generated from field: warehouse.expense.v1.ExpenseRecord expense = 1;
-   */
-  expense?: ExpenseRecord | undefined;
-};
-
-/**
- * Describes the message warehouse.expense.v1.ExpenseVoidResponse.
- * Use `create(ExpenseVoidResponseSchema)` to create a new message.
- */
-export const ExpenseVoidResponseSchema: GenMessage<ExpenseVoidResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 18);
 
 /**
  * What KIND of spending. A proto enum rather than a team-managed category table (owner, §2.3): every
@@ -765,7 +772,8 @@ export enum ExpenseKind {
   UNSPECIFIED = 0,
 
   /**
-   * Marketplace ads budget. The kind most likely to name a shop, though any kind may.
+   * Marketplace ads budget. The ONE kind that names a shop, and it must (an-expense-names-a-shop-only-for-ads). Posted to
+   * the paying account as `ads_expense` (ads-expense-joins-the-types).
    *
    * @generated from enum value: EXPENSE_KIND_ADS = 1;
    */
@@ -942,24 +950,15 @@ export const ExpenseService: GenService<{
     output: typeof ExpenseDailyResponseSchema;
   },
   /**
-   * An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).
+   * An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169). It is corrected by a
+   * NEW ROW, never by an edit (every-correction-is-a-signed-adjustment): ExpenseUpdate and ExpenseVoid are gone.
    *
-   * @generated from rpc warehouse.expense.v1.ExpenseService.ExpenseUpdate
+   * @generated from rpc warehouse.expense.v1.ExpenseService.ExpenseAdjust
    */
-  expenseUpdate: {
+  expenseAdjust: {
     methodKind: "unary";
-    input: typeof ExpenseUpdateRequestSchema;
-    output: typeof ExpenseUpdateResponseSchema;
-  },
-  /**
-   * Stop an expense counting. Kept and visible, never deleted.
-   *
-   * @generated from rpc warehouse.expense.v1.ExpenseService.ExpenseVoid
-   */
-  expenseVoid: {
-    methodKind: "unary";
-    input: typeof ExpenseVoidRequestSchema;
-    output: typeof ExpenseVoidResponseSchema;
+    input: typeof ExpenseAdjustRequestSchema;
+    output: typeof ExpenseAdjustResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_expense_v1_expense, 0);

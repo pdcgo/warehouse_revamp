@@ -6,6 +6,8 @@ import (
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
+	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
 func updateTransfer(f *wtFixture, team, id uint64, cost float64, account uint64, note string) (*inventoryv1.WarehouseTransfer, error) {
@@ -83,4 +85,59 @@ func TestWarehouseTransferUpdate_RefusesNoAccountAnotherSideAndAnAcceptedTransfe
 
 	_, err = updateTransfer(f, otMelati, tr.GetId(), 5000, wtAccount, "")
 	wantCode(t, err, connect.CodeFailedPrecondition, "edited once accepted")
+}
+
+// On edit a CHANGED account must be one of Melati's active accounts (a-transfers-shipping-is-paid-from-any-active-account),
+// operational or not; an unchanged one is the transfer keeping what it already holds — so archiving an account never
+// freezes the cost of the transfers that already named it (a-transfer-names-its-paying-account).
+func TestWarehouseTransferUpdate_RefusesAChangedAccountThatIsNotActive(t *testing.T) {
+	f := wtStocked(t)
+	accounts := restockAccounts()
+	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, accounts)
+
+	tr := f.create(t, wtLine(wtKaosPolos, 1))
+
+	_, err := updateTransfer(f, otMelati, tr.GetId(), 18000, accountOperational, "packed")
+	if err != nil {
+		t.Fatalf("naming an active operational account: %v", err)
+	}
+
+	f.sent.events = nil
+
+	for _, account := range []uint64{accountArchived, accountOtherTeams} {
+		_, err = updateTransfer(f, otMelati, tr.GetId(), 18000, account, "moved")
+		wantCode(t, err, connect.CodeFailedPrecondition, "moving the shipping to account "+itoa(account))
+	}
+
+	var row models.WarehouseTransfer
+
+	err = f.db.Where("id = ?", tr.GetId()).First(&row).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if row.FinanceAccountID != accountOperational || row.Note != "packed" || len(f.sent.events) != 0 {
+		t.Fatalf("a refused edit wrote account %d, note %q and published %d events", row.FinanceAccountID, row.Note,
+			len(f.sent.events))
+	}
+
+	// The account it already holds is archived since: an edit that keeps it still goes through, and so does dropping
+	// the cost, which names no account at all.
+	accounts[accountOperational] = inventory_v1.PayingAccount{Name: "BCA Operasional", Operational: true}
+
+	_, err = updateTransfer(f, otMelati, tr.GetId(), 20000, accountOperational, "repriced")
+	if err != nil {
+		t.Fatalf("an edit keeping the account the transfer already holds must pass: %v", err)
+	}
+
+	_, err = updateTransfer(f, otMelati, tr.GetId(), 0, 0, "no courier")
+	if err != nil {
+		t.Fatalf("dropping the cost must pass: %v", err)
+	}
+
+	// Moving it to an active account not marked operational passes: a transfer may be paid from any active one.
+	_, err = updateTransfer(f, otMelati, tr.GetId(), 18000, accountPlain, "plain")
+	if err != nil {
+		t.Fatalf("an active account not marked operational must be accepted: %v", err)
+	}
 }

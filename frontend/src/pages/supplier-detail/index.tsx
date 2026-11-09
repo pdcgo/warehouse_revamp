@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useSupplier, useSupplierChannels } from "../../features/suppliers/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -19,15 +19,17 @@ import { SupplierMeta } from "../../features/suppliers/SupplierMeta";
 import { SupplierHeaderActions } from "./components/SupplierHeaderActions";
 import type { FigureMarks } from "../../features/suppliers/SupplierFigures";
 import { RelatedWarehouses } from "../../features/suppliers/RelatedWarehouses";
-import { sampleWarehousesFor } from "../../features/suppliers/sampleWarehouses";
+import { useSupplierWarehouses } from "../../features/suppliers/goods";
 
-// Each store's and product's Terjual and Siap carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`).
+// Each PRODUCT's Terjual and Siap on the Produk tab carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`) —
+// invented with the tab's rows. A store's on the Toko tab are real and unmarked.
 const FIGURE_MARKS: FigureMarks = {
   sold: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sold" />,
   ready: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="ready" />,
 };
 
-// Each tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`).
+// The Produk tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`): its rows are invented, so
+// its file waits for real ones. The Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport).
 const EXPORT_MARK = <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="export" />;
 
 function parseSupplierId(raw: string | undefined): bigint {
@@ -76,6 +78,8 @@ export function SupplierDetailPage() {
   // supplier — and folding them together would let one request's failure hide the other's result.
   const supplierQuery = useSupplier({ teamId, supplierId: id });
   const channelsQuery = useSupplierChannels({ teamId, supplierId: id });
+  // Gudang terkait — where this supplier's goods were received, and what they did there (every team's).
+  const warehouses = useSupplierWarehouses(current?.teamType === TeamType.WAREHOUSE ? undefined : teamId, id);
 
   const supplier = supplierQuery.data ?? null;
   const loading = supplierQuery.isPending && id !== 0n;
@@ -97,7 +101,10 @@ export function SupplierDetailPage() {
   // only a selling team keeps suppliers (only-a-selling-team-has-suppliers). The server is the real boundary
   // either way; this keeps the page from offering what it would refuse.
   const canManage =
-    current?.teamType === TeamType.SELLING && supplier !== null && supplier.teamId === current.teamId;
+    canWrite(current) &&
+    current?.teamType === TeamType.SELLING &&
+    supplier !== null &&
+    supplier.teamId === current.teamId;
 
   const back = (
     <Button
@@ -161,18 +168,13 @@ export function SupplierDetailPage() {
       {/* GUDANG TERKAIT — the warehouses its restocks were received at, and the page's scope: a chip picked narrows every
           tab (`a-supplier-page-is-scoped-by-its-warehouses`). Over the tabs, since a tab cannot narrow the tabs beside it.
           Each chip is a warehouse's name; under them, what this supplier's goods did in the chosen one or in all
-          (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Sample warehouses, and a pick that only switches
-          that summary — both marked. */}
+          (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Real warehouses and figures
+          (InventoryService.SupplierGoods by warehouse); a pick only switches that summary — marked. */}
       <RelatedWarehouses
-        warehouses={sampleWarehousesFor(supplier.id, channels.length)}
+        warehouses={warehouses.warehouses}
         value={warehouseId}
         onChange={setWarehouseId}
-        marks={
-          <>
-            <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="warehouses" />
-            <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />
-          </>
-        }
+        marks={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />}
       />
 
       {/* The underline SLIDES to the picked tab, and the tab's content fades in where the last one was
@@ -195,7 +197,7 @@ export function SupplierDetailPage() {
         </Tabs.List>
 
         <Tabs.Content value="channels" animationStyle="swap">
-          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
+          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} />
         </Tabs.Content>
 
         <Tabs.Content value="products" animationStyle="swap">
@@ -203,8 +205,7 @@ export function SupplierDetailPage() {
         </Tabs.Content>
 
         <Tabs.Content value="statistics" animationStyle="swap">
-          <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sales" />}
-            exportMark={EXPORT_MARK} />
+          <SupplierStatistics supplierId={supplier.id} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

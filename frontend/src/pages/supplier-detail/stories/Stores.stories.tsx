@@ -82,8 +82,8 @@ export const AStoreOnAPhone: Story = {
 };
 
 // A STORE SHOWS ITS SOLD AND READY — the supplier list's figures for what was bought at this store: the last two columns
-// before the actions, the last order and the last restock under them, each heading with THIS page's mark (2 and 3 —
-// Products is 1).
+// before the actions, the last order and the last restock under them. Real (InventoryService.SupplierGoods by store), so
+// unmarked — the marks 2 and 3 now sit on the Produk tab's invented product figures only.
 export const AStoreShowsItsSoldAndReady: Story = {
   name: "Sold and Ready",
   play: async ({ canvasElement }) => {
@@ -94,10 +94,12 @@ export const AStoreShowsItsSoldAndReady: Story = {
     const headers = within(table).getAllByRole("columnheader");
     await expect(headers.at(-3)).toHaveTextContent(/^Sold/);
     await expect(headers.at(-2)).toHaveTextContent(/^Ready/);
-    await expect(within(headers.at(-3)!).getByTestId("not-implemented-sold")).toHaveTextContent("2");
-    await expect(within(headers.at(-2)!).getByTestId("not-implemented-ready")).toHaveTextContent("3");
-    await expect(canvas.getByTestId(`channel-sold-${SHOPEE_STORE.id}`)).toHaveTextContent(/^[\d.]+ordered \w+ \d+, \d{4}$/);
-    await expect(canvas.getByTestId(`channel-ready-${SHOPEE_STORE.id}`)).toHaveTextContent(/^[\d.]+restocked \w+ \d+, \d{4}$/);
+    await expect(within(headers.at(-3)!).queryByTestId("not-implemented-sold")).toBeNull();
+    await expect(within(headers.at(-2)!).queryByTestId("not-implemented-ready")).toBeNull();
+    await waitFor(() =>
+      expect(canvas.getByTestId(`channel-sold-${SHOPEE_STORE.id}`)).toHaveTextContent(/^1\.204ordered \w+ \d+, \d{4}$/),
+    );
+    await expect(canvas.getByTestId(`channel-ready-${SHOPEE_STORE.id}`)).toHaveTextContent(/^86restocked \w+ \d+, \d{4}$/);
   },
 };
 

@@ -41,6 +41,12 @@ type Service struct {
 
 	// What AnalyticReplayCompute seeks and reads the retention of.
 	broker ReplayBroker
+
+	// What inventory knows of a supplier's goods — Penjualan's take, the range pills' sets. See goods_reader.go.
+	goods GoodsReader
+
+	// Where a tab's export goes, and the names its rows need (export_store.go). nil = every export is Unimplemented.
+	exports ExportStore
 }
 
 // compile-time proof Service serves every proto service. One implementation behind four — the split is about who may
@@ -52,7 +58,7 @@ var (
 	_ supplierv1connect.SupplierAnalyticMaintenanceServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, teams SellingTeams, broker ReplayBroker) *Service {
+func NewService(db *gorm.DB, teams SellingTeams, broker ReplayBroker, goods GoodsReader, exports ExportStore) *Service {
 	// With no team service to ask, every SupplierCreate is REFUSED rather than trusted.
 	if teams == nil {
 		teams = noSellingTeams{}
@@ -63,7 +69,11 @@ func NewService(db *gorm.DB, teams SellingTeams, broker ReplayBroker) *Service {
 		broker = noReplayBroker{}
 	}
 
-	return &Service{db: db, teams: teams, broker: broker}
+	if goods == nil {
+		goods = noGoods{}
+	}
+
+	return &Service{db: db, teams: teams, broker: broker, goods: goods, exports: exports}
 }
 
 type noSellingTeams struct{}

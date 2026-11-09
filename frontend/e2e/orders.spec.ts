@@ -16,6 +16,9 @@ const CATEGORY = `E2E OrdCat ${SUFFIX}`;
 const SHOP_CODE = `OSH${SUFFIX}`;
 const SHOP_NAME = `E2E Order Shop ${SUFFIX}`;
 const SKU = `OP${SUFFIX}`;
+// What the product is STORED as — its team's code in front of the part typed (the-field-is-product-code-composed-on-write);
+// root files it under team 1, whose code is ROOT.
+const CODE = `ROOT-${SKU}`;
 const PRODUCT_NAME = `E2E Order Product ${SUFFIX}`;
 const CUSTOMER = `E2E Customer ${SUFFIX}`;
 // The marketplace's own id for the order — shaped like one a storefront actually issues, and made
@@ -78,13 +81,13 @@ async function login(page: Page, username: string, password: string) {
 // ⚠ The row is matched on the SKU it DISPLAYS, never as "the only row": the search is debounced, so
 // for a moment after typing the list still holds the previous product's row, which satisfies "exactly
 // one row" just as well and un-ticks what was ticked a moment ago.
-async function tickProduct(page: Page, sku: string) {
-  await page.getByTestId("product-picker-search").fill(sku);
+async function tickProduct(page: Page, productCode: string) {
+  await page.getByTestId("product-picker-search").fill(productCode);
 
   const row = page
     .getByTestId("product-picker-list")
     .locator('[data-testid^="product-picker-option-"]')
-    .filter({ hasText: sku });
+    .filter({ hasText: productCode });
   await expect(row).toHaveCount(1);
 
   // The click goes to the CONTROL, never the row's centre. In the table layout the centre lands on the
@@ -109,26 +112,34 @@ async function pickOrderDate(page: Page) {
   await page.keyboard.press("Escape");
 }
 
+// The courier — every order names one (no-order-without-a-courier): the server refuses an order without it. JNE is
+// seeded by shipment_service's first migration in every database.
+async function pickCourier(page: Page, code = "jne") {
+  await page.getByTestId("shipment-channel-select").getByRole("combobox").click();
+  await page.getByTestId(`shipment-channel-option-${code}`).click();
+}
+
 // Adds products to the order through the picker dialog (#165's pattern, now the order form's too).
 async function addProducts(page: Page, skus: string[]) {
   await page.getByTestId("order-create-add-line").click();
 
-  for (const sku of skus) {
-    await tickProduct(page, sku);
+  for (const productCode of skus) {
+    await tickProduct(page, productCode);
   }
 
   await page.getByTestId("product-picker-confirm").click();
 }
 
-// Places one order through the form (reusing the setup shop + product) and lands on its detail page.
-// Deliberately fills NO address: it is optional (#118), so this also proves the form submits and the
-// detail page renders without one.
-async function placeOrderViaForm(page: Page, customer: string) {
+// Fills the smallest placeable order on the form (the setup shop + product), the marketplace ref last, and stops
+// short of Create. Returns the shop's id, read off the option picked — the duplicate-ref test pushes a draft into it.
+async function fillOrderForm(page: Page, customer: string, ref: string): Promise<string> {
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await page.getByTestId("order-create-customer-name").fill(customer);
   await page.getByTestId("shop-select").click();
-  await page.getByRole("option").filter({ hasText: SHOP_NAME }).click();
+  const shopOption = page.getByRole("option").filter({ hasText: SHOP_NAME });
+  const shopId = ((await shopOption.getAttribute("data-testid")) ?? "").replace("shop-select-option-", "");
+  await shopOption.click();
   // Which warehouse ships it (#72) — required, so the form cannot submit without it. Chosen BEFORE
   // the products so the picker can show what that warehouse holds on each row.
   await page.getByTestId("order-warehouse").locator("input").fill(WH_CODE);
@@ -138,10 +149,21 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await pickOrderDate(page);
   // What the buyer paid on the storefront — required to place (platform-total-is-required-at-finalize).
   await page.getByTestId("order-marketplace-total").fill("25000");
-  // The marketplace ref — required to place (an-order-ref-is-required-by-the-rpc). One per order, so the duplicate
-  // warning never stands between two orders this spec places.
-  await page.getByTestId("order-external-ref-id").fill(`E2E-${Date.now()}`);
+  // The marketplace ref — required to place (an-order-ref-is-required-by-the-rpc).
+  await page.getByTestId("order-external-ref-id").fill(ref);
+  await pickCourier(page);
   // No price: a line is valued at the warehouse HPP, which this fixture's product has none of.
+  await expect(page.getByTestId("order-create-save")).toBeEnabled();
+
+  return shopId;
+}
+
+// Places one order through the form (reusing the setup shop + product) and lands on its detail page.
+// Deliberately fills NO address: it is optional (#118), so this also proves the form submits and the
+// detail page renders without one. One ref per order, so the duplicate warning never stands between two orders
+// this spec places.
+async function placeOrderViaForm(page: Page, customer: string) {
+  await fillOrderForm(page, customer, `E2E-${Date.now()}`);
   await page.getByTestId("order-create-save").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
 }
@@ -213,7 +235,7 @@ test("setup: a category, a shop, and a product for the order to reference", asyn
   await page.getByTestId("category-select").click();
   await page.getByTestId(`category-node-${CATEGORY}`).click();
   await page.getByTestId("product-edit-save").click();
-  await expect(page.getByTestId(`product-row-${SKU}`)).toBeVisible();
+  await expect(page.getByTestId(`product-row-${CODE}`)).toBeVisible();
 });
 
 // Stock for the order to take (#149). Placing an order now DEDUCTS from its warehouse, and a warehouse
@@ -229,7 +251,7 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   // The ids the API needs are not on screen, so read them back the same way the app would.
-  const ids = await page.evaluate(async ([whCode, sku]) => {
+  const ids = await page.evaluate(async ([whCode, productCode]) => {
     const token =
       window.sessionStorage.getItem("warehouse_revamp.token") ??
       window.localStorage.getItem("warehouse_revamp.token");
@@ -257,9 +279,9 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       page: { page: 1, limit: 200 },
     });
     const discovered = rowMap(products, "product");
-    const product = discovered.find((p) => p.sku === sku);
+    const product = discovered.find((p) => p.productCode === productCode);
     if (!product) {
-      throw new Error(`product ${sku} not found among ${discovered.length} discovered`);
+      throw new Error(`product ${productCode} not found among ${discovered.length} discovered`);
     }
 
     // Stock comes in the way it really does — a restock raised by the product's OWN team and accepted onto a rack
@@ -281,12 +303,18 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       openingBalance: 0,
       openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
     });
+    // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account) — the server refuses any other.
+    await call("financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+      teamId: product.teamId,
+      accountId: account.account.id,
+      operational: true,
+    });
 
     const restock = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
       teamId: product.teamId,
       warehouseId: warehouse.id,
       financeAccountId: account.account.id,
-      items: [{ productId: product.id, sku: product.sku, name: product.name, count: "50", total: "0" }],
+      items: [{ productId: product.id, productCode: product.productCode, name: product.name, count: "50", total: "0" }],
     });
 
     await call("inventory.v1.RestockRequestService/RestockRequestAccept", {
@@ -311,7 +339,7 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
     });
 
     return { warehouse: warehouse.id, product: product.id };
-  }, [WH_CODE, SKU]);
+  }, [WH_CODE, CODE]);
 
   expect(ids.warehouse).toBeTruthy();
   expect(ids.product).toBeTruthy();
@@ -464,6 +492,7 @@ test("Create: place an order through the form; money computes; the detail opens"
   // The MARKETPLACE'S own id for this order — typed beside the shop that took it, because that pair
   // is what lets anybody find this order again on the storefront.
   await page.getByTestId("order-external-ref-id").fill(MARKETPLACE_REF);
+  await pickCourier(page);
 
   // THE TRACKING NUMBER printed on the slip — its own field now (`receipt_code`), kept beside the slip itself.
   await page.getByTestId("order-receipt-code").fill(TRACKING_NUMBER);
@@ -569,6 +598,102 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("orders-table").locator('[data-testid^="order-row-"]')).toHaveCount(1);
 });
 
+// A WAREHOUSE OPENS THE SELLER'S LABEL (a-warehouse-prints-the-labels-of-orders-it-ships). The label of the order placed
+// above was uploaded by the SELLING side, so as the document's owner the warehouse reads NotFound — that was the bug:
+// Print Label failed on every order. A warehouse STAFF member — the person who actually prints it, created here with
+// that one role — opens the order detail and the label opens through OrderLabels, the order checked to ship from here.
+test("Label: the warehouse's staff opens the seller's label from the order detail", async ({ page }) => {
+  const STAFF = `e2elabelstaff${SUFFIX}`;
+  const PASSWORD = "e2e-label-pass-1";
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const seed = await page.evaluate(
+    async ([whCode, ref, staff, password]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const rowMap = (res: { items?: Record<string, { mapData?: Record<string, unknown> }>[] }, slice: string) =>
+        Object.values(res.items?.find((it) => it[slice])?.[slice]?.mapData ?? {}) as Record<string, string>[];
+
+      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+      const warehouse = rowMap(teams, "team").find((t) => t.teamCode === whCode)!;
+
+      const list = await call("selling.v1.OrderService/OrderList", {
+        teamId: "1",
+        filter: { search: ref },
+        page: { page: 1, limit: 5 },
+      });
+
+      await call("user.v1.UserService/CreateUser", {
+        teamId: warehouse.id,
+        username: staff,
+        password,
+        name: staff,
+        role: "ROLE_WAREHOUSE_STAFF",
+      });
+
+      return { warehouse: warehouse.id as string, order: (list.ids as string[])[0] };
+    },
+    [WH_CODE, MARKETPLACE_REF, STAFF, PASSWORD],
+  );
+
+  expect(seed.order).toBeTruthy();
+
+  await login(page, STAFF, PASSWORD);
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), seed.warehouse);
+
+  await page.goto(`/orders/${seed.order}`);
+  await expect(page.getByTestId("order-detail-page")).toBeVisible();
+  await expect(page.getByTestId("order-detail-receipt")).toContainText("resi-jne.pdf");
+
+  // The label opens in a new tab, from a link the ORDER SERVICE signed — and the file is the seller's upload. (A PDF tab
+  // never settles in headless Chromium, so the answer that minted the link is what is read, beside the tab opening.)
+  const [answer, popup] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith("/warehouse.selling.v1.OrderService/OrderLabels")),
+    page.waitForEvent("popup"),
+    page.getByTestId("order-receipt-open").click(),
+  ]);
+  expect(answer.status()).toBe(200);
+  const labels = (await answer.json()) as { url: string; results: { orderId: string; included?: boolean }[] };
+  expect(labels.results).toEqual([{ orderId: seed.order, included: true }]);
+  expect(labels.url).toContain("resi-jne.pdf");
+  await popup.close();
+
+  // No refusal toast was shown, and the label was never shared: as its "owner" the warehouse still reads NotFound.
+  await expect(page.getByText(/does not ship from this warehouse|has no label attached/)).toHaveCount(0);
+  const asOwner = await page.evaluate(async ([warehouse, order]) => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ?? window.localStorage.getItem("warehouse_revamp.token");
+    const post = (method: string, body: unknown) =>
+      fetch(`http://localhost:8081/warehouse.${method}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+
+    const detail = await (await post("selling.v1.OrderService/OrderDetail", { teamId: warehouse, orderId: order })).json();
+    const res = await post("document.v1.DocumentService/GetDownloadUrl", {
+      teamId: warehouse,
+      documentId: detail.order.receipt.documentId,
+    });
+
+    return res.status;
+  }, [seed.warehouse, seed.order]);
+  expect(asOwner).toBe(404);
+});
+
 // THE SETTLEMENT REPORT is wired end to end: the route, settlement's metric RPCs and their policy.
 //
 // The report lays out EVERY day of the window as a row, so the series table exists only if MetricData
@@ -614,6 +739,43 @@ test("Address: a postal code suggests the address and fills the whole cascade", 
   await expect(page.getByTestId("address-kodepos").locator("input")).toHaveValue(KODE_POS);
 });
 
+// How many units stand on this spec's seed rack — the one shelf the setup put the product on. Read the way the app reads
+// a rack (RackList with its stock totals), so a cancel's stock coming back is asserted on the shelf itself.
+async function seedRackStock(page: Page): Promise<number> {
+  return page.evaluate(async (whCode) => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ??
+      window.localStorage.getItem("warehouse_revamp.token");
+
+    const call = async (method: string, body: unknown) => {
+      const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+      return res.json();
+    };
+
+    const slice = (res: { items?: Record<string, { mapData?: Record<string, unknown> }>[] }, name: string) =>
+      Object.values(res.items?.find((it) => it[name])?.[name]?.mapData ?? {}) as Record<string, string>[];
+
+    const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+    const warehouse = slice(teams, "team").find((t) => t.teamCode === whCode)!;
+
+    const racks = await call("inventory.v1.RackService/RackList", {
+      teamId: warehouse.id,
+      filter: { q: "e2e-seed" },
+      dataRequest: ["RACK_LIST_DATA_TYPE_RACK", "RACK_LIST_DATA_TYPE_STOCK"],
+      page: { page: 1, limit: 5 },
+    });
+    const rack = slice(racks, "rack").find((r) => r.code === "e2e-seed")!;
+    const stock = slice(racks, "stock").find((r) => r.rackId === rack.id);
+
+    return Number(stock?.stockCount ?? 0);
+  }, WH_CODE);
+}
+
 // The order the Lifecycle test places and cancels. The list has no customer column, and this order
 // has no marketplace ref, so the list tests below find its row by id. (The file is serial, one worker.)
 let lifecycleOrderId = "";
@@ -625,7 +787,9 @@ let lifecycleOrderId = "";
 // the building takes it on.
 test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  const onShelf = await seedRackStock(page);
   await placeOrderViaForm(page, `${CUSTOMER} lifecycle`);
+  expect(await seedRackStock(page)).toBeLessThan(onShelf);
   lifecycleOrderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
   const detail = page.getByTestId("order-detail-page");
 
@@ -639,6 +803,12 @@ test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", 
   await page.getByTestId("confirm-action").click();
   await expect(detail).toContainText("Cancelled");
   await expect(page.getByTestId("order-action-cancel")).toBeHidden();
+
+  // THE STOCK COMES BACK A MOMENT LATER, not inside the cancel: inventory releases the take when OrderCancelled reaches
+  // it (inventory-returns-stock-on-order-cancelled), so the shelf is polled until it reads what it held before the order.
+  await expect(async () => {
+    expect(await seedRackStock(page)).toBe(onShelf);
+  }).toPass({ timeout: 45_000 });
 });
 
 // The header and the status tabs above the list.
@@ -918,85 +1088,114 @@ test("Picking: a selling team is told the queue is a warehouse screen (#151)", a
   await expect(page.getByTestId("pick-queue-table")).toBeHidden();
 });
 
-// #142 — a WAREHOUSE's Products screen shows what it has been ASKED to handle.
-//
-// Before this, a warehouse team opened Products and saw nothing: ProductList is scoped to the team that
-// OWNS the products, and a warehouse owns none. The restock request is what creates the arrangement, so
-// this places one and then looks at the screen from the warehouse's seat.
-test("Products: a warehouse sees the products it was asked to stock (#142)", async ({ page }) => {
+// THE RETURN ACCEPT (the-accept-is-the-status-return-completed), end to end: customer service claims a handed-over order
+// back, the parcel reaches the warehouse, the crew finds it on its Returns tab and accepts it — with the courier's
+// charge at the door, which liability posts from OrderReturnAccepted as the selling team's debt to the warehouse
+// (a-return-may-carry-the-couriers-ask). The event is the real one: the e2e broker pushes it to :8081.
+test("Return: the warehouse accepts a returned parcel and the courier's charge lands on the balance", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  // Ask this warehouse to stock the product — the API, because the restock create form is a different
-  // issue's surface and what is under test here is the warehouse's product list.
-  await page.evaluate(
-    async ([whCode, sku]) => {
-      const token =
-        window.sessionStorage.getItem("warehouse_revamp.token") ??
-        window.localStorage.getItem("warehouse_revamp.token");
+  await placeOrderViaForm(page, `${CUSTOMER} return`);
+  const orderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
 
-      const call = async (method: string, body: unknown) => {
-        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
-        return res.json();
-      };
+  // The warehouse walks it to the courier — three moves on the crew's screen.
+  await switchToWarehouse(page);
+  await page.goto(`/warehouse-orders/${orderId}`);
 
-      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
-      const warehouse = (Object.values(teams.items?.find((it: any) => it.team)?.team?.mapData ?? {}) as any[]).find((t: any) => t.teamCode === whCode);
+  for (const next of ["Mark Picked", "Mark Handed Over"]) {
+    await page.getByTestId("pick-order-advance").click();
+    await expect(page.getByTestId("pick-order-advance")).toContainText(next);
+  }
 
-      // Searched by SKU rather than scanned out of a page: this test runs late in a serial suite, and
-      // relying on the wanted product being inside an arbitrary first page is a fuse waiting to blow.
-      const products = await call("product.v1.ProductService/ProductDiscover", {
-        teamId: "1",
-        filter: { q: sku },
-        page: { page: 1, limit: 50 },
-      });
-      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.sku === sku);
-      if (!product) {
-        throw new Error(
-          `product ${sku} not found among ${(Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).length} results for q=${sku}`,
-        );
-      }
+  await page.getByTestId("pick-order-advance").click();
+  await expect(page.getByTestId("pick-order-advance")).toBeHidden();
 
-      // RestockRequestService, not InventoryService — restock requests are their own proto service, and
-      // the wrong path is a 404 rather than a helpful error.
-      // Every restock names the account that paid (a-restock-must-name-the-account-that-paid).
-      const account = await call("financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
-        teamId: "1",
-        type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
-        provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
-        name: "E2E stock ask",
-        holderName: "E2E",
-        accountNumber: "E2E-ORDERS-2",
-        openingBalance: 0,
-        openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
-      });
+  // Customer service claims it back from the selling seat: `return` is a claim, the parcel may still be in transit.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto(`/orders/${orderId}`);
+  await page.getByTestId("order-action-returnGoods").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
 
-      await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
-        teamId: "1",
-        warehouseId: warehouse.id,
-        financeAccountId: account.account.id,
-        items: [{ productId: product.id, sku, name: "e2e", count: "1", total: 1000 }],
-      });
-    },
-    [WH_CODE, SKU],
-  );
+  // The parcel arrives: the crew finds it on the Returns tab — the accept's queue.
+  await switchToWarehouse(page);
+  await page.goto("/warehouse-orders");
+  await page.getByTestId("pick-tab-return").click();
+  await page.getByTestId(`pick-queue-row-${orderId}`).click();
 
+  // Nothing missing; the courier asked for postage, and the charge needs what it was for before Accept presses.
+  await page.getByTestId("pick-order-accept-return").click();
+  await page.getByTestId("accept-return-charge").fill("12000");
+  await expect(page.getByTestId("accept-return-charge-note-error")).toBeVisible();
+  await expect(page.getByTestId("accept-return-submit")).toBeDisabled();
+
+  await page.getByTestId("accept-return-charge-note").fill("ongkir retur");
+  await page.getByTestId("accept-return-submit").click();
+
+  // An order of the team's own product has no label to print, so the dialog closes on the accept — and the return's
+  // one step is gone with it.
+  await expect(page.getByTestId("accept-return-dialog")).toBeHidden();
+  await expect(page.getByTestId("pick-order-accept-return")).toBeHidden();
+  await expect(page.getByText("Return received").first()).toBeVisible();
+
+  // THE CHARGE ON THE BALANCE — the selling seat owes the warehouse, named as a return's courier charge on this order.
+  // It arrives through the broker, after the accept answered, so it is waited for.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await expect
+    .poll(
+      async () => {
+        await page.goto("/liability");
+        await expect(page.getByTestId("liability-list-page")).toBeVisible();
+
+        const row = page.locator('[data-testid^="liability-row-"]').filter({ hasText: WH_NAME });
+        const found = await row
+          .first()
+          .waitFor({ timeout: 5_000 })
+          .then(() => true)
+          .catch(() => false);
+        if (!found) return "";
+
+        await row.first().click();
+        await page.getByTestId("liability-detail-tab-payable").click({ timeout: 5_000 });
+
+        return (await page.getByTestId("liability-detail-payable").textContent({ timeout: 5_000 })) ?? "";
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 3_000] },
+    )
+    .toContain(`Courier at a return · order #${orderId}`);
+});
+
+// A WAREHOUSE'S PRODUCTS IS WHAT IT HOLDS (a-warehouses-products-is-what-it-holds). It was #142's list of what the
+// warehouse had been ASKED to handle — the restock arrangement, with the seller's catalogue columns read as "—" and the
+// owner as "Team #1". Now it is every product with a batch here, any team's, at 0 too: the setup received this product
+// into this warehouse, so it is listed, its owner named and its units on hand, searchable. The owner's actions and the
+// seller's columns are not a warehouse's.
+test("Products: a warehouse's Products lists what it holds, without the seller's columns", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await switchToWarehouse(page);
   await page.goto("/products");
 
-  // The product the warehouse was asked to stock is on ITS list, even though a selling team owns it.
-  await expect(page.getByTestId("products-table")).toContainText(SKU);
+  // The product the setup received here is on ITS list, even though a selling team owns it.
+  const row = page.getByTestId(`stock-row-${CODE}`);
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(PRODUCT_NAME);
+  await expect(page.getByTestId(`stock-owner-${CODE}`)).not.toBeEmpty();
+  await expect(page.getByTestId(`stock-owner-${CODE}`)).not.toContainText("Team #");
+  await expect(page.getByTestId(`stock-onhand-${CODE}`)).toHaveText(/^\d+$/);
 
-  // And the actions that belong to the OWNER are not offered: a warehouse handles these products, it
-  // does not own them, so edit/delete would only ever be refused by the server.
-  await expect(page.getByTestId(`edit-${SKU}`)).toBeHidden();
-  await expect(page.getByTestId(`delete-${SKU}`)).toBeHidden();
-  await expect(page.getByTestId("open-create-product")).toBeHidden();
-  await expect(page.getByTestId("product-search")).toBeHidden();
+  // The OWNER's actions are not offered — a warehouse handles these products, it does not own them — and the seller's
+  // columns (Cross markup, Lock, the cost range, the catalogue's figures) are not on its view.
+  await expect(page.getByTestId(`edit-${CODE}`)).toHaveCount(0);
+  await expect(page.getByTestId(`archive-${CODE}`)).toHaveCount(0);
+  await expect(page.getByTestId("open-create-product")).toHaveCount(0);
+  await expect(page.getByTestId("products-table")).toHaveCount(0);
+  await expect(page.getByTestId(`cross-${CODE}`)).toHaveCount(0);
+  await expect(page.getByTestId(`lock-${CODE}`)).toHaveCount(0);
+
+  // It searches, on the server.
+  await page.getByTestId("inventory-search").fill(SKU);
+  await expect(row).toBeVisible();
 });
 
 // #153 — placing an order RECORDS ITS EXPECTED REVENUE, with nothing in between.
@@ -1053,7 +1252,7 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 
   // A restock for 10 on its way, plus two shelves to put them on.
   const seeded = await page.evaluate(
-    async ([whCode, sku]) => {
+    async ([whCode, productCode]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
@@ -1073,11 +1272,11 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 
       const products = await call("product.v1.ProductService/ProductDiscover", {
         teamId: "1",
-        filter: { q: sku },
+        filter: { q: productCode },
         page: { page: 1, limit: 50 },
       });
-      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.sku === sku);
-      if (!product) throw new Error(`product ${sku} not found`);
+      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.productCode === productCode);
+      if (!product) throw new Error(`product ${productCode} not found`);
 
       // Saved lowercase (rack-codes-are-saved-lowercase).
       const shelves: string[] = [];
@@ -1113,6 +1312,12 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         openingBalance: 0,
         openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
       });
+      // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account).
+      await call("financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+        teamId: "1",
+        accountId: account.account.id,
+        operational: true,
+      });
 
       // The supplier is the LINE's (a-line-names-the-channel-it-was-bought-from).
       const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
@@ -1121,13 +1326,13 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         financeAccountId: account.account.id,
         shipmentCost: 20000,
         items: [
-          { productId: product.id, sku, name: "e2e accept", count: "10", total: 100000, supplierId: supplier.supplier.id },
+          { productId: product.id, productCode, name: "e2e accept", count: "10", total: 100000, supplierId: supplier.supplier.id },
         ],
       });
 
       return { requestId: created.request.id, productId: product.id, supplierName, shelves };
     },
-    [WH_CODE, SKU],
+    [WH_CODE, CODE],
   );
 
   const pid = seeded.productId;
@@ -1278,10 +1483,10 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await switchToWarehouse(page);
 
-  // Reached by clicking the product in the warehouse's own list (#142) — which must NOT open the
-  // selling team's catalogue page.
+  // Reached by clicking the product in the warehouse's own Products — what it holds (a-warehouses-products-is-what-it-holds)
+  // — which must NOT open the selling team's catalogue page.
   await page.goto("/products");
-  await page.getByTestId(`product-row-${SKU}`).click();
+  await page.getByTestId(`stock-row-${CODE}`).getByText(PRODUCT_NAME).click();
 
   await expect(page.getByTestId("warehouse-product-page")).toBeVisible();
 
@@ -1411,4 +1616,255 @@ test("Export: the order list downloads as an .xlsx file", async ({ page }) => {
   expect(statSync(path).size).toBeGreaterThan(0);
 
   await expect(page.getByText("Export ready — the file is downloading")).toBeVisible();
+});
+
+// #11 — THE MOVES THE SERVER ALLOWED WITH NO BUTTON. §Status Move draws shipped → problem, problem → return and
+// problem → lost (customer-service-sets-shipped-and-problem-by-hand, a-forced-return-follows-the-status-move); the
+// selling seat's buttons now make each, through OrderStatusChange, the destructive two behind a confirm. Last in the
+// file: each places an order, and the tests above count orders and stock.
+async function toShipped(page: Page, customer: string): Promise<string> {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await placeOrderViaForm(page, customer);
+  const orderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
+
+  // The warehouse walks it to the courier.
+  await switchToWarehouse(page);
+  await page.goto(`/warehouse-orders/${orderId}`);
+  for (const next of ["Mark Picked", "Mark Handed Over"]) {
+    await page.getByTestId("pick-order-advance").click();
+    await expect(page.getByTestId("pick-order-advance")).toContainText(next);
+  }
+  await page.getByTestId("pick-order-advance").click();
+  await expect(page.getByTestId("pick-order-advance")).toBeHidden();
+
+  // Customer service sees it moving on the platform.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto(`/orders/${orderId}`);
+  await page.getByTestId("order-action-ship").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "shipped");
+
+  return orderId;
+}
+
+test("Moves: a shipped order is marked a problem, then returned (#11)", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} problem-return`);
+
+  // shipped → problem — customer service, by hand from the platform. A waystation: no confirm.
+  await page.getByTestId("order-action-markProblem").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "problem");
+
+  // problem → return — destructive, so it confirms first.
+  await expect(page.getByTestId("order-action-resolveDispute")).toBeVisible();
+  await page.getByTestId("order-action-returnGoods").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
+});
+
+test("Moves: a problem order is written off as lost (#11)", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} problem-lost`);
+
+  await page.getByTestId("order-action-markProblem").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "problem");
+
+  // problem → lost — destructive, so it confirms first; then nothing is left to press.
+  await page.getByTestId("order-action-markLost").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "lost");
+  await expect(page.getByTestId("order-action-bar")).toBeHidden();
+});
+
+// every-allowed-move-has-a-button — the last two edges of orderMoves the seller's screen had no button for, each confirmed.
+test("Moves: a shipped order is written off as lost directly", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} shipped-lost`);
+
+  // shipped → lost, without passing through problem. Four actions on shipped, so the destructive two sit in ⋯.
+  await page.getByTestId("order-action-more").click();
+  await page.getByTestId("order-action-markLost").click();
+  await expect(page.getByText(/Mark order #\d+ as lost\?/)).toBeVisible();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "lost");
+  await expect(page.getByTestId("order-action-bar")).toBeHidden();
+});
+
+test("Moves: a completed order is returned", async ({ page }) => {
+  await toShipped(page, `${CUSTOMER} completed-return`);
+
+  // shipped → completed — customer service, no confirm.
+  await page.getByTestId("order-action-complete").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "completed");
+
+  // completed → return — the buyer sent it back; destructive, so it confirms first.
+  await page.getByTestId("order-action-returnGoods").click();
+  await expect(page.getByText(/Return the goods on order #\d+\?/)).toBeVisible();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "return");
+});
+
+// THE DUPLICATE MARKETPLACE REF IS WARNED, NOT REFUSED (a-duplicate-ref-is-warned-not-refused,
+// the-duplicate-warning-reads-drafts-too, the-duplicate-ref-warning-is-accepted). A first order on a fresh ref goes
+// straight through; a second order typed on the same shop + ref is stopped by a warning naming the first (a link, its
+// status, the WIB day it was typed in); Go Back keeps the form as typed; Create Anyway places the double. A draft
+// pushed on another ref in the same shop is named the same way, as "Draft #id". LAST in the file: the double it places
+// would otherwise change the counts the list tests above assert.
+test("Duplicate ref: a second order on a used ref is warned about, and can still be created", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const ref = `250817DU${SUFFIX}`;
+  const customer = `E2E Duplicate ${SUFFIX}`;
+
+  // THE FIRST ORDER on the ref: nothing recorded yet, so no warning — Create goes straight to the detail.
+  await fillOrderForm(page, `${customer} first`, ref);
+  await page.getByTestId("order-create-save").click();
+  await expect(page.getByTestId("order-detail-page")).toBeVisible();
+  const firstId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
+
+  const shopId = await fillOrderForm(page, customer, ref);
+  await page.getByTestId("order-create-save").click();
+
+  const dialog = page.getByTestId("duplicate-ref-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId("duplicate-ref-lead")).toContainText(ref);
+  const link = dialog.getByTestId(`duplicate-ref-order-link-${firstId}`);
+  await expect(link).toHaveText(`Order #${firstId}`);
+  await expect(link).toHaveAttribute("href", `/orders/${firstId}`);
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(dialog.getByTestId(`duplicate-ref-order-${firstId}`)).toContainText("Pending");
+  // Typed in today — the short WIB day, off the lookup itself (OrderRefItem.created_at_unix), no detail read.
+  const today = new Date().toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  });
+  await expect(dialog.getByTestId(`duplicate-ref-order-${firstId}`)).toContainText(`created ${today}`);
+
+  // GO BACK keeps the form exactly as typed, and places nothing.
+  await dialog.getByTestId("duplicate-ref-go-back").click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/orders\/new$/);
+  await expect(page.getByTestId("order-create-customer-name")).toHaveValue(customer);
+  await expect(page.getByTestId("order-external-ref-id")).toHaveValue(ref);
+  await expect(page.getByTestId("order-line-0")).toContainText(SKU);
+
+  // CREATE ANYWAY places the double — the server refuses nothing for a repeated ref.
+  await page.getByTestId("order-create-save").click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId("duplicate-ref-create-anyway").click();
+  await expect(page.getByTestId("order-detail-page")).toBeVisible();
+  await expect(page).toHaveURL(/\/orders\/\d+$/);
+  expect(page.url()).not.toMatch(new RegExp(`/orders/${firstId}$`));
+  await expect(page.getByTestId("order-reference-mp")).toContainText(ref);
+
+  // A DRAFT ON THE SHOP + REF IS NAMED TOO — pushed the way the external app pushes one, into this shop.
+  const draftRef = `250816DR${SUFFIX}`;
+  const draftId = await page.evaluate(
+    async ({ draft, shop }: { draft: string; shop: string }) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const res = await fetch("http://localhost:8081/warehouse.selling.v1.OrderDraftService/OrderDraftPush", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId: "1", source: "e2e-scraper", externalId: draft, shopId: shop, customerName: "Budi" }),
+      });
+      if (res.status !== 200) throw new Error(`OrderDraftPush: ${res.status} ${await res.text()}`);
+
+      return ((await res.json()) as { draft: { id: string } }).draft.id;
+    },
+    { draft: draftRef, shop: shopId },
+  );
+
+  await fillOrderForm(page, customer, draftRef);
+  await page.getByTestId("order-create-save").click();
+  await expect(dialog).toBeVisible();
+  const draftLink = dialog.getByTestId(`duplicate-ref-draft-link-${draftId}`);
+  await expect(draftLink).toHaveText(`Draft #${draftId}`);
+  await expect(draftLink).toHaveAttribute("href", `/orders/new?draft=${draftId}`);
+  await expect(dialog.getByTestId(`duplicate-ref-draft-${draftId}`)).toContainText(`created ${today}`);
+  await expect(dialog.locator('[data-testid^="duplicate-ref-order-"]')).toHaveCount(0);
+  await dialog.getByTestId("duplicate-ref-go-back").click();
+  await expect(dialog).toBeHidden();
+
+  // The draft is left as it was found — deleted here so the drafts screen of a later spec starts as it did.
+  const deleted = await page.evaluate(async (id: string) => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ??
+      window.localStorage.getItem("warehouse_revamp.token");
+
+    const res = await fetch("http://localhost:8081/warehouse.selling.v1.OrderDraftService/OrderDraftDelete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ teamId: "1", draftIds: [id] }),
+    });
+
+    return res.status;
+  }, draftId);
+  expect(deleted).toBe(200);
+});
+
+// WAREHOUSE FEE, END TO END (the-warehouse-fee-prototype-is-accepted): an order's frozen fee reaches Analytic through the
+// order metrics' fold — OrderPlaced adds +1 and the fee on the placement day, OrderCancelled takes both back on the
+// cancel's day (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day), so placing and cancelling one
+// order today nets the day back to where it stood. The warehouse reads the amount too (a-warehouse-sees-its-own-fee-amount).
+// Read as DELTAS from a settled baseline: root reads every order this spec placed. LAST in the file: it places an order.
+test("Analytic: an order's warehouse fee counts when placed and nets back when cancelled", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const digits = (text: string | null) => Number((text ?? "").replace(/[^\d-]/g, ""));
+  const readFee = async (url = "/analytic?g=warehouse&m=metrics/warehouse_fee") => {
+    await page.goto(url);
+    await expect(page.getByTestId("analytic-page")).toBeVisible();
+    const count = page.getByTestId("analytic-headline-transaction_count-value");
+    const amount = page.getByTestId("analytic-headline-amount-value");
+    await expect(amount).toBeVisible({ timeout: 10_000 });
+
+    return `${digits(await count.textContent())}|${digits(await amount.textContent())}`;
+  };
+
+  // A SETTLED BASELINE — the earlier tests' folds have landed when two reads a few seconds apart agree.
+  let previous = "";
+  await expect
+    .poll(
+      async () => {
+        const now = await readFee();
+        const settled = now === previous;
+        previous = now;
+
+        return settled;
+      },
+      { timeout: 45_000, intervals: [3_000] },
+    )
+    .toBe(true);
+  const [baseCount, baseAmount] = previous.split("|").map(Number) as [number, number];
+
+  // Place one order; its fee is the one frozen on it, read off its detail.
+  await placeOrderViaForm(page, `${CUSTOMER} warehouse-fee`);
+  const orderUrl = page.url();
+  const fee = digits(await page.getByTestId("money-fees").textContent());
+  expect(fee).toBeGreaterThan(0);
+
+  // PLACED — one more fee transaction and the fee, once the push has been folded.
+  await expect.poll(() => readFee(), { timeout: 45_000, intervals: [1_000, 2_000, 3_000] }).toBe(
+    `${baseCount + 1}|${baseAmount + fee}`,
+  );
+
+  // THE WAREHOUSE READS THE AMOUNT — its own income, by seller (a-warehouse-sees-its-own-fee-amount).
+  await switchToWarehouse(page);
+  await page.goto("/analytic?g=team&m=metrics/warehouse_fee");
+  await expect(page.getByTestId("analytic-page")).toBeVisible();
+  await expect
+    .poll(async () => digits(await page.getByTestId("analytic-headline-amount-value").textContent()), { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(fee);
+
+  // CANCELLED — the cancel takes the fee back on its own day (today), so the day nets back to the baseline.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto(orderUrl);
+  await page.getByTestId("order-action-cancel").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("order-detail-page")).toContainText("Cancelled");
+
+  await expect.poll(() => readFee(), { timeout: 45_000, intervals: [1_000, 2_000, 3_000] }).toBe(
+    `${baseCount}|${baseAmount}`,
+  );
 });

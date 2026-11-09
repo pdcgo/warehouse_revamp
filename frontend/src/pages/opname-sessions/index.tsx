@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Card, Flex, Heading, HStack, Icon, Span, Spinner, Stack, Table, Tabs, Text } from "@chakra-ui/react";
@@ -7,7 +8,7 @@ import { ClipboardList, Eye, Plus } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { type OpnameSession, OpnameSessionStatus } from "../../gen/warehouse/inventory/v1/opname_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActiveOpnameSession, useOpnameSessions } from "../../features/opname/queries";
 import { OpnamePlanBadge, OpnameSessionStatusBadge } from "../../features/opname/OpnameBadges";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
@@ -28,8 +29,7 @@ const TABS = [
 // come here to find the ONE active count and start counting (one-active-count-per-warehouse), so that count stands at the
 // top, above the history, with its own Count button.
 //
-// ⚠ PROTOTYPE until design_accept: it runs against Storybook's stub; in the app OpnameService answers Unimplemented. It
-// sits BESIDE the old one-rack opname page (/inventories/opname), which the backend step replaces.
+// Built on OpnameService (inventory_v1/opname_*.go, accepted 2026-11-02 — the-count-prototype-is-accepted). It replaced the one-rack count page; /inventories/opname redirects here.
 export function OpnameSessionsPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
@@ -44,6 +44,8 @@ export function OpnameSessionsPage() {
   const teamId = current?.teamId;
   const status = TABS.find((x) => x.value === tab)!.status;
   const manager = canManageOpname(current?.role);
+  // `manager` also decides a READ (the watch page); starting and counting are writes, gated on canWrite as well.
+  const writable = canWrite(current);
 
   const list = useOpnameSessions({ teamId, status, page, pageSize });
   const active = useActiveOpnameSession(teamId);
@@ -59,7 +61,7 @@ export function OpnameSessionsPage() {
 
   const sessions = list.data?.sessions ?? [];
   const actors = list.data?.actors ?? new Map<string, PublicUser>();
-  const nameOf = (id: bigint) => (id > 0n ? (actors.get(id.toString())?.name ?? `#${id}`) : "");
+  const nameOf = (id: bigint) => (id > 0n ? personName(actors.get(id.toString()), `#${id}`) : "");
   const error = list.isError ? rpcError(list.error) : active.isError ? rpcError(active.error) : "";
   const activeSession = active.data ?? null;
 
@@ -80,7 +82,7 @@ export function OpnameSessionsPage() {
             {t("opnameSession.subtitle")}
           </Text>
         </Stack>
-        {manager && (
+        {manager && writable && (
           <Button
             size="xs"
             colorPalette="brand"
@@ -120,15 +122,17 @@ export function OpnameSessionsPage() {
               </Text>
             )}
             <HStack gap="2" pt="1" wrap="wrap">
-              <Button
-                size="xs"
-                colorPalette="brand"
-                onClick={() => navigate(`/inventories/opname/sessions/${activeSession.id}/count`)}
-                data-testid="opname-active-count"
-              >
-                <Icon as={ClipboardList} boxSize="4" />
-                {t("opnameSession.active.count")}
-              </Button>
+              {writable && (
+                <Button
+                  size="xs"
+                  colorPalette="brand"
+                  onClick={() => navigate(`/inventories/opname/sessions/${activeSession.id}/count`)}
+                  data-testid="opname-active-count"
+                >
+                  <Icon as={ClipboardList} boxSize="4" />
+                  {t("opnameSession.active.count")}
+                </Button>
+              )}
               {manager && (
                 <Button
                   size="xs"

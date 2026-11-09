@@ -115,6 +115,26 @@ export const ThePickerShowsTheMembersAtOnce: Story = {
   },
 };
 
+/** A grant GIVES a shop, so the picker never offers a suspended member (a-suspended-user-is-never-picked): Citra is one of
+ * Toko Melati's Customer Service, suspended — absent, while Eko is there. */
+export const ThePickerNeverOffersASuspendedMember: Story = {
+  name: "No suspended member",
+  render: () => <AtStore />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(within(canvas.getByTestId("shop-users-section")).getByRole("combobox"));
+    const eko = await screen.findByTestId("user-select-option-eko", {}, { timeout: 3000 });
+    await waitFor(() => expect(eko).toBeVisible());
+    await expect(screen.queryByTestId("user-select-option-citra")).toBeNull();
+
+    // Typed for by name, still not offered.
+    await userEvent.type(within(canvas.getByTestId("shop-users-section")).getByRole("combobox"), "cit", { delay: 40 });
+    await waitFor(() => expect(screen.queryByTestId("user-select-option-eko")).toBeNull());
+    await expect(screen.queryByTestId("user-select-option-citra")).toBeNull();
+  },
+};
+
 /** Removing a grant confirms first; removing the PRIMARY's leaves the shop with none. */
 export const RemovingThePrimaryLeavesNone: Story = {
   name: "Remove the primary",

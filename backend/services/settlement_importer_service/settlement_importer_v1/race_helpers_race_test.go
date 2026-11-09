@@ -239,7 +239,7 @@ func raceCheckImports(t *testing.T, db *gorm.DB, shopID uint64, platform string,
 			case "posted":
 				counted.RowsPosted++
 
-				if line.Reason == "no_order" {
+				if line.Reason == "no_order" || line.Reason == "several_orders" {
 					counted.RowsPostedToShop++
 				}
 			case "existing":

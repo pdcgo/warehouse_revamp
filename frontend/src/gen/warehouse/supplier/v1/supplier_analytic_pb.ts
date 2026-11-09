@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/supplier/v1/supplier_analytic.proto.
  */
 export const file_warehouse_supplier_v1_supplier_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Ci13YXJlaG91c2Uvc3VwcGxpZXIvdjEvc3VwcGxpZXJfYW5hbHl0aWMucHJvdG8SFXdhcmVob3VzZS5zdXBwbGllci52MSLYAgoOU3VwcGxpZXJNZXRyaWMSIQoNcmVzdG9ja19jb3VudBgBIAEoA0IKmrUYAggBoLUYAhIlChFyZXN0b2NrX3ZhbHVhdGlvbhgCIAEoA0IKmrUYAggBoLUYAxInChNzaGlwcGluZ19sb3N0X2NvdW50GAMgASgDQgqatRgCCAGgtRgCEisKF3NoaXBwaW5nX2xvc3RfdmFsdWF0aW9uGAQgASgDQgqatRgCCAGgtRgDEikKFXNoaXBwaW5nX2Jyb2tlbl9jb3VudBgFIAEoA0IKmrUYAggBoLUYAhItChlzaGlwcGluZ19icm9rZW5fdmFsdWF0aW9uGAYgASgDQgqatRgCCAGgtRgDEiEKC2Jyb2tlbl9yYXRlGAcgASgBQgyatRgECAEQMqC1GAE6KZq1GCUKBAEEBgkSAQEaBwECAwQFCAYiEW1ldHJpY3Mvc3VwcGxpZXJzIq4BChJTdXBwbGllck1ldHJpY0J5SUQSQwoFaXRlbXMYASADKAsyNC53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWNCeUlELkl0ZW1zRW50cnkaUwoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSNAoFdmFsdWUYAiABKAsyJS53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWM6AjgBIrABChNTdXBwbGllck1ldHJpY0J5RGF5EkQKBWl0ZW1zGAEgAygLMjUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpTCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRI0CgV2YWx1ZRgCIAEoCzIlLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllck1ldHJpYzoCOAEizAIKE01ldHJpY1NlYXJjaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESRQoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCDLpICYIBBhABIAAgARJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAYSPAoEc29ydBgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY1NvcnRCBrpIA8gBARJCCgRwYWdlGAUgASgLMiwud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuUGFnaW5hdGlvbkZpbHRlckIGukgDyAEBOguStRgHCgUBAgMEBSJeChRNZXRyaWNTZWFyY2hSZXNwb25zZRI0CgRrZXlzGAEgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIQCghoYXNfbmV4dBgCIAEoCCKeAgoRTWV0cmljRGF0YVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQwoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCrpIB4IBBBABIAASQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhAGEjQKBGtleXMYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEiAKCm1ldHJpY19pZHMYBSADKAlCDLpICZIBBggBEAoYAToLkrUYBwoFAQIDBAUi4AEKCk1ldHJpY0RhdGESQwoOc3VwcGxpZXJfYnlfaWQYASABKAsyKS53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWNCeUlESAASRQoPc3VwcGxpZXJfYnlfZGF5GAIgASgLMioud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljQnlEYXlIABJBChBzdXBwbGllcl9zdW1tYXJ5GAMgASgLMiUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljSABCAwoBbSJNChJNZXRyaWNEYXRhUmVzcG9uc2USNwoMbWV0cmljX2RhdGFzGAEgAygLMiEud2FyZWhvdXNlLnN1cHBsaWVyLnYxLk1ldHJpY0RhdGEiYQocQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVxdWVzdBI3CgpzdGFydF9kYXRlGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JDoIkrUYBAoCAQIihQEKHUFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlc3BvbnNlEg4KBnN0YXR1cxgBIAEoCRIbChNkZWxldGVkX3JlcG9ydF9yb3dzGAIgASgDEhoKEmRlbGV0ZWRfZXZlbnRfbG9ncxgDIAEoAxIbChNlYXJsaWVzdF9zdGFydF9kYXRlGAQgASgJIikKHUFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXF1ZXN0OgiStRgECgIBAiJMCh5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVzcG9uc2USGgoSZGVsZXRlZF9ldmVudF9sb2dzGAEgASgDEg4KBmN1dG9mZhgCIAEoCTLlAQoXU3VwcGxpZXJBbmFseXRpY1NlcnZpY2USZwoMTWV0cmljU2VhcmNoEioud2FyZWhvdXNlLnN1cHBsaWVyLnYxLk1ldHJpY1NlYXJjaFJlcXVlc3QaKy53YXJlaG91c2Uuc3VwcGxpZXIudjEuTWV0cmljU2VhcmNoUmVzcG9uc2USYQoKTWV0cmljRGF0YRIoLndhcmVob3VzZS5zdXBwbGllci52MS5NZXRyaWNEYXRhUmVxdWVzdBopLndhcmVob3VzZS5zdXBwbGllci52MS5NZXRyaWNEYXRhUmVzcG9uc2UysQIKIlN1cHBsaWVyQW5hbHl0aWNNYWludGVuYW5jZVNlcnZpY2USggEKFUFuYWx5dGljUmVwbGF5Q29tcHV0ZRIzLndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY1JlcGxheUNvbXB1dGVSZXF1ZXN0GjQud2FyZWhvdXNlLnN1cHBsaWVyLnYxLkFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlc3BvbnNlEoUBChZBbmFseXRpY01haW50ZW5hbmNlUnVuEjQud2FyZWhvdXNlLnN1cHBsaWVyLnYxLkFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXF1ZXN0GjUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLkFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXNwb25zZUJQWk5naXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3N1cHBsaWVyL3YxO3N1cHBsaWVydjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
+  fileDesc("Ci13YXJlaG91c2Uvc3VwcGxpZXIvdjEvc3VwcGxpZXJfYW5hbHl0aWMucHJvdG8SFXdhcmVob3VzZS5zdXBwbGllci52MSKaAwoOU3VwcGxpZXJNZXRyaWMSIQoNcmVzdG9ja19jb3VudBgBIAEoA0IKmrUYAggBoLUYAhIlChFyZXN0b2NrX3ZhbHVhdGlvbhgCIAEoAUIKmrUYAggBoLUYAxInChNzaGlwcGluZ19sb3N0X2NvdW50GAMgASgDQgqatRgCCAGgtRgCEisKF3NoaXBwaW5nX2xvc3RfdmFsdWF0aW9uGAQgASgBQgqatRgCCAGgtRgDEikKFXNoaXBwaW5nX2Jyb2tlbl9jb3VudBgFIAEoA0IKmrUYAggBoLUYAhItChlzaGlwcGluZ19icm9rZW5fdmFsdWF0aW9uGAYgASgBQgqatRgCCAGgtRgDEiEKC2Jyb2tlbl9yYXRlGAcgASgBQgyatRgECAEQMqC1GAESHwoLc2FsZXNfY291bnQYCCABKANCCpq1GAIIAaC1GAISHwoLc2FsZXNfdmFsdWUYCSABKAFCCpq1GAIIAaC1GAM6KZq1GCUKBAEEBgkSAQEaBwECAwQFCAYiEW1ldHJpY3Mvc3VwcGxpZXJzIq4BChJTdXBwbGllck1ldHJpY0J5SUQSQwoFaXRlbXMYASADKAsyNC53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWNCeUlELkl0ZW1zRW50cnkaUwoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSNAoFdmFsdWUYAiABKAsyJS53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWM6AjgBIrABChNTdXBwbGllck1ldHJpY0J5RGF5EkQKBWl0ZW1zGAEgAygLMjUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpTCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRI0CgV2YWx1ZRgCIAEoCzIlLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllck1ldHJpYzoCOAEizAIKE01ldHJpY1NlYXJjaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESRQoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCDLpICYIBBhABIAAgARJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAYSPAoEc29ydBgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY1NvcnRCBrpIA8gBARJCCgRwYWdlGAUgASgLMiwud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuUGFnaW5hdGlvbkZpbHRlckIGukgDyAEBOguStRgHCgUBAgMEBSJeChRNZXRyaWNTZWFyY2hSZXNwb25zZRI0CgRrZXlzGAEgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIQCghoYXNfbmV4dBgCIAEoCCKeAgoRTWV0cmljRGF0YVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQwoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCrpIB4IBBBABIAASQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhAGEjQKBGtleXMYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEiAKCm1ldHJpY19pZHMYBSADKAlCDLpICZIBBggBEAoYAToLkrUYBwoFAQIDBAUi4AEKCk1ldHJpY0RhdGESQwoOc3VwcGxpZXJfYnlfaWQYASABKAsyKS53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJNZXRyaWNCeUlESAASRQoPc3VwcGxpZXJfYnlfZGF5GAIgASgLMioud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljQnlEYXlIABJBChBzdXBwbGllcl9zdW1tYXJ5GAMgASgLMiUud2FyZWhvdXNlLnN1cHBsaWVyLnYxLlN1cHBsaWVyTWV0cmljSABCAwoBbSJhChJNZXRyaWNEYXRhUmVzcG9uc2USNwoMbWV0cmljX2RhdGFzGAEgAygLMiEud2FyZWhvdXNlLnN1cHBsaWVyLnYxLk1ldHJpY0RhdGESEgoKYXNfb2ZfdW5peBgCIAEoAyLYAQobU3VwcGxpZXJGaWd1cmVFeHBvcnRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkkKCGdyb3VwX2J5GAIgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQhC6SA2CAQoQARgCGAQYBRgGEkMKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgq6SAeSAQQIAhAGOguStRgHCgUBAgMEBSJ0ChxTdXBwbGllckZpZ3VyZUV4cG9ydFJlc3BvbnNlEg8KB21lc3NhZ2UYASABKAkSDAoEZG9uZRgCIAEoAxINCgV0b3RhbBgDIAEoAxIUCgxkb3dubG9hZF91cmwYBCABKAkSEAoIZmlsZW5hbWUYBSABKAkiywEKG1N1cHBsaWVyUmVwb3J0RXhwb3J0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJDCgdmaWx0ZXJzGAIgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIKukgHkgEECAEQAxI8CgRzb3J0GAMgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljU29ydEIGukgDyAEBOguStRgHCgUBAgMEBSJ0ChxTdXBwbGllclJlcG9ydEV4cG9ydFJlc3BvbnNlEg8KB21lc3NhZ2UYASABKAkSDAoEZG9uZRgCIAEoAxINCgV0b3RhbBgDIAEoAxIUCgxkb3dubG9hZF91cmwYBCABKAkSEAoIZmlsZW5hbWUYBSABKAkiYQocQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVxdWVzdBI3CgpzdGFydF9kYXRlGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JDoIkrUYBAoCAQIihQEKHUFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlc3BvbnNlEg4KBnN0YXR1cxgBIAEoCRIbChNkZWxldGVkX3JlcG9ydF9yb3dzGAIgASgDEhoKEmRlbGV0ZWRfZXZlbnRfbG9ncxgDIAEoAxIbChNlYXJsaWVzdF9zdGFydF9kYXRlGAQgASgJIikKHUFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXF1ZXN0OgiStRgECgIBAiJMCh5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVzcG9uc2USGgoSZGVsZXRlZF9ldmVudF9sb2dzGAEgASgDEg4KBmN1dG9mZhgCIAEoCTL3AwoXU3VwcGxpZXJBbmFseXRpY1NlcnZpY2USbAoMTWV0cmljU2VhcmNoEioud2FyZWhvdXNlLnN1cHBsaWVyLnYxLk1ldHJpY1NlYXJjaFJlcXVlc3QaKy53YXJlaG91c2Uuc3VwcGxpZXIudjEuTWV0cmljU2VhcmNoUmVzcG9uc2UiA5ACARJmCgpNZXRyaWNEYXRhEigud2FyZWhvdXNlLnN1cHBsaWVyLnYxLk1ldHJpY0RhdGFSZXF1ZXN0Gikud2FyZWhvdXNlLnN1cHBsaWVyLnYxLk1ldHJpY0RhdGFSZXNwb25zZSIDkAIBEoEBChRTdXBwbGllckZpZ3VyZUV4cG9ydBIyLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllckZpZ3VyZUV4cG9ydFJlcXVlc3QaMy53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJGaWd1cmVFeHBvcnRSZXNwb25zZTABEoEBChRTdXBwbGllclJlcG9ydEV4cG9ydBIyLndhcmVob3VzZS5zdXBwbGllci52MS5TdXBwbGllclJlcG9ydEV4cG9ydFJlcXVlc3QaMy53YXJlaG91c2Uuc3VwcGxpZXIudjEuU3VwcGxpZXJSZXBvcnRFeHBvcnRSZXNwb25zZTABMrECCiJTdXBwbGllckFuYWx5dGljTWFpbnRlbmFuY2VTZXJ2aWNlEoIBChVBbmFseXRpY1JlcGxheUNvbXB1dGUSMy53YXJlaG91c2Uuc3VwcGxpZXIudjEuQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVxdWVzdBo0LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY1JlcGxheUNvbXB1dGVSZXNwb25zZRKFAQoWQW5hbHl0aWNNYWludGVuYW5jZVJ1bhI0LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdBo1LndhcmVob3VzZS5zdXBwbGllci52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVzcG9uc2VCUFpOZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zdXBwbGllci92MTtzdXBwbGllcnYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
 
 /**
  * THE SIX FIGURES (each-figure-is-read-at-the-accept) and the broken rate. All six are movements, so a period, a
@@ -37,9 +37,9 @@ export type SupplierMetric = Message<"warehouse.supplier.v1.SupplierMetric"> & {
   restockCount: bigint;
 
   /**
-   * @generated from field: int64 restock_valuation = 2;
+   * @generated from field: double restock_valuation = 2;
    */
-  restockValuation: bigint;
+  restockValuation: number;
 
   /**
    * Units short in an accepted parcel.
@@ -49,9 +49,9 @@ export type SupplierMetric = Message<"warehouse.supplier.v1.SupplierMetric"> & {
   shippingLostCount: bigint;
 
   /**
-   * @generated from field: int64 shipping_lost_valuation = 4;
+   * @generated from field: double shipping_lost_valuation = 4;
    */
-  shippingLostValuation: bigint;
+  shippingLostValuation: number;
 
   /**
    * Units that arrived broken.
@@ -61,9 +61,9 @@ export type SupplierMetric = Message<"warehouse.supplier.v1.SupplierMetric"> & {
   shippingBrokenCount: bigint;
 
   /**
-   * @generated from field: int64 shipping_broken_valuation = 6;
+   * @generated from field: double shipping_broken_valuation = 6;
    */
-  shippingBrokenValuation: bigint;
+  shippingBrokenValuation: number;
 
   /**
    * broken ÷ (restocked + lost + broken), 0 to 1 — 0 when nothing arrived, so read the counts to tell no rate from a
@@ -73,6 +73,23 @@ export type SupplierMetric = Message<"warehouse.supplier.v1.SupplierMetric"> & {
    * @generated from field: double broken_rate = 7;
    */
   brokenRate: number;
+
+  /**
+   * PENJUALAN — units SOLD to a buyer from the supplier's goods (batches carrying its id), counted on the Jakarta day
+   * the order was placed; a cancel takes them back on the cancel's day, so a day may read negative
+   * (penjualan-is-the-selling-value-on-the-order-day). TEAM is the team that owns the goods — the restocking team.
+   *
+   * @generated from field: int64 sales_count = 8;
+   */
+  salesCount: bigint;
+
+  /**
+   * Their SELLING value, rupiah, exact: each order line's share of the order's `platform_total` (by the line's frozen
+   * total), spread over the line's units — the units from this supplier's batches at that price.
+   *
+   * @generated from field: double sales_value = 9;
+   */
+  salesValue: number;
 };
 
 /**
@@ -273,6 +290,19 @@ export type MetricDataResponse = Message<"warehouse.supplier.v1.MetricDataRespon
    * @generated from field: repeated warehouse.supplier.v1.MetricData metric_datas = 1;
    */
   metricDatas: MetricData[];
+
+  /**
+   * AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+   * `supplier_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+   * behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+   * every metric it serves shares it. 0 = nothing folded yet.
+   *
+   * ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+   * dead-letter topic and the lease's log.
+   *
+   * @generated from field: int64 as_of_unix = 2;
+   */
+  asOfUnix: bigint;
 };
 
 /**
@@ -281,6 +311,167 @@ export type MetricDataResponse = Message<"warehouse.supplier.v1.MetricDataRespon
  */
 export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_supplier_v1_supplier_analytic, 7);
+
+/**
+ * THE STATISTIK TAB AS A FILE — the view's own read, every page (each-supplier-tab-exports-its-own-table).
+ *
+ * @generated from message warehouse.supplier.v1.SupplierFigureExportRequest
+ */
+export type SupplierFigureExportRequest = Message<"warehouse.supplier.v1.SupplierFigureExportRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * THE VIEW: DAILY, MONTHLY or YEARLY is Per Periode at that grain; PRODUCT is Per Produk. The Supplier Report's
+   * ranking (SUPPLIER) is not offered here — its file is SupplierReportExport.
+   *
+   * @generated from field: warehouse.analytic_base.v1.GroupType group_by = 2;
+   */
+  groupBy: GroupType;
+
+  /**
+   * The tab's own filters — the window (required), the supplier (required), and whose restocks when one team is picked.
+   *
+   * @generated from field: repeated warehouse.analytic_base.v1.FilterItem filters = 3;
+   */
+  filters: FilterItem[];
+};
+
+/**
+ * Describes the message warehouse.supplier.v1.SupplierFigureExportRequest.
+ * Use `create(SupplierFigureExportRequestSchema)` to create a new message.
+ */
+export const SupplierFigureExportRequestSchema: GenMessage<SupplierFigureExportRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 8);
+
+/**
+ * One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+ * the file.
+ *
+ * @generated from message warehouse.supplier.v1.SupplierFigureExportResponse
+ */
+export type SupplierFigureExportResponse = Message<"warehouse.supplier.v1.SupplierFigureExportResponse"> & {
+  /**
+   * A sentence about the step.
+   *
+   * @generated from field: string message = 1;
+   */
+  message: string;
+
+  /**
+   * Rows written so far, of the total the view holds.
+   *
+   * @generated from field: int64 done = 2;
+   */
+  done: bigint;
+
+  /**
+   * @generated from field: int64 total = 3;
+   */
+  total: bigint;
+
+  /**
+   * Set on the LAST message only: the file's expiring link, and its name.
+   *
+   * @generated from field: string download_url = 4;
+   */
+  downloadUrl: string;
+
+  /**
+   * @generated from field: string filename = 5;
+   */
+  filename: string;
+};
+
+/**
+ * Describes the message warehouse.supplier.v1.SupplierFigureExportResponse.
+ * Use `create(SupplierFigureExportResponseSchema)` to create a new message.
+ */
+export const SupplierFigureExportResponseSchema: GenMessage<SupplierFigureExportResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 9);
+
+/**
+ * THE SUPPLIER REPORT AS A FILE — the ranking's own reads, every page (a-report-export-is-the-whole-view-as-a-file).
+ *
+ * @generated from message warehouse.supplier.v1.SupplierReportExportRequest
+ */
+export type SupplierReportExportRequest = Message<"warehouse.supplier.v1.SupplierReportExportRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The report's own filters — the window (required), whose restocks when one team is picked, and the search. Never a
+   * supplier: a file of one supplier is its Statistik tab's (SupplierFigureExport).
+   *
+   * @generated from field: repeated warehouse.analytic_base.v1.FilterItem filters = 2;
+   */
+  filters: FilterItem[];
+
+  /**
+   * The report's order — `metrics/suppliers` by restock_valuation or broken_rate, as its "Urutkan" picks; the server
+   * ranks exactly as MetricSearch does (the rate's minimum sample included).
+   *
+   * @generated from field: warehouse.analytic_base.v1.MetricSort sort = 3;
+   */
+  sort?: MetricSort | undefined;
+};
+
+/**
+ * Describes the message warehouse.supplier.v1.SupplierReportExportRequest.
+ * Use `create(SupplierReportExportRequestSchema)` to create a new message.
+ */
+export const SupplierReportExportRequestSchema: GenMessage<SupplierReportExportRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 10);
+
+/**
+ * One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+ * the file.
+ *
+ * @generated from message warehouse.supplier.v1.SupplierReportExportResponse
+ */
+export type SupplierReportExportResponse = Message<"warehouse.supplier.v1.SupplierReportExportResponse"> & {
+  /**
+   * A sentence about the step.
+   *
+   * @generated from field: string message = 1;
+   */
+  message: string;
+
+  /**
+   * Rows written so far, of the total the ranking holds.
+   *
+   * @generated from field: int64 done = 2;
+   */
+  done: bigint;
+
+  /**
+   * @generated from field: int64 total = 3;
+   */
+  total: bigint;
+
+  /**
+   * Set on the LAST message only: the file's expiring link, and its name.
+   *
+   * @generated from field: string download_url = 4;
+   */
+  downloadUrl: string;
+
+  /**
+   * @generated from field: string filename = 5;
+   */
+  filename: string;
+};
+
+/**
+ * Describes the message warehouse.supplier.v1.SupplierReportExportResponse.
+ * Use `create(SupplierReportExportResponseSchema)` to create a new message.
+ */
+export const SupplierReportExportResponseSchema: GenMessage<SupplierReportExportResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 11);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticReplayComputeRequest
@@ -300,7 +491,7 @@ export type AnalyticReplayComputeRequest = Message<"warehouse.supplier.v1.Analyt
  * Use `create(AnalyticReplayComputeRequestSchema)` to create a new message.
  */
 export const AnalyticReplayComputeRequestSchema: GenMessage<AnalyticReplayComputeRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 8);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 12);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticReplayComputeResponse
@@ -336,7 +527,7 @@ export type AnalyticReplayComputeResponse = Message<"warehouse.supplier.v1.Analy
  * Use `create(AnalyticReplayComputeResponseSchema)` to create a new message.
  */
 export const AnalyticReplayComputeResponseSchema: GenMessage<AnalyticReplayComputeResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 9);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 13);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticMaintenanceRunRequest
@@ -349,7 +540,7 @@ export type AnalyticMaintenanceRunRequest = Message<"warehouse.supplier.v1.Analy
  * Use `create(AnalyticMaintenanceRunRequestSchema)` to create a new message.
  */
 export const AnalyticMaintenanceRunRequestSchema: GenMessage<AnalyticMaintenanceRunRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 10);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 14);
 
 /**
  * @generated from message warehouse.supplier.v1.AnalyticMaintenanceRunResponse
@@ -375,7 +566,7 @@ export type AnalyticMaintenanceRunResponse = Message<"warehouse.supplier.v1.Anal
  * Use `create(AnalyticMaintenanceRunResponseSchema)` to create a new message.
  */
 export const AnalyticMaintenanceRunResponseSchema: GenMessage<AnalyticMaintenanceRunResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 11);
+  messageDesc(file_warehouse_supplier_v1_supplier_analytic, 15);
 
 /**
  * A SUPPLIER'S FIGURES — what was restocked from it, and how much of that was lost or broken on the way
@@ -389,6 +580,11 @@ export const AnalyticMaintenanceRunResponseSchema: GenMessage<AnalyticMaintenanc
  * ⚠ EVERY NUMBER HERE IS READ FROM A FOLDED TABLE — `supplier_product_daily_reports`, built by supplier_service's own
  * webhook consuming `RestockAccepted` (the-report-is-processed-like-settlement). A figure can lag the accept by the
  * broker's delivery time, and never by more than that.
+ *
+ * PENJUALAN (penjualan-is-the-selling-value-on-the-order-day) is folded beside them, into its OWN table
+ * `supplier_sale_daily_reports`, by the same service's webhook consuming `OrderPlaced` and `OrderCancelled` — the units
+ * the order's stock take drew from batches carrying the supplier (read from inventory through an in-process seam), at
+ * their share of what the order sold them for, on the order's Jakarta day; a cancel takes them back on its own day.
  *
  * ⚠ EVERY SELLING TEAM READS EVERY TEAM'S FIGURES (every-selling-team-sees-every-teams-figures). `team_id` is the
  * CALLER's scope, as on every read; a TeamFilter narrows to whose restocks are counted.
@@ -415,6 +611,33 @@ export const SupplierAnalyticService: GenService<{
     methodKind: "unary";
     input: typeof MetricDataRequestSchema;
     output: typeof MetricDataResponseSchema;
+  },
+  /**
+   * THE STATISTIK TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): the view
+   * on screen — Per Periode (every period of the window at its grain, newest first, the quiet ones included) or Per
+   * Produk (every product, ranked as the tab ranks them) — over the tab's own filters, every page, in the tab's columns,
+   * as .xlsx. A server stream: progress, then an expiring link. Not a read: it stores a file, so a monitor and an agent
+   * are refused (the-admin-team-monitors-read-only).
+   *
+   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.SupplierFigureExport
+   */
+  supplierFigureExport: {
+    methodKind: "server_streaming";
+    input: typeof SupplierFigureExportRequestSchema;
+    output: typeof SupplierFigureExportResponseSchema;
+  },
+  /**
+   * THE SUPPLIER REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+   * WHOLE ranking as narrowed — the report's own window, team and search, in its own order — every page, each supplier
+   * with its figures in the report's columns, as .xlsx. A server stream: progress, then an expiring link. Not a read: it
+   * stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+   *
+   * @generated from rpc warehouse.supplier.v1.SupplierAnalyticService.SupplierReportExport
+   */
+  supplierReportExport: {
+    methodKind: "server_streaming";
+    input: typeof SupplierReportExportRequestSchema;
+    output: typeof SupplierReportExportResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_supplier_v1_supplier_analytic, 0);

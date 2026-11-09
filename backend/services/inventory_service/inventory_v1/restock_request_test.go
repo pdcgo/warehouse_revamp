@@ -1,6 +1,8 @@
 package inventory_v1_test
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -9,6 +11,7 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
+	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"gorm.io/gorm"
 )
 
@@ -82,7 +85,7 @@ func TestRestockRequest_CreateListAccept(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 5000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 5000},
 		},
 	}))
 	if err != nil {
@@ -168,7 +171,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -262,8 +265,8 @@ func TestRestockRequest_Detail(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse, Receipt: "JP99",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 2, Total: 1500},
-			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 5, Total: 700},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 2, Total: 1500},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Gadget", Count: 5, Total: 700},
 		},
 	}))
 	if err != nil {
@@ -338,7 +341,7 @@ func TestRestockRequest_InvoiceRefPaymentAndNote(t *testing.T) {
 		FinanceAccountId: 7,
 		Note:             "titip ke driver, jangan ditinggal di pos",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 3, Total: 4000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 3, Total: 4000},
 		},
 	}))
 	if err != nil {
@@ -405,7 +408,7 @@ func TestRestockRequest_PaymentContextOptional(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 		},
 	}))
 	if err != nil {
@@ -435,10 +438,10 @@ func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 4, Total: 5000},
-			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 7, Total: 12500},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 4, Total: 5000},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Gadget", Count: 7, Total: 12500},
 			// Price 0 is legitimate — a transfer or a sample, not a mistake.
-			{ProductId: 300, Sku: "SKU3", Name: "Freebie", Count: 1},
+			{ProductId: 300, ProductCode: "SKU3", Name: "Freebie", Count: 1},
 		},
 	}))
 	if err != nil {
@@ -449,7 +452,7 @@ func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
 	if len(got.GetItems()) != 3 {
 		t.Fatalf("items = %d, want 3", len(got.GetItems()))
 	}
-	if got.GetItems()[1].GetTotal() != 12500 || got.GetItems()[1].GetSku() != "SKU2" {
+	if got.GetItems()[1].GetTotal() != 12500 || got.GetItems()[1].GetProductCode() != "SKU2" {
 		t.Fatalf("line did not round-trip: %+v", got.GetItems()[1])
 	}
 
@@ -500,7 +503,7 @@ func TestRestockRequest_SupplierMustBeLive(t *testing.T) {
 			TeamId: sellingTeam, WarehouseId: 5,
 			InvoiceRefId: "SHP-77", Receipt: "JP1234567890",
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplierID},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplierID},
 			},
 		}))
 
@@ -512,7 +515,7 @@ func TestRestockRequest_SupplierMustBeLive(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: 5,
 		InvoiceRefId: "SHP-77", Receipt: "JP1234567890",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: mine},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: mine},
 		},
 	}))
 	if err != nil {
@@ -545,7 +548,7 @@ func TestRestockRequest_OptionalContextOmitted(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 2, Total: 900},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 2, Total: 900},
 		},
 	}))
 	if err != nil {
@@ -578,8 +581,8 @@ func TestRestockRequest_EachLineKeepsItsOwnSupplier(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: 5,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: first},
-				{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 1, Total: 100, SupplierId: second},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: first},
+				{ProductId: 200, ProductCode: "SKU2", Name: "Gadget", Count: 1, Total: 100, SupplierId: second},
 			},
 		}))
 		if err != nil {
@@ -627,10 +630,10 @@ func TestRestockRequest_AcceptReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Short", Count: 10, Total: 5000},
-			{ProductId: 200, Sku: "SKU2", Name: "Exact", Count: 3, Total: 1000},
-			{ProductId: 300, Sku: "SKU3", Name: "Over", Count: 5, Total: 200},
-			{ProductId: 400, Sku: "SKU4", Name: "Missing", Count: 2, Total: 900},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Short", Count: 10, Total: 5000},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Exact", Count: 3, Total: 1000},
+			{ProductId: 300, ProductCode: "SKU3", Name: "Over", Count: 5, Total: 200},
+			{ProductId: 400, ProductCode: "SKU4", Name: "Missing", Count: 2, Total: 900},
 		},
 	}))
 	if err != nil {
@@ -677,10 +680,10 @@ func TestRestockRequest_AcceptReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId:           sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Short", Count: 10, Total: 5000},
-			{ProductId: 200, Sku: "SKU2", Name: "Exact", Count: 3, Total: 1000},
-			{ProductId: 300, Sku: "SKU3", Name: "Over", Count: 6, Total: 240, Note: "extra stock"},
-			{ProductId: 400, Sku: "SKU4", Name: "Missing", Count: 2, Total: 900},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Short", Count: 10, Total: 5000},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Exact", Count: 3, Total: 1000},
+			{ProductId: 300, ProductCode: "SKU3", Name: "Over", Count: 6, Total: 240, Note: "extra stock"},
+			{ProductId: 400, ProductCode: "SKU4", Name: "Missing", Count: 2, Total: 900},
 		},
 	}))
 	if err != nil {
@@ -796,8 +799,8 @@ func TestRestockRequest_AcceptPutsGoodsOnTheNamedShelf(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500},
-			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 4, Total: 700},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 500},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Gadget", Count: 4, Total: 700},
 		},
 	}))
 	if err != nil {
@@ -882,7 +885,7 @@ func TestRestockRequest_AcceptRefusesArrivedGoodsWithNoPlace(t *testing.T) {
 		created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 3, Total: 500},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 3, Total: 500},
 			},
 		}))
 		if err != nil {
@@ -944,7 +947,7 @@ func TestRestockRequest_AcceptCrossWarehouseRackIsNotFound(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 3, Total: 500},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 3, Total: 500},
 		},
 	}))
 	if err != nil {
@@ -991,7 +994,7 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{
-				ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500,
+				ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 500,
 				ReceivedCount: 10,
 				Placements:    placedOn(shelf, 10),
 				// And writes off two of its own goods while it is at it (#154).
@@ -1022,7 +1025,7 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 		TeamId:           sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{
-				ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500,
+				ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 500,
 				ReceivedCount: 10,
 				Placements:    placedOn(shelf, 10),
 				// And writes off two of its own goods while it is at it (#154).
@@ -1070,8 +1073,8 @@ func TestRestockRequest_AcceptRefusesAnIncompleteCount(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 4, Total: 500},
-			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 6, Total: 700},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 4, Total: 500},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Gadget", Count: 6, Total: 700},
 		},
 	}))
 	if err != nil {
@@ -1147,7 +1150,7 @@ func TestRestockRequest_Update(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 5000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 5000},
 		},
 	}))
 	if err != nil {
@@ -1160,8 +1163,8 @@ func TestRestockRequest_Update(t *testing.T) {
 		// Even the warehouse may change: nothing has been accepted, so nothing is committed to it.
 		WarehouseId: otherWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 3, Total: 1500},
-			{ProductId: 300, Sku: "SKU3", Name: "Gizmo", Count: 7, Total: 250},
+			{ProductId: 200, ProductCode: "SKU2", Name: "Gadget", Count: 3, Total: 1500},
+			{ProductId: 300, ProductCode: "SKU3", Name: "Gizmo", Count: 7, Total: 250},
 		},
 		Receipt: "SC9999", InvoiceRefId: "SHP-42", ShipmentCost: 12000,
 		// The paying account replaced the payment type (a-restock-names-its-paying-account) — an edit names an
@@ -1174,7 +1177,7 @@ func TestRestockRequest_Update(t *testing.T) {
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
 		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId:           9, RequestId: reqID, WarehouseId: warehouse,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: 1, Sku: "X", Name: "X", Count: 1}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: 1, ProductCode: "X", Name: "X", Count: 1}},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-team update code = %v, want NotFound", connect.CodeOf(err))
@@ -1213,8 +1216,8 @@ func TestRestockRequest_Update(t *testing.T) {
 	if len(items) != 2 {
 		t.Fatalf("lines are replaced, not merged: got %d lines, want 2 (%+v)", len(items), items)
 	}
-	if items[0].GetSku() != "SKU2" || items[0].GetCount() != 3 || items[0].GetTotal() != 1500 ||
-		items[1].GetSku() != "SKU3" || items[1].GetCount() != 7 {
+	if items[0].GetProductCode() != "SKU2" || items[0].GetCount() != 3 || items[0].GetTotal() != 1500 ||
+		items[1].GetProductCode() != "SKU3" || items[1].GetCount() != 7 {
 		t.Fatalf("replaced lines wrong: %+v", items)
 	}
 
@@ -1255,7 +1258,7 @@ func TestRestockRequest_UpdateClearsOptionalContext(t *testing.T) {
 		InvoiceRefId: "SHP-1", Receipt: "JP1", ShipmentCost: 9000,
 		Note: "please hurry",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
 		},
 	}))
 	if err != nil {
@@ -1279,7 +1282,7 @@ func TestRestockRequest_UpdateClearsOptionalContext(t *testing.T) {
 		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId:           sellingTeam, RequestId: reqID, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 		},
 	}))
 	if err != nil {
@@ -1320,7 +1323,7 @@ func TestRestockRequest_UpdateOnlyWhileOngoing(t *testing.T) {
 		created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 4, Total: 500},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 4, Total: 500},
 			},
 		}))
 		if err != nil {
@@ -1336,7 +1339,7 @@ func TestRestockRequest_UpdateOnlyWhileOngoing(t *testing.T) {
 			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 			TeamId:           sellingTeam, RequestId: reqID, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 999, Total: 500},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 999, Total: 500},
 			},
 		}))
 
@@ -1401,7 +1404,7 @@ func TestRestockRequest_UpdateSupplierMustBeLive(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 		},
 	}))
 	if err != nil {
@@ -1415,7 +1418,7 @@ func TestRestockRequest_UpdateSupplierMustBeLive(t *testing.T) {
 			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 			TeamId:           sellingTeam, RequestId: reqID, WarehouseId: 5,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplierID},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplierID},
 			},
 		}))
 
@@ -1465,7 +1468,7 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
 		},
 	}))
 	if err != nil {
@@ -1482,7 +1485,7 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 		TeamId:           sellingTeam, RequestId: reqID, WarehouseId: 5,
 		Note: "just fixing a typo",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
 		},
 	}))
 	if err != nil {
@@ -1493,7 +1496,7 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 	fresh, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 		},
 	}))
 	if err != nil {
@@ -1504,7 +1507,7 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId:           sellingTeam, RequestId: fresh.Msg.GetRequest().GetId(), WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
 		},
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeNotFound {
@@ -1520,7 +1523,7 @@ func TestRestockRequest_Cancel(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "S", Name: "N", Count: 3},
+			{ProductId: 100, ProductCode: "S", Name: "N", Count: 3},
 		},
 	}))
 	if err != nil {
@@ -1569,7 +1572,7 @@ func TestRestockRequest_AnAcceptedRestockCannotBeCancelled(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "S", Name: "N", Count: 3, Total: 300},
+			{ProductId: 100, ProductCode: "S", Name: "N", Count: 3, Total: 300},
 		},
 	}))
 	if err != nil {
@@ -1617,7 +1620,7 @@ func TestRestockRequest_AcceptSplitsALineAcrossSeveralShelves(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 100, Total: 1000000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 100, Total: 1000000},
 		},
 	}))
 	if err != nil {
@@ -1684,7 +1687,7 @@ func TestRestockRequest_AcceptRefusesPlacementsThatDoNotAddUp(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 50000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 50000},
 		},
 	}))
 	if err != nil {
@@ -1751,7 +1754,7 @@ func TestRestockRequest_AcceptRecordsDamageWithoutStockingIt(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
@@ -1833,7 +1836,7 @@ func TestRestockRequest_AcceptBrokenIsCountedOutOfReceived(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
@@ -1914,8 +1917,8 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 	twice, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Count: 3, Total: 3000},
-			{ProductId: 300, Sku: "SKU3", Name: "Gizmo", Count: 2, Total: 2000},
+			{ProductId: wanted, ProductCode: "SKU1", Name: "Widget", Count: 3, Total: 3000},
+			{ProductId: 300, ProductCode: "SKU3", Name: "Gizmo", Count: 2, Total: 2000},
 		},
 	}))
 	if err != nil {
@@ -1925,7 +1928,7 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 	_, err = svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: other, Sku: "SKU2", Name: "Gadget", Count: 1, Total: 500},
+			{ProductId: other, ProductCode: "SKU2", Name: "Gadget", Count: 1, Total: 500},
 		},
 	}))
 	if err != nil {
@@ -1962,5 +1965,150 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 	}
 	if len(requestRows(unfiltered.Msg)) != 2 {
 		t.Fatalf("unfiltered list holds %d requests, want 2", len(requestRows(unfiltered.Msg)))
+	}
+}
+
+// fakeAccounts is the PayingAccounts fake: account id → what financial_account_service would answer for the restock's
+// team. An id absent from the map is another team's or unknown — both read as not found.
+type fakeAccounts map[uint64]inventory_v1.PayingAccount
+
+func (f fakeAccounts) Account(_ context.Context, _ uint64, accountID uint64) (inventory_v1.PayingAccount, bool, error) {
+	account, found := f[accountID]
+
+	return account, found, nil
+}
+
+const (
+	accountOperational uint64 = 41
+	accountPlain       uint64 = 42
+	accountArchived    uint64 = 43
+	accountOtherTeams  uint64 = 44
+)
+
+func restockAccounts() fakeAccounts {
+	return fakeAccounts{
+		accountOperational: {Name: "BCA Operasional", Active: true, Operational: true},
+		accountPlain:       {Name: "BCA Tabungan", Active: true},
+		accountArchived:    {Name: "Mandiri Lama", Operational: true},
+	}
+}
+
+// a-restock-names-its-paying-account: the account that paid is one of the restock team's ACTIVE OPERATIONAL accounts.
+// Anything else is FailedPrecondition naming it — an archived one, one not marked operational, and another team's,
+// which reads exactly as one that never existed — and nothing is written.
+func TestRestockRequestCreate_RefusesAnAccountThatIsNotOperational(t *testing.T) {
+	db := san_testdb.DB(t)
+	ctx := ctxUser(1)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, restockAccounts())
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	create := func(account uint64) error {
+		_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+			TeamId: sellingTeam, WarehouseId: warehouse, FinanceAccountId: account,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			},
+		}))
+
+		return err
+	}
+
+	cases := []struct {
+		account uint64
+		names   string
+	}{
+		{accountPlain, "BCA Tabungan"},
+		{accountArchived, "Mandiri Lama"},
+		{accountOtherTeams, "account #44"},
+	}
+
+	for _, c := range cases {
+		err := create(c.account)
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("account %d: code = %v, want FailedPrecondition (%v)", c.account, connect.CodeOf(err), err)
+		}
+
+		if !strings.Contains(err.Error(), c.names) || !strings.Contains(err.Error(), "active operational") {
+			t.Fatalf("account %d: the refusal must name it: %v", c.account, err)
+		}
+	}
+
+	var stored int64
+
+	err := db.Model(&inventory_service_models.Restock{}).Where("team_id = ?", sellingTeam).Count(&stored).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if stored != 0 {
+		t.Fatalf("a refused restock wrote %d rows", stored)
+	}
+
+	err = create(accountOperational)
+	if err != nil {
+		t.Fatalf("an active operational account must be accepted: %v", err)
+	}
+}
+
+// On edit the account is judged like a line's supplier: a CHANGED account must be active and operational, an
+// unchanged one is the restock keeping what it already holds — so un-marking or archiving an account never locks the
+// restocks that already named it.
+func TestRestockRequestUpdate_RefusesAChangedAccountThatIsNotOperational(t *testing.T) {
+	db := san_testdb.DB(t)
+	ctx := ctxUser(1)
+	accounts := restockAccounts()
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, accounts)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, FinanceAccountId: accountOperational,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	reqID := created.Msg.GetRequest().GetId()
+
+	edit := func(account uint64, count int64) error {
+		_, editErr := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+			TeamId: sellingTeam, RequestId: reqID, WarehouseId: warehouse, FinanceAccountId: account,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: count, Total: 100},
+			},
+		}))
+
+		return editErr
+	}
+
+	for _, account := range []uint64{accountPlain, accountArchived, accountOtherTeams} {
+		err = edit(account, 2)
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("moving the payment to account %d: code = %v, want FailedPrecondition (%v)",
+				account, connect.CodeOf(err), err)
+		}
+	}
+
+	var row inventory_service_models.Restock
+
+	err = db.Where("id = ?", reqID).First(&row).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if row.FinanceAccountID != accountOperational {
+		t.Fatalf("a refused edit moved the account to %d", row.FinanceAccountID)
+	}
+
+	// The account it already holds is archived since: an edit that keeps it still goes through.
+	accounts[accountOperational] = inventory_v1.PayingAccount{Name: "BCA Operasional", Operational: true}
+
+	err = edit(accountOperational, 3)
+	if err != nil {
+		t.Fatalf("an edit keeping the account the restock already holds must pass: %v", err)
 	}
 }

@@ -12,8 +12,15 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
+// errShopClosedForEdit is an edit of a closed shop (a-closed-shop-locks-all-but-its-grants) — the owner's words.
+var errShopClosedForEdit = errors.New("the shop is closed — reopen the shop first")
+
 // ShopUpdate edits a shop in the scoped team. Absent fields are left alone. The team_id clause
 // scopes the write — a shop in another team reads as NotFound.
+//
+// A CLOSED shop is refused — FailedPrecondition, "reopen the shop first" (a-closed-shop-locks-all-but-its-grants): a
+// closed shop is being paid out, not changed. Its grants and its primary CS stay editable through their own RPCs. The
+// row is locked FOR NO KEY UPDATE first (lockShopRow), so an edit racing a close reads the status the close left.
 func (s *Service) ShopUpdate(
 	ctx context.Context,
 	req *connect.Request[sellingv1.ShopUpdateRequest],
@@ -42,15 +49,14 @@ func (s *Service) ShopUpdate(
 	var shop selling_service_models.Shop
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Check existence FIRST — Postgres reports 0 rows affected when an UPDATE writes identical
-		// values, so inferring NotFound from RowsAffected would misfire on a no-op resubmit.
-		exists, err := shopExists(tx, teamID, shopID)
+		// Check existence FIRST, and the status with it, under the row's lock — never inferred from RowsAffected.
+		locked, err := lockShopRow(tx, teamID, shopID)
 		if err != nil {
 			return err
 		}
 
-		if !exists {
-			return errShopMissing
+		if locked.IsClosed() {
+			return errShopClosedForEdit
 		}
 
 		if len(updates) > 0 {
@@ -67,8 +73,11 @@ func (s *Service) ShopUpdate(
 		return tx.Where("id = ? AND team_id = ?", shopID, teamID).First(&shop).Error
 	})
 	if err != nil {
-		if errors.Is(err, errShopMissing) {
+		switch {
+		case errors.Is(err, errShopMissing):
 			return nil, notFound()
+		case errors.Is(err, errShopClosedForEdit):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errShopClosedForEdit)
 		}
 
 		return nil, dbError(err)

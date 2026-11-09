@@ -28,9 +28,9 @@ stateDiagram-v2
     problem --> lost: customer service
     problem --> return: customer service, or the warehouse
     completed --> return: customer service, or the warehouse
-    return --> return_completed: the return accept - not built
+    return --> return_completed: warehouse - OrderReturnAccept, no stock yet
     return --> lost: customer service
-    pending --> cancel: OrderCancel (selling) - returns the stock (#70)
+    pending --> cancel: OrderCancel (selling) - inventory returns the stock on OrderCancelled
     cancel --> [*]
     lost --> [*]
     return_completed --> [*]
@@ -41,8 +41,52 @@ stateDiagram-v2
 Every edge above except two goes through **`OrderStatusChange(team_id, order_ids, to, note)`**
 ([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
 It replaced `OrderConfirm`, `OrderPick`, `OrderPack` and `OrderShip`, which only ever changed the status.
-The two that keep their own RPC do more than move a status: `OrderCancel` returns the stock and cancels
-the sale, and the return accept (not built) records the warehouse and relabels borrowed units.
+The two that keep their own RPC do more than move a status: `OrderCancel` checks the count first and announces the
+cancel that gives the stock back and cancels the sale, and the return accept (`OrderReturnAccept`, [below](#the-warehouse-accepts-a-return--orderreturnaccept)) notes the
+missing units, answers the labels for borrowed lines and announces the courier's charge.
+
+### `OrderCancel` — the count first, then the status, then the event (backlog #10 slice 4)
+
+The cancel **no longer releases the stock inside its own flow**. Inventory releases it when `OrderCancelled` reaches it
+([inventory-returns-stock-on-order-cancelled](../../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled)),
+by the order's key K ([every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key)).
+What the person meets is unchanged: a stock count holding a rack the take came from still refuses the cancel, naming the
+count, who started it and when, and the order stays pending
+([a-cancel-still-meets-the-count-first](../../business/order/context_decision.md#a-cancel-still-meets-the-count-first),
+[a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CS as customer service
+    participant S as OrderCancel (selling)
+    participant DB as orders, order_timeline_logs
+    participant INV as inventory - in process
+    participant PS as Pub/Sub order-cancelled
+
+    CS->>S: team_id, order_id
+    S->>DB: BEGIN, SELECT the order FOR UPDATE - pending only
+    S->>INV: StockLockCheck(team, warehouse, K) - a read of inventory's own tables
+    alt a count holds a rack the take came from
+        INV-->>S: the count, in the warehouse's words
+        S-->>CS: FailedPrecondition naming the count - nothing changed, still pending
+    else nothing holds it
+        S->>DB: status cancel + its timeline row, COMMIT
+        S->>PS: OrderCancelled with idempotency_key K and warehouse_id
+        S-->>CS: the cancelled order
+        PS->>INV: inventory-order-cancelled - releaseByKey(team, K)
+        Note over INV: a count that began after the check refuses the release - an error, redelivered until the count ends
+    end
+```
+
+| | |
+| --- | --- |
+| the check | `StockPicker.StockLockCheck(ctx, team, warehouse, K)` → `*StockLock{SessionID, Reason}` or nil; the bridge (`cmd/app_development/stock_picker.go`) calls `inventory_v1.StockLockCheck`, which reads `idempotency_order_check` → the take (team-checked) → its rack rows → the open count snapshots. Inside the cancel's transaction, after the order row is locked and before its status moves |
+| refused | `FailedPrecondition` whose message is the warehouse's own `CountedError` sentence — the same words the release used to refuse with, so the screen and the e2e read the same text. A check that could not be made refuses `Unavailable` (try again); nothing moves |
+| no stock to check | an order with no warehouse or no key took none: no check, and the event carries an empty key, which inventory acknowledges |
+| the event | `OrderCancelled` gains `idempotency_key` (6) and `warehouse_id` (7). Published after the commit; a failed publish is logged as *STOCK IS STILL TAKEN* with K — release it by hand (`OrderTransactionRelease`) — besides the revenue row it leaves |
+| the race | a count planned between the check and the release is the decided fallback: the listener's release is refused by the lock itself, errors, and is redelivered until the count ends — proved in [inventory's race](../../../audits/services/inventory_service/concurrency/lock-order.md) |
+| ⚠ the person is not told | the stock comes back a moment after the cancel answers; whether to say so on screen is the owner's open question (#10 Q11) — no message changed |
 
 ```mermaid
 sequenceDiagram
@@ -82,6 +126,7 @@ sequenceDiagram
 | Move | Scoped to | Because |
 | --- | --- | --- |
 | Create / Cancel | the **selling team** | the team that owns the order decides whether it stands |
+| the return accept | **the warehouse holding the parcel** — any, for an order in `return` | only the person holding the goods can say they are here, and the parcel may come back to a warehouse that did not ship it ([both-cs-and-the-warehouse-can-return-an-order](../../business/order/context_decision.md#both-cs-and-the-warehouse-can-return-an-order)) |
 | confirm, Set Picked, back to pending, the handover | the **order's warehouse** (#72) | the crew doing the work holds no role in the selling team |
 | shipped, completed, problem, lost | the **selling team** | customer service reads the platform |
 | a forced return | either | customer service claims it, or the warehouse forces it |
@@ -148,8 +193,9 @@ would take the goods twice.
 
 ### The cancel window (#70/#150)
 
-Cancel is allowed from **`pending` only**, and returns the stock **exactly where it came from** — same racks, same batches, because the release (`OrderTransactionRelease`, by the order's key) reverses the
-take's own ledger rows rather than trusting quantities (a-rollback-reverses-its-log-rows).
+Cancel is allowed from **`pending` only**, and the stock goes back **exactly where it came from** — same racks, same
+batches, because inventory's release on `OrderCancelled` (`releaseByKey`, by the order's key) reverses the take's own
+ledger rows rather than trusting quantities (a-rollback-reverses-its-log-rows).
 
 A `processed` or `picked` order is first handed back to `pending` by the warehouse — the moment the goods
 are unpacked and re-shelved — so the stock a cancel returns is really on a shelf. **After the handover a
@@ -160,6 +206,87 @@ would hide that rather than record it.
 
 > The hand-back to `pending` is what keeps the shelf honest: the books return the goods only once a
 > person has put them back. Re-shelving onto a different rack is `RackMove`'s job (#136).
+
+## The warehouse accepts a return — `OrderReturnAccept`
+
+`return` is a **claim** that the goods are coming back; `return_completed` is the goods **in the warehouse's hands**
+([the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed)).
+The move between them is the accepting warehouse's own RPC — **whichever warehouse holds the parcel** — built before its
+stock half
+([the-return-accept-is-built-before-its-stock-half](../../business/order/context_decision.md#the-return-accept-is-built-before-its-stock-half)):
+**it calls no inventory**, so a completed return's units are not back on a shelf until
+[inventory/return.md](../../business/inventory/return.md) designs it.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as the crew - Accept Return on the pick screen
+    participant S as OrderReturnAccept
+    participant DB as orders, order_items, product_return_maps
+    participant P as product_service - ProductByIds
+    participant B as Pub/Sub - order-return-accepted
+    participant L as liability_service
+    participant F as the order metrics fold
+
+    W->>S: team_id = the ACCEPTING warehouse, order_id, missing lines, courier charge and its note
+    S->>S: the root team, or a charge above 0 with no note - InvalidArgument
+    S->>DB: the order and its lines WHERE id, and in return or read by the caller - not locked
+    S->>S: the selling team - PermissionDenied, not return - FailedPrecondition, the missing lines checked
+    S->>DB: the selling team's maps of the lines' products
+    S->>P: one call - each line's owner, and each mapped own product's code
+    alt a borrowed line with no map
+        S-->>W: FailedPrecondition naming every such product - nothing written
+    end
+    Note over S,DB: ONE transaction
+    S->>DB: the order FOR UPDATE, re-check return - a second accept waits here, then is refused
+    S->>DB: UPDATE status return_completed, INSERT the accept row from warehouse - the charge as its note, accepting_warehouse_id
+    opt a short parcel
+        S->>DB: INSERT one note row from warehouse - each missing product and how many, same moment
+    end
+    S-->>W: the order, and the labels to print for borrowed lines
+    S->>B: OrderReturnAccepted - after the commit, a failure only logged
+    B->>L: liability-order-return-accepted - a charge above 0 posts return_incidental_fee, keyed by the order
+    B->>F: selling-order-fold-return-accepted - Return Arrived
+```
+
+| | |
+| --- | --- |
+| who | **the warehouse holding the parcel** — `ROOT`, `ADMINISTRATOR`, `WAREHOUSE_OWNER`, `WAREHOUSE_ADMIN`, `WAREHOUSE_STAFF`, scoped on it. Usually the selling team's configured return warehouse, which may not be the one the order shipped from ([a-return-may-land-in-another-warehouse](../../business/order/context_decision.md#a-return-may-land-in-another-warehouse)), and an old label may bring it to a third ([a-stale-return-location-is-accepted](../../business/order/context_decision.md#a-stale-return-location-is-accepted)) — so **any** warehouse may accept an order in `return`. An order in any other status reads `NotFound` unless the caller reads it ([orderReaders](#a-return-reads-to-its-return-warehouse--orderreaders)); the order's own selling team is `PermissionDenied` (it claims, it does not accept — unless it is its own warehouse); the root team, which is no building, `InvalidArgument` |
+| where | the accepting warehouse — the call's scope, asked of nobody — is written on the `return_completed` row, `order_timeline_logs.accepting_warehouse_id` (selling `00034`), and travels as `OrderTimelineLog.accepting_warehouse_id` ([the-accept-records-where-it-was-accepted](../../business/order/context_decision.md#the-accept-records-where-it-was-accepted)). It is also `OrderReturnAccepted.warehouse_id`: the courier was paid at that door, so the charge is owed to it |
+| from | `return` only. A parcel whose order is not claimed is forced to `return` first ([a-forced-return-follows-the-status-move](../../business/order/context_decision.md#a-forced-return-follows-the-status-move)); an accepted one answers *"this return is already accepted"* |
+| whole | every line at its ordered quantity ([a-return-is-never-partial](../../business/order/context_decision.md#a-return-is-never-partial)) — there is no "how many came back", only `missing_lines`: one per line, 1 to the line's quantity, on this order's lines |
+| a short parcel | one **note row** (no status) from the warehouse, at the accept's moment: *"Missing from the returned parcel: 1 × KPH-M Kaos Polos Hitam — M · …"* ([a-short-return-is-accepted-and-the-gap-written-off](../../business/order/context_decision.md#a-short-return-is-accepted-and-the-gap-written-off)). Its write-off is inventory's, not built |
+| a borrowed line | a line whose owner is known and is not the selling team, as create decides it. It answers a label: the mapped own product's code and name, one per unit in hand — the quantity less the missing ([a-returned-borrowed-unit-is-relabelled-at-the-accept](../../business/order/context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept)). An unmapped one refuses the whole accept ([a-return-never-clones-a-product](../../business/order/context_decision.md#a-return-never-clones-a-product)); an own line never reads the map |
+| the courier | `courier_charge` (a double, frozen exact by the accept; 0 = none) and its note, required above 0 ([an-incidental-line-must-say-what-it-was-for](../../business/balance/context_decision.md#an-incidental-line-must-say-what-it-was-for)). Written as the accept row's note — *"Courier charge Rp 15.000: ongkir retur"* — and carried by `OrderReturnAccepted`; liability posts it ([liability_service](../liability_service/rpc.md#the-courier-at-a-return--chargereturncourier)). A note with no charge is dropped |
+| the override | `is_override` on both rows it writes, and `actor_is_override` on the event ([an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)). `orders.is_override` is the placement's and is not touched |
+| the catalogue | read **before** the lock — no network call holds the order's row. The lines and the maps cannot change under it (frozen at placement, written once); only the status can, and it is re-read under the lock. A failed lookup is `Unavailable` and nothing is accepted |
+| the event | `OrderReturnAccepted` on `order-return-accepted`, `event_id` = `order-return-accepted:<order_id>` — the status is terminal, so an order is accepted once. It also replaces `OrderStatusChanged` as Return Arrived's feed: the plain move refuses `return_completed`, so no `OrderStatusChanged` ever carries it |
+| two crew, one parcel | ✅ safe — the row lock serialises them: 8 accepts at once leave one `return_completed` row and one event, and the interleave shows the second waiting on the first's lock, then refused. Two **warehouses** at once — the order's own and the configured one, 4 + 4 — the same: one wins, and the row names the one that won (`order_return_accept_race_test.go`) |
+| cost | ✅ 7 queries, ~3.7 ms over 50 000 orders, every read an index scan (`order_return_accept_perf_test.go`) |
+| ⚠ not built | the stock half — the return transaction into the configured return warehouse and the missing units' write-off ([return-is-unplanned](../../business/inventory/context_decision.md#return-is-unplanned)); **a way for a stale-label warehouse to FIND the order** — it is neither end nor the configured warehouse, so no list or scan of its own matches, and a cross-team search by the label is not designed (the server accepts it by id) — the warehouse's own *Receive Return* search and forced return are built 2026-11-04 (`ReceiveReturnDialog.tsx`); a screen showing where a return was accepted (it is on the wire); a reprint of the labels after the dialog closes |
+
+### A return reads to its return warehouse — `orderReaders`
+
+Every read of an order — `OrderList`, `OrderStat`, `OrderExport`, `OrderCreatorList`, `OrderDetail` — shares one
+condition, `orderReaders`: the order's selling team, its warehouse, and **narrowly** the selling team's configured return
+warehouse, for an order in `return` or `return_completed` only — read from `team_return_configurations` at that moment
+([the-return-warehouse-is-read-when-the-return-happens](../../business/order/context_decision.md#the-return-warehouse-is-read-when-the-return-happens)).
+It is how the pick queue's **Returns** tab lists the parcels coming back to a warehouse that never shipped them, and how
+the pick screen opens one to accept it. Nothing else of that team's is read, and nothing it may WRITE changes.
+
+```mermaid
+flowchart LR
+  O["an order of Toko Melati - ships from Gudang Cabang"] --> E["Melati and Gudang Cabang read it - always"]
+  O --> R{"in return or return_completed?"}
+  R -->|"yes"| C["Gudang Pusat reads it too - Melati's configured return warehouse"]
+  R -->|"no"| N["Gudang Pusat reads NotFound"]
+```
+
+| | |
+| --- | --- |
+| the SQL | `team_id = @team OR warehouse_id = @team OR (status IN ('return','return_completed') AND team_id = ANY(ARRAY(SELECT team_id FROM team_return_configurations WHERE warehouse_id = @team)))` — `ANY(ARRAY(…))`, an InitPlan computed once, so the arm is an index condition |
+| the index | `orders_return_team_idx` (selling `00034`) — `(team_id) WHERE status IN ('return','return_completed')`. Without it the third arm read every order of the configured teams and the planner chose a sequential scan of the table (9 ms over 50 000); with it the three arms are one BitmapOr, 2–4 ms — the two-arm scope's own figure (`TestPerf_OrderList_ReturnWarehouse`) |
+| the stale label | a third warehouse reads nothing of the order; it can accept it by id, and after the accept it still reads nothing — a gap, above |
 
 ---
 
@@ -196,7 +323,7 @@ sequenceDiagram
         UI-->>CS: HPP per line, e.g. 1 x Rp 8.000 + 1 x Rp 9.500, invoice, margin, fee
         CS->>UI: Create
         UI->>SELL: OrderCreate
-        SELL->>INV: OrderTransactionCreate - key order:id, before the order commits
+        SELL->>INV: OrderTransactionCreate - under the order's key K, before the order row
         INV-->>SELL: the draw it really made, or insufficient
         SELL-->>UI: the order, frozen at that draw, or the refusal
     end
@@ -246,29 +373,28 @@ sequenceDiagram
     UI->>SELL: OrderCreate
     SELL->>SELL: each line's owner, then every borrowed line's return map — see the return map
     SELL->>SELL: credit check — before the transaction
-    SELL->>SELL: open tx, insert the order header - no goods_cost, no fee yet - and its first timeline row, plus the typed note as its first note row
-    SELL->>INV: take the stock — key order:id
-    INV-->>SELL: per product - the draw's cost, unit cost, and total with the product's markup
-    SELL->>SELL: the four money figures per line, goods_cost = the lines' totals rounded once
+    SELL->>INV: take the stock — under the order's key K, before the transaction (slice 3)
+    INV-->>SELL: the transaction id, and per product the draw's cost, unit cost, and total with the product's markup
+    SELL->>SELL: open tx, insert the order header with K, transaction_id and goods_cost = the exact sum of the lines' totals, its first timeline row, plus the typed note as its first note row
     SELL->>WH: WarehouseFeeCalculate(team, warehouse, goods_cost) — in-process, inside the tx
     alt the warehouse never set its fee, or cannot be reached
         WH-->>SELL: FailedPrecondition naming it, or an error
         SELL->>SELL: roll the tx back
-        SELL->>INV: release the take — key order:id
+        SELL->>INV: release the take by K, then publish InventoryTxCancel — the compensation
         SELL-->>UI: the same refusal — no order, the stock back on the shelf
     else priced
         WH-->>SELL: the fee
-        SELL->>SELL: UPDATE the header's goods_cost, warehouse_fee and total_cost, insert the lines, commit
+        SELL->>SELL: UPDATE the header's warehouse_fee and total_cost, insert the lines, commit
         SELL-->>UI: the order, its cost and fee frozen from the one draw
     end
 ```
 
 | | |
 | --- | --- |
-| the basis | `goods_cost` — Σ the lines' frozen `total` (the draw's cost plus, on a borrowed product, its owner's markup), rounded once to whole rupiah ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost), [an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)). A line the take named no draw for adds 0, so a percent warehouse charges its floor on it |
+| the basis | `goods_cost` — Σ the lines' frozen `total` (the draw's cost plus, on a borrowed product, its owner's markup), exact — never rounded ([the-fee-is-priced-on-goods-cost](../../business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost), [an-order-is-costed-at-what-leaves-the-shelf](../../business/order/context_decision.md#an-order-is-costed-at-what-leaves-the-shelf)). A line the take named no draw for adds 0, so a percent warehouse charges its floor on it |
 | when | AFTER the take, inside the order's transaction — its basis is the draw, which exists only once the take answers. The fee is warehouse_service's to compute, never selling's ([warehouse-prices-balance-records](../../business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)), so it is asked rather than worked out from a rate read earlier. A refusal fails the transaction and the compensation releases the take — the owner's own flow ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders) *"the take is rolled back like any failed step"*). The form refuses such a warehouse before Create, so it is the rare path |
-| the header | inserted first, for the id the take's key is made of; its `goods_cost`, `warehouse_fee` and `total_cost` (= the two added) are written by one UPDATE of that row after the take, in the same transaction — no reader sees the order without them |
-| concurrency | the fee read takes no lock; the order's KEY SHARE on its shop is held across it as it is across the take — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
+| the header | inserted AFTER the take (slice 3), with its `goods_cost` from the draw; `warehouse_fee` and `total_cost` (= the two added) are written by one UPDATE of that row once priced, in the same transaction — no reader sees the order without them |
+| concurrency | the fee read takes no lock; the order's KEY SHARE on its shop is held across it. The take is no longer inside the transaction (slice 3) — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
 | the refusal | `FailedPrecondition`, the warehouse's own sentence passed through unchanged ([a-warehouse-with-no-rate-takes-no-orders](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). An unreachable warehouse_service is `Unavailable` — no order at a fee nobody computed |
 | the wiring | `selling_v1.WarehouseFeePricer`, adapted in the composition root (`warehouse_fee_pricer.go`) to the handler itself |
 | the event | `OrderPlaced.warehouse_fee` carries the frozen fee as stored (step 4, [the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)); liability posts it and reads no rate. Unset only for an order placed before fees were frozen |
@@ -297,7 +423,7 @@ sequenceDiagram
 
     UI->>SELL: lines - Kopi x 2 by hand, Kopi x 1 from a bundle
     SELL->>SELL: validate each line, then merge by product - Kopi x 3, the price never compared
-    alt two lines of one product disagree on sku or name
+    alt two lines of one product disagree on product code or name
         SELL-->>UI: InvalidArgument naming the product - nothing checked, nothing taken
     else merged
         SELL->>SELL: owners, return maps, credit - on the merged lines
@@ -316,12 +442,240 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| merged on | the product id. The merged line keeps the first line's sku and name, and the request is not modified |
+| merged on | the product id. The merged line keeps the first line's product code and name, and the request is not modified |
 | the price | **not compared, and not read** ([an-order-line-carries-no-marketplace-price](../../business/order/context_decision.md#an-order-line-carries-no-marketplace-price)). Every money field of a line is stamped from the take after the merge, and a line has no price of its own (`unit_price` was dropped by `00028`). So two draft rows of one product at two marketplace prices promote as ONE line and lose nothing: the prices stay on the draft's rows |
-| refused instead | two lines of one product under a different `sku` or `name` — merging would keep one label and drop the other. The form never sends that (the catalogue's label, per product) and Promote reads one catalogue snapshot per product, so only a client sending one product under two labels to `OrderCreate` meets it |
+| refused instead | two lines of one product under a different `product_code` or `name` — merging would keep one label and drop the other. The form never sends that (the catalogue's label, per product) and Promote reads one catalogue snapshot per product, so only a client sending one product under two labels to `OrderCreate` meets it |
 | the form's totals | the order form and the draft page sum their money **per product** (`byProduct`), so a product on two lines is costed as one draw — the figures on screen are the ones the order stores. The rows themselves still show where each came from |
 | passed through | any Connect error the take answers with — its code, message and details. A take that never answered in its own terms (not a Connect error) is still `Internal` |
 | the release | unchanged: a refused take is still released by its key, as every failed placement is |
+
+## The courier is a channel id, and no order goes without one — `placeOrder` (2026-11-06)
+
+`orders.shipment_channel_id` and `order_drafts.shipment_channel_id` (selling `00044`) replace the courier CODE the
+bridge stored ([the-old-catalogue-bridges-by-code](../../business/shipment/context_decision.md#the-old-catalogue-bridges-by-code)).
+The id is shipment_service's and OPAQUE here
+([shipment-channel-is-an-id-into-shipment-service](../../business/order/context_decision.md#shipment-channel-is-an-id-into-shipment-service)):
+selling stores it and nothing else about the channel
+([the-channel-name-is-not-frozen](../../business/order/context_decision.md#the-channel-name-is-not-frozen)), and every screen
+names it through `ShipmentChannelByIds`, which answers a deleted channel too, flagged. Create refuses an order with none
+([no-order-without-a-courier](../../business/order/context_decision.md#no-order-without-a-courier)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as third-party app
+    participant UI as order form
+    participant SELL as selling_service
+    participant SHIP as shipment_service
+
+    APP->>SHIP: ShipmentChannelList - the ids it maps onto
+    APP->>SELL: OrderDraftPush - shipment_channel_id, or 0 when it could not map the courier
+    UI->>SELL: OrderCreate - shipment_channel_id from the picker, seeded from the draft
+    alt shipment_channel_id is 0
+        SELL-->>UI: InvalidArgument - an order must say which courier carries it, nothing taken
+    else a channel id
+        SELL->>SELL: validate, then the take and the row - the id stored as sent, never looked up
+        SELL-->>UI: the order, with its shipment_channel_id
+    end
+    UI->>SHIP: ShipmentChannelByIds - the badge names the courier at read time
+```
+
+| | |
+| --- | --- |
+| the rule | `orderPlacement.validate` (`errOrderNoCourier`) — both doors, before the shop, the owners and the take. The request carries no `gt = 0`, so the refusal names what is missing, as `platform_total`'s does |
+| looked up | never — the id is opaque here; the picker (`ShipmentChannelSelect`) offers live channels only |
+| a draft | may hold 0 (the app could not convert the platform's courier). Push writes it unless a person touched `shipment_channel_id`; `OrderDraftUpdate.shipment_channel_id` (optional) sets it and marks it |
+| the filters | `OrderListFilter.shipment_channel_id` / `OrderStatFilter.shipment_channel_id` — 0 = any, an equality ANDed with the scope (≈6 ms over 50 000 orders, `TestPerf_OrderList_Courier`) |
+| the file | `OrderExport`'s courier column is the channel's CODE, through `OrderExportStore.ChannelCodes` (composition root → `ShipmentChannelByIds`); an id that resolves to nothing is written `#id` |
+| older rows | a developer's order from before `00044` holds 0 — the codes were not filled in, since a selling migration may not read shipment's table ([revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet)) |
+
+## An order's address is its own row, names only — `placeOrder` (2026-11-06)
+
+The customer and the address leave `orders` for the order's ONE `order_addresses` row (selling `00045`,
+[one-address-per-order-and-per-draft](../../business/order/context_decision.md#one-address-per-order-and-per-draft)),
+names only ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form
+    participant SELL as selling_service placeOrder
+    participant DB as orders, order_addresses
+
+    UI->>SELL: OrderCreate - customer, phone, the picker's address with codes and names
+    SELL->>DB: one transaction - INSERT orders, then INSERT order_addresses - names, postcode, line, the codes discarded
+    SELL-->>UI: the order - customer and address read from that row
+    UI->>SELL: OrderList, OrderDetail, OrderExport
+    SELL->>DB: the orders, then their address rows - one read per page or batch
+```
+
+| | |
+| --- | --- |
+| written | `placeOrder`, after the order row, in its transaction — an order without its row is never reachable; the response carries it |
+| read | `OrderDetail` preloads it; `OrderList`, `OrderExport` (per batch), `OrderCancel`, `OrderReceiptUpdate`, `OrderReturnAccept` and the re-read by key attach it (`attachAddresses`, one `order_id IN` read) |
+| the wire | unchanged: `Order.customer_name` / `customer_phone` / `address` are filled from the row; an order's `address` carries no `_code` (always empty now), `kode_pos` is the row's `postal_code` |
+| the search | the name and phone match `orders.id IN (SELECT order_id FROM order_addresses WHERE …)`, beside the ref and the receipt, served by the GIN trigram indexes of selling `00048` (`order_addresses_customer_trgm_idx`, `orders_ref_receipt_trgm_idx` — the [OrderList audit](../../../audits/services/selling_service/performances/OrderList.md)'s finding 1; its re-measure is there) |
+| a draft | its own ONE `order_draft_addresses` row, names only (selling `00046`) — see *A draft's address* below |
+
+## A draft's address — `order_draft_addresses` and the form's pre-fill (2026-11-06)
+
+A draft's buyer and address are its ONE `order_draft_addresses` row (selling `00046`,
+[one-address-per-order-and-per-draft](../../business/order/context_decision.md#one-address-per-order-and-per-draft)),
+names only and best effort ([a-draft-carries-the-scraped-address](../../business/order/context_decision.md#a-draft-carries-the-scraped-address)).
+The order form's region picker works by code, so `OrderDraftDetail` asks region_service, in-process, for the ONE place
+the draft's four names match — the address picker's pre-fill
+([the-cs-edits-the-whole-address-before-create](../../business/order/context_decision.md#the-cs-edits-the-whole-address-before-create),
+*Pre-filled when certain*).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as third-party app
+    participant UI as order form
+    participant SELL as selling_service OrderDraft RPCs
+    participant DB as order_drafts, order_draft_addresses
+    participant REG as region_service RegionMatch, in-process
+
+    APP->>SELL: OrderDraftPush - customer, phone, address names, codes ignored
+    SELL->>DB: one transaction - the draft row, then its ONE address row - insert, or update of untouched parts
+    UI->>SELL: OrderDraftDetail
+    SELL->>DB: the draft, its address row, its lines
+    alt all four region names present
+        SELL->>REG: MatchRegion - the four names as the draft holds them
+        REG-->>SELL: the one place, or none - several or none both answer none
+    end
+    SELL-->>UI: draft - address as text, region_match when certain
+    UI->>UI: dropdowns pre-filled from region_match, else empty - postcode and street seeded - all editable
+    UI->>SELL: OrderCreate - what the person left in the form, the codes discarded
+```
+
+| | |
+| --- | --- |
+| written | `OrderDraftPush` creates the row with the draft (always, empty fields and all) and a re-push updates its untouched parts (`customer_name`, `customer_phone`, `address` — the address one touched field); `OrderDraftUpdate` writes the present parts and marks them. Under the draft's `FOR UPDATE` lock, in its transaction |
+| read | `OrderDraftDetail` (one row), `OrderDraftList` (`attachDraftAddresses`, one `order_draft_id IN` read for the page), `OrderDraftUpdate` / push responses |
+| the wire | unchanged: `OrderDraft.customer_name` / `customer_phone` / `address` from the row; the address's `_code` fields always empty |
+| the matcher | region_service `RegionMatch`: exact on all four levels after normalising case and spacing and the kabupaten level's Kabupaten / Kab. / Kab / Kota (Administrasi) prefix — a written prefix must agree with the place's, none matches either; several desa matched (a prefix-less name fitting a Kota and a Kabupaten, two desa of one name in one kecamatan) = no match. Two queries (the desa candidates through `regions_name_lower_idx`, their ancestors by key), 0.5–2.1 ms over the 91 599-row seed (`TestPerf_RegionMatch`) |
+| the seam | `selling_v1.RegionMatcher` → `cmd/app_development/order_draft_regions.go` (`protovalidate` first; a name the request refuses is no match) → `region_v1.RegionMatch`. A blank level is never asked; a failed lookup is logged and leaves `region_match` unset — the read never fails over a pre-fill |
+| `region_match` | `OrderDraft.region_match` (24), an `OrderAddress` with codes, the region list's spelling and the desa's kode pos; `OrderDraftDetail` only, never stored. The form takes the draft's own postcode over the place's |
+| the list's Ready | `readyDrafts` needs the row's `customer_name` and `address_line` and the draft's `shipment_channel_id` — no mapping ([the-drafts-list-counts-no-mapping](../../technical/frontend/order_draft_decision.md#the-drafts-list-counts-no-mapping)); ≈10 ms over 50 000 drafts (`TestPerf_OrderDraftListReadyCount`) |
+
+## The submit's own key — `OrderCreate.idempotency_key` (backlog #10, slice 1)
+
+Every submit of the order form — a new order, a resubmit after an error, a draft's finalize — mints a fresh key with
+`crypto.randomUUID()` **inside the submit** and sends it as `idempotency_key`
+([the-frontend-mints-the-idempotency-key](../../business/order/context_decision.md#the-frontend-mints-the-idempotency-key),
+[every-submit-mints-a-new-key](../../business/order/context_decision.md#every-submit-mints-a-new-key)). It is
+**required** from the start ([revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet)),
+stored on `orders.idempotency_key` and UNIQUE ([the-idempotency-key-is-unique](../../business/order/context_decision.md#the-idempotency-key-is-unique)).
+A key already on an order is **refused**, never answered with that order
+([the-order-refuses-a-used-key](../../business/order/context_decision.md#the-order-refuses-a-used-key)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form or draft page
+    participant SELL as selling_service OrderCreate
+    participant DB as orders
+    participant INV as inventory_service take
+
+    UI->>UI: mint K inside this submit
+    UI->>SELL: OrderCreate with K
+    SELL->>SELL: K empty or starting order: - InvalidArgument
+    SELL->>DB: does an order hold K - one index read
+    alt an order holds K
+        SELL-->>UI: AlreadyExists with the KEY_USED refusal - nothing read further, nothing taken
+    else K is free
+        SELL->>SELL: draft, owners, return maps, credit
+        SELL->>INV: take under K (slice 3)
+        alt a same-second twin took under K first
+            INV-->>SELL: AlreadyExists KEY_USED - inventory's claim of K
+            SELL-->>UI: the same KEY_USED refusal - nothing released, the key is the twin's
+        else taken
+            SELL->>DB: INSERT the order with K - orders_idempotency_key_idx stays the backstop
+            SELL-->>UI: the order, carrying K
+        end
+    end
+```
+
+| | |
+| --- | --- |
+| the shape | `min_len 1`, `max_len 128` (proto); the handler re-checks empty and refuses a key starting `order:` — the shape the migration filled older developer rows with, which was their take's key too — as `InvalidArgument` |
+| ⚠ where it is checked | **first** — before the draft, the owner lookup, the credit check and the take; the unique index is the backstop. The owner's recommended default, **awaiting the owner (#10 Q10)** |
+| ⚠ how a used key is refused | `AlreadyExists` carrying inventory's `OrderTransactionRefusal{reason: KEY_USED}` with no lines — the detail the take answers a used key with, so the form shows its one *key already used* alert. The recommended default, **awaiting the owner (#10 Q9)** |
+| what it discloses | nothing: no order id, no team. A key held by another team's order is refused the same way |
+| the twin | two submits of one key at the same second both pass the lookup; since slice 3 the second is refused KEY_USED **at the take**, at once — inventory's claim of K committed with the first's take — and releases nothing (`TestInterleave_OrderCreateSameKey_TheTakeRefusesTheTwin`). The unique index stays the backstop |
+| since slice 3 | K is also the key the order's stock take is filed under and released by — see [the take before the order](#the-take-before-the-order-and-its-compensation--backlog-10-slice-3) |
+
+## The take before the order, and its compensation — backlog #10 slice 3
+
+`placeOrder` (both doors) takes the stock **before the order row exists and outside selling's transaction**, under the
+order's own key K, then writes the order with K and the take's `transaction_id`. Any failure once the take was called
+is **compensated**: the take is released by K directly, under a context the browser cannot cancel, and then
+`InventoryTxCancel{K, team_id, warehouse_id, actor}` is published as the backup
+([the-compensation-event-is-inventory-tx-cancel](../../business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel),
+[the-release-is-direct-then-the-event](../../business/order/context_decision.md#the-release-is-direct-then-the-event),
+[every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key)). A take refused
+because K is **already used** is never compensated — the key is another submit's live take
+([a-used-key-is-never-cancelled](../../business/order/context_decision.md#a-used-key-is-never-cancelled)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form or draft page
+    participant SELL as selling_service placeOrder
+    participant INV as inventory_service
+    participant DB as selling DB
+    participant PS as Pub/Sub
+
+    UI->>SELL: OrderCreate with K
+    SELL->>SELL: the key, the shop, owners, return maps, credit - nothing taken yet
+    SELL->>INV: OrderTransactionCreate under K - the request's context, no deadline of its own
+    alt refused as KEY_USED
+        INV-->>SELL: AlreadyExists with KEY_USED
+        SELL-->>UI: the refusal as it came - nothing released, nothing published
+    else any other failure of the take - a refusal, an error, the person leaving
+        INV-->>SELL: the failure - it may still have committed
+        SELL->>INV: release by K - context.WithoutCancel
+        SELL->>PS: InventoryTxCancel K - the backup
+        SELL-->>UI: the take's answer as it came
+    else taken
+        INV-->>SELL: transaction_id and the draw
+        SELL->>DB: BEGIN, INSERT the order with K and transaction_id, timeline rows, the draft's delete, the fee, the lines
+        alt any step fails - the fee, the draft already promoted, the database, the person leaving
+            DB-->>SELL: rolled back
+            SELL->>INV: release by K - context.WithoutCancel
+            SELL->>PS: InventoryTxCancel K - the backup
+            SELL-->>UI: that step's answer
+        else the COMMIT reports an error - it may have landed
+            SELL->>DB: a fresh read of the order by K
+            alt the order is there
+                SELL->>PS: OrderPlaced - nothing released
+                SELL-->>UI: the order, as placed
+            else it is not
+                SELL->>INV: release by K, then InventoryTxCancel K
+                SELL-->>UI: the error
+            else the read fails too
+                SELL-->>UI: Unavailable - nothing released, K logged
+            end
+        else committed
+            SELL->>PS: OrderPlaced with idempotency_key and transaction_id
+            SELL-->>UI: the order, carrying K and transaction_id
+        end
+    end
+```
+
+| | |
+| --- | --- |
+| the take | `StockPicker.Pick(ctx, team, warehouse, lines, K)` → `Take{TransactionID, Draw}`; the bridge (`cmd/app_development/stock_picker.go`) passes K through as `OrderTransactionCreate.idempotency_key`. Runs under the request's context with no deadline of its own ([no-answer-is-only-a-lost-connection](../../business/order/context_decision.md#no-answer-is-only-a-lost-connection)) |
+| what the order stores | `orders.idempotency_key = K` and `orders.transaction_id` (selling `00036`, `BIGINT NULL`); `Order.transaction_id` exposes it, `OrderPlaced` carries both |
+| the compensation | `compensateTake` (`order_take_compensation.go`): `StockPicker.Return(K)` first, then the event — ALWAYS both, since a released take makes the listener's release a no-op. Neither fails the caller, who hears the order's own failure. A failed release logs and leaves the event to do it; a failed publish is logged loudly; both failing logs *STOCK STILL TAKEN* with K, the key to release by hand |
+| the context | `context.WithoutCancel(ctx)` — keeps the identity (the release's ledger rows name who placed the order), drops the cancellation and any deadline |
+| KEY_USED | read off the refusal's `OrderTransactionRefusal` detail (`isKeyUsedRefusal`), never the code alone |
+| a refusal for stock | compensated too, as decided — the release of a key nothing was taken under claims it, so a take that lands late is refused |
+| a commit that reports an error (#10c) | the error came after every step ran, so the commit may have landed. `placedOrderByKey` re-reads `orders` by K on the service's own handle (never the failed transaction), under `context.WithoutCancel`: found → answered as placed and `OrderPlaced` published, nothing released; not found → compensated as above; the read failing too → `Unavailable`, nothing released, logged *STOCK MAY STILL BE TAKEN* with K. An error from inside the transaction's body is a rollback and compensates without the read. Test seam `SetOrderCommitResult` (`export_test.go`) |
+| the cancel | slice 4 — see [`OrderCancel`](#ordercancel--the-count-first-then-the-status-then-the-event-backlog-10-slice-4): no release in the cancel; inventory releases by K on `OrderCancelled` |
+| the event | `InventoryTxCancel` = envelope field 204, topic `inventory-tx-cancel`, `event_id` `inventory-tx-cancel:<K>` ([inventory-tx-cancel-is-an-order-event](../../business/order/context_decision.md#inventory-tx-cancel-is-an-order-event)); inventory's listener — [inventory_service rpc](../inventory_service/rpc.md#inventorytxcancel--the-compensations-listener) |
+| proved | `selling_v1/order_create_compensation_test.go`, `order_create_commit_test.go` (#10c); races in [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
 
 ## The pick screen's reads (#151)
 
@@ -366,21 +720,21 @@ sequenceDiagram
     participant S as selling_service
     participant I as inventory_service
 
-    Note over UI: the two reads are issued together —<br/>lines without shelves are useless, and<br/>shelves without lines are meaningless
-    par
-        UI->>S: OrderDetail(team_id=warehouse, order_id)
-        S-->>UI: the order + its lines
-    and
-        UI->>I: StockPickLocations(warehouse_id, ref="order:<id>")
-        I-->>UI: per product, per rack, how much
-    end
+    Note over UI: one query function returns both —<br/>lines without shelves are useless, and<br/>shelves without lines are meaningless
+    UI->>S: OrderDetail(team_id=warehouse, order_id)
+    S-->>UI: the order + its lines + its transaction_id
+    UI->>I: StockPickLocations(warehouse_id, transaction_id)
+    I-->>UI: per product, per rack, how much
 
     Note over UI: joined on product_id —<br/>a product drawn from 3 shelves = 3 stops
 ```
 
 **From the take, not from the racks now — this is the whole design.** The goods were drawn at placement (#149) and the
-take recorded, per rack, exactly how much it took under the order's key (`order:<id>`, found through
-`idempotency_order_check`). Those rows are what the order *holds*. Current levels answer a question whose answer
+take recorded, per rack, exactly how much it took, as placement log rows of one inventory transaction — the
+`transaction_id` the order stores ([the-placement-page-reads-racks-by-transaction-id](../../business/inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id),
+✅ backlog #10 slice 5). The detail is read first for that id, so the two reads are sequential; an order with no
+transaction took nothing and the page asks nothing. Inventory reads the rows only within the caller's `warehouse_id`,
+so one building never reads another's take. Those rows are what the order *holds*. Current levels answer a question whose answer
 keeps moving — another order draws from the same shelf, a stock-take shifts goods — and a picker sent
 by current levels can arrive at a shelf whose stock is spoken for.
 
@@ -401,6 +755,29 @@ with the frozen money — `goods_cost` (`cogs` until 2026-10-23, same field numb
 (`marketplace_total`, same number); `revenue` (the dropped `total`) and `shipping_cost` are reserved, neither had a
 consumer. `liability_service` consumes it and charges the order's fees; settlement opens the sale from `platform_total`.
 
+**`platform_total` is a double, frozen exact at placement** (selling 00041, 2026-11-06,
+[every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)):
+`orders.platform_total`, `order_drafts.platform_total` and `order_daily_reports.mp_total` are `double precision`; the wire's
+`platform_total` (Order, OrderCreateRequest, OrderDraft, OrderDraftUpdateRequest, the push line, `OrderPlaced`),
+`OrderStatusCount.value`/`mp_value`, `OrderStatPreview.revenue_30d` and the order metrics' `mp_total` fields are `double`.
+A draft keeps what was typed; `placeOrder` refuses a figure that is NaN, infinite or not above 0 (`san_money.Positive` —
+float dust is as missing as 0) and writes it EXACT onto the row ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06; it rounded with
+`san_money.Whole` before, so the decision `a-draft-keeps-its-platform-total-as-typed`'s *"rounded once when the order is
+placed"* no longer happens) — the event, the detail, the census and settlement's `initial_total` all carry that one
+exact figure.
+
+**The order's costs are doubles too** (selling 00042, 2026-11-06 — part 2): `orders.goods_cost`, `order_items.unit_cost`
+and `order_draft_items.unit_price` are `double precision`, and `goods_cost` (Order, `OrderPlaced`), `unit_cost` (OrderItem,
+`OrderPlacedLine`), `unit_price` (OrderDraftItem, the push line) and `OrderReturnAcceptRequest.courier_charge` (`gte 0`,
+finite; `OrderReturnAccepted` carries it) are `double`. `placeOrder` freezes each line's `unit_cost` (the take's drawn
+unit cost) and the order's `goods_cost` (Σ the lines' totals) EXACT — never rounded; the warehouse fee is the pricer's
+exact answer on that basis (2,5% of Rp 12.666,99 = Rp 316,67475) and `total_cost` their exact sum. `OrderReturnAccept`
+freezes the courier's charge as typed before its note check, its event and the liability posting read it. A draft's
+`unit_price` is information, kept as read. The order form previews the same exact figures — the line figures summed,
+nothing rounded (`features/orders/form/money.ts`, the fee quote as the warehouse answers it) — so the preview, the fee's
+basis and the frozen order are one figure; only the screen rounds, to 3 decimals. The credit block's message writes
+its figures with `san_money.Text` ("Rp 52.000.000", a fraction to 3 places).
+
 **Each line carries its frozen `total`** (`00023`) — what inventory's take priced it at, the goods plus the product's own
 markup ([inventory-computes-the-markup](../../business/order/context_decision.md#inventory-computes-the-markup)). The
 take answers it (`StockPicker.Pick` returns it per product), `placeOrder` writes the lines only after it, with it, and
@@ -420,12 +797,14 @@ The envelope carries `event_id` (derived from the order, so a redelivery and a r
 which is a record of who published, never something a consumer authorises from.
 
 > The full flow, the delivery trade-off, and why the event carries the money rather than just an order
-> id are in [revenue_service/rpc.md](../revenue_service/rpc.md).
+> id are in `revenue_service/rpc.md` (removed with the service on 2026-08-29 — `git show 0d4cbc49^:docs/services/revenue_service/rpc.md`).
 
 ## The order metrics — the fold and `OrderAnalyticService`
 
 The five order metrics of [order_statistic_metric.md](../../business/order/order_statistic_metric.md) — Created, Cancel,
-Return Created, Return Arrived, Lost Created — through the analytic pattern
+Return Created, Return Arrived, Lost Created — and **Warehouse Fee** (`metrics/warehouse_fee`,
+[the-warehouse-fee-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-warehouse-fee-prototype-is-accepted))
+through the analytic pattern
 ([rpc_provide.md](../../business/analytic/rpc_provide.md)): a folded report, ranked by `MetricSearch` and filled by
 `MetricData`. Served by `selling_v1.Analytic`, its own struct: its one outside question, whether the reader is a
 warehouse, is asked of team_service through `TeamTypeReader` (`selling_team_types.go` in the composition root).
@@ -439,24 +818,27 @@ sequenceDiagram
     participant A as MetricSearch and MetricData
     participant T as team_service
 
-    S->>B: OrderPlaced, OrderCancelled, OrderStatusChanged - after each commit
-    B->>F: three push subscriptions, one per topic, one handler
-    Note over F: created, cancelled, or a move to return, return_completed or lost - anything else is ACKED
+    S->>B: OrderPlaced, OrderCancelled, OrderStatusChanged, OrderReturnAccepted - after each commit
+    B->>F: four push subscriptions, one per topic, one handler
+    Note over F: created, cancelled, a move to return or lost, or a return accepted - anything else is ACKED
     F->>R: one transaction - claim the event id in order_event_logs, read the order, upsert its day row
+    F->>R: placed or cancelled with a fee - then the day's warehouse_fee row, +1 and +fee or -1 and -fee
     A->>T: is the reader a warehouse - TeamByIds
     A->>R: the reader rows - root all, a warehouse by warehouse_id, a seller by team_id
-    Note over A: a warehouse gets counts only - money unset, a sort on money refused
+    Note over A: a warehouse gets counts only on the five order metrics - money unset, a sort on it refused
+    Note over A: Warehouse Fee - the amount is set and sortable for a warehouse too
 ```
 
 | | |
 | --- | --- |
-| the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed) — each its OWN subscription on a topic liability and settlement also read |
+| the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed), `selling-order-fold-return-accepted` (order-return-accepted — Return Arrived, since `return_completed` is the accept's own event) — each its OWN subscription on a topic liability and settlement also read |
 | the day | the event's `occurred_at` as a Jakarta date — the placement, the cancel, the move's timeline row ([a-fact-counts-on-the-day-it-happened](../../business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened)) |
 | the row | (day, metric, seller, shop, warehouse, creator) += 1 order, its `total_cost`, its `platform_total`, read off the order |
+| Warehouse Fee | a sixth `metric` value, `warehouse_fee` (00038), written by the SAME claim: a placement adds +1 and the order's frozen `warehouse_fee` to the placement day's fee row, a cancel −1 and the fee to the CANCEL day's row ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)) — an earlier day is never re-folded, so a period can read negative. `order_count` = Fee transactions, `total` = Fee amount, `mp_total` 0. An order with no fee writes no fee row. The keys and filters are the order metrics' ([warehouse-fee-groups-like-the-order-metrics](../../business/analytic/rpc_provide_decision.md#warehouse-fee-groups-like-the-order-metrics)); `amount` is set for a warehouse ([a-warehouse-sees-its-own-fee-amount](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-its-own-fee-amount), `orderMetric.warehouseMoney`). Why a metric row and not a column: the signed row reuses every read (search, fill, summary, sort) unchanged, where a column on `created`/`cancelled` would need a cross-row net in each. The fee row is always the transaction's second report lock, so a placement and a cancel meeting on it queue (raced ×10, 0 deadlocks) |
 | a redelivery | the claim is the write: a second claim finds the row and folds nothing. Raced 40/40 |
 | the reads | one statement each, after the team-type lookup. A seller's or a warehouse's read uses its scope index (1–8 ms over 100 000 rows); root's scans (13–30 ms) |
 | an id of 0 | left out of an id group: `IDList` takes ids above 0 ([a-no-user-row-cannot-be-a-key](../../business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key)) |
-| ⚠ not built | a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_clarify.md#are-past-orders-folded)), a replay and a dedup prune — supplier's fold has all three |
+| ⚠ not built | a refold of Warehouse Fee for orders folded before 00038 (none in production, [revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet), [the-order-metrics-count-from-the-fold-onward](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward) — a dev order placed before it and cancelled after nets its seller below zero); a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)), a replay and a dedup prune — supplier's fold has all three |
 
 ## Draft orders — `OrderDraftPush` and the blanks-only merge (#190, #191)
 
@@ -485,8 +867,10 @@ sequenceDiagram
     end
 ```
 
-**The push's money, by JSON name.** A client posting Connect JSON names each field in lowerCamelCase. Money is whole
-rupiah, sent as a string or a number (protobuf `int64` in JSON).
+**The push's money, by JSON name.** A client posting Connect JSON names each field in lowerCamelCase. Money is a JSON
+number (protobuf `double`), a fraction allowed — a draft keeps it as sent
+([a-draft-keeps-its-platform-total-as-typed](../../business/order/context_decision.md#a-draft-keeps-its-platform-total-as-typed)).
+A quoted number from a client written for the old `int64` still parses.
 
 | JSON field | proto | what it is |
 | --- | --- | --- |
@@ -510,16 +894,18 @@ Four details that are decisions rather than implementation:
 
 - **It is "untouched fields only", NOT "empty fields only".** An untouched field the app has changed
   its mind about *is* updated — the app remains the authority on everything nobody here has claimed.
-- **The address is one touched field, not ten columns.** Somebody who corrects a kecamatan has
-  corrected the address, and rewriting the nine columns around their fix would leave a hybrid address
-  that was never true anywhere.
+- **The address is one touched field, not six names.** Somebody who corrects a kecamatan has
+  corrected the address, and rewriting the other parts of the draft's address row around their fix would leave a
+  hybrid address that was never true anywhere.
 - **`items` is one touched field too.** Once a person has edited any line, the app stops rewriting
   the lines altogether. Per-line merging would need a per-line touched mark; the rule that matters —
-  a re-scrape never destroys a mapping — holds without one. While untouched, the lines are replaced
+  a re-scrape never destroys a person's correction — holds without one. While untouched, the lines are replaced
   **wholesale**, so a line the app no longer sees disappears rather than lingering.
-- **`product_id` is ignored on push.** The app does not know our catalogue ids, and a client matching
-  titles against our catalogue on its own would guess wrong silently. Mapping is a human act. This is
-  the same instinct as `OrderItem.unit_cost`, which `OrderCreate` also refuses from the client.
+- **A draft stores no mapping** (selling `00047`,
+  [a-draft-stores-no-mapping](../../technical/frontend/order_draft_decision.md#a-draft-stores-no-mapping)). The app does
+  not know our catalogue ids, and a client matching titles against our catalogue would guess wrong silently, so a line
+  is the platform's reference only (`OrderDraftItem.product_id` / `OrderDraftLineEdit.product_id` reserved); the CS maps
+  each one in the order form, straight into the order's lines.
 
 **The author follows the push.** A draft is personal, and a colleague cannot pick one up — so
 re-pushing under the right person's login is the only way to hand a draft over. That makes
@@ -547,11 +933,30 @@ A colleague's draft reads as **NotFound**, not PermissionDenied: the caller hold
 role in the team, and "exists but is not yours" would leak that a given external ref has already been
 scraped by somebody else.
 
-**The list carries counts, not lines.** `item_count` and `unmapped_item_count` are aggregated in one
-`GROUP BY` for the whole page — they are the only thing on the list screen (#195) that says how much
-work is left on a draft, and computing them client-side would mean loading every draft's lines to
-render one page of a list. A non-zero `unmapped_item_count` is exactly what makes a draft still a
-draft.
+**The list carries a count, not lines.** `item_count` is aggregated in one `GROUP BY` for the whole page — computing
+it client-side would mean loading every draft's lines to render one page of a list. 🔄 *(2026-11-06)*
+`unmapped_item_count` is gone (reserved 18): a draft stores no mapping, so the list counts none
+([the-drafts-list-counts-no-mapping](../../technical/frontend/order_draft_decision.md#the-drafts-list-counts-no-mapping)).
+The page's buyers come from their address rows in one more `order_draft_id IN` read.
+
+**The list carries the set's ready count** (#16, 2026-11-04) — `ready_count`, the drafts of the WHOLE filtered set (every
+page) with nothing left before Promote, so the drafts screen's *Ready* card reads the backlog and not the page on screen
+([the-draft-summary-is-three-cards](../../technical/frontend/order_draft_decision.md#the-draft-summary-is-three-cards)). It is
+`readyDrafts` (order_draft_list.go), the SQL twin of the frontend's `draftGaps`, rule for rule: a shop, a warehouse, a
+customer name and an address line (the draft's `order_draft_addresses` row, an `EXISTS`), a courier, an order date, a
+sell price, at least one line, and not a `manual` draft — no mapping (2026-11-06). Stock is not in it — only the order
+form reads the warehouse's availability. One extra `COUNT(*)` on the same narrowed query, run before the page's own
+reads (a GORM `Session` copies the statement, so it must not see their ORDER/OFFSET). Perf: 5 queries, ≈10 ms median
+at 5 000 drafts for one author (`TestPerf_OrderDraftListReadyCount`, re-measured 2026-11-06) — fast, no audit file.
+
+```mermaid
+flowchart LR
+  Q["team_id + author_user_id + source"] --> C["COUNT - total_items"]
+  Q --> R["readyDrafts - COUNT - ready_count"]
+  Q --> P["ORDER, OFFSET, LIMIT - the page"]
+  P --> G["GROUP BY draft_id - item counts"]
+  P --> A["order_draft_addresses - the page's buyers"]
+```
 
 ### The human edit path — `OrderDraftUpdate` (#193)
 
@@ -628,7 +1033,7 @@ what the buyer paid (`00022`, `platform_total`), the buyer's username — seed t
 Promote sends them. The marketplace REF is the draft's `external_id`, seeded the same way; a `manual` draft's
 `external_id` is a minted `form-…` id, so its ref is typed
 ([an-order-ref-is-required-by-the-rpc](../../business/order/context_decision.md#an-order-ref-is-required-by-the-rpc)).
-The catalogue label (`sku`, `name`) is the page's, from the products it mapped.
+The catalogue label (`product_code`, `name`) is the page's, from the products it mapped.
 
 **One transaction, and one order per draft.** `orders` and `order_drafts` are the same service in the same database,
 so the order is written and the draft deleted together (`placeOrder`'s `inTx`). A refused order — no stock, no fee
@@ -686,7 +1091,7 @@ sequenceDiagram
     alt the lookup failed
         SELL-->>UI: Unavailable — not placed, try again
     else a borrowed line has no pair
-        SELL-->>UI: FailedPrecondition, naming every unmapped product by SKU
+        SELL-->>UI: FailedPrecondition, naming every unmapped product by its product code
     else every borrowed line is mapped
         SELL->>SELL: the cost read, the credit check, the fee, then the transaction
     end
@@ -718,15 +1123,15 @@ sequenceDiagram
     participant DB as shops, shop_users
     participant R as user_service's role resolver
     C->>S: team_id, shop_id, user_id — under the caller's token
-    S->>DB: a live shop of this team?
-    alt none — another team's, or deleted
+    S->>DB: a shop of this team — open or closed
+    alt none — another team's, or never existed
         S-->>C: NotFound
-    else found
+    else found — open, or closed and flagged
         S->>DB: the primary grant, and the user's own grant — one read
         opt the user holds no grant
             S->>R: the user's role in the team, and in the root team — cached
         end
-        S-->>C: the shop, primary_user_id, is_have_access
+        S-->>C: the shop with status, closed_at_unix, primary_user_id, is_have_access
     end
 ```
 
@@ -735,7 +1140,82 @@ sequenceDiagram
 | `is_have_access` | granted the shop, or the team's owner or admin, or root or admin ([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). A grant answers it without asking for a role |
 | `primary_user_id` | the grant flagged `is_primary` — 0 = none |
 | the roles | `RoleReader`, an interface selling owns; the composition root answers it with the access interceptor's resolver, so it is the same cached lookup every request pays for |
-| a deleted shop | `NotFound`, like every shop read — its last statements cannot be imported ([shop Q3](../../business/shop/context_clarify.md#question)) |
+| a closed shop | **answered**, `shop.status = SHOP_STATUS_CLOSED` with its `closed_at_unix` — each caller decides ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)). The settlement importer and settlement's primary-CS lookup accept it, so a closed shop's last statements import; financial_account's `ShopOfTeam` adapter (`cmd/app_development/financial_account_deps.go`) refuses it as `NotFound` — no new account link ([a-closed-shop-takes-no-new-account-link](../../business/shop/context_decision.md#a-closed-shop-takes-no-new-account-link)); the order writes refuse it (below). *(2026-11-06: `status` replaced `deleted`, selling `00043`)* |
+| in-process | the body is `shopAccess` (`selling_v1/shop_write_gate.go`) — the same answer this service's own order writes read, with no RPC hop |
+
+### The write gate on new selling — `refuseShopWrite` (2026-11-05)
+
+`OrderCreate` (and so a draft's Promote), `OrderDraftPush` naming a shop, and `OrderDraftUpdate` setting one ask
+`shopAccess` **in-process**, before any stock moves or any row is written
+([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). The
+caller is the request's identity; a call with none holds no grant and no role, so it is refused like a stranger.
+
+```mermaid
+flowchart TD
+  W["OrderCreate, a draft's Promote, OrderDraftPush with a shop, OrderDraftUpdate setting a shop"] --> A["shopAccess - the shop, the caller's grant, the role if no grant"]
+  A -->|"another team's, or none"| NF["NotFound - shop not found"]
+  A -->|"closed"| FP["FailedPrecondition - NAME: the shop is closed"]
+  A -->|"no grant, not owner or admin, not root or admin"| PD["PermissionDenied - You have no access to NAME"]
+  A -->|"granted, or a manager"| OK["the write goes on - the take, the row"]
+```
+
+| | |
+| --- | --- |
+| refused | `PermissionDenied`, *"You have no access to <shop> — ask the team's owner or admin for it"* — the importer's words · a closed shop `FailedPrecondition`, *"<shop>: the shop is closed — it takes no new orders"* ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)) |
+| not gated | reads (`ShopList`, `OrderList`, reports) · a draft push with no shop yet · an edit that leaves or clears the shop · the order moves and the order imports (`OrderStatusChange`, `ShopeeOrderImport`, `TiktokOrderImport`) — a closed shop's placed orders run to their end ([order-moves-stay-team-wide](../../business/shop/context_decision.md#order-moves-stay-team-wide)) |
+| the picker | `ShopList` `writable` (below) — the order form's `ShopSelect` (the draft page is the same form) and the statement import dialog ask it |
+| cost | 2 indexed reads (the shop by PK, `shop_users` by `(shop_id, user_id)`) + the cached role; `OrderCreate`'s whole create is 8 queries ≈3.2 ms (`TestPerf_OrderCreateKeyLookup`), was 7 |
+| concurrency | the gate itself takes no lock — a revoke landing between it and the write lets that one write through, serializable as *write, then revoke*. A **close** cannot: `placeOrder` re-reads the shop `FOR SHARE` inside its transaction (`refuseClosedShopInTx`), which ShopClose's `FOR NO KEY UPDATE` waits on — the order commits before the close, or reads it closed and is refused, its take returned (`TestRace_ShopClose_OrderCreate`; [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
+| tests | `shop_write_gate_test.go` — `TestOrderCreate_NeedsAGrantOrAManager` · `TestOrderCreate_AClosedShopOrAnotherTeamsIsRefused` · `TestOrderCreate_AShopClosedDuringTheTakeIsRefused` · `TestOrderDraftPush_NeedsAGrantOrAManager` · `TestOrderDraftUpdate_SettingTheShopNeedsAGrantOrAManager` · `TestShopList_WritableIsTheCallersShops`; `shop_access_check_test.go` (a closed shop answered flagged); e2e `writes_need_a_shop_grant.spec.ts`, `the_closed_shop.spec.ts` |
+
+## A shop is closed, never deleted — `ShopClose` and `ShopReopen` (2026-11-06)
+
+There is no delete: `ShopDelete` is gone, and a shop made by mistake is closed too
+([a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted)). `shops.status`
+(`open` | `closed`) and `closed_at` replaced `deleted` (selling `00043`, which filled every deleted shop in as closed at its
+`updated_at`). Both RPCs are the team's owner or admin, or root or admin; both answer the shop as it now stands, with its
+primary CS.
+
+```mermaid
+flowchart TD
+  C["ShopClose"] --> L1["lockShopRow - the shop FOR NO KEY UPDATE"]
+  L1 -->|"another team's, or none"| NF1["NotFound"]
+  L1 -->|"already closed"| I1["answered as it is - closed_at untouched"]
+  L1 -->|"open"| U1["UPDATE status closed, closed_at now"]
+  R["ShopReopen"] --> L2["lockShopRow - the shop FOR NO KEY UPDATE"]
+  L2 -->|"another team's, or none"| NF2["NotFound"]
+  L2 -->|"already open"| I2["answered as it is"]
+  L2 -->|"closed"| H["an OPEN shop of the team with its code?"]
+  H -->|"yes"| FP["FailedPrecondition - NAME cannot reopen: the open shop HOLDER holds the code CODE"]
+  H -->|"no"| U2["UPDATE status open, closed_at NULL"]
+  U2 -->|"one took the code in the same instant - the partial unique index"| FP2["FailedPrecondition - by the code"]
+```
+
+| | a closed shop |
+| --- | --- |
+| refused | a new order (`OrderCreate`, a draft's Promote), a draft pushed onto it or edited to it — *"<shop>: the shop is closed — it takes no new orders"* ([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)) · `ShopUpdate` — FailedPrecondition, *"the shop is closed — reopen the shop first"* ([a-closed-shop-locks-all-but-its-grants](../../business/shop/context_decision.md#a-closed-shop-locks-all-but-its-grants)) · a new withdrawal-account link (`ShopOfTeam` → NotFound, [a-closed-shop-takes-no-new-account-link](../../business/shop/context_decision.md#a-closed-shop-takes-no-new-account-link)) |
+| still served | `ShopDetail`, `ShopAccessCheck` (flagged) · the grants and the primary CS (`ShopUserAdd`/`Remove`/`SetPrimary`) · its statements (the settlement importer) · its placed orders' moves and the order imports · its drafts, which stay listed and wait — after a reopen they promote again ([a-close-leaves-the-drafts-waiting](../../business/shop/context_decision.md#a-close-leaves-the-drafts-waiting)) |
+| the code | unique among OPEN shops only — `shops_team_code_open_unique (team_id, shop_code) WHERE status = 'open'` — so the close frees it and `ShopCreate` may reuse it; the reopen is refused while an open shop holds it, naming that shop ([a-shop-code-is-unique-among-open-shops](../../business/shop/context_decision.md#a-shop-code-is-unique-among-open-shops)). The `00043` fill renames nothing: a deleted shop whose code was reused reopens only after one is renamed |
+| idempotent | a second close keeps the first `closed_at`; a reopen of an open shop changes nothing — two managers at once is one close (`TestRace_ShopClose_SameShopAtOnce`) |
+| concurrency | the row lock queues a close with an edit, a reopen and a grant write on the same shop; an order being placed holds the row `FOR SHARE` from its in-transaction re-check, so it commits before the close or is refused after it (`TestRace_ShopClose_OrderCreate`, mutation-checked). Two closed shops of one code reopened at once: exactly one wins (`TestRace_ShopReopen_TwoShopsOneCode`). Safe — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
+| cost | ShopClose 4 statements, ≈1.1 ms median; ShopReopen 5 (the holder by `shops_team_code_open_unique`), ≈1.2 ms — every read by index (`TestPerf_ShopClose`, `TestPerf_ShopReopen`, `-tags perfaudit`) — fast |
+| tests | `shop_close_test.go`, `shop_reopen_test.go` (roles, idempotency, NotFound, the code freed and the clash naming its holder, drafts waiting then promoting) · `shop_update_test.go` `TestShopUpdate_AClosedShopIsRefused` · `shop_user_test.go` (grants editable on a closed shop) · `shop_detail_test.go` · `shop_list_test.go` (status) · `shop_status_migration_test.go` (the `00043` fill) · `shop_close_race_test.go` (`-tags raceaudit`) · e2e `shops.spec.ts`, `the_closed_shop.spec.ts` |
+
+## The shop list's filters — `ShopList` (#16)
+
+`ShopListFilter` carries `q`, `marketplace`, `primary_user_id` and `no_primary` (2026-11-04), and `status`
+(2026-11-06); each narrows the whole set on the server, so the count and the pages agree with the rows. The primary is a flag on a grant
+([the-primary-cs-is-a-flag-on-a-grant](../../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)), never a
+column of `shops`, so the two CS filters ask `shop_users` (by `shop_users_one_primary_idx`). A person and *nobody* at once
+is refused, InvalidArgument. Perf: 3 queries, ≤ 4.3 ms median over 500 shops a team (`TestPerf_ShopListFilters`) — fast.
+
+| filter | WHERE |
+| --- | --- |
+| `status` *(2026-11-06)* | UNSPECIFIED and `OPEN` → `status = 'open'` — **the default**, so every picker and the list read open shops unless they ask · `CLOSED` → `status = 'closed'` · `ALL` → none ([a-shop-is-closed-never-deleted](../../business/shop/context_decision.md#a-shop-is-closed-never-deleted)). By `shops_team_status_idx (team_id, status)`; 3 queries, ≤ 2.2 ms median for closed or all over 500 shops (one in five closed) — fast |
+| `marketplace` ≠ UNSPECIFIED | `marketplace = <text>` |
+| `primary_user_id` > 0 | `id IN (SELECT shop_id FROM shop_users WHERE is_primary AND user_id = ?)` |
+| `no_primary` | `NOT EXISTS (SELECT 1 FROM shop_users WHERE shop_id = shops.id AND is_primary)` |
+| `writable` *(2026-11-05)* | none for a manager (the team's owner or admin, root or admin); anyone else `EXISTS (SELECT 1 FROM shop_users su WHERE su.shop_id = shops.id AND su.user_id = <caller>)` — the picker of a write. ⚠ planned as a `Seq Scan` on `shop_users` (≈5 ms at 30 000 grants): [ShopList.md](../../../audits/services/selling_service/performances/ShopList.md) recommends an index on `user_id` |
 
 ## The primary CS — `ShopUserAdd` and `ShopUserSetPrimary`
 
@@ -746,8 +1226,13 @@ a new grant on a shop with no primary becomes it; **Make primary** moves it; rem
 sequenceDiagram
     participant M as owner or admin
     participant S as ShopService
+    participant R as user_service's role resolver
     participant DB as shops, shop_users
     M->>S: ShopUserAdd, or ShopUserSetPrimary
+    S->>R: the person's role in the shop's team, and their suspension — cached, before the transaction
+    alt not a member, or suspended
+        S-->>M: FailedPrecondition, naming the user id — nothing written
+    end
     S->>DB: the shop's row FOR UPDATE — Add and Make primary run one at a time, a removal takes no such lock
     alt ShopUserAdd
         S->>DB: insert the grant, nothing if it exists
@@ -762,6 +1247,17 @@ sequenceDiagram
         end
     end
 ```
+
+**Who may be given a shop** (built 2026-11-04): only a member of the shop's team, and never a suspended or erased
+account — for a new grant and for Make primary alike
+([a-grant-goes-only-to-a-team-member](../../business/shop/context_decision.md#a-grant-goes-only-to-a-team-member),
+[a-suspended-user-is-never-picked](../../business/user/context_decision.md#a-suspended-user-is-never-picked)). Membership
+is user_service's, so it is asked through `RoleReader.Member` (an interface selling owns; the composition root answers it
+with the access interceptor's resolver, the same cached lookup as `ShopAccessCheck`) — never a read of its tables. Make
+primary asks too: a grant outlives a suspension, and a leaver's grants go only when `MemberRemoved` lands. The grant
+picker (`UserSelect excludeSuspended` → `UserList` `filter.exclude_suspended`) offers no one else. The check runs before
+the shop lock — a residual cross-service window, see
+[ShopUserAdd](../../../audits/services/selling_service/concurrency/ShopUserAdd.md).
 
 ⚠ **Clear, then set.** The partial unique index is checked row by row, so one `UPDATE` flipping both flags
 could meet the new one before the old one is gone. And **the shop's row is locked first**: without it, two
@@ -796,6 +1292,86 @@ counts: the order in its own shop — live first — and a ref found only in ano
 ([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)).
 It reads `orders_team_external_ref_idx` (`00014`); up to 2,000 refs a call.
 
+🔄 *(2026-11-04)* Each `OrderRefItem` also carries **`created_at_unix`** — when the order was typed in. The order form's
+duplicate-ref warning ([the-duplicate-ref-warning-is-accepted](../../business/order/context_decision.md#the-duplicate-ref-warning-is-accepted))
+dates every order it names from it, so the form no longer reads an `OrderDetail` per found order.
+
+### The duplicate-ref warning's two reads — `OrderByExternalRefs` + `OrderDraftByExternalRefs`
+
+Before *Create* (a new order, or a draft finalized through the form) the form asks both at once for the shop + ref
+([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused),
+[the-duplicate-warning-reads-drafts-too](../../business/order/context_decision.md#the-duplicate-warning-reads-drafts-too)).
+A find is a warning with *Create Anyway*; the server refuses nothing for a repeated ref.
+
+```mermaid
+sequenceDiagram
+  participant F as order form
+  participant O as OrderService
+  participant D as OrderDraftService
+  F->>O: OrderByExternalRefs(team, refs=[ref])
+  F->>D: OrderDraftByExternalRefs(team, shop, refs=[ref])
+  O-->>F: every order of the team on the ref, with status and created_at_unix
+  D-->>F: the team's drafts in that shop on the ref, never a manual one
+  Note over F: keeps live orders of this shop, drops the draft being finalized
+  F->>F: nothing left - straight on, else the warning names each with a link and its date
+```
+
+`OrderDraftService.OrderDraftByExternalRefs(team_id use_scope, filter {shop_id > 0, refs 1..50 unique})` →
+`items: map<ref, list{ draft_ref: map<draft_id, {draft_id, shop_id, author_user_id, created_at_unix}> }>`, a ref no
+draft carries absent. Same roles as `OrderCreate` (ROOT, ADMINISTRATOR, SELLING_OWNER/ADMIN/CS); `NO_SIDE_EFFECTS`.
+
+| | |
+| --- | --- |
+| whose drafts | the **team's**, any author's — a colleague's scrape of the ref is the double worth naming. The drafts list and detail keep their own-drafts rule |
+| the ref | a draft's `external_id`, with `source <> 'manual'`: a draft saved from the form carries a minted form id, not a marketplace ref |
+| the draft being finalized | answered like any other; the form drops it (`otherDrafts`) |
+| index | `order_drafts_team_shop_external_idx` `(team_id, shop_id, external_id)` (selling `00037`, 2026-11-05) — the lookup's own key, one seek per ref. 1 query: ≈0.5 ms at 50 000 drafts in one team for 1 ref and for 50 (was ≈6 ms / ≈15 ms on the unique `(team_id, source, external_id)`, which could not seek without `source`). [Audit](../../../audits/services/selling_service/performances/OrderDraftByExternalRefs.md) |
+| the warning's links | the read answers `author_user_id`; the dialog links only the caller's OWN drafts to `/orders/new?draft=id` — a colleague's is named *"A colleague's draft #id"* with no link, since a draft opens only for its author |
+
+## The labels a warehouse prints — `OrderLabels` (step 1)
+
+A shipping label is the SELLER's document — uploaded under its team — so the warehouse that ships the order cannot read
+it with `GetDownloadUrl` (NotFound: owner or share only). It asks the ORDER
+([a-warehouse-prints-the-labels-of-orders-it-ships](../../technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)):
+
+```mermaid
+sequenceDiagram
+  participant W as warehouse screen
+  participant O as selling_service OrderLabels
+  participant L as LabelLinker - order_label_linker.go
+  participant D as document_v1 LabelURL
+  W->>O: team_id = the warehouse, order_ids = one
+  O->>O: orders WHERE id IN ids AND warehouse_id = team - root reads all
+  O-->>W: none found - NOT_SHIPPED_HERE, no label file - NO_LABEL
+  O->>L: LabelURL - the order's team as owner, its receipt document id
+  L->>D: in-process call, not an RPC
+  D->>D: active order_receipt of that owner? else NotFound
+  D-->>O: signed URL and its expiry
+  O-->>W: url, expires_at, a result per order
+```
+
+| | |
+| --- | --- |
+| policy | WAREHOUSE_OWNER / ADMIN / STAFF, ROOT, ADMINISTRATOR — `NO_SIDE_EFFECTS` (it writes nothing, it signs a link). The seller keeps `GetDownloadUrl` |
+| the check | the order's `warehouse_id` is the scoped team; another warehouse's order and a missing id both read `NOT_SHIPPED_HERE`, and document_service is never asked |
+| the seam | selling's `LabelLinker` interface → composition root `NewOrderLabelLinker` → `document_v1.Service.LabelURL`, a plain method reading document_service's own table (id, owner team, `order_receipt`, active). No `document_shares` row is ever written |
+| a gone file | document_service's NotFound becomes `NO_LABEL` (and a WARN log); any other error is the call's error |
+| ⚠ step 1 | `order_ids` max 1, no PDF merge — the link is the order's own file. Merging (step 2) is the pick queue's `printMerge` mark |
+| cost | one primary-key read, 0.5 ms at 50 000 orders — not heavy |
+
+## The order list's money sorts and its *settlement not opened* filter — `OrderList` (2026-11-05)
+
+| | |
+| --- | --- |
+| **the two sorts** ([the-total-sort-is-ours-and-the-platform-total-sorts-apart](../../business/order/context_decision.md#the-total-sort-is-ours-and-the-platform-total-sorts-apart)) | `ORDER_ROW_SORT_TOTAL` orders by `total_cost` (goods cost + warehouse fee — what the order cost the seller); the new `ORDER_ROW_SORT_PLATFORM_TOTAL` by `platform_total` (what the buyer paid). Each `… <dir>, id <dir>`, so equal figures keep one stable order across pages. The column comes from a closed set in `orderOrderClause` (`list_slices.go`), never from input. Before this the TOTAL sort named a `total` column that 00027 had replaced. No screen offers sorting today |
+| **settlement not opened** ([a-missing-account-is-found-by-its-opened-at](../../business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at)) | `OrderListFilter.settlement_not_opened` → `settlement_opened_at IS NULL` in `scopedOrders`, so OrderStat (`OrderStatFilter.settlement_not_opened`) and OrderExport read the same set. Served by the partial index `orders_settlement_not_opened_idx` (00040). Each row carries `settlement_opened_at_unix` (0 = not yet). The screen's filter and badge are a Storybook prototype awaiting the owner (`SellerOrdersPage settlementMissingPrototype`) |
+| **who stamps it** | settlement, in-process, after a committed `initial_total` — `selling_v1.SettlementOpened(order, at)`: one `UPDATE … WHERE settlement_opened_at IS NULL`, so the first opening wins and an unknown order is no error. Not an RPC: no browser may claim an account opened. Seam and flow: [settlement rpc.md](../settlement_service/rpc.md#order_service--settlement_service-cross-service-by-event) |
+
+Tests: `order_list_sort_test.go`, `settlement_opened_test.go`, `settlement_opened_race_test.go` (`-tags raceaudit`), and
+through the composition root `cmd/app_development/settlement_opened_marker_test.go` (a real order, its Order Placed
+opening the account, and a refused open leaving NULL). Perf: [OrderList.md](../../../audits/services/selling_service/performances/OrderList.md)
+findings 3 and 6.
+
 ## The list as a file — `OrderExport`
 
 [one-export-is-the-list-as-a-file](../../technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file):
@@ -808,7 +1384,7 @@ sequenceDiagram
     participant C as a list's Export - seller or warehouse
     participant S as OrderExport
     participant DB as orders, order_items, shops
-    participant T as team_service and user_service
+    participant T as team_service, user_service and shipment_service
     participant D as document_service
 
     C->>S: team_id, the list's filter and tab, the view, the ticked ids if any
@@ -816,7 +1392,7 @@ sequenceDiagram
     S-->>C: exporting orders - 0 of N
     loop 200 rows at a time, newest first, keyset on id
         S->>DB: the page, with each row's item_quantity, and its shops
-        S->>T: TeamByIds and UserByIDs - the sellers' and creators' names, as the caller
+        S->>T: TeamByIds, UserByIDs and ShipmentChannelByIds - the sellers' and creators' names and the couriers' codes, as the caller
         S->>S: write the rows - ids and phones as text
         S-->>C: rows written - done of N
     end
@@ -833,3 +1409,44 @@ sequenceDiagram
 | the clock | WIB (UTC+7), the people reading it keep that time |
 | as the caller | the names and the upload go through clients that forward the caller's token (`san_auth.ForwardBearer`): the file is stored under the caller's team, as them, as a private `order_export` document behind an expiring signed link |
 | the stream | the guideline's long-task shape ([code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md)): every step a slog line sent as `message`, with `done` and `total` on each, the link on the last |
+
+## A marketplace's order export, imported — `ShopeeOrderImport` and `TiktokOrderImport`
+
+One shop's order export moves each order it names along customer service's moves after handover, and lists every other
+order with its reason ([the-import-moves-only-after-handover](../../technical/order/design_decision.md#the-import-moves-only-after-handover),
+[the-order-import-is-one-rpc-per-platform](../../technical/order/design_decision.md#the-order-import-is-one-rpc-per-platform)).
+Both RPCs run `importOrders`; only the reader differs ([order_import_readers](../../../backend/services/selling_service/order_import_readers/)).
+
+```mermaid
+sequenceDiagram
+  participant fe as Import dialog
+  participant imp as importOrders
+  participant rd as order_import_readers
+  participant mv as moveOrders
+  fe->>imp: team_id, shop_id, file_content
+  imp->>imp: the shop - this team's, open or closed, on this platform
+  imp-->>fe: ERROR and end, when it is not
+  imp->>rd: the file
+  rd-->>imp: one order per ref, the platform's words and what they mean
+  imp-->>fe: ERROR and end, when it is not this platform's order export
+  imp->>imp: the shop's live orders with those refs, 200 a query - no lock
+  imp->>imp: each order - cancelled, unknown words, no match, two matches, behind ours, not handed over, already there, or a move
+  loop each target status, 200 orders a call
+    imp->>mv: the orders, the target, note "Shopee order import"
+    mv->>mv: FOR UPDATE in id order, re-check each move against the status diagram, UPDATE, timeline rows
+    mv-->>imp: moved, or refused with why
+    imp->>imp: publish OrderStatusChanged for each move, after the commit
+  end
+  imp-->>fe: one line per order - INFO moved or already there, WARN not applied
+  imp-->>fe: the tally - moved, already there, not applied
+```
+
+| | |
+| --- | --- |
+| the decision | made on an UNLOCKED read, then re-checked by `moveOrders` under the lock — a move made by someone else in between comes back refused or "already", never written twice ([lock-order](../../../audits/services/selling_service/concurrency/lock-order.md)) |
+| a refusal | a WARN line, never an error of the RPC. Only the database failing fails it |
+| cancelled on the platform | listed only while a live order holds the ref; with none it is already there ([a-cancelled-order-with-nothing-live-is-already-there](../../technical/order/design_decision.md#a-cancelled-order-with-nothing-live-is-already-there)) |
+| two moves for one order | completed on the platform while `shipping` here is `shipped`, then `completed` — one round per step, the second only after the first commits ([a-completed-shipping-order-passes-through-shipped](../../technical/order/design_decision.md#a-completed-shipping-order-passes-through-shipped)). The status diagram gains no edge |
+| a closed tab | stops the lines, not the import: the work runs on `context.WithoutCancel`, as the settlement import does |
+| ⚠ the readers | built against the MOCK exports in [examples/order_samples](../../../examples/order_samples/README.md) — a real export may disagree |
+| ⚠ cost | 373 ms for 1 000 orders on a Windows dev machine, most of it a ~50 ms step per large statement traced to the local database connection, not the code — to be re-measured on Linux ([the audit](../../../audits/services/selling_service/performances/ShopeeOrderImport.md)) |

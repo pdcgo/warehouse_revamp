@@ -22,8 +22,8 @@ var (
 // RackMove moves goods off ONE rack onto one or more racks of the same warehouse (a-move-is-one-rack-to-one-or-more-racks),
 // on the decided ledgers: one `move` transaction per owning team, a row per rack touched, nothing in the batch ledger,
 // all in one database transaction — all or nothing (a-move-writes-two-rack-rows-and-no-batch-row, a-move-is-all-or-nothing).
-// Any warehouse member may move goods (any-warehouse-member-may-move-goods). ⚠ A rack being counted will refuse a move
-// once opname is built (a-lock-stops-units-moving-not-sales).
+// Any warehouse member may move goods (any-warehouse-member-may-move-goods). A product being counted on the rack refuses
+// the move as "being counted" (a-lock-stops-sales-and-cancels-too) — placementErr maps it through countedRefusal.
 func (s *Service) RackMove(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RackMoveRequest],
@@ -35,6 +35,7 @@ func (s *Service) RackMove(
 		WarehouseID:     warehouseID,
 		FromPlacementID: msg.GetFromRackId(),
 		ActorID:         actorFrom(ctx),
+		IsOverride:      overrideFrom(ctx),
 		Description:     msg.GetDescription(),
 	}
 
@@ -100,6 +101,10 @@ func (s *Service) RackMove(
 // (a-shelf-never-goes-below-zero).
 func placementErr(err error) error {
 	var short *inventory_ledgers.NotEnoughStockError
+
+	if refused := countedRefusal(err); refused != nil {
+		return refused
+	}
 
 	switch {
 	case errors.Is(err, errRackMissing):

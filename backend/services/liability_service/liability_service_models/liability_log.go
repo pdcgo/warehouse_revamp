@@ -18,9 +18,10 @@ type LiabilityLog struct {
 	TeamID         uint64
 	CounterpartyID uint64
 
-	// ⚠ From TeamID's point of view: a RECEIVABLE is POSITIVE, a PAYABLE is NEGATIVE. Whole rupiah.
+	// ⚠ From TeamID's point of view: a RECEIVABLE is POSITIVE, a PAYABLE is NEGATIVE. Exact rupiah,
+	// never rounded (the-backend-never-rounds-money).
 	// The two legs of one movement are exact negatives of each other.
-	Amount int64
+	Amount float64
 
 	// What caused it. SourceType is the enum as text (see mapper.go); SourceID is an opaque id in
 	// whichever service owns that thing.
@@ -35,7 +36,7 @@ type LiabilityLog struct {
 
 	// The balance on this side after this entry. Derived, kept for the history screen; the log rows
 	// stay what it is derived from.
-	BalanceAfter int64
+	BalanceAfter float64
 
 	// WHO CAUSED IT — a user id, opaque here (every-entry-names-who-posted-it). The human whose act
 	// produced the movement, not the service that wrote the row: a team disputing a charge has to be
@@ -45,6 +46,11 @@ type LiabilityLog struct {
 	// Rows written before this column existed carry 0 and cannot be back-filled: the fact was never
 	// recorded anywhere to recover it from.
 	ActorID uint64
+
+	// The actor was Root or the Administrator, posting inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service). Both legs carry it, as both carry the actor. A leg an event posted takes
+	// it from the event's `actor_is_override`, beside the event's actor.
+	IsOverride bool
 
 	CreatedAt time.Time
 }

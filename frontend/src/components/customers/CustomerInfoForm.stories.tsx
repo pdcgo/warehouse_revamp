@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Text } from "@chakra-ui/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 import { CustomerInfoForm, description } from "./CustomerInfoForm";
@@ -170,6 +171,27 @@ export const AddressColumnIsTheRealPicker: Story = {
     await expect(
       address.getByDisplayValue("Jl. Ir. H. Juanda No. 12, RT 03/RW 05"),
     ).toBeInTheDocument();
+  },
+};
+
+// THE ADDRESS HINT SLOT (the-cs-edits-the-whole-address-before-create): whatever the screen passes sits at the top of
+// the address column, above the picker — on a draft, the address as the marketplace wrote it — and the picker below it
+// stays the editable one. Without the prop the column opens on the picker, as every other caller has it.
+export const AnAddressHintSitsAboveThePicker: Story = {
+  args: {
+    customerName: "Budi Santoso",
+    addressHint: <Text data-testid="the-hint">Jl. Merdeka 1, Pakansari, Cibinong, Kab. Bogor</Text>,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const address = canvas.getByTestId("order-create-address");
+
+    const hint = within(address).getByTestId("the-hint");
+    const provinsi = within(address).getByTestId("address-provinsi");
+    await expect(hint).toBeVisible();
+    // Above the picker, in the address column.
+    await expect(hint.compareDocumentPosition(provinsi) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await expect(within(provinsi).getByRole("combobox")).toBeEnabled();
   },
 };
 

@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/region/v1/region.proto.
  */
 export const file_warehouse_region_v1_region: GenFile = /*@__PURE__*/
-  fileDesc("CiB3YXJlaG91c2UvcmVnaW9uL3YxL3JlZ2lvbi5wcm90bxITd2FyZWhvdXNlLnJlZ2lvbi52MSJ8CgZSZWdpb24SDAoEY29kZRgBIAEoCRITCgtwYXJlbnRfY29kZRgCIAEoCRIvCgVsZXZlbBgDIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWwSDAoEbmFtZRgEIAEoCRIQCghrb2RlX3BvcxgFIAEoCSLWAQoOUmVnaW9uQW5jZXN0cnkSFQoNcHJvdmluc2lfY29kZRgBIAEoCRIVCg1wcm92aW5zaV9uYW1lGAIgASgJEhYKDmthYnVwYXRlbl9jb2RlGAMgASgJEhYKDmthYnVwYXRlbl9uYW1lGAQgASgJEhYKDmtlY2FtYXRhbl9jb2RlGAUgASgJEhYKDmtlY2FtYXRhbl9uYW1lGAYgASgJEhEKCWRlc2FfY29kZRgHIAEoCRIRCglkZXNhX25hbWUYCCABKAkSEAoIa29kZV9wb3MYCSABKAkicAoRUmVnaW9uTGlzdFJlcXVlc3QSHAoLcGFyZW50X2NvZGUYASABKAlCB7pIBHICGBQSNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgaStRgCIAEidAoSUmVnaW9uTGlzdFJlc3BvbnNlEiwKB3JlZ2lvbnMYASADKAsyGy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbhIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIogBChNSZWdpb25TZWFyY2hSZXF1ZXN0EhQKAXEYASABKAlCCbpIBnIEEAIYZBI5CgVsZXZlbBgCIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWxCCLpIBYIBAhABEhgKBWxpbWl0GAMgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJMChRSZWdpb25TZWFyY2hSZXNwb25zZRI0CgdyZXN1bHRzGAEgAygLMiMud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25BbmNlc3RyeSJnChxSZWdpb25TZWFyY2hCeUtvZGVQb3NSZXF1ZXN0EiUKCGtvZGVfcG9zGAEgASgJQhO6SBByDhADGAUyCF5bMC05XSskEhgKBWxpbWl0GAIgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJVCh1SZWdpb25TZWFyY2hCeUtvZGVQb3NSZXNwb25zZRI0CgdyZXN1bHRzGAEgAygLMiMud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25BbmNlc3RyeSI3ChRSZWdpb25SZXNvbHZlUmVxdWVzdBIXCgRjb2RlGAEgASgJQgm6SAZyBBABGBQ6BpK1GAIgASJOChVSZWdpb25SZXNvbHZlUmVzcG9uc2USNQoIYW5jZXN0cnkYASABKAsyIy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkFuY2VzdHJ5KpUBCgtSZWdpb25MZXZlbBIcChhSRUdJT05fTEVWRUxfVU5TUEVDSUZJRUQQABIZChVSRUdJT05fTEVWRUxfUFJPVklOU0kQARIaChZSRUdJT05fTEVWRUxfS0FCVVBBVEVOEAISGgoWUkVHSU9OX0xFVkVMX0tFQ0FNQVRBThADEhUKEVJFR0lPTl9MRVZFTF9ERVNBEAQyuwMKDVJlZ2lvblNlcnZpY2USXQoKUmVnaW9uTGlzdBImLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGlzdFJlcXVlc3QaJy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkxpc3RSZXNwb25zZRJjCgxSZWdpb25TZWFyY2gSKC53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblNlYXJjaFJlcXVlc3QaKS53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblNlYXJjaFJlc3BvbnNlEn4KFVJlZ2lvblNlYXJjaEJ5S29kZVBvcxIxLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uU2VhcmNoQnlLb2RlUG9zUmVxdWVzdBoyLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uU2VhcmNoQnlLb2RlUG9zUmVzcG9uc2USZgoNUmVnaW9uUmVzb2x2ZRIpLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uUmVzb2x2ZVJlcXVlc3QaKi53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblJlc29sdmVSZXNwb25zZUJMWkpnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3JlZ2lvbi92MTtyZWdpb252MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiB3YXJlaG91c2UvcmVnaW9uL3YxL3JlZ2lvbi5wcm90bxITd2FyZWhvdXNlLnJlZ2lvbi52MSJ8CgZSZWdpb24SDAoEY29kZRgBIAEoCRITCgtwYXJlbnRfY29kZRgCIAEoCRIvCgVsZXZlbBgDIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWwSDAoEbmFtZRgEIAEoCRIQCghrb2RlX3BvcxgFIAEoCSLWAQoOUmVnaW9uQW5jZXN0cnkSFQoNcHJvdmluc2lfY29kZRgBIAEoCRIVCg1wcm92aW5zaV9uYW1lGAIgASgJEhYKDmthYnVwYXRlbl9jb2RlGAMgASgJEhYKDmthYnVwYXRlbl9uYW1lGAQgASgJEhYKDmtlY2FtYXRhbl9jb2RlGAUgASgJEhYKDmtlY2FtYXRhbl9uYW1lGAYgASgJEhEKCWRlc2FfY29kZRgHIAEoCRIRCglkZXNhX25hbWUYCCABKAkSEAoIa29kZV9wb3MYCSABKAkicAoRUmVnaW9uTGlzdFJlcXVlc3QSHAoLcGFyZW50X2NvZGUYASABKAlCB7pIBHICGBQSNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgaStRgCIAEidAoSUmVnaW9uTGlzdFJlc3BvbnNlEiwKB3JlZ2lvbnMYASADKAsyGy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbhIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIogBChNSZWdpb25TZWFyY2hSZXF1ZXN0EhQKAXEYASABKAlCCbpIBnIEEAIYZBI5CgVsZXZlbBgCIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWxCCLpIBYIBAhABEhgKBWxpbWl0GAMgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJMChRSZWdpb25TZWFyY2hSZXNwb25zZRI0CgdyZXN1bHRzGAEgAygLMiMud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25BbmNlc3RyeSJnChxSZWdpb25TZWFyY2hCeUtvZGVQb3NSZXF1ZXN0EiUKCGtvZGVfcG9zGAEgASgJQhO6SBByDhADGAUyCF5bMC05XSskEhgKBWxpbWl0GAIgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJVCh1SZWdpb25TZWFyY2hCeUtvZGVQb3NSZXNwb25zZRI0CgdyZXN1bHRzGAEgAygLMiMud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25BbmNlc3RyeSI3ChRSZWdpb25SZXNvbHZlUmVxdWVzdBIXCgRjb2RlGAEgASgJQgm6SAZyBBABGBQ6BpK1GAIgASJOChVSZWdpb25SZXNvbHZlUmVzcG9uc2USNQoIYW5jZXN0cnkYASABKAsyIy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkFuY2VzdHJ5IqIBChJSZWdpb25NYXRjaFJlcXVlc3QSIAoNcHJvdmluc2lfbmFtZRgBIAEoCUIJukgGcgQQARhkEiEKDmthYnVwYXRlbl9uYW1lGAIgASgJQgm6SAZyBBABGGQSIQoOa2VjYW1hdGFuX25hbWUYAyABKAlCCbpIBnIEEAEYZBIcCglkZXNhX25hbWUYBCABKAlCCbpIBnIEEAEYZDoGkrUYAiABIloKE1JlZ2lvbk1hdGNoUmVzcG9uc2USMgoFbWF0Y2gYASABKAsyIy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkFuY2VzdHJ5Eg8KB21hdGNoZXMYAiABKA0qlQEKC1JlZ2lvbkxldmVsEhwKGFJFR0lPTl9MRVZFTF9VTlNQRUNJRklFRBAAEhkKFVJFR0lPTl9MRVZFTF9QUk9WSU5TSRABEhoKFlJFR0lPTl9MRVZFTF9LQUJVUEFURU4QAhIaChZSRUdJT05fTEVWRUxfS0VDQU1BVEFOEAMSFQoRUkVHSU9OX0xFVkVMX0RFU0EQBDKdBAoNUmVnaW9uU2VydmljZRJdCgpSZWdpb25MaXN0EiYud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25MaXN0UmVxdWVzdBonLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGlzdFJlc3BvbnNlEmMKDFJlZ2lvblNlYXJjaBIoLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uU2VhcmNoUmVxdWVzdBopLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uU2VhcmNoUmVzcG9uc2USfgoVUmVnaW9uU2VhcmNoQnlLb2RlUG9zEjEud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25TZWFyY2hCeUtvZGVQb3NSZXF1ZXN0GjIud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25TZWFyY2hCeUtvZGVQb3NSZXNwb25zZRJmCg1SZWdpb25SZXNvbHZlEikud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25SZXNvbHZlUmVxdWVzdBoqLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uUmVzb2x2ZVJlc3BvbnNlEmAKC1JlZ2lvbk1hdGNoEicud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25NYXRjaFJlcXVlc3QaKC53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbk1hdGNoUmVzcG9uc2VCTFpKZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9yZWdpb24vdjE7cmVnaW9udjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One administrative region.
@@ -327,6 +327,71 @@ export const RegionResolveResponseSchema: GenMessage<RegionResolveResponse> = /*
   messageDesc(file_warehouse_region_v1_region, 9);
 
 /**
+ * @generated from message warehouse.region.v1.RegionMatchRequest
+ */
+export type RegionMatchRequest = Message<"warehouse.region.v1.RegionMatchRequest"> & {
+  /**
+   * The four levels as a marketplace wrote them. All four are required: a match on fewer levels names an area, not the
+   * place a parcel goes, so a caller holding fewer has nothing to match.
+   *
+   * @generated from field: string provinsi_name = 1;
+   */
+  provinsiName: string;
+
+  /**
+   * "Kabupaten Bogor", "Kab. Bogor", "Kab Bogor", "Kota Bogor" or "Bogor". A prefix must agree with the place's own
+   * (Kab. never matches a Kota); no prefix matches either.
+   *
+   * @generated from field: string kabupaten_name = 2;
+   */
+  kabupatenName: string;
+
+  /**
+   * @generated from field: string kecamatan_name = 3;
+   */
+  kecamatanName: string;
+
+  /**
+   * @generated from field: string desa_name = 4;
+   */
+  desaName: string;
+};
+
+/**
+ * Describes the message warehouse.region.v1.RegionMatchRequest.
+ * Use `create(RegionMatchRequestSchema)` to create a new message.
+ */
+export const RegionMatchRequestSchema: GenMessage<RegionMatchRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_region_v1_region, 10);
+
+/**
+ * @generated from message warehouse.region.v1.RegionMatchResponse
+ */
+export type RegionMatchResponse = Message<"warehouse.region.v1.RegionMatchResponse"> & {
+  /**
+   * The one desa the names match, with its full ancestry (the region list's own spelling, codes and kode pos). Unset when
+   * none matches and when several do.
+   *
+   * @generated from field: warehouse.region.v1.RegionAncestry match = 1;
+   */
+  match?: RegionAncestry | undefined;
+
+  /**
+   * How many desa matched, capped at 2: 0 = none, 1 = `match` is set, 2 = more than one (ambiguous).
+   *
+   * @generated from field: uint32 matches = 2;
+   */
+  matches: number;
+};
+
+/**
+ * Describes the message warehouse.region.v1.RegionMatchResponse.
+ * Use `create(RegionMatchResponseSchema)` to create a new message.
+ */
+export const RegionMatchResponseSchema: GenMessage<RegionMatchResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_region_v1_region, 11);
+
+/**
  * The four administrative tiers. The numbers are the `level` column verbatim (1..4), a structure
  * fixed by law rather than a list that grows.
  *
@@ -428,6 +493,20 @@ export const RegionService: GenService<{
     methodKind: "unary";
     input: typeof RegionResolveRequestSchema;
     output: typeof RegionResolveResponseSchema;
+  },
+  /**
+   * FOUR NAMES IN, THE ONE PLACE THEY NAME OUT — or none (the-cs-edits-the-whole-address-before-create, *Pre-filled when
+   * certain*). A draft's address arrives as plain names (an-address-is-plain-names), and the order form's picker works by
+   * code; when the four names match EXACTLY ONE desa, its ancestry is the pre-fill. Exact on all four levels after
+   * normalising case, spacing and the kabupaten level's Kabupaten / Kab. / Kota prefix — never a fuzzy guess: a wrong
+   * pre-fill would look like a person's pick. Several matches or none answer no match, and the person picks.
+   *
+   * @generated from rpc warehouse.region.v1.RegionService.RegionMatch
+   */
+  regionMatch: {
+    methodKind: "unary";
+    input: typeof RegionMatchRequestSchema;
+    output: typeof RegionMatchResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_region_v1_region, 0);

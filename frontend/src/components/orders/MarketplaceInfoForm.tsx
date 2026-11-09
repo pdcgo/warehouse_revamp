@@ -123,6 +123,11 @@ export function MarketplaceInfoForm({
             teamId={teamId}
             value={value.shopId}
             marketplace={value.marketplace}
+            // The order form writes on the shop — it offers only the ones this person may (a-write-needs-a-grant-or-a-manager).
+            writable
+            // A waiting draft's CLOSED shop is kept, badged — never cleared under the person, never offered for a new order
+            // (a-close-leaves-the-drafts-waiting); the form refuses Create while it holds one.
+            keepClosed
             onChange={(shopId) => onChange({ ...value, shopId })}
             disabled={disabled}
           />

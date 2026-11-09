@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,14 +18,12 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { MoreHorizontal, Pencil, SearchX, Store, Trash2, UserCog } from "lucide-react";
+import { Lock, LockOpen, MoreHorizontal, Pencil, SearchX, Store, UserCog } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { PRESSABLE } from "../../lib/motion";
@@ -33,12 +32,12 @@ import {
   enumCodec,
   idCodec,
   nullableCodec,
+  oneOfCodec,
   optionalCodec,
   sortCodec,
   textCodec,
   useUrlState,
 } from "../../lib/urlState";
-import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -49,11 +48,14 @@ import { SortableHeader, type SortState } from "../../components/chrome/Sortable
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
-import { type ShopSortKey, useDeleteShop, useShopPrimaries, useShops } from "../../features/shops/queries";
+import { type ShopSortKey, useReopenShop, useShopPrimaries, useShops } from "../../features/shops/queries";
 import { ShopFormDialog } from "../../features/shops/ShopFormDialog";
 import { PrimaryCsDialog } from "./components/PrimaryCsDialog";
 import { ShopOptionsFilter } from "./components/ShopOptionsFilter";
-import { SHOPS_LIST_PENDING } from "./pending";
+import { ShopStatusFilterSelect } from "./components/ShopStatusFilter";
+import { CloseShopDialog } from "../../features/shops/CloseShopDialog";
+import { ShopStatusBadge } from "../../features/shops/ShopStatusBadge";
+import { SHOP_STATUS_FILTERS, type ShopStatusFilter, isShopClosed } from "../../features/shops/status";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -70,6 +72,9 @@ const PRIMARY_CODEC = optionalCodec<bigint>({
   },
 });
 
+// The status filter's URL key: `open` (the default, left out), `closed`, `all` (a-shop-is-closed-never-deleted).
+const STATUS_CODEC = oneOfCodec(SHOP_STATUS_FILTERS);
+
 // A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up); Chakra's `_hover` honours `data-hover`.
 const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
@@ -81,8 +86,8 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 //   Toko [Toko Melati]                                                    [＋ Toko Baru]
 //   Etalase marketplace tempat tim ini berjualan …
-//   [⌕ Cari nama atau kode ×] [Semua marketplace ▾ ⚠1] [Semua CS utama ▾ ⚠2] [⚙ Filter ⌄ ⚠3 → ☐ Belum ada CS utama]
-//   Nama ↕         │ Kode ↕  │ Marketplace │ CS utama            │             [✎ Ubah] [🗑 Hapus] [⋯]
+//   [⌕ Cari nama atau kode ×] [Semua marketplace ▾] [Semua CS utama ▾] [⚙ Filter ⌄ → ☐ Belum ada CS utama]
+//   Nama ↕         │ Kode ↕  │ Marketplace │ CS utama            │             [✎ Ubah] [🔒 Tutup] [⋯]
 //   Melati Official │ MEL-SHP │ Shopee      │ Ani Rahayu          │                     ⋯ → ⚙ Ganti CS Utama
 //   Melati Store    │ MEL-TOK │ Tokopedia   │ Belum ada CS utama  │                     ⋯ → ⚙ Pilih CS Utama
 //
@@ -91,15 +96,26 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // ellipsis"*) — it is who an imported statement's rows with no order are counted for, and a shop with none cannot
 // import. "None" is a line of text in the warning role, not a badge.
 //
-// THE MARKETPLACE, THE PRIMARY CS AND "NO PRIMARY CS", AHEAD OF THE CONTRACT (owner: *"oke tambahkan dengan warning,
-// filter mp, cs utama sama belum ada cs"*, then *"bedakan belum ada csnya"*) — each is held in the URL and marked ⚠, its
-// pick THROWN AWAY: ShopListFilter has only `q`. "No primary CS" is its own tick, apart from the person; the two
-// cannot both hold, so setting one clears the other.
+// THE MARKETPLACE, THE PRIMARY CS AND "NO PRIMARY CS" (owner: *"filter mp, cs utama sama belum ada cs"*, then *"bedakan
+// belum ada csnya"*) — each is held in the URL and SENT: ShopListFilter's `marketplace`, `primary_user_id` and
+// `no_primary` narrow the whole set on the server (#16), so the count and the pages agree. "No primary CS" is its own
+// tick, apart from the person; the two cannot both hold (the server refuses both), so setting one clears the other.
 //
 // The name and the code sort from their headings (the two the contract orders by); the whole row opens the shop; a phone
 // reads each shop as a block; the first load is the list's shape; an empty list says what next; the pages grow.
+//
+// A SHOP IS CLOSED, NEVER DELETED (a-shop-is-closed-never-deleted, the-close-shop-prototype-is-accepted): a STATUS filter,
+// open by default and held in the URL; a *Closed · date* badge under a closed shop's name; Close (it confirms —
+// CloseShopDialog) and Reopen (at once, not destructive) where Delete was — there is no delete. A closed row has no
+// Edit (a-closed-shop-locks-all-but-its-grants) but keeps its primary CS action.
+//
+//   [⌕ Search] [Open shops ▾] [All marketplaces ▾] [Any primary CS ▾] [⚙ Filter]
+//   Melati Official │ MEL-SHP │ Shopee │ Ani Rahayu │ [✎ Edit] [🔒 Close] [⋯]
+//   Melati Store    │ MEL-TOK │ ...    │ ...        │          [🔓 Reopen] [⋯]     ← Closed / All
+//   [🔒 Closed · 3 Nov 2026]
 export function ShopsPage() {
   const { current } = useTeam();
+  const writable = canWrite(current);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -108,10 +124,11 @@ export function ShopsPage() {
   const [q, setQ] = useUrlState("q", "", textCodec);
   // `null` = the list's own order, newest first — no heading stands for it.
   const [sort, setSort] = useUrlState<SortState<ShopSortKey> | null>("sort", null, SORT_CODEC);
-  // ⚠ Held and marked, NOT SENT (SHOPS_LIST_PENDING) — ShopListFilter cannot carry them yet.
+  // Held in the URL and sent as ShopListFilter's marketplace / primary_user_id / no_primary.
   const [marketplace, setMarketplace] = useUrlState("market", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   const [primaryCsId, setPrimaryCsId] = useUrlState<bigint | undefined>("cs", undefined, PRIMARY_CODEC);
   const [noPrimaryOnly, setNoPrimaryOnly] = useUrlState("nocs", false, boolCodec);
+  const [status, setStatus] = useUrlState<ShopStatusFilter>("status", "open", STATUS_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<Shop | null>(null);
@@ -121,8 +138,18 @@ export function ShopsPage() {
   const term = useDebounced(q.trim());
   const teamId = current?.teamId;
 
-  const query = useShops({ teamId, q: term, sort, page, pageSize });
-  const deleteShop = useDeleteShop();
+  const query = useShops({
+    teamId,
+    q: term,
+    marketplace,
+    primaryUserId: primaryCsId,
+    noPrimary: noPrimaryOnly,
+    sort,
+    status,
+    page,
+    pageSize,
+  });
+  const reopenShop = useReopenShop();
 
   const shops = query.data?.shops ?? [];
   const totalItems = query.data?.totalItems ?? 0;
@@ -145,26 +172,29 @@ export function ShopsPage() {
       setMarketplace(Marketplace.UNSPECIFIED);
       setPrimaryCsId(undefined);
       setNoPrimaryOnly(false);
+      setStatus("open");
     });
   const filterCount = [
     q.trim() !== "",
     marketplace !== Marketplace.UNSPECIFIED,
     primaryCsId !== undefined,
     noPrimaryOnly,
+    // Open is the list's default, not a filter (a-shop-is-closed-never-deleted); Closed or All is.
+    status !== "open",
   ].filter(Boolean).length;
 
-  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its loading state.
-  // mutateAsync REJECTS on failure, which is why the catch is not optional.
-  async function remove(shop: Shop) {
+  // Reopen is not destructive (it gives selling back), so it runs at once. It is refused while an open shop
+  // of the team holds the code, naming that shop (a-shop-code-is-unique-among-open-shops) — the toast says so.
+  async function reopen(shop: Shop) {
     if (teamId === undefined) {
       return;
     }
 
     try {
-      await deleteShop.mutateAsync({ teamId, shopId: shop.id });
-      toaster.create({ type: "success", title: t("shops.deleted", { name: shop.name }) });
+      await reopenShop.mutateAsync({ teamId, shopId: shop.id });
+      toaster.create({ type: "success", title: t("shops.reopen.done", { name: shop.name }) });
     } catch (err) {
-      toaster.create({ type: "error", title: t("shops.deleteFailed"), description: rpcError(err) });
+      toaster.create({ type: "error", title: t("shops.reopen.failed"), description: rpcError(err) });
     }
   }
 
@@ -181,31 +211,26 @@ export function ShopsPage() {
 
   const open = (shop: Shop) => navigate(`/shops/${shop.id}`);
 
-  // Edit and Delete inline, each a labelled button with its icon (an-action-button-carries-its-icon); the primary CS in
-  // the ⋯ after them (owner: *"pilih cs di ellipsis"*), a menu item with its icon. The same on a row and on a phone
-  // block.
+  // Edit and Close (or Reopen) inline, each a labelled button with its icon (an-action-button-carries-its-icon); the
+  // primary CS in the ⋯ after them (owner: *"pilih cs di ellipsis"*), a menu item with its icon. The same on a row and on
+  // a phone block.
   function actions(shop: Shop) {
+    if (!writable) return null;
+
     const none = shop.primaryUserId === 0n;
+    const closed = isShopClosed(shop);
 
     return (
       <HStack justify="end" gap="1.5">
-        <Button size="xs" variant="outline" data-testid={`edit-${shop.shopCode}`} onClick={() => setEditing(shop)}>
-          <Icon as={Pencil} boxSize="4" />
-          {t("shops.editAction")}
-        </Button>
+        {/* A closed shop is locked until it is reopened — no Edit (a-closed-shop-locks-all-but-its-grants). */}
+        {!closed && (
+          <Button size="xs" variant="outline" data-testid={`edit-${shop.shopCode}`} onClick={() => setEditing(shop)}>
+            <Icon as={Pencil} boxSize="4" />
+            {t("shops.editAction")}
+          </Button>
+        )}
 
-        <ConfirmDialog
-          title={t("shops.deleteShop")}
-          message={t("shops.deleteConfirm", { name: shop.name })}
-          confirmLabel={t("shops.delete")}
-          onConfirm={() => remove(shop)}
-          trigger={
-            <Button size="xs" variant="outline" colorPalette="error" data-testid={`delete-${shop.shopCode}`}>
-              <Icon as={Trash2} boxSize="4" />
-              {t("shops.delete")}
-            </Button>
-          }
-        />
+        {lifecycle(shop, closed)}
 
         <Menu.Root>
           <Menu.Trigger asChild>
@@ -237,11 +262,55 @@ export function ShopsPage() {
     );
   }
 
-  function shopName(shop: Shop) {
+  // Close in Delete's place on an open shop (destructive, so it confirms and says what it does); Reopen on
+  // a closed one. No delete at all (a-shop-is-closed-never-deleted).
+  function lifecycle(shop: Shop, closed: boolean) {
+    if (closed) {
+      return (
+        <Button
+          size="xs"
+          variant="outline"
+          data-testid={`reopen-${shop.shopCode}`}
+          loading={reopenShop.isPending && reopenShop.variables?.shopId === shop.id}
+          onClick={() => void reopen(shop)}
+        >
+          <Icon as={LockOpen} boxSize="4" />
+          {t("shops.reopen.action")}
+        </Button>
+      );
+    }
+
     return (
+      <CloseShopDialog
+        teamId={teamId ?? 0n}
+        shop={shop}
+        trigger={
+          <Button size="xs" variant="outline" colorPalette="error" data-testid={`close-${shop.shopCode}`}>
+            <Icon as={Lock} boxSize="4" />
+            {t("shops.close.action")}
+          </Button>
+        }
+      />
+    );
+  }
+
+  function shopName(shop: Shop) {
+    const name = (
       <Text fontWeight="bold" data-testid={`open-shop-${shop.shopCode}`}>
         {shop.name}
       </Text>
+    );
+    // A closed shop's badge sits UNDER its name, so the badges line up down the page (a row's status sits under its
+    // reference).
+    if (!isShopClosed(shop)) {
+      return name;
+    }
+
+    return (
+      <Stack gap="1" align="start">
+        {name}
+        <ShopStatusBadge closedAtUnix={shop.closedAtUnix} testId={`shop-closed-${shop.shopCode}`} />
+      </Stack>
     );
   }
 
@@ -258,7 +327,7 @@ export function ShopsPage() {
 
     const person = primaries.data?.get(shop.primaryUserId.toString());
     if (person) {
-      return <Text>{person.name || person.username}</Text>;
+      return <Text>{personName(person)}</Text>;
     }
 
     return primaries.isPending ? <Skeleton h="3" w="20" /> : <Text>#{shop.primaryUserId.toString()}</Text>;
@@ -266,6 +335,18 @@ export function ShopsPage() {
 
   function list() {
     if (shops.length === 0 && !error) {
+      // No closed shop yet is a fact about the team, not an empty team.
+      if (status === "closed" && term === "") {
+        return (
+          <EmptyHint
+            icon={Lock}
+            title={t("shops.status.noneClosed")}
+            description={t("shops.status.noneClosedHint")}
+            testId="shops-none-closed"
+          />
+        );
+      }
+
       // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint) — nothing matches: clear the search; nothing yet: add one.
       return term !== "" ? (
         <EmptyHint
@@ -284,7 +365,7 @@ export function ShopsPage() {
           icon={Store}
           title={t("shops.empty")}
           description={t("shops.emptyHint")}
-          action={<ShopFormDialog triggerTestId="shops-empty-create" />}
+          action={writable ? <ShopFormDialog triggerTestId="shops-empty-create" /> : undefined}
           testId="shops-empty"
         />
       );
@@ -394,11 +475,8 @@ export function ShopsPage() {
             {t("shops.lead")}
           </Text>
         </Stack>
-        <ShopFormDialog compact={isMobile} />
+        {writable && <ShopFormDialog compact={isMobile} />}
       </Flex>
-
-      {/* What this list cannot do yet — the three filters it holds and throws away. */}
-      <NotImplementedSummary list={SHOPS_LIST_PENDING} />
 
       {/* THE SHARED FILTER STRIP (a-phone-filters-from-a-sheet) — the search, with its icon and its ×, then the
           marketplace and the primary CS, each with its own × (every-filter-clears-from-its-own-x); the sort is the
@@ -411,43 +489,38 @@ export function ShopsPage() {
           testId="shop-search"
         />
 
+        {/* The status: open by default, closed by a filter (a-shop-is-closed-never-deleted). */}
+        <FilterField w="11rem" testId="shops-status-filter">
+          <ShopStatusFilterSelect value={status} onChange={(next) => refilter(() => setStatus(next))} />
+        </FilterField>
+
         {/* A static, small set — a plain list, not a search. */}
         <FilterField w="15rem" testId="shops-marketplace-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <MarketplaceSelect
-                clearable
-                // Its own address — the New Shop form on this page picks a marketplace too.
-                testId="shops-marketplace-select"
-                value={marketplace}
-                placeholder={t("shops.filter.marketplaceAll")}
-                onChange={(m) => refilter(() => setMarketplace(m))}
-              />
-            </Box>
-            <NotImplemented list={SHOPS_LIST_PENDING} id="marketplaceFilter" />
-          </Flex>
+          <MarketplaceSelect
+            clearable
+            // Its own address — the New Shop form on this page picks a marketplace too.
+            testId="shops-marketplace-select"
+            value={marketplace}
+            placeholder={t("shops.filter.marketplaceAll")}
+            onChange={(m) => refilter(() => setMarketplace(m))}
+          />
         </FilterField>
 
         {/* WHO HOLDS THE SHOP — the people who are a primary CS on this team's shops
             (a-who-filter-lists-the-people-on-its-rows). Picking one lifts "No primary CS". */}
         <FilterField w="15rem" testId="shops-primary-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <PersonFilterSelect
-                people={primaryPeople.data}
-                error={primaryPeople.isError}
-                value={primaryCsId}
-                placeholder={t("shops.filter.primaryAll")}
-                onChange={(id) =>
-                  refilter(() => {
-                    setPrimaryCsId(id);
-                    if (id !== undefined) setNoPrimaryOnly(false);
-                  })
-                }
-              />
-            </Box>
-            <NotImplemented list={SHOPS_LIST_PENDING} id="primaryFilter" />
-          </Flex>
+          <PersonFilterSelect
+            people={primaryPeople.data}
+            error={primaryPeople.isError}
+            value={primaryCsId}
+            placeholder={t("shops.filter.primaryAll")}
+            onChange={(id) =>
+              refilter(() => {
+                setPrimaryCsId(id);
+                if (id !== undefined) setNoPrimaryOnly(false);
+              })
+            }
+          />
         </FilterField>
 
         {/* THE SHOPS WITH NO PRIMARY CS — its own tick (owner: *"bedakan belum ada csnya"*), in the Filter panel
@@ -486,9 +559,15 @@ export function ShopsPage() {
         page={page}
         onPageChange={setPage}
         hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
-        resetKey={[term, sort ? `${sort.by}:${sort.dir}` : "", marketplace, primaryCsId ?? "", noPrimaryOnly, pageSize].join(
-          "|",
-        )}
+        resetKey={[
+          term,
+          sort ? `${sort.by}:${sort.dir}` : "",
+          marketplace,
+          primaryCsId ?? "",
+          noPrimaryOnly,
+          pageSize,
+          status,
+        ].join("|")}
         pageSize={pageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         onPageSizeChange={(n) => {

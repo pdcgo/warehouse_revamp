@@ -112,7 +112,7 @@ func receiveOn(
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: seedOwner, WarehouseId: warehouseID,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: productID, Sku: "SKU", Name: "Product", Count: qty, Total: float64(qty * 1000)}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: productID, ProductCode: "SKU", Name: "Product", Count: qty, Total: float64(qty * 1000)}},
 	}))
 	if err != nil {
 		t.Fatalf("receive %d — restock create: %v", qty, err)

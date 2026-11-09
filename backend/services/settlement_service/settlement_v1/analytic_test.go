@@ -32,7 +32,7 @@ func logPosted(
 	day string,
 	shopID, orderID, orderCreator, actor uint64,
 	settlementType settlementv1.SettlementType,
-	change int64,
+	change float64,
 ) *eventsv1.Event {
 	return &eventsv1.Event{
 		EventId:     fmt.Sprintf("settlement-log:%d", logID),
@@ -85,9 +85,9 @@ func fold(t *testing.T, svc *settlement_v1.Service, events ...*eventsv1.Event) {
 
 type dayWant struct {
 	day    string
-	change int64
-	open   int64
-	close  int64
+	change float64
+	open   float64
+	close  float64
 }
 
 func assertDays(t *testing.T, got []settlement_service_models.SettlementMetricColumns, days []time.Time, want []dayWant) {
@@ -100,7 +100,7 @@ func assertDays(t *testing.T, got []settlement_service_models.SettlementMetricCo
 	for i := range want {
 		if days[i].Format(time.DateOnly) != want[i].day || got[i].Change != want[i].change ||
 			got[i].OpenBalance != want[i].open || got[i].CloseBalance != want[i].close {
-			t.Fatalf("day %d = %s change %d open %d close %d, want %+v",
+			t.Fatalf("day %v = %s change %v open %v close %v, want %+v",
 				i, days[i].Format(time.DateOnly), got[i].Change, got[i].OpenBalance, got[i].CloseBalance, want[i])
 		}
 	}
@@ -159,7 +159,7 @@ var workedExampleDays = []dayWant{
 // would hold on every row while every figure after 01-02 was wrong.
 func TestFold_BuildsTheShopAndUserDaysAndShiftsLaterDays(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -182,14 +182,14 @@ func TestFold_BuildsTheShopAndUserDaysAndShiftsLaterDays(t *testing.T) {
 	}
 
 	if state.CloseBalance != -30_000 {
-		t.Fatalf("shop state close = %d, want −30.000 — the NEWEST day's close", state.CloseBalance)
+		t.Fatalf("shop state close = %v, want −30.000 — the NEWEST day's close", state.CloseBalance)
 	}
 }
 
 // At-least-once delivery: the same event twice is folded once.
 func TestFold_IsIdempotentOnTheEventID(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	first := workedExample()[0]
 	fold(t, svc, first, first)
@@ -202,9 +202,9 @@ func TestFold_IsIdempotentOnTheEventID(t *testing.T) {
 // redelivers it later — and nothing is claimed, so the redelivery is folded.
 func TestFold_RefusesWhileTheEventLockIsHeld(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
-	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}' WHERE key = 'process_event_lock'`).Error
+	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() WHERE key = 'process_event_lock'`).Error
 	if err != nil {
 		t.Fatalf("take the lock: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestFold_RefusesWhileTheEventLockIsHeld(t *testing.T) {
 // it is misconfigured.
 func TestFold_RefusesAnUnparseableLock(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	err := db.Exec(`UPDATE settlement_service_metadata SET value = 'off' WHERE key = 'process_event_lock'`).Error
 	if err != nil {
@@ -246,7 +246,7 @@ func TestFold_RefusesAnUnparseableLock(t *testing.T) {
 // A shop-addressed row has no order and so no creator — the user grain files it under its ACTOR.
 func TestFold_AttributesAShopRowToItsActor(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	fold(t, svc, logPosted(9, "2026-01-05", shop, 0, 0, 9,
 		settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT, -5_000))
@@ -255,7 +255,109 @@ func TestFold_AttributesAShopRowToItsActor(t *testing.T) {
 	assertDays(t, metrics, days, []dayWant{{day: "2026-01-05", change: -5_000, open: 0, close: -5_000}})
 
 	if metrics[0].SystemAdjustment != -5_000 {
-		t.Fatalf("system_adjustment = %d, want −5.000", metrics[0].SystemAdjustment)
+		t.Fatalf("system_adjustment = %v, want −5.000", metrics[0].SystemAdjustment)
+	}
+}
+
+// lastDay is the person state's last_day as text, empty when NULL.
+func lastDay(t *testing.T, db *gorm.DB, userID uint64) string {
+	t.Helper()
+
+	var day *string
+
+	err := db.Raw(`SELECT last_day::text FROM user_settlement_reports WHERE user_id = ? AND team_id = ?`, userID, team).
+		Scan(&day).
+		Error
+	if err != nil {
+		t.Fatalf("read last_day: %v", err)
+	}
+
+	if day == nil {
+		return ""
+	}
+
+	return *day
+}
+
+// the-person-list-reads-the-last-day-from-the-user-report: the fold RAISES the person's last_day to the newest day it
+// has a row on, and a late event on an older day leaves it where it is.
+func TestFold_RaisesTheUsersLastDayAndAnOlderDayDoesNotLowerIt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+
+	fold(t, svc, logPosted(1, "2026-01-05", shop, order, creator, creator,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -sale))
+
+	if day := lastDay(t, db, creator); day != "2026-01-05" {
+		t.Fatalf("last_day after the first fold = %q, want 2026-01-05", day)
+	}
+
+	fold(t, svc, logPosted(2, "2026-01-09", shop, order, creator, 3,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 100_000))
+
+	if day := lastDay(t, db, creator); day != "2026-01-09" {
+		t.Fatalf("last_day after a newer day = %q, want it raised to 2026-01-09", day)
+	}
+
+	fold(t, svc, logPosted(3, "2026-01-02", shop, order, creator, 3,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_EXTERNAL_ADS_FEE, -10_000))
+
+	if day := lastDay(t, db, creator); day != "2026-01-09" {
+		t.Fatalf("last_day after a late, older day = %q, want 2026-01-09 kept", day)
+	}
+}
+
+// A replay cuts the person's newest days, so it recomputes last_day from the daily rows left — MAX(day), or NULL when
+// none are — and the redelivery raises it again.
+func TestAnalyticReplayCompute_RecomputesTheUsersLastDay(t *testing.T) {
+	db := san_testdb.DB(t)
+	broker := &fakeBroker{window: 7 * 24 * time.Hour}
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil, nil, nil)
+
+	const alone uint64 = 77 // only on days the replay cuts
+
+	yesterday := logPosted(1, jakartaDay(-2), shop, order, creator, creator,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL, -sale)
+	today := logPosted(2, jakartaDay(0), shop, order, creator, 3,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 100_000)
+	aloneToday := logPosted(3, jakartaDay(0), otherShop, otherOrder, alone, alone,
+		settlementv1.SettlementType_SETTLEMENT_TYPE_FUND, 5_000)
+
+	fold(t, svc, yesterday, today, aloneToday)
+
+	if day := lastDay(t, db, creator); day != jakartaDay(0) {
+		t.Fatalf("last_day before the replay = %q, want %s", day, jakartaDay(0))
+	}
+
+	_, err := svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
+		StartDate: jakartaDay(-1),
+	}))
+	if err != nil {
+		t.Fatalf("AnalyticReplayCompute: %v", err)
+	}
+
+	var maxDay *string
+
+	err = db.Raw(`SELECT MAX(day)::text FROM user_settlement_daily_reports WHERE user_id = ? AND team_id = ?`, creator, team).
+		Scan(&maxDay).
+		Error
+	if err != nil {
+		t.Fatalf("read MAX(day): %v", err)
+	}
+
+	if maxDay == nil || lastDay(t, db, creator) != *maxDay || *maxDay != jakartaDay(-2) {
+		t.Fatalf("last_day after the replay = %q, MAX(day) = %v — want both %s", lastDay(t, db, creator), maxDay, jakartaDay(-2))
+	}
+
+	if day := lastDay(t, db, alone); day != "" {
+		t.Fatalf("last_day of a person cut to no day = %q, want NULL", day)
+	}
+
+	// The redelivery folds the cut days back, and raises it again.
+	fold(t, svc, today, aloneToday)
+
+	if lastDay(t, db, creator) != jakartaDay(0) || lastDay(t, db, alone) != jakartaDay(0) {
+		t.Fatalf("last_day after the redelivery = %q / %q, want %s", lastDay(t, db, creator), lastDay(t, db, alone), jakartaDay(0))
 	}
 }
 
@@ -297,7 +399,7 @@ func lockValue(t *testing.T, db *gorm.DB) string {
 func TestAnalyticReplayCompute_ClearsTheRangeAndSeeks(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker, nil)
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil, nil, nil)
 
 	fold(t, svc,
 		logPosted(1, jakartaDay(-1), shop, order, creator, creator,
@@ -338,7 +440,7 @@ func TestAnalyticReplayCompute_ClearsTheRangeAndSeeks(t *testing.T) {
 func TestAnalyticReplayCompute_RefusesOutsideTheRetention(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker, nil)
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil, nil, nil)
 
 	_, err := svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(-30),
@@ -357,7 +459,7 @@ func TestAnalyticReplayCompute_RefusesOutsideTheRetention(t *testing.T) {
 func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.T) {
 	db := san_testdb.DB(t)
 
-	unreadable := settlement_v1.NewService(db, nil, &fakeBroker{err: errors.New("admin API down")}, nil)
+	unreadable := settlement_v1.NewService(db, nil, &fakeBroker{err: errors.New("admin API down")}, nil, nil, nil, nil)
 
 	_, err := unreadable.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(0),
@@ -366,13 +468,13 @@ func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.
 		t.Fatalf("unreadable window: got %v, want FailedPrecondition", err)
 	}
 
-	err = db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}' WHERE key = 'process_event_lock'`).Error
+	err = db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() WHERE key = 'process_event_lock'`).Error
 	if err != nil {
 		t.Fatalf("take the lock: %v", err)
 	}
 
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	locked := settlement_v1.NewService(db, nil, broker, nil)
+	locked := settlement_v1.NewService(db, nil, broker, nil, nil, nil, nil)
 
 	_, err = locked.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(0),
@@ -389,7 +491,7 @@ func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.
 // Maintenance prunes dedup rows by when they were RECEIVED, keeping everything inside the retention.
 func TestAnalyticMaintenanceRun_PrunesOnlyExpiredClaims(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	err := db.Exec(`
 INSERT INTO settlement_event_logs (id, raw, day, created_at) VALUES
@@ -407,5 +509,52 @@ INSERT INTO settlement_event_logs (id, raw, day, created_at) VALUES
 	if res.Msg.GetDeletedEventLogs() != 1 {
 		t.Fatalf("deleted %d claims, want 1 — a late event for an old DAY received today keeps its guard",
 			res.Msg.GetDeletedEventLogs())
+	}
+}
+
+// A DEAD REPLAY'S LOCK EXPIRES (a-dead-replays-lock-expires-after-a-minute): a lock taken over a minute ago counts as
+// released, so the fold claims and folds the event instead of refusing it until somebody resets the row by hand.
+func TestFold_FoldsPastADeadReplaysLock(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+
+	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
+	if err != nil {
+		t.Fatalf("leave a dead replay's lock: %v", err)
+	}
+
+	err = svc.FoldHandler()(context.Background(), workedExample()[0])
+	if err != nil {
+		t.Fatalf("fold past an expired lock: %v — a dead replay would stop the reports for good", err)
+	}
+
+	var claimed int64
+
+	err = db.Raw(`SELECT COUNT(*) FROM settlement_event_logs`).Scan(&claimed).Error
+	if err != nil || claimed != 1 {
+		t.Fatalf("claims = %d (%v), want the event folded", claimed, err)
+	}
+}
+
+// …and the NEXT replay takes it over, rather than being refused by a lock nobody will ever release — then releases it.
+func TestAnalyticReplayCompute_TakesOverADeadReplaysLock(t *testing.T) {
+	db := san_testdb.DB(t)
+	broker := &fakeBroker{window: 7 * 24 * time.Hour}
+	svc := settlement_v1.NewService(db, nil, broker, nil, nil, nil, nil)
+
+	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
+	if err != nil {
+		t.Fatalf("leave a dead replay's lock: %v", err)
+	}
+
+	_, err = svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
+		StartDate: jakartaDay(0),
+	}))
+	if err != nil || len(broker.seeks) != 1 {
+		t.Fatalf("replay over an expired lock: %v with %d seeks, want it to run", err, len(broker.seeks))
+	}
+
+	if value := lockValue(t, db); value != `{"lock":false}` {
+		t.Fatalf("the lock is %s after the replay — it must release what it took", value)
 	}
 }

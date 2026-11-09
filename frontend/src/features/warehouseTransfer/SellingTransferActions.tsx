@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { Button, Field, HStack, Icon, IconButton, Menu, Portal, Stack, Textarea } from "@chakra-ui/react";
 import { Ban, MoreHorizontal, PackageX, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -8,8 +9,6 @@ import { rpcError } from "../../api/clients";
 import type { WarehouseTransfer } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { useCancelWarehouseTransfer, useMarkLostWarehouseTransfer, useUpdateWarehouseTransfer } from "./queries";
-import type { PendingList } from "../../features/pending/registry";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
@@ -56,18 +55,18 @@ export interface SellingTransferActionsProps {
   teamId: bigint;
   /** `menu` — one ⋯ trigger (a list row, a phone header). `buttons` — labelled buttons (a desktop header). */
   variant: "menu" | "buttons";
-  /** The screen's pending list — it must carry `costEvent`. */
-  pending: PendingList<string>;
 }
 
 // The actions, and the three dialogs behind them. Nothing renders when the status allows nothing — a disabled button
 // would offer an act the server can only refuse.
-export function SellingTransferActions({ transfer, teamId, variant, pending }: SellingTransferActionsProps) {
+export function SellingTransferActions({ transfer, teamId, variant }: SellingTransferActionsProps) {
   const { t } = useTranslation();
   const [dialog, setDialog] = useState<"" | SellingTransferAction>("");
+  // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
 
   const actions = sellingTransferActions(transfer.status);
-  if (actions.length === 0) return null;
+  if (actions.length === 0 || !writable) return null;
 
   const id = transfer.id.toString();
 
@@ -123,7 +122,7 @@ export function SellingTransferActions({ transfer, teamId, variant, pending }: S
 
       {/* Mounted only while open, so each opening starts from the transfer as it is now. */}
       {dialog === "editCost" && (
-        <EditCostDialog transfer={transfer} teamId={teamId} pending={pending} onClose={() => setDialog("")} />
+        <EditCostDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />
       )}
       {dialog === "cancel" && <CancelDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />}
       {dialog === "markLost" && <MarkLostDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />}
@@ -131,7 +130,8 @@ export function SellingTransferActions({ transfer, teamId, variant, pending }: S
   );
 }
 
-const digitsOf = (n: number) => (n > 0 ? Math.round(n).toString() : "");
+// The stored cost exactly, a fraction included (the-backend-never-rounds-money) — saving untouched never moves it.
+const digitsOf = (n: number) => (n > 0 ? String(n) : "");
 const amountOf = (digits: string) => (digits === "" ? 0 : Number(digits));
 
 // EDIT COST — the shipping expense and the account that pays it, plus the note. The courier prices by the packed
@@ -140,12 +140,10 @@ const amountOf = (digits: string) => (digits === "" ? 0 : Number(digits));
 function EditCostDialog({
   transfer,
   teamId,
-  pending,
   onClose,
 }: {
   transfer: WarehouseTransfer;
   teamId: bigint;
-  pending: PendingList<string>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -185,13 +183,8 @@ function EditCostDialog({
     >
       <Stack gap="field">
         <Field.Root>
-          <Field.Label>
-            <HStack gap="1.5">
-              {t("warehouseTransfer.cost.shippingCost")}
-              <NotImplemented list={pending} id="costEvent" />
-            </HStack>
-          </Field.Label>
-          <CurrencyInput value={cost} onChange={setCost} data-testid="transfer-cost-amount" />
+          <Field.Label>{t("warehouseTransfer.cost.shippingCost")}</Field.Label>
+          <CurrencyInput fraction value={cost} onChange={setCost} data-testid="transfer-cost-amount" />
           <Field.HelperText>{t("warehouseTransfer.cost.shippingCostHint")}</Field.HelperText>
         </Field.Root>
 
@@ -204,7 +197,6 @@ function EditCostDialog({
             teamId={teamId}
             value={accountId > 0n ? accountId : undefined}
             onChange={setAccountId}
-            operationalOnly
             disabled={amountOf(cost) === 0}
             testId="transfer-cost-account"
           />

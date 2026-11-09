@@ -23,8 +23,8 @@ type UploadedFileLine struct {
 	// settlement's text for what it became — "" when the platform's type is not mapped.
 	SettlementType string
 
-	// Whole rupiah.
-	Change     int64
+	// Rupiah, a double since 00004 — whole: a fractional line is held with 0 here.
+	Change     float64
 	OccurredOn *time.Time `gorm:"type:date"`
 
 	// 0 = the shop.
@@ -36,6 +36,10 @@ type UploadedFileLine struct {
 	Detail  string
 
 	SettlementLogID uint64
+
+	// several_orders: every live order the ref found in the shop, comma-joined, ascending (00003,
+	// two-live-orders-on-a-ref-post-to-the-shop). '' otherwise.
+	FoundOrderIDs string `gorm:"column:found_order_ids"`
 
 	CreatedAt time.Time
 }

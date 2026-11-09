@@ -45,14 +45,20 @@ func list(t *testing.T, svc interface {
 	return resp.Msg
 }
 
-// the-three-channels-are-seeded — and the default order is by code.
+// seedByCode is every migration-seeded channel, in the list's default order (by code):
+// the-three-channels-are-seeded (00001) and the-channels-are-what-orders-ship-by (00002).
+var seedByCode = []string{
+	"anteraja", "gosend", "grabexpress", "idexpress", "jne", "jnt", "jntcargo", "lex", "pos", "sicepat", "spx",
+}
+
+// The seed is there — and the default order is by code.
 func TestShipmentChannelList_ReturnsTheSeedByCode(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
 	got := listCodes(t, list(t, svc, nil, 1, 50))
 
-	want := []string{"jne", "jnt", "sicepat"}
+	want := seedByCode
 	if len(got) != len(want) {
 		t.Fatalf("codes = %v, want %v", got, want)
 	}
@@ -109,13 +115,16 @@ func TestShipmentChannelList_Pages(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	resp := list(t, svc, nil, 2, 2)
+	// The LAST page of two-per-page holds the one left over: 11 seeded → 6 pages, page 6 = [spx].
+	pages := uint32((len(seedByCode) + 1) / 2)
+	resp := list(t, svc, nil, pages, 2)
 
-	if got := listCodes(t, resp); len(got) != 1 || got[0] != "sicepat" {
-		t.Fatalf("page 2 of 2 → %v, want [sicepat]", got)
+	last := seedByCode[len(seedByCode)-1]
+	if got := listCodes(t, resp); len(got) != 1 || got[0] != last {
+		t.Fatalf("page %d of %d → %v, want [%s]", pages, pages, got, last)
 	}
 
-	if resp.GetPageInfo().GetTotalItems() != 3 || resp.GetPageInfo().GetTotalPage() != 2 {
-		t.Fatalf("page_info = %+v, want 3 items over 2 pages", resp.GetPageInfo())
+	if resp.GetPageInfo().GetTotalItems() != uint64(len(seedByCode)) || resp.GetPageInfo().GetTotalPage() != pages {
+		t.Fatalf("page_info = %+v, want %d items over %d pages", resp.GetPageInfo(), len(seedByCode), pages)
 	}
 }

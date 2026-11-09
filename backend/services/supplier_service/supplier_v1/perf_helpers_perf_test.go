@@ -223,7 +223,7 @@ func perfSetup(t *testing.T) perfBook {
 		}
 	}
 
-	book.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil)
+	book.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil, nil, nil)
 
 	return book
 }

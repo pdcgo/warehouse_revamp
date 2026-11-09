@@ -41,8 +41,10 @@ const (
 	ShopServiceShopDetailProcedure = "/warehouse.selling.v1.ShopService/ShopDetail"
 	// ShopServiceShopUpdateProcedure is the fully-qualified name of the ShopService's ShopUpdate RPC.
 	ShopServiceShopUpdateProcedure = "/warehouse.selling.v1.ShopService/ShopUpdate"
-	// ShopServiceShopDeleteProcedure is the fully-qualified name of the ShopService's ShopDelete RPC.
-	ShopServiceShopDeleteProcedure = "/warehouse.selling.v1.ShopService/ShopDelete"
+	// ShopServiceShopCloseProcedure is the fully-qualified name of the ShopService's ShopClose RPC.
+	ShopServiceShopCloseProcedure = "/warehouse.selling.v1.ShopService/ShopClose"
+	// ShopServiceShopReopenProcedure is the fully-qualified name of the ShopService's ShopReopen RPC.
+	ShopServiceShopReopenProcedure = "/warehouse.selling.v1.ShopService/ShopReopen"
 	// ShopServiceShopUserListProcedure is the fully-qualified name of the ShopService's ShopUserList
 	// RPC.
 	ShopServiceShopUserListProcedure = "/warehouse.selling.v1.ShopService/ShopUserList"
@@ -67,7 +69,11 @@ type ShopServiceClient interface {
 	ShopList(context.Context, *connect.Request[v1.ShopListRequest]) (*connect.Response[v1.ShopListResponse], error)
 	ShopDetail(context.Context, *connect.Request[v1.ShopDetailRequest]) (*connect.Response[v1.ShopDetailResponse], error)
 	ShopUpdate(context.Context, *connect.Request[v1.ShopUpdateRequest]) (*connect.Response[v1.ShopUpdateResponse], error)
-	ShopDelete(context.Context, *connect.Request[v1.ShopDeleteRequest]) (*connect.Response[v1.ShopDeleteResponse], error)
+	// A shop is CLOSED, never deleted (a-shop-is-closed-never-deleted) — there is no ShopDelete. Close stops new selling
+	// on it (a-closed-shop-refuses-only-new-selling) and frees its code; Reopen gives it back, refused while an open shop
+	// of the team holds the code (a-shop-code-is-unique-among-open-shops).
+	ShopClose(context.Context, *connect.Request[v1.ShopCloseRequest]) (*connect.Response[v1.ShopCloseResponse], error)
+	ShopReopen(context.Context, *connect.Request[v1.ShopReopenRequest]) (*connect.Response[v1.ShopReopenResponse], error)
 	// Shop access — which users may work on a shop (#86). Scoped to the shop's team.
 	ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error)
 	ShopUserAdd(context.Context, *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error)
@@ -105,12 +111,14 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+ShopServiceShopListProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopDetail: connect.NewClient[v1.ShopDetailRequest, v1.ShopDetailResponse](
 			httpClient,
 			baseURL+ShopServiceShopDetailProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopUpdate: connect.NewClient[v1.ShopUpdateRequest, v1.ShopUpdateResponse](
@@ -119,16 +127,23 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(shopServiceMethods.ByName("ShopUpdate")),
 			connect.WithClientOptions(opts...),
 		),
-		shopDelete: connect.NewClient[v1.ShopDeleteRequest, v1.ShopDeleteResponse](
+		shopClose: connect.NewClient[v1.ShopCloseRequest, v1.ShopCloseResponse](
 			httpClient,
-			baseURL+ShopServiceShopDeleteProcedure,
-			connect.WithSchema(shopServiceMethods.ByName("ShopDelete")),
+			baseURL+ShopServiceShopCloseProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopClose")),
+			connect.WithClientOptions(opts...),
+		),
+		shopReopen: connect.NewClient[v1.ShopReopenRequest, v1.ShopReopenResponse](
+			httpClient,
+			baseURL+ShopServiceShopReopenProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopReopen")),
 			connect.WithClientOptions(opts...),
 		),
 		shopUserList: connect.NewClient[v1.ShopUserListRequest, v1.ShopUserListResponse](
 			httpClient,
 			baseURL+ShopServiceShopUserListProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopUserList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopUserAdd: connect.NewClient[v1.ShopUserAddRequest, v1.ShopUserAddResponse](
@@ -153,6 +168,7 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+ShopServiceShopAccessCheckProcedure,
 			connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		shopByIds: connect.NewClient[v1.ShopByIdsRequest, v1.ShopByIdsResponse](
@@ -170,7 +186,8 @@ type shopServiceClient struct {
 	shopList           *connect.Client[v1.ShopListRequest, v1.ShopListResponse]
 	shopDetail         *connect.Client[v1.ShopDetailRequest, v1.ShopDetailResponse]
 	shopUpdate         *connect.Client[v1.ShopUpdateRequest, v1.ShopUpdateResponse]
-	shopDelete         *connect.Client[v1.ShopDeleteRequest, v1.ShopDeleteResponse]
+	shopClose          *connect.Client[v1.ShopCloseRequest, v1.ShopCloseResponse]
+	shopReopen         *connect.Client[v1.ShopReopenRequest, v1.ShopReopenResponse]
 	shopUserList       *connect.Client[v1.ShopUserListRequest, v1.ShopUserListResponse]
 	shopUserAdd        *connect.Client[v1.ShopUserAddRequest, v1.ShopUserAddResponse]
 	shopUserRemove     *connect.Client[v1.ShopUserRemoveRequest, v1.ShopUserRemoveResponse]
@@ -199,9 +216,14 @@ func (c *shopServiceClient) ShopUpdate(ctx context.Context, req *connect.Request
 	return c.shopUpdate.CallUnary(ctx, req)
 }
 
-// ShopDelete calls warehouse.selling.v1.ShopService.ShopDelete.
-func (c *shopServiceClient) ShopDelete(ctx context.Context, req *connect.Request[v1.ShopDeleteRequest]) (*connect.Response[v1.ShopDeleteResponse], error) {
-	return c.shopDelete.CallUnary(ctx, req)
+// ShopClose calls warehouse.selling.v1.ShopService.ShopClose.
+func (c *shopServiceClient) ShopClose(ctx context.Context, req *connect.Request[v1.ShopCloseRequest]) (*connect.Response[v1.ShopCloseResponse], error) {
+	return c.shopClose.CallUnary(ctx, req)
+}
+
+// ShopReopen calls warehouse.selling.v1.ShopService.ShopReopen.
+func (c *shopServiceClient) ShopReopen(ctx context.Context, req *connect.Request[v1.ShopReopenRequest]) (*connect.Response[v1.ShopReopenResponse], error) {
+	return c.shopReopen.CallUnary(ctx, req)
 }
 
 // ShopUserList calls warehouse.selling.v1.ShopService.ShopUserList.
@@ -240,7 +262,11 @@ type ShopServiceHandler interface {
 	ShopList(context.Context, *connect.Request[v1.ShopListRequest]) (*connect.Response[v1.ShopListResponse], error)
 	ShopDetail(context.Context, *connect.Request[v1.ShopDetailRequest]) (*connect.Response[v1.ShopDetailResponse], error)
 	ShopUpdate(context.Context, *connect.Request[v1.ShopUpdateRequest]) (*connect.Response[v1.ShopUpdateResponse], error)
-	ShopDelete(context.Context, *connect.Request[v1.ShopDeleteRequest]) (*connect.Response[v1.ShopDeleteResponse], error)
+	// A shop is CLOSED, never deleted (a-shop-is-closed-never-deleted) — there is no ShopDelete. Close stops new selling
+	// on it (a-closed-shop-refuses-only-new-selling) and frees its code; Reopen gives it back, refused while an open shop
+	// of the team holds the code (a-shop-code-is-unique-among-open-shops).
+	ShopClose(context.Context, *connect.Request[v1.ShopCloseRequest]) (*connect.Response[v1.ShopCloseResponse], error)
+	ShopReopen(context.Context, *connect.Request[v1.ShopReopenRequest]) (*connect.Response[v1.ShopReopenResponse], error)
 	// Shop access — which users may work on a shop (#86). Scoped to the shop's team.
 	ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error)
 	ShopUserAdd(context.Context, *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error)
@@ -274,12 +300,14 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		ShopServiceShopListProcedure,
 		svc.ShopList,
 		connect.WithSchema(shopServiceMethods.ByName("ShopList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopDetailHandler := connect.NewUnaryHandler(
 		ShopServiceShopDetailProcedure,
 		svc.ShopDetail,
 		connect.WithSchema(shopServiceMethods.ByName("ShopDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopUpdateHandler := connect.NewUnaryHandler(
@@ -288,16 +316,23 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(shopServiceMethods.ByName("ShopUpdate")),
 		connect.WithHandlerOptions(opts...),
 	)
-	shopServiceShopDeleteHandler := connect.NewUnaryHandler(
-		ShopServiceShopDeleteProcedure,
-		svc.ShopDelete,
-		connect.WithSchema(shopServiceMethods.ByName("ShopDelete")),
+	shopServiceShopCloseHandler := connect.NewUnaryHandler(
+		ShopServiceShopCloseProcedure,
+		svc.ShopClose,
+		connect.WithSchema(shopServiceMethods.ByName("ShopClose")),
+		connect.WithHandlerOptions(opts...),
+	)
+	shopServiceShopReopenHandler := connect.NewUnaryHandler(
+		ShopServiceShopReopenProcedure,
+		svc.ShopReopen,
+		connect.WithSchema(shopServiceMethods.ByName("ShopReopen")),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopUserListHandler := connect.NewUnaryHandler(
 		ShopServiceShopUserListProcedure,
 		svc.ShopUserList,
 		connect.WithSchema(shopServiceMethods.ByName("ShopUserList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopUserAddHandler := connect.NewUnaryHandler(
@@ -322,6 +357,7 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		ShopServiceShopAccessCheckProcedure,
 		svc.ShopAccessCheck,
 		connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	shopServiceShopByIdsHandler := connect.NewUnaryHandler(
@@ -340,8 +376,10 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 			shopServiceShopDetailHandler.ServeHTTP(w, r)
 		case ShopServiceShopUpdateProcedure:
 			shopServiceShopUpdateHandler.ServeHTTP(w, r)
-		case ShopServiceShopDeleteProcedure:
-			shopServiceShopDeleteHandler.ServeHTTP(w, r)
+		case ShopServiceShopCloseProcedure:
+			shopServiceShopCloseHandler.ServeHTTP(w, r)
+		case ShopServiceShopReopenProcedure:
+			shopServiceShopReopenHandler.ServeHTTP(w, r)
 		case ShopServiceShopUserListProcedure:
 			shopServiceShopUserListHandler.ServeHTTP(w, r)
 		case ShopServiceShopUserAddProcedure:
@@ -379,8 +417,12 @@ func (UnimplementedShopServiceHandler) ShopUpdate(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopUpdate is not implemented"))
 }
 
-func (UnimplementedShopServiceHandler) ShopDelete(context.Context, *connect.Request[v1.ShopDeleteRequest]) (*connect.Response[v1.ShopDeleteResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopDelete is not implemented"))
+func (UnimplementedShopServiceHandler) ShopClose(context.Context, *connect.Request[v1.ShopCloseRequest]) (*connect.Response[v1.ShopCloseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopClose is not implemented"))
+}
+
+func (UnimplementedShopServiceHandler) ShopReopen(context.Context, *connect.Request[v1.ShopReopenRequest]) (*connect.Response[v1.ShopReopenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopReopen is not implemented"))
 }
 
 func (UnimplementedShopServiceHandler) ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error) {

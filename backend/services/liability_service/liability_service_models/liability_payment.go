@@ -18,8 +18,8 @@ type LiabilityPayment struct {
 	PayerTeamID    uint64
 	CreditorTeamID uint64
 
-	// Whole rupiah, always positive. Direction lives in the two ids above, never in a sign.
-	Amount int64
+	// Exact rupiah (the-backend-never-rounds-money), always positive. Direction lives in the two ids above, never in a sign.
+	Amount float64
 
 	// recorded | confirmed | rejected | reversed — see the mapper. Text rather than an enum column for
 	// the same reason `liability_logs.source_type` is.
@@ -51,6 +51,11 @@ type LiabilityPayment struct {
 	// Opaque user ids; 0 when unknown. Who claimed and who agreed.
 	RecordedBy  uint64
 	ConfirmedBy uint64
+
+	// Whether each of those two people was Root or the Administrator acting inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service) — ONE FLAG PER ACTOR, because the row records two acts.
+	RecordedIsOverride  bool
+	ConfirmedIsOverride bool
 
 	// WHERE THE MONEY LEFT AND WHERE IT LANDED (a-team-payment-posts-on-accept) — opaque
 	// financial_account_service ids, no FK. The payer names From when recording; the creditor names To

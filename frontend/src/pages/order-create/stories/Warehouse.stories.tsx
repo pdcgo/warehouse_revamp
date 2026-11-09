@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { products, shops } from "../../../../.storybook/fixtures";
-import { ORDER_CREATE_META, fillOrderRef, fillSellPrice, pickOrderDate, pickProduct } from "./kit";
+import { ORDER_CREATE_META, fillOrderRef, fillSellPrice, pickCourier, pickOrderDate, pickProduct } from "./kit";
 
 // ORDER CREATE — the band that leads the form: the team's default, a warehouse with no rate.
 // The page's stories are grouped by the part of the screen they are about
@@ -66,6 +66,7 @@ export const AWarehouseWithNoRateRefusesTheOrder: Story = {
     const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
     await waitFor(() => expect(shop).toBeVisible());
     await userEvent.click(shop);
+    await pickCourier(canvasElement);
     await pickProduct(canvasElement, products[0]!.id);
     await pickOrderDate(canvasElement);
     await fillSellPrice(canvasElement);

@@ -29,7 +29,7 @@ export function TransferItemsCell({
 
   const lines: ProductLine[] = items.map((item) => ({
     id: item.id.toString(),
-    sku: item.sku,
+    productCode: item.productCode,
     name: item.name,
     quantity: item.count,
     totalPrice: item.total,
@@ -46,13 +46,13 @@ export function TransferItemsCell({
 
       {rest.length === 0 ? (
         <Span fontSize="xs" color="fg.muted" lineClamp={1}>
-          {first.sku}
+          {first.productCode}
         </Span>
       ) : (
         <ProductLinesDialog
           lines={lines}
           showPrices={showPrices}
-          label={t("warehouseTransfer.table.firstAndMore", { sku: first.sku, count: rest.length })}
+          label={t("warehouseTransfer.table.firstAndMore", { productCode: first.productCode, count: rest.length })}
           testId="transfer-items"
         />
       )}

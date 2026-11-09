@@ -32,7 +32,7 @@ func (s *Service) RestockInboundStat(
 	// clause, so one statement serves both "from everyone" and "from this team" without building a
 	// WHERE by string concatenation.
 	//
-	// COUNT(DISTINCT product_id) is the point of the first column: the same SKU on four deliveries is
+	// COUNT(DISTINCT product_id) is the point of the first column: the same product on four deliveries is
 	// ONE thing to find a shelf for, and counting the lines instead would report four.
 	const linesSQL = `
 		SELECT COUNT(DISTINCT ri.product_id) AS product_count,

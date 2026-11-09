@@ -3,6 +3,8 @@ package liability_v1
 import (
 	"context"
 	"errors"
+
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 )
 
 // CourierCharge is a restock's courier charge at the door, as *Restock Accepted* announces it: the selling team owes the
@@ -12,16 +14,19 @@ type CourierCharge struct {
 	RestockID     uint64
 	SellingTeamID uint64
 	WarehouseID   uint64
-	Amount        int64
+	Amount        float64
 	// Who counted the box in — read from the stored restock, never from the envelope (every-entry-names-who-posted-it).
 	ActorID uint64
+	// Whether they counted it in as Root or the Administrator from outside the warehouse, as the accept stored it
+	// (an-override-is-stamped-in-every-service). Stamped on both legs beside the actor.
+	ActorIsOverride bool
 }
 
 // ChargeRestockCourier posts what the selling team owes the warehouse for the courier's charge, ONE posting per
 // restock (balance-posts-the-couriers-debt-from-the-event): an `incidental_fee` keyed by the restock, so a redelivered
 // event posts nothing new. Nothing is posted for 0 — an entry of zero reads as a debt of nothing.
 func (s *Service) ChargeRestockCourier(ctx context.Context, c CourierCharge) error {
-	if c.Amount <= 0 {
+	if !san_money.Positive(c.Amount) {
 		return nil
 	}
 
@@ -32,6 +37,7 @@ func (s *Service) ChargeRestockCourier(ctx context.Context, c CourierCharge) err
 		SourceType:     SourceTypeIncidentalFee,
 		SourceID:       c.RestockID,
 		ActorID:        c.ActorID,
+		IsOverride:     c.ActorIsOverride,
 	})
 
 	// A redelivery: the debt is already on the books, which is the right answer, not a failure.

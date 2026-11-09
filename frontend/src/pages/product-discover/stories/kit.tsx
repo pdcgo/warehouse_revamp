@@ -40,7 +40,7 @@ export const DISCOVER_PRODUCTS_META = {
 
 export async function loaded(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  await canvas.findByTestId(`discover-card-${KOPI.sku}`, {}, { timeout: 4000 });
+  await canvas.findByTestId(`discover-card-${KOPI.productCode}`, {}, { timeout: 4000 });
   return canvas;
 }
 

@@ -39,7 +39,7 @@ export function CountLineCard({
           <Stack gap="0" flex="1" minW="0">
             <Span fontWeight="bold">{item.name}</Span>
             <Span fontSize="xs" color="fg.muted">
-              {item.sku}
+              {item.productCode}
             </Span>
           </Stack>
           <Badge variant="subtle" data-testid={`accept-line-${item.id}-sent`}>

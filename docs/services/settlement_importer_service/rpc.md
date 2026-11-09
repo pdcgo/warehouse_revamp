@@ -99,6 +99,7 @@ flowchart TD
   P -->|"already there"| E["EXISTING, INFO"]
   P -->|"created, to its order"| P1["POSTED, INFO"]
   P -->|"created, its ref found no order"| P2["POSTED to the shop — no_order, WARN"]
+  P -->|"created, its ref is on two or more live orders"| P3["POSTED to the shop — several_orders, the ids kept, WARN"]
 ```
 
 | platform | the ref | key | the importer's policy |
@@ -111,7 +112,23 @@ Every posting line goes to settlement as source `importer`, with the order's cre
 the order — stamped on the account if the post opens it — and to the shop otherwise, where settlement
 itself asks the shop for the primary CS the row counts for
 ([settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)).
-The order a ref finds, among several in the shop: a live one before a cancelled one, then the newest.
+The order a ref finds, among several in the shop (`orderInShop`): **exactly one live order** is the line's, a cancelled
+one never beating it; **no live order** falls back to the newest cancelled one, as built; **two or more live orders** pick
+none — the line posts to the SHOP (order 0, no creator, so settlement counts it for the primary CS), reason
+`several_orders`, every live id kept in `found_order_ids` (ascending) and named on its WARN line, and it counts into
+`rows_posted_to_shop` ([two-live-orders-on-a-ref-post-to-the-shop](../../business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)).
+The file page's *Posted to the shop* view lists both reasons, the found ids as links to the orders.
+
+### The line's amount is a double (settlement_importer 00004)
+
+`uploaded_file_lines.change` and `UploadedFileLine.change` are doubles since 2026-11-06
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)),
+and `LedgerPost.Change` is passed to settlement's `double change` as it is. A FRACTION IS STILL HELD (`fractional_amount`,
+critique 8 — never rounded here, the line keeps 0 and its figure in `detail`); what changed is the test for one:
+`wholeRupiah` asks `san_money.IsWhole` (whole to 4 places), so float dust from the reader's arithmetic (99.999,99999) is
+whole rupiah and posts instead of being held — as the reader's own figure, never rounded ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06;
+it was sent as the whole number 100.000 before). The IsWhole test is a check on the file
+(a-fractional-statement-line-is-still-held), not a rounding.
 
 ## The reads
 
@@ -120,5 +137,16 @@ The order a ref finds, among several in the shop: a live one before a cancelled 
 | `UploadedFileList` | the guideline List — `ids`, `GENERAL` (name = the statement's range) and `FILE` slices, paged; newest first, or by `period_to` | the team's rows only; the status filter draws RUNNING and INTERRUPTED on the same two-minute line |
 | `UploadedFileByIds` | the guideline ByIds — id → its slices | another team's file is absent |
 | `UploadedFileLineList` | the guideline List over one file's lines, filtered by outcomes AND reasons — the file page asks HELD, SKIPPED, and POSTED + NO_ORDER | another team's file is `NotFound` |
+
+### The statement a ledger row came from — `StatementLinesBySettlementLogIds` (in-process, 2026-11-07)
+
+Not an RPC: settlement's Shop Entries asks it through the composition root
+(`cmd/app_development/settlement_shop_entries.go`, [the-shop-entries-page-is-accepted](../../technical/frontend/settlement_report_decision.md#the-shop-entries-page-is-accepted)).
+Per settlement log id, ONE line — `DISTINCT ON (settlement_log_id)`, the line that **posted** the row first, else the
+first line that found it (a re-import's `existing`) — with its file's platform, period and uploader (`created_by_user_id`).
+The reason is said only by the posting line (`no_order` / `several_orders`, else empty — a line that names no order).
+Scoped by the files' team; the root team reads every team's. Over `uploaded_file_lines_settlement_log_idx
+(settlement_log_id, id) WHERE settlement_log_id <> 0` (00005): 3 ms for a page of 20 ids, 51 lines each — probe
+`statement_lines_perf_test.go`.
 
 Code: [backend/services/settlement_importer_service/settlement_importer_v1/](../../../backend/services/settlement_importer_service/settlement_importer_v1/).

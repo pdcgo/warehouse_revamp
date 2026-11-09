@@ -26,7 +26,7 @@ flowchart TB
 
 | call | ledgers | money — unchanged from today |
 | --- | --- | --- |
-| `StockAdjust` recount | as drawn above | **none** |
+| `StockAdjust` recount | as drawn above | ✅ built 2026-11-02 (`inventory_v1/stock_adjust.go`, recount branch): a shortfall is written off and owed ([a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed)) |
 | `StockAdjust` damaged / lost | the named batch, value at its share | written off to expense after commit; the owner is owed it, inside the transaction |
 | `StockAdjust` found | the named batch, at its `price_unit` | the owner's debt given back; no expense |
 | `StockOpname` (one rack, many lines) | each line is a recount; one transaction per owning team | the shortfall written off (one expense for the rack) and owed to each owner |
@@ -62,23 +62,15 @@ Confirm the port as drawn, with the surplus minted at the newest price and the r
 
 ## Question
 
-1. A recount's surplus: mint at the owner's newest batch price here (recommended), or another rule?
-2. Should a `StockAdjust` recount write off and owe its shortfall, as `StockOpname` does? (recommended: yes)
-3. Damaged / lost / found keep naming their batch until adjustment.md is designed? (recommended: yes)
-4. A correct count writes a 0 rack row so the rack reads as counted — confirm?
+1. ✅ *(2026-10-31)* **Withdrawn** — the port is not refined further: [the-finished-count-comes-next-not-a-refined-port](./adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
+2. ✅ *(2026-10-31)* **Answered: yes** — [a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed). ✅ Built 2026-11-02. Kept as a line so the numbers hold.
+3. ✅ *(2026-10-31)* **Withdrawn** — the same: [the-finished-count-comes-next-not-a-refined-port](./adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
+4. ✅ *(2026-10-31)* **Withdrawn** — the same: [the-finished-count-comes-next-not-a-refined-port](./adjustment_decision.md#the-finished-count-comes-next-not-a-refined-port).
 
 # Contradiction
 
 ## a-recount-books-money-on-one-screen-only
 
-The EXAMPLE — `StockAdjust`'s own comment: *"a RECOUNT loss values at the oldest batch's cost"* (Q4, 2026-08), while its
-recount branch books nothing; `StockOpname` books both. One physical loss, two money outcomes.
-
-**→ RECOMMEND:** [Q2](#question) — book both everywhere; the port is the moment to do it, since both writers are being
-rewritten anyway.
-
-```mermaid
-flowchart LR
-  L["3 units missing on Rak A"] --> A["counted by StockAdjust - no expense, no debt"]
-  L --> O["counted by StockOpname - expense and debt"]
-```
+✅ **Resolved 2026-10-31** by [a-recount-shortfall-is-written-off-and-owed](./adjustment_decision.md#a-recount-shortfall-is-written-off-and-owed):
+a recount shortfall is written off and owed, as a stock count is. ✅ Built 2026-11-02. Kept as a heading so the links
+into it hold.

@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   Field,
+  Fieldset,
   Flex,
   Grid,
   GridItem,
@@ -16,16 +17,22 @@ import {
   Icon,
   IconButton,
   SimpleGrid,
+  Spinner,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
-import { rpcError, teamClient } from "../../api/clients";
+import { type orderClient, rpcError, teamClient } from "../../api/clients";
+import { awaitAnswer } from "../../features/orders/createAnswer";
+import { NoAnswerPanel } from "./components/NoAnswerPanel";
 import { useTeam } from "../../features/team/TeamContext";
+import { useAuth } from "../../features/auth/AuthContext";
 import { useCreateOrder } from "../../features/orders/queries";
+import { useShopOptions } from "../../features/shops/queries";
 import { useDeleteOrderDrafts, useOrderDraft } from "../../features/orderDrafts/queries";
-import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import { DraftProductHints } from "./components/DraftProductHints";
+import { DraftAddressText } from "./components/DraftAddressText";
+import { addressOf } from "./draftAddress";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { useIsMobile } from "../../layouts/shell";
 import { useStockTakeQuote } from "../../features/inventory/queries";
@@ -68,6 +75,8 @@ import { useReturnMapping } from "../../features/orders/form/returnMapping";
 import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptCard";
 import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
 import { OrderChecksDialog } from "../../features/orders/form/OrderChecksDialog";
+import { DuplicateRefDialog } from "../../features/orders/form/DuplicateRefDialog";
+import { type DuplicateFinding, findDuplicateRef, warns } from "../../features/orders/form/duplicateRef";
 import type { CheckFinding, ReceiptScan } from "../../features/orders/form/checks";
 import { applyScan, runOrderChecks, scanReceipt, suggestMarketplace } from "../../features/orders/form/checks";
 import { MarketplaceBadge, marketplaceLabel } from "../../components/badges/MarketplaceBadge";
@@ -103,25 +112,6 @@ function addressTouched(a: AddressValue): boolean {
 // ours, no marketplace's, so it is not copied into the order's ref (a manual draft has its ref typed).
 const DRAFT_SOURCE = "manual";
 
-// A draft's address as the form holds one — the same frozen shape an order carries, field for field.
-function addressOf(draft: OrderDraft): AddressValue {
-  const a = draft.address;
-  if (!a) return emptyAddress;
-
-  return {
-    provinsiCode: a.provinsiCode,
-    provinsiName: a.provinsiName,
-    kabupatenCode: a.kabupatenCode,
-    kabupatenName: a.kabupatenName,
-    kecamatanCode: a.kecamatanCode,
-    kecamatanName: a.kecamatanName,
-    desaCode: a.desaCode,
-    desaName: a.desaName,
-    kodePos: a.kodePos,
-    addressLine: a.addressLine,
-  };
-}
-
 // Everything the leave-guard counts as WORK, as one comparable string. On a draft the form opens already filled, so
 // "dirty" means changed since it was seeded, not merely non-empty — leaving a draft untouched loses nothing (the draft
 // is still on the list), and must not ask whether to discard it.
@@ -130,7 +120,7 @@ interface WorkFields {
   customerPhone: string;
   shopId: bigint;
   orderRef: string;
-  shippingCode: string;
+  shipmentChannelId: string;
   note: string;
   receipt: boolean;
   address: AddressValue;
@@ -168,9 +158,14 @@ function parseDraftId(raw: string | null): bigint {
 // transaction that writes it, so this screen is where stock leaves the building. Two consequences run
 // through the whole page — the warehouse is required and visible, and every line shows what that
 // warehouse actually holds.
+//
+// THE COURIER IS REQUIRED (no-order-without-a-courier, the-courier-required-look-is-accepted): the field carries the
+// red `*` and a hint while none is picked, and Create is held until one is — the server's refusal said before Create.
 export function OrderCreatePage() {
   const { t } = useTranslation();
   const { current } = useTeam();
+  // Whose drafts the duplicate warning may link to — only the caller's own open (OrderDraftDetail narrows to the author).
+  const { identity } = useAuth();
   const navigate = useNavigate();
   const createOrder = useCreateOrder();
 
@@ -185,10 +180,10 @@ export function OrderCreatePage() {
   // also be deleted from the header. Without the id the parameter is absent, the query never runs, and the form is
   // exactly what it was.
   //
-  // ⚠ THE SCRAPED LINES ARE NOT COPIED IN. A marketplace title names no product of ours (`product_id` is 0 until a
-  // person maps it), and auto-picking by matching titles is what the draft design refused: a wrong guess is
-  // indistinguishable from a person's choice once it is in the form. A line that IS mapped (a draft saved from this
-  // form) comes in as the product it names.
+  // ⚠ THE SCRAPED LINES ARE NOT COPIED IN. A marketplace title names no product of ours, and a draft stores no mapping
+  // (a-draft-stores-no-mapping): the person maps every line HERE, straight into the order's lines. Auto-picking by
+  // matching titles is what the draft design refused: a wrong guess is indistinguishable from a person's choice once it
+  // is in the form.
   const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const externalDraftId = parseDraftId(searchParams.get("draft"));
@@ -226,7 +221,9 @@ export function OrderCreatePage() {
   // A product page's warehouse lens, when it opened the form with one (a-product-page-opens-the-order-and-restock-forms)
   // — set before the team's default arrives, so the default (which only fills an untouched field) leaves it alone.
   const [warehouseId, setWarehouseId] = useState<bigint>(() => (draftMode ? 0n : preset.warehouseId));
-  const [shippingCode, setShippingCode] = useState("");
+  // The courier — a shipment channel id (shipment-channel-is-an-id-into-shipment-service). 0n = none picked; the server
+  // refuses an order without one (no-order-without-a-courier).
+  const [shipmentChannelId, setShipmentChannelId] = useState<bigint>(0n);
   // The resi as TEXT — the number the buyer is given, beside the courier and the file it is printed
   // on. Sent as `receipt_code`, the order's own field for it.
   const [receiptCode, setReceiptCode] = useState("");
@@ -240,6 +237,10 @@ export function OrderCreatePage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   // What the checks found on the last attempt to place. Empty = the dialog is closed.
   const [gate, setGate] = useState<CheckFinding[]>([]);
+  // WHAT THE DUPLICATE-REF CHECK FOUND on the last Create (a-duplicate-ref-is-warned-not-refused). null = the dialog is
+  // closed. `checkingRef` holds Create busy while the lookup runs, so a second press cannot start a second one.
+  const [duplicate, setDuplicate] = useState<DuplicateFinding | null>(null);
+  const [checkingRef, setCheckingRef] = useState(false);
 
   // The shipping receipt — the courier's slip photographed, or the marketplace's PDF (owner). What
   // is held here is a REFERENCE to a document already uploaded, never the file: the bytes went
@@ -282,7 +283,46 @@ export function OrderCreatePage() {
   const [compact, setCompact] = useState(false);
 
 
-  const [saving, setSaving] = useState(false);
+  // ── THE FORM LOCK (the-form-locks-until-it-is-answered, no-answer-is-only-a-lost-connection) ─────────────────────
+  //
+  // From the moment Create sends, the form is LOCKED on what was sent — every input, line and picker — until an answer
+  // comes back. `sent` is that payload, frozen, and where the wait stands:
+  //
+  // - `waiting` — the request is open. There is NO time limit: a slow server keeps the form locked until it answers.
+  // - `noAnswer` — the connection dropped with no reply (createAnswer.ts). The order may or may not exist, so the form
+  //   stays locked on the frozen payload and offers Try Again, which re-checks the shop + ref and resends under a NEW key.
+  //
+  // Why locked: an edit made while the first submit may still land would be a second, different order typed over the
+  // first — the person must first learn what happened to the one they sent.
+  type SentRequest = ReturnType<typeof orderRequest>;
+  const [sent, setSent] = useState<{ phase: "waiting" | "noAnswer"; request: SentRequest } | null>(null);
+  const locked = sent !== null;
+  const saving = sent?.phase === "waiting";
+  // What Try Again's re-check found (a-try-again-always-warns) — null = its warning is closed.
+  const [retry, setRetry] = useState<DuplicateFinding | null>(null);
+  // The locked fieldset: `inert` on top of `disabled`, so the controls a fieldset cannot disable (a file drop zone, a
+  // radio pill, a clickable row) take no click and no focus either.
+  const lockRef = useRef<HTMLFieldSetElement>(null);
+
+  useEffect(() => {
+    if (lockRef.current) lockRef.current.inert = locked;
+  }, [locked]);
+
+  // THE LOCKED LOOK — the cards fade with their controls; Create (with its spinner) and the panels above stay bright.
+  const lockFade = locked ? { opacity: 0.55, transition: "opacity 0.15s" } : { transition: "opacity 0.15s" };
+
+  // Closing the TAB while locked is guarded too — the in-app links are the blocker's (below).
+  useEffect(() => {
+    if (!locked) return;
+
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [locked]);
+
   const [error, setError] = useState("");
   // WHY THE WAREHOUSE REFUSED THE LAST CREATE, when it did (a-refusal-names-its-reason-and-every-line) — kept apart
   // from `error` because it is not a sentence to print but a reason and the lines it names, each one a line on this
@@ -347,31 +387,25 @@ export function OrderCreatePage() {
     const orderRef = draft.source !== DRAFT_SOURCE ? draft.externalId : "";
     // What the buyer paid — the draft's own `platform_total` (the-draft-price-is-platform-total); when the app sent none,
     // the rows' prices summed (`the-draft-sell-price-starts-from-the-rows`). The CS may type over it either way.
-    const scraped = draft.items.reduce((sum, item) => sum + item.unitPrice * BigInt(item.quantity), 0n);
-    const seededTotal = draft.platformTotal > 0n ? draft.platformTotal : scraped;
-    const platformTotal = seededTotal > 0n ? seededTotal.toString() : "";
+    const scraped = draft.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    // ⚠ The draft's figure and the rows' prices are doubles since selling 00041/00042, kept EXACT
+    // (a-draft-keeps-its-platform-total-as-typed, the-backend-never-rounds-money): the seed is the figure itself, a
+    // fraction included, and the order places exactly that.
+    const seededTotal = draft.platformTotal > 0 ? draft.platformTotal : scraped;
+    const platformTotal = Number.isFinite(seededTotal) && seededTotal > 0 ? String(seededTotal) : "";
     // The platform's own dates and the buyer's username, as the app pushed them — empty when it sent none.
     const seededOrderDate = draft.platformCreatedAtUnix > 0n ? unixToDateTimeInput(draft.platformCreatedAtUnix) : "";
     const seededDeadline =
       draft.platformShipmentDeadlineUnix > 0n ? unixToDateTimeInput(draft.platformShipmentDeadlineUnix) : "";
     const seededAddress = addressOf(draft);
+    // NO LINE IS SEEDED: a draft stores no mapping (a-draft-stores-no-mapping) — its scraped lines are the text above
+    // the products, and the person picks ours.
     const seededLines: LineDraft[] = [];
-    for (const item of draft.items) {
-      if (item.productId <= 0n || seededLines.some((l) => l.productId === item.productId)) continue;
-      seededLines.push({
-        productId: item.productId,
-        sku: item.externalSku,
-        name: item.externalName,
-        imageUrl: "",
-        thumbnailUrl: "",
-        quantity: String(item.quantity > 0 ? item.quantity : 1),
-      });
-    }
 
     setCustomerName(draft.customerName);
     setCustomerPhone(draft.customerPhone);
     setAddress(seededAddress);
-    setShippingCode(draft.shippingCode);
+    setShipmentChannelId(draft.shipmentChannelId);
     setMarketplace((prev) => ({ ...prev, shopId: draft.shopId, orderExternalRefId: orderRef, platformTotal }));
     setOrderDate(seededOrderDate);
     setDeadline(seededDeadline);
@@ -384,7 +418,7 @@ export function OrderCreatePage() {
         customerPhone: draft.customerPhone,
         shopId: draft.shopId,
         orderRef,
-        shippingCode: draft.shippingCode,
+        shipmentChannelId: draft.shipmentChannelId.toString(),
         note: "",
         receipt: false,
         address: seededAddress,
@@ -626,7 +660,7 @@ export function OrderCreatePage() {
 
       seen.set(line.productId.toString(), {
         productId: line.productId,
-        sku: line.sku,
+        productCode: line.productCode,
         name: line.name,
         ownerTeamId,
         ownerName: teamName(ownerTeamId),
@@ -649,7 +683,7 @@ export function OrderCreatePage() {
   // THE WAREHOUSE'S FEE, priced by the warehouse itself on the goods' cost — the same call order create makes before
   // it freezes the fee (the-flat-rate-is-dropped-last step 3). 0 while it is being asked, never a guess.
   const feeQuote = useWarehouseFeeQuote({ teamId, warehouseId, goodsCost: productsTotal });
-  const warehouseFee = feeQuote.data?.fee ?? 0n;
+  const warehouseFee = feeQuote.data?.fee ?? 0;
   // A warehouse that never set its fee takes no orders (a-warehouse-with-no-rate-takes-no-orders): its sentence is
   // shown under the picker and Save stays off, because the server would refuse the order anyway.
   const feeRefusal = warehouseId > 0n ? (feeQuote.data?.refusal ?? null) : null;
@@ -667,7 +701,7 @@ export function OrderCreatePage() {
     [productLines, owners, costs, teamId, teamNames, warehouseId, warehouseFee],
   );
 
-  const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0n);
+  const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0);
 
   // One row per creditor this order would put us in debt to — the building that ships it, and every
   // team whose goods are on it. Exactly the set `CheckCredit` is asked about at placement.
@@ -709,13 +743,24 @@ export function OrderCreatePage() {
   // is the MARKETPLACE REF (an-order-ref-is-required-by-the-rpc): the request's validation refuses an empty one.
   // ⚠ AND EVERY BORROWED PRODUCT NEEDS ITS RETURN MAP (a-borrowed-line-needs-its-map-at-create): the server refuses
   // the order without one, so Create is held here too, and the line under the button says why.
+  // ⚠ AND THE SHOP IS OPEN (a-closed-shop-refuses-only-new-selling): a waiting draft keeps its shop after the shop was
+  // closed (a-close-leaves-the-drafts-waiting) — ShopSelect `keepClosed` shows it badged rather than clearing it — and
+  // the server refuses the order, so Create is held here and the alert at the top says why and what the ways out are.
+  // The same read ShopSelect's `keepClosed` makes, so it is one request.
+  const closedShops = useShopOptions({ teamId: cardTeamId, status: "closed" });
+  const closedShop = shopId > 0n ? closedShops.data?.find((shop) => shop.id === shopId) : undefined;
+
   const canSave =
+    closedShop === undefined &&
     canSubmit({ customerName, shopId, warehouseId, lines: allLines, stock }) &&
     feeRefusal === null &&
     orderDate !== "" &&
-    sellPrice > 0n &&
+    sellPrice > 0 &&
     marketplace.orderExternalRefId.trim() !== "" &&
-    unmappedReturns === 0;
+    unmappedReturns === 0 &&
+    // No order without a courier (no-order-without-a-courier, the-courier-required-look-is-accepted) — held here, before
+    // the server would refuse it.
+    shipmentChannelId > 0n;
 
   // How many lines the chosen warehouse cannot fill. Summarised at the top as well as marked on each
   // line: on a long order the failing line can be off screen, and "Create is disabled and I cannot see
@@ -733,7 +778,7 @@ export function OrderCreatePage() {
     customerPhone,
     shopId,
     orderRef: marketplace.orderExternalRefId,
-    shippingCode,
+    shipmentChannelId: shipmentChannelId.toString(),
     note,
     receipt: hasReceipt(receipt),
     address,
@@ -759,11 +804,11 @@ export function OrderCreatePage() {
     customerPhone.trim() !== "" ||
     shopId > 0n ||
     marketplace.orderExternalRefId.trim() !== "" ||
-    shippingCode !== "" ||
+    shipmentChannelId > 0n ||
     note.trim() !== "" ||
     hasReceipt(receipt) ||
     addressTouched(address) ||
-    toRupiah(marketplace.platformTotal) > 0n ||
+    toRupiah(marketplace.platformTotal) > 0 ||
     lines.length > 0 ||
     // The cards that do not submit are still WORK: somebody who typed a deadline and a tracking
     // number has something to lose, whether or not the server will ever see it.
@@ -778,20 +823,51 @@ export function OrderCreatePage() {
   // navigation, and the answer decides whether it proceeds; blocking only while `dirty` means the
   // ordinary "opened it, changed my mind" path is untouched, and `savedRef` is what stops it firing on
   // the one navigation that is the whole point of the form.
+  //
+  // ⚠ AND ALWAYS WHILE LOCKED: an order sent and not yet answered (or never answered) is not "nothing typed" — leaving
+  // does not stop it, and the person must know to check the orders list before typing it again.
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      !savedRef.current && dirty && currentLocation.pathname !== nextLocation.pathname,
+      !savedRef.current && (dirty || locked) && currentLocation.pathname !== nextLocation.pathname,
   );
 
   // ⚠ CREATE IS TWO STEPS NOW (owner): what the order says about itself is checked BEFORE anything
   // is written. An error stops it outright; a warning is shown and can be overruled — see
   // `checks.ts` for which is which, and OrderChecksDialog for how the two read.
-  function save(event: FormEvent) {
+  //
+  // ⚠ AND BEFORE THEM, THE SHOP + REF (a-duplicate-ref-is-warned-not-refused, the-duplicate-warning-reads-drafts-too):
+  // is this order already recorded? A live order on the same shop and ref is NAMED in a warning with Create Anyway —
+  // never a refusal, the server takes the double. So is a DRAFT of the team on them (OrderDraftByExternalRefs). It runs
+  // for a new order and for a draft being finalized alike, and never names that draft. Nothing found → straight on to the checks, with no dialog at all.
+  async function save(event: FormEvent) {
     event.preventDefault();
 
-    if (teamId === undefined || !canSave) {
+    if (teamId === undefined || !canSave || checkingRef || locked) {
       return;
     }
+
+    setCheckingRef(true);
+    const finding = await findDuplicateRef({
+      teamId,
+      shopId,
+      ref: marketplace.orderExternalRefId,
+      // Only when the draft loaded — the same rule `orderDraftId` is sent by below.
+      finalizingDraftId: externalDraft.data ? externalDraftId : 0n,
+    });
+    setCheckingRef(false);
+
+    if (warns(finding)) {
+      setDuplicate(finding);
+      return;
+    }
+
+    runChecks();
+  }
+
+  // THE SECOND STEP — what the order says about itself. Reached straight from Create when the ref is not recorded, or
+  // from the duplicate warning's Create Anyway.
+  function runChecks() {
+    setDuplicate(null);
 
     const findings = runOrderChecks({
       orderRefId: marketplace.orderExternalRefId,
@@ -812,67 +888,88 @@ export function OrderCreatePage() {
   }
 
   async function place() {
-    if (teamId === undefined || !canSave) {
+    if (teamId === undefined || !canSave || locked) {
       return;
     }
 
     setGate([]);
-    setSaving(true);
+    await send(orderRequest(teamId));
+  }
+
+  // WHAT CREATE SENDS, minus its key — built once per Create and FROZEN in `sent`, so Try Again resends exactly this.
+  function orderRequest(teamId: bigint) {
+    return {
+      teamId,
+      shopId,
+      warehouseId,
+      customerName,
+      customerPhone,
+      address: addressTouched(address) ? address : undefined,
+      shipmentChannelId,
+      // Trimmed, so a note of nothing but whitespace is stored as no note at all — otherwise the
+      // detail page would render an empty note card for a field somebody tabbed through.
+      note: note.trim(),
+      // Sent only when one was actually attached: an empty reference and no reference say the same
+      // thing, and the shorter one cannot be mistaken for a document whose id got lost.
+      receipt: hasReceipt(receipt) ? receipt : undefined,
+      // What the buyer paid on the platform. The order's OWN money — goods_cost, the warehouse fee, total_cost — is
+      // not sent: the server freezes it from the take (an-order-is-costed-at-what-leaves-the-shelf).
+      // A double on the wire since selling 00041 — sent EXACT, a fraction included, and frozen as sent
+      // (the-backend-never-rounds-money).
+      platformTotal: toRupiah(marketplace.platformTotal),
+      // Trimmed, so a reference of nothing but whitespace is stored as none at all — the same
+      // treatment `note` gets, and for the same reason: "" and "   " must not be two states.
+      orderExternalRefId: marketplace.orderExternalRefId.trim(),
+      // The number printed on the slip (`receipt_code`), trimmed for the same reason. Typed, or filled from the
+      // file's scan — either way what the person confirmed is what is kept.
+      receiptCode: receiptCode.trim(),
+      // The buyer's name on the marketplace — optional, never a reason to refuse (the-buyers-username-is-optional).
+      // Trimmed like the ref; the server trims it again, so spaces alone are none on either side.
+      buyerUsername: buyerUsername.trim(),
+      // WHEN THE BUYER ORDERED — required (platform-created-at-is-required-at-finalize), which `canSave` already
+      // holds the form to — and the marketplace's ship-by time, optional. Local time, to the minute.
+      platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
+      platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
+      // ⚠ `allLines`, so a bundle's products are really ordered. The GROUPING is what is not
+      // stored (mark 1) — the goods themselves are ordinary lines and must reach the warehouse,
+      // or the totals above would promise stock the order never draws. A product on two lines is
+      // sent twice and merged by the SERVER into one line (both doors, every client) — the two
+      // carry the same sku and name, and the price is the take's, so nothing is lost in the merge.
+      items: allLines.map((l) => ({
+        id: 0n,
+        productId: l.productId,
+        productCode: l.productCode,
+        name: l.name,
+        quantity: toQty(l.quantity),
+        // NO PRICE: a line carries none (an-order-line-carries-no-marketplace-price). The server freezes every money
+        // figure of the line from the take's REAL draw (#74, an-order-is-costed-at-what-leaves-the-shelf) — the same
+        // selection the form's quote ran, so the two agree unless another order took the same units first.
+      })),
+      // THE DRAFT THIS FORM WAS OPENED BESIDE (`?draft=`), finished by this order and deleted with it
+      // (a-draft-becomes-an-order-through-order-create). Only when it loaded — which already proves it is the
+      // caller's — so a mistyped or foreign `?draft=` never refuses an order typed in full.
+      orderDraftId: externalDraft.data ? externalDraftId : 0n,
+    } satisfies Omit<Parameters<typeof orderClient.orderCreate>[0], "idempotencyKey">;
+  }
+
+  // ONE SEND — Create's, and every Try Again's — of a frozen request, under a key of its own. The form locks first and
+  // stays locked until the answer (createAnswer.ts): the order opens it; the SERVER's error gives the form back as
+  // typed; no answer keeps it locked on `request` and shows the Try Again panel.
+  async function send(request: SentRequest) {
+    setRetry(null);
     setError("");
     setRefusal(null);
+    setSent({ phase: "waiting", request });
 
-    try {
-      const res = await createOrder.mutateAsync({
-        teamId,
-        shopId,
-        warehouseId,
-        customerName,
-        customerPhone,
-        address: addressTouched(address) ? address : undefined,
-        shippingCode,
-        // Trimmed, so a note of nothing but whitespace is stored as no note at all — otherwise the
-        // detail page would render an empty note card for a field somebody tabbed through.
-        note: note.trim(),
-        // Sent only when one was actually attached: an empty reference and no reference say the same
-        // thing, and the shorter one cannot be mistaken for a document whose id got lost.
-        receipt: hasReceipt(receipt) ? receipt : undefined,
-        // What the buyer paid on the platform. The order's OWN money — goods_cost, the warehouse fee, total_cost — is
-        // not sent: the server freezes it from the take (an-order-is-costed-at-what-leaves-the-shelf).
-        platformTotal: toRupiah(marketplace.platformTotal),
-        // Trimmed, so a reference of nothing but whitespace is stored as none at all — the same
-        // treatment `note` gets, and for the same reason: "" and "   " must not be two states.
-        orderExternalRefId: marketplace.orderExternalRefId.trim(),
-        // The number printed on the slip (`receipt_code`), trimmed for the same reason. Typed, or filled from the
-        // file's scan — either way what the person confirmed is what is kept.
-        receiptCode: receiptCode.trim(),
-        // The buyer's name on the marketplace — optional, never a reason to refuse (the-buyers-username-is-optional).
-        // Trimmed like the ref; the server trims it again, so spaces alone are none on either side.
-        buyerUsername: buyerUsername.trim(),
-        // WHEN THE BUYER ORDERED — required (platform-created-at-is-required-at-finalize), which `canSave` already
-        // holds the form to — and the marketplace's ship-by time, optional. Local time, to the minute.
-        platformCreatedAtUnix: dateTimeInputToUnix(orderDate),
-        platformShipmentDeadlineUnix: dateTimeInputToUnix(deadline),
-        // ⚠ `allLines`, so a bundle's products are really ordered. The GROUPING is what is not
-        // stored (mark 1) — the goods themselves are ordinary lines and must reach the warehouse,
-        // or the totals above would promise stock the order never draws. A product on two lines is
-        // sent twice and merged by the SERVER into one line (both doors, every client) — the two
-        // carry the same sku and name, and the price is the take's, so nothing is lost in the merge.
-        items: allLines.map((l) => ({
-          id: 0n,
-          productId: l.productId,
-          sku: l.sku,
-          name: l.name,
-          quantity: toQty(l.quantity),
-          // NO PRICE: a line carries none (an-order-line-carries-no-marketplace-price). The server freezes every money
-          // figure of the line from the take's REAL draw (#74, an-order-is-costed-at-what-leaves-the-shelf) — the same
-          // selection the form's quote ran, so the two agree unless another order took the same units first.
-        })),
-        // THE DRAFT THIS FORM WAS OPENED BESIDE (`?draft=`), finished by this order and deleted with it
-        // (a-draft-becomes-an-order-through-order-create). Only when it loaded — which already proves it is the
-        // caller's — so a mistyped or foreign `?draft=` never refuses an order typed in full.
-        orderDraftId: externalDraft.data ? externalDraftId : 0n,
-      });
+    // THIS SUBMIT'S OWN KEY (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key) — minted HERE, inside
+    // every submit, never when the form opens and never reused: a resubmit after an error, a draft's finalize and a
+    // retry alike send a fresh one, so two attempts never share a key. The order stores it, and the server refuses a key
+    // an order already holds (the-order-refuses-a-used-key) with the take's *key already used* refusal.
+    const idempotencyKey = crypto.randomUUID();
 
+    const answer = await awaitAnswer(() => createOrder.mutateAsync({ ...request, idempotencyKey }));
+
+    if (answer.kind === "order") {
       // The invalidation rode with the write (#177) — this page navigates away, so the list it
       // leaves behind has no other way to learn about the order just created.
       toaster.create({ type: "success", title: t("orders.orderCreated") });
@@ -881,27 +978,58 @@ export function OrderCreatePage() {
       // successfully placed — which is exactly what happened the first time this shipped.
       savedRef.current = true;
 
-      const id = res.order?.id;
+      const id = answer.value.order?.id;
       // Back to the product's page it was opened from (a-product-page-opens-the-order-and-restock-forms); else the order.
       void navigate(openedFrom ?? (id ? `/orders/${id}` : "/orders"));
-    } catch (err) {
-      // The warehouse refusing the take (short stock, a borrowed product below its reserve) says WHY and names the
-      // lines; anything else is a sentence.
-      const refused = takeRefusalOf(err);
-      if (refused) {
-        setRefusal(refused);
-      } else {
-        setError(rpcError(err));
-      }
-    } finally {
-      setSaving(false);
+      return;
     }
+
+    if (answer.kind === "none") {
+      // NOTHING CAME BACK — the form stays locked on what was sent, and the person decides (Try Again).
+      setSent({ phase: "noAnswer", request });
+      return;
+    }
+
+    // THE SERVER ANSWERED: the form is the person's again, exactly as typed. The warehouse refusing the take (short
+    // stock, a borrowed product below its reserve) says WHY and names the lines; anything else is a sentence.
+    setSent(null);
+    const refused = takeRefusalOf(answer.error);
+    if (refused) {
+      setRefusal(refused);
+    } else {
+      setError(rpcError(answer.error));
+    }
+  }
+
+  // TRY AGAIN (a-try-again-always-warns): never sends straight away. It re-runs the duplicate check on the FROZEN shop +
+  // ref — the first submit may have landed, so it will usually be named — and always opens the warning: Create Anyway
+  // (or Send Again, when nothing is found yet) resends the frozen payload under a NEW key (every-submit-mints-a-new-key).
+  async function tryAgain() {
+    if (sent?.phase !== "noAnswer" || checkingRef) return;
+
+    const { request } = sent;
+    setCheckingRef(true);
+    const finding = await findDuplicateRef({
+      teamId: request.teamId,
+      shopId: request.shopId,
+      ref: request.orderExternalRefId,
+      finalizingDraftId: request.orderDraftId,
+    });
+    setCheckingRef(false);
+    setRetry(finding);
+  }
+
+  // GO BACK from Try Again's warning: the form is the person's again — as it was sent — and the next Create is a new
+  // submit like any other (its own duplicate check, its own key).
+  function goBackFromRetry() {
+    setRetry(null);
+    setSent(null);
   }
 
   // What a refused line is called on THIS form — the name the person picked it by, else its id.
   function productLabel(productId: bigint): string {
     const line = allLines.find((l) => l.productId === productId);
-    return line?.name || line?.sku || `#${productId.toString()}`;
+    return line?.name || line?.productCode || `#${productId.toString()}`;
   }
 
   // DELETE THE DRAFT — the app's work dropped, from its own page. Confirmed first: it is not undone.
@@ -963,6 +1091,7 @@ export function OrderCreatePage() {
                     label: t("orderForm.draft.delete"),
                     icon: Trash2,
                     danger: true,
+                    disabled: locked,
                     testId: "order-create-delete-draft",
                     onClick: () => setConfirmDeleteDraft(true),
                   },
@@ -973,6 +1102,7 @@ export function OrderCreatePage() {
                 size="xs"
                 variant="outline"
                 colorPalette="error"
+                disabled={locked}
                 data-testid="order-create-delete-draft"
                 onClick={() => setConfirmDeleteDraft(true)}
               >
@@ -992,6 +1122,31 @@ export function OrderCreatePage() {
 
       {refusal && <TakeRefusalAlert refusal={refusal} labelOf={productLabel} testId="order-create-refusal" />}
 
+      {/* SENT, AND WAITING FOR THE ANSWER — said at the top as well as on Create, which can be a screen away. */}
+      {sent?.phase === "waiting" && (
+        <Alert.Root status="info" data-testid="order-create-waiting">
+          <Alert.Indicator>
+            <Spinner size="sm" />
+          </Alert.Indicator>
+          <Alert.Title>{t("orderForm.lock.waiting")}</Alert.Title>
+        </Alert.Root>
+      )}
+
+      {/* NO ANSWER — outside the locked fieldset, so Try Again is the one thing on the page that still answers. */}
+      {sent?.phase === "noAnswer" && <NoAnswerPanel onTryAgain={() => void tryAgain()} checking={checkingRef} />}
+
+      {/* THE DRAFT'S SHOP IS CLOSED — the draft waits (a-close-leaves-the-drafts-waiting): it cannot become an order until the
+          shop is reopened, or it is deleted. Said at the top, where Create's being held is explained. */}
+      {closedShop && (
+        <Alert.Root status="warning" data-testid="order-create-shop-closed">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{t("orderForm.shopClosed.title", { name: closedShop.name })}</Alert.Title>
+            <Alert.Description>{t("orderForm.shopClosed.body")}</Alert.Description>
+          </Alert.Content>
+        </Alert.Root>
+      )}
+
       {/* Full width, above both columns: a line the warehouse cannot fill is a fact about the whole
           order, not about the column the line happens to sit in. */}
       {shortLines > 0 && (
@@ -1004,7 +1159,16 @@ export function OrderCreatePage() {
         </Alert.Root>
       )}
 
-      <form onSubmit={save} noValidate>
+      <form onSubmit={(event) => void save(event)} noValidate>
+        {/* THE LOCK — one native fieldset around the whole form: `disabled` reaches every input, button and picker
+            trigger inside it (and Chakra's fields read it through the fieldset context), `inert` the rest. */}
+        <Fieldset.Root
+          ref={lockRef}
+          disabled={locked}
+          minW="0"
+          data-testid="order-create-lock"
+          data-locked={locked ? "" : undefined}
+        >
         <Stack gap="section">
           {/* WHAT THIS SCREEN CANNOT DO, BEFORE ANYTHING ELSE. It is read once, at the top, and
               repeated as a badge on each card that is affected — so somebody who scrolled straight to
@@ -1020,7 +1184,9 @@ export function OrderCreatePage() {
               yet — and it is read before anybody starts. This is the first thing about the ORDER.
               Above it, the warehouse would be answered before the reader knew what they were looking
               at. */}
-          <WarehouseBand value={warehouseId} onChange={setWarehouseId} refusal={feeRefusal} />
+          <Box {...lockFade}>
+            <WarehouseBand value={warehouseId} onChange={setWarehouseId} refusal={feeRefusal} />
+          </Box>
 
       {/* ⚠ `minmax(0, 1fr)` ON A PHONE TOO, not `1fr`. A track's minimum is `auto` — its widest child —
           so a wide lines table pushed the whole column past a 390px screen instead of scrolling inside
@@ -1032,7 +1198,7 @@ export function OrderCreatePage() {
         style={{ marginTop: 16 }}
       >
         {/* ── THE ORDER BEING WRITTEN ─────────────────────────────────────── left column ──────── */}
-        <GridItem>
+        <GridItem {...lockFade}>
           <Stack gap="section">
             {/* ── THE RECEIPT FILE, FIRST (owner) ─────────────────────────────────────────────────
                 It carries the order id AND the tracking number, so the file and the two numbers read
@@ -1054,8 +1220,9 @@ export function OrderCreatePage() {
               }
               trackingCode={receiptCode}
               onTrackingCodeChange={setReceiptCode}
-              shippingCode={shippingCode}
-              onShippingCodeChange={setShippingCode}
+              shipmentChannelId={shipmentChannelId}
+              onShipmentChannelChange={setShipmentChannelId}
+              courierRequired
               filledFromFile={filledFromFile}
               scanResult={scan?.result}
             />
@@ -1122,6 +1289,7 @@ export function OrderCreatePage() {
                         <Field.RequiredIndicator />
                       </Field.Label>
                       <CurrencyInput
+                        fraction
                         value={marketplace.platformTotal}
                         data-testid="order-marketplace-total"
                         onChange={(platformTotal) =>
@@ -1246,6 +1414,9 @@ export function OrderCreatePage() {
               onCustomerPhoneChange={setCustomerPhone}
               address={address}
               onAddressChange={setAddress}
+              // A DRAFT'S ADDRESS AS THE MARKETPLACE WROTE IT (the-cs-edits-the-whole-address-before-create), read beside
+              // the editable picker — every part of which the person may change before Create.
+              addressHint={draft ? <DraftAddressText address={draft.address} /> : undefined}
               teamId={cardTeamId}
               // THE SECOND WAY INTO AN ADDRESS (owner): search the kecamatan by name, which fills
               // everything above it and the postcode when that kecamatan has only one.
@@ -1276,7 +1447,7 @@ export function OrderCreatePage() {
 
                 ONE TOGGLE FOR ALL THREE, not a collapse per card: they are read together, and three
                 separate chevrons would be three states to keep in your head. */}
-            <Flex justify="space-between" align="center" gap="2">
+            <Flex justify="space-between" align="center" gap="2" {...lockFade}>
               <Text fontSize="sm" fontWeight="bold" color="fg.muted">
                 {t("orderForm.rail.title")}
               </Text>
@@ -1292,16 +1463,18 @@ export function OrderCreatePage() {
               </Button>
             </Flex>
 
-            <CreditLimitPanel rows={creditRowsList} compact={compact} />
-            <ProfitEstimatePanel sellPrice={sellPrice} orderTotal={orderTotal} compact={compact} />
-            <TotalsInvoicePanel
-              productsTotal={productsTotal}
-              warehouseFee={warehouseFee}
-              orderTotal={orderTotal}
-              invoice={invoice}
-              invoiceTotal={invoiceTotal}
-              compact={compact}
-            />
+            <Stack gap={compact ? "card" : "section"} {...lockFade}>
+              <CreditLimitPanel rows={creditRowsList} compact={compact} />
+              <ProfitEstimatePanel sellPrice={sellPrice} orderTotal={orderTotal} compact={compact} />
+              <TotalsInvoicePanel
+                productsTotal={productsTotal}
+                warehouseFee={warehouseFee}
+                orderTotal={orderTotal}
+                invoice={invoice}
+                invoiceTotal={invoiceTotal}
+                compact={compact}
+              />
+            </Stack>
 
             {/* ── THE NOTE, AND THE BUTTON AFTER IT ───────────────────────── last in the rail ──
                 One card, because it is one moment: the last thing remembered, then the thing that
@@ -1317,14 +1490,39 @@ export function OrderCreatePage() {
               onNoteChange={setNote}
               unmappedReturns={unmappedReturns}
               compact={compact}
-              saving={saving}
+              saving={saving || checkingRef}
+              savingText={saving ? t("orderForm.lock.placing") : undefined}
               canSave={canSave}
             />
           </Stack>
         </GridItem>
       </Grid>
         </Stack>
+        </Fieldset.Root>
       </form>
+
+      {/* THIS SHOP + REF IS ALREADY RECORDED — asked before the checks below; Go Back keeps the form as typed. */}
+      <DuplicateRefDialog
+        finding={duplicate}
+        selfUserId={identity?.identityId}
+        placing={saving}
+        onGoBack={() => setDuplicate(null)}
+        onCreateAnyway={runChecks}
+      />
+
+      {/* TRY AGAIN'S WARNING (a-try-again-always-warns) — the same dialog, always opened: Create Anyway / Send Again
+          resends the frozen order under a new key; Go Back gives the form back; closing it keeps the lock. */}
+      <DuplicateRefDialog
+        retry
+        finding={retry}
+        selfUserId={identity?.identityId}
+        placing={saving}
+        onGoBack={goBackFromRetry}
+        onDismiss={() => setRetry(null)}
+        onCreateAnyway={() => {
+          if (sent) void send(sent.request);
+        }}
+      />
 
       {/* WHAT THE CHECKS FOUND — the last thing between Create and the write. */}
       <OrderChecksDialog
@@ -1361,9 +1559,17 @@ export function OrderCreatePage() {
 
       <ConfirmDialog
         open={blocker.state === "blocked"}
-        title={t("orders.discardTitle")}
-        message={t("orders.discardMessage")}
-        confirmLabel={t("orders.discardConfirm")}
+        // LOCKED, the question is not "discard what you typed" but "the order may still be placed" — leaving cannot
+        // stop a request already sent.
+        title={t(locked ? "orderForm.lock.leaveTitle" : "orders.discardTitle")}
+        message={
+          sent?.phase === "waiting"
+            ? t("orderForm.lock.leaveWaiting")
+            : sent?.phase === "noAnswer"
+              ? t("orderForm.lock.leaveNoAnswer")
+              : t("orders.discardMessage")
+        }
+        confirmLabel={t(locked ? "orderForm.lock.leaveConfirm" : "orders.discardConfirm")}
         onConfirm={async () => blocker.proceed?.()}
         // Closing the dialog ANY other way — Cancel, the X, the backdrop, Escape — means "stay", so
         // the navigation is reset rather than left hanging. `reset` is only defined while the blocker

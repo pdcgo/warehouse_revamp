@@ -19,7 +19,7 @@ func TestProductCrossMarkup_CreateListUpdate(t *testing.T) {
 	svc := newService(t, db)
 
 	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
-		TeamId: 2, Sku: "SKU-1", Name: "Widget", CategoryId: 1, CrossMarkupBps: 1250,
+		TeamId: 2, ProductCodePart: "SKU-1", Name: "Widget", CategoryId: 1, CrossMarkupBps: 1250,
 	}))
 	if err != nil {
 		t.Fatalf("ProductCreate: %v", err)
@@ -61,7 +61,7 @@ func TestProductCrossMarkup_AbsentOnUpdateLeavesItAlone(t *testing.T) {
 	svc := newService(t, db)
 
 	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
-		TeamId: 2, Sku: "SKU-1", Name: "Widget", CategoryId: 1, CrossMarkupBps: 1500,
+		TeamId: 2, ProductCodePart: "SKU-1", Name: "Widget", CategoryId: 1, CrossMarkupBps: 1500,
 	}))
 	if err != nil {
 		t.Fatalf("ProductCreate: %v", err)
@@ -87,7 +87,7 @@ func TestProductCrossLocked_SetOnCreate(t *testing.T) {
 	svc := newService(t, db)
 
 	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
-		TeamId: 2, Sku: "SKU-OURS", Name: "Ours only", CategoryId: 1, CrossLocked: true,
+		TeamId: 2, ProductCodePart: "SKU-OURS", Name: "Ours only", CategoryId: 1, CrossLocked: true,
 	}))
 	if err != nil {
 		t.Fatalf("ProductCreate: %v", err)

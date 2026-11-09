@@ -97,24 +97,28 @@ func NewRackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+RackServiceRackListProcedure,
 			connect.WithSchema(rackServiceMethods.ByName("RackList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		rackDetail: connect.NewClient[v1.RackDetailRequest, v1.RackDetailResponse](
 			httpClient,
 			baseURL+RackServiceRackDetailProcedure,
 			connect.WithSchema(rackServiceMethods.ByName("RackDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		rackStock: connect.NewClient[v1.RackStockRequest, v1.RackStockResponse](
 			httpClient,
 			baseURL+RackServiceRackStockProcedure,
 			connect.WithSchema(rackServiceMethods.ByName("RackStock")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		rackHistory: connect.NewClient[v1.RackHistoryRequest, v1.RackHistoryResponse](
 			httpClient,
 			baseURL+RackServiceRackHistoryProcedure,
 			connect.WithSchema(rackServiceMethods.ByName("RackHistory")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		rackUpdate: connect.NewClient[v1.RackUpdateRequest, v1.RackUpdateResponse](
@@ -242,24 +246,28 @@ func NewRackServiceHandler(svc RackServiceHandler, opts ...connect.HandlerOption
 		RackServiceRackListProcedure,
 		svc.RackList,
 		connect.WithSchema(rackServiceMethods.ByName("RackList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	rackServiceRackDetailHandler := connect.NewUnaryHandler(
 		RackServiceRackDetailProcedure,
 		svc.RackDetail,
 		connect.WithSchema(rackServiceMethods.ByName("RackDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	rackServiceRackStockHandler := connect.NewUnaryHandler(
 		RackServiceRackStockProcedure,
 		svc.RackStock,
 		connect.WithSchema(rackServiceMethods.ByName("RackStock")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	rackServiceRackHistoryHandler := connect.NewUnaryHandler(
 		RackServiceRackHistoryProcedure,
 		svc.RackHistory,
 		connect.WithSchema(rackServiceMethods.ByName("RackHistory")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	rackServiceRackUpdateHandler := connect.NewUnaryHandler(

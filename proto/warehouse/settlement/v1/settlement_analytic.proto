@@ -4,6 +4,8 @@ package warehouse.settlement.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/analytic_base/v1/analytic.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1";
@@ -27,9 +29,25 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/set
 // Report and the Analytic screen read one definition.
 service SettlementAnalyticService {
   // The keys of a page of the table, ranked by one field of one settlement metric.
-  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse);
+  rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
-  rpc MetricData(MetricDataRequest) returns (MetricDataResponse);
+  rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The people the Analytic screen's "created by" filter offers for a settlement metric: everyone a settlement row of
+  // this team counts for (a-who-filter-lists-the-people-on-its-rows) — read off the person report, the rows the USER
+  // group and filter read.
+  rpc SettlementPersonList(SettlementPersonListRequest) returns (SettlementPersonListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // Both metrics have the same shape:
@@ -40,6 +58,9 @@ service SettlementAnalyticService {
 //   USER        who the row counts for: an order's creator, a shop row's actor, an imported shop row's primary CS. A
 //               row with no one recorded is left out of this group and counted everywhere else
 //   a period    every period of the window is a row, a quiet one included: it still has a position
+//
+// MONEY IS `double` — sums of the exact posted rows (the-backend-never-rounds-money), so a position equals the log's
+// running sum within the tolerance (san_money.Equal). The take rate was always a double.
 //
 // ⚠ SIGN. The log's convention is positive-toward-us, so a sale is negative there. Settlement's own fields are turned
 // the way a person reads them: `sales`, `withdrawn` and `position_to_date` are positive. The by-type fields keep the
@@ -69,35 +90,41 @@ message SettlementMetric {
   };
 
   // What buyers paid, LIVE — cancels netted: −(initial_total + initial_total_cancel).
-  int64 sales = 1 [
+  double sales = 1 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // What the platform moved toward us — Σ every field of SettlementTypeMetric, named fees included.
-  int64 received = 2 [
+  double received = 2 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // What left the marketplace wallet for our bank, as a positive number: −withdrawal. ⚠ NOT part of `received` — it is
   // our own money moving on — but it IS in the position (#withdrawal-counts-in-the-position).
-  int64 withdrawn = 3 [
+  double withdrawn = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // sales − received: the part of the sale that never reached us.
-  int64 gap = 4 [
+  double gap = 4 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // gap ÷ sales, worked out from the key's own sums — never an average of rates. UNSET with no sales to divide by.
   //
-  // ⚠ NOT SORTABLE YET: a rate needs a minimum sample to rank by (a-rate-ranks-only-above-its-minimum-sample), and
-  // which sale is too small to rank has not been decided (analytic_context_clarify.md#a-take-rate-ranks-above-what-sale).
-  optional double take_rate = 5 [(warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_RATIO];
+  // Ranked only among keys that SOLD at least Rp 1.000.000 in the window — its sample is `sales`, in rupiah; the rest
+  // follow, in key order (a-take-rate-ranks-above-one-million-of-sales, a-rate-ranks-only-above-its-minimum-sample).
+  optional double take_rate = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {
+      can_sort: true
+      rank_min_sample: 1000000
+    },
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_RATIO
+  ];
   // THE POSITION at the period's END, as a positive number: −close_balance — what buyers paid, less everything the
   // platform moved, withdrawals included (#the-report-headline-is-position-to-date). A balance: it adds up across keys,
   // never across periods (a-position-is-its-own-stat-type). Never "outstanding" — nobody is going to collect it.
-  int64 position_to_date = 6 [
+  double position_to_date = 6 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_POSITION
   ];
@@ -144,44 +171,44 @@ message SettlementTypeMetric {
   // column of the same name.
 
   // What actually arrived from the platform.
-  int64 fund = 1 [
+  double fund = 1 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 external_ads_fee = 2 [
+  double external_ads_fee = 2 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 affiliate_fee = 3 [
+  double affiliate_fee = 3 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 marketplace_adjustment = 4 [
+  double marketplace_adjustment = 4 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 shipment_adjustment = 5 [
+  double shipment_adjustment = 5 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 logistic_reimbursement = 6 [
+  double logistic_reimbursement = 6 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 platform_reimbursement = 7 [
+  double platform_reimbursement = 7 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 marketplace_program = 8 [
+  double marketplace_program = 8 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  int64 other = 9 [
+  double other = 9 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
   // A repair of the report, shop-addressed (#system-adjustment-is-a-ledger-type).
-  int64 system_adjustment = 10 [
+  double system_adjustment = 10 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
@@ -289,4 +316,92 @@ message MetricData {
 
 message MetricDataResponse {
   repeated MetricData metric_datas = 1;
+  // AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+  // `settlement_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+  // behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+  // every metric it serves shares it. 0 = nothing folded yet.
+  //
+  // ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+  // dead-letter topic and the lease's log.
+  int64 as_of_unix = 2;
+}
+
+// ── Who the settlement rows count for (a-who-filter-lists-the-people-on-its-rows) ─────────────────────────────────────
+//
+// What a USER filter over a settlement metric offers: the people the person report holds a row for in this team — an
+// order's creator, a shop row's actor, an imported shop row's primary CS — and nobody else. Not the team's members: a
+// person who has left still sold last year's orders. Former members and suspended accounts are kept
+// (a-filter-keeps-former-and-suspended-people). 0 is "not recorded", never a person.
+
+enum SettlementPersonListDataType {
+  SETTLEMENT_PERSON_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SETTLEMENT_PERSON_LIST_DATA_TYPE_PERSON = 1;
+}
+
+// SettlementPersonSort is the sort selection paired with the PERSON slice.
+enum SettlementPersonSort {
+  SETTLEMENT_PERSON_SORT_UNSPECIFIED = 0;
+  // The last day a row counted for them — the default, newest first, so the people working now lead.
+  SETTLEMENT_PERSON_SORT_LAST_DAY = 1;
+}
+
+// Nothing narrows it yet: the picker offers everyone on the team's settlement rows.
+message SettlementPersonListFilter {}
+
+message SettlementPersonListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    SettlementPersonSort person = 2;
+  }
+}
+
+message SettlementPersonListRequest {
+  // Whoever may read the metric may filter it (whoever-reads-a-list-may-filter-it): exactly MetricData's roles.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The caller's scope. A selling team lists its own people; the root team lists every team's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  SettlementPersonListFilter filter = 2;
+  SettlementPersonListFilterSort sort = 3;
+  repeated SettlementPersonListDataType data_request = 4;
+  // It grows with staff turnover, slowly but without a ceiling, so it pages; the picker asks for a large first page
+  // and filters in the field.
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// One person, and the last day a settlement row of this team counted for them. Their name is user_service's — the
+// picker resolves it with UserByIDs.
+message SettlementPersonItem {
+  uint64 user_id = 1;
+  // YYYY-MM-DD, the report's own day.
+  string last_day = 2;
+}
+
+message SettlementPersonMapItem {
+  // Keyed by user id.
+  map<uint64, SettlementPersonItem> map_data = 1;
+}
+
+message SettlementPersonListResponseItem {
+  oneof d {
+    SettlementPersonMapItem person = 1;
+  }
+}
+
+message SettlementPersonListResponse {
+  repeated SettlementPersonListResponseItem items = 1;
+  // User ids, in the sort's order.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }

@@ -138,6 +138,9 @@ export const key = {
   warehouseTransfer: (teamId: bigint | undefined, params?: Params) => scope("warehouseTransfer", teamId, params),
   // The stock count's sessions, rows and racks. Its own prefix: a finalize moves stock, so it refreshes `inventory` too.
   opname: (teamId: bigint | undefined, params?: Params) => scope("opname", teamId, params),
+  // The found requests waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin). Its own
+  // prefix: an approval moves stock, so it refreshes `inventory` too.
+  foundRequests: (teamId: bigint | undefined, params?: Params) => scope("foundRequests", teamId, params),
   suppliers: (teamId: bigint | undefined, params?: Params) => scope("suppliers", teamId, params),
   users: (teamId: bigint | undefined, params?: Params) => scope("users", teamId, params),
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),
@@ -149,6 +152,9 @@ export const key = {
   // The accounts, their logs, their balances AND their reports under ONE prefix: every write moves a
   // balance, and a balance is in all four — so one write refreshes the lot.
   financialAccounts: (teamId: bigint | undefined, params?: Params) => scope("financialAccounts", teamId, params),
+  // The AI agents connected to read a team (docs/business/mcp) — a person's own (no team: `undefined`, they are the
+  // caller's across every team) and a team's, for its owner, under ONE prefix: a revoke from either list is in both.
+  agents: (teamId: bigint | undefined, params?: Params) => scope("agents", teamId, params),
 
   // No team: global reference data (see `global` above).
   regions: (params?: Params) => global("regions", params),

@@ -50,12 +50,21 @@ const (
 	// OrderServiceOrderStatusChangeProcedure is the fully-qualified name of the OrderService's
 	// OrderStatusChange RPC.
 	OrderServiceOrderStatusChangeProcedure = "/warehouse.selling.v1.OrderService/OrderStatusChange"
+	// OrderServiceOrderReturnAcceptProcedure is the fully-qualified name of the OrderService's
+	// OrderReturnAccept RPC.
+	OrderServiceOrderReturnAcceptProcedure = "/warehouse.selling.v1.OrderService/OrderReturnAccept"
 	// OrderServiceOrderNoteCreateProcedure is the fully-qualified name of the OrderService's
 	// OrderNoteCreate RPC.
 	OrderServiceOrderNoteCreateProcedure = "/warehouse.selling.v1.OrderService/OrderNoteCreate"
 	// OrderServiceOrderReceiptUpdateProcedure is the fully-qualified name of the OrderService's
 	// OrderReceiptUpdate RPC.
 	OrderServiceOrderReceiptUpdateProcedure = "/warehouse.selling.v1.OrderService/OrderReceiptUpdate"
+	// OrderServiceShopeeOrderImportProcedure is the fully-qualified name of the OrderService's
+	// ShopeeOrderImport RPC.
+	OrderServiceShopeeOrderImportProcedure = "/warehouse.selling.v1.OrderService/ShopeeOrderImport"
+	// OrderServiceTiktokOrderImportProcedure is the fully-qualified name of the OrderService's
+	// TiktokOrderImport RPC.
+	OrderServiceTiktokOrderImportProcedure = "/warehouse.selling.v1.OrderService/TiktokOrderImport"
 	// OrderServiceOrderProductActivityByIdsProcedure is the fully-qualified name of the OrderService's
 	// OrderProductActivityByIds RPC.
 	OrderServiceOrderProductActivityByIdsProcedure = "/warehouse.selling.v1.OrderService/OrderProductActivityByIds"
@@ -70,6 +79,9 @@ const (
 	// OrderServiceOrderCreatorListProcedure is the fully-qualified name of the OrderService's
 	// OrderCreatorList RPC.
 	OrderServiceOrderCreatorListProcedure = "/warehouse.selling.v1.OrderService/OrderCreatorList"
+	// OrderServiceOrderLabelsProcedure is the fully-qualified name of the OrderService's OrderLabels
+	// RPC.
+	OrderServiceOrderLabelsProcedure = "/warehouse.selling.v1.OrderService/OrderLabels"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -89,11 +101,25 @@ type OrderServiceClient interface {
 	//	pending → processed → picked → shipping → shipped → completed
 	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
-	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	// Cancel and the return accept do more than move a status, so they keep their own RPCs (OrderCancel,
+	// OrderReturnAccept).
 	// THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
 	// .xlsx. A server stream — progress, then an expiring link.
 	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest]) (*connect.ServerStreamForClient[v1.OrderExportResponse], error)
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
+	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
+	// `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
+	// not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
+	// and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
+	// than move a status, which is why OrderStatusChange refuses
+	// that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
+	// timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
+	// product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
+	// courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
+	//
+	// ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
+	// inventory's return transaction is designed, so a completed return under-reads stock by them.
+	OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error)
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.
 	OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error)
@@ -101,6 +127,11 @@ type OrderServiceClient interface {
 	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
 	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
 	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
+	// THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
+	// export from the platform moves each order it names along customer service's moves after handover, and every other
+	// order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
+	ShopeeOrderImport(context.Context, *connect.Request[v1.ShopeeOrderImportRequest]) (*connect.ServerStreamForClient[v1.ShopeeOrderImportResponse], error)
+	TiktokOrderImport(context.Context, *connect.Request[v1.TiktokOrderImportRequest]) (*connect.ServerStreamForClient[v1.TiktokOrderImportResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -132,6 +163,12 @@ type OrderServiceClient interface {
 	// The people the list's "created by" filter offers: everyone who typed in an order this team may list
 	// (a-who-filter-lists-the-people-on-its-rows).
 	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
+	// THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
+	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
+	// link is minted under its own identity, so a label is never shared document by document.
+	//
+	// ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -155,12 +192,14 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+OrderServiceOrderListProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderDetail: connect.NewClient[v1.OrderDetailRequest, v1.OrderDetailResponse](
 			httpClient,
 			baseURL+OrderServiceOrderDetailProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderCancel: connect.NewClient[v1.OrderCancelRequest, v1.OrderCancelResponse](
@@ -181,6 +220,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderStatusChange")),
 			connect.WithClientOptions(opts...),
 		),
+		orderReturnAccept: connect.NewClient[v1.OrderReturnAcceptRequest, v1.OrderReturnAcceptResponse](
+			httpClient,
+			baseURL+OrderServiceOrderReturnAcceptProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderReturnAccept")),
+			connect.WithClientOptions(opts...),
+		),
 		orderNoteCreate: connect.NewClient[v1.OrderNoteCreateRequest, v1.OrderNoteCreateResponse](
 			httpClient,
 			baseURL+OrderServiceOrderNoteCreateProcedure,
@@ -193,34 +238,58 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
 			connect.WithClientOptions(opts...),
 		),
+		shopeeOrderImport: connect.NewClient[v1.ShopeeOrderImportRequest, v1.ShopeeOrderImportResponse](
+			httpClient,
+			baseURL+OrderServiceShopeeOrderImportProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("ShopeeOrderImport")),
+			connect.WithClientOptions(opts...),
+		),
+		tiktokOrderImport: connect.NewClient[v1.TiktokOrderImportRequest, v1.TiktokOrderImportResponse](
+			httpClient,
+			baseURL+OrderServiceTiktokOrderImportProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("TiktokOrderImport")),
+			connect.WithClientOptions(opts...),
+		),
 		orderProductActivityByIds: connect.NewClient[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse](
 			httpClient,
 			baseURL+OrderServiceOrderProductActivityByIdsProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderProductActivityByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderActivityStat: connect.NewClient[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse](
 			httpClient,
 			baseURL+OrderServiceOrderActivityStatProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderStat: connect.NewClient[v1.OrderStatRequest, v1.OrderStatResponse](
 			httpClient,
 			baseURL+OrderServiceOrderStatProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderByExternalRefs: connect.NewClient[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse](
 			httpClient,
 			baseURL+OrderServiceOrderByExternalRefsProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		orderCreatorList: connect.NewClient[v1.OrderCreatorListRequest, v1.OrderCreatorListResponse](
 			httpClient,
 			baseURL+OrderServiceOrderCreatorListProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderCreatorList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		orderLabels: connect.NewClient[v1.OrderLabelsRequest, v1.OrderLabelsResponse](
+			httpClient,
+			baseURL+OrderServiceOrderLabelsProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderLabels")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -234,13 +303,17 @@ type orderServiceClient struct {
 	orderCancel               *connect.Client[v1.OrderCancelRequest, v1.OrderCancelResponse]
 	orderExport               *connect.Client[v1.OrderExportRequest, v1.OrderExportResponse]
 	orderStatusChange         *connect.Client[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse]
+	orderReturnAccept         *connect.Client[v1.OrderReturnAcceptRequest, v1.OrderReturnAcceptResponse]
 	orderNoteCreate           *connect.Client[v1.OrderNoteCreateRequest, v1.OrderNoteCreateResponse]
 	orderReceiptUpdate        *connect.Client[v1.OrderReceiptUpdateRequest, v1.OrderReceiptUpdateResponse]
+	shopeeOrderImport         *connect.Client[v1.ShopeeOrderImportRequest, v1.ShopeeOrderImportResponse]
+	tiktokOrderImport         *connect.Client[v1.TiktokOrderImportRequest, v1.TiktokOrderImportResponse]
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
 	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
 	orderByExternalRefs       *connect.Client[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse]
 	orderCreatorList          *connect.Client[v1.OrderCreatorListRequest, v1.OrderCreatorListResponse]
+	orderLabels               *connect.Client[v1.OrderLabelsRequest, v1.OrderLabelsResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -273,6 +346,11 @@ func (c *orderServiceClient) OrderStatusChange(ctx context.Context, req *connect
 	return c.orderStatusChange.CallUnary(ctx, req)
 }
 
+// OrderReturnAccept calls warehouse.selling.v1.OrderService.OrderReturnAccept.
+func (c *orderServiceClient) OrderReturnAccept(ctx context.Context, req *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error) {
+	return c.orderReturnAccept.CallUnary(ctx, req)
+}
+
 // OrderNoteCreate calls warehouse.selling.v1.OrderService.OrderNoteCreate.
 func (c *orderServiceClient) OrderNoteCreate(ctx context.Context, req *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error) {
 	return c.orderNoteCreate.CallUnary(ctx, req)
@@ -281,6 +359,16 @@ func (c *orderServiceClient) OrderNoteCreate(ctx context.Context, req *connect.R
 // OrderReceiptUpdate calls warehouse.selling.v1.OrderService.OrderReceiptUpdate.
 func (c *orderServiceClient) OrderReceiptUpdate(ctx context.Context, req *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error) {
 	return c.orderReceiptUpdate.CallUnary(ctx, req)
+}
+
+// ShopeeOrderImport calls warehouse.selling.v1.OrderService.ShopeeOrderImport.
+func (c *orderServiceClient) ShopeeOrderImport(ctx context.Context, req *connect.Request[v1.ShopeeOrderImportRequest]) (*connect.ServerStreamForClient[v1.ShopeeOrderImportResponse], error) {
+	return c.shopeeOrderImport.CallServerStream(ctx, req)
+}
+
+// TiktokOrderImport calls warehouse.selling.v1.OrderService.TiktokOrderImport.
+func (c *orderServiceClient) TiktokOrderImport(ctx context.Context, req *connect.Request[v1.TiktokOrderImportRequest]) (*connect.ServerStreamForClient[v1.TiktokOrderImportResponse], error) {
+	return c.tiktokOrderImport.CallServerStream(ctx, req)
 }
 
 // OrderProductActivityByIds calls warehouse.selling.v1.OrderService.OrderProductActivityByIds.
@@ -308,6 +396,11 @@ func (c *orderServiceClient) OrderCreatorList(ctx context.Context, req *connect.
 	return c.orderCreatorList.CallUnary(ctx, req)
 }
 
+// OrderLabels calls warehouse.selling.v1.OrderService.OrderLabels.
+func (c *orderServiceClient) OrderLabels(ctx context.Context, req *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error) {
+	return c.orderLabels.CallUnary(ctx, req)
+}
+
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
 type OrderServiceHandler interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
@@ -325,11 +418,25 @@ type OrderServiceHandler interface {
 	//	pending → processed → picked → shipping → shipped → completed
 	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
-	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	// Cancel and the return accept do more than move a status, so they keep their own RPCs (OrderCancel,
+	// OrderReturnAccept).
 	// THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
 	// .xlsx. A server stream — progress, then an expiring link.
 	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest], *connect.ServerStream[v1.OrderExportResponse]) error
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
+	// THE RETURN ACCEPT (the-accept-is-the-status-return-completed): a WAREHOUSE has the returned parcel in its hands, so
+	// `return → return_completed`. Whichever warehouse holds it — usually the selling team's configured return warehouse,
+	// not always the one it shipped from (a-return-may-land-in-another-warehouse, a-stale-return-location-is-accepted) —
+	// and that warehouse is recorded on the accept's timeline row (the-accept-records-where-it-was-accepted). It does more
+	// than move a status, which is why OrderStatusChange refuses
+	// that move: the return is whole (a-return-is-never-partial) and a short parcel names each missing unit on a
+	// timeline note (a-short-return-is-accepted-and-the-gap-written-off), a borrowed line answers the mapped own
+	// product's code to print over the lender's label (a-returned-borrowed-unit-is-relabelled-at-the-accept), and the
+	// courier's ask at the door, if any, rides OrderReturnAccepted to liability (a-return-may-carry-the-couriers-ask).
+	//
+	// ⚠ NO STOCK MOVES (the-return-accept-is-built-before-its-stock-half): the units are not put back on a shelf until
+	// inventory's return transaction is designed, so a completed return under-reads stock by them.
+	OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error)
 	// A NOTE ON THE ORDER (a-note-is-a-timeline-row): one order_timeline_logs row with no status, written by either end.
 	// Never edited and never deleted — a correction is a new note.
 	OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error)
@@ -337,6 +444,11 @@ type OrderServiceHandler interface {
 	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
 	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
 	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
+	// THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
+	// export from the platform moves each order it names along customer service's moves after handover, and every other
+	// order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
+	ShopeeOrderImport(context.Context, *connect.Request[v1.ShopeeOrderImportRequest], *connect.ServerStream[v1.ShopeeOrderImportResponse]) error
+	TiktokOrderImport(context.Context, *connect.Request[v1.TiktokOrderImportRequest], *connect.ServerStream[v1.TiktokOrderImportResponse]) error
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
 	// The selling team's product list asks one question of this service: when did each of these
@@ -368,6 +480,12 @@ type OrderServiceHandler interface {
 	// The people the list's "created by" filter offers: everyone who typed in an order this team may list
 	// (a-who-filter-lists-the-people-on-its-rows).
 	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
+	// THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the shipping labels of orders that
+	// ship from the caller's warehouse, behind one expiring link. The order service checks each order itself and the
+	// link is minted under its own identity, so a label is never shared document by document.
+	//
+	// ⚠ STEP 1: one order per call, no PDF merge — the link is that order's own file.
+	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -387,12 +505,14 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		OrderServiceOrderListProcedure,
 		svc.OrderList,
 		connect.WithSchema(orderServiceMethods.ByName("OrderList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderDetailHandler := connect.NewUnaryHandler(
 		OrderServiceOrderDetailProcedure,
 		svc.OrderDetail,
 		connect.WithSchema(orderServiceMethods.ByName("OrderDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderCancelHandler := connect.NewUnaryHandler(
@@ -413,6 +533,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderStatusChange")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderReturnAcceptHandler := connect.NewUnaryHandler(
+		OrderServiceOrderReturnAcceptProcedure,
+		svc.OrderReturnAccept,
+		connect.WithSchema(orderServiceMethods.ByName("OrderReturnAccept")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orderServiceOrderNoteCreateHandler := connect.NewUnaryHandler(
 		OrderServiceOrderNoteCreateProcedure,
 		svc.OrderNoteCreate,
@@ -425,34 +551,58 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceShopeeOrderImportHandler := connect.NewServerStreamHandler(
+		OrderServiceShopeeOrderImportProcedure,
+		svc.ShopeeOrderImport,
+		connect.WithSchema(orderServiceMethods.ByName("ShopeeOrderImport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceTiktokOrderImportHandler := connect.NewServerStreamHandler(
+		OrderServiceTiktokOrderImportProcedure,
+		svc.TiktokOrderImport,
+		connect.WithSchema(orderServiceMethods.ByName("TiktokOrderImport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orderServiceOrderProductActivityByIdsHandler := connect.NewUnaryHandler(
 		OrderServiceOrderProductActivityByIdsProcedure,
 		svc.OrderProductActivityByIds,
 		connect.WithSchema(orderServiceMethods.ByName("OrderProductActivityByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderActivityStatHandler := connect.NewUnaryHandler(
 		OrderServiceOrderActivityStatProcedure,
 		svc.OrderActivityStat,
 		connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderStatHandler := connect.NewUnaryHandler(
 		OrderServiceOrderStatProcedure,
 		svc.OrderStat,
 		connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderByExternalRefsHandler := connect.NewUnaryHandler(
 		OrderServiceOrderByExternalRefsProcedure,
 		svc.OrderByExternalRefs,
 		connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderCreatorListHandler := connect.NewUnaryHandler(
 		OrderServiceOrderCreatorListProcedure,
 		svc.OrderCreatorList,
 		connect.WithSchema(orderServiceMethods.ByName("OrderCreatorList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderLabelsHandler := connect.NewUnaryHandler(
+		OrderServiceOrderLabelsProcedure,
+		svc.OrderLabels,
+		connect.WithSchema(orderServiceMethods.ByName("OrderLabels")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -469,10 +619,16 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderExportHandler.ServeHTTP(w, r)
 		case OrderServiceOrderStatusChangeProcedure:
 			orderServiceOrderStatusChangeHandler.ServeHTTP(w, r)
+		case OrderServiceOrderReturnAcceptProcedure:
+			orderServiceOrderReturnAcceptHandler.ServeHTTP(w, r)
 		case OrderServiceOrderNoteCreateProcedure:
 			orderServiceOrderNoteCreateHandler.ServeHTTP(w, r)
 		case OrderServiceOrderReceiptUpdateProcedure:
 			orderServiceOrderReceiptUpdateHandler.ServeHTTP(w, r)
+		case OrderServiceShopeeOrderImportProcedure:
+			orderServiceShopeeOrderImportHandler.ServeHTTP(w, r)
+		case OrderServiceTiktokOrderImportProcedure:
+			orderServiceTiktokOrderImportHandler.ServeHTTP(w, r)
 		case OrderServiceOrderProductActivityByIdsProcedure:
 			orderServiceOrderProductActivityByIdsHandler.ServeHTTP(w, r)
 		case OrderServiceOrderActivityStatProcedure:
@@ -483,6 +639,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderByExternalRefsHandler.ServeHTTP(w, r)
 		case OrderServiceOrderCreatorListProcedure:
 			orderServiceOrderCreatorListHandler.ServeHTTP(w, r)
+		case OrderServiceOrderLabelsProcedure:
+			orderServiceOrderLabelsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -516,12 +674,24 @@ func (UnimplementedOrderServiceHandler) OrderStatusChange(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderStatusChange is not implemented"))
 }
 
+func (UnimplementedOrderServiceHandler) OrderReturnAccept(context.Context, *connect.Request[v1.OrderReturnAcceptRequest]) (*connect.Response[v1.OrderReturnAcceptResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderReturnAccept is not implemented"))
+}
+
 func (UnimplementedOrderServiceHandler) OrderNoteCreate(context.Context, *connect.Request[v1.OrderNoteCreateRequest]) (*connect.Response[v1.OrderNoteCreateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderNoteCreate is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderReceiptUpdate is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) ShopeeOrderImport(context.Context, *connect.Request[v1.ShopeeOrderImportRequest], *connect.ServerStream[v1.ShopeeOrderImportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.ShopeeOrderImport is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) TiktokOrderImport(context.Context, *connect.Request[v1.TiktokOrderImportRequest], *connect.ServerStream[v1.TiktokOrderImportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.TiktokOrderImport is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error) {
@@ -542,4 +712,8 @@ func (UnimplementedOrderServiceHandler) OrderByExternalRefs(context.Context, *co
 
 func (UnimplementedOrderServiceHandler) OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderCreatorList is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderLabels is not implemented"))
 }

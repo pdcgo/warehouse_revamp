@@ -12,7 +12,8 @@ import {
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
+import { personName } from "../../lib/users";
 import { useTeams } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useRestockPeople, useRestockRequests } from "../../features/restock/queries";
@@ -111,6 +112,7 @@ const NAME_LOOKUP_SIZE = 200;
 // unfiltered set and the pager confidently offered pages that no longer existed.
 export function RestockSellingPage() {
   const { current } = useTeam();
+  const writable = canWrite(current);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -249,7 +251,7 @@ export function RestockSellingPage() {
     // avatar the same read carries is what the detail page's timeline renders instead.
     const user = actors?.get(id.toString());
 
-    return user ? user.name || user.username : t("restock.table.userRef", { id: id.toString() });
+    return personName(user, t("restock.table.userRef", { id: id.toString() }));
   }
 
   // WHO IT WAS BOUGHT FROM, as words — the phone's line. The first line's supplier, and how many others the lines name;
@@ -369,7 +371,7 @@ export function RestockSellingPage() {
           }
           description={wholeList ? t("restock.selling.emptyHint") : undefined}
           action={
-            wholeList ? (
+            wholeList && writable ? (
               <Button colorPalette="brand" data-testid="open-create-restock-empty" onClick={newRestock}>
                 <Icon as={Plus} boxSize="4" />
                 {t("restock.newRequest")}
@@ -605,14 +607,19 @@ export function RestockSellingPage() {
                 testId: "restock-export",
                 onClick: exportList,
               },
-              {
-                id: "create",
-                label: t("restock.newRequest"),
-                icon: Plus,
-                primary: true,
-                testId: "open-create-restock",
-                onClick: newRestock,
-              },
+              // Not while the admin team monitors the team (the-admin-team-monitors-read-only).
+              ...(writable
+                ? [
+                    {
+                      id: "create",
+                      label: t("restock.newRequest"),
+                      icon: Plus,
+                      primary: true,
+                      testId: "open-create-restock",
+                      onClick: newRestock,
+                    },
+                  ]
+                : []),
             ]}
           />
         ) : (
@@ -622,10 +629,12 @@ export function RestockSellingPage() {
               {t("restock.selling.export")}
               <NotImplemented list={RESTOCK_SELLING_PENDING} id="export" />
             </Button>
-            <Button size="xs" colorPalette="brand" data-testid="open-create-restock" onClick={newRestock}>
-              <Icon as={Plus} boxSize="4" />
-              {t("restock.newRequest")}
-            </Button>
+            {writable && (
+              <Button size="xs" colorPalette="brand" data-testid="open-create-restock" onClick={newRestock}>
+                <Icon as={Plus} boxSize="4" />
+                {t("restock.newRequest")}
+              </Button>
+            )}
           </Flex>
         )}
       </Flex>

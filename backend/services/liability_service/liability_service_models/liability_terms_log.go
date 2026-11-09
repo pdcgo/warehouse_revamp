@@ -22,16 +22,16 @@ type LiabilityTermsLog struct {
 	ActorID uint64
 
 	// ⚠ POINTERS, AND NOT FOR TIDINESS. `nil`, `0` and a number are THREE different acts — unlimited,
-	// frozen, and a real ceiling — and an int64 flattens the first into the second, recording "they
+	// frozen, and a real ceiling — and a plain number flattens the first into the second, recording "they
 	// removed the limit" as "they froze the team". Those are opposites, and the wrong one of the two
 	// is the one that stops a team trading.
-	OldCreditLimit *int64
-	NewCreditLimit *int64
+	OldCreditLimit *float64
+	NewCreditLimit *float64
 
 	// HISTORY ONLY: the flat fee a term charged until step 5 of the-flat-rate-is-dropped-last dropped it (00011). Never
 	// written since, so a change after that reads 0 → 0. No third state: 0 meant "charge nothing".
-	OldHandlingFee int64
-	NewHandlingFee int64
+	OldHandlingFee float64
+	NewHandlingFee float64
 
 	// Required when Override is true, optional otherwise.
 	Reason string

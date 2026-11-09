@@ -84,7 +84,7 @@ function LabelCell({ label, settings: s, today }: { label: RestockLabel; setting
   const pad = paddingOf(s);
   // The QR carries sku/batch: one batch per line (one-batch-per-line), so the scan finds the exact stock. An arrived
   // restock's label has no batch yet (labels-print-from-arrived) — its QR is the SKU alone.
-  const payload = label.batchId > 0n ? `${label.sku}/${label.batchId.toString()}` : label.sku;
+  const payload = label.batchId > 0n ? `${label.productCode}/${label.batchId.toString()}` : label.productCode;
 
   const cell: CSSProperties = {
     boxSizing: "border-box",
@@ -129,7 +129,7 @@ function LabelCell({ label, settings: s, today }: { label: RestockLabel; setting
       <div style={text}>
         {s.showSku && (
           <span style={line(s.skuSize)} data-testid="label-sku">
-            {label.sku}
+            {label.productCode}
           </span>
         )}
         {s.showPlacement && label.placementCode && (

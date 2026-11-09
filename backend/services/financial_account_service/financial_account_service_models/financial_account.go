@@ -36,7 +36,7 @@ type FinancialAccount struct {
 	Name          string
 	HolderName    string
 	Description   string
-	Balance       float64 `gorm:"type:numeric(20,2)"`
+	Balance       float64 `gorm:"type:double precision"`
 	ReconciledAt  *time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time

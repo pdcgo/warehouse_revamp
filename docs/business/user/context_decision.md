@@ -113,6 +113,9 @@ flowchart LR
 fixes the unit price and the fee the selling team owes, is still [Q4](./context_clarify.md#question). The build
 already lets Staff do it, because `RestockRequestFulfill` is the count and the acceptance in one call.
 
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — receiving a customer's return is open to Staff: `OrderReturnAccept`'s policy names `ROLE_WAREHOUSE_STAFF` (`proto/warehouse/selling/v1/order.proto`, `order_return_accept.go`, 2026-11-03), and the pick queue's *Receive Return* searches and forces the return first (`pages/pick-queue/components/ReceiveReturnDialog.tsx`, `features/orders/useForceReturn.tsx`). ⚠ The stock half — the units back on a rack — is still unplanned ([return-is-unplanned](../inventory/context_decision.md#return-is-unplanned)).
+
+
 ## one-role-per-person-per-team
 
 > `context.md` §General 2 *(owner, 2026-10-02)*: *"One person have only one role in one team. in different team it
@@ -173,6 +176,9 @@ flowchart LR
 | the role picker | offers Root for the root and admin team types | never offers Root |
 | `tools/san` | `seed root` sets user 1's password · `user reset-password` resets anyone's | also adds and removes a Root. Its shape waits on [Q8](./context_clarify.md#question) |
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — the app never gives Root (`checkMemberWrite`, `user_v1/member_rules.go`, refusal `root-is-granted-only-through-san`, 2026-10-05); `san user root add` / `remove` are the only door (`user_v1/root_grants.go`, `root_grants_test.go`, `root_grants_race_test.go`). The ⚠ in the spec above is the state before the build.
+
+
 ## root-can-do-anything
 
 > `context.md` §root team 1 *(owner, 2026-10-02)*: *"root is superuser and can do whatever."* It answers the scope
@@ -221,6 +227,9 @@ flowchart LR
 | which writes it | — | the migration — [the-migration-writes-the-dev-root-password](#the-migration-writes-the-dev-root-password) |
 | the FAQ's login table | lists `dev` / `devpassword123` only | gains a `root` row |
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `user_service/db_migrations/00010_dev_root_password.sql`; `user_v1/dev_root_test.go`.
+
+
 ## the-migration-writes-the-dev-root-password
 
 > Owner, in chat *(2026-10-02)*: *"its okay write password in migration, in production sure we change better, but in
@@ -258,6 +267,9 @@ Root can do anything, until the operator runs `san seed root`.
 > `root1234`, and the Up re-run over a root that has a password leaves it. The FAQ, `san seed root`'s description and
 > docs/tools/san.md were rewritten in the same commit.
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `user_service/db_migrations/00010_dev_root_password.sql` (only while root's password is empty); `user_v1/dev_root_test.go`.
+
+
 ## a-user-is-never-deleted
 
 > Owner, in chat *(2026-10-02)*: *"for 7a, 7b, i follow your recomend"*. It answers [Q7a](./context_clarify.md#question),
@@ -281,6 +293,9 @@ stateDiagram-v2
 | --- | --- | --- |
 | `DeleteUser` | a hard delete for Root and the root team's Admin. The row and every membership go | removed: the RPC, its handler and test, and the Users screen's Delete row action and its dialog |
 | the records that hold a user id | 22 columns in 8 services, which show *"User #57"* after a delete | always resolve to a name |
+
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `DeleteUser` is gone from `proto/warehouse/user/v1/user.proto` with its handler and test; the Users screen offers no Delete (`e2e/users.spec.ts`).
+
 
 ## the-username-is-editable
 
@@ -306,6 +321,9 @@ flowchart LR
 | unique | a username already taken is refused, the same as at create |
 | sign-in | the person signs in with the new username from then on |
 | root | user 1 keeps `root` ([dev-root-password-is-root1234](#dev-root-password-is-root1234)) |
+
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `UpdateUserRequest.username` (`user.proto`), `user_v1/update_user.go`, `update_user_test.go`.
+
 
 ## superseded-two-levels-of-suspend
 
@@ -381,6 +399,9 @@ flowchart LR
 | the user search behind the pickers | leaves out suspended accounts. ~~And members suspended in the team being picked for~~ ⛔ lapsed with [superseded-two-levels-of-suspend](#superseded-two-levels-of-suspend) |
 | the user list and member list | keep them, with a Suspended badge and a filter |
 | a record's author | still resolves to their name |
+
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — every picker that gives something: `SearchUser` leaves suspended accounts out (2026-10-06); the shop grant's picker asks `UserListFilter.exclude_suspended` (`user_list_test.go` `…ExcludeSuspendedLeavesOutSuspendedAndErased`), and `ShopUserAdd` / `ShopUserSetPrimary` refuse a suspended member (`selling_v1/shop_user_add.go`).
+
 
 ## erase-keeps-the-row
 
@@ -535,6 +556,9 @@ flowchart LR
 **The spec.** ⚠ **Not built.** Today the root team's Admin can grant `ROLE_ADMIN` too, through `CreateUser` and
 `TeamUserUpdate`. Both must refuse `ROLE_ADMIN` unless the caller is Root, and the role picker offers it only to Root.
 
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — `checkMemberWrite` (`user_v1/member_rules.go`, refusal `root-grants-the-administrator`), `member_rules_test.go`; the 🔄 note above, so the ⚠ spec line is the state before.
+
+
 ## staff-accepts-the-restock
 
 > Owner, in chat *(2026-10-02)*: *"for q4, yes"*, confirmed as *"Staff accepts restock"* — the literal question, not my
@@ -634,6 +658,9 @@ flowchart LR
 is an Owner through `CreateUser`. Both must refuse it unless the caller is Root or the Administrator, and the role
 picker stops offering it to an Owner.
 
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — `checkMemberWrite` (`user_v1/member_rules.go`: *only a role below your own*), `member_rules_test.go`; the 🔄 note above.
+
+
 ## the-selling-admin-manages-members
 
 > `context.md` §selling team, The Admin *(owner, 2026-10-02)*: *"Responsbility: … manage member"*. It answers the
@@ -701,6 +728,9 @@ flowchart LR
 **The spec.** ⚠ **Not built.** `TeamUserUpdate` and `CreateUser` refuse a role equal to the caller's own, and the
 role picker stops offering it.
 
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — `checkMemberWrite` (`user_v1/member_rules.go`: *only a role below your own*), `member_rules_test.go`; the 🔄 note above.
+
+
 ## the-administrator-can-do-anything
 
 > Owner, in chat *(2026-10-02)*: *"for q9 keep do anything"*. It answers [Q9](./context_clarify.md#question),
@@ -725,6 +755,9 @@ flowchart LR
 **The spec.** Built: the access check lets `ROLE_ADMIN` in the root team past every team's scope. The three
 exceptions are not built — each is listed in its own decision. The dev fixture's `dev` user keeps its reach.
 ⚠ **Accepted:** Root can make a do-anything account in the app, without `tools/san`.
+
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — the three exceptions are enforced in `user_v1/member_rules.go`: never Root (`root-is-granted-only-through-san`), the Administrator given or taken only by Root (`root-grants-the-administrator`), and suspend by role (`checkSuspend`).
+
 
 ## the-role-names-are-the-codes-names
 
@@ -765,6 +798,9 @@ flowchart LR
   team_service's fact, so the move asks it for their ids; user_service never joins another service's table.
 - **The same change** regenerates both sides, rewrites every policy line naming the old roles (284 across the
   protos), and updates CLAUDE.md's roling section and every doc that names them.
+
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — the rename: `proto/warehouse/role_base/v1/role.proto` names `ROLE_SELLING_OWNER` 3, `ROLE_SELLING_ADMIN` 4, `ROLE_SELLING_CS` 5, `ROLE_ADMINISTRATOR` 2, plus `ROLE_ADMIN_OWNER` 11 and `ROLE_ADMIN_ADMINISTRATOR` 12. Not done: moving an admin-type team's members — none exists ([state report](../../development_state/user/context.md) item 1).
+
 
 ## a-member-is-found-in-a-search-popup
 
@@ -866,6 +902,9 @@ flowchart LR
 message is checked against the root team, so team roles there would never match. It gains the **team being added to**
 as its scope, and its policy names the Owners and the warehouse and selling Admins.
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `SearchUser` is scoped by `team_id` with the member managers' policy (`user_v1/search_user.go`, `admin_team_policy_test.go`); 2026-11-04 a monitoring admin team is held to that policy too (`refuseMonitorOutsidePolicy`, `search_user_test.go` `TestSearchUser_AMonitorIsHeldToThePolicy`).
+
+
 ## managers-search-by-exact-username-phone-or-email
 
 > Owner, in chat *(2026-10-02)*: *"for q11 i follow your recomendation"*. It answers [Q11b](./context_clarify.md#question), as recommended.
@@ -894,6 +933,9 @@ flowchart LR
 ([a-suspended-user-is-never-picked](#a-suspended-user-is-never-picked)). ✅ Confirmed (Q20d): a phone matches however
 it is written, so `0812…` and `+62812…` are the same number.
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `user_v1/search_user.go`: an Owner or Admin matches the whole username, email or phone; Root and the Administrator also by part (`search_user_test.go`).
+
+
 ## a-result-shows-the-phones-last-four-digits
 
 > Owner, in chat *(2026-10-02)*: *"for q11 i follow your recomendation"*. It answers [Q11c](./context_clarify.md#question), as recommended.
@@ -912,6 +954,9 @@ flowchart LR
 
 **The spec.** ⚠ **Not built.** The result type carries id, username, name and photo. It gains the last four digits,
 computed on the server. The full number never leaves it.
+
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `PublicUser.phone_last4` (`user.proto`), filled by `SearchUser` only.
+
 
 ## change-role-only-below-your-own
 
@@ -948,6 +993,9 @@ So an Admin never demotes the Owner, and the last Owner cannot demote themselves
 the target's current role and the new one, and refuses anything not below the caller's. The role picker offers only
 what the caller may give.
 
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — `checkMemberWrite` (`user_v1/member_rules.go`, refusals `change-role-only-below-your-own`) in `TeamUserUpdate` and `CreateUser`; `member_rules_test.go`, `team_user_update_race_test.go`.
+
+
 ## a-phone-or-email-belongs-to-one-account
 
 > Owner, in chat *(2026-10-02)*: *"for q11 i follow your recomendation"*. It answers [Q11e](./context_clarify.md#question), as recommended.
@@ -975,6 +1023,9 @@ flowchart LR
 (when given), which a migration can add only once any duplicates already stored are resolved. `CreateUser` and
 `UpdateUser` both refuse a taken phone or email.
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `users_phone_unique` (`user_service/db_migrations/00008_user_phone_international.sql`), `refuseTakenContact` (`user_v1/phone.go`), `phone_race_test.go`.
+
+
 ## a-shop-grant-picks-from-the-teams-members
 
 > Owner, in chat *(2026-10-02)*: *"for q11 i follow your recomendation"*. It answers [Q11f](./context_clarify.md#question), as recommended.
@@ -989,6 +1040,9 @@ flowchart LR
 
 **The spec.** ⚠ **Not built.** The shop page's picker is used without a team, so it searches everyone. Given the team,
 the same picker lists its members. Whether the server refuses a grant to a non-member is the shop context's to check.
+
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — the shop page's `UserSelect` is given the team (prototype, 2026-10-05), and the server refuses a non-member: `ShopUserAdd` asks user_service for the person's place (`selling_v1/shop_user_add.go`; `shop_user_add_test.go` — *not a member*).
+
 
 ## admin-team-roles-manage-only-their-team
 
@@ -1032,6 +1086,9 @@ flowchart LR
 | ⚠ dev data, untouched | four root-team memberships hold role 4 (today's `ROLE_TEAM_ADMIN`, after the rename `selling_admin`), which the root team does not have: three leftover test accounts and one person. They are the owner's data, so the build only stops new ones — a role must belong to its team's type |
 | the business's own reach | `business_level.md` §Admin gives the admin team *"manage all resource"* of other teams. This decision is about its own team; that reach is still not built and not asked |
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `ROLE_ADMIN_OWNER` / `ROLE_ADMIN_ADMINISTRATOR` (`role.proto` 11, 12) with the 🔄 notes' policies, `access_interceptors/admin_team_policy_test.go`; a role outside its team type is refused (`teamRoles`, `user_v1/member_rules.go`). The business's reach over other teams stays as the table says.
+
+
 ## the-admin-team-monitors-all-and-manages-its-own
 
 > Owner, in chat *(2026-10-02)*: *"for q12, q13, q14, q15, 1q6 i follow your recomendation"*. It answers [Q12](./context_clarify.md#question), as recommended, and resolves
@@ -1052,7 +1109,11 @@ flowchart LR
   A -.->|"never write"| S
 ```
 
-**The spec.** ⚠ **Not built.** Today an admin-type team reaches nothing outside itself.
+**The spec.** ✅ **Built 2026-11-02**, with its screen — [the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only)
+holds what was built. A read is the RPC's own `idempotency_level = NO_SIDE_EFFECTS`, not a request-message option. The
+access check asks the scoped team's type last (`TeamKinds`, a read of team_service's `teams.type` in the composition root,
+kept for the process — a type never changes): only a warehouse or a selling team is monitored; the root team and any
+admin-type team are refused.
 
 | | |
 | --- | --- |
@@ -1115,11 +1176,35 @@ flowchart LR
 > 🔄 *(2026-10-06)* The membership log stamps it too: Root or the Administrator adding, changing or removing a member of
 > a team they hold no role in.
 
-**The spec.** ⚠ **Not built, except in liability's terms log and user_service's membership log.** The access check already tells a handler that the
+**The spec.** ✅ **Built 2026-11-02** — see below the spec. The access check already tells a handler that the
 caller got in this way. Each service's write that records who acted also records that it was an override. One rule for
 every service, so it cannot exist in one and be forgotten in the next. Counts and losses:
 [inventory Q12d](../inventory/context_clarify.md#question).
 
+
+✅ **Built 2026-11-02.** One rule, `san_auth.IsOverride(ctx)`: a person is calling, the request is scoped, and the caller
+holds no role in that team (the interceptor's caller role) — and is not a monitor. Stamped on 18 tables in 9 services, each
+by its own migration: `team_agent_policies` (user `00012`); `liability_logs`, `liability_payments` (two flags, one per
+act), `liability_payment_requests` (liability `00013`); `expense_records` (`00003`); `financial_account_logs`
+(`00002`); `bundles` (product `00009`); `documents`, `document_shares` (document `00009`); `inventory_transactions`,
+`restock_logs`, `warehouse_transfer_logs` (inventory `00034`); `orders`, `order_timeline_logs`, `order_drafts`
+(selling `00033`); `settlement_logs` (settlement `00007`) — beside the two that already had it. A row an event
+consumer writes takes the flag of the act the event reports (`actor_is_override`), never its own. Every table and why it was or was not stamped: [database-schema.md](../../database-schema.md).
+⚠ my build detail: liability's terms log now reads the shared rule, so a call with no person is no longer an override.
+Server streams carry the scope and caller role too (`san_auth.StreamScope`), so an import is stamped: `uploaded_files`
+(settlement_importer `00002`) and the moves `ShopeeOrderImport` / `TiktokOrderImport` make.
+Events carry `actor_is_override` beside `actor_id` (`OrderPlaced`, `OrderCancelled`, `RestockAccepted`,
+`SettlementLogPosted`, `LiabilityPaymentAccepted`), set from the same source as the actor, so a row a consumer writes for
+the event's actor — settlement's order rows, liability's order fees, reversals and courier charge, the financial
+accounts' withdrawal and team-payment rows — carries the stamp of the act behind the event.
+
+⛔ **Not covered yet**, and why:
+
+| | |
+| --- | --- |
+| a stock release | covered at the act: the cancel that releases the stock is stamped on the order's timeline row; `RollbackTake`'s reversal rows record no actor of their own (they sit under the take's transaction) |
+| no actor at all | outside the rule's words — it stamps *a write that records who acted*, and `WarehouseTransferUpdate`, `LiabilityPaymentReject`, `BundleUpdate`, `OrderDraftUpdate` record nobody. Recording an actor on them is its own decision |
+| seeing it | only the membership log and the terms log show the flag; every other read needs a proto field and its screen |
 ## the-two-administrators-have-distinct-labels
 
 > Owner, in chat *(2026-10-02)*: *"for q12, q13, q14, q15, 1q6 i follow your recomendation"*. It answers [Q15](./context_clarify.md#question), as recommended.
@@ -1142,6 +1227,9 @@ flowchart LR
 
 **The spec.** ⚠ **Not built.** The role labels live in the two language catalogues and are read by the role picker and
 every badge. The bare word *Administrator* is used for neither.
+
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — `ROLE_LABEL` in `frontend/src/lib/roles.ts`: *System Administrator*, *Admin Team Admin*.
+
 
 ## one-account-per-phone-stays-a-refusal
 
@@ -1191,6 +1279,9 @@ flowchart TD
 | who | the remove action of `TeamUserUpdate` checks the caller's role against the person's, as Change Role does ([change-role-only-below-your-own](#change-role-only-below-your-own)) |
 | the log | a row in the membership log, in the same transaction ([every-role-change-is-logged](#every-role-change-is-logged)) |
 | the shop side | a *member removed* event names the team and the person. The shop side drops their grants in that team and clears a primary CS flag. Like every event, it needs its topic made by `san pubsub ensure` |
+
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `TeamUserUpdate`'s removal publishes `MemberRemoved`; `selling_v1/member_removed_listener.go` deletes the grants (`member_removed_listener_test.go`).
+
 
 ## customer-service-runs-orders-restock-requests-and-settlements
 
@@ -1244,6 +1335,9 @@ flowchart LR
 `FinancialAccountCapital` lose `ROLE_WAREHOUSE_ADMIN`. Recording, confirming and rejecting a payment, and reconciling,
 stay open to the Admin. The **selling** Admin is not covered by this decision: those calls are open to it today, and
 nothing here changes that.
+
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — the four money policies no longer name `ROLE_WAREHOUSE_ADMIN`: `user_service/access_interceptors/warehouse_admin_money_test.go`.
+
 
 ## the-history-is-a-tab-beside-the-members
 
@@ -1349,6 +1443,10 @@ flowchart LR
 - After this, `SearchUser` serves the Add Member popup alone, and `UserList` by team serves the member page and the shop
   grant.
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `RestockActorList` (inventory) and `OrderCreatorList` (selling), read by `components/pickers/PersonFilterSelect.tsx` on the orders and both restock pages.
+
+✅ Built 2026-11-06 — `ExpensePersonList` (expense_service, `expense_v1/expense_person_list.go`): the Analytic *Created by* field over Ads expense and Expenses offers the people on `expense_metric_daily_reports` (typists and correctors), a team its own and root every team's, unioned in `features/analytic/people.ts`; tests `TestExpensePersonList_*`, story `CreatedByOffersTheExpensePeople`, e2e `the_expense_metrics.spec.ts`.
+
 ## whoever-reads-a-list-may-filter-it
 
 > Owner, in chat *(2026-10-05)*. It answers [Q21b](./context_clarify.md#question), as recommended.
@@ -1370,6 +1468,9 @@ flowchart LR
 **The spec.** ⚠ **Not built.** The filter's RPC carries **the list's own policy**, not a member-management one. Today
 Customer Service and Staff are refused on four of the six filters, and a selling Owner on *accepted by* once a warehouse
 is picked. All of that goes with [a-who-filter-lists-the-people-on-its-rows](#a-who-filter-lists-the-people-on-its-rows).
+
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `RestockActorList` and `OrderCreatorList` carry their list's own roles (the 🔄 note above).
+
 
 ## a-filter-keeps-former-and-suspended-people
 
@@ -1398,6 +1499,9 @@ flowchart LR
 **The spec.** ⚠ **Not built.** The filter's answer carries each person's suspended state, and the picker badges it.
 Former members need nothing extra: they are on the rows, so they are in the set.
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `PublicUser.is_suspended`, badged by `components/pickers/PersonFilterSelect.tsx`; 2026-11-04 `UserListFilter.exclude_suspended` is off by default, so only the grant picker leaves them out.
+
+
 ## an-admin-changes-nobodys-role
 
 > Owner, in chat *(2026-10-05)*. It answers [Q22](./context_clarify.md#question), as recommended, and reads
@@ -1421,6 +1525,9 @@ flowchart LR
 (`add-member-nothing-to-change`). ⚠ **The server is not built**: `TeamUserUpdate` refuses an Admin's role change through
 [change-role-only-below-your-own](#change-role-only-below-your-own), with no special case.
 
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — the server refuses it by the rank rule, no special case needed: `checkMemberWrite` (`user_v1/member_rules.go`: *only a role below your own*), `member_rules_test.go`.
+
+
 ## the-user-prototype-is-accepted
 
 > Owner, in chat *(2026-10-05)*. It answers [Q23a](./context_clarify.md#question), as recommended. **design_accept
@@ -1443,6 +1550,9 @@ flowchart LR
 | Add Member popup | search → Select Role / Change Role / Create and Add, the only way an account is made ([an-account-is-made-only-from-the-member-search](#an-account-is-made-only-from-the-member-search)) |
 | contract (additive) | `UserList` MEMBERSHIP slice · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUser.username` · `UserErase` · `TeamMemberLogList` · `DeleteUser` deprecated |
 | choices accepted with it | Suspend and Erase in both tabs, since they act on the account · the team detail page's member list unchanged, its Add Member opens the popup · the role rename still unbuilt, by the owner's *"not yet"* |
+
+✅ **Built** (verified in code 2026-11-05) — the role rename it left unbuilt landed 2026-10-05 ([the-role-names-are-the-codes-names](#the-role-names-are-the-codes-names)); the screens' pending marks are gone (`pages/users/pending.ts`, `features/users/pending.ts` deleted 2026-10-06).
+
 
 ## a-root-team-form-starts-with-no-role
 
@@ -1513,6 +1623,9 @@ flowchart LR
 `UserMembership.alias`, `CreateUserRequest.alias`, `TeamAccessItem.alias` and `AddTeamUser.alias`. Each is `reserved`,
 never renumbered.
 
+✅ **Built 2026-10-06** (verified in code 2026-11-05) — `user_service/db_migrations/00009_drop_team_role_alias.sql`, the alias fields `reserved`; a name is required (`user_v1/name_required_test.go`).
+
+
 ## only-name-and-username-are-required
 
 > Owner, in chat *(2026-10-05)*. It answers [Q25](./context_clarify.md#question), as recommended.
@@ -1568,6 +1681,9 @@ flowchart LR
 | built with it | the admin team reads every team ([the-admin-team-monitors-all-and-manages-its-own](#the-admin-team-monitors-all-and-manages-its-own)) and the two labels ([the-two-administrators-have-distinct-labels](#the-two-administrators-have-distinct-labels)) |
 | stored data | an admin-type team's members move onto the new roles. Dev has none |
 
+✅ **Built 2026-10-05** (verified in code 2026-11-05) — `ROLE_ADMIN_OWNER` 11, `ROLE_ADMIN_ADMINISTRATOR` 12 (`role.proto`), `admin_team_policy_test.go`; the admin team's reads followed 2026-11-02 ([the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only)).
+
+
 ## rename-the-roles-before-the-grant-checks
 
 > Owner, in chat *(2026-10-05)*. It answers [Q26b](./context_clarify.md#question), as recommended, and **lifts the hold**
@@ -1597,6 +1713,9 @@ table, every number kept.
 1a and 1b may land in either order; both come before step 2. One change rewrites the proto policies, both generated
 sides, the Go and TypeScript references, CLAUDE.md's roling section and every live doc that names the old roles.
 `_decision.md` files keep the names they were written with.
+
+✅ **Built** (verified in code 2026-11-05) — in this order: 1a and 1b 2026-10-05, then the grant checks (`checkMemberWrite`, `user_v1/member_rules.go`) and the rest through 2026-10-06 — [state report](../../development_state/user/context.md) items 1–20.
+
 
 ## no-alias-for-the-old-role-names
 
@@ -1680,6 +1799,9 @@ flowchart TB
 | after a reload | the picked team is restored **by id** (`TeamByIds`), not looked up in your memberships |
 | a team you are in | stays under *My teams*, with your own role — *All teams* never shadows a membership |
 
+✅ **Built** (verified in code 2026-11-05) — `features/team/TeamContext.tsx`: *All teams* for Root, the Administrator and the admin team, a picked team restored by id (`notMember`); in the code since 2026-10-06.
+
+
 ## a-non-member-root-acts-under-a-strip
 
 > Owner, in chat *(2026-10-06)*. It answers [Q28c](./context_clarify.md#question), as recommended.
@@ -1701,6 +1823,9 @@ flowchart LR
 draws the strip. The server needs nothing new: the root-team bypass already lets them in, and a caller with no role
 in the team is what an override is.
 
+✅ **Built** (verified in code 2026-11-05) — the *Not a member — acting as …* strip (`team.notMember` in en/id, story `DesktopLayout` `not-member-strip`), and every write stamped as an override since 2026-11-02 ([an-override-is-stamped-in-every-service](#an-override-is-stamped-in-every-service)).
+
+
 ## the-admin-team-monitors-read-only
 
 > Owner, in chat *(2026-10-06)*. It answers [Q28d](./context_clarify.md#question), as recommended. It is the screen
@@ -1716,13 +1841,22 @@ flowchart LR
   A -.->|"refused"| W["a write"]
 ```
 
-**The spec.** ⚠ **Not built — its own pass** ([the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form)).
+**The spec.** ✅ **Built 2026-11-02**, as pass 2 of [the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form) —
+what was built is under the table.
 
 | | |
 | --- | --- |
 | the proto | each of the 142 team-scoped request messages is marked a read or not, by hand. About 59 look like reads by name; a name decides nothing |
 | the access check | a member of an admin-type team passes another team's scope for a marked read, and only for that. Roles 11 and 12 exist only in admin-type teams, since a role must be of its team's type |
 | the screens | a read-only flag on the current team hides every write control — the 21 screens that read the role, and any write offered to *any member* |
+
+Built with it:
+
+| build detail | what |
+| --- | --- |
+| the read marker | the RPC option `idempotency_level = NO_SIDE_EFFECTS` — the one an agent's credential is held to ([an-agent-only-reads-for-now](../mcp/context_decision.md#an-agent-only-reads-for-now)) — so ONE marker serves both rules. 93 of the 195 team-scoped RPCs carry it, each judged by its handler; an export, an import and the unbuilt stock count stay unmarked |
+| the access check | step 8b: a person holding role 11 or 12 in any team (one more resolver query, cached and invalidated with the rest), no role in the scoped team, and a marked read, passes as a **monitor** (`san_auth.IsMonitor`). Never the root team; never an AI agent's credential. A team they are in is read as that member |
+| the screens | *All teams* for the admin team, warehouse and selling teams only; a *Monitoring — read-only* strip; every write control behind one helper (`useCanWrite`); a write page reached by URL shows a read-only notice. The monitored team's screens are the Owner's, with no write |
 
 ## the-switcher-ships-with-the-create-team-form
 
@@ -1746,7 +1880,8 @@ flowchart LR
   S --> R
 ```
 
-**The spec.** Pass 1 needs only the screens and one contract change (`TeamCreateRequest` names the Owner); the
+**The spec.** ✅ **Built 2026-11-02** — both passes; pass 2's build details are in
+[the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only). Pass 1 needs only the screens and one contract change (`TeamCreateRequest` names the Owner); the
 server already lets Root and the Administrator into every team. Pass 2 is the proto marking, the access-check change
 and the read-only mode.
 

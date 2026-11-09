@@ -16,7 +16,11 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/doc
 service DocumentService {
   rpc RequestUpload(RequestUploadRequest) returns (RequestUploadResponse);
   rpc ConfirmUpload(ConfirmUploadRequest) returns (ConfirmUploadResponse);
-  rpc GetDownloadUrl(GetDownloadUrlRequest) returns (GetDownloadUrlResponse);
+  rpc GetDownloadUrl(GetDownloadUrlRequest) returns (GetDownloadUrlResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
   rpc ShareDocument(ShareDocumentRequest) returns (ShareDocumentResponse);
@@ -64,6 +68,11 @@ enum DocumentResourceType {
   // PRIVATE: an order list exported as .xlsx (one-export-is-the-list-as-a-file), stored as the person who exported it
   // and read back through an expiring signed link. Private because it names buyers and their phone numbers.
   DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT = 7;
+
+  // PRIVATE: a screen's table exported as .xlsx — a supplier page tab's (each-supplier-tab-exports-its-own-table), on
+  // the order list's pattern (one-export-is-the-list-as-a-file): stored as the person who exported it and read back
+  // through an expiring signed link. Private like every export: it is a team's working figures.
+  DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT = 8;
 }
 
 message Document {

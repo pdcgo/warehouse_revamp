@@ -48,21 +48,21 @@ export const AReserveReadsOnTheLock: Story = {
   },
 };
 
-// A MINIMUM IN FORCE SAYS LOCKED (owner: *"tapi kalau min gimana?"*) — Kopi's minimum raised to its whole 40: the ready
-// stock is AT the minimum (the-minimum-closes-at-the-minimum), so the badge reads *Locked · Min 40 pcs*, its reason in
-// a tooltip.
+// A MINIMUM IN FORCE SAYS LOCKED (owner: *"tapi kalau min gimana?"*) — Kopi's minimum raised to ONE ABOVE its whole
+// shelf: the ready stock is UNDER the minimum (a-minimum-closes-only-under-it — at exactly the minimum it is open), so the
+// badge reads *Locked · Min N pcs*, its reason in a tooltip.
 export const AMinimumInForceSaysLocked: Story = {
   name: "Minimum in force, locked",
-  beforeEach: () => patchProduct(KOPI.id, { reservedStock: Number(warehouseStock[KOPI.id.toString()]) }),
+  beforeEach: () => patchProduct(KOPI.id, { reservedStock: Number(warehouseStock[KOPI.id.toString()]) + 1 }),
   render: () => <AtKopi />,
   play: async ({ canvasElement }) => {
     const canvas = await stockLoaded(canvasElement);
     const badge = canvas.getByTestId(`discover-detail-lock-${KOPI.id}`);
-    const shelf = warehouseStock[KOPI.id.toString()]!;
+    const minimum = Number(warehouseStock[KOPI.id.toString()]!) + 1;
 
     await waitFor(() => expect(badge).toHaveAttribute("data-now", "true"));
-    await expect(badge).toHaveTextContent(`Locked · Min ${shelf} pcs`);
-    await expect(badge).toHaveAttribute("title", expect.stringContaining(`${shelf}`));
+    await expect(badge).toHaveTextContent(`Locked · Min ${minimum} pcs`);
+    await expect(badge).toHaveAttribute("title", expect.stringContaining(`${minimum}`));
   },
 };
 
@@ -90,7 +90,7 @@ export const LockedSaysSoAndOffersNoStock: Story = {
 
 export const ArchivedSaysSoAndOffersNoStock: Story = {
   name: "Archived, no stock",
-  beforeEach: tehIs("deleted"),
+  beforeEach: tehIs("archived"),
   render: () => <AtTeh />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);

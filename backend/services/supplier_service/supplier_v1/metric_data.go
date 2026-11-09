@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
@@ -19,7 +20,7 @@ import (
 //   - A period's key is its first day — the Monday of a week, the 1st of a month, 1 January.
 //   - One answer per asked metric (one-call-answers-every-asked-metric); this service has one.
 //
-// ONE statement.
+// TWO statements — the restock table's and Penjualan's, each grouped the same way, summed per key here (window()).
 func (s *Service) MetricData(
 	ctx context.Context,
 	req *connect.Request[supplierv1.MetricDataRequest],
@@ -47,7 +48,32 @@ func (s *Service) MetricData(
 		datas = append(datas, data)
 	}
 
-	return connect.NewResponse(&supplierv1.MetricDataResponse{MetricDatas: datas}), nil
+	asOf, err := s.asOf(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&supplierv1.MetricDataResponse{MetricDatas: datas, AsOfUnix: asOf}), nil
+}
+
+// asOf is when this service last folded an event — the newest claim in `supplier_event_logs` or the newest order the
+// sales fold touched (`supplier_sale_orders`), unix seconds; 0 before the first (a-money-metric-says-as-of-when). One
+// time for the service: its one metric is read from both folds.
+func (s *Service) asOf(ctx context.Context) (int64, error) {
+	var unix int64
+
+	err := s.db.WithContext(ctx).
+		Raw(`SELECT COALESCE(EXTRACT(EPOCH FROM GREATEST(
+    (SELECT MAX(created_at) FROM supplier_event_logs),
+    (SELECT MAX(updated_at) FROM supplier_sale_orders)
+))::bigint, 0)`).
+		Scan(&unix).
+		Error
+	if err != nil {
+		return 0, internal(err)
+	}
+
+	return unix, nil
 }
 
 func (s *Service) supplierMetricData(
@@ -63,14 +89,21 @@ func (s *Service) supplierMetricData(
 			return nil, invalid("a summary takes no keys")
 		}
 
-		var total supplier_service_models.SupplierMetricColumns
+		var total, sales supplier_service_models.SupplierFigureSums
 
 		err := scope.rows(db).Select(figureSums("r")).Scan(&total).Error
 		if err != nil {
 			return nil, internal(err)
 		}
 
-		return &supplierv1.MetricData{M: &supplierv1.MetricData_SupplierSummary{SupplierSummary: metricToProto(total)}}, nil
+		err = scope.salesRows(db).Select(salesSums("r")).Scan(&sales).Error
+		if err != nil {
+			return nil, internal(err)
+		}
+
+		return &supplierv1.MetricData{M: &supplierv1.MetricData_SupplierSummary{
+			SupplierSummary: metricToProto(withSales(total, sales)),
+		}}, nil
 	}
 
 	group, err := groupOf(groupBy)
@@ -89,29 +122,43 @@ func (s *Service) supplierMetricData(
 
 	items := make(map[uint64]*supplierv1.SupplierMetric, len(ids))
 	for _, id := range ids {
-		items[id] = metricToProto(supplier_service_models.SupplierMetricColumns{})
+		items[id] = metricToProto(supplier_service_models.SupplierFigureSums{})
 	}
 
 	if len(ids) > 0 {
 		type row struct {
 			Key uint64
-			supplier_service_models.SupplierMetricColumns
+			supplier_service_models.SupplierFigureSums
 		}
 
-		var rows []row
+		sums := map[uint64]supplier_service_models.SupplierFigureSums{}
 
-		err = scope.rows(db).
-			Where(group.key+" IN ?", ids).
-			Select(group.key + " AS key, " + figureSums("r")).
-			Group(group.key).
-			Scan(&rows).
-			Error
-		if err != nil {
-			return nil, internal(err)
+		for _, read := range []struct {
+			from *gorm.DB
+			sums string
+		}{
+			{scope.rows(db), figureSums("r")},
+			{scope.salesRows(db), salesSums("r")},
+		} {
+			var rows []row
+
+			err = read.from.
+				Where(group.key+" IN ?", ids).
+				Select(group.key + " AS key, " + read.sums).
+				Group(group.key).
+				Scan(&rows).
+				Error
+			if err != nil {
+				return nil, internal(err)
+			}
+
+			for _, r := range rows {
+				sums[r.Key] = withSales(addRestock(sums[r.Key], r.SupplierFigureSums), r.SupplierFigureSums)
+			}
 		}
 
-		for _, r := range rows {
-			items[r.Key] = metricToProto(r.SupplierMetricColumns)
+		for key, sum := range sums {
+			items[key] = metricToProto(sum)
 		}
 	}
 
@@ -145,29 +192,45 @@ func (s *Service) metricDataByDay(
 			return nil, invalid("%s is not the first day of its %s period", raw, groupBy)
 		}
 
-		items[raw] = metricToProto(supplier_service_models.SupplierMetricColumns{})
+		items[raw] = metricToProto(supplier_service_models.SupplierFigureSums{})
 	}
 
 	if len(days) > 0 {
 		type row struct {
 			Key time.Time
-			supplier_service_models.SupplierMetricColumns
+			supplier_service_models.SupplierFigureSums
 		}
 
-		var rows []row
+		db := s.db.WithContext(ctx)
+		sums := map[string]supplier_service_models.SupplierFigureSums{}
 
-		err := scope.rows(s.db.WithContext(ctx)).
-			Where(group.key+" IN ?", days).
-			Select(group.key + " AS key, " + figureSums("r")).
-			Group(group.key).
-			Scan(&rows).
-			Error
-		if err != nil {
-			return nil, internal(err)
+		for _, read := range []struct {
+			from *gorm.DB
+			sums string
+		}{
+			{scope.rows(db), figureSums("r")},
+			{scope.salesRows(db), salesSums("r")},
+		} {
+			var rows []row
+
+			err := read.from.
+				Where(group.key+" IN ?", days).
+				Select(group.key + " AS key, " + read.sums).
+				Group(group.key).
+				Scan(&rows).
+				Error
+			if err != nil {
+				return nil, internal(err)
+			}
+
+			for _, r := range rows {
+				key := r.Key.Format(dateLayout)
+				sums[key] = withSales(addRestock(sums[key], r.SupplierFigureSums), r.SupplierFigureSums)
+			}
 		}
 
-		for _, r := range rows {
-			items[r.Key.Format(dateLayout)] = metricToProto(r.SupplierMetricColumns)
+		for key, sum := range sums {
+			items[key] = metricToProto(sum)
 		}
 	}
 

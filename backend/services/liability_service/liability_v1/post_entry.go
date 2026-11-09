@@ -3,10 +3,12 @@ package liability_v1
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
@@ -30,8 +32,10 @@ type Posting struct {
 	// The team that is owed. Its balance moves UP (a receivable).
 	CreditorTeamID uint64
 
-	// Whole rupiah, always positive — direction is carried by the two fields above.
-	Amount int64
+	// Rupiah, always positive — direction is carried by the two fields above. A double that may carry a fraction (an
+	// order's percentage fee, a loss priced at a FIFO unit cost): PostEntry stores it EXACT, never rounded
+	// (the-backend-never-rounds-money). Callers pass the figure as they have it.
+	Amount float64
 
 	// What caused this, and its id in whichever service owns it. Together with the counterparty and
 	// `Reversal` they form the idempotency key.
@@ -54,6 +58,12 @@ type Posting struct {
 	// because a caller failed to thread an id is a ledger that loses money to a plumbing bug. The
 	// callers are where the id is required.
 	ActorID uint64
+
+	// Whether that person was Root or the Administrator acting inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service). Both legs carry it, as both carry the actor. Set by the caller that
+	// knows who acted — never derived here, because PostEntry is policy-free and an event-driven posting has no caller:
+	// an order's fees, its reversal and a restock's courier charge take it from the event's `actor_is_override`.
+	IsOverride bool
 }
 
 // PostEntry writes BOTH LEGS of one movement, in one transaction.
@@ -77,10 +87,19 @@ func (s *Service) PostEntry(ctx context.Context, tx *gorm.DB, p Posting) (uint64
 		return 0, errSameTeam
 	}
 
+	// NaN and the infinities are not money.
+	if math.IsNaN(p.Amount) || math.IsInf(p.Amount, 0) {
+		return 0, errors.New("liability: a posting must be a finite amount")
+	}
+
+	// THE FREEZE POINT, EXACT. The ledger stores the figure it is handed, never rounded (the-backend-never-rounds-
+	// money): a fee of Rp 316,675 posts Rp 316,675, and a balance equals the sum of its logs within the tolerance
+	// (san_money.Equal).
+	//
 	// A zero or negative posting is refused rather than stored. Zero would be an entry that changes
 	// nothing while consuming the pair's idempotency key for that source — so the real fee, when it
-	// arrived, would be swallowed as a duplicate.
-	if p.Amount <= 0 {
+	// arrived, would be swallowed as a duplicate. Float dust below 4 places counts as zero (san_money.Positive).
+	if !san_money.Positive(p.Amount) {
 		return 0, errors.New("liability: a posting must be a positive amount")
 	}
 
@@ -154,7 +173,7 @@ func (s *Service) postLeg(
 	tx *gorm.DB,
 	p Posting,
 	groupID, teamID, counterpartyID uint64,
-	amount int64,
+	amount float64,
 	sourceType string,
 ) error {
 	balance, err := s.moveBalance(tx, teamID, counterpartyID, amount)
@@ -172,6 +191,7 @@ func (s *Service) postLeg(
 		GroupID:        groupID,
 		BalanceAfter:   balance,
 		ActorID:        p.ActorID,
+		IsOverride:     p.IsOverride,
 	}
 
 	err = tx.Create(&entry).Error
@@ -194,7 +214,7 @@ func (s *Service) postLeg(
 // cleared as it RETURNS — so paying in full resets it and a partial payment does not. Both are done
 // in the same statement as the arithmetic, because a balance and the age of its debt disagreeing is
 // exactly the sort of thing nobody notices until a manager chases the wrong team.
-func (s *Service) moveBalance(tx *gorm.DB, teamID, counterpartyID uint64, amount int64) (int64, error) {
+func (s *Service) moveBalance(tx *gorm.DB, teamID, counterpartyID uint64, amount float64) (float64, error) {
 	now := time.Now()
 
 	// Hand-written rather than built through GORM's OnConflict clause, and the reason is worth
@@ -213,17 +233,18 @@ VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT (team_id, counterparty_id) DO UPDATE SET
     balance = liability_balances.balance + EXCLUDED.balance,
     oldest_unsettled_at = CASE
-        -- Square again: stop the clock.
-        WHEN liability_balances.balance + EXCLUDED.balance = 0 THEN NULL
+        -- Square again: stop the clock. Within the tolerance, never = 0: exact fractions summed can leave dust
+        -- (the-backend-never-rounds-money, san_money.ZeroBelow).
+        WHEN abs(liability_balances.balance + EXCLUDED.balance) < ` + san_money.ZeroBelow + ` THEN NULL
         -- Debt begins here: start it.
-        WHEN liability_balances.balance = 0 THEN EXCLUDED.oldest_unsettled_at
+        WHEN abs(liability_balances.balance) < ` + san_money.ZeroBelow + ` THEN EXCLUDED.oldest_unsettled_at
         -- More debt on an existing run: the oldest unsettled is still the oldest.
         ELSE liability_balances.oldest_unsettled_at
     END,
     updated_at = EXCLUDED.updated_at
 RETURNING balance`
 
-	var balance int64
+	var balance float64
 
 	err := tx.
 		Raw(upsert, teamID, counterpartyID, amount, now, now, now).

@@ -18,6 +18,9 @@
 //   the-couriers-charge-stays-out-of-total                  total = goods + shipping.
 //   every-status-change-is-logged, edits-are-in-the-same-trail   every change appends a trail row.
 //   a-product-appears-once-per-restock                      a product twice on one restock is refused.
+//   a-restock-names-its-paying-account                      Create, and an ongoing Update that CHANGES the account,
+//                                                           refuse one that is not the team's active operational
+//                                                           account (payingAccountRefusal, the server's words).
 //
 // WRITEABLE: a restock raised in one step is on the list in the next. preview.tsx resets it in its `beforeEach`.
 
@@ -32,6 +35,7 @@ import {
   RestockRequestStatus as S,
 } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { unitHpp } from "../src/features/restock/counting";
+import { payingAccountRefusal } from "./financialAccountStub";
 import { racks } from "./fixtures";
 import { type LineFixture, type RestockFixture, restockFixtures } from "./restockFixtures";
 import { SELF_ID } from "./userStub";
@@ -43,6 +47,13 @@ export function resetRestockStub() {
 }
 
 resetRestockStub();
+
+/** For a story: who raised restock `id` — e.g. a former user, to show the list naming them (erase-keeps-the-row). */
+export function restockRaisedByForStory(id: bigint, userId: bigint) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no restock ${id} in the stub`);
+  row.createdByUserId = userId;
+}
 
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 
@@ -65,6 +76,13 @@ function pageOf<R>(all: R[], page: PageReq) {
 const notFound = () => new ConnectError("restock request not found", Code.NotFound);
 const precondition = (msg: string) => new ConnectError(msg, Code.FailedPrecondition);
 const invalid = (msg: string) => new ConnectError(msg, Code.InvalidArgument);
+
+// a-restock-names-its-paying-account: the account must be one of the team's active operational ones — the server's
+// FailedPrecondition sentence, from the financial account stub's live table (so a story may unmark one mid-flight).
+function refuseAccount(teamId: bigint, accountId: bigint) {
+  const refused = payingAccountRefusal(teamId, accountId);
+  if (refused) throw precondition(refused);
+}
 
 // Either side may READ a restock; a third team reads NotFound.
 function visible(teamId: bigint, id: bigint): RestockFixture {
@@ -135,7 +153,7 @@ function toWire(r: RestockFixture, withLogs: boolean) {
 
 type LineIn = {
   productId: bigint;
-  sku: string;
+  productCode: string;
   name: string;
   count: bigint;
   total: number;
@@ -157,7 +175,7 @@ function newLines(r: { id: bigint }, items: LineIn[], startAt: number): LineFixt
   return items.map((it, i) => ({
     id: r.id * 10n + BigInt(startAt + i + 1),
     productId: it.productId,
-    sku: it.sku,
+    productCode: it.productCode,
     name: it.name,
     count: it.count,
     total: it.total,
@@ -203,13 +221,15 @@ export function patchRestock(id: bigint, fields: Partial<Pick<RestockFixture, "i
   Object.assign(found, fields);
 }
 
-const rupiah = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
+// The words the server writes (san_money.Text): the exact figure, up to 3 decimals — never rounded to the rupiah.
+const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID", { maximumFractionDigits: 3 })}`;
 
 export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestService>> = {
   restockRequestCreate(req) {
     if (req.items.length === 0) throw invalid("items: at least one line is required");
     if (req.financeAccountId === 0n) throw invalid("finance_account_id: value is required");
     onceEach(req.items);
+    refuseAccount(req.teamId, req.financeAccountId);
 
     const id = rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
     const r: RestockFixture = {
@@ -273,7 +293,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
           r.id.toString() === idQuery ||
           r.receipt.toLowerCase().includes(q) ||
           r.invoiceRefId.toLowerCase().includes(q) ||
-          r.items.some((l) => l.sku.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)),
+          r.items.some((l) => l.productCode.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)),
       )
       .sort((a, b) => (a.id > b.id ? -1 : 1));
 
@@ -321,6 +341,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     onceEach(req.items);
 
     if (r.status === S.ONGOING) {
+      // Only a CHANGED account is judged — an unchanged one is the restock keeping what it holds.
+      if (req.financeAccountId !== r.financeAccountId) refuseAccount(req.teamId, req.financeAccountId);
       r.warehouseId = req.warehouseId;
       r.receipt = req.receipt;
       r.receiptFile = req.receiptFile;
@@ -492,7 +514,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
 
       return l.placements.map((p) => ({
         productId: l.productId,
-        sku: l.sku,
+        productCode: l.productCode,
         name: l.name,
         batchId: l.id,
         quantity: p.quantity,
@@ -503,6 +525,19 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     const excluded = r.items.reduce((s, l) => s + l.problems.reduce((t, p) => t + p.count, 0n), 0n);
 
     return { restockId: r.id, receivedAtUnix: r.acceptedAtUnix, labels, excludedCount: excluded };
+  },
+
+  // the-restocks-warehouse-opens-its-label-photo — the server's rules: the restock must be going to the calling warehouse
+  // (another's reads NotFound, as an unknown id), and one with no photo is FailedPrecondition. The URL names the route
+  // so a story can tell this link from the owner's GetDownloadUrl one.
+  restockReceiptPhoto(req) {
+    const r = comingTo(req.teamId, req.requestId);
+    if (!r.receiptFile) throw precondition("this restock has no label photo");
+
+    return {
+      url: `https://example.invalid/restock-photo/${r.receiptFile}`,
+      expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 900),
+    };
   },
 
   restockInboundStat(req) {

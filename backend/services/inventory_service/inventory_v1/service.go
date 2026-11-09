@@ -28,13 +28,21 @@ type Service struct {
 	// Whether a restock's supplier is a live one — asked of supplier_service, which owns suppliers since
 	// the-supplier-gets-its-own-service. See supplier_checker.go in the composition root.
 	suppliers SupplierChecker
-	// What inventory must know of a product — its owner, lock, reserve, markup, sku and name — asked of product_service. A
+	// What inventory must know of a product — its owner, lock, reserve, markup, product code and name — asked of product_service. A
 	// restock and a transfer carry only the team's own products, and the order take checks the rest. See product_reader.go
 	// in the composition root.
 	products ProductReader
 	// Where an accepted restock is announced (`RestockAccepted`) — supplier_service folds it into a supplier's figures
 	// (the-report-is-processed-like-settlement). Inventory does not know who listens.
 	events event_source.EventSender
+	// Who signs the link to a restock's label photo for its warehouse — document_service, in-process
+	// (the-restocks-warehouse-opens-its-label-photo). See restock_photo_linker.go in the composition root. Nil answers
+	// RestockReceiptPhoto Unimplemented.
+	photos ReceiptPhotoLinker
+	// Whether the account a restock names is one of the team's ACTIVE OPERATIONAL accounts — asked of
+	// financial_account_service in-process (a-restock-names-its-paying-account). See paying_accounts.go here and
+	// restock_accounts.go in the composition root.
+	accounts PayingAccounts
 }
 
 // SupplierChecker answers whether a supplier is LIVE — any selling team's
@@ -72,6 +80,9 @@ var (
 	_ inventoryv1connect.RackServiceHandler              = (*Service)(nil)
 	_ inventoryv1connect.OrderTransactionServiceHandler  = (*Service)(nil)
 	_ inventoryv1connect.WarehouseTransferServiceHandler = (*Service)(nil)
+	_ inventoryv1connect.OpnameServiceHandler            = (*Service)(nil)
+	// A found at the shelf waiting for the warehouse Owner or Admin (found_request_*.go).
+	_ inventoryv1connect.FoundRequestServiceHandler = (*Service)(nil)
 )
 
 func NewService(
@@ -81,6 +92,8 @@ func NewService(
 	suppliers SupplierChecker,
 	events event_source.EventSender,
 	products ProductReader,
+	photos ReceiptPhotoLinker,
+	accounts PayingAccounts,
 ) *Service {
 	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
 	// box and the wrong one for production — the composition root always wires the real thing, and
@@ -113,7 +126,22 @@ func NewService(
 		products = factsUnchecked{}
 	}
 
-	return &Service{db: db, liability: liability, expense: expense, suppliers: suppliers, events: events, products: products}
+	// A nil account seam counts every account as active and operational — a test raising its own restock has no
+	// financial_account_service; the composition root always wires the real one.
+	if accounts == nil {
+		accounts = accountsUnchecked{}
+	}
+
+	return &Service{
+		accounts:  accounts,
+		db:        db,
+		liability: liability,
+		expense:   expense,
+		suppliers: suppliers,
+		events:    events,
+		products:  products,
+		photos:    photos,
+	}
 }
 
 // actorFrom pulls the acting user's id from the request identity (0 if somehow absent — the ledger records who, but a
@@ -125,4 +153,11 @@ func actorFrom(ctx context.Context) uint64 {
 	}
 
 	return identity.GetIdentityId()
+}
+
+// overrideFrom answers whether the actor is Root or the Administrator writing in a team they hold no role in
+// (an-override-is-stamped-in-every-service). It travels beside actorFrom's id onto every row that records who acted:
+// the ledger transaction, a restock's trail row, a transfer's trail row. A call with no person in ctx reads false.
+func overrideFrom(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
 }

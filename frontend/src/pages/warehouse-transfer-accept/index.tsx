@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Field, Flex, Heading, HStack, Icon, Input, SimpleGrid, Spacer, Spinner, Stack, Stat, Text } from "@chakra-ui/react";
+import { Button, Card, Field, Flex, Heading, Icon, Input, SimpleGrid, Spacer, Spinner, Stack, Stat, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
@@ -9,14 +9,11 @@ import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/w
 import { useTeam } from "../../features/team/TeamContext";
 import { useAcceptWarehouseTransfer, useWarehouseTransfer } from "../../features/warehouseTransfer/queries";
 import { directionFor, parseTransferId } from "../../features/warehouseTransfer/summary";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { CountLineCard } from "./components/CountLineCard";
 import { type LineCount, emptyCount, goodOf, isCounted, problemOf, toCount } from "./count";
-import { TRANSFER_ACCEPT_PENDING } from "./pending";
 
 // WarehouseTransferAcceptPage — Warehouse B COUNTS THE BOX IN (the-team-opens-the-sender-ships-the-receiver-accepts).
 //
@@ -122,8 +119,6 @@ export function WarehouseTransferAcceptPage() {
         {t("warehouseTransfer.accept.title", { id: transfer.id.toString() })}
       </Heading>
 
-      <NotImplementedSummary list={TRANSFER_ACCEPT_PENDING} />
-
       {lines.map((line, i) => (
         <CountLineCard
           key={line.itemId.toString()}
@@ -137,12 +132,7 @@ export function WarehouseTransferAcceptPage() {
       {/* THE COURIER'S CHARGE AT THE DOOR — B pays it, the team owes it back. A note says what it was for. */}
       <Card.Root data-testid="accept-charge">
         <Card.Header>
-          <Card.Title>
-            <HStack gap="1.5">
-              {t("warehouseTransfer.accept.charge")}
-              <NotImplemented list={TRANSFER_ACCEPT_PENDING} id="courierDebt" />
-            </HStack>
-          </Card.Title>
+          <Card.Title>{t("warehouseTransfer.accept.charge")}</Card.Title>
           <Card.Description>{t("warehouseTransfer.accept.chargeHint")}</Card.Description>
         </Card.Header>
         <Card.Body>

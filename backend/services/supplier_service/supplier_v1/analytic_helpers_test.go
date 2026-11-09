@@ -83,7 +83,7 @@ func figureRow(t *testing.T, db *gorm.DB, day string, supplier, product, team ui
 
 // metric is a SupplierMetric written as six numbers, for comparing — its broken rate computed as the server does,
 // broken ÷ every unit, 0 when none arrived.
-func metric(rc, rv, lc, lv, bc, bv int64) *supplierv1.SupplierMetric {
+func metric(rc int64, rv float64, lc int64, lv float64, bc int64, bv float64) *supplierv1.SupplierMetric {
 	var rate float64
 	if units := rc + lc + bc; units > 0 {
 		rate = float64(bc) / float64(units)
@@ -97,7 +97,7 @@ func metric(rc, rv, lc, lv, bc, bv int64) *supplierv1.SupplierMetric {
 	}
 }
 
-func columns(rc, rv, lc, lv, bc, bv int64) supplier_service_models.SupplierMetricColumns {
+func columns(rc int64, rv float64, lc int64, lv float64, bc int64, bv float64) supplier_service_models.SupplierMetricColumns {
 	return supplier_service_models.SupplierMetricColumns{
 		RestockCount: rc, RestockValuation: rv,
 		ShippingLostCount: lc, ShippingLostValuation: lv,
@@ -162,11 +162,11 @@ func eventsOf(events ...*eventsv1.Event) supplier_v1.BackfillSource {
 	}
 }
 
-// setEventLock flips the maintenance switch directly — what a developer does by hand.
+// setEventLock sets the lock directly, stamped NOW() — a LIVE lock, inside its lease.
 func setEventLock(t *testing.T, db *gorm.DB, value string) {
 	t.Helper()
 
-	err := db.Exec(`UPDATE supplier_service_metadata SET value = ? WHERE key = 'process_event_lock'`, value).Error
+	err := db.Exec(`UPDATE supplier_service_metadata SET value = ?, updated_at = NOW() WHERE key = 'process_event_lock'`, value).Error
 	if err != nil {
 		t.Fatalf("set lock: %v", err)
 	}
@@ -187,4 +187,14 @@ func metadata(t *testing.T, db *gorm.DB, key string) string {
 	}
 
 	return rows[0].Value
+}
+
+// leaveDeadLock is a replay that died holding the lock two minutes ago — past its one-minute lease.
+func leaveDeadLock(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	err := db.Exec(`UPDATE supplier_service_metadata SET value = '{"lock":true}', updated_at = NOW() - interval '2 minutes' WHERE key = 'process_event_lock'`).Error
+	if err != nil {
+		t.Fatalf("leave a dead replay's lock: %v", err)
+	}
 }

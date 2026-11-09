@@ -5,13 +5,14 @@ import { type MetricDef, type TableGroup, isTimeGroup, metricById } from "../src
 import { type MetricBody, type ReportFilters, sampleService } from "../src/features/analytic/provider";
 import { type FilterItem, GroupType, SortType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
 import type { OrderAnalyticService } from "../src/gen/warehouse/selling/v1/order_analytic_pb";
+import { FOLDED_AS_OF } from "./fixtures";
 
 // THE ORDER METRICS, as selling_service serves them — answered over the stub transport from the analytic samples, so a
 // story drives the screen's REAL wire path (provider → OrderAnalyticService → the answer) and still reads the numbers
 // sample.ts invents. The two steps are the provider's own `sampleService`, so the stub and the samples cannot disagree.
 //
 // Gudang Pusat (11) is a WAREHOUSE: it gets counts only, every money field unset (a-warehouse-sees-no-seller-money), as
-// the server answers it.
+// the server answers it — except Warehouse Fee's amount, the warehouse's own income (a-warehouse-sees-its-own-fee-amount).
 
 const WAREHOUSE_TEAM = 11n;
 
@@ -33,7 +34,11 @@ const ONEOF: Record<string, string> = {
   "metrics/orders/return_created": "returnCreated",
   "metrics/orders/return_arrived": "returnArrived",
   "metrics/orders/lost_created": "lostCreated",
+  "metrics/warehouse_fee": "warehouseFee",
 };
+
+/** The metrics whose money a warehouse reads too (a-warehouse-sees-its-own-fee-amount). */
+const WAREHOUSE_READS_MONEY = new Set(["metrics/warehouse_fee"]);
 
 function served(metricId: string): MetricDef {
   const def = metricById(metricId);
@@ -65,7 +70,7 @@ function messageOf(def: MetricDef, body: MetricBody, warehouse: boolean): Record
 
   for (const field of def.schema!.fields) {
     const kind = def.fields.find((f) => f.name === field.name)?.kind;
-    if (warehouse && kind === "money") continue;
+    if (warehouse && kind === "money" && !WAREHOUSE_READS_MONEY.has(def.metricId)) continue;
 
     const value = body[field.name] ?? 0;
     out[field.localName] = field.fieldKind === "scalar" && field.scalar === ScalarType.DOUBLE ? value : BigInt(Math.round(value));
@@ -100,6 +105,7 @@ export const orderAnalyticService: Partial<ServiceImpl<typeof OrderAnalyticServi
     const warehouse = req.teamId === WAREHOUSE_TEAM;
 
     return {
+      asOfUnix: FOLDED_AS_OF,
       metricDatas: req.metricIds.map((id) => {
         const def = served(id);
         const prefix = ONEOF[id]!;

@@ -27,12 +27,23 @@ func NewRegister(
 		mux.Handle(inventoryv1connect.NewOrderTransactionServiceHandler(inventory, opts))
 		// A selling team moving its own stock from one warehouse to another, on the decided ledgers (warehouse_transfer_*.go).
 		mux.Handle(inventoryv1connect.NewWarehouseTransferServiceHandler(inventory, opts))
-		// A prototype until design_accept: every RPC answers Unimplemented (opname_prototype.go).
-		mux.Handle(inventoryv1connect.NewOpnameServiceHandler(inventory_v1.OpnamePrototype{}, opts))
+		// The stock count — a session that snapshots and locks the shelf book, counts blind and finalizes into the
+		// stock-problem register (opname_*.go).
+		mux.Handle(inventoryv1connect.NewOpnameServiceHandler(inventory, opts))
+		// A found at the shelf waiting for the warehouse Owner or Admin — reported, listed, approved, rejected, settled by
+		// a count (found_request_*.go, an-adjust-found-waits-for-the-owner-or-admin).
+		mux.Handle(inventoryv1connect.NewFoundRequestServiceHandler(inventory, opts))
+		// Lost stock on the Analytic composer — `metrics/inventory/lost`, read from the report the loss's own transaction
+		// writes (lost_metric_*.go, inventory-lost-counts-the-warehouses-custody-losses).
+		mux.Handle(inventoryv1connect.NewInventoryAnalyticServiceHandler(inventory, opts))
 
-		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
-		// directly rather than through san_grpc. Push auth (OIDC/token) is a deployment concern.
-		mux.Handle("/events/inventory", event_source.NewMuxPushHandler(NewInventoryPushHandler()))
+		// THE LISTENER — /event/<sub_id>/push. A plain HTTP route, not a Connect RPC, so the roling ACL does not reach
+		// it: it is the broker's door, restricted at the ingress. Push auth (OIDC/token) is a deployment concern.
+		// InventoryTxCancel — the compensation of an order create that failed after its take (push_handler.go).
+		mux.Handle("/event/"+InventoryTxCancelSubscription+"/push", event_source.NewMuxPushHandler(NewInventoryPushHandler(inventory)))
+		// OrderCancelled — a cancelled order's stock released by its key (inventory-returns-stock-on-order-cancelled).
+		mux.Handle("/event/"+InventoryOrderCancelledSubscription+"/push",
+			event_source.NewMuxPushHandler(NewInventoryPushHandler(inventory)))
 
 		return san_grpc.ServiceReflectNames{
 			inventoryv1connect.InventoryServiceName,
@@ -41,6 +52,8 @@ func NewRegister(
 			inventoryv1connect.OrderTransactionServiceName,
 			inventoryv1connect.WarehouseTransferServiceName,
 			inventoryv1connect.OpnameServiceName,
+			inventoryv1connect.FoundRequestServiceName,
+			inventoryv1connect.InventoryAnalyticServiceName,
 		}
 	}
 }

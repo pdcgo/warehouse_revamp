@@ -96,18 +96,21 @@ func NewSupplierServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+SupplierServiceSupplierListProcedure,
 			connect.WithSchema(supplierServiceMethods.ByName("SupplierList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		supplierDetail: connect.NewClient[v1.SupplierDetailRequest, v1.SupplierDetailResponse](
 			httpClient,
 			baseURL+SupplierServiceSupplierDetailProcedure,
 			connect.WithSchema(supplierServiceMethods.ByName("SupplierDetail")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		supplierByIds: connect.NewClient[v1.SupplierByIdsRequest, v1.SupplierByIdsResponse](
 			httpClient,
 			baseURL+SupplierServiceSupplierByIdsProcedure,
 			connect.WithSchema(supplierServiceMethods.ByName("SupplierByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -192,18 +195,21 @@ func NewSupplierServiceHandler(svc SupplierServiceHandler, opts ...connect.Handl
 		SupplierServiceSupplierListProcedure,
 		svc.SupplierList,
 		connect.WithSchema(supplierServiceMethods.ByName("SupplierList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	supplierServiceSupplierDetailHandler := connect.NewUnaryHandler(
 		SupplierServiceSupplierDetailProcedure,
 		svc.SupplierDetail,
 		connect.WithSchema(supplierServiceMethods.ByName("SupplierDetail")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	supplierServiceSupplierByIdsHandler := connect.NewUnaryHandler(
 		SupplierServiceSupplierByIdsProcedure,
 		svc.SupplierByIds,
 		connect.WithSchema(supplierServiceMethods.ByName("SupplierByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.supplier.v1.SupplierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -76,7 +76,7 @@ func TestProductByIds_ResolvesADeletedProduct(t *testing.T) {
 
 	id := insertProduct(t, db, 2, "A-1", "Alpha")
 
-	_, err := svc.ProductDelete(context.Background(), connect.NewRequest(&productv1.ProductDeleteRequest{
+	_, err := svc.ProductArchive(context.Background(), connect.NewRequest(&productv1.ProductArchiveRequest{
 		TeamId: 2, ProductId: id,
 	}))
 	if err != nil {
@@ -96,7 +96,7 @@ func TestProductByIds_ResolvesADeletedProduct(t *testing.T) {
 		t.Fatalf("a deleted product must still resolve — stock outlives the catalogue entry, got %+v",
 			resp.Msg.GetItems())
 	}
-	if !rows[id].GetDeleted() {
+	if !rows[id].GetArchived() {
 		t.Fatal("a deleted product must come back marked deleted, so a caller can tell")
 	}
 }

@@ -22,6 +22,7 @@ type Sample struct {
 	WarehouseID uint64
 	PlacementID uint64
 	ActorID     uint64
+	IsOverride  bool
 	Recipient   string
 	Description string
 	Lines       []SampleLine
@@ -69,7 +70,7 @@ func PostSample(tx *gorm.DB, s Sample) ([]models.InventoryTransaction, error) {
 
 		t, createErr := inventory_ledgers.CreateTransaction(tx, inventory_ledgers.NewTransaction{
 			WarehouseID: s.WarehouseID, TeamID: owner[id], TxType: models.TxSample, ActorID: s.ActorID,
-			Description: s.Description, Recipient: s.Recipient,
+			IsOverride: s.IsOverride, Description: s.Description, Recipient: s.Recipient,
 		})
 		if createErr != nil {
 			return nil, createErr
@@ -124,6 +125,18 @@ func PostSample(tx *gorm.DB, s Sample) ([]models.InventoryTransaction, error) {
 	}
 
 	rows, err := inventory_ledgers.EnsureAndLockRacks(tx, s.WarehouseID, ensure)
+	if err != nil {
+		return nil, err
+	}
+
+	// No sample is taken from a product a count holds (a-lock-stops-sales-and-cancels-too). The batch rows above roll
+	// back with the caller's transaction.
+	keys := make([]inventory_ledgers.RackKey, 0, len(ensure))
+	for _, e := range ensure {
+		keys = append(keys, e.RackKey)
+	}
+
+	err = inventory_ledgers.RefuseCounted(tx, keys)
 	if err != nil {
 		return nil, err
 	}

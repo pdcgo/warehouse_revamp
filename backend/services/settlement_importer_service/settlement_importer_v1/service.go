@@ -26,6 +26,7 @@ import (
 	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1/settlement_importerv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 )
 
 // ShopChecker is ShopAccessCheck (the-shop-is-checked-before-the-file-is-stored): the shop, whether the
@@ -78,7 +79,7 @@ type LedgerPost struct {
 
 	UniqueID       string
 	SettlementType settlementv1.SettlementType
-	Change         int64
+	Change         float64
 	OccurredOn     string // YYYY-MM-DD
 	Note           string
 
@@ -149,6 +150,8 @@ const (
 	reasonRefused             = "refused"
 	reasonRepeatsOrderDetails = "repeats_order_details"
 	reasonFailedWithdrawal    = "failed_withdrawal"
+	// POSTED to the shop: the ref found two or more live orders (two-live-orders-on-a-ref-post-to-the-shop).
+	reasonSeveralOrders = "several_orders"
 )
 
 var errFileMissing = errors.New("uploaded file not found")
@@ -180,16 +183,15 @@ func totalPages(total int64, limit uint32) uint32 {
 	return uint32(math.Ceil(float64(total) / float64(limit)))
 }
 
-// wholeRupiah converts the reader's float64 to settlement's int64 — or refuses a fraction, which has never
-// happened in any sample and so means the file is not what we think (critique 8). Never rounded.
-func wholeRupiah(amount float64) (int64, bool) {
-	if math.IsNaN(amount) || math.IsInf(amount, 0) || amount != math.Trunc(amount) {
+// wholeRupiah passes the reader's amount on as settlement's `double change` — or refuses a fraction, which has never
+// happened in any sample and so means the file is not what we think (critique 8,
+// a-fractional-statement-line-is-still-held). A CHECK on the file, never a rounding: the amount sent is the reader's own
+// figure, exact (the-backend-never-rounds-money). Whole is to san_money's 4 places, so float dust from the reader's
+// arithmetic is not mistaken for a fraction.
+func wholeRupiah(amount float64) (float64, bool) {
+	if !san_money.IsWhole(amount) {
 		return 0, false
 	}
 
-	if amount > math.MaxInt64 || amount < math.MinInt64 {
-		return 0, false
-	}
-
-	return int64(amount), true
+	return amount, true
 }

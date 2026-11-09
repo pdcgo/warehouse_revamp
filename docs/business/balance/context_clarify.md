@@ -214,7 +214,7 @@ points are **deleted**, so this file is always the current open set.
 > | brings **Proof of bank transfer** — image/doc/screenshot | ❌ **nowhere to put it.** A payment carries a 500-char `note` and nothing else |
 > | Team B checks manually | ⛔ **impossible today** — [Critique 18](#critique) |
 > | Team B **accepts** | ✅ `LiabilityPaymentConfirm`, creditor-scoped |
-> | Team B **rejects** | ❌ not built — `RECORDED · CONFIRMED · REVERSED`, no `REJECTED` |
+> | Team B **rejects** | ❌ not built then — ✅ built since: `LiabilityPaymentReject`, `LIABILITY_PAYMENT_STATUS_REJECTED` (liability `00007_payment_reject.sql`) |
 > | `accept` is **terminal** | ✅ **now true** — the reverse is removed: [an-accepted-payment-is-final](./context_decision.md#an-accepted-payment-is-final) |
 >
 > ✅ **It settles a reading of cause 6.** *"Create / Accepting Payment"* in §What Things That Affect
@@ -508,7 +508,7 @@ flowchart LR
 
 | | Problem *(arising from [no-overdue-only-the-threshold](./context_decision.md#no-overdue-only-the-threshold))* | → Recommend |
 | --- | --- | --- |
-| **10** | **Nothing ever closes a DISPUTE now.** A cycle would have given each period a closing figure that both sides agree by a date. Without one, an entry from any month is as contestable as this morning's — and causes 4 and 5, broken-or-lost and found-back, are exactly the charges people argue about. A creditor's position is never final and a debtor may reopen a charge indefinitely. | ⚠ **A cycle is not the only way to close one.** Put the window on the **ENTRY**, not on a period: an entry is disputable for N days after it posts and is **agreed by silence** afterwards. No statement object, no due date, no overdue state — so it does not reopen your decision — and both sides still get a moment where the number becomes final. |
+| **10** | ✅ **Accepted 2026-10-31** — [an-entry-stays-disputable-forever](./context_decision.md#an-entry-stays-disputable-forever): no window, by choice. Was: **Nothing ever closes a DISPUTE now.** A cycle would have given each period a closing figure that both sides agree by a date. Without one, an entry from any month is as contestable as this morning's — and causes 4 and 5, broken-or-lost and found-back, are exactly the charges people argue about. A creditor's position is never final and a debtor may reopen a charge indefinitely. | ⚠ **A cycle is not the only way to close one.** Put the window on the **ENTRY**, not on a period: an entry is disputable for N days after it posts and is **agreed by silence** afterwards. No statement object, no due date, no overdue state — so it does not reopen your decision — and both sides still get a moment where the number becomes final. |
 | **11** | **A creditor has no INSTRUMENT to chase with.** With nothing ever due, *"please pay"* has nothing behind it. The only lever the design leaves is **lowering the credit limit** — which does not ask for money, it stops the debtor trading. So the mildest form of chasing and the most aggressive act available are the same act. | A **request-for-payment that posts nothing**: a notice on the pair, visible to both sides, ageing on the debtor's screen. It moves no balance and refuses no act, so it stays inside the decision — and it means the first step of chasing is not a block. |
 | **12** | **Counterparties are TEAMS ONLY, and supplier and courier debt therefore has no home.** It follows from cause 6 — a payment must be **confirmed by the creditor**, and an outsider has no account to confirm from. But a restock bought on supplier terms, and a courier invoiced monthly, are real payables. They are in neither this ledger nor `expense_service`, which records a cost once **paid** rather than an obligation while it is **outstanding**. Surfaced by your new §Responsibility heading. | Say plainly whether **external payables are in scope for v1**. → I recommend **no** — keep this ledger inter-team, where both sides can confirm — **but name where they do live**, because *"nowhere"* is today's answer and nobody decided it. |
 | **13** | **You have now named five kinds of movement, and the ledger has one source type and a boolean for three of them.** ⚠ Not a contradiction — the doc agrees with itself. It is a **vocabulary** gap between your words and the ledger's: `order_fee` → `HANDLING_FEE` · `cod_fee` → `RESTOCK_OUTLAY` · **`found`, `broken_good` and `lost_good` all → `STOCK_DAMAGE`**, the first distinguished only by a `reversal` flag. So *"how much to breakage versus shrinkage"* is unanswerable, and every reference has to be translated by whoever is reading. ⚠ Meanwhile `LIABILITY_SOURCE_TYPE_COD_FEE` **exists and nothing posts it** — your `cod_fee` sides with the name the ledger abandoned. | **Rename to your words and split `STOCK_DAMAGE` into three.** The names are yours, they are better (`order_fee` says when, `handling_fee` does not), and the split has to happen before volume — an enum widened later leaves rows nobody can re-classify. ⚠ The rename also **fixes the daily statement for free**: it already reads `COD_FEE`. |
@@ -535,8 +535,7 @@ flowchart LR
 > as [no-overdue-only-the-threshold](./context_decision.md#no-overdue-only-the-threshold). Q1 below is
 > the old Q2, promoted because that decision made it the only way a block ever ends.
 
-1. **Does an operating cost ever move a team balance?** ([Critique 5](#critique))
-   **→ I recommend no for v1.**
+1. ✅ *(2026-11-02)* **Answered: never** — [an-operating-cost-never-moves-a-team-balance](./context_decision.md#an-operating-cost-never-moves-a-team-balance). Kept as a line so the numbers hold.
 > ⛔ **Q2 is DELETED — `found` posts with NO acknowledgement**, and it closed **against** this file's
 > recommendation:
 > [found-posts-without-a-handshake](./context_decision.md#found-posts-without-a-handshake). ✅ It
@@ -544,44 +543,25 @@ flowchart LR
 > transaction, so there was never a place a handshake could go. ✅ **It unblocks the frontend**: an
 > acknowledgement would have needed a fourth screen. ⚠ **It hands the whole weight to [Q5](#question)**
 > — dispute is now the owning team's only recourse, and behind it there is nothing.
-3. **Is repayment IN GOODS allowed** — may a borrowing team clear cause 3 by restocking the owner with
-   equivalent units instead of paying? ([Critique 9](#critique))
-   **→ I recommend no: a goods repayment is a restock plus a payment, not a second instrument.**
-4. **🆕 Is the RETURN side of `cod_fee` v1?** ([Critique 14](#critique)) You wrote *"when accept
-   restock/return"*, and only the restock half exists — `StockReturn` is a pick-undo with no cost line
-   and no posting.
-   **→ I recommend later, but explicitly named as later.** A doc saying *"restock/return"* while only
-   restock works reads as done.
-5. **🆕 Is an entry disputable forever?** ([Critique 10](#critique)) No cycle means no moment at which a
-   charge becomes final, and causes 4 and 5 are the ones people argue about.
-   ⛔ **PROMOTED — this is now the heaviest open question in the context.**
-   [found-posts-without-a-handshake](./context_decision.md#found-posts-without-a-handshake) refused
-   cause 5 an acknowledgement, so dispute is the owning team's **only** recourse against a charge
-   asserted on their books in the asserter's favour — and today there is nothing behind it. ⚠ Sharper
-   still because a `found` is not bound to the loss it repays
-   ([technical Critique 10](../../technical/balance/team_balance_design_clarify.md#critique)), and
-   because the resulting balance can push a team through its threshold and stop their orders.
-   **→ I recommend a window on the ENTRY — disputable for N days, agreed by silence after** — which
-   needs no statement, no due date and no overdue state.
-6. **How does a creditor CHASE?** ([Critique 11](#critique)) Today the only lever is lowering the
-   limit, which stops the debtor trading rather than asking it to pay.
-   ⚠ **Narrowed by §Payment Flow, not answered.** The flow opens *"Team A see -100.000"* — the debtor
-   notices on their own — so payment is **debtor-initiated by design**, and there is no step in which
-   a creditor asks for one. What survives is the debtor who never looks.
-   **→ I recommend a request-for-payment that posts nothing** — a notice, not a block.
-7. **🆕 Are external payables — suppliers, couriers — in scope for this ledger?**
-   ([Critique 12](#critique)) They cannot use cause 6, because an outsider cannot confirm a payment.
-   **→ I recommend no for v1, but name where they DO live** — the current answer is "nowhere".
+3. ✅ *(2026-10-31)* **Answered: no — a payment always moves money** — [a-payment-always-moves-money](./context_decision.md#a-payment-always-moves-money):
+   goods moving is a restock, with a payment beside it if the teams agree. Kept as a line so the numbers hold.
+4. ✅ *(2026-10-31)* **Answered: yes — optional at the return accept** — [a-return-may-carry-the-couriers-ask](./context_decision.md#a-return-may-carry-the-couriers-ask),
+   against my *later*; the courier rarely asks. ✅ Built 2026-11-02. Kept as a line so the numbers hold.
+5. ✅ *(2026-10-31)* **Answered: yes, forever — no dispute window** —
+   [an-entry-stays-disputable-forever](./context_decision.md#an-entry-stays-disputable-forever), against my window; a
+   false `found` is bounded by the claim rule once stock problems are built. Kept as a line so the numbers hold.
+6. ✅ *(2026-10-31)* **Answered: a payment request that posts nothing** — [a-creditor-may-request-payment](./context_decision.md#a-creditor-may-request-payment).
+   ✅ Built 2026-11-02. Kept as a line so the numbers hold.
+7. ✅ *(2026-11-02)* **Answered: no outsider is ever owed** — [no-outsider-is-owed-in-the-system](./context_decision.md#no-outsider-is-owed-in-the-system):
+   a supplier is paid at the restock, a courier at the door; a monthly courier bill does not happen. Kept as a line so
+   the numbers hold.
 > ⛔ **Q8 is DEFERRED and leaves this file** —
 > [the-daily-report-is-deferred](./context_decision.md#the-daily-report-is-deferred). Parked is not
 > open, so it stops being counted here; the decision file holds it for when it comes back.
 > ⚠ **What it leaves broken is deliberate**: §Responsbility 2 promises every team a daily report and
 > the shipped page refuses all but warehouses.
 
-9. **🆕 Should one ORDER's warehouse fee be readable beside its settlement?** ([Critique 17](#critique))
-   The entry knows the `order_id`, the filter does not, so an order's true P&L exists in no screen.
-   **→ I recommend one `order_id` filter on `LiabilityEntryListFilter`** — and explicitly **not** a
-   copy of the fee in settlement's ledger.
+9. ✅ *(2026-11-02)* **Answered: yes, on the order** — [an-orders-warehouse-fee-is-read-on-the-order](./context_decision.md#an-orders-warehouse-fee-is-read-on-the-order). Kept as a line so the numbers hold.
 > ⛔ **TWO QUESTIONS DELETED, both answered the way this file recommended.**
 > [an-incidental-line-must-say-what-it-was-for](./context_decision.md#an-incidental-line-must-say-what-it-was-for)
 > — every cost line requires a note, which unblocks the LAST step of the vocabulary migration.

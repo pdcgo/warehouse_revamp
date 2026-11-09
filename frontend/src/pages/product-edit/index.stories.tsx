@@ -8,7 +8,7 @@ import { AtEditMinyak, PRODUCT_FORM_META, loadedMinyak } from "./stories/kit";
 // (stories-are-grouped-by-the-part-of-the-screen):
 //
 //   States   an edit, filled from the record
-//   Fields   the fields — filled on an edit, their examples, their limits, the lock and its minimum
+//   Fields   the fields — filled on an edit, their examples, the team's code in front, their limits, the lock and its minimum
 //   Save     what Save waits for, what it sends, what it refuses
 //   Gallery  the cover and four — dropped files, the cover, a picture from the web
 //   Back     where Back and Save return — the product, the filtered list, the list

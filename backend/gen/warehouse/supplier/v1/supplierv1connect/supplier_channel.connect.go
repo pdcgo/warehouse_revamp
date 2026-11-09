@@ -45,6 +45,9 @@ const (
 	// SupplierChannelServiceSupplierChannelDeleteProcedure is the fully-qualified name of the
 	// SupplierChannelService's SupplierChannelDelete RPC.
 	SupplierChannelServiceSupplierChannelDeleteProcedure = "/warehouse.supplier.v1.SupplierChannelService/SupplierChannelDelete"
+	// SupplierChannelServiceSupplierChannelExportProcedure is the fully-qualified name of the
+	// SupplierChannelService's SupplierChannelExport RPC.
+	SupplierChannelServiceSupplierChannelExportProcedure = "/warehouse.supplier.v1.SupplierChannelService/SupplierChannelExport"
 	// SupplierChannelServiceSupplierChannelByIdsProcedure is the fully-qualified name of the
 	// SupplierChannelService's SupplierChannelByIds RPC.
 	SupplierChannelServiceSupplierChannelByIdsProcedure = "/warehouse.supplier.v1.SupplierChannelService/SupplierChannelByIds"
@@ -57,6 +60,11 @@ type SupplierChannelServiceClient interface {
 	SupplierChannelCreate(context.Context, *connect.Request[v1.SupplierChannelCreateRequest]) (*connect.Response[v1.SupplierChannelCreateResponse], error)
 	SupplierChannelUpdate(context.Context, *connect.Request[v1.SupplierChannelUpdateRequest]) (*connect.Response[v1.SupplierChannelUpdateResponse], error)
 	SupplierChannelDelete(context.Context, *connect.Request[v1.SupplierChannelDeleteRequest]) (*connect.Response[v1.SupplierChannelDeleteResponse], error)
+	// THE TOKO TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): exactly the
+	// stores SupplierChannelList holds with this filter and order, every page of them, in the tab's columns — Terjual and
+	// Siap with their dates beside each store — as .xlsx. A server stream: progress, then an expiring link. Not a read:
+	// it stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+	SupplierChannelExport(context.Context, *connect.Request[v1.SupplierChannelExportRequest]) (*connect.ServerStreamForClient[v1.SupplierChannelExportResponse], error)
 	// Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
 	// (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
 	SupplierChannelByIds(context.Context, *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error)
@@ -78,6 +86,7 @@ func NewSupplierChannelServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+SupplierChannelServiceSupplierChannelListProcedure,
 			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		supplierChannelCreate: connect.NewClient[v1.SupplierChannelCreateRequest, v1.SupplierChannelCreateResponse](
@@ -98,10 +107,17 @@ func NewSupplierChannelServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		supplierChannelExport: connect.NewClient[v1.SupplierChannelExportRequest, v1.SupplierChannelExportResponse](
+			httpClient,
+			baseURL+SupplierChannelServiceSupplierChannelExportProcedure,
+			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelExport")),
+			connect.WithClientOptions(opts...),
+		),
 		supplierChannelByIds: connect.NewClient[v1.SupplierChannelByIdsRequest, v1.SupplierChannelByIdsResponse](
 			httpClient,
 			baseURL+SupplierChannelServiceSupplierChannelByIdsProcedure,
 			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -113,6 +129,7 @@ type supplierChannelServiceClient struct {
 	supplierChannelCreate *connect.Client[v1.SupplierChannelCreateRequest, v1.SupplierChannelCreateResponse]
 	supplierChannelUpdate *connect.Client[v1.SupplierChannelUpdateRequest, v1.SupplierChannelUpdateResponse]
 	supplierChannelDelete *connect.Client[v1.SupplierChannelDeleteRequest, v1.SupplierChannelDeleteResponse]
+	supplierChannelExport *connect.Client[v1.SupplierChannelExportRequest, v1.SupplierChannelExportResponse]
 	supplierChannelByIds  *connect.Client[v1.SupplierChannelByIdsRequest, v1.SupplierChannelByIdsResponse]
 }
 
@@ -136,6 +153,11 @@ func (c *supplierChannelServiceClient) SupplierChannelDelete(ctx context.Context
 	return c.supplierChannelDelete.CallUnary(ctx, req)
 }
 
+// SupplierChannelExport calls warehouse.supplier.v1.SupplierChannelService.SupplierChannelExport.
+func (c *supplierChannelServiceClient) SupplierChannelExport(ctx context.Context, req *connect.Request[v1.SupplierChannelExportRequest]) (*connect.ServerStreamForClient[v1.SupplierChannelExportResponse], error) {
+	return c.supplierChannelExport.CallServerStream(ctx, req)
+}
+
 // SupplierChannelByIds calls warehouse.supplier.v1.SupplierChannelService.SupplierChannelByIds.
 func (c *supplierChannelServiceClient) SupplierChannelByIds(ctx context.Context, req *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error) {
 	return c.supplierChannelByIds.CallUnary(ctx, req)
@@ -148,6 +170,11 @@ type SupplierChannelServiceHandler interface {
 	SupplierChannelCreate(context.Context, *connect.Request[v1.SupplierChannelCreateRequest]) (*connect.Response[v1.SupplierChannelCreateResponse], error)
 	SupplierChannelUpdate(context.Context, *connect.Request[v1.SupplierChannelUpdateRequest]) (*connect.Response[v1.SupplierChannelUpdateResponse], error)
 	SupplierChannelDelete(context.Context, *connect.Request[v1.SupplierChannelDeleteRequest]) (*connect.Response[v1.SupplierChannelDeleteResponse], error)
+	// THE TOKO TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): exactly the
+	// stores SupplierChannelList holds with this filter and order, every page of them, in the tab's columns — Terjual and
+	// Siap with their dates beside each store — as .xlsx. A server stream: progress, then an expiring link. Not a read:
+	// it stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+	SupplierChannelExport(context.Context, *connect.Request[v1.SupplierChannelExportRequest], *connect.ServerStream[v1.SupplierChannelExportResponse]) error
 	// Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
 	// (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
 	SupplierChannelByIds(context.Context, *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error)
@@ -164,6 +191,7 @@ func NewSupplierChannelServiceHandler(svc SupplierChannelServiceHandler, opts ..
 		SupplierChannelServiceSupplierChannelListProcedure,
 		svc.SupplierChannelList,
 		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	supplierChannelServiceSupplierChannelCreateHandler := connect.NewUnaryHandler(
@@ -184,10 +212,17 @@ func NewSupplierChannelServiceHandler(svc SupplierChannelServiceHandler, opts ..
 		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	supplierChannelServiceSupplierChannelExportHandler := connect.NewServerStreamHandler(
+		SupplierChannelServiceSupplierChannelExportProcedure,
+		svc.SupplierChannelExport,
+		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelExport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	supplierChannelServiceSupplierChannelByIdsHandler := connect.NewUnaryHandler(
 		SupplierChannelServiceSupplierChannelByIdsProcedure,
 		svc.SupplierChannelByIds,
 		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.supplier.v1.SupplierChannelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -200,6 +235,8 @@ func NewSupplierChannelServiceHandler(svc SupplierChannelServiceHandler, opts ..
 			supplierChannelServiceSupplierChannelUpdateHandler.ServeHTTP(w, r)
 		case SupplierChannelServiceSupplierChannelDeleteProcedure:
 			supplierChannelServiceSupplierChannelDeleteHandler.ServeHTTP(w, r)
+		case SupplierChannelServiceSupplierChannelExportProcedure:
+			supplierChannelServiceSupplierChannelExportHandler.ServeHTTP(w, r)
 		case SupplierChannelServiceSupplierChannelByIdsProcedure:
 			supplierChannelServiceSupplierChannelByIdsHandler.ServeHTTP(w, r)
 		default:
@@ -225,6 +262,10 @@ func (UnimplementedSupplierChannelServiceHandler) SupplierChannelUpdate(context.
 
 func (UnimplementedSupplierChannelServiceHandler) SupplierChannelDelete(context.Context, *connect.Request[v1.SupplierChannelDeleteRequest]) (*connect.Response[v1.SupplierChannelDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierChannelService.SupplierChannelDelete is not implemented"))
+}
+
+func (UnimplementedSupplierChannelServiceHandler) SupplierChannelExport(context.Context, *connect.Request[v1.SupplierChannelExportRequest], *connect.ServerStream[v1.SupplierChannelExportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierChannelService.SupplierChannelExport is not implemented"))
 }
 
 func (UnimplementedSupplierChannelServiceHandler) SupplierChannelByIds(context.Context, *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error) {

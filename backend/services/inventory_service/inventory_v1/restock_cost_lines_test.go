@@ -49,7 +49,7 @@ func acceptWithCosts(
 		TeamId: clSellingTeam, WarehouseId: clWarehouse,
 		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU-CL", Name: "Widget", Count: 10, Total: 500000},
+			{ProductId: product, ProductCode: "SKU-CL", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -142,7 +142,7 @@ func TestRestockAccept_TheCourierChargeReachesTheHPP(t *testing.T) {
 	}
 
 	if lines[0].GetUnitCost() != 54500 {
-		t.Fatalf("HPP = %d, want 54500 — a charge that raises a debt must also raise the cost",
+		t.Fatalf("HPP = %v, want 54500 — a charge that raises a debt must also raise the cost",
 			lines[0].GetUnitCost())
 	}
 }

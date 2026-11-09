@@ -696,6 +696,133 @@ func (x *RegionResolveResponse) GetAncestry() *RegionAncestry {
 	return nil
 }
 
+type RegionMatchRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The four levels as a marketplace wrote them. All four are required: a match on fewer levels names an area, not the
+	// place a parcel goes, so a caller holding fewer has nothing to match.
+	ProvinsiName string `protobuf:"bytes,1,opt,name=provinsi_name,json=provinsiName,proto3" json:"provinsi_name,omitempty"`
+	// "Kabupaten Bogor", "Kab. Bogor", "Kab Bogor", "Kota Bogor" or "Bogor". A prefix must agree with the place's own
+	// (Kab. never matches a Kota); no prefix matches either.
+	KabupatenName string `protobuf:"bytes,2,opt,name=kabupaten_name,json=kabupatenName,proto3" json:"kabupaten_name,omitempty"`
+	KecamatanName string `protobuf:"bytes,3,opt,name=kecamatan_name,json=kecamatanName,proto3" json:"kecamatan_name,omitempty"`
+	DesaName      string `protobuf:"bytes,4,opt,name=desa_name,json=desaName,proto3" json:"desa_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegionMatchRequest) Reset() {
+	*x = RegionMatchRequest{}
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegionMatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegionMatchRequest) ProtoMessage() {}
+
+func (x *RegionMatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegionMatchRequest.ProtoReflect.Descriptor instead.
+func (*RegionMatchRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *RegionMatchRequest) GetProvinsiName() string {
+	if x != nil {
+		return x.ProvinsiName
+	}
+	return ""
+}
+
+func (x *RegionMatchRequest) GetKabupatenName() string {
+	if x != nil {
+		return x.KabupatenName
+	}
+	return ""
+}
+
+func (x *RegionMatchRequest) GetKecamatanName() string {
+	if x != nil {
+		return x.KecamatanName
+	}
+	return ""
+}
+
+func (x *RegionMatchRequest) GetDesaName() string {
+	if x != nil {
+		return x.DesaName
+	}
+	return ""
+}
+
+type RegionMatchResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The one desa the names match, with its full ancestry (the region list's own spelling, codes and kode pos). Unset when
+	// none matches and when several do.
+	Match *RegionAncestry `protobuf:"bytes,1,opt,name=match,proto3" json:"match,omitempty"`
+	// How many desa matched, capped at 2: 0 = none, 1 = `match` is set, 2 = more than one (ambiguous).
+	Matches       uint32 `protobuf:"varint,2,opt,name=matches,proto3" json:"matches,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegionMatchResponse) Reset() {
+	*x = RegionMatchResponse{}
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegionMatchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegionMatchResponse) ProtoMessage() {}
+
+func (x *RegionMatchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegionMatchResponse.ProtoReflect.Descriptor instead.
+func (*RegionMatchResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RegionMatchResponse) GetMatch() *RegionAncestry {
+	if x != nil {
+		return x.Match
+	}
+	return nil
+}
+
+func (x *RegionMatchResponse) GetMatches() uint32 {
+	if x != nil {
+		return x.Matches
+	}
+	return 0
+}
+
 var File_warehouse_region_v1_region_proto protoreflect.FileDescriptor
 
 const file_warehouse_region_v1_region_proto_rawDesc = "" +
@@ -739,19 +866,28 @@ const file_warehouse_region_v1_region_proto_rawDesc = "" +
 	"\x14RegionResolveRequest\x12\x1d\n" +
 	"\x04code\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\x14R\x04code:\x06\x92\xb5\x18\x02 \x01\"X\n" +
 	"\x15RegionResolveResponse\x12?\n" +
-	"\bancestry\x18\x01 \x01(\v2#.warehouse.region.v1.RegionAncestryR\bancestry*\x95\x01\n" +
+	"\bancestry\x18\x01 \x01(\v2#.warehouse.region.v1.RegionAncestryR\bancestry\"\xd8\x01\n" +
+	"\x12RegionMatchRequest\x12.\n" +
+	"\rprovinsi_name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\fprovinsiName\x120\n" +
+	"\x0ekabupaten_name\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\rkabupatenName\x120\n" +
+	"\x0ekecamatan_name\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\rkecamatanName\x12&\n" +
+	"\tdesa_name\x18\x04 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\bdesaName:\x06\x92\xb5\x18\x02 \x01\"j\n" +
+	"\x13RegionMatchResponse\x129\n" +
+	"\x05match\x18\x01 \x01(\v2#.warehouse.region.v1.RegionAncestryR\x05match\x12\x18\n" +
+	"\amatches\x18\x02 \x01(\rR\amatches*\x95\x01\n" +
 	"\vRegionLevel\x12\x1c\n" +
 	"\x18REGION_LEVEL_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15REGION_LEVEL_PROVINSI\x10\x01\x12\x1a\n" +
 	"\x16REGION_LEVEL_KABUPATEN\x10\x02\x12\x1a\n" +
 	"\x16REGION_LEVEL_KECAMATAN\x10\x03\x12\x15\n" +
-	"\x11REGION_LEVEL_DESA\x10\x042\xbb\x03\n" +
+	"\x11REGION_LEVEL_DESA\x10\x042\x9d\x04\n" +
 	"\rRegionService\x12]\n" +
 	"\n" +
 	"RegionList\x12&.warehouse.region.v1.RegionListRequest\x1a'.warehouse.region.v1.RegionListResponse\x12c\n" +
 	"\fRegionSearch\x12(.warehouse.region.v1.RegionSearchRequest\x1a).warehouse.region.v1.RegionSearchResponse\x12~\n" +
 	"\x15RegionSearchByKodePos\x121.warehouse.region.v1.RegionSearchByKodePosRequest\x1a2.warehouse.region.v1.RegionSearchByKodePosResponse\x12f\n" +
-	"\rRegionResolve\x12).warehouse.region.v1.RegionResolveRequest\x1a*.warehouse.region.v1.RegionResolveResponseBLZJgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/region/v1;regionv1b\x06proto3"
+	"\rRegionResolve\x12).warehouse.region.v1.RegionResolveRequest\x1a*.warehouse.region.v1.RegionResolveResponse\x12`\n" +
+	"\vRegionMatch\x12'.warehouse.region.v1.RegionMatchRequest\x1a(.warehouse.region.v1.RegionMatchResponseBLZJgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/region/v1;regionv1b\x06proto3"
 
 var (
 	file_warehouse_region_v1_region_proto_rawDescOnce sync.Once
@@ -766,7 +902,7 @@ func file_warehouse_region_v1_region_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_region_v1_region_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_region_v1_region_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_warehouse_region_v1_region_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_warehouse_region_v1_region_proto_goTypes = []any{
 	(RegionLevel)(0),                      // 0: warehouse.region.v1.RegionLevel
 	(*Region)(nil),                        // 1: warehouse.region.v1.Region
@@ -779,31 +915,36 @@ var file_warehouse_region_v1_region_proto_goTypes = []any{
 	(*RegionSearchByKodePosResponse)(nil), // 8: warehouse.region.v1.RegionSearchByKodePosResponse
 	(*RegionResolveRequest)(nil),          // 9: warehouse.region.v1.RegionResolveRequest
 	(*RegionResolveResponse)(nil),         // 10: warehouse.region.v1.RegionResolveResponse
-	(*v1.PageFilter)(nil),                 // 11: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),                   // 12: warehouse.common.v1.PageInfo
+	(*RegionMatchRequest)(nil),            // 11: warehouse.region.v1.RegionMatchRequest
+	(*RegionMatchResponse)(nil),           // 12: warehouse.region.v1.RegionMatchResponse
+	(*v1.PageFilter)(nil),                 // 13: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),                   // 14: warehouse.common.v1.PageInfo
 }
 var file_warehouse_region_v1_region_proto_depIdxs = []int32{
 	0,  // 0: warehouse.region.v1.Region.level:type_name -> warehouse.region.v1.RegionLevel
-	11, // 1: warehouse.region.v1.RegionListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	13, // 1: warehouse.region.v1.RegionListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	1,  // 2: warehouse.region.v1.RegionListResponse.regions:type_name -> warehouse.region.v1.Region
-	12, // 3: warehouse.region.v1.RegionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	14, // 3: warehouse.region.v1.RegionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	0,  // 4: warehouse.region.v1.RegionSearchRequest.level:type_name -> warehouse.region.v1.RegionLevel
 	2,  // 5: warehouse.region.v1.RegionSearchResponse.results:type_name -> warehouse.region.v1.RegionAncestry
 	2,  // 6: warehouse.region.v1.RegionSearchByKodePosResponse.results:type_name -> warehouse.region.v1.RegionAncestry
 	2,  // 7: warehouse.region.v1.RegionResolveResponse.ancestry:type_name -> warehouse.region.v1.RegionAncestry
-	3,  // 8: warehouse.region.v1.RegionService.RegionList:input_type -> warehouse.region.v1.RegionListRequest
-	5,  // 9: warehouse.region.v1.RegionService.RegionSearch:input_type -> warehouse.region.v1.RegionSearchRequest
-	7,  // 10: warehouse.region.v1.RegionService.RegionSearchByKodePos:input_type -> warehouse.region.v1.RegionSearchByKodePosRequest
-	9,  // 11: warehouse.region.v1.RegionService.RegionResolve:input_type -> warehouse.region.v1.RegionResolveRequest
-	4,  // 12: warehouse.region.v1.RegionService.RegionList:output_type -> warehouse.region.v1.RegionListResponse
-	6,  // 13: warehouse.region.v1.RegionService.RegionSearch:output_type -> warehouse.region.v1.RegionSearchResponse
-	8,  // 14: warehouse.region.v1.RegionService.RegionSearchByKodePos:output_type -> warehouse.region.v1.RegionSearchByKodePosResponse
-	10, // 15: warehouse.region.v1.RegionService.RegionResolve:output_type -> warehouse.region.v1.RegionResolveResponse
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	2,  // 8: warehouse.region.v1.RegionMatchResponse.match:type_name -> warehouse.region.v1.RegionAncestry
+	3,  // 9: warehouse.region.v1.RegionService.RegionList:input_type -> warehouse.region.v1.RegionListRequest
+	5,  // 10: warehouse.region.v1.RegionService.RegionSearch:input_type -> warehouse.region.v1.RegionSearchRequest
+	7,  // 11: warehouse.region.v1.RegionService.RegionSearchByKodePos:input_type -> warehouse.region.v1.RegionSearchByKodePosRequest
+	9,  // 12: warehouse.region.v1.RegionService.RegionResolve:input_type -> warehouse.region.v1.RegionResolveRequest
+	11, // 13: warehouse.region.v1.RegionService.RegionMatch:input_type -> warehouse.region.v1.RegionMatchRequest
+	4,  // 14: warehouse.region.v1.RegionService.RegionList:output_type -> warehouse.region.v1.RegionListResponse
+	6,  // 15: warehouse.region.v1.RegionService.RegionSearch:output_type -> warehouse.region.v1.RegionSearchResponse
+	8,  // 16: warehouse.region.v1.RegionService.RegionSearchByKodePos:output_type -> warehouse.region.v1.RegionSearchByKodePosResponse
+	10, // 17: warehouse.region.v1.RegionService.RegionResolve:output_type -> warehouse.region.v1.RegionResolveResponse
+	12, // 18: warehouse.region.v1.RegionService.RegionMatch:output_type -> warehouse.region.v1.RegionMatchResponse
+	14, // [14:19] is the sub-list for method output_type
+	9,  // [9:14] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_region_v1_region_proto_init() }
@@ -817,7 +958,7 @@ func file_warehouse_region_v1_region_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_region_v1_region_proto_rawDesc), len(file_warehouse_region_v1_region_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

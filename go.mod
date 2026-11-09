@@ -116,7 +116,7 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
+	golang.org/x/time v0.15.0
 	golang.org/x/tools v0.48.0 // indirect
 	google.golang.org/genproto v0.0.0-20260519071638-aa98bba5eb94 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7 // indirect
@@ -130,6 +130,6 @@ tool (
 )
 
 // san_receipt_readers is its own repo, checked out here as a git submodule
-// (backend/packages/san_receipt_readers). The replace builds against that checkout, so an edit there is
-// seen here at once, without a tag.
-replace github.com/pdcgo/san_receipt_readers => ./backend/packages/san_receipt_readers
+// (backend/pkgs/san_receipt_readers — its own module, so root `./...` never enters it). The replace builds
+// against that checkout, so an edit there is seen here at once, without a tag.
+replace github.com/pdcgo/san_receipt_readers => ./backend/pkgs/san_receipt_readers

@@ -76,7 +76,7 @@ func perfLedgerBackground(t *testing.T, db *gorm.DB) {
 		`INSERT INTO restocks (team_id, warehouse_id, status, finance_account_id, note)
 		 SELECT 2, 1 + g % 20, 'accepted', 7, 'perf-bg' FROM generate_series(1, 10000) g`,
 
-		`INSERT INTO restock_items (restock_id, product_id, sku, name, count, total, price_unit, received_count)
+		`INSERT INTO restock_items (restock_id, product_id, product_code, name, count, total, price_unit, received_count)
 		 SELECT r.id, 100000 + k, 'SKU-BG', 'background', 10, 10000, 1000, 10
 		 FROM restocks r CROSS JOIN generate_series(1, 5) k WHERE r.note = 'perf-bg'`,
 	}
@@ -114,7 +114,7 @@ func perfProducts(n int) []uint64 {
 func perfFacts(n int) fakeFacts {
 	facts := fakeFacts{}
 	for _, id := range perfProducts(n) {
-		facts[id] = inventory_v1.ProductFact{TeamID: otMelati, SKU: "PERF", Name: "Perf product"}
+		facts[id] = inventory_v1.ProductFact{TeamID: otMelati, ProductCode: "PERF", Name: "Perf product"}
 	}
 
 	return facts

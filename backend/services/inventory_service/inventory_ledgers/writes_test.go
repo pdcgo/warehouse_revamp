@@ -54,8 +54,10 @@ func TestBatchWrites_ARowChangedTwiceIsStoredOnceAndLoggedTwice(t *testing.T) {
 	}
 }
 
-// The statements a ledger write costs do not grow with its lines: one product or ten, a mint is 3 statements, a put 4,
-// and a take of both ledgers 6 (ledger-writes-are-set-based). This is the audit's N+1, pinned.
+// The statements a ledger write costs do not grow with its lines: one product or ten, a mint is 3 statements, a put 5,
+// and a take of both ledgers 7 (ledger-writes-are-set-based). This is the audit's N+1, pinned. The put and the take each
+// read the stock count's lock once, in a statement of its own after the racks are locked (count_lock.go says why it
+// cannot ride the locking SELECT).
 func TestLedgerWrites_TheStatementsDoNotGrowWithTheLines(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 
@@ -173,11 +175,11 @@ func TestLedgerWrites_TheStatementsDoNotGrowWithTheLines(t *testing.T) {
 		t.Fatalf("a mint cost %d statements for 1 product and %d for 9, want 3 both", oneMint, tenMint)
 	}
 
-	if onePut != 4 || tenPut != 4 {
-		t.Fatalf("a put cost %d statements for 1 product and %d for 9, want 4 both", onePut, tenPut)
+	if onePut != 5 || tenPut != 5 {
+		t.Fatalf("a put cost %d statements for 1 product and %d for 9, want 5 both", onePut, tenPut)
 	}
 
-	if oneTake != 6 || tenTake != 6 {
-		t.Fatalf("a take cost %d statements for 1 product and %d for 9, want 6 both", oneTake, tenTake)
+	if oneTake != 7 || tenTake != 7 {
+		t.Fatalf("a take cost %d statements for 1 product and %d for 9, want 7 both", oneTake, tenTake)
 	}
 }

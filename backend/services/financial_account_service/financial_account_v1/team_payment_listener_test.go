@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 	financial_account_v1 "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
@@ -17,7 +18,7 @@ import (
 // acceptedAt is when the creditor accepted — two days back, so the day the rows count on is not today by accident.
 var acceptedAt = time.Now().In(jakarta).Add(-48 * time.Hour)
 
-func acceptedEvent(eventID string, payment, from, to uint64, amount int64) *eventsv1.Event {
+func acceptedEvent(eventID string, payment, from, to uint64, amount float64) *eventsv1.Event {
 	return &eventsv1.Event{
 		EventId:     eventID,
 		OccurredAt:  timestamppb.New(acceptedAt),
@@ -168,5 +169,28 @@ func TestTeamPayment_NoAccountToLandInIsRefused(t *testing.T) {
 
 	if err := accept(svc, acceptedEvent("evt-tp-nowhere", 11, 0, 0, 50_000)); err == nil {
 		t.Fatal("an acceptance with nowhere to land was acked")
+	}
+}
+
+// A team payment posts the EXACT figure the liability stored, on both legs (the-backend-never-rounds-money) — a payment
+// of Rp 316,675 moves both accounts by exactly that.
+func TestTeamPayment_PostsTheExactFigureOnBothLegs(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	payer := mustCreate(t, svc, bca(teamA, "BCA Seller", "9500000011", 1_000_000))
+	creditor := mustCreate(t, svc, bca(teamB, "BCA Gudang", "9500000022", 0))
+
+	err := accept(svc, acceptedEvent("evt-tp-whole", 9, payer.GetId(), creditor.GetId(), 316.675))
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+
+	if got := balance(t, db, payer.GetId()); !san_money.Equal(got, 999_683.325) {
+		t.Fatalf("payer balance = %v, want 999.683,325", got)
+	}
+
+	if got := balance(t, db, creditor.GetId()); got != 316.675 {
+		t.Fatalf("creditor balance = %v, want 316,675", got)
 	}
 }

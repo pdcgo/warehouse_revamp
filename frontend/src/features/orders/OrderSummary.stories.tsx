@@ -17,10 +17,10 @@ import { orderSummaryTotal } from "./stat";
 // the owner's eight statuses and the contract carries six, differently named. That is why the badge
 // arrives as a prop: naming and colouring a pile is the page's job, not this component's.
 
-function priced(key: string, count: number, value: bigint): OrderSummaryRow {
+function priced(key: string, count: number, value: number): OrderSummaryRow {
   // What the platform actually paid sits a little under our quote, which is the whole reason the
   // margin is measured against it rather than against `value`.
-  const mpValue = (value * 98n) / 100n;
+  const mpValue = Math.trunc((value * 98) / 100);
 
   return {
     key,
@@ -28,37 +28,37 @@ function priced(key: string, count: number, value: bigint): OrderSummaryRow {
     count,
     value,
     mpValue,
-    goodsCost: (mpValue * 62n) / 100n,
-    fees: 3_000n * BigInt(count),
+    goodsCost: Math.trunc((mpValue * 62) / 100),
+    fees: 3_000 * count,
     marginUnknown: 0,
     itemCount: count * 3,
   };
 }
 
 const ROWS: OrderSummaryRow[] = [
-  priced("pending", 2, 430_000n),
+  priced("pending", 2, 430_000),
   // ⚠ THE ONE NOTHING IS PRICED IN. Its revenue, cost and fees are 0 because there is nothing to add,
   // and `marginUnknown === count` is what tells the screen that 0 is an absence rather than an amount.
   {
     key: "processed",
     onTheWire: true,
     count: 1,
-    value: 420_000n,
-    mpValue: 0n,
-    goodsCost: 0n,
-    fees: 0n,
+    value: 420_000,
+    mpValue: 0,
+    goodsCost: 0,
+    fees: 0,
     marginUnknown: 1,
     itemCount: 3,
   },
-  priced("shipped", 2, 640_000n),
-  priced("cancel", 1, 360_000n),
+  priced("shipped", 2, 640_000),
+  priced("cancel", 1, 360_000),
   // ⚠ A STAGE THE CONTRACT HAS NO STATUS FOR — `completed` is one of the owner's eight and the enum
   // has no value for it, so every figure is unknown rather than zero.
   {
     key: "completed",
     onTheWire: false,
     count: 0,
-    value: 0n,
+    value: 0,
     mpValue: null,
     goodsCost: null,
     fees: null,

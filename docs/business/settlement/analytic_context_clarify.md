@@ -13,8 +13,9 @@ mine.** Answered points are deleted, so this file is always the current open set
 > [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables) — `MetricSearch` / `MetricData` in
 > [settlement_analytic.proto](../../../proto/warehouse/settlement/v1/settlement_analytic.proto), the Settlement Report and the Analytic screen on them,
 > the three old reads removed. The pattern's answer for a balance is
-> [a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type). Two questions are left, neither blocking:
-> [a-take-rate-ranks-above-what-sale](#a-take-rate-ranks-above-what-sale) here, and [the-picker-ticks-fields](../analytic/rpc_provide_clarify.md#the-picker-ticks-fields).
+> [a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type). The last question is answered:
+> [a-take-rate-ranks-above-one-million-of-sales](./context_decision.md#a-take-rate-ranks-above-one-million-of-sales). Ticking fields was answered no, for now:
+> [a-metric-is-added-whole-for-now](../analytic/rpc_provide_decision.md#a-metric-is-added-whole-for-now).
 
 | today | on the pattern |
 | --- | --- |
@@ -44,7 +45,7 @@ flowchart LR
 | --- | --- |
 | what the screen offers | **Settlement** (selling price, received, withdrawn, gap, take rate, position to date) and **Settlement by type** (the ten types that make up received): [settlement-serves-its-headline-and-its-breakdown](./context_decision.md#settlement-serves-its-headline-and-its-breakdown) |
 | which table answers | the shop table for shop and team, the person table for a person, either for time and the headline, and a shop with a person refused: [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables) |
-| for the pattern | ✅ *position to date* is a `POSITION` ([a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type)) · still open: ticking fields ([the-picker-ticks-fields](../analytic/rpc_provide_clarify.md#the-picker-ticks-fields)), less pressing now the metrics have 6 and 10 fields |
+| for the pattern | ✅ *position to date* is a `POSITION` ([a-position-is-its-own-stat-type](../analytic/rpc_provide_decision.md#a-position-is-its-own-stat-type)) · ✅ ticking fields: no, a metric is added whole for now ([a-metric-is-added-whole-for-now](../analytic/rpc_provide_decision.md#a-metric-is-added-whole-for-now)) |
 
 ### your doc, after the move
 
@@ -53,33 +54,6 @@ flowchart LR
 | `### Field that tracked.` lists nine. The five types of 2026-09-24 — `withdrawal`, `shipment_adjustment`, `logistic_reimbursement`, `platform_reimbursement`, `marketplace_program` — are folded and served, and not listed | add them: it is the list the metric's fields are read from |
 | `## How Rpc Api Deliver Analytical Data.` describes the three reads the move removed (2026-10-30) | replace it with a pointer to [rpc_provide.md](../analytic/rpc_provide.md) — the move has shipped |
 
-
-## a-take-rate-ranks-above-what-sale
-
-> 🆕 **2026-10-30, from the build.** `take_rate` is served, but **not sortable**: a rate ranks only above a minimum sample
-> ([a-rate-ranks-only-above-its-minimum-sample](../analytic/rpc_provide_decision.md#a-rate-ranks-only-above-its-minimum-sample)), and settlement's has
-> not been decided. Nothing waits on it — the Settlement Report ranks by position.
-
-Ranked by `gap`, the biggest shops lead: that is size, not leakage. Ranked by `take_rate` with no minimum, a shop that
-sold Rp 20.000 and received nothing leads at 100%. A minimum sale is what makes the rate a ranking of what the platform
-takes.
-
-```mermaid
-flowchart LR
-  s["shops in the window"] --> q{"sold at least the minimum?"}
-  q -->|"yes"| r["ranked by take rate"]
-  q -->|"no"| f["follow, unranked, by key"]
-```
-
-| | |
-| --- | --- |
-| A — not sortable, as built | ✅ nothing misleading · ❌ *"which shop does the platform take the most from"* cannot be asked |
-| **B — sortable above a minimum sale**: `rank_min_sample` on `take_rate`, its sample being `sales` in rupiah | ✅ supplier's pattern, one number in the proto · ❌ one threshold reads differently over a week and over a year |
-| C — sortable, no minimum | ❌ the smallest shops lead |
-
-**→ Recommend B, at Rp 1.000.000 of sales.** What breaks: over a single day most shops fall below it and the rate
-ranks almost nobody. I think that is right, because a day's take rate is mostly timing (the fund lands days after the
-sale), not a property of the shop.
 
 ## 🔁 This round — two new sections, 2026-09-10
 
@@ -275,7 +249,7 @@ re-derivation now exists in **two** places —
 | --- | --- | --- |
 | **1** | ✅ **SETTLED — one transaction** ([dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction)). The mark-then-compute hole is closed: a failure now rolls the dedup row back with the fold, so the redelivery genuinely reprocesses. | ⚠ **What the doc still has to say**: the duplicate test is `ON CONFLICT DO NOTHING` + **rows affected = 0**, never a caught PK violation — a raw constraint error aborts the whole transaction. And `pg_advisory_xact_lock` per scope in a **fixed order** (shop, then user), because one event writes both tables and the shift takes an unbounded row range. |
 | **2** | ✅ **SETTLED — the replay clears its range** ([a-replay-deletes-its-range-first](./context_decision.md#a-replay-deletes-its-range-first)), which removes the doubling. ✅ And the user-table half of the data loss is gone too, now that the creator is on the state row. ⛔ **What survives is the genesis anchor**: a `start_date` at or before the genesis day deletes the only record of everything before it, and the re-fold does not read that prehistory either. | **A floor on `start_date`, refused at or below the genesis day** — worked through in [the replay floor](#the-replay-floor--elaborated), where the obvious repair turns out to be wrong. [Q1](#question). |
-| **3** | ✅ **SETTLED — `order_settlements.created_by_user_id`** ([the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)), stamped once when the account opens. It closes all three at once: the live fold, the genesis seed (`GROUP BY created_by_user_id, team_id`) and the replay — the state row survives the DELETE, so the user is available on every replayed row. **The data-loss path is gone.** | ⚠ **It is not free yet.** `selling_service` must record an author on the order first ([`orders`](backend/services/selling_service/selling_service_models/order.go) has no creator column and `AuthorUserID` lives on `order_drafts`), and `SettlementPostRequest` needs the field — **two migrations in two lanes**, and until both land the opening call has nothing to pass. ⚠ And `0` must read as *not recorded*: an account opened by an exporter's `fund` before any `initial_total` has no creator, so the report needs an explicit **unattributed** bucket or its columns will silently fail to sum to the shop report. |
+| **3** | ✅ **SETTLED — `order_settlements.created_by_user_id`** ([the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)), stamped once when the account opens. It closes all three at once: the live fold, the genesis seed (`GROUP BY created_by_user_id, team_id`) and the replay — the state row survives the DELETE, so the user is available on every replayed row. **The data-loss path is gone.** | ⚠ **It is not free yet.** `selling_service` must record an author on the order first ([`orders`](../../../backend/services/selling_service/selling_service_models/order.go) has no creator column and `AuthorUserID` lives on `order_drafts`), and `SettlementPostRequest` needs the field — **two migrations in two lanes**, and until both land the opening call has nothing to pass. ⚠ And `0` must read as *not recorded*: an account opened by an exporter's `fund` before any `initial_total` has no creator, so the report needs an explicit **unattributed** bucket or its columns will silently fail to sum to the shop report. |
 | **4** | ✅ **SETTLED — the webhook is open** ([the-event-webhook-is-open](./context_decision.md#the-event-webhook-is-open)), against my recommendation. The reasoning that makes it survivable is recorded there: a forged POST corrupts a **projection**, not the ledger, and `settlement_logs` is not reachable from this path. | ⚠ **Two things follow and belong in the doc.** **(a)** `AnalyticReplayCompute` is now the **repair path for a reachable failure**, not a maintenance convenience — which is why [Q2](#question) has to be finished. **(b)** The app layer is settled, so the cheap mitigation is at the **ingress**: allow only Pub/Sub's ranges or a service account at the load balancer. No code, contradicts nothing. |
 | **5** | ⚠ **A 500 while `process_event_lock` is held feeds the DEAD-LETTER QUEUE with good events.** Pub/Sub counts every non-2xx as a delivery attempt, so a maintenance window longer than `max_delivery_attempts × backoff` dead-letters messages that were never malformed. ⚠ **The replay algorithm makes this reachable rather than theoretical** — a replay is exactly when the lock is held, and exactly when events keep arriving. | **State the maximum safe window**, derived from the subscription's retry policy — or **detach the subscription** during a replay, which stops delivery without consuming attempts. ⚠ Prefer 503 to 500 either way: it is the honest code for *"try later"*. |
 | **6** | ✅ **SETTLED — stored** ([the-carry-is-stored-not-derived](./context_decision.md#the-carry-is-stored-not-derived)), against my recommendation. The cascade stays, the `prev` lookup stays, the read is one row. ⚠ **It half-reverses [open-and-close-are-log-sums-at-the-day-boundaries](./context_decision.md#open-and-close-are-log-sums-at-the-day-boundaries)** — the definition survives as the invariant, "no carry" and "rebuildable per day" do not. | ⛔ **What it makes urgent is GENESIS** — a carry's first row anchors the chain, and every live shop already holds balances, so `0` is wrong for all of them and wrong **silently**. **→ Seed day zero from `SUM(order_settlements.last_balance)` per scope at migration time.** That is [Q1](#question), and it is cheap exactly once. |
@@ -365,8 +339,8 @@ shorter than what is written.
 ⛔ **Step 1 derives `day` from `created_at` converted to GMT+7. The report was decided to bucket on
 `posted_on`** ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)) — and
 `posted_on` is `DATE NOT NULL DEFAULT CURRENT_DATE` in the shipped migration
-([00001_create_settlement_ledger.sql:62](backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)),
-stamped `time.Now()` in Go ([post_entry.go:201](backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
+([00001_create_settlement_ledger.sql:62](../../../backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)),
+stamped `time.Now()` in Go ([post_entry.go:201](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
 with **no timezone configured anywhere in the repo** — so it lands on the UTC date.
 
 ```mermaid
@@ -1453,7 +1427,7 @@ doc** and the recommendation stays on the table.
 
 ## Question
 
-**None open** — Q1 to Q7 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 by the owner's `settlement_importer.md`. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**None open.** Q1 to Q7 were answered 2026-09-28, Q8 on 2026-10-30 and Q9 on 2026-11-02; they stay as one-line pointers so the numbers hold; Q7 by the owner's `settlement_importer.md`. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1500,8 +1474,8 @@ yet**, so no order opens an account today.
 8. ✅ **Answered 2026-10-30 — a settlement metric reads both tables**: [one-settlement-metric-reads-both-tables](./context_decision.md#one-settlement-metric-reads-both-tables),
    and what it serves: [settlement-serves-its-headline-and-its-breakdown](./context_decision.md#settlement-serves-its-headline-and-its-breakdown). Kept as a line so the numbers hold.
 
-9. 🆕 **Should a take rate rank, and above what sale?** — [a-take-rate-ranks-above-what-sale](#a-take-rate-ranks-above-what-sale). Built unsortable until decided.
-   **→ Recommend** sortable above Rp 1.000.000 of sales in the window.
+9. ✅ **Answered 2026-11-02 — a take rate ranks above Rp 1.000.000 of sales**: [a-take-rate-ranks-above-one-million-of-sales](./context_decision.md#a-take-rate-ranks-above-one-million-of-sales).
+   ✅ Built 2026-11-02. Kept as a line so the numbers hold.
 
 
 # Contradiction
@@ -1543,7 +1517,7 @@ flowchart TB
 **→ Recommend the state tables be named EXPLICITLY in the replay** — **re-seeded inside the delete
 transaction** from the daily rows that survive it, never inheriting a predicate they cannot match, and
 never as a step *after* the replay: the seek is asynchronous and the RPC returns before the range is
-rebuilt ([the working](#-this-breaks-my-own-earlier-recommendation-and-here-is-the-repair)). **→ And what
+rebuilt ([the working](#-the-obvious-repair-is-wrong--do-not-re-seed-from-order_settlements)). **→ And what
 stops it recurring**: the decision was written as *"three tables"*, a **count**, when what it meant was
 *"every table the fold writes"*. A rule stated as a list goes stale the moment the list grows; the same
 rule stated as **the set the fold touches** would have covered these two on the day they appeared.
@@ -1610,8 +1584,8 @@ statements are one unit — an edit to either is an edit to both, in the same pa
 > convert to **GMT+7** and get the date as `day`."*
 
 **Two derivations of one day, and they are not the same day.** `posted_on` is
-`DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62))
-and stamped `time.Now()` ([post_entry.go:201](backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
+`DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](../../../backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62))
+and stamped `time.Now()` ([post_entry.go:201](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L201)),
 with no timezone set anywhere in the repo — so it lands on the **UTC** date, while the fold computes a
 **Jakarta** date. For every movement written between 00:00 and 07:00 WIB the log says one day and the
 report says the next.
@@ -1796,7 +1770,7 @@ flowchart LR
 
 - ➡ **MOVED to [Q1](#question)** — the event's shape is now the one thing blocking a build, so it is a
   question rather than a note.
-- ⛔ **`created_by_user_id` is decided and unbuilt** —
+- ✅ *(built 2026-09-14, settlement `00004_order_settlement_creator.sql`)* **`created_by_user_id` was decided and unbuilt** —
   [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
   put it on `order_settlements`; the model has no user column, so `user_settlement_daily_reports` cannot
   be folded at all. It is a migration in this service, not a question.

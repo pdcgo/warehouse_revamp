@@ -12,6 +12,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:stories": "vitest run --project=storybook",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
     "lint:mermaid": "node scripts/lint-mermaid.mjs"
   },
   "dependencies": {

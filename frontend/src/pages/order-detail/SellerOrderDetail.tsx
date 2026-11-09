@@ -59,6 +59,7 @@ import { StageStepper } from "./components/StageStepper";
 import { SummaryTiles } from "./components/SummaryTiles";
 import { CopyText } from "../../components/chrome/CopyText";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { personName } from "../../lib/users";
 
 // THE SELLER'S ORDER DETAIL — the owner's page of sections, approved as a preview and now routed at
 // `/orders/:orderId` for every team that is not a warehouse (the picker is `index.tsx`).
@@ -239,7 +240,7 @@ export function SellerOrderDetailPage() {
 
     return {
       id: item.productId,
-      sku: item.sku,
+      productCode: item.productCode,
       name: item.name,
       defaultImageUrl: product?.defaultImageUrl,
       defaultImageThumbnailUrl: product?.defaultImageThumbnailUrl,
@@ -257,7 +258,7 @@ export function SellerOrderDetailPage() {
             this page to carry elsewhere. In the first card rather than the sticky header (owner:
             *"jangan di sticky"*), so they are read on arrival and scroll away. */}
         <OrderReferences
-          courier={order.shippingCode}
+          channelId={order.shipmentChannelId}
           receiptCode={receiptCode}
           orderRefId={order.orderExternalRefId}
         />
@@ -338,11 +339,11 @@ export function SellerOrderDetailPage() {
                 <ProductListItem product={lineProduct(item)} />
                 <Flex justify="space-between" align="baseline" gap="3" fontSize="sm">
                   <Text color="fg.muted">
-                    {item.unitCost > 0n ? formatRupiah(lineUnitBeli(item)) : "—"} × {item.quantity}
+                    {item.unitCost > 0 ? formatRupiah(lineUnitBeli(item)) : "—"} × {item.quantity}
                     {teamName ? ` · ${teamName}` : ""}
                   </Text>
                   <Text fontWeight="bold" whiteSpace="nowrap">
-                    {item.unitCost > 0n ? formatRupiah(BigInt(Math.round(lineTotalBeli(item)))) : "—"}
+                    {item.unitCost > 0 ? formatRupiah(lineTotalBeli(item)) : "—"}
                   </Text>
                 </Flex>
               </Stack>
@@ -373,12 +374,12 @@ export function SellerOrderDetailPage() {
                     </Table.Cell>
                     <Table.Cell>{teamName || "—"}</Table.Cell>
                     <Table.Cell textAlign="end" whiteSpace="nowrap">
-                      {item.unitCost > 0n ? formatRupiah(lineUnitBeli(item)) : "—"}
+                      {item.unitCost > 0 ? formatRupiah(lineUnitBeli(item)) : "—"}
                     </Table.Cell>
                     <Table.Cell textAlign="end">{item.quantity}</Table.Cell>
                     <Table.Cell textAlign="end" whiteSpace="nowrap">
-                      {item.unitCost > 0n
-                        ? formatRupiah(BigInt(Math.round(lineTotalBeli(item))))
+                      {item.unitCost > 0
+                        ? formatRupiah(lineTotalBeli(item))
                         : "—"}
                     </Table.Cell>
                   </Table.Row>
@@ -397,7 +398,7 @@ export function SellerOrderDetailPage() {
         )}
 
         <MoneyBreakdown
-          productCost={anyCostMissing ? 0n : productCost}
+          productCost={anyCostMissing ? 0 : productCost}
           fees={fees}
           platformTotal={order.platformTotal}
         />
@@ -425,7 +426,7 @@ export function SellerOrderDetailPage() {
         <Rail
           testId="timeline-rail"
           items={[...steps].reverse().map((log) => {
-            const who = actors.data?.get(log.actorId.toString())?.name ?? "";
+            const who = personName(actors.data?.get(log.actorId.toString()));
             const fromKey = timelineFromKey(log.from);
 
             return {
@@ -455,7 +456,7 @@ export function SellerOrderDetailPage() {
           tracking is designed. */}
       <ShipmentLeg
         title={t("orderDetail.shipping.outbound")}
-        courier={order.shippingCode}
+        channelId={order.shipmentChannelId}
         receiptCode={receiptCode}
         extra={{
           label: t("orderDetail.shipping.deadline"),
@@ -520,7 +521,7 @@ export function SellerOrderDetailPage() {
         shopId={order.shopId}
         orderRef={order.orderExternalRefId || String(order.id)}
         // The SAME total sistem the money section shows, so the ledger's margins and the page's agree.
-        totalBeli={orderSpend(productCost, fees ?? 0n, !anyCostMissing && fees !== null) ?? undefined}
+        totalBeli={orderSpend(productCost, fees ?? 0, !anyCostMissing && fees !== null) ?? undefined}
       />
     </Section>
   );
@@ -626,7 +627,7 @@ export function SellerOrderDetailPage() {
       {/* ② FOUR NUMBERS TO LAND ON — the answer before the working. */}
       <SummaryTiles
         platformTotal={order.platformTotal}
-        productCost={anyCostMissing ? 0n : productCost}
+        productCost={anyCostMissing ? 0 : productCost}
         fees={fees}
         itemCount={order.items.reduce((sum, item) => sum + item.quantity, 0)}
       />

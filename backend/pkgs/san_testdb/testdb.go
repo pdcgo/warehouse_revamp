@@ -26,6 +26,8 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbsession"
 )
 
 // Tests run against a SEPARATE database (`warehouse_test`), never the development database
@@ -205,7 +207,9 @@ func connect() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	raw, err := sql.Open("pgx", dsn())
+	// THE SAME CALENDAR AS PRODUCTION (the-system-runs-on-jakarta-time): every test session is Jakarta, through the
+	// opener the server uses — a test on another calendar would pass where production is wrong.
+	raw, err := san_dbsession.OpenSQL(dsn())
 	if err != nil {
 		return nil, err
 	}

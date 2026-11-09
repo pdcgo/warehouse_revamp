@@ -23,7 +23,7 @@ func seedRestock(t *testing.T, db *gorm.DB, status string, supplierID *uint64, a
 		WarehouseID: 5,
 		Status:      status,
 		Items: []inventory_service_models.RestockItem{{
-			ProductID: 100, SKU: "SKU1", Name: "Kaos", Count: 10, Total: 30000, PriceUnit: 3000, ReceivedCount: 9,
+			ProductID: 100, ProductCode: "SKU1", Name: "Kaos", Count: 10, Total: 30000, PriceUnit: 3000, ReceivedCount: 9,
 			SupplierID: supplierID,
 		}},
 		Problems: []inventory_service_models.RestockProblemItem{
@@ -47,7 +47,7 @@ func seedRestock(t *testing.T, db *gorm.DB, status string, supplierID *uint64, a
 type backfilledRow struct {
 	Day                 time.Time
 	RestockCount        int64
-	RestockValuation    int64
+	RestockValuation    float64
 	ShippingLostCount   int64
 	ShippingBrokenCount int64
 }

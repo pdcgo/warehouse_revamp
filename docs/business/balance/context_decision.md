@@ -29,6 +29,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [found-posts-without-a-handshake](#found-posts-without-a-handshake) | cause 5 posts **unilaterally** — no acknowledgement. ⚠ against recommendation, and it hands the whole weight to the unbuilt dispute |
 | [an-accepted-payment-is-final](#an-accepted-payment-is-final) | once the creditor accepts, the payment **never changes and is never reversed**. `LiabilityPaymentReverse` is removed. ⚠ against recommendation |
 | [a-transfer-charge-is-a-transfer-fee](#a-transfer-charge-is-a-transfer-fee) | a warehouse transfer's door charge is its own source type, `TRANSFER_FEE`, keyed by the transfer |
+| [an-operating-cost-never-moves-a-team-balance](#an-operating-cost-never-moves-a-team-balance) | an operating cost — payroll, electricity, ads — is its own team's expense and never moves a team balance |
+| [an-orders-warehouse-fee-is-read-on-the-order](#an-orders-warehouse-fee-is-read-on-the-order) | an order's warehouse fee is kept on the order and read on its page, beside its settlement — no `order_id` filter on the entries |
+| [the-liability-day-is-the-jakarta-day](#the-liability-day-is-the-jakarta-day) | the liability daily view groups by the Jakarta day, not UTC | owner, as recommended | — |
 
 ---
 
@@ -842,6 +845,8 @@ written and this one is the correction — the reverse is now **[Q11](./context_
 not a defect. Its sibling, the missing `rejected` state, is **confirmed** as a defect and is now
 build work.
 
+✅ Built 2026-11-07 — only the debtor records: `LiabilityPaymentRecord` refuses a payer whose side of the pair is not negative (the creditor, a square pair) as `FailedPrecondition`, reading the balance `FOR SHARE` in the claim's transaction; the pair detail offers Make Payment only while the team owes ([rpc.md](../../services/liability_service/rpc.md#only-the-debtor-records--and-only-while-it-owes)).
+
 ---
 
 ## an-incidental-line-must-say-what-it-was-for
@@ -1181,3 +1186,226 @@ flowchart LR
 | posted | once per transfer, by balance from the event ([balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)) |
 | not built | liability has no subscription to `warehouse-transfer-accepted` and no case for it in `push_handler.go`, so today the charge is booked nowhere |
 | your doc | §What Things That Affect The Team Balance, cause 2, says *"to receive restock"*. Widening it to a transfer is yours: [cause-2-names-the-restock-only](./context_clarify.md#cause-2-names-the-restock-only) |
+
+✅ **Built 2026-11-04** (verified in code 2026-11-05) — `liability-warehouse-transfer-accepted` (`liability_service/push_handler.go`), `liability_v1/transfer_courier_charge.go` posts `transfer_fee` (`LIABILITY_SOURCE_TYPE_TRANSFER_FEE`), tests `transfer_courier_charge_test.go`, `…_race_test.go`.
+
+
+## an-entry-stays-disputable-forever
+
+> Owner, in chat (2026-10-31): *"yes, it can disputed forever"* — to [Q5](./context_clarify.md#question), *is an entry
+> disputable forever?*, after I recommended withdrawing it: no dispute feature exists, and a false `found` is bounded by
+> [a-surplus-claims-a-lost-unit-first](../inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first). Against my
+> first recommendation, a window on the entry.
+
+**The verdict.** An entry never becomes final by time. There is **no dispute window** — no N days after which silence
+counts as agreement, and no state that closes an entry against argument. An entry from any month can be contested as
+much as one from today.
+
+```mermaid
+flowchart LR
+  E["an entry on a team's balance"] --> D["contestable - today, next month, any month"]
+  F["a found from the warehouse"] -->|"once stock problems are built"| C["must claim an open lost problem first"]
+  C --> M["so a found reverses only a real loss"]
+```
+
+| | |
+| --- | --- |
+| a window | none — no entry is agreed by silence |
+| a dispute feature | none is built or designed; contesting an entry happens between the teams |
+| the false `found` | bounded by [a-surplus-claims-a-lost-unit-first](../inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first): a found unit claims an open `lost` problem before any money comes back — ⛔ not built (`warehouse_stock_problems` does not exist) |
+| ✅ built | nothing to build — no window exists today |
+
+**What it costs — accepted.** Nothing in the system says an old figure is settled; a month already reported can still be
+argued over.
+
+## a-payment-always-moves-money
+
+> Owner, in chat (2026-10-31): *"cash you mean is bank transfer ?"*, then *"yes"* to *"a payment always moves money from
+> one account to another, with proof attached — never goods, and no netting of its own"*. It answers
+> [Q3](./context_clarify.md#question) (repaying in goods) and
+> [team balance Q2](../../technical/balance/team_balance_design_clarify.md#question) (an `offset` method), both as one
+> question.
+
+**The verdict.** A payment between two teams is **money moving** from one of the payer's financial accounts to one of
+the receiver's — a bank transfer, an e-wallet transfer, or cash handed over from a cash box — always with proof attached
+([a-payment-must-carry-proof](#a-payment-must-carry-proof)). It is never goods, and there is no netting method: the pair
+balance already nets ([the-grain-is-the-team-pair](#the-grain-is-the-team-pair)).
+
+| | |
+| --- | --- |
+| a bank account | a bank transfer — its screenshot |
+| an e-wallet | a wallet transfer — its receipt |
+| a cash box | cash handed over — a photo of the signed handover note |
+| goods instead of money | **no** — goods moving is a restock; if the teams agree it settles money, a payment is recorded beside it, each a record of its own kind |
+| netting | **not a payment** — what W owes A and what A owes W post into one pair balance, so it already reads as the net, and one payment settles it |
+
+```mermaid
+flowchart LR
+  E1["W owes A - 300k, lost goods"] --> B["the pair balance - A owes W 700k"]
+  E2["A owes W - 1M, fees"] --> B
+  B --> P["one payment of 700k - money from an account, with proof"]
+  G["goods sent instead"] -.->|"a restock, not a payment"| R["restock"]
+```
+
+**What it closes:** [a-payment-must-carry-proof](#a-payment-must-carry-proof) named `offset` as still open — it is not a
+method. My own recommendation to allow `offset` was made before reading the pair grain, and was wrong.
+
+✅ **Built** — nothing to change: a payment already names `from_account_id` and `to_account_id`, any of the three
+account types, and refuses without proof.
+
+## a-return-may-carry-the-couriers-ask
+
+> Owner, in chat (2026-10-31): *"return have to. but its courrier rarely ask"* — to [Q4](./context_clarify.md#question),
+> *is the return half of `cod_fee` in scope now?* Against my *later*.
+
+**The verdict.** The return half is in scope. When a warehouse person **accepts a return**
+([order_return.md](../order/order_return.md), *"Warehouse Person Accepting Return"*), they may enter what the courier
+asked at the door — **optional**, because the courier rarely asks. If they enter one, the selling team owes the
+warehouse that amount, exactly as a restock's courier charge does
+([cod-fee-is-the-couriers-incidental-ask](#cod-fee-is-the-couriers-incidental-ask)).
+
+```mermaid
+flowchart LR
+  R["a returned parcel arrives"] --> A["the warehouse person accepts the return"]
+  A --> Q{"did the courier ask anything?"}
+  Q -->|"usually not"| N["nothing posted"]
+  Q -->|"yes - amount and note"| E["the return-accepted event carries it"]
+  E --> L["liability - the selling team owes the warehouse"]
+```
+
+| | |
+| --- | --- |
+| where it is entered | the return accept, by the warehouse person — an amount and a short note, both optional, empty by default |
+| ⚠ my spec — the shape | the restock's: `warehouse_additional_cost` and its note on the accept, carried by the accepted event, posted by liability from the event ([restock_courier_charge.go](../../../backend/services/liability_service/liability_v1/restock_courier_charge.go)) |
+| the entry | `INCIDENTAL_FEE`, the selling team owing the warehouse, keyed by the order |
+| empty | posts nothing — the common case |
+| `inventory/return.md` | still unplanned: this is the money at the door, not the stock side of a return |
+
+✅ **Built 2026-11-02**, with the accept ([the-return-accept-is-built-before-its-stock-half](../order/context_decision.md#the-return-accept-is-built-before-its-stock-half)).
+The crew's **Accept Return** dialog takes the amount and the note (required above 0 —
+[an-incidental-line-must-say-what-it-was-for](#an-incidental-line-must-say-what-it-was-for)); `OrderReturnAccepted` carries
+both, and liability posts the selling team's debt to the warehouse once per order, nothing for 0. ⚠ my build detail: the
+entry is **`return_incidental_fee`**, keyed by the order — not `INCIDENTAL_FEE` as the table says. `INCIDENTAL_FEE`'s
+source is a restock, and the ledger's key is (team, counterparty, source type, source id, reversal): an order and a restock
+with the same number would collide, the second charge swallowed as a redelivery and labelled *restock #…*. The history
+reads *"Courier at a return · order #N"*, and the daily statement's courier column sums both.
+
+## a-creditor-may-request-payment
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q6](./context_clarify.md#question), *how does a creditor ask a debtor to
+> pay?*, on the payment request recommended. As recommended.
+
+**The verdict.** A creditor may send a **payment request**: a notice to the debtor that it is owed, which **posts
+nothing and blocks nothing**. Payment still starts with the debtor, through the payment flow as it is
+([the-debtor-claims-the-creditor-decides](#the-debtor-claims-the-creditor-decides)). Lowering the limit stays the last
+resort, never the way to ask.
+
+```
+Gudang Bekasi is owed Rp 700.000 by Toko A
+  Bekasi presses Request Payment on the pair detail
+  → Toko A sees on its balance: "Gudang Bekasi asks you to pay Rp 700.000"
+  → Toko A pays through the payment flow, or does not — nothing moves by itself
+```
+
+```mermaid
+flowchart LR
+  C["the creditor - Request Payment"] --> N["a notice on the debtor's balance"]
+  N --> D["the debtor pays - the payment flow, as it is"]
+  C -.->|"last resort, unchanged"| L["lower the limit"]
+```
+
+| | |
+| --- | --- |
+| who sends it | the creditor team's owner and admin, from the pair detail |
+| what it says | who asks, the amount owed at that moment, when |
+| what it moves | nothing — no entry, no block, no due date |
+| what the debtor sees | the request on its balance and on the pair detail, until it pays or the request is replaced |
+| built | ✅ 2026-11-02 — see below |
+
+✅ **Built 2026-11-02.** `LiabilityPaymentRequestSend` (liability migration `00012`, one request per pair, replaced by a
+second) for the creditor's owner and admin; the request rides `LiabilityPosition.payment_request` on both sides of the
+pair, and the debtor recording a payment to that creditor clears it. The pair detail carries **Request Payment** (a
+confirm, then *"You asked Toko A to pay …"*) and, for the debtor, a warning — *"Gudang Bekasi asks you to pay Rp
+700.000"*; the liability list badges the row. ⚠ my build detail: a request is cleared by RECORDING a payment, not by
+its acceptance — the debtor has answered, and a rejected payment does not bring the request back.
+
+## no-outsider-is-owed-in-the-system
+
+> Owner, in chat (2026-11-02): *"thats not happen"* — to [Q7](./context_clarify.md#question), *are external payables —
+> suppliers, couriers — in scope?*, asked as *does a courier ever bill monthly instead of being paid at the door?*
+
+**The verdict.** No outsider is ever owed in the system, so there are no external payables to design. A supplier is paid
+when the restock is raised ([a-restock-must-name-the-account-that-paid](../financial_account/context_decision.md#a-restock-must-name-the-account-that-paid)),
+and a courier is paid at the door — never billed monthly.
+
+| outsider | paid | recorded |
+| --- | --- | --- |
+| a supplier | when the restock is raised, from a named account | the restock and the account |
+| a courier, on a restock or a return | at the door, from the warehouse's cash box | owed back by the selling team ([cod-fee-is-the-couriers-incidental-ask](#cod-fee-is-the-couriers-incidental-ask), [a-return-may-carry-the-couriers-ask](#a-return-may-carry-the-couriers-ask)) |
+| a courier billed monthly | — | does not happen |
+
+```mermaid
+flowchart LR
+  S["a supplier"] -->|"paid at the restock"| A["an account"]
+  C["a courier"] -->|"paid at the door"| B["the warehouse's cash box"]
+  M["a monthly courier invoice"] -.->|"does not happen"| X["nothing to design"]
+```
+
+**When it comes back:** a contract courier that invoices — then the invoice is the warehouse's expense on the day it is
+paid, from the account that paid it.
+
+## an-operating-cost-never-moves-a-team-balance
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q1](./context_clarify.md#question), *does an
+> operating cost ever move a team balance?* Your own ruling of 2026-07-21, until now written only in a migration's comment.
+
+**The verdict.** An operating cost — payroll, electricity, ads — **never** moves a team balance. It is an expense of the
+team that paid it, and it is **never recharged onward**: a warehouse's payroll is the warehouse's cost, not the selling
+teams' it fulfils for. A balance moves only for what crosses between two teams.
+
+```
+warehouse payroll Rp 8.000.000   → an expense, on the warehouse's team        ✅
+                                 → a balance with the selling teams           never
+```
+
+| | |
+| --- | --- |
+| an operating cost | one `expense_records` row, on one team |
+| a team balance | moved only by what crosses between two teams — fees, goods, payments |
+| the source | `expense_service` migration `00001`: *"never recharged onward"* (owner, 2026-07-21) |
+| also closes | [cost Q2](../../technical/cost/design_clarify.md#question), *does a cost also move the team balance?* |
+| ✅ built | nothing changes |
+
+## an-orders-warehouse-fee-is-read-on-the-order
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q9](./context_clarify.md#question), *should one
+> order's warehouse fee be readable beside its settlement?*
+
+**The verdict.** Yes, and it already is. The order keeps its own warehouse fee
+([warehouse-prices-balance-records](../teams/warehouse/context_decision.md#warehouse-prices-balance-records)), so the
+order's page shows it beside the order's settlement. No `order_id` filter on the liability entry list, and no copy of
+the fee in settlement's ledger.
+
+```mermaid
+flowchart LR
+  W["WarehouseFeeCalculate"] --> O["the order keeps the fee"]
+  O --> P["the order's page, the fee beside its settlement"]
+  O --> B["balance records the amount"]
+```
+
+| | |
+| --- | --- |
+| the fee | on the order — `selling_service` migration `00019` |
+| where it is read | the order's page |
+| `LiabilityEntryListFilter.order_id` | not added |
+| ✅ built | nothing to build |
+
+---
+
+## the-liability-day-is-the-jakarta-day
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: the liability daily report groups by UTC day (`liability_v1/liability_daily.go`, pinned by its tests) — move it to Jakarta days?
+
+**The verdict.** Yes. The liability daily view groups by the **Jakarta day** with Jakarta-midnight bounds, like every other day in the system ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)): an amount owed at 06:00 WIB lands on that WIB day, not the UTC day before. Its tests move with it. ⚠ Not built.
+
+✅ Built 2026-11-05 — `liability_v1/liability_daily.go` groups by `(created_at AT TIME ZONE 'Asia/Jakarta')::date` and reads the period's dates as Jakarta midnights; tests `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay`, `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` (now in WIB); perf `TestPerf_LiabilityDaily` — plan unchanged, not heavy ([rpc.md](../../services/liability_service/rpc.md#bucketing--the-jakarta-day)).

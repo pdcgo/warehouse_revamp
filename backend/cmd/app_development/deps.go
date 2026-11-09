@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbsession"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
@@ -28,9 +28,9 @@ func NewDocumentConfig(cfg *Config) docstore.Config {
 }
 
 // NewDatabase opens the shared Postgres. GORM reads and writes rows; goose owns the schema.
-// There is deliberately no AutoMigrate.
+// There is deliberately no AutoMigrate. Every session is on the Jakarta calendar (san_dbsession).
 func NewDatabase(cfg *Config) (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
+	return san_dbsession.OpenGORM(cfg.DatabaseURL, &gorm.Config{
 		TranslateError: true,
 		Logger:         logger.Default.LogMode(logger.Warn),
 	})

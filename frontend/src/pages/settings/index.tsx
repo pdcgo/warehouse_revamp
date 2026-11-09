@@ -3,13 +3,14 @@ import type { FormEvent } from "react";
 import { Button, Card, Field, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../api/clients";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useUpdateTeam, useSaveTeamInfo, useTeamDetail } from "../../features/teams/queries";
 import { TeamPicture } from "./components/TeamPicture";
 import { ReturnWarehouseCard } from "./components/ReturnWarehouseCard";
 import { WarehouseFeeCard } from "./components/WarehouseFeeCard";
+import { TeamAgentsCard } from "./components/TeamAgentsCard";
 import { toaster } from "../../components/feedback/Toaster";
-import { isTeamManager } from "../../lib/roles";
+import { canOverseeTeamAgents, isTeamManager } from "../../lib/roles";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 
@@ -29,7 +30,8 @@ export function SettingsPage() {
   // The warehouse this SELLING team ships from by default (#145). 0 = not configured.
   const [defaultWarehouse, setDefaultWarehouse] = useState<bigint>(0n);
 
-  const canEdit = isTeamManager(current?.role);
+  // canWrite first: a monitor's role is the screen role, which alone would offer the Owner's edits.
+  const canEdit = canWrite(current) && isTeamManager(current?.role);
 
   // Keep the name field in sync with whichever team is current.
   useEffect(() => {
@@ -207,6 +209,11 @@ export function SettingsPage() {
 
       {/* What this warehouse charges per order (warehouse-prices-balance-records) — a WAREHOUSE's setting only. */}
       {current.teamType === TeamType.WAREHOUSE && <WarehouseFeeCard teamId={current.teamId} canEdit={canEdit} />}
+
+      {/* The AI agents reading this team, and whether CS and staff may connect one — the OWNER's, with Root and the
+          Administrator (the-owner-decides-who-connects-an-agent). Absent, not disabled, for everyone else: the three RPCs
+          behind it refuse them. */}
+      {canOverseeTeamAgents(current.role) && canWrite(current) && <TeamAgentsCard teamId={current.teamId} />}
     </Stack>
   );
 }

@@ -4,6 +4,7 @@ import { Warehouse } from "lucide-react";
 
 import { TeamSelect } from "../../../components/teams/TeamSelect";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
+import { WarehouseClosedNote } from "../../warehouse/WarehouseClosedNote";
 
 // THE BUILDING THIS ORDER IS BUILT ON — first, and not a card (owner).
 //
@@ -79,8 +80,14 @@ export function WarehouseBand({
               value={value}
               onChange={onChange}
               disabled={disabled}
+              // A closed warehouse is MARKED, still selectable (a-closed-day-warns-and-never-refuses).
+              optionNote={(id) => <WarehouseClosedNote warehouseId={id} compact />}
             />
           </Box>
+
+          {/* WHEN IT WILL BE HANDLED — the chosen warehouse is closed now. A warning, never a refusal: the order is
+              created as usual. */}
+          {chosen && <WarehouseClosedNote warehouseId={value} />}
 
           {/* UNDER THE PICKER IT IS ABOUT, in the error role: this is the one thing stopping the order, and the
               fix is choosing another warehouse or asking this one to set its fee. */}

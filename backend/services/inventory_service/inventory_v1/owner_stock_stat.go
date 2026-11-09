@@ -32,13 +32,13 @@ func (s *Service) OwnerStockStat(
 	// one statement serves both "everywhere" and "this building" without string-building a WHERE.
 	const readySQL = `
 		SELECT COALESCE(SUM(b.stock_count), 0) AS qty,
-		       ROUND(COALESCE(SUM(b.stock_valuation), 0))::bigint AS value
+		       COALESCE(SUM(b.stock_valuation), 0) AS value
 		FROM batches b
 		WHERE b.team_id = ? AND b.stock_count > 0 AND (? = 0 OR b.warehouse_id = ?)`
 
 	var ready struct {
 		Qty   int64
-		Value int64
+		Value float64
 	}
 
 	err := db.Raw(readySQL, teamID, warehouseID, warehouseID).Scan(&ready).Error
@@ -48,14 +48,14 @@ func (s *Service) OwnerStockStat(
 
 	const ongoingSQL = `
 		SELECT COALESCE(SUM(ri.count), 0) AS qty,
-		       ROUND(COALESCE(SUM(ri.total), 0))::bigint AS value
+		       COALESCE(SUM(ri.total), 0) AS value
 		FROM restock_items ri
 		JOIN restocks r ON r.id = ri.restock_id
 		WHERE r.team_id = ? AND r.status IN ? AND (? = 0 OR r.warehouse_id = ?)`
 
 	var ongoing struct {
 		Qty   int64
-		Value int64
+		Value float64
 	}
 
 	err = db.Raw(ongoingSQL, teamID, restockInboundStatuses, warehouseID, warehouseID).Scan(&ongoing).Error

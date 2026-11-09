@@ -83,7 +83,7 @@ func linkWarehouseProductIDs(tx *gorm.DB, warehouseID uint64, productIDs []uint6
 // should see is what somebody has asked it to hold, which is this list.
 //
 // It returns product IDS, not products. inventory_service does not own the catalogue and must not
-// mirror it (HARD RULE 3): the names and SKUs come from product_service, which the caller resolves in
+// mirror it (HARD RULE 3): the names and codes come from product_service, which the caller resolves in
 // one follow-up call to ProductByIds. That keeps a product's name in exactly one place, so renaming it
 // does not leave a stale copy here.
 func (s *Service) WarehouseProductList(

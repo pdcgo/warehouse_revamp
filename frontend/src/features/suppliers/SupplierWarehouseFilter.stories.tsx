@@ -25,7 +25,7 @@ export const MarkedNotWired: Story = {
   play: async ({ canvasElement }) => {
     const slot = within(canvasElement).getByTestId("supplier-warehouse-filter");
     await expect(within(slot).getByRole("combobox")).toHaveAttribute("placeholder", "All warehouses");
-    await expect(within(slot).getByTestId("not-implemented-warehouse")).toHaveTextContent("5");
+    await expect(within(slot).getByTestId("not-implemented-warehouse")).toHaveTextContent("1");
   },
 };
 

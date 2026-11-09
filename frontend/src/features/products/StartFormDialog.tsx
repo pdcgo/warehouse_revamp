@@ -41,7 +41,7 @@ export function StartFormDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teamId: bigint | undefined;
-  product: { id: bigint; name: string; sku: string };
+  product: { id: bigint; name: string; productCode: string };
   /** The page's warehouse lens — preselected when it can be used. */
   initialWarehouseId?: bigint;
   onContinue: (warehouseId: bigint, quantity: number) => void;
@@ -88,7 +88,7 @@ function StartBody({
 }: {
   kind: StartKind;
   teamId: bigint | undefined;
-  product: { id: bigint; name: string; sku: string };
+  product: { id: bigint; name: string; productCode: string };
   initialWarehouseId: bigint;
   onCancel: () => void;
   onContinue: (warehouseId: bigint, quantity: number) => void;
@@ -132,7 +132,7 @@ function StartBody({
           <Stack gap="0">
             <Text fontWeight="bold">{product.name}</Text>
             <Text fontSize="sm" color="fg.muted">
-              {product.sku}
+              {product.productCode}
             </Text>
           </Stack>
 

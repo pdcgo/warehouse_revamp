@@ -47,7 +47,7 @@ export function ValidationScanDialog({
   );
 
   function scan(code: string) {
-    const item = items.find((line) => line.sku.toLowerCase() === code.toLowerCase());
+    const item = items.find((line) => line.productCode.toLowerCase() === code.toLowerCase());
 
     if (!item) {
       beep("wrong");
@@ -124,7 +124,7 @@ export function ValidationScanDialog({
                           py="2"
                           borderRadius="l2"
                           bg={exact ? "success.subtle" : "bg.subtle"}
-                          data-testid={`validate-line-${item.sku}`}
+                          data-testid={`validate-line-${item.productCode}`}
                           data-exact={exact ? "true" : undefined}
                         >
                           <Stack gap="0" flex="1" minW="0">
@@ -132,7 +132,7 @@ export function ValidationScanDialog({
                               {item.name}
                             </Text>
                             <Text fontSize="xs" color="fg.muted" fontFamily="mono">
-                              {item.sku}
+                              {item.productCode}
                             </Text>
                           </Stack>
                           <Badge colorPalette={exact ? "success" : "gray"} variant="subtle" size="lg">

@@ -36,7 +36,7 @@ export function LimitSetOnYou({ teamId, creditorId, creditorName }: LimitSetOnYo
   }
 
   const credit = query.data?.get(creditorId.toString());
-  if (!credit || (credit.debt === 0n && credit.creditLimit === undefined)) {
+  if (!credit || (credit.debt === 0 && credit.creditLimit === undefined)) {
     return null;
   }
 

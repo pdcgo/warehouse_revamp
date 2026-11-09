@@ -45,13 +45,13 @@ export const PagesThroughTheCatalogue: Story = {
     await expect(cards(canvas)).toHaveLength(PAGE_SIZE);
 
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.sku}`, {}, { timeout: 4000 });
-    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.sku}`)).toBeNull());
+    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.productCode}`, {}, { timeout: 4000 });
+    await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.productCode}`)).toBeNull());
     await expect(cards(canvas)).toHaveLength(PAGE_SIZE);
 
     // The short last page.
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${LAST.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${LAST.productCode}`, {}, { timeout: 4000 });
     await waitFor(() => expect(cards(canvas)).toHaveLength(LAST_PAGE_COUNT));
   },
 };
@@ -64,13 +64,13 @@ export const SearchStartsAgainFromPageOne: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${PAGE_2_FIRST.productCode}`, {}, { timeout: 4000 });
     await userEvent.click(canvas.getByTestId("discover-pager-next"));
-    await canvas.findByTestId(`discover-card-${LAST.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${LAST.productCode}`, {}, { timeout: 4000 });
 
     await userEvent.type(canvas.getByTestId("discover-search"), "kopi", { delay: 40 });
 
-    await canvas.findByTestId(`discover-card-${KOPI.sku}`, {}, { timeout: 4000 });
+    await canvas.findByTestId(`discover-card-${KOPI.productCode}`, {}, { timeout: 4000 });
     await expect(canvas.queryByTestId("discover-none-match")).toBeNull();
   },
 };

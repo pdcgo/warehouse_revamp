@@ -32,13 +32,25 @@ service SettlementImporterService {
   rpc ShopeeSettlementImport(ShopeeSettlementImportRequest) returns (stream ShopeeSettlementImportResponse);
 
   // The team's imported files, newest first — the import screen.
-  rpc UploadedFileList(UploadedFileListRequest) returns (UploadedFileListResponse);
+  rpc UploadedFileList(UploadedFileListRequest) returns (UploadedFileListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Files by id — one file's page reads its own row through this.
-  rpc UploadedFileByIds(UploadedFileByIdsRequest) returns (UploadedFileByIdsResponse);
+  rpc UploadedFileByIds(UploadedFileByIdsRequest) returns (UploadedFileByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // One file's rows, by outcome — what was held, what was skipped, what went to the shop.
-  rpc UploadedFileLineList(UploadedFileLineListRequest) returns (UploadedFileLineListResponse);
+  rpc UploadedFileLineList(UploadedFileLineListRequest) returns (UploadedFileLineListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // ── The file ─────────────────────────────────────────────────────────────────────────────────────
@@ -74,8 +86,8 @@ message UploadedFileTally {
   uint32 existing = 3;
   uint32 held = 4;
   uint32 skipped = 5;
-  // Of `posted`: rows whose order ref found no order, posted to the shop
-  // (an-unmatched-ref-posts-to-the-shop).
+  // Of `posted`: rows whose order ref found no order (an-unmatched-ref-posts-to-the-shop), or two or more live ones
+  // (two-live-orders-on-a-ref-post-to-the-shop), posted to the shop.
   uint32 posted_to_shop = 6;
 }
 
@@ -333,6 +345,9 @@ enum UploadedFileLineReason {
   // SKIPPED: a withdrawal that did not succeed, and the refund that returned it
   // (only-a-successful-withdrawal-is-recorded).
   UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL = 6;
+  // POSTED to the shop: its ref found two or more LIVE orders in the shop, so no one order is credited with money
+  // that may be another's (two-live-orders-on-a-ref-post-to-the-shop). `found_order_ids` names them.
+  UPLOADED_FILE_LINE_REASON_SEVERAL_ORDERS = 7;
 }
 
 // One row the file yielded, and what became of it.
@@ -347,8 +362,10 @@ message UploadedFileLine {
   string description = 6;
   // What it became. UNSPECIFIED when the platform's type is not mapped.
   warehouse.settlement.v1.SettlementType settlement_type = 7;
-  // Whole rupiah. A FRACTIONAL_AMOUNT line keeps its figure as written in `detail`.
-  int64 change = 8;
+  // Rupiah, a double like SettlementPost's change — the reader's own figure, never rounded
+  // (the-backend-never-rounds-money). A FRACTIONAL_AMOUNT line is held (a-fractional-statement-line-is-still-held), and
+  // keeps its figure as written in `detail`, with 0 here.
+  double change = 8;
   // YYYY-MM-DD, Jakarta.
   string occurred_on = 9;
   // 0 = the shop.
@@ -358,6 +375,9 @@ message UploadedFileLine {
   string detail = 13;
   // The ledger row it posted or found. 0 when held or skipped.
   uint64 settlement_log_id = 14;
+  // SEVERAL_ORDERS: every live order the ref found in the shop, ascending — so a person can place the money
+  // (two-live-orders-on-a-ref-post-to-the-shop). Empty otherwise.
+  repeated uint64 found_order_ids = 15;
 }
 
 message UploadedFileLineListRequest {
@@ -381,13 +401,13 @@ message UploadedFileLineListRequest {
   warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
 }
 
-// The file page's three views are HELD · SKIPPED · POSTED with NO_ORDER.
+// The file page's three views are HELD · SKIPPED · POSTED to the shop (NO_ORDER, SEVERAL_ORDERS).
 message UploadedFileLineListFilter {
   uint64 uploaded_file_id = 1 [(buf.validate.field).uint64.gt = 0];
   // Empty = every outcome.
   repeated UploadedFileLineOutcome outcomes = 2 [(buf.validate.field).repeated.max_items = 4];
   // Empty = every reason.
-  repeated UploadedFileLineReason reasons = 3 [(buf.validate.field).repeated.max_items = 6];
+  repeated UploadedFileLineReason reasons = 3 [(buf.validate.field).repeated.max_items = 7];
 }
 
 enum UploadedFileLineListDataType {

@@ -12,7 +12,7 @@ import { formatRupiahNumber } from "../../lib/money";
 export interface ProductLine {
   /** Stable key for the row — an id, a SKU, anything unique within the list. */
   id: string;
-  sku: string;
+  productCode: string;
   name: string;
   quantity: bigint;
   /**
@@ -130,7 +130,7 @@ export function ProductLinesDialog({
                       <Text fontWeight="bold">{line.name}</Text>
                       <Flex justify="space-between" gap="3" fontSize="sm">
                         <Text color="fg.muted" minW="0" truncate>
-                          {line.sku} · {line.quantity.toString()}
+                          {line.productCode} · {line.quantity.toString()}
                           {priced && ` × ${formatRupiahNumber(unitPrice(line))}`}
                         </Text>
                         {priced && <Text whiteSpace="nowrap">{formatRupiahNumber(line.totalPrice ?? 0)}</Text>}
@@ -167,7 +167,7 @@ export function ProductLinesDialog({
                         {lines.map((line) => (
                           // A row lights up under the pointer, every cell (a-table-row-lights-up).
                           <Table.Row key={line.id} css={{ _hover: { "& > td": { bg: "bg.muted" } } }}>
-                            <Table.Cell whiteSpace="nowrap">{line.sku}</Table.Cell>
+                            <Table.Cell whiteSpace="nowrap">{line.productCode}</Table.Cell>
                             {/* The one column allowed to be long, so it is the one that wraps. */}
                             <Table.Cell minW="40">{line.name}</Table.Cell>
                             <Table.Cell textAlign="end">{line.quantity.toString()}</Table.Cell>

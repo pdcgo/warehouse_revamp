@@ -183,7 +183,8 @@ ambiguous. Most single-timezone standards carry a DST caveat; this one does not.
 ([a-table-date-is-short-and-every-time-is-wib](../technical/frontend/context_decision.md#a-table-date-is-short-and-every-time-is-wib)).
 The date pickers and range filters still cut days at the viewer's own midnight.
 
-⚠ **Not applied yet — deferred by the owner.** The DSN sets no timezone today, so a fresh checkout is on
-**UTC**. The ordered change list is
-[development_state/architecture](../development_state/architecture/context.md), including the one thing
-to decide first: a session-timezone change does **not** rewrite existing `DATE` values.
+✅ **Applied 2026-11-05.** Every connection is opened through `backend/pkgs/san_dbsession`, which sets the session's
+`timezone` to `Asia/Jakarta` whatever the DSN says — the server, `san` and the tests alike, so a test runs on the
+production calendar. A Go `time.Time` bound against an instant column is NOT converted by the session: parse such a
+day bound with a Jakarta location (`time.ParseInLocation`). State and the services checked:
+[development_state/architecture](../development_state/architecture/context.md).

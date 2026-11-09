@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Flex, HStack, Icon, Link, SimpleGrid, Separator, Stack, Text } from "@chakra-ui/react";
-import { ExternalLink } from "lucide-react";
+import { Flex, HStack, SimpleGrid, Separator, Stack, Text } from "@chakra-ui/react";
 
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { committedValue, courierCharge, goodsTotal } from "./summary";
 import { PhotoView } from "./PhotoView";
+import { ReceiptPhoto } from "./ReceiptPhoto";
 import { courierSlipSample } from "./photoSamples";
 import { useFinancialAccount } from "../financialAccount/queries";
 import { useShipmentChannelsByIds } from "../shipment/queries";
@@ -38,12 +38,21 @@ export interface RestockParty {
 
 export function DeliveryFacts({
   request,
+  teamId,
+  opensAs,
   party,
   narrow = false,
   withCourierCharge = false,
   courierCharge,
 }: {
   request: RestockRequest;
+  /** The reading team — the scope of the call that mints the label photo's link. */
+  teamId: bigint;
+  /**
+   * How this side opens the label photo, the selling team's document: `owner` (the selling team) or `warehouse` (the
+   * warehouse it is going to, through RestockReceiptPhoto) — ReceiptPhoto.
+   */
+  opensAs: "owner" | "warehouse";
   party: RestockParty;
   /** In a side column — one fact a row, whatever the screen. */
   narrow?: boolean;
@@ -72,7 +81,7 @@ export function DeliveryFacts({
       </Fact>
       {withCourierCharge && <Fact label={t("restock.detail.section.courier")}>{courierCharge}</Fact>}
       <Fact label={t("restock.detail.receiptPhotoLabel")}>
-        <ReceiptPhoto url={request.receiptFile} />
+        <ReceiptPhoto documentId={request.receiptFile} teamId={teamId} requestId={request.id} opensAs={opensAs} />
       </Fact>
       <Fact label={t("restock.detail.created")}>{formatUnixDateTime(request.createdAtUnix)}</Fact>
       <Fact label={t("restock.detail.arrivedAt")}>
@@ -190,21 +199,5 @@ function MoneyLine({ label, value, testId }: { label: string; value: number; tes
         {formatRupiahNumber(value)}
       </Text>
     </Flex>
-  );
-}
-
-// The photo of the label — a link out, since it is somebody's phone picture rather than something to lay out here.
-function ReceiptPhoto({ url }: { url: string }) {
-  const { t } = useTranslation();
-
-  return url ? (
-    <Link href={url} target="_blank" rel="noreferrer" fontSize="sm" data-testid="restock-detail-receipt-photo">
-      <Icon as={ExternalLink} boxSize="3" />
-      {t("restock.detail.receiptPhoto")}
-    </Link>
-  ) : (
-    <Text as="span" fontSize="sm" color="fg.muted">
-      {t("restock.detail.noReceiptPhoto")}
-    </Text>
   );
 }

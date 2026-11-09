@@ -1,11 +1,17 @@
 package inventory_v1_test
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
@@ -30,7 +36,7 @@ func TestStockCost_TheAverageOfTheUnitsHeld(t *testing.T) {
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
 				{
-					ProductId: productX, Sku: "SKU1", Name: "Widget",
+					ProductId: productX, ProductCode: "SKU1", Name: "Widget",
 					Count: lineQty, Total: float64(unitPrice * lineQty),
 				},
 			},
@@ -69,7 +75,7 @@ func TestStockCost_TheAverageOfTheUnitsHeld(t *testing.T) {
 
 	// The two accepted deliveries, equal units at 5.000 and 7.000 — never the pending 9.999.
 	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 6000 {
-		t.Fatalf("unit cost = %d, want 6000 — the average of the units held", got)
+		t.Fatalf("unit cost = %v, want 6000 — the average of the units held", got)
 	}
 }
 
@@ -105,7 +111,7 @@ func TestStockCost_ScopedToTheWarehouse(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: theirs,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 5, Total: 4242},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 5, Total: 4242},
 		},
 	}))
 	if err != nil {
@@ -149,7 +155,7 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			// Deliberately indivisible: 10.000 / 3 = 3.333,33…
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 3, Total: 10000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 3, Total: 10000},
 		},
 	}))
 	if err != nil {
@@ -180,9 +186,10 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 		t.Fatalf("costs = %+v, want one line", stockCostLines(res.Msg))
 	}
 
-	// The batch keeps 3.333,33… as is; this contract carries whole rupiah, so the read rounds it to 3.333.
-	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 3333 {
-		t.Fatalf("unit cost = %d, want 3333 (10000 / 3, to the rupiah)", got)
+	// The batch keeps 3.333,33… as is, and since the stock reads became doubles (every-ledger-moves-to-double-rounded-
+	// when-frozen) so does the read: the unrounded unit cost, compared at san_money's 4 places — never pre-rounded.
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); !san_money.Equal(got, 10000.0/3) {
+		t.Fatalf("unit cost = %v, want 3333.3333… (10000 / 3, unrounded)", got)
 	}
 }
 
@@ -206,7 +213,7 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
@@ -231,7 +238,7 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 	}
 
 	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 12000 {
-		t.Fatalf("HPP = %d, want 12000 (10.000 goods + 2.000 freight share)", got)
+		t.Fatalf("HPP = %v, want 12000 (10.000 goods + 2.000 freight share)", got)
 	}
 }
 
@@ -248,7 +255,7 @@ func TestStockCost_FreightIsSpreadOverEveryUnitOrdered(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		ShipmentCost: 20000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
@@ -281,7 +288,7 @@ func TestStockCost_FreightIsSpreadOverEveryUnitOrdered(t *testing.T) {
 
 	// goods 100.000 / 10 = 10.000 ; freight 20.000 / 10 = 2.000 ; the batch's price 12.000.
 	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 12000 {
-		t.Fatalf("HPP = %d, want 12000 — freight over all 10 ordered", got)
+		t.Fatalf("HPP = %v, want 12000 — freight over all 10 ordered", got)
 	}
 }
 
@@ -299,8 +306,8 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		ShipmentCost: 20000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 8, Total: 80000},
-			{ProductId: productY, Sku: "SKU2", Name: "Gadget", Count: 2, Total: 40000},
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 8, Total: 80000},
+			{ProductId: productY, ProductCode: "SKU2", Name: "Gadget", Count: 2, Total: 40000},
 		},
 	}))
 	if err != nil {
@@ -325,15 +332,90 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 	// 10 units on the request, so every unit carries 20.000 / 10 = 2.000 of freight.
 	//   Widget: 80.000 / 8 = 10.000 + 2.000 = 12.000
 	//   Gadget: 40.000 / 2 = 20.000 + 2.000 = 22.000
-	want := map[uint64]int64{productX: 12000, productY: 22000}
+	want := map[uint64]float64{productX: 12000, productY: 22000}
 
 	for _, c := range stockCostLines(res.Msg) {
 		if got := c.GetUnitCost(); got != want[c.GetProductId()] {
-			t.Fatalf("product %d HPP = %d, want %d", c.GetProductId(), got, want[c.GetProductId()])
+			t.Fatalf("product %v HPP = %v, want %v", c.GetProductId(), got, want[c.GetProductId()])
 		}
 	}
 
 	if len(stockCostLines(res.Msg)) != 2 {
 		t.Fatalf("costs = %+v, want both products", stockCostLines(res.Msg))
+	}
+}
+
+// THE WAREHOUSE PRODUCT PAGE READS IT (/inventories/products/:id): its one caller is a warehouse screen, so the policy
+// admits the warehouse roles — it once admitted only the selling roles, from when it was an order's cost, and the page
+// answered permission_denied to a warehouse Owner or Admin. RackDetail and RackStock already give every warehouse role
+// the same average for a shelf.
+func TestStockCost_PolicyAdmitsTheWarehouse(t *testing.T) {
+	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName("warehouse.inventory.v1.StockCostRequest"))
+	if err != nil {
+		t.Fatalf("descriptor: %v", err)
+	}
+
+	policy := san_auth.PolicyOf(desc.(protoreflect.MessageDescriptor))
+	if policy == nil {
+		t.Fatalf("StockCostRequest has no policy")
+	}
+
+	for _, role := range []role_basev1.Role{
+		role_basev1.Role_ROLE_WAREHOUSE_OWNER,
+		role_basev1.Role_ROLE_WAREHOUSE_ADMIN,
+		role_basev1.Role_ROLE_WAREHOUSE_STAFF,
+	} {
+		if !slices.Contains(policy.GetRoles(), role) {
+			t.Errorf("StockCost is closed to %s — the warehouse product page reads it", role)
+		}
+	}
+}
+
+// A WAREHOUSE READS ITS OWN BUILDING ONLY: scoped to its team, it gets its own shelf's average, and a filter naming
+// another warehouse is refused rather than answered.
+func TestStockCost_AWarehouseReadsItsOwnBuildingOnly(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, mine, theirs uint64 = 2, 5, 6
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: mine,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: productX, ProductCode: "SKU1", Name: "Widget", Count: 5, Total: 50000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: mine, RequestId: created.Msg.GetRequest().GetId(),
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
+	}))
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+
+	asAdmin := san_auth.WithCallerRole(ctx, role_basev1.Role_ROLE_WAREHOUSE_ADMIN)
+
+	res, err := svc.StockCost(asAdmin, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: mine, Filter: &inventoryv1.StockCostFilter{WarehouseId: mine, Ids: []uint64{productX}},
+	}))
+	if err != nil {
+		t.Fatalf("its own building: %v", err)
+	}
+
+	lines := stockCostLines(res.Msg)
+	if len(lines) != 1 || lines[0].GetUnitCost() != 10000 {
+		t.Fatalf("its own building = %+v, want Widget at 10.000", lines)
+	}
+
+	_, err = svc.StockCost(asAdmin, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: mine, Filter: &inventoryv1.StockCostFilter{WarehouseId: theirs, Ids: []uint64{productX}},
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("another warehouse = %v, want PermissionDenied", err)
 	}
 }

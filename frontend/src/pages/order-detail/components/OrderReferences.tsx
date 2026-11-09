@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Flex, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
+import { courierCodeOf, useShippingCatalogue } from "../../../features/shipping/catalogue";
 
 import { CopyText } from "../../../components/chrome/CopyText";
 
@@ -19,16 +20,19 @@ import { CopyText } from "../../../components/chrome/CopyText";
 // ⚠ NO RETURN RESI (the-return-leg-waits-for-tracking): there is no return shipment record, and the
 // return resi is asked again when tracking is designed.
 export function OrderReferences({
-  courier,
+  channelId = 0n,
   receiptCode,
   orderRefId,
 }: {
-  courier?: string;
+  /** The order's `shipment_channel_id` — printed as its courier code, read from the shared catalogue. 0 = none. */
+  channelId?: bigint;
   receiptCode?: string;
   /** `order_external_ref_id`. "" on a phone order. */
   orderRefId: string;
 }) {
   const { t } = useTranslation();
+  const { couriers, loading } = useShippingCatalogue();
+  const courier = courierCodeOf(couriers, channelId, loading);
 
   return (
     <Stack gap="3" data-testid="order-references">

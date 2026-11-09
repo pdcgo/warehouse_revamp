@@ -38,7 +38,7 @@ export function DiscoverPrice({
   const { t } = useTranslation();
   // The rule is shared with the discover detail (discoverPriceOf), so a card and its page never disagree.
   const price = discoverPriceOf(productId, markupBps, own, stock);
-  const range = (r?: { min: bigint; max: bigint }) => (r ? formatRupiahRange(r.min, r.max) : "—");
+  const range = (r?: { min: number; max: number }) => (r ? formatRupiahRange(r.min, r.max) : "—");
 
   if (own) {
     return (

@@ -5,23 +5,15 @@ import type { PendingList, PendingPart } from "../pending/registry";
 // `features/pending` for the four kinds and why a badge's number is its position in this list.
 
 /** One unwired part. The id is also its i18n key (`suppliers.pending.<id>`). */
-export type SupplierListPendingId = "sold" | "ready" | "soldRange" | "readyRange" | "warehouse";
+export type SupplierListPendingId = "warehouse";
 
+// Terjual and Siap themselves are REAL since 2026-11-07 (InventoryService.SupplierGoods, features/suppliers/goods.ts) —
+// their two `sample` entries went, and so did the range pills' two `dropped` ones once the list narrowed by them on the
+// server (`the-range-pills-are-a-fixed-set`), so the warehouse is ⚠1.
 const PARTS: PendingPart<SupplierListPendingId>[] = [
-  // SAMPLE FIGURES (owner: *"tampilkan saja dulu, tulis unimplemented karena memang belum ada"*) — every unit sold, ALL
-  // time, and the last order (*"tidak pakai api itu, semuanya saja"*): summed over the supplier's products, which
-  // nothing yet names — the store-product link is not built, and nothing sums per supplier.
-  { id: "sold", kind: "sample" },
-  // …and its ready stock and its last restock, the same way.
-  { id: "ready", kind: "sample" },
-  // THE RANGE PILLS (owner: *"di sini kita akan ada filter untuk keduanya, tentu masih unimplemented"*) — a pick is held on
-  // screen and thrown away: the list cannot be narrowed by a sum that does not exist, and where the bands come from is
-  // open (figureRanges.ts).
-  { id: "soldRange", kind: "dropped" },
-  { id: "readyRange", kind: "dropped" },
   // THE WAREHOUSE (owner: *"di sini ada filter gudang dan di suppliers juga sama"*) — the suppliers whose restocks are
-  // received at that warehouse; held on screen and thrown away, since nothing yet says where a supplier's goods are
-  // received. Last in the list, so the numbers already on screen keep their meaning.
+  // received at that warehouse; held on screen and thrown away: inventory knows where a supplier's goods were received
+  // (SupplierGoods by warehouse), but supplier_service's list cannot be narrowed by it yet.
   { id: "warehouse", kind: "dropped" },
 ];
 

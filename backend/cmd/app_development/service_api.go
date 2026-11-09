@@ -43,6 +43,7 @@ import (
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_service "github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/agent_credentials"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	warehouse_service "github.com/pdcgo/warehouse_revamp/backend/services/warehouse_service"
 	warehouse_v1 "github.com/pdcgo/warehouse_revamp/backend/services/warehouse_service/warehouse_v1"
@@ -72,6 +73,10 @@ func NewServeMux(
 	accountService *financial_account_v1.Service,
 	supplierService *supplier_v1.Service,
 	warehouseService *warehouse_v1.Service,
+	agentService *user_v1.AgentService,
+	agentStore *agent_credentials.Store,
+	agents *AgentEndpoints,
+	teamKinds access_interceptors.TeamKinds,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
@@ -100,7 +105,13 @@ func NewServeMux(
 	// interceptor at all — their request_policy options were written down and never enforced.
 	opts := connect.WithInterceptors(
 		validator,
-		access_interceptors.NewInterceptor(signer, resolver),
+		// An AI agent's own credential is checked against user_service's store (an-agent-gets-its-own-team-credential):
+		// read-only, its one team — enforced here, for every RPC, not by the MCP's tool list.
+		access_interceptors.NewInterceptor(signer, resolver,
+			access_interceptors.WithAgentVerifier(agentStore),
+			// The admin team monitors warehouse and selling teams only (the-admin-team-monitors-all-and-manages-its-own).
+			access_interceptors.WithTeamKinds(teamKinds),
+		),
 	)
 
 	mux := http.NewServeMux()
@@ -113,7 +124,7 @@ func NewServeMux(
 	// mounts them and advertises exactly those over gRPC reflection. Adding a service is one line
 	// here plus its register.go — reflection can never drift from what is actually served.
 	san_grpc.Register(mux,
-		user_service.NewRegister(mux, authService, userService, opts),
+		user_service.NewRegister(mux, authService, userService, agentService, opts),
 		team_service.NewRegister(mux, teamService, opts),
 		shipment_service.NewRegister(mux, shipmentService, opts),
 		product_service.NewRegister(mux, productService, opts),
@@ -130,6 +141,10 @@ func NewServeMux(
 		supplier_service.NewRegister(mux, supplierService, opts),
 		warehouse_service.NewRegister(mux, warehouseService, opts),
 	)
+
+	// The AI agents' doors (our-server-hosts-the-mcp): the OAuth that connects one, and /mcp. Plain HTTP — an agent
+	// speaks OAuth and MCP, not Connect — so they are mounted beside the services rather than through san_grpc.
+	agents.Mount(mux)
 
 	return mux, nil
 }
@@ -172,5 +187,17 @@ func withCORS(cfg *Config, handler http.Handler) http.Handler {
 		ExposedHeaders: connectcors.ExposedHeaders(),
 	})
 
-	return middleware.Handler(handler)
+	app := middleware.Handler(handler)
+
+	// An AGENT's requests are not our app's — ChatGPT, Claude — so they bypass the app's origin list and answer their own
+	// CORS. The bearer, or PKCE, is what authorizes them, never an origin.
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isAgentPath(r.URL.Path) {
+			handler.ServeHTTP(w, r)
+
+			return
+		}
+
+		app.ServeHTTP(w, r)
+	})
 }

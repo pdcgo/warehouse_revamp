@@ -85,7 +85,7 @@ func TestRace_LiabilityPaymentConfirm(t *testing.T) {
 
 	// AND THE MONEY IS RIGHT, which is the claim that actually matters. A count can be right while the
 	// arithmetic is wrong, so the balance is read rather than inferred.
-	var balance int64
+	var balance float64
 
 	err = db.Raw(`SELECT balance FROM liability_balances WHERE team_id = ? AND counterparty_id = ?`,
 		selling, warehouse).Scan(&balance).Error
@@ -94,7 +94,7 @@ func TestRace_LiabilityPaymentConfirm(t *testing.T) {
 	}
 
 	if balance != 0 {
-		t.Fatalf("balance = %d after 8 concurrent confirms of a 15000 payment against a 15000 debt, "+
+		t.Fatalf("balance = %v after 8 concurrent confirms of a 15000 payment against a 15000 debt, "+
 			"want 0 — a positive number here means the payer was credited money nobody sent", balance)
 	}
 
@@ -187,7 +187,7 @@ func TestRace_LiabilityPaymentConfirmAgainstReject(t *testing.T) {
 		t.Fatalf("read status: %v", err)
 	}
 
-	var balance int64
+	var balance float64
 
 	err = db.Raw(`SELECT balance FROM liability_balances WHERE team_id = ? AND counterparty_id = ?`,
 		selling, warehouse).Scan(&balance).Error
@@ -199,13 +199,13 @@ func TestRace_LiabilityPaymentConfirmAgainstReject(t *testing.T) {
 	case "confirmed":
 		// The money moved, so the debt is squared.
 		if balance != 0 {
-			t.Fatalf("status=confirmed but balance=%d, want 0 — the claim says paid and the ledger "+
+			t.Fatalf("status=confirmed but balance=%v, want 0 — the claim says paid and the ledger "+
 				"disagrees", balance)
 		}
 	case "rejected":
 		// A rejection posts NOTHING, so the debt must be untouched.
 		if balance != -15000 {
-			t.Fatalf("status=rejected but balance=%d, want -15000 — a refused claim settled a debt",
+			t.Fatalf("status=rejected but balance=%v, want -15000 — a refused claim settled a debt",
 				balance)
 		}
 

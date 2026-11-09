@@ -43,7 +43,7 @@ func raceHarness(t *testing.T) *san_race.Harness {
 // on is a service whose every write runs inside tx — an Interleave step drives the REAL handler, its own
 // transaction becoming a savepoint under the step's.
 func on(tx *gorm.DB) *financial_account_v1.Service {
-	return financial_account_v1.NewService(tx, testShops)
+	return financial_account_v1.NewService(tx, testShops, nil)
 }
 
 func capitalIn(svc *financial_account_v1.Service, id uint64, amount float64) error {
@@ -73,7 +73,7 @@ func storedAccount(t *testing.T, db *gorm.DB, id uint64) m.FinancialAccount {
 // balance_after is distinct, and the day's report closes on the balance.
 func TestRace_Post_EightCapitalsLoseNothing(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	a := mustCreate(t, svc, cash(teamA, "Kas", 0))
 
 	res := h.Race(t, 8, func(int) error { return capitalIn(svc, a.GetId(), 1_000) })
@@ -105,7 +105,7 @@ func TestRace_Post_EightCapitalsLoseNothing(t *testing.T) {
 // The PROOF: a second post on the same account waits for the first, then builds on its balance.
 func TestInterleave_Post_ASecondPostWaitsForTheFirst(t *testing.T) {
 	h := raceHarness(t)
-	a := mustCreate(t, financial_account_v1.NewService(h.DB(), testShops), cash(teamA, "Kas", 0))
+	a := mustCreate(t, financial_account_v1.NewService(h.DB(), testShops, nil), cash(teamA, "Kas", 0))
 
 	sched := h.Interleave(t,
 		san_race.Do("A", "A posts 1.000", func(tx *gorm.DB) error { return capitalIn(on(tx), a.GetId(), 1_000) }),
@@ -131,7 +131,7 @@ func TestInterleave_Post_ASecondPostWaitsForTheFirst(t *testing.T) {
 // and the money is conserved.
 func TestRace_Transfer_OppositeDirectionsNeverDeadlock(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	x := mustCreate(t, svc, bca(teamA, "X", "R000001", 1_000_000))
 	y := mustCreate(t, svc, bca(teamA, "Y", "R000002", 1_000_000))
 
@@ -163,7 +163,7 @@ func TestRace_Transfer_OppositeDirectionsNeverDeadlock(t *testing.T) {
 // An archive and a post at the same instant, ten times over: an archived account never holds money.
 func TestRace_Archive_NeverWithMoneyInIt(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 
 	for round := range 10 {
 		a := mustCreate(t, svc, cash(teamA, fmt.Sprintf("Kas %d", round), 0))
@@ -187,7 +187,7 @@ func TestRace_Archive_NeverWithMoneyInIt(t *testing.T) {
 // The PROOF: an archive arriving while a post holds the account waits, then sees the money and refuses.
 func TestInterleave_Archive_SeesTheBalanceAPostLeft(t *testing.T) {
 	h := raceHarness(t)
-	a := mustCreate(t, financial_account_v1.NewService(h.DB(), testShops), cash(teamA, "Kas", 0))
+	a := mustCreate(t, financial_account_v1.NewService(h.DB(), testShops, nil), cash(teamA, "Kas", 0))
 
 	var archiveErr error
 
@@ -216,7 +216,7 @@ func TestInterleave_Archive_SeesTheBalanceAPostLeft(t *testing.T) {
 // Eight teams recording one number at once: one row, the rest AlreadyExists — never Internal.
 func TestRace_Create_OneNumberOneRow(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 
 	res := h.Race(t, 8, func(i int) error {
 		_, err := create(svc, bca(teamA+uint64(i*10), fmt.Sprintf("BCA %d", i), "R555555", 0))
@@ -246,7 +246,7 @@ func TestRace_Create_OneNumberOneRow(t *testing.T) {
 
 // ── the withdrawal listener ─────────────────────────────────────────────────────────────────────
 
-func deliver(svc *financial_account_v1.Service, eventID string, shop uint64, change int64) error {
+func deliver(svc *financial_account_v1.Service, eventID string, shop uint64, change float64) error {
 	return svc.WithdrawalHandler()(context.Background(), settlementEvent(eventID, teamA, shop, settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, change, day(0)))
 }
 
@@ -254,7 +254,7 @@ func deliver(svc *financial_account_v1.Service, eventID string, shop uint64, cha
 // posted ONCE, and every delivery is acked.
 func TestRace_Withdrawal_OneEventFourDeliveries(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 	a := mustCreate(t, svc, bca(teamA, "BCA", "R000101", 0))
 
 	_, err := svc.FinancialAccountShopSet(asAni(), connect.NewRequest(&financial_accountv1.FinancialAccountShopSetRequest{TeamId: teamA, ShopId: 501, AccountId: a.GetId()}))
@@ -278,7 +278,7 @@ func TestRace_Withdrawal_OneEventFourDeliveries(t *testing.T) {
 // insert fails and is redelivered — and then every withdrawal is in it, once.
 func TestRace_Withdrawal_ANewShopGetsOneUnknownAccount(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 
 	res := h.Race(t, 4, func(i int) error { return deliver(svc, fmt.Sprintf("race-new-shop-%d", i), 502, -10_000) })
 	res.Report(t)
@@ -311,7 +311,7 @@ func TestRace_Withdrawal_ANewShopGetsOneUnknownAccount(t *testing.T) {
 // redelivery follows the shop to the real one.
 func TestInterleave_Withdrawal_FollowsAShopMovedWhileItWaited(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
 
 	if err := deliver(svc, "move-seed", 501, -50_000); err != nil {
 		t.Fatalf("seed withdrawal: %v", err)

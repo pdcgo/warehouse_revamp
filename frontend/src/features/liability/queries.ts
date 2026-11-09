@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { liabilityClient, liabilityPaymentClient, liabilityTermsClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
+import { LiabilityLogDirection, LiabilityPaymentSide } from "../../gen/warehouse/liability/v1/liability_pb";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
   creditRowData,
   creditsFromByIds,
@@ -15,6 +17,8 @@ import {
   termsFromList,
   termsRowData,
 } from "./adapt";
+import type { DateRange } from "../../components/datetime/DateRangePicker";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 
 // The Liability screens' reads (#185).
 //
@@ -22,25 +26,61 @@ import {
 // function called in-process, because nothing outside this system may assert that one team owes
 // another. Payments (#188) and terms (#189) will add writes of their own — postings will not.
 
+// A picked date range → the `yyyy-mm-dd` pair the Team Balance lists filter on (backlog #34); "" is an open end, and
+// ALL_DATES is two of them. The server reads each day as a JAKARTA day (the-liability-day-is-the-jakarta-day).
+//
+// A RELATIVE range ("last 7 days") carries no dates, only the count — `jakartaWindowOf` resolves it against JAKARTA's
+// today (backlog #37), so the days asked for are the server's days whatever the viewer's clock says.
+export function liabilityPeriod(range: DateRange): { from: string; to: string } {
+  return jakartaWindowOf(range);
+}
+
+// THE PAIR PAGE'S PREVIOUS ROWS, KEPT ONLY FOR THE SAME PAIR. A new tab, page or date range refines the same question,
+// so the rows on screen stay while the next ones load (`listQuery`, HARD RULE 10) — but another pair is a different
+// subject, and its rows (and its balance) must never be drawn under this pair's name for a beat.
+function keepWithinPair(counterpartyId: bigint) {
+  return <T>(previous: T | undefined, previousQuery: { queryKey: readonly unknown[] } | undefined): T | undefined => {
+    const params = previousQuery?.queryKey[2] as { counterpartyId?: string } | undefined;
+
+    return params?.counterpartyId === counterpartyId.toString() ? previous : undefined;
+  };
+}
+
+// THE ROW FILTERS ARE THE SERVER'S (backlog #34): the search over the counterparty's name and code, its team type and
+// "awaiting my confirmation" narrow BEFORE the page, so a match on page 2 is found and the pager counts the matches.
+// They used to cut the 20 loaded rows here, which reported "no team found" while the team sat on page 2. The summary
+// tiles still read the whole set — a search is not a scope (the-summary-is-tiles-on-the-list).
 export function useLiabilityPositions(args: {
   teamId: bigint | undefined;
   page: number;
   pageSize: number;
   unsettledOnly: boolean;
+  /** The search, already trimmed and debounced. */
+  q?: string;
+  counterpartyType?: TeamType;
+  awaitingOnly?: boolean;
 }) {
-  const { teamId, page, pageSize, unsettledOnly } = args;
+  const {
+    teamId,
+    page,
+    pageSize,
+    unsettledOnly,
+    q = "",
+    counterpartyType = TeamType.UNSPECIFIED,
+    awaitingOnly = false,
+  } = args;
 
   return useQuery({
     // ⚠ `listQuery` — a page turn or a filter flip REFINES THE SAME QUESTION, so the previous rows stay
     // on screen while the next ones load (HARD RULE 10). Without it the table tears down on every
     // interaction, which is strictly worse than the staleness it was replacing.
     ...listQuery,
-    queryKey: key.liability(teamId, { page, pageSize, unsettledOnly }),
+    queryKey: key.liability(teamId, { page, pageSize, unsettledOnly, q, counterpartyType, awaitingOnly }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await liabilityClient.liabilityPositionList({
         teamId: teamId!,
-        filter: { unsettledOnly },
+        filter: { unsettledOnly, q, counterpartyType, awaitingOnly },
         dataRequest: positionRowData(),
         page: { page, limit: pageSize },
       });
@@ -83,31 +123,53 @@ export function useLiabilityAwaiting(teamId: bigint | undefined, enabled: boolea
   });
 }
 
+// ONE PAIR'S BALANCE LOG, one tab's cut of it (backlog #34): the period — `yyyy-mm-dd` Jakarta days, "" an open end —
+// and the direction narrow on the SERVER before the page, so each tab reads its own page and its own count. Each row's
+// *Balance after* is the server's stored running balance of the WHOLE ledger, and `balance` the pair's now, whatever
+// the cut (the-team-balance-screens-are-accepted).
 export function useLiabilityLogs(args: {
   teamId: bigint | undefined;
   counterpartyId: bigint;
   page: number;
   pageSize: number;
+  from?: string;
+  to?: string;
+  direction?: LiabilityLogDirection;
 }) {
-  const { teamId, counterpartyId, page, pageSize } = args;
+  const {
+    teamId,
+    counterpartyId,
+    page,
+    pageSize,
+    from = "",
+    to = "",
+    direction = LiabilityLogDirection.UNSPECIFIED,
+  } = args;
 
   return useQuery({
+    placeholderData: keepWithinPair(counterpartyId),
     queryKey: key.liability(teamId, {
       counterpartyId: counterpartyId.toString(),
       page,
       pageSize,
+      from,
+      to,
+      direction,
     }),
     enabled: teamId !== undefined && counterpartyId > 0n,
     queryFn: async () => {
       const res = await liabilityClient.liabilityLogList({
         teamId: teamId!,
-        filter: { counterpartyId },
+        filter: { counterpartyId, from, to, direction },
         dataRequest: logRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
         entries: logsFromList(res.items, res.ids),
+        // The cut these rows were read for — while the next tab's page loads, the kept rows are another cut's, and the
+        // screen must not draw them under this tab.
+        direction,
         balance: res.balance,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
@@ -115,38 +177,56 @@ export function useLiabilityLogs(args: {
   });
 }
 
-// The payment records for ONE relationship (#188). `awaitingMyConfirmation` is a SERVER-SIDE filter —
-// a paginated list narrowed on the client would report the unfiltered total beside the wrong rows
-// (see LiabilityPaymentListRequest). The "my payments / team payments" split the screen draws is a
-// different cut (payer side), done client-side over the loaded page.
+// The payment records for ONE relationship (#188). Every filter is the SERVER's — a paginated list narrowed on the
+// client reports the unfiltered total beside the wrong rows (see LiabilityPaymentListRequest): `awaitingMyConfirmation`,
+// the period (`yyyy-mm-dd` Jakarta days, the day it was RECORDED) and the SIDE — My payments (this team paid) and Their
+// payments (this team was paid), each its own page since backlog #34 rather than a cut of one 50-row read.
 export function useLiabilityPayments(args: {
   teamId: bigint | undefined;
   counterpartyId: bigint;
   awaitingMyConfirmation: boolean;
   page: number;
   pageSize: number;
+  from?: string;
+  to?: string;
+  side?: LiabilityPaymentSide;
 }) {
-  const { teamId, counterpartyId, awaitingMyConfirmation, page, pageSize } = args;
+  const {
+    teamId,
+    counterpartyId,
+    awaitingMyConfirmation,
+    page,
+    pageSize,
+    from = "",
+    to = "",
+    side = LiabilityPaymentSide.UNSPECIFIED,
+  } = args;
 
   return useQuery({
+    placeholderData: keepWithinPair(counterpartyId),
     queryKey: key.liability(teamId, {
       payments: true,
       counterpartyId: counterpartyId.toString(),
       awaitingMyConfirmation,
       page,
       pageSize,
+      from,
+      to,
+      side,
     }),
     enabled: teamId !== undefined && counterpartyId > 0n,
     queryFn: async () => {
       const res = await liabilityPaymentClient.liabilityPaymentList({
         teamId: teamId!,
-        filter: { counterpartyId, awaitingMyConfirmation },
+        filter: { counterpartyId, awaitingMyConfirmation, from, to, side },
         dataRequest: paymentRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
         payments: paymentsFromList(res.items, res.ids),
+        // As the ledger's `direction`: the side these rows were read for.
+        side,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -163,7 +243,7 @@ export function useRecordPayment() {
     mutationFn: (args: {
       teamId: bigint;
       creditorTeamId: bigint;
-      amount: bigint;
+      amount: number;
       note: string;
       // ⚠ AT LEAST ONE, and the server refuses without (a-payment-must-carry-proof). Each must
       // already be SHARED with the creditor — see useProofUpload, which does both.
@@ -310,13 +390,18 @@ export function useLiabilityTerms(args: {
 //
 // ⚠ `counterpartyId` is `bigint | undefined`, NOT `0n` for "all" — 0 is the default row, a real
 // counterparty here. Sending 0 asks for the default row's history and nothing else.
+//
+// `from` / `to` — the pair page's one date range, as `yyyy-mm-dd` Jakarta days on the day a limit CHANGED, narrowing on
+// the server before the page (backlog #34). "" leaves that end open.
 export function useTermsHistory(args: {
   teamId: bigint | undefined;
   counterpartyId: bigint | undefined;
   page: number;
   pageSize: number;
+  from?: string;
+  to?: string;
 }) {
-  const { teamId, counterpartyId, page, pageSize } = args;
+  const { teamId, counterpartyId, page, pageSize, from = "", to = "" } = args;
 
   return useQuery({
     ...listQuery,
@@ -325,12 +410,14 @@ export function useTermsHistory(args: {
       counterpartyId: counterpartyId === undefined ? "all" : counterpartyId.toString(),
       page,
       pageSize,
+      from,
+      to,
     }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await liabilityTermsClient.liabilityTermsHistoryList({
         teamId: teamId!,
-        filter: { counterpartyId },
+        filter: { counterpartyId, from, to },
         dataRequest: termsChangeRowData(),
         page: { page, limit: pageSize },
       });
@@ -345,7 +432,7 @@ export function useTermsHistory(args: {
 
 // Set one pair's terms — a CREATE-OR-UPDATE on (team, counterparty).
 //
-// ⚠ `creditLimit: undefined` means UNLIMITED and `0n` means NO CREDIT AT ALL. They are opposites, so
+// ⚠ `creditLimit: undefined` means UNLIMITED and `0` means NO CREDIT AT ALL. They are opposites, so
 // the caller must pass `undefined` deliberately rather than letting a blank input coerce to zero —
 // that coercion is the bug the whole optional field exists to prevent.
 export function useSetTerms() {
@@ -355,7 +442,7 @@ export function useSetTerms() {
     mutationFn: (args: {
       teamId: bigint;
       counterpartyId: bigint;
-      creditLimit: bigint | undefined;
+      creditLimit: number | undefined;
       reason: string;
     }) =>
       liabilityTermsClient.liabilityTermsSet({
@@ -384,6 +471,47 @@ export function useDeleteTerms() {
         teamId: args.teamId,
         counterpartyId: args.counterpartyId,
         reason: args.reason,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}
+
+// ─── the payment request (a-creditor-may-request-payment) ───────────────────────────────────────
+
+// ONE PAIR'S POSITION — what the pair detail reads for the open payment request, either way. The list filtered to one
+// counterparty, square pairs included: a request outlives nothing but a payment, and the screen must see it.
+//
+// The plain default, not `listQuery`: the key carries the counterparty, and keeping the previous key's row would show
+// one pair's request under another pair's name.
+export function useLiabilityPosition(teamId: bigint | undefined, counterpartyId: bigint) {
+  return useQuery({
+    queryKey: key.liability(teamId, { position: counterpartyId.toString() }),
+    enabled: teamId !== undefined && counterpartyId > 0n,
+    queryFn: async () => {
+      const res = await liabilityClient.liabilityPositionList({
+        teamId: teamId!,
+        filter: { counterpartyId, unsettledOnly: false },
+        dataRequest: positionRowData(),
+        page: { page: 1, limit: 1 },
+      });
+
+      return positionsFromList(res.items, res.ids)[0] ?? null;
+    },
+  });
+}
+
+// ASK A DEBTOR TO PAY — a notice on its balance. It POSTS NOTHING and BLOCKS NOTHING; sending again replaces the request
+// with the moment's figure. Every liability read is invalidated so both the pair and the list show it.
+export function useRequestPayment() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { teamId: bigint; debtorTeamId: bigint }) =>
+      liabilityPaymentClient.liabilityPaymentRequestSend({
+        teamId: args.teamId,
+        debtorTeamId: args.debtorTeamId,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["liability"] });

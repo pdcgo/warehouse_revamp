@@ -7,7 +7,7 @@ import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
 import { manySuppliers } from "../../../.storybook/supplierFixtures";
 import { addSupplierRows } from "../../../.storybook/supplierStub";
-import { asPlatformOnly, asRole, withTeamName } from "../../../.storybook/sessionScenario";
+import { asAdminTeam, asPlatformOnly, asRole, withTeamName } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { MobileLayout } from "./MobileLayout";
 import { SUPPLIER_ROUTES } from "../../../.storybook/supplierRoutes";
@@ -356,6 +356,22 @@ export const RootInATeamTheyAreNotIn: Story = {
 
     const strip = await canvas.findByTestId("not-member-strip", {}, { timeout: 4000 });
     await expect(strip).toHaveTextContent("acting as Root");
+  },
+};
+
+// the-admin-team-monitors-read-only — on a phone too: the admin team reading Toko Melati sees the Monitoring strip over
+// the page, never the override strip. The strip is ONE component both shells mount, so they cannot disagree.
+export const TheAdminTeamMonitorsReadOnly: Story = {
+  beforeEach: () => {
+    asAdminTeam()();
+    asTeam(SELLING.id)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const strip = await canvas.findByTestId("monitoring-strip", {}, { timeout: 4000 });
+    await expect(strip).toHaveTextContent("Monitoring — read-only");
+    await expect(canvas.queryByTestId("not-member-strip")).toBeNull();
   },
 };
 

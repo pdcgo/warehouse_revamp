@@ -27,6 +27,7 @@ func (s *Service) RackSample(
 		WarehouseID: warehouseID,
 		PlacementID: msg.GetRackId(),
 		ActorID:     actorFrom(ctx),
+		IsOverride:  overrideFrom(ctx),
 		Recipient:   msg.GetRecipient(),
 		Description: msg.GetDescription(),
 	}

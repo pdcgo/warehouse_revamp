@@ -15,13 +15,13 @@ import { ProductDetailPage } from "../index";
 // Activity, Derived ⚠), and the warehouse card below with its TABS (the-warehouse-zone-is-tabs): Overview (its figures,
 // Suppliers ⚠), Cost price, Daily ⚠, Stock history. The stub is productStub.ts, its figures consistent across them:
 //
-//   700  SKU-ANG-001  Minyak Goreng Sawit 2L — Satuan   (Toko Anggrek, team 15)
+//   700  SL-03-ANG-001  Minyak Goreng Sawit 2L — Satuan   (Toko Anggrek, team 15)
 //        info        two pictures, a description, 12.5% markup, 4 held back
 //        batch 7001  Gudang Pusat   ready 30 of 60  @ Rp 45.700
 //        batch 7002  Gudang Cabang  ready 25 of 40  @ Rp 47.200
 //        batch 7003  Gudang Pusat   ready 24 of 24  @ Rp 46.500     → 79 ready, Rp 3.667.000
 //        history     receive 60, pick 30, receive 40, pick 15, receive 24 → balance 79
-//   790  SKU-ANG-001  the archived older pack — its SKU now held by 700
+//   790  SL-03-ANG-001-L  the archived older pack — it kept its code, so it comes back under it
 //    74  another team's product — not found here
 
 function asAnggrekOwner() {

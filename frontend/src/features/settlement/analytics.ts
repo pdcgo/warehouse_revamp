@@ -100,7 +100,8 @@ export function useSettlementSummary({ teamId, from, to, valid }: Window) {
     ...listQuery,
     queryKey: key.settlement(teamId, { report: "summary", from, to }),
     enabled: teamId !== undefined && valid,
-    queryFn: async (): Promise<SettlementMeasure> => {
+    // With the service's AS OF (a-money-metric-says-as-of-when): when its fold last claimed an event — the screen says it.
+    queryFn: async (): Promise<SettlementMeasure & { asOfUnix: bigint }> => {
       const res = await settlementAnalyticClient.metricData({
         teamId: teamId!,
         groupBy: GroupType.SUMMARY,
@@ -108,7 +109,7 @@ export function useSettlementSummary({ teamId, from, to, valid }: Window) {
         metricIds: [SETTLEMENT],
       });
 
-      return measureOf(settlementData(res.metricDatas).summary);
+      return { ...measureOf(settlementData(res.metricDatas).summary), asOfUnix: res.asOfUnix };
     },
   });
 }

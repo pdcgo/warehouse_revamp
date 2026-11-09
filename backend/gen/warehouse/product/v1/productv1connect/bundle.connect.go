@@ -78,12 +78,14 @@ func NewBundleServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+BundleServiceBundleListProcedure,
 			connect.WithSchema(bundleServiceMethods.ByName("BundleList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		bundleByIds: connect.NewClient[v1.BundleByIdsRequest, v1.BundleByIdsResponse](
 			httpClient,
 			baseURL+BundleServiceBundleByIdsProcedure,
 			connect.WithSchema(bundleServiceMethods.ByName("BundleByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		bundleCreate: connect.NewClient[v1.BundleCreateRequest, v1.BundleCreateResponse](
@@ -165,12 +167,14 @@ func NewBundleServiceHandler(svc BundleServiceHandler, opts ...connect.HandlerOp
 		BundleServiceBundleListProcedure,
 		svc.BundleList,
 		connect.WithSchema(bundleServiceMethods.ByName("BundleList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	bundleServiceBundleByIdsHandler := connect.NewUnaryHandler(
 		BundleServiceBundleByIdsProcedure,
 		svc.BundleByIds,
 		connect.WithSchema(bundleServiceMethods.ByName("BundleByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	bundleServiceBundleCreateHandler := connect.NewUnaryHandler(

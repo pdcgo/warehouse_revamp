@@ -19,8 +19,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../features/auth/AuthContext";
-import { useTeam } from "../../features/team/TeamContext";
-import { roleLabel } from "../../lib/roles";
+import { useCurrentRoleLabel, useTeam } from "../../features/team/TeamContext";
 import { LanguageSwitch, ThemeSwitch } from "../PreferenceSwitches";
 import { PROFILE, activeRoute, isMenuGroup, menuFor, menuSectionsFor } from "../nav";
 import type { MenuEntry, MenuItem } from "../nav";
@@ -54,6 +53,7 @@ import type { MenuEntry, MenuItem } from "../nav";
 export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { identity, logout } = useAuth();
   const { current } = useTeam();
+  const roleText = useCurrentRoleLabel();
   const { t } = useTranslation();
   const location = useLocation();
 
@@ -171,7 +171,7 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
             {identity?.username}
           </Text>
           <Text fontSize="sm" color="fg.muted" truncate>
-            {[roleLabel(current?.role), current?.teamName].filter(Boolean).join(" · ")}
+            {[roleText, current?.teamName].filter(Boolean).join(" · ")}
           </Text>
         </Box>
       </Flex>

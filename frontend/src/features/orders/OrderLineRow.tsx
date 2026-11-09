@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, Badge, Box, Flex, Icon, IconButton, Stack, Table, Text } from "@chakra-ui/react";
 import { Package, Trash2 } from "lucide-react";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiah, type Rupiah } from "../../lib/money";
 import type { Costs, LineDraft, LineStock } from "./lines";
 import { costKnown, costSplit, formatCostSplit, lineTotal, unitCost } from "./lines";
 
@@ -30,7 +30,7 @@ export interface OrderLineRowProps {
    * indent that pushes the mapping control out of line with the evidence above it. */
   cover?: boolean;
   /** Overrides qty × HPP. Set it whenever `price` is set, or the row's total contradicts its price. */
-  total?: bigint;
+  total?: Rupiah;
 
   onPatch: (patch: Partial<LineDraft>) => void;
   onRemove: () => void;
@@ -91,7 +91,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
             <Stack gap="0">
               <Text fontSize="sm">{line.name}</Text>
               <Text fontSize="xs" color="fg.muted">
-                {line.sku}
+                {line.productCode}
               </Text>
             </Stack>
           )}

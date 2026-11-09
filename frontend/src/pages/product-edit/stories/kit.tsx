@@ -10,11 +10,13 @@ import { ProductEditPage } from "../index";
 // per part. Each file keeps its own `title` literal — Storybook reads it statically — and spreads the rest from here.
 //
 // THE PRODUCT FORM — one page for New (/products/new) and Edit (/products/:id/edit), AS THE SCREEN STANDS TODAY: the
-// gallery beside the record, the SKU, name, description and a LEAF category, the hold-back, the markup another team
-// pays, and the lock. The stub is productStub.ts, writeable, with the server's rule that a SKU is held once among the
-// live — so a story can save and then read back what was sent.
+// gallery beside the record, the product code (the team's code fixed in front, its own part typed), name, description and
+// a LEAF category, the hold-back, the markup another team pays, and the lock. The stub is productStub.ts, writeable, with
+// the server's rules — the code composed as `<team_code>-<part>` and held once over every row, a correction of the part
+// taken only from a product with no history — so a story can save and then read back what was sent.
 //
-//   700  SKU-ANG-001  Minyak Goreng Sawit 2L — Satuan   two pictures, a description, 12.5% markup, 4 held back
+//   team 15  Toko Anggrek, team code SL-03
+//   700  SL-03-ANG-001  Minyak Goreng Sawit 2L — Satuan   two pictures, a description, 12.5% markup, 4 held back; USED
 //   categories        Elektronik › Audio › Headphone, Rumah Tangga › Dapur — only Headphone and Dapur are leaves
 
 function asAnggrekOwner() {
@@ -47,7 +49,7 @@ export async function loaded(canvasElement: HTMLElement) {
 
 export async function loadedMinyak(canvasElement: HTMLElement) {
   const canvas = await loaded(canvasElement);
-  await waitFor(() => expect(canvas.getByTestId("product-edit-sku")).toHaveValue("SKU-ANG-001"));
+  await waitFor(() => expect(canvas.getByTestId("product-edit-sku")).toHaveValue("ANG-001"));
   return canvas;
 }
 

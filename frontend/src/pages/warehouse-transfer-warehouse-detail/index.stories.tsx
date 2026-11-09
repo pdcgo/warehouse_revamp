@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
@@ -24,6 +24,7 @@ function routedAt(id: bigint) {
 }
 
 const At601 = routedAt(601n);
+const At603 = routedAt(603n);
 const At604 = routedAt(604n);
 const At605 = routedAt(605n);
 
@@ -64,6 +65,50 @@ export const Process: Story = {
 
     await waitFor(() => expect(transferWire(601n).status).toBe(WarehouseTransferStatus.PROCESS));
     await waitFor(() => expect(canvas.getByTestId("transfer-action-ship-601")).toBeInTheDocument());
+  },
+};
+
+// THE LABEL PHOTO A attached at ship (receipt_file): A opens it — the link is minted on click by
+// WarehouseTransferLabelPhoto (every-side-of-a-transfer-opens-its-label-photo).
+export const SenderOpensTheLabelPhoto: Story = {
+  render: () => <At603 />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    await userEvent.click(await canvas.findByTestId("transfer-detail-label-photo-open"));
+
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith(
+        "https://example.invalid/transfer-photo/doc-transfer-603-label",
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    open.mockRestore();
+  },
+};
+
+// B opens the same photo, to match the parcel at its door — through the same check, never a share of A's document.
+export const ReceiverOpensTheLabelPhoto: Story = {
+  render: () => <At603 />,
+  beforeEach: () => {
+    asTeam(14n)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    await userEvent.click(await canvas.findByTestId("transfer-detail-label-photo-open"));
+
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith(
+        "https://example.invalid/transfer-photo/doc-transfer-603-label",
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    open.mockRestore();
   },
 };
 

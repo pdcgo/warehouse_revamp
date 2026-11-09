@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { personName } from "../../../lib/users";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -25,6 +26,7 @@ import { toaster } from "../../../components/feedback/Toaster";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../../layouts/shell";
+import { useCanWrite } from "../../../features/team/TeamContext";
 
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect SCOPED TO THE TEAM — a shop is
@@ -54,6 +56,8 @@ export function ShopUsersSection({
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  // Who may work on the shop is READ while the admin team monitors the team — no add, no primary, no remove.
+  const writable = useCanWrite();
   const [userIds, setUserIds] = useState<bigint[]>([]);
   const [users, setUsers] = useState<Record<string, PublicUser>>({});
   const [loading, setLoading] = useState(true);
@@ -67,7 +71,7 @@ export function ShopUsersSection({
   // A person as a sentence names them — the name, else the username, else the id.
   const nameOf = (id: bigint) => {
     const u = users[id.toString()];
-    return u?.name || u?.username || `#${id}`;
+    return personName(u, `#${id}`);
   };
 
   const load = useCallback(async () => {
@@ -163,11 +167,15 @@ export function ShopUsersSection({
             </Alert.Root>
           )}
 
+          {writable && (
           <Flex gap="card" align={isMobile ? "stretch" : "end"} direction={isMobile ? "column" : "row"}>
             <Field.Root flex="1">
               <Field.Label>{t("shops.users.addLabel")}</Field.Label>
+              {/* A grant GIVES a shop: suspended and erased members are never offered (a-suspended-user-is-never-picked),
+                  and the server refuses anyone who is not an active member (a-grant-goes-only-to-a-team-member). */}
               <UserSelect
                 teamId={teamId}
+                excludeSuspended
                 value={adding}
                 onChange={setAdding}
                 placeholder={t("shops.users.searchPlaceholder")}
@@ -185,6 +193,7 @@ export function ShopUsersSection({
               {t("shops.users.add")}
             </Button>
           </Flex>
+          )}
 
           {error && (
             <Box color="error.fg" fontSize="sm" data-testid="shop-users-error">
@@ -233,6 +242,7 @@ export function ShopUsersSection({
                         </Badge>
                       )}
                     </HStack>
+                    {writable && (
                     <HStack gap="1" flexShrink={0}>
                       {!primary && (
                         <IconButton
@@ -258,6 +268,7 @@ export function ShopUsersSection({
                         <Icon as={UserMinus} boxSize="4" />
                       </IconButton>
                     </HStack>
+                    )}
                   </Flex>
                 );
               })}

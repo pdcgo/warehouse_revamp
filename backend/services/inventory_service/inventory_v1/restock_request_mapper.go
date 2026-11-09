@@ -267,13 +267,13 @@ func restockRequestToProto(r *inventory_service_models.Restock) *inventoryv1.Res
 		src := &r.Items[i]
 
 		item := &inventoryv1.RestockRequestItem{
-			Id:        src.ID,
-			ProductId: src.ProductID,
-			Sku:       src.SKU,
-			Name:      src.Name,
-			Count:     src.Count,
-			Total:     src.Total,
-			PriceUnit: src.PriceUnit,
+			Id:          src.ID,
+			ProductId:   src.ProductID,
+			ProductCode: src.ProductCode,
+			Name:        src.Name,
+			Count:       src.Count,
+			Total:       src.Total,
+			PriceUnit:   src.PriceUnit,
 			// What was in the box, broken included (any-warehouse-member-counts-what-arrived).
 			ReceivedCount: src.ReceivedCount,
 			Problems:      problems[src.ProductID],
@@ -354,7 +354,7 @@ func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service
 	for _, item := range in {
 		out = append(out, inventory_service_models.RestockItem{
 			ProductID:         item.GetProductId(),
-			SKU:               item.GetSku(),
+			ProductCode:       item.GetProductCode(),
 			Name:              item.GetName(),
 			Count:             item.GetCount(),
 			Total:             item.GetTotal(),
@@ -371,6 +371,11 @@ func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service
 // restockErr maps the internal errors to Connect codes: a missing/cross-scope restock is NotFound; one in the wrong
 // status is FailedPrecondition; a malformed count is InvalidArgument; everything else is Internal.
 func restockErr(err error) error {
+	// A put-away onto a product a count holds on that rack (a-lock-stops-sales-and-cancels-too).
+	if refused := countedRefusal(err); refused != nil {
+		return refused
+	}
+
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return connect.NewError(connect.CodeNotFound, errRestockMissing)
@@ -389,7 +394,8 @@ func restockErr(err error) error {
 		errors.Is(err, errRestockNotArrivable),
 		errors.Is(err, errRestockArrivedLinesOnly),
 		errors.Is(err, errRestockLineRemoved),
-		errors.Is(err, errRestockArrivedSupplierLocked):
+		errors.Is(err, errRestockArrivedSupplierLocked),
+		errors.Is(err, errAccountNotOperational):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, errRestockCountIncomplete),
 		errors.Is(err, errRestockOverCount),
@@ -433,10 +439,11 @@ func recordRestockLog(
 	requestID uint64,
 	from, to string,
 	actor uint64,
+	override bool,
 	description string,
 	at time.Time,
 ) error {
-	_, err := recordRestockLogRow(tx, requestID, from, to, actor, description, at)
+	_, err := recordRestockLogRow(tx, requestID, from, to, actor, override, description, at)
 
 	return err
 }
@@ -447,6 +454,7 @@ func recordRestockLogRow(
 	requestID uint64,
 	from, to string,
 	actor uint64,
+	override bool,
 	description string,
 	at time.Time,
 ) (inventory_service_models.RestockLog, error) {
@@ -455,6 +463,7 @@ func recordRestockLogRow(
 		FromStatus:  from,
 		ToStatus:    to,
 		ActorUserID: actor,
+		IsOverride:  override,
 		Description: description,
 		CreatedAt:   at,
 	}

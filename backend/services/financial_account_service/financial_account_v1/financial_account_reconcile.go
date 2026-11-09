@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	financial_accountv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 )
 
@@ -51,6 +52,7 @@ func (s *Service) FinancialAccountReconcile(
 	}
 
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 	note := strings.TrimSpace(msg.GetNote())
 
 	var (
@@ -73,9 +75,10 @@ func (s *Service) FinancialAccountReconcile(
 			return errNoStatement
 		}
 
-		difference = rupiah(actual) - account.Balance
+		// Exact (the-backend-never-rounds-money): what was counted, less what the books hold. Float dust is no difference.
+		difference = actual - account.Balance
 
-		if difference != 0 {
+		if !san_money.IsZero(difference) {
 			if note == "" {
 				return errNeedsWhy
 			}
@@ -88,9 +91,10 @@ func (s *Service) FinancialAccountReconcile(
 			posted, err := post(tx, account, entry{
 				changeType:  m.ChangeAdjustment,
 				change:      difference,
-				description: "Reconcile — " + read + " " + formatRupiah(actual) + " · " + note,
+				description: "Reconcile — " + read + " " + san_money.Text(actual) + " · " + note,
 				occurredAt:  occurredAt,
 				actorID:     actor,
+				isOverride:  override,
 			})
 			if err != nil {
 				return err

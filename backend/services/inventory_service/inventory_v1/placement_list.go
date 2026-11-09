@@ -47,8 +47,9 @@ func (s *Service) PlacementList(
 
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
-	// The three dates are correlated maxima over THIS rack row's log. Last opname is the last `adjustment` row — a
-	// count writes one even when it finds the rack exact, so the rack reads as counted.
+	// The three dates are correlated maxima over THIS rack row's log. Last opname is the later of the last `adjustment`
+	// row — a recount writes one even when it finds the rack exact — and the last FINISHED stock count that held a row
+	// for it, which writes nothing on a rack it found exact.
 	err = s.db.WithContext(ctx).
 		Raw(`
 			SELECT
@@ -58,8 +59,13 @@ func (s *Service) PlacementList(
 			       WHERE l.product_id = pp.product_id AND l.placement_id = pp.placement_id AND l.stock_change < 0) AS last_out,
 			    (SELECT MAX(l.created_at) FROM product_placement_logs l
 			       WHERE l.product_id = pp.product_id AND l.placement_id = pp.placement_id AND l.stock_change > 0) AS last_in,
-			    (SELECT MAX(l.created_at) FROM product_placement_logs l
-			       WHERE l.product_id = pp.product_id AND l.placement_id = pp.placement_id AND l.change_type = ?) AS last_opname
+			    GREATEST(
+			        (SELECT MAX(l.created_at) FROM product_placement_logs l
+			           WHERE l.product_id = pp.product_id AND l.placement_id = pp.placement_id AND l.change_type = ?),
+			        (SELECT MAX(o.finalized_at) FROM opname_session_snapshots ss
+			           JOIN opname_sessions o ON o.id = ss.opname_session_id
+			           WHERE ss.product_id = pp.product_id AND ss.placement_id = pp.placement_id AND o.status = 'finish')
+			    ) AS last_opname
 			FROM product_placements pp
 			WHERE pp.warehouse_id = ? AND pp.product_id = ? AND pp.stock_count > 0
 			ORDER BY pp.placement_id ASC

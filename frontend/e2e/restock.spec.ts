@@ -111,7 +111,7 @@ async function restockGround(page: Page, tag: string) {
   const cat = await api(page, "category.v1.CategoryService/CategoryCreate", { name: category });
   const product = await api(page, "product.v1.ProductService/ProductCreate", {
     teamId: "1",
-    sku: skuA,
+    productCodePart: skuA,
     name: `E2E ${skuA}`,
     categoryId: cat.category.id,
   });
@@ -168,13 +168,13 @@ async function seed(page: Page, tag: string) {
       const cover =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
-      for (const sku of [skuA, skuB]) {
+      for (const productCode of [skuA, skuB]) {
         await call("product.v1.ProductService/ProductCreate", {
           teamId: "1",
-          sku,
-          name: `E2E ${sku}`,
+          productCodePart: productCode,
+          name: `E2E ${productCode}`,
           categoryId: cat.category.id,
-          images: sku === skuA ? [{ url: cover, thumbnailUrl: cover }] : [],
+          images: productCode === skuA ? [{ url: cover, thumbnailUrl: cover }] : [],
         });
       }
 
@@ -210,8 +210,8 @@ async function seed(page: Page, tag: string) {
 //
 // `ticked` is the state EXPECTED AFTER the click — this toggles, so a row that was already ticked
 // comes back unticked, which is the untick half of the reconcile test below.
-async function tick(page: Page, sku: string, ticked = true) {
-  await page.getByTestId("product-picker-search").fill(sku);
+async function tick(page: Page, productCode: string, ticked = true) {
+  await page.getByTestId("product-picker-search").fill(productCode);
 
   // Each row's testid carries the product's ID, which this test has no way to know — so the row is
   // found by the SKU it displays.
@@ -223,7 +223,7 @@ async function tick(page: Page, sku: string, ticked = true) {
   const row = page
     .getByTestId("product-picker-list")
     .locator('[data-testid^="product-picker-option-"]')
-    .filter({ hasText: sku });
+    .filter({ hasText: productCode });
   await expect(row).toHaveCount(1);
 
   // The row IS the checkbox's label, so the click goes to its control — the row's centre lands on the
@@ -263,7 +263,7 @@ test("Restock list: raised-by and accepted-by offer who did it, and narrow to th
     teamId: "1",
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
-    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 2, total: 20000 }],
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 2, total: 20000 }],
   });
 
   await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
@@ -524,7 +524,7 @@ test("Restock detail: broken and missing show with the warehouse's notes (#154)"
     teamId: "1",
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
-    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
   });
 
   await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
@@ -578,7 +578,7 @@ test("Restock detail: broken and missing show with the warehouse's notes (#154)"
     teamId: "1",
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
-    items: [{ productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 4, total: 100000 }],
+    items: [{ productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 4, total: 100000 }],
   });
 
   await page.goto(`/inventories/restock/${pending.request.id}`);
@@ -602,7 +602,7 @@ test("Restock detail: the courier's charge shows on its own and stays out of the
     warehouseId: ground.warehouseId,
     financeAccountId: ground.accountId,
     shipmentCost: 15000,
-    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
   });
 
   await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
@@ -639,4 +639,146 @@ test("Restock detail: the courier's charge shows on its own and stays out of the
   await expect(steps).toHaveCount(2);
   await expect(steps.nth(0)).toHaveAttribute("data-kind", "created");
   await expect(steps.nth(1)).toContainText("25.000");
+});
+
+// #18 — A RESTOCK'S LABEL PHOTO OPENS. `receipt_file` is the DOCUMENT ID the form's ReceiptUpload stored, and the page
+// used it as an href, so the link went nowhere. The selling team (the photo's owner) now gets a button that mints a signed
+// URL on click through GetDownloadUrl. Asserted on the RPC answer beside the popup: headless Chromium's popup never fires
+// `load`, so its url() cannot be read.
+test("Restock detail: the label photo opens through a signed link (#18)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const ground = await restockGround(page, "P");
+
+  // The upload the form does: RequestUpload → PUT the bytes → ConfirmUpload, in the selling team's scope.
+  const requested = await api(page, "document.v1.DocumentService/RequestUpload", {
+    teamId: "1",
+    filename: "label.png",
+    contentType: "image/png",
+    sizeBytes: "70",
+    resourceType: "DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT",
+  });
+  const put = await page.evaluate(
+    async ([url, method, headers]) => {
+      const png = Uint8Array.from(
+        atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="),
+        (c) => c.charCodeAt(0),
+      );
+      const res = await fetch(url as string, { method: method as string, headers: headers as Record<string, string>, body: png });
+      return res.status;
+    },
+    [requested.uploadUrl, requested.method, requested.headers ?? {}] as const,
+  );
+  expect(put).toBeLessThan(300);
+  const confirmed = await api(page, "document.v1.DocumentService/ConfirmUpload", { uploadToken: requested.uploadToken });
+  const documentId = String(confirmed.document.id);
+
+  const created = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+    teamId: "1",
+    warehouseId: ground.warehouseId,
+    financeAccountId: ground.accountId,
+    receipt: `E2ELBL${SUFFIX}`,
+    receiptFile: documentId,
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 2, total: 20000 }],
+  });
+
+  await page.goto(`/inventories/restock/${created.request.id}`);
+
+  const button = page.getByTestId("restock-detail-receipt-photo-open");
+  await expect(button).toBeVisible();
+  // Never an href: the stored value is an id, and a signed URL rendered on the page would expire while it is open.
+  await expect(page.getByTestId("restock-detail-tracking").locator("a")).toHaveCount(0);
+
+  const minted = page.waitForResponse((r) => r.url().includes("DocumentService/GetDownloadUrl"));
+  const popup = page.waitForEvent("popup");
+  await button.click();
+
+  const res = await minted;
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(String(body.url)).toMatch(/^https?:\/\//);
+  await popup;
+});
+
+// the-restocks-warehouse-opens-its-label-photo — the WAREHOUSE the restock is going to opens the selling team's label
+// photo. A warehouse STAFF member (the floor crew matching the box at the door), created here with that one role, opens
+// the warehouse's restock detail and the photo opens through RestockReceiptPhoto — the restock checked to be this
+// warehouse's, the link signed in-process. Nothing was shared: as the file's "owner" the warehouse still reads NotFound.
+test("Restock detail: the warehouse's staff opens the seller's label photo", async ({ page }) => {
+  const STAFF = `e2ephotostaff${SUFFIX}`;
+  const PASSWORD = "e2e-photo-pass-1";
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const ground = await restockGround(page, "H");
+
+  const requested = await api(page, "document.v1.DocumentService/RequestUpload", {
+    teamId: "1",
+    filename: "label.png",
+    contentType: "image/png",
+    sizeBytes: "70",
+    resourceType: "DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT",
+  });
+  const put = await page.evaluate(
+    async ([url, method, headers]) => {
+      const png = Uint8Array.from(
+        atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="),
+        (c) => c.charCodeAt(0),
+      );
+      const res = await fetch(url as string, { method: method as string, headers: headers as Record<string, string>, body: png });
+      return res.status;
+    },
+    [requested.uploadUrl, requested.method, requested.headers ?? {}] as const,
+  );
+  expect(put).toBeLessThan(300);
+  const confirmed = await api(page, "document.v1.DocumentService/ConfirmUpload", { uploadToken: requested.uploadToken });
+  const documentId = String(confirmed.document.id);
+
+  const created = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+    teamId: "1",
+    warehouseId: ground.warehouseId,
+    financeAccountId: ground.accountId,
+    receipt: `E2EWPH${SUFFIX}`,
+    receiptFile: documentId,
+    items: [{ productId: ground.productId, productCode: ground.skuA, name: `E2E ${ground.skuA}`, count: 2, total: 20000 }],
+  });
+  const restockId = String(created.request.id);
+
+  await api(page, "user.v1.UserService/CreateUser", {
+    teamId: ground.warehouseId,
+    username: STAFF,
+    password: PASSWORD,
+    name: STAFF,
+    role: "ROLE_WAREHOUSE_STAFF",
+  });
+
+  await login(page, STAFF, PASSWORD);
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), ground.warehouseId);
+
+  await page.goto(`/inventories/restock/${restockId}`);
+  await expect(page.getByTestId("restock-detail-page")).toBeVisible();
+  await expect(page.getByText("only the selling team can open it")).toHaveCount(0);
+
+  const button = page.getByTestId("restock-detail-receipt-photo-open");
+  await expect(button).toBeVisible();
+  await expect(page.getByTestId("restock-detail-tracking").locator("a")).toHaveCount(0);
+
+  // The link comes from INVENTORY, and names the seller's file. (Headless Chromium's popup never settles, so the answer
+  // that minted the link is what is read, beside the tab opening.)
+  const [answer, popup] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith("/warehouse.inventory.v1.RestockRequestService/RestockReceiptPhoto")),
+    page.waitForEvent("popup"),
+    button.click(),
+  ]);
+  expect(answer.status()).toBe(200);
+  const body = (await answer.json()) as { url: string; expiresAtUnix: string };
+  expect(String(body.url)).toMatch(/^https?:\/\//);
+  expect(String(body.url)).toContain("label.png");
+  expect(Number(body.expiresAtUnix)).toBeGreaterThan(Date.now() / 1000);
+  await popup.close();
+
+  // Never shared: asked as the document's owner, the warehouse reads NotFound.
+  await expect(
+    api(page, "document.v1.DocumentService/GetDownloadUrl", { teamId: ground.warehouseId, documentId }),
+  ).rejects.toThrow(/404|not_found/);
 });

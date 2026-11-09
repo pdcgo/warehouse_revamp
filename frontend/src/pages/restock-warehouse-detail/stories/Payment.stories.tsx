@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { At503, WAREHOUSE_DETAIL_META, loaded } from "./kit";
 
-// RESTOCK WAREHOUSE DETAIL — the ongkir this warehouse paid at the door, a fact in Kiriman, and its slip.
+// RESTOCK WAREHOUSE DETAIL — the ongkir this warehouse paid at the door, a fact in Kiriman, and its slip; the label photo
+// it opens from Kiriman too.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -30,6 +31,32 @@ export const TheCouriersChargeIsOwedBack: Story = {
     await expect(canvas.queryByTestId("restock-detail-courier-charge-card")).toBeNull();
     await expect(within(delivery).getByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 5.000");
     await expect(within(delivery).getByTestId("restock-detail-courier-charge-note")).toHaveTextContent("Ongkos bongkar di gudang");
+  },
+};
+
+// the-restocks-warehouse-opens-its-label-photo — the warehouse the restock is going to opens the selling team's label
+// photo, to match the box at its door: a link minted on click by RestockReceiptPhoto (checked to be this warehouse's
+// restock, signed in-process — no share), never an href on the page.
+export const TheWarehouseOpensTheLabelPhoto: Story = {
+  name: "Label photo",
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const open = spyOn(window, "open").mockReturnValue(null);
+
+    const button = canvas.getByTestId("restock-detail-receipt-photo-open");
+    await expect(button).toHaveTextContent("Open Label Photo");
+    await expect(canvas.getByTestId("restock-detail-tracking").querySelector("a")).toBeNull();
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith(
+        "https://example.invalid/restock-photo/doc-restock-503-label",
+        "_blank",
+        "noopener,noreferrer",
+      ),
+    );
+    open.mockRestore();
   },
 };
 

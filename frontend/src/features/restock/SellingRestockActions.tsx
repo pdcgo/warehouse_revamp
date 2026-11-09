@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -105,8 +106,14 @@ export function SellingRestockActions({
   const navigate = useNavigate();
   const location = useLocation();
   const [dialog, setDialog] = useState<"" | "cancel" | "markLost" | "notes">("");
+  // Nothing to change here while the admin team monitors the team (the-admin-team-monitors-read-only) — the notes are
+  // still there to read.
+  const writable = useCanWrite();
 
-  const actions: SellingAction[] = [...sellingActions(request.status), ...(withNotes ? (["notes"] as const) : [])];
+  const actions: SellingAction[] = [
+    ...(writable ? sellingActions(request.status) : []),
+    ...(withNotes ? (["notes"] as const) : []),
+  ];
   if (actions.length === 0) return null;
 
   const id = request.id.toString();

@@ -47,7 +47,7 @@ func perfShopUser(team, k int) uint64 {
 //
 // By the shop's index i:
 //
-//	i%20 == 19  soft-deleted (5%)
+//	i%20 == 19  closed (5%)
 //	i%50 == 49  no grants yet — nobody has been given it (2%)
 //	i%10 == 3   five grants, its primary's grant since removed — no primary (10%)
 //	otherwise   five grants, the first one — user (j+0)%8 — primary
@@ -57,18 +57,26 @@ func perfSeedShops(t *testing.T, db *gorm.DB) []selling_service_models.Shop {
 	markets := []string{"shopee", "tiktok", "lazada", "tokopedia", "shopee"}
 
 	shops := make([]selling_service_models.Shop, 0, perfShopTeamCount*perfShopsPerTeam)
+	closedAt := time.Now()
 
 	for team := range perfShopTeamCount {
 		for j := range perfShopsPerTeam {
 			i := perfShopIndex(team, j)
 
-			shops = append(shops, selling_service_models.Shop{
+			shop := selling_service_models.Shop{
 				TeamID:      perfShopTeamBase + uint64(team),
 				Name:        fmt.Sprintf("Toko %d-%d", team, j),
 				ShopCode:    fmt.Sprintf("PERF-%d-%d", team, j),
 				Marketplace: markets[j],
-				Deleted:     i%20 == 19,
-			})
+				Status:      selling_service_models.ShopOpen,
+			}
+
+			if i%20 == 19 {
+				shop.Status = selling_service_models.ShopClosed
+				shop.ClosedAt = &closedAt
+			}
+
+			shops = append(shops, shop)
 		}
 	}
 

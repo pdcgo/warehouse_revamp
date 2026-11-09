@@ -6,7 +6,7 @@
 // shape change lives entirely at this boundary.
 
 import {
-  StockListDataType,
+  WarehouseStockListDataType,
   StockHistoryDataType,
   BatchListDataType,
   BatchPlacementListDataType,
@@ -16,7 +16,8 @@ import {
   ProductPlacesDataType,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type {
-  StockListResponse,
+  WarehouseProductSearchItem,
+  WarehouseStockListResponse,
   StockLevel,
   StockHistoryResponse,
   StockMovement,
@@ -36,11 +37,29 @@ import type {
 
 // ── List RPCs: rebuild the ordered rows from (items, ids) ────────────────────────────────────────
 
-export const stockListRowData = () => [StockListDataType.STOCK];
-export function stockLevelsFromList(res: StockListResponse): StockLevel[] {
-  let m: { [k: string]: StockLevel } = {};
-  for (const it of res.items) if (it.d.case === "stock") m = it.d.value.mapData;
-  return res.ids.map((id) => m[id.toString()]).filter(Boolean);
+/**
+ * One row of the Stock screen (the-stock-screen-lists-what-the-warehouse-has-held): a product with a batch in this
+ * warehouse — any team's, archived ones flagged — and its units on hand here. A product the stock slice does not name
+ * reads 0: it is held, and has nothing on a shelf.
+ */
+export interface WarehouseStockRow {
+  product: WarehouseProductSearchItem;
+  onHand: bigint;
+}
+
+export const warehouseStockListRowData = () => [WarehouseStockListDataType.PRODUCT, WarehouseStockListDataType.STOCK];
+export function warehouseStockFromList(res: WarehouseStockListResponse): WarehouseStockRow[] {
+  let products: { [k: string]: WarehouseProductSearchItem } = {};
+  let stock: { [k: string]: StockLevel } = {};
+  for (const it of res.items) {
+    if (it.d.case === "product") products = it.d.value.mapData;
+    if (it.d.case === "stock") stock = it.d.value.mapData;
+  }
+
+  return res.ids.flatMap((id) => {
+    const product = products[id.toString()];
+    return product ? [{ product, onHand: stock[id.toString()]?.onHand ?? 0n }] : [];
+  });
 }
 
 export const stockHistoryRowData = () => [StockHistoryDataType.MOVEMENT];

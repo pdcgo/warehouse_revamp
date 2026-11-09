@@ -9,8 +9,8 @@ mine. Answered points are **deleted**, so this file is always the current open s
 > metric reaches the screen. Most of this file was arguing a pipeline that now exists in a different shape, so **six of
 > the seven questions and most critiques are closed** ([closed-this-pass](#closed-this-pass)), each with its evidence.
 >
-> **Open:** one question — the expense correction, decided and not built ([Question](#question)) · three contradictions ·
-> five critiques.
+> **Open:** no question — the expense correction was answered 2026-10-31 and built 2026-11-02 (`ExpenseAdjust`) ([Question](#question)) · three
+> contradictions · five critiques.
 >
 > ✅ The diagrams parse (`npm run lint:mermaid`).
 
@@ -169,24 +169,11 @@ leaves it set ([settlement meta Q2](../settlement/meta_context_clarify.md#questi
 
 # Question
 
-### what-a-void-and-a-reducing-adjustment-write
+None open.
 
-⛔ **The expense correction is decided and not built.** [an-expense-is-never-edited](./context_decision.md#an-expense-is-never-edited)
-removes `ExpenseUpdate`; [expense_update.go:67](../../../backend/services/expense_service/expense_v1/expense_update.go)
-still overwrites the amount, kind, shop and `occurred_at`, and `expense_service` publishes nothing. Two details are left
-before it can be built:
-
-| | → Recommend |
-| --- | --- |
-| does `ExpenseVoid` stay? | ✅ as a button, but it writes an **adjustment of minus the whole amount**, dated to the expense — one way to correct, not two. Today it stamps `voided_at` on the row, which is an edit |
-| how is a reducing adjustment written, when an amount is always positive? | an adjustment carries a **signed** amount, never zero, and names the expense it corrects. An expense's own amount stays positive |
-
-```mermaid
-flowchart LR
-  e["expense 77 - 28 Sep - 5.000.000"] --> m["September"]
-  a["adjustment for 77 - minus 4.500.000 - counts on 28 Sep"] --> m
-  v["void of 77 - an adjustment of minus 5.000.000"] --> m
-```
+- ✅ *(2026-10-31)* **what-a-void-and-a-reducing-adjustment-write — answered:** one kind of correction, a signed
+  adjustment naming its expense; Void is dropped, Batalkan writes minus the whole amount —
+  [every-correction-is-a-signed-adjustment](./context_decision.md#every-correction-is-a-signed-adjustment). ✅ Built 2026-11-02.
 
 ---
 

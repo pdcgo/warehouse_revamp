@@ -86,7 +86,7 @@ export function LinesCard({
       <ProductListItem
         product={{
           id: item.productId,
-          sku: item.sku,
+          productCode: item.productCode,
           name: item.name,
           defaultImageUrl: cover?.defaultImageUrl,
           defaultImageThumbnailUrl: cover?.defaultImageThumbnailUrl,

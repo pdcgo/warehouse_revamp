@@ -32,7 +32,8 @@ func supplierCommand() *cli.Command {
 					"legacy_supplier_channels and writes supplier_service's suppliers and supplier_channels KEEPING\n" +
 					"every id — restocks and batches hold those ids. Deleted suppliers move too, marked. City and\n" +
 					"province join the address, an offline store is folded into its supplier, and the code is dropped.\n" +
-					"Refused — nothing written — if supplier_service already holds a DIFFERENT row under a moving id.",
+					"A row moved before is skipped, even when it was edited since; refused — nothing written — if\n" +
+					"supplier_service holds an UNRELATED row under a moving id.",
 				Action: runSupplierMove,
 			},
 			supplierBackfillCommand(),
@@ -52,6 +53,10 @@ func runSupplierMove(ctx context.Context, cmd *cli.Command) error {
 		log.Printf("[%s] stores: %d moved, %d already there, %d offline folded into their supplier", san.target,
 			report.storesMoved, report.storesAlreadyThere, report.offlineFolded)
 
+		for _, line := range report.editedSince {
+			log.Printf("[%s] %s", san.target, line)
+		}
+
 		return nil
 	})
 }
@@ -64,6 +69,9 @@ type moveReport struct {
 	storesMoved           int
 	storesAlreadyThere    int
 	offlineFolded         int
+	// editedSince names each row moved by an earlier run and edited in supplier_service since — counted in
+	// the "already there" figures, kept as it is.
+	editedSince []string
 }
 
 // legacySupplier is a row of inventory_service's legacy_suppliers (its 00023 renamed the table).
@@ -129,8 +137,10 @@ var errMoveCollision = errors.New("supplier_service already holds a different ro
 //
 // The danger is a supplier created in supplier_service BEFORE the move ran: its id came from the new
 // sequence, and may be one a legacy row still needs. A row already there under a moving id is accepted
-// only when it is the SAME supplier (team and name) — the move having run before — and otherwise the whole
-// move is refused with the ids named, so nothing is overwritten and nothing is silently skipped.
+// only when it is the SAME row moved by an earlier run — same team (a store: same supplier) and same
+// created_at, which the move copies and no edit changes — and is then skipped, even when its name or
+// contact was edited since. Anything else under a moving id refuses the whole move with the ids named, so
+// nothing is overwritten and nothing is silently skipped.
 func (s *San) MoveSuppliers(ctx context.Context) (moveReport, error) {
 	var report moveReport
 
@@ -156,7 +166,7 @@ func (s *San) MoveSuppliers(ctx context.Context) (moveReport, error) {
 			return err
 		}
 
-		err = refuseCollisions(movedSuppliers, movedChannels, existingSuppliers, existingChannels)
+		report.editedSince, err = refuseCollisions(movedSuppliers, movedChannels, existingSuppliers, existingChannels)
 		if err != nil {
 			return err
 		}
@@ -361,37 +371,81 @@ func existingRows(
 	return existingSuppliers, existingChannels, nil
 }
 
-// refuseCollisions fails the move when supplier_service holds a DIFFERENT row under a moving id. The same
-// supplier (team and name) or store (supplier and name) is a move that already ran, and is skipped.
+// refuseCollisions fails the move when supplier_service holds an UNRELATED row under a moving id.
+//
+// A row is the one an earlier run moved when it keeps the legacy row's origin: its team (a store: its
+// supplier) and its created_at — both copied by the move, and neither changed by any edit. Such a row is
+// already moved and is skipped; when its name, contact or address was edited since, it is named in the
+// returned list so the run reports it, and it is never overwritten.
 func refuseCollisions(
 	suppliers []movedSupplier,
 	channels []movedChannel,
 	existingSuppliers map[uint64]movedSupplier,
 	existingChannels map[uint64]movedChannel,
-) error {
+) ([]string, error) {
 	var clashes []string
+
+	var edited []string
 
 	for _, s := range suppliers {
 		there, ok := existingSuppliers[s.ID]
-		if ok && (there.TeamID != s.TeamID || there.Name != s.Name) {
-			clashes = append(clashes, fmt.Sprintf("supplier %d (legacy %q, now %q)", s.ID, s.Name, there.Name))
+		if !ok {
+			continue
+		}
+
+		if there.TeamID != s.TeamID || !sameInstant(there.CreatedAt, s.CreatedAt) {
+			clashes = append(clashes, fmt.Sprintf("supplier %d (legacy %q of team %d created %s, now %q of team %d created %s)",
+				s.ID, s.Name, s.TeamID, clashDay(s.CreatedAt), there.Name, there.TeamID, clashDay(there.CreatedAt)))
+
+			continue
+		}
+
+		if there.Name != s.Name || there.Contact != s.Contact || there.Address != s.Address ||
+			there.Description != s.Description {
+			edited = append(edited, fmt.Sprintf("supplier %d moved before and edited since (legacy %q, now %q) — kept as it is",
+				s.ID, s.Name, there.Name))
 		}
 	}
 
 	for _, c := range channels {
 		there, ok := existingChannels[c.ID]
-		if ok && (there.SupplierID != c.SupplierID || there.Name != c.Name) {
-			clashes = append(clashes, fmt.Sprintf("store %d (legacy %q, now %q)", c.ID, c.Name, there.Name))
+		if !ok {
+			continue
+		}
+
+		if there.SupplierID != c.SupplierID || !sameInstant(there.CreatedAt, c.CreatedAt) {
+			clashes = append(clashes, fmt.Sprintf("store %d (legacy %q of supplier %d created %s, now %q of supplier %d created %s)",
+				c.ID, c.Name, c.SupplierID, clashDay(c.CreatedAt), there.Name, there.SupplierID, clashDay(there.CreatedAt)))
+
+			continue
+		}
+
+		if there.Name != c.Name || there.ChannelType != c.ChannelType || there.URI != c.URI ||
+			there.Description != c.Description {
+			edited = append(edited, fmt.Sprintf("store %d moved before and edited since (legacy %q, now %q) — kept as it is",
+				c.ID, c.Name, there.Name))
 		}
 	}
 
+	sort.Strings(edited)
+
 	if len(clashes) == 0 {
-		return nil
+		return edited, nil
 	}
 
 	sort.Strings(clashes)
 
-	return fmt.Errorf("%w — nothing was written: %s", errMoveCollision, strings.Join(clashes, "; "))
+	return nil, fmt.Errorf("%w — nothing was written: %s", errMoveCollision, strings.Join(clashes, "; "))
+}
+
+// clashDay is when a clashing row was created, in WIB — enough for an operator to tell the two rows apart.
+func clashDay(t time.Time) string {
+	return t.In(time.FixedZone("WIB", 7*60*60)).Format("2006-01-02 15:04")
+}
+
+// sameInstant compares two stored timestamps at Postgres's precision, a microsecond.
+func sameInstant(a, b time.Time) bool {
+	return a.Truncate(time.Microsecond).Equal(b.Truncate(time.Microsecond))
 }
 
 func joinNonEmpty(sep string, parts ...string) string {
@@ -424,8 +478,12 @@ func moveSuppliersOn(ctx context.Context, db *sql.DB, target string) error {
 		return err
 	}
 
-	fmt.Printf("  %d suppliers and %d stores moved, %d already there\n",
-		report.suppliersMoved, report.storesMoved, report.suppliersAlreadyThere)
+	fmt.Printf("  %d suppliers and %d stores moved, %d suppliers and %d stores already there\n",
+		report.suppliersMoved, report.storesMoved, report.suppliersAlreadyThere, report.storesAlreadyThere)
+
+	for _, line := range report.editedSince {
+		fmt.Printf("  %s\n", line)
+	}
 
 	return nil
 }

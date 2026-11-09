@@ -28,8 +28,8 @@ deleted, so this file is always the current open set; what you settle goes in `c
 > the access interceptor cannot scope it · and it prices **one** warehouse per call, so the order form comparing
 > three is three round trips.
 
-Siblings: [order](../order/context_clarify.md) · [balance](../balance/context_clarify.md) ·
-[inventory](../inventory/context_clarify.md) · [technical/balance](../../technical/balance/team_balance_design_clarify.md).
+Siblings: [order](../../order/context_clarify.md) · [balance](../../balance/context_clarify.md) ·
+[inventory](../../inventory/context_clarify.md) · [technical/balance](../../../technical/balance/team_balance_design_clarify.md).
 
 ---
 
@@ -164,7 +164,7 @@ sequenceDiagram
 
 ### the-rate-moves-in-five-steps
 
-The elaboration of [who-owns-the-rate-after-this](#who-owns-the-rate-after-this). **What is true today, read
+The elaboration of [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). **What is true today, read
 off the code** — this is what any answer has to survive:
 
 | | today |
@@ -185,7 +185,7 @@ is shipped.
 
 | | |
 | --- | --- |
-| ✅ **A — the rate moves**, balance posts what it is handed | **DECIDED** — [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). One owner, one number. Same shape as [the-cross-markup-belongs-to-the-product](../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
+| ✅ **A — the rate moves**, balance posts what it is handed | **DECIDED** — [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). One owner, one number. Same shape as [the-cross-markup-belongs-to-the-product](../../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
 | **B — the rate stays**, `warehouse_service` only calculates | ⛔ ruled out: `WarehouseFeeCalculate` would be a proxy for another service's column, and `warehouse_service` would own nothing it can answer for |
 | **C — both hold a copy** | ✅ ruled out: `handling_fee` is dropped as the last step of the move ([the-flat-rate-is-dropped-last](./context_decision.md#the-flat-rate-is-dropped-last)) |
 
@@ -212,15 +212,11 @@ are both built in liability today, and none of them is in your field list.
 
 ### closed-means-refused
 
-An open/close grid nothing consults is decoration — that is its state today.
-
-| | → |
-| --- | --- |
-| order create / finalize names a warehouse closed at that moment | **refuse**, naming the day and the next opening |
-| the warehouse picker | shows closed warehouses **disabled**, with the reason |
-| timezone | one, fixed: **Asia/Jakarta**. A per-warehouse timezone is a real feature only when a warehouse sits outside WIB |
-| one-off dates | the weekly grid cannot say *Idul Fitri*. **→ Recommend a `warehouse_closures` exception list** (date, reason) beside the grid |
-| receiving vs operating | keep both, and be explicit: **`receiving_hours` gates orders, `operating_hours` gates restock and return arrival** |
+🔄 **Replaced 2026-10-31** by [a-closed-day-warns-and-never-refuses](./context_decision.md#a-closed-day-warns-and-never-refuses):
+a paid marketplace order has to be recorded at any hour, so a closed warehouse is marked on the form and the picker with
+its next opening, never refused, and the hours gate no restock. Still standing from this proposal: one timezone,
+**Asia/Jakarta**, and the open question of one-off dates ([are-there-one-off-closures](#question)). Kept as a heading so
+the links into it hold.
 
 ---
 
@@ -229,7 +225,7 @@ An open/close grid nothing consults is decoration — that is its state today.
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **flat-vs-percent-is-a-live-rate-change** | `liability_terms.handling_fee` is charging money **today**, flat per order. 🔄 *(2026-10-19)* A warehouse's **default** flat fee carries over as `0%`, floor = cap; a **per-seller** flat fee has no form under one rate per warehouse | carry the default row over exactly, and tell a seller with its own row the day its charge changes. Never a silent reinterpretation of the old column |
-| **nobody-reads-the-calendar** | `receiving_hours` has a table, a proto, an editor and a test, and **no caller** — an order can be placed into a warehouse that is shut | [closed-means-refused](#closed-means-refused) |
+| **nobody-reads-the-calendar** | `receiving_hours` has a table, a proto, an editor and a test, and **no caller** — an order can be placed into a warehouse that is shut | ✅ decided 2026-10-31: [a-closed-day-warns-and-never-refuses](./context_decision.md#a-closed-day-warns-and-never-refuses) — the form warns; ✅ built 2026-11-02 (`WarehouseReceivingStatus`) |
 | **location-is-free-text** | one string cannot be matched against `region_service`, cannot suggest the nearest warehouse, and cannot fill a courier pickup form. `orders` already freezes provinsi→desa codes **and** names for exactly this reason | the same shape as the order address: codes + names + `address_line`, with the free text kept as the last line |
 | **who-may-change-a-price-others-pay** | `WarehouseInfoUpdate` is `WAREHOUSE_OWNER` / `WAREHOUSE_ADMIN`. A fee is money other teams owe — a rate edited unilaterally at 2am changes every order placed after it | the rate is writable by `ROOT`/`ADMIN` **and** the warehouse owner, every edit is logged with the actor, and the seller sees the rate on the order form before finalizing. If a rate is meant to be *agreed* rather than *set*, that is a different feature and worth saying |
 | **the-fee-is-invisible-to-the-payer** | nothing in the doc lets a selling team **see** a warehouse's rate before choosing it. Today the first sight of the charge is a ledger row | `WarehouseFeeCalculate` is callable by any authenticated team, pricing the caller's own order, and the order form shows the chosen warehouse's fee ([the-fee-is-priced-one-warehouse-at-a-time](./context_decision.md#the-fee-is-priced-one-warehouse-at-a-time)) |
@@ -271,18 +267,18 @@ reversed my own `repeated`: the form picks one warehouse, where the stock is. Ke
 heading so the links into it hold.
 
 ### does-the-warehouse-profile-move-out-of-team-service
-`warehouse_infos` (location + both weekly grids) lives in `team_service` and is built. Does it move whole into
-`warehouse_service`? **→ Recommend yes, in one migration** — otherwise the warehouse profile is owned by two
-services and the doc is true of neither.
+✅ **Answered (2026-10-31): yes, whole** — [the-warehouse-profile-lives-in-warehouse-service](./context_decision.md#the-warehouse-profile-lives-in-warehouse-service):
+location and both weekly grids move to `warehouse_service`; a selling team's default warehouse stays in `team_service`.
+✅ Built 2026-11-02. Kept as a heading so the links into it hold.
 
 ### what-does-a-closed-day-actually-do
-Refuse the order · warn and allow · queue it to the next open day. And does it gate **restock arrival** too?
-**→ Recommend refuse for orders (`receiving_hours`) and refuse for arrivals (`operating_hours`)**, both naming
-the next opening. Today neither is read at all.
+✅ **Answered (2026-10-31): warn, never refuse** — [a-closed-day-warns-and-never-refuses](./context_decision.md#a-closed-day-warns-and-never-refuses):
+the order is created and the form names the next opening; the hours gate no restock. Against my first *refuse*. ✅ Built
+2026-11-02. Kept as a heading so the links into it hold.
 
 ### are-there-one-off-closures
-The weekly grid cannot express a public holiday. **→ Recommend a `warehouse_closures` date list** with a
-reason, read by the same check.
+✅ **Answered (2026-10-31): yes** — [a-warehouse-records-its-holidays](./context_decision.md#a-warehouse-records-its-holidays): a date range
+and a reason, read by the closed-day warning. ✅ Built 2026-11-02. Kept as a heading so the links into it hold.
 
 ### is-the-fee-refunded-on-return-or-lost
 ✅ **Overtaken and closed (2026-10-19):** a return keeps the fee ([a-return-keeps-both-fees](../../order/context_decision.md#a-return-keeps-both-fees)),
@@ -292,16 +288,50 @@ Kept as a heading so the links into it hold.
 
 
 ### is-a-warehouse-ever-two-buildings
-Everything built assumes `warehouse_id` is a warehouse **team**. If one team can run two locations, that
-changes `stock`, `racks` and `orders.warehouse_id` — not this service. **→ Recommend one team per building.**
+✅ **Answered (2026-10-31): one team per building** — [one-warehouse-team-is-one-building](./context_decision.md#one-warehouse-team-is-one-building).
+Kept as a heading so the links into it hold.
 
 ### what-is-NOT-the-warehouse-services-job
-Stock, racks and opname are inventory's. The balance and the posting are liability's. Identity and membership
-are team's. **→ Recommend a *Whats Not* section** naming those four, as the order context has.
+✅ **Answered (2026-10-31)** — [the-warehouse-service-owns-the-profile-and-the-fee](./context_decision.md#the-warehouse-service-owns-the-profile-and-the-fee):
+it owns the profile, the closures and the fee; stock, money owed, membership and orders are not its job. Kept as a
+heading so the links into it hold.
 
 ---
 
 # Contradiction
+
+## the-doc-links-one-folder-short
+
+**The example.** Links in your doc that point at a file that is not there:
+
+| line | the link | the file now |
+| --- | --- | --- |
+| 6 | `[balance](../balance/context.md)` | [../../balance/context.md](../../balance/context.md) — the doc sits one folder deeper, under `teams/` |
+| 6 | `[order](../order/context.md)` | [../../order/context.md](../../order/context.md) |
+
+**→ Recommend:** add one `../` to each. Found by a link check over every doc (2026-11-02); reported, not edited.
+
+```mermaid
+flowchart LR
+  L["a link in the doc"] -.->|"the file moved or went"| X["nothing there"]
+  L -->|"repointed"| F["the file as it is now"]
+```
+
+## responsibility-names-team-services-job
+
+**The example.** [context.md](./context.md) §Responsbility 1: *"we must have warehouse service that manage warehouse teams"*.
+[the-warehouse-service-owns-the-profile-and-the-fee](./context_decision.md#the-warehouse-service-owns-the-profile-and-the-fee)
+(2026-10-31): managing teams is team_service's; this service owns the profile, the closures and the fee.
+
+**Which is stale:** the line — the decision is yours and newer. **→ Recommend:** §Responsbility 1 reads *"warehouse service
+owns a warehouse's profile (location, hours, closures) and its fee"*, and a *Whats Not* section names stock (inventory),
+money owed (liability), members (team) and orders (selling).
+
+```mermaid
+flowchart LR
+  D["context.md, manage warehouse teams"] -.->|"stale"| T["team_service's job"]
+  D -.->|"should say"| W["profile, closures, fee"]
+```
 
 ## the-fee-rate-would-exist-in-two-services
 
@@ -312,7 +342,7 @@ are team's. **→ Recommend a *Whats Not* section** naming those four, as the or
 
 *"`double order_total` … `double max_fee` … `double calculated_warehouse_fee`"* (§Rpc That Must Exist). Meanwhile the
 build stores money as `int64`: over 100 `int64` fields with money names (`total`, `price`, `cost`, `fee`…) across the
-protos, against 10 `double` fields, all in `financial_account`. [expense.proto](../../../proto/warehouse/expense/v1/expense.proto)
+protos, against 10 `double` fields, all in `financial_account`. [expense.proto](../../../../proto/warehouse/expense/v1/expense.proto)
 even states `int64` as the rule in a comment.
 
 🔄 *(2026-10-10)* **Which is wrong: the BUILD, not your payload.** I first said the opposite. Your `double` follows
@@ -365,17 +395,17 @@ flowchart LR
 ## the-warehouse-profile-is-already-owned-elsewhere
 
 *"Property or Field that must Have — Location Info, Open/Close Order Day info"* (this doc) — while
-[database-schema.md](../../database-schema.md) has **`warehouse_infos`** holding exactly those, in
+[database-schema.md](../../../database-schema.md) has **`warehouse_infos`** holding exactly those, in
 `team_service`, with `WarehouseInfoDetail` / `WarehouseInfoUpdate` shipped and a frontend editor on them.
 **Which is wrong:** neither — they are the same requirement written twice, in two services.
 **→ Recommend** [the move](#the-warehouse-profile-moves-out-of-team-service), so one of them stops being true.
 
 ## the-order-fee-column-the-order-context-promises-is-not-built
 
-*"`warehouse_fee`"* in [order/context.md](../order/context.md) §Table That Must Have — while no `warehouse_fee`
+*"`warehouse_fee`"* in [order/context.md](../../order/context.md) §Table That Must Have — while no `warehouse_fee`
 column, field or proto exists anywhere in the build, and the amount lives **only** as a `liability_entries` row
 posted after the fact. **Which is wrong:** the build. **→ Recommend** the freeze
-([does-the-order-freeze-the-fee](#does-the-order-freeze-the-fee)) — it is the same change that makes this
+([the-order-freezes-the-fee-and-the-ledger-posts-it](#the-order-freezes-the-fee-and-the-ledger-posts-it)) — it is the same change that makes this
 column mean something.
 
 ---

@@ -94,7 +94,7 @@ func TestRestockRequest_RecordsWhoRaisedAndWhoAccepted(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(buyerCtx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 1000},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 1000},
 			},
 		}))
 		if err != nil {
@@ -195,7 +195,7 @@ func TestRestockRequestList_FilterByWarehouse(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -243,7 +243,7 @@ func TestRestockRequestList_FilterByDateField(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -338,7 +338,7 @@ func TestRestockRequestList_Search(t *testing.T) {
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			InvoiceRefId: orderRef, Receipt: receipt,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: sku, Name: name, Count: 1, Total: 100},
+				{ProductId: 100, ProductCode: sku, Name: name, Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -456,7 +456,7 @@ func TestRestockRequestList_FilterByRequestingTeam(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: seller, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -513,7 +513,7 @@ func TestRestockRequestList_FilterByActor(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctxUser(author), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 2, Total: 200},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 2, Total: 200},
 			},
 		}))
 		if err != nil {
@@ -612,7 +612,7 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 	created, err := svc.RestockRequestCreate(buyerCtx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 1000},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 1000},
 		},
 	}))
 	if err != nil {
@@ -628,7 +628,7 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 			TeamId:           sellingTeam, RequestId: id, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: qty, Total: 1000},
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: qty, Total: 1000},
 			},
 		}))
 		if updErr != nil {
@@ -722,7 +722,7 @@ func TestRestockRequest_CancelRecordsWho(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctxUser(buyer), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
 		},
 	}))
 	if err != nil {

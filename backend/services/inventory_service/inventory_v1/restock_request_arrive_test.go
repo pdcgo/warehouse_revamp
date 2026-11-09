@@ -35,8 +35,8 @@ var (
 // arrLines are a restock's two lines as the selling team raises them: Kaos from Melati, Celana from no one named.
 func arrLines() []*inventoryv1.RestockRequestItem {
 	return []*inventoryv1.RestockRequestItem{
-		{ProductId: 100, Sku: "SKU-KAOS", Name: "Kaos", Count: 10, Total: 100000, SupplierId: arrMelati},
-		{ProductId: 200, Sku: "SKU-CELANA", Name: "Celana", Count: 5, Total: 150000},
+		{ProductId: 100, ProductCode: "SKU-KAOS", Name: "Kaos", Count: 10, Total: 100000, SupplierId: arrMelati},
+		{ProductId: 200, ProductCode: "SKU-CELANA", Name: "Celana", Count: 5, Total: 150000},
 	}
 }
 
@@ -258,7 +258,7 @@ func TestRestockRequestArrive_OpensTheArrivedWindow(t *testing.T) {
 		r.Items[0].Total = 120000
 		r.Items[0].Note = "extra stock"
 		r.Items = append(r.Items, &inventoryv1.RestockRequestItem{
-			ProductId: 300, Sku: "SKU-TOPI", Name: "Topi", Count: 2, Total: 30000, SupplierId: arrSinar,
+			ProductId: 300, ProductCode: "SKU-TOPI", Name: "Topi", Count: 2, Total: 30000, SupplierId: arrSinar,
 			Note: "came in the box",
 		})
 	})

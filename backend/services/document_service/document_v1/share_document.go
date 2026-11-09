@@ -68,6 +68,7 @@ func (s *Service) ShareDocument(
 		DocumentID: doc.ID,
 		TeamID:     msg.GetWithTeamId(),
 		GrantedBy:  grantedBy,
+		IsOverride: san_auth.IsOverride(ctx),
 	}
 
 	// GRANTING TWICE IS THE SAME FACT, not two of them. A client that retries — or a payer who attaches

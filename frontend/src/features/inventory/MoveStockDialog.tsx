@@ -114,7 +114,7 @@ export function MoveStockDialog({
         onSuccess: () => {
           toaster.create({
             type: "success",
-            title: t("inventory.movedToast", { qty, sku: product.sku }),
+            title: t("inventory.movedToast", { qty, productCode: product.productCode }),
           });
           onOpenChange(false);
         },
@@ -145,7 +145,7 @@ export function MoveStockDialog({
                   <Text fontSize="sm" color="fg.muted">
                     {t("inventory.moveProductSummary", {
                       name: product.name,
-                      sku: product.sku,
+                      productCode: product.productCode,
                       onHand: currentOnHand.toString(),
                     })}
                   </Text>

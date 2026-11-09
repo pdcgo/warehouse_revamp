@@ -48,7 +48,7 @@ func writeTerms(
 	t *testing.T,
 	svc *liability_v1.Service,
 	teamID, counterparty uint64,
-	limit *int64,
+	limit *float64,
 	reason string,
 ) {
 	t.Helper()
@@ -65,7 +65,7 @@ func writeTerms(
 	}
 }
 
-func i64(v int64) *int64 { return &v }
+func i64(v float64) *float64 { return &v }
 
 // ⛔ THE WHOLE REASON THIS TABLE EXISTS. `absent`, `0` and a number are THREE acts — no limit at all,
 // frozen entirely, and a real ceiling — and a NOT NULL column flattens the first into the second,
@@ -98,7 +98,7 @@ func TestTermsHistory_TellsRemovedApartFromFrozen(t *testing.T) {
 	// REMOVED: the new limit is ABSENT. If this ever reads as a present 0, the log is saying the
 	// creditor froze a team at the moment they un-restricted it.
 	if removed.NewCreditLimit != nil {
-		t.Fatalf("the removal recorded new_credit_limit = %d, want ABSENT — 0 means frozen, which is "+
+		t.Fatalf("the removal recorded new_credit_limit = %v, want ABSENT — 0 means frozen, which is "+
 			"the opposite of what happened", removed.GetNewCreditLimit())
 	}
 
@@ -137,7 +137,7 @@ func TestTermsHistory_ADeleteIsRecordedAsARemoval(t *testing.T) {
 	del := changes[0]
 
 	if del.NewCreditLimit != nil {
-		t.Fatalf("the delete recorded new_credit_limit = %d, want ABSENT", del.GetNewCreditLimit())
+		t.Fatalf("the delete recorded new_credit_limit = %v, want ABSENT", del.GetNewCreditLimit())
 	}
 
 	if del.GetReason() != "they settled up and left" {
@@ -259,5 +259,76 @@ func TestTermsHistory_AnOmittedFilterDoesNotPanic(t *testing.T) {
 
 	if len(res.Msg.GetIds()) != 1 {
 		t.Fatalf("%d changes, want 1 — an omitted filter means EVERY counterparty", len(res.Msg.GetIds()))
+	}
+}
+
+// The pair page's date range narrows the LIMIT log too, before the page (backlog #34) — the day a limit CHANGED, a
+// Jakarta day. Eleven changes on one pair, the oldest at 06:30 WIB on 5 Nov (23:30 UTC on the 4th): with a page of 10
+// it is on page 2 unfiltered, and the 5 Nov range finds it alone.
+func TestTermsHistory_ADateRangeNarrowsBeforeThePage(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	const debtor uint64 = 31
+
+	for i := 0; i < 11; i++ {
+		writeTerms(t, svc, warehouse, debtor, i64(float64(1000*(i+1))), "")
+	}
+
+	changes := termsHistory(t, svc, warehouse, nil)
+	if len(changes) != 11 {
+		t.Fatalf("%d changes, want 11", len(changes))
+	}
+
+	oldest := changes[len(changes)-1].GetId()
+	wib := time.FixedZone("WIB", 7*60*60)
+
+	err := db.Exec(`UPDATE liability_terms_logs SET changed_at = ? WHERE team_id = ? AND id <> ?`,
+		time.Date(2026, 11, 6, 9, 0, 0, 0, wib), warehouse, oldest).Error
+	if err != nil {
+		t.Fatalf("date the changes: %v", err)
+	}
+
+	err = db.Exec(`UPDATE liability_terms_logs SET changed_at = ? WHERE id = ?`,
+		time.Date(2026, 11, 4, 23, 30, 0, 0, time.UTC), oldest).Error
+	if err != nil {
+		t.Fatalf("date the oldest: %v", err)
+	}
+
+	page := func(from, to string) *liabilityv1.LiabilityTermsHistoryListResponse {
+		res, err := svc.LiabilityTermsHistoryList(context.Background(),
+			connect.NewRequest(&liabilityv1.LiabilityTermsHistoryListRequest{
+				TeamId: warehouse,
+				Filter: &liabilityv1.LiabilityTermsHistoryListFilter{CounterpartyId: &[]uint64{debtor}[0], From: from, To: to},
+				Page:   &commonv1.CommonPagination{Page: 1, Limit: 10},
+			}))
+		if err != nil {
+			t.Fatalf("LiabilityTermsHistoryList(%s..%s): %v", from, to, err)
+		}
+
+		return res.Msg
+	}
+
+	day := page("2026-11-05", "2026-11-05")
+	if ids := day.GetIds(); len(ids) != 1 || ids[0] != oldest || day.GetPageInfo().GetTotalItems() != 1 {
+		t.Fatalf("5 Nov = %v (total %d), want [%d]", ids, day.GetPageInfo().GetTotalItems(), oldest)
+	}
+
+	if n := page("", "2026-11-04").GetPageInfo().GetTotalItems(); n != 0 {
+		t.Fatalf("to 4 Nov: %d changes, want 0 — 23:30 UTC on the 4th is the 5th in Jakarta", n)
+	}
+
+	if n := page("2026-11-06", "").GetPageInfo().GetTotalItems(); n != 10 {
+		t.Fatalf("from 6 Nov: %d changes, want 10", n)
+	}
+
+	_, err = svc.LiabilityTermsHistoryList(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityTermsHistoryListRequest{
+			TeamId: warehouse,
+			Filter: &liabilityv1.LiabilityTermsHistoryListFilter{From: "2026-11-31"},
+			Page:   &commonv1.CommonPagination{Page: 1, Limit: 10},
+		}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("30 days hath November: err = %v, want InvalidArgument", err)
 	}
 }

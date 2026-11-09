@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { SUPPLIER_DISCOVER_META, SINAR, SUMBER, loaded } from "./kit";
 
@@ -52,14 +52,13 @@ export const TheCardEndsWithItsContactAndAnArrow: Story = {
 };
 
 // A CARD CARRIES THE FIGURES AS ICONS, ONE ROW, UNDER THE CONTACT (a-card-reads-its-figures-as-icons) — a cart and a
-// checked package, each with its units and its mark (1 and 2); no dates. A store-less supplier reads a dash for each,
-// unmarked. The strip at the top names them.
+// checked package, each with its units — real (InventoryService.SupplierGoods), so unmarked; no dates. A supplier none of
+// whose goods ever arrived reads a dash for each.
 export const ACardCarriesTheFigures: Story = {
   name: "Figures as icons",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
     const row = canvas.getByTestId(`discover-card-figures-${SUMBER.id}`);
     const sold = within(row).getByTestId(`discover-card-figures-${SUMBER.id}-sold`);
     const ready = within(row).getByTestId(`discover-card-figures-${SUMBER.id}-ready`);
@@ -69,8 +68,9 @@ export const ACardCarriesTheFigures: Story = {
     await expect(within(sold).getByTitle("Sold")).toBeVisible();
     await expect(within(ready).getByTitle("Ready")).toBeVisible();
     await expect(row).not.toHaveTextContent(/ordered|restocked/);
-    await expect(within(sold).getByTestId("not-implemented-sold")).toHaveTextContent("1");
-    await expect(within(ready).getByTestId("not-implemented-ready")).toHaveTextContent("2");
+    await waitFor(() => expect(sold).toHaveTextContent("1.507"));
+    await expect(ready).toHaveTextContent("151");
+    await expect(within(sold).queryByTestId("not-implemented-sold")).toBeNull();
     // One row, under the contact.
     await expect(Math.abs(sold.getBoundingClientRect().top - ready.getBoundingClientRect().top)).toBeLessThan(2);
     const contact = canvas.getByTestId(`discover-card-contact-${SUMBER.id}`).getBoundingClientRect();

@@ -33,27 +33,37 @@
 //
 // ⚠ IT IS NOT PROFIT. Everything the marketplace deducts beyond the price is still outside it.
 // Label it as margin wherever it is shown.
+//
+// ⚠ EVERY FIGURE IS AN EXACT DOUBLE (the-backend-never-rounds-money): `platform_total` since selling 00041, `goods_cost`
+// and the lines' `unit_cost` since 00042, and `warehouse_fee` — each frozen EXACT when the order was placed. So the
+// arithmetic here is plain `number`, the server's own, and a fraction shows on screen
+// (a-fraction-of-a-rupiah-shows-three-decimals). Nothing here rounds.
+
+import { type Rupiah, signOfRupiah } from "../../lib/money";
+
+/** A Rupiah as a plain number — a bigint taken exactly, a NaN or an infinity as 0. */
+function asNumber(amount: Rupiah): number {
+  if (typeof amount === "bigint") return Number(amount);
+  return Number.isFinite(amount) ? amount : 0;
+}
 
 /**
  * THE WAREHOUSE'S FEE ON ONE ORDER, as the margin arithmetic takes it — or `null` when it was NEVER PRICED.
  *
  * `Order.warehouse_fee` is frozen at create (`the-flat-rate-is-dropped-last`, step 3), unrounded, as a double. Absent
  * means the order was placed before fees were frozen, which is unknown rather than free — so it is `null` here and
- * the total beli it belongs to refuses, exactly as an unknown cost does.
- *
- * ⚠ ROUNDED TO WHOLE RUPIAH FOR THE ARITHMETIC ONLY. Every other figure on the row is bigint rupiah; the frozen value
- * on the order is left exactly as it was priced (when a frozen fee is rounded is not decided — `rupiah-is-floating-point`).
+ * the total beli it belongs to refuses, exactly as an unknown cost does. Taken as it was priced: no rounding.
  */
-export function orderFee(order: { warehouseFee?: number }): bigint | null {
-  return order.warehouseFee === undefined ? null : BigInt(Math.round(order.warehouseFee));
+export function orderFee(order: { warehouseFee?: number }): number | null {
+  return order.warehouseFee === undefined ? null : order.warehouseFee;
 }
 
 /** An order line as the money below reads it — `OrderItem`'s frozen figures. */
 export interface LineMoney {
   quantity: number;
-  /** The drawn cost of one unit, whole rupiah. 0 = UNKNOWN, not free. */
-  unitCost: bigint;
-  /** One unit at the owner's markup — absent on a line frozen before selling 00025. */
+  /** The drawn cost of one unit, frozen exact (a double). 0 = UNKNOWN, not free. */
+  unitCost: number;
+  /** One unit at the owner's markup — absent on a line frozen before selling 00025. Unrounded. */
   unitCostWithMarkup?: number;
   /** The line's frozen total, the markup in — absent on a line frozen before selling 00023. */
   total?: number;
@@ -61,24 +71,25 @@ export interface LineMoney {
 
 /**
  * ONE LINE'S HARGA BELI — what one unit cost the SELLER: the owner's cost plus the owner's markup on a borrowed line,
- * the drawn cost on an own line (where the two are equal). `unit_cost_with_markup`, rounded for the bigint arithmetic;
- * a line frozen before it existed falls back to `unit_cost`.
+ * the drawn cost on an own line (where the two are equal). `unit_cost_with_markup` as frozen (unrounded — it shows its
+ * fraction); a line frozen before it existed falls back to `unit_cost`.
  */
-export function lineUnitBeli(line: LineMoney): bigint {
-  return line.unitCostWithMarkup === undefined ? line.unitCost : BigInt(Math.round(line.unitCostWithMarkup));
+export function lineUnitBeli(line: LineMoney): number {
+  return line.unitCostWithMarkup ?? line.unitCost;
 }
 
 /** One line's total at harga beli — its frozen `total`, unrounded; `unit_cost × qty` on a line frozen before it. */
 export function lineTotalBeli(line: LineMoney): number {
-  return line.total ?? Number(line.unitCost) * line.quantity;
+  return line.total ?? line.unitCost * line.quantity;
 }
 
 /**
  * THE GOODS' COST, summed off the lines — the order's `goods_cost` as its lines spell it: Σ the frozen line totals,
- * rounded ONCE, as the server rounds the header (so the lines and the header agree to the rupiah).
+ * EXACT, as the server freezes the header (the-backend-never-rounds-money) — the lines and the header agree within the
+ * tolerance.
  */
-export function linesGoodsCost(lines: LineMoney[]): bigint {
-  return BigInt(Math.round(lines.reduce((sum, line) => sum + lineTotalBeli(line), 0)));
+export function linesGoodsCost(lines: LineMoney[]): number {
+  return lines.reduce((sum, line) => sum + lineTotalBeli(line), 0);
 }
 
 /**
@@ -87,7 +98,7 @@ export function linesGoodsCost(lines: LineMoney[]): bigint {
  * `costKnown` is the CALLER's answer to "is this cost real?", because the two callers answer it
  * differently and neither can answer for the other:
  *
- *   one order → `goodsCost > 0n`; a 0 means the goods were never restocked through this system, which is
+ *   one order → `goodsCost > 0`; a 0 means the goods were never restocked through this system, which is
  *               UNKNOWN and not free (`order.proto`).
  *   a pile    → whether ANY order in it can be measured at all (`summaryHasMeasured`, a cost AND a
  *               platform figure); a pile may hold a positive sum and still be missing members.
@@ -96,8 +107,8 @@ export function linesGoodsCost(lines: LineMoney[]): bigint {
  * beli, so there is no margin and no percentage either — and an order whose cost nobody recorded must
  * read as unmeasured rather than as unusually profitable.
  */
-export function orderSpend(goodsCost: bigint, fees: bigint, costKnown: boolean): bigint | null {
-  return costKnown ? goodsCost + fees : null;
+export function orderSpend(goodsCost: Rupiah, fees: Rupiah, costKnown: boolean): number | null {
+  return costKnown ? asNumber(goodsCost) + asNumber(fees) : null;
 }
 
 /**
@@ -106,25 +117,30 @@ export function orderSpend(goodsCost: bigint, fees: bigint, costKnown: boolean):
  * ⚠ A `revenue` OF 0 IS NOT A SALE OF NOTHING — `platform_total` is 0 when nobody wrote down what
  * the storefront took (`order.proto`), so the margin is unknown rather than a loss of the whole cost.
  * That is the one case where a plausible-looking number would be most wrong: a full-price order would
- * read as −100%.
+ * read as −100%. A revenue that is not above 0 (float dust included) counts as not recorded too.
  */
-export function orderMargin(revenue: bigint, spend: bigint | null): bigint | null {
-  if (spend === null || revenue <= 0n) {
+export function orderMargin(revenue: Rupiah, spend: number | null): number | null {
+  const sale = asNumber(revenue);
+
+  if (spend === null || signOfRupiah(sale) <= 0) {
     return null;
   }
 
-  return revenue - spend;
+  return sale - spend;
 }
 
-/** The same, as a share OF THE REVENUE. One decimal, computed in tenths to stay in bigint. */
-export function orderMarginPct(revenue: bigint, spend: bigint | null): number | null {
+/** The same, as a share OF THE REVENUE. One decimal, truncated toward zero (as the bigint tenths once were). */
+export function orderMarginPct(revenue: Rupiah, spend: number | null): number | null {
   const margin = orderMargin(revenue, spend);
+  const sale = asNumber(revenue);
 
-  if (margin === null || revenue <= 0n) {
+  if (margin === null || signOfRupiah(sale) <= 0) {
     return null;
   }
 
-  return Number((margin * 1000n) / revenue) / 10;
+  // In tenths of a percent; toPrecision(15) clears binary dust so 33.3 is not cut to 33.2.
+  // `|| 0` turns a −0 into 0, so a margin of nothing never reads "−0%".
+  return Math.trunc(Number(((margin * 1000) / sale).toPrecision(15))) / 10 || 0;
 }
 
 /** The percentage as the app writes it — id-ID, one decimal, no trailing zero noise. */

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Button, Flex, HStack, Heading, Icon, IconButton, Menu, Portal, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
@@ -9,7 +10,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useAuth } from "../../features/auth/AuthContext";
 import { lineState, unavailable } from "../../features/bundles/adapt";
 import { useBundle, useBundleProducts, useBundleStock, useDeleteBundle } from "../../features/bundles/queries";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeams, useTeamsByIds } from "../../features/teams/queries";
 import { useActors } from "../../features/users/queries";
 import { useIsMobile } from "../../layouts/shell";
@@ -116,8 +117,10 @@ export function BundleDetailPage() {
     );
   }
 
-  const mayChange = canChangeBundle({ role: current.role, createdByUserId: bundle.createdByUserId, me: identity?.identityId });
-  const creator = actors.data?.get(bundle.createdByUserId.toString())?.name ?? `#${bundle.createdByUserId}`;
+  const writable = canWrite(current);
+  const mayChange =
+    writable && canChangeBundle({ role: current.role, createdByUserId: bundle.createdByUserId, me: identity?.identityId });
+  const creator = personName(actors.data?.get(bundle.createdByUserId.toString()), `#${bundle.createdByUserId}`);
   const blocked = bundle.lines.filter((l) => unavailable(lineState(products.data?.get(l.productId.toString()), bundle.teamId))).length;
   const makes = bundleMakes({ bundle, products: products.data, stock: stock.data, warehouseId });
 
@@ -191,7 +194,9 @@ export function BundleDetailPage() {
             {bundle.description}
           </Text>
         )}
-        {!mayChange && (
+        {/* "Only its creator or an admin changes it" — not while monitoring, where nobody here changes anything and
+            the strip already says so. */}
+        {writable && !mayChange && (
           <HStack gap="1.5" color="fg.muted" data-testid="bundle-detail-read-only">
             <Icon as={Lock} boxSize="3.5" />
             <Text fontSize="sm">{t("bundles.form.readOnly", { name: creator })}</Text>

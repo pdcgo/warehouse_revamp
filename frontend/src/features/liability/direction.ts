@@ -1,4 +1,4 @@
-import { formatRupiah } from "../../lib/money";
+import { formatRupiah, type Rupiah, rupiahNumber, signOfRupiah } from "../../lib/money";
 
 // ⚠ DIRECTION IS WORDS, NEVER A SIGN — the one rule this whole screen is built around (#185).
 //
@@ -12,12 +12,16 @@ import { formatRupiah } from "../../lib/money";
 // start disagreeing about what a minus sign meant.
 export type Direction = "they-owe-you" | "you-owe-them" | "square";
 
-export function directionOf(balance: bigint): Direction {
-  if (balance > 0n) {
+// A balance is the exact double the ledger stores (the-backend-never-rounds-money). Its sign is read with the server's
+// tolerance (4 places, signOfRupiah), so a dust of float left by summing exact fractions never turns "square" into a
+// direction.
+export function directionOf(amount: Rupiah): Direction {
+  const sign = signOfRupiah(amount);
+  if (sign > 0) {
     return "they-owe-you";
   }
 
-  if (balance < 0n) {
+  if (sign < 0) {
     return "you-owe-them";
   }
 
@@ -28,10 +32,10 @@ export function directionOf(balance: bigint): Direction {
 // HERE and used only for display — it is never stored, never returned by an API, and never sits in a
 // field beside the signed one, because two fields that disagree in sign is a bug that reaches the
 // screen.
-export function directionCopy(balance: bigint): { key: string; amount: string } {
-  const abs = balance < 0n ? -balance : balance;
+export function directionCopy(amount: Rupiah): { key: string; amount: string } {
+  const abs = Math.abs(rupiahNumber(amount));
 
-  switch (directionOf(balance)) {
+  switch (directionOf(amount)) {
     case "they-owe-you":
       return { key: "liability.theyOweYou", amount: formatRupiah(abs) };
     case "you-owe-them":
@@ -43,7 +47,7 @@ export function directionCopy(balance: bigint): { key: string; amount: string } 
 
 // Green when money is coming to you, orange when it is going out, grey when square. Colour SUPPORTS
 // the words; it never replaces them — a colour-blind reader gets the sentence either way.
-export function directionPalette(balance: bigint): string {
+export function directionPalette(balance: Rupiah): string {
   switch (directionOf(balance)) {
     case "they-owe-you":
       return "success";

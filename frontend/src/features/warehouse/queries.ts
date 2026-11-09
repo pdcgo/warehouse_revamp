@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Code, ConnectError } from "@connectrpc/connect";
 
-import { warehouseFeeClient } from "../../api/clients";
+import { warehouseFeeClient, warehouseInfoClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 
 /** What the order form is told about the fee for the order on screen — a price, or the warehouse's refusal. */
 export interface WarehouseFeeQuote {
   warehouseId: bigint;
-  /** The fee, rounded to whole rupiah for the form's bigint arithmetic. `null` when refused. */
-  fee: bigint | null;
+  /** The fee, exact as the warehouse prices it — never rounded. `null` when refused. */
+  fee: number | null;
   /** "Gudang A has not set its fee" — the server's own sentence (a-warehouse-with-no-rate-takes-no-orders). */
   refusal: string | null;
 }
@@ -28,8 +28,8 @@ export interface WarehouseFeeQuote {
 export function useWarehouseFeeQuote(args: {
   teamId: bigint | undefined;
   warehouseId: bigint;
-  /** Σ quantity × HPP — the order's goods cost, the basis the fee is priced on (the-fee-is-priced-on-goods-cost). */
-  goodsCost: bigint;
+  /** Σ quantity × HPP — the order's goods cost, exact, the basis the fee is priced on (the-fee-is-priced-on-goods-cost). */
+  goodsCost: number;
 }) {
   const { teamId, warehouseId, goodsCost } = args;
 
@@ -43,10 +43,11 @@ export function useWarehouseFeeQuote(args: {
         const res = await warehouseFeeClient.warehouseFeeCalculate({
           teamId: teamId!,
           warehouseId,
-          orderTotal: Number(goodsCost),
+          orderTotal: goodsCost,
         });
 
-        return { warehouseId, fee: BigInt(Math.round(res.calculatedWarehouseFee)), refusal: null };
+        // EXACT, as the order will freeze it (the-backend-never-rounds-money) — 2,5% of Rp 12.666,99 is Rp 316,67475.
+        return { warehouseId, fee: res.calculatedWarehouseFee, refusal: null };
       } catch (err) {
         const connectErr = ConnectError.from(err);
         if (connectErr.code === Code.FailedPrecondition) {
@@ -86,5 +87,21 @@ export function useSetWarehouseFee() {
     mutationFn: async (vars: { teamId: bigint; feePercent: number; minFee: number; maxFee?: number }) =>
       (await warehouseFeeClient.warehouseFeeSet(vars)).fee,
     onSuccess: () => client.invalidateQueries({ queryKey: ["warehouseFee"] }),
+  });
+}
+
+/**
+ * WHETHER A WAREHOUSE RECEIVES ORDERS NOW (a-closed-day-warns-and-never-refuses) — and if not, its next opening and, for
+ * a one-off closure, why. It only MARKS: the order is created whatever this says. Read fresh, like every read here.
+ */
+export function useWarehouseReceiving(warehouseId: bigint) {
+  return useQuery({
+    queryKey: ["warehouseReceiving", warehouseId.toString()],
+    enabled: warehouseId > 0n,
+    queryFn: async () => {
+      const res = await warehouseInfoClient.warehouseReceivingStatus({ warehouseIds: [warehouseId] });
+
+      return res.states[warehouseId.toString()] ?? null;
+    },
   });
 }

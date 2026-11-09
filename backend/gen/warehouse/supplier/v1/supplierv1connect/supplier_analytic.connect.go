@@ -42,6 +42,12 @@ const (
 	// SupplierAnalyticServiceMetricDataProcedure is the fully-qualified name of the
 	// SupplierAnalyticService's MetricData RPC.
 	SupplierAnalyticServiceMetricDataProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/MetricData"
+	// SupplierAnalyticServiceSupplierFigureExportProcedure is the fully-qualified name of the
+	// SupplierAnalyticService's SupplierFigureExport RPC.
+	SupplierAnalyticServiceSupplierFigureExportProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/SupplierFigureExport"
+	// SupplierAnalyticServiceSupplierReportExportProcedure is the fully-qualified name of the
+	// SupplierAnalyticService's SupplierReportExport RPC.
+	SupplierAnalyticServiceSupplierReportExportProcedure = "/warehouse.supplier.v1.SupplierAnalyticService/SupplierReportExport"
 	// SupplierAnalyticMaintenanceServiceAnalyticReplayComputeProcedure is the fully-qualified name of
 	// the SupplierAnalyticMaintenanceService's AnalyticReplayCompute RPC.
 	SupplierAnalyticMaintenanceServiceAnalyticReplayComputeProcedure = "/warehouse.supplier.v1.SupplierAnalyticMaintenanceService/AnalyticReplayCompute"
@@ -57,6 +63,17 @@ type SupplierAnalyticServiceClient interface {
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
 	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// THE STATISTIK TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): the view
+	// on screen — Per Periode (every period of the window at its grain, newest first, the quiet ones included) or Per
+	// Produk (every product, ranked as the tab ranks them) — over the tab's own filters, every page, in the tab's columns,
+	// as .xlsx. A server stream: progress, then an expiring link. Not a read: it stores a file, so a monitor and an agent
+	// are refused (the-admin-team-monitors-read-only).
+	SupplierFigureExport(context.Context, *connect.Request[v1.SupplierFigureExportRequest]) (*connect.ServerStreamForClient[v1.SupplierFigureExportResponse], error)
+	// THE SUPPLIER REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+	// WHOLE ranking as narrowed — the report's own window, team and search, in its own order — every page, each supplier
+	// with its figures in the report's columns, as .xlsx. A server stream: progress, then an expiring link. Not a read: it
+	// stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+	SupplierReportExport(context.Context, *connect.Request[v1.SupplierReportExportRequest]) (*connect.ServerStreamForClient[v1.SupplierReportExportResponse], error)
 }
 
 // NewSupplierAnalyticServiceClient constructs a client for the
@@ -75,12 +92,26 @@ func NewSupplierAnalyticServiceClient(httpClient connect.HTTPClient, baseURL str
 			httpClient,
 			baseURL+SupplierAnalyticServiceMetricSearchProcedure,
 			connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricSearch")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		metricData: connect.NewClient[v1.MetricDataRequest, v1.MetricDataResponse](
 			httpClient,
 			baseURL+SupplierAnalyticServiceMetricDataProcedure,
 			connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricData")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		supplierFigureExport: connect.NewClient[v1.SupplierFigureExportRequest, v1.SupplierFigureExportResponse](
+			httpClient,
+			baseURL+SupplierAnalyticServiceSupplierFigureExportProcedure,
+			connect.WithSchema(supplierAnalyticServiceMethods.ByName("SupplierFigureExport")),
+			connect.WithClientOptions(opts...),
+		),
+		supplierReportExport: connect.NewClient[v1.SupplierReportExportRequest, v1.SupplierReportExportResponse](
+			httpClient,
+			baseURL+SupplierAnalyticServiceSupplierReportExportProcedure,
+			connect.WithSchema(supplierAnalyticServiceMethods.ByName("SupplierReportExport")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -88,8 +119,10 @@ func NewSupplierAnalyticServiceClient(httpClient connect.HTTPClient, baseURL str
 
 // supplierAnalyticServiceClient implements SupplierAnalyticServiceClient.
 type supplierAnalyticServiceClient struct {
-	metricSearch *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
-	metricData   *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	metricSearch         *connect.Client[v1.MetricSearchRequest, v1.MetricSearchResponse]
+	metricData           *connect.Client[v1.MetricDataRequest, v1.MetricDataResponse]
+	supplierFigureExport *connect.Client[v1.SupplierFigureExportRequest, v1.SupplierFigureExportResponse]
+	supplierReportExport *connect.Client[v1.SupplierReportExportRequest, v1.SupplierReportExportResponse]
 }
 
 // MetricSearch calls warehouse.supplier.v1.SupplierAnalyticService.MetricSearch.
@@ -102,6 +135,16 @@ func (c *supplierAnalyticServiceClient) MetricData(ctx context.Context, req *con
 	return c.metricData.CallUnary(ctx, req)
 }
 
+// SupplierFigureExport calls warehouse.supplier.v1.SupplierAnalyticService.SupplierFigureExport.
+func (c *supplierAnalyticServiceClient) SupplierFigureExport(ctx context.Context, req *connect.Request[v1.SupplierFigureExportRequest]) (*connect.ServerStreamForClient[v1.SupplierFigureExportResponse], error) {
+	return c.supplierFigureExport.CallServerStream(ctx, req)
+}
+
+// SupplierReportExport calls warehouse.supplier.v1.SupplierAnalyticService.SupplierReportExport.
+func (c *supplierAnalyticServiceClient) SupplierReportExport(ctx context.Context, req *connect.Request[v1.SupplierReportExportRequest]) (*connect.ServerStreamForClient[v1.SupplierReportExportResponse], error) {
+	return c.supplierReportExport.CallServerStream(ctx, req)
+}
+
 // SupplierAnalyticServiceHandler is an implementation of the
 // warehouse.supplier.v1.SupplierAnalyticService service.
 type SupplierAnalyticServiceHandler interface {
@@ -109,6 +152,17 @@ type SupplierAnalyticServiceHandler interface {
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
 	// The figures of the keys a search returned — or, grouped by SUMMARY, the headline.
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
+	// THE STATISTIK TAB AS A FILE (each-supplier-tab-exports-its-own-table, on one-export-is-the-list-as-a-file): the view
+	// on screen — Per Periode (every period of the window at its grain, newest first, the quiet ones included) or Per
+	// Produk (every product, ranked as the tab ranks them) — over the tab's own filters, every page, in the tab's columns,
+	// as .xlsx. A server stream: progress, then an expiring link. Not a read: it stores a file, so a monitor and an agent
+	// are refused (the-admin-team-monitors-read-only).
+	SupplierFigureExport(context.Context, *connect.Request[v1.SupplierFigureExportRequest], *connect.ServerStream[v1.SupplierFigureExportResponse]) error
+	// THE SUPPLIER REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file, on one-export-is-the-list-as-a-file): the
+	// WHOLE ranking as narrowed — the report's own window, team and search, in its own order — every page, each supplier
+	// with its figures in the report's columns, as .xlsx. A server stream: progress, then an expiring link. Not a read: it
+	// stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
+	SupplierReportExport(context.Context, *connect.Request[v1.SupplierReportExportRequest], *connect.ServerStream[v1.SupplierReportExportResponse]) error
 }
 
 // NewSupplierAnalyticServiceHandler builds an HTTP handler from the service implementation. It
@@ -122,12 +176,26 @@ func NewSupplierAnalyticServiceHandler(svc SupplierAnalyticServiceHandler, opts 
 		SupplierAnalyticServiceMetricSearchProcedure,
 		svc.MetricSearch,
 		connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricSearch")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	supplierAnalyticServiceMetricDataHandler := connect.NewUnaryHandler(
 		SupplierAnalyticServiceMetricDataProcedure,
 		svc.MetricData,
 		connect.WithSchema(supplierAnalyticServiceMethods.ByName("MetricData")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	supplierAnalyticServiceSupplierFigureExportHandler := connect.NewServerStreamHandler(
+		SupplierAnalyticServiceSupplierFigureExportProcedure,
+		svc.SupplierFigureExport,
+		connect.WithSchema(supplierAnalyticServiceMethods.ByName("SupplierFigureExport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	supplierAnalyticServiceSupplierReportExportHandler := connect.NewServerStreamHandler(
+		SupplierAnalyticServiceSupplierReportExportProcedure,
+		svc.SupplierReportExport,
+		connect.WithSchema(supplierAnalyticServiceMethods.ByName("SupplierReportExport")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.supplier.v1.SupplierAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +204,10 @@ func NewSupplierAnalyticServiceHandler(svc SupplierAnalyticServiceHandler, opts 
 			supplierAnalyticServiceMetricSearchHandler.ServeHTTP(w, r)
 		case SupplierAnalyticServiceMetricDataProcedure:
 			supplierAnalyticServiceMetricDataHandler.ServeHTTP(w, r)
+		case SupplierAnalyticServiceSupplierFigureExportProcedure:
+			supplierAnalyticServiceSupplierFigureExportHandler.ServeHTTP(w, r)
+		case SupplierAnalyticServiceSupplierReportExportProcedure:
+			supplierAnalyticServiceSupplierReportExportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -151,6 +223,14 @@ func (UnimplementedSupplierAnalyticServiceHandler) MetricSearch(context.Context,
 
 func (UnimplementedSupplierAnalyticServiceHandler) MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.MetricData is not implemented"))
+}
+
+func (UnimplementedSupplierAnalyticServiceHandler) SupplierFigureExport(context.Context, *connect.Request[v1.SupplierFigureExportRequest], *connect.ServerStream[v1.SupplierFigureExportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.SupplierFigureExport is not implemented"))
+}
+
+func (UnimplementedSupplierAnalyticServiceHandler) SupplierReportExport(context.Context, *connect.Request[v1.SupplierReportExportRequest], *connect.ServerStream[v1.SupplierReportExportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierAnalyticService.SupplierReportExport is not implemented"))
 }
 
 // SupplierAnalyticMaintenanceServiceClient is a client for the

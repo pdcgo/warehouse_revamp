@@ -60,11 +60,15 @@ test("reads need no login, writes do", async ({ request }) => {
   expect(create.status()).toBe(401);
 });
 
-test("the seed is there: jne, jnt, sicepat", async ({ page }) => {
+// the-three-channels-are-seeded (00001) and the-channels-are-what-orders-ship-by (00002).
+test("the seed is there: the eleven couriers", async ({ page }) => {
   await login(page);
   await gotoChannels(page);
 
-  for (const code of ["jne", "jnt", "sicepat"]) {
+  for (const code of [
+    "jne", "jnt", "sicepat",
+    "spx", "grabexpress", "jntcargo", "idexpress", "lex", "anteraja", "gosend", "pos",
+  ]) {
     await expect(row(page, code)).toBeVisible();
   }
 });

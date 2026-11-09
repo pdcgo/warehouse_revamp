@@ -84,7 +84,7 @@ func (p *raceShopPrimary) PrimaryUser(ctx context.Context, _, _, askingUserID ui
 	return p.user, nil
 }
 
-func imrRow(shopID uint64, key string, change int64, actor uint64, source settlementv1.SourceType) settlement_v1.PostInput {
+func imrRow(shopID uint64, key string, change float64, actor uint64, source settlementv1.SourceType) settlement_v1.PostInput {
 	return settlement_v1.PostInput{
 		TeamID:         team,
 		ShopID:         shopID,
@@ -97,10 +97,10 @@ func imrRow(shopID uint64, key string, change int64, actor uint64, source settle
 	}
 }
 
-func imrShopBalance(t *testing.T, db *gorm.DB, shopID uint64) int64 {
+func imrShopBalance(t *testing.T, db *gorm.DB, shopID uint64) float64 {
 	t.Helper()
 
-	var balance int64
+	var balance float64
 
 	err := db.Raw(`SELECT last_balance FROM shop_settlements WHERE shop_id = ?`, shopID).
 		Scan(&balance).
@@ -134,16 +134,16 @@ func imrShopRows(t *testing.T, db *gorm.DB, shopID uint64) []settlement_service_
 // imrAssertChain checks the ledger's own definition row by row: each row's balance is the one before it
 // plus its change. Two posts that read the same previous balance would leave two rows on one link — the
 // signature of a lost update, visible even when the final number happens to be right.
-func imrAssertChain(t *testing.T, rows []settlement_service_models.SettlementLog) int64 {
+func imrAssertChain(t *testing.T, rows []settlement_service_models.SettlementLog) float64 {
 	t.Helper()
 
-	var running int64
+	var running float64
 
 	for _, row := range rows {
 		running += row.Change
 
 		if row.Balance != running {
-			t.Fatalf("row %d (%s) has balance %d, want %d — it was built on a stale previous balance",
+			t.Fatalf("row %v (%s) has balance %v, want %v — it was built on a stale previous balance",
 				row.ID, row.UniqueID, row.Balance, running)
 		}
 	}
@@ -169,7 +169,7 @@ func TestInterleave_ImportedShopRow_TheAskHoldsNoLock(t *testing.T) {
 		parked:    make(chan struct{}),
 		release:   make(chan struct{}),
 	}
-	svc := settlement_v1.NewService(db, nil, nil, primary)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	// The account exists and holds a position before either post, so there is a real row to lock.
 	_, err := svc.PostEntry(ctx, imrRow(imrShop, "imr-open", -1_000, uploader, imrImporter))
@@ -249,7 +249,7 @@ func TestInterleave_ImportedShopRow_TheAskHoldsNoLock(t *testing.T) {
 
 	// A read the account after the ask, under its lock — so it builds on B's committed row.
 	if resultA.Entry.Balance != resultB.Entry.Balance-2_000 {
-		t.Fatalf("A's balance %d, want B's %d − 2 000 — A built on a position read before its ask",
+		t.Fatalf("A's balance %v, want B's %v − 2 000 — A built on a position read before its ask",
 			resultA.Entry.Balance, resultB.Entry.Balance)
 	}
 
@@ -264,7 +264,7 @@ func TestInterleave_ImportedShopRow_TheAskHoldsNoLock(t *testing.T) {
 
 	balance := imrShopBalance(t, db, imrShop)
 	if balance != -6_000 || running != balance {
-		t.Fatalf("last_balance %d, log sums to %d — want −6 000 both", balance, running)
+		t.Fatalf("last_balance %v, log sums to %v — want −6 000 both", balance, running)
 	}
 }
 
@@ -277,7 +277,7 @@ func TestInterleave_ImportedShopRow_APosterHoldingTheAccountBlocksTheNext(t *tes
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS}
-	svc := settlement_v1.NewService(db, nil, nil, primary)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	_, err := svc.PostEntry(ctx, imrRow(imrShop, "imr-held-open", -1_000, uploader, imrImporter))
 	if err != nil {
@@ -333,14 +333,14 @@ VALUES (?, ?, ?, ?, 'importer', 'other', -2000, -3000, 'imr-held-a', '2026-09-28
 
 	// −1 000 opening, −2 000 by A, −3 000 by B. B built on −1 000 would read −4 000: the lost update.
 	if resultB.Entry.Balance != -6_000 {
-		t.Fatalf("B's balance %d, want −6 000 — B used a balance read before it held the lock", resultB.Entry.Balance)
+		t.Fatalf("B's balance %v, want −6 000 — B used a balance read before it held the lock", resultB.Entry.Balance)
 	}
 
 	running := imrAssertChain(t, imrShopRows(t, db, imrShop))
 
 	balance := imrShopBalance(t, db, imrShop)
 	if balance != -6_000 || running != balance {
-		t.Fatalf("last_balance %d, log sums to %d — want −6 000 both", balance, running)
+		t.Fatalf("last_balance %v, log sums to %v — want −6 000 both", balance, running)
 	}
 }
 
@@ -352,12 +352,12 @@ func TestRace_ImportedShopRow_ABurstLosesNothingAndCountsForThePrimary(t *testin
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS, delay: 5 * time.Millisecond}
-	svc := settlement_v1.NewService(db, nil, nil, primary)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	const posters = 16
 
 	res := h.Race(t, posters, func(i int) error {
-		_, err := svc.PostEntry(ctx, imrRow(imrShop, fmt.Sprintf("imr-burst-%d", i), -int64(1_000*(i+1)), uploader, imrImporter))
+		_, err := svc.PostEntry(ctx, imrRow(imrShop, fmt.Sprintf("imr-burst-%d", i), -float64(1_000*(i+1)), uploader, imrImporter))
 
 		return err
 	})
@@ -369,7 +369,7 @@ func TestRace_ImportedShopRow_ABurstLosesNothingAndCountsForThePrimary(t *testin
 	}
 
 	// Distinct amounts, so a lost row shows in the sum: −(1 + 2 + … + 16) × 1 000.
-	const want int64 = -136_000
+	const want float64 = -136_000
 
 	rows := imrShopRows(t, db, imrShop)
 	if len(rows) != posters {
@@ -380,7 +380,7 @@ func TestRace_ImportedShopRow_ABurstLosesNothingAndCountsForThePrimary(t *testin
 
 	balance := imrShopBalance(t, db, imrShop)
 	if balance != want || running != want {
-		t.Fatalf("last_balance %d, log sums to %d, want %d — lost to a read-modify-write race", balance, running, want)
+		t.Fatalf("last_balance %v, log sums to %v, want %v — lost to a read-modify-write race", balance, running, want)
 	}
 
 	for _, row := range rows {
@@ -403,7 +403,7 @@ func TestRace_ImportedShopRow_ImportedAndManualShareOneAccount(t *testing.T) {
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS, delay: 5 * time.Millisecond}
-	svc := settlement_v1.NewService(db, nil, nil, primary)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	const posters = 16
 
@@ -413,7 +413,7 @@ func TestRace_ImportedShopRow_ImportedAndManualShareOneAccount(t *testing.T) {
 			source = settlementv1.SourceType_SOURCE_TYPE_MANUAL
 		}
 
-		_, err := svc.PostEntry(ctx, imrRow(imrShop, fmt.Sprintf("imr-mixed-%d", i), -int64(1_000*(i+1)), uploader, source))
+		_, err := svc.PostEntry(ctx, imrRow(imrShop, fmt.Sprintf("imr-mixed-%d", i), -float64(1_000*(i+1)), uploader, source))
 
 		return err
 	})
@@ -429,7 +429,7 @@ func TestRace_ImportedShopRow_ImportedAndManualShareOneAccount(t *testing.T) {
 
 	balance := imrShopBalance(t, db, imrShop)
 	if len(rows) != posters || balance != -136_000 || running != balance {
-		t.Fatalf("%d rows, last_balance %d, log sum %d — want %d rows and −136 000 both", len(rows), balance, running, posters)
+		t.Fatalf("%v rows, last_balance %v, log sum %v — want %v rows and −136 000 both", len(rows), balance, running, posters)
 	}
 
 	for _, row := range rows {
@@ -455,7 +455,7 @@ func TestRace_ImportedShopRow_SameKeyWritesOnce(t *testing.T) {
 	ctx := context.Background()
 
 	primary := &raceShopPrimary{user: shopPrimaryCS, delay: 5 * time.Millisecond}
-	svc := settlement_v1.NewService(db, nil, nil, primary)
+	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
 
 	const retries = 16
 
@@ -492,7 +492,7 @@ func TestRace_ImportedShopRow_SameKeyWritesOnce(t *testing.T) {
 	balance := imrShopBalance(t, db, imrShop)
 
 	if rows != 1 || wrote != 1 || balance != -7_000 {
-		t.Fatalf("%d rows, %d callers told created, last_balance %d after %d retries — want 1, 1 and −7 000",
+		t.Fatalf("%v rows, %v callers told created, last_balance %v after %v retries — want 1, 1 and −7 000",
 			rows, wrote, balance, retries)
 	}
 
@@ -501,18 +501,20 @@ func TestRace_ImportedShopRow_SameKeyWritesOnce(t *testing.T) {
 	t.Logf("the shop was asked %d times for %d retries of one row", primary.asked.Load(), retries)
 }
 
-// ⚠ WHAT A KEY COLLIDING ACROSS SHOPS ANSWERS, one at a time and at once.
+// WHAT A KEY COLLIDING ACROSS SHOPS ANSWERS, one at a time and at once — the same refusal
+// (#a-colliding-key-at-once-is-refused-the-same).
 //
 // One at a time, a key already held by another shop's row is refused as InvalidArgument
 // (#a-key-held-by-another-account-is-refused) — the existence check finds it. At once, the existence check
 // cannot see the other transaction's uncommitted row: the insert waits on the unique index, then fails
-// with 23505 — which dbError maps to Internal. The data is right either way (one row); the answer is not.
-func TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsAnswersInternal(t *testing.T) {
+// with 23505 — which the post maps to the same errUniqueIDTaken. Once SettlementPost finding 1, which
+// answered Internal here; the data was right either way (one row).
+func TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsIsRefusedTheSame(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
 	ctx := context.Background()
 
-	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS})
+	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS}, nil, nil, nil)
 
 	// One at a time: the contract's answer.
 	_, err := svc.PostEntry(ctx, imrRow(imrShop, "imr-collide-seq", -1_000, uploader, imrImporter))
@@ -606,6 +608,12 @@ VALUES (?, ?, ?, ?, 'importer', 'other', -1000, -2000, 'imr-collide', '2026-09-2
 	if codes[connect.CodeInternal] > 0 {
 		t.Errorf("%d of 20 real collisions answered Internal, not InvalidArgument", codes[connect.CodeInternal])
 	}
+
+	for code, n := range codes {
+		if code != connect.CodeInvalidArgument {
+			t.Errorf("%d real collisions answered %v, want InvalidArgument", n, code)
+		}
+	}
 }
 
 // ⚠ THE LOCK-ORDER PROOF for the fold, with the new attribution: an imported shop row now folds under its
@@ -618,7 +626,7 @@ func TestRace_ImportedShopRow_FoldsCrossingShopsAndPrimariesNeverDeadlock(t *tes
 	db := h.DB()
 	ctx := context.Background()
 
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
 
 	const (
 		primaryOne uint64 = 70
@@ -628,7 +636,7 @@ func TestRace_ImportedShopRow_FoldsCrossingShopsAndPrimariesNeverDeadlock(t *tes
 	// shop, order (0 = a shop row), the person it counts for, change.
 	type crossing struct {
 		shop, order, user uint64
-		change            int64
+		change            float64
 	}
 
 	pattern := []crossing{
@@ -668,8 +676,8 @@ func TestRace_ImportedShopRow_FoldsCrossingShopsAndPrimariesNeverDeadlock(t *tes
 			res.Count(san_race.Deadlock), res.Failed(), len(events))
 	}
 
-	sum := func(table, key string, id uint64) int64 {
-		var total int64
+	sum := func(table, key string, id uint64) float64 {
+		var total float64
 
 		err := db.Raw(`SELECT COALESCE(SUM(change), 0) FROM `+table+` WHERE `+key+` = ? AND team_id = ?`, id, team).
 			Scan(&total).
@@ -684,7 +692,7 @@ func TestRace_ImportedShopRow_FoldsCrossingShopsAndPrimariesNeverDeadlock(t *tes
 	for _, want := range []struct {
 		table, key string
 		id         uint64
-		total      int64
+		total      float64
 	}{
 		{"shop_settlement_daily_reports", "shop_id", imrShop, 2 * (-1_000 + 3_000)},
 		{"shop_settlement_daily_reports", "shop_id", imrOtherShop, 2 * (-2_000 + 4_000)},
@@ -693,7 +701,7 @@ func TestRace_ImportedShopRow_FoldsCrossingShopsAndPrimariesNeverDeadlock(t *tes
 	} {
 		got := sum(want.table, want.key, want.id)
 		if got != want.total {
-			t.Fatalf("%s %s=%d moved %d, want %d", want.table, want.key, want.id, got, want.total)
+			t.Fatalf("%s %s=%v moved %v, want %v", want.table, want.key, want.id, got, want.total)
 		}
 	}
 }

@@ -9,6 +9,7 @@ package settlementv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
+	v11 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -24,27 +25,121 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type SettlementPersonListDataType int32
+
+const (
+	SettlementPersonListDataType_SETTLEMENT_PERSON_LIST_DATA_TYPE_UNSPECIFIED SettlementPersonListDataType = 0
+	SettlementPersonListDataType_SETTLEMENT_PERSON_LIST_DATA_TYPE_PERSON      SettlementPersonListDataType = 1
+)
+
+// Enum value maps for SettlementPersonListDataType.
+var (
+	SettlementPersonListDataType_name = map[int32]string{
+		0: "SETTLEMENT_PERSON_LIST_DATA_TYPE_UNSPECIFIED",
+		1: "SETTLEMENT_PERSON_LIST_DATA_TYPE_PERSON",
+	}
+	SettlementPersonListDataType_value = map[string]int32{
+		"SETTLEMENT_PERSON_LIST_DATA_TYPE_UNSPECIFIED": 0,
+		"SETTLEMENT_PERSON_LIST_DATA_TYPE_PERSON":      1,
+	}
+)
+
+func (x SettlementPersonListDataType) Enum() *SettlementPersonListDataType {
+	p := new(SettlementPersonListDataType)
+	*p = x
+	return p
+}
+
+func (x SettlementPersonListDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SettlementPersonListDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_enumTypes[0].Descriptor()
+}
+
+func (SettlementPersonListDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_settlement_v1_settlement_analytic_proto_enumTypes[0]
+}
+
+func (x SettlementPersonListDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SettlementPersonListDataType.Descriptor instead.
+func (SettlementPersonListDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{0}
+}
+
+// SettlementPersonSort is the sort selection paired with the PERSON slice.
+type SettlementPersonSort int32
+
+const (
+	SettlementPersonSort_SETTLEMENT_PERSON_SORT_UNSPECIFIED SettlementPersonSort = 0
+	// The last day a row counted for them — the default, newest first, so the people working now lead.
+	SettlementPersonSort_SETTLEMENT_PERSON_SORT_LAST_DAY SettlementPersonSort = 1
+)
+
+// Enum value maps for SettlementPersonSort.
+var (
+	SettlementPersonSort_name = map[int32]string{
+		0: "SETTLEMENT_PERSON_SORT_UNSPECIFIED",
+		1: "SETTLEMENT_PERSON_SORT_LAST_DAY",
+	}
+	SettlementPersonSort_value = map[string]int32{
+		"SETTLEMENT_PERSON_SORT_UNSPECIFIED": 0,
+		"SETTLEMENT_PERSON_SORT_LAST_DAY":    1,
+	}
+)
+
+func (x SettlementPersonSort) Enum() *SettlementPersonSort {
+	p := new(SettlementPersonSort)
+	*p = x
+	return p
+}
+
+func (x SettlementPersonSort) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SettlementPersonSort) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_enumTypes[1].Descriptor()
+}
+
+func (SettlementPersonSort) Type() protoreflect.EnumType {
+	return &file_warehouse_settlement_v1_settlement_analytic_proto_enumTypes[1]
+}
+
+func (x SettlementPersonSort) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SettlementPersonSort.Descriptor instead.
+func (SettlementPersonSort) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{1}
+}
+
 // SETTLEMENT — what buyers paid against what the platform moved to us (#the-measure-is-sales-received-and-gap).
 type SettlementMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What buyers paid, LIVE — cancels netted: −(initial_total + initial_total_cancel).
-	Sales int64 `protobuf:"varint,1,opt,name=sales,proto3" json:"sales,omitempty"`
+	Sales float64 `protobuf:"fixed64,1,opt,name=sales,proto3" json:"sales,omitempty"`
 	// What the platform moved toward us — Σ every field of SettlementTypeMetric, named fees included.
-	Received int64 `protobuf:"varint,2,opt,name=received,proto3" json:"received,omitempty"`
+	Received float64 `protobuf:"fixed64,2,opt,name=received,proto3" json:"received,omitempty"`
 	// What left the marketplace wallet for our bank, as a positive number: −withdrawal. ⚠ NOT part of `received` — it is
 	// our own money moving on — but it IS in the position (#withdrawal-counts-in-the-position).
-	Withdrawn int64 `protobuf:"varint,3,opt,name=withdrawn,proto3" json:"withdrawn,omitempty"`
+	Withdrawn float64 `protobuf:"fixed64,3,opt,name=withdrawn,proto3" json:"withdrawn,omitempty"`
 	// sales − received: the part of the sale that never reached us.
-	Gap int64 `protobuf:"varint,4,opt,name=gap,proto3" json:"gap,omitempty"`
+	Gap float64 `protobuf:"fixed64,4,opt,name=gap,proto3" json:"gap,omitempty"`
 	// gap ÷ sales, worked out from the key's own sums — never an average of rates. UNSET with no sales to divide by.
 	//
-	// ⚠ NOT SORTABLE YET: a rate needs a minimum sample to rank by (a-rate-ranks-only-above-its-minimum-sample), and
-	// which sale is too small to rank has not been decided (analytic_context_clarify.md#a-take-rate-ranks-above-what-sale).
+	// Ranked only among keys that SOLD at least Rp 1.000.000 in the window — its sample is `sales`, in rupiah; the rest
+	// follow, in key order (a-take-rate-ranks-above-one-million-of-sales, a-rate-ranks-only-above-its-minimum-sample).
 	TakeRate *float64 `protobuf:"fixed64,5,opt,name=take_rate,json=takeRate,proto3,oneof" json:"take_rate,omitempty"`
 	// THE POSITION at the period's END, as a positive number: −close_balance — what buyers paid, less everything the
 	// platform moved, withdrawals included (#the-report-headline-is-position-to-date). A balance: it adds up across keys,
 	// never across periods (a-position-is-its-own-stat-type). Never "outstanding" — nobody is going to collect it.
-	PositionToDate int64 `protobuf:"varint,6,opt,name=position_to_date,json=positionToDate,proto3" json:"position_to_date,omitempty"`
+	PositionToDate float64 `protobuf:"fixed64,6,opt,name=position_to_date,json=positionToDate,proto3" json:"position_to_date,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -79,28 +174,28 @@ func (*SettlementMetric) Descriptor() ([]byte, []int) {
 	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *SettlementMetric) GetSales() int64 {
+func (x *SettlementMetric) GetSales() float64 {
 	if x != nil {
 		return x.Sales
 	}
 	return 0
 }
 
-func (x *SettlementMetric) GetReceived() int64 {
+func (x *SettlementMetric) GetReceived() float64 {
 	if x != nil {
 		return x.Received
 	}
 	return 0
 }
 
-func (x *SettlementMetric) GetWithdrawn() int64 {
+func (x *SettlementMetric) GetWithdrawn() float64 {
 	if x != nil {
 		return x.Withdrawn
 	}
 	return 0
 }
 
-func (x *SettlementMetric) GetGap() int64 {
+func (x *SettlementMetric) GetGap() float64 {
 	if x != nil {
 		return x.Gap
 	}
@@ -114,7 +209,7 @@ func (x *SettlementMetric) GetTakeRate() float64 {
 	return 0
 }
 
-func (x *SettlementMetric) GetPositionToDate() int64 {
+func (x *SettlementMetric) GetPositionToDate() float64 {
 	if x != nil {
 		return x.PositionToDate
 	}
@@ -219,17 +314,17 @@ func (x *SettlementMetricByDay) GetItems() map[string]*SettlementMetric {
 type SettlementTypeMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// What actually arrived from the platform.
-	Fund                  int64 `protobuf:"varint,1,opt,name=fund,proto3" json:"fund,omitempty"`
-	ExternalAdsFee        int64 `protobuf:"varint,2,opt,name=external_ads_fee,json=externalAdsFee,proto3" json:"external_ads_fee,omitempty"`
-	AffiliateFee          int64 `protobuf:"varint,3,opt,name=affiliate_fee,json=affiliateFee,proto3" json:"affiliate_fee,omitempty"`
-	MarketplaceAdjustment int64 `protobuf:"varint,4,opt,name=marketplace_adjustment,json=marketplaceAdjustment,proto3" json:"marketplace_adjustment,omitempty"`
-	ShipmentAdjustment    int64 `protobuf:"varint,5,opt,name=shipment_adjustment,json=shipmentAdjustment,proto3" json:"shipment_adjustment,omitempty"`
-	LogisticReimbursement int64 `protobuf:"varint,6,opt,name=logistic_reimbursement,json=logisticReimbursement,proto3" json:"logistic_reimbursement,omitempty"`
-	PlatformReimbursement int64 `protobuf:"varint,7,opt,name=platform_reimbursement,json=platformReimbursement,proto3" json:"platform_reimbursement,omitempty"`
-	MarketplaceProgram    int64 `protobuf:"varint,8,opt,name=marketplace_program,json=marketplaceProgram,proto3" json:"marketplace_program,omitempty"`
-	Other                 int64 `protobuf:"varint,9,opt,name=other,proto3" json:"other,omitempty"`
+	Fund                  float64 `protobuf:"fixed64,1,opt,name=fund,proto3" json:"fund,omitempty"`
+	ExternalAdsFee        float64 `protobuf:"fixed64,2,opt,name=external_ads_fee,json=externalAdsFee,proto3" json:"external_ads_fee,omitempty"`
+	AffiliateFee          float64 `protobuf:"fixed64,3,opt,name=affiliate_fee,json=affiliateFee,proto3" json:"affiliate_fee,omitempty"`
+	MarketplaceAdjustment float64 `protobuf:"fixed64,4,opt,name=marketplace_adjustment,json=marketplaceAdjustment,proto3" json:"marketplace_adjustment,omitempty"`
+	ShipmentAdjustment    float64 `protobuf:"fixed64,5,opt,name=shipment_adjustment,json=shipmentAdjustment,proto3" json:"shipment_adjustment,omitempty"`
+	LogisticReimbursement float64 `protobuf:"fixed64,6,opt,name=logistic_reimbursement,json=logisticReimbursement,proto3" json:"logistic_reimbursement,omitempty"`
+	PlatformReimbursement float64 `protobuf:"fixed64,7,opt,name=platform_reimbursement,json=platformReimbursement,proto3" json:"platform_reimbursement,omitempty"`
+	MarketplaceProgram    float64 `protobuf:"fixed64,8,opt,name=marketplace_program,json=marketplaceProgram,proto3" json:"marketplace_program,omitempty"`
+	Other                 float64 `protobuf:"fixed64,9,opt,name=other,proto3" json:"other,omitempty"`
 	// A repair of the report, shop-addressed (#system-adjustment-is-a-ledger-type).
-	SystemAdjustment int64 `protobuf:"varint,10,opt,name=system_adjustment,json=systemAdjustment,proto3" json:"system_adjustment,omitempty"`
+	SystemAdjustment float64 `protobuf:"fixed64,10,opt,name=system_adjustment,json=systemAdjustment,proto3" json:"system_adjustment,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -264,70 +359,70 @@ func (*SettlementTypeMetric) Descriptor() ([]byte, []int) {
 	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SettlementTypeMetric) GetFund() int64 {
+func (x *SettlementTypeMetric) GetFund() float64 {
 	if x != nil {
 		return x.Fund
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetExternalAdsFee() int64 {
+func (x *SettlementTypeMetric) GetExternalAdsFee() float64 {
 	if x != nil {
 		return x.ExternalAdsFee
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetAffiliateFee() int64 {
+func (x *SettlementTypeMetric) GetAffiliateFee() float64 {
 	if x != nil {
 		return x.AffiliateFee
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetMarketplaceAdjustment() int64 {
+func (x *SettlementTypeMetric) GetMarketplaceAdjustment() float64 {
 	if x != nil {
 		return x.MarketplaceAdjustment
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetShipmentAdjustment() int64 {
+func (x *SettlementTypeMetric) GetShipmentAdjustment() float64 {
 	if x != nil {
 		return x.ShipmentAdjustment
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetLogisticReimbursement() int64 {
+func (x *SettlementTypeMetric) GetLogisticReimbursement() float64 {
 	if x != nil {
 		return x.LogisticReimbursement
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetPlatformReimbursement() int64 {
+func (x *SettlementTypeMetric) GetPlatformReimbursement() float64 {
 	if x != nil {
 		return x.PlatformReimbursement
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetMarketplaceProgram() int64 {
+func (x *SettlementTypeMetric) GetMarketplaceProgram() float64 {
 	if x != nil {
 		return x.MarketplaceProgram
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetOther() int64 {
+func (x *SettlementTypeMetric) GetOther() float64 {
 	if x != nil {
 		return x.Other
 	}
 	return 0
 }
 
-func (x *SettlementTypeMetric) GetSystemAdjustment() int64 {
+func (x *SettlementTypeMetric) GetSystemAdjustment() float64 {
 	if x != nil {
 		return x.SystemAdjustment
 	}
@@ -789,8 +884,16 @@ func (*MetricData_TypesByDay) isMetricData_M() {}
 func (*MetricData_TypesSummary) isMetricData_M() {}
 
 type MetricDataResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MetricDatas   []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	MetricDatas []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
+	// AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+	// `settlement_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+	// behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+	// every metric it serves shares it. 0 = nothing folded yet.
+	//
+	// ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+	// dead-letter topic and the lease's log.
+	AsOfUnix      int64 `protobuf:"varint,2,opt,name=as_of_unix,json=asOfUnix,proto3" json:"as_of_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -832,22 +935,446 @@ func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
 	return nil
 }
 
+func (x *MetricDataResponse) GetAsOfUnix() int64 {
+	if x != nil {
+		return x.AsOfUnix
+	}
+	return 0
+}
+
+// Nothing narrows it yet: the picker offers everyone on the team's settlement rows.
+type SettlementPersonListFilter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementPersonListFilter) Reset() {
+	*x = SettlementPersonListFilter{}
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementPersonListFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementPersonListFilter) ProtoMessage() {}
+
+func (x *SettlementPersonListFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementPersonListFilter.ProtoReflect.Descriptor instead.
+func (*SettlementPersonListFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{11}
+}
+
+type SettlementPersonListFilterSort struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	SortType v11.CommonSortType     `protobuf:"varint,1,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
+	// Types that are valid to be assigned to S:
+	//
+	//	*SettlementPersonListFilterSort_Person
+	S             isSettlementPersonListFilterSort_S `protobuf_oneof:"s"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementPersonListFilterSort) Reset() {
+	*x = SettlementPersonListFilterSort{}
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementPersonListFilterSort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementPersonListFilterSort) ProtoMessage() {}
+
+func (x *SettlementPersonListFilterSort) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementPersonListFilterSort.ProtoReflect.Descriptor instead.
+func (*SettlementPersonListFilterSort) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SettlementPersonListFilterSort) GetSortType() v11.CommonSortType {
+	if x != nil {
+		return x.SortType
+	}
+	return v11.CommonSortType(0)
+}
+
+func (x *SettlementPersonListFilterSort) GetS() isSettlementPersonListFilterSort_S {
+	if x != nil {
+		return x.S
+	}
+	return nil
+}
+
+func (x *SettlementPersonListFilterSort) GetPerson() SettlementPersonSort {
+	if x != nil {
+		if x, ok := x.S.(*SettlementPersonListFilterSort_Person); ok {
+			return x.Person
+		}
+	}
+	return SettlementPersonSort_SETTLEMENT_PERSON_SORT_UNSPECIFIED
+}
+
+type isSettlementPersonListFilterSort_S interface {
+	isSettlementPersonListFilterSort_S()
+}
+
+type SettlementPersonListFilterSort_Person struct {
+	Person SettlementPersonSort `protobuf:"varint,2,opt,name=person,proto3,enum=warehouse.settlement.v1.SettlementPersonSort,oneof"`
+}
+
+func (*SettlementPersonListFilterSort_Person) isSettlementPersonListFilterSort_S() {}
+
+type SettlementPersonListRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The caller's scope. A selling team lists its own people; the root team lists every team's.
+	TeamId      uint64                          `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter      *SettlementPersonListFilter     `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	Sort        *SettlementPersonListFilterSort `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
+	DataRequest []SettlementPersonListDataType  `protobuf:"varint,4,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.settlement.v1.SettlementPersonListDataType" json:"data_request,omitempty"`
+	// It grows with staff turnover, slowly but without a ceiling, so it pages; the picker asks for a large first page
+	// and filters in the field.
+	Page          *v11.CommonPagination `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementPersonListRequest) Reset() {
+	*x = SettlementPersonListRequest{}
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementPersonListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementPersonListRequest) ProtoMessage() {}
+
+func (x *SettlementPersonListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementPersonListRequest.ProtoReflect.Descriptor instead.
+func (*SettlementPersonListRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SettlementPersonListRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SettlementPersonListRequest) GetFilter() *SettlementPersonListFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *SettlementPersonListRequest) GetSort() *SettlementPersonListFilterSort {
+	if x != nil {
+		return x.Sort
+	}
+	return nil
+}
+
+func (x *SettlementPersonListRequest) GetDataRequest() []SettlementPersonListDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+func (x *SettlementPersonListRequest) GetPage() *v11.CommonPagination {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
+// One person, and the last day a settlement row of this team counted for them. Their name is user_service's — the
+// picker resolves it with UserByIDs.
+type SettlementPersonItem struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// YYYY-MM-DD, the report's own day.
+	LastDay       string `protobuf:"bytes,2,opt,name=last_day,json=lastDay,proto3" json:"last_day,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementPersonItem) Reset() {
+	*x = SettlementPersonItem{}
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementPersonItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementPersonItem) ProtoMessage() {}
+
+func (x *SettlementPersonItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementPersonItem.ProtoReflect.Descriptor instead.
+func (*SettlementPersonItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SettlementPersonItem) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *SettlementPersonItem) GetLastDay() string {
+	if x != nil {
+		return x.LastDay
+	}
+	return ""
+}
+
+type SettlementPersonMapItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Keyed by user id.
+	MapData       map[uint64]*SettlementPersonItem `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementPersonMapItem) Reset() {
+	*x = SettlementPersonMapItem{}
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementPersonMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementPersonMapItem) ProtoMessage() {}
+
+func (x *SettlementPersonMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementPersonMapItem.ProtoReflect.Descriptor instead.
+func (*SettlementPersonMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *SettlementPersonMapItem) GetMapData() map[uint64]*SettlementPersonItem {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type SettlementPersonListResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*SettlementPersonListResponseItem_Person
+	D             isSettlementPersonListResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementPersonListResponseItem) Reset() {
+	*x = SettlementPersonListResponseItem{}
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementPersonListResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementPersonListResponseItem) ProtoMessage() {}
+
+func (x *SettlementPersonListResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementPersonListResponseItem.ProtoReflect.Descriptor instead.
+func (*SettlementPersonListResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SettlementPersonListResponseItem) GetD() isSettlementPersonListResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *SettlementPersonListResponseItem) GetPerson() *SettlementPersonMapItem {
+	if x != nil {
+		if x, ok := x.D.(*SettlementPersonListResponseItem_Person); ok {
+			return x.Person
+		}
+	}
+	return nil
+}
+
+type isSettlementPersonListResponseItem_D interface {
+	isSettlementPersonListResponseItem_D()
+}
+
+type SettlementPersonListResponseItem_Person struct {
+	Person *SettlementPersonMapItem `protobuf:"bytes,1,opt,name=person,proto3,oneof"`
+}
+
+func (*SettlementPersonListResponseItem_Person) isSettlementPersonListResponseItem_D() {}
+
+type SettlementPersonListResponse struct {
+	state protoimpl.MessageState              `protogen:"open.v1"`
+	Items []*SettlementPersonListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// User ids, in the sort's order.
+	Ids           []uint64      `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo      *v11.PageInfo `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementPersonListResponse) Reset() {
+	*x = SettlementPersonListResponse{}
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementPersonListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementPersonListResponse) ProtoMessage() {}
+
+func (x *SettlementPersonListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementPersonListResponse.ProtoReflect.Descriptor instead.
+func (*SettlementPersonListResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SettlementPersonListResponse) GetItems() []*SettlementPersonListResponseItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *SettlementPersonListResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+func (x *SettlementPersonListResponse) GetPageInfo() *v11.PageInfo {
+	if x != nil {
+		return x.PageInfo
+	}
+	return nil
+}
+
 var File_warehouse_settlement_v1_settlement_analytic_proto protoreflect.FileDescriptor
 
 const file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc = "" +
 	"\n" +
-	"1warehouse/settlement/v1/settlement_analytic.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xbd\x02\n" +
+	"1warehouse/settlement/v1/settlement_analytic.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xc7\x02\n" +
 	"\x10SettlementMetric\x12 \n" +
-	"\x05sales\x18\x01 \x01(\x03B\n" +
+	"\x05sales\x18\x01 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05sales\x12&\n" +
-	"\breceived\x18\x02 \x01(\x03B\n" +
+	"\breceived\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\breceived\x12(\n" +
-	"\twithdrawn\x18\x03 \x01(\x03B\n" +
+	"\twithdrawn\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\twithdrawn\x12\x1c\n" +
-	"\x03gap\x18\x04 \x01(\x03B\n" +
-	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x03gap\x12&\n" +
-	"\ttake_rate\x18\x05 \x01(\x01B\x04\xa0\xb5\x18\x01H\x00R\btakeRate\x88\x01\x01\x124\n" +
-	"\x10position_to_date\x18\x06 \x01(\x03B\n" +
+	"\x03gap\x18\x04 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x03gap\x120\n" +
+	"\ttake_rate\x18\x05 \x01(\x01B\x0e\x9a\xb5\x18\x06\b\x01\x10\xc0\x84=\xa0\xb5\x18\x01H\x00R\btakeRate\x88\x01\x01\x124\n" +
+	"\x10position_to_date\x18\x06 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x04R\x0epositionToDate:+\x9a\xb5\x18'\n" +
 	"\x04\x01\x04\x05\b\x12\x01\x01\x1a\b\x01\x02\x03\x04\x05\t\a\n" +
 	"\"\x12metrics/settlementB\f\n" +
@@ -866,26 +1393,26 @@ const file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12?\n" +
 	"\x05value\x18\x02 \x01(\v2).warehouse.settlement.v1.SettlementMetricR\x05value:\x028\x01\"\xee\x04\n" +
 	"\x14SettlementTypeMetric\x12\x1e\n" +
-	"\x04fund\x18\x01 \x01(\x03B\n" +
+	"\x04fund\x18\x01 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x04fund\x124\n" +
-	"\x10external_ads_fee\x18\x02 \x01(\x03B\n" +
+	"\x10external_ads_fee\x18\x02 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x0eexternalAdsFee\x12/\n" +
-	"\raffiliate_fee\x18\x03 \x01(\x03B\n" +
+	"\raffiliate_fee\x18\x03 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\faffiliateFee\x12A\n" +
-	"\x16marketplace_adjustment\x18\x04 \x01(\x03B\n" +
+	"\x16marketplace_adjustment\x18\x04 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15marketplaceAdjustment\x12;\n" +
-	"\x13shipment_adjustment\x18\x05 \x01(\x03B\n" +
+	"\x13shipment_adjustment\x18\x05 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x12shipmentAdjustment\x12A\n" +
-	"\x16logistic_reimbursement\x18\x06 \x01(\x03B\n" +
+	"\x16logistic_reimbursement\x18\x06 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15logisticReimbursement\x12A\n" +
-	"\x16platform_reimbursement\x18\a \x01(\x03B\n" +
+	"\x16platform_reimbursement\x18\a \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x15platformReimbursement\x12;\n" +
-	"\x13marketplace_program\x18\b \x01(\x03B\n" +
+	"\x13marketplace_program\x18\b \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x12marketplaceProgram\x12 \n" +
-	"\x05other\x18\t \x01(\x03B\n" +
+	"\x05other\x18\t \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05other\x127\n" +
 	"\x11system_adjustment\x18\n" +
-	" \x01(\x03B\n" +
+	" \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x10systemAdjustment:1\x9a\xb5\x18-\n" +
 	"\x04\x01\x04\x05\b\x12\x01\x01\x1a\b\x01\x02\x03\x04\x05\t\a\n" +
 	"\"\x18metrics/settlement/types\"\xd7\x01\n" +
@@ -929,13 +1456,49 @@ const file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc = "" +
 	"\ftypes_by_day\x18\x05 \x01(\v22.warehouse.settlement.v1.SettlementTypeMetricByDayH\x00R\n" +
 	"typesByDay\x12T\n" +
 	"\rtypes_summary\x18\x06 \x01(\v2-.warehouse.settlement.v1.SettlementTypeMetricH\x00R\ftypesSummaryB\x03\n" +
-	"\x01m\"\\\n" +
+	"\x01m\"z\n" +
 	"\x12MetricDataResponse\x12F\n" +
-	"\fmetric_datas\x18\x01 \x03(\v2#.warehouse.settlement.v1.MetricDataR\vmetricDatas2\xef\x01\n" +
-	"\x19SettlementAnalyticService\x12k\n" +
-	"\fMetricSearch\x12,.warehouse.settlement.v1.MetricSearchRequest\x1a-.warehouse.settlement.v1.MetricSearchResponse\x12e\n" +
+	"\fmetric_datas\x18\x01 \x03(\v2#.warehouse.settlement.v1.MetricDataR\vmetricDatas\x12\x1c\n" +
 	"\n" +
-	"MetricData\x12*.warehouse.settlement.v1.MetricDataRequest\x1a+.warehouse.settlement.v1.MetricDataResponseBTZRgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1b\x06proto3"
+	"as_of_unix\x18\x02 \x01(\x03R\basOfUnix\"\x1c\n" +
+	"\x1aSettlementPersonListFilter\"\xb0\x01\n" +
+	"\x1eSettlementPersonListFilterSort\x12@\n" +
+	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12G\n" +
+	"\x06person\x18\x02 \x01(\x0e2-.warehouse.settlement.v1.SettlementPersonSortH\x00R\x06personB\x03\n" +
+	"\x01s\"\x87\x03\n" +
+	"\x1bSettlementPersonListRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12K\n" +
+	"\x06filter\x18\x02 \x01(\v23.warehouse.settlement.v1.SettlementPersonListFilterR\x06filter\x12K\n" +
+	"\x04sort\x18\x03 \x01(\v27.warehouse.settlement.v1.SettlementPersonListFilterSortR\x04sort\x12X\n" +
+	"\fdata_request\x18\x04 \x03(\x0e25.warehouse.settlement.v1.SettlementPersonListDataTypeR\vdataRequest\x12A\n" +
+	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"J\n" +
+	"\x14SettlementPersonItem\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12\x19\n" +
+	"\blast_day\x18\x02 \x01(\tR\alastDay\"\xde\x01\n" +
+	"\x17SettlementPersonMapItem\x12X\n" +
+	"\bmap_data\x18\x01 \x03(\v2=.warehouse.settlement.v1.SettlementPersonMapItem.MapDataEntryR\amapData\x1ai\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12C\n" +
+	"\x05value\x18\x02 \x01(\v2-.warehouse.settlement.v1.SettlementPersonItemR\x05value:\x028\x01\"s\n" +
+	" SettlementPersonListResponseItem\x12J\n" +
+	"\x06person\x18\x01 \x01(\v20.warehouse.settlement.v1.SettlementPersonMapItemH\x00R\x06personB\x03\n" +
+	"\x01d\"\xbd\x01\n" +
+	"\x1cSettlementPersonListResponse\x12O\n" +
+	"\x05items\x18\x01 \x03(\v29.warehouse.settlement.v1.SettlementPersonListResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*}\n" +
+	"\x1cSettlementPersonListDataType\x120\n" +
+	",SETTLEMENT_PERSON_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12+\n" +
+	"'SETTLEMENT_PERSON_LIST_DATA_TYPE_PERSON\x10\x01*c\n" +
+	"\x14SettlementPersonSort\x12&\n" +
+	"\"SETTLEMENT_PERSON_SORT_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fSETTLEMENT_PERSON_SORT_LAST_DAY\x10\x012\x84\x03\n" +
+	"\x19SettlementAnalyticService\x12p\n" +
+	"\fMetricSearch\x12,.warehouse.settlement.v1.MetricSearchRequest\x1a-.warehouse.settlement.v1.MetricSearchResponse\"\x03\x90\x02\x01\x12j\n" +
+	"\n" +
+	"MetricData\x12*.warehouse.settlement.v1.MetricDataRequest\x1a+.warehouse.settlement.v1.MetricDataResponse\"\x03\x90\x02\x01\x12\x88\x01\n" +
+	"\x14SettlementPersonList\x124.warehouse.settlement.v1.SettlementPersonListRequest\x1a5.warehouse.settlement.v1.SettlementPersonListResponse\"\x03\x90\x02\x01BTZRgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1b\x06proto3"
 
 var (
 	file_warehouse_settlement_v1_settlement_analytic_proto_rawDescOnce sync.Once
@@ -949,62 +1512,89 @@ func file_warehouse_settlement_v1_settlement_analytic_proto_rawDescGZIP() []byte
 	return file_warehouse_settlement_v1_settlement_analytic_proto_rawDescData
 }
 
-var file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_warehouse_settlement_v1_settlement_analytic_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_warehouse_settlement_v1_settlement_analytic_proto_goTypes = []any{
-	(*SettlementMetric)(nil),          // 0: warehouse.settlement.v1.SettlementMetric
-	(*SettlementMetricByID)(nil),      // 1: warehouse.settlement.v1.SettlementMetricByID
-	(*SettlementMetricByDay)(nil),     // 2: warehouse.settlement.v1.SettlementMetricByDay
-	(*SettlementTypeMetric)(nil),      // 3: warehouse.settlement.v1.SettlementTypeMetric
-	(*SettlementTypeMetricByID)(nil),  // 4: warehouse.settlement.v1.SettlementTypeMetricByID
-	(*SettlementTypeMetricByDay)(nil), // 5: warehouse.settlement.v1.SettlementTypeMetricByDay
-	(*MetricSearchRequest)(nil),       // 6: warehouse.settlement.v1.MetricSearchRequest
-	(*MetricSearchResponse)(nil),      // 7: warehouse.settlement.v1.MetricSearchResponse
-	(*MetricDataRequest)(nil),         // 8: warehouse.settlement.v1.MetricDataRequest
-	(*MetricData)(nil),                // 9: warehouse.settlement.v1.MetricData
-	(*MetricDataResponse)(nil),        // 10: warehouse.settlement.v1.MetricDataResponse
-	nil,                               // 11: warehouse.settlement.v1.SettlementMetricByID.ItemsEntry
-	nil,                               // 12: warehouse.settlement.v1.SettlementMetricByDay.ItemsEntry
-	nil,                               // 13: warehouse.settlement.v1.SettlementTypeMetricByID.ItemsEntry
-	nil,                               // 14: warehouse.settlement.v1.SettlementTypeMetricByDay.ItemsEntry
-	(v1.GroupType)(0),                 // 15: warehouse.analytic_base.v1.GroupType
-	(*v1.FilterItem)(nil),             // 16: warehouse.analytic_base.v1.FilterItem
-	(*v1.MetricSort)(nil),             // 17: warehouse.analytic_base.v1.MetricSort
-	(*v1.PaginationFilter)(nil),       // 18: warehouse.analytic_base.v1.PaginationFilter
-	(*v1.MetricKeys)(nil),             // 19: warehouse.analytic_base.v1.MetricKeys
+	(SettlementPersonListDataType)(0),        // 0: warehouse.settlement.v1.SettlementPersonListDataType
+	(SettlementPersonSort)(0),                // 1: warehouse.settlement.v1.SettlementPersonSort
+	(*SettlementMetric)(nil),                 // 2: warehouse.settlement.v1.SettlementMetric
+	(*SettlementMetricByID)(nil),             // 3: warehouse.settlement.v1.SettlementMetricByID
+	(*SettlementMetricByDay)(nil),            // 4: warehouse.settlement.v1.SettlementMetricByDay
+	(*SettlementTypeMetric)(nil),             // 5: warehouse.settlement.v1.SettlementTypeMetric
+	(*SettlementTypeMetricByID)(nil),         // 6: warehouse.settlement.v1.SettlementTypeMetricByID
+	(*SettlementTypeMetricByDay)(nil),        // 7: warehouse.settlement.v1.SettlementTypeMetricByDay
+	(*MetricSearchRequest)(nil),              // 8: warehouse.settlement.v1.MetricSearchRequest
+	(*MetricSearchResponse)(nil),             // 9: warehouse.settlement.v1.MetricSearchResponse
+	(*MetricDataRequest)(nil),                // 10: warehouse.settlement.v1.MetricDataRequest
+	(*MetricData)(nil),                       // 11: warehouse.settlement.v1.MetricData
+	(*MetricDataResponse)(nil),               // 12: warehouse.settlement.v1.MetricDataResponse
+	(*SettlementPersonListFilter)(nil),       // 13: warehouse.settlement.v1.SettlementPersonListFilter
+	(*SettlementPersonListFilterSort)(nil),   // 14: warehouse.settlement.v1.SettlementPersonListFilterSort
+	(*SettlementPersonListRequest)(nil),      // 15: warehouse.settlement.v1.SettlementPersonListRequest
+	(*SettlementPersonItem)(nil),             // 16: warehouse.settlement.v1.SettlementPersonItem
+	(*SettlementPersonMapItem)(nil),          // 17: warehouse.settlement.v1.SettlementPersonMapItem
+	(*SettlementPersonListResponseItem)(nil), // 18: warehouse.settlement.v1.SettlementPersonListResponseItem
+	(*SettlementPersonListResponse)(nil),     // 19: warehouse.settlement.v1.SettlementPersonListResponse
+	nil,                                      // 20: warehouse.settlement.v1.SettlementMetricByID.ItemsEntry
+	nil,                                      // 21: warehouse.settlement.v1.SettlementMetricByDay.ItemsEntry
+	nil,                                      // 22: warehouse.settlement.v1.SettlementTypeMetricByID.ItemsEntry
+	nil,                                      // 23: warehouse.settlement.v1.SettlementTypeMetricByDay.ItemsEntry
+	nil,                                      // 24: warehouse.settlement.v1.SettlementPersonMapItem.MapDataEntry
+	(v1.GroupType)(0),                        // 25: warehouse.analytic_base.v1.GroupType
+	(*v1.FilterItem)(nil),                    // 26: warehouse.analytic_base.v1.FilterItem
+	(*v1.MetricSort)(nil),                    // 27: warehouse.analytic_base.v1.MetricSort
+	(*v1.PaginationFilter)(nil),              // 28: warehouse.analytic_base.v1.PaginationFilter
+	(*v1.MetricKeys)(nil),                    // 29: warehouse.analytic_base.v1.MetricKeys
+	(v11.CommonSortType)(0),                  // 30: warehouse.common.v1.CommonSortType
+	(*v11.CommonPagination)(nil),             // 31: warehouse.common.v1.CommonPagination
+	(*v11.PageInfo)(nil),                     // 32: warehouse.common.v1.PageInfo
 }
 var file_warehouse_settlement_v1_settlement_analytic_proto_depIdxs = []int32{
-	11, // 0: warehouse.settlement.v1.SettlementMetricByID.items:type_name -> warehouse.settlement.v1.SettlementMetricByID.ItemsEntry
-	12, // 1: warehouse.settlement.v1.SettlementMetricByDay.items:type_name -> warehouse.settlement.v1.SettlementMetricByDay.ItemsEntry
-	13, // 2: warehouse.settlement.v1.SettlementTypeMetricByID.items:type_name -> warehouse.settlement.v1.SettlementTypeMetricByID.ItemsEntry
-	14, // 3: warehouse.settlement.v1.SettlementTypeMetricByDay.items:type_name -> warehouse.settlement.v1.SettlementTypeMetricByDay.ItemsEntry
-	15, // 4: warehouse.settlement.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	16, // 5: warehouse.settlement.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	17, // 6: warehouse.settlement.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
-	18, // 7: warehouse.settlement.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
-	19, // 8: warehouse.settlement.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
-	15, // 9: warehouse.settlement.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	16, // 10: warehouse.settlement.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	19, // 11: warehouse.settlement.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
-	1,  // 12: warehouse.settlement.v1.MetricData.settlement_by_id:type_name -> warehouse.settlement.v1.SettlementMetricByID
-	2,  // 13: warehouse.settlement.v1.MetricData.settlement_by_day:type_name -> warehouse.settlement.v1.SettlementMetricByDay
-	0,  // 14: warehouse.settlement.v1.MetricData.settlement_summary:type_name -> warehouse.settlement.v1.SettlementMetric
-	4,  // 15: warehouse.settlement.v1.MetricData.types_by_id:type_name -> warehouse.settlement.v1.SettlementTypeMetricByID
-	5,  // 16: warehouse.settlement.v1.MetricData.types_by_day:type_name -> warehouse.settlement.v1.SettlementTypeMetricByDay
-	3,  // 17: warehouse.settlement.v1.MetricData.types_summary:type_name -> warehouse.settlement.v1.SettlementTypeMetric
-	9,  // 18: warehouse.settlement.v1.MetricDataResponse.metric_datas:type_name -> warehouse.settlement.v1.MetricData
-	0,  // 19: warehouse.settlement.v1.SettlementMetricByID.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementMetric
-	0,  // 20: warehouse.settlement.v1.SettlementMetricByDay.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementMetric
-	3,  // 21: warehouse.settlement.v1.SettlementTypeMetricByID.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementTypeMetric
-	3,  // 22: warehouse.settlement.v1.SettlementTypeMetricByDay.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementTypeMetric
-	6,  // 23: warehouse.settlement.v1.SettlementAnalyticService.MetricSearch:input_type -> warehouse.settlement.v1.MetricSearchRequest
-	8,  // 24: warehouse.settlement.v1.SettlementAnalyticService.MetricData:input_type -> warehouse.settlement.v1.MetricDataRequest
-	7,  // 25: warehouse.settlement.v1.SettlementAnalyticService.MetricSearch:output_type -> warehouse.settlement.v1.MetricSearchResponse
-	10, // 26: warehouse.settlement.v1.SettlementAnalyticService.MetricData:output_type -> warehouse.settlement.v1.MetricDataResponse
-	25, // [25:27] is the sub-list for method output_type
-	23, // [23:25] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	20, // 0: warehouse.settlement.v1.SettlementMetricByID.items:type_name -> warehouse.settlement.v1.SettlementMetricByID.ItemsEntry
+	21, // 1: warehouse.settlement.v1.SettlementMetricByDay.items:type_name -> warehouse.settlement.v1.SettlementMetricByDay.ItemsEntry
+	22, // 2: warehouse.settlement.v1.SettlementTypeMetricByID.items:type_name -> warehouse.settlement.v1.SettlementTypeMetricByID.ItemsEntry
+	23, // 3: warehouse.settlement.v1.SettlementTypeMetricByDay.items:type_name -> warehouse.settlement.v1.SettlementTypeMetricByDay.ItemsEntry
+	25, // 4: warehouse.settlement.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	26, // 5: warehouse.settlement.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	27, // 6: warehouse.settlement.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
+	28, // 7: warehouse.settlement.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
+	29, // 8: warehouse.settlement.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	25, // 9: warehouse.settlement.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	26, // 10: warehouse.settlement.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	29, // 11: warehouse.settlement.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	3,  // 12: warehouse.settlement.v1.MetricData.settlement_by_id:type_name -> warehouse.settlement.v1.SettlementMetricByID
+	4,  // 13: warehouse.settlement.v1.MetricData.settlement_by_day:type_name -> warehouse.settlement.v1.SettlementMetricByDay
+	2,  // 14: warehouse.settlement.v1.MetricData.settlement_summary:type_name -> warehouse.settlement.v1.SettlementMetric
+	6,  // 15: warehouse.settlement.v1.MetricData.types_by_id:type_name -> warehouse.settlement.v1.SettlementTypeMetricByID
+	7,  // 16: warehouse.settlement.v1.MetricData.types_by_day:type_name -> warehouse.settlement.v1.SettlementTypeMetricByDay
+	5,  // 17: warehouse.settlement.v1.MetricData.types_summary:type_name -> warehouse.settlement.v1.SettlementTypeMetric
+	11, // 18: warehouse.settlement.v1.MetricDataResponse.metric_datas:type_name -> warehouse.settlement.v1.MetricData
+	30, // 19: warehouse.settlement.v1.SettlementPersonListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	1,  // 20: warehouse.settlement.v1.SettlementPersonListFilterSort.person:type_name -> warehouse.settlement.v1.SettlementPersonSort
+	13, // 21: warehouse.settlement.v1.SettlementPersonListRequest.filter:type_name -> warehouse.settlement.v1.SettlementPersonListFilter
+	14, // 22: warehouse.settlement.v1.SettlementPersonListRequest.sort:type_name -> warehouse.settlement.v1.SettlementPersonListFilterSort
+	0,  // 23: warehouse.settlement.v1.SettlementPersonListRequest.data_request:type_name -> warehouse.settlement.v1.SettlementPersonListDataType
+	31, // 24: warehouse.settlement.v1.SettlementPersonListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	24, // 25: warehouse.settlement.v1.SettlementPersonMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementPersonMapItem.MapDataEntry
+	17, // 26: warehouse.settlement.v1.SettlementPersonListResponseItem.person:type_name -> warehouse.settlement.v1.SettlementPersonMapItem
+	18, // 27: warehouse.settlement.v1.SettlementPersonListResponse.items:type_name -> warehouse.settlement.v1.SettlementPersonListResponseItem
+	32, // 28: warehouse.settlement.v1.SettlementPersonListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	2,  // 29: warehouse.settlement.v1.SettlementMetricByID.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementMetric
+	2,  // 30: warehouse.settlement.v1.SettlementMetricByDay.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementMetric
+	5,  // 31: warehouse.settlement.v1.SettlementTypeMetricByID.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementTypeMetric
+	5,  // 32: warehouse.settlement.v1.SettlementTypeMetricByDay.ItemsEntry.value:type_name -> warehouse.settlement.v1.SettlementTypeMetric
+	16, // 33: warehouse.settlement.v1.SettlementPersonMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementPersonItem
+	8,  // 34: warehouse.settlement.v1.SettlementAnalyticService.MetricSearch:input_type -> warehouse.settlement.v1.MetricSearchRequest
+	10, // 35: warehouse.settlement.v1.SettlementAnalyticService.MetricData:input_type -> warehouse.settlement.v1.MetricDataRequest
+	15, // 36: warehouse.settlement.v1.SettlementAnalyticService.SettlementPersonList:input_type -> warehouse.settlement.v1.SettlementPersonListRequest
+	9,  // 37: warehouse.settlement.v1.SettlementAnalyticService.MetricSearch:output_type -> warehouse.settlement.v1.MetricSearchResponse
+	12, // 38: warehouse.settlement.v1.SettlementAnalyticService.MetricData:output_type -> warehouse.settlement.v1.MetricDataResponse
+	19, // 39: warehouse.settlement.v1.SettlementAnalyticService.SettlementPersonList:output_type -> warehouse.settlement.v1.SettlementPersonListResponse
+	37, // [37:40] is the sub-list for method output_type
+	34, // [34:37] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_settlement_v1_settlement_analytic_proto_init() }
@@ -1021,18 +1611,25 @@ func file_warehouse_settlement_v1_settlement_analytic_proto_init() {
 		(*MetricData_TypesByDay)(nil),
 		(*MetricData_TypesSummary)(nil),
 	}
+	file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[12].OneofWrappers = []any{
+		(*SettlementPersonListFilterSort_Person)(nil),
+	}
+	file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes[16].OneofWrappers = []any{
+		(*SettlementPersonListResponseItem_Person)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc), len(file_warehouse_settlement_v1_settlement_analytic_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   15,
+			NumEnums:      2,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_warehouse_settlement_v1_settlement_analytic_proto_goTypes,
 		DependencyIndexes: file_warehouse_settlement_v1_settlement_analytic_proto_depIdxs,
+		EnumInfos:         file_warehouse_settlement_v1_settlement_analytic_proto_enumTypes,
 		MessageInfos:      file_warehouse_settlement_v1_settlement_analytic_proto_msgTypes,
 	}.Build()
 	File_warehouse_settlement_v1_settlement_analytic_proto = out.File

@@ -3,7 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { SHOPS_META, loaded } from "./kit";
 
-// SHOPS — New Shop, Edit and Delete.
+// SHOPS — New Shop, Edit and Close (a shop is closed, never deleted — the rest of Close is ../CloseShop.stories.tsx).
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -55,13 +55,14 @@ export const EditOpensTheShopFilledIn: Story = {
   },
 };
 
-/** Delete confirms first, naming the shop — and the row is gone after. */
-export const DeleteConfirmsFirst: Story = {
-  name: "Delete confirms",
+/** Close confirms first, naming the shop — and the row leaves the open list after (a-shop-is-closed-never-deleted). */
+export const CloseConfirmsFirst: Story = {
+  name: "Close confirms",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("delete-MEL-LAZ"));
+    await expect(canvas.queryAllByTestId(/^delete-/)).toHaveLength(0);
+    await userEvent.click(canvas.getByTestId("close-MEL-LAZ"));
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
     await expect(dialog).toHaveTextContent("Melati Grosir");

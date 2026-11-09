@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { ADMIN_DSN, TEST_DSN } from "./db";
 import { acquireRunLock } from "./lock";
 import { ensurePubsubTopicsCommand, requirePubsubEmulator } from "./pubsub";
@@ -38,6 +38,8 @@ function servicesToMigrate(): string[] {
   const discovered = readdirSync("../backend/services", { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.endsWith("_service"))
     .map((entry) => entry.name)
+    // A service with no migrations of its own (mcp_service owns no table) has nothing to apply — as san_testdb says.
+    .filter((name) => existsSync(`../backend/services/${name}/db_migrations`))
     .filter((name) => !seededFirst.includes(name))
     .sort();
 

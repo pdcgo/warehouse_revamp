@@ -36,13 +36,13 @@ export interface StatementRow {
   bucket: string;
 
   /** What the bucket EARNED, in this mode's terms. The top of the subtraction. */
-  income: bigint;
+  income: number;
 
   // ── selling only ────────────────────────────────────────────────────────────────────────────────
   orders: number;
-  revenue: bigint;
-  cogs: bigint;
-  shippingCost: bigint;
+  revenue: number;
+  cogs: number;
+  shippingCost: number;
   /** Orders whose cost was unknown (#74) — their margin reads as pure profit. */
   unknownCostOrders: number;
 
@@ -50,21 +50,21 @@ export interface StatementRow {
   /** Ledger legs the bucket holds. */
   feeEntries: number;
   /** ⚠ COD is a REIMBURSEMENT of cash already paid to a courier, so it is shown but NOT in `income`. */
-  codFees: bigint;
+  codFees: number;
 
   // ── both ────────────────────────────────────────────────────────────────────────────────────────
   /** Everything in `expense_records` for the bucket, stock loss included. */
-  expenses: bigint;
+  expenses: number;
   /** The stock written off in it (#211) — a warehouse's biggest controllable cost. */
-  stockLoss: bigint;
+  stockLoss: number;
   /** `expenses − stockLoss` — the money somebody DECIDED to spend, as opposed to what went wrong. */
-  otherExpenses: bigint;
+  otherExpenses: number;
   expenseEntries: number;
 
   /** income − expenses. */
-  profit: bigint;
+  profit: number;
   /** Profit accumulated from the first bucket of the period THROUGH this one. */
-  running: bigint;
+  running: number;
   /** Whether anything happened at all on either side. */
   active: boolean;
 }
@@ -72,7 +72,7 @@ export interface StatementRow {
 export interface Statement {
   rows: StatementRow[];
   /** The period's income total, from the SERVER — the handling fees it charged. */
-  income: bigint;
+  income: number;
   liability: LiabilityDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
 }
@@ -84,6 +84,18 @@ const HANDLING_FEE = LiabilitySourceType.ORDER_FEE;
 // all while this one reported 0 every day. Repointing it is the live bug that
 // the-ledger-speaks-the-business-words fixed for free.
 const COD_FEE = LiabilitySourceType.INCIDENTAL_FEE;
+
+// The courier's ask at a RETURN's door (a-return-may-carry-the-couriers-ask) — the same money as COD_FEE, the courier paid
+// from the warehouse's cash box and owed back, under its own type only because its source is an order, not a restock.
+const RETURN_COD_FEE = LiabilitySourceType.RETURN_INCIDENTAL_FEE;
+
+// The same courier money on a warehouse transfer's accept (a-transfer-charge-is-a-transfer-fee), keyed by the transfer.
+const TRANSFER_COD_FEE = LiabilitySourceType.TRANSFER_FEE;
+
+/** What the couriers asked at the door, a restock's, a return's and a transfer's together — the statement's one courier column. */
+export function courierAsks(bySource: { [source: number]: number } | undefined): number {
+  return (bySource?.[COD_FEE] ?? 0) + (bySource?.[RETURN_COD_FEE] ?? 0) + (bySource?.[TRANSFER_COD_FEE] ?? 0);
+}
 
 // The daily statement's read.
 //
@@ -149,7 +161,7 @@ export function useDailyStatement(args: {
         // note on LiabilityDailyFilter. A COD fee reimburses cash the warehouse already handed a
         // courier, and a PAYMENT settles a balance that was earned when the fee was charged. Summing
         // every source and calling it income would count the same money twice.
-        income: fees.totals?.bySource[HANDLING_FEE] ?? 0n,
+        income: fees.totals?.bySource[HANDLING_FEE] ?? 0,
         liability: fees.totals,
         expenses: exp.totals,
       };
@@ -177,8 +189,8 @@ function bucketise<T extends { date: string }>(rows: T[], grain: PeriodGrain): M
   return out;
 }
 
-const sum = <T>(rows: T[], of: (row: T) => bigint | undefined) =>
-  rows.reduce((total, row) => total + (of(row) ?? 0n), 0n);
+const sum = <T>(rows: T[], of: (row: T) => number | undefined) =>
+  rows.reduce((total, row) => total + (of(row) ?? 0), 0);
 
 // mergeBuckets lines every sparse series up on the client's spine and runs the subtraction.
 //
@@ -205,7 +217,7 @@ function mergeBuckets(
   const feesAt = bucketise(feeDays, grain);
   const expensesAt = bucketise(expenseDays, grain);
 
-  let running = 0n;
+  let running = 0;
 
   return bucketSpine(from, to, grain).map((bucket) => {
     const f = feesAt.get(bucket) ?? [];
@@ -227,13 +239,13 @@ function mergeBuckets(
       // ⚠ RESERVED, and always zero today. These five are the selling half, kept in the row shape so
       // the table's column sets and every consumer stay as they were when statistics return.
       orders: 0,
-      revenue: 0n,
-      cogs: 0n,
-      shippingCost: 0n,
+      revenue: 0,
+      cogs: 0,
+      shippingCost: 0,
       unknownCostOrders: 0,
 
-      feeEntries: Number(sum(f, (d) => d.entries)),
-      codFees: sum(f, (d) => d.bySource[COD_FEE]),
+      feeEntries: sum(f, (d) => Number(d.entries)),
+      codFees: sum(f, (d) => courierAsks(d.bySource)),
 
       expenses,
       stockLoss,
@@ -241,7 +253,7 @@ function mergeBuckets(
       // stock loss got its own kind: rent is a choice, a dropped pallet is not, and a single
       // "Operational" column that held both could not tell a manager which one moved.
       otherExpenses: expenses - stockLoss,
-      expenseEntries: Number(sum(e, (d) => d.entries)),
+      expenseEntries: sum(e, (d) => Number(d.entries)),
 
       profit,
       running,

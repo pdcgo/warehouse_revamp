@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanWrite } from "../team/TeamContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, HStack, Icon, IconButton, Menu, Portal, Separator } from "@chakra-ui/react";
 import { MoreHorizontal, PackageCheck, PackageOpen, Printer } from "lucide-react";
@@ -82,8 +83,11 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
   const navigate = useNavigate();
   const location = useLocation();
   const [signing, setSigning] = useState(false);
+  // Nothing to change here while the admin team monitors the team (the-admin-team-monitors-read-only) — printing the
+  // labels changes nothing, so it stays.
+  const writable = useCanWrite();
 
-  const actions = warehouseActions(request.status);
+  const actions = warehouseActions(request.status).filter((action) => writable || action === "labels");
   if (actions.length === 0) return null;
 
   const id = request.id.toString();

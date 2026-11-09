@@ -1,19 +1,22 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, DataList, Flex, Grid, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Alert, Button, Card, DataList, Flex, Grid, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
+import { ArrowLeft, Lock, LockOpen, Pencil } from "lucide-react";
 import { rpcError } from "../../api/clients";
-import { useTeam } from "../../features/team/TeamContext";
-import { useDeleteShop, useShop } from "../../features/shops/queries";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
+import { useReopenShop, useShop } from "../../features/shops/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { CopyText } from "../../components/chrome/CopyText";
-import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
 import { ShopFormDialog } from "../../features/shops/ShopFormDialog";
+import { CloseShopDialog } from "../../features/shops/CloseShopDialog";
+import { ShopStatusBadge } from "../../features/shops/ShopStatusBadge";
+import { isShopClosed } from "../../features/shops/status";
+import { formatUnixDate } from "../../lib/datetime";
 import { ShopUsersSection } from "./components/ShopUsersSection";
 import { WithdrawalAccountCard } from "./components/WithdrawalAccountCard";
 
@@ -33,7 +36,7 @@ function parseShopId(raw: string | undefined): bigint {
 // `the-shop-screens-follow-the-screen-rules`), the supplier page's shape:
 //
 //   ← Kembali ke Toko
-//   Melati Official                                           [✎ Ubah] [🗑 Hapus]   ← one row; icons on a phone
+//   Melati Official                                           [✎ Ubah] [🔒 Tutup Toko]   ← one row; icons on a phone
 //   ┌ Detail Toko ─────────────────┐ ┌ Pengguna dengan Akses ──────────────────────┐  ← two panels from `lg`
 //   │ Kode         MEL-SHP ⧉       │ │ [Ketik username anggota      ] [Tambah]     │
 //   │ Marketplace  [Shopee]        │ │ Ani Rahayu  @ani  [CS utama]           ⊖    │
@@ -44,8 +47,21 @@ function parseShopId(raw: string | undefined): bigint {
 //   │ [BCA] BCA Operasional [Buka ›]│
 //   └──────────────────────────────┘
 //
-// The page's title is the shop's name — "Detail Toko" names the card of its facts, not the page. Delete is here too,
-// as on the list, so a phone (whose list block opens the page) can reach it.
+// The page's title is the shop's name — "Detail Toko" names the card of its facts, not the page. Close Shop is here
+// too, as on the list, so a phone (whose list block opens the page) can reach it. There is no delete
+// (a-shop-is-closed-never-deleted): Close Shop confirms and says what it does (CloseShopDialog), and a closed shop's page
+// says so (the-close-shop-prototype-is-accepted):
+//
+//   ← Back to Shops
+//   Melati Store [🔒 Closed]                                               [🔓 Reopen Shop]
+//   ┌ ⓘ This shop is closed ────────────────────────────────────────────────────────────────┐
+//   │ Closed on 3 Nov 2026. It takes no new orders or drafts. Its placed orders run to their │
+//   │ end, its statements still import, and who has access can still change. …              │
+//   └────────────────────────────────────────────────────────────────────────────────────────┘
+//   Shop Details · Withdrawal Account (no new link) │ Users with Access — still editable
+//
+// No Edit on a closed shop (a-closed-shop-locks-all-but-its-grants); its access panel keeps working, so its last
+// statements can still be imported. No new withdrawal account is linked to it (a-closed-shop-takes-no-new-account-link).
 export function ShopDetailPage() {
   const { shopId } = useParams();
   const navigate = useNavigate();
@@ -56,14 +72,15 @@ export function ShopDetailPage() {
   const id = parseShopId(shopId);
 
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const teamId = current?.teamId;
 
   const query = useShop({ teamId, shopId: id });
-  const deleteShop = useDeleteShop();
+  const reopenShop = useReopenShop();
 
   const shop = query.data ?? null;
+  const closed = isShopClosed(shop);
   const loading = query.isPending && id !== 0n;
 
   // A malformed id in the URL is not a failed request — the query never runs for it (`enabled`), so its message is
@@ -110,17 +127,70 @@ export function ShopDetailPage() {
     );
   }
 
-  // Delete confirms, then goes back to the list — the page it was on no longer opens.
-  async function remove() {
+  // Reopen runs at once (not destructive); refused while an open shop holds the code, naming it.
+  async function reopen() {
     if (!shop || teamId === undefined) return;
 
     try {
-      await deleteShop.mutateAsync({ teamId, shopId: shop.id });
-      toaster.create({ type: "success", title: t("shops.detail.deleted", { name: shop.name }) });
-      navigate("/shops");
+      await reopenShop.mutateAsync({ teamId, shopId: shop.id });
+      toaster.create({ type: "success", title: t("shops.reopen.done", { name: shop.name }) });
     } catch (err) {
-      toaster.create({ type: "error", title: t("shops.deleteFailed"), description: rpcError(err) });
+      toaster.create({ type: "error", title: t("shops.reopen.failed"), description: rpcError(err) });
     }
+  }
+
+  // The header's actions: Edit · Close Shop on an open shop, Reopen Shop alone on a closed one. On a phone each is its
+  // icon (a-phone-header-action-is-an-icon).
+  function headerActions() {
+    if (!canWrite(current)) return null;
+
+    if (closed) {
+      return isMobile ? (
+        <CompactActions
+          menuLabel={t("common.actions")}
+          actions={[
+            { id: "reopen", label: t("shops.reopen.title"), icon: LockOpen, primary: true, testId: "shop-detail-reopen", onClick: () => void reopen() },
+          ]}
+        />
+      ) : (
+        <Button
+          size="xs"
+          variant="outline"
+          colorPalette="brand"
+          flexShrink={0}
+          loading={reopenShop.isPending}
+          data-testid="shop-detail-reopen"
+          onClick={() => void reopen()}
+        >
+          <Icon as={LockOpen} boxSize="4" />
+          {t("shops.reopen.title")}
+        </Button>
+      );
+    }
+
+    // Close in Delete's place — there is no delete (a-shop-is-closed-never-deleted).
+    const last = { id: "close", label: t("shops.close.title"), icon: Lock, testId: "shop-detail-close", onClick: () => setClosing(true) };
+
+    return isMobile ? (
+      <CompactActions
+        menuLabel={t("common.actions")}
+        actions={[
+          { id: "edit", label: t("shops.detail.edit"), icon: Pencil, testId: "shop-detail-edit", onClick: () => setEditing(true) },
+          { ...last, danger: true },
+        ]}
+      />
+    ) : (
+      <HStack gap="1.5" flexShrink={0}>
+        <Button size="xs" variant="outline" data-testid="shop-detail-edit" onClick={() => setEditing(true)}>
+          <Icon as={Pencil} boxSize="4" />
+          {t("shops.detail.edit")}
+        </Button>
+        <Button size="xs" variant="outline" colorPalette="error" data-testid={last.testId} onClick={last.onClick}>
+          <Icon as={last.icon} boxSize="4" />
+          {last.label}
+        </Button>
+      </HStack>
+    );
   }
 
   return (
@@ -137,35 +207,28 @@ export function ShopDetailPage() {
             <Heading size="md" truncate={isMobile} minW="0" data-testid="shop-detail-name">
               {shop.name}
             </Heading>
+            {/* The status sits on the header's one row (the-phone-header-is-one-row). */}
+            {closed && <ShopStatusBadge testId="shop-detail-closed" />}
           </HStack>
-          {isMobile ? (
-            <CompactActions
-              menuLabel={t("common.actions")}
-              actions={[
-                { id: "edit", label: t("shops.detail.edit"), icon: Pencil, testId: "shop-detail-edit", onClick: () => setEditing(true) },
-                { id: "delete", label: t("shops.detail.delete"), icon: Trash2, danger: true, testId: "shop-detail-delete", onClick: () => setDeleting(true) },
-              ]}
-            />
-          ) : (
-            <HStack gap="1.5" flexShrink={0}>
-              <Button size="xs" variant="outline" data-testid="shop-detail-edit" onClick={() => setEditing(true)}>
-                <Icon as={Pencil} boxSize="4" />
-                {t("shops.detail.edit")}
-              </Button>
-              <Button
-                size="xs"
-                variant="outline"
-                colorPalette="error"
-                data-testid="shop-detail-delete"
-                onClick={() => setDeleting(true)}
-              >
-                <Icon as={Trash2} boxSize="4" />
-                {t("shops.detail.delete")}
-              </Button>
-            </HStack>
-          )}
+          {headerActions()}
         </Flex>
       </Stack>
+
+      {/* A CLOSED SHOP'S PAGE SAYS WHAT IT STILL DOES, under the title: the day it closed, what it refuses,
+          what keeps working, what is locked (the closed-shop decisions). Reopen is the header's. */}
+      {closed && (
+        <Alert.Root status="info" data-testid="shop-closed-banner">
+          <Alert.Indicator>
+            <Icon as={Lock} />
+          </Alert.Indicator>
+          <Alert.Content>
+            <Alert.Title>{t("shops.closedBanner.title")}</Alert.Title>
+            <Alert.Description>
+              {t("shops.closedBanner.since", { date: formatUnixDate(shop.closedAtUnix) })} {t("shops.closedBanner.body")}
+            </Alert.Description>
+          </Alert.Content>
+        </Alert.Root>
+      )}
 
       {/* TWO PANELS, DETAIL AND ACCESS (owner: *"untuk toko taruh detail di atas"*, *"yang sekarang saja, tapi ui
           kurang"*, then *"space terlalu banyak, coba jadi 2 panel, detail dan akses"*) — side by side from `lg`, HALF AND
@@ -212,7 +275,7 @@ export function ShopDetailPage() {
             </Card.Body>
           </Card.Root>
 
-          <WithdrawalAccountCard teamId={current.teamId} shop={shop} />
+          <WithdrawalAccountCard teamId={current.teamId} shop={shop} closed={closed} />
         </Stack>
 
         {/* WHO WORKS ON IT — the access panel; the section draws its own card. */}
@@ -224,14 +287,10 @@ export function ShopDetailPage() {
         />
       </Grid>
 
-      <ConfirmDialog
-        open={deleting}
-        onOpenChange={setDeleting}
-        title={t("shops.deleteShop")}
-        message={t("shops.deleteConfirm", { name: shop.name })}
-        confirmLabel={t("shops.delete")}
-        onConfirm={remove}
-      />
+      {/* The close — it stays on the page, which then reads as closed. */}
+      {!closed && (
+        <CloseShopDialog teamId={current.teamId} shop={shop} open={closing} onOpenChange={setClosing} />
+      )}
 
       {editing && (
         <ShopFormDialog

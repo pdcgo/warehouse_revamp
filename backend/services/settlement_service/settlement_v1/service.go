@@ -40,6 +40,16 @@ type Service struct {
 	// Who an imported shop row counts for — the shop's primary CS, asked of the shop before the write
 	// (#settlement-asks-the-shop-for-its-primary-cs). Settlement's one call into another service.
 	shops ShopPrimary
+
+	// Where the order learns its account OPENED — orders.settlement_opened_at, stamped at the first `initial_total`
+	// (a-missing-account-is-found-by-its-opened-at). The order's own row, so the order service writes it.
+	opened OrderOpenedMarker
+
+	// The statement a shop row came from — the importer's line, asked in-process (shop_entry_sources.go).
+	statements StatementSources
+
+	// Who posted or uploaded a shop row, by name — the user read, in-process.
+	users UserNames
 }
 
 // compile-time proof Service serves every proto service. One implementation behind four, exactly as
@@ -51,7 +61,15 @@ var (
 	_ settlementv1connect.SettlementAnalyticMaintenanceServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroker, shops ShopPrimary) *Service {
+func NewService(
+	db *gorm.DB,
+	events event_source.EventSender,
+	broker ReplayBroker,
+	shops ShopPrimary,
+	opened OrderOpenedMarker,
+	statements StatementSources,
+	users UserNames,
+) *Service {
 	// A nil sender would panic on the first post. EmptySender still VALIDATES the event, so a malformed
 	// one is caught with no broker in sight — the right default for tests and a local run.
 	if events == nil {
@@ -68,7 +86,29 @@ func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroke
 		shops = noShopPrimary{}
 	}
 
-	return &Service{db: db, events: events, broker: broker, shops: shops}
+	// With no order service to tell, an opening is not stamped — a test's settlement, or a binary with no orders.
+	if opened == nil {
+		opened = noOrderOpened{}
+	}
+
+	// With no importer, no row names a statement; with no user service, a name falls back to the id on the screen.
+	if statements == nil {
+		statements = noStatementSources{}
+	}
+
+	if users == nil {
+		users = noUserNames{}
+	}
+
+	return &Service{
+		db:         db,
+		events:     events,
+		broker:     broker,
+		shops:      shops,
+		opened:     opened,
+		statements: statements,
+		users:      users,
+	}
 }
 
 const dateLayout = "2006-01-02"
@@ -153,12 +193,43 @@ var (
 		errors.New("initial_total_cancel exceeds this order's live sale"),
 	)
 
+	// A change that is not a number cannot be frozen to a rupiah. The wire refuses it (double.finite); this holds an
+	// in-process caller — an order event, the importer — to the same.
+	errChangeNotFinite = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("change must be a finite amount of rupiah"),
+	)
+
+	// A ROW IS REVERSED ONCE (a-shop-entry-reverses-inline: "a row already reversed shows so and offers no second
+	// Reverse"). Checked under the account's lock, so two reversals at once cannot both find it unreversed.
+	errAlreadyReversed = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("this entry is already reversed"),
+	)
+
+	// A reversal POSTS THE NEGATION, SAME settlement_type (a-correction-is-a-new-row) — anything else is a new entry
+	// pretending to undo an old one.
+	errReversalNotOpposite = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("a reversal must carry the reversed entry's type and the opposite amount"),
+	)
+
 	errUnknownType   = errors.New("unknown settlement_type")
 	errUnknownSource = errors.New("unknown source_type")
 )
 
 // parseDate is deliberate about its error: the proto's regex has already run in production, but a
 // handler called directly (a CLI command, a unit test) has no validation interceptor in front of it.
+// parseJakartaDay is a day as the instant it starts at — Jakarta midnight — for a bound on a TIMESTAMPTZ column.
+func parseJakartaDay(raw string) (time.Time, error) {
+	t, err := time.ParseInLocation(dateLayout, raw, jakarta)
+	if err != nil {
+		return time.Time{}, errBadDate
+	}
+
+	return t, nil
+}
+
 func parseDate(raw string) (time.Time, error) {
 	t, err := time.Parse(dateLayout, raw)
 	if err != nil {
@@ -180,6 +251,13 @@ func actorFrom(ctx context.Context) uint64 {
 	}
 
 	return identity.GetIdentityId()
+}
+
+// overrideFrom is whether actorFrom is Root or the Administrator posting inside a team they hold no role in — through
+// the root-team bypass, not a membership (an-override-is-stamped-in-every-service). Stamped beside the actor on the
+// row it writes.
+func overrideFrom(ctx context.Context) bool {
+	return san_auth.IsOverride(ctx)
 }
 
 func totalPages(total int64, limit uint32) uint32 {

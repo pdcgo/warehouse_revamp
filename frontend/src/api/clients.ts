@@ -1,5 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import { AuthService, UserService } from "../gen/warehouse/user/v1/user_pb";
+import { AgentService } from "../gen/warehouse/user/v1/agent_pb";
 import { TeamService } from "../gen/warehouse/team/v1/team_pb";
 import { ProductService } from "../gen/warehouse/product/v1/product_pb";
 import { BundleService } from "../gen/warehouse/product/v1/bundle_pb";
@@ -9,6 +10,7 @@ import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
 import { OrderAnalyticService } from "../gen/warehouse/selling/v1/order_analytic_pb";
 import { TeamReturnConfigurationService } from "../gen/warehouse/selling/v1/return_configuration_pb";
 import { WarehouseFeeService } from "../gen/warehouse/warehouse/v1/warehouse_fee_pb";
+import { WarehouseInfoService } from "../gen/warehouse/warehouse/v1/warehouse_info_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptService } from "../gen/warehouse/shipment/v1/receipt_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
@@ -18,6 +20,7 @@ import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { WarehouseTransferService } from "../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { OpnameService } from "../gen/warehouse/inventory/v1/opname_pb";
+import { FoundRequestService } from "../gen/warehouse/inventory/v1/found_request_pb";
 import { SupplierService } from "../gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../gen/warehouse/supplier/v1/supplier_channel_pb";
 import { SupplierAnalyticService } from "../gen/warehouse/supplier/v1/supplier_analytic_pb";
@@ -31,16 +34,19 @@ import {
 import { SettlementService, SettlementWriteService } from "../gen/warehouse/settlement/v1/settlement_pb";
 import { SettlementAnalyticService } from "../gen/warehouse/settlement/v1/settlement_analytic_pb";
 import { SettlementImporterService } from "../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
-import {
-  FinancialAccountAnalyticService,
-  FinancialAccountService,
-} from "../gen/warehouse/financial_account/v1/financial_account_pb";
+import { FinancialAccountService } from "../gen/warehouse/financial_account/v1/financial_account_pb";
+import { FinancialAccountAnalyticService } from "../gen/warehouse/financial_account/v1/financial_account_analytic_pb";
+import { InventoryAnalyticService } from "../gen/warehouse/inventory/v1/inventory_analytic_pb";
+import { ExpenseAnalyticService } from "../gen/warehouse/expense/v1/expense_analytic_pb";
 import { transport } from "../transport";
 
 // One client per service, created once. The transport attaches the bearer token; the CURRENT
 // TEAM is never attached automatically — it is a message field, so each caller passes it.
 export const authClient = createClient(AuthService, transport);
 export const userClient = createClient(UserService, transport);
+// The AI agents a person connects to read a team through our MCP endpoint (docs/business/mcp) — the connect page, the
+// person's own connections on /profile, and the team owner's view on Settings. The OAuth endpoints are plain HTTP.
+export const agentClient = createClient(AgentService, transport);
 export const teamClient = createClient(TeamService, transport);
 export const productClient = createClient(ProductService, transport);
 // A selling team's picking recipes (docs/business/product/product_bundle.md).
@@ -55,6 +61,9 @@ export const orderDraftClient = createClient(OrderDraftService, transport);
 export const teamReturnConfigurationClient = createClient(TeamReturnConfigurationService, transport);
 // What a warehouse charges per order (warehouse-prices-balance-records).
 export const warehouseFeeClient = createClient(WarehouseFeeService, transport);
+// The warehouse PROFILE — hours, location, closures, and whether it receives orders now
+// (the-warehouse-profile-lives-in-warehouse-service).
+export const warehouseInfoClient = createClient(WarehouseInfoService, transport);
 // The ONE courier catalogue (docs/business/shipment) — public reads, root writes.
 export const shipmentChannelClient = createClient(ShipmentChannelService, transport);
 // Reads an uploaded shipping label (receipt-check-is-shipments) — signed in, stores nothing.
@@ -76,6 +85,9 @@ export const restockClient = createClient(RestockRequestService, transport);
 export const warehouseTransferClient = createClient(WarehouseTransferService, transport);
 // The stock count — a prototype until design_accept: the server answers Unimplemented, Storybook's stub plays it.
 export const opnameClient = createClient(OpnameService, transport);
+// A found at the shelf waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin) — a
+// PROTOTYPE until design_accept: the server answers Unimplemented, Storybook's stub (foundRequestStub.ts) plays it.
+export const foundRequestClient = createClient(FoundRequestService, transport);
 // Global reference data — regions are the same for everyone, so no team travels with these calls.
 export const regionClient = createClient(RegionService, transport);
 export const expenseClient = createClient(ExpenseService, transport);
@@ -98,8 +110,11 @@ export const settlementImporterClient = createClient(SettlementImporterService, 
 // Served by backend/services/financial_account_service; its withdrawals arrive from settlement's event.
 export const financialAccountClient = createClient(FinancialAccountService, transport);
 export const financialAccountAnalyticClient = createClient(FinancialAccountAnalyticService, transport);
+// Lost stock on the Analytic composer — served by inventory_service (inventory_analytic.proto).
+export const inventoryAnalyticClient = createClient(InventoryAnalyticService, transport);
+// Ads expense and Expenses on the Analytic composer — served by expense_service (expense_analytic.proto).
+export const expenseAnalyticClient = createClient(ExpenseAnalyticService, transport);
 
-// rpcError turns a Connect error into something a human can read.
-export function rpcError(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+// rpcError turns a Connect error into something a human can read — the code never, the server's sentence when it was
+// written for a person, else a translated one (api/rpcError.ts).
+export { rpcError } from "./rpcError";

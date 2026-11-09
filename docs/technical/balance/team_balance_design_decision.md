@@ -15,6 +15,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-default-terms-row-is-a-dialog-on-the-list](../frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) | `counterparty_id = 0` is edited in a **dialog opened from the list**. ⚠ against recommendation. Fixes a live regression |
 | [the-ledger-charges-the-frozen-line-total](#the-ledger-charges-the-frozen-line-total) | the markup is the product's, applied once at the take — the ledger posts the frozen line totals and reads no markup; `liability_terms.product_markup_bp` is dropped |
 | [the-debtor-sees-the-limits-set-on-it](#the-debtor-sees-the-limits-set-on-it) | a team sees each limit set ON it, its debt and its 80% warning — on the order form and the pair detail; never anybody else's |
+| [the-team-balance-screens-are-accepted](#the-team-balance-screens-are-accepted) | the Team Balance desktop screens pass design_accept; the balance log gains an All tab first | owner, as recommended | — |
+| [the-team-balance-phone-layout-is-accepted](#the-team-balance-phone-layout-is-accepted) | Team Balance on a phone: blocks, filters in a sheet, the tabs scroll in one row | owner, as recommended | — |
 
 ---
 
@@ -431,3 +433,34 @@ A `ByIds` read, per the service guideline.
 | data types | `GENERAL` (the creditor's name) and `CREDIT` |
 | a `CREDIT` item, per creditor | `credit_limit` — optional, unset is unlimited; `debt`; `state` — `OK`, `NEAR`, `AT_LIMIT` |
 | not paged | bounded by the ids asked for, like every `ByIds` |
+
+---
+
+## the-team-balance-screens-are-accepted
+
+> In chat *(owner, 2026-11-07)* — *"A"*, as recommended, replying to the screenshots `balance_review/01…11` (the pairs list with the 80 % / over / frozen badges, a pair's detail, the ledger in its business words, the debtor's side, Make Payment, Accept with *Received into*, the order form at the limit, the limit edit), asked with: the ledger's *Receivable* / *Payable* cuts split by sign, so a payment lands under *Payable* and *Balance after* skips rows — while §Detail Pair Team Balance asked for *"change balance log"*.
+
+**The verdict.** The **desktop** Team Balance screens are accepted — the `design_accept` gate is passed. One change to [the-pair-detail-shows-both-logs](#the-pair-detail-shows-both-logs)'s *four cuts*: the balance log gains an **All** tab, **first and the default**, showing the pair's whole running ledger in order with *Balance after* on every row; *Receivable*, *Payable*, *My payments* and *Their payments* stay as they are. The **phone** layout is not part of this accept (it has none yet — backlog #32, a prototype first). ⚠ The All tab is not built.
+
+✅ Built 2026-11-07 — the **All** tab, first and the default on the pair detail: every movement of the pair in the ledger's order with *Balance after* on every row; the four cuts unchanged ([development_state](../../development_state/balance/context.md)). The phone layout is a Storybook prototype only (#32), not built.
+
+---
+
+## the-team-balance-phone-layout-is-accepted
+
+> In chat *(owner, 2026-11-07)* — *"A"*, as recommended, replying to the Storybook screenshots `balance_phone/01…08` (`features/liability/phonePrototype.tsx`).
+
+**The verdict.** The phone layout of `/liability` and `/liability/:id` is the design, after [a-phone-reads-each-line-as-a-block](../frontend/context_decision.md#a-phone-reads-each-line-as-a-block) and [a-phone-filters-from-a-sheet](../frontend/context_decision.md#a-phone-filters-from-a-sheet):
+
+| | |
+| --- | --- |
+| the list | each counterparty a block with its badges; the search in the row, the other filters in a bottom sheet; Default Terms a header icon |
+| the pair page | a one-row header; the position card full width; the date range in the sheet |
+| the tabs | the seven **scroll in one row**, the picked one kept in view — like the order page's section chips ([the-phone-header-is-one-row](../frontend/context_decision.md#the-phone-header-is-one-row)), not a *View* dropdown |
+| every log | ledger entries, payments and limit changes each a block |
+
+Closes the phone half left open by [the-team-balance-screens-are-accepted](#the-team-balance-screens-are-accepted). ⚠ Not live (the Storybook switch).
+
+✅ Built 2026-11-07 — the phone layout is live: `/liability` and `/liability/:id` read `useIsMobile()` (the Storybook-only switch `features/liability/phonePrototype.tsx` is deleted), and the `PhonePrototype*` stories are the pages' `Mobile*` stories now ([development_state](../../development_state/balance/context.md)).
+
+✅ Built 2026-11-07 — the list's search / type / awaiting and the pair's date range / direction / side are applied on the server before paging (backlog #34), so every tab, the All ledger included, reads the whole history; Balance after stays the true running balance.

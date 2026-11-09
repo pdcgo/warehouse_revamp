@@ -29,6 +29,8 @@ export function ReportHeadline({
             value={formatFigure(field.kind, summary[def.metricId]?.[field.name])}
             line={t(`analytic.metric.${def.labelKey}`)}
             emphasis={sort?.by === "field" && sort.metricId === def.metricId && sort.field === field.name}
+            // The lead card is a size up: in a crowded strip it takes two columns, so a nine-digit Rp is whole.
+            double={sort?.by === "field" && sort.metricId === def.metricId && sort.field === field.name}
             testId={`analytic-headline-${field.name}`}
           />
         )),

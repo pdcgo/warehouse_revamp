@@ -59,6 +59,8 @@ func acceptedEvent(p *liability_service_models.LiabilityPayment) *eventsv1.Event
 				FromAccountId:  p.FromAccountID,
 				ToAccountId:    p.ToAccountID,
 				ActorId:        p.ConfirmedBy,
+				// Read beside the actor, from the same row: the confirm's own stamp (an-override-is-stamped-in-every-service).
+				ActorIsOverride: p.ConfirmedIsOverride,
 			},
 		},
 	}

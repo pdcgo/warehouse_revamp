@@ -157,10 +157,10 @@ func (s *Service) creditStandings(
 // creditState places a debt against a real limit (the-threshold-warns-at-eighty-percent).
 //
 // The thresholds are the screen's own, `features/liability/CreditMeter` `creditWarning`: NEAR from 80% —
-// `debt × 5 ≥ limit × 4` is exactly `debt ≥ 0.8 × limit` in integers — and AT_LIMIT on `refusesCredit`. A limit of 0
+// `debt × 5 ≥ limit × 4` is exactly `debt ≥ 0.8 × limit` on whole-rupiah doubles (both are frozen whole) — and AT_LIMIT on `refusesCredit`. A limit of 0
 // is therefore always AT_LIMIT: no credit at all refuses the next order whatever is owed, and the meter says so in
 // words ("Frozen") rather than as a percentage.
-func creditState(debt, limit int64) liabilityv1.LiabilityCreditState {
+func creditState(debt, limit float64) liabilityv1.LiabilityCreditState {
 	if refusesCredit(debt, limit) {
 		return liabilityv1.LiabilityCreditState_LIABILITY_CREDIT_STATE_AT_LIMIT
 	}

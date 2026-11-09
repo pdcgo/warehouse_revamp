@@ -59,6 +59,10 @@ const (
 	// PRIVATE: an order list exported as .xlsx (one-export-is-the-list-as-a-file), stored as the person who exported it
 	// and read back through an expiring signed link. Private because it names buyers and their phone numbers.
 	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT DocumentResourceType = 7
+	// PRIVATE: a screen's table exported as .xlsx — a supplier page tab's (each-supplier-tab-exports-its-own-table), on
+	// the order list's pattern (one-export-is-the-list-as-a-file): stored as the person who exported it and read back
+	// through an expiring signed link. Private like every export: it is a team's working figures.
+	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT DocumentResourceType = 8
 )
 
 // Enum value maps for DocumentResourceType.
@@ -72,6 +76,7 @@ var (
 		5: "DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF",
 		6: "DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT",
 		7: "DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT",
+		8: "DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT",
 	}
 	DocumentResourceType_value = map[string]int32{
 		"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED":          0,
@@ -82,6 +87,7 @@ var (
 		"DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF":        5,
 		"DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT": 6,
 		"DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT":         7,
+		"DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT":         8,
 	}
 )
 
@@ -838,7 +844,7 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"5\n" +
 	"\x1bProfilePictureEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\rR\x06erased*\xe6\x02\n" +
+	"\x06erased\x18\x01 \x01(\rR\x06erased*\x8f\x03\n" +
 	"\x14DocumentResourceType\x12&\n" +
 	"\"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eDOCUMENT_RESOURCE_TYPE_GENERAL\x10\x01\x12*\n" +
@@ -847,11 +853,12 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"$DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT\x10\x04\x12(\n" +
 	"$DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF\x10\x05\x12/\n" +
 	"+DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT\x10\x06\x12'\n" +
-	"#DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT\x10\a2\xc2\x04\n" +
+	"#DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT\x10\a\x12'\n" +
+	"#DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT\x10\b2\xc7\x04\n" +
 	"\x0fDocumentService\x12j\n" +
 	"\rRequestUpload\x12+.warehouse.document.v1.RequestUploadRequest\x1a,.warehouse.document.v1.RequestUploadResponse\x12j\n" +
-	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12m\n" +
-	"\x0eGetDownloadUrl\x12,.warehouse.document.v1.GetDownloadUrlRequest\x1a-.warehouse.document.v1.GetDownloadUrlResponse\x12j\n" +
+	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12r\n" +
+	"\x0eGetDownloadUrl\x12,.warehouse.document.v1.GetDownloadUrlRequest\x1a-.warehouse.document.v1.GetDownloadUrlResponse\"\x03\x90\x02\x01\x12j\n" +
 	"\rShareDocument\x12+.warehouse.document.v1.ShareDocumentRequest\x1a,.warehouse.document.v1.ShareDocumentResponse\x12|\n" +
 	"\x13ProfilePictureErase\x121.warehouse.document.v1.ProfilePictureEraseRequest\x1a2.warehouse.document.v1.ProfilePictureEraseResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1;documentv1b\x06proto3"
 

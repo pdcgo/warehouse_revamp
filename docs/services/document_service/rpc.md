@@ -46,8 +46,10 @@ sequenceDiagram
   UI load a light preview fast. Generation is best-effort: a non-decodable image just yields no
   thumbnail, never a failed upload.
 - **Resource types split public from private.** `PROFILE_PICTURE` and `PRODUCT_IMAGE` are public —
-  shown inline from a stable URL. `GENERAL`, `ORDER_RECEIPT`, `PAYMENT_PROOF` and `SETTLEMENT_STATEMENT`
-  are private — a statement is the .xlsx the settlement importer uploads **as a client of this contract**,
+  shown inline from a stable URL. `GENERAL`, `ORDER_RECEIPT`, `PAYMENT_PROOF`, `SETTLEMENT_STATEMENT`, `ORDER_EXPORT`
+  and `TABLE_EXPORT` (`00010` — a screen's table as .xlsx, a supplier tab's:
+  [each-supplier-tab-exports-its-own-table](../../technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table),
+  uploaded as the person exporting, like the order list's export) are private — a statement is the .xlsx the settlement importer uploads **as a client of this contract**,
   under the uploader's own token, before it reads it. The rest of this point is the receipt's case: an order's courier slip
   (image or PDF) names a buyer and where their parcel went, so it is opened through a signed URL by
   somebody who belongs to the team. Adding a type means four edits in step — the proto enum,
@@ -94,3 +96,19 @@ sequenceDiagram
 - **Every photo, not the current one:** a photo the person replaced is as personal as the one they kept.
 
 Code: `backend/services/document_service/document_v1/profile_picture_erase.go`.
+
+## LabelURL — the one door to a label another team owns (not an RPC)
+
+`document_v1.Service.LabelURL(ctx, ownerTeamID, documentID)` signs a short-lived link to an ORDER RECEIPT for two
+in-process callers, each of which has checked the caller's right to it first and names the owner:
+
+| caller | adapter | its check | owner it names |
+| --- | --- | --- | --- |
+| selling `OrderLabels` ([a-warehouse-prints-the-labels-of-orders-it-ships](../../technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)) | `cmd/app_development/order_label_linker.go` | the order ships from the caller's warehouse | the order's selling team |
+| inventory `RestockReceiptPhoto` ([the-restocks-warehouse-opens-its-label-photo](../../business/inventory/restock_decision.md#the-restocks-warehouse-opens-its-label-photo)) | `cmd/app_development/restock_photo_linker.go` | the restock is going to the caller's warehouse | the restock's selling team |
+
+The restock form's label photo is uploaded through the same ReceiptUpload as an order's label, so it is an
+`order_receipt` too — the door did not widen to admit it.
+It reads only `documents` (`id`, `team_id` = owner, `resource_type = 'order_receipt'`, `status = 'active'`) and answers
+NotFound for anything else — never a payment proof or a statement. No `document_shares` row is written; `GetDownloadUrl`'s
+two doors are unchanged. Flow in [selling rpc.md](../selling_service/rpc.md#the-labels-a-warehouse-prints--orderlabels-step-1).

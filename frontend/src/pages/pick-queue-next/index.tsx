@@ -20,7 +20,7 @@ import {
 import { ArrowRight, Download, PackageSearch, Printer, ScanLine, Truck, Undo2 } from "lucide-react";
 import { Menu, Portal } from "@chakra-ui/react";
 
-import { documentClient, rpcError } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
 import type { Order } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -30,14 +30,15 @@ import { Pagination } from "../../components/chrome/Pagination";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
-import { ShippingSelect } from "../../components/pickers/ShippingSelect";
+import { ShipmentChannelSelect } from "../../components/pickers/ShipmentChannelSelect";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
 import { CopyText } from "../../components/chrome/CopyText";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { OrderCourierBadge } from "../../features/orders/OrderCourierBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { useTeam } from "../../features/team/TeamContext";
+import { useOrderLabels } from "../../features/orders/labels";
 import { useOrders, useOrderStat } from "../../features/orders/queries";
 import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
@@ -145,7 +146,8 @@ export function PickQueueNextPage() {
   // The shipment-state switch is gone: the status tabs are it.
   const [sellerId, setSellerId] = useUrlState("team", 0n, idCodec);
   const [marketplace, setMarketplace] = useUrlState("marketplace", Marketplace.UNSPECIFIED, MARKETPLACE_CODEC);
-  const [courier, setCourier] = useUrlState("courier", "", textCodec);
+  // The courier is its shipment channel id (shipment-channel-is-an-id-into-shipment-service).
+  const [courier, setCourier] = useUrlState("courier", 0n, idCodec);
 
   // ── THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`) ──
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -157,6 +159,7 @@ export function PickQueueNextPage() {
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const warehouseId = isWarehouse ? current?.teamId : undefined;
+  const { openLabel } = useOrderLabels();
 
   const debouncedSearch = useDebounced(search.trim());
   const filters: OrderFilters = useMemo(() => {
@@ -168,7 +171,7 @@ export function PickQueueNextPage() {
       toUnix,
       sellerTeamId: sellerId,
       marketplace,
-      shippingCode: courier,
+      shipmentChannelId: courier,
     };
   }, [debouncedSearch, range, sellerId, marketplace, courier]);
   const filterCount = [
@@ -176,7 +179,7 @@ export function PickQueueNextPage() {
     !isAllDates(range),
     sellerId > 0n,
     marketplace !== Marketplace.UNSPECIFIED,
-    courier !== "",
+    courier > 0n,
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
@@ -243,17 +246,13 @@ export function PickQueueNextPage() {
     setSelected(new Set());
   }
 
-  // ONE label, through a short-lived signed URL fetched on the click — the receipt is a private document.
+  // ONE label, through a short-lived signed URL fetched on the click — the receipt is the SELLER's private document, so
+  // the warehouse asks the order for it (OrderLabels, a-warehouse-prints-the-labels-of-orders-it-ships). Several merged
+  // into one PDF is step 2 — the printMerge mark below.
   async function printOne(order: Order) {
-    const documentId = order.receipt?.documentId;
-    if (!documentId || warehouseId === undefined) return;
+    if (warehouseId === undefined) return;
 
-    try {
-      const res = await documentClient.getDownloadUrl({ teamId: warehouseId, documentId });
-      window.open(res.url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      toaster.create({ type: "error", title: rpcError(err) });
-    }
+    await openLabel({ teamId: warehouseId, teamType: TeamType.WAREHOUSE, order });
   }
 
   function handOverSelected() {
@@ -336,7 +335,7 @@ export function PickQueueNextPage() {
             setRange(ALL_DATES);
             setSellerId(0n);
             setMarketplace(Marketplace.UNSPECIFIED);
-            setCourier("");
+            setCourier(0n);
           })
         }
       >
@@ -370,10 +369,10 @@ export function PickQueueNextPage() {
 
         {/* THE COURIER — what parcels are grouped by before a pickup. */}
         <FilterField w="15rem" testId="warehouse-orders-courier-filter">
-          <ShippingSelect
+          <ShipmentChannelSelect
             value={courier}
             placeholder={t("warehouseOrders.filter.courier")}
-            onChange={(code) => refilter(() => setCourier(code))}
+            onChange={(channelId) => refilter(() => setCourier(channelId))}
           />
         </FilterField>
 
@@ -536,7 +535,7 @@ export function PickQueueNextPage() {
                                 <ShopRefCell shop={facts.shop} orderRefId={order.orderExternalRefId} />
                               </Table.Cell>
                               <Table.Cell>
-                                <AwbCell courier={order.shippingCode} code={facts.resi} />
+                                <AwbCell channelId={order.shipmentChannelId} code={facts.resi} />
                               </Table.Cell>
                               <Table.Cell textAlign="end" data-testid={`pick-queue-qty-${order.id}`}>
                                 {facts.quantity}
@@ -700,7 +699,7 @@ function OrderBlock({
           {order.orderExternalRefId && <CopyText value={order.orderExternalRefId} fontSize="xs" />}
         </Flex>
         <Flex align="center" gap="1.5" wrap="wrap">
-          {order.shippingCode && <ShippingBadge code={order.shippingCode} />}
+          {order.shipmentChannelId > 0n && <OrderCourierBadge channelId={order.shipmentChannelId} />}
           {facts.resi && <CopyText value={facts.resi} mono fontSize="xs" />}
         </Flex>
         <Flex align="center" gap="1" wrap="wrap">

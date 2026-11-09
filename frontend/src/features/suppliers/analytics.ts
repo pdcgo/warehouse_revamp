@@ -75,7 +75,7 @@ export interface SupplierProductRow {
   productId: bigint;
   /** "" when product_service could not name it — the screen reads "Product #<id>". */
   name: string;
-  sku: string;
+  productCode: string;
   /** The product's list-sized picture — "" when it has none, and the shared item draws its placeholder. */
   thumbnailUrl: string;
   /** The team whose product it is — the team that restocked it. */
@@ -133,6 +133,28 @@ function windowFilters({ from, to, restockTeamId, q = "" }: Window): Filter[] {
 
 const supplierFilter = (supplierId: bigint): Filter => ({ f: { case: "supplierFilter", value: { supplierId } } });
 
+/**
+ * The Statistik tab's filters — the window, whose restocks, the supplier — exactly what its reads send, so its export
+ * sends the same (each-supplier-tab-exports-its-own-table).
+ */
+export function statisticsFilters(args: { from: string; to: string; restockTeamId: bigint; supplierId: bigint }): Filter[] {
+  return [
+    ...windowFilters({ teamId: undefined, valid: true, from: args.from, to: args.to, restockTeamId: args.restockTeamId }),
+    supplierFilter(args.supplierId),
+  ];
+}
+
+/**
+ * The Supplier Report's filters and order — the window, whose restocks, the settled search, and its "Urutkan" — exactly
+ * what its ranking sends, so its export sends the same (a-report-export-is-the-whole-view-as-a-file).
+ */
+export function reportQuery(args: { from: string; to: string; restockTeamId: bigint; q: string; rankBy: SupplierRankBy }) {
+  return {
+    filters: windowFilters({ teamId: undefined, valid: true, ...args }),
+    sort: { metricId: SUPPLIERS, field: rankField[args.rankBy], sortType: SortType.DESC },
+  };
+}
+
 const idKeys = (ids: bigint[]) => ({ k: { case: "ids" as const, value: { ids } } });
 
 const idsOf = (keys: MetricKeys | undefined): bigint[] => (keys?.k.case === "ids" ? keys.k.value.ids : []);
@@ -148,8 +170,11 @@ function supplierData(datas: MetricData[]) {
   };
 }
 
-/** The headline — the same metric grouped by SUMMARY, over the same filters (the-headline-is-the-metric-grouped-by-summary). */
-async function headline(teamId: bigint, filters: Filter[]): Promise<SupplierFigures> {
+/**
+ * The headline — the same metric grouped by SUMMARY, over the same filters (the-headline-is-the-metric-grouped-by-summary) —
+ * with the service's AS OF (a-money-metric-says-as-of-when): when its fold last claimed an event.
+ */
+async function headline(teamId: bigint, filters: Filter[]): Promise<SupplierFigures & { asOfUnix: bigint }> {
   const res = await supplierAnalyticClient.metricData({
     teamId,
     groupBy: GroupType.SUMMARY,
@@ -157,7 +182,7 @@ async function headline(teamId: bigint, filters: Filter[]): Promise<SupplierFigu
     metricIds: [SUPPLIERS],
   });
 
-  return figuresOf(supplierData(res.metricDatas).summary);
+  return { ...figuresOf(supplierData(res.metricDatas).summary), asOfUnix: res.asOfUnix };
 }
 
 const groupOf: Record<PeriodGrain, GroupType> = {
@@ -313,7 +338,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
 
       // The names are product_service's — any team's product, by id — and so is the team: a product is ITS team's, the
       // team that restocked it. A label, so a failure leaves the ids standing.
-      const products = new Map<string, { name: string; sku: string; thumbnailUrl: string; teamId: bigint }>();
+      const products = new Map<string, { name: string; productCode: string; thumbnailUrl: string; teamId: bigint }>();
       try {
         const resolved = await productClient.productByIds({
           teamId: teamId!,
@@ -323,7 +348,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
         for (const p of productsFromByIds(resolved)) {
           // The picture rides the same read — the thumbnail, or the full image when there is no thumbnail.
           const thumbnailUrl = p.defaultImageThumbnailUrl || p.defaultImageUrl;
-          products.set(p.id.toString(), { name: p.name, sku: p.sku, thumbnailUrl, teamId: p.teamId });
+          products.set(p.id.toString(), { name: p.name, productCode: p.productCode, thumbnailUrl, teamId: p.teamId });
         }
       } catch {
         // Labels only.
@@ -339,7 +364,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
           key: `${owner}|${productId}`,
           productId,
           name: product?.name ?? "",
-          sku: product?.sku ?? "",
+          productCode: product?.productCode ?? "",
           thumbnailUrl: product?.thumbnailUrl ?? "",
           team: { teamId: owner, name: teams.get(owner.toString()) ?? "" },
           figures: figuresOf(byId[productId.toString()]),

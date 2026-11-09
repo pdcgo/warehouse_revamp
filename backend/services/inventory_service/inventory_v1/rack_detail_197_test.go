@@ -39,7 +39,7 @@ func aRackWithGoods(t *testing.T, svc *inventory_v1.Service, db *gorm.DB) (uint6
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: rackWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: priced, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500000},
+			{ProductId: priced, ProductCode: "SKU1", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -104,7 +104,7 @@ func TestRackDetail_SummarisesWhatIsOnTheShelf(t *testing.T) {
 
 	// 10 × 50.000 + 4 × 1.000.
 	if summary.GetTotalValue() != 504000 {
-		t.Fatalf("total value = %d, want 504000", summary.GetTotalValue())
+		t.Fatalf("total value = %v, want 504000", summary.GetTotalValue())
 	}
 
 	// Every unit on the ledgers carries a price, so nothing on the shelf is of unknown cost.

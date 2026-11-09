@@ -15,7 +15,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 import { TeamMemberLogAction, UserListDataType } from "../src/gen/warehouse/user/v1/user_pb";
-import { teams, users as userFixtures } from "./fixtures";
+import { formerUsers, teams, users as userFixtures } from "./fixtures";
 import { sessionScenario } from "./sessionScenario";
 
 // ── The tables ──────────────────────────────────────────────────────────────────────────────────
@@ -289,7 +289,7 @@ function paged<T>(rows: T[], page: { page?: bigint; limit?: bigint } | undefined
 
 type ListReq = {
   teamId: bigint;
-  filter?: { q?: string };
+  filter?: { q?: string; excludeSuspended?: boolean };
   dataRequest: UserListDataType[];
   page?: { page?: bigint; limit?: bigint };
 };
@@ -301,8 +301,13 @@ export const userStub = {
     const roles = rolesIn(req.teamId);
     const q = (req.filter?.q ?? "").trim().toLowerCase();
 
+    // excludeSuspended — the shop-grant picker's: a suspended (or erased, which is suspended too) person is never
+    // offered where something is given (a-suspended-user-is-never-picked).
     const rows = people.filter(
-      (u) => (req.teamId === ROOT_TEAM || roles.has(u.id)) && contains(q, u.name, u.username, u.email),
+      (u) =>
+        (req.teamId === ROOT_TEAM || roles.has(u.id)) &&
+        contains(q, u.name, u.username, u.email) &&
+        !(req.filter?.excludeSuspended && u.isSuspended),
     );
     const { window, pageInfo } = paged(rows, req.page);
     const types = req.dataRequest.length > 0 ? req.dataRequest : [UserListDataType.USER];
@@ -325,7 +330,8 @@ export const userStub = {
     const items: Record<string, { items: { d: { case: "publicUser"; value: { mapData: Record<string, ReturnType<typeof publicOf>> } } }[] }> = {};
 
     for (const id of req.filter?.ids ?? []) {
-      const u = people.find((p) => p.id === id);
+      // A former user (fixtures' `formerUsers`) is found by id too — the row stays (erase-keeps-the-row).
+      const u = people.find((p) => p.id === id) ?? formerUsers.find((p) => p.id === id);
       if (!u) continue; // an unknown id is ABSENT — never a null row
 
       items[id.toString()] = { items: [{ d: { case: "publicUser", value: { mapData: { [id.toString()]: publicOf(u) } } } }] };
@@ -452,6 +458,10 @@ export const userStub = {
     return { user: u };
   },
 
+  // The signed-in person's OWN row, email and phone included — the profile form's starting point.
+  profileDetail: () => ({ user: people.find((p) => p.id === SELF_ID) }),
+
+  // An absent field is left alone, as on the server — a name-only save keeps the email and the phone.
   updateProfile: (req: { name?: string; email?: string; phoneNumber?: string }) => userStub.updateUser({ ...req, userId: SELF_ID }),
 
   suspendUser: (req: { userId: bigint; suspended: boolean }) => {

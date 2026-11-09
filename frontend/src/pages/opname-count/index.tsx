@@ -46,7 +46,7 @@ import { CountRowCard } from "./components/CountRowCard";
 // An `all` count lists every rack, empty ones too (an-all-count-visits-every-rack): an empty rack shows nothing expected,
 // and the counter adds what is really there.
 //
-// ⚠ PROTOTYPE until design_accept — Storybook's stub plays it.
+// Built on OpnameService (inventory_v1/opname_*.go, accepted 2026-11-02 — the-count-prototype-is-accepted).
 export function OpnameCountPage() {
   const { current } = useTeam();
   const navigate = useNavigate();

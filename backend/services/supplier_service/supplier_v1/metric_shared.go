@@ -88,6 +88,12 @@ func parseFilters(items []*analytic_basev1.FilterItem) (metricScope, error) {
 				return scope, errRangeBackwards
 			}
 
+			// A YEAR AT MOST, both days counted (a-metric-reads-at-most-a-year) — a ranking reads every daily row in its window.
+			err = san_metric.CheckRange(start, end)
+			if err != nil {
+				return scope, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
 			scope.start, scope.end = start, end
 		case analytic_basev1.FilterType_FILTER_TYPE_TEAM:
 			scope.restockTeamID = item.GetTeamFilter().GetTeamId()
@@ -107,13 +113,21 @@ func parseFilters(items []*analytic_basev1.FilterItem) (metricScope, error) {
 	return scope, nil
 }
 
-// rows is the report table narrowed by every filter — the window, the team, the supplier and the search.
+// rows is the restock table narrowed by every filter — the window, the team, the supplier and the search; salesRows is
+// Penjualan's table narrowed by the same (penjualan-is-the-selling-value-on-the-order-day).
 //
 // The search finds suppliers as SupplierList does — name, address, contact, a live store's name
 // (the-supplier-report-keeps-its-search). supplier_service holds both tables, so it is a subquery over its own rows, never
 // a call; a DELETED supplier is still found, as it is still ranked (a-deleted-supplier-is-kept-for-its-figures).
 func (m metricScope) rows(db *gorm.DB) *gorm.DB {
-	query := window(db, m.start, m.end, m.restockTeamID)
+	return m.narrow(window(db, restockTable, m.start, m.end, m.restockTeamID))
+}
+
+func (m metricScope) salesRows(db *gorm.DB) *gorm.DB {
+	return m.narrow(window(db, salesTable, m.start, m.end, m.restockTeamID))
+}
+
+func (m metricScope) narrow(query *gorm.DB) *gorm.DB {
 
 	if m.supplierID != 0 {
 		query = query.Where("r.supplier_id = ?", m.supplierID)

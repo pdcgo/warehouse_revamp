@@ -88,13 +88,13 @@ test("setup: a selling team with two products, and a CS in it", async ({ page })
   const category = await call(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Bundle Cat ${SUFFIX}` });
   expect(category.status).toBe(200);
 
-  for (const [name, sku] of [
+  for (const [name, productCode] of [
     [BERAS, `BRS${SUFFIX}`],
     [GULA, `GLA${SUFFIX}`],
   ] as const) {
     const product = await call(page, "product.v1.ProductService/ProductCreate", {
       teamId,
-      sku,
+      productCodePart: productCode,
       name,
       categoryId: category.body.category.id,
     });

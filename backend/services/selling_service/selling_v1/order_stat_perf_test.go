@@ -36,14 +36,15 @@ func perfOrderRows(n int, shopIDs []uint64) []selling_service_models.Order {
 
 	for i := range n {
 		rows = append(rows, selling_service_models.Order{
-			ID:            uint64(1 + i),
-			TeamID:        uint64(2 + i%5),
-			ShopID:        shopIDs[i%len(shopIDs)],
-			WarehouseID:   uint64(900 + i%3),
-			Status:        statuses[i%len(statuses)],
-			CustomerName:  "Budi",
-			GoodsCost:     int64(10_000 + i),
-			PlatformTotal: int64(15_000 + i),
+			IdempotencyKey: newOrderKey(),
+			ID:             uint64(1 + i),
+			TeamID:         uint64(2 + i%5),
+			ShopID:         shopIDs[i%len(shopIDs)],
+			WarehouseID:    uint64(900 + i%3),
+			Status:         statuses[i%len(statuses)],
+			Address:        &selling_service_models.OrderAddress{CustomerName: "Budi"},
+			GoodsCost:      float64(10_000 + i),
+			PlatformTotal:  float64(15_000 + i),
 			// Half inside the 30-day window, half outside it, so the FILTER aggregates are not
 			// measured against a set that trivially matches everything.
 			CreatedAt: time.Now().Add(-time.Duration(i%60) * 24 * time.Hour),
@@ -82,12 +83,13 @@ func perfStatOrderRows(n int, teamOf func(int) uint64, shopIDs []uint64, salt in
 		total := int64(15_000 + k%5_000)
 
 		o := selling_service_models.Order{
-			TeamID:             teamOf(i),
-			ShopID:             shopIDs[i%len(shopIDs)],
-			WarehouseID:        uint64(900 + i%3),
-			Status:             perfStatStatuses[i%len(perfStatStatuses)],
-			CustomerName:       perfStatNames[i%len(perfStatNames)],
-			CustomerPhone:      fmt.Sprintf("08%010d", k),
+			IdempotencyKey: newOrderKey(),
+			TeamID:         teamOf(i),
+			ShopID:         shopIDs[i%len(shopIDs)],
+			WarehouseID:    uint64(900 + i%3),
+			Status:         perfStatStatuses[i%len(perfStatStatuses)],
+			Address:        &selling_service_models.OrderAddress{CustomerName: perfStatNames[i%len(perfStatNames)], CustomerPhone: fmt.Sprintf("08%010d", k)},
+
 			OrderExternalRefID: fmt.Sprintf("INV-%08d", k),
 			TotalCost:          float64(total),
 			// Half inside the 30-day window, half outside it.
@@ -96,11 +98,11 @@ func perfStatOrderRows(n int, teamOf func(int) uint64, shopIDs []uint64, salt in
 		}
 
 		if i%5 != 0 {
-			o.GoodsCost = total / 2
+			o.GoodsCost = float64(total / 2)
 		}
 
 		if i%3 != 0 {
-			o.PlatformTotal = total - 1_000
+			o.PlatformTotal = float64(total - 1_000)
 		}
 
 		if i%4 != 0 {
@@ -127,13 +129,13 @@ func perfStatItemRows(orders []selling_service_models.Order) []selling_service_m
 
 		for j := range lines {
 			items = append(items, selling_service_models.OrderItem{
-				OrderID:   o.ID,
-				ProductID: uint64(1_000 + (i+j)%500),
-				SKU:       "SKU-" + strconv.Itoa((i+j)%500),
-				Name:      "Barang " + strconv.Itoa((i+j)%500),
-				Quantity:  uint32(1 + (i+j)%4),
-				UnitCost:  2_500,
-				CreatedAt: o.CreatedAt,
+				OrderID:     o.ID,
+				ProductID:   uint64(1_000 + (i+j)%500),
+				ProductCode: "SKU-" + strconv.Itoa((i+j)%500),
+				Name:        "Barang " + strconv.Itoa((i+j)%500),
+				Quantity:    uint32(1 + (i+j)%4),
+				UnitCost:    2_500,
+				CreatedAt:   o.CreatedAt,
 			})
 		}
 	}

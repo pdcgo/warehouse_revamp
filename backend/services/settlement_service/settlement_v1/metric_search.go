@@ -48,7 +48,7 @@ func (s *Service) MetricSearch(
 		return nil, err
 	}
 
-	field, _, err := san_metric.SortField(metric.desc, msg.GetSort().GetField())
+	field, option, err := san_metric.SortField(metric.desc, msg.GetSort().GetField())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -86,10 +86,20 @@ func (s *Service) MetricSearch(
 
 	// The field is one the metric declares sortable (SortField), so its name is safe to write into the ORDER BY. The
 	// key, DESC, breaks every tie (the-key-breaks-every-tie).
+	order := fmt.Sprintf("%s %s NULLS LAST, k DESC", field.Name(), direction)
+
+	// A rate with a minimum ranks only the keys whose sample reaches it; the rest follow, in key order, whichever way
+	// the rate is sorted (a-rate-ranks-only-above-its-minimum-sample). The minimum is the proto's, the sample rankSample's.
+	if minimum := option.GetRankMinSample(); minimum > 0 {
+		sample := rankSample[string(field.Name())]
+		order = fmt.Sprintf("(%[1]s >= %[2]d) DESC, CASE WHEN %[1]s >= %[2]d THEN %[3]s END %[4]s NULLS LAST, k DESC",
+			sample, minimum, field.Name(), direction)
+	}
+
 	query := base + fmt.Sprintf(`
 SELECT key FROM measured
-ORDER BY %s %s NULLS LAST, k DESC
-OFFSET %d LIMIT %d`, field.Name(), direction, page.GetOffset(), limit+1)
+ORDER BY %s
+OFFSET %d LIMIT %d`, order, page.GetOffset(), limit+1)
 
 	var found []string
 

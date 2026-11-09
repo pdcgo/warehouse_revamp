@@ -6,12 +6,14 @@ The development flow, branching, and which docs a change has to carry with it.
 
 ## Which branch do I commit to? Do I open a PR per task?
 
-**No branch per issue, no PR per issue.** All work goes on the single long-lived **`dev`** branch,
-committed straight. The owner keeps `dev` checked out to preview the running app, so per-issue
-branch switching just gets in the way.
+**The branch that is checked out — each developer has a long-lived one of their own** (Heri:
+`backup/inventory`, Toni: `thoni`). `dev` is no longer the shared branch. Commit only when the owner says so,
+and never open a branch or a PR per issue. The rule and its reason:
+[each-developer-works-on-their-own-branch](../business/project/member_decision.md#each-developer-works-on-their-own-branch),
+and CLAUDE.md §Git workflow.
 
-`main` is promoted from `dev` **only when the owner asks**. Never push `main`, never merge to it
-unasked, never force-push it.
+Work moves between branches, and into `main`, **only when the owner asks**. Never push `main`, never merge
+to it unasked, never force-push it.
 
 ---
 

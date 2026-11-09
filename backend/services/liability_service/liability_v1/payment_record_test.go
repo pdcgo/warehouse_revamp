@@ -3,9 +3,11 @@ package liability_v1_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
@@ -56,7 +58,24 @@ func (r *recordingSender) send(ctx context.Context, identity *role_basev1.Identi
 	return nil
 }
 
-func recordFrom(svc *liability_v1.Service, payer, creditor, fromAccount uint64, amount int64) (*liabilityv1.LiabilityPayment, error) {
+// owes posts a debt of `amount` from debtor to creditor — the courier's ask at a restock, keyed by `sourceID` — so the
+// debtor has something to pay: only the team that owes records a payment (the-debtor-claims-the-creditor-decides).
+func owes(t *testing.T, svc *liability_v1.Service, db *gorm.DB, debtor, creditor uint64, amount float64, sourceID uint64) {
+	t.Helper()
+
+	_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
+		DebtorTeamID:   debtor,
+		CreditorTeamID: creditor,
+		Amount:         amount,
+		SourceType:     liability_v1.SourceTypeIncidentalFee,
+		SourceID:       sourceID,
+	})
+	if err != nil {
+		t.Fatalf("post %v owed by %d to %d: %v", amount, debtor, creditor, err)
+	}
+}
+
+func recordFrom(svc *liability_v1.Service, payer, creditor, fromAccount uint64, amount float64) (*liabilityv1.LiabilityPayment, error) {
 	res, err := svc.LiabilityPaymentRecord(context.Background(),
 		connect.NewRequest(&liabilityv1.LiabilityPaymentRecordRequest{
 			TeamId:         payer,
@@ -79,6 +98,7 @@ func TestPaymentRecord_KeepsTheAccountItWasPaidFrom(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db, nil, bothBanks, nil)
 
+	oweThem(t, svc, db, 15000, 1)
 	payment, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
 	if err != nil {
 		t.Fatalf("record: %v", err)
@@ -160,5 +180,138 @@ func TestPaymentRecord_ATeamCannotPayItself(t *testing.T) {
 	_, err := recordFrom(svc, selling, selling, sellingBCA, 15000)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+}
+
+// A CLAIM IS STORED EXACT (the-backend-never-rounds-money): the payment's figure is written as claimed, so the accept
+// posts exactly that — Rp 316,675 included. Only a claim that is not above 0 (float dust included) is refused as
+// InvalidArgument.
+func TestPaymentRecord_StoresAFractionalClaimExact(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
+
+	oweThem(t, svc, db, 15_000.5, 1)
+	payment, err := recordFrom(svc, selling, warehouse, sellingBCA, 15_000.5)
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	if payment.GetAmount() != 15_000.5 {
+		t.Fatalf("amount = %v, want exactly 15.000,5", payment.GetAmount())
+	}
+
+	var row liability_service_models.LiabilityPayment
+	if err := db.Where("id = ?", payment.GetId()).Take(&row).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	if row.Amount != 15_000.5 {
+		t.Fatalf("stored amount = %v, want 15000.5", row.Amount)
+	}
+
+	_, err = recordFrom(svc, selling, warehouse, sellingBCA, 0.00001)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a claim of float dust: code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+}
+
+// ⛔ THE CREDITOR CANNOT RECORD A PAYMENT (the-debtor-claims-the-creditor-decides): only the team that owes starts one.
+// Melati owes the warehouse, so the warehouse — the creditor — naming its own live account and a slip is still
+// refused, as FailedPrecondition (the pair is in the wrong state for it, as a request to a pair owing nothing is),
+// and nothing is written.
+func TestPaymentRecord_TheCreditorCannotRecordAPayment(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
+
+	oweThem(t, svc, db, 15000, 1)
+
+	_, err := recordFrom(svc, warehouse, selling, warehouseBCA, 15000)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("the creditor recording: code = %v, want FailedPrecondition", connect.CodeOf(err))
+	}
+
+	if !strings.Contains(err.Error(), "only the team that owes records a payment") {
+		t.Fatalf("message = %q, want it to say only the team that owes records a payment", err.Error())
+	}
+
+	var count int64
+	db.Model(&liability_service_models.LiabilityPayment{}).Where("payer_team_id = ?", warehouse).Count(&count)
+
+	if count != 0 {
+		t.Fatalf("%d payments written by the creditor, want 0", count)
+	}
+
+	// The debtor still records its own — the refusal is about who, not the pair.
+	_, err = recordFrom(svc, selling, warehouse, sellingBCA, 15000)
+	if err != nil {
+		t.Fatalf("the debtor recording: %v", err)
+	}
+}
+
+// A PAIR THAT OWES NOTHING HAS NOTHING TO PAY — a pair nothing ever moved on (no balance row), one paid off to 0, and
+// one left at float dust (square within the server's 4-place tolerance) are all refused alike.
+func TestPaymentRecord_ASquarePairHasNothingToPay(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
+
+	// Never moved.
+	_, err := recordFrom(svc, selling, warehouse, sellingBCA, 5000)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("no balance row: code = %v, want FailedPrecondition", connect.CodeOf(err))
+	}
+
+	// Owed, then paid off to 0.
+	oweThem(t, svc, db, 5000, 1)
+
+	paid, err := recordFrom(svc, selling, warehouse, sellingBCA, 5000)
+	if err != nil {
+		t.Fatalf("record while owing: %v", err)
+	}
+
+	_, err = svc.LiabilityPaymentConfirm(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityPaymentConfirmRequest{
+			TeamId:      warehouse,
+			PaymentId:   paid.GetId(),
+			ToAccountId: warehouseBCA,
+		}))
+	if err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+
+	_, err = recordFrom(svc, selling, warehouse, sellingBCA, 5000)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("paid off to 0: code = %v, want FailedPrecondition", connect.CodeOf(err))
+	}
+
+	// Float dust is square too.
+	err = db.Exec(`UPDATE liability_balances SET balance = -0.00001 WHERE team_id = ? AND counterparty_id = ?`,
+		selling, warehouse).Error
+	if err != nil {
+		t.Fatalf("set dust: %v", err)
+	}
+
+	_, err = recordFrom(svc, selling, warehouse, sellingBCA, 5000)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("float dust: code = %v, want FailedPrecondition", connect.CodeOf(err))
+	}
+}
+
+// THE DEBTOR OF ONE PAIR MAY BE THE CREDITOR OF ANOTHER: the check reads THIS pair's row, never the team's total.
+// Selling owes the warehouse and is owed by the product owner; it may pay the warehouse and not the product owner.
+func TestPaymentRecord_TheCheckIsThisPairs(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, bothBanks, nil)
+
+	owes(t, svc, db, selling, warehouse, 15000, 1)
+	owes(t, svc, db, productOwner, selling, 40000, 2)
+
+	_, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
+	if err != nil {
+		t.Fatalf("paying the warehouse it owes: %v", err)
+	}
+
+	_, err = recordFrom(svc, selling, productOwner, sellingBCA, 15000)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("paying the team that owes IT: code = %v, want FailedPrecondition", connect.CodeOf(err))
 	}
 }

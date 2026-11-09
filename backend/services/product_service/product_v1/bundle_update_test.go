@@ -90,7 +90,7 @@ func TestBundleUpdate_KeepsALineMadeUnavailableSince(t *testing.T) {
 		t.Fatalf("a kept locked line refused: %v", err)
 	}
 
-	setProduct(t, db, gula, "deleted", true)
+	setProduct(t, db, gula, "archived", true)
 	_, err = svc.BundleUpdate(ctx, update(b.GetId(), "Renamed again", lines(beras, 1, gula, 3)))
 	if err != nil {
 		t.Fatalf("a kept archived line refused: %v", err)
@@ -106,7 +106,7 @@ func TestBundleUpdate_RefusesAddingAnUnavailableProduct(t *testing.T) {
 	locked := insertProduct(t, db, kenanga, "LCK", "Locked")
 	setProduct(t, db, locked, "cross_locked", true)
 	archived := insertProduct(t, db, melati, "OLD", "Archived")
-	setProduct(t, db, archived, "deleted", true)
+	setProduct(t, db, archived, "archived", true)
 	b := createBundle(t, svc, ctx, melati, "Paket", lines(beras, 1))
 
 	for name, ls := range map[string][]*productv1.BundleLine{

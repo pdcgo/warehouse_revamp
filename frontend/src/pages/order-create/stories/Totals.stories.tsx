@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { products } from "../../../../.storybook/fixtures";
+import { liabilityTerms, products } from "../../../../.storybook/fixtures";
 import { asTeam } from "../../../../.storybook/pageStory";
 import { formatRupiah } from "../../../lib/money";
 import { ORDER_CREATE_META, pickProduct, typeQuantity } from "./kit";
 
-// ORDER CREATE — the warehouse fee, the debt limits, what the invoice charges.
+// ORDER CREATE — the warehouse fee, the debt limits and the warning at one, what the invoice charges.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -54,6 +54,32 @@ export const TheDebtLimitsAreEachCreditorsOwn: Story = {
 
     await expect(canvas.queryByTestId("not-implemented-creditLimit")).toBeNull();
     await expect(canvas.queryByTestId("pending-row-creditLimit")).toBeNull();
+  },
+};
+
+// THE DEBTOR'S WARNING AT THE LIMIT (over-the-limit-refuses-the-create). Gudang Pusat lowers Melati's limit to
+// 8.000.000 while Melati already owes it 8.700.000 — the committed debt is past the limit, so the create will be
+// refused whatever this order adds, and the row says so in words before customer service presses Create.
+export const ACreditorAtItsLimitSaysTheOrderIsRefused: Story = {
+  name: "At the limit, refused",
+  beforeEach: [
+    asTeam(12n),
+    () => {
+      const terms = liabilityTerms.find((x) => x.teamId === 11n && x.counterpartyId === 12n)!;
+      const before = terms.creditLimit;
+      terms.creditLimit = 8_000_000;
+      return () => {
+        terms.creditLimit = before;
+      };
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // 8.700.000 of 8.000.000 is 108,75% — the meter prints whole percents, rounded.
+    await expect(await canvas.findByTestId("credit-meter-11-pct", {}, { timeout: 4000 })).toHaveTextContent("109%");
+    await expect(canvas.getByTestId("credit-warn-11")).toBeInTheDocument();
+    await expect(canvas.getByTestId("credit-after-11")).toHaveTextContent("this order will be refused");
   },
 };
 

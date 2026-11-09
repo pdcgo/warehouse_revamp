@@ -46,8 +46,9 @@ type orderMoveRule struct {
 // owner's §Status Move with who makes it.
 //
 // Two edges are NOT here, because they do more than move a status and keep their own RPCs:
-// pending → cancel (OrderCancel: stock back, the sale cancelled) and return → return_completed (the
-// return accept: the warehouse recorded, borrowed units relabelled, stock back).
+// pending → cancel (OrderCancel: stock back, the sale cancelled) and return → return_completed
+// (OrderReturnAccept: the missing units noted, borrowed units relabelled, the courier's charge announced — and, once
+// inventory's return is designed, the stock back).
 var orderMoves = map[orderMove]orderMoveRule{
 	// The warehouse.
 	{orderStatusPending, orderStatusProcessed}: {by: sideWarehouse},
@@ -95,18 +96,20 @@ func loadScopedOrder(tx *gorm.DB, teamID, orderID uint64, dst *selling_service_m
 // timeline nothing else can reconstruct — the row keeps only its current status — and that gap is
 // invisible until somebody opens the order weeks later and finds a step missing.
 //
-// `actor` is the caller (eventActor), 0 when unidentifiable. It is a parameter rather than read from a
-// context in here because this function has no ctx and should not grow one for a field: the handler
-// knows who is asking.
+// `actor` is the caller (eventActor), 0 when unidentifiable, and `override` whether they acted from outside the
+// scoped team (eventOverride, an-override-is-stamped-in-every-service). Both are parameters rather than read from a
+// context in here because this function has no ctx and should not grow one for a field: the handler knows who is
+// asking.
 func setOrderStatus(
 	tx *gorm.DB,
 	order *selling_service_models.Order,
 	status string,
 	from string,
 	actor uint64,
+	override bool,
 	note string,
 ) error {
-	_, err := setOrdersStatus(tx, []timelineMove{{order: order, from: from}}, status, actor, note)
+	_, err := setOrdersStatus(tx, []timelineMove{{order: order, from: from}}, status, actor, override, note)
 
 	return err
 }
@@ -116,6 +119,9 @@ func setOrderStatus(
 type timelineMove struct {
 	order *selling_service_models.Order
 	from  string
+	// The warehouse that accepted a return (the-accept-records-where-it-was-accepted) — set by the return accept alone,
+	// onto its return_completed row; 0 for every other move.
+	acceptingWarehouseID uint64
 }
 
 // setOrdersStatus is setOrderStatus for a batch that all moves INTO the same status: one UPDATE and one
@@ -129,6 +135,7 @@ func setOrdersStatus(
 	moves []timelineMove,
 	status string,
 	actor uint64,
+	override bool,
 	note string,
 ) ([]selling_service_models.OrderTimelineLog, error) {
 	if len(moves) == 0 {
@@ -147,12 +154,15 @@ func setOrdersStatus(
 	for _, move := range moves {
 		ids = append(ids, move.order.ID)
 		logs = append(logs, selling_service_models.OrderTimelineLog{
-			OrderID:   move.order.ID,
-			Status:    status,
-			Note:      note,
-			From:      move.from,
-			ActorID:   actor,
-			CreatedAt: now,
+			OrderID:    move.order.ID,
+			Status:     status,
+			Note:       note,
+			From:       move.from,
+			ActorID:    actor,
+			IsOverride: override,
+			// 0 except on the return accept's row (00034).
+			AcceptingWarehouseID: move.acceptingWarehouseID,
+			CreatedAt:            now,
 		})
 	}
 

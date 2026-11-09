@@ -42,6 +42,16 @@ func (s *Service) OrderDraftPush(
 		return nil, err
 	}
 
+	// A draft pushed onto a shop is a write on it (a-write-needs-a-grant-or-a-manager): the app's login needs a grant
+	// or a manager role, and a closed shop takes no new drafts (a-closed-shop-refuses-only-new-selling). A draft with
+	// no shop yet (0) writes on none — it is checked when a shop is set, and again at Promote.
+	if shopID := req.Msg.GetShopId(); shopID != 0 {
+		err = s.refuseShopWrite(ctx, req.Msg.GetTeamId(), shopID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	draft, created, err := s.pushDraft(ctx, req.Msg, authorID)
 	if err != nil {
 		// Two pushes of the same external ref arriving together: both find nothing and both insert,
@@ -75,6 +85,10 @@ func (s *Service) pushDraft(
 		created bool
 	)
 
+	// Whether the author pushes from outside the team (an-override-is-stamped-in-every-service) — stamped beside the
+	// author on both paths, and following the push exactly as the author does.
+	override := eventOverride(ctx)
+
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// FOR UPDATE, because the merge is read-then-write: two pushes of the same draft would
 		// otherwise both read the touched set, both decide a field is free, and the later one would
@@ -89,14 +103,14 @@ func (s *Service) pushDraft(
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
 			created = true
 
-			return createDraft(tx, msg, authorID, &draft)
+			return createDraft(tx, msg, authorID, override, &draft)
 		}
 
 		if findErr != nil {
 			return findErr
 		}
 
-		return mergeDraft(tx, msg, authorID, &draft)
+		return mergeDraft(tx, msg, authorID, override, &draft)
 	})
 	if err != nil {
 		return nil, false, err
@@ -111,33 +125,22 @@ func createDraft(
 	tx *gorm.DB,
 	msg *sellingv1.OrderDraftPushRequest,
 	authorID uint64,
+	override bool,
 	draft *selling_service_models.OrderDraft,
 ) error {
-	address := msg.GetAddress()
-
 	*draft = selling_service_models.OrderDraft{
 		TeamID:        msg.GetTeamId(),
 		AuthorUserID:  authorID,
+		IsOverride:    override,
 		Source:        msg.GetSource(),
 		ExternalID:    msg.GetExternalId(),
 		TouchedFields: "[]",
 		ShopID:        msg.GetShopId(),
 		WarehouseID:   msg.GetWarehouseId(),
-		CustomerName:  msg.GetCustomerName(),
-		CustomerPhone: msg.GetCustomerPhone(),
 		// Trimmed: spaces alone are no username (the-buyers-username-is-optional).
 		BuyerUsername: strings.TrimSpace(msg.GetBuyerUsername()),
-		ProvinsiCode:  address.GetProvinsiCode(),
-		ProvinsiName:  address.GetProvinsiName(),
-		KabupatenCode: address.GetKabupatenCode(),
-		KabupatenName: address.GetKabupatenName(),
-		KecamatanCode: address.GetKecamatanCode(),
-		KecamatanName: address.GetKecamatanName(),
-		DesaCode:      address.GetDesaCode(),
-		DesaName:      address.GetDesaName(),
-		KodePos:       address.GetKodePos(),
-		AddressLine:   address.GetAddressLine(),
-		ShippingCode:  msg.GetShippingCode(),
+		// The courier as the app converted it; 0 = it could not (the-app-converts-the-courier-to-a-channel-id).
+		ShipmentChannelID: msg.GetShipmentChannelId(),
 		// What the buyer paid, as the app read it; 0 = it could not see one (platform-total-is-required-at-finalize
 		// checks it at Promote, never here).
 		PlatformTotal: msg.GetPlatformTotal(),
@@ -147,7 +150,20 @@ func createDraft(
 		Items:                    draftItemModels(msg.GetItems()),
 	}
 
-	return tx.Create(draft).Error
+	err := tx.Create(draft).Error
+	if err != nil {
+		return err
+	}
+
+	// THE DRAFT'S ONE ADDRESS ROW, in the draft's own transaction (one-address-per-order-and-per-draft) — always written,
+	// empty fields and all, so every draft has exactly one. Names only: any region codes the app sent are discarded.
+	draft.Address = &selling_service_models.OrderDraftAddress{
+		CustomerName:  msg.GetCustomerName(),
+		CustomerPhone: msg.GetCustomerPhone(),
+	}
+	setDraftAddress(draft.Address, msg.GetAddress())
+
+	return saveDraftAddress(tx, draft)
 }
 
 // mergeDraft applies a re-push to a draft that already exists — the blanks-only rule (§6.5).
@@ -159,15 +175,24 @@ func mergeDraft(
 	tx *gorm.DB,
 	msg *sellingv1.OrderDraftPushRequest,
 	authorID uint64,
+	override bool,
 	draft *selling_service_models.OrderDraft,
 ) error {
 	touched := decodeTouched(draft.TouchedFields)
 
+	// The buyer and the address are the draft's one address row — read under the draft's lock (taken by pushDraft), and
+	// written back below with only the untouched parts changed.
+	err := loadDraftAddress(tx, draft)
+	if err != nil {
+		return err
+	}
+
 	// The author follows the push (§6.3). A draft is personal and a colleague cannot pick one up, so
 	// re-pushing under the right person's login is the ONLY way to hand a draft over — making this
 	// the escape hatch that "personal" leans on, rather than an accident.
-	updates := map[string]any{"author_user_id": authorID}
+	updates := map[string]any{"author_user_id": authorID, "is_override": override}
 	draft.AuthorUserID = authorID
+	draft.IsOverride = override
 
 	if !touched[draftFieldShopID] {
 		updates["shop_id"] = msg.GetShopId()
@@ -180,13 +205,11 @@ func mergeDraft(
 	}
 
 	if !touched[draftFieldCustomerName] {
-		updates["customer_name"] = msg.GetCustomerName()
-		draft.CustomerName = msg.GetCustomerName()
+		draft.Address.CustomerName = msg.GetCustomerName()
 	}
 
 	if !touched[draftFieldCustomerPhone] {
-		updates["customer_phone"] = msg.GetCustomerPhone()
-		draft.CustomerPhone = msg.GetCustomerPhone()
+		draft.Address.CustomerPhone = msg.GetCustomerPhone()
 	}
 
 	if !touched[draftFieldBuyerUsername] {
@@ -194,38 +217,21 @@ func mergeDraft(
 		updates["buyer_username"] = draft.BuyerUsername
 	}
 
-	// The address is ONE field for this purpose, not ten. Somebody who corrects a kecamatan has
-	// corrected the address — letting a re-scrape rewrite the other nine columns around their fix
+	// The address is ONE field for this purpose, not six. Somebody who corrects a kecamatan has
+	// corrected the address — letting a re-scrape rewrite the other parts around their fix
 	// would leave a hybrid address that was never true anywhere.
 	if !touched[draftFieldAddress] {
-		address := msg.GetAddress()
-
-		updates["provinsi_code"] = address.GetProvinsiCode()
-		updates["provinsi_name"] = address.GetProvinsiName()
-		updates["kabupaten_code"] = address.GetKabupatenCode()
-		updates["kabupaten_name"] = address.GetKabupatenName()
-		updates["kecamatan_code"] = address.GetKecamatanCode()
-		updates["kecamatan_name"] = address.GetKecamatanName()
-		updates["desa_code"] = address.GetDesaCode()
-		updates["desa_name"] = address.GetDesaName()
-		updates["kode_pos"] = address.GetKodePos()
-		updates["address_line"] = address.GetAddressLine()
-
-		draft.ProvinsiCode = address.GetProvinsiCode()
-		draft.ProvinsiName = address.GetProvinsiName()
-		draft.KabupatenCode = address.GetKabupatenCode()
-		draft.KabupatenName = address.GetKabupatenName()
-		draft.KecamatanCode = address.GetKecamatanCode()
-		draft.KecamatanName = address.GetKecamatanName()
-		draft.DesaCode = address.GetDesaCode()
-		draft.DesaName = address.GetDesaName()
-		draft.KodePos = address.GetKodePos()
-		draft.AddressLine = address.GetAddressLine()
+		setDraftAddress(draft.Address, msg.GetAddress())
 	}
 
-	if !touched[draftFieldShippingCode] {
-		updates["shipping_code"] = msg.GetShippingCode()
-		draft.ShippingCode = msg.GetShippingCode()
+	err = saveDraftAddress(tx, draft)
+	if err != nil {
+		return err
+	}
+
+	if !touched[draftFieldShipmentChannel] {
+		updates["shipment_channel_id"] = msg.GetShipmentChannelId()
+		draft.ShipmentChannelID = msg.GetShipmentChannelId()
 	}
 
 	// What the buyer paid — the app's latest reading, unless a person has typed one.
@@ -245,7 +251,7 @@ func mergeDraft(
 		updates["platform_shipment_deadline"] = draft.PlatformShipmentDeadline
 	}
 
-	err := tx.
+	err = tx.
 		Model(&selling_service_models.OrderDraft{}).
 		Where("id = ?", draft.ID).
 		Updates(withUpdatedAt(updates)).
@@ -254,7 +260,7 @@ func mergeDraft(
 		return err
 	}
 
-	// The lines are replaced wholesale, or not at all. Untouched means no human mapping exists to
+	// The lines are replaced wholesale, or not at all. Untouched means no person's correction exists to
 	// lose, so the app's latest scrape simply replaces what its previous one said — including lines
 	// it no longer sees, which is how a removed line disappears rather than lingering.
 	if touched[draftFieldItems] {

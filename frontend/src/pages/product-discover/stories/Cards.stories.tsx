@@ -59,7 +59,7 @@ export const EveryTeamsProductsNamedByOwner: Story = {
     const canvas = await loaded(canvasElement);
 
     for (const product of [KOPI, GULA, BERAS]) {
-      const card = canvas.getByTestId(`discover-card-${product.sku}`);
+      const card = canvas.getByTestId(`discover-card-${product.productCode}`);
       // The names land after the products (one TeamByIds per page), so the card first reads "Team #<id>".
       await waitFor(() => expect(card).toHaveTextContent(teamName(product.teamId)));
     }
@@ -95,7 +95,7 @@ export const YourOwnProductSaysCostAndCross: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const stock = ownerStockSample(MINYAK.id, FIGURED_TEAM, 0n)!;
-    const card = canvas.getByTestId(`discover-card-${MINYAK.sku}`);
+    const card = canvas.getByTestId(`discover-card-${MINYAK.productCode}`);
 
     await waitFor(() =>
       expect(canvas.getByTestId(`discover-price-cost-${MINYAK.id}`)).toHaveTextContent(
@@ -167,7 +167,7 @@ export const ACardOpensTheDiscoverDetail: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId(`discover-open-${GULA.sku}`));
+    await userEvent.click(canvas.getByTestId(`discover-open-${GULA.productCode}`));
     await canvas.findByTestId("at-discover-detail");
   },
 };

@@ -32,6 +32,13 @@ func (s *Service) LiabilityTermsHistoryList(
 ) (*connect.Response[liabilityv1.LiabilityTermsHistoryListResponse], error) {
 	page := req.Msg.GetPage()
 
+	// The pair page's one date range narrows this log too, before the page (backlog #34) — the day a limit CHANGED,
+	// a Jakarta day like every other list's.
+	start, end, err := listPeriod(req.Msg.GetFilter().GetFrom(), req.Msg.GetFilter().GetTo())
+	if err != nil {
+		return nil, err
+	}
+
 	scope := func() *gorm.DB {
 		q := s.db.
 			WithContext(ctx).
@@ -50,12 +57,20 @@ func (s *Service) LiabilityTermsHistoryList(
 			q = q.Where("counterparty_id = ?", *f.CounterpartyId)
 		}
 
+		if start != nil {
+			q = q.Where("changed_at >= ?", *start)
+		}
+
+		if end != nil {
+			q = q.Where("changed_at < ?", *end)
+		}
+
 		return q
 	}
 
 	var total int64
 
-	err := scope().Count(&total).Error
+	err = scope().Count(&total).Error
 	if err != nil {
 		return nil, dbError(err)
 	}

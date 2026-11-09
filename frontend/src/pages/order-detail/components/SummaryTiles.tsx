@@ -8,7 +8,7 @@ import {
   orderMarginPct,
   orderSpend,
 } from "../../../features/orders/margin";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiah, type Rupiah, rupiahNumber } from "../../../lib/money";
 import { CopyText } from "../../../components/chrome/CopyText";
 
 // FOUR NUMBERS TO LAND ON — "is this order OK" before any scrolling.
@@ -33,24 +33,25 @@ export function SummaryTiles({
   fees,
   itemCount,
 }: {
-  platformTotal: bigint;
+  /** A double frozen exact at placement (selling 00041). 0 = not recorded. */
+  platformTotal: number;
   /** Σ line cost; 0 when any line's cost is unknown — the tiles then refuse, like the panel. */
-  productCost: bigint;
+  productCost: number;
   /** The frozen warehouse fee, or `null` when never priced — the totals then refuse. */
-  fees: bigint | null;
+  fees: number | null;
   itemCount: number;
 }) {
   const { t } = useTranslation();
 
-  const spend = orderSpend(productCost, fees ?? 0n, productCost > 0n && fees !== null);
+  const spend = orderSpend(productCost, fees ?? 0, productCost > 0 && fees !== null);
   const margin = orderMargin(platformTotal, spend);
   const pct = formatMarginPct(orderMarginPct(platformTotal, spend));
-  const tone = margin === null ? undefined : margin < 0n ? "error" : "success";
+  const tone = margin === null ? undefined : margin < 0 ? "error" : "success";
 
   return (
     <SimpleGrid minChildWidth="10rem" gap="card" data-testid="summary-tiles">
       <Tile label={t("orderDetail.money.platformTotal")} testId="tile-mp">
-        {platformTotal > 0n ? <Amount value={platformTotal} /> : "—"}
+        {platformTotal > 0 ? <Amount value={platformTotal} /> : "—"}
       </Tile>
 
       {/* Built on the order's own frozen fee — and refusing when there is none, rather than printing the goods
@@ -118,7 +119,7 @@ function Tile({
   );
 }
 
-/** A rupiah figure that shows formatted and copies as digits. */
-function Amount({ value }: { value: bigint }) {
-  return <CopyText value={value.toString()} display={formatRupiah(value)} fontSize="lg" />;
+/** A rupiah figure that shows formatted and copies as digits — the exact stored figure ("12666.99"), never rounded. */
+function Amount({ value }: { value: Rupiah }) {
+  return <CopyText value={String(rupiahNumber(value))} display={formatRupiah(value)} fontSize="lg" />;
 }

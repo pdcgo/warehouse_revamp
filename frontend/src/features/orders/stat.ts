@@ -1,5 +1,6 @@
 import type { OrderStatResponse, OrderStatusCount } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+
 import { orderMargin, orderMarginPct, orderSpend } from "./margin";
 
 // What the header above the order list needs, derived from OrderStat's census in ONE place.
@@ -19,9 +20,9 @@ export interface OrderStatSummary {
   /** Shipped — out of the building. */
   shipped: number;
   orders30d: number;
-  revenue30d: bigint;
-  /** revenue ÷ orders, whole rupiah. 0 when there were no orders — never a division by zero. */
-  avgOrder: bigint;
+  revenue30d: number;
+  /** revenue ÷ orders, exact. 0 when there were no orders — never a division by zero. */
+  avgOrder: number;
 }
 
 // The statuses that mean "the warehouse has this": confirmed and being picked, or picked and waiting for
@@ -41,7 +42,8 @@ export function summariseOrderStat(res: OrderStatResponse | undefined): OrderSta
   const count = (status: OrderStatus) => counts.get(status) ?? 0;
 
   const orders30d = Number(res?.preview?.orders30d ?? 0n);
-  const revenue30d = res?.preview?.revenue30d ?? 0n;
+  // A double on the wire since selling 00041 — the exact sum of the platform totals (the-backend-never-rounds-money).
+  const revenue30d = res?.preview?.revenue30d ?? 0;
 
   return {
     count,
@@ -50,7 +52,7 @@ export function summariseOrderStat(res: OrderStatResponse | undefined): OrderSta
     shipped: LEFT_THE_BUILDING.reduce((sum, s) => sum + count(s), 0),
     orders30d,
     revenue30d,
-    avgOrder: orders30d > 0 ? revenue30d / BigInt(orders30d) : 0n,
+    avgOrder: orders30d > 0 ? revenue30d / orders30d : 0,
   };
 }
 
@@ -89,7 +91,7 @@ export interface OrderSummaryRow {
   /** How many orders are in this pile right now. */
   count: number;
   /** Σ `platform_total` over EVERY order in the pile — what the buyers paid (`OrderStatusCount.value`). */
-  value: bigint;
+  value: number;
   /**
    * Σ `platform_total` — WHAT THE BUYERS ACTUALLY PAID THE PLATFORM, and the top of the margin.
    *
@@ -102,16 +104,16 @@ export interface OrderSummaryRow {
    * margin by the unpriced orders' whole sale — not a rounding error: one unpriced order among nine
    * moved a 36% margin to 48% the first time this was rendered.
    */
-  mpValue: bigint | null;
+  mpValue: number | null;
   /** Σ `goods_cost`, over the same orders as `mpValue`. */
-  goodsCost: bigint | null;
+  goodsCost: number | null;
   /**
    * Σ of the per-order FULFILMENT FEES, over the same orders again — the `biaya` half of total beli.
    *
    * ⚠ IT BELONGS AT THE BOTTOM OF THE SUBTRACTION. Leaving it out was the first version of this and
    * it overstated every pile by the whole warehouse bill.
    */
-  fees: bigint | null;
+  fees: number | null;
   /**
    * How many of `count` the margin CANNOT BE TAKEN OVER, so the reader knows what it left out.
    *
@@ -149,10 +151,10 @@ function emptyRow(key: string, onTheWire: boolean): OrderSummaryRow {
     key,
     onTheWire,
     count: 0,
-    value: 0n,
-    mpValue: onTheWire ? 0n : null,
-    goodsCost: onTheWire ? 0n : null,
-    fees: onTheWire ? 0n : null,
+    value: 0,
+    mpValue: onTheWire ? 0 : null,
+    goodsCost: onTheWire ? 0 : null,
+    fees: onTheWire ? 0 : null,
     marginUnknown: onTheWire ? 0 : null,
     itemCount: onTheWire ? 0 : null,
   };
@@ -185,12 +187,13 @@ export function orderSummaryRows(
 
       if (entry) {
         row.count += Number(entry.count);
+        // Every figure arrives as an exact double (the-backend-never-rounds-money) and is added as it is — nothing
+        // here rounds; the screen rounds for display only.
         row.value += entry.value;
         row.itemCount = (row.itemCount ?? 0) + Number(entry.itemCount);
-        row.mpValue = (row.mpValue ?? 0n) + entry.mpValue;
-        row.goodsCost = (row.goodsCost ?? 0n) + entry.goodsCost;
-        // The fees arrive unrounded (rupiah-is-floating-point); whole rupiah here, for the bigint arithmetic only.
-        row.fees = (row.fees ?? 0n) + BigInt(Math.round(entry.fees));
+        row.mpValue = (row.mpValue ?? 0) + entry.mpValue;
+        row.goodsCost = (row.goodsCost ?? 0) + entry.goodsCost;
+        row.fees = (row.fees ?? 0) + entry.fees;
         row.marginUnknown = (row.marginUnknown ?? 0) + Number(entry.marginUnknown);
       }
     }
@@ -213,8 +216,8 @@ export function orderSummaryTotal(rows: OrderSummaryRow[]): OrderSummaryRow {
   // the moment one of the owner's undelivered statuses appeared in the list — which is always.
   const counted = rows.filter((row) => row.onTheWire);
 
-  const sumOrNull = (pick: (r: OrderSummaryRow) => bigint | null): bigint | null =>
-    counted.every((r) => pick(r) !== null) ? counted.reduce((sum, r) => sum + pick(r)!, 0n) : null;
+  const sumOrNull = (pick: (r: OrderSummaryRow) => number | null): number | null =>
+    counted.every((r) => pick(r) !== null) ? counted.reduce((sum, r) => sum + pick(r)!, 0) : null;
 
   const countOrNull = (pick: (r: OrderSummaryRow) => number | null): number | null =>
     counted.every((r) => pick(r) !== null) ? counted.reduce((sum, r) => sum + pick(r)!, 0) : null;
@@ -225,7 +228,7 @@ export function orderSummaryTotal(rows: OrderSummaryRow[]): OrderSummaryRow {
     // which is the right answer rather than a missing one.
     onTheWire: true,
     count: counted.reduce((sum, r) => sum + r.count, 0),
-    value: counted.reduce((sum, r) => sum + r.value, 0n),
+    value: counted.reduce((sum, r) => sum + r.value, 0),
     mpValue: sumOrNull((r) => r.mpValue),
     goodsCost: sumOrNull((r) => r.goodsCost),
     fees: sumOrNull((r) => r.fees),
@@ -240,9 +243,9 @@ export function orderSummaryTotal(rows: OrderSummaryRow[]): OrderSummaryRow {
 // refuses rather than divides by zero — an empty status is an em-dash, never a 0% that reads as a
 // measured result.
 
-/** Average transaction value — Σ total ÷ orders, whole rupiah. */
-export function summaryAtv(row: OrderSummaryRow): bigint | null {
-  return row.onTheWire && row.count > 0 ? row.value / BigInt(row.count) : null;
+/** Average transaction value — Σ total ÷ orders. Unrounded: an average is not a frozen figure, so it shows its fraction. */
+export function summaryAtv(row: OrderSummaryRow): number | null {
+  return row.onTheWire && row.count > 0 ? row.value / row.count : null;
 }
 
 /** Units per transaction. Kept as a float — the whole point is the fraction. */
@@ -258,7 +261,7 @@ export function summaryUpt(row: OrderSummaryRow): number | null {
  * The owner's `subtotal produk + biaya`, summed. It is what the strip labels *nilai belanja*, so the
  * card and the table's `Beli` cell mean the same thing by the same word.
  */
-export function summarySpend(row: OrderSummaryRow): bigint | null {
+export function summarySpend(row: OrderSummaryRow): number | null {
   if (row.goodsCost === null || row.fees === null) {
     return null;
   }
@@ -275,7 +278,7 @@ export function summarySpend(row: OrderSummaryRow): bigint | null {
  * ⚠ It is NOT profit, and must not be labelled as one. What the marketplace deducts beyond the price
  * only lands weeks later, on the settlement ledger.
  */
-export function summaryMargin(row: OrderSummaryRow): bigint | null {
+export function summaryMargin(row: OrderSummaryRow): number | null {
   if (row.mpValue === null) {
     return null;
   }

@@ -20,7 +20,7 @@ import {
 import { Undo2 } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
@@ -228,10 +228,12 @@ export function ReturnsPage() {
         <Spacer />
         {/* Force Return — the warehouse starts a return itself (brainstorming §5.3): a parcel turned up,
             so log it and receive it in one motion rather than waiting for an "ongoing" one to arrive. */}
-        <Button colorPalette="brand" data-testid="returns-force">
-          <Icon as={Undo2} boxSize="4" />
-          {t("returns.forceReturn")}
-        </Button>
+        {canWrite(current) && (
+          <Button colorPalette="brand" data-testid="returns-force">
+            <Icon as={Undo2} boxSize="4" />
+            {t("returns.forceReturn")}
+          </Button>
+        )}
       </Flex>
 
       <SimpleGrid columns={{ base: 1, sm: 3 }} gap="card">
@@ -284,6 +286,8 @@ export function ReturnsPage() {
             disabled until one is picked. */}
         <Box maxW="52" w="full">
           <ShopSelect
+            // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
+            asFilter
             teamId={teamId}
             value={shopId > 0n ? shopId : undefined}
             disabled={teamId === 0n}

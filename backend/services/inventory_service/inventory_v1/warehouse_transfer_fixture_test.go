@@ -45,9 +45,9 @@ type wtFixture struct {
 
 func wtFacts() fakeFacts {
 	return fakeFacts{
-		wtKaosHitam: {TeamID: otMelati, SKU: "KH-001", Name: "Kaos Hitam"},
-		wtKaosPolos: {TeamID: otMelati, SKU: "KP-001", Name: "Kaos Polos"},
-		wtKaosMerah: {TeamID: otSinar, SKU: "KM-001", Name: "Kaos Merah"},
+		wtKaosHitam: {TeamID: otMelati, ProductCode: "KH-001", Name: "Kaos Hitam"},
+		wtKaosPolos: {TeamID: otMelati, ProductCode: "KP-001", Name: "Kaos Polos"},
+		wtKaosMerah: {TeamID: otSinar, ProductCode: "KM-001", Name: "Kaos Merah"},
 	}
 }
 
@@ -56,7 +56,7 @@ func wtStocked(t *testing.T) *wtFixture {
 
 	f := &wtFixture{sent: &sentEvents{}}
 	f.db = san_testdb.DB(t)
-	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts())
+	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, nil)
 
 	f.rakA = newRack(t, f.svc, wtA, "rak-a")
 	f.rakB = newRack(t, f.svc, wtA, "rak-b")

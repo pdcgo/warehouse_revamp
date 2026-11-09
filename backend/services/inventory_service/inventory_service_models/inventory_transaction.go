@@ -29,6 +29,9 @@ type InventoryTransaction struct {
 	TeamID         uint64
 	TxType         TxType
 	CreateByUserID uint64
+	// Root or the Administrator wrote it inside a team they hold no role in (an-override-is-stamped-in-every-service,
+	// 00034). The batch and rack rows are the transaction's lines and read it through transaction_id.
+	IsOverride bool
 	// Set once, by the rollback (an-undo-rolls-the-transaction-back-once). Only a take is ever rolled back.
 	IsRollback  bool
 	Description string

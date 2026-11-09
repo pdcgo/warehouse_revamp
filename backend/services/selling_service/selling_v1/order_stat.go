@@ -32,14 +32,14 @@ func (s *Service) OrderStat(
 	type scan struct {
 		Status        string
 		Count         int64
-		Value         int64
+		Value         float64
 		ItemCount     int64
-		MpValue       int64
-		GoodsCost     int64
+		MpValue       float64
+		GoodsCost     float64
 		Fees          float64
 		MarginUnknown int64
 		Count30D      int64
-		Value30D      int64
+		Value30D      float64
 	}
 
 	var rows []scan

@@ -68,7 +68,7 @@ card. Frontend only; no RPC, proto or migration changed. Decisions:
 | pending (`pages/product-discover/pending.ts`) | `warehouse`, `division`, `category`, `stock`, `crossRange`, `lockFilter` — dropped; `crossPrice`, `cardStock`, `divisionBadge` — sample (`sampleMock.ts`); `locked` — missing |
 | ⚠ contradiction | the owner's division is per product with three values; the proto's priority partition is a TEAM flag with two — the chips are NOT wired to `owner_team_ids` on purpose |
 | shared helpers | `withMarkup` (lib/markup.ts), `formatRupiahRange` (lib/money.ts) replaced copies in ProductsTable, the product page and PriceSection; `readyStatus` (features/products/stockAge.ts) is the product page's and Discover's one stock rule |
-| later the same pass | the card's stock, price, division and lock badges; stock and price as picked bands with **Atur sendiri**; the **Kunci** filter; the panel never past the window's foot and above the grid; a minimum closes AT the minimum (≤, `lockedByMinimumNow`) — every decision from `a-discover-price-is-red-and-unlabelled` to `the-card-states-are-pinned-on-the-page` in products_decision.md |
+| later the same pass | the card's stock, price, division and lock badges; stock and price as picked bands with **Atur sendiri**; the **Kunci** filter; the panel never past the window's foot and above the grid; a minimum closes AT the minimum (≤, `lockedByMinimumNow`; reversed 2026-10-31 to `<` by `a-minimum-closes-only-under-it`) — every decision from `a-discover-price-is-red-and-unlabelled` to `the-card-states-are-pinned-on-the-page` in products_decision.md |
 | stories | `Pages/Products/DiscoverProducts` (the Default story carries a locked product — `patchProduct`; this stub's ProductDiscover does not leave locked products out), `Components/Chrome/FilterPanel`, `FilterChips/WithoutAll`·`WithIcons` |
 
 ## Next — backend (owner, 2026-10-30: *"iy"* to recording it)
@@ -133,5 +133,5 @@ carries only the cover).
 - The **reserve applies to the owner's own product** on this page too — consistent with the owner detail's
   "never offered for sale", not settled for cross lines.
 - ⚠ **`sampleSuppliers.ts` imports `features/suppliers/discover.ts`** — the supplier discover sample, written by
-  the supplier pass. When that sample becomes a real read, the product side needs its own read (product →
-  channels), not the supplier search.
+  the supplier pass. ✅ That search is a real read since 2026-10-07 (`EVERY_TEAM`), but the product side still needs
+  its own read (product → channels), which waits on a store per restock line — the suppliers stay sample.

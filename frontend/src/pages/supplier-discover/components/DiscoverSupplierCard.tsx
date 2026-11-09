@@ -4,8 +4,8 @@ import { ArrowUpRight } from "lucide-react";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { DiscoverSupplier } from "../../../features/suppliers/discover";
 import { ChannelTypes } from "../../../features/suppliers/ChannelTypes";
-import { LIST_FIGURE_MARKS, SupplierFigureIcons } from "../../../features/suppliers/SupplierFigures";
-import { sampleFiguresFor } from "../../../features/suppliers/sampleSupplierFigures";
+import { NO_FIGURE_MARKS, SupplierFigureIcons } from "../../../features/suppliers/SupplierFigures";
+import type { SupplierFigureValues } from "../../../features/suppliers/figureValues";
 import { TeamItem } from "../../../components/entity/TeamItem";
 import { LIFTS } from "../../../lib/motion";
 
@@ -19,13 +19,24 @@ import { LIFTS } from "../../../lib/motion";
 //        Selling
 //   [Shopee] [Tokopedia] [Other]                  ← where it sells, or "Belum ada toko pemasok"
 //   0812-1111-2222                                ← the contact
-//   🛒 2.579 ⚠1   ✓ 803 ⚠2                    ↗   ← its figures as icons, one row, no dates (a-card-reads-its-figures-as-icons),
+//   🛒 2.579   ✓ 803                          ↗   ← its figures as icons, one row, no dates (a-card-reads-its-figures-as-icons),
 //                                                    and the arrow that says the card opens
 //
 // The whole card opens the supplier's Discover detail, so it lights up under a pointer and while pressed
 // (a-table-row-lights-up) — and rises a little, so in a grid the one about to open stands out
 // (`motion-is-small-quick-and-shared`).
-export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverSupplier; onOpen: () => void }) {
+//
+// The figures are the page's to read — one SupplierGoods call for the whole page — and come in as `figures`; null is
+// a supplier none of whose goods ever arrived (a dash each).
+export function DiscoverSupplierCard({
+  supplier,
+  figures,
+  onOpen,
+}: {
+  supplier: DiscoverSupplier;
+  figures: SupplierFigureValues | null;
+  onOpen: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -65,8 +76,8 @@ export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverS
           </Text>
           <Flex justify="space-between" align="center" gap="2">
             <SupplierFigureIcons
-              figures={sampleFiguresFor(supplier)}
-              marks={LIST_FIGURE_MARKS}
+              figures={figures}
+              marks={NO_FIGURE_MARKS}
               testId={`discover-card-figures-${supplier.id}`}
             />
             {/* ↗ — the card opens the supplier; the arrow says so, bottom right. */}

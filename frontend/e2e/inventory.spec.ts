@@ -26,14 +26,14 @@ test("Inventory: the stock screen is reachable and prompts for a warehouse", asy
   await expect(page.getByTestId("inventory-pick-warehouse")).toBeVisible();
 });
 
-// #95/#122 — the Inventories sub-menu. The group shows for selling/warehouse teams (root reaches the
-// routes directly). "Stock" is the on-hand screen. ("Restock" used to be this same screen under
-// another title — it is now the request flow, covered by restock.spec.ts.) The placement list is
-// Racks (the-racks-page-is-the-placement-list), so there is no Placements stub to visit.
-test("Inventories: Stock is the on-hand screen", async ({ page }) => {
+// The old Inventories ▸ Stock address FORWARDS (a-warehouses-products-is-what-it-holds): what a warehouse holds is its
+// Products now, and root and the admin team read it on Inventory — so root, opening the old address, lands there. (A
+// warehouse lands on its Products: found_requests.spec.ts.)
+test("Inventories: the old Stock address forwards root to Inventory", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   await page.goto("/inventories/stock");
-  await expect(page.getByRole("heading", { name: "Stock" })).toBeVisible();
+  await expect(page).toHaveURL(/\/inventory$/);
+  await expect(page.getByRole("heading", { name: "Inventory" })).toBeVisible();
   await expect(page.getByTestId("inventory-pick-warehouse")).toBeVisible();
 });

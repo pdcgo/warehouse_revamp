@@ -6,7 +6,7 @@ import { Pencil, Plus, SearchX, Trash2, Warehouse } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Rack } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { RackTotals } from "../../features/racks/adapt";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useDeleteRack, useRacks } from "./queries";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { FilterBar, FilterSearch } from "../../components/chrome/FilterBar";
@@ -54,6 +54,7 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // On a phone the header's action is its icon, the search stays in the row, and each rack is a block.
 export function RacksPage() {
   const { current } = useTeam();
+  const writable = canWrite(current);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -140,8 +141,11 @@ export function RacksPage() {
     );
   }
 
-  // A row's two acts — Edit and Delete, kept inline (two stay named by their icons). Each stops the row's navigate.
+  // A row's two acts — Edit and Delete, kept inline (two stay named by their icons). Each stops the row's navigate. None
+  // while the admin team monitors the warehouse (the-admin-team-monitors-read-only).
   function rowActions(rack: Rack) {
+    if (!writable) return null;
+
     return (
       <HStack justify="end" gap="1" onClick={(e) => e.stopPropagation()}>
         <IconButton
@@ -342,7 +346,8 @@ export function RacksPage() {
             {t("racks.subtitle")}
           </Text>
         </Stack>
-        {isMobile ? (
+        {/* Nothing to change while the admin team monitors the warehouse (the-admin-team-monitors-read-only). */}
+        {!writable ? null : isMobile ? (
           <CompactActions
             menuLabel={t("racks.table.actions")}
             actions={[

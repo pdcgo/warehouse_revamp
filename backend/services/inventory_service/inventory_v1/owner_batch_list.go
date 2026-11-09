@@ -2,7 +2,6 @@ package inventory_v1
 
 import (
 	"context"
-	"math"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -91,6 +90,6 @@ func (s *Service) OwnerBatchList(
 		Items:           items,
 		Ids:             ids,
 		PageInfo:        pageInfo(page, total),
-		ReadyValueTotal: int64(math.Round(readyValue)),
+		ReadyValueTotal: readyValue,
 	}), nil
 }

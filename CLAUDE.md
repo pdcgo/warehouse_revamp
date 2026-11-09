@@ -621,7 +621,7 @@ it once a real domain service replaces it.
 | Run the whole dev stack (docker + API + UI) | `go run ./tools/san dev run` — one terminal, output prefixed per server, Ctrl-C stops all of it. Starts the Pub/Sub emulator too, and makes its topics and its PUSH subscriptions to the API (:8080) on every start, so every event consumer runs locally |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
-| Fetch / test a submodule package | `git submodule update --init` after a clone (the build needs it), then `cd backend/packages/<name> && go test ./...` — root `./...` never enters a nested module. A change there is committed and pushed **in the submodule first**, then committed here as a pointer move |
+| Fetch / test a submodule package | `git submodule update --init` after a clone (the build needs it), then `cd backend/pkgs/san_receipt_readers && go test ./...` — root `./...` never enters a nested module. A change there is committed and pushed **in the submodule first**, then committed here as a pointer move |
 | Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
 | Create the event topics + subscriptions | `go run ./tools/san pubsub ensure --project warehouse-dev --emulator` — **nothing else creates them** |
@@ -671,6 +671,10 @@ message TeamInfoUpdateRequest {
   request (cached ~1 min, invalidated on every membership change), so revoking a role takes
   effect without reissuing tokens.
 - **ROOT/ADMINISTRATOR in team 1** (the root team) bypass every scope check.
+- **The admin team MONITORS, read-only** — `ROLE_ADMIN_OWNER`/`ROLE_ADMIN_ADMINISTRATOR`, in a team they hold no role in,
+  pass only an RPC marked `option idempotency_level = NO_SIDE_EFFECTS` — in a WAREHOUSE or SELLING team only
+  (`TeamKinds`, never the root or an admin team), never as an AI agent; `san_auth.IsMonitor`). It is the ONE read marker — an agent's credential is held to it too — so a new RPC is marked
+  a read by reading its handler (no row, no event, no file), never by its name; an unmarked read fails closed for both.
 
 **Where it lives:** [backend/services/user_service/access_interceptors/](backend/services/user_service/access_interceptors/)
 — user_service owns identity and roles, so it owns the enforcement. Other services import it.
@@ -691,9 +695,17 @@ The generic primitives (JWT, reading the proto options, descriptor validation) a
   non-uint, nested, or duplicated. Each of those is silent at runtime otherwise.
 - **Server streams are authorized on their request; client and bidi streams are refused.** A server
   stream's token is checked from its headers before the handler runs, and its one request is checked
-  — policy, then scope — as connect-go reads it, before the handler's body sees it. ⚠ Its ctx carries
-  the identity and bearer, **not** the scope: a stream handler reads `team_id` off its own request.
+  — policy, then scope — as connect-go reads it, before the handler's body sees it. Its ctx carries the
+  identity and bearer from the start, and the scope, caller role and monitor mark once that request is
+  authorized — a `san_auth.StreamScope` the read fills — so `GetScope` / `GetCallerRole` / `IsOverride`
+  answer in a stream's body as in a unary call's.
   Client and bidi streams carry many messages and no one request, so they stay `Unimplemented`.
+- **An AI agent's bearer (`wha_…`) only calls a READ** — an RPC declared `option idempotency_level = NO_SIDE_EFFECTS;`
+  ([an-agent-only-reads-for-now](docs/business/mcp/context_decision.md#an-agent-only-reads-for-now)); anything else is refused
+  before the handler, and a one-team credential is held to its team's scope. ⚠ Offering a new read to agents (a tool in
+  [mcp_service](backend/services/mcp_service/)) means marking it — **and every RPC its handler calls with the forwarded
+  bearer**, or the tool fails for agents only. The OAuth that mints the bearer is `user_service/agent_oauth`
+  ([docs/services/mcp_service/rpc.md](docs/services/mcp_service/rpc.md)).
 - The role lookup uses **`.Find()`, never `.First()`** — `First` returns `ErrRecordNotFound` for
   a non-member, and every request resolves the root team, where almost nobody is a member.
 
@@ -1187,14 +1199,15 @@ written for the next agent, not for a person: what exists, what does not, what w
 
 ## Git workflow
 
-All work happens on a single long-lived **`dev`** branch. Commit straight to `dev` — do **not**
-create a branch or a PR per task. The owner keeps `dev` checked out to preview the running app and
-review as work lands, so branch-switching just gets in the way.
+**Each developer works on a long-lived branch of their own** — Heri on `backup/inventory`, Toni on `thoni`
+([each-developer-works-on-their-own-branch](docs/business/project/member_decision.md#each-developer-works-on-their-own-branch)).
+Commit on the branch that is checked out, and **only when the owner says so** — finish the work, show what changed,
+ask. Do **not** create a branch or a PR per task. `dev` is no longer the shared branch (idle since 2026-10-12).
 
-- Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright spec for
+- Keep the branch green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright spec for
   the work in hand should pass at each commit. CI runs the full suite.
-- Promote to `main` by merging `dev` → `main` **when the owner asks**. Never force-push `main`;
-  never push `main` or merge without an explicit ask.
+- Work moves between branches by a merge, **when the owner asks**. Never force-push `main`; never push
+  `main` or merge into it without an explicit ask.
 
 CI (`.github/workflows/ci.yml`) runs on push-to-`main` and every PR: buf lint + generated-drift
 check, `go build/vet/test`, frontend build, and Playwright e2e against Postgres + Redis service

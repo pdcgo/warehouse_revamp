@@ -35,12 +35,14 @@ func namedOrder(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: name, CustomerPhone: phone,
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -187,12 +189,14 @@ func TestOrderList_SearchNeverLeaksAnotherTeamsOrders(t *testing.T) {
 	ours := namedOrder(t, svc, mine, "Budi Santoso", "081200001111")
 
 	_, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                3, ShopId: theirs, WarehouseId: 901,
 		CustomerName: "Budi Santoso", CustomerPhone: "081200001111",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {

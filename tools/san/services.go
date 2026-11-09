@@ -100,7 +100,8 @@ func defaultCategorySeedPath() string {
 }
 
 // discoverServices lists the services from the filesystem rather than a hardcoded list —
-// a hardcoded list silently goes stale the first time someone adds a service.
+// a hardcoded list silently goes stale the first time someone adds a service. Only those with migrations of their own:
+// a service that owns no table (mcp_service) has nothing to migrate, and goose refuses an empty directory.
 func discoverServices() ([]string, error) {
 	root, err := servicesRoot()
 	if err != nil {
@@ -115,9 +116,16 @@ func discoverServices() ([]string, error) {
 	services := make([]string, 0, len(entries))
 
 	for _, entry := range entries {
-		if entry.IsDir() {
-			services = append(services, entry.Name())
+		if !entry.IsDir() {
+			continue
 		}
+
+		_, statErr := os.Stat(filepath.Join(root, entry.Name(), "db_migrations"))
+		if statErr != nil {
+			continue
+		}
+
+		services = append(services, entry.Name())
 	}
 
 	if len(services) == 0 {

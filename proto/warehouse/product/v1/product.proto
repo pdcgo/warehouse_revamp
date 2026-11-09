@@ -23,28 +23,51 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/pro
 //   - ProductByIds    — a KNOWN set of ids, across any team, for selling AND warehouse roles (#138).
 service ProductService {
   rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse);
-  rpc ProductList(ProductListRequest) returns (ProductListResponse);
+  rpc ProductList(ProductListRequest) returns (ProductListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
-  rpc ProductDiscover(ProductDiscoverRequest) returns (ProductDiscoverResponse);
+  rpc ProductDiscover(ProductDiscoverRequest) returns (ProductDiscoverResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
-  rpc ProductByIds(ProductByIdsRequest) returns (ProductByIdsResponse);
-  rpc ProductDetail(ProductDetailRequest) returns (ProductDetailResponse);
+  rpc ProductByIds(ProductByIdsRequest) returns (ProductByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ProductDetail(ProductDetailRequest) returns (ProductDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
-  // ProductDelete ARCHIVES a product (`deleted = true`) — the row survives, and the UI calls it
-  // Archive for that reason. ProductRestore is the way back.
+  // Two actions, split by whether the product has a HISTORY (a-used-product-is-archived-never-deleted):
+  //
+  // ProductArchive takes a product out of the list and every picker — any time, even with stock on a shelf — so nothing
+  // NEW uses it; what is already on its way still lands. The row survives. ProductUnarchive is the way back.
+  rpc ProductArchive(ProductArchiveRequest) returns (ProductArchiveResponse);
+  rpc ProductUnarchive(ProductUnarchiveRequest) returns (ProductUnarchiveResponse);
+  // ProductDelete removes a product for good — ONLY one with no history: never in a stock movement, an order line or a
+  // restock line. It strands nothing, because nothing ever pointed at it. Refused otherwise: archive it instead.
   rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
-  // ProductRestore brings an archived product back into the catalogue. It can legitimately FAIL:
-  // archiving frees the SKU, so a re-used one blocks the return (see ProductRestoreRequest).
-  rpc ProductRestore(ProductRestoreRequest) returns (ProductRestoreResponse);
 }
 
 message Product {
   uint64 id = 1;
   uint64 team_id = 2;
-  string sku = 3;
+  // The product's ONE code, as stored — `<team_code>-<the team's part>`, composed by product_service on write and globally
+  // unique over every row, archived ones included (the-field-is-product-code-composed-on-write). What the sticker and the
+  // scan carry. Read-only: a write sends the team's part (ProductCreateRequest.product_code_part).
+  string product_code = 3;
   string name = 4;
   string description = 5;
-  bool deleted = 6;
+  // Out of the list and the pickers (ProductArchive), still resolvable by id — a shelf, an old order and a report name it.
+  bool archived = 6;
 
   // The product's category (a node in the global category taxonomy). Required on create/update —
   // 0 only appears on rows created before categories existed.
@@ -88,15 +111,14 @@ message ProductImages {
 }
 
 message ProductCreateRequest {
-  // Write: the team's managers. Team-level roles are legal here because team_id carries use_scope.
+  // Write: the SELLING team's managers — a warehouse owns no product (the-product-writes-drop-the-warehouse-roles).
+  // Team-level roles are legal here because team_id carries use_scope.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -104,7 +126,11 @@ message ProductCreateRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  string sku = 2 [(buf.validate.field).string = {
+  // The TEAM'S OWN PART of the code — what the form's field takes beside the fixed team prefix. product_service stores
+  // `<team_code>-<this>` as Product.product_code (team ABC sends SHOE-42, the product is ABC-SHOE-42); the prefix is
+  // never typed, so no team can type its way into another's namespace. AlreadyExists when the composed code is held by
+  // any product, archived or not.
+  string product_code_part = 2 [(buf.validate.field).string = {
     min_len: 1
     max_len: 64
   }];
@@ -188,7 +214,7 @@ enum ProductListDataType {
 enum ProductRowSort {
   PRODUCT_ROW_SORT_UNSPECIFIED = 0;
   PRODUCT_ROW_SORT_NAME = 1;
-  PRODUCT_ROW_SORT_SKU = 2;
+  PRODUCT_ROW_SORT_PRODUCT_CODE = 2;
   // ID: newest-first is DESC on id (the legacy default).
   PRODUCT_ROW_SORT_ID = 3;
 }
@@ -230,13 +256,14 @@ message ProductListFilterSort {
 message ProductRowItem {
   uint64 id = 1;
   uint64 team_id = 2;
-  string sku = 3;
+  // As on Product: the composed `<team_code>-<part>`.
+  string product_code = 3;
   string name = 4;
   string description = 5;
   uint64 category_id = 6;
   string default_image_url = 7;
   string default_image_thumbnail_url = 8;
-  bool deleted = 9;
+  bool archived = 9;
 
   // The CROSS markup another team pays over our cost when it sells this product (basis points,
   // 1250 = 12.50%). On the row because it is a per-product decision the owner reviews across the
@@ -479,7 +506,7 @@ message ProductByIdsResponse {
   // Keyed by product id. An id that resolves to nothing is simply ABSENT rather than an error: a
   // caller holding a stock row for a since-deleted product is asking a reasonable question, and
   // failing the whole lookup would blank a rack over one dead id. Soft-deleted products ARE returned
-  // (stock outlives a catalogue entry); Product.deleted is on the wire so a caller that cares can tell.
+  // (stock outlives a catalogue entry); Product.archived is on the wire so a caller that cares can tell.
   map<uint64, ProductByIdsResponseList> items = 1;
 }
 
@@ -489,9 +516,7 @@ message ProductUpdateRequest {
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -501,8 +526,11 @@ message ProductUpdateRequest {
   ];
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
 
-  // Absent = leave alone. Present = write it.
-  optional string sku = 3 [(buf.validate.field).string = {
+  // A correction of the team's part of the code — the product becomes `<team_code>-<this>`. Absent = leave alone.
+  // Accepted ONLY while the product has no history (the line ProductDelete uses): once it has been in a stock movement,
+  // an order line or a restock line a sticker can exist, and the code is fixed — FailedPrecondition
+  // (the-field-is-product-code-composed-on-write).
+  optional string product_code_part = 3 [(buf.validate.field).string = {
     min_len: 1
     max_len: 64
   }];
@@ -564,15 +592,39 @@ message ProductDetailResponse {
   Product product = 1;
 }
 
+// ProductArchive takes a product out of the catalogue (`archived = true`) — any time, even with stock on a shelf. It needs
+// no guard because it can be undone: it stops anything NEW from using the product, while an open order still ships, a
+// restock is still accepted and a return still comes back, on the archived product.
+message ProductArchiveRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductArchiveResponse {}
+
+// ProductDelete removes a product with NO HISTORY — a typo, a duplicate — and its own data (its images). Its code is free
+// again. A product ever in a stock movement, an order line (a borrowed line names the owner's product) or a restock line
+// is refused with FailedPrecondition: archive it instead (a-used-product-is-archived-never-deleted). Inventory and the
+// order side are asked at the moment of the delete.
 message ProductDeleteRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -585,24 +637,20 @@ message ProductDeleteRequest {
 
 message ProductDeleteResponse {}
 
-// ProductRestore puts an archived product back into the catalogue (`deleted = false`).
+// ProductUnarchive puts an archived product back into the catalogue (`archived = false`) — same id, same code.
 //
-// It is a separate RPC rather than an `archived` flag on ProductUpdate because it can FAIL for a
-// reason no other update can: archiving frees the SKU (the uniqueness index is partial —
-// `(team_id, sku) WHERE deleted = FALSE`), so by the time somebody restores, another active product
-// may be holding it. The restore is then REFUSED with the conflicting product named, rather than
-// succeeding under a silently renamed SKU: a SKU is how a human finds a box on a shelf, and renaming
-// one behind their back is worse than making them choose.
-message ProductRestoreRequest {
-  // Write: the same managers who may archive. Team-level roles are legal — team_id carries use_scope.
+// It needs nothing else: an archived product KEEPS its code (the uniqueness index is over every row,
+// archived ones included), so no other product can have taken it in the meantime and the way back cannot
+// collide (a-used-product-is-archived-never-deleted, the-field-is-product-code-composed-on-write).
+message ProductUnarchiveRequest {
+  // Write: the same SELLING managers who may archive (the-product-writes-drop-the-warehouse-roles). Team-level roles are
+  // legal — team_id carries use_scope.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
-      ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -612,14 +660,11 @@ message ProductRestoreRequest {
   ];
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
 
-  // Optional NEW sku, which is how a caller resolves the collision above in one step: restore under
-  // a free SKU instead of the taken one. Absent = restore with the SKU it was archived under.
-  optional string sku = 3 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 64
-  }];
+  // Was an optional NEW code, the way a restore resolved a collision with an active product. A kept code cannot collide.
+  reserved 3;
+  reserved "sku";
 }
 
-message ProductRestoreResponse {
+message ProductUnarchiveResponse {
   Product product = 1;
 }

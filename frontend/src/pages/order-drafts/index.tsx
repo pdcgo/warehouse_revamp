@@ -24,7 +24,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { useTeam } from "../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { draftGaps } from "../../features/orderDrafts/draftReadiness";
 import {
   useDeleteOrderDrafts,
@@ -34,13 +34,12 @@ import {
 import { CreatedCell, DateCell, OrderRefCell, OwnerCell } from "../../features/orders/OrderRowCells";
 import { useShopOptions } from "../../features/shops/queries";
 import { useActors } from "../../features/users/queries";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { ORDER_DRAFTS_PENDING } from "./pending";
 import { DraftSummary } from "./components/DraftSummary";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
+import { personName } from "../../lib/users";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -60,6 +59,9 @@ export function OrderDraftsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { current } = useTeam();
+  // A draft opens in the order FORM (a write route), so while the admin team monitors the team the list is read in
+  // place: no ticks, no delete, no row that opens a form it cannot submit.
+  const writable = canWrite(current);
   const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
@@ -164,8 +166,6 @@ export function OrderDraftsPage() {
   return (
     // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
     <Stack gap="section" animationStyle="enter">
-      {!warehouse && <NotImplementedSummary list={ORDER_DRAFTS_PENDING} />}
-
       {/* ITS OWN TITLE, the subtitle under it (the-drafts-are-a-list-of-their-own) — no longer the order list's heading over
           a Drafts tab. */}
       <Flex align="flex-start" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
@@ -185,7 +185,7 @@ export function OrderDraftsPage() {
 
         {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
             buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
-        {isMobile ? (
+        {!writable ? null : isMobile ? (
           <CompactActions
             menuLabel={t("orders.actions")}
             actions={[
@@ -217,7 +217,7 @@ export function OrderDraftsPage() {
 
       {/* Under the title, as the order list keeps its summary — and, like it, controlling nothing. */}
       {!warehouse && !loading && (
-        <DraftSummary total={totalItems} oldest={oldest.data} page={drafts} />
+        <DraftSummary total={totalItems} oldest={oldest.data} ready={query.data?.readyCount ?? 0} />
       )}
 
       {error && (
@@ -238,6 +238,7 @@ export function OrderDraftsPage() {
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader width="1">
+                    {writable && (
                     <Checkbox.Root
                       size="sm"
                       checked={allOnPageSelected}
@@ -248,6 +249,7 @@ export function OrderDraftsPage() {
                       <Checkbox.HiddenInput />
                       <Checkbox.Control />
                     </Checkbox.Root>
+                    )}
                   </Table.ColumnHeader>
                   <Table.ColumnHeader>{t("orderDrafts.reference")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("orders.shop")}</Table.ColumnHeader>
@@ -262,18 +264,19 @@ export function OrderDraftsPage() {
               <Table.Body>
                 {drafts.map((d) => {
                   const gaps = draftGaps(d);
-                  const author = actors.data?.get(d.authorUserId.toString())?.name ?? "";
+                  const author = personName(actors.data?.get(d.authorUserId.toString()));
 
                   return (
                     <Table.Row
                       key={d.id.toString()}
-                      cursor="pointer"
+                      cursor={writable ? "pointer" : undefined}
                       _hover={{ bg: "bg.muted" }}
                       data-testid={`draft-row-${d.id}`}
-                      onClick={() => navigate(`/orders/new?draft=${d.id}`)}
+                      onClick={writable ? () => navigate(`/orders/new?draft=${d.id}`) : undefined}
                     >
                       {/* ⚠ STOPS THE ROW'S NAVIGATE — ticking a box must not open the draft. */}
                       <Table.Cell onClick={(e) => e.stopPropagation()}>
+                        {writable && (
                         <Checkbox.Root
                           size="sm"
                           checked={selected.has(d.id.toString())}
@@ -284,6 +287,7 @@ export function OrderDraftsPage() {
                           <Checkbox.HiddenInput />
                           <Checkbox.Control />
                         </Checkbox.Root>
+                        )}
                       </Table.Cell>
 
                       {/* THE REFERENCE, and under it WHAT IS LEFT — where the order list puts the
@@ -332,19 +336,13 @@ export function OrderDraftsPage() {
                       </Table.Cell>
 
                       <Table.Cell>
-                        {d.unmappedItemCount > 0 ? (
-                          <Badge colorPalette="warning" data-testid={`draft-unmapped-${d.id}`}>
-                            {t("orderDrafts.unmappedOf", {
-                              unmapped: d.unmappedItemCount,
-                              total: d.itemCount,
-                            })}
-                          </Badge>
-                        ) : (
-                          <Text>{d.itemCount}</Text>
-                        )}
+                        {/* The line count only — a draft stores no mapping, so the list counts none
+                            (the-drafts-list-counts-no-mapping). */}
+                        <Text data-testid={`draft-lines-${d.id}`}>{d.itemCount}</Text>
                       </Table.Cell>
 
                       <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                        {writable && (
                         <Menu.Root>
                           <Menu.Trigger asChild>
                             <IconButton
@@ -381,6 +379,7 @@ export function OrderDraftsPage() {
                             </Menu.Positioner>
                           </Portal>
                         </Menu.Root>
+                        )}
                       </Table.Cell>
                     </Table.Row>
                   );

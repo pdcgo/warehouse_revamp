@@ -18,10 +18,11 @@ import "context"
 // transaction commits. A rare dropped expense is a gap a report can find; a stock adjust that failed
 // because a downstream ledger was unwired would be inventory refusing to do its own job.
 type ExpensePoster interface {
-	// PostStockLoss records `amount` rupiah (qty × the batch's frozen unit cost) as an expense the
+	// PostStockLoss records `amount` rupiah (qty × the batch's frozen unit cost — a double, stored exact by the
+	// expense, the-backend-never-rounds-money) as an expense the
 	// warehouse team bears, with a human note. Called only for a KNOWN cost — an unknown-cost batch has
 	// no value to write off (#74).
-	PostStockLoss(ctx context.Context, warehouseID uint64, amount int64, note string) error
+	PostStockLoss(ctx context.Context, warehouseID uint64, amount float64, note string) error
 }
 
 // noExpense is what a Service built without a poster uses: it drops the loss value on the floor. A unit
@@ -29,4 +30,4 @@ type ExpensePoster interface {
 // not fail for a value record. The composition root wires the real one.
 type noExpense struct{}
 
-func (noExpense) PostStockLoss(context.Context, uint64, int64, string) error { return nil }
+func (noExpense) PostStockLoss(context.Context, uint64, float64, string) error { return nil }

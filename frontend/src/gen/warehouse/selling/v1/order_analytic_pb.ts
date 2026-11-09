@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order_analytic.proto.
  */
 export const file_warehouse_selling_v1_order_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Cil3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9hbmFseXRpYy5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEi1AEKEk9yZGVyQ3JlYXRlZE1ldHJpYxIhCg1jcmVhdGVkX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEiYKDWNyZWF0ZWRfdG90YWwYAiABKAFCCpq1GAIIAaC1GANIAIgBARIhCghtcF90b3RhbBgDIAEoA0IKmrUYAggBoLUYA0gBiAEBOjGatRgtCgUBBAUHCBIBARoJAQIDBAUJBwsKIhZtZXRyaWNzL29yZGVycy9jcmVhdGVkQhAKDl9jcmVhdGVkX3RvdGFsQgsKCV9tcF90b3RhbCK4AQoWT3JkZXJDcmVhdGVkTWV0cmljQnlJRBJGCgVpdGVtcxgBIAMoCzI3LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlZE1ldHJpY0J5SUQuSXRlbXNFbnRyeRpWCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlZE1ldHJpYzoCOAEiugEKF09yZGVyQ3JlYXRlZE1ldHJpY0J5RGF5EkcKBWl0ZW1zGAEgAygLMjgud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVkTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpWCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlZE1ldHJpYzoCOAEi0gEKEU9yZGVyQ2FuY2VsTWV0cmljEiAKDGNhbmNlbF9jb3VudBgBIAEoA0IKmrUYAggBoLUYAhIlCgxjYW5jZWxfdG90YWwYAiABKAFCCpq1GAIIAaC1GANIAIgBARIhCghtcF90b3RhbBgDIAEoA0IKmrUYAggBoLUYA0gBiAEBOjOatRgvCgUBBAUHCBIBARoJAQIDBAUJBwsKIhhtZXRyaWNzL29yZGVycy9jYW5jZWxsZWRCDwoNX2NhbmNlbF90b3RhbEILCglfbXBfdG90YWwitQEKFU9yZGVyQ2FuY2VsTWV0cmljQnlJRBJFCgVpdGVtcxgBIAMoCzI2LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ2FuY2VsTWV0cmljQnlJRC5JdGVtc0VudHJ5GlUKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjYKBXZhbHVlGAIgASgLMicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWM6AjgBIrcBChZPcmRlckNhbmNlbE1ldHJpY0J5RGF5EkYKBWl0ZW1zGAEgAygLMjcud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWNCeURheS5JdGVtc0VudHJ5GlUKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjYKBXZhbHVlGAIgASgLMicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWM6AjgBIpQCChhPcmRlclJldHVybkNyZWF0ZWRNZXRyaWMSKAoUcmV0dXJuX2NyZWF0ZWRfY291bnQYASABKANCCpq1GAIIAaC1GAISLQoUcmV0dXJuX2NyZWF0ZWRfdG90YWwYAiABKAFCCpq1GAIIAaC1GANIAIgBARIwChdyZXR1cm5fY3JlYXRlZF9tcF90b3RhbBgDIAEoA0IKmrUYAggBoLUYA0gBiAEBOjiatRg0CgUBBAUHCBIBARoJAQIDBAUJBwsKIh1tZXRyaWNzL29yZGVycy9yZXR1cm5fY3JlYXRlZEIXChVfcmV0dXJuX2NyZWF0ZWRfdG90YWxCGgoYX3JldHVybl9jcmVhdGVkX21wX3RvdGFsIsoBChxPcmRlclJldHVybkNyZWF0ZWRNZXRyaWNCeUlEEkwKBWl0ZW1zGAEgAygLMj0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljQnlJRC5JdGVtc0VudHJ5GlwKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEj0KBXZhbHVlGAIgASgLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljOgI4ASLMAQodT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljQnlEYXkSTQoFaXRlbXMYASADKAsyPi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkNyZWF0ZWRNZXRyaWNCeURheS5JdGVtc0VudHJ5GlwKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEj0KBXZhbHVlGAIgASgLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljOgI4ASKUAgoYT3JkZXJSZXR1cm5BcnJpdmVkTWV0cmljEigKFHJldHVybl9hcnJpdmVkX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEi0KFHJldHVybl9hcnJpdmVkX3RvdGFsGAIgASgBQgqatRgCCAGgtRgDSACIAQESMAoXcmV0dXJuX2Fycml2ZWRfbXBfdG90YWwYAyABKANCCpq1GAIIAaC1GANIAYgBATo4mrUYNAoFAQQFBwgSAQEaCQECAwQFCQcLCiIdbWV0cmljcy9vcmRlcnMvcmV0dXJuX2Fycml2ZWRCFwoVX3JldHVybl9hcnJpdmVkX3RvdGFsQhoKGF9yZXR1cm5fYXJyaXZlZF9tcF90b3RhbCLKAQocT3JkZXJSZXR1cm5BcnJpdmVkTWV0cmljQnlJRBJMCgVpdGVtcxgBIAMoCzI9LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpY0J5SUQuSXRlbXNFbnRyeRpcCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI9CgV2YWx1ZRgCIAEoCzIuLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpYzoCOAEizAEKHU9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpY0J5RGF5Ek0KBWl0ZW1zGAEgAygLMj4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5BcnJpdmVkTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpcCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRI9CgV2YWx1ZRgCIAEoCzIuLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpYzoCOAEihgIKFk9yZGVyTG9zdENyZWF0ZWRNZXRyaWMSJgoSbG9zdF9jcmVhdGVkX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEisKEmxvc3RfY3JlYXRlZF90b3RhbBgCIAEoAUIKmrUYAggBoLUYA0gAiAEBEi4KFWxvc3RfY3JlYXRlZF9tcF90b3RhbBgDIAEoA0IKmrUYAggBoLUYA0gBiAEBOjaatRgyCgUBBAUHCBIBARoJAQIDBAUJBwsKIhttZXRyaWNzL29yZGVycy9sb3N0X2NyZWF0ZWRCFQoTX2xvc3RfY3JlYXRlZF90b3RhbEIYChZfbG9zdF9jcmVhdGVkX21wX3RvdGFsIsQBChpPcmRlckxvc3RDcmVhdGVkTWV0cmljQnlJRBJKCgVpdGVtcxgBIAMoCzI7LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTG9zdENyZWF0ZWRNZXRyaWNCeUlELkl0ZW1zRW50cnkaWgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSOwoFdmFsdWUYAiABKAsyLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljOgI4ASLGAQobT3JkZXJMb3N0Q3JlYXRlZE1ldHJpY0J5RGF5EksKBWl0ZW1zGAEgAygLMjwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMb3N0Q3JlYXRlZE1ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaWgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSOwoFdmFsdWUYAiABKAsyLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljOgI4ASLPAgoTTWV0cmljU2VhcmNoUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJFCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIMukgJggEGEAEgACABEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBRI8CgRzb3J0GAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljU29ydEIGukgDyAEBEkIKBHBhZ2UYBSABKAsyLC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5QYWdpbmF0aW9uRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIl4KFE1ldHJpY1NlYXJjaFJlc3BvbnNlEjQKBGtleXMYASABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEhAKCGhhc19uZXh0GAIgASgIIqECChFNZXRyaWNEYXRhUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJDCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIKukgHggEEEAEgABJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAUSNAoEa2V5cxgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSIAoKbWV0cmljX2lkcxgFIAMoCUIMukgJkgEGCAEQBRgBOg6StRgKCggBAgMEBQYJCCKdCQoKTWV0cmljRGF0YRJFCg1jcmVhdGVkX2J5X2lkGAEgASgLMiwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVkTWV0cmljQnlJREgAEkcKDmNyZWF0ZWRfYnlfZGF5GAIgASgLMi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVkTWV0cmljQnlEYXlIABJDCg9jcmVhdGVkX3N1bW1hcnkYAyABKAsyKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNyZWF0ZWRNZXRyaWNIABJDCgxjYW5jZWxfYnlfaWQYBCABKAsyKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNhbmNlbE1ldHJpY0J5SURIABJFCg1jYW5jZWxfYnlfZGF5GAUgASgLMiwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWNCeURheUgAEkEKDmNhbmNlbF9zdW1tYXJ5GAYgASgLMicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWNIABJSChRyZXR1cm5fY3JlYXRlZF9ieV9pZBgHIAEoCzIyLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQ3JlYXRlZE1ldHJpY0J5SURIABJUChVyZXR1cm5fY3JlYXRlZF9ieV9kYXkYCCABKAsyMy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkNyZWF0ZWRNZXRyaWNCeURheUgAElAKFnJldHVybl9jcmVhdGVkX3N1bW1hcnkYCSABKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkNyZWF0ZWRNZXRyaWNIABJSChRyZXR1cm5fYXJyaXZlZF9ieV9pZBgKIAEoCzIyLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpY0J5SURIABJUChVyZXR1cm5fYXJyaXZlZF9ieV9kYXkYCyABKAsyMy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkFycml2ZWRNZXRyaWNCeURheUgAElAKFnJldHVybl9hcnJpdmVkX3N1bW1hcnkYDCABKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkFycml2ZWRNZXRyaWNIABJOChJsb3N0X2NyZWF0ZWRfYnlfaWQYDSABKAsyMC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljQnlJREgAElAKE2xvc3RfY3JlYXRlZF9ieV9kYXkYDiABKAsyMS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljQnlEYXlIABJMChRsb3N0X2NyZWF0ZWRfc3VtbWFyeRgPIAEoCzIsLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTG9zdENyZWF0ZWRNZXRyaWNIAEIDCgFtIkwKEk1ldHJpY0RhdGFSZXNwb25zZRI2CgxtZXRyaWNfZGF0YXMYASADKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5NZXRyaWNEYXRhMt4BChRPcmRlckFuYWx5dGljU2VydmljZRJlCgxNZXRyaWNTZWFyY2gSKS53YXJlaG91c2Uuc2VsbGluZy52MS5NZXRyaWNTZWFyY2hSZXF1ZXN0Gioud2FyZWhvdXNlLnNlbGxpbmcudjEuTWV0cmljU2VhcmNoUmVzcG9uc2USXwoKTWV0cmljRGF0YRInLndhcmVob3VzZS5zZWxsaW5nLnYxLk1ldHJpY0RhdGFSZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuTWV0cmljRGF0YVJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
+  fileDesc("Cil3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9hbmFseXRpYy5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEi1AEKEk9yZGVyQ3JlYXRlZE1ldHJpYxIhCg1jcmVhdGVkX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEiYKDWNyZWF0ZWRfdG90YWwYAiABKAFCCpq1GAIIAaC1GANIAIgBARIhCghtcF90b3RhbBgDIAEoAUIKmrUYAggBoLUYA0gBiAEBOjGatRgtCgUBBAUHCBIBARoJAQIDBAUJBwsKIhZtZXRyaWNzL29yZGVycy9jcmVhdGVkQhAKDl9jcmVhdGVkX3RvdGFsQgsKCV9tcF90b3RhbCK4AQoWT3JkZXJDcmVhdGVkTWV0cmljQnlJRBJGCgVpdGVtcxgBIAMoCzI3LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlZE1ldHJpY0J5SUQuSXRlbXNFbnRyeRpWCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlZE1ldHJpYzoCOAEiugEKF09yZGVyQ3JlYXRlZE1ldHJpY0J5RGF5EkcKBWl0ZW1zGAEgAygLMjgud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVkTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpWCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlZE1ldHJpYzoCOAEi0gEKEU9yZGVyQ2FuY2VsTWV0cmljEiAKDGNhbmNlbF9jb3VudBgBIAEoA0IKmrUYAggBoLUYAhIlCgxjYW5jZWxfdG90YWwYAiABKAFCCpq1GAIIAaC1GANIAIgBARIhCghtcF90b3RhbBgDIAEoAUIKmrUYAggBoLUYA0gBiAEBOjOatRgvCgUBBAUHCBIBARoJAQIDBAUJBwsKIhhtZXRyaWNzL29yZGVycy9jYW5jZWxsZWRCDwoNX2NhbmNlbF90b3RhbEILCglfbXBfdG90YWwitQEKFU9yZGVyQ2FuY2VsTWV0cmljQnlJRBJFCgVpdGVtcxgBIAMoCzI2LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ2FuY2VsTWV0cmljQnlJRC5JdGVtc0VudHJ5GlUKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjYKBXZhbHVlGAIgASgLMicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWM6AjgBIrcBChZPcmRlckNhbmNlbE1ldHJpY0J5RGF5EkYKBWl0ZW1zGAEgAygLMjcud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWNCeURheS5JdGVtc0VudHJ5GlUKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjYKBXZhbHVlGAIgASgLMicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWM6AjgBIpQCChhPcmRlclJldHVybkNyZWF0ZWRNZXRyaWMSKAoUcmV0dXJuX2NyZWF0ZWRfY291bnQYASABKANCCpq1GAIIAaC1GAISLQoUcmV0dXJuX2NyZWF0ZWRfdG90YWwYAiABKAFCCpq1GAIIAaC1GANIAIgBARIwChdyZXR1cm5fY3JlYXRlZF9tcF90b3RhbBgDIAEoAUIKmrUYAggBoLUYA0gBiAEBOjiatRg0CgUBBAUHCBIBARoJAQIDBAUJBwsKIh1tZXRyaWNzL29yZGVycy9yZXR1cm5fY3JlYXRlZEIXChVfcmV0dXJuX2NyZWF0ZWRfdG90YWxCGgoYX3JldHVybl9jcmVhdGVkX21wX3RvdGFsIsoBChxPcmRlclJldHVybkNyZWF0ZWRNZXRyaWNCeUlEEkwKBWl0ZW1zGAEgAygLMj0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljQnlJRC5JdGVtc0VudHJ5GlwKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEj0KBXZhbHVlGAIgASgLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljOgI4ASLMAQodT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljQnlEYXkSTQoFaXRlbXMYASADKAsyPi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkNyZWF0ZWRNZXRyaWNCeURheS5JdGVtc0VudHJ5GlwKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEj0KBXZhbHVlGAIgASgLMi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5DcmVhdGVkTWV0cmljOgI4ASKUAgoYT3JkZXJSZXR1cm5BcnJpdmVkTWV0cmljEigKFHJldHVybl9hcnJpdmVkX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEi0KFHJldHVybl9hcnJpdmVkX3RvdGFsGAIgASgBQgqatRgCCAGgtRgDSACIAQESMAoXcmV0dXJuX2Fycml2ZWRfbXBfdG90YWwYAyABKAFCCpq1GAIIAaC1GANIAYgBATo4mrUYNAoFAQQFBwgSAQEaCQECAwQFCQcLCiIdbWV0cmljcy9vcmRlcnMvcmV0dXJuX2Fycml2ZWRCFwoVX3JldHVybl9hcnJpdmVkX3RvdGFsQhoKGF9yZXR1cm5fYXJyaXZlZF9tcF90b3RhbCLKAQocT3JkZXJSZXR1cm5BcnJpdmVkTWV0cmljQnlJRBJMCgVpdGVtcxgBIAMoCzI9LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpY0J5SUQuSXRlbXNFbnRyeRpcCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI9CgV2YWx1ZRgCIAEoCzIuLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpYzoCOAEizAEKHU9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpY0J5RGF5Ek0KBWl0ZW1zGAEgAygLMj4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZXR1cm5BcnJpdmVkTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpcCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRI9CgV2YWx1ZRgCIAEoCzIuLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpYzoCOAEihgIKFk9yZGVyTG9zdENyZWF0ZWRNZXRyaWMSJgoSbG9zdF9jcmVhdGVkX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEisKEmxvc3RfY3JlYXRlZF90b3RhbBgCIAEoAUIKmrUYAggBoLUYA0gAiAEBEi4KFWxvc3RfY3JlYXRlZF9tcF90b3RhbBgDIAEoAUIKmrUYAggBoLUYA0gBiAEBOjaatRgyCgUBBAUHCBIBARoJAQIDBAUJBwsKIhttZXRyaWNzL29yZGVycy9sb3N0X2NyZWF0ZWRCFQoTX2xvc3RfY3JlYXRlZF90b3RhbEIYChZfbG9zdF9jcmVhdGVkX21wX3RvdGFsIsQBChpPcmRlckxvc3RDcmVhdGVkTWV0cmljQnlJRBJKCgVpdGVtcxgBIAMoCzI7LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTG9zdENyZWF0ZWRNZXRyaWNCeUlELkl0ZW1zRW50cnkaWgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSOwoFdmFsdWUYAiABKAsyLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljOgI4ASLGAQobT3JkZXJMb3N0Q3JlYXRlZE1ldHJpY0J5RGF5EksKBWl0ZW1zGAEgAygLMjwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMb3N0Q3JlYXRlZE1ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaWgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSOwoFdmFsdWUYAiABKAsyLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljOgI4ASKJAQoSV2FyZWhvdXNlRmVlTWV0cmljEiUKEXRyYW5zYWN0aW9uX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEhoKBmFtb3VudBgCIAEoAUIKmrUYAggBoLUYAzowmrUYLAoFAQQFBwgSAQEaCQECAwQFCQcLCiIVbWV0cmljcy93YXJlaG91c2VfZmVlIrgBChZXYXJlaG91c2VGZWVNZXRyaWNCeUlEEkYKBWl0ZW1zGAEgAygLMjcud2FyZWhvdXNlLnNlbGxpbmcudjEuV2FyZWhvdXNlRmVlTWV0cmljQnlJRC5JdGVtc0VudHJ5GlYKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjcKBXZhbHVlGAIgASgLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuV2FyZWhvdXNlRmVlTWV0cmljOgI4ASK6AQoXV2FyZWhvdXNlRmVlTWV0cmljQnlEYXkSRwoFaXRlbXMYASADKAsyOC53YXJlaG91c2Uuc2VsbGluZy52MS5XYXJlaG91c2VGZWVNZXRyaWNCeURheS5JdGVtc0VudHJ5GlYKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjcKBXZhbHVlGAIgASgLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuV2FyZWhvdXNlRmVlTWV0cmljOgI4ASLPAgoTTWV0cmljU2VhcmNoUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJFCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIMukgJggEGEAEgACABEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBRI8CgRzb3J0GAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljU29ydEIGukgDyAEBEkIKBHBhZ2UYBSABKAsyLC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5QYWdpbmF0aW9uRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIl4KFE1ldHJpY1NlYXJjaFJlc3BvbnNlEjQKBGtleXMYASABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEhAKCGhhc19uZXh0GAIgASgIIqECChFNZXRyaWNEYXRhUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJDCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIKukgHggEEEAEgABJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAUSNAoEa2V5cxgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSIAoKbWV0cmljX2lkcxgFIAMoCUIMukgJkgEGCAEQBhgBOg6StRgKCggBAgMEBQYJCCKECwoKTWV0cmljRGF0YRJFCg1jcmVhdGVkX2J5X2lkGAEgASgLMiwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVkTWV0cmljQnlJREgAEkcKDmNyZWF0ZWRfYnlfZGF5GAIgASgLMi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVkTWV0cmljQnlEYXlIABJDCg9jcmVhdGVkX3N1bW1hcnkYAyABKAsyKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNyZWF0ZWRNZXRyaWNIABJDCgxjYW5jZWxfYnlfaWQYBCABKAsyKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNhbmNlbE1ldHJpY0J5SURIABJFCg1jYW5jZWxfYnlfZGF5GAUgASgLMiwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWNCeURheUgAEkEKDmNhbmNlbF9zdW1tYXJ5GAYgASgLMicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxNZXRyaWNIABJSChRyZXR1cm5fY3JlYXRlZF9ieV9pZBgHIAEoCzIyLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQ3JlYXRlZE1ldHJpY0J5SURIABJUChVyZXR1cm5fY3JlYXRlZF9ieV9kYXkYCCABKAsyMy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkNyZWF0ZWRNZXRyaWNCeURheUgAElAKFnJldHVybl9jcmVhdGVkX3N1bW1hcnkYCSABKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkNyZWF0ZWRNZXRyaWNIABJSChRyZXR1cm5fYXJyaXZlZF9ieV9pZBgKIAEoCzIyLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmV0dXJuQXJyaXZlZE1ldHJpY0J5SURIABJUChVyZXR1cm5fYXJyaXZlZF9ieV9kYXkYCyABKAsyMy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkFycml2ZWRNZXRyaWNCeURheUgAElAKFnJldHVybl9hcnJpdmVkX3N1bW1hcnkYDCABKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJldHVybkFycml2ZWRNZXRyaWNIABJOChJsb3N0X2NyZWF0ZWRfYnlfaWQYDSABKAsyMC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljQnlJREgAElAKE2xvc3RfY3JlYXRlZF9ieV9kYXkYDiABKAsyMS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxvc3RDcmVhdGVkTWV0cmljQnlEYXlIABJMChRsb3N0X2NyZWF0ZWRfc3VtbWFyeRgPIAEoCzIsLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTG9zdENyZWF0ZWRNZXRyaWNIABJLChN3YXJlaG91c2VfZmVlX2J5X2lkGBAgASgLMiwud2FyZWhvdXNlLnNlbGxpbmcudjEuV2FyZWhvdXNlRmVlTWV0cmljQnlJREgAEk0KFHdhcmVob3VzZV9mZWVfYnlfZGF5GBEgASgLMi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuV2FyZWhvdXNlRmVlTWV0cmljQnlEYXlIABJJChV3YXJlaG91c2VfZmVlX3N1bW1hcnkYEiABKAsyKC53YXJlaG91c2Uuc2VsbGluZy52MS5XYXJlaG91c2VGZWVNZXRyaWNIAEIDCgFtImAKEk1ldHJpY0RhdGFSZXNwb25zZRI2CgxtZXRyaWNfZGF0YXMYASADKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5NZXRyaWNEYXRhEhIKCmFzX29mX3VuaXgYAiABKAMy6AEKFE9yZGVyQW5hbHl0aWNTZXJ2aWNlEmoKDE1ldHJpY1NlYXJjaBIpLndhcmVob3VzZS5zZWxsaW5nLnYxLk1ldHJpY1NlYXJjaFJlcXVlc3QaKi53YXJlaG91c2Uuc2VsbGluZy52MS5NZXRyaWNTZWFyY2hSZXNwb25zZSIDkAIBEmQKCk1ldHJpY0RhdGESJy53YXJlaG91c2Uuc2VsbGluZy52MS5NZXRyaWNEYXRhUmVxdWVzdBooLndhcmVob3VzZS5zZWxsaW5nLnYxLk1ldHJpY0RhdGFSZXNwb25zZSIDkAIBQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
 
 /**
  * ORDER CREATED — each order counted on its `created_at`.
@@ -39,9 +39,9 @@ export type OrderCreatedMetric = Message<"warehouse.selling.v1.OrderCreatedMetri
   /**
    * Σ their `platform_total`. Unset for a warehouse.
    *
-   * @generated from field: optional int64 mp_total = 3;
+   * @generated from field: optional double mp_total = 3;
    */
-  mpTotal?: bigint | undefined;
+  mpTotal?: number | undefined;
 };
 
 /**
@@ -112,9 +112,9 @@ export type OrderCancelMetric = Message<"warehouse.selling.v1.OrderCancelMetric"
   /**
    * Σ their `platform_total`. Unset for a warehouse.
    *
-   * @generated from field: optional int64 mp_total = 3;
+   * @generated from field: optional double mp_total = 3;
    */
-  mpTotal?: bigint | undefined;
+  mpTotal?: number | undefined;
 };
 
 /**
@@ -185,9 +185,9 @@ export type OrderReturnCreatedMetric = Message<"warehouse.selling.v1.OrderReturn
   /**
    * Σ their `platform_total`. Unset for a warehouse.
    *
-   * @generated from field: optional int64 return_created_mp_total = 3;
+   * @generated from field: optional double return_created_mp_total = 3;
    */
-  returnCreatedMpTotal?: bigint | undefined;
+  returnCreatedMpTotal?: number | undefined;
 };
 
 /**
@@ -258,9 +258,9 @@ export type OrderReturnArrivedMetric = Message<"warehouse.selling.v1.OrderReturn
   /**
    * Σ their `platform_total`. Unset for a warehouse.
    *
-   * @generated from field: optional int64 return_arrived_mp_total = 3;
+   * @generated from field: optional double return_arrived_mp_total = 3;
    */
-  returnArrivedMpTotal?: bigint | undefined;
+  returnArrivedMpTotal?: number | undefined;
 };
 
 /**
@@ -331,9 +331,9 @@ export type OrderLostCreatedMetric = Message<"warehouse.selling.v1.OrderLostCrea
   /**
    * Σ their `platform_total`. Unset for a warehouse.
    *
-   * @generated from field: optional int64 lost_created_mp_total = 3;
+   * @generated from field: optional double lost_created_mp_total = 3;
    */
-  lostCreatedMpTotal?: bigint | undefined;
+  lostCreatedMpTotal?: number | undefined;
 };
 
 /**
@@ -382,6 +382,82 @@ export const OrderLostCreatedMetricByDaySchema: GenMessage<OrderLostCreatedMetri
   messageDesc(file_warehouse_selling_v1_order_analytic, 14);
 
 /**
+ * WAREHOUSE FEE (the-warehouse-fee-prototype-is-accepted) — the fee frozen on each order (the-event-carries-the-warehouse-fee),
+ * NET, each on its own day (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day): an order counts
+ * +1 and + its fee on its placement day, and a cancel takes both back on the cancel's day. An earlier day never changes,
+ * so a period can read NEGATIVE when it holds more cancels than placements. Under Expense on the screen.
+ *
+ * Its keys are the order metrics' (warehouse-fee-groups-like-the-order-metrics): TEAM the seller charged, WAREHOUSE the
+ * warehouse that charged, SHOP, USER the order's creator, and the four periods.
+ *
+ * ⚠ A WAREHOUSE SEES THE AMOUNT (a-warehouse-sees-its-own-fee-amount): the fee is the warehouse's own income, not the
+ * seller's money, so a-warehouse-sees-no-seller-money does not hide it — `amount` is set for every reader and sortable by
+ * a warehouse too. An order priced with no fee (a server built without a pricer) is not a fee transaction.
+ *
+ * @generated from message warehouse.selling.v1.WarehouseFeeMetric
+ */
+export type WarehouseFeeMetric = Message<"warehouse.selling.v1.WarehouseFeeMetric"> & {
+  /**
+   * Fee transactions: orders placed with a fee, less those cancelled — each on its own day.
+   *
+   * @generated from field: int64 transaction_count = 1;
+   */
+  transactionCount: bigint;
+
+  /**
+   * Fee amount: Σ their frozen `warehouse_fee`, less the cancelled ones'. Set for a warehouse too.
+   *
+   * @generated from field: double amount = 2;
+   */
+  amount: number;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.WarehouseFeeMetric.
+ * Use `create(WarehouseFeeMetricSchema)` to create a new message.
+ */
+export const WarehouseFeeMetricSchema: GenMessage<WarehouseFeeMetric> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_analytic, 15);
+
+/**
+ * A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+ *
+ * @generated from message warehouse.selling.v1.WarehouseFeeMetricByID
+ */
+export type WarehouseFeeMetricByID = Message<"warehouse.selling.v1.WarehouseFeeMetricByID"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.selling.v1.WarehouseFeeMetric> items = 1;
+   */
+  items: { [key: string]: WarehouseFeeMetric };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.WarehouseFeeMetricByID.
+ * Use `create(WarehouseFeeMetricByIDSchema)` to create a new message.
+ */
+export const WarehouseFeeMetricByIDSchema: GenMessage<WarehouseFeeMetricByID> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_analytic, 16);
+
+/**
+ * A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+ *
+ * @generated from message warehouse.selling.v1.WarehouseFeeMetricByDay
+ */
+export type WarehouseFeeMetricByDay = Message<"warehouse.selling.v1.WarehouseFeeMetricByDay"> & {
+  /**
+   * @generated from field: map<string, warehouse.selling.v1.WarehouseFeeMetric> items = 1;
+   */
+  items: { [key: string]: WarehouseFeeMetric };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.WarehouseFeeMetricByDay.
+ * Use `create(WarehouseFeeMetricByDaySchema)` to create a new message.
+ */
+export const WarehouseFeeMetricByDaySchema: GenMessage<WarehouseFeeMetricByDay> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_analytic, 17);
+
+/**
  * @generated from message warehouse.selling.v1.MetricSearchRequest
  */
 export type MetricSearchRequest = Message<"warehouse.selling.v1.MetricSearchRequest"> & {
@@ -407,7 +483,8 @@ export type MetricSearchRequest = Message<"warehouse.selling.v1.MetricSearchRequ
   filters: FilterItem[];
 
   /**
-   * Names ONE of this service's metrics and one of its fields. A money field is refused for a warehouse.
+   * Names ONE of this service's metrics and one of its fields. An order metric's money field is refused for a warehouse
+   * (Warehouse Fee's `amount` is not — a-warehouse-sees-its-own-fee-amount).
    *
    * @generated from field: warehouse.analytic_base.v1.MetricSort sort = 4;
    */
@@ -424,7 +501,7 @@ export type MetricSearchRequest = Message<"warehouse.selling.v1.MetricSearchRequ
  * Use `create(MetricSearchRequestSchema)` to create a new message.
  */
 export const MetricSearchRequestSchema: GenMessage<MetricSearchRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_analytic, 15);
+  messageDesc(file_warehouse_selling_v1_order_analytic, 18);
 
 /**
  * @generated from message warehouse.selling.v1.MetricSearchResponse
@@ -450,7 +527,7 @@ export type MetricSearchResponse = Message<"warehouse.selling.v1.MetricSearchRes
  * Use `create(MetricSearchResponseSchema)` to create a new message.
  */
 export const MetricSearchResponseSchema: GenMessage<MetricSearchResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_analytic, 16);
+  messageDesc(file_warehouse_selling_v1_order_analytic, 19);
 
 /**
  * @generated from message warehouse.selling.v1.MetricDataRequest
@@ -483,7 +560,7 @@ export type MetricDataRequest = Message<"warehouse.selling.v1.MetricDataRequest"
   keys?: MetricKeys | undefined;
 
   /**
-   * Any of the five, in any order; the answer keeps it.
+   * Any of the six, in any order; the answer keeps it.
    *
    * @generated from field: repeated string metric_ids = 5;
    */
@@ -495,7 +572,7 @@ export type MetricDataRequest = Message<"warehouse.selling.v1.MetricDataRequest"
  * Use `create(MetricDataRequestSchema)` to create a new message.
  */
 export const MetricDataRequestSchema: GenMessage<MetricDataRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_analytic, 17);
+  messageDesc(file_warehouse_selling_v1_order_analytic, 20);
 
 /**
  * One per asked metric, in the asked order (one-call-answers-every-asked-metric): the case says which metric and how
@@ -597,6 +674,24 @@ export type MetricData = Message<"warehouse.selling.v1.MetricData"> & {
      */
     value: OrderLostCreatedMetric;
     case: "lostCreatedSummary";
+  } | {
+    /**
+     * @generated from field: warehouse.selling.v1.WarehouseFeeMetricByID warehouse_fee_by_id = 16;
+     */
+    value: WarehouseFeeMetricByID;
+    case: "warehouseFeeById";
+  } | {
+    /**
+     * @generated from field: warehouse.selling.v1.WarehouseFeeMetricByDay warehouse_fee_by_day = 17;
+     */
+    value: WarehouseFeeMetricByDay;
+    case: "warehouseFeeByDay";
+  } | {
+    /**
+     * @generated from field: warehouse.selling.v1.WarehouseFeeMetric warehouse_fee_summary = 18;
+     */
+    value: WarehouseFeeMetric;
+    case: "warehouseFeeSummary";
   } | { case: undefined; value?: undefined };
 };
 
@@ -605,7 +700,7 @@ export type MetricData = Message<"warehouse.selling.v1.MetricData"> & {
  * Use `create(MetricDataSchema)` to create a new message.
  */
 export const MetricDataSchema: GenMessage<MetricData> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_analytic, 18);
+  messageDesc(file_warehouse_selling_v1_order_analytic, 21);
 
 /**
  * @generated from message warehouse.selling.v1.MetricDataResponse
@@ -615,6 +710,19 @@ export type MetricDataResponse = Message<"warehouse.selling.v1.MetricDataRespons
    * @generated from field: repeated warehouse.selling.v1.MetricData metric_datas = 1;
    */
   metricDatas: MetricData[];
+
+  /**
+   * AS OF WHEN (a-money-metric-says-as-of-when): the moment this service last folded an event — the newest claim in
+   * `order_event_logs`, unix seconds. Every figure above includes what was folded up to then; a figure is a projection, seconds
+   * behind its source normally and longer while a retry or a replay holds an event back. One time for the service, so
+   * every metric it serves shares it. 0 = nothing folded yet.
+   *
+   * ⚠ It cannot tell a quiet day from a stuck fold — both stop it moving; that is the operator's, through the
+   * dead-letter topic and the lease's log.
+   *
+   * @generated from field: int64 as_of_unix = 2;
+   */
+  asOfUnix: bigint;
 };
 
 /**
@@ -622,11 +730,12 @@ export type MetricDataResponse = Message<"warehouse.selling.v1.MetricDataRespons
  * Use `create(MetricDataResponseSchema)` to create a new message.
  */
 export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_analytic, 19);
+  messageDesc(file_warehouse_selling_v1_order_analytic, 22);
 
 /**
  * THE ORDER METRICS (docs/business/order/order_statistic_metric.md) — five, each counting WHOLE ORDERS on the day of its
- * own move (a-fact-counts-on-the-day-it-happened), served through the analytic pattern
+ * own move (a-fact-counts-on-the-day-it-happened) — and WAREHOUSE FEE, the fee frozen on those orders, net of cancels
+ * (the-warehouse-fee-prototype-is-accepted). All six are served through the analytic pattern
  * (docs/business/analytic/rpc_provide.md): `MetricSearch` ranks the keys, `MetricData` fills them.
  *
  * ⚠ EVERY NUMBER IS READ FROM A FOLDED TABLE — `order_daily_reports`, built by selling_service's own webhook from
@@ -635,8 +744,10 @@ export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PUR
  *
  * WHO READS WHAT (a-warehouse-reads-the-orders-it-ships): `team_id` is the caller's scope. A selling team reads its own
  * orders, a warehouse the orders it ships, the root team every order. ⚠ A WAREHOUSE GETS COUNTS ONLY
- * (a-warehouse-sees-no-seller-money): every money field is `optional` and left UNSET for it — never 0 — and a sort on
- * one is refused. The service decides from the scope's team type; the screen only drops a column that came back unset.
+ * (a-warehouse-sees-no-seller-money): every money field of the five order metrics is `optional` and left UNSET for it —
+ * never 0 — and a sort on one is refused. Warehouse Fee's `amount` is the one exception: the warehouse's own income, set
+ * for it (a-warehouse-sees-its-own-fee-amount). The service decides from the scope's team type; the screen only drops a
+ * column that came back unset.
  *
  * @generated from service warehouse.selling.v1.OrderAnalyticService
  */

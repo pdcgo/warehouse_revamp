@@ -42,43 +42,23 @@ func columnOfType(typeText string) (string, bool) {
 	return "", false
 }
 
-// reportGrain is one daily report table: its key, and the columns that identify ONE position — a scope's
-// latest close_balance is read per position, then summed (metric_shared.go's idBase and timeBase).
+// reportGrain is one daily report table and its key. A scope's position is the running sum of its rows' change
+// (metric_shared.go's idBase and timeBase); the fold and the day re-fold write a row per (key, team, day).
 type reportGrain struct {
-	table    string
-	key      string
-	position []string
+	table string
+	key   string
 }
 
 var (
 	shopDaily = reportGrain{
-		table:    "shop_settlement_daily_reports",
-		key:      "shop_id",
-		position: []string{"shop_id", "team_id"},
+		table: "shop_settlement_daily_reports",
+		key:   "shop_id",
 	}
 	userDaily = reportGrain{
-		table:    "user_settlement_daily_reports",
-		key:      "user_id",
-		position: []string{"user_id", "team_id"},
+		table: "user_settlement_daily_reports",
+		key:   "user_id",
 	}
 )
-
-// columnsOf renders column names under an alias: "r.shop_id, r.team_id".
-func columnsOf(alias string, columns []string) string {
-	rendered := make([]string, 0, len(columns))
-
-	for _, column := range columns {
-		if alias == "" {
-			rendered = append(rendered, column)
-
-			continue
-		}
-
-		rendered = append(rendered, alias+"."+column)
-	}
-
-	return strings.Join(rendered, ", ")
-}
 
 // movementSums renders "COALESCE(SUM(r.initial_total), 0) AS initial_total, …, … AS change".
 func movementSums(alias string) string {
@@ -91,6 +71,18 @@ func movementSums(alias string) string {
 
 	for _, column := range append(append([]string{}, trackedColumns...), "change") {
 		parts = append(parts, fmt.Sprintf("COALESCE(SUM(%s%s), 0) AS %s", prefix, column, column))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// movementSumsWhere is movementSums with every sum FILTERed to `where` — the window's movement read in the same pass
+// as a position that runs over every earlier row.
+func movementSumsWhere(alias, where string) string {
+	parts := make([]string, 0, len(trackedColumns)+1)
+
+	for _, column := range append(append([]string{}, trackedColumns...), "change") {
+		parts = append(parts, fmt.Sprintf("COALESCE(SUM(%s.%s) FILTER (WHERE %s), 0) AS %s", alias, column, where, column))
 	}
 
 	return strings.Join(parts, ", ")

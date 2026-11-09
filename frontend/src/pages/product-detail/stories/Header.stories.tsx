@@ -25,7 +25,7 @@ export const TheProductsName: Story = {
 
     await expect(canvas.getByTestId("product-detail-name")).toHaveTextContent(/^Minyak Goreng Sawit 2L — Satuan$/);
     await expect(info.queryByTestId("product-detail-name")).toBeNull();
-    await expect(canvas.getByTestId("product-detail-sku")).toHaveTextContent("SKU-ANG-001");
+    await expect(canvas.getByTestId("product-detail-sku")).toHaveTextContent("SL-03-ANG-001");
     await expect(info.queryByTestId("product-detail-sku")).toBeNull();
     await waitFor(() => expect(info.getByTestId("product-detail-category")).toHaveTextContent("Rumah Tangga"));
   },
@@ -51,7 +51,7 @@ export const TheHeaderRowSticks: Story = {
     await waitFor(() => expect(bar).toHaveAttribute("data-shown", "true"));
     await expect(bar).toHaveTextContent("Minyak Goreng Sawit 2L — Satuan");
     // The SKU, back and the actions ride with it (owner: *"di stickynya juga ada skuid"*, *"di stickynya juga ada"*).
-    await expect(within(bar).getByTestId("product-detail-sticky-sku")).toHaveTextContent("SKU-ANG-001");
+    await expect(within(bar).getByTestId("product-detail-sticky-sku")).toHaveTextContent("SL-03-ANG-001");
     await expect(within(bar).getByTestId("product-detail-sticky-back")).toBeInTheDocument();
     await expect(within(bar).getByTestId("product-detail-sticky-edit")).toBeInTheDocument();
 

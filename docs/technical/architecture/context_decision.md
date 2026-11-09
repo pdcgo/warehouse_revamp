@@ -7,6 +7,8 @@ away.
 | decision | what it decided |
 | --- | --- |
 | [the-system-runs-on-jakarta-time](#the-system-runs-on-jakarta-time) | one calendar for the whole system — WIB (UTC+7). Every `DATE`, every day boundary, every report window |
+| [there-is-no-systems-tree](#there-is-no-systems-tree) | there is no `systems/` rung — three trees: business, technical, development_state |
+| [export-service-is-the-settlement-importer](#export-service-is-the-settlement-importer) | `export_service` was built as `settlement_importer_service` (2026-09-29); there is no `export_service` |
 
 ---
 
@@ -60,11 +62,11 @@ single-timezone standards carry a DST caveat; this one does not.
 
 | | |
 | --- | --- |
-| ⛔ **the DSN sets no timezone** | [`san_dbtarget/target.go:49`](backend/pkgs/san_dbtarget/target.go#L49) builds `host=… port=… user=… password=… dbname=… sslmode=disable` with **no `TimeZone=`**, so the session inherits the server default — **UTC** in the Postgres image. **→ One line, and it is the whole standard for every service at once.** ⚠ Add it to `ProductionDSN` too, and to `san_testdb`, or tests pass on a different calendar than production |
-| ⛔ **`settlement_logs.posted_on`** | `DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)) — today the **UTC** date. It is the column every settlement report buckets on |
+| ⛔ **the DSN sets no timezone** | [`san_dbtarget/target.go:49`](../../../backend/pkgs/san_dbtarget/target.go#L49) builds `host=… port=… user=… password=… dbname=… sslmode=disable` with **no `TimeZone=`**, so the session inherits the server default — **UTC** in the Postgres image. **→ One line, and it is the whole standard for every service at once.** ⚠ Add it to `ProductionDSN` too, and to `san_testdb`, or tests pass on a different calendar than production |
+| ⛔ **`settlement_logs.posted_on`** | `DATE NOT NULL DEFAULT CURRENT_DATE` ([migration:62](../../../backend/services/settlement_service/db_migrations/00001_create_settlement_ledger.sql#L62)) — today the **UTC** date. It is the column every settlement report buckets on |
 | ⚠ **`expense_records.occurred_at`** | `DATE NOT NULL` — the only other `DATE` in the system, so **there are exactly two columns to get right**, and that is the argument for doing it now |
 | ⚠ **~40 `time.Now()` calls in handlers** | each yields host-local time. Harmless for a `TIMESTAMPTZ`, wrong for anything cast to a date. With the DSN set, the cast is Jakarta and these stay correct — which is why the DSN is the fix and 40 edits are not |
-| ✅ **nothing depends on UTC on purpose** | one `.UTC().Format(time.RFC3339)` in [inventory_service/service.go:265](backend/services/inventory_service/inventory_v1/service.go#L265), which is an RFC3339 wire value and correct as it is |
+| ✅ **nothing depends on UTC on purpose** | one `.UTC().Format(time.RFC3339)` in [inventory_service/service.go:265](../../../backend/services/inventory_service/inventory_v1/service.go#L265), which is an RFC3339 wire value and correct as it is |
 
 ### What it closes
 
@@ -76,3 +78,94 @@ single-timezone standards carry a DST caveat; this one does not.
 
 ⚠ **What it does NOT decide**: whether a *user* in another timezone sees their own day or Jakarta's. The
 system's calendar is Jakarta; the presentation question is separate and not raised by anything yet.
+
+✅ Built 2026-11-05 — `backend/pkgs/san_dbsession` sets the session `timezone` to Asia/Jakarta on every connection (dev server, shipment_service, `san`, `san_testdb`); settlement `00009` comments its DATE columns; tests `san_dbsession/session_test.go` and `TestSettlementPost_APostAt2330UTCLandsOnTheJakartaDay` ([development_state/architecture](../../development_state/architecture/context.md)).
+
+✅ Built 2026-11-05 — the two day boundaries the session could not fix: `liability_v1/liability_daily.go` groups and bounds by the Jakarta day ([the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day)); `inventory_v1/batch_list.go` `soonCutoff(now)` ends the "expiring ≤ 30 days" window at the Jakarta midnight after today's Jakarta date + 30, not at a host-clock instant; tests `TestBatchList_TheSoonWindowEndsWithTheThirtiethJakartaDay`, `TestBatchList_ExpiringSoonCountsTheWholeThirtiethJakartaDay` ([development_state/architecture](../../development_state/architecture/context.md)).
+
+✅ Built 2026-11-06 — the stock-loss expense: `cmd/app_development/expense_poster.go` `PostStockLoss` dates `occurred_at` by `expense_v1.JakartaDay(now)`, not the host clock; test `TestExpensePoster_AWriteOffAt0030WIBLandsOnItsJakartaDay` (00:30 WIB on a UTC clock lands on its Jakarta day) ([development_state/architecture](../../development_state/architecture/context.md)).
+
+✅ Built 2026-11-07 — the frontend's report and list windows (backlog #37): one helper, `frontend/src/lib/jakartaDay.ts` (fixed UTC+7 arithmetic, never the browser's zone) — `jakartaWindowOf` for the screens that send Jakarta `yyyy-mm-dd` days (Analytic, supplier statistics and report, financial account detail and report, settlement list, report and Shop Entries, Team Balance, the daily statement) and `resolveRange` → 00:00 / 23:59:59 WIB bounds for the unix-bound lists (orders, pick queue, restocks, returns, batches); `features/settlement/window.ts` and the local copies are gone. Test `src/lib/jakartaDay.test.ts` runs the 23:30 / 00:30 WIB edges under UTC, Los Angeles, Makassar, Jayapura and Jakarta, so viewer-midnight math fails it on any machine ([development_state/architecture](../../development_state/architecture/context.md)).
+
+## region-stays-its-own-service
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q8](./context_clarify.md#question), *does `region_service` stay its own
+> service?* As recommended.
+
+**The verdict.** `region_service` stays its own service. Its one job is the province → regency → district → village
+tree that the address pickers read; no other service routes or prices by region — an order keeps its address as plain
+names ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)), and the
+warehouse fee is a percent per warehouse ([warehouse-prices-balance-records](../../business/teams/warehouse/context_decision.md#warehouse-prices-balance-records)).
+
+```mermaid
+flowchart LR
+  P["the address pickers"] --> R["region_service - the area tree"]
+  O["an order"] -.->|"keeps plain names, no region id"| X["no region read"]
+```
+
+| | |
+| --- | --- |
+| what it holds | the area tree, read by the address pickers |
+| who reads it | the frontend only |
+| revisit when | tracking, or a fee, needs a region |
+| ✅ built | nothing changes — this is what runs |
+
+## the-balance-service-is-liability-service
+
+> Owner, in chat (2026-10-31): *"yes"* — to [Q10](./context_clarify.md#question), *is the balance service named
+> `balance_service` or `liability_service`?* As recommended, and as
+> [liability-stays](../balance/team_balance_design_decision.md#liability-stays) already kept the shipped name.
+
+**The verdict.** The service that holds the pair rows, the threshold (the gate) and the payments between teams is
+**`liability_service`**. *Balance* stays the word for the NUMBER (`last_balance`, `balance_after`); *liability* names
+what the rows are.
+
+```mermaid
+flowchart LR
+  S["settlement_service - the order's payout"] --> O["an order's money"]
+  L["liability_service - pair rows, the gate, payments"] --> P["what teams owe each other"]
+```
+
+| | |
+| --- | --- |
+| the code | unchanged — `liability_service`, `warehouse.liability.v1`, the *Liability* / *Kewajiban* screens |
+| your list | [context.md](./context.md) line 7 still says `balance_service` — reported in the clarify's [the-list-names-balance-service](./context_clarify.md#the-list-names-balance-service) |
+
+## there-is-no-systems-tree
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q9](./context_clarify.md#question), *what does
+> `systems/` hold?*
+
+**The verdict.** Nothing — there is no `systems/` rung. You deleted its one doc (`product/systems.md`) on 2026-09-12, and
+the docs have three trees (CLAUDE.md HARD RULE 7):
+
+```
+docs/business/<big>/<small>.md            what the business needs
+docs/technical/<big>/<small>.md           how it gets built
+docs/development_state/<big>/<small>.md   how far it has got
+```
+
+| | |
+| --- | --- |
+| ✅ built | nothing to build |
+
+## export-service-is-the-settlement-importer
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q11](./context_clarify.md#question), *is
+> `export_service` a service, and is it in the list?*
+
+**The verdict.** It was built under another name: **`settlement_importer_service`** (2026-09-29), the service that reads
+a marketplace's settlement export, from your [settlement_importer.md](../../business/settlement/settlement_importer.md).
+There is no `export_service`.
+
+```mermaid
+flowchart LR
+  E["export_service, deferred in settlement context.md"] -.->|"built as"| I["settlement_importer_service"]
+  I --> S["settlement_service, the ledger it posts to"]
+```
+
+| | |
+| --- | --- |
+| ⚠ [settlement context.md](../../business/settlement/context.md) line 34 | still names `export_service` — reported in [the-doc-still-names-export-service](../../business/settlement/context_clarify.md#the-doc-still-names-export-service) |
+| ⚠ the list in [context.md](./context.md), lines 5–15 | does not name it — one of several built services the list predates. Yours to add |
+| ✅ built | `backend/services/settlement_importer_service/` |

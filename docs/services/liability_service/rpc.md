@@ -2,6 +2,26 @@
 
 Tables: [database-schema.md](../../database-schema.md#liability_service).
 
+### The money is a double, stored exact as it is written (liability 00014)
+
+Every rupiah this service holds — the ledger's legs and `balance_after`, the balances, payment requests, payments, the
+credit limits and their history — is `double precision` in the database and `double` on the wire since 2026-11-06
+([every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)): the `LiabilityPosition*`, `LiabilityCredit*`,
+`LiabilityDaily` / summary figures and their `by_source` maps, `LiabilityPaymentRecordRequest.amount` (`gt 0`, finite),
+`credit_limit` on the terms (`gte 0`, finite), and `LiabilityPaymentAccepted.amount` on the event. **`PostEntry` is the
+freeze point, and it is EXACT** ([the-backend-never-rounds-money](../../business/order/context_decision.md#the-backend-never-rounds-money), 2026-11-06 — it rounded to whole rupiah before): it refuses NaN,
+the infinities and anything not above 0 (`san_money.Positive` — float dust below 4 places counts as 0) and stores the
+figure as handed in. An order's 2,5% fee on Rp 12.666,99 posts Rp 316,67475 on both legs; a balance is the sum of its
+logs within the tolerance, and "square" is a tolerance test in SQL too (`abs(balance) < 0.00005`, `san_money.ZeroBelow`
+— the running `oldest_unsettled_at` clock and `unsettled_only`). `LiabilityPaymentRecord` stores the claim as typed
+and refuses one that is not above 0 (InvalidArgument, *"a payment must be more than Rp 0"*); `LiabilityTermsSet` stores
+a limit as set. The order-fee and courier listeners skip a figure that is not above 0 before posting.
+
+⚠ **The order routes are mounted since 2026-11-06**: `/event/liability-order-placed/push` and
+`/event/liability-order-cancelled/push` were missing from `register.go` (the pushes 404'd and dead-lettered), so the
+fees below were never charged in a running app; both now go to the same push handler
+(`TestRegister_TheOrderEventsReachTheLedger`).
+
 ## The first writer — a restock's courier charge, from *Restock Accepted* (#184)
 
 An obligation the system creates at a restock's door: the warehouse pays the courier for goods it does not own, so the
@@ -38,6 +58,78 @@ re-computable figure. Restrict `/event/liability-restock-accepted/push` at the i
 ⚠ **This does not change costing.** The charge still flows into the batch's landed price — the same rupiah answers what
 the goods cost and who is owed for them.
 
+## The courier at a return — `ChargeReturnCourier`
+
+The restock's twin, at the other door ([a-return-may-carry-the-couriers-ask](../../business/balance/context_decision.md#a-return-may-carry-the-couriers-ask)):
+when the warehouse accepts a returned parcel, the courier may ask for something, the warehouse pays it from its cash
+box, and the selling team owes it back. Rarely — so it is optional, and 0 posts nothing.
+
+```mermaid
+sequenceDiagram
+    participant W as warehouse crew
+    participant O as selling_service
+    participant PS as Pub/Sub
+    participant S as liability_service
+
+    W->>O: OrderReturnAccept — the missing units, the courier charge and its note
+    O->>O: ONE transaction - return_completed, the accept row with the charge as its note
+    O-->>W: the order, the labels to print
+    O->>PS: Order Return Accepted - the charge, its note, who accepted and their override stamp
+    PS->>S: push to /event/liability-order-return-accepted/push
+    S->>S: ChargeReturnCourier - return_incidental_fee keyed by the order, two legs
+```
+
+| | |
+| --- | --- |
+| who owes whom | the order's selling team (`team_id`) owes the warehouse that **accepted** it (`warehouse_id`) — the door the courier was paid at. Not always the one the order shipped from: the configured return warehouse, or one an old label named ([the-accept-records-where-it-was-accepted](../../business/order/context_decision.md#the-accept-records-where-it-was-accepted)) |
+| to oneself | nothing — a team that is its own warehouse paid its own courier. Skipped before `PostEntry`, which refuses one team on both sides and would make the push NACK forever |
+| the source | ⚠ **`return_incidental_fee`**, `source_id` = the order — not the restock's `incidental_fee`, though it is the same kind of money. `incidental_fee`'s `source_id` is a restock, and an order id from selling_service can be the same number as a restock id from inventory_service: under the key `(team, counterparty, source_type, source_id, reversal)` the second charge for the pair would be swallowed as a redelivery of the first, and the history would read *"restock #&lt;order&gt;"*. Proved by `TestChargeReturnCourier_DoesNotCollideWithARestockOfTheSameNumber` |
+| a redelivery | posts nothing new — `ErrAlreadyPosted` is the normal answer |
+| 0 | posts nothing — the common case |
+| actor and stamp | the event's `actor_id` and `actor_is_override`, read from the accept's timeline row — never the envelope |
+| the screens | the counterparty history labels it *"Courier at a return · order #N"*; the daily statement's courier column sums both courier types |
+| a lost event | the debt is unposted; the charge survives as the text of the accept's timeline row (*"Courier charge Rp 15.000: …"*) — not a structured field to re-post from, unlike the restock's ([no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)) |
+
+⚠ **The route is an open webhook**, as the restock's is: restrict `/event/liability-order-return-accepted/push` at the
+ingress to Pub/Sub's push.
+
+## The courier at a transfer's door — `ChargeTransferCourier`
+
+The restock's twin at a **warehouse transfer**'s receiving door
+([balance-posts-the-transfers-on-site-debt-from-the-event](../../business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event),
+[a-transfer-charge-is-a-transfer-fee](../../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)):
+B pays the courier on site, B's accept saves the charge and its note on the transfer, and liability posts the debt when
+*Warehouse Transfer Accepted* arrives. Built 2026-11-04.
+
+```mermaid
+sequenceDiagram
+    participant B as Warehouse B
+    participant I as inventory_service
+    participant PS as Pub/Sub
+    participant S as liability_service
+
+    B->>I: WarehouseTransferAccept — the count, the courier charge and its note
+    I->>I: ONE transaction - batches, problem rows, the charge on the transfer
+    I->>PS: Warehouse Transfer Accepted - after every accept, a charge of 0 included
+    PS->>S: push to /event/liability-warehouse-transfer-accepted/push
+    S->>S: ChargeTransferCourier - transfer_fee keyed by the transfer, two legs
+```
+
+| | |
+| --- | --- |
+| who owes whom | the transfer's selling team (`team_id`) owes the RECEIVING warehouse (`to_warehouse_id`, B) — never A |
+| the source | **`transfer_fee`** (`LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10`), `source_id` = the transfer — never `incidental_fee`, whose key is a restock: transfer 41 beside restock 41 for the same pair would be swallowed as a redelivery. Proved by `TestChargeTransferCourier_DoesNotCollideWithARestockOfTheSameNumber` |
+| the amount | `warehouse_additional_cost`, a double as inventory stores it, posted exact (the-backend-never-rounds-money) |
+| 0 | posts nothing, acked — the event is published after every accept |
+| to oneself | nothing — skipped before `PostEntry`, as the return's |
+| a redelivery | posts nothing new — `ErrAlreadyPosted` is the normal answer; 8 deliveries at once post once (`transfer_courier_charge_race_test.go`) |
+| actor | the event's `actor_id`, who counted it in. ⚠ The event carries no `actor_is_override`, so the legs are never stamped an override |
+| the note | not stored — `liability_logs` has no note column, as for the restock's and the return's charge; it stays on the transfer |
+| a lost event | the debt is unposted but not unrecorded — the charge is on the accepted transfer, and re-publishing posts it once |
+
+⚠ **The route is an open webhook**, as the restock's is: restrict `/event/liability-warehouse-transfer-accepted/push` at
+the ingress to Pub/Sub's push.
+
 ## How the two services are joined
 
 `inventory_service` declares `LiabilityPoster` in its own terms and imports nothing from liability; the adapter lives in
@@ -50,6 +142,7 @@ called inside the adjust's or count's transaction:
 | selling → inventory (`StockPicker`) | ❌ another service's commit | takes the stock, **compensates** if the order then fails |
 | inventory → liability, stock damage (`LiabilityPoster`) | ✅ same database | one transaction, **nothing to compensate** |
 | inventory → liability, courier charge (*Restock Accepted*) | ❌ after commit | the event; a lost one is found on the restock |
+| selling → liability, courier at a return (*Order Return Accepted*) | ❌ after commit | the event; a lost one is read off the accept's timeline note |
 
 ## The write path has no wire surface
 
@@ -94,7 +187,7 @@ sequenceDiagram
     and
         S-->>T: liability-order-placed
     end
-    T->>T: the order's frozen warehouse_fee to the warehouse, rounded once
+    T->>T: the order's frozen warehouse_fee to the warehouse, exact
     T->>T: product fee to each owning team, the sum of its line totals
 ```
 
@@ -113,7 +206,7 @@ topic until liability became a second consumer.
 
 | | Default with no configuration | Because |
 | --- | --- | --- |
-| **Warehouse fee** | **charge nothing** when the order carries none | It is a **price**, and the order froze it at create (warehouse_service priced it). Liability posts that number, rounded once to whole rupiah, and reads no rate of its own — since step 4 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last), `liability_terms.handling_fee` is not read ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)). An order placed before fees were frozen carries none and is charged nothing; a fee of 0 posts no entry. |
+| **Warehouse fee** | **charge nothing** when the order carries none | It is a **price**, and the order froze it at create (warehouse_service priced it). Liability posts that number exactly as frozen, and reads no rate of its own — since step 4 of [the-flat-rate-is-dropped-last](../../business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last), `liability_terms.handling_fee` is not read ([the-event-carries-the-warehouse-fee](../../business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)). An order placed before fees were frozen carries none and is charged nothing; a fee of 0 posts no entry. |
 | **Product fee** | **charge the lines' frozen totals** | It is a **cost transfer**. The goods left the owner's stock and do not come back (§2.2 — "money from the first moment"), so the owner is owed whether or not anybody configured anything — and there is nothing here to configure. |
 
 Defaulting the product fee to zero as well would mean one team's goods walk out of another team's
@@ -131,14 +224,14 @@ flowchart LR
   T --> O["order_items.total — frozen"]
   O --> E["OrderPlacedLine.total"]
   E --> F["product fee per owning team = sum of its line totals"]
-  F --> R["rounded once, on the sum"]
+  F --> R["posted exact, on the sum"]
 ```
 
 | | |
 | --- | --- |
 | the fee | Σ `total` of the owning team's lines, one fee per owning team per order, never recomputed |
 | own lines | never charged — the owner is the selling team |
-| rounding | the sum, once, to whole rupiah (`math.Round`) — the same edge the restock courier charge is rounded at |
+| rounding | none — the exact sum of the owner's lines is one entry (`PostEntry`, the-backend-never-rounds-money) |
 | the terms | not read for this fee at all — `liability_terms.product_markup_bp` was dropped (`00010`) |
 
 **Still cost-anchored, never the buyer-paid price** ([the-product-fee-is-the-line-total](../../business/order/context_decision.md#the-product-fee-is-the-line-total)).
@@ -251,16 +344,34 @@ that also emitted empty days would be a second calendar free to disagree about w
 A quiet day is still **rendered**, dimmed. A missing row cannot tell a reader "nothing was charged" apart
 from "that day did not load".
 
-### Bucketing
+### Bucketing — the Jakarta day
 
-`created_at` is a `TIMESTAMPTZ`, cast with an explicit `AT TIME ZONE 'UTC'` — a bare `::date` converts
-using the session's TimeZone, which nothing sets. The upper bound is **half-open** (`< to + 1 day`) for
-the same reason revenue's is: `<= to` means `<= midnight` and would silently drop almost the whole final
+`created_at` is a `TIMESTAMPTZ`, grouped by `(created_at AT TIME ZONE 'Asia/Jakarta')::date`, and the period's bounds
+are **Jakarta midnights** (`parsePeriod` reads both dates in WIB) — one calendar for the rows and the bounds
+([the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day),
+[the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)). A fee
+owed at 06:00 WIB lands on that WIB day, not the UTC day before. The zone is named in the SQL rather than left to the
+session (which `san_dbsession` also pins to Jakarta), so the grouping and the Go-parsed bounds agree by construction. The
+upper bound is **half-open** (`< to + 1 day`): `<= to` means `<= midnight` and would silently drop almost the whole final
 day of every period.
 
-> ⚠ The business is UTC+7, so an entry posted before 07:00 local lands on the previous day here. It is
-> deliberate *consistency* rather than a fresh decision — see
-> [revenue_service/rpc.md](../revenue_service/rpc.md) for the full note.
+```mermaid
+flowchart LR
+  I["a leg at 2026-07-03 06:00 WIB — 2026-07-02 23:00 UTC"] --> D["grouped on 2026-07-03"]
+  B["period 2026-07-03 .. 2026-07-03"] --> R["created_at in 07-03 00:00 WIB .. 07-04 00:00 WIB"]
+  R --> D
+```
+
+Pinned by `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay` (00:00 and 06:00 WIB land on their WIB day,
+23:59 WIB the evening before does not) and `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` (23:30 WIB counts,
+00:05 WIB the next day does not — though both are the same UTC day).
+
+**Performance** (`TestPerf_LiabilityDaily`, `-tags perfaudit`, 2026-11-05): one query; 50 000 legs for the team among
+500 000 — a 31-day period **10.7 ms** median, a 366-day period **30 ms**. The plan is the one the UTC grouping had (a
+bitmap scan of `liability_logs_pair_idx` on its `team_id` prefix, then the `created_at` filter; the probe EXPLAINs both
+groupings side by side: 9.7 vs 9.2 ms, 28.5 vs 21.7 ms) — the change moved the group key, not the access path. Not
+heavy, so no audit file. The `created_at` filter removes 46 125 of the team's rows on the 31-day period: an index on
+`(team_id, created_at)` would narrow it, the owner's call if a team's ledger grows far past this.
 
 ### The totals are built in the fold, not by a second query
 
@@ -268,6 +379,48 @@ The one place this differs from the revenue and expense handlers. They each had 
 query to reuse, and reusing it keeps their footer identical to their list screen's. There is no such query
 here, so a second one would be a second definition of the same sum — free to drift from the days above it,
 which is exactly the failure the other two reuse their query to avoid.
+
+## The Team Balance lists filter before the page (backlog #34)
+
+Every filter the two Team Balance screens offer is the SERVER's, applied before the page and counted in `page_info`.
+They used to be the screen's, over the rows it had loaded — 20 pairs, 50 entries — so a team on page 2 read as "no team
+found", a date range reaching past page 1 showed only what page 1 held, and *Their payments* drew empty under a page of
+*My payments*.
+
+| RPC | filter | rule |
+| --- | --- | --- |
+| `LiabilityPositionList` | `q` (≤ 100) | the counterparty TEAM's name or code, case-insensitive, anywhere in either, trimmed |
+| | `counterparty_type` | one kind of counterparty team (warehouse / selling); UNSPECIFIED = every kind |
+| | `awaiting_only` | pairs where the counterparty recorded a payment THIS team has not yet accepted or rejected — the rows the badge counts |
+| `LiabilityLogList` | `from`, `to` | the period, inclusive, as `YYYY-MM-DD` Jakarta days |
+| | `direction` | RECEIVABLE = `amount > 0`, PAYABLE = `amount < 0`, UNSPECIFIED = all (the All tab) |
+| `LiabilityPaymentList` | `from`, `to` | the day the payment was RECORDED, as Jakarta days |
+| | `side` | PAID = this team is the payer (*My payments*), RECEIVED = it is the creditor (*Their payments*) |
+| `LiabilityTermsHistoryList` | `from`, `to` | the day a limit CHANGED, as Jakarta days — the pair page's one range narrows its limit log too |
+
+- **A day is a Jakarta day** ([the-liability-day-is-the-jakarta-day](../../business/balance/context_decision.md#the-liability-day-is-the-jakarta-day)).
+  `from` / `to` become two instants — the Jakarta midnight opening `from` and the one closing `to` — compared with the
+  raw column (`created_at >= ? AND created_at < ?`), so an entry at 00:30 or 06:30 WIB is on its WIB date however the
+  host's clock is set, and an index on the column reads as it is. Either end may be empty (open); a non-day
+  (`2026-02-31`) or a `to` before `from` is `InvalidArgument`, never swapped (`list_filters.go` `listPeriod`).
+- **The summary is not filtered.** The tiles on the pair list and the `balance` on the pair page are the whole set's and
+  the whole pair's whatever the filter ([the-summary-is-tiles-on-the-list](../../technical/balance/team_balance_design_decision.md#the-summary-is-tiles-on-the-list):
+  a search box is not a scope).
+- **Balance after stays true on a cut.** `balance_after` is stored on each row when it is posted, so a filtered page
+  (a range, a direction, page 2 of either) still carries the running balance of the WHOLE ledger after that entry
+  ([the-team-balance-screens-are-accepted](../../technical/balance/team_balance_design_decision.md#the-team-balance-screens-are-accepted)).
+- **The search and the kind are team_service's facts, never a join** (HARD RULE 3). The handler reads its own pairs'
+  counterparty ids (one read of `liability_balances`, bounded by the teams it trades with), asks the in-process seam
+  `TeamNamer.TeamFacts(ids)` — the composition root's adapter calls team_service's `TeamByIds` handler (TEAM slice) in
+  batches of 200 — and narrows by the ids that match. A team team_service does not know (deleted) never matches a
+  search or a kind, and still lists when nothing is filtered. Without a search or a kind, team_service is not asked.
+- **A side never widens the scope**: PAID / RECEIVED narrow inside the payer-OR-creditor scope, so they only ever take
+  away from this team's own payments.
+
+Perf (`-tags perfaudit`): `LiabilityLogList` 6–15 ms / 3 queries over a 50 000-movement pair; `LiabilityPaymentList`
+4–31 ms / 3 queries over 200 000 payments; `LiabilityTermsHistoryList` ≈ 1 ms / 2 queries (the period is an index range
+on both history indexes); `LiabilityPositionList` 3–5 ms with a search — 7 queries, heavy by the query-count line only
+([audit](../../../audits/services/liability_service/performances/LiabilityPositionList.md)). No index was added.
 
 ## The rates and limits themselves — `LiabilityTermsService` (#189)
 
@@ -280,7 +433,7 @@ every handling fee was 0 and every credit limit was unlimited — permanently. T
 | `LiabilityTermsList` | what the scoped team charges each debtor — the **creditor's own books**, never what it is charged |
 | `LiabilityTermsSet` | upsert one pair's rate and limit |
 | `LiabilityTermsDelete` | remove a pair's row entirely |
-| `LiabilityTermsHistoryList` | every change to those terms, in order. ⛔ **declared, not implemented** — see below |
+| `LiabilityTermsHistoryList` | every change to those terms, in order. ✅ implemented (`liability_v1/terms_history_list.go`) — see below |
 
 **The scope is the CREDITOR.** `team_id` is the team that WROTE these rows. A debtor asking what it
 is charged is asking about somebody else's configuration and gets its own empty list.
@@ -339,7 +492,7 @@ How it is built:
 | --- | --- |
 | `liability_terms_logs` | ⚠ **both limit columns NULLABLE.** `NULL`, `0` and a number are three different acts, and an integer column flattens the first into the second — turning *"they removed the limit"* into *"they froze the team"* |
 | the actor, stamped at write time | `LiabilityTermsSet` / `LiabilityTermsDelete` read it from the TOKEN, never the request |
-| `override`, derived by the server | `san_auth.GetCallerRole` returns the role the access interceptor resolved **for the scoped team**. `ROLE_UNSPECIFIED` means the caller holds none there — so the request was authorized by the root-team bypass, which is exactly what an override is. ⚠ It is not an authorization check and must never be used as one: the interceptor has already decided *whether*, this answers *on whose behalf* |
+| `override`, derived by the server | `san_auth.IsOverride` — the one rule every service stamps by ([an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)): a person, a scoped request, and `san_auth.GetCallerRole` = `ROLE_UNSPECIFIED`, the role the access interceptor resolved **for the scoped team**. Holding none there means the request was authorized by the root-team bypass, which is exactly what an override is. A call with no person or no scope reads false. ⚠ It is not an authorization check and must never be used as one: the interceptor has already decided *whether*, this answers *on whose behalf*. The same answer stamps a payment's record and confirm, a payment request, and the legs of a posting a person made (`00013`). A leg posted from an event — an order's fees, their reversal, a restock's courier charge — has no caller and takes the event's `actor_is_override` instead |
 | the write and its log are ONE TRANSACTION | a limit that changed with no record of who changed it is the back door this exists to close — worse than either half failing, because nobody would know to look |
 | a DELETE logs a REMOVAL | `new_credit_limit` NULL, not 0. Deleting a pair's terms lifts the ceiling, so 0 would say the act froze the team it freed |
 | a no-op delete logs NOTHING | the RPC still succeeds, but nothing changed — and a history full of no-ops is one nobody reads |
@@ -478,6 +631,7 @@ sequenceDiagram
     participant C as Creditor team
 
     P->>S: LiabilityPaymentRecord — amount, note, PROOF, Paid from
+    Note over S: the payer must OWE the creditor on this pair, else FailedPrecondition
     Note over S: status = recorded. NO ledger effect.
     S-->>C: appears in the badge and the awaiting_my_confirmation list
 
@@ -575,11 +729,42 @@ let any team write off its own debt by typing a number. Only the creditor can se
 which is also why counterparties are **teams only**: an external party has no account and could never
 confirm.
 
+### Only the debtor records — and only while it owes
+
+[the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides):
+a payment is started by the team that **owes** — never the creditor, never a team on a square pair. Since 2026-11-07
+`LiabilityPaymentRecord` enforces it (it had accepted a claim from any team).
+
+```mermaid
+sequenceDiagram
+    participant P as Payer team
+    participant S as liability_service
+    P->>S: Record — creditor, amount, proof, Paid from
+    S->>S: Paid from asked of the accounts first (unchanged)
+    S->>S: tx — read the payer's balance row on the pair FOR SHARE
+    alt the payer's side is negative beyond float dust
+        S->>S: INSERT the claim, clear the creditor's open request
+        S-->>P: the claim, recorded
+    else square, no row, or the payer is the creditor
+        S-->>P: FailedPrecondition — only the team that owes records a payment
+    end
+```
+
+| | |
+| --- | --- |
+| the rule | the payer's own row `(team_id = payer, counterparty_id = creditor)` must be **negative** — `san_money.Positive(-balance)`, the server's 4-place tolerance, so float dust is square. No row is a pair nothing ever moved on: square |
+| the refusal | `FailedPrecondition`, *"your team owes this team nothing right now, so there is no payment to record — only the team that owes records a payment"* — the same code `LiabilityPaymentRequestSend` gives a pair owing nothing |
+| order | after the same-team check (`InvalidArgument`) and the *Paid from* check, before the amount check — a refused claim writes nothing and leaves the creditor's request standing |
+| the amount | not capped at the debt — the creditor still checks the transfer by hand and accepts or rejects it |
+| `FOR SHARE` | inside the claim's transaction, so a confirm squaring the pair at the same moment (PostEntry's upsert) is waited for and its result read; two claims by one debtor take SHARE locks and never queue. Proven by `TestInterleave_RecordWaitsForTheConfirmThatSquaresThePair` / `TestInterleave_RecordTwoClaimsDoNotQueue` (`-tags raceaudit`); the matrix row is in [lock-order.md](../../../audits/services/liability_service/concurrency/lock-order.md) |
+| cost | one more statement, a lookup on `liability_balances`' `(team_id, counterparty_id)` unique index — not heavy, no audit file |
+| the screen | the pair detail offers **Make Payment** only while this team owes the counterparty |
+
 ### The scope asymmetry IS the design
 
 | RPC | `team_id` must be | |
 | --- | --- | --- |
-| `Record` | the **payer** | you may only assert a movement of your own money |
+| `Record` | the **payer** — and the pair's **debtor** | you may only assert a movement of your own money, and only toward a team you owe |
 | `Confirm` | the **creditor** | a payer who could confirm their own payment could write off any debt |
 | `Reject` | the **creditor** | only the team that was supposedly paid can say the money did not arrive |
 
@@ -621,6 +806,32 @@ the count inside the query it already makes, so the badge and the rows cannot di
 It means `recorded` payments where **this team is the creditor** — never the ones it recorded itself,
 which are waiting on somebody else. Counting both sides would show every payer a permanent
 notification for work that is not theirs.
+
+### Asking to be paid — `LiabilityPaymentRequestSend`
+
+A creditor may ask its debtor to pay ([a-creditor-may-request-payment](../../business/balance/context_decision.md#a-creditor-may-request-payment)). It is a notice: it posts
+nothing, blocks nothing, and payment still starts with the debtor through Record.
+
+```mermaid
+sequenceDiagram
+  participant C as the creditor's owner or admin
+  participant L as liability_service
+  participant D as the debtor
+  C->>L: LiabilityPaymentRequestSend — debtor_team_id
+  L->>L: read the creditor's balance on the pair — nothing owed is FailedPrecondition
+  L->>L: upsert the one request per pair, with the amount owed now
+  D->>L: LiabilityPositionList — the request rides the pair's position, either way
+  D->>L: LiabilityPaymentRecord to that creditor
+  L->>L: the payment row is inserted and the request deleted, one transaction
+```
+
+| | |
+| --- | --- |
+| who | the creditor team's owner and admin, warehouse or selling — the request's `team_id` is the creditor |
+| amount | the creditor's balance on the pair at that moment; a live figure is the position itself |
+| again | replaces the request — amount, sender and time |
+| cleared | by the debtor recording a payment to that creditor, whatever its amount; rejecting it later does not bring the request back |
+| shown | `LiabilityPosition.payment_request`, on both teams' rows of the pair |
 
 ## The fifth obligation — stock the warehouse broke or lost (`STOCK_DAMAGE`)
 

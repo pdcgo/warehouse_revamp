@@ -56,8 +56,9 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [umum-carries-no-badge-and-stock-can-be-empty](#umum-carries-no-badge-and-stock-can-be-empty) | a card carries no badge for Umum; Stok siap starts with a **Kosong** band; a price band writes its unit once — **100–250rb**, no Rp |
 | [the-filter-panel-sits-above-the-grid](#the-filter-panel-sits-above-the-grid) | the filter panel is layered above the list beside it, so a picker opening from it (the category columns) paints over the cards |
 | [a-range-bound-is-a-plain-number-box](#a-range-bound-is-a-plain-number-box) | a stock range's own min and max are plain boxes — digits only, grouped, no − and + — an exception to "a quantity is QuantityInput" |
-| [the-minimum-closes-at-the-minimum](#the-minimum-closes-at-the-minimum) | a minimum closes a product when its ready stock is AT or under it (≤) — the Terkunci badge and Discover's filter alike; the business context still says `<`, reported there |
+| [superseded-the-minimum-closes-at-the-minimum](#superseded-the-minimum-closes-at-the-minimum) | ~~a minimum closes a product AT or under it (≤)~~ — reversed by [a-minimum-closes-only-under-it](#a-minimum-closes-only-under-it) |
 | [a-locked-product-shows-on-discover](#a-locked-product-shows-on-discover) | Discover shows a product its owner LOCKED, with its *Selalu dikunci* badge — `ProductDiscover`'s `include_locked`, asked by the page alone; every picker still leaves it out |
+| [a-minimum-closes-only-under-it](#a-minimum-closes-only-under-it) | a minimum closes a product only when its ready stock is UNDER it (`<`) — at exactly the minimum it is open, as the business rule and the order take already say |
 | [the-card-states-are-pinned-on-the-page](#the-card-states-are-pinned-on-the-page) | Discover's card has no story of its own — its states are pinned by the page's stories, which carry a locked product |
 | [the-discover-detail-is-the-product-page](#the-discover-detail-is-the-product-page) | the discover detail takes the product page's shape — the title row and its sticky bar, a nav beside Info (the large ready figure, the record as a list), Penjualan Tim Lain, Per Gudang and Pemasok ⚠ — with the card's badges and cross price — ⚠ the markup, the owner row, the cover and Produk Turunan REPLACED by [the-discover-detail-shows-no-markup](#the-discover-detail-shows-no-markup); Per Gudang's columns by [each-warehouse-says-ready-and-its-price](#each-warehouse-says-ready-and-its-price) |
 | [the-discover-detail-shows-no-markup](#the-discover-detail-shows-no-markup) | the discover detail shows no markup percentage; the owner is **Tim** and its name alone; the pictures are the product page's gallery; **Produk Turunan** ⚠ sits beside Penjualan Tim Lain, as on the product page |
@@ -73,6 +74,7 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [the-order-and-restock-start-on-the-page](#the-order-and-restock-start-on-the-page) | Buat Pesanan and Restok first ask, on the page, the **warehouse** (each with its ready stock — the stock check) and the **quantity**; the form then opens with both on its first line |
 | [an-empty-product-cannot-start-an-order](#an-empty-product-cannot-start-an-order) | with no stock ready in any warehouse, **Buat Pesanan** is held back with *Stok siap habis di semua gudang* — on both pages; Restok stays |
 | [a-picture-comes-from-the-web-by-drag-or-paste](#a-picture-comes-from-the-web-by-drag-or-paste) | a picture dragged from a web page is fetched and uploaded like a file; an image copied anywhere pastes with Ctrl+V; a site that refuses is answered with how to copy it |
+| [the-screen-says-product-code](#the-screen-says-product-code) | every screen calls the code "Product code" (Kode produk), never "SKU" — the field itself is still `sku` on the wire |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -1266,7 +1268,10 @@ Maksimal 100.000
 browser's own spinners"*. The reasons against the native number box all still hold, and this box avoids every one of them;
 what it drops is only the − and +, for a bound in a filter. CLAUDE.md is not edited here — it is the owner's to update.
 
-## the-minimum-closes-at-the-minimum
+## superseded-the-minimum-closes-at-the-minimum
+
+> ⚠ **Superseded 2026-10-31** by [a-minimum-closes-only-under-it](#a-minimum-closes-only-under-it): the business context
+> settled the boundary the other way. Kept as written below.
 
 > Owner, in chat (2026-10-30), to *"≤ seperti di filter, atau < seperti di context bisnis?"*: *"iya"* — ≤.
 
@@ -1679,3 +1684,49 @@ Ctrl+V with a copied picture ─────────────────
 | the words | the cover box reads *Seret atau tempel (Ctrl+V) gambar ke sini, atau klik untuk memilih* |
 | no server change | the picture is fetched by the page and goes up the two-phase upload every file takes |
 | pinned by | `APictureFromAWebPageDrops`, `ABlockedPictureSaysHowToCopyIt`, `APastedPictureFillsABox` |
+
+## a-minimum-closes-only-under-it
+
+> Owner, in chat (2026-10-31): *"follow your recomendation"* — on the business context's
+> [exactly-the-reserve-stays-open](../../business/product/context_decision.md#exactly-the-reserve-stays-open), which
+> settled the boundary [superseded-the-minimum-closes-at-the-minimum](#superseded-the-minimum-closes-at-the-minimum) had
+> reported there.
+
+```
+minimum 20      ready 19 → Terkunci      ready 20 → Terbuka      ready 21 → Terbuka
+```
+
+| | |
+| --- | --- |
+| the rule | a minimum closes a product to other teams when its ready stock, across every warehouse, is **under** it — `<`. At exactly the minimum it is open |
+| why | the screens follow the business rule rather than restate it: the reserve is a low-stock line, not a floor, and the order take already opens a product at its minimum — the badge saying *Terkunci* there was a product the server still sold |
+| where | `lockedByMinimumNow` ([ProductLock.tsx](../../../frontend/src/features/products/ProductLock.tsx)) — the Terkunci badge on the product list and the product's page; Discover's **Kunci** filter states the same line, still pending (`lockFilter`) |
+| ✅ built *(2026-10-31)* | the stories `ProductLock/AtTheMinimumIsOpen`, `ProductLock/OneUnderTheMinimumIsLocked` |
+| ⚠ not changed | Discover detail's *Bisa Anda ambil* subtracts the minimum from each shelf — a floor reading, already pending (`canTake`) as an unsettled rule |
+
+**What it replaces** (HARD RULE 11): [superseded-the-minimum-closes-at-the-minimum](#superseded-the-minimum-closes-at-the-minimum)
+(≤) and the stories `AtTheMinimumIsLocked` / `OneAboveTheMinimumIsOpen`. [discover-filters-by-lock](#discover-filters-by-lock)'s
+*Terkunci … at or under it* row is history, kept as written.
+
+## the-screen-says-product-code
+
+> Owner, in chat (2026-10-31): *"the screen calls it "SKU", change to product code"* — while [product Q7](../../business/product/context_clarify.md#question)
+> asked whether the field is `product_code`, the name the owner's [context.md](../../business/product/context.md) gives it.
+
+**The verdict.** Every screen calls the product's code **"Product code"** — *Kode produk* in Indonesian — never "SKU".
+Sentence case, as every field label and column header is.
+
+| | before | now |
+| --- | --- | --- |
+| the field, the column, the detail | SKU | Product code · Kode produk |
+| the sort | SKU A–Z | Product code A–Z · Kode produk A–Z |
+| the example in the box | e.g. SKU-KOPI-250 | e.g. KOPI-250 · Contoh: KOPI-250 |
+| a code another product holds | …already uses this SKU… | …already uses this product code… |
+| every search box that names it | …SKU or name | …product code or name |
+
+| | |
+| --- | --- |
+| where | the `en` and `id` locales — 19 strings each, values only; no key, prop or field renamed |
+| not changed | the wire and the database still say `sku`; whether the FIELD becomes `product_code`, composed on write, is still [product Q7](../../business/product/context_clarify.md#question) |
+| not changed | the old screens under `frontend/src/legacy*/` |
+| ✅ built *(2026-10-31)* | the locales; the stories `ProductEdit/EveryFieldShowsAnExample` and `ATakenSkuIsSaidUnderTheSku` assert the new words |

@@ -1,5 +1,23 @@
 # AnalyticTimeSearch — performance audit
 
+> ✅ **RESOLVED 2026-11-05 — the RPC is removed.** Its successor, `FinancialAccountAnalyticService.MetricData` over
+> `metrics/financial_accounts`, reads the balance as the running sum recommended below
+> ([the-balance-series-is-a-running-sum](../../../../docs/business/analytic/rpc_provide_decision.md#the-balance-series-is-a-running-sum)):
+> each account's last row before the window once, then the window's rows summed per day, then the sum per period.
+> Same seed, fresh `warehouse_test`, median of 5 ([metric_perf_test.go](../../../../backend/services/financial_account_service/financial_account_v1/metric_perf_test.go)):
+>
+> | call | before (AnalyticTimeSearch) | after (MetricData) | queries |
+> | --- | --- | --- | --- |
+> | daily, 30 days, page 20 | 120–156 ms | **2.0 ms** | 2 |
+> | daily, 365 days, page 20 | 403–417 ms | **11.4 ms** | 2 |
+> | daily, 365 days, page 200 | 1 482 – 3 264 ms | **11.0 ms** | 2 |
+> | monthly, 365 days | 82–186 ms | **11.1 ms** | 2 |
+> | daily, 30 days, one account | 1.3 ms | **1.1 ms** | 2 |
+>
+> The cost no longer grows with the page or the history: one Bitmap Index Scan of the window's rows on
+> `financial_account_daily_reports_team_day_idx`, plus one backward probe per account. FAST — kept here only as the
+> record of the finding.
+
 **Verdict:** 🔴 heavy — the balance is re-derived from scratch for EVERY bucket, so the cost grows with the page size and with the length of history (a plan-level N+1)
 **Measured:** 2026-10-01 · `financial_account_service/financial_account_v1/analytic_time_search.go` · seed 10 000 `financial_accounts` (200 teams × 50), ~50 000 `financial_account_daily_reports` (the audited team's 50 accounts × 365 days = 18 250, the rest other teams'), 50 000 `financial_account_logs`; then the same at a production-like spread — 400 000 daily rows, the team ~5% · warm, median of 5 · [`analytic_time_search_perf_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/analytic_time_search_perf_test.go), [`distribution_perf_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/distribution_perf_test.go) (`-tags perfaudit`)
 

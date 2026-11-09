@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	financial_accountv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	m "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
 )
@@ -30,12 +31,12 @@ func TestFinancialAccountTransfer_PostsTwoLegsSharingAGroup(t *testing.T) {
 		t.Fatalf("legs = %+v", legs)
 	}
 
-	// Rounded to whole rupiah as it posts.
-	if legs[0].GetChange() != -250_000 || legs[1].GetChange() != 250_000 {
+	// Posted EXACT, the fraction included (the-backend-never-rounds-money).
+	if legs[0].GetChange() != -250_000.4 || legs[1].GetChange() != 250_000.4 {
 		t.Fatalf("changes = %v, %v", legs[0].GetChange(), legs[1].GetChange())
 	}
 
-	if balance(t, db, ops.GetId()) != 750_000 || balance(t, db, pay.GetId()) != 250_000 {
+	if !san_money.Equal(balance(t, db, ops.GetId()), 749_999.6) || balance(t, db, pay.GetId()) != 250_000.4 {
 		t.Fatal("balances did not move by the transfer")
 	}
 

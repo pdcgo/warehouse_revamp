@@ -109,6 +109,32 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-order-line-carries-no-marketplace-price](#an-order-line-carries-no-marketplace-price) | an order line holds only the take's money — `unit_cost`, `unit_cost_with_markup`, `markup_total`, `total`; the marketplace price stays on the draft's platform row |
 | [an-order-ref-is-required-by-the-rpc](#an-order-ref-is-required-by-the-rpc) | `order_external_ref_id` cannot be empty, refused by the create request's validation; no database rule, and old orders keep their `''` |
 | [a-draft-becomes-an-order-through-order-create](#a-draft-becomes-an-order-through-order-create) | the draft page's Promote sends `OrderCreate` with `order_draft_id`; `OrderDraftPromote` and Save as Draft are removed |
+| [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced) | the warehouse receives a parcel by search on the pick queue, forces the order to return if needed, then accepts; also a Force Return on the order page | owner, as recommended | — |
+| [every-allowed-move-has-a-button](#every-allowed-move-has-a-button) | Mark as Lost on shipped and Return Goods on completed, each confirmed — every allowed move is on a screen | owner, as recommended | — |
+| [the-return-receiving-screens-are-accepted](#the-return-receiving-screens-are-accepted) | Receive a Return, Force Return and the seller's new moves are the design | owner | — |
+| [the-duplicate-ref-warning-is-accepted](#the-duplicate-ref-warning-is-accepted) | the duplicate-ref warning dialog is the design: named matches as links, Go Back / Create Anyway | owner | ✅ drafts: a new `OrderDraftByExternalRefs` read |
+| [superseded-the-take-before-the-order-follows-the-recommendations](#superseded-the-take-before-the-order-follows-the-recommendations) | ⛔ WITHDRAWN — the thirteen points are asked one by one | owner | — |
+| [a-used-key-is-never-cancelled](#a-used-key-is-never-cancelled) | #10 Q1: a take refused as *key already used* never publishes the cancel | owner, as recommended | — |
+| [the-release-is-direct-then-the-event](#the-release-is-direct-then-the-event) | #10 Q2: the compensation releases directly first, the event is the backup | owner, as recommended | — |
+| [the-cancel-event-names-the-team](#the-cancel-event-names-the-team) | #10 Q3: InventoryTxCancel carries the team; one team-checked release | owner, as recommended | — |
+| [a-cancel-still-meets-the-count-first](#a-cancel-still-meets-the-count-first) | #10 Q4: a cancel checks the count lock first and is refused; the compensation waits for the count | owner, as recommended | — |
+| [revamp-has-no-real-orders-yet](#revamp-has-no-real-orders-yet) | #10 Q5–Q6: no production yet — key required, no backfill, the order:<id> bridge removed | owner | — |
+| [inventory-tx-cancel-is-an-order-event](#inventory-tx-cancel-is-an-order-event) | #10 Q7: InventoryTxCancel is an order event (204), its own topic | owner, as recommended | — |
+| [no-answer-is-only-a-lost-connection](#no-answer-is-only-a-lost-connection) | #10 Q8: no time limit — only a lost connection is *no answer*; the take has no deadline of its own | owner, against my recommendation | — |
+| [the-form-lock-and-try-again-are-accepted](#the-form-lock-and-try-again-are-accepted) | the locked form, the no-answer panel and Try Again are the design, with four calls | owner | — |
+| [a-used-key-reads-as-inventorys-refusal](#a-used-key-reads-as-inventorys-refusal) | #10 Q9: a used key is refused with inventory's *key already used*, no order shown | owner, as recommended | — |
+| [the-key-is-checked-first](#the-key-is-checked-first) | #10 Q10: the key is checked first, the unique index is the backstop | owner, as recommended | — |
+| [a-cancel-says-nothing-new-about-stock](#a-cancel-says-nothing-new-about-stock) | #10 Q11: a cancel keeps its message; the stock returns by event a moment later | owner, as recommended | — |
+| [a-stuck-release-is-replayed-by-san](#a-stuck-release-is-replayed-by-san) | #10 Q12: a `san` command lists and replays dead-lettered releases (covers 10d) | owner, as recommended | — |
+| [the-total-sort-is-ours-and-the-platform-total-sorts-apart](#the-total-sort-is-ours-and-the-platform-total-sorts-apart) | 10b: *Total* sorts by `total_cost`; a separate *Platform total* sort reads `platform_total` | owner, as recommended | — |
+| [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen) | the integer ledgers move to `double precision` / `double`, rounded to whole rupiah when frozen, compared with a tolerance; no `numeric` | owner, as recommended | — |
+| [numeric-money-moves-to-double-too](#numeric-money-moves-to-double-too) | the `numeric` money columns (financial accounts, `lost_amount`) move to `double precision` too | owner, as recommended | — |
+| [a-fraction-of-a-rupiah-shows-three-decimals](#a-fraction-of-a-rupiah-shows-three-decimals) | a rupiah figure with a fraction shows up to 3 decimals; whole figures show none | owner, as recommended | — |
+| [a-draft-keeps-its-platform-total-as-typed](#a-draft-keeps-its-platform-total-as-typed) | a draft keeps a fractional platform total as typed; it is rounded to whole rupiah when the order is placed | owner, as recommended | — |
+| [the-backend-never-rounds-money](#the-backend-never-rounds-money) | the backend stores and posts every rupiah exactly; only the screen rounds (3 decimals) | owner, as recommended | — |
+| [large-sum-drift-is-left-for-now](#large-sum-drift-is-left-for-now) | summing exact doubles may drift past the 4-place tolerance only at ~100.000 entries; left for now | owner, as recommended | — |
+| [the-courier-required-look-is-accepted](#the-courier-required-look-is-accepted) | the order form marks the courier required and holds Create until one is picked | owner, as recommended | — |
+| [the-cs-edits-the-whole-address-before-create](#the-cs-edits-the-whole-address-before-create) | before Create, the CS can edit every part of a draft's address | owner, as recommended | — |
 
 ---
 
@@ -451,7 +477,7 @@ list offers them as a filter under the `processed` tab. A per-step count line wa
 out — what a seller does with these is pick one.
 
 **Why this is the same rule twice already recorded.**
-[return-means-received-by-the-warehouse](./context_clarify.md#return-means-received-by-the-warehouse)
+[return-means-received-by-the-warehouse](./context_clarify.md#question)
 put a return's transit on a return record rather than on the order, and shipment tracking was
 deferred to the shipment. Picking and packed are the third instance, so the set of eight
 ([superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses)) is not a simplification for its own
@@ -873,7 +899,7 @@ if the create succeeds and the draft is not removed, the draft stays in the queu
 | 🔄 *(2026-10-15)* | **amended by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)** — the second attempt is now **warned**, not refused. The net is the person reading the warning |
 | ⚠ **→ Recommend** | the create-order request carries `order_draft_id`, and the backend removes the draft in the same transaction. The seeding stays in the browser; only the cleanup moves back |
 
-⚠ **And it reopens who writes `order_draft_items`.** [the-two-draft-line-tables-are-not-linked](#the-two-draft-line-tables-are-not-linked)
+⚠ **And it reopens who writes `order_draft_items`.** [the-two-draft-line-tables-are-not-linked](#superseded-the-two-draft-line-tables-are-not-linked)
 assumed the push owns the platform lines and a **person** owns ours. With finalize happening entirely in the
 browser, nobody saves a mapping back to the draft — so either the **app** writes `order_draft_items` too, or
 that table has no writer at all. Asked in the clarify.
@@ -1035,6 +1061,10 @@ adding the four codes back at write time, not deriving them later from text.
 ⚠ **The build stores codes today** — `provinsi_code`, `kabupaten_code`, `kecamatan_code`, `desa_code` on
 `orders` — so this is a column drop, and `kode_pos` becomes `postal_code` in the same move.
 
+✅ **Built 2026-11-06 — the order's half** — selling `00045_order_addresses.sql`: `order_addresses` holds `customer_name`, `customer_phone`, the four `_name`s, `postal_code` and `address_line`; the four `_code` columns on `orders` are dropped, not moved, and the picker's codes are discarded on write (`placeOrder`). The wire's `kode_pos` stays its name. ⛔ The draft's half (`order_draft_addresses`, names only) is not built: a names-only scraped address cannot fill the code-driven AddressPicker the order form seeds from a draft — how the form shows it is a visible change awaiting the owner.
+
+✅ Built 2026-11-06 — the draft's half: `order_draft_addresses` holds names only (selling `00046`); the codes a push or an edit sends are discarded, and the order form's code-driven picker is pre-filled by name match at read time ([the-cs-edits-the-whole-address-before-create](#the-cs-edits-the-whole-address-before-create)).
+
 ---
 
 ## a-draft-carries-the-scraped-address
@@ -1069,6 +1099,8 @@ made every draft need the same manual work, including the ones the app got right
 ⚠ **Where an unsplittable address should land:** `address_line`, holding whatever text the platform gave,
 so nothing is lost when the app cannot parse the region tiers.
 
+✅ Built 2026-11-06 — `order_draft_addresses` (selling `00046`): `customer_name`, `customer_phone`, the four `_name`s, `postal_code`, `address_line`, every field optional; written by `OrderDraftPush` with the draft and updated by a re-push (untouched parts) and `OrderDraftUpdate`; the draft's twelve inline columns dropped after the copy (codes not moved). Tests `order_draft_address_test.go`.
+
 ---
 
 ## one-address-per-order-and-per-draft
@@ -1099,6 +1131,10 @@ means — the join is total, and an order detail can read it as if it were colum
 
 ⚠ **The build's `customer_name` is required** (`orders_customer_present CHECK`). Splitting the table moves
 that rule: the address row must exist and carry a name, or the same guarantee is quietly lost.
+
+✅ **Built 2026-11-06 — `order_addresses`** — `UNIQUE (order_id)` (`order_addresses_order_unique`), written in the order's own transaction, `order_addresses_customer_present` carrying the old `orders_customer_present`; the migration copied every existing order's row. Tests `order_address_test.go` (one row, names only; a second row and a nameless one refused; the list searches the row). ⛔ `order_draft_addresses` (`UNIQUE (order_draft_id)`) is not built — see [an-address-is-plain-names](#an-address-is-plain-names).
+
+✅ Built 2026-11-06 — the draft's half: `order_draft_addresses` `UNIQUE (order_draft_id)` (`order_draft_addresses_draft_unique`), FK cascade, written in the draft's own transaction under its `FOR UPDATE` lock; corrections update the one row. Tests `order_draft_address_test.go` (one row of names, a re-push and an edit update it, a second row refused, gone with the draft).
 
 ---
 
@@ -1135,6 +1171,8 @@ renamed or retired channel changes what an old order appears to have shipped by 
 blank. **→ Recommend freezing the channel's NAME beside the id**, the way the receipt already freezes its
 filename. Open, not decided.
 
+✅ **Built 2026-11-06** — selling `00044_order_shipment_channel_id.sql`: `orders.shipment_channel_id` and `order_drafts.shipment_channel_id` (BIGINT, 0 = none, no FK) replace `shipping_code`, which is dropped (no code-to-id fill — a selling migration may not read shipment's table, [revamp-has-no-real-orders-yet](#revamp-has-no-real-orders-yet)); proto `Order.shipment_channel_id` (36), `OrderCreateRequest` (23), `OrderListFilter` (14), `OrderStatFilter` (13), `OrderDraft` (23), `OrderDraftUpdateRequest` (15), `OrderDraftPushRequest` (16), the old numbers reserved. Opaque to selling — never looked up. Tests `order_shipment_channel_test.go`, perf `TestPerf_OrderList_Courier`.
+
 ---
 
 ## the-channel-name-is-not-frozen
@@ -1170,6 +1208,8 @@ It also keeps one name in one place, so a correction reaches every order at once
 reference it forever, so a hard delete breaks history that this decision has no fallback for. Worth writing
 into that context when it is designed.
 
+✅ **Built 2026-11-06** — the order stores the id only; screens name it from shipment's catalogue at read time (`features/orders/OrderCourierBadge.tsx` over the shared session catalogue, deleted channels included; `courierCodeOf` where a screen prints the code), and `OrderExport` resolves it through `OrderExportStore.ChannelCodes` → `ShipmentChannelByIds`.
+
 ---
 
 ## inventory-returns-stock-on-order-cancelled
@@ -1194,7 +1234,7 @@ comes back when the event is consumed — so a cancelled order's goods are brief
 
 ⚠ **What it makes load-bearing.** A lost Order Cancel publish now strands stock as well as leaving fees
 charged, which is why the publish needs its sent-at stamp
-([half-finished-orders-are-found-from-the-order](./context_clarify.md#half-finished-orders-are-found-from-the-order)).
+([half-finished-orders-are-found-from-the-order](#a-lost-publish-is-not-tracked-on-the-order)).
 And inventory must release **idempotently**, keyed on the order — a redelivered cancel must not return the
 same units twice.
 
@@ -1618,7 +1658,7 @@ flowchart LR
 | what it still lacks | a **screen that sets it** and a **server that reads it**. Today it is written by `TeamInfoUpdate` and read by nobody |
 | `shops.return_warehouse_id` | **not built** |
 | `team_return_configurations` | **not built** — [order_return.md](./order_return.md) §Table Must Have asks for it, and the owner's doc is theirs to amend (RULE 7b) |
-| on the order | `orders.return_warehouse_id`, resolved from the team at create — its freezing is [still open](./order_return_clarify.md#frozen-on-the-order) |
+| on the order | `orders.return_warehouse_id`, resolved from the team at create — its freezing is [still open](./order_return_clarify.md#question) |
 
 ⚠ **This reverses my recommendation, and the reasoning I lost on is worth keeping.** I argued the platform
 prints the return address **per shop**, so a team with three shops could have three of them and a parcel would
@@ -1636,6 +1676,9 @@ flowchart LR
   OK["every shop returns to the same building"] -->|"holds today"| D["one warehouse per team is enough"]
   NEW["a shop is set to return elsewhere on the platform"] -.->|"reversal trigger"| D
 ```
+
+✅ **Built 2026-10-21** (verified in code 2026-11-05) — the 🔄 above: `team_return_configurations` (`selling_service/db_migrations/00016_team_return_configurations.sql`, `proto/warehouse/selling/v1/return_configuration.proto`) and its Settings card. `shops.return_warehouse_id` stays absent, by this verdict.
+
 
 ## the-return-warehouse-is-read-when-the-return-happens
 
@@ -1727,7 +1770,7 @@ should be *whoever scanned the parcel*, because a person standing in a building 
 building they are in. That assumes the return is created **by someone in the receiving warehouse** — which is
 an assumption about who does this job, and it was never established. If Customer Service creates returns from
 an office, there is no building to read, and the proposal has nothing to stand on. **That is now the open
-question** ([who-creates-the-return](./order_return_clarify.md#who-creates-the-return)).
+question** ([who-creates-the-return](./order_return_clarify.md#question)).
 
 ```mermaid
 flowchart LR
@@ -2434,8 +2477,8 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the refusal | the box has no *over the limit* branch — [a-blocked-line-refuses-the-whole-order](./context_clarify.md#a-blocked-line-refuses-the-whole-order) |
-| the warehouse | checked only when a shared product is present, while the build and balance check the fulfilling warehouse on every order — [the-warehouse-is-a-creditor-too](./context_clarify.md#the-warehouse-is-a-creditor-too) |
+| the refusal | the box has no *over the limit* branch — [a-blocked-line-refuses-the-whole-order](#over-the-limit-refuses-the-create) |
+| the warehouse | checked only when a shared product is present, while the build and balance check the fulfilling warehouse on every order — [the-warehouse-is-a-creditor-too](#the-warehouse-is-a-creditor-on-every-order) |
 | where the owners come from | the take returns them, but it runs after the check — [the-owners-are-needed-before-the-take](./context_clarify.md#critique) |
 
 ---
@@ -2977,6 +3020,10 @@ flowchart LR
 | `order_drafts.shipment_channel_id` | may be empty — the app could not convert the platform's courier |
 | the form | the courier field is required, seeded from the draft when it has one |
 
+✅ **Built 2026-11-06 (the server)** — `placeOrder`'s shared rule refuses an order with no `shipment_channel_id`, *"an order must say which courier carries it"*, on both doors (a promoted draft too); a draft may still hold 0 (push and `OrderDraftUpdate` store it, touched mark `shipment_channel_id`). Tests `TestOrderCreate_RefusesAnOrderWithNoCourier`, `TestOrderCreateFromDraft_NeedsACourier`. ⛔ The form's **required** courier field (the `*`, the line under it, Create held) is a Storybook prototype awaiting design accept — `pages/order-create/courierRequired.stories.tsx` behind `OrderCreatePage courierRequired`; until then the live form shows the server's refusal under its header.
+
+✅ Built 2026-11-06 — the form's required courier is live ([the-courier-required-look-is-accepted](#the-courier-required-look-is-accepted)): the `*`, the hint, Create held until a courier is picked.
+
 ---
 
 ## the-status-move-is-the-only-journey
@@ -3015,6 +3062,8 @@ tabs, [the-status-moves-miss-picked-and-shipping](./context_clarify.md#the-statu
 mapping the owner agreed), and every plain move goes through `OrderStatusChange`
 ([one-status-change-for-every-plain-move](../../technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)).
 Not built: the return accept (`return → return_completed`).
+
+✅ **Built 2026-11-03** (verified in code 2026-11-05) — the return accept (`return → return_completed`): `OrderReturnAccept` (`selling_v1/order_return_accept.go`, `order_return_accept_test.go`, `order_return_accept_race_test.go`).
 
 ---
 
@@ -3848,3 +3897,448 @@ flowchart LR
 | `manual` drafts already stored | still listed and still promotable. Nothing makes new ones |
 | validation | `OrderCreate`'s own, request and placement, for both buttons. The draft page's reasons match the create form's |
 | ✅ built *(2026-10-29)* | `OrderCreateRequest.order_draft_id` (field 21) and `OrderCreate`'s draft lookup and in-transaction delete, which checks `RowsAffected` so one draft becomes one order. `OrderDraftPromote` removed from the proto and the service. The draft page's Promote builds the request from its screen; the create form's Save as Draft is gone, and Create finishes a `?draft=` it was opened beside. Tests: `TestOrderCreateFromDraft_*` (the draft disappears, one draft one order, a refused order leaves it, a colleague's is NotFound, the event fires), stories `AnUnsavedEditIsPromotedAsIs`, `AManualDraftAsksForItsRef`, `TheFormHasNoSaveAsDraft`. ⚠ The concurrent half of one-draft-one-order is not proved with `san_race` |
+
+---
+
+## the-return-accept-is-built-before-its-stock-half
+
+> Owner, in chat (2026-11-02): *"2. build now"* — to *"the courier's fee at a return: build the return accept without stock,
+> or keep it parked?"*, against my recommendation to keep it parked.
+
+**The verdict.** The warehouse's **return accept** — `return → return_completed`
+([the-accept-is-the-status-return-completed](#the-accept-is-the-status-return-completed)) — is built **now**, with
+everything the order side decides, and **without** inventory's return transaction: the returned units are not put back
+on a shelf until [inventory/return.md](../inventory/return.md) designs it
+([return-is-unplanned](../inventory/context_decision.md#return-is-unplanned) still holds for the stock half).
+
+```mermaid
+flowchart LR
+  P["a returned parcel"] --> A["the warehouse accepts - return_completed"]
+  A --> F["the courier's ask, if any - the selling team owes the warehouse"]
+  A --> N["a short parcel - a timeline note naming what is missing"]
+  A --> L["a borrowed line - the label to print, the mapped product's code"]
+  A -.->|"not yet - return.md"| S["the units back on a shelf"]
+```
+
+| | |
+| --- | --- |
+| who | the warehouse whose staff hold the parcel — the configured return warehouse, or any other a stale label sent it to — recorded automatically ([a-return-may-land-in-another-warehouse](#a-return-may-land-in-another-warehouse), [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted)); from `return` only — a forced return moves first ([a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move)). 🔄 *(2026-11-02)* this row first read *the order's warehouse* — corrected, see [the-accept-was-recorded-as-the-shipping-warehouses](./order_return_clarify.md#the-accept-was-recorded-as-the-shipping-warehouses) |
+| whole | every line at its ordered quantity ([a-return-is-never-partial](#a-return-is-never-partial)) |
+| short | each missing unit named on an `order_timeline_logs` row, `from = warehouse` ([a-short-return-is-accepted-and-the-gap-written-off](#a-short-return-is-accepted-and-the-gap-written-off)); its write-off is inventory's, not yet |
+| borrowed | the accept lists each borrowed line's mapped own product code to print ([a-returned-borrowed-unit-is-relabelled-at-the-accept](#a-returned-borrowed-unit-is-relabelled-at-the-accept)); an unmapped one is refused, as order_return.md draws |
+| the courier | an optional amount and note, carried by the accepted event and posted by liability as `INCIDENTAL_FEE`, the selling team owing the warehouse ([a-return-may-carry-the-couriers-ask](../balance/context_decision.md#a-return-may-carry-the-couriers-ask)) |
+| ⚠ accepted | until return.md, a completed return's units are not on the shelf: inventory under-reads by them |
+
+✅ **Built 2026-11-02.** `OrderReturnAccept` ([order.proto](../../../proto/warehouse/selling/v1/order.proto)) — scoped on the
+**accepting** warehouse: any warehouse may accept an order in `return`, and the order's own selling team is refused. In one
+transaction under the order's row lock: `return_completed` on a warehouse timeline row (the courier's charge as its note,
+and the accepting warehouse in `order_timeline_logs.accepting_warehouse_id`, selling `00034`), the missing units on one
+warehouse note row, the borrowed lines' labels in the answer (an unmapped one refuses the whole accept), and no inventory
+call. `OrderReturnAccepted` (`order-return-accepted`) carries the charge to liability, owed to the accepting warehouse, and
+the order metrics' Return Arrived counts it. The configured return warehouse reads the team's orders in `return` and
+`return_completed` — only those — so its crew finds them on a **Returns** tab and accepts from the order
+([rpc.md](../../services/selling_service/rpc.md#the-warehouse-accepts-a-return--orderreturnaccept)).
+⚠ my build details: the charge posts as its own source type, **`return_incidental_fee`**, not `INCIDENTAL_FEE` — that one is
+keyed by a restock id, and an order of the same number would collide on the ledger's idempotency key; a label is printed
+per unit **in hand** (ordered less missing). ⚠ A stale-label warehouse — neither end nor the configured one — has no way
+to find the order: the server accepts it by id, but no list or scan of its own matches it.
+
+---
+
+## a-return-is-received-by-search-then-forced
+
+> In chat *(owner, 2026-11-04)* — *"Follow your recomendation"* (B + A), to: where does the warehouse's forced return sit on its own screens?
+
+**The verdict.** The warehouse receives a returned parcel the way [order_return.md](./order_return.md) §Who Change The Returns draws it — **search, force if needed, accept**:
+
+1. **B — *Receive a Return* on the pick queue.** The crew types or scans the order ref or the tracking number from the label; the order is found (OrderList's own `q`, which already matches both); if it is in `return`, the next step is **Accept Return**; if it is in a status the warehouse may force from (`shipping`, `shipped`, `problem`, `completed` — [a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move)), **Force Return** then **Accept Return**, one after the other.
+2. **A — *Force Return* on the order page** (pick-order, beside where *Accept Return* appears, and the warehouse order detail) for someone already looking at the order.
+
+| | |
+| --- | --- |
+| who | the shipping warehouse's Owner, Admin and Staff |
+| the move | the existing status move to `return` — no new server rule |
+| a parcel whose order is not this warehouse's | not found by the search |
+| not chosen | a row action in the pick queue (C) |
+
+⛔ Not built — a new screen part: a Storybook prototype comes first for the owner's design accept.
+
+✅ **Built 2026-11-04** — accepted the same day ([the-return-receiving-screens-are-accepted](#the-return-receiving-screens-are-accepted)). `pages/pick-queue/components/ReceiveReturnDialog.tsx`, `features/orders/useForceReturn.tsx`, `features/orders/AcceptReturnDialog.tsx` (moved, shared by three pages); Force Return on pick-order and the warehouse order detail, which also gained Accept Return. No server change.
+
+---
+
+## every-allowed-move-has-a-button
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended, to: should the two moves the server allows but no screen offers get buttons?
+
+**The verdict.** The seller's order actions offer every move the status rules allow. Added to what was built earlier the same day (*Mark as Problem* on shipped; *Mark as Lost* and *Return Goods* on problem):
+
+| status | new action | confirm |
+| --- | --- | --- |
+| `shipped` | **Mark as Lost** — the courier lost it before delivery, without passing through `problem` | yes |
+| `completed` | **Return Goods** — the buyer sends a delivered order back | yes |
+
+The warehouse's side is [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced). No server change: [a-forced-return-follows-the-status-move](#a-forced-return-follows-the-status-move) and the order transition table already allow both moves.
+
+⛔ Not built — `features/orders/rowActions.ts` offers neither yet.
+
+✅ **Built 2026-11-04** — `features/orders/rowActions.ts`; stories `ShippedOffersLost`, `CompletedOffersReturn`; e2e *Moves: a shipped order is written off as lost directly*, *Moves: a completed order is returned*.
+
+---
+
+## the-return-receiving-screens-are-accepted
+
+> In chat *(owner, 2026-11-04)* — *"Yes, i accept"*, replying to the Storybook screenshots of *Receive a Return* (the pick queue's action, the search finding a shipped order, the force confirm, the accept straight after, not found, the warehouse order detail, the phone dialog) and the seller's shipped / completed menus.
+
+**The verdict.** The screens are the design: [a-return-is-received-by-search-then-forced](#a-return-is-received-by-search-then-forced) and [every-allowed-move-has-a-button](#every-allowed-move-has-a-button) as drawn, including *Accept Return* on the warehouse order detail so a *Force Return* there has its next step.
+
+**What it does NOT settle.** The receive search finds this warehouse's orders and returns addressed to it, never a parcel still shipped from another building under a stale label; the dialogs stretch to full height on desktop (shared with the older Accept Return dialog — a styling fix, not a decision).
+
+---
+
+## the-duplicate-ref-warning-is-accepted
+
+> In chat *(owner, 2026-11-04)* — *"Yes, I accept design"*, replying to the Storybook screenshots of the duplicate-ref warning (a live order found on the order form, the draft rows as the dialog draws them, the phone dialog).
+
+**The verdict.** The warning is the design for [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) and [the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too): before Create (and when a draft is finalized through the form) the shop + marketplace ref is looked up; each live order and draft found is named with a link opening in a new tab (order: status and date; draft: its number); **Go Back** keeps the form as typed, **Create Anyway** goes on; a cancelled order never warns, nor does the draft being finalized; a failed lookup says so and still offers *Create Anyway*; on a phone the two buttons stack full width.
+
+**What it does NOT settle.** How drafts are found by shop + ref (no read does it today); the *Try Again* path, which comes with the form lock ([the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered)) and reuses this dialog ([a-try-again-always-warns](#a-try-again-always-warns)).
+
+🔄 *(2026-11-04)* **Settled in chat** — *"B"*, as recommended: drafts are found by a new read `OrderDraftByExternalRefs`, shaped like `OrderByExternalRefs` (the team's drafts carrying those refs in that shop); the drafts list keeps its own-drafts rule.
+
+⛔ Not built — the live-order half works in the prototype through `OrderByExternalRefs`; the draft half and the order date in the short WIB form are the backend step.
+
+✅ **Built 2026-11-04.** `OrderDraftService.OrderDraftByExternalRefs` (`selling_v1/order_draft_by_external_refs.go`: the team's drafts in the shop on those refs, any author, never `manual`); `OrderRefItem.created_at_unix`; `features/orders/form/duplicateRef.ts` reads both at once. Tests `order_draft_by_external_refs_test.go`; e2e *the warning names the first order, Go Back keeps the form, Create Anyway places the second, a pushed draft is named*.
+
+---
+
+## superseded-the-take-before-the-order-follows-the-recommendations
+
+> ⛔ **WITHDRAWN** *(2026-11-04, before it was built or committed)*: the owner, a minute later — *"Sorry B"*: the thirteen points are taken **one by one** instead. Each answer gets its own entry.
+
+> In chat *(owner, 2026-11-04)* — *"A"* (*follow your recommendations*) to the thirteen points the take-before-the-order decisions leave open, listed back to the owner the same message. Builds [the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key), [every-submit-mints-a-new-key](#every-submit-mints-a-new-key), [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered), [the-compensation-event-is-inventory-tx-cancel](#the-compensation-event-is-inventory-tx-cancel), [every-release-goes-by-the-key](#every-release-goes-by-the-key), [inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled).
+
+| # | point | verdict |
+| --- | --- | --- |
+| 1 | a take refused as *key already used* | **never** publishes the cancel — the key is someone else's live take |
+| 2 | how the compensation travels | the in-process release first, the `InventoryTxCancel` event as the backup; a double release is a no-op |
+| 3 | the team on the release | the event carries `team_id`; the listener reuses the team-checked release |
+| 4 | a count lock against an asynchronous release | a cancel pre-checks the lock and is refused as today ([a-lock-stops-sales-and-cancels-too](../inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)); an `InventoryTxCancel` that meets a lock is redelivered until the count ends |
+| 5 | the key of an existing order | backfilled as `order:<id>`; a new key starting `order:` is refused |
+| 6 | `transaction_id` for existing orders | no backfill if revamp holds no real orders (a dev reset); otherwise a `san` backfill command — ⬜ the owner confirms which |
+| 7 | the event | `InventoryTxCancel`, in the order range (204), topic `inventory-tx-cancel`, published by the order service |
+| 8 | what the browser calls *no answer* | a 30 s client deadline; the server's take stops at 20 s, so a server timeout comes back as an error (already compensated) |
+| 9 | how a used key is shown | the inventory refusal's *key already used* detail, the same message |
+| 10 | where the key is checked | first, before the owner lookup and the credit check; the unique index is the backstop |
+| 11 | telling the person stock comes back after a cancel | no change |
+| 12 | a release stuck in the dead-letter | a `san` command lists and replays dead-lettered `InventoryTxCancel` / `OrderCancelled` |
+| 13 | the build order | slices 1 → 3 → 4 → 5 → 6, then 2 (the form lock and *Try Again*, which needs a design accept) |
+
+⛔ Not built.
+
+---
+
+## a-used-key-is-never-cancelled
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended — #10 question 1: when the take is refused as *key already used*, does the order still publish the cancel?
+
+**The verdict.** A take refused because its key is **already used** never publishes `InventoryTxCancel` and never releases: the key belongs to another order's live take, and only the order that owns a key may release it. It narrows [the-compensation-event-is-inventory-tx-cancel](#the-compensation-event-is-inventory-tx-cancel)'s *"any failure after the take was called"*. Every other failure after the take still compensates.
+
+| | |
+| --- | --- |
+| *key already used* | no cancel, no release — the order fails with the refusal |
+| any other failure after the take was called | compensated, as decided |
+| not chosen | always cancel (B — can release another order's stock); cancel only on timeouts (C) |
+
+⛔ Not built — part of backlog #10, slice 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `selling_v1/order_place.go`: a take refused *key already used* is returned as it came and never compensated; `order_create_compensation_test.go`.
+
+---
+
+## the-release-is-direct-then-the-event
+
+> In chat *(owner, 2026-11-04)* — *"B"*, as recommended — #10 question 2: how does the compensation travel?
+
+**The verdict.** When an order fails after its take, the order service **first releases the take directly** (in-process, while the services share one program) and **then publishes `InventoryTxCancel`** as the backup. A release that finds the take already released is a no-op, so the two never give stock back twice. Stock stays taken only if the program dies between the take and both releases — the case [no-outbox-the-publish-is-trusted] already accepts.
+
+| | |
+| --- | --- |
+| first | the direct release by the key, with a context the browser leaving cannot cancel |
+| then | `InventoryTxCancel{key}` — the backup when the direct call failed |
+| when the services split | the direct call becomes the event alone |
+| not chosen | the event only (A); an outbox table (C) |
+
+⛔ Not built — backlog #10, slice 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `selling_v1/order_place.go` releases by the key in-process, then publishes `InventoryTxCancel`; a second release is a no-op (`order_create_compensation_test.go`, `inventory_v1/inventory_tx_cancel_listener_test.go`).
+
+---
+
+## the-cancel-event-names-the-team
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended — #10 question 3: does `InventoryTxCancel` name the team?
+
+**The verdict.** `InventoryTxCancel` carries the **key and the team** (`team_id`, the order's selling team). Inventory's listener releases through the same team-checked release as `OrderTransactionRelease`, so one team can never release another's take, by call or by event. It amends the inventory note *"InventoryTxCancel stays the key alone"* (`the-key-is-claimed-in-its-own-table`).
+
+| | |
+| --- | --- |
+| the event | `idempotency_key`, `team_id` (+ the warehouse and the actor) |
+| the release | one path, team-checked, for the call and the event |
+| another team's key | refused — the listener acknowledges and logs it |
+| not chosen | key alone (B); dropping the team check (C) |
+
+⛔ Not built — backlog #10, slice 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `InventoryTxCancel{idempotency_key, team_id, warehouse_id, actor_id, reason}` (`proto/warehouse/events/v1/event.proto`); `inventory_v1/inventory_tx_cancel_listener.go` releases through `releaseByKey`, team-checked.
+
+---
+
+## a-cancel-still-meets-the-count-first
+
+> In chat *(owner, 2026-11-04)* — *"B"*, as recommended — #10 question 4: what happens when a release meets a stock count?
+
+**The verdict.** [a-lock-stops-sales-and-cancels-too](../inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too) keeps holding once the cancel's release travels by event: **OrderCancel checks the count lock first** (an in-process read before the status moves) and is refused as today — *"being counted in count #12"* — leaving the order pending. Only `InventoryTxCancel`, the automatic compensation of a failed create that has no person to refuse, **waits**: its listener refuses while the count holds and the broker redelivers until the count ends (dead-lettered after the retry limit, then replayed by hand).
+
+| | |
+| --- | --- |
+| a person's cancel on a counted rack | refused before anything changes, the count named |
+| a cancel that slips past the check (a race) | its `OrderCancelled` release waits and redelivers, like the compensation |
+| a failed create's compensation | waits for the count to end |
+| not chosen | the cancel always passes and the stock comes back later (A); a release that ignores the count (C) |
+
+⛔ Not built — backlog #10, slices 3 and 4.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `OrderCancel` reads the count lock first (`cmd/app_development/stock_picker.go`), and `inventory_tx_cancel_listener.go` errors while a count holds the rack, so the broker redelivers (`inventory_tx_cancel_listener_test.go`, `inventory_tx_cancel_race_test.go`).
+
+---
+
+## revamp-has-no-real-orders-yet
+
+> In chat *(owner, 2026-11-04)* — *"Older order ? We don't go to production yet"* — answering #10 questions 5 and 6 (what key and which stock-take id an order made before the change gets).
+
+**The verdict.** Revamp holds **no real orders**, so nothing is carried forward for them:
+
+| | |
+| --- | --- |
+| the key on an order | **required** from the start — the form always sends one |
+| rows already in a developer's database | the migration fills them with `order:<id>` only so it applies cleanly; no code keeps a path for them |
+| `transaction_id` | no backfill command; the pick page reads by `transaction_id` only, and a pre-change dev order simply shows no racks (reset the dev data if it matters) |
+| the `order:<id>` bridge | removed in the same build, not kept as a fallback |
+| a new key starting `order:` | refused, so it never meets a filled dev row |
+
+⛔ Not built — backlog #10, slices 1, 5 and 6 (slice 6 shrinks to deleting the bridge).
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — `OrderCreateRequest.idempotency_key` required, dev rows filled by selling `00035_order_idempotency_key`, a new `order:` key refused (`order_idempotency_key.go`); `StockPickLocations` takes `transaction_id` only, the `order:<id>` ref reserved ([the-placement-page-reads-racks-by-transaction-id](../inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id)).
+
+---
+
+## inventory-tx-cancel-is-an-order-event
+
+> In chat *(owner, 2026-11-04)* — *"A"*, as recommended — #10 question 7: where does `InventoryTxCancel` live?
+
+**The verdict.** `InventoryTxCancel` is an **order event**: field 204 of the envelope's order range, its own topic `inventory-tx-cancel`, published by the order service; inventory is its only subscriber (filtered on its event type, with a dead-letter like every subscription). `event_id` = `inventory-tx-cancel:<key>`.
+
+| | |
+| --- | --- |
+| range | order (200s), beside OrderPlaced · OrderCancelled · OrderStatusChanged · OrderReturnAccepted |
+| topic | `inventory-tx-cancel` |
+| not chosen | the inventory range (B); a second kind on `order-cancelled` (C) |
+
+⛔ Not built — backlog #10, slice 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — field 204 of the envelope (`event.proto`), topic `inventory-tx-cancel` (`tools/san/pubsub.go`), published by selling, heard by `inventory_v1/inventory_tx_cancel_listener.go`.
+
+---
+
+## no-answer-is-only-a-lost-connection
+
+> In chat *(owner, 2026-11-04)* — *"A"*, **against my recommendation** (*B — the form waits 30 s, the server's take stops at 20 s*) — #10 question 8: when does the order form decide there is *no answer*?
+
+**The verdict.** There is **no time limit**. The form stays locked ([the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered)) for as long as the request is open; only a **lost connection** (the request fails without any reply from the server) counts as *no answer* and offers *Try Again* with a new key. The server's take runs under the request: it has no deadline of its own.
+
+| | |
+| --- | --- |
+| a slow server | the person waits, locked, until it answers |
+| a dropped connection | *no answer* → *Try Again* (a new key, the duplicate warning first) |
+| a person who leaves while waiting | the request may still finish; if it fails after the take, the compensation still runs ([the-release-is-direct-then-the-event](#the-release-is-direct-then-the-event)) |
+| what is given up | a bounded wait — a server that hangs keeps the form locked until the connection itself drops |
+| not chosen | 30 s / 20 s (B); 60 s / 45 s (C) |
+
+⛔ Not built — backlog #10, slices 2 and 3.
+
+✅ **Built 2026-11-05** (verified in code 2026-11-05) — no time limit: `features/orders/createAnswer.ts`, `pages/order-create/components/NoAnswerPanel.tsx` (*Try Again* only on a lost connection), stories `pages/order-create/formLock.stories.tsx`.
+
+---
+
+## the-form-lock-and-try-again-are-accepted
+
+> In chat *(owner, 2026-11-04)* — *"Yes, i accept it"*, replying to the Storybook screenshots of the order form locked while waiting, the *no answer* panel (desktop and phone) and *Try Again*'s duplicate warning naming the first order, with the four calls listed in the same message.
+
+**The verdict.** The screens are the design for [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered), [every-submit-mints-a-new-key](#every-submit-mints-a-new-key), [a-try-again-always-warns](#a-try-again-always-warns) and [no-answer-is-only-a-lost-connection](#no-answer-is-only-a-lost-connection): while Create waits the whole form fades and locks, the button reads *Placing order…*, and leaving the page asks first; an answer from the server (any error it sent) unlocks the form as typed; a lost connection keeps it locked on what was sent and shows *"No answer from the server — the order may or may not have been placed."* with **Try Again** and *Check the Orders List* (a new tab); Try Again always runs the duplicate check first, then sends the same order under a new key.
+
+| the four calls, accepted | |
+| --- | --- |
+| Try Again finds nothing yet | the button reads **Send Again**, and the dialog says the last Create may still be finishing |
+| closing the warning by X or Escape | keeps the lock — only **Go Back** unlocks |
+| the margin checks on a resend | not re-run — the order is unchanged |
+| a gateway's bare 502 / 503 / 504 | counts as *no answer* — the request may still be running behind it |
+
+✅ **Built 2026-11-04** — `features/orders/createAnswer.ts` (+ unit tests), `pages/order-create/components/NoAnswerPanel.tsx`, `DuplicateRefDialog` `retry`; stories `Pages/Order/OrderCreateFormLock`.
+
+---
+
+## a-used-key-reads-as-inventorys-refusal
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q9: when an order arrives with a key already used, what does the person see?
+
+**The verdict.** The refusal of [the-order-refuses-a-used-key](#the-order-refuses-a-used-key) reads as inventory's: **"key already used"**, the same detail whichever check catches it (the lookup before the take, or the unique index at the insert). No order is shown or linked — the only callers who send a used key are a bug and a hostile one, and neither is handed an order. Confirms the point listed in the withdrawn [superseded-the-take-before-the-order-follows-the-recommendations](#superseded-the-take-before-the-order-follows-the-recommendations).
+
+✅ **Built 2026-11-04** — `selling_v1/order_create.go` (the used-key refusal), test `order_create_idempotency_test.go`.
+
+---
+
+## the-key-is-checked-first
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q10: where is the key checked?
+
+**The verdict.** `OrderCreate` looks up its key **first** — before the owner lookup and the credit check — so a used key does no work and takes nothing. The orders' unique index on the key ([the-idempotency-key-is-unique](#the-idempotency-key-is-unique)) is the backstop for two sends racing past the lookup. Inventory checks its own side first too ([a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)).
+
+✅ **Built 2026-11-04** — `selling_v1/order_create.go`; tests `order_create_idempotency_test.go`.
+
+---
+
+## a-cancel-says-nothing-new-about-stock
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q11: after a cancel, should the screen tell the person the stock is coming back?
+
+**The verdict.** No change. A cancel keeps its usual *Order cancelled* message; the stock returns through the release event a moment later ([inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled)), with no note on the screen. A release stuck behind a count waits and goes through when the count ends.
+
+---
+
+## a-stuck-release-is-replayed-by-san
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to #10 Q12: what happens when a stock release gets stuck in the dead-letter?
+
+**The verdict.** A **`san` command lists and replays** the dead-lettered `InventoryTxCancel` and `OrderCancelled` events, so stock left taken by a failed release is given back without a hand fix. A replay is safe to run twice: inventory releases a key once ([a-used-key-is-never-cancelled](#a-used-key-is-never-cancelled), the release claims its event). It also covers a lost `OrderCancelled` publish (backlog 10d) once that is dead-lettered or found by the key. ⚠ Not built.
+
+✅ Built 2026-11-05 — `san pubsub releases list | replay [--dry-run]` (`tools/san/pubsub_releases.go`): reads `inventory-tx-cancel.dlq` and `order-cancelled.dlq`, replays each stuck release through inventory's own push handler in-process, acks only on success, leaves other consumers' dead-letters alone; tests `pubsub_releases_test.go` (incl. a twice-replayed release through the real inventory handler); run against the dev emulator — [san.md](../../tools/san.md#pubsub-releases).
+
+---
+
+## the-total-sort-is-ours-and-the-platform-total-sorts-apart
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: what should sorting orders by *Total* do? (`OrderList`'s `ORDER_ROW_SORT_TOTAL` names a `total` column that no longer exists.) An earlier "A" in the same chat, to a question that would have pointed *Total* at what the buyer paid, was re-asked before it was recorded, because it broke [the-total-is-ours-the-platform-total-is-theirs](#the-total-is-ours-the-platform-total-is-theirs).
+
+**The verdict.** Both figures sort, each under its own name:
+
+| sort | column | what it is |
+| --- | --- | --- |
+| **Total** (`ORDER_ROW_SORT_TOTAL`) | `total_cost` | what the order cost the seller — goods cost + warehouse fee |
+| **Platform total** (new) | `platform_total` | what the storefront took from the buyer |
+
+The two are never mixed ([the-total-is-ours-the-platform-total-is-theirs](#the-total-is-ours-the-platform-total-is-theirs)). Ties fall back to the order id. ⚠ Not built.
+
+✅ Built 2026-11-05 — `ORDER_ROW_SORT_TOTAL` → `total_cost`, new `ORDER_ROW_SORT_PLATFORM_TOTAL` → `platform_total`, each with `id` as the tie-break in the same direction (`selling_v1/list_slices.go` `orderOrderClause`); tests `order_list_sort_test.go`; perf [OrderList.md](../../../audits/services/selling_service/performances/OrderList.md) finding 3 (root 37 ms, unchanged). No screen offers sorting orders today, so nothing on screen changed.
+
+---
+
+## every-ledger-moves-to-double-rounded-when-frozen
+
+> In chat *(owner, 2026-11-05)* — *"A"*, as recommended, to: how do the ledgers still on whole-rupiah integers move to [rupiah-is-floating-point](#rupiah-is-floating-point)?
+
+**The verdict.** Every rupiah still stored as an integer moves to **`double precision`** in the database and **`double`** on the wire — the same shape as what already follows the decision (order cost figures, expense amounts, financial accounts, batch prices). Two of the decision's mitigations become the rule; the third does not:
+
+| | |
+| --- | --- |
+| frozen figures | rounded to **whole rupiah** at the moment they are frozen (finalize, posting), so drift cannot accumulate past it (`san_money`) |
+| comparing | with a tolerance, never `==` (`san_money.Equal`) |
+| `numeric` storage | **not** used |
+
+Still on integers on 2026-11-05: the settlement ledger and its reports, the liability ledger and its payments, `orders.platform_total`, the expense ledger, the stock reads (`int64`). ⚠ Not built — after the settlement pass running the same day, which edits settlement's reads.
+
+✅ Built 2026-11-06 — part 1: settlement + platform_total — `double precision` / `double` for the settlement ledger, its accounts and reports (settlement 00010, 39 columns), `uploaded_file_lines.change` (settlement_importer 00004) and `orders`/`order_drafts.platform_total` + `order_daily_reports.mp_total` (selling 00041); `SettlementPost` rounds `change` to whole rupiah as it posts and `placeOrder` freezes `platform_total` with `san_money.Whole`; compares via `san_money.Equal`/`IsZero`; frontend reads them as `number` (`lib/money.ts` formatters take `bigint | number`). Tests in `post_entry_test.go`, `metric_data_test.go`, `day_refold_test.go`, `shopee_settlement_import_test.go`, `uploaded_file_line_list_test.go`, `order_platform_total_test.go`. Part 2 (liability, expense, selling goods_cost/unit_cost/unit_price/courier_charge, inventory stock reads, supplier valuations, the `numeric` columns) not built — [development_state/settlement](../../development_state/settlement/context.md), [order](../../development_state/order/context.md).
+
+✅ Built 2026-11-06 — part 2: liability, expense, the order's costs, inventory's reads, supplier — `double precision` / `double` for the liability ledger, balances, payments, requests, credit limits and their history (liability 00014, 10 columns), `expense_records.amount` (expense 00005), `orders.goods_cost` / `order_items.unit_cost` / `order_draft_items.unit_price` (selling 00042) plus `courier_charge` on the wire, the three supplier valuations (supplier 00003); inventory's stock reads carry the stored double unrounded (no `ROUND::bigint`). Freeze points, each `san_money.Whole`: liability `PostEntry` (refuses NaN/Inf, then `> 0`), `LiabilityPaymentRecord` (refuses under Rp 1), `LiabilityTermsSet`, `ExpenseCreate` / `ExpenseAdjust` (refuse a figure that rounds to 0), `placeOrder` (each `unit_cost`, `goods_cost` once from the unrounded line totals), `OrderReturnAccept` (courier charge), the supplier and lost folds. The order form previews `goods_cost` and each owner's charge the same way — summed unrounded, rounded once. Tests `TestPostEntry_RoundsAFractionOnceToWholeRupiah`, `TestPaymentRecord_FreezesAFractionalClaimToWholeRupiah`, `TestExpenseCreate_AFractionalAmountFreezesToWholeRupiah`, `TestOrderCreate_FractionalCostsFreezeWholeOnceAndTravelAsDoubles`, `TestStockAdjust_AFractionalLossReachesTheLedgersUnroundedAndPostsWhole`, `features/orders/form/money.test.ts`. No integer rupiah column, proto field or Go/TS contract type is left — [development_state/order](../../development_state/order/context.md), [balance](../../development_state/balance/context.md), [financial_account](../../development_state/financial_account/context.md), [inventory](../../development_state/inventory/ledgers.md), [supplier](../../development_state/supplier/context.md).
+
+---
+
+## numeric-money-moves-to-double-too
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: the money-type inventory found the financial-account tables (15 columns: `financial_accounts.balance`, `financial_account_logs.change` / `balance_after`, `financial_account_daily_reports` ×12) and `inventory_lost_daily_reports.lost_amount` stored as Postgres `numeric` — move them too?
+
+**The verdict.** Yes. They move to **`double precision`** in part 2 of the money-type change, so every rupiah column follows one rule ([every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen) — no `numeric`). The wire is already `double`; only the column type changes, rounded to whole rupiah where the figure is frozen. ⚠ Not built.
+
+✅ Built 2026-11-06 — part 2: the 15 financial-account columns (financial_account 00003) and `inventory_lost_daily_reports.lost_amount` (inventory 00038) are `double precision`; no `numeric` column is left in any service. The ledger's `post` freezes with `san_money.Whole` (was `math.Round`) and the lost fold writes `Whole(value)`; tests `TestExpensePayment_PostsAnExactWholeFigureAndTheBalanceIsTheSumOfItsLogs`, `TestTeamPayment_PostsAnExactWholeFigureOnBothLegs` — [development_state/financial_account](../../development_state/financial_account/context.md), [inventory](../../development_state/inventory/ledgers.md).
+
+---
+
+## a-fraction-of-a-rupiah-shows-three-decimals
+
+> In chat *(owner, 2026-11-06)* — *"make precision 3 decimal"*, then *"C"* to: store 3 decimals (A), compare at 0.001 (B), or **show** 3 decimals (C)?
+
+**The verdict.** Storage and rounding stay as [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen) decided — frozen figures are whole rupiah. On screen, a rupiah figure that **has a fraction** (an unfrozen figure: a unit cost with markup, a fee before posting, a batch price) shows **up to 3 decimals**, in the Indonesian form — `Rp 12.345,505`, trailing zeros dropped (`Rp 12.345,5`). A whole figure shows no decimals (`Rp 12.345`), as today. Rounding to 3 places is for display only and never feeds a sum. ⚠ Not built.
+
+✅ Built 2026-11-06 — `frontend/src/lib/money.ts` (`displayParts`): `formatRupiah` writes a number with a fraction to up to 3 places after a comma, rounded half away from zero (binary dust cleared first, so 1,0005 reads `Rp 1,001`), trailing zeros dropped; a whole figure or a bigint shows none; a figure that rounds to 0 never reads `−Rp 0`; from Rp 1.000.000.000.000 up the figure is shown whole. `formatSignedRupiah`, `formatRupiahNumber`, `formatRupiahBare` and `formatRupiahRange` (two ends that read the same are one price) follow it. The COMPACT formatter (`formatRupiahCompact`) does not: from Rp 1rb up it keeps its own one scaled decimal below 100 of the unit and none above (`Rp 12,3rb`, `Rp 150jt`), so a thousandth of a rupiah never shows there; below Rp 1rb it is `formatRupiah`, fraction included (`Rp 512,75`). Tests in `lib/money.test.ts` (*a fraction of a rupiah shows up to three decimals*), stories `AnUnfrozenUnitCostShowsThreeDecimals` (order detail) and the restock accept's landed price (`34.215,686`).
+
+---
+
+## a-draft-keeps-its-platform-total-as-typed
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: a draft's `platform_total` with a fraction — keep it as typed, or round on every save?
+
+**The verdict.** A draft is not frozen, so it **keeps the figure as typed** (shown with up to 3 decimals — [a-fraction-of-a-rupiah-shows-three-decimals](#a-fraction-of-a-rupiah-shows-three-decimals)). It is rounded to whole rupiah **once, when the order is placed** — the freeze point of [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen). A figure that rounds to nothing is refused at placement.
+
+✅ **Built 2026-11-06** — `selling_v1/order_place.go` (`san_money.Whole` at placement); tests `TestOrderCreateFromDraft_APlatformTotalIsADoubleFrozenWholeEndToEnd`, `TestOrderCreate_RefusesAPlatformTotalThatRoundsToNothing`.
+
+---
+
+## the-backend-never-rounds-money
+
+> In chat *(owner, 2026-11-06)* — *"Round only on frontend, in backend stay as is"*, asked why an order's goods cost is rounded at placement; then *"A"* to: exact everywhere (A), exact on the order but rounded in the ledgers (B), or the backend as built (C)? **A** was recommended for a rule of "the backend never rounds".
+
+**The verdict.** The backend **never rounds money**. Orders, every ledger (settlement, liability / Team Balance, expense, financial accounts), every report and every event store and carry the **exact** figure — an order's goods cost `12.666,99`, its warehouse fee `316,675`, its total cost `12.983,675`, and Team Balance posts `316,675`. Only the **screen** rounds, by [a-fraction-of-a-rupiah-shows-three-decimals](#a-fraction-of-a-rupiah-shows-three-decimals) (up to 3 decimals, trailing zeros dropped). This **supersedes** the *"rounded to whole rupiah at the moment they are frozen"* row of [every-ledger-moves-to-double-rounded-when-frozen](#every-ledger-moves-to-double-rounded-when-frozen); its `double precision` / `double` shape, and *compare with a tolerance, never `==`*, stand.
+
+| | |
+| --- | --- |
+| freezing | a frozen figure is frozen **exact** — it no longer changes, and it is not rounded |
+| a figure that "rounds to nothing" | no longer a refusal by rounding; an amount must still be finite and above 0 where it was |
+| the statement importer | still **holds** a line with a real fraction ([a-fractional-statement-line-is-still-held](../settlement/context_decision.md#a-fractional-statement-line-is-still-held)) — that is a check on the file, not a rounding |
+| the order form | previews the exact figures the server will store, shown with up to 3 decimals |
+| sums | sums of exact doubles; reports equal their logs within the tolerance |
+
+⚠ Not built — today placement, posting and the ledgers round with `san_money.Whole`.
+
+✅ Built 2026-11-06 — `san_money.Whole` is deleted and nothing in the backend rounds money: placement freezes `platform_total`, each `unit_cost`, `goods_cost` and the courier charge exact; `PostEntry` (Team Balance), `LiabilityPaymentRecord`, `LiabilityTermsSet`, `SettlementPost`, `ExpenseCreate`/`ExpenseAdjust`, the financial-account `post`, the lost and supplier folds store the figure as handed in. "Rounds to nothing" refusals are `san_money.Positive` (finite, above 0, float dust counts as 0); zero/square tests use the tolerance (`IsZero`, SQL `abs(x) < 0.00005`), and `san_money.Equal` compares the difference. The statement importer still holds a real fraction (`IsWhole`) and posts a whole-within-tolerance line as the reader's figure. Words the server writes use `san_money.Text` (3 decimals). The order form previews the exact figures (`number`, no whole-rupiah bigint maths; `CurrencyInput fraction` for the platform total); `wholeRupiah()` is gone from the frontend. Found on the way: liability never mounted its order-placed/cancelled push routes, so no order fee reached Team Balance — mounted. Tests: `TestOrderCreate_FractionalCostsAreFrozenExactAndTravelAsDoubles` (12.666,99 / 316,67475), `TestChargeOrder_TheFrozenFeeIsPostedExact`, `TestRegister_TheOrderEventsReachTheLedger`, `TestPostEntry_StoresAFractionExact`, `TestSettlementPost_StoresAFractionExact`, `TestExpenseCreate_AFractionalAmountIsStoredExact`, `TestExpensePayment_PostsTheExactFigureAndTheBalanceIsTheSumOfItsLogs`, `TestShopeeSettlementImport_AnAmountWithFloatDustPostsAsRead`, e2e `the_order_keeps_exact_figures.spec.ts` (preview = stored order, Team Balance 316,67475) — [development_state/order](../../development_state/order/context.md), [balance](../../development_state/balance/context.md).
+
+> ✏️ *Correction (assistant, 2026-11-06): the example figures in the verdict were the assistant's slip — written from a goods cost rounded to 12.667. Exactly: goods cost 12.666,99 → warehouse fee 2,5% = **316,67475** (shown Rp 316,675) → total cost **12.983,66475** (shown Rp 12.983,665). The rule is unchanged.*
+
+---
+
+## large-sum-drift-is-left-for-now
+
+> In chat *(owner, 2026-11-06)* — *"A"*, as recommended, to: with [the-backend-never-rounds-money](#the-backend-never-rounds-money), a sum of ~100.000 exact entries (e.g. 316,675 each) drifts ~0,00005 — past the 4-place tolerance of `san_money.Equal` — so a report total could compare unequal to its log. Loosen the tolerance for large sums?
+
+**The verdict.** Not now. No ledger is near that size; comparisons keep the 4-place tolerance. Revisit when a ledger, report or reconcile sums entries in that range — the fix then is a tolerance scaled to the count of summed entries, not rounding.
+
+---
+
+## the-courier-required-look-is-accepted
+
+> In chat *(owner, 2026-11-06)* — *"A"*, replying to the Storybook screenshots `order_model/a_courier_required_{desktop,phone}.png` (`courierRequired.stories.tsx`).
+
+**The verdict.** The design for [no-order-without-a-courier](#no-order-without-a-courier) on the order form: the courier field carries the **required `*`** and a hint, and **Create is held until a courier is picked** — the server's refusal is shown before the person presses Create, not after. ⚠ Not built live (the story's prototype only).
+
+✅ Built 2026-11-06 — live: `OrderCreatePage` has no prototype prop any more — the courier field always carries the `*` and `orderForm.courierRequired` while none is picked (`ShippingReceiptCard courierRequired`), and Create is held until `shipment_channel_id > 0`. Stories `pages/order-create/courierRequired.stories.tsx` (4, the live-unmarked one removed); every form story and e2e that places an order picks JNE.
+
+---
+
+## the-cs-edits-the-whole-address-before-create
+
+> In chat *(owner, 2026-11-06)* — *"Make before finalize order customer service can edit all address again"*, to: a draft stores its address as names only ([an-address-is-plain-names](#an-address-is-plain-names), [one-address-per-order-and-per-draft](#one-address-per-order-and-per-draft)) while the form's region picker works by code — how does the form show it?
+
+**The verdict.** Opening a draft in the order form, **every part of the address stays editable until Create**: the customer's name and phone, the street line and postal code, and all four region levels (Provinsi → Kabupaten → Kecamatan → Desa). The draft's address is shown as text from the marketplace so the CS can check it while editing; nothing in the address is locked by the draft. What is created is what the CS leaves in the form, stored as names.
+
+**Pre-filled when certain** — *"A"*, as recommended, to the follow-up: when the draft's four region names match **exactly one** place in the region list, the dropdowns open **pre-filled** with it; the CS can still change any level. With no exact match (spelling, *Kota* / *Kab.* prefixes the matcher cannot settle), they open empty and the CS picks, reading the text. ⚠ Not built.
+
+✅ Built 2026-11-06 — a draft's address is its `order_draft_addresses` row (names only, selling `00046`); `OrderDraftDetail` asks region_service's new `RegionMatch` in-process (`selling_v1.RegionMatcher` → `cmd/app_development/order_draft_regions.go`) and returns `OrderDraft.region_match` (24) when the four names match exactly one place — exact after normalising case, spacing and the Kabupaten / Kab. / Kab / Kota (Administrasi) prefix (a written prefix must agree; several or no matches = none). The form (`pages/order-create/draftAddress.ts`) opens the dropdowns pre-filled from it, else empty; the draft's postcode and street line are seeded either way; every part stays editable; the draft's address is shown as text above the picker (`DraftAddressText`, the hint sand). Tests: `region_match_test.go` (exact, prefix variants, ambiguous, no match), `order_draft_detail_test.go` (pre-fill, none, blank level, failed lookup), `TestDraftRegionMatcher_PrefillsADraftsAddressFromTheRegionList` (real wiring), `draftAddress.test.ts`; stories *ADraftAddressThatMatchesOnePlaceOpensPrefilled*, *APrefilledAddressStaysEditable*, *ADraftAddressWithNoMatchOpensEmpty*; e2e `order_drafts.spec.ts` (a Kab. match pre-fills, a Kota mismatch stays empty).

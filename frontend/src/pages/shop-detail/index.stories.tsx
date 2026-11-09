@@ -8,10 +8,12 @@ import { SHOP_DETAIL_META, loaded } from "./stories/kit";
 // Storybook draws ShopDetail as a folder with these two stories leading it. Its rules are grouped by the part of the
 // screen they are about, one file each in ./stories (stories-are-grouped-by-the-part-of-the-screen):
 //
-//   States   a shop with nobody granted, and another team's shop
-//   Header   the title's row — Back, Edit, Delete
+//   States   a shop with nobody granted, another team's shop, and a monitored team's shop, read-only
+//   Header   the title's row — Back, Edit, Close Shop
 //   Details  the Shop Details panel — its fields, the two panels, the withdrawal account
-//   Access   who may work on it — the primary CS, Make Primary, the picker, removing a grant
+//   Access   who may work on it — the primary CS, Make Primary, the picker (never a suspended member), removing a grant
+//
+// A closed shop's page — its banner, Reopen, no new account link — is ../shops/CloseShop.stories.tsx.
 
 const meta = {
   title: "Pages/Shops/ShopDetail",
@@ -23,7 +25,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-/** A phone — the header stays one row, Edit and Delete their icons (a-phone-header-action-is-an-icon). */
+/** A phone — the header stays one row, Edit and Close Shop their icons (a-phone-header-action-is-an-icon). */
 export const Mobile: Story = {
   name: "Mobile",
   globals: { viewport: { value: "mobile2" } },

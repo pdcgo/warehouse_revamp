@@ -2,17 +2,25 @@ package selling_v1_test
 
 import (
 	"context"
+	"crypto/rand"
 	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
+
+// newOrderKey mints the key a submit carries (every-submit-mints-a-new-key) — a fresh random one per call, so two
+// requests built by one helper never share a key and the second is never refused as a used one.
+func newOrderKey() string {
+	return "test-" + rand.Text()
+}
 
 // fakePicker stands in for inventory_service in these tests (#149/#70).
 //
@@ -26,28 +34,46 @@ import (
 // `draw` is the answer verbatim, for a draw no single unit price describes — two batches at two costs. A product absent
 // from all three is one the take named no draw for (an-order-is-costed-at-what-leaves-the-shelf).
 type fakePicker struct {
-	picked    []string                // refs picked, in order
-	asked     [][]selling_v1.PickLine // the lines each pick was asked for, in order
-	returned  []string                // refs returned, in order
-	pickErr   error                   // if set, Pick refuses
-	costs     map[uint64]int64        // each product's unit cost as the take draws it
-	totals    map[uint64]float64      // a line's total, when it is not its cost
-	draw      selling_v1.PickDraw     // a product's draw, verbatim
-	returnErr error                   // if set, Return refuses
+	calls     int                       // every Pick call, a refused one included
+	picked    []string                  // keys picked, in order
+	asked     [][]selling_v1.PickLine   // the lines each pick was asked for, in order
+	returned  []string                  // keys returned, in order
+	live      []bool                    // per Return: whether its context was still live (never cancelled)
+	pickErr   error                     // if set, Pick refuses
+	onPick    func(ctx context.Context) // if set, runs at the start of every Pick — a test cancels the request here
+	txID      uint64                    // the transaction a successful take answers; 0 = 7001
+	costs     map[uint64]float64        // each product's unit cost as the take draws it
+	totals    map[uint64]float64        // a line's total, when it is not its cost
+	draw      selling_v1.PickDraw       // a product's draw, verbatim
+	returnErr error                     // if set, Return refuses
+	lock      *selling_v1.StockLock     // if set, StockLockCheck answers that a count holds the take
+	lockErr   error                     // if set, StockLockCheck fails
+	checked   []string                  // keys StockLockCheck was asked about, in order
 }
 
 func (f *fakePicker) Pick(
-	_ context.Context,
+	ctx context.Context,
 	_, _ uint64,
 	lines []selling_v1.PickLine,
-	ref string,
-) (selling_v1.PickDraw, error) {
-	if f.pickErr != nil {
-		return nil, f.pickErr
+	key string,
+) (selling_v1.Take, error) {
+	f.calls++
+
+	if f.onPick != nil {
+		f.onPick(ctx)
 	}
 
-	f.picked = append(f.picked, ref)
+	if f.pickErr != nil {
+		return selling_v1.Take{}, f.pickErr
+	}
+
+	f.picked = append(f.picked, key)
 	f.asked = append(f.asked, lines)
+
+	txID := f.txID
+	if txID == 0 {
+		txID = 7001
+	}
 
 	draw := selling_v1.PickDraw{}
 
@@ -81,17 +107,29 @@ func (f *fakePicker) Pick(
 		}
 	}
 
-	return draw, nil
+	return selling_v1.Take{TransactionID: txID, Draw: draw}, nil
 }
 
-func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {
+func (f *fakePicker) Return(ctx context.Context, _, _ uint64, key string) error {
+	f.live = append(f.live, ctx.Err() == nil)
+
 	if f.returnErr != nil {
 		return f.returnErr
 	}
 
-	f.returned = append(f.returned, ref)
+	f.returned = append(f.returned, key)
 
 	return nil
+}
+
+func (f *fakePicker) StockLockCheck(_ context.Context, _, _ uint64, key string) (*selling_v1.StockLock, error) {
+	f.checked = append(f.checked, key)
+
+	if f.lockErr != nil {
+		return nil, f.lockErr
+	}
+
+	return f.lock, nil
 }
 
 // fakeCatalog stands in for product_service when a draft is promoted (#194).
@@ -127,7 +165,7 @@ func (c *fakeCatalog) Snapshots(
 		}
 
 		sku := "SKU" + strconv.FormatUint(id, 10)
-		out[id] = selling_v1.ProductSnapshot{SKU: sku, Name: "Catalogue " + sku, TeamID: c.owners[id]}
+		out[id] = selling_v1.ProductSnapshot{ProductCode: sku, Name: "Catalogue " + sku, TeamID: c.owners[id]}
 	}
 
 	return out, nil
@@ -137,21 +175,36 @@ func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+}
+
+// everyoneMayWrite is a team where every person asked about may write on every shop and may be granted one: the write
+// gate reads them as the team's owner (a-write-needs-a-grant-or-a-manager), so an order test about something else
+// places its order without seeding a grant — a call with no identity included — and a grant reads them as an active
+// member (a-grant-goes-only-to-a-team-member). The tests about WHO may write use fakeRoles (shop_write_gate_test.go,
+// shop_access_check_test.go); about who may be granted, fakeRoles / fakeMembers.
+type everyoneMayWrite struct{}
+
+func (everyoneMayWrite) Roles(context.Context, uint64, uint64) (role_basev1.Role, role_basev1.Role, error) {
+	return role_basev1.Role_ROLE_SELLING_OWNER, role_basev1.Role_ROLE_UNSPECIFIED, nil
+}
+
+func (everyoneMayWrite) Member(context.Context, uint64, uint64) (selling_v1.TeamMember, error) {
+	return selling_v1.TeamMember{Role: role_basev1.Role_ROLE_SELLING_CS}, nil
 }
 
 // newServiceWithEvents is for the tests that care WHICH EVENT was published (#153).
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
@@ -162,7 +215,7 @@ func newServiceWithCatalog(
 ) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // insertShop seeds an active shop directly and returns its id.
@@ -203,12 +256,14 @@ func placeOrderAs(
 	t.Helper()
 
 	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 1},
 		},
 	}))
 	if err != nil {
@@ -264,14 +319,14 @@ func (f *fakeFees) Price(_ context.Context, _, _ uint64, goodsCost float64) (flo
 func newServiceWithFees(t *testing.T, db *gorm.DB, picker *fakePicker, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil, nil, fees)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil)
 }
 
 // newServiceWithCredit is for the tests that care whether an order is REFUSED (#189).
 func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChecker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, nil, nil, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, everyoneMayWrite{}, nil, nil, nil, nil)
 }
 
 // testPlatformDate is when the buyer of every test order ordered on the storefront — REQUIRED at placement
@@ -280,4 +335,8 @@ const testPlatformDate int64 = 1_790_000_000
 
 // testPlatformTotal is what the buyer of every test order paid on the storefront — REQUIRED at placement too
 // (platform-total-is-required-at-finalize). A test that asserts on the figure sets its own.
-const testPlatformTotal int64 = 12_000
+const testPlatformTotal float64 = 12_000
+
+// testShipmentChannel is the courier every test order names — an opaque shipment channel id, which create requires
+// (no-order-without-a-courier) and never looks up (shipment-channel-is-an-id-into-shipment-service).
+const testShipmentChannel uint64 = 4

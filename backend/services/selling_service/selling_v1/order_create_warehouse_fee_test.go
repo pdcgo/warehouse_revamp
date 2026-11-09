@@ -10,26 +10,30 @@ import (
 	"gorm.io/gorm"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
+	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
 // feeOrderReq is two lines of goods whose cost the picker knows: 2 × 4.000 + 1 × 6.000 = a goods cost of 14.000.
 func feeOrderReq(shopID uint64) *sellingv1.OrderCreateRequest {
 	return &sellingv1.OrderCreateRequest{
+		ShipmentChannelId:     testShipmentChannel,
+		IdempotencyKey:        newOrderKey(),
 		PlatformCreatedAtUnix: testPlatformDate,
 		PlatformTotal:         testPlatformTotal,
 		TeamId:                2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi",
 		Items: []*sellingv1.OrderItem{
-			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 2},
-			{ProductId: 2, Sku: "SKU2", Name: "Gadget", Quantity: 1},
+			{ProductId: 1, ProductCode: "SKU1", Name: "Widget", Quantity: 2},
+			{ProductId: 2, ProductCode: "SKU2", Name: "Gadget", Quantity: 1},
 		},
 	}
 }
 
 func knownCosts() *fakePicker {
-	return &fakePicker{costs: map[uint64]int64{1: 4000, 2: 6000}}
+	return &fakePicker{costs: map[uint64]float64{1: 4000, 2: 6000}}
 }
 
 func countOrders(t *testing.T, db *gorm.DB) int64 {
@@ -66,7 +70,7 @@ func TestOrderCreate_FreezesTheWarehouseFeeOnTheGoodsCost(t *testing.T) {
 	}
 
 	if order.GetGoodsCost() != 14000 || !(order.WarehouseFee != nil) || order.GetWarehouseFee() != 350 {
-		t.Fatalf("order goods_cost %d, fee %v (set %v) — want 14000 and 350, frozen", order.GetGoodsCost(),
+		t.Fatalf("order goods_cost %v, fee %v (set %v) — want 14000 and 350, frozen", order.GetGoodsCost(),
 			order.GetWarehouseFee(), (order.WarehouseFee != nil))
 	}
 
@@ -168,4 +172,65 @@ func TestOrderCreate_KeepsTheTrackingNumberAndTheSearchFindsIt(t *testing.T) {
 	}
 
 	wantOrders(t, listFiltered(t, svc, 2, &sellingv1.OrderListFilter{Search: "12345678"}), created.Msg.GetOrder().GetId())
+}
+
+// AN ORDER WITH FRACTIONAL COSTS, END TO END (the-backend-never-rounds-money): the take draws doubles (3.333,33 a unit
+// × 2; 6.000,33), and placement freezes each figure EXACT — goods_cost is the sum of the drawn totals, Rp 12.666,99, each
+// line's unit_cost is the drawn unit cost — and the warehouse fee is the pricer's own answer on that exact basis (2,5% of
+// 12.666,99 = 316,67475, which the screen shows as Rp 316,675), total_cost = goods + fee = 12.983,66475. The row, the
+// response and the OrderPlaced event carry the same exact doubles, so liability and settlement post what the order froze.
+func TestOrderCreate_FractionalCostsAreFrozenExactAndTravelAsDoubles(t *testing.T) {
+	db := san_testdb.DB(t)
+	events := &recorder{}
+	picker := &fakePicker{costs: map[uint64]float64{1: 3_333.33, 2: 6_000.33}}
+	fees := &fakeFees{percent: 2.5}
+	svc := selling_v1.NewService(db, picker, events.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil)
+	shop := insertShop(t, db, 2, "Melati Shopee", "MEL-S", "shopee")
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(feeOrderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	goods := 3_333.33*2 + 6_000.33
+	order := created.Msg.GetOrder()
+	if order.GetGoodsCost() != goods || !san_money.Equal(goods, 12_666.99) {
+		t.Fatalf("goods_cost = %v, want the exact 12.666,99 (Σ 6.666,66 + 6.000,33)", order.GetGoodsCost())
+	}
+
+	if len(fees.asked) != 1 || fees.asked[0] != goods {
+		t.Fatalf("the fee was priced on %v, want the exact goods_cost 12.666,99", fees.asked)
+	}
+
+	if !san_money.Equal(order.GetWarehouseFee(), 316.67475) || !san_money.Equal(order.GetTotalCost(), 12_983.66475) {
+		t.Fatalf("fee/total = %v/%v, want the exact 316,67475 / 12.983,66475", order.GetWarehouseFee(), order.GetTotalCost())
+	}
+
+	stored := storedOrder(t, db, order.GetId())
+	if stored.GoodsCost != goods || stored.WarehouseFee == nil || *stored.WarehouseFee != order.GetWarehouseFee() {
+		t.Fatalf("stored goods_cost/fee = %v/%v, want the exact %v / %v", stored.GoodsCost, stored.WarehouseFee, goods,
+			order.GetWarehouseFee())
+	}
+
+	unitCosts := map[uint64]float64{}
+	for _, item := range stored.Items {
+		unitCosts[item.ProductID] = item.UnitCost
+	}
+
+	if unitCosts[1] != 3_333.33 || unitCosts[2] != 6_000.33 {
+		t.Fatalf("stored unit costs = %v, want the exact 3.333,33 and 6.000,33", unitCosts)
+	}
+
+	placed := events.placed(t)
+	if placed.GetGoodsCost() != goods || placed.GetWarehouseFee() != order.GetWarehouseFee() {
+		t.Fatalf("OrderPlaced goods_cost/fee = %v/%v, want the stored %v / %v", placed.GetGoodsCost(), placed.GetWarehouseFee(),
+			goods, order.GetWarehouseFee())
+	}
+
+	for _, line := range placed.GetLines() {
+		if line.GetUnitCost() != unitCosts[line.GetProductId()] {
+			t.Fatalf("OrderPlaced line %d unit_cost = %v, want the stored %v", line.GetProductId(), line.GetUnitCost(),
+				unitCosts[line.GetProductId()])
+		}
+	}
 }

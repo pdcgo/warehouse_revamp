@@ -10,7 +10,7 @@ type ShopSettlementReport struct {
 	ID           uint64 `gorm:"primaryKey"`
 	ShopID       uint64
 	TeamID       uint64
-	CloseBalance int64
+	CloseBalance float64
 	LastUpdated  time.Time
 }
 

@@ -10,6 +10,9 @@ type WarehouseTransferLog struct {
 	FromStatus  TransferStatus
 	ToStatus    TransferStatus
 	ActorUserID uint64
+	// The actor was Root or the Administrator, acting in a team they hold no role in (an-override-is-stamped-in-every-service,
+	// 00034) — on the trail row, since the transfer carries one actor per act.
+	IsOverride  bool
 	Description string
 	CreatedAt   time.Time
 }

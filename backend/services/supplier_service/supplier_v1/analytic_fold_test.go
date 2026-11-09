@@ -200,3 +200,22 @@ func TestFold_OneProductOnTwoLinesAddsBoth(t *testing.T) {
 		t.Fatalf("row = %+v, want %+v — 3 at Rp 1.000 and 2 at Rp 1.500, one broken at Rp 1.000", got, want)
 	}
 }
+
+// A DEAD REPLAY'S LOCK EXPIRES (a-dead-replays-lock-expires-after-a-minute): past its lease it counts as released, and
+// the event is folded rather than refused until somebody resets the row by hand.
+func TestFold_FoldsPastADeadReplaysLock(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	leaveDeadLock(t, db)
+
+	err := svc.FoldHandler()(context.Background(),
+		accept(1, sellingA, 31, "2026-10-03", line{product: 100, ordered: 5, total: 5000, accepted: 5}))
+	if err != nil {
+		t.Fatalf("fold past an expired lock: %v", err)
+	}
+
+	if n := countRows(t, db, &supplier_service_models.SupplierEventLog{}); n != 1 {
+		t.Fatalf("%d dedup rows, want the event claimed and folded", n)
+	}
+}

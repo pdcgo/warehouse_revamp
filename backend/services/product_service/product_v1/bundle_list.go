@@ -39,7 +39,7 @@ func (s *Service) BundleList(
 				"SELECT bp.bundle_id FROM bundles own "+
 				"JOIN bundle_products bp ON bp.bundle_id = own.id "+
 				"JOIN products p ON p.id = bp.product_id "+
-				"WHERE own.team_id = ? AND (p.name ILIKE ? OR p.sku ILIKE ?)))",
+				"WHERE own.team_id = ? AND (p.name ILIKE ? OR p.product_code ILIKE ?)))",
 			pattern, req.Msg.GetTeamId(), pattern, pattern,
 		)
 	}

@@ -19,11 +19,11 @@ type OrderSettlement struct {
 	// screen ever negates by hand. A cancel zeroes it rather than leaving the historical figure.
 	//
 	// ⚠ 0 MEANS NOT RECORDED, never "sold for nothing".
-	InitialTotal int64
+	InitialTotal float64
 
 	// The current position. Negative means part of what the buyer paid never reached us, and it is
 	// NOT expected to reach zero — the residual is the platform's unitemised take.
-	LastBalance int64
+	LastBalance float64
 
 	TeamID uint64
 	ShopID uint64

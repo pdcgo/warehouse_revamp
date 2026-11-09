@@ -19,8 +19,18 @@ The open set is [context_clarify.md](./context_clarify.md).
 | ~~[a-lazada-receipt-is-its-order-number](#a-lazada-receipt-is-its-order-number)~~ | ⛔ superseded by [a-lazada-receipt-is-its-tracking-number](#a-lazada-receipt-is-its-tracking-number): the owner withdrew the value it rested on |
 | [a-shopee-resi-is-confirmed-by-its-barcode](#a-shopee-resi-is-confirmed-by-its-barcode) | A Shopee label no courier layout knows is read from its Resi box when a barcode says the same |
 | [a-lazada-receipt-is-its-tracking-number](#a-lazada-receipt-is-its-tracking-number) | A Lazada label's `Receipt` is the courier's tracking number, its `OrderID` the 16-digit order number |
-| [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module) | The package is the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`, with its own `go.mod` |
+| [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module) | The package is the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`, with its own `go.mod`. 🔄 *Folder moved to `backend/pkgs/` by [the-reader-lives-in-backend-pkgs](#the-reader-lives-in-backend-pkgs)* |
 | [the-label-samples-may-be-committed](#the-label-samples-may-be-committed) | The label PDFs in `examples/receipt_file_samples/` are not sensitive: they stay committed, the repo stays public |
+| [a-receipt-mismatch-is-only-a-warning](#a-receipt-mismatch-is-only-a-warning) | a label that disagrees with the typed resi only warns at submit; the five mismatched samples are not investigated, for now |
+| [jnttest-is-a-tiktok-jnt-express-label](#jnttest-is-a-tiktok-jnt-express-label) | `jnttest.pdf` is a TikTok J&T Express label — same generator and fonts as a TikTok label, a TikTok order id |
+| [a-kiriminaja-label-leaves-the-order-id-empty](#a-kiriminaja-label-leaves-the-order-id-empty) | a KiriminAja label fills no order id — its `OID-…` is the aggregator's, never the marketplace's |
+| [the-phone-is-the-recipients-never-the-senders](#the-phone-is-the-recipients-never-the-senders) | `Phone` is the recipient's, filled only when printed in full — never the sender's |
+| [a-masked-value-comes-back-empty](#a-masked-value-comes-back-empty) | a name or phone printed with `*` comes back `""`, never as `a**i` |
+| [the-address-is-one-string-joined-by-spaces](#the-address-is-one-string-joined-by-spaces) | `Address` is one string, the box's lines joined by a space; the region boxes wait for the order form |
+| [a-picture-label-is-read-from-its-barcodes-only](#a-picture-label-is-read-from-its-barcodes-only) | a label printed as a picture gives its tracking number, and its order id when a barcode carries it — no OCR |
+| [a-reservation-number-is-read-as-the-order-id](#a-reservation-number-is-read-as-the-order-id) | a Shopee reservation label's `No.Reservasi:` number is its `OrderID`, whatever the label is for — the reader reads, the caller decides |
+| [a-label-is-read-from-a-pdf-only](#a-label-is-read-from-a-pdf-only) | a label is read only from a PDF — a photo is never sent to the reader |
+| [the-reader-lives-in-backend-pkgs](#the-reader-lives-in-backend-pkgs) | the submodule's folder moves to `backend/pkgs/san_receipt_readers` — still its own repo and its own module |
 
 ---
 
@@ -407,9 +417,9 @@ flowchart LR
 | | spec |
 | --- | --- |
 | module | `github.com/pdcgo/san_receipt_readers`, its own `go.mod` and `go.sum` |
-| folder | `backend/packages/`, meaning "another repo, checked out here", beside `backend/pkgs/` (this repo's own packages) |
-| wiring | the root `go.mod` requires it and `replace`s it with `./backend/packages/san_receipt_readers`, so an edit there is seen here at once |
-| CI | both checkouts take `submodules: true` (every `go` command reads the replaced folder's `go.mod`), and a step runs `go vet` and `go test` inside each `backend/packages/*`, which the root's `./...` never enters |
+| folder | `backend/packages/`, meaning "another repo, checked out here", beside `backend/pkgs/` (this repo's own packages). 🔄 *Moved 2026-11-03 by [the-reader-lives-in-backend-pkgs](#the-reader-lives-in-backend-pkgs): the folder is `backend/pkgs/san_receipt_readers`* |
+| wiring | the root `go.mod` requires it and `replace`s it with `./backend/packages/san_receipt_readers`, so an edit there is seen here at once. 🔄 *Now `./backend/pkgs/san_receipt_readers`* |
+| CI | both checkouts take `submodules: true` (every `go` command reads the replaced folder's `go.mod`), and a step runs `go vet` and `go test` inside each `backend/packages/*`, which the root's `./...` never enters. 🔄 *Now inside every path `.gitmodules` lists* |
 | privacy | `*.pdf` is gitignored in the submodule. The real samples stay untracked in this repo's `examples/` ([Q5](./context_clarify.md#question)), and the tests build their labels in code. 🔄 *Reversed 2026-10-19 by [the-label-samples-may-be-committed](#the-label-samples-may-be-committed): the samples are committed here, and the diagram's "never pushed" is stale* |
 | docs | stay here, in `docs/technical/packages/receipt_readers/`. The submodule's README links to them by URL |
 | a change | is two commits: one in the submodule (pushed to its repo), then one here moving the submodule pointer |
@@ -445,3 +455,232 @@ flowchart LR
 | the submodule | unchanged: `*.pdf` stays gitignored in `pdcgo/san_receipt_readers`, whose own history holds no PDF |
 | reverses | the privacy row of [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module), *"the real samples stay untracked"* |
 | stale, outside this repo's docs | the submodule's README, line 25, still says the folder is untracked |
+
+## a-receipt-mismatch-is-only-a-warning
+
+> Owner, in chat (2026-10-31): *"what warning ?"*, *"the warning is just warn its different ?"*, then *"for now just warn
+> thats different thats it"* — to [Q17](./context_clarify.md#question), *five labels read cleanly, yet don't match what
+> their orders store: what do the orders store?*
+
+**The verdict.** For now a mismatch between the label and the typed resi is **only a warning**, and nothing more is done
+about it. The five mismatched samples are not investigated; the reader is not changed for them.
+
+```
+CS attaches the label → the reader fills an EMPTY Resi box, never a typed one
+CS submits, the typed resi differs →
+  "Nomor resi tidak cocok dengan file resi, yang tertulis SPXID0123456."
+  → CS fixes the box, or places the order anyway
+```
+
+| | |
+| --- | --- |
+| the warning | at submit, on the order form ([checks.ts](../../../../frontend/src/features/orders/form/checks.ts) `checkScanMatches`) — for the resi, the order id, or both |
+| overrule | yes — *place anyway*; the server never verifies a label ([receipt-check-returns-what-the-library-reads](../../../business/shipment/context_decision.md#receipt-check-returns-what-the-library-reads)) |
+| the five samples | not investigated — `shopee_instant_01`, `shopee_halu_02`, `shopee_spx_01`, `shopee_std_02`, `lazada_lex_02` |
+| [the-pickup-code-is-the-receipt](#the-pickup-code-is-the-receipt) | stands — `shopee_instant_01` is not taken as evidence against it |
+| when it comes back | a wrong resi on a real order, traced to the reader |
+| ✅ built | nothing to build — this is what runs |
+
+## jnttest-is-a-tiktok-jnt-express-label
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q1](./context_clarify.md#question), *which app
+> produced `jnttest.pdf`?* As recommended.
+
+**The verdict.** `jnttest.pdf` is a **TikTok** label carried by **J&T Express**. It shares its generator
+(`wkhtmltopdf` + `pdfcpu`) and its fonts with a known TikTok / Tokopedia label, and its order id is a TikTok one.
+
+| | |
+| --- | --- |
+| how it is read | unchanged — already under the TikTok layouts (`jnt.go`) |
+| what changes | its name only: it is filed as *TikTok, J&T Express* |
+| ✅ built | nothing to build |
+
+## a-kiriminaja-label-leaves-the-order-id-empty
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q11](./context_clarify.md#question), *a KiriminAja
+> label: is its booking number the order id?* As recommended, and as built.
+
+**The verdict.** A KiriminAja label fills **no** order id. The only id it prints is KiriminAja's own booking number
+(`OID-…`, under *No. Trx KiriminAja*) — an aggregator's number, not the marketplace's. The order id box stays empty and
+the person types the marketplace's reference, so the settlement import, which matches orders by that reference, still
+finds the order.
+
+```
+a KiriminAja label:   No. Trx KiriminAja: OID-20251104-8812   ← the aggregator's
+the order id box:     (empty — CS types the marketplace's order id)
+```
+
+| | |
+| --- | --- |
+| `OrderID` | `""` |
+| `Receipt` | the tracking number of the courier KiriminAja booked, as read today |
+| ✅ built | nothing changes — this is what the reader does |
+
+## the-phone-is-the-recipients-never-the-senders
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q8](./context_clarify.md#question), *`Phone`: only one label prints the recipient's — whose phone is it?* As
+> recommended, and as built, with Q8 and Q10 in one answer.
+
+**The verdict.** `Phone` is the **recipient's** phone, filled only when the label prints it in full. It is **never** the
+sender's: a Shopee label prints only the seller's own number, under `Pengirim:`, and reading that would fill the
+seller's number in as the customer's. So the field is filled on one label in thirty-seven today, and that is accepted.
+
+```mermaid
+flowchart LR
+  S["Shopee - the SENDER's phone only"] --> E["Phone is empty"]
+  T["TikTok - the recipient's, masked"] --> E
+  K["KiriminAja - the recipient's, in full"] --> F["Phone is filled"]
+```
+
+| | |
+| --- | --- |
+| `Phone` | the recipient's, as printed, when printed in full · `""` otherwise |
+| the sender's phone | never read, on any label |
+| ✅ built | nothing changes — this is what the reader does |
+
+## a-masked-value-comes-back-empty
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q9](./context_clarify.md#question), *a masked value: empty, or as printed?* As
+> recommended, and as built, with Q8 and Q10 in one answer.
+
+**The verdict.** A recipient's name or phone that the label prints **masked** — any `*` in it — comes back **`""`**.
+TikTok's courier labels print the name as `a**i` and the phone as `(+62)81*******00`; an empty box is better than a
+customer card that says `a**i`.
+
+```
+printed:    a**i            (+62)81*******00
+returned:   ""              ""
+TikTok's instant label:  the name in full → returned · the phone still masked → ""
+```
+
+| | |
+| --- | --- |
+| `CustomerName`, `Phone` | `""` when the printed value carries a `*`; as printed otherwise |
+| the masked form | not returned — nothing can be done with it |
+| ✅ built | nothing changes |
+
+## the-address-is-one-string-joined-by-spaces
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q10](./context_clarify.md#question), *the address: one string, wrapped words split?* As
+> recommended, and as built, with Q8 and Q10 in one answer.
+
+**The verdict.** `Address` is **one string**: the address box's lines joined by a space. The box wraps inside words, and
+on these PDFs a wrap inside a word can't be told from one between words, so a split word stays split (`Gro gol Sel`)
+and two words are never glued together (`KALIMANTANBARAT`). A Shopee label's **region boxes**
+(`KOTA JAKARTA BARAT | KEMBANGAN`) are not returned yet: they get their own fields when the order form wants the
+address structured. That is a contract change, made then.
+
+```
+the box:     Jl. Panjang No. 5, Kedoya, Gro
+             gol Sel, Kebon Jeruk
+returned:    Jl. Panjang No. 5, Kedoya, Gro gol Sel, Kebon Jeruk
+```
+
+| | |
+| --- | --- |
+| `Address` | the box's lines, joined by one space; the address tag above it (`HOME`, `RUMAH`) left out, as today |
+| the region boxes | not read — a field of their own when the order form reads them |
+| ✅ built | nothing changes |
+
+## a-picture-label-is-read-from-its-barcodes-only
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q13](./context_clarify.md#question), *a label printed
+> as a picture: the receipt from its barcode, or OCR for the rest too?* As recommended, and as built.
+
+**The verdict.** A label PDF with no text — only an image of the label (`jnt_eco_01.pdf`, `shopee_std_01.pdf`) — is
+read from its **barcodes and QR codes only**. They give the tracking number and, when a barcode carries it, the order
+id. The name, phone and address are pixels and come back `""`. **No OCR**: it would need a native library in every
+server or a paid cloud service that sends the buyer's address outside the system, and no screen reads a label's
+recipient yet ([the-phone-is-the-recipients-never-the-senders](#the-phone-is-the-recipients-never-the-senders)).
+
+```mermaid
+flowchart LR
+  P["a page with no text"] --> B["decode every image's QR and Code 128"]
+  B -->|"a J and T or SPX number, every copy agreeing"| R["Receipt"]
+  B -->|"a Shopee order number beside it"| O["OrderID"]
+  B -->|"nothing of that shape"| U["unknown layout"]
+```
+
+| | |
+| --- | --- |
+| `Receipt` | from the barcodes, every copy agreeing |
+| `OrderID` | from a barcode when one carries it (SPX, `shopee_std_01.pdf`), else `""` |
+| `CustomerName`, `Phone`, `Address` | `""` |
+| the library | `gozxing` (pure Go, MIT) — about 3 ms a label |
+| revisit OCR | only if picture labels turn out common — the upload tool saves every label it cannot read, so the samples will show it |
+| ✅ built | nothing changes — `jnt_picture.go`, `spx_picture.go`, `shopee_barcode.go` |
+
+## a-reservation-number-is-read-as-the-order-id
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — to [Q14](./context_clarify.md#question), *a Shopee
+> reservation label: is the reservation number the order id?* The recommendation was to keep the reader as built
+> **either way**, whatever the label turns out to be for. As recommended, and as built.
+
+**The verdict.** A Shopee label that prints `No.Reservasi:` where an order label prints `No. Pesanan:`
+(`shopee_spx_02.pdf`, addressed to an SPX hub) gives its **reservation number as the `OrderID`**. It is Shopee's own
+number for the parcel, captioned where the order number would be. The reader only reads the label; whether the parcel
+is a buyer's order is the caller's to decide.
+
+```
+No.Reservasi: 260101ABCDEFGHIJK      ← the box wraps it
+Pesan: (260101ABCDEFGHIJKLM)         ← printed whole → OrderID, when the box's part is how it starts
+Penerima: … RDC - Pengiriman Kilat   ← the hub → CustomerName, as printed
+```
+
+| | |
+| --- | --- |
+| `OrderID` | the 19-character reservation number |
+| `CustomerName` | the hub's name, as printed — the hub is the recipient |
+| the order form | never warns on its shape ([the-form-does-not-check-number-formats](../../frontend/order_create_decision.md#the-form-does-not-check-number-formats)); it only stops offering Shopee as the marketplace, its hint knowing 12–14 characters |
+| not answered | what a reservation label is FOR — a buyer's order routed through the hub, or stock sent into Shopee's own warehouse. Nothing here depends on it. If it is stock, how that stock leaves our warehouse is an inventory question, opened when such a parcel is handled |
+| ✅ built | nothing changes — `shopee.go`'s `shopeeReservation` |
+
+## a-label-is-read-from-a-pdf-only
+
+> Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q4](./context_clarify.md#question), *do sellers
+> upload photos of labels?*
+
+**The verdict.** A label is read only from a **PDF**. A photo would need OCR, which is a different package at a
+different cost, and a PDF holding a picture is still read from its barcodes
+([a-picture-label-is-read-from-its-barcodes-only](#a-picture-label-is-read-from-its-barcodes-only)). It is what is
+built, and what was accepted with the receipt check
+([the-receipt-check-prototype-is-accepted](../../../business/shipment/context_decision.md#the-receipt-check-prototype-is-accepted)).
+
+```
+a PDF label                → read
+a JPEG, a phone photo      → not sent to the reader — the person types the numbers
+```
+
+| | |
+| --- | --- |
+| the upload | still accepts both ([document.proto:34](../../../../proto/warehouse/document/v1/document.proto#L34)) — only the READ is PDF-only |
+| ✅ built | the order form sends only `application/pdf` to `ReceiptCheck` |
+
+---
+
+## the-reader-lives-in-backend-pkgs
+
+> Owner, in chat (2026-11-03): *"can you move it to pkgs"* — then, of the options put to them: *"Only move the folder:
+> still a submodule with its own module, at backend/pkgs/san_receipt_readers"*, and *"Keep the GitHub repo"*.
+
+**The verdict.** Only the FOLDER moves: `backend/packages/san_receipt_readers` → `backend/pkgs/san_receipt_readers`.
+Everything else in [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module)
+stands — the public repo `pdcgo/san_receipt_readers`, a git submodule, its own Go module, built through a `replace`,
+a change being two commits. The module path does not change, so no import does (`shipment_v1`, `tools/receipt_iterate`).
+
+```mermaid
+flowchart LR
+  W["warehouse_revamp go.mod"] -->|"replace with ./backend/pkgs/san_receipt_readers"| S["backend/pkgs/san_receipt_readers, own go.mod"]
+  S -->|"git submodule, path moved"| G["github.com/pdcgo/san_receipt_readers, unchanged"]
+  P["backend/pkgs, this repo's packages"] -.->|"now also holds"| S
+```
+
+| | |
+| --- | --- |
+| the move | `git mv` — `.gitmodules`' `path` follows; the submodule's NAME stays `backend/packages/san_receipt_readers` (a name is an id, not a folder). Pinned commit unchanged |
+| `backend/pkgs/` | now mixes this repo's own packages with one nested module. ⚠ Root `go build / vet / test ./...` skips it, as before — test it from inside |
+| CI | the submodule step loops over every `path` in `.gitmodules` instead of `backend/packages/*`, so the next move needs no CI edit |
+| also updated | root `go.mod` `replace`, `.gcloudignore`, CLAUDE.md's command table, receipt.proto's comment (and its generated `receipt_pb.ts`), the state and clarify docs' links |
+| owner's spec | [context.md](./context.md) §General now says `backend/pkgs/san_receipt_readers` — edited by the agent with the owner's permission, given for that session only (2026-11-03) |
+| ⚠ left to the owner | the submodule's own README line 21 (a commit in the other repo) |
+| ✅ built | 2026-11-03 |

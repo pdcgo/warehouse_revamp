@@ -208,6 +208,32 @@ stories' address probe is hidden (`LocationProbe hidden`,
 [the-labels-address-probe-is-hidden](../../technical/frontend/restock_decision.md#the-labels-address-probe-is-hidden)).
 What is left on restock is the ⚠ marks — each waits on a read or a write the screen cannot make yet.
 
+✅ **2026-11-05: the paying account is checked server-side** — uncommitted
+([a-restock-names-its-paying-account](../../business/inventory/restock_decision.md#a-restock-names-its-paying-account)).
+`RestockRequestCreate`, and an ongoing `RestockRequestUpdate` that CHANGES the account, refuse one that is not the team's
+ACTIVE OPERATIONAL account — FailedPrecondition naming it, the expense *Paid from* words. Inventory owns
+`PayingAccounts` ([paying_accounts.go](../../../backend/services/inventory_service/inventory_v1/paying_accounts.go), the 8th
+`NewService` dep; nil = unchecked, tests only); the composition root's `restock_accounts.go` answers it from
+`FinancialAccountByIds`, sharing `teamAccount` with `expense_accounts.go`. Asked before the transaction / the lock; an
+unchanged account is kept even if archived since (the supplier rule). Tests: `restock_request_test.go`
+(`TestRestockRequestCreate_RefusesAnAccountThatIsNotOperational`,
+`TestRestockRequestUpdate_RefusesAChangedAccountThatIsNotOperational`), `cmd/app_development/restock_accounts_test.go`
+(real seam + wired create), race `restock_request_account_race_test.go`, perf `restock_accounts_perf_test.go`
+([Create](../../../audits/services/inventory_service/performances/RestockRequestCreate.md) /
+[Update](../../../audits/services/inventory_service/performances/RestockRequestUpdate.md), ✅ ≈0.5 ms added). Stub
+`restockStub.ts` refuses the same (`payingAccountRefusal`); story `ARefusedPayingAccountIsSaid`. e2e seeds that raise
+restocks (`found_requests`, `liability`, `opname_sessions`, `stock_count_cancel`, `orders` ×2) now mark their account
+operational. Flow: [rpc.md](../../services/inventory_service/rpc.md#the-paying-account--one-of-the-teams-active-operational-accounts).
+⚠ For the owner: an UNCHANGED account is not re-checked on edit (else un-marking an account locks every restock that
+named it) — say if an ongoing edit should re-check it too.
+
+✅ **2026-11-04: the three money events have a listener** — uncommitted. `financial_account_service`'s
+[restock_payment_listener.go](../../../backend/services/financial_account_service/financial_account_v1/restock_payment_listener.go)
+posts *Created* (the amount out), *Updated* (the difference, or the whole payment moved between accounts) and *Cancelled*
+(the refund when the money came back) as `restock` rows; subscriptions `financial-account-restock-{created,updated,cancelled}`
+in `san pubsub ensure`. Flow: [rpc.md](../../services/financial_account_service/rpc.md#the-restock-payment-listener). The
+"Nothing LISTENS" note below is history. The restock screens' `costEvent` marks are the frontend pass's to remove.
+
 ✅ **2026-10-17: the accept is on the ledgers, the tables carry the owner's names, the money is `double`** — uncommitted,
 for the owner's review ([ledgers.md](ledgers.md), stages 2a, 2c, 2b).
 
@@ -264,7 +290,7 @@ follow the right column, pinned by the `ProblemUnitsCarryTheLandedPrice` story. 
 the backend step rebuilds the accept on the ledgers; until then it counts the door's problems twice.
 ⚠ **The accept must wait for the ledgers** ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)),
 like the transfer, opname and placement. ⚠ **The accept prototype ignores opname's rack lock**: put-away onto a rack
-being counted must be refused ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)).
+being counted must be refused ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
 RackSelect in the accept offers every rack today. **Planned:** `RackListRequest.product_id`, and on each row
 a `counting` flag for that product (the same meaning as `RackStock`'s `counting`, false until opname is built); RackSelect
 takes a `productId` and shows those racks disabled, *being counted*. Deferred on 2026-10-15 only because another session
@@ -327,6 +353,38 @@ prop and the `restock.*.pending` translations: every one of the 28 marks named s
 Checked against the real dev API (screens shot, `[data-testid^=not-implemented]` counted at 0).
 `OnlyTheReferenceChecksAreMarked` (was `NothingIsMarkedNotImplemented`) on the request form fails the day a third mark
 comes back.
+
+## The label photo opens (#18, 2026-11-04)
+
+`restocks.receipt_file` is the DOCUMENT ID the form's ReceiptUpload stores (a photo of the label,
+[the-receipt-is-the-tracking-number](../../business/inventory/restock_decision.md#the-receipt-is-the-tracking-number)), but both
+detail pages rendered it as a link's `href`, so the link went nowhere. Now one shared `features/restock/ReceiptPhoto.tsx`:
+
+| reader | shows |
+| --- | --- |
+| the selling team (the document's owner), `restock-selling-detail` InfoPanel | **Open Label Photo** — mints a signed URL on click with `documentClient.getDownloadUrl` (the PaymentProof / transfer LabelPhoto shape), never on render |
+| the warehouse, `restock-warehouse-detail` | **Open Label Photo** — mints the link on click through inventory's `RestockReceiptPhoto` (below) |
+| nothing attached | *No photo of the label* |
+
+✅ **Built 2026-11-04 — the warehouse opens it**
+([the-restocks-warehouse-opens-its-label-photo](../../business/inventory/restock_decision.md#the-restocks-warehouse-opens-its-label-photo)).
+`RestockRequestService.RestockReceiptPhoto(team_id, request_id)` — Warehouse Owner/Admin/Staff + Root/Administrator,
+`NO_SIDE_EFFECTS` — checks `restocks.warehouse_id = team_id` (else NotFound, as an unknown id), refuses a restock with no
+photo as FailedPrecondition *this restock has no label photo*, then asks inventory's `ReceiptPhotoLinker` →
+`cmd/app_development/restock_photo_linker.go` → `document_v1.LabelURL` (the OrderLabels seam, unchanged: an active
+`order_receipt` of the owner inventory names — the restock's selling team). No share; GetDownloadUrl as the warehouse
+stays NotFound. `ReceiptPhoto` takes `requestId` + `opensAs: "owner" | "warehouse"` (the `canOpen` prop and the
+`restock.detail.receiptPhotoSellerOnly` key are gone); the seller's path is unchanged.
+Tests: `inventory_v1/restock_receipt_photo_test.go` (own warehouse gets the link, another / unknown / the selling team as
+scope NotFound without asking the seam, no photo and a file the seam refuses both FailedPrecondition, a seam failure is
+the error, unwired is Unimplemented, policy + NO_SIDE_EFFECTS pinned); `cmd/app_development/restock_photo_linker_test.go`
+(real upload + wiring: the warehouse's link, another warehouse NotFound, GetDownloadUrl NotFound, a payment proof or
+another team's receipt refused); perf probe `restock_receipt_photo_perf_test.go` (1 PK lookup, ≈0.5 ms over 50 000
+restocks). Stories: `Features/Restock/ReceiptPhoto` (`TheWarehouseOpensTheLabelPhoto`, `AnotherWarehouseIsRefused`,
+`TheSellerOpensItsOwnUpload`, `NoPhoto`), warehouse page `TheWarehouseOpensTheLabelPhoto` (replaces
+`TheLabelPhotoIsTheSellersToOpen`), selling page `TheLabelPhotoOpensASignedLink`, `NoLabelPhoto`. e2e
+*Restock detail: the label photo opens through a signed link (#18)* (seller) and *Restock detail: the warehouse's staff
+opens the seller's label photo* (a WAREHOUSE_STAFF user, real server). The fixture's 503 carries a document id.
 
 ## Backend analysis — the parts that write no stock (2026-10-15)
 

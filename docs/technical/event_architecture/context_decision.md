@@ -822,7 +822,7 @@ flowchart LR
 
 | site | today | in the same change |
 | --- | --- | --- |
-| [`selling/v1/events.proto`](../../../proto/warehouse/selling/v1/events.proto) lines 35 and 125 | `(warehouse.event_base.v1.event_config).event_topic` = `order-placed` · `order-cancelled` | the new option |
+| [`selling/v1/events.proto`](../../../proto/warehouse/events/v1/event.proto) lines 35 and 125 | `(warehouse.event_base.v1.event_config).event_topic` = `order-placed` · `order-cancelled` | the new option |
 | [`event_source.go`](../../../backend/pkgs/event_source/event_source.go) lines 63–67 | `TopicName()` reads `event_basev1.E_EventConfig` | reads the new extension |
 | `event_source_test.go` · `san_caches_test.go` | `HelloExampleEvent` as a fixture | another message |
 | `backend/gen/…/event_base` · `frontend/src/gen/…/event_base` | generated | gone after `buf generate` |
@@ -1442,6 +1442,8 @@ The DLQ and its triage subscription stay — they are not an archive
 ([setup-ensures-safe-defaults-never-deletes](#setup-ensures-safe-defaults-never-deletes)) — and so does topic
 retention at 31 days, which is what lets a replacement subscription seek back.
 
+✅ **Built 2026-09-14** (verified in code 2026-11-05) — the protection exists: `order_settlements.created_by_user_id` (settlement `00004_order_settlement_creator.sql`), so the creator outlives the event.
+
 ---
 
 ## events-are-encoded-with-protojson
@@ -1976,7 +1978,7 @@ well-formed and says the system did it. **→ Recommend** the helper takes a req
 
 The guideline's `string actor = 5` ([§3](../../../guidelines/architectures/event_library.md#3-shared-metadata)) is
 the seventeenth site in the [guideline
-contradiction](./context_clarify.md#the-guideline-still-describes-the-shapes-this-pass-replaced) — the NUMBER
+contradiction](./context_clarify.md#-resolved--the-guideline-described-the-shapes-this-pass-replaced) — the NUMBER
 survives, the type and the home change. No new contradiction.
 
 ### What this does NOT settle

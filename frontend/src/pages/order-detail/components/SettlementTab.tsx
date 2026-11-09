@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { Alert, Stack, Text } from "@chakra-ui/react";
 
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
-import { useTeam } from "../../../features/team/TeamContext";
+import { canWrite, useTeam } from "../../../features/team/TeamContext";
 import { useOrderSettlement, usePostSettlementEntry } from "../../../features/settlement/queries";
 import { OrderLedgerPanel } from "../../order-settlement/components/OrderLedgerPanel";
 import type { EntryDraft } from "../../order-settlement/components/AddEntryDialog";
@@ -53,7 +53,7 @@ export interface SettlementTabProps {
    * The page's own "total sistem" — what the order cost, everything included — for the panel's two
    * margins. Undefined when the page does not know it; the margins then stay off.
    */
-  totalBeli?: bigint;
+  totalBeli?: number;
   /** Drop the panel's own card — the host is already one. See `OrderLedgerPanel`. */
   bare?: boolean;
 }
@@ -151,7 +151,7 @@ export function SettlementTab({
 
       <OrderLedgerPanel
         settlement={query.data}
-        canPost={role !== undefined}
+        canPost={role !== undefined && canWrite(current)}
         role={role}
         onAddEntry={addEntry}
         onReverse={reverse}

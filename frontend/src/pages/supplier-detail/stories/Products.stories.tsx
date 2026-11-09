@@ -83,7 +83,7 @@ export const ProductsPaginate: Story = {
 };
 
 // A PRODUCT SHOWS ITS SOLD AND READY — the last two columns, the last order under Terjual; no restock date under Siap,
-// since Last bought, just left of it, is that date.
+// since Last bought, just left of it, is that date. Still invented with the tab's rows, so marked 2 and 3.
 export const AProductShowsItsSoldAndReady: Story = {
   name: "Sold and Ready",
   play: async ({ canvasElement }) => {
@@ -98,6 +98,8 @@ export const AProductShowsItsSoldAndReady: Story = {
     const key = `${SHOPEE_STORE.id}-0`;
     await expect(canvas.getByTestId(`product-sold-${key}`)).toHaveTextContent(/^[\d.]+ordered /);
     await expect(canvas.getByTestId(`product-ready-${key}`)).toHaveTextContent(/^[\d.]+$/);
+    await expect(within(headers.at(-2)!).getByTestId("not-implemented-sold")).toHaveTextContent("2");
+    await expect(within(headers.at(-1)!).getByTestId("not-implemented-ready")).toHaveTextContent("3");
   },
 };
 
@@ -109,8 +111,8 @@ export const APhoneStoreAndProductCarryTheirFigures: Story = {
     const canvas = await loaded(canvasElement);
 
     const store = await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}-figures`);
-    await expect(store).toHaveTextContent(/Sold [\d.]+ · ordered .+Ready [\d.]+ · restocked /);
-    await expect(within(store).getByTestId("not-implemented-sold")).toHaveTextContent("2");
+    await waitFor(() => expect(store).toHaveTextContent(/Sold 1\.204 · ordered .+Ready 86 · restocked /));
+    await expect(within(store).queryByTestId("not-implemented-sold")).toBeNull();
 
     await openProducts(canvas);
     const product = await canvas.findByTestId(`product-row-${SHOPEE_STORE.id}-0-figures`);

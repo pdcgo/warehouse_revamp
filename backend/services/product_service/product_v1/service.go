@@ -17,7 +17,9 @@ import (
 )
 
 type Service struct {
-	db *gorm.DB
+	db      *gorm.DB
+	history ProductHistory
+	teams   TeamCodes
 }
 
 // compile-time proof Service satisfies the generated handler interfaces — the catalogue and its bundles
@@ -27,8 +29,12 @@ var (
 	_ productv1connect.BundleServiceHandler  = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+// NewService takes the product's HISTORY reader — inventory and the order side, joined at the composition root — which
+// ProductDelete asks before it removes anything (a-used-product-is-archived-never-deleted), and the TEAM CODE reader
+// every product code is composed from (the-field-is-product-code-composed-on-write). A nil history refuses every delete
+// and every code correction; a nil team-code reader refuses every create.
+func NewService(db *gorm.DB, history ProductHistory, teams TeamCodes) *Service {
+	return &Service{db: db, history: history, teams: teams}
 }
 
 var errProductMissing = errors.New("product not found")
@@ -37,11 +43,13 @@ func notFound() error {
 	return connect.NewError(connect.CodeNotFound, errProductMissing)
 }
 
-// dbError maps a duplicate SKU to AlreadyExists (a client error) and everything else to Internal.
+// dbError maps a duplicate product code to AlreadyExists (a client error) and everything else to Internal. The code is
+// unique over EVERY row, archived ones included — but a composed code can only collide inside its own team's prefix, so
+// the refusal says nothing about anybody else's catalogue.
 func dbError(err error) error {
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		return connect.NewError(connect.CodeAlreadyExists,
-			errors.New("a product with this SKU already exists in the team"))
+			errors.New("a product with this product code already exists — an archived one keeps its code, so check the archive too"))
 	}
 
 	return connect.NewError(connect.CodeInternal, err)
@@ -54,7 +62,7 @@ func productExists(tx *gorm.DB, teamID, productID uint64) (bool, error) {
 
 	err := tx.
 		Model(&product_service_models.Product{}).
-		Where("id = ? AND team_id = ? AND deleted = ?", productID, teamID, false).
+		Where("id = ? AND team_id = ? AND archived = ?", productID, teamID, false).
 		Count(&count).
 		Error
 

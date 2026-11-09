@@ -3,6 +3,7 @@ package selling_v1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -17,11 +18,12 @@ func insertRefOrder(t *testing.T, db *gorm.DB, teamID, shopID uint64, ref, statu
 	t.Helper()
 
 	order := selling_service_models.Order{
+		IdempotencyKey:     newOrderKey(),
 		TeamID:             teamID,
 		ShopID:             shopID,
 		WarehouseID:        testWarehouse,
 		Status:             status,
-		CustomerName:       "Buyer " + ref,
+		Address:            &selling_service_models.OrderAddress{CustomerName: "Buyer " + ref},
 		OrderExternalRefID: ref,
 		CreatedByUserID:    creator,
 	}
@@ -93,5 +95,39 @@ func TestOrderByExternalRefs_ResolvesAStatementsRefs(t *testing.T) {
 
 	if _, ok := resp.Msg.GetItems()["2509ZZZ"]; ok {
 		t.Error("a ref no order carries must be ABSENT")
+	}
+}
+
+// Each order found carries the day it was typed in — the duplicate-ref warning dates the orders it names from this,
+// without an OrderDetail per order (the-duplicate-ref-warning-is-accepted).
+func TestOrderByExternalRefs_CarriesWhenTheOrderWasTypedIn(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	shop := insertShop(t, db, 2, "Melati", "M1", "shopee")
+	order := insertRefOrder(t, db, 2, shop, "2509DDD", "pending", 7)
+
+	at := time.Date(2026, 11, 3, 9, 30, 0, 0, time.UTC)
+
+	err := db.
+		Model(&selling_service_models.Order{}).
+		Where("id = ?", order).
+		Update("created_at", at).
+		Error
+	if err != nil {
+		t.Fatalf("stamp created_at: %v", err)
+	}
+
+	resp, err := svc.OrderByExternalRefs(context.Background(), connect.NewRequest(&sellingv1.OrderByExternalRefsRequest{
+		TeamId: 2,
+		Filter: &sellingv1.OrderByExternalRefsFilter{Refs: []string{"2509DDD"}},
+	}))
+	if err != nil {
+		t.Fatalf("OrderByExternalRefs: %v", err)
+	}
+
+	got := resp.Msg.GetItems()["2509DDD"].GetItems()[0].GetOrderRef().GetMapData()[order]
+	if got.GetCreatedAtUnix() != at.Unix() {
+		t.Fatalf("created_at_unix = %d, want %d", got.GetCreatedAtUnix(), at.Unix())
 	}
 }

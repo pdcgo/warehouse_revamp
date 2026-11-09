@@ -227,7 +227,7 @@ export const ALockedLineIsKeptOnSave: Story = {
 export const AnArchivedLine: Story = {
   beforeEach: () => {
     standingAs(Role.SELLING_OWNER)();
-    withProductState(TEH, { deleted: true })();
+    withProductState(TEH, { archived: true })();
   },
   render: () => <AtSarapan />,
   play: async ({ canvasElement }) => {

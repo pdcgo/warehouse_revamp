@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -26,6 +27,10 @@ type OrderExportStore interface {
 	// resolve is absent, and its cell is left as the id.
 	TeamNames(ctx context.Context, ids []uint64) (map[uint64]string, error)
 	UserNames(ctx context.Context, ids []uint64) (map[uint64]string, error)
+	// ChannelCodes names the rows' couriers by their shipment channel's CODE — the file's courier column held the code
+	// before the order stored an id (shipment-channel-is-an-id-into-shipment-service), and keeps it. A deleted channel
+	// still resolves (a-deleted-channel-still-resolves-by-id); an id that does not is absent, and its cell is `#id`.
+	ChannelCodes(ctx context.Context, ids []uint64) (map[uint64]string, error)
 }
 
 // exportBatch is the rows read per step — the name lookups take at most 200 ids, and one step's rows can name 200.
@@ -102,6 +107,12 @@ func (s *Service) OrderExport(
 			return dbError(err)
 		}
 
+		// The step's buyers — one read for its rows.
+		err = attachAddresses(s.db.WithContext(ctx), orders)
+		if err != nil {
+			return dbError(err)
+		}
+
 		if len(orders) == 0 {
 			break
 		}
@@ -151,15 +162,18 @@ type exportRowNames struct {
 	shops map[uint64]selling_service_models.Shop
 	teams map[uint64]string
 	users map[uint64]string
+	// The couriers, by channel id → code.
+	channels map[uint64]string
 }
 
 func (s *Service) exportNames(ctx context.Context, orders []selling_service_models.Order) (exportRowNames, error) {
-	shopIDs, teamIDs, userIDs := idSet{}, idSet{}, idSet{}
+	shopIDs, teamIDs, userIDs, channelIDs := idSet{}, idSet{}, idSet{}, idSet{}
 
 	for i := range orders {
 		shopIDs.add(orders[i].ShopID)
 		teamIDs.add(orders[i].TeamID)
 		userIDs.add(orders[i].CreatedByUserID)
+		channelIDs.add(orders[i].ShipmentChannelID)
 	}
 
 	names := exportRowNames{shops: map[uint64]selling_service_models.Shop{}}
@@ -181,8 +195,27 @@ func (s *Service) exportNames(ctx context.Context, orders []selling_service_mode
 	}
 
 	names.users, err = s.exports.UserNames(ctx, userIDs.list())
+	if err != nil {
+		return names, err
+	}
+
+	names.channels, err = s.exports.ChannelCodes(ctx, channelIDs.list())
 
 	return names, err
+}
+
+// courierCell is the courier column: the channel's code, `#id` for an id that resolved to nothing, empty for none.
+func courierCell(channels map[uint64]string, id uint64) string {
+	if id == 0 {
+		return ""
+	}
+
+	code, found := channels[id]
+	if !found {
+		return "#" + strconv.FormatUint(id, 10)
+	}
+
+	return code
 }
 
 // idSet collects distinct non-zero ids — 0 means "not recorded" and is never looked up.
@@ -273,7 +306,7 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 			shop.Name,
 			shop.Marketplace,
 			order.OrderExternalRefID,
-			order.ShippingCode,
+			courierCell(names.channels, order.ShipmentChannelID),
 			order.Receipt,
 			order.ItemQuantity,
 			order.Status,
@@ -290,14 +323,14 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 		order.Status,
 		created,
 		creator,
-		order.CustomerName,
+		order.Customer(),
 		// Beside the customer, as the detail shows it — blank when there is none (the-buyers-username-is-optional).
 		order.BuyerUsername,
-		order.CustomerPhone,
-		order.ShippingCode,
+		order.Phone(),
+		courierCell(names.channels, order.ShipmentChannelID),
 		order.Receipt,
 		order.ItemQuantity,
-		moneyOrEmpty(order.GoodsCost),
+		moneyOrEmpty(float64(order.GoodsCost)),
 		feeOrEmpty(order.WarehouseFee),
 		moneyOrEmpty(order.PlatformTotal),
 		momentOrEmpty(order.PlatformCreatedAt),
@@ -354,9 +387,10 @@ func nameOr(names map[uint64]string, id uint64) string {
 	return name
 }
 
-// moneyOrEmpty leaves a 0 — "not recorded" — as an empty cell.
-func moneyOrEmpty(rupiah int64) any {
-	if rupiah == 0 {
+// moneyOrEmpty leaves a 0 — "not recorded" — as an empty cell. An exact double (the-backend-never-rounds-money),
+// tested for zero with san_money's tolerance, never ==; the integer goods cost is widened to it at the call.
+func moneyOrEmpty(rupiah float64) any {
+	if san_money.IsZero(rupiah) {
 		return ""
 	}
 

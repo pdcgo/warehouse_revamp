@@ -46,6 +46,11 @@ const (
 func transferErr(err error) error {
 	var short *inventory_mutations.ShortLinesError
 
+	// A put-away onto a product a count holds on that rack (a-lock-stops-sales-and-cancels-too).
+	if refused := countedRefusal(err); refused != nil {
+		return refused
+	}
+
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound), errors.Is(err, errTransferMissing):
 		return connect.NewError(connect.CodeNotFound, errTransferMissing)
@@ -59,7 +64,9 @@ func transferErr(err error) error {
 		}
 
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
-	case errors.Is(err, errTransferWrongStatus):
+	case errors.Is(err, errTransferWrongStatus),
+		errors.Is(err, errAccountNotActive):
+		// The shipping's account must be one of the team's active ones: FailedPrecondition, naming it (paying_accounts.go).
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, errTransferToItself),
 		errors.Is(err, errTransferProductTwice),
@@ -120,6 +127,7 @@ func moveTransfer(
 	t *models.WarehouseTransfer,
 	to models.TransferStatus,
 	actorID uint64,
+	override bool,
 	description string,
 	extra map[string]any,
 ) error {
@@ -146,7 +154,7 @@ func moveTransfer(
 	setStatusActor(t, to, actorID, now)
 	t.Status = to
 
-	return appendTransferLog(tx, t.ID, from, to, actorID, description)
+	return appendTransferLog(tx, t.ID, from, to, actorID, override, description)
 }
 
 func setStatusActor(t *models.WarehouseTransfer, to models.TransferStatus, actorID uint64, at time.Time) {
@@ -173,6 +181,7 @@ func appendTransferLog(
 	transferID uint64,
 	from, to models.TransferStatus,
 	actorID uint64,
+	override bool,
 	description string,
 ) error {
 	err := tx.Create(&models.WarehouseTransferLog{
@@ -180,6 +189,7 @@ func appendTransferLog(
 		FromStatus:  from,
 		ToStatus:    to,
 		ActorUserID: actorID,
+		IsOverride:  override,
 		Description: description,
 	}).Error
 	if err != nil {
@@ -338,7 +348,7 @@ func transferToProto(
 		out.Items = append(out.Items, &inventoryv1.WarehouseTransferItem{
 			Id:           item.ID,
 			ProductId:    item.ProductID,
-			Sku:          item.SKU,
+			ProductCode:  item.ProductCode,
 			Name:         item.Name,
 			Count:        item.Count,
 			Total:        item.Total,
@@ -425,6 +435,7 @@ func (s *Service) transition(
 	extra map[string]any,
 ) (*inventoryv1.WarehouseTransfer, error) {
 	actor := actorFrom(ctx)
+	override := overrideFrom(ctx)
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		t, lockErr := lockTransfer(tx, transferID, teamID, side)
@@ -437,7 +448,7 @@ func (s *Service) transition(
 			return statusErr
 		}
 
-		return moveTransfer(tx, t, to, actor, description, extra)
+		return moveTransfer(tx, t, to, actor, override, description, extra)
 	})
 	if err != nil {
 		return nil, transferErr(err)

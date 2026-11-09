@@ -33,7 +33,7 @@ func createRestock(t *testing.T, svc *inventory_v1.Service, warehouseID uint64, 
 	items := make([]*inventoryv1.RestockRequestItem, 0, len(productIDs))
 	for _, id := range productIDs {
 		items = append(items, &inventoryv1.RestockRequestItem{
-			ProductId: id, Sku: "SKU", Name: "Widget", Count: 1, Total: 1000,
+			ProductId: id, ProductCode: "SKU", Name: "Widget", Count: 1, Total: 1000,
 		})
 	}
 
@@ -107,8 +107,8 @@ func TestWarehouseProductList_ARestockListingAProductTwiceIsRefused(t *testing.T
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouseA,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU100", Name: "P100", Count: 1, Total: 100},
-			{ProductId: 100, Sku: "SKU100", Name: "P100", Count: 2, Total: 200},
+			{ProductId: 100, ProductCode: "SKU100", Name: "P100", Count: 1, Total: 100},
+			{ProductId: 100, ProductCode: "SKU100", Name: "P100", Count: 2, Total: 200},
 		},
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {

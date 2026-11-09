@@ -8,22 +8,29 @@
 //                                      place an order as the default warehouse team with a selling team's shop —
 //                                      the stub served every shop before it was scoped — and a team with shops of
 //                                      its own (every screen that manages them) is scoped exactly.
-//   a delete is soft                   ShopDelete marks the row: gone from List and Detail.
+//   a shop is closed, never deleted    ShopClose / ShopReopen (a-shop-is-closed-never-deleted); ShopList's `status`
+//                                      reads open by default, closed or all on asking; ShopDetail and the grant RPCs
+//                                      answer a closed shop (a-closed-shop-locks-all-but-its-grants: grants and the
+//                                      primary CS stay editable); ShopUpdate refuses it ("reopen the shop first");
+//                                      a reopen is refused while an open shop of the team holds its code, naming it
+//                                      (a-shop-code-is-unique-among-open-shops). Close and reopen are idempotent.
 //   the-primary-cs-is-a-flag-on-a-grant
 //                                      the FIRST user granted a shop becomes its primary CS; removing the primary's
 //                                      grant leaves the shop with none (0); Make Primary needs a grant.
 //
-// And the list's shape: ShopList's `q` over the name and the code, its sort by name or code, its paging — newest first
+// And the list's shape: ShopList's `q` over the name and the code, its marketplace / primary CS / no-primary / writable filters, its sort by name or code, its paging — newest first
 // (id DESC) when no sort is sent.
 //
 // WRITEABLE: a shop added in one step is on the list in the next. Module state survives between stories in one tab —
 // preview.tsx calls `resetShopStub()` in its `beforeEach`.
+//
+// Nothing is closed until a story closes one (`closeShopForStory`, or a play that clicks Close).
 
 import { Code, ConnectError } from "@connectrpc/connect";
 
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
-import { ShopRowSort } from "../src/gen/warehouse/selling/v1/selling_pb";
+import { ShopListStatus, ShopRowSort, ShopStatus } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { shops as shopFixtures } from "./fixtures";
 
 interface ShopRow {
@@ -33,7 +40,9 @@ interface ShopRow {
   shopCode: string;
   marketplace: Marketplace;
   description: string;
-  deleted: boolean;
+  status: ShopStatus;
+  /** When it closed, unix seconds; 0 while open. */
+  closedAtUnix: bigint;
   primaryUserId: bigint;
 }
 
@@ -47,17 +56,30 @@ const GRANTS: Record<string, bigint[]> = {
 let rows: ShopRow[] = [];
 let grants = new Map<string, bigint[]>();
 
+// WHO ShopList's `writable` answers for (a-write-needs-a-grant-or-a-manager): `null` = a manager of the team — the
+// team's owner or admin, root — who writes on every shop; a user id = a CS, who writes only on the shops granted them.
+// A story about the gate sets it in its own `beforeEach`; resetShopStub puts the manager back.
+let writer: bigint | null = null;
+
+export function setShopWriter(userId: bigint | null) {
+  writer = userId;
+}
+
 export function resetShopStub() {
+  writer = null;
   grants = new Map(Object.entries(GRANTS).map(([id, users]) => [id, [...users]]));
   rows = shopFixtures.map((s) => ({ ...s, primaryUserId: grants.get(s.id.toString())?.[0] ?? 0n }));
 }
 
 resetShopStub();
 
-const live = (teamId: bigint) => rows.filter((r) => r.teamId === teamId && !r.deleted);
+// A team's shops, OPEN OR CLOSED — a closed shop is still the team's (a-shop-is-closed-never-deleted).
+const ofTeam = (teamId: bigint) => rows.filter((r) => r.teamId === teamId);
+const isClosed = (r: ShopRow) => r.status === ShopStatus.CLOSED;
+const nowUnix = () => BigInt(Math.floor(Date.now() / 1000));
 
 function find(teamId: bigint, shopId: bigint): ShopRow {
-  const row = live(teamId).find((r) => r.id === shopId);
+  const row = ofTeam(teamId).find((r) => r.id === shopId);
   if (!row) throw new ConnectError("shop not found", Code.NotFound);
   return row;
 }
@@ -89,31 +111,53 @@ const matches = (q: string | undefined, ...fields: string[]) => {
   return term === "" || fields.some((f) => f.toLowerCase().includes(term));
 };
 
-export const shopService = {
-  shopList: (req: {
-    teamId: bigint;
-    filter?: { q?: string };
-    sort?: { sortType?: CommonSortType; s?: { case?: string; value?: unknown } };
-    page?: PageReq;
-  }) => {
-    const by = req.sort?.s?.case === "shop" ? (req.sort.s.value as ShopRowSort) : ShopRowSort.UNSPECIFIED;
-    const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
-    const field = (s: ShopRow) => (by === ShopRowSort.SHOP_CODE ? s.shopCode : s.name);
-    const order = (a: ShopRow, b: ShopRow) =>
-      by === ShopRowSort.NAME || by === ShopRowSort.SHOP_CODE
-        ? field(a).localeCompare(field(b)) * dir
-        : a.id > b.id
-          ? -1
-          : 1;
+type ListReq = {
+  teamId: bigint;
+  filter?: {
+    q?: string;
+    marketplace?: Marketplace;
+    primaryUserId?: bigint;
+    noPrimary?: boolean;
+    writable?: boolean;
+    status?: ShopListStatus;
+  };
+  sort?: { sortType?: CommonSortType; s?: { case?: string; value?: unknown } };
+};
 
-    return paged(
-      "shop",
-      (live(req.teamId).length > 0 ? live(req.teamId) : rows.filter((r) => !r.deleted))
-        .filter((s) => matches(req.filter?.q, s.name, s.shopCode))
-        .sort(order),
-      req.page,
-    );
-  },
+// ShopList's WHERE and ORDER BY — its `status` open by default (UNSPECIFIED), closed, or all.
+function selectShops(req: ListReq): ShopRow[] {
+  const f = req.filter ?? {};
+  const status = f.status ?? ShopListStatus.UNSPECIFIED;
+  // A person and nobody at once cannot both hold — the server answers InvalidArgument.
+  if (f.noPrimary && (f.primaryUserId ?? 0n) > 0n) {
+    throw new ConnectError("a shop cannot both have this primary cs and have none", Code.InvalidArgument);
+  }
+  const by = req.sort?.s?.case === "shop" ? (req.sort.s.value as ShopRowSort) : ShopRowSort.UNSPECIFIED;
+  const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
+  const field = (s: ShopRow) => (by === ShopRowSort.SHOP_CODE ? s.shopCode : s.name);
+  const order = (a: ShopRow, b: ShopRow) =>
+    by === ShopRowSort.NAME || by === ShopRowSort.SHOP_CODE
+      ? field(a).localeCompare(field(b)) * dir
+      : a.id > b.id
+        ? -1
+        : 1;
+
+  return (ofTeam(req.teamId).length > 0 ? ofTeam(req.teamId) : rows)
+      .filter((s) =>
+        status === ShopListStatus.ALL ? true : status === ShopListStatus.CLOSED ? isClosed(s) : !isClosed(s),
+      )
+      .filter((s) => matches(f.q, s.name, s.shopCode))
+      // #16 — the marketplace, the primary CS and "no primary CS" narrow the whole set, as the server's WHERE does.
+      .filter((s) => !f.marketplace || s.marketplace === f.marketplace)
+      .filter((s) => !f.primaryUserId || s.primaryUserId === f.primaryUserId)
+      .filter((s) => !f.noPrimary || s.primaryUserId === 0n)
+      // The picker of a write: a manager writes on every shop, anyone else on the ones granted them.
+      .filter((s) => !f.writable || writer === null || (grants.get(s.id.toString()) ?? []).includes(writer))
+      .sort(order);
+}
+
+export const shopService = {
+  shopList: (req: ListReq & { page?: PageReq }) => paged("shop", selectShops(req), req.page),
 
   shopDetail: (req: { teamId: bigint; shopId: bigint }) => ({ shop: find(req.teamId, req.shopId) }),
 
@@ -152,7 +196,8 @@ export const shopService = {
       shopCode: req.shopCode,
       marketplace: req.marketplace,
       description: req.description,
-      deleted: false,
+      status: ShopStatus.OPEN,
+      closedAtUnix: 0n,
       primaryUserId: 0n,
     };
     rows.push(shop);
@@ -168,13 +213,32 @@ export const shopService = {
     description: string;
   }) => {
     const shop = find(req.teamId, req.shopId);
+    // A closed shop is locked until it is reopened (a-closed-shop-locks-all-but-its-grants).
+    if (isClosed(shop)) throw new ConnectError("the shop is closed — reopen the shop first", Code.FailedPrecondition);
     Object.assign(shop, { name: req.name, shopCode: req.shopCode, marketplace: req.marketplace, description: req.description });
     return { shop };
   },
 
-  shopDelete: (req: { teamId: bigint; shopId: bigint }) => {
-    find(req.teamId, req.shopId).deleted = true;
-    return {};
+  // Idempotent: a closed shop is answered as it is, its date unchanged.
+  shopClose: (req: { teamId: bigint; shopId: bigint }) => {
+    const shop = find(req.teamId, req.shopId);
+    if (!isClosed(shop)) Object.assign(shop, { status: ShopStatus.CLOSED, closedAtUnix: nowUnix() });
+    return { shop };
+  },
+
+  // Idempotent; refused while an open shop of the team holds the code, naming it — the server's words.
+  shopReopen: (req: { teamId: bigint; shopId: bigint }) => {
+    const shop = find(req.teamId, req.shopId);
+    if (!isClosed(shop)) return { shop };
+    const holder = ofTeam(req.teamId).find((r) => r.id !== shop.id && !isClosed(r) && r.shopCode === shop.shopCode);
+    if (holder) {
+      throw new ConnectError(
+        `${shop.name} cannot reopen: the open shop ${holder.name} holds the code ${shop.shopCode} — rename one, then reopen`,
+        Code.FailedPrecondition,
+      );
+    }
+    Object.assign(shop, { status: ShopStatus.OPEN, closedAtUnix: 0n });
+    return { shop };
   },
 
   shopUserList: (req: { teamId: bigint; filter?: { shopId?: bigint }; page?: PageReq }) => {
@@ -213,3 +277,13 @@ export const shopService = {
     return { shop };
   },
 };
+
+/** A STORY'S SETUP: shop `shopId` closed `daysAgo` days ago (a relative day, never a fixed clock hour). */
+export function closeShopForStory(shopId: bigint, daysAgo = 3) {
+  const row = rows.find((r) => r.id === shopId);
+  if (!row) throw new Error(`no shop ${shopId} in the stub`);
+  Object.assign(row, {
+    status: ShopStatus.CLOSED,
+    closedAtUnix: BigInt(Math.floor((Date.now() - daysAgo * 24 * 3600 * 1000) / 1000)),
+  });
+}

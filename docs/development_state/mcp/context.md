@@ -1,46 +1,53 @@
 # Development state — mcp
 
-**Pass:** business analysis of the owner's [mcp/context.md](../../business/mcp/context.md) — a local MCP app shipped
-to users, so their own AI agent can read and analyze their data through the RPC API. Questions:
-[context_clarify.md](../../business/mcp/context_clarify.md) — **6 open** (Q3–Q8). Decisions:
-[context_decision.md](../../business/mcp/context_decision.md) — **four**. The lifecycle is at *waiting for the owner*,
-⛔ **blocked on Q8**; no Storybook prototype, no proto, no code.
-
-## Decided
-
-| decision | what it means for the build |
-| --- | --- |
-| [an-agent-only-reads-for-now](../../business/mcp/context_decision.md#an-agent-only-reads-for-now) *(Q1)* | an agent runs **no write**, destructive or not · the **server** refuses it — the access interceptor, before the handler, on an agent's credential · a read is an RPC declared `idempotency_level = NO_SIDE_EFFECTS` (my spec — no proto carries it yet) · tools listed with `readOnlyHint: true` · rules out the session token as the agent's credential |
-| [the-mcp-uses-the-official-go-sdk](../../business/mcp/context_decision.md#the-mcp-uses-the-official-go-sdk) *(owner's §General 3)* | every MCP piece on `modelcontextprotocol/go-sdk`, the version `go.mod` pins (v1.7.0, shared with `san remote`) · it issues no token, so any OAuth login is ours to build · ⚠ its localhost guard 403s a loopback request with a public `Host` |
-| [the-tools-live-in-the-shipped-app](../../business/mcp/context_decision.md#the-tools-live-in-the-shipped-app) *(Q2a — against my B)* | option A: a Go app on the user's machine, MCP over stdio (`StdioTransport`), calling our Connect RPCs over HTTPS with the agent's credential · tools compiled in · **no `/mcp` on our server** · accepts that a breaking RPC change breaks un-updated copies |
-| [chatgpt-and-claude-are-the-agents-for-now](../../business/mcp/context_decision.md#chatgpt-and-claude-are-the-agents-for-now) *(Q2b)* | ChatGPT reaches only a public HTTPS URL, OAuth or no auth, never stdio · Claude: custom connectors are public URLs called from Anthropic's cloud (OAuth), and Claude Desktop / Claude Code also run a local stdio program |
-
-⛔ **The last two conflict** — ChatGPT cannot reach the shipped app. Recorded as a contradiction in the clarify
-([the shipped app cannot reach ChatGPT](../../business/mcp/context_clarify.md#the-shipped-app-cannot-reach-chatgpt))
-and asked as Q8. My recommendation: C — our server hosts the MCP behind an OAuth login.
+> ✅ **2026-11-02 — built.** Our server hosts the MCP at `/mcp` behind our own OAuth
+> ([our-server-hosts-the-mcp](../../business/mcp/context_decision.md#our-server-hosts-the-mcp)); an agent's credential is
+> its own, read-only, one team (or every team for root), 90 days, revocable. Every decision in
+> [context_decision.md](../../business/mcp/context_decision.md) carries a *Built* note with its build details.
 
 ## What exists
 
 | | |
 | --- | --- |
-| a user-facing MCP | **nothing** — no service, no proto option, no screen, no shipped app |
-| `san remote mcp` | the **developer** MCP (shell + files of the checkout, `tools/san/remote/`) — unrelated; must not be extended into this, and nothing of it is ever shipped. Its tunnel + `--public-url` shape is option "A + a tunnel per user" in Q8 |
-| the only credential | the 24h session JWT — **no per-token revocation** (logout drops the role cache only; a password reset stops only `CheckAccess` renewal), and it carries every write |
-| read markers | none — no proto has `idempotency_level`, and `request_policy` names roles, not read/write |
+| contract | `warehouse.user.v1.AgentService` ([agent.proto](../../../proto/warehouse/user/v1/agent.proto)) — 8 RPCs. The read marker: `option idempotency_level = NO_SIDE_EFFECTS` on `MetricSearch`/`MetricData` (order, settlement, supplier), `ProductList`, `OrderByExternalRefs`, `OrderDetail`, `LiabilityPositionList`, `TeamList`, `TeamByIds` |
+| schema | user_service `00011` — `agent_oauth_clients`, `agent_oauth_codes`, `agent_credentials`, `team_agent_policies` ([database-schema.md](../../database-schema.md#user_service)) |
+| enforcement | `access_interceptors` — a `wha_` bearer goes to `AgentVerifier` (`agent_credentials.Store`), only a marked read passes, and step 6b holds it to its team (or to root's bypass, while held). `WithAgentVerifier` option; `AgentGrantFrom(ctx)` |
+| OAuth | `user_service/agent_oauth` — discovery, `/oauth/register`, `/oauth/authorize` → the app's `/connect-agent`, `/oauth/token` (PKCE S256, no refresh) |
+| the endpoint | `backend/services/mcp_service` — stateless Streamable HTTP, `auth.RequireBearerToken`, six read-only tools calling our RPCs at `INTERNAL_BASE_URL` with the agent's bearer; 120 calls/min, burst 20, per connection per instance |
+| config | `PUBLIC_URL` (the API as an agent sees it), `APP_URL` (the connect page's host) — both default to localhost; a non-loopback `PUBLIC_URL` turns off the SDK's localhost guard |
+| screens | `/connect-agent` (outside the shell, `pages/connect-agent`), /profile → AI Agents (`AgentConnectionsCard`, with the connector URL to copy), Settings → AI Agents (`TeamAgentsCard`: the owner's switch and list); `features/agents` holds the hooks and the shared row. Stories: `Pages/Agents/ConnectAgent`, `Pages/Profile/AgentConnectionsCard`, `Pages/Settings/TeamAgentsCard`, `Pages/Login`, `Features/Agents/AgentConnectionRow` |
+| docs | [docs/services/mcp_service/rpc.md](../../services/mcp_service/rpc.md), [user_service rpc.md](../../services/user_service/rpc.md#connecting-an-ai-agent--oauth-then-its-own-credential), CLAUDE.md's roling rules |
 
-## Proposed, not decided (all in the clarify)
+```sh
+go test ./backend/services/user_service/... ./backend/services/mcp_service/...
+```
+
+Smoke-tested end to end against a running server on the test database (2026-11-02): discovery → register → sign in →
+authorize → connect (root, every team) → token → an agent's write refused → initialize → all six tools → revoke →
+the next call a 401.
+
+## ⚠ Build details the owner has not seen
 
 | | |
 | --- | --- |
-| reaching ChatGPT | C: a hosted MCP endpoint behind an OAuth login that mints the agent's credential — reverses A (Q8) |
-| offered to agents | a read is callable with an agent key only if its request also carries a new `(warehouse.agent.v1.tool)` option; boot fails on the option over a non-read (Q6) |
-| the credential | `agent_keys` in `user_service` — hashed, named, one team, expiring, revocable, `last_used_at`; never the root bypass (Q3, Q4) |
-| who | team owner and admin; CS and staff only if the owner allows (Q5) |
-| first tools | the 11 existing aggregate RPCs + a product search + an order by marketplace ref; a per-key rate limit (Q6) |
-| buyer data | `customer_name`, `customer_phone`, address cleared by our server for an agent's credential (Q7) |
-| screens | `/profile` → AI agents (create, show once, revoke via `ConfirmDialog`); the team's settings for the owner |
+| `list_teams` | a sixth tool beside the decided five — root's every-team connection needs team ids |
+| root's connections | not listed on a team's owner list, and no team owner may revoke them |
+| unscoped reads | a one-team credential may call an unscoped `allow_only_authenticated` read (`TeamByIds` — names by id), as a handler forwarding its bearer does |
+| the rate | 120/min, burst 20 — no number was decided |
+| the connect page | no team preselected unless there is one; a link missing its PKCE or redirect is refused before any call; root also sees team 1 as a single team beside *Every team* |
+| the settings card | the owner, root and the administrator only — the team Admin may connect but does not see the team's list (its RPCs are the owner's) |
+| sign-in | now returns to the page it was sent from (`state.from` = path + query), so signing back in no longer always lands on `/` |
 
-## Pick up here
+## Not built
 
-Wait for the owner on **Q8**. Do not start a prototype before it: A's first screen is a key page plus a local app's
-setup, C's is an OAuth consent page — they share only the list of connected agents.
+| | |
+| --- | --- |
+| a refresh token | by design — 90 days, then connect again |
+| a cross-instance rate limit | per instance today; a shared limiter (Redis) when there is more than one |
+| a dev tunnel recipe | connecting the real ChatGPT/Claude needs `PUBLIC_URL` on a public HTTPS tunnel to :8080 and `APP_URL` to the UI — not scripted |
+
+## 2026-11-06 — money reaches the agent as JSON numbers
+
+Every money field the tools read is a `double` since the money-type change (both parts), so protojson writes a number —
+`"total_receivable":700000`, never the quoted `"700000"` of an `int64`. No tool description calls money an integer
+(`list_metrics`' CURRENCY / POSITION say *rupiah*). `TestMCP_AnotherTeamIsRefusedThroughTheTool` now asserts the number.

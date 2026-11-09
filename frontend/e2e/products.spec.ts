@@ -16,6 +16,9 @@ const SUFFIX = Date.now().toString().slice(-6);
 const SKU = `P${SUFFIX}`;
 const SKU_IMG = `PI${SUFFIX}`;
 const SKU_SUB = `PS${SUFFIX}`;
+// THE CODE IS COMPOSED ON WRITE (the-field-is-product-code-composed-on-write): root types the PART above, and the product
+// carries its team's code in front — team 1's is ROOT — on every screen and in every testid built from it.
+const code = (part: string) => `ROOT-${part}`;
 const NAME = `E2E Product ${SUFFIX}`;
 const CATEGORY = `E2E Cat ${SUFFIX}`;
 const SUBCATEGORY = `E2E Sub ${SUFFIX}`;
@@ -82,8 +85,8 @@ test("Create: product create is a PAGE; category is required; the product appear
 
   // Saving returns to the list, where the new product shows.
   await expect(page.getByTestId("products-table")).toBeVisible();
-  await expect(page.getByTestId(`product-row-${SKU}`)).toBeVisible();
-  await expect(page.getByTestId(`product-row-${SKU}`)).toContainText(NAME);
+  await expect(page.getByTestId(`product-row-${code(SKU)}`)).toBeVisible();
+  await expect(page.getByTestId(`product-row-${code(SKU)}`)).toContainText(NAME);
 });
 
 test("Create with image: the upload succeeds and the cover shows in the list (#80)", async ({ page }) => {
@@ -116,19 +119,19 @@ test("Create with image: the upload succeeds and the cover shows in the list (#8
   // the shared ProductListItem now, so the cover is that component's avatar image — a product with
   // none falls back to the package ICON and renders no <img> at all, which is what this asserts.
   await expect(page.getByTestId("products-table")).toBeVisible();
-  await expect(page.getByTestId(`product-row-${SKU_IMG}`)).toBeVisible();
-  await expect(page.getByTestId(`product-row-${SKU_IMG}`).locator("img")).toBeVisible();
+  await expect(page.getByTestId(`product-row-${code(SKU_IMG)}`)).toBeVisible();
+  await expect(page.getByTestId(`product-row-${code(SKU_IMG)}`).locator("img")).toBeVisible();
 });
 
 test("Detail: the product detail page opens from the row (#83)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoProducts(page);
 
-  await page.getByTestId(`open-product-${SKU_IMG}`).click();
+  await page.getByTestId(`open-product-${code(SKU_IMG)}`).click();
 
   await expect(page.getByTestId("product-detail-page")).toBeVisible();
   await expect(page.getByTestId("product-detail-name")).toHaveText(`${NAME} with image`);
-  await expect(page.getByTestId("product-detail-page")).toContainText(SKU_IMG);
+  await expect(page.getByTestId("product-detail-page")).toContainText(code(SKU_IMG));
   // The category shows as a breadcrumb, and the image uploaded earlier is in the gallery.
   await expect(page.getByTestId("product-detail-page")).toContainText(CATEGORY);
   await expect(page.getByTestId("product-detail-image-0")).toBeVisible();
@@ -166,14 +169,14 @@ test("Multistage category: create a subcategory, then drill parent → child to 
   await expect(page.getByTestId("product-edit-save")).toBeEnabled();
 
   await page.getByTestId("product-edit-save").click();
-  await expect(page.getByTestId(`product-row-${SKU_SUB}`)).toBeVisible();
+  await expect(page.getByTestId(`product-row-${code(SKU_SUB)}`)).toBeVisible();
 });
 
 test("Edit: edit is a PAGE, pre-filled; the rename persists", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoProducts(page);
 
-  await page.getByTestId(`edit-${SKU}`).click();
+  await page.getByTestId(`edit-${code(SKU)}`).click();
 
   await expect(page.getByTestId("product-edit-page")).toBeVisible();
   await expect(page).toHaveURL(/\/products\/\d+\/edit$/);
@@ -187,17 +190,17 @@ test("Edit: edit is a PAGE, pre-filled; the rename persists", async ({ page }) =
 
   // Opened from the list, the save returns to the list (the-form-returns-where-it-was-opened).
   await expect(page.getByTestId("products-table")).toBeVisible();
-  await expect(page.getByTestId(`product-row-${SKU}`)).toContainText(`${NAME} renamed`);
+  await expect(page.getByTestId(`product-row-${code(SKU)}`)).toContainText(`${NAME} renamed`);
 });
 
 test("Delete: the product is gone", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoProducts(page);
 
-  await page.getByTestId(`delete-${SKU}`).click();
+  await page.getByTestId(`archive-${code(SKU)}`).click();
   await page.getByTestId("confirm-action").click();
 
-  await expect(page.getByTestId(`product-row-${SKU}`)).toBeHidden();
+  await expect(page.getByTestId(`product-row-${code(SKU)}`)).toBeHidden();
 });
 
 // #106 — Discover lists products across ALL teams (SKU_IMG, created above, is not deleted). Root
@@ -207,13 +210,13 @@ test("Discover: products across teams are listed (#106)", async ({ page }) => {
 
   await page.goto("/products/discover");
   await expect(page.getByTestId("discover-grid")).toBeVisible();
-  await expect(page.getByTestId(`discover-card-${SKU_IMG}`)).toBeVisible();
+  await expect(page.getByTestId(`discover-card-${code(SKU_IMG)}`)).toBeVisible();
 
   // A card opens the DISCOVER detail, read through ProductByIds + StockAvailability — not the owner's
   // ProductDetail, which would answer NotFound for any other team's product.
-  await page.getByTestId(`discover-open-${SKU_IMG}`).click();
+  await page.getByTestId(`discover-open-${code(SKU_IMG)}`).click();
   await expect(page).toHaveURL(/\/products\/discover\/\d+$/);
-  await expect(page.getByTestId("discover-detail-page")).toContainText(SKU_IMG);
+  await expect(page.getByTestId("discover-detail-page")).toContainText(code(SKU_IMG));
   // The owner's page's shape (the-discover-detail-is-the-product-page) — Per Gudang is one of its sections.
   await expect(page.getByTestId("dd-section-warehouse")).toBeVisible();
 });

@@ -57,7 +57,8 @@ export const TheTableShowsTheDescription: Story = {
   },
 };
 
-// …and the table carries them last, at the right edge, as the supplier list does — a dash for a store-less supplier.
+// …and the table carries them last, at the right edge, as the supplier list does — a dash for a supplier none of whose
+// goods ever arrived.
 export const TheTableCarriesTheFiguresLast: Story = {
   name: "Figures last",
   play: async ({ canvasElement }) => {
@@ -70,8 +71,8 @@ export const TheTableCarriesTheFiguresLast: Story = {
       .map((h) => h.textContent ?? "");
     await expect(headers.at(-2)).toMatch(/^Sold/);
     await expect(headers.at(-1)).toMatch(/^Ready/);
-    await expect(canvas.getByTestId(`discover-sold-${SUMBER.id}`)).toHaveTextContent(/^[\d.]+ordered \w+ \d+, \d{4}$/);
-    await expect(canvas.getByTestId(`discover-ready-${SUMBER.id}`)).toHaveTextContent(/^[\d.]+restocked \w+ \d+, \d{4}$/);
+    await expect(canvas.getByTestId(`discover-sold-${SUMBER.id}`)).toHaveTextContent(/^1\.507ordered \w+ \d+, \d{4}$/);
+    await expect(canvas.getByTestId(`discover-ready-${SUMBER.id}`)).toHaveTextContent(/^151restocked \w+ \d+, \d{4}$/);
     await expect(canvas.getByTestId(`discover-sold-${SINAR.id}`)).toHaveTextContent("—");
   },
 };

@@ -20,7 +20,7 @@ func acceptOne(t *testing.T, svc *inventory_v1.Service, warehouse, rackID, produ
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: float64(total)},
+			{ProductId: product, ProductCode: "SKU", Name: "P", Count: qty, Total: float64(total)},
 		},
 	}))
 	if err != nil {
@@ -73,14 +73,14 @@ func TestCostLayerList_GroupsByFrozenCost(t *testing.T) {
 
 	// Dearest first.
 	if layers[0].GetUnitCost() != 40000 || layers[0].GetOnHand() != 100 || layers[0].GetAmount() != 4000000 {
-		t.Fatalf("layer 0 = %d/%d/%d, want 40000/100/4000000", layers[0].GetUnitCost(), layers[0].GetOnHand(), layers[0].GetAmount())
+		t.Fatalf("layer 0 = %v/%v/%v, want 40000/100/4000000", layers[0].GetUnitCost(), layers[0].GetOnHand(), layers[0].GetAmount())
 	}
 	if layers[1].GetUnitCost() != 25000 || layers[1].GetOnHand() != 50 || layers[1].GetAmount() != 1250000 {
-		t.Fatalf("layer 1 = %d/%d/%d, want 25000/50/1250000", layers[1].GetUnitCost(), layers[1].GetOnHand(), layers[1].GetAmount())
+		t.Fatalf("layer 1 = %v/%v/%v, want 25000/50/1250000", layers[1].GetUnitCost(), layers[1].GetOnHand(), layers[1].GetAmount())
 	}
 
 	// The header total values the whole shelf across layers.
 	if res.Msg.GetTotalValue() != 5250000 {
-		t.Fatalf("total_value = %d, want 5250000", res.Msg.GetTotalValue())
+		t.Fatalf("total_value = %v, want 5250000", res.Msg.GetTotalValue())
 	}
 }

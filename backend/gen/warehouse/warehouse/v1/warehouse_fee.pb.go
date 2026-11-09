@@ -509,11 +509,11 @@ const file_warehouse_warehouse_v1_warehouse_fee_proto_rawDesc = "" +
 	"\amax_fee\x18\x05 \x01(\x01H\x00R\x06maxFee\x88\x01\x01\x128\n" +
 	"\x18calculated_warehouse_fee\x18\x06 \x01(\x01R\x16calculatedWarehouseFeeB\n" +
 	"\n" +
-	"\b_max_fee2\x8d\x03\n" +
-	"\x13WarehouseFeeService\x12{\n" +
-	"\x12WarehouseFeeDetail\x121.warehouse.warehouse.v1.WarehouseFeeDetailRequest\x1a2.warehouse.warehouse.v1.WarehouseFeeDetailResponse\x12r\n" +
-	"\x0fWarehouseFeeSet\x12..warehouse.warehouse.v1.WarehouseFeeSetRequest\x1a/.warehouse.warehouse.v1.WarehouseFeeSetResponse\x12\x84\x01\n" +
-	"\x15WarehouseFeeCalculate\x124.warehouse.warehouse.v1.WarehouseFeeCalculateRequest\x1a5.warehouse.warehouse.v1.WarehouseFeeCalculateResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/warehouse/v1;warehousev1b\x06proto3"
+	"\b_max_fee2\x98\x03\n" +
+	"\x13WarehouseFeeService\x12\x80\x01\n" +
+	"\x12WarehouseFeeDetail\x121.warehouse.warehouse.v1.WarehouseFeeDetailRequest\x1a2.warehouse.warehouse.v1.WarehouseFeeDetailResponse\"\x03\x90\x02\x01\x12r\n" +
+	"\x0fWarehouseFeeSet\x12..warehouse.warehouse.v1.WarehouseFeeSetRequest\x1a/.warehouse.warehouse.v1.WarehouseFeeSetResponse\x12\x89\x01\n" +
+	"\x15WarehouseFeeCalculate\x124.warehouse.warehouse.v1.WarehouseFeeCalculateRequest\x1a5.warehouse.warehouse.v1.WarehouseFeeCalculateResponse\"\x03\x90\x02\x01BRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/warehouse/v1;warehousev1b\x06proto3"
 
 var (
 	file_warehouse_warehouse_v1_warehouse_fee_proto_rawDescOnce sync.Once

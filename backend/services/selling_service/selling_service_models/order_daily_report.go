@@ -12,7 +12,10 @@ type OrderDailyReport struct {
 
 	// The move's Jakarta day (a-fact-counts-on-the-day-it-happened).
 	Day time.Time
-	// created · cancelled · return_created · return_arrived · lost_created.
+	// created · cancelled · return_created · return_arrived · lost_created · warehouse_fee (00038). A warehouse_fee
+	// row is SIGNED — a placement adds +1 and its fee, a cancel −1 and the fee, each on its own day
+	// (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day): OrderCount is the fee transactions,
+	// Total the fee amount, MpTotal 0.
 	Metric string
 
 	TeamID      uint64
@@ -35,5 +38,5 @@ func (OrderDailyReport) TableName() string {
 type OrderMetricColumns struct {
 	OrderCount int64
 	Total      float64
-	MpTotal    int64
+	MpTotal    float64
 }
