@@ -237,7 +237,9 @@ export function ReturnMappingCard({ teamId, lines, mapping, onMap, checking = fa
                       teamId={teamId}
                       value={0n}
                       placeholder={t("orderForm.returnMap.pick")}
-                      onChange={(product: PickedProduct) => setPending({ line, product })}
+                      onChange={(product: PickedProduct | null) => {
+                        if (product) setPending({ line, product });
+                      }}
                     />
                   )}
                 </Box>

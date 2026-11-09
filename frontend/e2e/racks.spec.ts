@@ -83,7 +83,7 @@ test("Edit: rename and change the description; both persist", async ({ page }) =
 // it must read as "0 units, never counted" rather than as a broken header or an epoch date. The
 // numbers with real goods behind them are covered by the Go tests, which can seed a restock without
 // driving six screens to do it.
-test("Detail: the header tiles and the five vertical tabs (#197)", async ({ page }) => {
+test("Detail: the header tiles and the three sections under a nav (a-rack-page-is-one-page-of-sections)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoRacks(page);
 
@@ -97,21 +97,19 @@ test("Detail: the header tiles and the five vertical tabs (#197)", async ({ page
   await expect(page.getByTestId("rack-summary-count")).toContainText("0");
   await expect(page.getByTestId("rack-summary-last-counted")).toHaveText("Never counted");
 
-  // Products is the tab that opens — it is what somebody standing at the shelf came for.
+  // Products leads — it is what somebody standing at the shelf came for — and every section is on the one page; the
+  // nav jumps to each.
   await expect(page.getByTestId("rack-products-panel")).toBeVisible();
   await expect(page.getByTestId("rack-detail-empty")).toBeVisible();
 
-  await page.getByTestId("rack-tab-info").click();
+  await page.getByTestId("section-nav-info").click();
   await expect(page.getByTestId("rack-info-code")).toHaveText(CODE);
 
-  await page.getByTestId("rack-tab-prices").click();
-  await expect(page.getByTestId("rack-prices-panel")).toBeVisible();
-
-  await page.getByTestId("rack-tab-stock-history").click();
-  await expect(page.getByTestId("rack-stock-history-empty")).toBeVisible();
-
-  await page.getByTestId("rack-tab-placement-history").click();
-  await expect(page.getByTestId("rack-placement-history-empty")).toBeVisible();
+  // Riwayat — every movement, and the Penempatan lens over the same ledger.
+  await page.getByTestId("section-nav-history").click();
+  await expect(page.getByTestId("rack-history-empty")).toBeVisible();
+  await page.getByTestId("rack-history-filter-placement").click();
+  await expect(page.getByTestId("rack-history-empty")).toBeVisible();
 });
 
 test("Delete: the rack is gone", async ({ page }) => {

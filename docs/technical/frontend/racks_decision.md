@@ -9,9 +9,14 @@ off it is the business record: [placement_decision.md](../../business/inventory/
 
 | decision | what it settles |
 | --- | --- |
-| [the-racks-follow-the-screen-rules](#the-racks-follow-the-screen-rules) | the rack list and a rack's page follow the rules every screen does — a titled header with its icon actions, the filter strip, skeletons, hints, the growing pager, a block per row on a phone, the card strip, Mobile stories |
+| [the-racks-follow-the-screen-rules](#the-racks-follow-the-screen-rules) | the rack list and a rack's page follow the rules every screen does — a titled header with its icon actions, the filter strip, skeletons, hints, the growing pager, a block per row on a phone, the card strip, Mobile stories — 🔄 a rack page's tabs REPLACED by [a-rack-page-is-one-page-of-sections](#a-rack-page-is-one-page-of-sections) |
 | [an-empty-rack-says-so](#an-empty-rack-says-so) | a rack holding nothing carries **Kosong** on its row — under its code on a desktop, beside it on a phone, in the plain tone |
 | [the-rack-list-leads-with-its-figures](#the-rack-list-leads-with-its-figures) | the rack list leads with the card strip — Rak, Terisi, Kosong, Stok di rak; the three past *Rak* are the page's, and say so once the racks run past one page |
+| [a-rack-page-is-one-page-of-sections](#a-rack-page-is-one-page-of-sections) | a rack's page is the other detail pages' shape — three sections under a nav (Produk priced, Info, Riwayat with a *Hanya penempatan* chip), the title that sticks, Info beside the rest on a wide screen; its five vertical tabs (#197) are gone |
+| [temuan-and-sampel-are-one-word](#temuan-and-sampel-are-one-word) | on a rack's page the two acts read **Temuan** and **Sampel** — on the button, in ⋯ and in the sticky bar; their dialogs keep the verb |
+| [the-found-dialog-fits-its-fields](#the-found-dialog-fits-its-fields) | Temuan's dialog: the count is a short box (10rem; a phone's full width), the note a two-row box as the rack's other dialogs' |
+| [a-found-waits-in-one-line](#a-found-waits-in-one-line) | a found's waiting notice is one line — *Stok berubah setelah disetujui Owner atau Admin gudang lain.* — on Temuan and on Koreksi stok's Found |
+| [the-move-reads-pindah-rak](#the-move-reads-pindah-rak) | the move off a rack reads **Pindah Rak** (en *Move*) — on the act and its dialog's title; the submit keeps *Pindahkan* |
 
 ## the-racks-follow-the-screen-rules
 
@@ -111,3 +116,121 @@ What it replaces: an empty rack told apart only by the 0 in its Stok column.
 | pinned by | RackList `Default` (3 · 2 · 1 · 34 pcs, no mark) · `Figures past one page` (21; Kosong 18 of the page; ⚠ on the three, not on Rak) |
 
 What it replaces: a list with no figures over it.
+
+## a-rack-page-is-one-page-of-sections
+
+> Owner, in chat (2026-11-09): *"inisiasi rack detail page"*; offered the other detail pages' shape in place of the
+> tabs, *"iya seperti usulmu, gunakan detail lain sebagai referensi"*. Then, on the five sections that made: *"produk dan
+> harga sama, apa pembedanya selain ada harganya / riwayat stok dan penempatanpun kelihatan sama, apa bedanya?"* — to
+> three sections, *"oke"*.
+
+```
+before (#197, tabs)                         now — the product page's and the restock pages' shape
+← A-01-1             [🎁] [⇄]               ┌ Produk  ┐  ← A-01-1  Aisle A bawah   [⊕ Laporkan Temuan] [🎁 Catat Sampel] [⇄ Pindahkan]
+[Di rak ini] [Opname terakhir]              │ Info    │  [Di rak ini 25 unit · Rp …] [Opname terakhir · Belum pernah]
+Info Rak │                                  └ Riwayat ┘  ┌ Produk ── Produk · Tim · Di rak ini · Harga/pcs · Nilai ┐  ┌ Info ─────────┐
+Produk ● │  one tab's content                            ┌ Riwayat ── (Semua) (Hanya penempatan) ────────────────┐  │ Kode · Nama · │
+Harga    │                                                                                                         │ Deskripsi     │
+Riwayat… │  (five tabs)                                                                                            └───────────────┘
+```
+
+| | |
+| --- | --- |
+| the shape | ONE page of section cards (`Section`) with `SectionNav` on the left; a click jumps and the card blinks ([a-nav-jump-blinks-where-it-lands](context_decision.md#a-nav-jump-blinks-where-it-lands)); the section being read is lit (`useScrollSpy`). No tabs |
+| the order | **Produk** (what somebody at the shelf came for) · **Info** · **Riwayat** — `pages/rack-detail/sections.ts`, the one list the nav and the page read |
+| why three, not five | the tabs' two pairs were one read each: **Harga** was Produk's table with two more columns, and **Riwayat Penempatan** was Riwayat Stok narrowed to Diterima and Pindah rak (`PLACEMENT_KINDS`) — every row of it also a row of Riwayat Stok. Behind tabs one was on screen at a time; on one page each read twice |
+| Produk | the shelf priced: Produk · Tim · Di rak ini · **Harga/pcs · Nilai** — one read, one pager (`useRackShelf`); on a phone the block's last line is *Rp … × 12 … Rp …* |
+| Riwayat | the one ledger, with `FilterChips` over it — **Semua** (every movement) or **Hanya penempatan** (Diterima and Pindah rak only, what decided goods live here, its hover says so; owner: *"penempatan jadi hanya penempatan"* — the chip says it narrows); a chip resets the pager. The chips stay while the ledger under them loads |
+| the title | back, the code painted on the shelf with the name under it, the acts held right — `RackTitleRow`, drawn twice: the page's, and the bar that sticks once all of it has scrolled away ([a-sticky-bar-waits-for-the-whole-title-row](context_decision.md#a-sticky-bar-waits-for-the-whole-title-row), `useStickyTitle`, `ProductStickyStrip`). The bar's acts are their icons, `-sticky` test ids |
+| the figures | the card strip stays under the title, over the sections — the whole rack's, as before |
+| Info | the rack's short record — Kode, Nama, Deskripsi as `Fact`s — beside the rest from `xl`, as a restock's Kiriman; in the nav's order below that. Scrolling lights only the main column's sections while it stands beside them |
+| a phone | the section chips stick at the top in place of the nav; the acts are their icons, three folded into ⋯; each product a block |
+| kept | every read, `reloadKey`, the dialogs; `rack-detail-stock` for the shelf's table, the panels as `rack-<key>-panel`; the ledger is `rack-history` (it was `rack-stock-history` and `rack-placement-history`) |
+| stories | 22 stories, so folders by the part of the screen ([stories-are-grouped-by-the-part-of-the-screen](context_decision.md#stories-are-grouped-by-the-part-of-the-screen)): Default and Mobile under RackDetail; Found, Header, History, Move, Sample, Sections, Shelf |
+| pinned by | RackDetail `Default`, `Mobile` (the block's price line) · `Sections / One page of sections` (three, Produk priced), `Nav jumps` · `Header / Title sticks` · `History / Penempatan lens` (a move stays, a sample goes) · e2e `racks.spec.ts` (the nav jumps; the Penempatan chip) |
+
+What it replaces: the five vertical tabs of #197 — one section on screen at a time — and the *the tabs* row of
+[the-racks-follow-the-screen-rules](#the-racks-follow-the-screen-rules); the Harga and Riwayat Penempatan tabs, now a
+column pair and a chip.
+
+## temuan-and-sampel-are-one-word
+
+> Owner, in chat (2026-11-09), on the rack page's acts: *"laporan temuan ada saran 1 kata? catat sampel jadi sampel
+> saja"* — offered *Temuan*, as a noun beside *Sampel*: *"temuan"*.
+
+```
+before                                              now
+[⊕ Laporkan Temuan] [🎁 Catat Sampel] [⇄ Pindahkan Barang]   [⊕ Temuan] [🎁 Sampel] [⇄ Pindahkan Barang]
+```
+
+| | |
+| --- | --- |
+| the acts | **Temuan** and **Sampel** (en *Found*, *Sample*) — what is recorded, named alike as nouns; on the desktop button, in the phone's and the sticky bar's ⋯ (`racks.reportFound.action`, `racks.sample.action`) |
+| the dialogs | keep their verb, since there it says what is being done: *Laporkan Temuan di A-01-1* · *Catat Sampel dari A-01-1*, and the submit *Catat Sampel* |
+| not changed | *Pindahkan Barang* — not asked (🔄 since renamed *Pindah Rak*, [the-move-reads-pindah-rak](#the-move-reads-pindah-rak)); *Lapor* alone was not taken (report what?), nor *Ditemukan* (reads as a status, not an act) |
+| pinned by | the rack page's stories find the acts by test id (`rack-action-report-found`, `rack-action-sample`), which did not change |
+
+What it replaces: *Laporkan Temuan* and *Catat Sampel* on the acts.
+
+## the-found-dialog-fits-its-fields
+
+> Owner, in chat (2026-11-09), on Temuan's dialog: *"catatan textarea, jumlahnya tolong sedikit dipersempit, agak lebar"*.
+
+```
+before                                         now
+Jumlah ditemukan                               Jumlah ditemukan
+[ −            1                     + ]       [ −   1   + ]
+Catatan                                        Catatan
+[ Contoh: di belakang karton …        ]        [ Contoh: di belakang karton …        ]
+                                               [                                     ]
+```
+
+| | |
+| --- | --- |
+| the count | `QuantityInput` 10rem (`width="40"`) on a desktop — a few units, a box its size; a phone keeps the full width for the thumb |
+| the note | a two-row `Textarea` with its 200 count, as Move Goods' and Sample's notes — where it was found is often a sentence |
+| where | `features/inventory/ReportFoundDialog` — the rack page's Temuan |
+| pinned by | RackDetail `Found / Staff report a found` (the count under half the dialog, the note a textarea) |
+
+What it replaces: a count box as wide as the dialog, and a one-line note.
+
+## a-found-waits-in-one-line
+
+> Owner, in chat (2026-11-09), on Temuan's notice: *"alertnya kepanjangan, ada yang lebih ringkas?"* — offered one line,
+> and the same for Koreksi stok's Found with its extra line as a hover: *"pakai itu"*.
+
+```
+before                                                      now
+ⓘ Menunggu Owner atau Admin gudang                           ⓘ Stok berubah setelah disetujui Owner atau Admin gudang lain.
+  Tidak ada yang berubah sampai salah satu dari mereka …
+  Owner atau Admin lain yang menyetujuinya — bukan …
+```
+
+| | |
+| --- | --- |
+| the line | *Stok berubah setelah disetujui Owner atau Admin gudang lain.* (`inventory.foundWaits`) — that it waits, who approves it, and that the reporter does not (*lain*); *no batch, no money* is not what somebody at a shelf needs to read |
+| where | Temuan (`ReportFoundDialog`, the rack page) and Koreksi stok's Found (`AdjustStockDialog`, a warehouse product's page) |
+| Koreksi's extra line | what an approval claims back first — the oldest open loss, at its price — is the notice's hover (`title`), no longer a line of it |
+| retired | `inventory.adjustFoundWaitsTitle`, `adjustFoundWaitsNothing`, `adjustFoundWaitsNotYou` |
+| pinned by | RackDetail `Found / Staff report a found` · `AdjustStockDialog` Found (the line, and the hover) · e2e `found_requests.spec.ts` |
+
+What it replaces: the three-line notice on both dialogs.
+
+## the-move-reads-pindah-rak
+
+> Owner, in chat (2026-11-09), on the rack page's acts: *"pindah barang jadi pindah rak"*.
+
+```
+before                                               now
+[⊕ Temuan] [🎁 Sampel] [⇄ Pindahkan Barang]          [⊕ Temuan] [🎁 Sampel] [⇄ Pindah Rak]
+dialog  Pindahkan Barang dari A-01-1                 dialog  Pindah Rak dari A-01-1
+```
+
+| | |
+| --- | --- |
+| the act | **Pindah Rak** (en *Move*) — what happens to the goods is that they change rack; *barang* said nothing the rack page does not already say. On the desktop button, in the phone's and the sticky bar's ⋯ (`racks.move.action`) |
+| the dialog's title | the same words: *Pindah Rak dari A-01-1* (`racks.move.title`) |
+| not changed | the submit *Pindahkan* — the verb, as Sampel's *Catat Sampel* · *Ganti Rak* inside the dialog, which re-points one line |
+| pinned by | RackDetail `Mobile` reads the act in ⋯ (`rack-action-move`, now *Move*) |
+
+What it replaces: *Pindahkan Barang* on the act and the dialog's title.

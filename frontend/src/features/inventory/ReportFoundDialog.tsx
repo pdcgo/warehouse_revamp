@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Dialog, Field, Icon, Input, Portal, Stack, Text } from "@chakra-ui/react";
+import { Alert, Button, Dialog, Field, Icon, Portal, Stack, Textarea } from "@chakra-ui/react";
 import { Hourglass, Send } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
@@ -88,18 +88,14 @@ export function ReportFoundDialog({
             </Dialog.Header>
             <Dialog.Body>
               <Stack gap="card">
+                {/* ONE LINE (owner: *"alertnya kepanjangan, ada yang lebih ringkas?"*, a-found-waits-in-one-line) — that it
+                    waits, who approves it, and that the reporter does not ("lain"). */}
                 <Alert.Root status="info" data-testid="report-found-waits">
                   <Alert.Indicator>
                     <Icon as={Hourglass} boxSize="4" />
                   </Alert.Indicator>
                   <Alert.Content>
-                    <Alert.Title>{t("inventory.adjustFoundWaitsTitle")}</Alert.Title>
-                    <Alert.Description>
-                      <Stack gap="1">
-                        <Text>{t("inventory.adjustFoundWaitsNothing")}</Text>
-                        <Text>{t("inventory.adjustFoundWaitsNotYou")}</Text>
-                      </Stack>
-                    </Alert.Description>
+                    <Alert.Title fontWeight="normal">{t("inventory.foundWaits")}</Alert.Title>
                   </Alert.Content>
                 </Alert.Root>
 
@@ -117,7 +113,7 @@ export function ReportFoundDialog({
                     value={product?.id ?? 0n}
                     placeholder={t("racks.reportFound.productPlaceholder")}
                     onChange={(p) => {
-                      setProduct({ id: p.id, name: p.name, code: p.productCode });
+                      setProduct(p ? { id: p.id, name: p.name, code: p.productCode } : null);
                       setError("");
                     }}
                   />
@@ -126,9 +122,11 @@ export function ReportFoundDialog({
 
                 <Field.Root required>
                   <Field.Label>{t("inventory.adjustQty_found")}</Field.Label>
+                  {/* A count of a few units — a box its size, not the dialog's width (owner: *"jumlahnya tolong sedikit
+                      dipersempit"*); a phone keeps the full width for the thumb. */}
                   <QuantityInput
                     min={1}
-                    width="full"
+                    width={isMobile ? "full" : "40"}
                     size="sm"
                     value={amount}
                     testId="report-found-amount"
@@ -139,7 +137,10 @@ export function ReportFoundDialog({
 
                 <Field.Root>
                   <Field.Label>{t("inventory.adjustNote")}</Field.Label>
-                  <Input
+                  {/* A two-row box, as the rack's other dialogs' notes (owner: *"catatan textarea"*) — where it was found
+                      is often a sentence. */}
+                  <Textarea
+                    rows={2}
                     value={note}
                     maxLength={NOTE_MAX}
                     placeholder={t("inventory.adjustFoundNotePlaceholder")}

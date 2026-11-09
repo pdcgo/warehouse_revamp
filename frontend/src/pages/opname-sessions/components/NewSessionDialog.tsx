@@ -150,7 +150,7 @@ export function NewSessionDialog({
                         portalled={false}
                         value={productId}
                         placeholder={t("opnameSession.create.productPlaceholder")}
-                        onChange={(p) => setProductId(p.id)}
+                        onChange={(p) => setProductId(p?.id ?? 0n)}
                       />
                       <Field.HelperText>{t("inventory.pickHeldHelp")}</Field.HelperText>
                     </Field.Root>

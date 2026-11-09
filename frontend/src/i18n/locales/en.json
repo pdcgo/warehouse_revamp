@@ -885,7 +885,15 @@
       "confirmLabel": "Delete"
     },
     "picker": {
-      "archived": "Archived"
+      "archived": "Archived",
+      "none": "No products found",
+      "typeTwo": "Type at least 2 letters of a name or product code",
+      "pending": {
+        "warehouseOpensEmpty": {
+          "label": "This warehouse's products, opened with nothing typed",
+          "reason": "A warehouse's product search still needs 2 letters, so the list cannot show before they are typed."
+        }
+      }
     }
   },
   "bundles": {
@@ -2372,6 +2380,7 @@
       "neverCounted": "Never counted",
       "code": "Code",
       "name": "Name",
+      "description": "Description",
       "noName": "(no name)",
       "noDescription": "(no description)",
       "unitCost": "Unit cost",
@@ -2387,8 +2396,14 @@
         "products": "Products",
         "prices": "Prices",
         "stockHistory": "Stock History",
-        "placementHistory": "Placement History"
+        "placementHistory": "Placement History",
+        "history": "History"
       },
+      "navLabel": "Rack sections",
+      "historyLens": "Which movements",
+      "historyAll": "All",
+      "historyPlacement": "Placement only",
+      "historyPlacementTitle": "Received and moved between racks only — what decided goods live here",
       "actions": "Rack actions",
       "pending": {
         "countLock": {
@@ -2400,8 +2415,8 @@
       "noHistoryHint": "Every delivery put away here, move and sample shows up in this list."
     },
     "move": {
-      "action": "Move Goods",
-      "title": "Move Goods from {{code}}",
+      "action": "Move",
+      "title": "Move from {{code}}",
       "defaultTo": "To rack",
       "defaultToHelp": "Every line goes here unless you change it.",
       "products": "Products on {{code}}",
@@ -2433,7 +2448,7 @@
       "done": "Moved {{count}} units off {{code}}"
     },
     "sample": {
-      "action": "Record Sample",
+      "action": "Sample",
       "title": "Record Sample from {{code}}",
       "intro": "Units handed to a person at the warehouse. A sample is final: it cannot be undone.",
       "quantity": "Quantity of {{name}} given",
@@ -2475,7 +2490,7 @@
       }
     },
     "reportFound": {
-      "action": "Report Found",
+      "action": "Found",
       "title": "Report Found on {{code}}",
       "product": "Product found",
       "productPlaceholder": "Search the product you found"
@@ -3102,10 +3117,8 @@
       "move": "Shelf move",
       "sample": "Sample"
     },
-    "adjustFoundWaitsTitle": "Waits for the warehouse Owner or Admin",
-    "adjustFoundWaitsNothing": "Nothing changes until one of them approves it — no stock, no batch, no money.",
+    "foundWaits": "Stock changes once another Owner or Admin of the warehouse approves it.",
     "adjustFoundWaitsApproval": "Once approved, the units first claim back this product's oldest open loss, at the price it was lost at; the rest come in as new stock at the latest price here.",
-    "adjustFoundWaitsNotYou": "Another Owner or Admin approves it — never the person who reports it.",
     "adjustFoundHelper": "How many units you found on this rack.",
     "adjustFoundNotePlaceholder": "e.g. behind the cartons on the bottom shelf, still sealed",
     "adjustFoundSend": "Send for Approval",

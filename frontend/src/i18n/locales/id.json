@@ -877,7 +877,15 @@
       "confirmLabel": "Hapus"
     },
     "picker": {
-      "archived": "Arsip"
+      "archived": "Arsip",
+      "none": "Produk tidak ditemukan",
+      "typeTwo": "Ketik minimal 2 huruf nama atau kode produk",
+      "pending": {
+        "warehouseOpensEmpty": {
+          "label": "Produk gudang ini, dibuka tanpa ketikan",
+          "reason": "Pencarian produk gudang masih meminta 2 huruf, jadi daftarnya belum bisa tampil sebelum diketik."
+        }
+      }
     }
   },
   "bundles": {
@@ -2356,8 +2364,9 @@
       "neverCounted": "Belum pernah diopname",
       "code": "Kode",
       "name": "Nama",
+      "description": "Deskripsi",
       "noName": "(tanpa nama)",
-      "noDescription": "(tanpa keterangan)",
+      "noDescription": "(tanpa deskripsi)",
       "unitCost": "Harga satuan",
       "lineValue": "Nilai",
       "costUnknown": "Tidak diketahui",
@@ -2371,8 +2380,14 @@
         "products": "Produk",
         "prices": "Harga",
         "stockHistory": "Riwayat Stok",
-        "placementHistory": "Riwayat Penempatan"
+        "placementHistory": "Riwayat Penempatan",
+        "history": "Riwayat"
       },
+      "navLabel": "Bagian rak",
+      "historyLens": "Gerakan yang ditampilkan",
+      "historyAll": "Semua",
+      "historyPlacement": "Hanya penempatan",
+      "historyPlacementTitle": "Hanya yang diterima dan pindah rak — yang menentukan barang ada di rak ini",
       "actions": "Aksi rak",
       "pending": {
         "countLock": {
@@ -2384,8 +2399,8 @@
       "noHistoryHint": "Setiap barang yang ditaruh, dipindah, atau diambil sebagai sampel di rak ini muncul di sini."
     },
     "move": {
-      "action": "Pindahkan Barang",
-      "title": "Pindahkan Barang dari {{code}}",
+      "action": "Pindah Rak",
+      "title": "Pindah Rak dari {{code}}",
       "defaultTo": "Ke rak",
       "defaultToHelp": "Semua baris ke sini kecuali Anda mengubahnya.",
       "products": "Produk di {{code}}",
@@ -2417,7 +2432,7 @@
       "done": "{{count}} unit dipindahkan dari {{code}}"
     },
     "sample": {
-      "action": "Catat Sampel",
+      "action": "Sampel",
       "title": "Catat Sampel dari {{code}}",
       "intro": "Unit yang diserahkan kepada seseorang di gudang. Sampel bersifat final: tidak bisa dibatalkan.",
       "quantity": "Jumlah {{name}} yang diberikan",
@@ -2459,7 +2474,7 @@
       }
     },
     "reportFound": {
-      "action": "Laporkan Temuan",
+      "action": "Temuan",
       "title": "Laporkan Temuan di {{code}}",
       "product": "Produk yang ditemukan",
       "productPlaceholder": "Cari produk yang Anda temukan"
@@ -3086,10 +3101,8 @@
       "move": "Pindah rak",
       "sample": "Sampel"
     },
-    "adjustFoundWaitsTitle": "Menunggu Owner atau Admin gudang",
-    "adjustFoundWaitsNothing": "Tidak ada yang berubah sampai salah satu dari mereka menyetujuinya — tidak ada stok, batch, atau uang.",
+    "foundWaits": "Stok berubah setelah disetujui Owner atau Admin gudang lain.",
     "adjustFoundWaitsApproval": "Setelah disetujui, unitnya lebih dulu mengklaim kembali kehilangan terlama produk ini yang masih terbuka, dengan harga saat hilang; sisanya masuk sebagai stok baru dengan harga terakhir di gudang ini.",
-    "adjustFoundWaitsNotYou": "Owner atau Admin lain yang menyetujuinya — bukan orang yang melaporkannya.",
     "adjustFoundHelper": "Berapa unit yang Anda temukan di rak ini.",
     "adjustFoundNotePlaceholder": "Contoh: di belakang karton di rak paling bawah, masih tersegel",
     "adjustFoundSend": "Kirim untuk Disetujui",

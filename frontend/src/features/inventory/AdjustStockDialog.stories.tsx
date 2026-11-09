@@ -72,9 +72,9 @@ export const FoundWaitsForApproval: Story = {
     // No batch — the approval picks the batches (the oldest loss's, then a minted one).
     await expect(screen.queryByTestId("adjust-batch")).toBeNull();
     const notice = screen.getByTestId("adjust-found-waits");
-    await expect(notice).toHaveTextContent("Waits for the warehouse Owner or Admin");
-    await expect(notice).toHaveTextContent("Nothing changes until one of them approves it — no stock, no batch, no money.");
-    await expect(notice).toHaveTextContent("never the person who reports it");
+    // ONE LINE (a-found-waits-in-one-line); what it claims back on approval is its hover.
+    await expect(notice).toHaveTextContent(/^Stock changes once another Owner or Admin of the warehouse approves it\.$/);
+    await expect(notice).toHaveAttribute("title", expect.stringContaining("oldest open loss"));
 
     // A found report starts at one unit, not at the rack's on-hand.
     await expect(screen.getByTestId("adjust-amount")).toHaveValue("1");

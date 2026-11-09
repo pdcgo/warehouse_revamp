@@ -101,6 +101,8 @@ when it applies one of these.
 | [the-phone-menu-carries-no-count-for-now](#the-phone-menu-carries-no-count-for-now) | the phone shell shows no waiting count — not on a menu item, not on More — for Kewajiban or Found Stock; the counts stay the desktop sidebar's, for now | the phone shell |
 | [a-report-export-is-the-whole-view-as-a-file](#a-report-export-is-the-whole-view-as-a-file) | a report's Ekspor holds everything the report shows as filtered, every page, the screen's columns | the Supplier Report and the Financial Account Report, 2026-11-07 |
 | [monitoring-keeps-what-only-reads](#monitoring-keeps-what-only-reads) | while the admin team monitors a team, an action that only READS stays — Catatan (read, no Ubah), Cetak label; every write goes | the restock lists and pages, 2026-11-09 |
+| [a-product-picker-needs-no-two-letters](#a-product-picker-needs-no-two-letters) | a product picker has no two-letter minimum — opened, it lists its first page; one letter is a search. ⚠ A warehouse's picker still needs two (its server refuses fewer): it says so, marked | every `ProductSelect` — from Temuan, 2026-11-09 |
+| [a-product-option-shows-its-picture](#a-product-option-shows-its-picture) | every option of the product picker shows the product's picture beside its code and name — the package placeholder when it has none | every `ProductSelect` — from Temuan, 2026-11-09 |
 | [every-screen-says-product-code](#every-screen-says-product-code) | no screen says "SKU" — it is *Kode produk* / *Product code*, on the product screens and every other | the product form, restock statistics, Cetak Label, the product picker — 2026-11-09 |
 
 ## a-list-summary-is-the-order-lists-card-strip
@@ -2313,6 +2315,49 @@ row ⋯   Catatan                           row     [Cetak]                 ← 
 | pinned by | RestockSelling `Notes / Monitoring, read only` · RestockWarehouse `Actions / Monitoring, Print only` |
 
 What it replaces: `backup/inventory`'s restock actions returning nothing at all for a monitor.
+
+## a-product-picker-needs-no-two-letters
+
+> Owner, in chat (2026-11-09), on Temuan's product picker opening empty: *"di semua contoh, produknya kosong?"*, then,
+> told a warehouse's search refuses fewer than two letters, *"harusnya tidak perlu minimal 2 huruf"*.
+
+```
+the team's / every team's catalogue           a warehouse's (Temuan, a count's plan and its found)
+opened   → the first page                      opened   → "Ketik minimal 2 huruf nama atau kode produk" ⚠
+"k"      → Kopi, Kecap, …  (it was: wait)      "g"      → the same hint ⚠
+"ko"     → Kopi                                "gu"     → Gula Pasir · Toko Kenanga
+```
+
+| | |
+| --- | --- |
+| the rule | a product picker has NO two-letter minimum: opened with nothing typed it lists its first page ([every-combobox-reopens-whole](#every-combobox-reopens-whole)), and ONE letter is a search. The catalogue's own wait for a second letter (`useProductSearch`) is gone — ProductList and ProductDiscover never asked for one |
+| ⚠ a warehouse's picker | `WarehouseProductSearch` refuses fewer than two characters (`min_len: 2`, and its handler), so with fewer typed the picker does not ask: its panel says *Ketik minimal 2 huruf nama atau kode produk* with ⚠ `warehouseOpensEmpty` (`missing`, `features/products/pickerPending.ts`) — never *Produk tidak ditemukan*, which was what an empty search's refusal read as. The mark sits in the picker, where the gap shows, since the three screens using it have no pending list of their own |
+| the words | *Produk tidak ditemukan* and the hint are i18n now (`products.picker.none`, `typeTwo`) — they were English in code |
+| pinned by | ProductSelect `OneLetterSearches`, `Warehouse, opened empty` (the hint and its mark, one letter still short, two list) |
+
+What it replaces: the picker's wait for a second letter, and a warehouse picker that opened on *No products found*.
+
+## a-product-option-shows-its-picture
+
+> Owner, in chat (2026-11-09), on Temuan's product picker: *"select product ada gambarnya"*.
+
+```
+┌──────────────────────────────────────────┐
+│ [🖼] SL-01-BERAS-5K                       │   ← the cover, as ProductListItem draws it, a size smaller
+│      Beras Pandan Wangi 5kg · Toko Melati │
+│ [📦] SL-02-GULA-1K                        │   ← no cover: the package placeholder
+│      Gula Pasir 1kg · Toko Kenanga        │
+└──────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the rule | every option of `ProductSelect` shows the product's picture on its left — the thumbnail, else the full image; the package icon when there is none — then its code and name (and, on a warehouse's, its owner and *Arsip*) as before |
+| the read | a team's and every team's catalogue already carry the cover; a warehouse's search (`WarehouseProductSearch`) names a product without one, so its options' covers are ONE `ProductByIds` per search, beside the owners' names — best-effort, a failed read leaves the placeholder |
+| where | every screen with the picker: Temuan, a count's product plan and its found, the order form's product filter, analytic's product filter |
+| pinned by | ProductSelect `Option picture` (Beras's cover on its option) |
+
+What it replaces: options of text alone.
 
 ## every-screen-says-product-code
 

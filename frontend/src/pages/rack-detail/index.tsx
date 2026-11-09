@@ -1,21 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Box, Button, Flex, HStack, Heading, Icon, IconButton, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
-import { ArrowLeft, ArrowRightLeft, Gift, History, PackageOpen, PackageSearch } from "lucide-react";
+import { Box, Button, Flex, Grid, HStack, Heading, Icon, Span, Stack, Table, Text, useBreakpointValue } from "@chakra-ui/react";
+import { ArrowRightLeft, Gift, History, PackageOpen, PackageSearch } from "lucide-react";
 import { personName } from "../../lib/users";
-import { productClient, rackClient, rpcError, teamClient } from "../../api/clients";
-import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
+import { productClient, rackClient, rpcError } from "../../api/clients";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Rack, RackStockLine, RackSummary } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
-import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
+import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
+import { rackHistoryFromList, rackHistoryRowData } from "../../features/racks/adapt";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { CompactActions } from "../../components/chrome/CompactActions";
+import { Fact, Section } from "../../components/chrome/DetailSection";
+import { FilterChips } from "../../components/chrome/FilterChips";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { SectionNav } from "../../components/chrome/SectionNav";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { ProductListItem } from "../../components/products/ProductListItem";
@@ -26,13 +30,24 @@ import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { formatRupiah } from "../../lib/money";
 import { useIsMobile } from "../../layouts/shell";
+import { useScrollSpy } from "../../lib/useScrollSpy";
+import { useStickyTitle } from "../../lib/useStickyTitle";
 import { fetchActors } from "../../features/users/queries";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ReportFoundDialog } from "../../features/inventory/ReportFoundDialog";
 import { canReportFound } from "../../lib/roles";
 import { MoveGoodsDialog } from "./components/MoveGoodsDialog";
+import { RackTitleRow } from "./components/RackTitleRow";
 import { RecordSampleDialog } from "./components/RecordSampleDialog";
 import { RACK_DETAIL_PENDING } from "./pending";
+import {
+  RACK_MAIN_SECTIONS,
+  RACK_SECTION_KEYS,
+  type RackSectionKey,
+  rackSection,
+  rackSectionDomId,
+} from "./sections";
+import { type RackShelf, useRackShelf } from "./useRackShelf";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -52,30 +67,31 @@ function parseRackId(raw: string | undefined): bigint {
   }
 }
 
-// RackDetailPage answers the questions someone standing at a shelf has (#138/#197): which rack is
-// this, what is on it, what it is worth, and what has happened to it — a PAGE, not a dialog, because
-// it is a record being read.
+// RackDetailPage answers the questions someone standing at a shelf has (#138/#197): which rack is this, what is on it,
+// what it is worth, and what has happened to it — a PAGE, not a dialog, because it is a record being read.
 //
-// THE LAYOUT IS THE OWNER'S (#197): the name and two header tiles across the top, then VERTICAL tabs
-// down the left with their content beside them. Vertical rather than the horizontal tabs
-// WarehouseProductPage uses, because five labels do not read well in a row and these are sections of
-// one record rather than alternative views of one thing.
+// ONE PAGE OF SECTIONS, AS EVERY OTHER DETAIL PAGE (owner: *"iya seperti usulmu, gunakan detail lain sebagai
+// referensi"*, a-rack-page-is-one-page-of-sections) — the product page's and the restock pages' shape. It REPLACES the
+// five vertical tabs of #197, and their pairs that read twice on one page are one section each: Produk carries Harga's
+// two columns, Riwayat carries Riwayat Penempatan as its Penempatan chip.
 //
-// The page exists because a warehouse holds OTHER TEAMS' goods: a selling team raises a restock for
-// its own product and accepting it (#137) puts that product on this warehouse's shelf. So RackStock
-// returns product ids this warehouse does not own, and it deliberately returns ONLY ids — resolving
-// them is the caller's job, via ProductByIds and NOT ProductList, which serves the warehouse's own
-// catalogue and would silently omit most of the shelf.
+//   ┌ Produk  ┐   ← A-01-1  Aisle A bawah                         [⊕ Temuan] [🎁 Sampel] [⇄ Pindahkan]
+//   │ Info    │   [Di rak ini 25 unit · Rp …]  [Opname terakhir …]
+//   └ Riwayat ┘   ┌ Produk ── Produk · Tim · Di rak ini · Harga/pcs · Nilai ──┐   ┌ Info ── Kode · Nama · Deskripsi ┐
+//                 ┌ Riwayat ── (Semua) (Hanya penempatan) ────────────────────┐
 //
-// ON THE SCREEN RULES (owner: *"sekarang inisiasi rack"*, the-racks-follow-the-screen-rules): back is its icon in the
-// title's row and returns where the page was opened; the two acts carry their icons, and on a phone are their icons; the
-// header figures are the card strip; a first load is a skeleton; an empty shelf or history is a hint; the pager grows;
-// on a phone the tabs run across the top and each product is a block; the date speaks the app's language.
+// The nav on the left (Section, SectionNav, useScrollSpy); the title row sticks once it scrolls away; on a phone the
+// section chips stick at the top, the acts are their icons (three fold into ⋯) and each product is a block. Info is the
+// rack's short record, so where there is room it stands beside the rest, as Kiriman does on a restock.
+//
+// The page exists because a warehouse holds OTHER TEAMS' goods: a selling team raises a restock for its own product and
+// accepting it (#137) puts that product on this warehouse's shelf — so whose each thing is has its own column.
 export function RackDetailPage() {
   const { t } = useTranslation();
   const { rackId: rackIdParam } = useParams();
   const navigate = useNavigate();
   const { current } = useTeam();
+  const isMobile = useIsMobile();
   // EVERY WAY OUT GOES WHERE THE PAGE WAS OPENED (a-form-returns-where-it-was-opened) — the list with its search; by a
   // link, the list.
   const backTo = cameFrom(useLocation()) ?? "/inventories/racks";
@@ -88,39 +104,37 @@ export function RackDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [lines, setLines] = useState<RackStockLine[]>([]);
-  // productId -> product, for the page's lines. ProductByIds answers unordered and may answer SHORT,
-  // so the rows are matched out of this by id — never by position against `lines`.
-  const [products, setProducts] = useState<Map<string, Product>>(new Map());
-  const [stockLoading, setStockLoading] = useState(true);
-  const [stockError, setStockError] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-
-  // teamId -> team, for each row's Team column. The whole point of this page is that the shelf holds
-  // other teams' goods, so "whose is this?" gets its own column — avatar, name and type, the way a team
-  // is shown everywhere (TeamItem). Batched (TeamByIds), never per row.
-  const [teams, setTeams] = useState<Map<string, Team>>(new Map());
-  // The names alone, for the two dialogs, which show a team inside a product's line.
-  const teamNames = useMemo(() => new Map([...teams].map(([id, team]) => [id, team.name])), [teams]);
-
-  // The two writes off this rack (placement_decision.md): Move Goods, and Record Sample
-  // (a-sample-is-recorded-on-rack-detail). The reads below are hand-rolled effects rather than query hooks, so a
-  // write bumps `reloadKey` and every read on the page — header, contents, both histories — asks again.
+  // The writes off this rack (placement_decision.md): Move Goods, Record Sample (a-sample-is-recorded-on-rack-detail) and
+  // Report Found. The reads are hand-rolled effects rather than query hooks, so a write bumps `reloadKey` and every read on
+  // the page — header, the shelf, the history — asks again.
   const [dialog, setDialog] = useState<"move" | "sample" | "found" | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
-  const isMobile = useIsMobile();
 
-  // Read inside the effect WITHOUT making it a dependency: `teams` grows as pages resolve, so
-  // depending on it would re-run the effect on its own result.
-  const teamsRef = useRef(teams);
-  teamsRef.current = teams;
+  // WHAT IS ON IT, PRICED — Produk's read and its pager (useRackShelf).
+  const shelf = useRackShelf(teamId, rackId, reloadKey);
 
-  // Which rack is this, and the two header numbers. Kept apart from the contents below so that paging
-  // the shelf does not re-ask for the header, and a rack that fails to load fails the whole page —
-  // there is no useful "contents of a rack we cannot name".
+  // The names alone, for the dialogs, which show a team inside a product's line.
+  const teamNames = useMemo(() => new Map([...shelf.teams].map(([id, team]) => [id, team.name])), [shelf.teams]);
+
+  // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────────
+  // Info beside the rest where there is room beside the nav — Chakra's `xl`, as a restock's Kiriman.
+  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
+  const stick = useStickyTitle(rack !== null, isMobile);
+  const { active, scrollTo } = useScrollSpy(
+    rack !== null,
+    stick.bar,
+    RACK_SECTION_KEYS,
+    rackSectionDomId,
+    wide ? RACK_MAIN_SECTIONS : undefined,
+  );
+  const navSections = useMemo(
+    () => RACK_SECTION_KEYS.map((key) => ({ key, label: t(rackSection(key).titleKey), icon: rackSection(key).icon })),
+    [t],
+  );
+
+  // Which rack is this, and the header's figures. Kept apart from the shelves so that paging one does not re-ask for the
+  // header, and a rack that fails to load fails the whole page — there is no useful "contents of a rack we cannot name".
   useEffect(() => {
     if (teamId === undefined || rackId === 0n) {
       setError(rackId === 0n ? t("racks.detail.invalidId") : "");
@@ -158,125 +172,6 @@ export function RackDetailPage() {
     };
   }, [teamId, rackId, t, reloadKey]);
 
-  // What is on it, and what each thing IS. The two calls are deliberately SERIALISED into one effect
-  // and committed together, rather than showing the lines and letting the names land after:
-  // "Unknown product" is a claim — that the catalogue no longer lists it — and flashing it down the
-  // column on every page load, while the lookup is merely in flight, would assert something false.
-  // (A team NAME is decoration with an honest "Team #<id>" fallback, so that one resolves after.)
-  useEffect(() => {
-    if (teamId === undefined || rackId === 0n) {
-      setStockLoading(false);
-      return;
-    }
-
-    let ignore = false;
-
-    setStockLoading(true);
-    setStockError("");
-
-    void (async () => {
-      try {
-        const res = await rackClient.rackStock({
-          teamId,
-          filter: { rackId },
-          dataRequest: rackStockRowData(),
-          page: { page, limit: pageSize },
-        });
-        if (ignore) return;
-
-        const stockLines = rackStockFromList(res.items, res.ids);
-
-        // Unique and non-zero: ProductByIds demands min_items:1, unique ids, each > 0 — so a
-        // duplicate or an empty set must never become a call. The cap is 200 and a page is at most
-        // 50, so a page's ids always fit in ONE call.
-        const ids = [...new Set(stockLines.map((line) => line.productId).filter((id) => id > 0n))];
-
-        const resolved = new Map<string, Product>();
-
-        if (ids.length > 0) {
-          try {
-            // `teamId` here is the team the CALLER holds a role in — this warehouse — not the team
-            // whose products come back. That is what lets it resolve a selling team's product.
-            const productRes = await productClient.productByIds({
-              teamId,
-              filter: { ids },
-              dataRequest: productByIdsRowData(),
-            });
-            if (ignore) return;
-
-            for (const product of productsFromByIds(productRes)) {
-              resolved.set(product.id.toString(), product);
-            }
-          } catch {
-            // Swallowed on purpose: the goods are on the shelf whether or not the catalogue can be
-            // read. Every row falls back to the unresolved label and KEEPS ITS COUNT, which is the
-            // number someone at the rack came for.
-          }
-        }
-
-        if (ignore) return;
-
-        setLines(stockLines);
-        setProducts(resolved);
-        setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-      } catch (err) {
-        if (!ignore) {
-          setStockError(rpcError(err));
-          setLines([]);
-          setProducts(new Map());
-          setTotalItems(0);
-        }
-      } finally {
-        if (!ignore) setStockLoading(false);
-      }
-    })();
-
-    return () => {
-      ignore = true;
-    };
-  }, [teamId, rackId, page, pageSize, reloadKey]);
-
-  // The owning team per row, resolved in ONE batch and cached for the page's life — paging back, or a
-  // second page owned by the same teams, costs nothing. Deliberately does NOT gate `stockLoading`: rows
-  // render with TeamItem's "Team #<id>" fallback and upgrade in place.
-  useEffect(() => {
-    if (products.size === 0) return;
-
-    const missing = [
-      ...new Set(
-        [...products.values()]
-          .map((product) => product.teamId)
-          .filter((id) => id > 0n && !teamsRef.current.has(id.toString())),
-      ),
-    ];
-
-    if (missing.length === 0) return;
-
-    let ignore = false;
-
-    void (async () => {
-      try {
-        const found = teamsByIds(await teamClient.teamByIds({ filter: { ids: missing }, dataRequest: teamByIdsRowData() }));
-        if (ignore) return;
-
-        setTeams((prev) => {
-          const next = new Map(prev);
-          for (const [id, team] of Object.entries(found)) {
-            next.set(id, team);
-          }
-
-          return next;
-        });
-      } catch {
-        // A name is decoration: TeamItem falls back to "Team #<id>".
-      }
-    })();
-
-    return () => {
-      ignore = true;
-    };
-  }, [products]);
-
   // No current team means there is no warehouse to read a rack against — the whole page is meaningless.
   if (!current) {
     return (
@@ -289,20 +184,7 @@ export function RackDetailPage() {
     );
   }
 
-  // Back is its icon alone, in the title's row — to where the page was opened (the list with its search), else the list.
-  const back = (
-    <IconButton
-      size="sm"
-      variant="ghost"
-      flexShrink={0}
-      aria-label={t("racks.detail.back")}
-      title={t("racks.detail.back")}
-      data-testid="rack-detail-back"
-      onClick={() => navigate(backTo)}
-    >
-      <Icon as={ArrowLeft} boxSize="4" />
-    </IconButton>
-  );
+  const back = () => navigate(backTo);
 
   // The first load shows the page's shape (motion-is-small-quick-and-shared).
   if (loading) {
@@ -312,7 +194,7 @@ export function RackDetailPage() {
   if (error || !rack) {
     return (
       <Stack gap="section">
-        <Box>{back}</Box>
+        <RackTitleRow stuck={false} code={t("racks.detail.title")} name="" backLabel={t("racks.detail.back")} onBack={back} />
         <Text color="error.fg" data-testid="rack-detail-error">
           {error || t("racks.detail.notFound")}
         </Text>
@@ -320,242 +202,229 @@ export function RackDetailPage() {
     );
   }
 
-  const shelfPager = (
-    <GrowingPager
-      page={page}
-      onPageChange={setPage}
-      hasNext={page * pageSize < totalItems}
-      resetKey={String(pageSize)}
-      pageSize={pageSize}
-      pageSizeOptions={PAGE_SIZE_OPTIONS}
-      onPageSizeChange={(n) => {
-        setPageSize(n);
-        setPage(1);
-      }}
-    />
-  );
-
   // REPORT FOUND (staff-may-report-a-found): units found on this shelf, sent for the Owner's or Admin's approval. Its
   // place here was accepted 2026-11-03 (the-staff-found-screens-are-accepted).
-  const reportsFound = canReportFound(current?.role);
+  const reportsFound = canReportFound(current.role);
 
-  // THE ACTS OFF THIS RACK, each with its icon (an-action-button-carries-its-icon) — on a phone their icons alone, two
-  // stay out of `⋯` and three fold into it (a-phone-header-action-is-an-icon). None while the admin team monitors the
-  // warehouse (the-admin-team-monitors-read-only).
-  const actions = !canWrite(current) ? null : isMobile ? (
-    <CompactActions
-      menuLabel={t("racks.detail.actions")}
-      menuTestId="rack-actions"
-      actions={[
-        ...(reportsFound
-          ? [
-              {
-                id: "found",
-                label: t("racks.reportFound.action"),
-                icon: PackageSearch,
-                testId: "rack-action-report-found",
-                onClick: () => setDialog("found"),
-              },
-            ]
-          : []),
-        {
-          id: "sample",
-          label: t("racks.sample.action"),
-          icon: Gift,
-          testId: "rack-action-sample",
-          onClick: () => setDialog("sample"),
-        },
-        {
-          id: "move",
-          label: t("racks.move.action"),
-          icon: ArrowRightLeft,
-          primary: true,
-          testId: "rack-action-move",
-          onClick: () => setDialog("move"),
-        },
-      ]}
-    />
-  ) : (
-    <HStack gap="2" flexShrink={0}>
-      {reportsFound && (
-        <Button variant="outline" data-testid="rack-action-report-found" onClick={() => setDialog("found")}>
-          <Icon as={PackageSearch} boxSize="4" />
-          {t("racks.reportFound.action")}
+  // THE ACTS OFF THIS RACK, each with its icon (an-action-button-carries-its-icon) — on a phone, and in the sticky bar,
+  // their icons: two stay out of `⋯`, three fold into it (a-phone-header-action-is-an-icon). None while the admin team
+  // monitors the warehouse (the-admin-team-monitors-read-only). The bar's copy suffixes its test ids `-sticky`, so a test
+  // finds each of the page's once.
+  const actions = (compact: boolean, suffix = "") =>
+    !canWrite(current) ? null : compact ? (
+      <CompactActions
+        menuLabel={t("racks.detail.actions")}
+        menuTestId={`rack-actions${suffix}`}
+        actions={[
+          ...(reportsFound
+            ? [
+                {
+                  id: "found",
+                  label: t("racks.reportFound.action"),
+                  icon: PackageSearch,
+                  testId: `rack-action-report-found${suffix}`,
+                  onClick: () => setDialog("found"),
+                },
+              ]
+            : []),
+          {
+            id: "sample",
+            label: t("racks.sample.action"),
+            icon: Gift,
+            testId: `rack-action-sample${suffix}`,
+            onClick: () => setDialog("sample"),
+          },
+          {
+            id: "move",
+            label: t("racks.move.action"),
+            icon: ArrowRightLeft,
+            primary: true,
+            testId: `rack-action-move${suffix}`,
+            onClick: () => setDialog("move"),
+          },
+        ]}
+      />
+    ) : (
+      <HStack gap="2" flexShrink={0}>
+        {reportsFound && (
+          <Button variant="outline" data-testid="rack-action-report-found" onClick={() => setDialog("found")}>
+            <Icon as={PackageSearch} boxSize="4" />
+            {t("racks.reportFound.action")}
+          </Button>
+        )}
+        <Button variant="outline" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
+          <Icon as={Gift} boxSize="4" />
+          {t("racks.sample.action")}
         </Button>
-      )}
-      <Button variant="outline" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
-        <Icon as={Gift} boxSize="4" />
-        {t("racks.sample.action")}
-      </Button>
-      <Button colorPalette="brand" data-testid="rack-action-move" onClick={() => setDialog("move")}>
-        <Icon as={ArrowRightLeft} boxSize="4" />
-        {t("racks.move.action")}
-      </Button>
-    </HStack>
+        <Button colorPalette="brand" data-testid="rack-action-move" onClick={() => setDialog("move")}>
+          <Icon as={ArrowRightLeft} boxSize="4" />
+          {t("racks.move.action")}
+        </Button>
+      </HStack>
+    );
+
+  // ── THE TITLE ROW — back, the code with the name under it, the acts held to the right. ONE builder, drawn twice: as the
+  // page's title, and as the sticky bar once that title has scrolled behind it (the-title-row-is-the-sticky-bar). ────────
+  const titleRow = (stuck: boolean) => (
+    <RackTitleRow
+      stuck={stuck}
+      code={rack.code}
+      name={rack.name}
+      backLabel={t("racks.detail.back")}
+      onBack={back}
+      titleRef={stick.title}
+      actions={stuck ? <Box data-testid="rack-detail-sticky-actions">{actions(true, "-sticky")}</Box> : actions(isMobile)}
+    />
   );
 
   const counted = summary?.lastCountedAt ? Date.parse(summary.lastCountedAt) : NaN;
   const unknownCost = summary?.unknownCostProducts ?? 0;
 
+  // THE HEADER FIGURES, the order list's card strip (a-list-summary-is-the-order-lists-card-strip) — what is on the shelf
+  // and what it is worth, then when it was last counted. Under the title, over the sections: the whole rack's.
+  const figures = (
+    <SummaryStrip testId="rack-summary">
+      <SummaryCard
+        emphasis
+        label={t("racks.detail.countAndValue")}
+        value={
+          <Span data-testid="rack-summary-count">
+            {t("racks.detail.unitsOnShelf", { count: Number(summary?.totalOnHand ?? 0n) })}
+          </Span>
+        }
+        line={
+          <>
+            <Span data-testid="rack-summary-value">{formatRupiah(summary?.totalValue ?? 0)}</Span>
+            {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds nothing to it, so a
+                shelf of never-restocked goods would otherwise read as a confident small number. */}
+            {unknownCost > 0 && (
+              <Span color="warning.fg" data-testid="rack-summary-unknown-cost">
+                {" · "}
+                {t("racks.detail.unknownCost", { count: unknownCost })}
+              </Span>
+            )}
+          </>
+        }
+        testId="rack-summary-stock"
+      />
+      {/* "Never counted" is a real answer for a new shelf, and it must not render as a date. The date speaks the app's
+          language (a-date-speaks-the-apps-language). */}
+      <SummaryCard
+        label={t("racks.detail.lastCounted")}
+        value={
+          <Span data-testid="rack-summary-last-counted">
+            {Number.isNaN(counted) ? t("racks.detail.neverCounted") : formatUnixDate(BigInt(Math.floor(counted / 1000)))}
+          </Span>
+        }
+        testId="rack-summary-counted"
+      />
+    </SummaryStrip>
+  );
+
+  /** A section card, keyed by its entry in `sections.ts` — its id, icon and title come from there. */
+  const section = (key: RackSectionKey, children: ReactNode, testId: string) => {
+    const entry = rackSection(key);
+
+    return (
+      <Section id={rackSectionDomId(key)} icon={entry.icon} title={t(entry.titleKey)} testId={testId}>
+        {children}
+      </Section>
+    );
+  };
+
+  // PRODUK — what is on the shelf, whose it is, how many here, and what it is worth: the Harga tab's two columns are this
+  // section's, since a second table of the same rows read twice on one page.
+  const products = section("products", <ShelfSection shelf={shelf} />, "rack-products-panel");
+  // INFO — the rack's own record: the code painted on it, its name, what it is for.
+  const info = section(
+    "info",
+    <Stack gap="card">
+      <Fact label={t("racks.detail.code")}>
+        <Text as="span" data-testid="rack-info-code">
+          {rack.code}
+        </Text>
+      </Fact>
+      <Fact label={t("racks.detail.name")}>
+        <Text as="span" data-testid="rack-info-name">
+          {rack.name || t("racks.detail.noName")}
+        </Text>
+      </Fact>
+      <Fact label={t("racks.detail.description")} full>
+        <Text as="span" data-testid="rack-info-description">
+          {rack.description || t("racks.detail.noDescription")}
+        </Text>
+      </Fact>
+    </Stack>,
+    "rack-info-panel",
+  );
+  // RIWAYAT — what has happened to this shelf; the Riwayat Penempatan tab is its Penempatan chip, the same ledger narrowed
+  // to the movements that decided goods LIVE here.
+  const history = section(
+    "history",
+    <RackHistory teamId={teamId} rackId={rackId} reloadKey={reloadKey} testId="rack-history" />,
+    "rack-history-panel",
+  );
+
+  const title = titleRow(false);
+
   return (
     // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
-    <Stack gap="section" animationStyle="enter" data-testid="rack-detail-page">
-      {/* THE TITLE'S ROW (the-phone-header-is-one-row) — back, the code painted on the shelf as the heading with its name
-          small under it, and the two acts. */}
-      <Flex align="center" gap={isMobile ? "2" : "card"}>
-        {back}
-        <Stack gap="0" flex="1" minW="0">
-          {/* The CODE is how a person finds this rack in the building, so it is the heading. The name only qualifies
-              it, and is legitimately empty. */}
-          <Heading size="lg" truncate data-testid="rack-detail-code">
-            {rack.code}
-          </Heading>
-          {rack.name && (
-            <Text fontSize="sm" color="fg.muted" truncate data-testid="rack-detail-name">
-              {rack.name}
-            </Text>
-          )}
-        </Stack>
-        {actions}
-      </Flex>
-
-      {/* The Move and Record Sample writes are a prototype; this strip names the parts whose rule is not settled. */}
+    <Stack
+      gap="section"
+      animationStyle="enter"
+      data-testid="rack-detail-page"
+      style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
+    >
+      {/* What is not wired yet (pending.ts) — nothing today, so the strip draws nothing. */}
       <NotImplementedSummary list={RACK_DETAIL_PENDING} />
 
-      {/* THE HEADER FIGURES, the order list's card strip (a-list-summary-is-the-order-lists-card-strip) — what is on the
-          shelf and what it is worth, then when it was last counted. */}
-      <SummaryStrip testId="rack-summary">
-        <SummaryCard
-          emphasis
-          label={t("racks.detail.countAndValue")}
-          value={
-            <Span data-testid="rack-summary-count">
-              {t("racks.detail.unitsOnShelf", { count: Number(summary?.totalOnHand ?? 0n) })}
-            </Span>
-          }
-          line={
-            <>
-              <Span data-testid="rack-summary-value">{formatRupiah(summary?.totalValue ?? 0)}</Span>
-              {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds nothing to it,
-                  so a shelf of never-restocked goods would otherwise read as a confident small number. */}
-              {unknownCost > 0 && (
-                <Span color="warning.fg" data-testid="rack-summary-unknown-cost">
-                  {" · "}
-                  {t("racks.detail.unknownCost", { count: unknownCost })}
-                </Span>
-              )}
-            </>
-          }
-          testId="rack-summary-stock"
-        />
-        {/* "Never counted" is a real answer for a new shelf, and it must not render as a date. The date speaks the
-            app's language (a-date-speaks-the-apps-language). */}
-        <SummaryCard
-          label={t("racks.detail.lastCounted")}
-          value={
-            <Span data-testid="rack-summary-last-counted">
-              {Number.isNaN(counted)
-                ? t("racks.detail.neverCounted")
-                : formatUnixDate(BigInt(Math.floor(counted / 1000)))}
-            </Span>
-          }
-          testId="rack-summary-counted"
-        />
-      </SummaryStrip>
-
-      {/* VERTICAL tabs down the left, content beside them (#197) — across the top on a phone, scrolling in their own
-          row rather than past the screen's edge (nothing-runs-past-a-phones-edge). */}
-      <Tabs.Root
-        defaultValue="products"
-        orientation={isMobile ? "horizontal" : "vertical"}
-        data-testid="rack-tabs"
+      {/* THE STICKY STRIP — the section chips on a phone (always), and the title bar under them, drawn over the page once
+          the title has gone behind it. */}
+      <ProductStickyStrip
+        prefix="rack-detail"
+        stripRef={stick.strip}
+        barRef={stick.bar}
+        shown={stick.past}
+        isMobile={isMobile}
+        chips={<SectionNav compact sections={navSections} ariaLabel={t("racks.detail.navLabel")} active={active} onSelect={scrollTo} />}
       >
-        <Tabs.List
-          minW={isMobile ? undefined : "48"}
-          flexShrink={0}
-          flexWrap="nowrap"
-          overflowX={isMobile ? "auto" : undefined}
-          overflowY={isMobile ? "hidden" : undefined}
-        >
-          <Tabs.Trigger value="info" flexShrink={0} data-testid="rack-tab-info">
-            {t("racks.detail.tab.info")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="products" flexShrink={0} data-testid="rack-tab-products">
-            {t("racks.detail.tab.products")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="prices" flexShrink={0} data-testid="rack-tab-prices">
-            {t("racks.detail.tab.prices")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="stockHistory" flexShrink={0} data-testid="rack-tab-stock-history">
-            {t("racks.detail.tab.stockHistory")}
-          </Tabs.Trigger>
-          <Tabs.Trigger value="placementHistory" flexShrink={0} data-testid="rack-tab-placement-history">
-            {t("racks.detail.tab.placementHistory")}
-          </Tabs.Trigger>
-        </Tabs.List>
+        {titleRow(true)}
+      </ProductStickyStrip>
 
-        <Tabs.Content value="info" flex="1" minW="0" data-testid="rack-info-panel">
-          <Stack gap="card">
-            <Field label={t("racks.detail.code")} value={rack.code} testId="rack-info-code" />
-            <Field
-              label={t("racks.detail.name")}
-              value={rack.name || t("racks.detail.noName")}
-              testId="rack-info-name"
-            />
-            <Field
-              label={t("racks.detail.description")}
-              value={rack.description || t("racks.detail.noDescription")}
-              testId="rack-info-description"
-            />
+      {/* THE NAVIGATION, THEN THE SECTIONS. ⚠ `minmax(0, 1fr)` so a wide table scrolls in its own box. */}
+      <Grid templateColumns={isMobile ? "minmax(0, 1fr)" : "13rem minmax(0, 1fr)"} gap="section" alignItems="start">
+        {!isMobile && (
+          <Box position="sticky" top="calc(var(--detail-header-h, 0px) + 1rem)">
+            <SectionNav sections={navSections} ariaLabel={t("racks.detail.navLabel")} active={active} onSelect={scrollTo} />
+          </Box>
+        )}
+
+        {/* THE SHELF IN THE MAIN COLUMN, INFO BESIDE IT where there is room — in the nav's order in one column otherwise. A
+            JS branch, so no card exists twice. */}
+        {wide ? (
+          <Stack gap="section" minW="0" w="full">
+            {title}
+            {figures}
+            <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
+              <Stack gap="section" minW="0">
+                {products}
+                {history}
+              </Stack>
+              <Stack gap="section" minW="0">
+                {info}
+              </Stack>
+            </Grid>
           </Stack>
-        </Tabs.Content>
-
-        <Tabs.Content value="products" flex="1" minW="0" data-testid="rack-products-panel">
-          <Stack gap="card">
-            <RackStockTable
-              lines={lines}
-              products={products}
-              teams={teams}
-              loading={stockLoading}
-              error={stockError}
-              showMoney={false}
-            />
-            {shelfPager}
+        ) : (
+          <Stack gap="section" minW="0" w="full">
+            {title}
+            {figures}
+            {products}
+            {info}
+            {history}
           </Stack>
-        </Tabs.Content>
-
-        {/* PRICES reads the SAME call the Products tab does — one query, two views, so the count and
-            the money beside it can never come from two different reads of the shelf. */}
-        <Tabs.Content value="prices" flex="1" minW="0" data-testid="rack-prices-panel">
-          <Stack gap="card">
-            <RackStockTable
-              lines={lines}
-              products={products}
-              teams={teams}
-              loading={stockLoading}
-              error={stockError}
-              showMoney
-            />
-            {shelfPager}
-          </Stack>
-        </Tabs.Content>
-
-        <Tabs.Content value="stockHistory" flex="1" minW="0" data-testid="rack-stock-history-panel">
-          <RackHistory teamId={teamId} rackId={rackId} reloadKey={reloadKey} testId="rack-stock-history" />
-        </Tabs.Content>
-
-        {/* PLACEMENT HISTORY is the same ledger narrowed to the movements that decided goods LIVE
-            here — put-aways and moves, rather than every change to a count. */}
-        <Tabs.Content value="placementHistory" flex="1" minW="0" data-testid="rack-placement-history-panel">
-          <RackHistory
-            teamId={teamId}
-            rackId={rackId}
-            kinds={PLACEMENT_KINDS}
-            reloadKey={reloadKey}
-            testId="rack-placement-history"
-          />
-        </Tabs.Content>
-      </Tabs.Root>
+        )}
+      </Grid>
 
       {teamId !== undefined && (
         <>
@@ -590,14 +459,26 @@ export function RackDetailPage() {
   );
 }
 
-// A field of the Info tab — its label on the type scale's field label (13 bold, `fg.label`), its value under it.
-function Field({ label, value, testId }: { label: string; value: string; testId: string }) {
+// THE SHELF SECTION — the table (or a phone's blocks) and its pager under it.
+function ShelfSection({ shelf }: { shelf: RackShelf }) {
   return (
-    <Stack gap="0.5">
-      <Text fontSize="0.8125rem" fontWeight="bold" color="fg.label">
-        {label}
-      </Text>
-      <Text data-testid={testId}>{value}</Text>
+    <Stack gap="card">
+      <RackStockTable
+        lines={shelf.lines}
+        products={shelf.products}
+        teams={shelf.teams}
+        loading={shelf.loading}
+        error={shelf.error}
+      />
+      <GrowingPager
+        page={shelf.page}
+        onPageChange={shelf.setPage}
+        hasNext={shelf.page * shelf.pageSize < shelf.totalItems}
+        resetKey={String(shelf.pageSize)}
+        pageSize={shelf.pageSize}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        onPageSizeChange={shelf.setPageSize}
+      />
     </Stack>
   );
 }
@@ -608,20 +489,11 @@ interface RackStockTableProps {
   teams: Map<string, Team>;
   loading: boolean;
   error: string;
-  // The Prices tab is this same table with the money columns shown. One component rather than two,
-  // because the rows, the fallbacks and the "unknown product" rule are identical — and a second copy
-  // is how two tabs start disagreeing about what is on the shelf.
-  showMoney: boolean;
 }
 
-function RackStockTable({
-  lines,
-  products,
-  teams,
-  loading,
-  error,
-  showMoney,
-}: RackStockTableProps) {
+// THE SHELF, PRICED — what is on it, whose it is, how many here, the unit price and the value. It was two tabs, Produk and
+// Harga, the second this table with the money shown; on one page they read twice, so the money columns are always here.
+function RackStockTable({ lines, products, teams, loading, error }: RackStockTableProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -634,12 +506,9 @@ function RackStockTable({
   }
 
   if (loading) {
-    return <ListSkeleton rows={3} testId={showMoney ? "rack-prices-loading" : "rack-stock-loading"} />;
+    return <ListSkeleton rows={3} testId="rack-stock-loading" />;
   }
 
-  // Distinct testid per tab: BOTH panels mount this table (Products and Prices are one component,
-  // two views), so a shared one resolves to two elements and any assertion on it is ambiguous rather
-  // than wrong — the worst kind of test failure to read.
   if (lines.length === 0) {
     // AN EMPTY SHELF SAYS SO, AND WHAT FILLS IT (an-empty-list-shows-a-hint).
     return (
@@ -648,7 +517,7 @@ function RackStockTable({
         icon={PackageOpen}
         title={t("racks.detail.empty")}
         description={t("racks.detail.emptyHint")}
-        testId={showMoney ? "rack-prices-empty" : "rack-detail-empty"}
+        testId="rack-detail-empty"
       />
     );
   }
@@ -689,9 +558,9 @@ function RackStockTable({
 
   if (isMobile) {
     // A PHONE READS EACH PRODUCT AS A BLOCK (a-phone-reads-each-line-as-a-block) — the product at full width, whose it
-    // is, then the count on this rack (and on Prices, its unit price × count = its value).
+    // is, then the count on this rack, then its unit price × count = its value.
     return (
-      <Stack gap="3" data-testid={showMoney ? "rack-detail-prices" : "rack-detail-stock"}>
+      <Stack gap="3" data-testid="rack-detail-stock">
         {lines.map((line) => {
           const { product, item } = productOf(line);
 
@@ -716,15 +585,13 @@ function RackStockTable({
                   </Span>
                 </Text>
               </Flex>
-              {showMoney && (
-                <Text fontSize="sm" color="fg.muted">
-                  <Span data-testid={`rack-unit-cost-${line.productId}`}>{money(line, line.unitCost)}</Span>
-                  {` × ${line.onHand.toString()} … `}
-                  <Span fontWeight="bold" color="fg" data-testid={`rack-line-value-${line.productId}`}>
-                    {money(line, line.value)}
-                  </Span>
-                </Text>
-              )}
+              <Text fontSize="sm" color="fg.muted">
+                <Span data-testid={`rack-unit-cost-${line.productId}`}>{money(line, line.unitCost)}</Span>
+                {` × ${line.onHand.toString()} … `}
+                <Span fontWeight="bold" color="fg" data-testid={`rack-line-value-${line.productId}`}>
+                  {money(line, line.value)}
+                </Span>
+              </Text>
             </Stack>
           );
         })}
@@ -735,7 +602,7 @@ function RackStockTable({
   return (
     // The table scrolls inside its own box, never the page.
     <Box overflowX="auto" w="full" maxW="full" minW="0">
-      <Table.Root size="sm" data-testid={showMoney ? "rack-detail-prices" : "rack-detail-stock"}>
+      <Table.Root size="sm" data-testid="rack-detail-stock">
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("racks.detail.product")}</Table.ColumnHeader>
@@ -743,12 +610,8 @@ function RackStockTable({
             {/* NOT "On hand" — the app already uses that for the warehouse-wide number
                 (inventory.table.onHand), and this is one shelf's share of it. */}
             <Table.ColumnHeader textAlign="end">{t("racks.detail.onThisRack")}</Table.ColumnHeader>
-            {showMoney && (
-              <>
-                <Table.ColumnHeader textAlign="end">{t("racks.detail.unitCost")}</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="end">{t("racks.detail.lineValue")}</Table.ColumnHeader>
-              </>
-            )}
+            <Table.ColumnHeader textAlign="end">{t("racks.detail.unitCost")}</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="end">{t("racks.detail.lineValue")}</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
 
@@ -768,16 +631,12 @@ function RackStockTable({
                 <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-stock-onhand-${line.productId}`}>
                   {line.onHand.toString()}
                 </Table.Cell>
-                {showMoney && (
-                  <>
-                    <Table.Cell textAlign="end" data-testid={`rack-unit-cost-${line.productId}`}>
-                      {money(line, line.unitCost)}
-                    </Table.Cell>
-                    <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-line-value-${line.productId}`}>
-                      {money(line, line.value)}
-                    </Table.Cell>
-                  </>
-                )}
+                <Table.Cell textAlign="end" data-testid={`rack-unit-cost-${line.productId}`}>
+                  {money(line, line.unitCost)}
+                </Table.Cell>
+                <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-line-value-${line.productId}`}>
+                  {money(line, line.value)}
+                </Table.Cell>
               </Table.Row>
             );
           })}
@@ -790,12 +649,13 @@ function RackStockTable({
 interface RackHistoryProps {
   teamId: bigint | undefined;
   rackId: bigint;
-  // Omitted = every kind. The two history tabs are the same ledger asked two different questions.
-  kinds?: number[];
   // Bumped by a write on this page (a move, a sample), so the history asks again.
   reloadKey: number;
   testId: string;
 }
+
+/** Riwayat's chips: every movement, or only the ones that decided goods live here. */
+type HistoryLens = "all" | "placement";
 
 // The names of a page of history rows' products. Never throws: a product the catalogue cannot name keeps its row, as
 // "#id" — the same fallback the shelf's own table uses.
@@ -822,8 +682,17 @@ async function productNamesFor(teamId: bigint, ids: bigint[]): Promise<Map<strin
 
 // RackHistory is what has happened to THIS SHELF (#197) — a read `StockHistory` cannot serve, since
 // it demands a product id and answers "what happened to this product".
-function RackHistory({ teamId, rackId, kinds, reloadKey, testId }: RackHistoryProps) {
+//
+// ONE LEDGER, TWO LENSES (owner: *"riwayat stok dan penempatanpun kelihatan sama"*, then *"oke"*) — it was two tabs,
+// Riwayat Stok and Riwayat Penempatan, the second the first narrowed to put-aways and moves (PLACEMENT_KINDS); on one page
+// they read twice, so Penempatan is a chip over the one ledger:
+//
+//   (Semua) (Hanya penempatan)  ← Diterima and Pindah rak only — what decided goods live here
+function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const [lens, setLens] = useState<HistoryLens>("all");
+  const kinds = lens === "placement" ? PLACEMENT_KINDS : undefined;
 
   const [movements, setMovements] = useState<StockMovement[]>([]);
   // userId → name, and productId → name, for the page of rows: WHO did it (any-warehouse-member-may-move-goods — every
@@ -897,20 +766,48 @@ function RackHistory({ teamId, rackId, kinds, reloadKey, testId }: RackHistoryPr
     };
   }, [teamId, rackId, page, pageSize, kindKey, reloadKey]);
 
+  // The chips stay put while the ledger under them loads or fails — a lens is chosen, then answered.
+  const chips = (
+    <FilterChips<HistoryLens>
+      value={lens}
+      onChange={(next) => {
+        setLens(next);
+        setPage(1);
+      }}
+      all="all"
+      allLabel={t("racks.detail.historyAll")}
+      options={[
+        { value: "placement", label: t("racks.detail.historyPlacement"), title: t("racks.detail.historyPlacementTitle") },
+      ]}
+      ariaLabel={t("racks.detail.historyLens")}
+      scroll={isMobile}
+      testId={`${testId}-filter`}
+    />
+  );
+
   if (error) {
     return (
-      <Text color="error.fg" data-testid={`${testId}-error`}>
-        {error}
-      </Text>
+      <Stack gap="card">
+        {chips}
+        <Text color="error.fg" data-testid={`${testId}-error`}>
+          {error}
+        </Text>
+      </Stack>
     );
   }
 
   if (loading) {
-    return <ListSkeleton rows={3} testId={`${testId}-loading`} />;
+    return (
+      <Stack gap="card">
+        {chips}
+        <ListSkeleton rows={3} testId={`${testId}-loading`} />
+      </Stack>
+    );
   }
 
   return (
     <Stack gap="card">
+      {chips}
       {/* The shared ledger (features/inventory/MovementTable): this shelf's history names the PRODUCT
           that moved, since the rack is already the thing you are looking at. "On shelf after" stays
           this page's wording — it is one shelf's count, not the warehouse's (#135). */}

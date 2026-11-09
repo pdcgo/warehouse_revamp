@@ -244,20 +244,19 @@ export function AdjustStockDialog({
 
                   {/* A found that waits names no batch and changes nothing yet — said before the figures, so nobody
                       reads the form as a correction that has already happened. */}
+                  {/* ONE LINE (owner: *"alertnya kepanjangan, ada yang lebih ringkas?"*, a-found-waits-in-one-line) — what
+                      it claims back on approval is the hover's, for whoever asks. */}
                   {awaitsApproval && (
-                    <Alert.Root status="info" data-testid="adjust-found-waits">
+                    <Alert.Root
+                      status="info"
+                      title={t("inventory.adjustFoundWaitsApproval")}
+                      data-testid="adjust-found-waits"
+                    >
                       <Alert.Indicator>
                         <Icon as={Hourglass} boxSize="4" />
                       </Alert.Indicator>
                       <Alert.Content>
-                        <Alert.Title>{t("inventory.adjustFoundWaitsTitle")}</Alert.Title>
-                        <Alert.Description>
-                          <Stack gap="1">
-                            <Text>{t("inventory.adjustFoundWaitsNothing")}</Text>
-                            <Text>{t("inventory.adjustFoundWaitsApproval")}</Text>
-                            <Text>{t("inventory.adjustFoundWaitsNotYou")}</Text>
-                          </Stack>
-                        </Alert.Description>
+                        <Alert.Title fontWeight="normal">{t("inventory.foundWaits")}</Alert.Title>
                       </Alert.Content>
                     </Alert.Root>
                   )}

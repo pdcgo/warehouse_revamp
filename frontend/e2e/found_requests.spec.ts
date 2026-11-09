@@ -180,7 +180,7 @@ test("Found: the Admin reports two units on the Adjust dialog — nothing posts,
   await dialog.getByTestId("rack-select").click();
   await dialog.getByTestId(`rack-select-option-${state.rakA}`).click();
   await dialog.getByTestId("adjust-reason-type").selectOption("found");
-  await expect(dialog.getByTestId("adjust-found-waits")).toContainText("Waits for the warehouse Owner or Admin");
+  await expect(dialog.getByTestId("adjust-found-waits")).toContainText("Stock changes once another Owner or Admin");
   await expect(dialog.getByTestId("adjust-batch")).toHaveCount(0);
   await dialog.getByTestId("adjust-amount").fill("2");
   await dialog.getByTestId("adjust-reason").fill("behind the cartons");
