@@ -58,10 +58,17 @@ async function amount(value: string) {
   await userEvent.type(el, value, { delay: 40 });
 }
 
+// The reason is a radio pill, every one on screen (the-adjust-reason-is-a-radio-pill): one click picks it.
+async function pickReason(reason: "recount" | "damaged" | "lost" | "found") {
+  const option = screen.getByTestId(`adjust-reason-option-${reason}`);
+  await userEvent.click(option);
+  await waitFor(() => expect(option).toHaveAttribute("data-state", "checked"));
+}
+
 async function reportFound(rackId: bigint) {
   await screen.findByTestId("adjust-dialog");
   await pickRack(rackId);
-  await userEvent.selectOptions(screen.getByTestId("adjust-reason-type"), "found");
+  await pickReason("found");
 }
 
 // Found asks for no batch, says nothing changes until the Owner or Admin approves, and sends a request.
@@ -113,11 +120,23 @@ export const DamagedStillNamesItsBatch: Story = {
   play: async () => {
     await screen.findByTestId("adjust-dialog");
     await pickRack(43n);
-    await userEvent.selectOptions(screen.getByTestId("adjust-reason-type"), "damaged");
+    await pickReason("damaged");
 
     await expect(await screen.findByTestId("adjust-batch")).toBeInTheDocument();
     await expect(screen.queryByTestId("adjust-found-waits")).toBeNull();
     await expect(screen.getByTestId("submit-adjust")).toHaveTextContent("Adjust");
+
+    // The batch is picked by its OWN number, searched (a-batch-is-picked-by-its-own-number) — and Adjust waits for it.
+    await expect(screen.getByTestId("submit-adjust")).toBeDisabled();
+    const input = screen.getByTestId("adjust-batch");
+    await userEvent.click(input);
+    await userEvent.type(input, "7", { delay: 30 });
+    const option = await screen.findByTestId("adjust-batch-option-7");
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(input).toHaveValue("#7 · 3 ready"));
+    await amount("1");
+    await expect(screen.getByTestId("submit-adjust")).toBeEnabled();
   },
 };
 
@@ -133,6 +152,30 @@ export const ACountedRackRefusesTheFound: Story = {
     await expect(await screen.findByTestId("adjust-error")).toHaveTextContent("count #15");
     await expect(reportScenario.last?.productId).toBe(73n);
     await expect(screen.queryByTestId("adjust-closed")).toBeNull();
+  },
+};
+
+// THE REASON IS A RADIO PILL, THE NOTE A TEXTAREA (owner: *"aku ingin itu jadi pilihan radio kalau masih sedikit"*,
+// the-adjust-reason-is-a-radio-pill; *"catatan textarea"*, the-adjust-dialog-picks-with-chakra-controls) — the four
+// reasons on screen at once, Recount chosen as it opens, one click to change; no list to open, no native <select>.
+export const ReasonAndNote: Story = {
+  name: "Reason and note",
+  play: async () => {
+    await screen.findByTestId("adjust-dialog");
+    const group = screen.getByTestId("adjust-reason-type");
+
+    await expect(within(group).getAllByRole("radio")).toHaveLength(4);
+    for (const reason of ["recount", "damaged", "lost", "found"]) {
+      await expect(screen.getByTestId(`adjust-reason-option-${reason}`)).toBeVisible();
+    }
+    await expect(screen.getByTestId("adjust-reason-option-recount")).toHaveAttribute("data-state", "checked");
+    await expect(screen.queryByRole("combobox", { name: "Reason" })).toBeNull();
+
+    // One click changes it, and the form follows — Lost asks for its batch.
+    await pickReason("lost");
+    await expect(await screen.findByTestId("adjust-batch")).toBeInTheDocument();
+
+    await expect(screen.getByTestId("adjust-reason").tagName).toBe("TEXTAREA");
   },
 };
 

@@ -62,8 +62,9 @@ export const Default: Story = {
     await expect(canvas.getByTestId("batch-detail-name")).toHaveTextContent("Batch #5031");
     await expect(canvas.getByTestId("batch-detail-origin")).toHaveTextContent("Restock");
     await expect(canvas.getByTestId("batch-detail-expiring")).toBeVisible();
-    await expect(canvas.getByTestId("batch-detail-order")).toHaveTextContent(/^From Restock #503$/);
-    await expect(canvas.getByTestId("batch-detail-receipt-order")).not.toHaveTextContent("SCP5544332211");
+    // Where it came from is Info's *From*, as a way there, no resi (a-batch-opens-where-it-came-from).
+    await expect(canvas.getByTestId("batch-detail-order")).toHaveTextContent(/^Restock #503$/);
+    await expect(canvas.getByTestId("batch-info-panel")).not.toHaveTextContent("SCP5544332211");
     await expect(canvas.getByTestId("batch-detail-back")).toHaveTextContent("");
     await expect(canvas.getByTestId("batch-detail-adjust").querySelector("svg")).not.toBeNull();
 
@@ -86,7 +87,7 @@ export const Default: Story = {
 };
 
 // A PHONE (every-page-has-a-mobile-story) — the title's row is one row, Koreksi its icon (a-phone-header-action-is-an-
-// icon); the tabs run across the top; nothing runs past the screen's edge.
+// icon); the sections' chips stick at the top in place of the nav; nothing runs past the screen's edge.
 export const Mobile: Story = {
   name: "Mobile",
   globals: { viewport: { value: "mobile1" } },
@@ -95,8 +96,62 @@ export const Mobile: Story = {
 
     await expect(canvas.getByTestId("batch-detail-adjust")).toHaveAccessibleName("Adjust");
     await expect(canvas.getByTestId("batch-detail-adjust")).toHaveTextContent("");
-    await expect(canvas.getByTestId("batch-detail-tabs")).toHaveAttribute("data-orientation", "horizontal");
+    await expect(canvas.getByTestId("section-nav-strip")).toBeVisible();
+    await expect(canvas.queryByTestId("section-nav")).toBeNull();
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};
+
+// ONE PAGE OF SECTIONS, IN THE NAV'S ORDER (a-batch-page-is-one-page-of-sections) — where it was put, the batch's own
+// record, what has happened to it; none behind a tab. Info holds the record the heading used to: where it came from, who
+// took it in, what a unit cost, when it expires.
+export const OnePageOfSections: Story = {
+  name: "One page of sections",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const nav = canvas.getByTestId("section-nav");
+
+    await expect([...nav.querySelectorAll<HTMLElement>("[data-section]")].map((el) => el.dataset.section)).toEqual([
+      "placements",
+      "info",
+      "history",
+    ]);
+    await expect(canvas.getByTestId("section-nav-placements")).toHaveAttribute("aria-current", "location");
+    for (const panel of ["placements", "info", "history"]) {
+      await expect(canvas.getByTestId(`batch-${panel}-panel`)).toBeInTheDocument();
+    }
+    await expect(canvas.queryByRole("tablist")).toBeNull();
+
+    const info = canvas.getByTestId("batch-info-panel");
+    for (const label of ["From", "Accepted by", "Unit cost", "Expiry"]) {
+      await expect(info).toHaveTextContent(label);
+    }
+    await expect(info).not.toHaveTextContent("batchDetail.");
+    await expect(within(info).getByTestId("batch-detail-unit-cost")).toHaveTextContent(/^Rp/);
+    // The expiry as the list says it — the day, and how long is left, amber within 30 days (an-expiry-says-how-long-is-left).
+    await expect(within(info).getByTestId("batch-detail-expiry-left")).toHaveAttribute("data-band", "soon");
+
+    // A nav click jumps there and lights it (a-nav-jump-blinks-where-it-lands).
+    await userEvent.click(canvas.getByTestId("section-nav-history"));
+    await waitFor(() => expect(canvas.getByTestId("section-nav-history")).toHaveAttribute("aria-current", "location"));
+  },
+};
+
+// THE HEADING STICKS ONCE IT HAS SCROLLED AWAY (the-title-row-is-the-sticky-bar) — hidden while it is on screen; after a
+// jump down the page, the number in small with the product under it, back, and Koreksi as its icon.
+export const TheTitleSticks: Story = {
+  name: "Title sticks",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const bar = canvas.getByTestId("batch-detail-name-bar");
+
+    await expect(bar).not.toHaveAttribute("data-shown");
+    await userEvent.click(canvas.getByTestId("section-nav-history"));
+    await waitFor(() => expect(bar).toHaveAttribute("data-shown"));
+    await expect(bar).toHaveTextContent("Batch #5031");
+    await expect(bar).toHaveTextContent("Beras Pandan Wangi 5kg");
+    await expect(within(bar).getByTestId("batch-detail-sticky-back")).toBeVisible();
+    await expect(within(bar).getByTestId("batch-detail-adjust-sticky")).toBeVisible();
   },
 };
 
@@ -119,8 +174,12 @@ export const History: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("batch-detail-tab-history"));
-    const table = await canvas.findByTestId("batch-detail-history-table", {}, { timeout: 4000 });
+    // On the page — no tab to open first.
+    const table = await within(canvas.getByTestId("batch-history-panel")).findByTestId(
+      "batch-detail-history-table",
+      {},
+      { timeout: 4000 },
+    );
     await expect(table).toHaveTextContent("A-01-1");
     await expect(table).toHaveTextContent("B-02-1");
   },

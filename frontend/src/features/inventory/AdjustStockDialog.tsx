@@ -9,11 +9,10 @@ import {
   Dialog,
   Field,
   Icon,
-  Input,
-  NativeSelect,
   Portal,
   Stack,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
 import { Hourglass, Send } from "lucide-react";
 import { rpcError } from "../../api/clients";
@@ -21,9 +20,11 @@ import type { StockAdjustRequest } from "../../gen/warehouse/inventory/v1/invent
 import { StockAdjustReason } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
+import { BatchSelect } from "../../components/pickers/BatchSelect";
 import { RackSelect } from "../../components/pickers/RackSelect";
 import { CharCount } from "../../components/inputs/CharCount";
-import { useAdjustStock, useProductBatches, useProductPlaces } from "./queries";
+import { RadioPills } from "../../components/inputs/RadioPills";
+import { useAdjustStock, useProductPlaces } from "./queries";
 import { useReportFound } from "./foundRequests";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
 
@@ -40,6 +41,14 @@ const REASON_ENUM: Record<Exclude<Reason, "found">, StockAdjustReason> = {
   damaged: StockAdjustReason.DAMAGED,
   lost: StockAdjustReason.LOST,
 };
+
+// The four reasons, in the order the pills show them, with their words.
+const REASONS: { value: Reason; labelKey: string }[] = [
+  { value: "recount", labelKey: "inventory.adjustReasonRecount" },
+  { value: "damaged", labelKey: "inventory.adjustReasonDamaged" },
+  { value: "lost", labelKey: "inventory.adjustReasonLost" },
+  { value: "found", labelKey: "inventory.adjustReasonFound" },
+];
 
 // StockAdjustRequest.reason's max_len — the box stops where the server would refuse (a-limited-field-shows-its-count).
 const NOTE_MAX = 200;
@@ -83,13 +92,11 @@ export function AdjustStockDialog({
   const report = useReportFound();
   const busy = adjust.isPending || report.isPending;
 
+
   // A found waits for approval: it names no batch and moves nothing now.
   const awaitsApproval = reasonType === "found";
   const isBatch = reasonType !== "recount";
   const needsBatch = isBatch && !awaitsApproval;
-
-  const batches = useProductBatches({ warehouseId, productId: product.id });
-  const batchList = batches.data ?? [];
 
   // The shelves this product sits on, for the delta preview's current figure.
   const placesQuery = useProductPlaces({ warehouseId, productIds: [product.id] });
@@ -218,28 +225,28 @@ export function AdjustStockDialog({
                     <Field.HelperText>{t("inventory.placeCountedHelper")}</Field.HelperText>
                   </Field.Root>
 
-                  {/* The reason first — it decides whether a batch and which quantity the rest asks for. */}
+                  {/* The reason first — it decides whether a batch and which quantity the rest asks for. RADIO PILLS
+                      (owner: *"aku ingin itu jadi pilihan radio kalau masih sedikit"*, the-adjust-reason-is-a-radio-pill):
+                      four reasons, all on screen at once — the list is StockAdjustReason's and Found, bounded by the code,
+                      since each reason has its own ledger rule; one more is a code change, never data that grows. */}
                   <Field.Root required>
                     <Field.Label>{t("inventory.adjustReasonType")}</Field.Label>
-                    <NativeSelect.Root>
-                      <NativeSelect.Field
-                        value={reasonType}
-                        data-testid="adjust-reason-type"
-                        onChange={(e) => {
-                          const next = e.target.value as Reason;
-                          setReasonType(next);
-                          // A found report starts at one unit, not at the rack's whole on-hand — the figure the field
-                          // opens with is a recount's.
-                          if (next === "found") setAmount("1");
-                        }}
-                      >
-                        <option value="recount">{t("inventory.adjustReasonRecount")}</option>
-                        <option value="damaged">{t("inventory.adjustReasonDamaged")}</option>
-                        <option value="lost">{t("inventory.adjustReasonLost")}</option>
-                        <option value="found">{t("inventory.adjustReasonFound")}</option>
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                    <RadioPills<Reason>
+                      value={reasonType}
+                      onChange={(next) => {
+                        setReasonType(next);
+                        // A found report starts at one unit, not at the rack's whole on-hand — the figure the field
+                        // opens with is a recount's.
+                        if (next === "found") setAmount("1");
+                      }}
+                      options={REASONS.map((r) => ({
+                        value: r.value,
+                        label: t(r.labelKey),
+                        testId: `adjust-reason-option-${r.value}`,
+                      }))}
+                      ariaLabel={t("inventory.adjustReasonType")}
+                      testId="adjust-reason-type"
+                    />
                   </Field.Root>
 
                   {/* A found that waits names no batch and changes nothing yet — said before the figures, so nobody
@@ -261,31 +268,20 @@ export function AdjustStockDialog({
                     </Alert.Root>
                   )}
 
-                  {/* Which delivery's units — only for the batch reasons; a recount is batch-agnostic, and a found that
-                      waits is put into batches by its approval. */}
+                  {/* Which batch's units — only for the batch reasons; a recount is batch-agnostic, and a found that waits
+                      is put into batches by its approval. A SEARCH SELECT by the batch's own number (owner: *"batch
+                      selectnya"*, a-batch-is-picked-by-its-own-number): a product gains a batch with every restock, and
+                      the number is on the box's label. */}
                   {needsBatch && (
                     <Field.Root required>
                       <Field.Label>{t("inventory.adjustBatch")}</Field.Label>
-                      <NativeSelect.Root>
-                        <NativeSelect.Field
-                          value={batch}
-                          data-testid="adjust-batch"
-                          onChange={(e) => setBatch(e.target.value)}
-                        >
-                          <option value="" disabled>
-                            {t("inventory.adjustBatchPlaceholder")}
-                          </option>
-                          {batchList.map((b) => (
-                            <option key={b.id.toString()} value={b.id.toString()}>
-                              {t("inventory.moveBatchOption", {
-                                id: b.deliveryId.toString(),
-                                ready: b.ready.toString(),
-                              })}
-                            </option>
-                          ))}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
+                      <BatchSelect
+                        warehouseId={warehouseId}
+                        productId={product.id}
+                        value={batch === "" ? 0n : BigInt(batch)}
+                        onChange={(id) => setBatch(id > 0n ? id.toString() : "")}
+                        testId="adjust-batch"
+                      />
                     </Field.Root>
                   )}
 
@@ -306,7 +302,10 @@ export function AdjustStockDialog({
 
                   <Field.Root>
                     <Field.Label>{t("inventory.adjustNote")}</Field.Label>
-                    <Input
+                    {/* A two-row box, as the rack's dialogs' notes (owner: *"catatan textarea"*) — why a count was off is
+                        often a sentence. */}
+                    <Textarea
+                      rows={2}
                       value={note}
                       maxLength={NOTE_MAX}
                       placeholder={

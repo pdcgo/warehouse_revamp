@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Span, Stack, Text } from "@chakra-ui/react";
 
-import { daysUntilUnix, formatUnixDate, formatUnixDateShort } from "../../../lib/datetime";
+import { daysUntilUnix, formatUnixDate, formatUnixDateShort } from "../../lib/datetime";
 
 // The "expiring soon" window the server uses — 30 days.
 const SOON_DAYS = 30;
@@ -21,12 +21,26 @@ function band(days: number): { color: string; key: "past" | "soon" | "later" } {
 //   18 hari lagi      amber within 30 days, red once past, quiet beyond; the full date on its hover
 //
 // `inline` puts both on one line — a phone's block: *27 Nov · 18 hari lagi*. No expiry is a dash.
-export function ExpiryCell({ unix, inline = false, testId }: { unix: bigint; inline?: boolean; testId?: string }) {
+//
+// Two pages of one domain read it — the batch list's column and block, and a batch's Info (a-batch-page-is-one-page-of-
+// sections) — so it lives in features/, not under the list's page.
+export function ExpiryCell({
+  unix,
+  inline = false,
+  fontSize = "xs",
+  testId,
+}: {
+  unix: bigint;
+  inline?: boolean;
+  /** 12px beside a table's *Tiba*; a batch's Info reads it at a fact's size. */
+  fontSize?: "xs" | "sm" | "md";
+  testId?: string;
+}) {
   const { t } = useTranslation();
 
   if (unix <= 0n) {
     return (
-      <Text fontSize="xs" color="fg.muted" data-testid={testId}>
+      <Text fontSize={fontSize} color="fg.muted" data-testid={testId}>
         —
       </Text>
     );
@@ -54,7 +68,7 @@ export function ExpiryCell({ unix, inline = false, testId }: { unix: bigint; inl
 
   if (inline) {
     return (
-      <Text fontSize="xs" as="span">
+      <Text fontSize={fontSize} as="span">
         {date}
         {" · "}
         {remaining}
@@ -63,7 +77,7 @@ export function ExpiryCell({ unix, inline = false, testId }: { unix: bigint; inl
   }
 
   return (
-    <Stack gap="0" fontSize="xs" align="start">
+    <Stack gap="0" fontSize={fontSize} align="start">
       {date}
       {remaining}
     </Stack>

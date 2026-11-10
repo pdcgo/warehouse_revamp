@@ -19,16 +19,9 @@ export const description =
 //
 // No resi: it is the restock's, one click away on its page, and on a batch's row it was a third fact in a two-line cell.
 // The click stops at the link, so the row under it — which opens the batch — does not fire too.
-export function BatchSource({
-  batch,
-  prefix,
-  testId,
-}: {
-  batch: StockBatch;
-  /** The restock's words: "Restok #503" on the list, "Dari Restok #503" on a batch's page. */
-  prefix?: "from";
-  testId?: string;
-}) {
+// The same words everywhere — *Restok #503* — since a batch's page now reads it under Info's own *Dari* label
+// (a-batch-page-is-one-page-of-sections); its *Dari Restok #503* prefix went with the heading line it sat in.
+export function BatchSource({ batch, testId }: { batch: StockBatch; testId?: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,7 +56,7 @@ export function BatchSource({
       }}
       data-testid={testId}
     >
-      {prefix === "from" ? t("batchDetail.fromRestock", { id }) : t("batches.fromRestock", { id })}
+      {t("batches.fromRestock", { id })}
     </Link>
   );
 }

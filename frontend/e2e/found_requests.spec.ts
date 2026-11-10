@@ -179,7 +179,8 @@ test("Found: the Admin reports two units on the Adjust dialog — nothing posts,
   await expect(dialog).toBeVisible();
   await dialog.getByTestId("rack-select").click();
   await dialog.getByTestId(`rack-select-option-${state.rakA}`).click();
-  await dialog.getByTestId("adjust-reason-type").selectOption("found");
+  // The reason is a radio pill, every one on screen (the-adjust-reason-is-a-radio-pill).
+  await dialog.getByTestId("adjust-reason-option-found").click();
   await expect(dialog.getByTestId("adjust-found-waits")).toContainText("Stock changes once another Owner or Admin");
   await expect(dialog.getByTestId("adjust-batch")).toHaveCount(0);
   await dialog.getByTestId("adjust-amount").fill("2");

@@ -30,7 +30,7 @@ import { formatRupiah } from "../../lib/money";
 import { PRESSABLE } from "../../lib/motion";
 import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, enumCodec, idCodec, textCodec, useUrlState } from "../../lib/urlState";
-import { ExpiryCell } from "./components/ExpiryCell";
+import { ExpiryCell } from "../../features/inventory/ExpiryCell";
 import { ExpirySelect } from "./components/ExpirySelect";
 import { BATCH_LIST_PENDING } from "./pending";
 
