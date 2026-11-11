@@ -76,6 +76,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-phone-starts-with-0-or-a-country-code](#a-phone-starts-with-0-or-a-country-code) | a number with neither a leading `0` nor `+` and a country code (nor `62`) is refused, never guessed | owner, 2026-10-06 |
 | [stored-phones-are-rewritten-once](#stored-phones-are-rewritten-once) | the migration rewrites every readable stored phone, leaves an unreadable one, and stops if two accounts share a number | owner, 2026-10-06 |
 | [the-pass-1-prototype-is-accepted](#the-pass-1-prototype-is-accepted) | design_accept of pass 1: the switcher's *All teams*, the strip, Create Team's required Owner and `owner_user_id`, with the five choices made in the prototype | owner, 2026-10-06 |
+| [an-override-shows-a-platform-badge](#an-override-shows-a-platform-badge) | a platform write inside a team carries a shared "by Platform" badge beside the person's name | owner, as recommended | — |
+| ~~[superseded-an-override-shows-as-the-person](#superseded-an-override-shows-as-the-person)~~ ⛔ withdrawn | a platform write inside a team is shown by the person who did it — no separate override badge | owner | — |
 
 ## warehouse-staff-is-the-whole-floor-job
 
@@ -2091,3 +2093,38 @@ test asserts the two agree on every case. Development held `0811` (left) and `+1
 > 🔄 *(2026-10-06, built)* Run against a scratch database: `0812-3456-7890` → `+6281234567890`, `+1 555 123 4567` →
 > `+15551234567`, `0811` and `abc` left; with `0813-1111-2222` and `+62 813 1111 2222` on two accounts it stopped, named
 > both, and left the database at `00007` with nothing changed.
+
+---
+
+## superseded-an-override-shows-as-the-person
+
+> ⛔ **WITHDRAWN** *(2026-11-09, minutes later, before it was built)*: the owner — *"sorry, i misslead, im back choose A"* — returns to the badge: [an-override-shows-a-platform-badge](#an-override-shows-a-platform-badge).
+
+> Owner (Heri), in chat (2026-11-09): *"sorry, just show user"* — to: [an-override-is-stamped-in-every-service](#an-override-is-stamped-in-every-service) is stamped on 18 tables but shown on only two screens; show it as a shared *"by Platform"* badge beside the person's name, or leave it unshown? (He first answered *"A"* — the badge — then took it back.)
+
+**The verdict.** No override badge. Where a record says who did it, it shows **the person** — Root or the Administrator by name, like anyone else — and that is how a team sees what the platform did inside it. The `is_override` flags stay stored, as built, for reports and audits; no screen reads them for a mark.
+
+| | |
+| --- | --- |
+| the screens | show the acting user's name on a stamped record; a record that names nobody today gains the name, not a badge |
+| the two that already mark it | the member log and the Team Balance terms keep what they show |
+| the flags | unchanged — still stamped in every service |
+
+⚠ My reading of *"just show user"* — the owner may correct it. ⚠ Not built where a record names nobody yet.
+
+---
+
+## an-override-shows-a-platform-badge
+
+> Owner (Heri), in chat (2026-11-09): *"A"*, then *"sorry, just show user"*, then *"sorry, i misslead, im back choose A"* — to: [an-override-is-stamped-in-every-service](#an-override-is-stamped-in-every-service) is stamped on 18 tables but shown on two screens; show it as a shared *"by Platform"* badge beside the person's name (A), or leave it unshown (B)? As recommended. Withdraws [superseded-an-override-shows-as-the-person](#superseded-an-override-shows-as-the-person).
+
+**The verdict.** Wherever a record says who did it, a record the platform wrote inside the team — Root or the Administrator, not a member (`is_override`) — shows the person's name **and a shared "by Platform" badge** beside it. One component, the same everywhere, so a team sees at a glance what the platform did inside it.
+
+| | |
+| --- | --- |
+| first | a Storybook prototype on 3–4 screens — the order timeline, a stock history, an expense, a settlement row — for the owner's design accept |
+| then | rolled out to all 16 stamped tables' screens; a record that names nobody today gains the name and the badge |
+| the two that already mark it | the member log and the Team Balance terms move to the shared badge |
+| the flags | unchanged — still stamped in every service; each read gains the field it needs |
+
+⚠ Not built.
