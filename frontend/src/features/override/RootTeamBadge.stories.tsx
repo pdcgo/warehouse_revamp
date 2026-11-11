@@ -120,8 +120,8 @@ function stockScene() {
 }
 async function stockHistory(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  await userEvent.click(await canvas.findByTestId("rack-tab-stock-history", {}, { timeout: 4000 }));
-  const table = await canvas.findByTestId("rack-stock-history-table", {}, { timeout: 4000 });
+  // The rack page is one page of sections (hfrada's racks redesign): its history is drawn in place, no tab to open.
+  const table = await canvas.findByTestId("rack-history-table", {}, { timeout: 4000 });
   await waitFor(() => expect(table).toHaveTextContent("Fajar Nugroho"), { timeout: 4000 });
 
   return table;
@@ -277,7 +277,7 @@ export const StockHistory: Story = {
   beforeEach: stockScene,
   play: async ({ canvasElement }) => {
     const table = await stockHistory(canvasElement);
-    await badgeOnlyOn(table, within(table).getByTestId("rack-stock-history-row-9001"), "Fajar Nugroho");
+    await badgeOnlyOn(table, within(table).getByTestId("rack-history-row-9001"), "Fajar Nugroho");
   },
 };
 
@@ -369,8 +369,8 @@ export const RestockTimeline: Story = {
   beforeEach: restockScene,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // The restock page is one page of sections: the timeline is drawn in place, no tab to open.
     await canvas.findByTestId("restock-detail-page", {}, { timeout: 4000 });
-    await userEvent.click(canvas.getByTestId("restock-detail-tab-timeline"));
     const trail = await canvas.findByTestId("restock-timeline-2", {}, { timeout: 4000 });
     await waitFor(() => expect(trail).toHaveTextContent("Fajar Nugroho"), { timeout: 4000 });
     await badgeOnlyOn(canvasElement, trail, "Fajar Nugroho");
