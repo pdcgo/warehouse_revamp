@@ -972,7 +972,7 @@ test.describe("selling:all create restock", () => {
         });
 
         // The line financial_account_service writes for it: "Restock #<id>".
-        await test.step(`then: the account history shows the restock (Restock #${restockId})`, async () => {
+        await test.step(`then: the restock is recorded in the account history (Restock #${restockId})`, async () => {
           await expect
             .soft(async () => {
               await page.goto(`/financial-accounts/${ground.account}`);
@@ -992,7 +992,7 @@ test.describe("selling:all create restock", () => {
 // Same shape as the create block above: every warehouse role signs for the box through its own inbound list, once from
 // ongoing and once from lost (a-late-lost-box-is-signed-for-as-arrived). The restocks themselves are the GIVEN state,
 // so they are seeded through the API; the sign is the WHEN, through the screen. The seller's side is read as one
-// selling role (status-is-per-then). `the courier's charge shows on the restock (if noted)` is 🚧 unimplemented — the
+// selling role (status-is-per-then). `the courier's charge is recorded on the restock (if noted)` is 🚧 unimplemented — the
 // server drops the charge — so it has no check here yet.
 test.describe("warehouse:all mark arrived", () => {
   const PASSWORD = "e2e-acceptance-pass-1";
@@ -1115,7 +1115,7 @@ test.describe("warehouse:all mark arrived", () => {
           await expect.soft(page.getByTestId(`restock-row-${id}`).getByTestId("restock-status-4")).toBeVisible();
         });
 
-        await test.step("then: the inbound list shows who signed for it and when", async () => {
+        await test.step("then: who received it and when is recorded", async () => {
           await expect.soft(page.getByTestId(`restock-arrived-${id}`)).toContainText(/\d/);
           await expect.soft(page.getByTestId(`restock-arrived-${id}-by`)).toContainText(displayName(r.given));
         });
@@ -1130,5 +1130,249 @@ test.describe("warehouse:all mark arrived", () => {
         });
       });
     }
+  }
+});
+
+// ── warehouse:all accept — the checks behind docs/acceptances/inventory/restock.md ────────────────────────────────────
+//
+// So far only `the restock is recorded at the supplier`, (if has supplier) and (mixed suppliers); the other accept thens
+// were checked by hand. The accept itself goes through the API here, as each warehouse role — what is checked is where the
+// figures land, which the accept screen does not change.
+//
+// (mixed suppliers) is ❌ error: supplier_service folds a restock under ONE restock-level supplier, so a restock whose
+// lines name different suppliers is recorded at none (commonLineSupplier). Its check is `test.fail` — green while the bug
+// stands, red the day it is fixed, which is the sign to ask the owner to change the status (acceptances-are-markdown). A
+// one-supplier restock accepted AFTER the mixed one is its CONTROL: once that shows, the fold has run, so the mixed one's
+// absence is the bug and not a slow fold. A broken fold fails the (if has supplier) test beside it, so `test.fail` hides
+// nothing.
+test.describe("warehouse:all accept", () => {
+  const PASSWORD = "e2e-acceptance-pass-1";
+  const ROLES = [
+    { given: "warehouse:owner", role: "ROLE_WAREHOUSE_OWNER", key: "own" },
+    { given: "warehouse:admin", role: "ROLE_WAREHOUSE_ADMIN", key: "adm" },
+    { given: "warehouse:staff", role: "ROLE_WAREHOUSE_STAFF", key: "stf" },
+  ] as const;
+
+  type Raised = { request: { id: string; items: { id: string }[] } };
+
+  const username = (role: string) => `e2eacp${role}${SUFFIX}`;
+  const SELLER = `e2eacpseller${SUFFIX}`;
+  // Per role: line C (supplier A) of the one-supplier restock; lines A (supplier A) and B (supplier B) of the MIXED
+  // restock, and line D (supplier A) of its control.
+  const sku = (role: string, line: "A" | "B" | "C" | "D") => `ACP${role.toUpperCase()}${line}${SUFFIX}`;
+  const ground = {
+    team: "",
+    warehouse: "",
+    rack: "",
+    account: "",
+    supplierA: "",
+    supplierB: "",
+    products: {} as Record<string, string>,
+    restocks: {} as Record<string, Raised>,
+  };
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+    ground.team = String(
+      (
+        await api(page, "team.v1.TeamService/TeamCreate", {
+          name: `E2E Acp Seller ${SUFFIX}`,
+          teamCode: `PS${SUFFIX}`,
+          type: "TEAM_TYPE_SELLING",
+          ownerUserId: ROOT_USER_ID,
+        })
+      ).team.id,
+    );
+    ground.warehouse = String(
+      (
+        await api(page, "team.v1.TeamService/TeamCreate", {
+          name: `E2E Acp Warehouse ${SUFFIX}`,
+          teamCode: `PW${SUFFIX}`,
+          type: "TEAM_TYPE_WAREHOUSE",
+          ownerUserId: ROOT_USER_ID,
+        })
+      ).team.id,
+    );
+    ground.rack = String(
+      (
+        await api(page, "inventory.v1.RackService/RackCreate", {
+          teamId: ground.warehouse,
+          code: `acp-${SUFFIX}`,
+          name: "E2E accept shelf",
+        })
+      ).rack.id,
+    );
+
+    for (const r of ROLES) {
+      await api(page, "user.v1.UserService/CreateUser", {
+        teamId: ground.warehouse,
+        username: username(r.key),
+        password: PASSWORD,
+        name: `Acp ${r.given} ${SUFFIX}`,
+        role: r.role,
+      });
+    }
+    await api(page, "user.v1.UserService/CreateUser", {
+      teamId: ground.team,
+      username: SELLER,
+      password: PASSWORD,
+      name: `Acp selling:owner ${SUFFIX}`,
+      role: "ROLE_SELLING_OWNER",
+    });
+
+    ground.supplierA = String(
+      (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: `E2E Acp Sup A ${SUFFIX}` }))
+        .supplier.id,
+    );
+    ground.supplierB = String(
+      (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: `E2E Acp Sup B ${SUFFIX}` }))
+        .supplier.id,
+    );
+
+    const category = await api(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Acp Cat ${SUFFIX}` });
+    for (const r of ROLES) {
+      for (const line of ["A", "B", "C", "D"] as const) {
+        const created = await api(page, "product.v1.ProductService/ProductCreate", {
+          teamId: ground.team,
+          productCodePart: sku(r.key, line),
+          name: `E2E ${sku(r.key, line)}`,
+          categoryId: category.category.id,
+        });
+        ground.products[sku(r.key, line)] = String(created.product.id);
+      }
+    }
+
+    const account = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+      teamId: ground.team,
+      type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+      provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+      name: `E2E Acp BCA ${SUFFIX}`,
+      holderName: "E2E",
+      accountNumber: `79${SUFFIX}01`,
+      openingBalance: 10_000_000,
+      openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+    });
+    ground.account = String(account.account.id);
+    await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+      teamId: ground.team,
+      accountId: ground.account,
+      operational: true,
+    });
+
+    // GIVEN — per role, the restocks it will count in, raised here by root (any seller would do; the seller is not who
+    // is being checked): one with one supplier, one with mixed suppliers, and the mixed one's control.
+    for (const r of ROLES) {
+      ground.restocks[`${r.key}-single`] = await raise(page, [{ code: sku(r.key, "C"), supplierId: ground.supplierA }]);
+      ground.restocks[`${r.key}-mixed`] = await raise(page, [
+        { code: sku(r.key, "A"), supplierId: ground.supplierA },
+        { code: sku(r.key, "B"), supplierId: ground.supplierB },
+      ]);
+      ground.restocks[`${r.key}-control`] = await raise(page, [{ code: sku(r.key, "D"), supplierId: ground.supplierA }]);
+    }
+
+    await page.close();
+  });
+
+  // A restock of the given lines, raised for the selling team by `page`'s user.
+  async function raise(page: Page, lines: { code: string; supplierId: string }[]): Promise<Raised> {
+    const created = await page.evaluate(
+      async ([body]) => {
+        const token =
+          window.sessionStorage.getItem("warehouse_revamp.token") ??
+          window.localStorage.getItem("warehouse_revamp.token");
+        const res = await fetch("http://localhost:8081/warehouse.inventory.v1.RestockRequestService/RestockRequestCreate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`RestockRequestCreate: ${res.status} ${await res.text()}`);
+        return res.json();
+      },
+      [
+        {
+          teamId: ground.team,
+          warehouseId: ground.warehouse,
+          financeAccountId: ground.account,
+          items: lines.map((l) => ({
+            productId: ground.products[l.code],
+            productCode: l.code,
+            name: `E2E ${l.code}`,
+            count: 2,
+            total: 20000,
+            supplierId: l.supplierId,
+          })),
+        },
+      ] as const,
+    );
+    return created as Raised;
+  }
+
+  // WHEN — `page`'s warehouse role counts each restock in, whole, onto the shelf, in the order given.
+  async function acceptWhole(page: Page, restocks: Raised[]) {
+    for (const restock of restocks) {
+      await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+        teamId: ground.warehouse,
+        requestId: restock.request.id,
+        lines: restock.request.items.map((item) => ({
+          itemId: item.id,
+          receivedCount: 2,
+          placements: [{ placementId: ground.rack, quantity: 2 }],
+        })),
+      });
+    }
+  }
+
+  // THEN is read by the selling team, on a supplier's Statistics, by product.
+  async function asSeller(page: Page) {
+    await login(page, SELLER, PASSWORD);
+    await page.evaluate((team) => window.sessionStorage.setItem("warehouse_revamp.team", team), ground.team);
+  }
+
+  async function byProduct(page: Page, supplierId: string) {
+    await page.goto(`/inventories/suppliers/${supplierId}`);
+    await page.getByTestId("supplier-tab-statistics").click();
+    await page.getByTestId("statistics-view-product").click();
+    return page.getByTestId("supplier-statistics");
+  }
+
+  // The fold runs on an event, so a product is re-read until it lands rather than once.
+  async function untilRecorded(page: Page, supplierId: string, code: string) {
+    await expect(async () => {
+      const stats = await byProduct(page, supplierId);
+      await expect(stats.getByTestId("statistics-products")).toContainText(`E2E ${code}`, { timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
+  }
+
+  for (const r of ROLES) {
+    test(`${r.given} accept (if has supplier)`, async ({ page }) => {
+      await login(page, username(r.key), PASSWORD);
+      await acceptWhole(page, [ground.restocks[`${r.key}-single`]]);
+
+      await asSeller(page);
+      await test.step("then: the restock is recorded at the supplier (if has supplier)", async () => {
+        await untilRecorded(page, ground.supplierA, sku(r.key, "C"));
+      });
+    });
+
+    test(`${r.given} accept (mixed suppliers)`, async ({ page }) => {
+      test.fail(true, "❌ error — docs/acceptances/inventory/restock.md#a-mixed-supplier-restock-is-recorded-at-no-supplier");
+
+      // The mixed one first, its control after.
+      await login(page, username(r.key), PASSWORD);
+      await acceptWhole(page, [ground.restocks[`${r.key}-mixed`], ground.restocks[`${r.key}-control`]]);
+
+      await asSeller(page);
+      // The control has landed, so the fold has run past the mixed restock.
+      await untilRecorded(page, ground.supplierA, sku(r.key, "D"));
+
+      await test.step("then: the restock is recorded at the supplier (mixed suppliers)", async () => {
+        const atA = await byProduct(page, ground.supplierA);
+        await expect.soft(atA.getByTestId("statistics-products")).toContainText(`E2E ${sku(r.key, "A")}`);
+        const atB = await byProduct(page, ground.supplierB);
+        await expect.soft(atB).toContainText(`E2E ${sku(r.key, "B")}`);
+      });
+    });
   }
 });

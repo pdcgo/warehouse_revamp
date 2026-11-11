@@ -106,8 +106,11 @@ Until then, the shared list is not needed.
   glance. A new row is written `⬜ untested`.
 - `❌ error` means the system does it, but wrongly. `🚧 unimplemented` means the then is agreed, but the system does not do
   it yet.
+- **An `❌ error` links to its entry under `## Errors`**, at the foot of the same file. The entry's heading is a name that
+  says what goes wrong, and the entry gives the then, what was expected, what actually happens, the cause, where it was
+  seen, and the check that pins it. When the error is fixed and the status changes, the entry is deleted.
 - `team:all` is tested with **every** role of that team type. If one role fails, the then is `error`.
-- A then observed by another team (*the target warehouse sees it incoming*) is checked as any **one** role there that can read it.
+- A then observed by another team (*the target warehouse has it incoming*) is checked as any **one** role there that can read it.
 - **The agent changes a status only on the owner's instruction, one then at a time.** If the agent's own test later fails, the
   agent reports it in chat and leaves the status alone.
 
@@ -125,6 +128,10 @@ acceptance's. The status stays the owner's record, and the spec is what keeps th
 docs/acceptances/inventory/restock.md   the status: the owner's record
 frontend/e2e/restock.spec.ts            the check: the agent's regression test
 ```
+
+A then that is `❌ error` or `🚧 unimplemented` keeps its check, marked **`test.fail`** with the status in its reason. The
+suite stays green while the system is wrong. The day the system gets it right, the check turns red, and that is the sign
+to ask the owner to change the status.
 
 ## only-the-discussion-changes-a-row
 
