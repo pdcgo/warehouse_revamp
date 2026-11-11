@@ -557,6 +557,7 @@ frontend/    React + TypeScript (Vite), Connect RPC client
 docs/business/    what the business needs — owner-written (HARD RULE 7)
 docs/technical/   how it gets built — owner-written (HARD RULE 7)
 docs/development_state/  how far each context has got — agent-written (HARD RULE 7)
+docs/acceptances/  the owner's Given-When-Then checklist per small feature (see Development lifecycle)
 guidelines/  programmer-authoritative service + code guidelines
 docs/faq/    the team FAQ — every question already asked, with its answer (see below)
 ```
@@ -1196,6 +1197,11 @@ says how many are not shown and where they live.
 
 **At the end of a pass, write the state report** — `docs/development_state/<big>/<small>.md`. It is
 written for the next agent, not for a person: what exists, what does not, what was decided.
+
+**Acceptances are made semi-automatically, and nothing outside that loop changes them** (owner) —
+[docs/acceptances/guide.md](docs/acceptances/guide.md). A row is written only by discussing one given + when with the
+owner, and a status changes only on the owner's instruction. A code change, a refactor, or an edit to a business or
+technical doc never rewrites a row. When the code disagrees with a then, report it in chat and leave the row alone.
 
 ## Git workflow
 
