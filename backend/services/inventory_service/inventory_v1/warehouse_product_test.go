@@ -4,25 +4,33 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
-	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
-func warehouseProducts(t *testing.T, svc *inventory_v1.Service, warehouseID uint64) []uint64 {
+// warehouseProducts reads the arrangement rows straight from `warehouse_products`, newest first — the list RPC that
+// once read them back (WarehouseProductList) is deleted (warehouse-product-list-is-deleted), and the rows stay: a
+// restock and a transfer still write them, ProductHistory still reads them.
+func warehouseProducts(t *testing.T, db *gorm.DB, warehouseID uint64) []uint64 {
 	t.Helper()
 
-	res, err := svc.WarehouseProductList(ctxUser(1), connect.NewRequest(&inventoryv1.WarehouseProductListRequest{
-		WarehouseId: warehouseID,
-		Page:        &commonv1.CommonPagination{Page: 1, Limit: 50},
-	}))
+	var ids []uint64
+
+	err := db.
+		Model(&inventory_service_models.WarehouseProduct{}).
+		Where("warehouse_id = ?", warehouseID).
+		Order("id DESC").
+		Pluck("product_id", &ids).
+		Error
 	if err != nil {
-		t.Fatalf("WarehouseProductList: %v", err)
+		t.Fatalf("reading warehouse_products: %v", err)
 	}
 
-	return res.Msg.GetIds()
+	return ids
 }
 
 // createRestock sends a restock request naming these products, which is what makes them visible to the
@@ -45,11 +53,11 @@ func createRestock(t *testing.T, svc *inventory_v1.Service, warehouseID uint64, 
 	}
 }
 
-// #142 — a warehouse sees the products it has been ASKED to handle, and only those.
+// #142 — a restock links its products to ITS warehouse, and only to it.
 //
 // This is the whole point: a warehouse holds no products of its own, so a team-scoped product list
 // shows it nothing. Asking it to stock something is what puts that product on its list.
-func TestWarehouseProductList_ShowsOnlyWhatThisWarehouseWasAskedToHandle(t *testing.T) {
+func TestWarehouseProductLink_ShowsOnlyWhatThisWarehouseWasAskedToHandle(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
@@ -58,7 +66,7 @@ func TestWarehouseProductList_ShowsOnlyWhatThisWarehouseWasAskedToHandle(t *test
 	createRestock(t, svc, warehouseA, 100, 200)
 	createRestock(t, svc, otherWarehouse, 300)
 
-	got := warehouseProducts(t, svc, warehouseA)
+	got := warehouseProducts(t, db, warehouseA)
 
 	if len(got) != 2 {
 		t.Fatalf("warehouse A handles %d products, want 2: %v", len(got), got)
@@ -71,7 +79,7 @@ func TestWarehouseProductList_ShowsOnlyWhatThisWarehouseWasAskedToHandle(t *test
 	}
 
 	// And the other warehouse sees only its own.
-	other := warehouseProducts(t, svc, otherWarehouse)
+	other := warehouseProducts(t, db, otherWarehouse)
 	if len(other) != 1 || other[0] != 300 {
 		t.Fatalf("the other warehouse handles %v, want [300]", other)
 	}
@@ -82,7 +90,7 @@ func TestWarehouseProductList_ShowsOnlyWhatThisWarehouseWasAskedToHandle(t *test
 // A second restock request for a product is the NORMAL case, not an error. If the link write were not
 // idempotent, restocking a product you already stock would fail — which would make the common path the
 // broken one.
-func TestWarehouseProductList_RestockingTheSameProductAgainIsFine(t *testing.T) {
+func TestWarehouseProductLink_RestockingTheSameProductAgainIsFine(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
@@ -90,7 +98,7 @@ func TestWarehouseProductList_RestockingTheSameProductAgainIsFine(t *testing.T) 
 	createRestock(t, svc, warehouseA, 100)
 	createRestock(t, svc, warehouseA, 100, 200)
 
-	got := warehouseProducts(t, svc, warehouseA)
+	got := warehouseProducts(t, db, warehouseA)
 
 	if len(got) != 2 {
 		t.Fatalf("the warehouse handles %d products after repeat requests, want 2 (100 and 200): %v",
@@ -100,7 +108,7 @@ func TestWarehouseProductList_RestockingTheSameProductAgainIsFine(t *testing.T) 
 
 // ONE restock naming the same product on two lines is REFUSED (a-product-appears-once-per-restock), and so links
 // nothing: a restock that was never created makes no product visible to the warehouse.
-func TestWarehouseProductList_ARestockListingAProductTwiceIsRefused(t *testing.T) {
+func TestWarehouseProductLink_ARestockListingAProductTwiceIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
@@ -115,17 +123,19 @@ func TestWarehouseProductList_ARestockListingAProductTwiceIsRefused(t *testing.T
 		t.Fatalf("a restock listing product 100 twice: got %v, want InvalidArgument", err)
 	}
 
-	if got := warehouseProducts(t, svc, warehouseA); len(got) != 0 {
+	if got := warehouseProducts(t, db, warehouseA); len(got) != 0 {
 		t.Fatalf("a refused restock linked %d products to the warehouse: %v", len(got), got)
 	}
 }
 
-// #142 — a warehouse nobody has asked for anything reads as empty, not as an error.
-func TestWarehouseProductList_AnUnusedWarehouseIsEmpty(t *testing.T) {
+// #142 — a warehouse nobody has asked for anything has no arrangement row.
+func TestWarehouseProductLink_AnUnusedWarehouseIsEmpty(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	if got := warehouseProducts(t, svc, 951); len(got) != 0 {
+	createRestock(t, svc, warehouseA, 100)
+
+	if got := warehouseProducts(t, db, 951); len(got) != 0 {
 		t.Fatalf("an unused warehouse handles %v, want nothing", got)
 	}
 }

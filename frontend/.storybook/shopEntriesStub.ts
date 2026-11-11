@@ -41,6 +41,7 @@ const shopee = (over: Partial<ShopEntryImport>): ShopEntryImport => ({
   foundOrderIds: [],
   uploadedBy: 62n,
   uploadedByName: NAMES["62"]!,
+  uploadedByIsOverride: false,
   ...over,
 });
 const tiktok = (over: Partial<ShopEntryImport>): ShopEntryImport => ({
@@ -55,6 +56,7 @@ const tiktok = (over: Partial<ShopEntryImport>): ShopEntryImport => ({
   foundOrderIds: [],
   uploadedBy: 61n,
   uploadedByName: NAMES["61"]!,
+  uploadedByIsOverride: false,
   ...over,
 });
 
@@ -69,6 +71,7 @@ const entry = (over: Partial<ShopEntry> & Pick<ShopEntry, "id" | "shopId" | "set
     note: "",
     actorId,
     actorName: NAMES[actorId.toString()] ?? "",
+    isOverride: false,
     reversesId: 0n,
     reversedById: 0n,
     ...over,
@@ -175,6 +178,7 @@ function toWire(e: ShopEntry) {
       reversesId: e.reversesId,
       note: e.note,
       actorName: e.actorName,
+      isOverride: e.isOverride,
     },
     reversedById: e.reversedById,
     statement: e.import
@@ -190,6 +194,7 @@ function toWire(e: ShopEntry) {
           foundOrderIds: e.import.foundOrderIds,
           uploadedByUserId: e.import.uploadedBy,
           uploadedByName: e.import.uploadedByName,
+          uploadedByIsOverride: e.import.uploadedByIsOverride,
         }
       : undefined,
   };
@@ -255,6 +260,7 @@ export function shopEntrySettlementPost(req: SettlementPostRequest) {
     note: req.note,
     actorId: 64n,
     actorName: NAMES["64"]!,
+    isOverride: false,
     reversesId: target.id,
     reversedById: 0n,
     import: undefined,

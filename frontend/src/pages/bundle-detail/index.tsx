@@ -20,6 +20,7 @@ import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { BundleStockCard } from "./components/BundleStockCard";
 import { bundleMakes } from "./makes";
+import { ActorName } from "../../components/entity/ActorName";
 
 function parseId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -187,7 +188,11 @@ export function BundleDetailPage() {
           {actions}
         </Flex>
         <Text fontSize="sm" color="fg.muted" data-testid="bundle-detail-creator">
-          {t("bundles.form.createdBy", { name: creator, when: formatUnixRelative(bundle.updatedAtUnix) })}
+          {/* The maker, with the "by Root team" badge when Root made it from outside the team. */}
+          <ActorName
+            name={t("bundles.form.createdBy", { name: creator, when: formatUnixRelative(bundle.updatedAtUnix) })}
+            isOverride={bundle.isOverride}
+          />
         </Text>
         {bundle.description && (
           <Text fontSize="sm" data-testid="bundle-detail-description">

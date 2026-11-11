@@ -28,8 +28,9 @@ type StatementLine struct {
 	// The importer's reason text — "no_order", "several_orders", or empty for a line that names no order.
 	Reason        string
 	FoundOrderIDs []uint64
-	// Who uploaded the file.
-	UploadedBy uint64
+	// Who uploaded the file, and whether that upload was an override (the "by Root team" badge).
+	UploadedBy           uint64
+	UploadedByIsOverride bool
 }
 
 // UserNames turns user ids into display names — the existing user read (UserByIDs), in-process. Unknown ids are

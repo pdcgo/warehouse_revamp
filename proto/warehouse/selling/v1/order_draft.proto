@@ -164,6 +164,11 @@ message OrderDraft {
   // the form's dropdowns then open empty and the person picks, reading `address` as text. OrderDraftDetail only, worked
   // out on every read and never stored — the draft keeps names (an-address-is-plain-names).
   OrderAddress region_match = 24;
+
+  // THE LAST PUSH WAS AN OVERRIDE — `author_user_id` is Root or the System Administrator and pushed it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `order_drafts.is_override`, which follows the push.
+  bool is_override = 25;
 }
 
 message OrderDraftListRequest {

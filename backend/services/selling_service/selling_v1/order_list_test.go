@@ -312,3 +312,37 @@ func TestOrderList_FiltersByProduct(t *testing.T) {
 		t.Fatalf("unfiltered list holds %d orders, want 2", len(orderRows(all)))
 	}
 }
+
+// THE LIST READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): the order Root placed from outside team 2 reads
+// is_override beside its creator — the "by Root team" badge on the list's Created cell — and the CS's order does not.
+func TestOrderList_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	shopID := insertShop(t, db, 2, "Shop", "S1", "shopee")
+
+	byRoot, err := svc.OrderCreate(asScoped(1, 2, rootOutside), connect.NewRequest(orderReq(shopID)))
+	if err != nil {
+		t.Fatalf("OrderCreate as root: %v", err)
+	}
+
+	byCS, err := svc.OrderCreate(asScoped(7, 2, sellingCS), connect.NewRequest(orderReq(shopID)))
+	if err != nil {
+		t.Fatalf("OrderCreate as CS: %v", err)
+	}
+
+	want := map[uint64]bool{
+		byRoot.Msg.GetOrder().GetId(): true,
+		byCS.Msg.GetOrder().GetId():   false,
+	}
+
+	rows := orderRows(listOrders(t, svc, 2, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED))
+	if len(rows) != 2 {
+		t.Fatalf("listed %d orders, want 2", len(rows))
+	}
+
+	for _, o := range rows {
+		if o.GetIsOverride() != want[o.GetId()] {
+			t.Errorf("order %d is_override = %v, want %v", o.GetId(), o.GetIsOverride(), want[o.GetId()])
+		}
+	}
+}

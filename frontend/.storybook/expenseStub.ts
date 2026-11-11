@@ -83,6 +83,19 @@ export function someoneElseAdjusts(expenseId: bigint, amount: number, note = "Co
   });
 }
 
+/**
+ * For a story: who recorded each row, by expense id — the fixtures' creators are opaque ids nobody resolves — and which
+ * rows Root or the System Administrator recorded from outside the team, served as `is_override` (the "by Root team"
+ * badge, an-override-shows-a-platform-badge).
+ */
+export function expenseByForStory(createdBy: Record<string, bigint>, overrides: readonly bigint[] = []) {
+  for (const r of rows) {
+    const who = createdBy[r.id.toString()];
+    if (who !== undefined) r.createdBy = who;
+    r.isOverride = overrides.includes(r.id);
+  }
+}
+
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 
 const WRITERS = new Set<Role>([Role.ROOT, Role.ADMINISTRATOR, Role.SELLING_OWNER, Role.SELLING_ADMIN]);

@@ -369,6 +369,8 @@ func transferToProto(
 				ActorUserId: l.ActorUserID,
 				Description: l.Description,
 				AtUnix:      l.CreatedAt.Unix(),
+				// The "by Root team" badge beside the actor (an-override-shows-a-platform-badge).
+				IsOverride: l.IsOverride,
 			})
 		}
 	}

@@ -70,7 +70,8 @@ func (p *lockedPicker) ReturnStock(ctx context.Context, in selling_v1.StockRetur
 func configureRaceReturnWarehouse(t *testing.T, db *gorm.DB, warehouseID uint64) {
 	t.Helper()
 
-	err := db.Exec(`INSERT INTO team_return_configurations (team_id, warehouse_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())`,
+	err := db.Exec(`INSERT INTO team_return_configurations (team_id, warehouse_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())
+		ON CONFLICT (team_id) DO UPDATE SET warehouse_id = EXCLUDED.warehouse_id`,
 		raceOrderTeam, warehouseID).Error
 	if err != nil {
 		t.Fatalf("configure the race team's return warehouse: %v", err)

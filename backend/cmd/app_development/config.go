@@ -57,6 +57,12 @@ type Config struct {
 
 	// AppURL is the web app's public base: an agent's OAuth sends the person's browser to its /connect-agent page.
 	AppURL string `env:"APP_URL" yaml:"app_url"`
+
+	// GeneratedFileSweepEvery is how often this server sweeps generated downloads older than seven days
+	// (generated-files-are-kept-seven-days) — daily by default, the first run a minute after it starts. 0 or less
+	// turns the ticker off (the sweep is then `san document sweep-generated` by hand). Two instances may both run it:
+	// the sweep's lock keeps them from sweeping at once.
+	GeneratedFileSweepEvery time.Duration `env:"GENERATED_FILE_SWEEP_EVERY" yaml:"generated_file_sweep_every"`
 }
 
 func NewConfig() (*Config, error) {
@@ -75,6 +81,8 @@ func NewConfig() (*Config, error) {
 
 		PublicURL: "http://localhost:8080",
 		AppURL:    "http://localhost:5174",
+
+		GeneratedFileSweepEvery: 24 * time.Hour,
 	}
 
 	err := san_config.NewConfiguration(&cfg,

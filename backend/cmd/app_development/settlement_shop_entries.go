@@ -38,16 +38,17 @@ func (a *settlementStatementSources) StatementLines(
 
 	for _, line := range lines {
 		out[line.SettlementLogID] = settlement_v1.StatementLine{
-			UploadedFileID: line.UploadedFileID,
-			Platform:       line.Platform,
-			PeriodFrom:     line.PeriodFrom,
-			PeriodTo:       line.PeriodTo,
-			Sheet:          line.Sheet,
-			Description:    line.Description,
-			OrderRef:       line.OrderRef,
-			Reason:         line.Reason,
-			FoundOrderIDs:  line.FoundOrderIDs,
-			UploadedBy:     line.UploadedBy,
+			UploadedFileID:       line.UploadedFileID,
+			Platform:             line.Platform,
+			PeriodFrom:           line.PeriodFrom,
+			PeriodTo:             line.PeriodTo,
+			Sheet:                line.Sheet,
+			Description:          line.Description,
+			OrderRef:             line.OrderRef,
+			Reason:               line.Reason,
+			FoundOrderIDs:        line.FoundOrderIDs,
+			UploadedBy:           line.UploadedBy,
+			UploadedByIsOverride: line.UploadedByIsOverride,
 		}
 	}
 

@@ -113,8 +113,10 @@ func fileToProto(file *settlement_importer_service_models.UploadedFile, now time
 			PostedToShop: uint32(file.RowsPostedToShop),
 		},
 		CreatedByUserId: file.CreatedByUserID,
-		CreatedAt:       timestamppb.New(file.CreatedAt),
-		UpdatedAt:       timestamppb.New(file.UpdatedAt),
+		// The "by Root team" badge beside the uploader (an-override-shows-a-platform-badge).
+		IsOverride: file.IsOverride,
+		CreatedAt:  timestamppb.New(file.CreatedAt),
+		UpdatedAt:  timestamppb.New(file.UpdatedAt),
 	}
 
 	if file.PeriodFrom != nil {

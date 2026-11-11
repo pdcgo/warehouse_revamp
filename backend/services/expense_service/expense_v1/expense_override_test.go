@@ -92,3 +92,12 @@ func TestExpenseOverride_EachRowCarriesItsTypist(t *testing.T) {
 		}
 	}
 }
+
+// rootOutside is Root, in by the root-team bypass, inside a team it holds no role in; ownerIn is that team's own owner.
+func rootOutside(scope uint64) context.Context {
+	return asCaller(1, scope, role_basev1.Role_ROLE_UNSPECIFIED)
+}
+
+func ownerIn(scope uint64) context.Context {
+	return asCaller(42, scope, role_basev1.Role_ROLE_SELLING_OWNER)
+}

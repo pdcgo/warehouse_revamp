@@ -9,6 +9,8 @@ away.
 | [the-system-runs-on-jakarta-time](#the-system-runs-on-jakarta-time) | one calendar for the whole system — WIB (UTC+7). Every `DATE`, every day boundary, every report window |
 | [there-is-no-systems-tree](#there-is-no-systems-tree) | there is no `systems/` rung — three trees: business, technical, development_state |
 | [export-service-is-the-settlement-importer](#export-service-is-the-settlement-importer) | `export_service` was built as `settlement_importer_service` (2026-09-29); there is no `export_service` |
+| [a-pure-index-is-added-without-asking](#a-pure-index-is-added-without-asking) | a pure index addition an audit measured is added without asking, and reported | owner, as recommended | — |
+| [generated-files-are-kept-seven-days](#generated-files-are-kept-seven-days) | merged label PDFs and export files are deleted seven days after they are made | owner, as recommended | — |
 
 ---
 
@@ -169,3 +171,37 @@ flowchart LR
 | ⚠ [settlement context.md](../../business/settlement/context.md) line 34 | still names `export_service` — reported in [the-doc-still-names-export-service](../../business/settlement/context_clarify.md#the-doc-still-names-export-service) |
 | ⚠ the list in [context.md](./context.md), lines 5–15 | does not name it — one of several built services the list predates. Yours to add |
 | ✅ built | `backend/services/settlement_importer_service/` |
+
+---
+
+## a-pure-index-is-added-without-asking
+
+> Owner (Heri), in chat (2026-11-09): *"A"*, as recommended — to: the speed audits propose indexes they do not apply, because an index migration is the owner's call (HARD RULES 2 and 3); give a standing OK for pure index additions, or ask each time?
+
+**The verdict.** A **pure index addition** — a new index (plain, partial, or `pg_trgm`) through `san migrate create` in the owning service, changing **no** query, code path, write, constraint or result — is **added without asking** when a performance audit **measures a real gain** at a realistic volume. It is reported in the slice's summary with its before / after figures and recorded in the audit (`✅ applied`).
+
+| | |
+| --- | --- |
+| covered | a new index, and the `ANALYZE` / extension it needs |
+| **still asked** | a query rewrite, a running total or other denormalisation, a write-path change, a dropped or altered index or constraint, anything a lock-order or concurrency audit must re-prove |
+| the measure | the audit's probe before and after, at the volume it names — no index on a guess |
+
+Narrows HARD RULES 2 and 3 for this one case; everything else they cover still comes to the owner.
+
+---
+
+## generated-files-are-kept-seven-days
+
+> Owner (Heri), in chat (2026-11-09): *"A"*, as recommended — to: how long are merged label PDFs (`order_labels`) and table exports (`TABLE_EXPORT`, the order export) kept? Nothing deletes them today (backlog #38).
+
+**The verdict.** A file the system **generates for a download** — a merged label PDF, a table export, an order export — is kept **7 days** from when it was made. A **daily** sweep deletes the stored object and its document row once it is older; its link expires on its own before that. Anyone who needs it again makes it again: the data behind it never goes away.
+
+| | |
+| --- | --- |
+| swept | generated downloads only — `order_labels`, `TABLE_EXPORT`, the order export's file |
+| never swept | an uploaded file — a label, a receipt, a statement, proof of payment, a document a person shared |
+| the sweep | daily, idempotent, bounded per run; a `san` command to run it by hand |
+
+⚠ Not built.
+
+✅ **Built 2026-11-11.** `document_v1.Service.SweepGeneratedFiles` (a Go method, not an RPC): `order_labels`, `table_export` and `order_export` rows made more than 7 days ago, never a shared one, oldest first, at most 1 000 a run in transactions of 100 under an advisory lock (`FOR UPDATE SKIP LOCKED`) — the object and thumbnail, then the row; a second run finds nothing. Daily: a ticker in the server's process (nothing else schedules a job), first run a minute after start, `GENERATED_FILE_SWEEP_EVERY` (default `24h`, `0` off); by hand: [`san document sweep-generated`](../../tools/san.md#document-sweep-generated) (`--dry-run`, `--limit`). Index `documents_generated_created_idx` (document `00012`, [a-pure-index-is-added-without-asking](#a-pure-index-is-added-without-asking)): a run of 2 000 files 1.03 s → 0.14 s at 316 000 documents ([audit](../../../audits/services/document_service/performances/SweepGeneratedFiles.md)). Raced against itself, a download and a share — safe. Flow: [document rpc.md](../../services/document_service/rpc.md#the-generated-file-sweep--a-download-is-kept-seven-days-not-an-rpc).

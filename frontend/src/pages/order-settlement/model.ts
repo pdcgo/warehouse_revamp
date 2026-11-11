@@ -149,6 +149,8 @@ export interface SettlementEntry {
   sourceType: SourceType;
   /** Who is answerable — the PIC (`actor-id-is-the-pic`). Resolved to a name for display. */
   actorName: string;
+  /** The actor was Root or the System Administrator, from outside the team — the "by Root team" badge. */
+  isOverride?: boolean;
   /** The day the platform says it belongs to. */
   occurredOn: string;
   /** The day we learned it. Equal to `occurredOn` on same-day rows; later on a late fee. */

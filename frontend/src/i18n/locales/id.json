@@ -1139,8 +1139,8 @@
     "hppUnknown": "belum tercatat",
     "hppSplitHint_one": "Diambil dari {{count}} batch, yang terlama dulu",
     "hppSplitHint_other": "Diambil dari {{count}} batch, yang terlama dulu",
-    "marketplaceTotal": "Total order di marketplace",
-    "marketplaceTotalHelp": "Yang diterima di marketplace. Catatan saja — tidak dihitung ke total di bawah.",
+    "marketplaceTotal": "Total order di platform",
+    "marketplaceTotalHelp": "Yang diterima di platform. Catatan saja — tidak dihitung ke total di bawah.",
     "pickWarehouseFirst": "Pilih gudang dulu — produk yang bisa dijual adalah yang stoknya ada di gudang itu.",
     "product": "Produk",
     "inStock": "Stok",
@@ -1277,9 +1277,9 @@
       "productTotal": "Total produk",
       "fees": "Biaya lain (gudang)",
       "systemTotal": "Total sistem",
-      "marketplaceTotal": "Total MP",
+      "platformTotal": "Total platform",
       "margin": "Margin (estimasi)",
-      "marginHelp": "Total MP dikurangi total sistem, sebagai persentase dari total MP — angka yang sama dengan di daftar pesanan. Estimasi: biaya gudangnya masih angka contoh, dan potongan marketplace di luar harga baru masuk berminggu-minggu kemudian lewat settlement."
+      "marginHelp": "Total platform dikurangi total sistem, sebagai persentase dari total platform — angka yang sama dengan di daftar pesanan. Estimasi: biaya gudangnya masih angka contoh, dan potongan platform di luar harga baru masuk berminggu-minggu kemudian lewat settlement."
     },
     "timeline": {
       "title": "Timeline",
@@ -2014,6 +2014,7 @@
       "code": "Kode",
       "name": "Nama",
       "noName": "(tanpa nama)",
+      "description": "Deskripsi",
       "noDescription": "(tanpa keterangan)",
       "unitCost": "Harga satuan",
       "lineValue": "Nilai",
@@ -2618,7 +2619,6 @@
       "removed": "{{actor}} mengeluarkan {{user}} ({{from}})",
       "system": "sistem",
       "userRef": "pengguna #{{id}}",
-      "override": "penggantian",
       "failed": "Riwayat keanggotaan gagal dimuat.",
       "empty": "Belum ada yang bergabung, keluar, atau berganti peran."
     },
@@ -2864,7 +2864,7 @@
     "defaultWarehouseSaved": "Gudang default disimpan",
     "returnWarehouse": "Gudang Retur",
     "returnWarehouseHint": "Paket retur tim ini diterima di gudang ini. Gudang mana pun dapat dipilih.",
-    "returnWarehouseNotSet": "Gudang retur belum diatur. Pesanan akan segera membutuhkannya.",
+    "returnWarehouseNotSet": "Gudang retur belum diatur, jadi tim ini tidak bisa membuat pesanan sampai diatur.",
     "returnWarehouseSaved": "Gudang retur disimpan",
     "warehouseFee": {
       "title": "Biaya Gudang",
@@ -3315,7 +3315,8 @@
       "note": "Catatan",
       "amount": "Jumlah",
       "actions": "Aksi",
-      "paidFrom": "Dibayar dari"
+      "paidFrom": "Dibayar dari",
+      "recordedBy": "Dicatat oleh"
     },
     "kind": {
       "ads": "Iklan",
@@ -3368,7 +3369,8 @@
       "shop": "toko tempat iklan berjalan"
     },
     "cancelAccount": "{{net}} kembali ke {{account}}.",
-    "cancelNoAccount": "Biaya ini tidak menyebut rekening, jadi tidak ada saldo yang berubah."
+    "cancelNoAccount": "Biaya ini tidak menyebut rekening, jadi tidak ada saldo yang berubah.",
+    "recordedBy": "Dicatat oleh {{name}}"
   },
   "periodGrain": {
     "label": "Kelompokkan per",
@@ -3619,7 +3621,6 @@
     "tileUnlimited": "Tanpa batas",
     "tileUnlimitedHelp": "Belum ada plafon",
     "overrideWriter": "Menulis sebagai admin",
-    "override": "Override",
     "historyAll": "Log Perubahan",
     "historyOne": "Log Perubahan — {{name}}",
     "historyEmpty": "Belum ada perubahan tercatat.",
@@ -5283,5 +5284,9 @@
     "permissionDenied": "Anda tidak diizinkan melakukan ini.",
     "unauthenticated": "Sesi masuk Anda telah berakhir. Silakan masuk lagi.",
     "refused": "Server menolak permintaan ini."
+  },
+  "override": {
+    "byRootTeam": "oleh tim Root",
+    "byRootTeamHint": "Root atau System Administrator melakukannya di dalam tim ini — mereka bukan anggota tim ini."
   }
 }

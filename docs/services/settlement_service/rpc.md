@@ -458,3 +458,17 @@ sequenceDiagram
 
 The reads take the position from the running sum of `change` regardless (above); the shift keeps the stored carry — what
 a later fold opens a new day from — true as well.
+
+## The override stamp on the reads — the "by Root team" badge (built 2026-11-11)
+
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge), accepted as
+[the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team):
+every read a screen names a person from now carries the record's own `is_override` (stamped at the write by
+`san_auth.IsOverride`, [an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+and the screen draws the shared `ActorName` / `RootTeamBadge` beside the person. Never sent by a caller; a row from
+before the column reads false.
+
+| read | field | read from | performance |
+| --- | --- | --- | --- |
+| `ShopSettlementEntryList`, `OrderSettlementDetail` (and `SettlementPost`) | `SettlementEntry.is_override` (17) | `settlement_logs.is_override`, same row | nil |
+| `ShopSettlementEntryList` | `ShopEntryStatement.uploaded_by_is_override` (12) — the statement's upload | the importer's `uploaded_files.is_override`, through the existing in-process seam (`StatementLine.UploadedByIsOverride`, `cmd/app_development/settlement_shop_entries.go`) | nil — one more column of the file row the seam already joins |

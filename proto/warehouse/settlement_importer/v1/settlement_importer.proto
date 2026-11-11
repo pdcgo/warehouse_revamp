@@ -114,6 +114,10 @@ message UploadedFile {
   google.protobuf.Timestamp created_at = 13;
   google.protobuf.Timestamp updated_at = 14;
   google.protobuf.Timestamp finished_at = 15;
+  // THE UPLOAD WAS AN OVERRIDE — `created_by_user_id` is Root or the System Administrator and uploaded it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `uploaded_files.is_override`.
+  bool is_override = 16;
 }
 
 // ── The two imports ──────────────────────────────────────────────────────────────────────────────

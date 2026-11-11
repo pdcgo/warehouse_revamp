@@ -1995,8 +1995,12 @@ type FinancialAccountLog struct {
 	// The other account of a transfer or a team payment — this team's or the counterparty's. 0 otherwise
 	// (my spec: so a leg can say "to BCA Gaji" without a second lookup by group).
 	CounterAccountId uint64 `protobuf:"varint,12,opt,name=counter_account_id,json=counterAccountId,proto3" json:"counter_account_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// THE ACTOR WAS AN OVERRIDE — `actor_id` is Root or the System Administrator and moved it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `financial_account_logs.is_override`; a row an event wrote carries the act's own flag.
+	IsOverride    bool `protobuf:"varint,13,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FinancialAccountLog) Reset() {
@@ -2111,6 +2115,13 @@ func (x *FinancialAccountLog) GetCounterAccountId() uint64 {
 		return x.CounterAccountId
 	}
 	return 0
+}
+
+func (x *FinancialAccountLog) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type FinancialAccountLogListRequest struct {
@@ -3939,7 +3950,7 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"type_total\x18\x02 \x01(\v2=.warehouse.financial_account.v1.FinancialAccountTypeTotalListH\x00R\ttypeTotalB\x03\n" +
 	"\x01d\"~\n" +
 	" FinancialAccountOverviewResponse\x12Z\n" +
-	"\x05items\x18\x01 \x03(\v2D.warehouse.financial_account.v1.FinancialAccountOverviewResponseItemR\x05items\"\xf5\x03\n" +
+	"\x05items\x18\x01 \x03(\v2D.warehouse.financial_account.v1.FinancialAccountOverviewResponseItemR\x05items\"\x96\x04\n" +
 	"\x13FinancialAccountLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x1d\n" +
@@ -3957,7 +3968,9 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"created_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x19\n" +
 	"\bgroup_id\x18\v \x01(\x04R\agroupId\x12,\n" +
-	"\x12counter_account_id\x18\f \x01(\x04R\x10counterAccountId\"\xb3\x03\n" +
+	"\x12counter_account_id\x18\f \x01(\x04R\x10counterAccountId\x12\x1f\n" +
+	"\vis_override\x18\r \x01(\bR\n" +
+	"isOverride\"\xb3\x03\n" +
 	"\x1eFinancialAccountLogListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12]\n" +
 	"\x06filter\x18\x02 \x01(\v2=.warehouse.financial_account.v1.FinancialAccountLogListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12U\n" +

@@ -718,8 +718,12 @@ type OrderTimelineLog struct {
 	// on the `return_completed` row only; 0 on every other row. When it is not the selling team's configured return
 	// warehouse, the parcel came to an old address — visible here, fixed by a warehouse transfer.
 	AcceptingWarehouseId uint64 `protobuf:"varint,7,opt,name=accepting_warehouse_id,json=acceptingWarehouseId,proto3" json:"accepting_warehouse_id,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// THIS ROW'S ACTOR WAS AN OVERRIDE — Root or the System Administrator wrote it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `order_timeline_logs.is_override`; false when no person is recorded.
+	IsOverride    bool `protobuf:"varint,8,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderTimelineLog) Reset() {
@@ -799,6 +803,13 @@ func (x *OrderTimelineLog) GetAcceptingWarehouseId() uint64 {
 		return x.AcceptingWarehouseId
 	}
 	return 0
+}
+
+func (x *OrderTimelineLog) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 // OrderItem is one order line. product_id is an OPAQUE product_service id; product code/name are a SNAPSHOT
@@ -1304,8 +1315,12 @@ type Order struct {
 	// THE RETURN'S INVENTORY TRANSACTION — the `return` transaction its accepted return was put back on the shelf in
 	// (OrderTransactionReturn), stored by the accept beside `transaction_id`. 0 = not accepted back.
 	ReturnTransactionId uint64 `protobuf:"varint,38,opt,name=return_transaction_id,json=returnTransactionId,proto3" json:"return_transaction_id,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// THE PLACEMENT WAS AN OVERRIDE — the person in `created_by_user_id` is Root or the System Administrator and placed it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `orders.is_override`, set at placement and never updated.
+	IsOverride    bool `protobuf:"varint,39,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -1553,6 +1568,13 @@ func (x *Order) GetReturnTransactionId() uint64 {
 		return x.ReturnTransactionId
 	}
 	return 0
+}
+
+func (x *Order) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type OrderCreateRequest struct {
@@ -5812,7 +5834,7 @@ var File_warehouse_selling_v1_order_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\n" +
-	" warehouse/selling/v1/order.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a*warehouse/marketplace/v1/marketplace.proto\x1a!warehouse/role_base/v1/role.proto\"\xa7\x02\n" +
+	" warehouse/selling/v1/order.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a*warehouse/marketplace/v1/marketplace.proto\x1a!warehouse/role_base/v1/role.proto\"\xc8\x02\n" +
 	"\x10OrderTimelineLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x129\n" +
 	"\x06status\x18\x02 \x01(\x0e2!.warehouse.selling.v1.OrderStatusR\x06status\x12\x12\n" +
@@ -5820,7 +5842,9 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x04from\x18\x04 \x01(\x0e2'.warehouse.selling.v1.OrderTimelineFromR\x04from\x12\x19\n" +
 	"\bactor_id\x18\x05 \x01(\x04R\aactorId\x12&\n" +
 	"\x0fcreated_at_unix\x18\x06 \x01(\x03R\rcreatedAtUnix\x124\n" +
-	"\x16accepting_warehouse_id\x18\a \x01(\x04R\x14acceptingWarehouseId\"\x95\x03\n" +
+	"\x16accepting_warehouse_id\x18\a \x01(\x04R\x14acceptingWarehouseId\x12\x1f\n" +
+	"\vis_override\x18\b \x01(\bR\n" +
+	"isOverride\"\x95\x03\n" +
 	"\tOrderItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
@@ -5854,7 +5878,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vdocument_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"documentId\x12$\n" +
 	"\bfilename\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bfilename\x12%\n" +
-	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xfa\v\n" +
+	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\x9b\f\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -5888,7 +5912,9 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x19settlement_opened_at_unix\x18# \x01(\x03R\x16settlementOpenedAtUnix\x12.\n" +
 	"\x13shipment_channel_id\x18$ \x01(\x04R\x11shipmentChannelId\x12.\n" +
 	"\x13return_warehouse_id\x18% \x01(\x04R\x11returnWarehouseId\x122\n" +
-	"\x15return_transaction_id\x18& \x01(\x04R\x13returnTransactionIdB\x10\n" +
+	"\x15return_transaction_id\x18& \x01(\x04R\x13returnTransactionId\x12\x1f\n" +
+	"\vis_override\x18' \x01(\bR\n" +
+	"isOverrideB\x10\n" +
 	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
 	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\rshipping_codeR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\xa1\b\n" +

@@ -186,6 +186,8 @@ test("setup: a selling team of its own, two Shopee shops, Root granted the one t
     lines: [{ itemId: restock.request.items[0].id, receivedCount: 2, placements: [{ placementId: rack, quantity: 2 }] }],
   });
   await ok(page, "warehouse.v1.WarehouseFeeService/WarehouseFeeSet", { teamId: wh, feePercent: 1, minFee: 0 });
+  // The seller's return warehouse — order create refuses a team that has none (create-refuses-a-team-with-no-return-warehouse).
+  await ok(page, "selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationSet", { teamId, warehouseId: wh });
 
   // ONE ORDER ON EACH SHOP, while both are open.
   for (const [shopId, ref] of [

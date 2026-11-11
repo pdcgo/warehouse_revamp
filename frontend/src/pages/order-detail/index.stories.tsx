@@ -157,6 +157,21 @@ export const PlatformTotalDiffersFromOurs: Story = {
     await expect(Number(FULL.platformTotal)).not.toBe(FULL.totalCost);
     await expect(canvas.getByTestId("tile-mp")).toHaveTextContent("Rp 245.000");
     await expect(canvas.getByTestId("tile-system")).toHaveTextContent("Rp 150.500");
+
+    // The tile is LABELLED, in the decided word (platform-is-the-word-for-the-outside-marketplace) — never the raw
+    // key i18next prints for a key its catalog lacks, as it once did for `orderDetail.money.platformTotal`.
+    await expect(canvas.getByTestId("tile-mp")).toHaveTextContent("Platform total");
+
+    // …and no label anywhere on the page is a key: not the text, not a tooltip (the margin bar's title), not an
+    // aria-label.
+    const rawKey = /\b(orderDetail|orders|orderForm|common)\.[a-z][A-Za-z]+/;
+    const labels = [
+      canvasElement.textContent ?? "",
+      ...Array.from(canvasElement.querySelectorAll("[title], [aria-label]")).map(
+        (el) => `${el.getAttribute("title") ?? ""} ${el.getAttribute("aria-label") ?? ""}`,
+      ),
+    ];
+    await expect(labels.filter((label) => rawKey.test(label))).toEqual([]);
   },
 };
 
@@ -401,7 +416,10 @@ export const AWarehouseLabelRefusalSaysWhy: Story = {
 
     await userEvent.click(await canvas.findByTestId("order-receipt-open", {}, { timeout: 3000 }));
 
-    await expect(await screen.findByText(`Order #${FULL.id} has no label attached yet — ask the seller to attach it`)).toBeVisible();
+    // The toast animates in: wait for it to SHOW, not only to be in the document (a bare toBeVisible right after
+    // findByText caught it mid-animation whenever the stories before it ran a little longer).
+    const refusal = await screen.findByText(`Order #${FULL.id} has no label attached yet — ask the seller to attach it`);
+    await waitFor(() => expect(refusal).toBeVisible());
     await expect(open).not.toHaveBeenCalled();
     open.mockRestore();
   },

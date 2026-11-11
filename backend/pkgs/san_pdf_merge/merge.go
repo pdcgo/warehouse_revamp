@@ -2,7 +2,8 @@
 //
 // It is the merge behind a warehouse printing many shipping labels at once
 // (a-warehouse-prints-the-labels-of-orders-it-ships): a label is the PDF a marketplace prints or a photo of the
-// courier's slip, so a PDF adds its own pages and a picture becomes one page of its own size.
+// courier's slip, so a PDF adds its own pages and a picture becomes one page of its own size — a JPEG turned the way
+// its EXIF orientation says it is seen, so a photo taken in portrait prints upright.
 //
 // ⚠ ONE FILE NEVER SPOILS THE REST. Each file is read on its own, and a file that cannot be read — not a PDF or a
 // picture, truncated, malformed, or so hostile that the PDF library panics on it — is refused with ErrUnreadable while
@@ -208,8 +209,11 @@ func rewrite(content []byte) ([]byte, error) {
 }
 
 // imagePDF turns a picture into a one-page PDF, the page the picture's own size (pdfcpu's "full" import): JPEG is
-// embedded as it is, PNG, WEBP and TIFF are decoded.
+// embedded as it is — unless its EXIF orientation says it is seen turned or mirrored, when it is first turned the
+// right way up and re-encoded (upright, orientation.go) — PNG, WEBP and TIFF are decoded.
 func imagePDF(content []byte) ([]byte, error) {
+	content, _ = upright(content)
+
 	var buf bytes.Buffer
 
 	imp := pdfcpu.DefaultImportConfig()

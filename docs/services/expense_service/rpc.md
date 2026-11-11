@@ -354,3 +354,19 @@ sequenceDiagram
   E-->>S: ids, latest first, with each person's last day
   S->>U: UserByIDs — their names
 ```
+
+## The override stamp on the reads — the "by Root team" badge (built 2026-11-11)
+
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge), accepted as
+[the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team):
+every read a screen names a person from now carries the record's own `is_override` (stamped at the write by
+`san_auth.IsOverride`, [an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+and the screen draws the shared `ActorName` / `RootTeamBadge` beside the person. Never sent by a caller; a row from
+before the column reads false.
+
+| read | field | read from | performance |
+| --- | --- | --- | --- |
+| `ExpenseList` | `ExpenseRowItem.is_override` (14) — who recorded it | `expense_records.is_override`, same row | nil |
+| `ExpenseCreate`, `ExpenseAdjust` | `ExpenseRecord.is_override` (14) | the row just written | nil |
+
+The Expenses page gains its **Recorded by** column (a line on phones) from `created_by` — the expense named nobody before.

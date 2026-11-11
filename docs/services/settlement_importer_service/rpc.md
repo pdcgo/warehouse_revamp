@@ -150,3 +150,17 @@ Scoped by the files' team; the root team reads every team's. Over `uploaded_file
 `statement_lines_perf_test.go`.
 
 Code: [backend/services/settlement_importer_service/settlement_importer_v1/](../../../backend/services/settlement_importer_service/settlement_importer_v1/).
+
+## The override stamp on the reads — the "by Root team" badge (built 2026-11-11)
+
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge), accepted as
+[the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team):
+every read a screen names a person from now carries the record's own `is_override` (stamped at the write by
+`san_auth.IsOverride`, [an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+and the screen draws the shared `ActorName` / `RootTeamBadge` beside the person. Never sent by a caller; a row from
+before the column reads false.
+
+| read | field | read from | performance |
+| --- | --- | --- | --- |
+| `UploadedFileList`, `UploadedFileByIds` (and the import streams) | `UploadedFile.is_override` (16) — the uploader | `uploaded_files.is_override`, same row | nil |
+| `StatementLinesBySettlementLogIds` (in-process, for settlement's Entri Toko) | `StatementLineSource.UploadedByIsOverride` | `f.is_override` beside `f.created_by_user_id` in the existing join | nil |

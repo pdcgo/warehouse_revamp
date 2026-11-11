@@ -421,6 +421,10 @@ message FinancialAccountLog {
   // The other account of a transfer or a team payment — this team's or the counterparty's. 0 otherwise
   // (my spec: so a leg can say "to BCA Gaji" without a second lookup by group).
   uint64 counter_account_id = 12;
+  // THE ACTOR WAS AN OVERRIDE — `actor_id` is Root or the System Administrator and moved it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `financial_account_logs.is_override`; a row an event wrote carries the act's own flag.
+  bool is_override = 13;
 }
 
 message FinancialAccountLogListRequest {

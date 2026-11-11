@@ -28,6 +28,7 @@ import { personName } from "../../lib/users";
 import { UploadedFileStatus } from "../../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 import { idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { ImportFileDialog } from "./components/ImportFileDialog";
+import { ActorName } from "../../components/entity/ActorName";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -180,7 +181,8 @@ export function SettlementImportsPage() {
                         {file.periodFrom ? `${file.periodFrom} – ${file.periodTo}` : "—"}
                       </Table.Cell>
                       <Table.Cell>
-                        <Text>{uploader}</Text>
+                        {/* The uploader, with the "by Root team" badge when Root uploaded it from outside the team. */}
+                        <ActorName name={uploader} isOverride={file.isOverride} />
                         <Text fontSize="xs" color="fg.muted">
                           {file.createdAt ? timestampDate(file.createdAt).toLocaleString() : "—"}
                         </Text>

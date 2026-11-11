@@ -14,6 +14,7 @@ import { formatUnixDateTime } from "../../../lib/datetime";
 import { SectionEmpty } from "../../../components/chrome/DetailSection";
 import { useCanWrite } from "../../../features/team/TeamContext";
 import { personName } from "../../../lib/users";
+import { ActorName } from "../../../components/entity/ActorName";
 
 /** The contract's limit (`OrderNoteCreateRequest.note`): 1 to 500 characters, trimmed. */
 export const NOTE_MAX = 500;
@@ -147,7 +148,8 @@ export function NotesSection({
                 <Flex gap="2" align="baseline" wrap="wrap">
                   {who && (
                     <Text fontSize="sm" fontWeight="bold" data-testid="order-note-by">
-                      {who}
+                      {/* The "by Root team" badge on a note Root or the System Administrator wrote from outside. */}
+                      <ActorName name={who} isOverride={log.isOverride} />
                     </Text>
                   )}
                   {/* WHICH SIDE, then when — the same words the timeline uses for a row's side. */}

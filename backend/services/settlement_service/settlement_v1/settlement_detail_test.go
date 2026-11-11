@@ -117,3 +117,44 @@ func TestOrderSettlementDetail_RefusesAnotherTeamsAccount(t *testing.T) {
 		t.Errorf("code = %v, want PermissionDenied", connect.CodeOf(err))
 	}
 }
+
+// THE ORDER'S LEDGER READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): the row Root posted from outside the
+// team reads is_override beside its actor — the "by Root team" badge on the ledger — and the CS's row and the opening
+// row the system wrote do not.
+func TestOrderSettlementDetail_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+
+	_, err := post(t, svc, initialTotal("order-5001-initial"))
+	if err != nil {
+		t.Fatalf("initial_total: %v", err)
+	}
+
+	for _, in := range []settlement_v1.PostInput{
+		{UniqueID: "root-fund", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND,
+			SourceType: settlementv1.SourceType_SOURCE_TYPE_MANUAL, Change: arrived, ActorID: 1, IsOverride: true},
+		{UniqueID: "cs-ads", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_EXTERNAL_ADS_FEE,
+			SourceType: settlementv1.SourceType_SOURCE_TYPE_MANUAL, Change: adsFee, ActorID: 7},
+	} {
+		_, err = post(t, svc, in)
+		if err != nil {
+			t.Fatalf("%s: %v", in.UniqueID, err)
+		}
+	}
+
+	got, err := detail(t, svc, team, order)
+	if err != nil {
+		t.Fatalf("OrderSettlementDetail: %v", err)
+	}
+
+	if len(got.GetEntries()) != 3 {
+		t.Fatalf("%d entries, want 3", len(got.GetEntries()))
+	}
+
+	for _, e := range got.GetEntries() {
+		want := e.GetActorId() == 1
+		if e.GetIsOverride() != want {
+			t.Errorf("entry %s by %d: is_override = %v, want %v", e.GetUniqueId(), e.GetActorId(), e.GetIsOverride(), want)
+		}
+	}
+}

@@ -126,3 +126,4 @@ default transaction — the migration needs `-- +goose NO TRANSACTION`.
 | --- | --- | --- | --- |
 | 2026-10-22 | 21.7 ms (10 teams) | 3 | first shape — correlated `EXISTS`, hoisted to a hashed subplan over every team's lines ⋈ products |
 | 2026-10-22 | 12.7 ms (40 teams) · 49.7 ms at 10× | 3 | subquery scoped to the team's bundles first — this report |
+| 2026-11-11 | — | 3 | `BundleRowItem.is_override` (the "by Root team" badge) — a column of the `bundles` row already read: cost nil, finding unchanged |

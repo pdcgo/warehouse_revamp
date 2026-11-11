@@ -77,6 +77,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [stored-phones-are-rewritten-once](#stored-phones-are-rewritten-once) | the migration rewrites every readable stored phone, leaves an unreadable one, and stops if two accounts share a number | owner, 2026-10-06 |
 | [the-pass-1-prototype-is-accepted](#the-pass-1-prototype-is-accepted) | design_accept of pass 1: the switcher's *All teams*, the strip, Create Team's required Owner and `owner_user_id`, with the five choices made in the prototype | owner, 2026-10-06 |
 | [an-override-shows-a-platform-badge](#an-override-shows-a-platform-badge) | a platform write inside a team carries a shared "by Platform" badge beside the person's name | owner, as recommended | — |
+| [the-override-badge-is-accepted-as-by-root-team](#the-override-badge-is-accepted-as-by-root-team) | the override badge prototype is accepted, named "by Root team" / "oleh tim Root" | owner, as recommended | — |
 | ~~[superseded-an-override-shows-as-the-person](#superseded-an-override-shows-as-the-person)~~ ⛔ withdrawn | a platform write inside a team is shown by the person who did it — no separate override badge | owner | — |
 
 ## warehouse-staff-is-the-whole-floor-job
@@ -2128,3 +2129,24 @@ test asserts the two agree on every case. Development held `0811` (left) and `+1
 | the flags | unchanged — still stamped in every service; each read gains the field it needs |
 
 ⚠ Not built.
+
+✅ **Built 2026-11-11** — live as *by Root team* ([the-override-badge-is-accepted-as-by-root-team](#the-override-badge-is-accepted-as-by-root-team)): every read a screen names a person from returns the record's `is_override` — orders and their timeline, drafts, every stock ledger, restock and transfer timelines, account logs, bundles, settlement rows and statements, imported files, expenses — and those screens draw the shared `ActorName` badge; the expenses list gained its **Recorded by** column; the member log and the Team Balance limit log moved to it. ⚠ Not shown, because their screen names nobody and a name there would be a new column or line: `liability_logs` (the balance ledger), `liability_payments` (the payments table), `liability_payment_requests` (the request notice names the team), `team_agent_policies` (a toggle), `documents` / `document_shares` (no screen lists them). State: [user context](../../development_state/user/context.md).
+
+---
+
+## the-override-badge-is-accepted-as-by-root-team
+
+> Owner (Heri), in chat (2026-11-11): *"A"*, as recommended — to the Storybook prototype of [an-override-shows-a-platform-badge](#an-override-shows-a-platform-badge) (`Pages/Prototypes/PlatformBadge`, screenshots of the order timeline, a stock history, the expenses list, Entri Toko, the member log and the Team Balance limit log, desktop and phone), and to the clash it found: *Platform* is already the word for the outside marketplace ([platform-is-the-word-for-the-outside-marketplace](../order/context_decision.md#platform-is-the-word-for-the-outside-marketplace)) — the app says *Platform reimbursed*, and a *by Platform* badge would sit near it on Entri Toko. A: accept, but name the badge so it cannot be read as Shopee/TikTok; B: accept as shown; C: change something.
+
+**The verdict.** The design is **accepted** as shown, with one change: the badge reads **"by Root team"** (en) / **"oleh tim Root"** (id), not *by Platform*.
+
+| | |
+| --- | --- |
+| the badge | a small badge in the root team's green with a shield icon, right after the person's name (`ActorName`); `sm` in table cells, `xs` in timelines and phone blocks |
+| its explanation | a tooltip on desktop, a tap on phones: *Root or the System Administrator did this inside this team — they are not one of its members.* |
+| where | wherever a record names who did it; the expenses list gains a **Recorded by** column (a line on phones); every stock ledger through the shared movement table; the member log's amber mark and the Team Balance limit log's purple mark are replaced by it |
+| *Platform* | keeps meaning the outside marketplace only |
+
+The rest of [an-override-shows-a-platform-badge](#an-override-shows-a-platform-badge) stands. ⚠ Not built — each read must return `is_override` first.
+
+✅ **Built 2026-11-11** — the badge reads *by Root team* / *oleh tim Root* (`override.byRootTeam`), the component is `RootTeamBadge` (`components/entity/ActorName.tsx`) in the `rootTeamBadge` theme colour, the tooltip / tap sentence unchanged; the Storybook switch is deleted and `Pages/RootTeamBadge` shows the live screens. e2e `the_root_team_badge.spec.ts`: root records an expense inside a team it is not in, and the team's owner sees root's name with the badge.

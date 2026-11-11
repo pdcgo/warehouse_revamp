@@ -1,6 +1,7 @@
 package product_v1_test
 
 import (
+	"context"
 	"testing"
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
@@ -38,4 +39,9 @@ func TestBundleCreate_StampsAnOverride(t *testing.T) {
 			t.Errorf("%s: is_override = %v, want %v", c.name, row.IsOverride, c.want)
 		}
 	}
+}
+
+// scopedAs is a person as the access interceptor leaves them, inside `team`: ROLE_UNSPECIFIED is Root by the bypass.
+func scopedAs(userID, team uint64, role role_basev1.Role) context.Context {
+	return san_auth.WithScope(asPerson(userID, role), team)
 }

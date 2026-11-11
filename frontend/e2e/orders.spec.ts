@@ -338,6 +338,13 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       minFee: 1500,
     });
 
+    // THE RETURN WAREHOUSE — order create refuses a team that has none (create-refuses-a-team-with-no-return-warehouse).
+    // Root's team returns to the warehouse that ships its orders.
+    await call("selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationSet", {
+      teamId: product.teamId,
+      warehouseId: warehouse.id,
+    });
+
     return { warehouse: warehouse.id, product: product.id };
   }, [WH_CODE, CODE]);
 

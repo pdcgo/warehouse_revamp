@@ -277,12 +277,12 @@ at the owner's *"build now"*.
 | root | `OrderList` / `OrderDetail` drop the team clause for the root team (`readsEveryTeam`) |
 | settlement | `OrderPlaced` carries `shop_id` + `platform_total` (`marketplace_total` until the thirteenth pass), `OrderCancelled` carries `shop_id`; settlement's `OrderSaleHandler` opens and cancels the sale, idempotent on its key. Selling no longer calls settlement |
 | local events | the emulator pushes to `:8080` (project `warehouse-dev`) and to the e2e's `:8081` (`warehouse-e2e`) — [the-emulator-pushes-locally](../../technical/event_architecture/context_decision.md#the-emulator-pushes-locally) |
-| return warehouse | selling `00016` `team_return_configurations` · `TeamReturnConfigurationService` (`Detail`, `Set` — an upsert, no clear, `ByIds` — root's) · Settings → **Return Warehouse** card (a selling team's managers) · root's Teams list badges each selling team with none. Team `00009` dropped `team_infos.return_warehouse_id` / `return_user_id`, proto fields 6–7 reserved |
+| return warehouse | selling `00016` `team_return_configurations` · `TeamReturnConfigurationService` (`Detail`, `Set` — an upsert, no clear, `ByIds` — root's) · Settings → **Return Warehouse** card (a selling team's managers) · root's Teams list badges each selling team with none. Team `00009` dropped `team_infos.return_warehouse_id` / `return_user_id`, proto fields 6–7 reserved · **order create refuses a team with none** since 2026-11-11 ([create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse), [entry below](#2026-11-11--order-create-refuses-a-team-with-no-return-warehouse-rollout-step-3)) |
 | return map | selling `00024` `product_return_maps` · `ProductReturnMapCreate` (written once, a standing pair comes back `created = false`) and `ProductReturnMapByIds` on the same service · `placeOrder` refuses an unmapped borrowed line on both doors, and a failed owners lookup · the order form's Return Mapping card writes at the confirmed pick and both pages pre-fill from the read — eighth pass above, flow in [rpc.md](../../services/selling_service/rpc.md#a-borrowed-products-return-map--productreturnmapcreate-and-productreturnmapbyids) |
 | the return accept | `OrderReturnAccept` (2026-11-02; with its stock half 2026-11-09) — **only the selling team's configured return warehouse** ([only-the-return-warehouse-accepts-a-return](../../business/order/context_decision.md#only-the-return-warehouse-accepts-a-return)), recorded on the accept's row, from `return` only: every line counted (broken, missing, the crew's note, the racks of the sound units), inventory's `OrderTransactionReturn` puts the parcel back on the shelf FIRST (`orders.return_transaction_id`), then `return_completed`, broken and missing on one warehouse note, the borrowed lines' labels, the courier's charge on `OrderReturnAccepted` → liability's `return_incidental_fee`; Return Arrived folds from that event. The pick queue's **Returns** tab; the pick page, the warehouse order detail and Receive a Return open the **Accept Return page** (`/warehouse-orders/:orderId/accept-return`). Flow in [rpc.md](../../services/selling_service/rpc.md#the-return-warehouse-accepts-a-return--orderreturnaccept) |
 | colours | every status's hue is the owner's: picked sky, shipping cyan, return red, return_completed pink decided 2026-10-21 ([shipping-is-cyan-and-picked-is-sky](../../technical/frontend/order_list_decision.md#shipping-is-cyan-and-picked-is-sky), [pink-follows-retur-diterima-to-return-completed](../../technical/frontend/order_list_decision.md#pink-follows-retur-diterima-to-return-completed)) |
 | frontend | one tab per status plus All, one stage per status (`features/orders/stages.ts`), the 6-step stepper, the timeline's notes and *handed back*, the warehouse workbench's four steps (`pages/pick-queue-next/steps.ts`), batch handover through the one RPC |
-| dev DB | migrated 2026-10-21 (team 9, selling 16): 2 pending, 1 shipping, 1 cancel. **No team has a return warehouse yet** |
+| dev DB | migrated 2026-10-21 (team 9, selling 16): 2 pending, 1 shipping, 1 cancel. Return warehouses since 2026-11-11 — every dev selling team has one: 14 Dev Selling → 13 Dev Warehouse, 89 Selling Srengat → 2 Jakarta Warehouse, 91 Selling Developer → 13 Dev Warehouse (the warehouse most of each team's orders ship from — the owner's 2026-11-09 choice — set through `TeamReturnConfigurationSet` as root) |
 
 ```sh
 go test ./backend/services/selling_service/... ./backend/services/settlement_service/... ./backend/services/team_service/...
@@ -448,7 +448,7 @@ touched here.
 
 | | |
 | --- | --- |
-| the create check for a return warehouse | rollout steps **2** (each team sets its own — [each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse)) and **3** (create refuses a team without one) — [create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse). Step 1 is this pass |
+| ~~the create check for a return warehouse~~ | ✅ built 2026-11-11 — rollout step 3 ([create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse)), [the entry below](#2026-11-11--order-create-refuses-a-team-with-no-return-warehouse-rollout-step-3). Step 2 stays each team's own on Settings ([each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse)); the dev teams were set at the owner's 2026-11-09 choice |
 | ~~the return's stock half~~ | ✅ built 2026-11-09 — [the entry below](#2026-11-09--the-return-goes-back-on-the-shelf-backlog-40) |
 
 ## Asks for a yes
@@ -477,10 +477,9 @@ touched here.
 | `-g` on the serial `orders.spec.ts` | skips the setup that creates the warehouse, so a later test fails on `undefined`. Run the whole file |
 | the e2e and the race/perf audits share `warehouse_test` | the e2e drops it at the end. Never run them at once |
 
-**Next agent:** step 2 of the return rollout is the teams' own — each sets its return warehouse on Settings, no backfill
-([each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse)).
-Step 3 is one check before the create's transaction, turned on once root's Teams list shows no *No return warehouse*
-badge ([root-sees-which-teams-have-no-return-warehouse](../../business/order/context_decision.md#root-sees-which-teams-have-no-return-warehouse)).
+**Next agent:** ✅ *(2026-11-11)* step 3 of the return rollout is on — [the entry below](#2026-11-11--order-create-refuses-a-team-with-no-return-warehouse-rollout-step-3).
+Real teams set theirs on Settings at release ([each-team-sets-its-own-return-warehouse](../../business/order/context_decision.md#each-team-sets-its-own-return-warehouse));
+root's Teams list badges any still missing ([root-sees-which-teams-have-no-return-warehouse](../../business/order/context_decision.md#root-sees-which-teams-have-no-return-warehouse)) — such a team cannot order until it does.
 
 ## 2026-11-06 — `platform_total` is a double, frozen whole at placement (money-type change, part 1)
 
@@ -697,3 +696,48 @@ Every record of [return_decision.md](../../business/inventory/return_decision.md
 | tests | inventory `order_transaction_return_test.go` (7), migration test 00040; selling `order_return_accept_test.go` (15), migration test 00049; race `TestInterleave_OrderTransactionReturn_SecondWaitsOnTheTake`, `TestRace_OrderTransactionReturn_OnceForEightCallers`, `TestRace_OrderReturnAccept_*` (selling, 3) and `TestRace_OrderReturnAccept_OneReturnTransaction` (`cmd/app_development`, the real stack); perf `TestPerf_OrderTransactionReturn`, `TestPerf_OrderReturnAccept`; stories `Pages/Warehouse/OrderReturnAccept`; e2e `the_return_goes_back_on_the_shelf.spec.ts` (a whole return on a rack, a short + broken one with its note, the wrong warehouse refused) and `orders.spec.ts` *Return* on the page |
 | audits | perf — both over the 5-statement line by the count alone, written up with no fix proposed: [OrderTransactionReturn.md](../../../audits/services/inventory_service/performances/OrderTransactionReturn.md), [OrderReturnAccept.md](../../../audits/services/selling_service/performances/OrderReturnAccept.md). Concurrency — safe, rows in both lock-orders ([inventory](../../../audits/services/inventory_service/concurrency/lock-order.md#an-order-comes-back-on-its-return-2026-11-09), [selling](../../../audits/services/selling_service/concurrency/lock-order.md#per-handler-in-acquisition-order)) |
 | ⚠ not built | a way for a stale-label warehouse to FIND an order it neither shipped nor receives (moot for the accept, which it may not do); a screen showing where a return was accepted; a reprint of the labels after the page |
+
+## 2026-11-11 — order create refuses a team with no return warehouse (rollout step 3)
+
+[create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse)
+is ON. Flow: [selling rpc.md](../../services/selling_service/rpc.md#a-team-with-no-return-warehouse-places-nothing--placeorder-2026-11-11).
+
+| | |
+| --- | --- |
+| dev data first | the dev DB's three selling teams had none: 14 Dev Selling → 13 Dev Warehouse (its 1 order), 89 Selling Srengat → 2 Jakarta Warehouse (3 of its 4 orders; default 90 not used), 91 Selling Developer → 13 Dev Warehouse (its 1 order) — the owner's 2026-11-09 rule (most orders shipped from, else the default, else any), set through `TeamReturnConfigurationSet` as root on a temporary dev API, read back with `TeamReturnConfigurationByIds`. No other selling team on dev |
+| the rule | `placeOrder` → `requireReturnWarehouseToOrder` (`order_place.go`): after the request's checks and the shop gate (a foreign shop stays `NotFound`), before the owner lookup, the credit check and the take. `FailedPrecondition` *"<team> has no return warehouse set — set it on Settings › Return Warehouse before creating an order"*, the team named through `TeamNamer` (`teamName` gained a kind: *"team #14"* / *"warehouse #13"* when unnamed). Both doors: the form and a draft's Promote (the draft is kept). `OrderDraftPush` is not refused |
+| race | read before the transaction, as the decision places it; safe because no path deletes a `team_return_configurations` row — noted in the code and the [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) OrderCreate row. Perf: the whole create 12 queries ≈ 4.3 ms (one indexed read added) — not heavy |
+| frontend | no new element: the server's sentence shows in the form's existing `order-create-error`, the form kept as typed. The Settings card's warning reads *"No return warehouse is set, so this team cannot create orders until one is."* (en + id; was *"…will require one soon"*) |
+| Go fixtures | selling `insertShop` gives the team a return warehouse (`giveReturnWarehouse`, testWarehouse, ON CONFLICT DO NOTHING, removed at cleanup for the committing race tests); `takeReturnWarehouse` for the no-warehouse cases; `configureReturnWarehouse` / `configureRaceReturnWarehouse` upsert. `cmd/app_development`: `shopForOrders(team, warehouse)` + `returnsTo`, `seedTwoBatches` (and `team_return_configurations` in `orderRaceTables`), `perfTakeShelf` |
+| e2e fixtures | every spec whose team places orders sets it: `orders` (root's team → its warehouse, in the stock setup), `stock_count_cancel`, `the_closed_shop`, `the_labels_print_together`, `the_order_keeps_exact_figures` (root's team), `the_supplier_goods`, `the_warehouse_list`; `the_return_goes_back_on_the_shelf` already did |
+| tests | `order_create_return_warehouse_test.go` — refused without (exact message, no take, no order) then placed once set; any warehouse passes; a Promote refused with its draft kept, then promoted; the id fallback (mutation-checked: the rule off fails 3 of 4). `TestOrderReturnAccept_ATeamWithNoReturnWarehouseIsRefused` now takes the row away after placing. e2e `the_order_needs_a_return_warehouse.spec.ts` — the form refused naming the team, then the same form placed once set |
+| checks | gofmt (changed files); root `go build`/`vet`/`test -count=1 -p 1 ./...` green; `vet -tags raceaudit` / `perfaudit`; raceaudit `TestRace|TestInterleave` selling + `cmd/app_development` green (no row left behind); `npm run typecheck`, `test:unit` 93; stories settings + order-create + teams 95; `lint:mermaid`; FULL e2e in 8 name-ordered batches — 225 passed, 2 skipped (`orders.spec.ts` failed once on a login page that never drew in *Label*, 29/29 on its re-run) |
+
+## 2026-11-11 — a sideways label photo prints upright (backlog #39)
+
+`backend/pkgs/san_pdf_merge` placed a JPEG as stored and pdfcpu ignores EXIF, so a label photographed in portrait printed
+sideways in the merged OrderLabels PDF. Now `imagePDF` first calls `upright` (`orientation.go`): a small hand-rolled reader
+of the JPEG's APP1 EXIF segment (IFD0 tag 0x0112, either byte order, bounds-checked) and, for orientation 2–8, a decode,
+the turn or mirror the EXIF table names (sample for sample on YCbCr at 4:4:4, Gray, or a generic path for CMYK) and a
+re-encode at quality 92 without the tag. No new dependency (`image/jpeg` + `encoding/binary`); pdfcpu stays v0.15.0.
+
+| | |
+| --- | --- |
+| kept as is | no EXIF, orientation 1, a value outside 1–8, a malformed segment — the bytes are placed unchanged (still not decoded); over 50 megapixels — placed unturned rather than decoded (a hostile 65535² header must not take the memory). Never a refusal for metadata |
+| cost | 12 MP photo in portrait: ≈ 292 ms vs 1 ms as stored (`TestPerf_MergeTurnedPhoto`); most phone portraits carry orientation 6, so a print of many photo labels pays it per photo |
+| tests | `orientation_test.go`: every orientation 1–8 × II/MM, the fixture built from the EXIF specification's own table (not the code's turns), asserting the placed image's size, each corner's colour and a landscape page; orientation 1 placed byte for byte; 7 unreadable tags placed as is; a 60 MP header never decoded. Mutation-checked (6↔8 swapped, turn disabled) |
+
+## 2026-11-11 — the order detail's Platform total reads as text, not its key (#42)
+
+The seller's order detail drew the raw key `orderDetail.money.platformTotal` (Summary tile, Money breakdown, the margin
+bar's tooltip): the code had moved to the decided word with
+[platform-is-the-word-for-the-outside-marketplace](../../business/order/context_decision.md#platform-is-the-word-for-the-outside-marketplace)
+(commit dad6833a, 2026-10-28) while both locale files kept `orderDetail.money.marketplaceTotal` — the LOCALES drifted.
+
+| | |
+| --- | --- |
+| fix | en/id: `orderDetail.money.marketplaceTotal` → `platformTotal` (*Platform total* / *Total platform*), `marginHelp` says platform; `orders.marketplaceTotal(Help)` — the same figure on the order form and the Info panel — now reads *Platform order total* / *Total order di platform* (key kept); `WarehouseOrders.tsx`'s column header reads the new key. Edited with the i18n round-trip script |
+| second raw key | the same scan found `racks.detail.description` (rack detail, Info tab) missing from both locales — added (*Description* / *Deskripsi*) |
+| guard | `src/i18n/keys.test.ts` (`npm run test:unit`): every literal `t("a.b")` in the app's source (not gen, stories, tests) must exist in en.json AND id.json (plural `_one`/`_other` counted) — mutation-checked. Story `Pages/Order/OrderDetailPage › PlatformTotalDiffersFromOurs` asserts the tile reads *Platform total* and that no text, title or aria-label on the page is a key. `AWarehouseLabelRefusalSaysWhy` now waits for its toast to SHOW (it caught the toast mid-animation 3 runs in 4 once the story before it ran longer) |
+| checks (2026-11-11, the batch #38 #39 #41 #42) | gofmt on the changed files; `buf lint` + `buf generate` (drift: the 3 inventory gen files only); root `go build`/`vet` (+ `raceaudit`, `perfaudit`)/`test -count=1 -p 1 ./...` green (47 packages); raceaudit document_service green; `npm run typecheck`, `test:unit` 97, stories order-detail/order-create/orders/order-settlement/rack-detail/MarketplaceInfoForm green, `lint:mermaid` 1658; FULL e2e in 8 name-ordered batches — 225 passed, 2 skipped, 0 failed |
+| still says marketplace (by the decision's own ⚠ list, a separate one-change-per-side rename) | the `orders.marketplaceTotal` key name, `MarketplaceInfoForm`, the `order-marketplace-total` testids, the shop's marketplace type |

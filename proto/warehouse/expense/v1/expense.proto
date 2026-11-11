@@ -149,6 +149,11 @@ message ExpenseRecord {
   // original did (a-correction-follows-the-expenses-account), so an old expense's corrections name none either.
   // The account's NAME is the screen's own read (FinancialAccountByIds), as on a restock.
   uint64 finance_account_id = 13;
+
+  // THE TYPIST WAS AN OVERRIDE — `created_by` is Root or the System Administrator, who recorded it inside a team they
+  // hold no role in (an-override-is-stamped-in-every-service); the Expenses screen's Recorded by shows the shared
+  // "by Root team" badge beside the person (an-override-shows-a-platform-badge). From `expense_records.is_override`.
+  bool is_override = 14;
 }
 
 message ExpenseCreateRequest {
@@ -314,6 +319,10 @@ message ExpenseRowItem {
   // As on ExpenseRecord: the account that paid; 0 on an expense made before Paid from; an adjustment carries its
   // expense's.
   uint64 finance_account_id = 13;
+  // THE TYPIST WAS AN OVERRIDE — `created_by` is Root or the System Administrator and recorded it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `expense_records.is_override` — the row's own typist, an adjustment's too.
+  bool is_override = 14;
 }
 
 message ExpenseRowMapItem {

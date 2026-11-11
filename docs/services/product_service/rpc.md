@@ -104,3 +104,16 @@ AND a CS in the team reads as the CS there.
 
 **Concurrency.** `BundleUpdate` and `BundleDelete` take the bundle row `FOR UPDATE` first, so two saves of one bundle
 run one after the other — each replaces the lines whole, and two interleaved replaces would leave a mix of both.
+
+## The override stamp on the reads — the "by Root team" badge (built 2026-11-11)
+
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge), accepted as
+[the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team):
+every read a screen names a person from now carries the record's own `is_override` (stamped at the write by
+`san_auth.IsOverride`, [an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+and the screen draws the shared `ActorName` / `RootTeamBadge` beside the person. Never sent by a caller; a row from
+before the column reads false.
+
+| read | field | read from | performance |
+| --- | --- | --- | --- |
+| `BundleList`, `BundleByIds` (and the bundle writes) | `BundleRowItem.is_override` (9) — the maker | `bundles.is_override`, same row | nil |

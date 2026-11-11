@@ -75,6 +75,7 @@ export function entryFromWire(wire: WireSettlementEntry): SettlementEntry {
     // ⚠ The id, not a name. Resolving it needs user_service, and a ledger does not read another
     // service's tables (HARD RULE 3) — the screen looks it up where it already lists people.
     actorName: wire.actorName || String(wire.actorId),
+    isOverride: wire.isOverride,
     occurredOn: wire.occurredOn,
     postedOn: wire.postedOn,
     reversesId: wire.reversesId === 0n ? undefined : String(wire.reversesId),

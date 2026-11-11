@@ -1151,8 +1151,8 @@
     "hppUnknown": "not recorded",
     "hppSplitHint_one": "Drawn from {{count}} batch, oldest first",
     "hppSplitHint_other": "Drawn from {{count}} batches, oldest first",
-    "marketplaceTotal": "Marketplace order total",
-    "marketplaceTotalHelp": "What the storefront took. A note — it is not added to the total below.",
+    "marketplaceTotal": "Platform order total",
+    "marketplaceTotalHelp": "What the platform took. A note — it is not added to the total below.",
     "pickWarehouseFirst": "Choose a warehouse first — the products you can sell are the ones it has in stock.",
     "product": "Product",
     "inStock": "In stock",
@@ -1289,9 +1289,9 @@
       "productTotal": "Product total",
       "fees": "Other costs (warehouse)",
       "systemTotal": "System total",
-      "marketplaceTotal": "Marketplace total",
+      "platformTotal": "Platform total",
       "margin": "Margin (estimated)",
-      "marginHelp": "Marketplace total minus system total, as a share of the marketplace total — the same figure the order list shows. Estimated: the warehouse fee is a sample, and what the platform deducts beyond the price only lands weeks later on the settlement ledger."
+      "marginHelp": "Platform total minus system total, as a share of the platform total — the same figure the order list shows. Estimated: the warehouse fee is a sample, and what the platform deducts beyond the price only lands weeks later on the settlement ledger."
     },
     "timeline": {
       "title": "Timeline",
@@ -2027,6 +2027,7 @@
       "code": "Code",
       "name": "Name",
       "noName": "(no name)",
+      "description": "Description",
       "noDescription": "(no description)",
       "unitCost": "Unit cost",
       "lineValue": "Value",
@@ -2631,7 +2632,6 @@
       "removed": "{{actor}} removed {{user}} ({{from}})",
       "system": "the system",
       "userRef": "user #{{id}}",
-      "override": "override",
       "failed": "The membership history could not be loaded.",
       "empty": "No one has joined, left or changed role yet."
     },
@@ -2877,7 +2877,7 @@
     "defaultWarehouseSaved": "Default warehouse saved",
     "returnWarehouse": "Return Warehouse",
     "returnWarehouseHint": "Returned parcels of this team are received at this warehouse. Any warehouse can be chosen.",
-    "returnWarehouseNotSet": "No return warehouse is set. Orders will require one soon.",
+    "returnWarehouseNotSet": "No return warehouse is set, so this team cannot create orders until one is.",
     "returnWarehouseSaved": "Return warehouse saved",
     "warehouseFee": {
       "title": "Warehouse Fee",
@@ -3339,7 +3339,8 @@
       "note": "Note",
       "amount": "Amount",
       "actions": "Actions",
-      "paidFrom": "Paid from"
+      "paidFrom": "Paid from",
+      "recordedBy": "Recorded by"
     },
     "kind": {
       "ads": "Ads",
@@ -3392,7 +3393,8 @@
       "shop": "the shop the ads ran for"
     },
     "cancelAccount": "{{net}} goes back to {{account}}.",
-    "cancelNoAccount": "This expense names no account, so no balance moves."
+    "cancelNoAccount": "This expense names no account, so no balance moves.",
+    "recordedBy": "Recorded by {{name}}"
   },
   "periodGrain": {
     "label": "Group by",
@@ -3644,7 +3646,6 @@
     "tileUnlimited": "Unlimited",
     "tileUnlimitedHelp": "No ceiling set",
     "overrideWriter": "Writing as admin",
-    "override": "Override",
     "historyAll": "Change Log",
     "historyOne": "Change Log — {{name}}",
     "historyEmpty": "No changes recorded.",
@@ -5312,5 +5313,9 @@
     "permissionDenied": "You are not allowed to do this.",
     "unauthenticated": "Your sign-in has ended. Sign in again.",
     "refused": "The server refused this request."
+  },
+  "override": {
+    "byRootTeam": "by Root team",
+    "byRootTeamHint": "Root or the System Administrator did this inside this team — they are not one of its members."
   }
 }

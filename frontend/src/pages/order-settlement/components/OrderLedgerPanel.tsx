@@ -15,6 +15,7 @@ import {
 import { ChevronRight, Clock, Plus, Undo2 } from "lucide-react";
 
 import { SettlementSourceBadge } from "../../../components/badges/SettlementSourceBadge";
+import { RootTeamBadge } from "../../../components/entity/ActorName";
 import { SummaryCard, SummaryStrip } from "../../../features/orders/SummaryCard";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { AddEntryDialog, type EntryDraft } from "./AddEntryDialog";
@@ -487,6 +488,8 @@ function LedgerBlock({
             {late && ` · ${t("orderSettlement.postedOn", { date: entry.postedOn })}`}
           </Text>
           <SettlementSourceBadge source={entry.sourceType} actor={entry.actorName} />
+          {/* The manual badge names who typed it; Root's or the System Administrator's from outside the team says so. */}
+          {entry.sourceType === "manual" && entry.isOverride && <RootTeamBadge size="xs" />}
         </Flex>
         <Text fontSize="sm" fontWeight="bold" whiteSpace="nowrap" data-testid={`ledger-balance-${entry.id}`}>
           {t("orderSettlement.balanceShort")} {formatSignedRupiah(entry.balance)}
@@ -556,6 +559,7 @@ function LedgerRow({
       <Table.Cell data-testid={`ledger-detail-${entry.id}`}>
         <Flex align="center" gap="2" wrap="wrap">
           <SettlementSourceBadge source={entry.sourceType} actor={entry.actorName} />
+          {entry.sourceType === "manual" && entry.isOverride && <RootTeamBadge />}
           {entry.reversesId ? (
             <Text fontSize="sm" color="fg.muted" data-testid={`ledger-reversal-${entry.id}`}>
               {reverses

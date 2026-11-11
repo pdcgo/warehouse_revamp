@@ -35,6 +35,7 @@ var orderRaceTables = []string{
 	"orders",
 	"order_drafts",
 	"shops",
+	"team_return_configurations",
 	"warehouse_fees",
 	"order_return_problem_items",
 	"order_return_checks",
@@ -93,6 +94,11 @@ func seedTwoBatches(t *testing.T, db *gorm.DB) uint64 {
 	if err == nil {
 		err = db.Raw(`INSERT INTO shops (team_id, name, shop_code, marketplace) VALUES (?, 'Toko Melati', 'MEL', 'shopee')
 			RETURNING id`, ocTeam).Scan(&shop).Error
+	}
+
+	// Melati returns to the warehouse it ships from (create-refuses-a-team-with-no-return-warehouse).
+	if err == nil {
+		err = returnsTo(db, ocTeam, ocWarehouse)
 	}
 
 	if err != nil {

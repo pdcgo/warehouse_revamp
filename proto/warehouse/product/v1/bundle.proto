@@ -76,6 +76,10 @@ message BundleRowItem {
   int64 updated_at_unix = 7;
   // In the order they were saved. Never empty (a-bundle-has-at-least-one-line).
   repeated BundleLine lines = 8;
+  // THE MAKER WAS AN OVERRIDE — `created_by_user_id` is Root or the System Administrator and made it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `bundles.is_override`, set once at create.
+  bool is_override = 9;
 }
 
 message BundleRowMapItem {

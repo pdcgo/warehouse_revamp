@@ -783,6 +783,15 @@ const customConfig = defineConfig({
           admin: teamTypeColour(["#fee2e2", "#fecaca", "#b91c1c"], ["#7f1d1d", "#991b1b", "#fca5a5"]),
           others: teamTypeColour(["#f3f4f6", "#e5e7eb", "#374151"], ["#1f2937", "#374151", "#d1d5db"]),
         },
+        // `rootTeamBadge.bg` / `.fg` — THE "BY ROOT TEAM" BADGE (an-override-shows-a-platform-badge,
+        // the-override-badge-is-accepted-as-by-root-team): a record Root or the System Administrator wrote inside a team
+        // they are not in. The ROOT TEAM's own green from TEAM TYPE COLOURS — the badge names the root team, and the
+        // switcher already paints it so — referenced, not copied, so the two cannot drift. Not a status role: an override
+        // is neither a fault nor a warning. Read only by RootTeamBadge (components/entity/ActorName).
+        rootTeamBadge: {
+          bg: { value: "{colors.teamType.root.badge}" },
+          fg: { value: "{colors.teamType.root.fg}" },
+        },
         // Surfaces — page → card → inset. `--bg` / `--surface` / `--surface-2`. The status tints are
         // Chakra's own `bg.error` & co., pointed at the role ramps.
         bg: {

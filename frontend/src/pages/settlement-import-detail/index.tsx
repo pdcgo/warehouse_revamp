@@ -30,6 +30,7 @@ import { UploadedFileStatusBadge } from "../../features/settlementImport/Uploade
 import { type LineView, useUploadedFile, useUploadedFileLines } from "../../features/settlementImport/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
+import { ActorName } from "../../components/entity/ActorName";
 import { SettlementType } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import {
   type UploadedFile,
@@ -173,11 +174,15 @@ function FileDetail({ teamId, file }: { teamId: bigint; file: UploadedFile }) {
               ? t("settlementImports.detail.period", { from: file.periodFrom, to: file.periodTo })
               : t("settlementImports.detail.periodUnread")}
           </Text>
-          <Text fontSize="sm" color="fg.muted">
-            {t("settlementImports.detail.uploadedBy", {
-              name: uploader,
-              at: file.createdAt ? timestampDate(file.createdAt).toLocaleString() : "—",
-            })}
+          <Text fontSize="sm" color="fg.muted" data-testid="import-detail-uploaded-by">
+            {/* The uploader, with the "by Root team" badge when Root uploaded it from outside the team. */}
+            <ActorName
+              name={t("settlementImports.detail.uploadedBy", {
+                name: uploader,
+                at: file.createdAt ? timestampDate(file.createdAt).toLocaleString() : "—",
+              })}
+              isOverride={file.isOverride}
+            />
           </Text>
         </Stack>
         <Box flex="1" />

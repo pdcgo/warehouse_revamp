@@ -238,3 +238,49 @@ func TestOrderDraftList_ReadyCountIsTheWholeSets(t *testing.T) {
 		t.Fatalf("ready with a manual draft = %d, want 1", msg.GetReadyCount())
 	}
 }
+
+// THE DRAFTS LIST READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): a draft whose last push was Root's, from
+// outside team 2, reads is_override beside its author — the "by Root team" badge — and the CS's draft does not.
+func TestOrderDraftList_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	want := map[uint64]bool{}
+
+	for _, c := range []struct {
+		ref    string
+		userID uint64
+		want   bool
+	}{
+		{"SHP-ROOT", 1, true},
+		{"SHP-CS", 7, false},
+	} {
+		role := sellingCS
+		if c.want {
+			role = rootOutside
+		}
+
+		msg := scrape()
+		msg.ExternalId = c.ref
+
+		res, err := svc.OrderDraftPush(asScoped(c.userID, 2, role), connect.NewRequest(msg))
+		if err != nil {
+			t.Fatalf("%s: OrderDraftPush: %v", c.ref, err)
+		}
+
+		want[res.Msg.GetDraft().GetId()] = c.want
+	}
+
+	// A draft is its author's own (the list narrows to the caller), so each reads their own one.
+	for _, userID := range []uint64{1, 7} {
+		rows := draftRows(listDrafts(t, svc, userID, 2, ""))
+		if len(rows) != 1 {
+			t.Fatalf("user %d listed %d drafts, want 1", userID, len(rows))
+		}
+
+		d := rows[0]
+		if d.GetIsOverride() != want[d.GetId()] {
+			t.Errorf("user %d: draft %d is_override = %v, want %v", userID, d.GetId(), d.GetIsOverride(), want[d.GetId()])
+		}
+	}
+}

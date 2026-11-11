@@ -64,21 +64,6 @@ func stockHistoryItems(movements []*inventoryv1.StockMovement, types []inventory
 	return items, ids
 }
 
-// warehouseProductItems is a pure id list: the ids ARE the product ids; the only slice is GENERAL.
-func warehouseProductItems(productIDs []uint64, types []inventoryv1.WarehouseProductListDataType) ([]*inventoryv1.WarehouseProductListResponseItem, []uint64) {
-	items := make([]*inventoryv1.WarehouseProductListResponseItem, 0, len(types))
-	for _, t := range types {
-		if t == inventoryv1.WarehouseProductListDataType_WAREHOUSE_PRODUCT_LIST_DATA_TYPE_GENERAL {
-			m := make(map[uint64]*commonv1.GeneralItem, len(productIDs))
-			for _, id := range productIDs {
-				m[id] = &commonv1.GeneralItem{Id: id}
-			}
-			items = append(items, &inventoryv1.WarehouseProductListResponseItem{D: &inventoryv1.WarehouseProductListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}}})
-		}
-	}
-	return items, productIDs
-}
-
 func batchListItems(batches []*inventoryv1.StockBatch, types []inventoryv1.BatchListDataType) ([]*inventoryv1.BatchListResponseItem, []uint64) {
 	if len(types) == 0 {
 		types = []inventoryv1.BatchListDataType{inventoryv1.BatchListDataType_BATCH_LIST_DATA_TYPE_BATCH}

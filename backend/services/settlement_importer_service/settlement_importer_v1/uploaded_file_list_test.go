@@ -167,3 +167,31 @@ func TestUploadedFileList_FiltersByShopAndPlatform(t *testing.T) {
 		t.Fatalf("by platform = %v, want [%d]", byPlatform.GetIds(), shopee)
 	}
 }
+
+// THE LIST READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): a file Root uploaded from outside the team
+// reads is_override beside its uploader — the "by Root team" badge on the imports list — and a member's does not.
+func TestUploadedFileList_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	w := newWorld(t, db)
+
+	byRoot := insertFile(t, db, team, shopeeShop, "shopee", "done", 2*time.Hour)
+	byMember := insertFile(t, db, team, shopeeShop, "shopee", "done", time.Hour)
+
+	err := db.Model(&settlement_importer_service_models.UploadedFile{}).Where("id = ?", byRoot).Update("is_override", true).Error
+	if err != nil {
+		t.Fatalf("stamp Root's file: %v", err)
+	}
+
+	files := map[uint64]*settlement_importerv1.UploadedFile{}
+
+	for _, item := range listFiles(t, w, nil, 1).GetItems() {
+		if item.GetFile() != nil {
+			files = item.GetFile().GetMapData()
+		}
+	}
+
+	if !files[byRoot].GetIsOverride() || files[byMember].GetIsOverride() {
+		t.Fatalf("is_override: Root's file %v, the member's %v — want true, false",
+			files[byRoot].GetIsOverride(), files[byMember].GetIsOverride())
+	}
+}

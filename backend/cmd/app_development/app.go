@@ -7,10 +7,15 @@ import (
 	"net/http"
 	"time"
 
+	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	settlement_importer_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_v1"
 )
 
 const shutdownGrace = 10 * time.Second
+
+// firstGeneratedFileSweep is how long after start the first sweep runs — after the server is listening, never in the
+// way of its start.
+const firstGeneratedFileSweep = time.Minute
 
 type App struct {
 	server *http.Server
@@ -18,10 +23,15 @@ type App struct {
 	// A settlement import runs detached from its request (an-import-finishes-whether-anyone-watches), so
 	// the server's own drain cannot see it.
 	importer *settlement_importer_v1.Service
+
+	// The daily sweep of generated downloads (generated-files-are-kept-seven-days) runs in this process: nothing
+	// else schedules a job.
+	documents  *document_v1.Service
+	sweepEvery time.Duration
 }
 
-func NewApp(server *http.Server, importer *settlement_importer_v1.Service) *App {
-	return &App{server: server, importer: importer}
+func NewApp(server *http.Server, importer *settlement_importer_v1.Service, documents *document_v1.Service, cfg *Config) *App {
+	return &App{server: server, importer: importer, documents: documents, sweepEvery: cfg.GeneratedFileSweepEvery}
 }
 
 // Run serves until ctx is cancelled, then drains in-flight requests before returning.
@@ -40,6 +50,11 @@ func (a *App) Run(ctx context.Context) error {
 
 		serveErr <- err
 	}()
+
+	// Ends with ctx; a run in flight when the server stops rolls back its batch, and the next start sweeps it.
+	if a.sweepEvery > 0 {
+		go a.documents.SweepGeneratedFilesEvery(ctx, firstGeneratedFileSweep, a.sweepEvery)
+	}
 
 	select {
 	case err := <-serveErr:

@@ -9,8 +9,9 @@ import (
 // Config is the operations tool's configuration.
 //
 // It is deliberately SMALLER than the server's: san serves no traffic, so it has no address, no
-// CORS origins and no document storage. What is left is what the service constructors it drives
-// require — and one setting that genuinely matters here, RedisAddr.
+// CORS origins and no file endpoint. What is left is what the service constructors it drives
+// require — the document store's directory for the generated-file sweep among them — and one
+// setting that genuinely matters here, RedisAddr.
 type Config struct {
 	// DatabaseURL is NOT here on purpose. Which database to act on is a per-invocation decision
 	// (--dsn, or the Local/Production prompt), so it enters the graph as an argument — see
@@ -37,6 +38,11 @@ type Config struct {
 	// team_service to name a team; no san command reaches that path, but the client is part of
 	// the service's construction.
 	InternalBaseURL string `env:"INTERNAL_BASE_URL" yaml:"internal_base_url"`
+
+	// DocumentStorageDir is the SERVER's document store, for `document sweep-generated`, which deletes the objects of
+	// generated downloads older than seven days. Same variable and same empty default (a temp dir) as the server's, so
+	// a local san reaches the local server's files.
+	DocumentStorageDir string `env:"DOCUMENT_STORAGE_DIR" yaml:"document_storage_dir"`
 }
 
 func NewConfig() (*Config, error) {

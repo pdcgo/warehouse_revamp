@@ -284,7 +284,7 @@ export function WarehouseOrdersPage() {
                       {/* What the buyer paid the platform (`platform_total`). The order's old `total` (our quote plus
                           postage) was dropped by selling 00027, and the seller's own cost is not this building's to read
                           (the-two-ends-are-two-screens). */}
-                      <Table.ColumnHeader textAlign="end">{t("orderDetail.money.marketplaceTotal")}</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="end">{t("orderDetail.money.platformTotal")}</Table.ColumnHeader>
                     </Table.Row>
                   </Table.Header>
 

@@ -750,8 +750,12 @@ type RestockLog struct {
 	// user_service id; 0 = not recorded. Resolved to a name at read time, never snapshotted.
 	ActorUserId uint64 `protobuf:"varint,4,opt,name=actor_user_id,json=actorUserId,proto3" json:"actor_user_id,omitempty"`
 	// Why, or what changed — "Kaos Hitam 10 → 12, extra stock".
-	Description   string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	AtUnix        int64  `protobuf:"varint,6,opt,name=at_unix,json=atUnix,proto3" json:"at_unix,omitempty"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	AtUnix      int64  `protobuf:"varint,6,opt,name=at_unix,json=atUnix,proto3" json:"at_unix,omitempty"`
+	// THIS ROW'S ACTOR WAS AN OVERRIDE — Root or the System Administrator wrote it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `restock_logs.is_override`.
+	IsOverride    bool `protobuf:"varint,7,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -826,6 +830,13 @@ func (x *RestockLog) GetAtUnix() int64 {
 		return x.AtUnix
 	}
 	return 0
+}
+
+func (x *RestockLog) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type RestockRequest struct {
@@ -3464,7 +3475,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\vsupplier_id\x18\r \x01(\x04R\n" +
 	"supplierId\x12.\n" +
 	"\x13supplier_channel_id\x18\x0e \x01(\x04R\x11supplierChannelId\x12\x1c\n" +
-	"\x04note\x18\x0f \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04noteJ\x04\b\a\x10\bJ\x04\b\b\x10\tR\x11received_quantityR\x10received_rack_id\"\x95\x02\n" +
+	"\x04note\x18\x0f \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04noteJ\x04\b\a\x10\bJ\x04\b\b\x10\tR\x11received_quantityR\x10received_rack_id\"\xb6\x02\n" +
 	"\n" +
 	"RestockLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12M\n" +
@@ -3473,7 +3484,9 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\tto_status\x18\x03 \x01(\x0e2,.warehouse.inventory.v1.RestockRequestStatusR\btoStatus\x12\"\n" +
 	"\ractor_user_id\x18\x04 \x01(\x04R\vactorUserId\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x17\n" +
-	"\aat_unix\x18\x06 \x01(\x03R\x06atUnix\"\x97\v\n" +
+	"\aat_unix\x18\x06 \x01(\x03R\x06atUnix\x12\x1f\n" +
+	"\vis_override\x18\a \x01(\bR\n" +
+	"isOverride\"\x97\v\n" +
 	"\x0eRestockRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12,\n" +
 	"\x12requesting_team_id\x18\x02 \x01(\x04R\x10requestingTeamId\x12!\n" +

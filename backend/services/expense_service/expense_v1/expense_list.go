@@ -126,6 +126,8 @@ func expenseRowItem(c *expense_service_models.ExpenseRecord, adjusted map[uint64
 		AdjustsExpenseId: c.AdjustsExpenseID,
 		NetAmount:        net,
 		FinanceAccountId: c.FinanceAccountID,
+		// The "by Root team" badge beside who recorded it (an-override-shows-a-platform-badge).
+		IsOverride: c.IsOverride,
 	}
 }
 

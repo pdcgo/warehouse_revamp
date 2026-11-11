@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
@@ -79,11 +80,18 @@ func returnedOrder(t *testing.T, svc *selling_v1.Service, req *sellingv1.OrderCr
 	return id, created.Msg.GetOrder().GetItems()
 }
 
-// configureReturnWarehouse gives a team its return warehouse (team_return_configurations).
+// configureReturnWarehouse gives a team its return warehouse (team_return_configurations) — over the one insertShop gave
+// it, so a test names the building its returns go to.
 func configureReturnWarehouse(t *testing.T, db *gorm.DB, teamID, warehouseID uint64) {
 	t.Helper()
 
-	err := db.Create(&selling_service_models.TeamReturnConfiguration{TeamID: teamID, WarehouseID: warehouseID}).Error
+	err := db.
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "team_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"warehouse_id"}),
+		}).
+		Create(&selling_service_models.TeamReturnConfiguration{TeamID: teamID, WarehouseID: warehouseID}).
+		Error
 	if err != nil {
 		t.Fatalf("configure the return warehouse of %d: %v", teamID, err)
 	}
@@ -373,6 +381,10 @@ func TestOrderReturnAccept_ATeamWithNoReturnWarehouseIsRefused(t *testing.T) {
 
 	orderID, items := returnedOrder(t, svc, orderReq(shop))
 	rec.events = nil
+
+	// An order of a team that has none is not placeable any more (create-refuses-a-team-with-no-return-warehouse) — the
+	// row is taken away after the order, the state an order placed before the rule was on would be in.
+	takeReturnWarehouse(t, db, mapTeam)
 
 	_, err := acceptReturn(svc, context.Background(), testWarehouse, orderID, whole(items), nil)
 	cerr := wantCode(t, err, connect.CodeFailedPrecondition)

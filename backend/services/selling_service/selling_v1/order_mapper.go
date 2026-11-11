@@ -96,6 +96,8 @@ func timelineLogToProto(log *selling_service_models.OrderTimelineLog) *sellingv1
 		CreatedAtUnix: log.CreatedAt.Unix(),
 		// Where a return was accepted — 0 on every row but the accept's.
 		AcceptingWarehouseId: log.AcceptingWarehouseID,
+		// Whether THIS row's actor was Root or the System Administrator from outside the team (the "by Root team" badge).
+		IsOverride: log.IsOverride,
 	}
 }
 
@@ -199,7 +201,9 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		TimelineLogs:       timeline,
 		CreatedAtUnix:      o.CreatedAt.Unix(),
 		CreatedByUserId:    o.CreatedByUserID,
-		ItemQuantity:       itemQuantity,
+		// Whether the placement was an override — the "by Root team" badge beside the creator.
+		IsOverride:   o.IsOverride,
+		ItemQuantity: itemQuantity,
 		// The number printed on the receipt — the proto's `receipt` being the file it is printed on.
 		ReceiptCode:  o.Receipt,
 		StatusAtUnix: statusAtUnix(o),

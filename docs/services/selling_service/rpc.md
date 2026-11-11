@@ -464,6 +464,44 @@ sequenceDiagram
 | passed through | any Connect error the take answers with — its code, message and details. A take that never answered in its own terms (not a Connect error) is still `Internal` |
 | the release | unchanged: a refused take is still released by its key, as every failed placement is |
 
+## A team with no return warehouse places nothing — `placeOrder` (2026-11-11)
+
+Order create refuses a team that has **no `team_return_configurations` row**
+([create-refuses-a-team-with-no-return-warehouse](../../business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse),
+rollout step 3 — switched on once the dev teams had one). Nobody could accept such a team's return
+([only-the-return-warehouse-accepts-a-return](../../business/order/context_decision.md#only-the-return-warehouse-accepts-a-return)),
+so it is stopped at the door, not at the return. The request names no return warehouse and the order stores none
+([the-return-warehouse-is-read-when-the-return-happens](../../business/order/context_decision.md#the-return-warehouse-is-read-when-the-return-happens)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as order form or draft page
+    participant SELL as selling_service placeOrder
+    participant DB as selling DB
+    participant TEAM as team_service names
+
+    UI->>SELL: OrderCreate - typed, or a draft's Promote
+    SELL->>SELL: the key, the request, the lines merged, the shop gate
+    SELL->>DB: team_return_configurations - this team's row
+    alt no row
+        SELL->>TEAM: TeamNamer - the team's name, in process
+        SELL-->>UI: FailedPrecondition - Toko Melati has no return warehouse set, set it on Settings
+        UI-->>UI: the sentence under Create, the form as typed, a draft kept
+    else a row - any warehouse
+        SELL->>SELL: owners, return maps, credit, the take, the order
+    end
+```
+
+| | |
+| --- | --- |
+| where | `placeOrder` → `requireReturnWarehouseToOrder` (`order_place.go`): after the request's checks and the shop gate (a shop that is not the caller's stays `NotFound`), before the owner lookup, the credit check and the take — a refused team costs one indexed read and moves nothing |
+| who | every team that orders — the typed form and a draft's Promote are this one door. `OrderDraftPush` is not an order create: a draft of a team with none still lands, and its Promote is refused |
+| the refusal | `FailedPrecondition` *"Toko Melati has no return warehouse set — set it on Settings › Return Warehouse before creating an order"* — the team named through the `TeamNamer` seam (*"team #14"* when it cannot be named). The order form shows it under Create (`order-create-error`) and keeps what was typed |
+| what passes | a row naming ANY warehouse ([a-team-may-pick-any-return-warehouse](../../business/order/context_decision.md#a-team-may-pick-any-return-warehouse)) — not necessarily the one the order ships from |
+| before the transaction | as the decision places it. Safe there: a row is never deleted (`TeamReturnConfigurationSet` only inserts or moves it; nothing else writes the table), so *"has one"* cannot turn false before the commit — [lock-order](../../../audits/services/selling_service/concurrency/lock-order.md) |
+| tests | `order_create_return_warehouse_test.go` — refused without (the message, no take, no order) and placed once set, any warehouse passes, a Promote refused with its draft kept, the id fallback; e2e `the_order_needs_a_return_warehouse.spec.ts` |
+
 ## The courier is a channel id, and no order goes without one — `placeOrder` (2026-11-06)
 
 `orders.shipment_channel_id` and `order_drafts.shipment_channel_id` (selling `00044`) replace the courier CODE the
@@ -1414,6 +1452,7 @@ sequenceDiagram
 | several ids | the files are read once each (two orders naming one file print it once), merged in the asked order — a PDF label adds its pages, a label photo one page of its own size — and stored as a private `order_labels` document of the CALLER's team (the warehouse, or root's team 1), its creator the caller, override-stamped like any upload. A run with nothing printable stores nothing and answers no link |
 | the reasons | `NOT_SHIPPED_HERE`, `NO_LABEL` (none attached, or the file is not the seller's / not there), `UNREADABLE` (several only: not a PDF or a picture, broken, gone from storage, or over the upload limit). One refusal never blocks the rest |
 | a hostile file | [san_pdf_merge](../../../backend/pkgs/san_pdf_merge/merge.go) (pdfcpu v0.15.0, pure Go, Apache-2.0) reads each file on its own, rewrites it once and reads it back (pdfcpu reads lazily, so a broken stream otherwise surfaces only in the merged file), and recovers a library panic per file. The result is written without object streams (a classic xref) for any viewer or printer. `TestMerge_CorruptedFilesNeverCrash` overwrites every sample at 24 places |
+| a sideways photo | a JPEG label photo is placed the way its EXIF `Orientation` (1–8) says it is seen — turned or mirrored, then re-encoded at quality 92 (`san_pdf_merge/orientation.go`, a small reader of the APP1 segment; no new dependency). A photo with no readable tag is placed byte for byte, and one past 50 megapixels is placed unturned rather than decoded. ≈ 0.3 s for a 12-megapixel photo taken in portrait, 1 ms for one already upright (`TestPerf_MergeTurnedPhoto`). `TestMerge_AJPEGIsPlacedTheWayItsEXIFSaysItIsSeen` — all eight orientations, both byte orders, each corner's colour (backlog #39, 2026-11-11) |
 | the seam | selling's `LabelLinker` (`LabelURL`, `LabelFiles`, `StoreOrderLabels`) → composition root `NewOrderLabelLinker` → `document_v1.Service` plain methods over document_service's own table and store. No `document_shares` row is ever written; `RequestUpload` refuses the `ORDER_LABELS` type |
 | errors | document_service's NotFound on one id becomes `NO_LABEL` (and a WARN log); any other read or store failure is the call's error |
 | cost | 3 queries (the orders by key, the documents by key, the stored row), ≈85 ms for 50 real labels (4.9 MB) end to end, ≈70 ms of it the merge; one id is one primary-key read, 0.5 ms at 50 000 orders — not heavy |
@@ -1509,3 +1548,18 @@ sequenceDiagram
 | a closed tab | stops the lines, not the import: the work runs on `context.WithoutCancel`, as the settlement import does |
 | ⚠ the readers | built against the MOCK exports in [examples/order_samples](../../../examples/order_samples/README.md) — a real export may disagree |
 | ⚠ cost | 373 ms for 1 000 orders on a Windows dev machine, most of it a ~50 ms step per large statement traced to the local database connection, not the code — to be re-measured on Linux ([the audit](../../../audits/services/selling_service/performances/ShopeeOrderImport.md)) |
+
+## The override stamp on the reads — the "by Root team" badge (built 2026-11-11)
+
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge), accepted as
+[the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team):
+every read a screen names a person from now carries the record's own `is_override` (stamped at the write by
+`san_auth.IsOverride`, [an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+and the screen draws the shared `ActorName` / `RootTeamBadge` beside the person. Never sent by a caller; a row from
+before the column reads false.
+
+| read | field | read from | performance |
+| --- | --- | --- | --- |
+| `OrderDetail`, `OrderList` (and every write answering an `Order`) | `Order.is_override` (39) — the placement | `orders.is_override`, a column of the row already read (`orders.*`) | nil — no query, no join |
+| `OrderDetail` (and every write answering the timeline) | `OrderTimelineLog.is_override` (8) — that row's own actor | `order_timeline_logs.is_override`, same row | nil |
+| `OrderDraftList` (and the draft writes) | `OrderDraft.is_override` (25) — the last push | `order_drafts.is_override`, same row | nil |

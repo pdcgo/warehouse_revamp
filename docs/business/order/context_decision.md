@@ -136,6 +136,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-courier-required-look-is-accepted](#the-courier-required-look-is-accepted) | the order form marks the courier required and holds Create until one is picked | owner, as recommended | — |
 | [the-cs-edits-the-whole-address-before-create](#the-cs-edits-the-whole-address-before-create) | before Create, the CS can edit every part of a draft's address | owner, as recommended | — |
 | [only-the-return-warehouse-accepts-a-return](#only-the-return-warehouse-accepts-a-return) | a return is accepted only by the selling team's configured return warehouse | owner, against the recommendation | — |
+| [the-return-warehouse-warning-says-orders-are-refused](#the-return-warehouse-warning-says-orders-are-refused) | the Settings card warns that the team cannot create orders until a return warehouse is set | owner, as recommended | — |
 
 ---
 
@@ -3166,6 +3167,8 @@ flowchart LR
 | 🔄 *(2026-10-21)* step 1 built | the table and the Settings card ([the-return-warehouse-lives-in-team-return-configurations](#the-return-warehouse-lives-in-team-return-configurations)). Steps 2 and 3 are not: no team has a row yet, and create does not check |
 | 🔄 *(2026-10-21)* step 2 | each team sets its own, no backfill — [each-team-sets-its-own-return-warehouse](#each-team-sets-its-own-return-warehouse) |
 
+✅ **Built 2026-11-11** — rollout step 3 is on. `placeOrder` → `requireReturnWarehouseToOrder` (`backend/services/selling_service/selling_v1/order_place.go`), the one door both the order form and a draft's Promote pass (a pushed draft is not an order and still lands): after the request's checks and the shop gate, before the owner lookup, the credit check and the take, it reads the team's own `team_return_configurations` row and refuses a team with none `FailedPrecondition` *"Toko Melati has no return warehouse set — set it on Settings › Return Warehouse before creating an order"* (the name through the `TeamNamer` seam). Before the transaction as specified — no row is ever deleted, so the answer cannot turn false before the commit. Dev teams 14 → Dev Warehouse (13), 89 → Jakarta Warehouse (2), 91 → Dev Warehouse (13) were set through `TeamReturnConfigurationSet` as root first (owner, 2026-11-09: the warehouse most of each team's orders ship from); the Settings card's warning now says orders are refused until one is set. Tests `order_create_return_warehouse_test.go`; e2e `the_order_needs_a_return_warehouse.spec.ts`; flow in [selling rpc.md](../../services/selling_service/rpc.md#a-team-with-no-return-warehouse-places-nothing--placeorder-2026-11-11).
+
 ---
 
 ## a-team-may-pick-any-return-warehouse
@@ -4370,3 +4373,11 @@ flowchart LR
 **What it reverses** (HARD RULE 11): the built *"any warehouse may accept an order in `return`"* of [the-return-accept-is-built-before-its-stock-half](#the-return-accept-is-built-before-its-stock-half); and the stock row of [the-accept-records-where-it-was-accepted](#the-accept-records-where-it-was-accepted) — the stock no longer goes anywhere but where it is accepted, which is now always the return warehouse (the recorded accepting warehouse stays, and always equals it). The courier's charge is owed to the return warehouse, as the accepting one. ⚠ Not built.
 
 ✅ **Built 2026-11-09** — `selling_v1/order_return_accept.go` (`requireReturnWarehouse`: `FailedPrecondition` *"this return goes to Gudang C …"* through the `TeamNamer` seam, or *"the selling team has no return warehouse"*), the units onto the return warehouse's racks by inventory's `OrderTransactionReturn`; Receive a Return shows where a parcel goes with no Accept (`ReceiveReturnDialog`); tests `TestOrderReturnAccept_OnlyTheReturnWarehouseAccepts`, `TestOrderReturnAccept_ATeamWithNoReturnWarehouseIsRefused`, `TestRace_OrderReturnAccept_TwoWarehousesAtOnce`, e2e *Wrong warehouse: …*.
+
+---
+
+## the-return-warehouse-warning-says-orders-are-refused
+
+> Owner (Heri), in chat (2026-11-11): *"A"*, as recommended — to: [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) is now switched on, so the Settings › Return Warehouse card's warning *"Orders will require one soon"* is no longer true; keep the new wording *"…so this team cannot create orders until one is."* (en + id), or other words?
+
+**The verdict.** The new wording stays: the card's warning says the team **cannot create orders until a return warehouse is set** (en and id, as built 2026-11-11). It replaces the *"soon"* text this decision quoted. ✅ Built 2026-11-11.

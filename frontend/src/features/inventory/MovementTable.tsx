@@ -3,6 +3,7 @@ import { HStack, Stack, Table, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ActorName } from "../../components/entity/ActorName";
 import { useIsMobile } from "../../layouts/shell";
 import type { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRfc3339DateTimeShort } from "../../lib/datetime";
@@ -49,6 +50,8 @@ export interface MovementRow {
   delta: bigint;
   balance: bigint;
   actorUserId: bigint;
+  /** The movement's transaction was an override — Root or the System Administrator, outside the team. */
+  isOverride?: boolean;
   batchId: bigint;
   productId: bigint;
   /** Absent on a ledger that has no shelves in it — see the `warehouse` column. */
@@ -127,12 +130,17 @@ export function MovementTable({
 
   function cell(column: MovementContextColumn, m: MovementRow) {
     switch (column) {
-      case "by":
+      case "by": {
         // A movement the system made on its own has no actor, and an em dash says that better than
         // a "#0" nobody can look up.
-        return m.actorUserId > 0n
-          ? actorNames?.get(m.actorUserId.toString()) ?? `#${m.actorUserId}`
-          : "—";
+        if (m.actorUserId <= 0n) return "—";
+
+        const name = actorNames?.get(m.actorUserId.toString()) ?? `#${m.actorUserId}`;
+
+        // The shared ActorName: an override carries the "by Root team" badge beside the name
+        // (an-override-shows-a-platform-badge) — every stock ledger with a By column at once.
+        return <ActorName name={name} isOverride={m.isOverride} size={isMobile ? "xs" : "sm"} />;
+      }
       case "batch":
         // A batch-less shelf recount lands on the oldest batch by FIFO but names none (#211).
         return m.batchId > 0n ? `#${m.batchId}` : "—";

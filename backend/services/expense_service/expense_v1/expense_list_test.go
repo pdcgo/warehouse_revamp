@@ -157,3 +157,36 @@ func TestCostList_FiltersByKind(t *testing.T) {
 		t.Fatalf("filtered total = %v, want 2000000 — the payroll must not count", total)
 	}
 }
+
+// THE LIST READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): the expense Root recorded from outside the team
+// reads is_override beside `created_by` — the Recorded by column's "by Root team" badge — and the owner's does not.
+func TestExpenseList_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	for _, ctx := range []context.Context{rootOutside(teamA), ownerIn(teamA)} {
+		_, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Amount: 250_000, OccurredAt: "2026-07-03",
+			FinanceAccountId: payingAccount,
+		}))
+		if err != nil {
+			t.Fatalf("ExpenseCreate: %v", err)
+		}
+	}
+
+	rows := expenseRows(list(t, svc, &expensev1.ExpenseListRequest{
+		TeamId: teamA,
+		Filter: &expensev1.ExpenseListFilter{From: "2026-07-01", To: "2026-07-31"},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 10},
+	}))
+	if len(rows) != 2 {
+		t.Fatalf("listed %d expenses, want 2", len(rows))
+	}
+
+	for _, row := range rows {
+		want := row.GetCreatedBy() == 1
+		if row.GetIsOverride() != want {
+			t.Errorf("expense %d by %d: is_override = %v, want %v", row.GetId(), row.GetCreatedBy(), row.GetIsOverride(), want)
+		}
+	}
+}

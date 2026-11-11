@@ -527,9 +527,13 @@ type WarehouseTransferLog struct {
 	FromStatus WarehouseTransferStatus `protobuf:"varint,2,opt,name=from_status,json=fromStatus,proto3,enum=warehouse.inventory.v1.WarehouseTransferStatus" json:"from_status,omitempty"`
 	ToStatus   WarehouseTransferStatus `protobuf:"varint,3,opt,name=to_status,json=toStatus,proto3,enum=warehouse.inventory.v1.WarehouseTransferStatus" json:"to_status,omitempty"`
 	// user_service id; resolved to a name at read time.
-	ActorUserId   uint64 `protobuf:"varint,4,opt,name=actor_user_id,json=actorUserId,proto3" json:"actor_user_id,omitempty"`
-	Description   string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	AtUnix        int64  `protobuf:"varint,6,opt,name=at_unix,json=atUnix,proto3" json:"at_unix,omitempty"`
+	ActorUserId uint64 `protobuf:"varint,4,opt,name=actor_user_id,json=actorUserId,proto3" json:"actor_user_id,omitempty"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	AtUnix      int64  `protobuf:"varint,6,opt,name=at_unix,json=atUnix,proto3" json:"at_unix,omitempty"`
+	// THIS ROW'S ACTOR WAS AN OVERRIDE — Root or the System Administrator wrote it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `warehouse_transfer_logs.is_override`.
+	IsOverride    bool `protobuf:"varint,7,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -604,6 +608,13 @@ func (x *WarehouseTransferLog) GetAtUnix() int64 {
 		return x.AtUnix
 	}
 	return 0
+}
+
+func (x *WarehouseTransferLog) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type WarehouseTransfer struct {
@@ -2556,7 +2567,7 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"placements\x18\n" +
 	" \x03(\v22.warehouse.inventory.v1.WarehouseTransferPlacementR\n" +
 	"placements\x12L\n" +
-	"\bproblems\x18\v \x03(\v20.warehouse.inventory.v1.WarehouseTransferProblemR\bproblems\"\xa5\x02\n" +
+	"\bproblems\x18\v \x03(\v20.warehouse.inventory.v1.WarehouseTransferProblemR\bproblems\"\xc6\x02\n" +
 	"\x14WarehouseTransferLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12P\n" +
 	"\vfrom_status\x18\x02 \x01(\x0e2/.warehouse.inventory.v1.WarehouseTransferStatusR\n" +
@@ -2564,7 +2575,9 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\tto_status\x18\x03 \x01(\x0e2/.warehouse.inventory.v1.WarehouseTransferStatusR\btoStatus\x12\"\n" +
 	"\ractor_user_id\x18\x04 \x01(\x04R\vactorUserId\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x17\n" +
-	"\aat_unix\x18\x06 \x01(\x03R\x06atUnix\"\x85\v\n" +
+	"\aat_unix\x18\x06 \x01(\x03R\x06atUnix\x12\x1f\n" +
+	"\vis_override\x18\a \x01(\bR\n" +
+	"isOverride\"\x85\v\n" +
 	"\x11WarehouseTransfer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12*\n" +

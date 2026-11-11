@@ -116,5 +116,7 @@ func logToProto(l m.FinancialAccountLog) *financial_accountv1.FinancialAccountLo
 		CreatedAt:        timestamppb.New(l.CreatedAt),
 		GroupId:          l.GroupID,
 		CounterAccountId: l.CounterAccountID,
+		// The "by Root team" badge beside the actor (an-override-shows-a-platform-badge).
+		IsOverride: l.IsOverride,
 	}
 }

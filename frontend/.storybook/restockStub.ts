@@ -55,6 +55,17 @@ export function restockRaisedByForStory(id: bigint, userId: bigint) {
   row.createdByUserId = userId;
 }
 
+/**
+ * For a story: who took ONE step of restock `id`'s timeline (the trail row `logId`), and whether it was Root or the
+ * System Administrator from outside the team — served as `is_override`, the "by Root team" badge.
+ */
+export function restockLogByForStory(id: bigint, logId: bigint, userId: bigint, isOverride: boolean) {
+  const log = rows.find((r) => r.id === id)?.logs.find((l) => l.id === logId);
+  if (!log) throw new Error(`no trail row ${logId} on restock ${id} in the stub`);
+  log.actorUserId = userId;
+  log.isOverride = isOverride;
+}
+
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 
 type PageReq = { page?: number; limit?: number } | undefined;

@@ -58,6 +58,7 @@ export function HistorySection({
         delta: m.delta,
         balance: m.balance,
         actorUserId: m.actorUserId,
+        isOverride: m.isOverride,
         batchId: m.batchId,
         productId: m.productId,
         warehouseId: m.warehouseId,

@@ -120,3 +120,43 @@ limit; a row whose file is gone comes back with no content, which selling report
 `StoreOrderLabels(ctx, team, filename, pdf)` writes the merged PDF straight to the asset prefix and an ACTIVE private
 `order_labels` row of the warehouse (`00011`), then signs its link. `RequestUpload` refuses `ORDER_LABELS`: only the
 order service makes one. Code: `label_files.go`, `order_labels_store.go`.
+
+## The generated-file sweep — a download is kept seven days (not an RPC)
+
+[generated-files-are-kept-seven-days](../../technical/architecture/context_decision.md#generated-files-are-kept-seven-days):
+a file the system MADE for a download — `order_labels` (the merged label PDF), `table_export`, `order_export` — is
+deleted, object and row, once it is more than **7 days** old. An uploaded file (every other type) and a generated file
+somebody shared are never swept. Built 2026-11-11: `document_v1.Service.SweepGeneratedFiles(ctx, input)` in
+`generated_file_sweep.go` — a Go method, no browser can call it. Two callers:
+
+| caller | when |
+| --- | --- |
+| the server's ticker, `SweepGeneratedFilesEvery` (started by `cmd/app_development/app.go`) | a minute after the server starts, then every `GENERATED_FILE_SWEEP_EVERY` (default `24h`, `0` = off). Nothing else schedules a job in this system, so the ticker lives in the process that runs document_service |
+| [`san document sweep-generated`](../../tools/san.md#document-sweep-generated) | by hand, `--dry-run` / `--limit` |
+
+```mermaid
+sequenceDiagram
+  participant T as the daily ticker or san
+  participant DOC as SweepGeneratedFiles
+  participant DB as Postgres — documents
+  participant ST as the document store
+  T->>DOC: now, limit (default 1000), dry-run
+  loop one transaction per 100 files, oldest first, until the limit or none left
+    DOC->>DB: pg_try_advisory_xact_lock(document_service, generated-file-sweep)
+    Note over DOC,DB: taken — another instance sweeps, so this run stops with ErrSweepRunning
+    DOC->>DB: SELECT id … generated type, created_at older than now − 7 days, no share — FOR UPDATE SKIP LOCKED
+    DOC->>DB: DELETE … WHERE id IN picked AND still no share RETURNING keys and sizes
+    DOC->>ST: delete each object and thumbnail — a missing key is not an error
+    DOC->>DB: COMMIT — a store error rolls the rows back, so the next run finds them again
+  end
+  DOC-->>T: swept, bytes, cutoff, more (the limit was hit with older files left)
+```
+
+| | |
+| --- | --- |
+| predicate | `resource_type IN ('order_labels', 'table_export', 'order_export')` written as LITERALS — the partial index `documents_generated_created_idx (created_at, id)` (`00012`) carries the same list, and the planner matches a partial index only against constants — `AND created_at < now − 7 days AND NOT EXISTS (a share)` |
+| bounded | at most `limit` files a run (default 1000), 100 per transaction; `More` says older ones are left |
+| idempotent | a second run finds nothing; an object already gone still lets its row go |
+| a download racing it | `GetDownloadUrl` takes no lock: it reads the row first and signs a link to a file about to go, or reads NotFound — what an expired download answers anyway. `TestRace_SweepGeneratedFiles_ADownloadRacingTheSweep` |
+| a share racing it | a share in flight holds the row (its FK check), so the pick SKIPS it and the file stays; a share after the pick waits on the sweep's row lock and is refused once the row is gone (an FK violation — `ShareDocument` answers Internal rather than NotFound for it). Never a share left on a deleted file. `TestInterleave_SweepGeneratedFiles_*`, `TestRace_SweepGeneratedFiles_AShareRacingTheSweep` |
+| speed | [performance audit](../../../audits/services/document_service/performances/SweepGeneratedFiles.md) — the index took a 2 000-file run from 1.03 s to 0.14 s at 316 000 documents |

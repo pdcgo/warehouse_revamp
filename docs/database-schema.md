@@ -1005,7 +1005,11 @@ erDiagram
   refuses the type), its object straight under `assets/`; private, since every label on it names a buyer. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
   `ProfilePictureErase` ([erase-deletes-the-photo-file](business/user/context_decision.md#erase-deletes-the-photo-file)),
   which deletes every photo one person uploaded — removing their share rows first, deliberately, since `RESTRICT`
-  would otherwise refuse it.
+  would otherwise refuse it. The three GENERATED types (`order_labels`, `table_export`, `order_export`) are swept
+  seven days after they are made — the object and the row, never a shared one
+  ([generated-files-are-kept-seven-days](technical/architecture/context_decision.md#generated-files-are-kept-seven-days)):
+  a partial index on `(created_at, id)` WHERE `resource_type` is one of the three (`00012`) serves the sweep's
+  oldest-first pick, and holds about a week of rows however large the table grows.
 
 - **`document_shares`** — the ONE way a document is readable outside the team that owns it
   ([a-payment-must-carry-proof](business/balance/context_decision.md#a-payment-must-carry-proof)).

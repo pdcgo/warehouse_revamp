@@ -25,6 +25,8 @@ export interface BundleRecord {
   description: string;
   /** Who made it — the one CS who may change it besides an Admin (the-creator-or-an-admin-edits-a-bundle). */
   createdByUserId: bigint;
+  /** The maker was Root or the System Administrator, from outside the team — the "by Root team" badge. */
+  isOverride?: boolean;
   createdAtUnix: bigint;
   updatedAtUnix: bigint;
   lines: BundleLineRecord[];
@@ -41,6 +43,7 @@ export function bundleRecord(r: BundleRowItem): BundleRecord {
     name: r.name,
     description: r.description,
     createdByUserId: r.createdByUserId,
+    isOverride: r.isOverride,
     createdAtUnix: r.createdAtUnix,
     updatedAtUnix: r.updatedAtUnix,
     lines: r.lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),

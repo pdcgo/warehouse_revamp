@@ -21,6 +21,7 @@ import type { Order, OrderTimelineLog } from "../../../gen/warehouse/selling/v1/
 import { OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
 import { UserItem } from "../../../components/entity/UserItem";
+import { RootTeamBadge } from "../../../components/entity/ActorName";
 import { statusLogs, timelineFromKey } from "../../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../../lib/datetime";
 
@@ -240,6 +241,10 @@ function LogStep({
               </Text>
             )
           )}
+
+          {/* A step Root or the System Administrator took from outside the team: the shared "by Root team" badge right
+              after the person (an-override-shows-a-platform-badge). */}
+          {(actor || fallback) && log.isOverride && <RootTeamBadge />}
 
           {/* `height="auto"` + `alignSelf="stretch"` because a vertical Separator has no intrinsic
               height — left to itself in a flex row it collapses to nothing and never appears. */}

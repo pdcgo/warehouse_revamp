@@ -1,13 +1,9 @@
 package inventory_v1
 
 import (
-	"context"
-
-	"connectrpc.com/connect"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -15,7 +11,8 @@ import (
 //
 // Called from RestockRequestCreate, inside its transaction: asking a warehouse to stock something is
 // what makes it visible there, and a request whose products the crew cannot see is one nobody can act
-// on.
+// on. The list RPC that once read these rows back (WarehouseProductList) is deleted
+// (warehouse-product-list-is-deleted); the rows stay, and ProductHistory still reads them.
 //
 // Idempotent by design. ON CONFLICT DO NOTHING because linking the same product twice is not a
 // condition worth failing a restock request over — the second request for a product is the normal case,
@@ -74,59 +71,4 @@ func linkWarehouseProductIDs(tx *gorm.DB, warehouseID uint64, productIDs []uint6
 		Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&links).
 		Error
-}
-
-// WarehouseProductList returns the products THIS WAREHOUSE HANDLES (#142).
-//
-// The warehouse's catalogue is not the whole catalogue. A warehouse team holds no products of its own —
-// products belong to selling teams — so a team-scoped ProductList shows it nothing useful. What it
-// should see is what somebody has asked it to hold, which is this list.
-//
-// It returns product IDS, not products. inventory_service does not own the catalogue and must not
-// mirror it (HARD RULE 3): the names and codes come from product_service, which the caller resolves in
-// one follow-up call to ProductByIds. That keeps a product's name in exactly one place, so renaming it
-// does not leave a stale copy here.
-func (s *Service) WarehouseProductList(
-	ctx context.Context,
-	req *connect.Request[inventoryv1.WarehouseProductListRequest],
-) (*connect.Response[inventoryv1.WarehouseProductListResponse], error) {
-	page := req.Msg.GetPage()
-
-	query := s.db.
-		WithContext(ctx).
-		Model(&inventory_service_models.WarehouseProduct{}).
-		Where("warehouse_id = ?", req.Msg.GetWarehouseId())
-
-	var total int64
-
-	err := query.Count(&total).Error
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	var rows []inventory_service_models.WarehouseProduct
-
-	err = query.
-		// Newest arrangement first — the product somebody just asked for is the one they are looking for.
-		Order("id DESC").
-		Offset(pageOffset(page)).
-		Limit(int(page.GetLimit())).
-		Find(&rows).
-		Error
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	productIDs := make([]uint64, 0, len(rows))
-	for i := range rows {
-		productIDs = append(productIDs, rows[i].ProductID)
-	}
-
-	items, ids := warehouseProductItems(productIDs, req.Msg.GetDataRequest())
-
-	return connect.NewResponse(&inventoryv1.WarehouseProductListResponse{
-		Items:    items,
-		Ids:      ids,
-		PageInfo: pageInfo(page, total),
-	}), nil
 }

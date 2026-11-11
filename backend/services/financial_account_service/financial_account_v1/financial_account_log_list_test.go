@@ -1,6 +1,7 @@
 package financial_account_v1_test
 
 import (
+	"context"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -99,5 +100,46 @@ func TestFinancialAccountLogList_AnotherTeamsAccountIsNotFound(t *testing.T) {
 	_, err := statement(t, svc, teamA, &financial_accountv1.FinancialAccountLogListFilter{AccountId: theirs.GetId()})
 	if code := connectCode(t, err); code != connect.CodeNotFound {
 		t.Fatalf("code = %v, want NotFound", code)
+	}
+}
+
+// THE STATEMENT READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): the capital Root put in from outside the
+// team reads is_override beside its actor — the "by Root team" badge in the account's log — and the owner's does not.
+func TestFinancialAccountLogList_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	kas := mustCreate(t, svc, cash(teamA, "Kas", 1_000))
+
+	for _, ctx := range []context.Context{rootOutside(teamA), ownerIn(teamA)} {
+		_, err := svc.FinancialAccountCapital(ctx, connect.NewRequest(&financial_accountv1.FinancialAccountCapitalRequest{
+			TeamId: teamA, AccountId: kas.GetId(), Direction: financial_accountv1.CapitalDirection_CAPITAL_DIRECTION_IN,
+			Amount: 500, OccurredOn: day(1),
+		}))
+		if err != nil {
+			t.Fatalf("capital: %v", err)
+		}
+	}
+
+	rows, err := statement(t, svc, teamA, &financial_accountv1.FinancialAccountLogListFilter{AccountId: kas.GetId()})
+	if err != nil {
+		t.Fatalf("FinancialAccountLogList: %v", err)
+	}
+
+	overrides := 0
+
+	for _, row := range rows {
+		want := row.GetActorId() == 1
+		if row.GetIsOverride() != want {
+			t.Errorf("row %d by %d: is_override = %v, want %v", row.GetId(), row.GetActorId(), row.GetIsOverride(), want)
+		}
+
+		if row.GetIsOverride() {
+			overrides++
+		}
+	}
+
+	if len(rows) != 3 || overrides != 1 {
+		t.Fatalf("%d rows with %d overrides, want 3 (opening, Root's capital, the owner's) with 1", len(rows), overrides)
 	}
 }

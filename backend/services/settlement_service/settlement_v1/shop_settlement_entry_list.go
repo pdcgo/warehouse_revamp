@@ -243,17 +243,18 @@ func (s *Service) shopEntries(
 
 		if line, ok := lines[row.ID]; ok {
 			entry.Statement = &settlementv1.ShopEntryStatement{
-				UploadedFileId:   line.UploadedFileID,
-				Platform:         line.Platform,
-				PeriodFrom:       line.PeriodFrom,
-				PeriodTo:         line.PeriodTo,
-				Sheet:            line.Sheet,
-				Description:      line.Description,
-				OrderRef:         line.OrderRef,
-				Reason:           statementReason(line.Reason),
-				FoundOrderIds:    line.FoundOrderIDs,
-				UploadedByUserId: line.UploadedBy,
-				UploadedByName:   names[line.UploadedBy],
+				UploadedFileId:       line.UploadedFileID,
+				Platform:             line.Platform,
+				PeriodFrom:           line.PeriodFrom,
+				PeriodTo:             line.PeriodTo,
+				Sheet:                line.Sheet,
+				Description:          line.Description,
+				OrderRef:             line.OrderRef,
+				Reason:               statementReason(line.Reason),
+				FoundOrderIds:        line.FoundOrderIDs,
+				UploadedByUserId:     line.UploadedBy,
+				UploadedByName:       names[line.UploadedBy],
+				UploadedByIsOverride: line.UploadedByIsOverride,
 			}
 		}
 

@@ -61,6 +61,8 @@ export interface ShopEntryImport {
   /** Who uploaded the file. */
   uploadedBy: bigint;
   uploadedByName: string;
+  /** The upload was Root's or the System Administrator's, from outside the team — the "by Root team" badge. */
+  uploadedByIsOverride: boolean;
 }
 
 export interface ShopEntry {
@@ -79,6 +81,8 @@ export interface ShopEntry {
   /** Who posted it (actor-id-is-the-pic), and their name as the server resolved it ("" when unknown). */
   actorId: bigint;
   actorName: string;
+  /** The poster was Root or the System Administrator, from outside the team — the "by Root team" badge. */
+  isOverride: boolean;
   /** The row this one undoes, or 0n. */
   reversesId: bigint;
   /** The row that undid this one, or 0n — a row is reversed once. */
@@ -126,6 +130,7 @@ export function shopEntryFromWire(row: ShopSettlementEntry): ShopEntry | undefin
     note: e.note,
     actorId: e.actorId,
     actorName: e.actorName,
+    isOverride: e.isOverride,
     reversesId: e.reversesId,
     reversedById: row.reversedById,
     import: s
@@ -141,6 +146,7 @@ export function shopEntryFromWire(row: ShopSettlementEntry): ShopEntry | undefin
           foundOrderIds: s.foundOrderIds,
           uploadedBy: s.uploadedByUserId,
           uploadedByName: s.uploadedByName,
+          uploadedByIsOverride: s.uploadedByIsOverride,
         }
       : undefined,
   };

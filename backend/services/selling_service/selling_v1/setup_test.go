@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
@@ -255,7 +256,9 @@ func newServiceWithCatalog(
 	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 }
 
-// insertShop seeds an active shop directly and returns its id.
+// insertShop seeds an active shop directly and returns its id — and gives its team a return warehouse
+// (giveReturnWarehouse), since a team that sells has one: order create refuses a team without
+// (create-refuses-a-team-with-no-return-warehouse). A test about a team WITHOUT one takes it away (takeReturnWarehouse).
 func insertShop(t *testing.T, db *gorm.DB, teamID uint64, name, code, marketplace string) uint64 {
 	t.Helper()
 
@@ -266,7 +269,48 @@ func insertShop(t *testing.T, db *gorm.DB, teamID uint64, name, code, marketplac
 		t.Fatalf("insert shop: %v", err)
 	}
 
+	giveReturnWarehouse(t, db, teamID)
+
 	return s.ID
+}
+
+// giveReturnWarehouse gives a team testWarehouse as its return warehouse, the one every fixture order ships from — and
+// leaves a team that already has one as it is, so a test that set its own keeps it.
+//
+// A racing test COMMITS (san_testdb.Pool, -tags raceaudit): the row given here is taken back when the test ends, as its
+// harness takes the shop back. Under a rolled-back test the delete runs inside that transaction, before its rollback,
+// and changes nothing.
+func giveReturnWarehouse(t *testing.T, db *gorm.DB, teamID uint64) {
+	t.Helper()
+
+	res := db.
+		Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "team_id"}}, DoNothing: true}).
+		Create(&selling_service_models.TeamReturnConfiguration{TeamID: teamID, WarehouseID: testWarehouse})
+	if res.Error != nil {
+		t.Fatalf("give team %d a return warehouse: %v", teamID, res.Error)
+	}
+
+	if res.RowsAffected == 1 {
+		t.Cleanup(func() {
+			db.
+				Where("team_id = ?", teamID).
+				Delete(&selling_service_models.TeamReturnConfiguration{})
+		})
+	}
+}
+
+// takeReturnWarehouse removes a team's return warehouse — the state create-refuses-a-team-with-no-return-warehouse
+// refuses, and that no RPC can reach (a row is only ever set or moved), so a test writes it directly.
+func takeReturnWarehouse(t *testing.T, db *gorm.DB, teamID uint64) {
+	t.Helper()
+
+	err := db.
+		Where("team_id = ?", teamID).
+		Delete(&selling_service_models.TeamReturnConfiguration{}).
+		Error
+	if err != nil {
+		t.Fatalf("take team %d's return warehouse away: %v", teamID, err)
+	}
 }
 
 // placeOrder creates a PLACED order through the service (one line) and returns its id.

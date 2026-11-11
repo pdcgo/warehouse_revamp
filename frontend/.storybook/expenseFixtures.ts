@@ -40,6 +40,8 @@ export interface ExpenseFixture {
   adjustsExpenseId: bigint;
   /** The account that paid (an-expense-must-name-the-account-that-paid); 0 on an expense made before Paid from. */
   financeAccountId: bigint;
+  /** Recorded by Root or the System Administrator from outside the team (`is_override`); absent reads false. */
+  isOverride?: boolean;
 }
 
 /** Melati's operational accounts (financialAccountFixtures.ts) — what Paid from offers. */

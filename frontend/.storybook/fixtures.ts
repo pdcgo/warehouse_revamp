@@ -548,7 +548,16 @@ export const orderDetailExtras: Record<
      * The timeline (order-timeline-logs-replaces-order-events): status 0 = a NOTE row (a-note-is-a-timeline-row), any
      * other = a status row whose `note` is its reason; from 1 = warehouse, 2 = selling. There is no `Order.note`.
      */
-    timelineLogs?: { id: bigint; status: number; note?: string; from: number; actorId: bigint; createdAtUnix: bigint }[];
+    timelineLogs?: {
+      id: bigint;
+      status: number;
+      note?: string;
+      from: number;
+      actorId: bigint;
+      createdAtUnix: bigint;
+      /** Root or the System Administrator wrote it from outside the team (`is_override`); absent reads false. */
+      isOverride?: boolean;
+    }[];
     address?: Record<string, string>;
     receipt?: { documentId: string; filename: string; mimeType: string };
   }

@@ -122,9 +122,11 @@ func draftToProto(d *selling_service_models.OrderDraft) *sellingv1.OrderDraft {
 	}
 
 	return &sellingv1.OrderDraft{
-		Id:            d.ID,
-		TeamId:        d.TeamID,
-		AuthorUserId:  d.AuthorUserID,
+		Id:           d.ID,
+		TeamId:       d.TeamID,
+		AuthorUserId: d.AuthorUserID,
+		// Whether the last push was an override — the "by Root team" badge beside the author.
+		IsOverride:    d.IsOverride,
 		Source:        d.Source,
 		ExternalId:    d.ExternalID,
 		TouchedFields: names,

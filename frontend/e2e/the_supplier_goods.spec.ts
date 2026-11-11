@@ -165,6 +165,11 @@ test("Supplier goods: a seller restocks 5 units from its supplier's store", asyn
   });
 
   await rpc(page, "warehouse.v1.WarehouseFeeService/WarehouseFeeSet", { teamId: state.warehouse, feePercent: 2.5, minFee: 0 });
+  // The seller's return warehouse — order create refuses a team that has none (create-refuses-a-team-with-no-return-warehouse).
+  await rpc(page, "selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationSet", {
+    teamId: state.seller,
+    warehouseId: state.warehouse,
+  });
   const shop = await rpc<{ shop: { id: string } }>(page, "selling.v1.ShopService/ShopCreate", {
     teamId: state.seller,
     name: state.shopName,

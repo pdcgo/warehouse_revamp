@@ -53,7 +53,7 @@ func newOpenedFixture(t *testing.T, team, warehouse, product uint64) *openedFixt
 	f.settlement = settlement_v1.NewService(f.db, nil, nil, nil, NewSettlementOpenedMarker(f.orders), nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 10)
-	f.shop = shopForOrders(t, f.db, team)
+	f.shop = shopForOrders(t, f.db, team, warehouse)
 
 	return f
 }

@@ -6,6 +6,7 @@ import type { FinancialAccountLog } from "../../../gen/warehouse/financial_accou
 import { BalanceText, ChangeText, ChangeTypeBadge } from "../../../features/financialAccount/badges";
 import { BY_HAND } from "../../../features/financialAccount/vocab";
 import { formatUnixDate } from "../../../lib/datetime";
+import { ActorName } from "../../../components/entity/ActorName";
 
 // ONE STATEMENT ROW, WHOLE (owner: *"keterangan di mobile lebih baik dihidden saja, atau buat modal detail untuk
 // mobile"*, `a-phone-statement-row-opens-its-detail`) — a phone's row is the date, the type and the money; what it
@@ -63,9 +64,14 @@ export function AccountLogDetailDialog({
                     </Stack>
                     <Line label={t("financialAccounts.log.by")}>
                       <Text fontSize="sm" textAlign="end" data-testid="account-log-detail-way">
-                        {BY_HAND.has(log.changeType)
-                          ? t("financialAccounts.log.byHand", { name: actorName(log.actorId) })
-                          : t("financialAccounts.log.automatic")}
+                        {BY_HAND.has(log.changeType) ? (
+                          <ActorName
+                            name={t("financialAccounts.log.byHand", { name: actorName(log.actorId) })}
+                            isOverride={log.isOverride}
+                          />
+                        ) : (
+                          t("financialAccounts.log.automatic")
+                        )}
                       </Text>
                     </Line>
                     <Line label={t("financialAccounts.log.recorded")}>

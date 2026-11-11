@@ -42,6 +42,7 @@ function expensesFromList(items: ExpenseListResponseItem[], ids: bigint[]): Expe
           adjustsExpenseId: r.adjustsExpenseId,
           netAmount: r.netAmount,
           financeAccountId: r.financeAccountId,
+          isOverride: r.isOverride,
         }),
       );
     }

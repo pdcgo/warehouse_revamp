@@ -25,6 +25,8 @@ func bundleRowItem(b *product_service_models.Bundle) *productv1.BundleRowItem {
 		CreatedAtUnix:   b.CreatedAt.Unix(),
 		UpdatedAtUnix:   b.UpdatedAt.Unix(),
 		Lines:           lines,
+		// The "by Root team" badge beside the maker (an-override-shows-a-platform-badge).
+		IsOverride: b.IsOverride,
 	}
 }
 

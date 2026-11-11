@@ -32,6 +32,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-stock-screen-lists-what-the-warehouse-has-held](#the-stock-screen-lists-what-the-warehouse-has-held) | Inventories ▸ Stock lists every product with a batch in this warehouse — any team's, at 0 or not — with its owner and on-hand, searchable by name or SKU |
 | [superseded-stock-opens-a-warehouses-inventories](#superseded-stock-opens-a-warehouses-inventories) | ⛔ WITHDRAWN the same night — **Stock** was to be the first item of a warehouse's Inventories group, before Restock, for its Owner, Admin and Staff |
 | [a-warehouses-products-is-what-it-holds](#a-warehouses-products-is-what-it-holds) | a warehouse's **Products** menu IS the list of what it holds — the Stock screen's list, a row opening the warehouse product page; no separate Stock item, the old address forwards there |
+| [warehouse-product-list-is-deleted](#warehouse-product-list-is-deleted) | the unused WarehouseProductList RPC is deleted | owner, as recommended | — |
 
 ---
 
@@ -886,3 +887,13 @@ columns, no New Product or archive. `/inventories/stock` is `StockForward`: a wa
 team's catalogue is unchanged. The old warehouse branch of the products table (`WarehouseProductList` + `ProductByIds`)
 is gone from the screen; the RPC stays, uncalled. e2e: the warehouse Admin opens Products, sees Kaos Temuan with its
 owner and 12 on hand, a row opens its page, and the old address forwards.
+
+---
+
+## warehouse-product-list-is-deleted
+
+> Owner (Heri), in chat (2026-11-09): *"A"*, as recommended — to: delete the unused `WarehouseProductList` RPC? Nothing calls it since the products page moved to the warehouse's search (`WarehouseProductSearch`, 2026-11-03).
+
+**The verdict.** `InventoryService.WarehouseProductList` (the warehouse's *asked-to-hold* arrangement list, #142), its request, response and `WarehouseProductListDataType`, its handler (`inventory_v1/warehouse_product.go`'s list) and its test are **deleted**; the RPC's name and its messages' field numbers are **reserved** in the proto, so they are never reused. The arrangement rows themselves, and every reader that still uses them, are unchanged. ⚠ Not done yet.
+
+✅ **Built 2026-11-11.** The rpc is gone from `InventoryService`; `WarehouseProductListRequest` and `WarehouseProductListResponse` stay in `inventory.proto` only as empty tombstones — protobuf cannot reserve a method or message name, so the names stay taken and every field number and name they had is `reserved` (1–3); `WarehouseProductListDataType` and `WarehouseProductListResponseItem` are deleted. The handler and its slice builder are gone (`inventory_v1/warehouse_product.go` keeps only the link writers); its test file now pins the `warehouse_products` arrangement a restock writes (`TestWarehouseProductLink_*`), which `ProductHistory` still reads. No perf audit existed for it. Docs: [rpc.md](../../services/inventory_service/rpc.md).

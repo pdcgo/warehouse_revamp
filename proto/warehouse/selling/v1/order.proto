@@ -201,6 +201,10 @@ message OrderTimelineLog {
   // on the `return_completed` row only; 0 on every other row. When it is not the selling team's configured return
   // warehouse, the parcel came to an old address — visible here, fixed by a warehouse transfer.
   uint64 accepting_warehouse_id = 7;
+  // THIS ROW'S ACTOR WAS AN OVERRIDE — Root or the System Administrator wrote it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `order_timeline_logs.is_override`; false when no person is recorded.
+  bool is_override = 8;
 }
 
 // OrderItem is one order line. product_id is an OPAQUE product_service id; product code/name are a SNAPSHOT
@@ -513,6 +517,11 @@ message Order {
   // THE RETURN'S INVENTORY TRANSACTION — the `return` transaction its accepted return was put back on the shelf in
   // (OrderTransactionReturn), stored by the accept beside `transaction_id`. 0 = not accepted back.
   uint64 return_transaction_id = 38;
+
+  // THE PLACEMENT WAS AN OVERRIDE — the person in `created_by_user_id` is Root or the System Administrator and placed it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `orders.is_override`, set at placement and never updated.
+  bool is_override = 39;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different

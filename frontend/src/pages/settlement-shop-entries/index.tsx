@@ -34,6 +34,7 @@ import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { SettlementType } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import { ShopStatus } from "../../gen/warehouse/selling/v1/selling_pb";
 import { useIsMobile } from "../../layouts/shell";
+import { ActorName } from "../../components/entity/ActorName";
 import { formatDayShort } from "../../lib/datetime";
 import { formatRupiah, formatSignedRupiah } from "../../lib/money";
 import { dateRangeCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
@@ -441,6 +442,8 @@ function referenceOf(t: (key: string, opts?: Record<string, unknown>) => string,
 function StatementCell({ entry, actor }: { entry: ShopEntry; actor: string }) {
   const { t } = useTranslation();
   const line = entry.import;
+  // An imported row names its file's uploader, a hand row its poster — each with that act's own override stamp.
+  const isOverride = line ? line.uploadedByIsOverride : entry.isOverride;
   const period =
     line && line.periodFrom === line.periodTo
       ? formatDayShort(line.periodFrom)
@@ -461,7 +464,11 @@ function StatementCell({ entry, actor }: { entry: ShopEntry; actor: string }) {
       )}
       {/* Who uploaded the statement — or who posted the row by hand. */}
       <Text fontSize="xs" color="fg.muted" data-testid={`shop-entry-by-${entry.id}`}>
-        {t("settlementShopEntries.byPerson", { name: line?.uploadedByName || actor })}
+        <ActorName
+          name={t("settlementShopEntries.byPerson", { name: line?.uploadedByName || actor })}
+          isOverride={isOverride}
+          size="xs"
+        />
       </Text>
     </Stack>
   );
@@ -524,7 +531,9 @@ function EntryBlock({
               </RouterLink>
             </Link>
           ) : (
-            <Text color="fg.muted">{t("settlementShopEntries.byPerson", { name: actor })}</Text>
+            <Text color="fg.muted" data-testid={`shop-entry-by-${entry.id}`}>
+              <ActorName name={t("settlementShopEntries.byPerson", { name: actor })} isOverride={entry.isOverride} size="xs" />
+            </Text>
           )}
         </Box>
       </Flex>

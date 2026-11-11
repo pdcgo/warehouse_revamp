@@ -7,6 +7,7 @@ import { ShopItem } from "../../components/entity/ShopItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { OrderCourierBadge } from "./OrderCourierBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
+import { RootTeamBadge } from "../../components/entity/ActorName";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatUnixDateTime, formatUnixDateTimeShort, formatUnixRelative } from "../../lib/datetime";
@@ -157,7 +158,18 @@ export function OwnerCell({
  * answer the same question, so they share the second line — `oleh Ani via ScraperX` — and the cell stays two
  * lines. An order has no app, so the order list never passes it.
  */
-export function CreatedCell({ unix, by, via }: { unix: bigint; by?: string; via?: string }) {
+export function CreatedCell({
+  unix,
+  by,
+  via,
+  isOverride = false,
+}: {
+  unix: bigint;
+  by?: string;
+  via?: string;
+  /** The placement was Root's or the System Administrator's, from outside the team — the "by Root team" badge. */
+  isOverride?: boolean;
+}) {
   const { t } = useTranslation();
   const author = (by ?? "").trim();
   const app = (via ?? "").trim();
@@ -174,9 +186,12 @@ export function CreatedCell({ unix, by, via }: { unix: bigint; by?: string; via?
       </Text>
 
       {line !== "" && (
-        <Under testId="order-placed-by" title={line}>
-          {line}
-        </Under>
+        <Flex align="center" gap="1" minW="0">
+          <Under testId="order-placed-by" title={line}>
+            {line}
+          </Under>
+          {isOverride && author !== "" && <RootTeamBadge size="xs" />}
+        </Flex>
       )}
     </Stack>
   );

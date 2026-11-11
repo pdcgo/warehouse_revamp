@@ -94,3 +94,35 @@ func TestStatementLinesBySettlementLogIds_NamesThePostingLine(t *testing.T) {
 		t.Errorf("no ids = %v (%v), want nothing", none, err)
 	}
 }
+
+// THE STATEMENT LINE CARRIES ITS UPLOAD'S OVERRIDE STAMP (an-override-shows-a-platform-badge): Entri Toko names the
+// uploader of the file a row came from, with the "by Root team" badge when Root uploaded it from outside the team.
+func TestStatementLinesBySettlementLogIds_CarriesTheUploadsOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	w := newWorld(t, db)
+
+	byRoot := insertFile(t, db, team, shopeeShop, "shopee", "done", 2*time.Hour)
+	byMember := insertFile(t, db, team, shopeeShop, "shopee", "done", time.Hour)
+
+	err := db.Model(&settlement_importer_service_models.UploadedFile{}).Where("id = ?", byRoot).Update("is_override", true).Error
+	if err != nil {
+		t.Fatalf("stamp Root's file: %v", err)
+	}
+
+	insertLogLine(t, db, byRoot, settlement_importer_service_models.UploadedFileLine{LineNo: 1, Outcome: "posted", SettlementLogID: 601})
+	insertLogLine(t, db, byMember, settlement_importer_service_models.UploadedFileLine{LineNo: 1, Outcome: "posted", SettlementLogID: 602})
+
+	lines, err := w.svc.StatementLinesBySettlementLogIds(context.Background(), team, []uint64{601, 602})
+	if err != nil {
+		t.Fatalf("StatementLinesBySettlementLogIds: %v", err)
+	}
+
+	got := map[uint64]bool{}
+	for _, line := range lines {
+		got[line.SettlementLogID] = line.UploadedByIsOverride
+	}
+
+	if len(got) != 2 || !got[601] || got[602] {
+		t.Fatalf("upload overrides by row = %v, want 601 true (Root's file), 602 false", got)
+	}
+}

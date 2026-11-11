@@ -408,3 +408,16 @@ sequenceDiagram
 token, BEFORE the transaction, so no lock is held across the call. Another team's shop or a deleted one is
 NotFound, and nothing is linked. Then the account is locked and the link upserted on `shop_id` — pointing a
 shop here moves it off the account it named.
+
+## The override stamp on the reads — the "by Root team" badge (built 2026-11-11)
+
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge), accepted as
+[the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team):
+every read a screen names a person from now carries the record's own `is_override` (stamped at the write by
+`san_auth.IsOverride`, [an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+and the screen draws the shared `ActorName` / `RootTeamBadge` beside the person. Never sent by a caller; a row from
+before the column reads false.
+
+| read | field | read from | performance |
+| --- | --- | --- | --- |
+| `FinancialAccountLogList` (and the writes answering a log) | `FinancialAccountLog.is_override` (13) | `financial_account_logs.is_override`, same row | nil |

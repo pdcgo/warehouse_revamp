@@ -99,6 +99,15 @@ func refExpr(alias string) string {
 		'')`
 }
 
+// overrideExpr is whether the row's inventory transaction was an override — its creator Root or the System
+// Administrator, outside the team (an-override-is-stamped-in-every-service). The flag lives on the TRANSACTION, never on
+// the log rows it wrote, so a history row reads it by the transaction's primary key: one index probe per row of the
+// page. A row under no transaction (0) reads false. The screens draw the "by Root team" badge from it
+// (an-override-shows-a-platform-badge).
+func overrideExpr(transactionID string) string {
+	return `COALESCE((SELECT t.is_override FROM inventory_transactions t WHERE t.id = ` + transactionID + `), FALSE)`
+}
+
 // historyRow is one log row as the history screens read it.
 type historyRow struct {
 	ID          uint64
@@ -113,6 +122,8 @@ type historyRow struct {
 	Ref         string
 	ActorID     uint64
 	CreatedAt   time.Time
+	// The row's inventory transaction was an override (inventory_transactions.is_override) — overrideExpr.
+	IsOverride bool
 }
 
 func (r *historyRow) proto() *inventoryv1.StockMovement {
@@ -129,13 +140,16 @@ func (r *historyRow) proto() *inventoryv1.StockMovement {
 		Ref:         r.Ref,
 		ActorUserId: r.ActorID,
 		CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339),
+		IsOverride:  r.IsOverride,
 	}
 }
 
 // placementHistorySelect reads `product_placement_logs AS l` as history rows: the rack, never a batch.
 var placementHistorySelect = `l.id, l.product_id, l.warehouse_id, l.placement_id, 0 AS batch_id, l.change_type,
-	l.stock_change AS change, l.stock_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at`
+	l.stock_change AS change, l.stock_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
+	` + overrideExpr("l.transaction_id") + ` AS is_override`
 
 // batchHistorySelect reads `batch_logs AS l JOIN batches AS b` as history rows: the batch, never a rack.
 var batchHistorySelect = `l.id, b.product_id, l.warehouse_id, 0 AS placement_id, l.batch_id, l.change_type,
-	l.change_count AS change, l.stock_count_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at`
+	l.change_count AS change, l.stock_count_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
+	` + overrideExpr("l.transaction_id") + ` AS is_override`

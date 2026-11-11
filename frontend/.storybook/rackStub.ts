@@ -116,6 +116,9 @@ let nextTransactionId = 7001n;
 let last: RackWrite | null = null;
 // Who the rack history says moved each unit — the signed-in person, unless a story names someone else.
 let historyActor = SELF_ID;
+// …and, row by row, anyone a story names instead, with whether that row's transaction was an override (Root or the
+// System Administrator from outside the warehouse — served as `is_override`, the "by Root team" badge).
+let historyActorOf: Record<string, { userId: bigint; isOverride: boolean }> = {};
 
 /**
  * A RACE, armed for the next write only: just before RackMove or RackSample checks the shelf, somebody else has taken
@@ -134,12 +137,18 @@ export function resetRackStub() {
   nextTransactionId = 7001n;
   last = null;
   historyActor = SELF_ID;
+  historyActorOf = {};
   rackStubScenario.raceBeforeNextWrite = null;
 }
 
 /** For a story: who the rack history names on every row — e.g. a former user (erase-keeps-the-row). */
 export function rackHistoryByForStory(userId: bigint) {
   historyActor = userId;
+}
+
+/** For a story: who ONE history row names, and whether it was an override — the rest keep `rackHistoryByForStory`'s. */
+export function rackHistoryRowByForStory(movementId: bigint, userId: bigint, isOverride = false) {
+  historyActorOf[movementId.toString()] = { userId, isOverride };
 }
 
 resetRackStub();
@@ -412,7 +421,15 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
             case: "movement",
             value: {
               mapData: Object.fromEntries(
-                rows.map((m) => [m.id.toString(), { ...m, actorUserId: historyActor, batchId: 0n }]),
+                rows.map((m) => [
+                  m.id.toString(),
+                  {
+                    ...m,
+                    actorUserId: historyActorOf[m.id.toString()]?.userId ?? historyActor,
+                    isOverride: historyActorOf[m.id.toString()]?.isOverride ?? false,
+                    batchId: 0n,
+                  },
+                ]),
               ),
             },
           },

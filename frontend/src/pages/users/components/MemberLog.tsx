@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, HStack, Spinner, Stack, Text } from "@chakra-ui/react";
+import { HStack, Spinner, Stack, Text } from "@chakra-ui/react";
 import {
   type TeamMemberLogEntry,
   TeamMemberLogAction,
@@ -12,6 +12,7 @@ import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { formatUnixDateTime } from "../../../lib/datetime";
 import { roleLabel } from "../../../lib/roles";
 import { formerUserId } from "../../../lib/users";
+import { RootTeamBadge } from "../../../components/entity/ActorName";
 
 const PAGE_SIZE = 10;
 
@@ -81,11 +82,9 @@ export function MemberLog({ teamId, teamType }: { teamId: bigint; teamType?: Tea
                   {formatUnixDateTime(e.createdAtUnix)}
                 </Text>
                 <Text textStyle="sm">{sentence(e)}</Text>
-                {e.isOverride && (
-                  <Badge colorPalette="warning" size="sm">
-                    {t("users.log.override")}
-                  </Badge>
-                )}
+                {/* The shared "by Root team" badge after the sentence that names the person — the log's own amber mark
+                    moved to it (an-override-shows-a-platform-badge, the-override-badge-is-accepted-as-by-root-team). */}
+                {e.isOverride && <RootTeamBadge />}
               </HStack>
             ))}
 

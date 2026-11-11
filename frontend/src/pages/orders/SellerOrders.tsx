@@ -777,7 +777,7 @@ export function SellerOrdersPage() {
                             </Table.Cell>
 
                             <Table.Cell>
-                              <CreatedCell unix={o.createdAtUnix} by={typistOf(o.createdByUserId)} />
+                              <CreatedCell unix={o.createdAtUnix} by={typistOf(o.createdByUserId)} isOverride={o.isOverride} />
                             </Table.Cell>
 
                             {/* When the buyer ordered, and when it has to be out — both the platform's. */}

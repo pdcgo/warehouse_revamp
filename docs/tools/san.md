@@ -90,6 +90,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
 | [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
+| [`document sweep-generated`](#document-sweep-generated) | Delete the generated downloads older than 7 days — merged label PDFs, table exports, order exports — now, as the server's daily sweep does. Uploads never. `--dry-run` counts first. Safe to re-run — a second run finds nothing |
 | [`report refold`](#report-refold) | Rebuild ONE shop's or ONE person's day of a settlement report from the log — the repair for a day that is wrong while the log is right; every later day's carry follows. `--dry-run` prints it first. Safe to re-run — a second run changes nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
@@ -141,6 +142,7 @@ Environment used when a command builds its services:
 | `REDIS_ADDR` | *(empty — in-process cache)* | ⚠ **Set it when acting on a deployment.** A reset evicts the user's cached roles; with no Redis the tool evicts a cache only it can see, and running servers keep serving that user's cached roles for up to ~1 minute. The password change itself is immediate either way. |
 | `JWT_SECRET`, `TOKEN_TTL` | dev values | Build the signer. No command mints a token today. |
 | `INTERNAL_BASE_URL` | `http://localhost:8080` | Where cross-service clients point. No command reaches that path today. |
+| `DOCUMENT_STORAGE_DIR` | *(empty — the same temp-dir default as the server)* | The server's document store. [`document sweep-generated`](#document-sweep-generated) deletes objects there, so point it at the store the server writes to — the server reads the same variable. |
 
 ---
 
@@ -927,6 +929,74 @@ sequenceDiagram
 | `this account is not a Root` | `remove` on anybody else |
 | `a suspended or erased account is never made Root` | `add` on a suspended or erased account |
 | `name the account: --username, --email or --user-id` | No selector, or more than one |
+
+## `document sweep-generated`
+
+[generated-files-are-kept-seven-days](../technical/architecture/context_decision.md#generated-files-are-kept-seven-days): a
+file the system **made for a download** — a merged label PDF (`order_labels`), a table export (`table_export`), an order
+export (`order_export`) — is kept **7 days** from when it was made. The server sweeps them **daily** on its own (a ticker
+in its process: the first run a minute after it starts, then every `GENERATED_FILE_SWEEP_EVERY`, default `24h`; `0` turns
+it off). This command runs the same sweep once, by hand. **Safe to re-run**: a second run finds nothing.
+
+```sh
+go run ./tools/san document sweep-generated --dry-run     # prompts Local/Production; counts, deletes nothing
+go run ./tools/san document sweep-generated               # the real run, at most 1000 files
+go run ./tools/san document sweep-generated --limit 5000  # a bigger run
+```
+
+| Flag | |
+| --- | --- |
+| `--dry-run` | Count the files a run would delete (oldest first, at most `--limit`) and their size. Deletes nothing |
+| `--limit` | The most files this run deletes, oldest first. Default `1000`. A run that stops at it says so — run it again |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+**Never swept:** an uploaded file — a label, a receipt, a statement, a proof of payment, a photo — and a generated file
+somebody **shared** (a share row keeps it). The objects are deleted from `DOCUMENT_STORAGE_DIR` — see
+[the environment](#global-options).
+
+It calls document_service's own `SweepGeneratedFiles` (`document_v1/generated_file_sweep.go`) — the server's lock, its
+predicate, its store — never a hand-written DELETE. Two sweeps never run at once: the one that finds the lock taken stops.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san document sweep-generated
+  participant DOC as document_service — SweepGeneratedFiles
+  participant DB as Postgres
+  participant ST as the document store
+  SAN->>DOC: dry-run, limit
+  loop a transaction per 100 files, until the limit or nothing is left
+    DOC->>DB: pg_try_advisory_xact_lock — taken means another sweep runs, stop
+    DOC->>DB: the oldest generated rows made over 7 days ago, unshared, FOR UPDATE SKIP LOCKED
+    DOC->>DB: delete them, re-checking for a share
+    DOC->>ST: delete each object and thumbnail — a missing one is fine
+    DOC->>DB: commit — a failed object delete rolls its rows back for the next run
+  end
+  DOC-->>SAN: swept, bytes, the cutoff, more left
+  SAN-->>SAN: print it
+```
+
+### Output
+
+The dev database (2026-11-11), which has no generated file older than a week:
+
+```
+$ san document sweep-generated --dry-run --dsn …
+[explicit --dsn] DRY RUN — would sweep 0 generated file(s), 0.0 MB, made before 2026-11-04 22:17 +07
+```
+
+A run that stops at its limit adds `[…] stopped at --limit 1000: older generated files are left — run it again`.
+
+### Errors
+
+| Error | Cause |
+| --- | --- |
+| `--limit must be at least 1` | `--limit 0` or below. Checked before any database is asked for |
+| `[Database Local] another generated-file sweep is running — this one stopped, the other one is doing the work` | The server's daily sweep (or another `san`) holds the sweep's lock. Nothing was deleted; run it again later, or leave it — the other one is sweeping |
+| `deleting generated file <id>: …` | The store refused a delete. That batch's rows were rolled back, so the next run tries them again |
+
+---
 
 ## `report refold`
 

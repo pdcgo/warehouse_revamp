@@ -376,3 +376,56 @@ func TestShopSettlementEntryList_RefusesTheSaleKinds(t *testing.T) {
 		}
 	}
 }
+
+// ENTRI TOKO READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): a hand row Root posted from outside the team
+// reads is_override, the CS's does not; an imported row's statement says whether its UPLOAD was an override, as the
+// importer answers it — the "by Root team" badge beside the uploader.
+func TestShopSettlementEntryList_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	statements := &fakeStatements{lines: map[uint64]settlement_v1.StatementLine{}}
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, statements, fakeNames{1: "Fajar", 7: "Ani"})
+
+	byRoot, err := postShop(t, svc, settlement_v1.PostInput{
+		UniqueID: "manual-root", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT,
+		SourceType: settlementv1.SourceType_SOURCE_TYPE_MANUAL, Change: 12_000, ActorID: 1, IsOverride: true,
+	})
+	if err != nil {
+		t.Fatalf("Root's row: %v", err)
+	}
+
+	byCS, err := postShop(t, svc, settlement_v1.PostInput{
+		UniqueID: "manual-cs", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT,
+		SourceType: settlementv1.SourceType_SOURCE_TYPE_MANUAL, Change: 8_000, ActorID: 7,
+	})
+	if err != nil {
+		t.Fatalf("the CS's row: %v", err)
+	}
+
+	imported, err := postShop(t, svc, settlement_v1.PostInput{
+		UniqueID: "shopee:Rincian:9", SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND,
+		SourceType: settlementv1.SourceType_SOURCE_TYPE_IMPORTER, Change: 185_000, ActorID: 1, IsOverride: true,
+	})
+	if err != nil {
+		t.Fatalf("an imported row: %v", err)
+	}
+
+	statements.lines[imported.Entry.ID] = settlement_v1.StatementLine{
+		UploadedFileID: 905, Platform: marketplacev1.Marketplace_MARKETPLACE_SHOPEE, UploadedBy: 1, UploadedByIsOverride: true,
+	}
+
+	rows := entriesOf(listShopEntries(t, svc, team, &settlementv1.ShopSettlementEntryListFilter{}, 1, 20))
+
+	if !rows[byRoot.Entry.ID].GetEntry().GetIsOverride() || rows[byCS.Entry.ID].GetEntry().GetIsOverride() {
+		t.Fatalf("is_override: Root's row %v, the CS's %v — want true, false",
+			rows[byRoot.Entry.ID].GetEntry().GetIsOverride(), rows[byCS.Entry.ID].GetEntry().GetIsOverride())
+	}
+
+	statement := rows[imported.Entry.ID].GetStatement()
+	if !statement.GetUploadedByIsOverride() || statement.GetUploadedByName() != "Fajar" {
+		t.Fatalf("imported row's statement = %+v, want Fajar's upload read as an override", statement)
+	}
+
+	if rows[byCS.Entry.ID].GetStatement() != nil {
+		t.Fatalf("a hand row carries a statement: %+v", rows[byCS.Entry.ID].GetStatement())
+	}
+}

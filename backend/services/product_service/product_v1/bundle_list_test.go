@@ -118,3 +118,27 @@ func TestBundleList_SortsByNameAndPages(t *testing.T) {
 		t.Fatalf("pages = %v, want %v", seen, want)
 	}
 }
+
+// THE LIST READS THE OVERRIDE STAMP (an-override-shows-a-platform-badge): the bundle Root made from outside Melati reads
+// is_override beside its maker — the "by Root team" badge — and the CS's bundle does not.
+func TestBundleList_ReadsTheOverrideStamp(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	beras := insertProduct(t, db, melati, "BRS", "Beras")
+
+	byRoot := createBundle(t, svc, scopedAs(1, melati, role_basev1.Role_ROLE_UNSPECIFIED), melati, "Paket Root", lines(beras, 1))
+	byCS := createBundle(t, svc, scopedAs(ani, melati, role_basev1.Role_ROLE_SELLING_CS), melati, "Paket CS", lines(beras, 2))
+
+	resp, err := svc.BundleList(asPerson(ani, role_basev1.Role_ROLE_SELLING_OWNER), connect.NewRequest(&productv1.BundleListRequest{
+		TeamId: melati, Page: page(1, 20),
+	}))
+	if err != nil {
+		t.Fatalf("BundleList: %v", err)
+	}
+
+	rows := bundleListRows(resp.Msg.GetItems())
+	if !rows[byRoot.GetId()].GetIsOverride() || rows[byCS.GetId()].GetIsOverride() {
+		t.Fatalf("is_override: Root's %v, the CS's %v — want true, false",
+			rows[byRoot.GetId()].GetIsOverride(), rows[byCS.GetId()].GetIsOverride())
+	}
+}

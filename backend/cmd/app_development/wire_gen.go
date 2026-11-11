@@ -123,6 +123,6 @@ func InitializeApp() (*App, error) {
 		return nil, err
 	}
 	server := NewServer(config, serveMux)
-	app := NewApp(server, settlement_importer_v1Service)
+	app := NewApp(server, settlement_importer_v1Service, document_v1Service, config)
 	return app, nil
 }

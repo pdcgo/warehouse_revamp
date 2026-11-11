@@ -27,7 +27,7 @@ var errWarehouseProductSearchShort = errors.New("type at least 2 characters of a
 //
 // Two halves, each over its own rows (HARD RULE 3):
 //   - which products have been here — the batch ledger, inventory's. A batch is never deleted, so an emptied one still
-//     says the product was held; a product only asked for (WarehouseProductList's arrangement) never was;
+//     says the product was held; a product only asked for (a restock's `warehouse_products` arrangement row) never was;
 //   - which of those match the term — product_service's names and codes, asked through the ProductReader with the held
 //     ids, so the search, the order and the count of matches are product_service's and the paging is exact.
 //

@@ -93,12 +93,15 @@ func (s *Service) OwnerStockHistory(
 		Ref         string
 		ActorUserID uint64
 		CreatedAt   time.Time
+		IsOverride  bool
 	}
 
 	var rows []row
 
 	err = db.
-		Raw("SELECT * FROM ("+inner+") x"+where+" ORDER BY id DESC LIMIT ? OFFSET ?",
+		// The override flag is read on the PAGE only — outside the window, one transaction probe per row returned.
+		Raw("SELECT p.*, "+overrideExpr("p.movement_id")+" AS is_override FROM ("+
+			"SELECT * FROM ("+inner+") x"+where+" ORDER BY id DESC LIMIT ? OFFSET ?) p ORDER BY p.id DESC",
 			append(append([]any{}, args...), int(page.GetLimit()), pageOffset(page))...).
 		Scan(&rows).
 		Error
@@ -124,6 +127,7 @@ func (s *Service) OwnerStockHistory(
 			Ref:           r.Ref,
 			ActorUserId:   r.ActorUserID,
 			CreatedAtUnix: r.CreatedAt.Unix(),
+			IsOverride:    r.IsOverride,
 		})
 	}
 

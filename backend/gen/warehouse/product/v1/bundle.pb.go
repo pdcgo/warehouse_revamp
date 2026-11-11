@@ -249,7 +249,11 @@ type BundleRowItem struct {
 	CreatedAtUnix   int64  `protobuf:"varint,6,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	UpdatedAtUnix   int64  `protobuf:"varint,7,opt,name=updated_at_unix,json=updatedAtUnix,proto3" json:"updated_at_unix,omitempty"`
 	// In the order they were saved. Never empty (a-bundle-has-at-least-one-line).
-	Lines         []*BundleLine `protobuf:"bytes,8,rep,name=lines,proto3" json:"lines,omitempty"`
+	Lines []*BundleLine `protobuf:"bytes,8,rep,name=lines,proto3" json:"lines,omitempty"`
+	// THE MAKER WAS AN OVERRIDE — `created_by_user_id` is Root or the System Administrator and made it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `bundles.is_override`, set once at create.
+	IsOverride    bool `protobuf:"varint,9,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -338,6 +342,13 @@ func (x *BundleRowItem) GetLines() []*BundleLine {
 		return x.Lines
 	}
 	return nil
+}
+
+func (x *BundleRowItem) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type BundleRowMapItem struct {
@@ -1349,7 +1360,7 @@ const file_warehouse_product_v1_bundle_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12&\n" +
 	"\bquantity\x18\x02 \x01(\rB\n" +
-	"\xbaH\a*\x05\x18\x8fN(\x01R\bquantity\"\xa3\x02\n" +
+	"\xbaH\a*\x05\x18\x8fN(\x01R\bquantity\"\xc4\x02\n" +
 	"\rBundleRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x12\n" +
@@ -1358,7 +1369,9 @@ const file_warehouse_product_v1_bundle_proto_rawDesc = "" +
 	"\x12created_by_user_id\x18\x05 \x01(\x04R\x0fcreatedByUserId\x12&\n" +
 	"\x0fcreated_at_unix\x18\x06 \x01(\x03R\rcreatedAtUnix\x12&\n" +
 	"\x0fupdated_at_unix\x18\a \x01(\x03R\rupdatedAtUnix\x126\n" +
-	"\x05lines\x18\b \x03(\v2 .warehouse.product.v1.BundleLineR\x05lines\"\xc3\x01\n" +
+	"\x05lines\x18\b \x03(\v2 .warehouse.product.v1.BundleLineR\x05lines\x12\x1f\n" +
+	"\vis_override\x18\t \x01(\bR\n" +
+	"isOverride\"\xc3\x01\n" +
 	"\x10BundleRowMapItem\x12N\n" +
 	"\bmap_data\x18\x01 \x03(\v23.warehouse.product.v1.BundleRowMapItem.MapDataEntryR\amapData\x1a_\n" +
 	"\fMapDataEntry\x12\x10\n" +

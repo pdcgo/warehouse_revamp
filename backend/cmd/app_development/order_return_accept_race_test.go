@@ -27,7 +27,7 @@ import (
 )
 
 // The order race's tables, the return's own, and what the accept reads.
-var returnRaceTables = append([]string{"team_return_configurations", "warehouse_products"}, orderRaceTables...)
+var returnRaceTables = append([]string{"warehouse_products"}, orderRaceTables...)
 
 // ownCatalog is product_service for the race: every product is Melati's own, so no line is borrowed.
 type ownCatalog struct{}
@@ -73,20 +73,9 @@ func TestRace_OrderReturnAccept_OneReturnTransaction(t *testing.T) {
 	for round := range 5 {
 		resetOrderRace(t, db)
 
-		err := db.Exec(`DELETE FROM team_return_configurations WHERE team_id = ?`, ocTeam).Error
-		if err != nil {
-			t.Fatalf("reset the return configuration: %v", err)
-		}
-
+		// Melati's return warehouse is the one that shipped the order — seedTwoBatches sets it.
 		shop := seedTwoBatches(t, db)
 		svc := returnService(db)
-
-		// Melati's return warehouse is the one that shipped the order.
-		err = db.Exec(`INSERT INTO team_return_configurations (team_id, warehouse_id, created_at, updated_at)
-			VALUES (?, ?, NOW(), NOW())`, ocTeam, ocWarehouse).Error
-		if err != nil {
-			t.Fatalf("configure the return warehouse: %v", err)
-		}
 
 		created, err := svc.OrderCreate(context.Background(), connect.NewRequest(twoUnits(shop)))
 		if err != nil {

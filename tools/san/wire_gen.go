@@ -41,6 +41,7 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 	selling_v1Service := NewShopGrants(db, roleResolver)
 	inventory_v1Service := NewReleaseInventory(db)
 	settlement_v1Service := NewSettlementReports(db)
-	san := NewSan(db, service, supplier_v1Service, team_v1Service, selling_v1Service, inventory_v1Service, settlement_v1Service)
+	document_v1Service := NewDocuments(db, config)
+	san := NewSan(db, service, supplier_v1Service, team_v1Service, selling_v1Service, inventory_v1Service, settlement_v1Service, document_v1Service)
 	return san, nil
 }

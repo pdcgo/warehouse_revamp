@@ -188,6 +188,17 @@ func (s *Service) placeOrder(
 		return nil, err
 	}
 
+	// THE TEAM HAS A RETURN WAREHOUSE (create-refuses-a-team-with-no-return-warehouse, rollout step 3, switched on
+	// 2026-11-11): with the request's own checks — after the shop gate, so a shop that is not the caller's stays NotFound
+	// and discloses nothing — and before the owner lookup, the credit check and the take, so a refused team costs one
+	// indexed read and moves nothing. It reads this service's own table, never another service. Both doors meet it: the
+	// typed form and a draft's Promote are this one function. A draft PUSHED by the app is not an order
+	// (OrderDraftPush), so it is never refused here — its Promote is.
+	err = s.requireReturnWarehouseToOrder(ctx, p.teamID)
+	if err != nil {
+		return nil, err
+	}
+
 	// WHO OWNS EACH LINE, looked up ONCE — the owner's flow draws it as the first step after the request check, and
 	// both the return-map check and the credit check below read this one answer. A lookup that fails REFUSES the
 	// create (a-failed-owner-lookup-refuses-the-create): without it the order cannot tell a borrowed line from its own,
@@ -830,4 +841,33 @@ func creditBlocked(block *CreditBlock) error {
 		"credit limit reached with team %d: %s owed of a %s limit — settle before ordering again",
 		block.CreditorTeamID, san_money.Text(block.Debt), san_money.Text(block.Limit),
 	))
+}
+
+// errOrderNoReturnWarehouse is create-refuses-a-team-with-no-return-warehouse's refusal, after the team's name: the
+// return warehouse is not set, and where to set it (the flow's "set the return warehouse first").
+var errOrderNoReturnWarehouse = errors.New("has no return warehouse set — set it on Settings › Return Warehouse " +
+	"before creating an order")
+
+// requireReturnWarehouseToOrder refuses an order for a team with no `team_return_configurations` row
+// (create-refuses-a-team-with-no-return-warehouse): nobody could accept its return (only-the-return-warehouse-accepts-a-
+// return). FAILED_PRECONDITION, as creditBlocked: the caller may order, the team's settings are what refuse. The message
+// names the team (TeamNamer, "team #<id>" without one), since the person reading it is customer service, who fixes it
+// by asking a manager to set the card.
+//
+// BEFORE the transaction, as the decision places it — and safe there: a row is never deleted (TeamReturnConfigurationSet
+// only inserts or moves it to another warehouse, and nothing else writes the table), so the answer read here cannot turn
+// false before the order commits. A warehouse changed in between does not matter: the order stores none, and the return
+// reads the row when it happens (the-return-warehouse-is-read-when-the-return-happens).
+func (s *Service) requireReturnWarehouseToOrder(ctx context.Context, teamID uint64) error {
+	returnWarehouse, err := returnWarehouseOf(s.db.WithContext(ctx), teamID)
+	if err != nil {
+		return dbError(err)
+	}
+
+	if returnWarehouse != 0 {
+		return nil
+	}
+
+	return connect.NewError(connect.CodeFailedPrecondition,
+		fmt.Errorf("%s %w", s.teamName(ctx, teamID, "team"), errOrderNoReturnWarehouse))
 }

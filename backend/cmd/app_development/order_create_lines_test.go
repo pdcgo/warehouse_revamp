@@ -41,7 +41,7 @@ func TestOrderCreate_OneProductOnTwoLinesThroughTheRealTake(t *testing.T) {
 	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 5)
-	shop := shopForOrders(t, db, team)
+	shop := shopForOrders(t, db, team, warehouse)
 
 	res, err := svc.OrderCreate(context.Background(), connect.NewRequest(twoLinesOf(team, shop, warehouse, product)))
 	if err != nil {
@@ -78,7 +78,7 @@ func TestOrderCreate_AShortRealTakeKeepsItsCodeAndDetail(t *testing.T) {
 	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 2)
-	shop := shopForOrders(t, db, team)
+	shop := shopForOrders(t, db, team, warehouse)
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(twoLinesOf(team, shop, warehouse, product)))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
@@ -129,17 +129,29 @@ func twoLinesOf(team, shop, warehouse, product uint64) *sellingv1.OrderCreateReq
 	}
 }
 
-// shopForOrders seeds an active shop for `team` and returns its id.
-func shopForOrders(t *testing.T, db *gorm.DB, team uint64) uint64 {
+// shopForOrders seeds an active shop for `team` and returns its id — and gives the team `warehouse`, the one it ships
+// from, as its return warehouse (returnsTo).
+func shopForOrders(t *testing.T, db *gorm.DB, team, warehouse uint64) uint64 {
 	t.Helper()
 
 	var shop uint64
 
 	err := db.Raw(`INSERT INTO shops (team_id, name, shop_code, marketplace) VALUES (?, 'Toko Melati', 'MEL', 'shopee')
 		RETURNING id`, team).Scan(&shop).Error
+	if err == nil {
+		err = returnsTo(db, team, warehouse)
+	}
+
 	if err != nil {
 		t.Fatalf("seed the shop: %v", err)
 	}
 
 	return shop
+}
+
+// returnsTo gives a selling team its return warehouse — order create refuses a team without one
+// (create-refuses-a-team-with-no-return-warehouse). A team that already has one keeps it.
+func returnsTo(db *gorm.DB, team, warehouse uint64) error {
+	return db.Exec(`INSERT INTO team_return_configurations (team_id, warehouse_id) VALUES (?, ?)
+		ON CONFLICT (team_id) DO NOTHING`, team, warehouse).Error
 }

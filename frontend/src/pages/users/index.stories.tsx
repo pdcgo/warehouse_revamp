@@ -174,7 +174,13 @@ export const TheHistoryReadsAsSentences: Story = {
     await expect(log).toHaveTextContent("san added dewi as Warehouse Owner");
     await expect(log).toHaveTextContent("fajar removed Former user #69 (Warehouse Staff)");
     await expect(log).not.toHaveTextContent("erased69");
-    await expect(within(log).getByText("override")).toBeInTheDocument();
+    // fajar's removal is stamped: the shared "by Root team" badge on that line only, and the old "override" word is gone.
+    const fajars = within(log)
+      .getAllByTestId(/^member-log-\d+$/)
+      .find((row) => /fajar removed/i.test(row.textContent ?? ""))!;
+    await expect(within(fajars).getByTestId("root-team-badge")).toHaveTextContent("by Root team");
+    await expect(within(log).getAllByTestId("root-team-badge")).toHaveLength(1);
+    await expect(within(log).queryByText("override")).toBeNull();
   },
 };
 

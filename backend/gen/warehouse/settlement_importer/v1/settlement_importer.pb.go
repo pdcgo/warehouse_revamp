@@ -634,8 +634,12 @@ type UploadedFile struct {
 	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	FinishedAt      *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// THE UPLOAD WAS AN OVERRIDE — `created_by_user_id` is Root or the System Administrator and uploaded it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `uploaded_files.is_override`.
+	IsOverride    bool `protobuf:"varint,16,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UploadedFile) Reset() {
@@ -771,6 +775,13 @@ func (x *UploadedFile) GetFinishedAt() *timestamppb.Timestamp {
 		return x.FinishedAt
 	}
 	return nil
+}
+
+func (x *UploadedFile) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type TiktokSettlementImportRequest struct {
@@ -2336,7 +2347,7 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"\bexisting\x18\x03 \x01(\rR\bexisting\x12\x12\n" +
 	"\x04held\x18\x04 \x01(\rR\x04held\x12\x18\n" +
 	"\askipped\x18\x05 \x01(\rR\askipped\x12$\n" +
-	"\x0eposted_to_shop\x18\x06 \x01(\rR\fpostedToShop\"\xac\x05\n" +
+	"\x0eposted_to_shop\x18\x06 \x01(\rR\fpostedToShop\"\xcd\x05\n" +
 	"\fUploadedFile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -2358,7 +2369,9 @@ const file_warehouse_settlement_importer_v1_settlement_importer_proto_rawDesc = 
 	"\n" +
 	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12;\n" +
 	"\vfinished_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"finishedAt\"\xa5\x01\n" +
+	"finishedAt\x12\x1f\n" +
+	"\vis_override\x18\x10 \x01(\bR\n" +
+	"isOverride\"\xa5\x01\n" +
 	"\x1dTiktokSettlementImportRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12/\n" +

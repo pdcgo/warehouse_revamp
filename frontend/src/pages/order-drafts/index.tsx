@@ -328,6 +328,7 @@ export function OrderDraftsPage() {
                           unix={d.createdAtUnix}
                           by={author}
                           via={d.source === "manual" ? "" : d.source}
+                          isOverride={d.isOverride}
                         />
                       </Table.Cell>
 

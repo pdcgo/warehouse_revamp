@@ -151,7 +151,7 @@ export function OrderDetailPreview({
 //
 // ⚠ `platformTotal` IS `initialTotal`, and the preview exists partly to make that visible.
 // `the-sale-is-recorded-once-and-copied-verbatim` says settlement opens its account from a frozen
-// copy of `order.platform_total` — so the figure the Info tab prints as "Marketplace total" and
+// copy of `order.platform_total` — so the figure the Info tab prints as "Platform order total" and
 // the figure the Settlement tab measures every loss against are the SAME NUMBER seen twice. On one
 // screen, a disagreement between them is a bug anybody can spot.
 //

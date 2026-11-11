@@ -84,6 +84,7 @@ func main() {
 			productCommand(),
 			shopCommand(),
 			reportCommand(),
+			documentCommand(),
 			pubsubCommand(),
 			remoteCommand(),
 

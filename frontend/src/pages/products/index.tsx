@@ -57,8 +57,8 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
 //   [⌕ Search products by product code or name                ×]
 //   Product code   · Product                     · Owner          · On hand · Actions
 //
-// It used to be the arrangement list (WarehouseProductList, #142): what the warehouse was ASKED to hold, with the
-// seller's catalogue columns read as "—", the owner as "Team #1", and no search.
+// It used to be the arrangement list (#142): what the warehouse was ASKED to hold, with the seller's catalogue columns
+// read as "—", the owner as "Team #1", and no search. The RPC behind it is deleted (warehouse-product-list-is-deleted).
 function WarehouseProductsPage() {
   const { current } = useTeam();
   const { t } = useTranslation();

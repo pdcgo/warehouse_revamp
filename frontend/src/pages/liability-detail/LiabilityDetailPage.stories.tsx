@@ -267,8 +267,10 @@ export const TheLimitLogIsSeparateFromTheLedger: Story = {
     });
     await expect(canvas.getByTestId("terms-change-2")).toHaveTextContent(/unlimited/i);
 
-    // And the override — a limit lifted by somebody outside the creditor team — is marked as one.
-    await expect(canvas.getByTestId("terms-override-3")).toBeInTheDocument();
+    // And the override — a limit lifted by somebody outside the creditor team — carries the shared "by Root team" badge,
+    // on that change only (the-override-badge-is-accepted-as-by-root-team).
+    await expect(within(canvas.getByTestId("terms-change-3")).getByTestId("root-team-badge")).toHaveTextContent("by Root team");
+    await expect(within(canvas.getByTestId("terms-change-2")).queryByTestId("root-team-badge")).toBeNull();
   },
 };
 
@@ -743,6 +745,6 @@ export const MobileLimitChangesAreBlocks: Story = {
     const table = await canvas.findByTestId("terms-history-table", {}, { timeout: 3000 });
     await expect(table).toHaveAttribute("data-layout", "blocks");
     await expect(canvas.getByTestId("terms-change-3")).toHaveTextContent("Cap lifted for the ramadan push");
-    await expect(canvas.getByTestId("terms-override-3")).toBeInTheDocument();
+    await expect(within(canvas.getByTestId("terms-change-3")).getByTestId("root-team-badge")).toBeInTheDocument();
   },
 };

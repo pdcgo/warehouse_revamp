@@ -45,6 +45,10 @@ func perfTakeShelf(t *testing.T, db *gorm.DB) uint64 {
 
 	err := quiet.Raw(`INSERT INTO shops (team_id, name, shop_code, marketplace) VALUES (?, 'Toko Perf', 'PERF-TAKE', 'shopee')
 		RETURNING id`, perfTakeTeam).Scan(&shop).Error
+	if err == nil {
+		err = returnsTo(quiet, perfTakeTeam, perfTakeWarehouse)
+	}
+
 	if err != nil {
 		t.Fatalf("shop: %v", err)
 	}

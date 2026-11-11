@@ -35,6 +35,9 @@ import { thisMonth } from "../../lib/period";
 import { canMoveExpenses } from "../../lib/roles";
 import { type UrlCodec, enumCodec, useUrlState } from "../../lib/urlState";
 import { useShopsByIds } from "../../features/shops/queries";
+import { useActors } from "../../features/users/queries";
+import { ActorName } from "../../components/entity/ActorName";
+import { personName } from "../../lib/users";
 import { AdjustExpenseDialog } from "./components/AdjustExpenseDialog";
 import { RecordExpenseDialog } from "./components/RecordExpenseDialog";
 import { useExpenseAccountNames } from "./components/accountName";
@@ -95,6 +98,12 @@ export function ExpensesPage() {
   );
   // The shop a row names — an Ads expense's, or an older row's from before a shop was for ads only.
   const shopNames = useShopsByIds({ shopIds: expenses.map((e) => e.shopId) }).data;
+  // WHO RECORDED IT (an-override-shows-a-platform-badge: a record that named nobody gains the name, and the badge on an
+  // override — the-override-badge-is-accepted-as-by-root-team: a Recorded by column, a line on phones). One UserByIDs
+  // for the page's people.
+  const creators = useActors(expenses.map((e) => e.createdBy)).data;
+  const creatorOf = (cost: ExpenseRecord) =>
+    personName(creators?.get(cost.createdBy.toString()), `#${cost.createdBy}`);
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
@@ -316,6 +325,13 @@ export function ExpensesPage() {
                     {cost.note}
                   </Text>
                 )}
+                <Text fontSize="xs" color="fg.muted" data-testid={`expense-by-${cost.id}`}>
+                  <ActorName
+                    name={t("expenses.recordedBy", { name: creatorOf(cost) })}
+                    isOverride={cost.isOverride}
+                    size="xs"
+                  />
+                </Text>
               </Stack>
 
               <Stack gap="0" align="end" flexShrink={0}>
@@ -344,6 +360,7 @@ export function ExpensesPage() {
             <Table.ColumnHeader>{t("expenses.table.kind")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("expenses.table.paidFrom")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("expenses.table.note")}</Table.ColumnHeader>
+            <Table.ColumnHeader>{t("expenses.table.recordedBy")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("expenses.table.amount")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("expenses.table.actions")}</Table.ColumnHeader>
           </Table.Row>
@@ -378,6 +395,9 @@ export function ExpensesPage() {
                 </Table.Cell>
                 <Table.Cell whiteSpace="nowrap">{accountOf(cost)}</Table.Cell>
                 <Table.Cell>{cost.note}</Table.Cell>
+                <Table.Cell data-testid={`expense-by-${cost.id}`}>
+                  <ActorName name={creatorOf(cost)} isOverride={cost.isOverride} />
+                </Table.Cell>
                 <Table.Cell textAlign="end">{amountOf(cost, isAdjustment)}</Table.Cell>
 
                 <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>

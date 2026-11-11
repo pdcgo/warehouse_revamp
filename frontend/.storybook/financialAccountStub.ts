@@ -63,6 +63,8 @@ type StubLog = {
   createdAt: Timestamp;
   groupId: bigint;
   counterAccountId: bigint;
+  /** Root or the System Administrator moved it from outside the team (`is_override`); absent reads false. */
+  isOverride?: boolean;
 };
 
 // The signed-in person every hand row is recorded under — the stub's CheckAccess answers Ani.
@@ -152,6 +154,17 @@ export function archiveAccountForStory(accountId: bigint) {
 }
 
 /**
+ * For a story: who made log row `logId`, and whether it was Root or the System Administrator from outside the team —
+ * served as `is_override`, the "by Root team" badge beside "by hand · <name>".
+ */
+export function accountLogByForStory(logId: bigint, actorId: bigint, isOverride: boolean) {
+  const row = logs.find((l) => l.id === logId);
+  if (!row) throw new Error(`no account log ${logId} in the stub`);
+  row.actorId = actorId;
+  row.isOverride = isOverride;
+}
+
+/**
  * Whether an account may pay a warehouse transfer's shipping — the team's own and ACTIVE, operational or not
  * (a-transfers-shipping-is-paid-from-any-active-account; inventory_v1 `checkActive`). `null` when it may; else the
  * server's FailedPrecondition sentence. Another team's account reads as one that never existed.
@@ -222,6 +235,7 @@ function wireLog(l: StubLog) {
     createdAt: l.createdAt,
     groupId: l.groupId,
     counterAccountId: l.counterAccountId,
+    isOverride: l.isOverride ?? false,
   };
 }
 

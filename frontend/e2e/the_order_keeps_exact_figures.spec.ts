@@ -140,6 +140,12 @@ test("Exact: a warehouse holding one unit at Rp 12.666,99, a 2,5% fee, and a sho
     feePercent: FEE_PERCENT,
     minFee: 0,
   });
+  // Root's team returns to this warehouse — order create refuses a team that has none
+  // (create-refuses-a-team-with-no-return-warehouse).
+  await rpc(page, "selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationSet", {
+    teamId: "1",
+    warehouseId: state.warehouse,
+  });
 
   const shop = await rpc<{ shop: { id: string } }>(page, "selling.v1.ShopService/ShopCreate", {
     teamId: "1",

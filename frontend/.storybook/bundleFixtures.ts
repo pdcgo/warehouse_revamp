@@ -20,6 +20,8 @@ export interface BundleFixture {
   name: string;
   description: string;
   createdByUserId: bigint;
+  /** Made by Root or the System Administrator from outside the team (`is_override`); absent reads false. */
+  isOverride?: boolean;
   createdAtUnix: bigint;
   updatedAtUnix: bigint;
   lines: { productId: bigint; quantity: number }[];

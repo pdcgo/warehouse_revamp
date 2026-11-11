@@ -170,6 +170,11 @@ test("setup: a seller, its warehouse with stock, the crew, a monitor, three orde
     lines: [{ itemId: restock.request.items[0].id, receivedCount: 10, placements: [{ placementId: rack, quantity: 10 }] }],
   });
   await ok(page, "warehouse.v1.WarehouseFeeService/WarehouseFeeSet", { teamId: state.warehouse, feePercent: 1, minFee: 0 });
+  // The seller's return warehouse — order create refuses a team that has none (create-refuses-a-team-with-no-return-warehouse).
+  await ok(page, "selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationSet", {
+    teamId: state.seller,
+    warehouseId: state.warehouse,
+  });
 
   // THE CREW: a STAFF member of the warehouse. THE MONITOR: an admin team's owner, a member of no warehouse.
   await ok(page, "user.v1.UserService/CreateUser", {

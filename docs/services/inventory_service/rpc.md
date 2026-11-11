@@ -1339,7 +1339,10 @@ every product with a batch in this warehouse — any team's, archived ones flagg
 and its units on hand here, searched by name or product code on the server, paged. A product emptied to 0 stays listed, so
 it can still be found and adjusted. It replaced `ProductList` scoped to the warehouse (the warehouse TEAM's own catalogue —
 always empty for a real warehouse) joined client-side to a fixed page of `StockList`; on a warehouse's Products it replaced
-`WarehouseProductList` (what the warehouse was ASKED to hold) resolved through `ProductByIds` — which no screen calls now. **Built 2026-11-04**:
+`WarehouseProductList` (what the warehouse was ASKED to hold) resolved through `ProductByIds` — an RPC no screen called
+afterwards, DELETED 2026-11-11 ([warehouse-product-list-is-deleted](../../business/inventory/context_decision.md#warehouse-product-list-is-deleted)):
+the rpc is gone, its request and response are empty tombstones in `inventory.proto` whose field numbers and names are
+`reserved`, and the `warehouse_products` arrangement a restock or a transfer writes stays — `ProductHistory` still reads it. **Built 2026-11-04**:
 [inventory.proto](../../../proto/warehouse/inventory/v1/inventory.proto), `inventory_v1/warehouse_stock_list.go`. State:
 [opname.md](../../development_state/inventory/opname.md#the-stock-screen-lists-what-the-warehouse-has-held--built).
 
@@ -1597,3 +1600,21 @@ sequenceDiagram
 | after, never inside | an event for an accept that rolled back would fold goods that never arrived |
 | a failed publish | logged; the supplier's figures are short that restock until a replay or an adjustment — never wrong the other way (no-outbox-the-publish-is-trusted) |
 | `RestockAcceptedEvent` | the pure builder, exported — `san supplier backfill-figures` builds the very same event for a restock accepted before it existed |
+
+## The override stamp on the reads — the "by Root team" badge (built 2026-11-11)
+
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge), accepted as
+[the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team):
+every read a screen names a person from now carries the record's own `is_override` (stamped at the write by
+`san_auth.IsOverride`, [an-override-is-stamped-in-every-service](../../business/user/context_decision.md#an-override-is-stamped-in-every-service)),
+and the screen draws the shared `ActorName` / `RootTeamBadge` beside the person. Never sent by a caller; a row from
+before the column reads false.
+
+| read | field | read from | performance |
+| --- | --- | --- | --- |
+| `StockHistory`, `RackHistory` (and `StockAdjust`) | `StockMovement.is_override` (13) | `inventory_transactions.is_override` of the log row's `transaction_id` — a correlated primary-key probe in the select list, beside `refExpr`'s two | one PK probe per row the query walks: 300k placement logs / 100k transactions, a 50-row page 0.039 → 0.110 ms at offset 0, 0.84 → 6.05 ms at offset 5 000 (the probe runs for the skipped rows too, as `refExpr` already does) — under every audit threshold |
+| `OwnerStockHistory` | `OwnerMovement.is_override` (13) | the same probe by `movement_id`, applied OUTSIDE the running-balance window on the page only (`SELECT p.*, … FROM (… LIMIT ? OFFSET ?) p`) | ≤ one PK probe per returned row |
+| `RestockRequestDetail` (and the restock writes) | `RestockLog.is_override` (7) | `restock_logs.is_override`, the preloaded trail row | nil |
+| `WarehouseTransferDetail` (and the transfer writes) | `WarehouseTransferLog.is_override` (7) | `warehouse_transfer_logs.is_override`, the preloaded trail row | nil |
+
+A row with no actor (a take's release rows under the take's transaction) still reads its transaction's flag, but the screen draws no name and so no badge for actor 0.

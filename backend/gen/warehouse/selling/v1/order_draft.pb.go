@@ -306,7 +306,11 @@ type OrderDraft struct {
 	// list's own names, its kode pos; `address_line` empty. Unset when they match none or several, or a level is empty:
 	// the form's dropdowns then open empty and the person picks, reading `address` as text. OrderDraftDetail only, worked
 	// out on every read and never stored — the draft keeps names (an-address-is-plain-names).
-	RegionMatch   *OrderAddress `protobuf:"bytes,24,opt,name=region_match,json=regionMatch,proto3" json:"region_match,omitempty"`
+	RegionMatch *OrderAddress `protobuf:"bytes,24,opt,name=region_match,json=regionMatch,proto3" json:"region_match,omitempty"`
+	// THE LAST PUSH WAS AN OVERRIDE — `author_user_id` is Root or the System Administrator and pushed it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `order_drafts.is_override`, which follows the push.
+	IsOverride    bool `protobuf:"varint,25,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -486,6 +490,13 @@ func (x *OrderDraft) GetRegionMatch() *OrderAddress {
 		return x.RegionMatch
 	}
 	return nil
+}
+
+func (x *OrderDraft) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type OrderDraftListRequest struct {
@@ -2071,7 +2082,7 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\bquantity\x18\x05 \x01(\rR\bquantity\x12\x1d\n" +
 	"\n" +
 	"unit_price\x18\x06 \x01(\x01R\tunitPriceJ\x04\b\x04\x10\x05R\n" +
-	"product_id\"\xb6\a\n" +
+	"product_id\"\xd7\a\n" +
 	"\n" +
 	"OrderDraft\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
@@ -2097,7 +2108,9 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\x0ebuyer_username\x18\x15 \x01(\tR\rbuyerUsername\x12%\n" +
 	"\x0eplatform_total\x18\x16 \x01(\x01R\rplatformTotal\x12.\n" +
 	"\x13shipment_channel_id\x18\x17 \x01(\x04R\x11shipmentChannelId\x12E\n" +
-	"\fregion_match\x18\x18 \x01(\v2\".warehouse.selling.v1.OrderAddressR\vregionMatchJ\x04\b\f\x10\rJ\x04\b\r\x10\x0eJ\x04\b\x12\x10\x13R\rshipping_codeR\rshipping_costR\x13unmapped_item_count\"\xe6\x02\n" +
+	"\fregion_match\x18\x18 \x01(\v2\".warehouse.selling.v1.OrderAddressR\vregionMatch\x12\x1f\n" +
+	"\vis_override\x18\x19 \x01(\bR\n" +
+	"isOverrideJ\x04\b\f\x10\rJ\x04\b\r\x10\x0eJ\x04\b\x12\x10\x13R\rshipping_codeR\rshipping_costR\x13unmapped_item_count\"\xe6\x02\n" +
 	"\x15OrderDraftListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12B\n" +
 	"\x06filter\x18\x02 \x01(\v2*.warehouse.selling.v1.OrderDraftListFilterR\x06filter\x12B\n" +

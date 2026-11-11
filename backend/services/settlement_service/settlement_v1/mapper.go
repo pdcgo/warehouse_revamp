@@ -97,6 +97,8 @@ func entryToProto(
 		Note:           log.Note,
 		ActorName:      actorName,
 		UserId:         log.UserID,
+		// The "by Root team" badge beside the actor (an-override-shows-a-platform-badge).
+		IsOverride: log.IsOverride,
 	}
 
 	if log.ReversesID != nil {

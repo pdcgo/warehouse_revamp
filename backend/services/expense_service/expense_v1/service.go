@@ -156,6 +156,7 @@ func costToProto(c *expense_service_models.ExpenseRecord, net float64) *expensev
 		AdjustsExpenseId: c.AdjustsExpenseID,
 		NetAmount:        net,
 		FinanceAccountId: c.FinanceAccountID,
+		IsOverride:       c.IsOverride,
 	}
 }
 

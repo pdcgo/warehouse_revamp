@@ -133,6 +133,8 @@ test("Count: a cancel is refused naming the count, and goes through once the cou
 
   // The warehouse takes orders only with a rate (a-warehouse-with-no-rate-takes-no-orders).
   await rpc(page, "warehouse.v1.WarehouseFeeService/WarehouseFeeSet", { teamId: wh, feePercent: 1, minFee: 0 });
+  // The seller's return warehouse — order create refuses a team that has none (create-refuses-a-team-with-no-return-warehouse).
+  await rpc(page, "selling.v1.TeamReturnConfigurationService/TeamReturnConfigurationSet", { teamId: seller, warehouseId: wh });
 
   const shop = await rpc<{ shop: { id: string } }>(page, "selling.v1.ShopService/ShopCreate", {
     teamId: seller,

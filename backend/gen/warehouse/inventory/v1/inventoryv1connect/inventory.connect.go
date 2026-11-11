@@ -54,9 +54,6 @@ const (
 	// InventoryServiceStockTakeQuoteProcedure is the fully-qualified name of the InventoryService's
 	// StockTakeQuote RPC.
 	InventoryServiceStockTakeQuoteProcedure = "/warehouse.inventory.v1.InventoryService/StockTakeQuote"
-	// InventoryServiceWarehouseProductListProcedure is the fully-qualified name of the
-	// InventoryService's WarehouseProductList RPC.
-	InventoryServiceWarehouseProductListProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductList"
 	// InventoryServiceWarehouseProductSearchProcedure is the fully-qualified name of the
 	// InventoryService's WarehouseProductSearch RPC.
 	InventoryServiceWarehouseProductSearchProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductSearch"
@@ -132,8 +129,6 @@ type InventoryServiceClient interface {
 	// owner's batches oldest first, their cost, and whether there are enough — the take's own selection, read-only, so
 	// the order form's preview and the cost the order freezes cannot be two rules.
 	StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error)
-	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
-	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
 	// The WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
 	// a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
 	// product code. Inventory knows what has been here; product_service names and searches it.
@@ -245,13 +240,6 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+InventoryServiceStockTakeQuoteProcedure,
 			connect.WithSchema(inventoryServiceMethods.ByName("StockTakeQuote")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		warehouseProductList: connect.NewClient[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse](
-			httpClient,
-			baseURL+InventoryServiceWarehouseProductListProcedure,
-			connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -386,7 +374,6 @@ type inventoryServiceClient struct {
 	stockedProductList     *connect.Client[v1.StockedProductListRequest, v1.StockedProductListResponse]
 	stockCost              *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
 	stockTakeQuote         *connect.Client[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse]
-	warehouseProductList   *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
 	warehouseProductSearch *connect.Client[v1.WarehouseProductSearchRequest, v1.WarehouseProductSearchResponse]
 	warehouseStockList     *connect.Client[v1.WarehouseStockListRequest, v1.WarehouseStockListResponse]
 	productPlaces          *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
@@ -439,11 +426,6 @@ func (c *inventoryServiceClient) StockCost(ctx context.Context, req *connect.Req
 // StockTakeQuote calls warehouse.inventory.v1.InventoryService.StockTakeQuote.
 func (c *inventoryServiceClient) StockTakeQuote(ctx context.Context, req *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error) {
 	return c.stockTakeQuote.CallUnary(ctx, req)
-}
-
-// WarehouseProductList calls warehouse.inventory.v1.InventoryService.WarehouseProductList.
-func (c *inventoryServiceClient) WarehouseProductList(ctx context.Context, req *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {
-	return c.warehouseProductList.CallUnary(ctx, req)
 }
 
 // WarehouseProductSearch calls warehouse.inventory.v1.InventoryService.WarehouseProductSearch.
@@ -554,8 +536,6 @@ type InventoryServiceHandler interface {
 	// owner's batches oldest first, their cost, and whether there are enough — the take's own selection, read-only, so
 	// the order form's preview and the cost the order freezes cannot be two rules.
 	StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error)
-	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
-	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
 	// The WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
 	// a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
 	// product code. Inventory knows what has been here; product_service names and searches it.
@@ -663,13 +643,6 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		InventoryServiceStockTakeQuoteProcedure,
 		svc.StockTakeQuote,
 		connect.WithSchema(inventoryServiceMethods.ByName("StockTakeQuote")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	inventoryServiceWarehouseProductListHandler := connect.NewUnaryHandler(
-		InventoryServiceWarehouseProductListProcedure,
-		svc.WarehouseProductList,
-		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -808,8 +781,6 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockCostHandler.ServeHTTP(w, r)
 		case InventoryServiceStockTakeQuoteProcedure:
 			inventoryServiceStockTakeQuoteHandler.ServeHTTP(w, r)
-		case InventoryServiceWarehouseProductListProcedure:
-			inventoryServiceWarehouseProductListHandler.ServeHTTP(w, r)
 		case InventoryServiceWarehouseProductSearchProcedure:
 			inventoryServiceWarehouseProductSearchHandler.ServeHTTP(w, r)
 		case InventoryServiceWarehouseStockListProcedure:
@@ -879,10 +850,6 @@ func (UnimplementedInventoryServiceHandler) StockCost(context.Context, *connect.
 
 func (UnimplementedInventoryServiceHandler) StockTakeQuote(context.Context, *connect.Request[v1.StockTakeQuoteRequest]) (*connect.Response[v1.StockTakeQuoteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockTakeQuote is not implemented"))
-}
-
-func (UnimplementedInventoryServiceHandler) WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseProductList is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) WarehouseProductSearch(context.Context, *connect.Request[v1.WarehouseProductSearchRequest]) (*connect.Response[v1.WarehouseProductSearchResponse], error) {

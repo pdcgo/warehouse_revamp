@@ -202,7 +202,7 @@ func (s *Service) requireReturnWarehouse(ctx context.Context, sellingTeamID, acc
 	if returnWarehouse != acceptingID {
 		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
 			"this return goes to %s — only the selling team's return warehouse accepts it; the parcel waits here until "+
-				"it is carried there", s.teamName(ctx, returnWarehouse)))
+				"it is carried there", s.teamName(ctx, returnWarehouse, "warehouse")))
 	}
 
 	return nil

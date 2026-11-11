@@ -10,6 +10,7 @@ import { useIsMobile } from "../../../layouts/shell";
 import { formatUnixDate } from "../../../lib/datetime";
 import { AccountLogDetailDialog } from "./AccountLogDetailDialog";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
+import { ActorName } from "../../../components/entity/ActorName";
 
 // A ROW LIGHTS UP UNDER THE POINTER (owner: *"hoverable juga"*, `a-statement-row-lights-up`) — as the report's table
 // does: set on every cell, by Chakra's `_hover`, which a story can drive with `data-hover`.
@@ -144,9 +145,17 @@ export function AccountLogTable({
                   <Stack gap="0">
                     <Text fontSize="sm">{describe(log.description)}</Text>
                     <Text fontSize="xs" color="fg.muted" data-testid={`account-log-way-${log.id}`}>
-                      {byHand
-                        ? t("financialAccounts.log.byHand", { name: actorName(log.actorId) })
-                        : t("financialAccounts.log.automatic")}
+                      {/* A hand row Root or the System Administrator made from outside the team carries the "by Root
+                          team" badge beside the person (an-override-shows-a-platform-badge). */}
+                      {byHand ? (
+                        <ActorName
+                          name={t("financialAccounts.log.byHand", { name: actorName(log.actorId) })}
+                          isOverride={log.isOverride}
+                          size="xs"
+                        />
+                      ) : (
+                        t("financialAccounts.log.automatic")
+                      )}
                     </Text>
                   </Stack>
                 </Table.Cell>

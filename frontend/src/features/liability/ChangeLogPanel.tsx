@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Box, Flex, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Flex, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowRight, History } from "lucide-react";
 
 import { rpcError, userClient } from "../../api/clients";
@@ -13,6 +13,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { formatRupiah, isZeroRupiah, type Rupiah } from "../../lib/money";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ActorName } from "../../components/entity/ActorName";
 
 const PAGE_SIZE = 10;
 
@@ -124,15 +125,16 @@ export function ChangeLogPanel({
                         <Icon as={ArrowRight} boxSize="3" mx="2" color="fg.subtle" />
                         <LimitText limit={c.newCreditLimit} />
                       </Text>
-                      {c.override && (
-                        <Badge colorPalette="purple" data-testid={`terms-override-${c.id}`}>
-                          {t("terms.override")}
-                        </Badge>
-                      )}
                     </Flex>
-                    <Text fontSize="xs" color="fg.muted" mt="0.5" lineClamp={1}>
+                    {/* The person with the shared "by Root team" badge on an override — the log's own purple mark moved
+                        to it (the-override-badge-is-accepted-as-by-root-team). */}
+                    <Text fontSize="xs" color="fg.muted" mt="0.5">
                       {formatUnixDateTimeShort(c.changedAtUnix)} ·{" "}
-                      {personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
+                      <ActorName
+                        name={personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
+                        isOverride={c.override}
+                        size="xs"
+                      />
                     </Text>
                     {c.reason && (
                       <Text fontSize="sm" mt="0.5">
@@ -165,16 +167,12 @@ export function ChangeLogPanel({
                       {formatUnixDateTimeShort(c.changedAtUnix)}
                     </Table.Cell>
                     <Table.Cell>
-                      <Text as="span">
-                        {personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
-                      </Text>
-                      {/* An override is a write by somebody outside the creditor team. It is
-                          derived by the server from who acted — never claimed by the caller. */}
-                      {c.override && (
-                        <Badge colorPalette="purple" ml="2" data-testid={`terms-override-${c.id}`}>
-                          {t("terms.override")}
-                        </Badge>
-                      )}
+                      {/* An override is a write by somebody outside the creditor team, derived by the server from who
+                          acted — never claimed by the caller. It shows as the shared "by Root team" badge. */}
+                      <ActorName
+                        name={personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
+                        isOverride={c.override}
+                      />
                     </Table.Cell>
                     {counterpartyId === undefined && (
                       <Table.Cell>

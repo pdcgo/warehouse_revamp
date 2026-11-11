@@ -64,12 +64,9 @@ service InventoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  // The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
-  rpc WarehouseProductList(WarehouseProductListRequest) returns (WarehouseProductListResponse) {
-    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
-    // the-admin-team-monitors-read-only).
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
+  // `WarehouseProductList` (what a warehouse was ASKED to hold, #142) is DELETED (warehouse-product-list-is-deleted):
+  // nothing called it once a warehouse's Products became what it holds (WarehouseProductSearch, WarehouseStockList).
+  // Its NAME is reserved — never add an rpc by that name; its request and response below keep only `reserved` lines.
 
   // The WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
   // a count's found: the products with a batch in this warehouse, any team's, at 0 today or not, searched by name or
@@ -272,6 +269,11 @@ message StockMovement {
   // Which batch moved (#209). 0 = a batch-less event — a shelf recount reconciles the whole shelf and
   // shows Batch "—" (#211), even though its delta lands on the oldest batch underneath (FIFO).
   uint64 batch_id = 12;
+
+  // THE MOVE WAS AN OVERRIDE — its inventory transaction's creator was Root or the System Administrator acting inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `inventory_transactions.is_override` of the row's transaction; false for a row under no transaction.
+  bool is_override = 13;
 }
 
 // -------------------------------------------------------------------------- reads
@@ -796,47 +798,19 @@ message StockPickLocationsResponse {
   repeated StockPickLocation locations = 1;
 }
 
-// WarehouseProductList — the products THIS WAREHOUSE HANDLES (#142).
-//
-// A warehouse must not see the whole catalogue. It holds no products of its own — products belong to
-// selling teams — so the ordinary team-scoped ProductList shows a warehouse team nothing useful. What
-// it should see is what somebody has asked it to hold, which today means the products named on a
-// restock request sent to it (owner, 2026-07-20).
+// WarehouseProductList — DELETED (warehouse-product-list-is-deleted). The RPC listed what a warehouse was ASKED to
+// hold (the `warehouse_products` arrangement a restock or a transfer writes, which stays); no screen called it once a
+// warehouse's Products became what it holds. Protobuf cannot reserve a service method or a message NAME, so the two
+// messages stay as empty tombstones: their names cannot be defined again, and every field number and name they had is
+// reserved. Its `WarehouseProductListDataType` enum and `WarehouseProductListResponseItem` are gone with it.
 message WarehouseProductListRequest {
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN,
-      ROLE_WAREHOUSE_STAFF
-    ]
-  };
-  uint64 warehouse_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-  repeated WarehouseProductListDataType data_request = 2;
-  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
-}
-
-// WarehouseProductList returns opaque product ids; the only slice is GENERAL (id only). Callers
-// resolve names via ProductByIds.
-enum WarehouseProductListDataType {
-  WAREHOUSE_PRODUCT_LIST_DATA_TYPE_UNSPECIFIED = 0;
-  WAREHOUSE_PRODUCT_LIST_DATA_TYPE_GENERAL = 1;
-}
-
-message WarehouseProductListResponseItem {
-  oneof d {
-    warehouse.common.v1.GeneralMapItem general = 1;
-  }
+  reserved 1, 2, 3;
+  reserved "warehouse_id", "data_request", "page";
 }
 
 message WarehouseProductListResponse {
-  repeated WarehouseProductListResponseItem items = 1;
-  repeated uint64 ids = 2;
-  warehouse.common.v1.PageInfo page_info = 3;
+  reserved 1, 2, 3;
+  reserved "items", "ids", "page_info";
 }
 
 // WarehouseProductSearch — a warehouse picks ONLY what it has held (a-warehouse-picks-only-what-it-has-held).
@@ -1746,6 +1720,8 @@ message OwnerMovement {
   string ref = 10;
   uint64 actor_user_id = 11;
   int64 created_at_unix = 12;
+  // THE MOVE WAS AN OVERRIDE — as StockMovement.is_override: `inventory_transactions.is_override` of `movement_id`.
+  bool is_override = 13;
 }
 
 message OwnerStockHistoryFilter {

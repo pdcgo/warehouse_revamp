@@ -23,6 +23,7 @@ import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { useTransferActors } from "./queries";
 import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseTransferStatusBadge";
 import { UserItem } from "../../components/entity/UserItem";
+import { RootTeamBadge } from "../../components/entity/ActorName";
 import { formatUnixDateTime } from "../../lib/datetime";
 
 // THE TRAIL — `transfer.logs`, oldest first (every-transfer-status-change-is-logged). People from three teams move one
@@ -129,6 +130,9 @@ function LogStep({ log, actor }: { log: WarehouseTransferLog; actor?: PublicUser
               </Text>
             )
           )}
+          {/* A step Root or the System Administrator took from outside the team: the shared "by Root team" badge right
+              after the person (an-override-shows-a-platform-badge). */}
+          {(actor || fallback) && log.isOverride && <RootTeamBadge />}
           {(actor || fallback) && <Separator orientation="vertical" height="auto" alignSelf="stretch" />}
 
           <Stack gap="1" minW="0" flex="1">

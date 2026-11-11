@@ -266,8 +266,12 @@ type ExpenseRecord struct {
 	// original did (a-correction-follows-the-expenses-account), so an old expense's corrections name none either.
 	// The account's NAME is the screen's own read (FinancialAccountByIds), as on a restock.
 	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// THE TYPIST WAS AN OVERRIDE — `created_by` is Root or the System Administrator, who recorded it inside a team they
+	// hold no role in (an-override-is-stamped-in-every-service); the Expenses screen's Recorded by shows the shared
+	// "by Root team" badge beside the person (an-override-shows-a-platform-badge). From `expense_records.is_override`.
+	IsOverride    bool `protobuf:"varint,14,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExpenseRecord) Reset() {
@@ -382,6 +386,13 @@ func (x *ExpenseRecord) GetFinanceAccountId() uint64 {
 		return x.FinanceAccountId
 	}
 	return 0
+}
+
+func (x *ExpenseRecord) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type ExpenseCreateRequest struct {
@@ -853,8 +864,12 @@ type ExpenseRowItem struct {
 	// As on ExpenseRecord: the account that paid; 0 on an expense made before Paid from; an adjustment carries its
 	// expense's.
 	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// THE TYPIST WAS AN OVERRIDE — `created_by` is Root or the System Administrator and recorded it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `expense_records.is_override` — the row's own typist, an adjustment's too.
+	IsOverride    bool `protobuf:"varint,14,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExpenseRowItem) Reset() {
@@ -969,6 +984,13 @@ func (x *ExpenseRowItem) GetFinanceAccountId() uint64 {
 		return x.FinanceAccountId
 	}
 	return 0
+}
+
+func (x *ExpenseRowItem) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 type ExpenseRowMapItem struct {
@@ -1581,7 +1603,7 @@ var File_warehouse_expense_v1_expense_proto protoreflect.FileDescriptor
 
 const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xa5\x03\n" +
+	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xc6\x03\n" +
 	"\rExpenseRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1598,7 +1620,9 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
 	"\n" +
 	"net_amount\x18\f \x01(\x01R\tnetAmount\x12,\n" +
-	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountIdJ\x04\b\t\x10\n" +
+	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountId\x12\x1f\n" +
+	"\vis_override\x18\x0e \x01(\bR\n" +
+	"isOverrideJ\x04\b\t\x10\n" +
 	"R\x06voided\"\xd5\x03\n" +
 	"\x14ExpenseCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\xac\x01\n" +
@@ -1639,7 +1663,7 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\aby_kind\x18\x02 \x03(\v2/.warehouse.expense.v1.ExpenseTotals.ByKindEntryR\x06byKind\x1a9\n" +
 	"\vByKindEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xa6\x03\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xc7\x03\n" +
 	"\x0eExpenseRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1656,7 +1680,9 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x12adjusts_expense_id\x18\v \x01(\x04R\x10adjustsExpenseId\x12\x1d\n" +
 	"\n" +
 	"net_amount\x18\f \x01(\x01R\tnetAmount\x12,\n" +
-	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountIdJ\x04\b\t\x10\n" +
+	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountId\x12\x1f\n" +
+	"\vis_override\x18\x0e \x01(\bR\n" +
+	"isOverrideJ\x04\b\t\x10\n" +
 	"R\x06voided\"\xc6\x01\n" +
 	"\x11ExpenseRowMapItem\x12O\n" +
 	"\bmap_data\x18\x01 \x03(\v24.warehouse.expense.v1.ExpenseRowMapItem.MapDataEntryR\amapData\x1a`\n" +

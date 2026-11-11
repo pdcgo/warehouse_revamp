@@ -22,6 +22,7 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useOrder } from "../../features/orders/queries";
 import { useProductsByIds } from "../../features/products/queries";
 import { useActors } from "../../features/users/queries";
+import { ActorName } from "../../components/entity/ActorName";
 import { useTeams } from "../../features/teams/queries";
 import { useShopOptions } from "../../features/shops/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
@@ -428,14 +429,24 @@ export function SellerOrderDetailPage() {
           items={[...steps].reverse().map((log) => {
             const who = personName(actors.data?.get(log.actorId.toString()));
             const fromKey = timelineFromKey(log.from);
+            const when = [formatUnixDateTime(log.createdAtUnix), fromKey ? t(fromKey) : ""].filter(Boolean).join(" · ");
 
             return {
               key: log.id.toString(),
               testId: `order-timeline-${timelineSlug(log)}`,
               title: t(timelineTitleKey(log, steps.indexOf(log))),
-              meta: [formatUnixDateTime(log.createdAtUnix), fromKey ? t(fromKey) : "", who, log.note]
-                .filter(Boolean)
-                .join(" · "),
+              // When · from · who · note — the person drawn by the shared ActorName, so a row Root or the System
+              // Administrator wrote from outside the team carries the "by Root team" badge (an-override-shows-a-platform-badge).
+              meta: who ? (
+                <>
+                  {when}
+                  {when ? " · " : ""}
+                  <ActorName name={who} isOverride={log.isOverride} size="xs" />
+                  {log.note ? ` · ${log.note}` : ""}
+                </>
+              ) : (
+                [when, log.note].filter(Boolean).join(" · ")
+              ),
             };
           })}
         />

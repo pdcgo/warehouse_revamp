@@ -201,6 +201,10 @@ message RestockLog {
   // Why, or what changed — "Kaos Hitam 10 → 12, extra stock".
   string description = 5;
   int64 at_unix = 6;
+  // THIS ROW'S ACTOR WAS AN OVERRIDE — Root or the System Administrator wrote it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `restock_logs.is_override`.
+  bool is_override = 7;
 }
 
 message RestockRequest {

@@ -55,6 +55,7 @@ import {
 } from "../../features/orders/OrderRowCells";
 import { deadlineUrgency, hoursFromNow, orderDeadline, orderPlatformDate } from "../../features/orders/deadline";
 import { useTypists } from "../../features/orders/typists";
+import { ActorName, RootTeamBadge } from "../../components/entity/ActorName";
 import { NO_SHOPS, useShopsByIds, type ShopNames } from "../../features/shops/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTimeShort, formatUnixRelative } from "../../lib/datetime";
@@ -580,7 +581,11 @@ export function PickQueuePage() {
                                 <SelectBox id={order.id} checked={selected.has(String(order.id))} onToggle={() => toggle(order.id)} />
                               </Table.Cell>
                               <Table.Cell>
-                                <PersonTeamCell person={typistOf(order.createdByUserId)} team={teamName(order.teamId)} />
+                                <PersonTeamCell
+                                  person={typistOf(order.createdByUserId)}
+                                  team={teamName(order.teamId)}
+                                  mark={order.isOverride ? <RootTeamBadge size="xs" /> : undefined}
+                                />
                               </Table.Cell>
                               <Table.Cell>
                                 <ShopRefCell shop={facts.shop} orderRefId={order.orderExternalRefId} />
@@ -778,8 +783,9 @@ function OrderBlock({
         </Flex>
         <Flex align="center" gap="1" wrap="wrap">
           <Text fontSize="xs" color="fg.muted">
-            {typist || "—"} · {team} · {formatUnixDateTimeShort(order.createdAtUnix)} (
-            {formatUnixRelative(order.createdAtUnix)})
+            {/* Who typed it in — with the "by Root team" badge when Root placed it from outside the team. */}
+            <ActorName name={typist || "—"} isOverride={order.isOverride && typist !== ""} size="xs" /> · {team} ·{" "}
+            {formatUnixDateTimeShort(order.createdAtUnix)} ({formatUnixRelative(order.createdAtUnix)})
           </Text>
         </Flex>
         {facts.mpCreated !== undefined && (

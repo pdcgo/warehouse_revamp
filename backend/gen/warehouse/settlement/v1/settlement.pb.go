@@ -456,7 +456,11 @@ type SettlementEntry struct {
 	// WHO THE PER-USER REPORT COUNTS THIS ROW FOR, when it is not the actor — the shop's primary CS on an
 	// IMPORTED SHOP ROW, asked of the shop by settlement itself (#settlement-asks-the-shop-for-its-primary-cs).
 	// 0 on every other row: an order row counts for its creator, a hand-posted shop row for its actor.
-	UserId        uint64 `protobuf:"varint,16,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId uint64 `protobuf:"varint,16,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// THE ACTOR WAS AN OVERRIDE — `actor_id` is Root or the System Administrator and posted it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From `settlement_logs.is_override`; an order event's row carries the act's own flag.
+	IsOverride    bool `protobuf:"varint,17,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -601,6 +605,13 @@ func (x *SettlementEntry) GetUserId() uint64 {
 		return x.UserId
 	}
 	return 0
+}
+
+func (x *SettlementEntry) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 // The state row — a PROJECTION of the log, recomputable from it alone.
@@ -1610,8 +1621,12 @@ type ShopEntryStatement struct {
 	// Who uploaded the file, and their name.
 	UploadedByUserId uint64 `protobuf:"varint,10,opt,name=uploaded_by_user_id,json=uploadedByUserId,proto3" json:"uploaded_by_user_id,omitempty"`
 	UploadedByName   string `protobuf:"bytes,11,opt,name=uploaded_by_name,json=uploadedByName,proto3" json:"uploaded_by_name,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// THE UPLOAD WAS AN OVERRIDE — the uploader is Root or the System Administrator and uploaded it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+	// From the file's `uploaded_files.is_override`, asked of the importer with the line.
+	UploadedByIsOverride bool `protobuf:"varint,12,opt,name=uploaded_by_is_override,json=uploadedByIsOverride,proto3" json:"uploaded_by_is_override,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ShopEntryStatement) Reset() {
@@ -1719,6 +1734,13 @@ func (x *ShopEntryStatement) GetUploadedByName() string {
 		return x.UploadedByName
 	}
 	return ""
+}
+
+func (x *ShopEntryStatement) GetUploadedByIsOverride() bool {
+	if x != nil {
+		return x.UploadedByIsOverride
+	}
+	return false
 }
 
 type ShopSettlementEntry struct {
@@ -2194,7 +2216,7 @@ var File_warehouse_settlement_v1_settlement_proto protoreflect.FileDescriptor
 
 const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\n" +
-	"(warehouse/settlement/v1/settlement.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a*warehouse/marketplace/v1/marketplace.proto\x1a!warehouse/role_base/v1/role.proto\"\x9b\x04\n" +
+	"(warehouse/settlement/v1/settlement.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a*warehouse/marketplace/v1/marketplace.proto\x1a!warehouse/role_base/v1/role.proto\"\xbc\x04\n" +
 	"\x0fSettlementEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1b\n" +
 	"\tunique_id\x18\x02 \x01(\tR\buniqueId\x12\x19\n" +
@@ -2216,7 +2238,9 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x04note\x18\x0e \x01(\tR\x04note\x12\x1d\n" +
 	"\n" +
 	"actor_name\x18\x0f \x01(\tR\tactorName\x12\x17\n" +
-	"\auser_id\x18\x10 \x01(\x04R\x06userId\"\xd3\x01\n" +
+	"\auser_id\x18\x10 \x01(\x04R\x06userId\x12\x1f\n" +
+	"\vis_override\x18\x11 \x01(\bR\n" +
+	"isOverride\"\xd3\x01\n" +
 	"\x0fOrderSettlement\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12#\n" +
 	"\rinitial_total\x18\x02 \x01(\x01R\finitialTotal\x12!\n" +
@@ -2303,7 +2327,7 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x06filter\x18\x02 \x01(\v26.warehouse.settlement.v1.ShopSettlementEntryListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12[\n" +
 	"\fdata_request\x18\x03 \x03(\x0e28.warehouse.settlement.v1.ShopSettlementEntryListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"\xe0\x03\n" +
+	"\x05\x01\x02\x03\x04\x05\"\x97\x04\n" +
 	"\x12ShopEntryStatement\x12(\n" +
 	"\x10uploaded_file_id\x18\x01 \x01(\x04R\x0euploadedFileId\x12A\n" +
 	"\bplatform\x18\x02 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceR\bplatform\x12\x1f\n" +
@@ -2317,7 +2341,8 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x0ffound_order_ids\x18\t \x03(\x04R\rfoundOrderIds\x12-\n" +
 	"\x13uploaded_by_user_id\x18\n" +
 	" \x01(\x04R\x10uploadedByUserId\x12(\n" +
-	"\x10uploaded_by_name\x18\v \x01(\tR\x0euploadedByName\"\xc6\x01\n" +
+	"\x10uploaded_by_name\x18\v \x01(\tR\x0euploadedByName\x125\n" +
+	"\x17uploaded_by_is_override\x18\f \x01(\bR\x14uploadedByIsOverride\"\xc6\x01\n" +
 	"\x13ShopSettlementEntry\x12>\n" +
 	"\x05entry\x18\x01 \x01(\v2(.warehouse.settlement.v1.SettlementEntryR\x05entry\x12$\n" +
 	"\x0ereversed_by_id\x18\x02 \x01(\x04R\freversedById\x12I\n" +

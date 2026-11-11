@@ -218,6 +218,11 @@ message SettlementEntry {
   // IMPORTED SHOP ROW, asked of the shop by settlement itself (#settlement-asks-the-shop-for-its-primary-cs).
   // 0 on every other row: an order row counts for its creator, a hand-posted shop row for its actor.
   uint64 user_id = 16;
+
+  // THE ACTOR WAS AN OVERRIDE — `actor_id` is Root or the System Administrator and posted it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From `settlement_logs.is_override`; an order event's row carries the act's own flag.
+  bool is_override = 17;
 }
 
 // The state row — a PROJECTION of the log, recomputable from it alone.
@@ -561,6 +566,10 @@ message ShopEntryStatement {
   // Who uploaded the file, and their name.
   uint64 uploaded_by_user_id = 10;
   string uploaded_by_name = 11;
+  // THE UPLOAD WAS AN OVERRIDE — the uploader is Root or the System Administrator and uploaded it inside a team they hold no role in (an-override-is-stamped-in-every-service);
+  // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
+  // From the file's `uploaded_files.is_override`, asked of the importer with the line.
+  bool uploaded_by_is_override = 12;
 }
 
 message ShopSettlementEntry {

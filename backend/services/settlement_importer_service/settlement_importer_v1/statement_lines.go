@@ -28,6 +28,8 @@ type StatementLineSource struct {
 	Reason        string
 	FoundOrderIDs []uint64
 	UploadedBy    uint64
+	// The upload was an override (uploaded_files.is_override) — the "by Root team" badge beside the uploader.
+	UploadedByIsOverride bool
 }
 
 // StatementLinesBySettlementLogIds is an IN-PROCESS read — settlement's Shop Entries asks it through the composition
@@ -53,7 +55,7 @@ func (s *Service) StatementLinesBySettlementLogIds(
 		Select(
 			"DISTINCT ON (l.settlement_log_id) l.settlement_log_id, l.uploaded_file_id, l.sheet, l.description, "+
 				"l.order_ref, l.outcome, l.reason, l.found_order_ids, f.platform, f.period_from, f.period_to, "+
-				"f.created_by_user_id",
+				"f.created_by_user_id, f.is_override",
 		).
 		Where("l.settlement_log_id IN ?", logIDs)
 
@@ -74,6 +76,7 @@ func (s *Service) StatementLinesBySettlementLogIds(
 		PeriodFrom      *time.Time
 		PeriodTo        *time.Time
 		CreatedByUserID uint64
+		IsOverride      bool
 	}
 
 	// The posting line first, then the file order.
@@ -91,14 +94,15 @@ func (s *Service) StatementLinesBySettlementLogIds(
 
 	for _, row := range rows {
 		source := StatementLineSource{
-			SettlementLogID: row.SettlementLogID,
-			UploadedFileID:  row.UploadedFileID,
-			Platform:        san_marketplace.FromText(row.Platform),
-			Sheet:           row.Sheet,
-			Description:     row.Description,
-			OrderRef:        row.OrderRef,
-			FoundOrderIDs:   parseIDs(row.FoundOrderIDs),
-			UploadedBy:      row.CreatedByUserID,
+			SettlementLogID:      row.SettlementLogID,
+			UploadedFileID:       row.UploadedFileID,
+			Platform:             san_marketplace.FromText(row.Platform),
+			Sheet:                row.Sheet,
+			Description:          row.Description,
+			OrderRef:             row.OrderRef,
+			FoundOrderIDs:        parseIDs(row.FoundOrderIDs),
+			UploadedBy:           row.CreatedByUserID,
+			UploadedByIsOverride: row.IsOverride,
 		}
 
 		// Why it went to the shop is said only by the line that POSTED it there.

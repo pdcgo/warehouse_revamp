@@ -37,11 +37,16 @@ export function resetBundleStub() {
 
 resetBundleStub();
 
-/** For a story: who made bundle `id` — e.g. a former user, to show the list naming them (erase-keeps-the-row). */
-export function bundleCreatedByForStory(id: bigint, userId: bigint) {
+/**
+ * For a story: who made bundle `id` — e.g. a former user, to show the list naming them (erase-keeps-the-row) — and
+ * whether Root or the System Administrator made it from outside the team, served as `is_override` (the "by Root team"
+ * badge).
+ */
+export function bundleCreatedByForStory(id: bigint, userId: bigint, isOverride = false) {
   const bundle = bundles.find((b) => b.id === id);
   if (!bundle) throw new Error(`no bundle ${id} in the stub`);
   bundle.createdByUserId = userId;
+  bundle.isOverride = isOverride;
 }
 
 // The signed-in person — the stub's AuthService answers as `users[0]`.

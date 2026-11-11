@@ -167,7 +167,8 @@ test("API: an order for shop B is refused PermissionDenied, naming it — shop A
   expect(refused.body.code).toBe("permission_denied");
   expect(refused.body.message).toContain(`You have no access to ${SHOP_B}`);
 
-  // Shop A gets past the gate: it fails later, for the warehouse that does not exist — never for the shop.
+  // Shop A gets past the gate: it fails later — for the team's missing return warehouse
+  // (create-refuses-a-team-with-no-return-warehouse) or the warehouse that does not exist — never for the shop.
   const passed = await call(page, "selling.v1.OrderService/OrderCreate", orderOn(shopA, "A"));
   expect(passed.body.code).not.toBe("permission_denied");
   expect(passed.body.message ?? "").not.toContain("no access");

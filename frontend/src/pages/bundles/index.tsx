@@ -24,6 +24,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import { BundleLinesText } from "./components/BundleLinesText";
 import { BundleSortSelect } from "./components/BundleSortSelect";
+import { ActorName } from "../../components/entity/ActorName";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -233,7 +234,9 @@ export function BundlesPage() {
               <Table.Cell maxW="28rem">
                 <BundleLinesText bundle={bundle} products={products.data} testId={`bundle-row-${bundle.id}-lines`} />
               </Table.Cell>
-              <Table.Cell data-testid={`bundle-row-${bundle.id}-creator`}>{creatorName(bundle)}</Table.Cell>
+              <Table.Cell data-testid={`bundle-row-${bundle.id}-creator`}>
+                <ActorName name={creatorName(bundle)} isOverride={bundle.isOverride} />
+              </Table.Cell>
               <Table.Cell whiteSpace="nowrap">{formatUnixRelative(bundle.updatedAtUnix)}</Table.Cell>
               {/* Stop the row's navigate from firing when a row action is used. */}
               <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>

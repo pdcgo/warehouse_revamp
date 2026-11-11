@@ -30,17 +30,16 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 | --- | --- | --- | --- | --- | --- |
 | 27 | **Old dev orders have no Team Balance fees** — liability's order routes were never mounted until 2026-11-06, so their `order-placed` events dead-lettered; `san pubsub redrive --topic order-placed` replays them if wanted | data | liability | S | `docs/tools/san.md` |
 | 35 | **The warehouse daily statement's old words** — still says *COD* and *Handling fees* (the report is deferred: `the-daily-report-is-deferred`) | frontend | balance | S | `DailyStatementPage` |
-| 38 | **Merged label PDFs and table exports are never cleaned up** — `order_labels` / `TABLE_EXPORT` documents pile up; a retention sweep (and a decision on how long) | ops · API | document | S | `document_v1/order_labels_store.go` |
-| 39 | **A sideways phone photo of a label prints sideways** — the merge ignores a JPEG's EXIF rotation | bug · API | order | S | `pkgs/san_pdf_merge` |
 
 ### Later — decided, bigger
 
 - **Large-sum drift** — `large-sum-drift-is-left-for-now`: revisit when anything sums ~100.000 exact entries (tolerance scaled to the count).
 
 - **Statistics:** the four Inventory metrics on Analytic — Restock, Transfer, Return, Ready (filters decided: `the-four-inventory-metrics-filter-like-lost-stock`; fields, day and readers from a Storybook prototype); the report-day rebuild command (`a-wrong-day-is-refolded-from-the-log`); server-side month grouping for the expense and balance daily views; the supplier pages' leftovers — the Produk tab's figures (needs the store–product link), the Gudang filter + warehouse narrowing (a supplier_service seam); running sold totals per supplier on the order-take write path (`SupplierGoods.md`: ~5 s cold for a 100k-order supplier; `SupplierIDsByFigure.md`: a Terjual band 0.6–0.9 s at 1M order rows); a rebuild path for Penjualan (`AnalyticReplayCompute` replays restock only); product page suppliers and daily in/out; category product count.
-- **Order model** — left: the return-warehouse refusal (`create-refuses-a-team-with-no-return-warehouse`) waits until every team sets one (dev teams 14, 89, 91 have none); OrderList search for root ~77 ms — a union-of-ids rewrite is recommended in `OrderList.md`.
+- **Order model** — left: OrderList search for root ~77 ms — a union-of-ids rewrite is recommended in `OrderList.md`.
 - **Inventory:** price correction (revaluation) — decided (`the-owning-team-revalues-with-a-reason`, `revaluation-and-opname-are-transaction-types`): `PostRevaluation` + a *Correct Price* action on a batch (prototype first); correcting a wrong stock-in — a restock or transfer accepted with the wrong count (direction decided: an `adjustment` for the units still there, `a-rollback-only-undoes-a-take`; who, money and naming undesigned — `adjustment-md-is-retired`); goods-in-transit figure; `warehouse_products` team column; legacy supplier tables to drop; expiry report.
-- **Overrides shown on records:** a shared *by Platform* badge beside the person's name on the 16 stamped tables' screens (`an-override-shows-a-platform-badge`) — a prototype on 3–4 screens first.
+- **Generated-file sweep leftovers:** `ShareDocument` answers Internal (not NotFound) when it loses the race to the sweep — nothing shares a generated file today; a scale-to-zero deploy runs no ticker (the `san` command or a scheduler covers it until a deploy decision).
+- **Overrides shown on records — leftovers** (`an-override-shows-a-platform-badge`: a record that names nobody gains the name): the Team Balance ledger (`liability_logs`) and payments (`liability_payments`) name nobody — a *Recorded by* column like Expenses needs a prototype + accept; the restock and transfer **lists'** created-by read unstamped `restocks` / `warehouse_transfers` — fill from the first timeline row's flag; `liability_payment_requests` (notice names the team), `team_agent_policies` (a toggle), `documents` / `document_shares` (no list screen) — nothing to show today.
 - **Products / Discover:** lock and stock-age filters; Discover's warehouse, stock, cross-price filters.
 - **Exports:** the supplier Produk tab (its figures are samples); the Supplier Report export at 2.000 suppliers takes 1.1–1.7 s a year — read the figures from the ranking query's own totals (~5×, `SupplierReportExport.md`).
 
@@ -52,14 +51,17 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 | **Real Shopee/TikTok export files** | testing the importers on real data | files from the owner |
 | **Index proposals the audits measured** | speed at volume | the owner's OK (HARD RULE 2/3) |
 | **Discover division** (Prioritas · Riset · Umum per product) | Discover's division chips (marked) | **Toni** — the product context is his (`products-follow-the-unit-price`); the owner: *"bukan kewenanganku"* |
-| **Delete the unused `WarehouseProductList` RPC** | cleanup | an OK |
-| **How long to keep merged label PDFs and export files** (#38) | the cleanup sweep | a number of days |
-| **Return warehouses for dev teams 14, 89, 91** | switching on `create-refuses-a-team-with-no-return-warehouse` | set on the Teams screen |
 
 ## Done
 
 | Date | Item | Commit |
 | --- | --- | --- |
+| 2026-11-11 | **The *by Root team* badge is live** (`the-override-badge-is-accepted-as-by-root-team`) — 14 proto fields over 10 protos; `RootTeamBadge` / `ActorName` on 13 stamped tables' screens (orders, drafts, timelines, every stock ledger, restock/transfer timelines, account log, bundles, settlement entries, imports, expenses + its new *Recorded by* column, member log, limit log); prototype deleted; 17 `…_ReadsTheOverrideStamp` tests; `the_root_team_badge.spec.ts`; full e2e 229 passed | uncommitted |
+| 2026-11-11 | **#41 `WarehouseProductList` deleted** (`warehouse-product-list-is-deleted`) — rpc gone, its messages emptied to `reserved` numbers + names; the arrangement rows untouched | uncommitted |
+| 2026-11-11 | **#38 Generated downloads swept after 7 days** (`generated-files-are-kept-seven-days`) — `SweepGeneratedFiles` on a daily ticker (`GENERATED_FILE_SWEEP_EVERY`), advisory-locked, 1000/run; `san document sweep-generated`; document 00012 partial index (43 → 0.7 ms at 316k) | uncommitted |
+| 2026-11-11 | **#39 Label photos honour EXIF orientation** — `san_pdf_merge/orientation.go`, all 8 orientations tested; no new dependency | uncommitted |
+| 2026-11-11 | **#42 Raw `orderDetail.money.platformTotal` key** — locales caught up with `platform-is-the-word-for-the-outside-marketplace` (*Platform total*); `racks.detail.description` added; `src/i18n/keys.test.ts` guards every literal key; full e2e 225 passed | uncommitted |
+| 2026-11-11 | **Return warehouse required to order** (`create-refuses-a-team-with-no-return-warehouse`) — dev teams 14/91 → Dev Warehouse, 89 → Jakarta Warehouse; create + Promote refused `FailedPrecondition` naming the team; fixtures + `the_order_needs_a_return_warehouse.spec.ts`; full e2e 225 passed | uncommitted |
 | 2026-11-04 | Table mirroring package — `backend/pkgs/san_table_mirroring`, all 9 decisions, README + examples; no caller yet ([state](packages/table_mirroring.md)) | `57c1c6c4` |
 | 2026-11-04 | #1 Saving the profile wiped email and phone — new `ProfileDetail`; save sends only changed fields | `19607cbb` |
 | 2026-11-04 | #2 The admin team's Admin could search every account — SearchUser holds a monitor to its policy | `19607cbb` |
