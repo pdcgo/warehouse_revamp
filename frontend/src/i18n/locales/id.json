@@ -5615,6 +5615,21 @@
       "newBatchId": "Batch baru #{{id}}",
       "claims": "kehilangan #{{id}} tanggal {{date}}"
     },
+    "table": {
+      "no": "No.",
+      "product": "Produk",
+      "owner": "Pemilik",
+      "found": "Ditemukan",
+      "reported": "Dilaporkan",
+      "decided": "Diputuskan",
+      "value": "Nilai",
+      "actions": "Aksi",
+      "units_one": "{{count}} unit",
+      "units_other": "{{count}} unit"
+    },
+    "detail": {
+      "title": "Rincian Temuan #{{id}}"
+    },
     "post": {
       "unspecified": "—",
       "claim": "Diklaim kembali",

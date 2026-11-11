@@ -209,8 +209,8 @@ test("Found: the Admin reports two units on the Adjust dialog — nothing posts,
   await page.goto("/inventories/found-stock");
   await expect(page.getByTestId("found-requests-page")).toBeVisible();
   await expect(page.getByTestId("nav-count-/inventories/found-stock")).toHaveText("1");
-  const card = page.getByTestId(`found-request-${state.request}`);
-  await expect(card).toContainText("2 units on");
+  // One request a row (the-found-list-is-a-table): what was found is its own cell.
+  await expect(page.getByTestId(`found-request-units-${state.request}`)).toContainText("2 units");
   await expect(page.getByTestId(`found-request-approve-${state.request}`)).toBeDisabled();
   await expect(page.getByTestId(`found-request-block-${state.request}`)).toContainText("You reported it");
   await expect(page.getByTestId(`found-request-reject-${state.request}`)).toHaveText("Withdraw");

@@ -32,3 +32,12 @@ The owner: *"inisiasi dan kasih keterangan batch itu apa"*. Both batch screens f
 - The batch page's history and placements reads are query hooks already, but the detail aggregate (`useBatchDetail`)
   is five reads behind one query — unchanged.
 - A batch's *Koreksi* opens the shared stock dialog for the product, not for this batch alone — unchanged.
+- ⚠ NOT FINISHED (2026-11-11) — **a batch's page is the only one on a grey canvas.** `usesGreyCanvas` in
+  `layouts/shell.ts` paints `/inventories/batches/…` `gray.100`; it came with the repo's first commit (2026-08-19) and no
+  decision names it. Every other detail page — a rack's, a product's — is white, and the batch page is their shape since
+  [a-batch-page-is-one-page-of-sections](../../technical/frontend/batches_decision.md#a-batch-page-is-one-page-of-sections).
+  Recommended to the owner: drop it, and the mechanism with it (`usesGreyCanvas`, `GREY_CANVAS`, and the two layout
+  stories that pin it). Asked, not answered — the owner said *"commit aja, tandai belum selesai"*.
+- When Koreksi's *Ditemukan* is sent from a batch's page, the units do not necessarily go back into THAT batch — the
+  approval picks (the oldest open loss, else a new batch). The dialog does not say so but on the waiting line's hover;
+  raised with the owner, not answered.

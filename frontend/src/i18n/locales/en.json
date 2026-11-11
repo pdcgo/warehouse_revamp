@@ -5640,6 +5640,21 @@
       "newBatchId": "New batch #{{id}}",
       "claims": "loss #{{id}} of {{date}}"
     },
+    "table": {
+      "no": "No.",
+      "product": "Product",
+      "owner": "Owner",
+      "found": "Found",
+      "reported": "Reported",
+      "decided": "Decided",
+      "value": "Value",
+      "actions": "Actions",
+      "units_one": "{{count}} unit",
+      "units_other": "{{count}} units"
+    },
+    "detail": {
+      "title": "Found #{{id}} Details"
+    },
     "post": {
       "unspecified": "—",
       "claim": "Claimed back",
