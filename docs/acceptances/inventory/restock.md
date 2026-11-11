@@ -4,13 +4,13 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 
 | given | when | then | status |
 | --- | --- | --- | --- |
-| `selling:all` | create restock | restock is listed as ongoing | untested |
-| | | the target warehouse sees it incoming | untested |
-| | | ongoing stock increases | untested |
-| | | paying account balance decreases | untested |
-| | | the account history shows the restock | untested |
-| | | product is listed in the target warehouse (if new) | untested |
-| | | product is listed once (if already there) | untested |
+| `selling:all` | create restock | restock is listed as ongoing (1 product) | ✅ ok |
+| | | restock is listed as ongoing (2 products) | ✅ ok |
+| | | restock is listed as ongoing (with shipping cost) | ✅ ok |
+| | | the target warehouse sees it incoming | ✅ ok |
+| | | ongoing stock increases | ✅ ok |
+| | | paying account balance decreases | ✅ ok |
+| | | the account history shows the restock | ✅ ok |
 
 ## Not discussed yet
 
@@ -21,7 +21,7 @@ only when it is discussed, so the states below are a starting point, not a decis
 | given | when |
 | --- | --- |
 | `warehouse:all` | mark an ongoing restock arrived ← next |
-| `warehouse:all` | accept an arrived restock |
+| `warehouse:all` | accept an arrived restock — carries two thens moved from create: `product is listed in the target warehouse (if new)` and `product is listed once (if already there)`. The warehouse's product list shows a product once it is accepted, not while the restock is ongoing |
 | `selling:all` | edit a restock |
 | `selling:all` | cancel an ongoing restock |
 | `selling:all` | set an ongoing restock lost |

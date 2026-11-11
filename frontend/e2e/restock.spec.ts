@@ -782,3 +782,207 @@ test("Restock detail: the warehouse's staff opens the seller's label photo", asy
     api(page, "document.v1.DocumentService/GetDownloadUrl", { teamId: ground.warehouseId, documentId }),
   ).rejects.toThrow(/404|not_found/);
 });
+
+// ── selling:all create restock — the checks behind docs/acceptances/inventory/restock.md ──────────────────────────────
+//
+// An acceptance has no test file of its own (docs/acceptances/guide.md#acceptances-are-markdown): its checks live here,
+// in the regression spec of the feature its WHEN belongs to. The rows' statuses are the owner's, set by hand on the
+// owner's instruction — never by this block.
+//
+// `selling:all` is checked as EVERY selling role, through the seller's own list and form. The WHEN runs once per role
+// and case, and each THEN is its own step, checked SOFTLY so one failing then does not hide the next. The ground is
+// seeded in beforeAll, so a worker restarted after a failure seeds its own instead of reading a moved SUFFIX.
+test.describe("selling:all create restock", () => {
+  const PASSWORD = "e2e-acceptance-pass-1";
+  const ROLES = [
+    { given: "selling:owner", role: "ROLE_SELLING_OWNER", key: "own" },
+    { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
+    { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
+  ] as const;
+  // The bracketed conditions of `restock is listed as ongoing`.
+  const CASES = [
+    { cond: "1 product", key: "p1", products: 1, shipping: "" },
+    { cond: "2 products", key: "p2", products: 2, shipping: "" },
+    { cond: "with shipping cost", key: "sc", products: 1, shipping: "15000" },
+  ] as const;
+
+  const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
+  const username = (role: string) => `e2eacc${role}${SUFFIX}`;
+  // One product code per role, case and line, so a list row is found by what only that restock carries.
+  const code = (role: string, kase: string, line: number) => `AC${role.toUpperCase()}${kase.toUpperCase()}${line}${SUFFIX}`;
+  const WH_CODE = `AW${SUFFIX}`;
+  const SUPPLIER_NAME = `E2E Acc Supplier ${SUFFIX}`;
+  const ground = { team: "", supplier: "", account: "" };
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+    ground.team = String(
+      (
+        await api(page, "team.v1.TeamService/TeamCreate", {
+          name: `E2E Acc Seller ${SUFFIX}`,
+          teamCode: `AS${SUFFIX}`,
+          type: "TEAM_TYPE_SELLING",
+          ownerUserId: ROOT_USER_ID,
+        })
+      ).team.id,
+    );
+    await api(page, "team.v1.TeamService/TeamCreate", {
+      name: `E2E Acc Warehouse ${SUFFIX}`,
+      teamCode: WH_CODE,
+      type: "TEAM_TYPE_WAREHOUSE",
+      ownerUserId: ROOT_USER_ID,
+    });
+
+    for (const r of ROLES) {
+      await api(page, "user.v1.UserService/CreateUser", {
+        teamId: ground.team,
+        username: username(r.key),
+        password: PASSWORD,
+        name: `Acc ${r.given} ${SUFFIX}`,
+        role: r.role,
+      });
+    }
+
+    const category = await api(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Acc Cat ${SUFFIX}` });
+    for (const r of ROLES) {
+      for (const c of CASES) {
+        for (let line = 0; line < c.products; line++) {
+          await api(page, "product.v1.ProductService/ProductCreate", {
+            teamId: ground.team,
+            productCodePart: code(r.key, c.key, line),
+            name: `E2E ${code(r.key, c.key, line)}`,
+            categoryId: category.category.id,
+          });
+        }
+      }
+    }
+
+    ground.supplier = String(
+      (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: SUPPLIER_NAME }))
+        .supplier.id,
+    );
+
+    const account = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+      teamId: ground.team,
+      type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+      provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+      name: `E2E Acc BCA ${SUFFIX}`,
+      holderName: "E2E",
+      accountNumber: `77${SUFFIX}01`,
+      openingBalance: 10_000_000,
+      openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+    });
+    ground.account = String(account.account.id);
+    await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+      teamId: ground.team,
+      accountId: ground.account,
+      operational: true,
+    });
+
+    await page.close();
+  });
+
+  // The paying account's balance as its own page shows it — "—" until it has loaded, so the figure is waited for.
+  async function accountBalance(page: Page): Promise<number> {
+    await page.goto(`/financial-accounts/${ground.account}`);
+    const balance = page.getByTestId("account-detail-balance");
+    await expect(balance).toHaveText(/\d/);
+    return Number((await balance.innerText()).replace(/[^\d-]/g, ""));
+  }
+
+  for (const c of CASES) {
+    for (const r of ROLES) {
+      test(`${r.given} create restock (${c.cond})`, async ({ page }) => {
+        await login(page, username(r.key), PASSWORD);
+        await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), ground.team);
+
+        const before = await accountBalance(page);
+        const paid = c.products * 100_000 + Number(c.shipping || 0);
+
+        // WHEN — through the seller's own list and form, as this role.
+        await page.goto("/inventories/restock");
+        await page.getByTestId("open-create-restock").or(page.getByTestId("open-create-restock-empty")).first().click();
+        await expect(page).toHaveURL(/\/inventories\/restock\/new$/);
+
+        await page.getByTestId("restock-pick-products").click();
+        for (let line = 0; line < c.products; line++) {
+          await tick(page, code(r.key, c.key, line));
+        }
+        await page.getByTestId("product-picker-confirm").click();
+
+        for (let line = 0; line < c.products; line++) {
+          await page.getByTestId(`restock-qty-${line}`).fill("10");
+          await page.getByTestId(`restock-total-price-${line}`).fill("100000");
+        }
+
+        await page.getByTestId("restock-warehouse").locator("input").fill(WH_CODE);
+        await page.getByTestId(`team-select-option-${WH_CODE}`).click();
+
+        await page.getByTestId("restock-finance-account").click();
+        await page.getByTestId(`restock-finance-account-option-${ground.account}`).click();
+
+        await page.getByTestId("restock-all-supplier-picker-trigger").click();
+        await page.getByTestId("restock-all-supplier-picker-search").fill(SUPPLIER_NAME);
+        await page.getByTestId(`restock-all-supplier-picker-supplier-${ground.supplier}`).click();
+        await page.getByTestId("restock-all-supplier-picker-confirm").click();
+
+        await page.getByTestId("restock-courier").getByRole("combobox").click();
+        await page.getByTestId("shipment-channel-option-jne").click();
+
+        await page.getByTestId("restock-receipt").fill(`E2E-ACC-${r.key.toUpperCase()}-${c.key.toUpperCase()}-${SUFFIX}`);
+        if (c.shipping) {
+          await page.getByTestId("restock-shipping-cost").fill(c.shipping);
+        }
+
+        await expect(page.getByTestId("restock-form-ready")).toBeVisible();
+        await page.getByTestId("submit-restock").click();
+        await expect(page).toHaveURL(/\/inventories\/restock$/);
+
+        // The restock just made: the ongoing row carrying this case's first product.
+        const made = page
+          .getByTestId("restock-requests-table")
+          .locator("tbody tr")
+          .filter({ hasText: code(r.key, c.key, 0) })
+          .filter({ has: page.getByTestId("restock-status-1") });
+        await expect(made).toHaveCount(1);
+        const restockId = (await made.getAttribute("data-testid"))!.replace("restock-row-", "");
+
+        await test.step(`then: restock is listed as ongoing (${c.cond})`, async () => {
+          const row = page
+            .getByTestId("restock-requests-table")
+            .locator("tbody tr")
+            .filter({ hasText: code(r.key, c.key, 0) });
+          await expect.soft(row).toHaveCount(1);
+          await expect.soft(row.getByTestId("restock-status-1")).toBeVisible();
+        });
+
+        // The account moves when financial_account_service takes the Restock Created event, so it is re-read until
+        // it lands rather than once.
+        await test.step(`then: paying account balance decreases (by ${rupiah(paid)}, from ${rupiah(before)})`, async () => {
+          await expect
+            .soft(async () => {
+              await page.goto(`/financial-accounts/${ground.account}`);
+              await expect(page.getByTestId("account-detail-balance")).toHaveText(rupiah(before - paid), {
+                timeout: 2_000,
+              });
+            })
+            .toPass({ timeout: 30_000 });
+        });
+
+        // The line financial_account_service writes for it: "Restock #<id>".
+        await test.step(`then: the account history shows the restock (Restock #${restockId})`, async () => {
+          await expect
+            .soft(async () => {
+              await page.goto(`/financial-accounts/${ground.account}`);
+              await expect(page.getByTestId("account-log-table")).toContainText(`Restock #${restockId}`, {
+                timeout: 2_000,
+              });
+            })
+            .toPass({ timeout: 30_000 });
+        });
+      });
+    }
+  }
+});

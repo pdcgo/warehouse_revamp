@@ -43,8 +43,8 @@ stateDiagram-v2
 | [every-candidate-is-listed](#every-candidate-is-listed) | the agent lists every candidate then, including the ones it would leave out |
 | [a-then-is-one-visible-effect](#a-then-is-one-visible-effect) | one effect a person can see, with no measure in the wording |
 | [a-then-is-copied-word-for-word](#a-then-is-copied-word-for-word) | the same effect is written the same way everywhere |
-| [status-is-per-then](#status-is-per-then) | `ok` / `error` / `untested`, changed only on the owner's instruction |
-| [acceptances-are-markdown](#acceptances-are-markdown) | no Gherkin runner |
+| [status-is-per-then](#status-is-per-then) | `✅ ok` / `❌ error` / `⬜ untested`, changed only on the owner's instruction |
+| [acceptances-are-markdown](#acceptances-are-markdown) | no Gherkin runner and no test file of its own: the agent's checks live in the feature's regression spec |
 | [only-the-discussion-changes-a-row](#only-the-discussion-changes-a-row) | nothing outside this loop edits a row |
 
 ## one-row-per-then
@@ -55,8 +55,8 @@ given and when continue the row above.
 ```markdown
 | given | when | then | status |
 | --- | --- | --- | --- |
-| `selling:all` | create restock | restock is listed as ongoing | untested |
-| | | ongoing stock increases | untested |
+| `selling:all` | create restock | restock is listed as ongoing | ⬜ untested |
+| | | ongoing stock increases | ⬜ untested |
 ```
 
 ## given-is-who-can
@@ -100,7 +100,8 @@ Until then, the shared list is not needed.
 
 ## status-is-per-then
 
-- `ok`, `error`, or `untested`. A row is written `untested`.
+- `✅ ok`, `❌ error`, or `⬜ untested`. The emoji is part of the value, so a status can be read at a glance. A new row is
+  written `⬜ untested`.
 - `team:all` is tested with **every** role of that team type. If one role fails, the then is `error`.
 - A then observed by another team (*the target warehouse sees it incoming*) is checked as any **one** role there that can read it.
 - **The agent changes a status only on the owner's instruction, one then at a time.** If the agent's own test later fails, the
@@ -110,6 +111,16 @@ Until then, the shared list is not needed.
 
 Plain markdown and no runner. The owner tests a then by hand, or the agent tests it on the owner's instruction, and the status
 records the result.
+
+**An acceptance has no test file of its own** (owner). The agent's check for a then goes in the **regression spec of the
+feature its WHEN belongs to**, as one block per given + when. All of create restock's thens go in
+`frontend/e2e/restock.spec.ts`, including the one that shows in the financial account. That spec is the agent's, not the
+acceptance's. The status stays the owner's record, and the spec is what keeps that record true.
+
+```
+docs/acceptances/inventory/restock.md   the status: the owner's record
+frontend/e2e/restock.spec.ts            the check: the agent's regression test
+```
 
 ## only-the-discussion-changes-a-row
 

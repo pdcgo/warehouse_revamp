@@ -1202,6 +1202,8 @@ written for the next agent, not for a person: what exists, what does not, what w
 [docs/acceptances/guide.md](docs/acceptances/guide.md). A row is written only by discussing one given + when with the
 owner, and a status changes only on the owner's instruction. A code change, a refactor, or an edit to a business or
 technical doc never rewrites a row. When the code disagrees with a then, report it in chat and leave the row alone.
+**An acceptance has no test file of its own:** the agent's check for a then goes in the regression spec of the WHEN's
+feature (create restock → `frontend/e2e/restock.spec.ts`).
 
 ## Git workflow
 

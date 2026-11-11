@@ -3,9 +3,9 @@
 The first big feature. The focus is **restock**. Inventory needs products, but product's own acceptance comes later
 ([product](../product/context.md)). Rules: [guide.md](../guide.md).
 
-| small feature | ok | error | untested |
+| small feature | ✅ ok | ❌ error | ⬜ untested |
 | --- | --- | --- | --- |
-| [restock](restock.md) | 0 | 0 | 7 |
+| [restock](restock.md) | 7 | 0 | 0 |
 | [placement](placement.md) | | | |
 | [batch](batch.md) | | | |
 | [transaction](transaction.md) | | | |
