@@ -986,3 +986,149 @@ test.describe("selling:all create restock", () => {
     }
   }
 });
+
+// ── warehouse:all mark arrived — the checks behind docs/acceptances/inventory/restock.md ──────────────────────────────
+//
+// Same shape as the create block above: every warehouse role signs for the box through its own inbound list, once from
+// ongoing and once from lost (a-late-lost-box-is-signed-for-as-arrived). The restocks themselves are the GIVEN state,
+// so they are seeded through the API; the sign is the WHEN, through the screen. The seller's side is read as one
+// selling role (status-is-per-then). `the courier's charge shows on the restock (if noted)` is 🚧 unimplemented — the
+// server drops the charge — so it has no check here yet.
+test.describe("warehouse:all mark arrived", () => {
+  const PASSWORD = "e2e-acceptance-pass-1";
+  const ROLES = [
+    { given: "warehouse:owner", role: "ROLE_WAREHOUSE_OWNER", key: "own" },
+    { given: "warehouse:admin", role: "ROLE_WAREHOUSE_ADMIN", key: "adm" },
+    { given: "warehouse:staff", role: "ROLE_WAREHOUSE_STAFF", key: "stf" },
+  ] as const;
+  const CASES = [
+    { cond: "from ongoing", key: "on", lost: false },
+    { cond: "from lost", key: "lo", lost: true },
+  ] as const;
+
+  const username = (role: string) => `e2earr${role}${SUFFIX}`;
+  const displayName = (given: string) => `Arr ${given} ${SUFFIX}`;
+  const SELLER = `e2earrseller${SUFFIX}`;
+  const ground = { team: "", warehouse: "", restocks: {} as Record<string, string> };
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+    ground.team = String(
+      (
+        await api(page, "team.v1.TeamService/TeamCreate", {
+          name: `E2E Arr Seller ${SUFFIX}`,
+          teamCode: `RS${SUFFIX}`,
+          type: "TEAM_TYPE_SELLING",
+          ownerUserId: ROOT_USER_ID,
+        })
+      ).team.id,
+    );
+    ground.warehouse = String(
+      (
+        await api(page, "team.v1.TeamService/TeamCreate", {
+          name: `E2E Arr Warehouse ${SUFFIX}`,
+          teamCode: `RA${SUFFIX}`,
+          type: "TEAM_TYPE_WAREHOUSE",
+          ownerUserId: ROOT_USER_ID,
+        })
+      ).team.id,
+    );
+
+    for (const r of ROLES) {
+      await api(page, "user.v1.UserService/CreateUser", {
+        teamId: ground.warehouse,
+        username: username(r.key),
+        password: PASSWORD,
+        name: displayName(r.given),
+        role: r.role,
+      });
+    }
+    await api(page, "user.v1.UserService/CreateUser", {
+      teamId: ground.team,
+      username: SELLER,
+      password: PASSWORD,
+      name: `Arr selling:cs ${SUFFIX}`,
+      role: "ROLE_SELLING_CS",
+    });
+
+    const category = await api(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Arr Cat ${SUFFIX}` });
+    const sku = `ARR${SUFFIX}`;
+    const product = await api(page, "product.v1.ProductService/ProductCreate", {
+      teamId: ground.team,
+      productCodePart: sku,
+      name: `E2E ${sku}`,
+      categoryId: category.category.id,
+    });
+
+    const account = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+      teamId: ground.team,
+      type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+      provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+      name: `E2E Arr BCA ${SUFFIX}`,
+      holderName: "E2E",
+      accountNumber: `78${SUFFIX}01`,
+      openingBalance: 10_000_000,
+      openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+    });
+    await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+      teamId: ground.team,
+      accountId: account.account.id,
+      operational: true,
+    });
+
+    // GIVEN — one restock per role and case, on its way to the warehouse; the "from lost" ones given up by the seller.
+    for (const r of ROLES) {
+      for (const c of CASES) {
+        const created = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+          teamId: ground.team,
+          warehouseId: ground.warehouse,
+          financeAccountId: account.account.id,
+          items: [{ productId: product.product.id, productCode: sku, name: `E2E ${sku}`, count: 1, total: 1000 }],
+        });
+        const id = String(created.request.id);
+        if (c.lost) {
+          await api(page, "inventory.v1.RestockRequestService/RestockRequestMarkLost", { teamId: ground.team, requestId: id });
+        }
+        ground.restocks[`${r.key}-${c.key}`] = id;
+      }
+    }
+
+    await page.close();
+  });
+
+  for (const c of CASES) {
+    for (const r of ROLES) {
+      test(`${r.given} mark arrived (${c.cond})`, async ({ page }) => {
+        const id = ground.restocks[`${r.key}-${c.key}`];
+
+        // WHEN — Sign for Box on the warehouse's own inbound list, as this role.
+        await login(page, username(r.key), PASSWORD);
+        await page.evaluate((team) => window.sessionStorage.setItem("warehouse_revamp.team", team), ground.warehouse);
+        await page.goto("/inventories/restock?status=all");
+        await expect(page.getByTestId("restock-inbound-page")).toBeVisible();
+        await page.getByTestId(`restock-action-sign-${id}`).click();
+        await page.getByTestId("confirm-action").click();
+
+        await test.step(`then: restock is listed as arrived (${c.cond})`, async () => {
+          await expect.soft(page.getByTestId(`restock-row-${id}`).getByTestId("restock-status-4")).toBeVisible();
+        });
+
+        await test.step("then: the inbound list shows who signed for it and when", async () => {
+          await expect.soft(page.getByTestId(`restock-arrived-${id}`)).toContainText(/\d/);
+          await expect.soft(page.getByTestId(`restock-arrived-${id}-by`)).toContainText(displayName(r.given));
+        });
+
+        // Seen from the selling team that raised it.
+        await login(page, SELLER, PASSWORD);
+        await page.evaluate((team) => window.sessionStorage.setItem("warehouse_revamp.team", team), ground.team);
+        await page.goto("/inventories/restock?status=all");
+
+        await test.step("then: the seller sees it arrived", async () => {
+          await expect.soft(page.getByTestId(`restock-row-${id}`).getByTestId("restock-status-4")).toBeVisible();
+        });
+      });
+    }
+  }
+});

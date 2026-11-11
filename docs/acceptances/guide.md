@@ -31,6 +31,8 @@ stateDiagram-v2
   [*] --> untested: row written
   untested --> ok: every role passes
   untested --> error: one role fails
+  untested --> unimplemented: the system does not do it yet
+  unimplemented --> ok: built, then tested
   error --> ok: retested on instruction
   ok --> error: retested on instruction
 ```
@@ -43,7 +45,7 @@ stateDiagram-v2
 | [every-candidate-is-listed](#every-candidate-is-listed) | the agent lists every candidate then, including the ones it would leave out |
 | [a-then-is-one-visible-effect](#a-then-is-one-visible-effect) | one effect a person can see, with no measure in the wording |
 | [a-then-is-copied-word-for-word](#a-then-is-copied-word-for-word) | the same effect is written the same way everywhere |
-| [status-is-per-then](#status-is-per-then) | `✅ ok` / `❌ error` / `⬜ untested`, changed only on the owner's instruction |
+| [status-is-per-then](#status-is-per-then) | `✅ ok` / `❌ error` / `🚧 unimplemented` / `⬜ untested`, changed only on the owner's instruction |
 | [acceptances-are-markdown](#acceptances-are-markdown) | no Gherkin runner and no test file of its own: the agent's checks live in the feature's regression spec |
 | [only-the-discussion-changes-a-row](#only-the-discussion-changes-a-row) | nothing outside this loop edits a row |
 
@@ -100,8 +102,10 @@ Until then, the shared list is not needed.
 
 ## status-is-per-then
 
-- `✅ ok`, `❌ error`, or `⬜ untested`. The emoji is part of the value, so a status can be read at a glance. A new row is
-  written `⬜ untested`.
+- `✅ ok`, `❌ error`, `🚧 unimplemented`, or `⬜ untested`. The emoji is part of the value, so a status can be read at a
+  glance. A new row is written `⬜ untested`.
+- `❌ error` means the system does it, but wrongly. `🚧 unimplemented` means the then is agreed, but the system does not do
+  it yet.
 - `team:all` is tested with **every** role of that team type. If one role fails, the then is `error`.
 - A then observed by another team (*the target warehouse sees it incoming*) is checked as any **one** role there that can read it.
 - **The agent changes a status only on the owner's instruction, one then at a time.** If the agent's own test later fails, the

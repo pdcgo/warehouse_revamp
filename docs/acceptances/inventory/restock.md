@@ -11,6 +11,11 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 | | | ongoing stock increases | ✅ ok |
 | | | paying account balance decreases | ✅ ok |
 | | | the account history shows the restock | ✅ ok |
+| `warehouse:all` | mark arrived | restock is listed as arrived (from ongoing) | ✅ ok |
+| | | restock is listed as arrived (from lost) | ✅ ok |
+| | | the seller sees it arrived | ✅ ok |
+| | | the inbound list shows who signed for it and when | ✅ ok |
+| | | the courier's charge shows on the restock (if noted) | 🚧 unimplemented |
 
 ## Not discussed yet
 
@@ -20,8 +25,7 @@ only when it is discussed, so the states below are a starting point, not a decis
 
 | given | when |
 | --- | --- |
-| `warehouse:all` | mark an ongoing restock arrived ← next |
-| `warehouse:all` | accept an arrived restock — carries two thens moved from create: `product is listed in the target warehouse (if new)` and `product is listed once (if already there)`. The warehouse's product list shows a product once it is accepted, not while the restock is ongoing |
+| `warehouse:all` | accept an arrived restock ← next — carries two thens moved from create: `product is listed in the target warehouse (if new)` and `product is listed once (if already there)`. The warehouse's product list shows a product once it is accepted, not while the restock is ongoing |
 | `selling:all` | edit a restock |
 | `selling:all` | cancel an ongoing restock |
 | `selling:all` | set an ongoing restock lost |
