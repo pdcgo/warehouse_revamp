@@ -682,7 +682,7 @@ flowchart LR
 | broken vs lost | `warehouse_stock_problems.problem_type`, per batch — not on the item |
 | the ledgers | each log row carries its transaction's type; the three lists are one list |
 | per count, per team | up to three transactions — `problem`, `found`, `move` — listed by the session ([a-session-lists-its-final-transactions](./opname_decision.md#a-session-lists-its-final-transactions)) |
-| `adjustment` | left with corrections only, such as a wrong stock-in ([a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)) — yours to design in [adjustment.md](./adjustment.md) |
+| `adjustment` | left with corrections only, such as a wrong stock-in ([a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)) — yours to design in [adjustment.md](./adjustment_decision.md#adjustment-md-is-retired) |
 
 It amends [revaluation-and-opname-are-transaction-types](#revaluation-and-opname-are-transaction-types) (its `opname` half).
 ⚠ Not yet in your docs: batch.md still lists `broken` and `lost`, and opname.md still draws one `opname` transaction per

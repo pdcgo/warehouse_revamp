@@ -61,7 +61,12 @@ const (
 	resourceOrderExport = "order_export"
 	// A screen's table exported as .xlsx — a supplier page tab's (each-supplier-tab-exports-its-own-table). Private.
 	resourceTableExport = "table_export"
+	// Several orders' labels merged into one PDF for the warehouse that prints them
+	// (a-warehouse-prints-the-labels-of-orders-it-ships). Private, and written only by StoreOrderLabels — never uploaded.
+	resourceOrderLabels = "order_labels"
 )
+
+var errOrderLabelsAreNotUploaded = errors.New("an order labels file is made by the order service, never uploaded")
 
 func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
 	switch t {
@@ -81,6 +86,10 @@ func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
 		return resourceOrderExport, nil
 	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT:
 		return resourceTableExport, nil
+	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_LABELS:
+		// The merged labels are the order service's answer (StoreOrderLabels), so RequestUpload refuses the type: a
+		// browser could otherwise store any file under the name of a print it never made.
+		return "", errOrderLabelsAreNotUploaded
 	default:
 		return "", fmt.Errorf("unknown resource type %v", t)
 	}
@@ -104,6 +113,8 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT
 	case resourceTableExport:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_TABLE_EXPORT
+	case resourceOrderLabels:
+		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_LABELS
 	default:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_UNSPECIFIED
 	}

@@ -1279,7 +1279,11 @@
     "label": {
       "notShippedHere": "Pesanan #{{id}} tidak dikirim dari gudang ini — labelnya bukan untuk dicetak di sini",
       "noLabel": "Pesanan #{{id}} belum punya label — minta penjual melampirkannya",
-      "refused": "Label pesanan #{{id}} tidak bisa dibuka"
+      "refused": "Label pesanan #{{id}} tidak bisa dibuka",
+      "unreadable": "File label pesanan #{{id}} tidak bisa dibaca — minta penjual mengunggahnya lagi",
+      "someLeftOut_one": "{{count}} label tidak ada di PDF",
+      "someLeftOut_other": "{{count}} label tidak ada di PDF",
+      "noneToPrint": "Tidak ada label yang bisa dicetak"
     },
     "settlementMissing": {
       "filter": "Settlement belum terbuka",
@@ -3293,16 +3297,9 @@
     "empty": "Belum ada pesanan.",
     "emptyFiltered": "Tidak ada pesanan {{status}}.",
     "tab": {
-      "new": "Baru",
-      "toPick": "Perlu Diambil",
-      "picked": "Sudah Diambil",
-      "handover": "Sudah Diserahkan",
-      "all": "Semua",
       "return": "Retur"
     },
     "table": {
-      "order": "Pesanan",
-      "customer": "Pelanggan",
       "status": "Status",
       "product": "Produk",
       "qty": "Jml",
@@ -3312,7 +3309,6 @@
     },
     "action": {
       "confirm": "Konfirmasi Pesanan",
-      "markPicked": "Tandai Sudah Diambil",
       "markHandedOver": "Tandai Diserahkan",
       "acceptReturn": "Terima Retur",
       "forceReturn": "Paksa Retur",
@@ -3333,25 +3329,81 @@
     },
     "acceptReturn": {
       "title": "Terima Retur #{{id}}",
-      "intro": "Paketnya sudah di tangan Anda. Seluruh pesanan kembali — cukup tulis yang tidak ada di dalam paket.",
-      "linesTitle": "Yang kembali",
-      "linesHint": "Biarkan kosong jika semua unit baris itu ada di paket.",
-      "ordered_other": "{{count}} dipesan",
-      "missing": "Kurang",
-      "missingOf": "Unit {{name}} yang kurang",
-      "shortHint": "Unit yang kurang dicatat di pesanan, agar customer service bisa mengklaimnya ke platform.",
       "courierTitle": "Biaya kurir di pintu",
       "courierHint": "Hanya jika kurir meminta sesuatu saat menyerahkan paket. Gudang membayarnya dan tim penjual menggantinya.",
       "courierAmount": "Jumlah",
       "courierNote": "Untuk apa",
       "courierNotePlaceholder": "Contoh: ongkir retur yang diminta J&T",
       "courierNoteRequired": "Tulis untuk apa biaya kurir ini.",
-      "accepted": "Retur diterima",
-      "labelsTitle": "Cetak Label",
-      "labelsIntro": "Unit ini produk tim lain yang kembali sebagai produk milik tim penjual sendiri. Cetak setiap kode dan tempel di atas label lama, agar scan ambil berikutnya cocok.",
-      "labelOver": "Di atas label lama {{code}}",
-      "labelCount_other": "{{count}} label",
-      "done": "Selesai"
+      "accepted": "Retur diterima"
+    },
+    "returnAccept": {
+      "intro": "Paketnya sudah di tangan Anda. Seluruh pesanan kembali — per baris cukup tulis yang kurang dan yang rusak, lalu taruh unit yang layak di rak.",
+      "back": "Kembali",
+      "openOrder": "Buka Pesanan",
+      "actions": "Aksi",
+      "failed": "Retur tidak bisa diterima",
+      "countSummary": "{{placed}} dari {{sound}} pcs layak sudah di rak",
+      "progress_other": "{{count}} baris belum selesai",
+      "ready": "Semua unit layak sudah punya rak",
+      "ordered_other": "Dipesan {{count}}",
+      "relabelTitle": "Ganti label — kembali sebagai produk tim penjual sendiri",
+      "relabelCount_other": "Cetak {{count}} label dan tempel di atas {{code}}",
+      "relabelNone": "Tidak ada unit layak yang kembali — tidak ada label dicetak",
+      "cameBack": "Yang kembali",
+      "missing": "Kurang",
+      "missingOf": "Unit {{name}} yang kurang",
+      "missingHint": "Tidak ada di paket",
+      "broken": "Rusak",
+      "brokenOf": "Unit {{name}} yang rusak",
+      "brokenHint": "Terlalu rusak untuk dijual",
+      "note": "Catatan (opsional)",
+      "noteOf": "Catatan tentang yang rusak atau hilang pada {{name}}",
+      "notePlaceholder": "mis. sobek di jahitan",
+      "noteHint": "Disimpan bersama unit rusak dan hilang, lalu disalin ke catatan pesanan untuk klaim ke platform.",
+      "over_other": "Rusak dan kurang lebih banyak dari {{count}} yang dipesan.",
+      "sound": "Layak — masuk rak",
+      "thrownAway": "Dibuang (rusak)",
+      "missingOut": "Kurang",
+      "putaway": "Taruh ke rak",
+      "rackPlaceholder": "Pilih rak",
+      "rackQty": "Jumlah di rak ini",
+      "removeRack": "Hapus rak ini",
+      "addRack": "Pisah ke Rak Lain",
+      "fixCountFirst": "Perbaiki hitungan dulu",
+      "nothingToPlace": "Tidak ada yang ditaruh",
+      "nothingToPlaceHint": "Tidak ada unit layak di baris ini — tidak ada yang masuk rak.",
+      "chooseRack": "Pilih rak",
+      "duplicateRack": "Rak dipakai dua kali",
+      "toPlace_other": "{{count}} belum ditaruh",
+      "tooMany_other": "Kelebihan {{count}}",
+      "placed_other": "{{count}} ditaruh",
+      "summaryShelf": "Masuk rak",
+      "summaryShelfOf_other": "dari {{count}} dipesan",
+      "summaryThrown": "Dibuang",
+      "summaryThrownHint": "Rusak — tidak masuk rak",
+      "summaryMissing": "Kurang",
+      "summaryMissingHint": "Tidak ada di paket",
+      "summaryLabels": "Label dicetak",
+      "summaryLabelsHint": "Unit pinjaman, diganti label",
+      "borneBy_other": "{{count}} unit ditanggung {{team}}, bukan gudang ini — dicatat di catatan pesanan agar customer service bisa mengklaimnya ke platform.",
+      "allSound": "Semua unit layak dan kembali ke rak.",
+      "elsewhere": {
+        "title": "Retur ini ke {{warehouse}}",
+        "description": "Hanya gudang retur {{team}} yang menerimanya dan menaruh unitnya di raknya sendiri. Simpan paket ini sampai dibawa ke {{warehouse}}.",
+        "short": "Retur ini ke {{warehouse}} — simpan paketnya sampai dibawa ke sana."
+      },
+      "noReturnWarehouse": {
+        "title": "{{team}} belum punya gudang retur",
+        "description": "Retur ini belum bisa diterima siapa pun sampai {{team}} mengatur gudang returnya. Simpan paketnya dulu."
+      },
+      "alreadyAccepted": "Retur #{{id}} sudah diterima.",
+      "notInReturn": "Pesanan #{{id}} berstatus \"{{status}}\" — tandai retur dari pesanan dulu.",
+      "confirm": {
+        "title": "Terima Retur #{{id}}",
+        "message": "{{sound}} pcs masuk ke rak yang Anda pilih, {{broken}} rusak dibuang dan {{missing}} dicatat kurang, ditanggung tim penjual. Ini tidak dapat dibatalkan.",
+        "keepCounting": "Lanjut Menghitung"
+      }
     },
     "forceReturn": {
       "title": "Paksa Retur",
@@ -3376,6 +3428,20 @@
       "alreadyAccepted": "Pesanan #{{id}} sudah diterima sebagai retur.",
       "cancelled": "Pesanan #{{id}} dibatalkan sebelum dikirim — tidak ada yang perlu diretur.",
       "lost": "Pesanan #{{id}} sudah dijadikan lost — tidak bisa diterima sebagai retur. Tanyakan ke customer service."
+    },
+    "scan": {
+      "title": "Pindai Barang",
+      "help": "Scan setiap barang. Tandai Sudah Diambil aktif setelah semua baris pas.",
+      "unknown": "Tidak ada di order ini: {{code}}",
+      "over": "{{name}} — melebihi jumlah pesanan",
+      "complete": "Semua barang sudah pas",
+      "setPicked": "Tandai Sudah Diambil"
+    },
+    "pending": {
+      "barcode": {
+        "label": "Barcode",
+        "reason": "Produk belum punya barcode, jadi scan barang mencocokkan kode produk setiap barang."
+      }
     }
   },
   "batches": {
@@ -4035,20 +4101,6 @@
       "created": "Tanggal",
       "mpDate": "Tanggal MP"
     },
-    "pending": {
-      "resiLookup": {
-        "label": "Mencari lewat resi",
-        "reason": "Scan serah kurir hanya mencari di order yang sudah dimuat layar ini. Belum bertanya ke server, padahal pencarian order kini bisa menemukan order lewat nomor resi."
-      },
-      "barcode": {
-        "label": "Barcode",
-        "reason": "Produk belum punya barcode, jadi scan validasi mencocokkan kode produk setiap barang."
-      },
-      "printMerge": {
-        "label": "Cetak resi sekaligus",
-        "reason": "Belum ada yang menggabungkan beberapa file resi menjadi satu dokumen."
-      }
-    },
     "tab": {
       "toConfirm": "Perlu konfirmasi",
       "all": "Semua"
@@ -4058,7 +4110,8 @@
       "courier": "Semua jasa kirim"
     },
     "header": {
-      "scanHandover": "Pindai Serah Kurir"
+      "scanHandover": "Pindai Serah Kurir",
+      "scanLabel": "Pindai Label"
     },
     "bulk": {
       "selected": "{{count}} dipilih",
@@ -4066,25 +4119,24 @@
       "print": "Cetak Resi",
       "handover": "Serah Kurir",
       "clear": "Batal Pilih",
-      "skipped": "{{count}} belum Dikemas — dilewati",
+      "skipped": "{{count}} belum diambil — dilewati",
       "hint": "Centang order untuk aksi massal",
-      "exportSelected": "Export {{count}}",
-      "exportAll": "Export Semua"
+      "exportSelected": "Ekspor {{count}}",
+      "exportAll": "Ekspor Semua"
     },
     "row": {
       "actions": "Aksi order",
       "moveTo": "Pindah ke {{step}}",
       "backTo": "Kembalikan ke {{step}}",
-      "validate": "Pindai Validasi",
       "findParcel": "Cari Paket",
       "printLabel": "Cetak Resi",
       "open": "Buka Daftar Ambil",
-      "noReceipt": "Tidak ada file resi",
+      "noReceipt": "Tidak Ada File Resi",
       "select": "Pilih order {{id}}",
       "selectAll": "Pilih semua order di halaman ini"
     },
     "back": {
-      "title": "Kembalikan ke Dikonfirmasi",
+      "title": "Kembalikan ke Perlu Konfirmasi",
       "warning": "Order kembali ke antrean dan progresnya dibatalkan. Stok di rak tidak berubah — barang sudah dihitung keluar saat order dibuat.",
       "reason": "Alasan",
       "reasonPlaceholder": "Barang tidak ketemu di rak, rusak, …",
@@ -4106,7 +4158,9 @@
       "submit": "Serahkan {{count}} Paket",
       "empty": "Scan label paket untuk mulai.",
       "done_one": "{{count}} paket diserahkan",
-      "done_other": "{{count}} paket diserahkan"
+      "done_other": "{{count}} paket diserahkan",
+      "several": "Beberapa order — tidak ada yang diserahkan",
+      "severalHint": "{{orders}} memakai label ini. Tanyakan ke tim seller atau admin gudang mana yang dikirim."
     },
     "find": {
       "title": "Cari Paket Ini",
@@ -4115,17 +4169,21 @@
       "match": "Cocok — ini paketnya",
       "noMatch": "Bukan paket ini"
     },
-    "validate": {
-      "title": "Pindai Validasi",
-      "help": "Scan setiap barang. Langkah bisa lanjut kalau semua baris sudah pas.",
-      "unknown": "Tidak ada di order ini: {{code}}",
-      "over": "Melebihi jumlah pesanan",
-      "complete": "Semua barang sudah pas",
-      "next": "Pindah ke {{step}}",
-      "loading": "Memuat barang di order…"
-    },
     "moved": "Dipindah ke {{step}}",
-    "notMoved": "{{count}} pesanan tidak dipindah"
+    "notMoved": "{{count}} pesanan tidak dipindah",
+    "scanLabel": {
+      "title": "Pindai Label",
+      "help": "Scan label paket — nomor resi, nomor order marketplace, atau ID order. Satu order gudang ini langsung membuka halaman ambilnya.",
+      "searching": "Mencari {{code}}…",
+      "none": "Tidak ada order gudang ini dengan label {{code}}.",
+      "cancelledOnly": "Label {{code}} hanya milik order yang sudah batal ({{orders}}) — tidak ada yang perlu diambil.",
+      "several": "Beberapa order memakai label {{code}} — tanyakan ke tim seller atau admin gudang mana yang diproses.",
+      "open": "Buka",
+      "failed": "Label tidak bisa dicari.",
+      "units_one": "{{count}} unit",
+      "units_other": "{{count}} unit"
+    },
+    "emptyReturns": "Tidak ada retur ke gudang ini."
   },
   "settlementImports": {
     "title": "Impor Penyelesaian",

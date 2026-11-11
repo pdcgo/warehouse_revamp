@@ -38,7 +38,7 @@ func TestOrderCreate_OneProductOnTwoLinesThroughTheRealTake(t *testing.T) {
 
 	db := san_testdb.DB(t)
 	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 5)
 	shop := shopForOrders(t, db, team)
@@ -75,7 +75,7 @@ func TestOrderCreate_AShortRealTakeKeepsItsCodeAndDetail(t *testing.T) {
 
 	db := san_testdb.DB(t)
 	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
-	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, nil, nil, nil, nil)
 
 	stockForPicker(t, inventory, team, warehouse, product, 2)
 	shop := shopForOrders(t, db, team)

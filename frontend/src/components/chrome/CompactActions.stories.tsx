@@ -84,3 +84,26 @@ export const ALeftOutActionDoesNotCount: Story = {
     await expect(canvas.getByRole("button", { name: "Delete" })).toBeVisible();
   },
 };
+
+/**
+ * A PINNED action stays its icon past two, and only the others fold behind ⋯ beside it — the exception a page grants its
+ * every-visit action (the warehouse list's Scan Label, scan-label-stays-an-icon-on-a-phone).
+ */
+export const APinnedActionStaysAnIcon: Story = {
+  args: { actions: [{ ...exportAction, pinned: true }, importAction, createAction] },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const pinned = canvas.getByRole("button", { name: "Export" });
+    await expect(pinned).toHaveAttribute("data-testid", "act-export");
+    await userEvent.click(pinned);
+    await expect((args.actions[0] as typeof exportAction).onClick).toHaveBeenCalled();
+
+    await userEvent.click(canvas.getByTestId("actions-menu"));
+    const create = await screen.findByTestId("act-create");
+    await waitFor(() => expect(create).toBeVisible());
+    await expect(create).toHaveTextContent("New Order");
+    await expect(screen.getByTestId("act-import")).toHaveTextContent("Import");
+    // The pinned one is not repeated in the menu.
+    await expect(screen.getAllByTestId("act-export")).toHaveLength(1);
+  },
+};

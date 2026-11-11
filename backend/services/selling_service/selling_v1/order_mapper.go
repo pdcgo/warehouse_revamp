@@ -218,6 +218,10 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		TransactionId: uint64OrZero(o.TransactionID),
 		// When its settlement account opened; 0 = not yet (a-missing-account-is-found-by-its-opened-at).
 		SettlementOpenedAtUnix: unixOrZero(o.SettlementOpenedAt),
+		// Where a return of it goes, read with it (only-the-return-warehouse-accepts-a-return); 0 = the team has none.
+		ReturnWarehouseId: o.ReturnWarehouseID,
+		// The return transaction its accepted return went back on the shelf in; 0 = not accepted back.
+		ReturnTransactionId: uint64OrZero(o.ReturnTransactionID),
 	}
 }
 

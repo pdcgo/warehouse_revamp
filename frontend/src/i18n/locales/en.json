@@ -1291,7 +1291,11 @@
     "label": {
       "notShippedHere": "Order #{{id}} does not ship from this warehouse — its label is not yours to print",
       "noLabel": "Order #{{id}} has no label attached yet — ask the seller to attach it",
-      "refused": "The label of order #{{id}} could not be opened"
+      "refused": "The label of order #{{id}} could not be opened",
+      "unreadable": "The label file of order #{{id}} can't be read — ask the seller to upload it again",
+      "someLeftOut_one": "{{count}} label is not in the PDF",
+      "someLeftOut_other": "{{count}} labels are not in the PDF",
+      "noneToPrint": "No label could be printed"
     },
     "settlementMissing": {
       "filter": "Settlement not opened",
@@ -3309,16 +3313,9 @@
     "empty": "No orders yet.",
     "emptyFiltered": "No {{status}} orders.",
     "tab": {
-      "new": "New",
-      "toPick": "To Pick",
-      "picked": "Picked",
-      "handover": "Handed Over",
-      "all": "All",
       "return": "Returns"
     },
     "table": {
-      "order": "Order",
-      "customer": "Customer",
       "status": "Status",
       "product": "Product",
       "qty": "Qty",
@@ -3328,7 +3325,6 @@
     },
     "action": {
       "confirm": "Confirm Order",
-      "markPicked": "Mark Picked",
       "markHandedOver": "Mark Handed Over",
       "acceptReturn": "Accept Return",
       "forceReturn": "Force Return",
@@ -3349,27 +3345,90 @@
     },
     "acceptReturn": {
       "title": "Accept Return #{{id}}",
-      "intro": "The parcel is in your hands. The whole order comes back — name only what is missing from the box.",
-      "linesTitle": "What came back",
-      "linesHint": "Leave a line empty when every unit is in the box.",
-      "ordered_one": "{{count}} ordered",
-      "ordered_other": "{{count}} ordered",
-      "missing": "Missing",
-      "missingOf": "Missing units of {{name}}",
-      "shortHint": "The missing units are written on the order, for customer service to claim from the platform.",
       "courierTitle": "Courier's charge at the door",
       "courierHint": "Only if the courier asked for something when handing the parcel over. The warehouse pays it and the selling team owes it back.",
       "courierAmount": "Amount",
       "courierNote": "What it was for",
       "courierNotePlaceholder": "e.g. return postage asked by J&T",
       "courierNoteRequired": "Say what the courier's charge was for.",
-      "accepted": "Return accepted",
-      "labelsTitle": "Print the Labels",
-      "labelsIntro": "These units are another team's products, coming back as the selling team's own. Print each code and stick it over the old label, so the next pick scan matches.",
-      "labelOver": "Over the old label {{code}}",
-      "labelCount_one": "{{count}} label",
-      "labelCount_other": "{{count}} labels",
-      "done": "Done"
+      "accepted": "Return accepted"
+    },
+    "returnAccept": {
+      "intro": "The parcel is in your hands. The whole order comes back — per line, type only what is missing and what is broken, and put the sound units on racks.",
+      "back": "Back",
+      "openOrder": "Open Order",
+      "actions": "Actions",
+      "failed": "The return could not be accepted",
+      "countSummary": "{{placed}} of {{sound}} sound pcs on a rack",
+      "progress_one": "{{count}} line to finish",
+      "progress_other": "{{count}} lines to finish",
+      "ready": "Every sound unit has a rack",
+      "ordered_one": "Ordered {{count}}",
+      "ordered_other": "Ordered {{count}}",
+      "relabelTitle": "Relabel — it comes back as the selling team's own",
+      "relabelCount_one": "Print {{count}} label and stick it over {{code}}",
+      "relabelCount_other": "Print {{count}} labels and stick each over {{code}}",
+      "relabelNone": "Nothing sound comes back — no label to print",
+      "cameBack": "What came back",
+      "missing": "Missing",
+      "missingOf": "Missing units of {{name}}",
+      "missingHint": "Not in the box",
+      "broken": "Broken",
+      "brokenOf": "Broken units of {{name}}",
+      "brokenHint": "Too damaged to sell",
+      "note": "Note (optional)",
+      "noteOf": "Note on what is broken or missing in {{name}}",
+      "notePlaceholder": "e.g. torn at the seam",
+      "noteHint": "Kept with the broken and missing units and copied onto the order's note for the platform claim.",
+      "over_one": "Broken and missing together are more than the {{count}} ordered.",
+      "over_other": "Broken and missing together are more than the {{count}} ordered.",
+      "sound": "Sound — onto racks",
+      "thrownAway": "Thrown away (broken)",
+      "missingOut": "Missing",
+      "putaway": "Put away to racks",
+      "rackPlaceholder": "Select a rack",
+      "rackQty": "Units on this rack",
+      "removeRack": "Remove this rack",
+      "addRack": "Split to Another Rack",
+      "fixCountFirst": "Fix the count first",
+      "nothingToPlace": "Nothing to place",
+      "nothingToPlaceHint": "Nothing on this line is sound — nothing goes onto a rack.",
+      "chooseRack": "Choose a rack",
+      "duplicateRack": "A rack twice",
+      "toPlace_one": "{{count}} still to place",
+      "toPlace_other": "{{count}} still to place",
+      "tooMany_one": "{{count}} too many",
+      "tooMany_other": "{{count}} too many",
+      "placed_one": "{{count}} placed",
+      "placed_other": "{{count}} placed",
+      "summaryShelf": "On the shelf",
+      "summaryShelfOf_one": "of {{count}} ordered",
+      "summaryShelfOf_other": "of {{count}} ordered",
+      "summaryThrown": "Thrown away",
+      "summaryThrownHint": "Broken — never shelved",
+      "summaryMissing": "Missing",
+      "summaryMissingHint": "Not in the box",
+      "summaryLabels": "Labels to print",
+      "summaryLabelsHint": "Borrowed units, relabelled",
+      "borneBy_one": "{{count}} unit is borne by {{team}}, not this warehouse — it is named on the order's note for customer service to claim from the platform.",
+      "borneBy_other": "{{count}} units are borne by {{team}}, not this warehouse — they are named on the order's note for customer service to claim from the platform.",
+      "allSound": "Every unit is sound and goes back on a rack.",
+      "elsewhere": {
+        "title": "This return goes to {{warehouse}}",
+        "description": "Only {{team}}'s return warehouse accepts it, and puts the units on its own racks. Keep the parcel aside until it is carried to {{warehouse}}.",
+        "short": "This return goes to {{warehouse}} — keep the parcel aside until it is carried there."
+      },
+      "noReturnWarehouse": {
+        "title": "{{team}} has no return warehouse",
+        "description": "Nobody can accept this return until {{team}} sets its return warehouse. Keep the parcel aside."
+      },
+      "alreadyAccepted": "Return #{{id}} is already accepted.",
+      "notInReturn": "Order #{{id}} is \"{{status}}\" — mark it returned from the order first.",
+      "confirm": {
+        "title": "Accept Return #{{id}}",
+        "message": "{{sound}} pcs go onto the racks you named, {{broken}} broken are thrown away and {{missing}} are recorded missing, borne by the selling team. This cannot be undone.",
+        "keepCounting": "Keep Counting"
+      }
     },
     "forceReturn": {
       "title": "Force Return",
@@ -3394,6 +3453,20 @@
       "alreadyAccepted": "Order #{{id}} is already accepted as a return.",
       "cancelled": "Order #{{id}} was cancelled before it shipped — there is nothing to return.",
       "lost": "Order #{{id}} was written off as lost — it cannot be received as a return. Ask customer service."
+    },
+    "scan": {
+      "title": "Scan the Items",
+      "help": "Scan every item. Set Picked turns on once every line is exact.",
+      "unknown": "Not on this order: {{code}}",
+      "over": "{{name}} — more than ordered",
+      "complete": "Every item is exact",
+      "setPicked": "Set Picked"
+    },
+    "pending": {
+      "barcode": {
+        "label": "Barcode",
+        "reason": "Products have no barcode yet, so the item scan matches each item's product code."
+      }
     }
   },
   "batches": {
@@ -4056,20 +4129,6 @@
       "created": "Date",
       "mpDate": "Marketplace date"
     },
-    "pending": {
-      "resiLookup": {
-        "label": "Finding by tracking number",
-        "reason": "The handover scan looks only in the orders this screen has loaded. It does not ask the server yet, although the order search now finds an order by its tracking number."
-      },
-      "barcode": {
-        "label": "Barcode",
-        "reason": "Products have no barcode yet, so the validation scan matches each item's product code."
-      },
-      "printMerge": {
-        "label": "Printing labels together",
-        "reason": "Nothing merges several receipt files into one document yet."
-      }
-    },
     "tab": {
       "toConfirm": "To confirm",
       "all": "All"
@@ -4079,7 +4138,8 @@
       "courier": "All couriers"
     },
     "header": {
-      "scanHandover": "Scan Handover"
+      "scanHandover": "Scan Handover",
+      "scanLabel": "Scan Label"
     },
     "bulk": {
       "selected": "{{count}} selected",
@@ -4087,7 +4147,7 @@
       "print": "Print Labels",
       "handover": "Hand Over",
       "clear": "Clear Selection",
-      "skipped": "{{count}} not packed — skipped",
+      "skipped": "{{count}} not picked yet — skipped",
       "hint": "Tick orders for bulk actions",
       "exportSelected": "Export {{count}}",
       "exportAll": "Export All"
@@ -4096,16 +4156,15 @@
       "actions": "Order actions",
       "moveTo": "Move to {{step}}",
       "backTo": "Back to {{step}}",
-      "validate": "Scan to Validate",
       "findParcel": "Find Parcel",
       "printLabel": "Print Label",
       "open": "Open Pick List",
-      "noReceipt": "No receipt file",
+      "noReceipt": "No Receipt File",
       "select": "Select order {{id}}",
       "selectAll": "Select every order on this page"
     },
     "back": {
-      "title": "Return to Confirmed",
+      "title": "Back to To Confirm",
       "warning": "The order goes back to the queue and its progress is undone. Nothing on the shelf changes — the goods were counted out when the order was placed.",
       "reason": "Reason",
       "reasonPlaceholder": "Item not found on the shelf, damaged, …",
@@ -4127,7 +4186,9 @@
       "submit": "Hand Over {{count}}",
       "empty": "Scan a parcel's label to begin.",
       "done_one": "{{count}} parcel handed over",
-      "done_other": "{{count}} parcels handed over"
+      "done_other": "{{count}} parcels handed over",
+      "several": "Several orders — none handed over",
+      "severalHint": "{{orders}} carry this label. Ask the selling team or the warehouse admin which one ships."
     },
     "find": {
       "title": "Find This Parcel",
@@ -4136,18 +4197,22 @@
       "match": "Match — this is the parcel",
       "noMatch": "Not this parcel"
     },
-    "validate": {
-      "title": "Scan to Validate",
-      "help": "Scan every item. The step can move on once every line is exact.",
-      "unknown": "Not on this order: {{code}}",
-      "over": "More than ordered",
-      "complete": "Every item is exact",
-      "next": "Move to {{step}}",
-      "loading": "Loading the order's items…"
-    },
     "moved": "Moved to {{step}}",
     "notMoved_one": "{{count}} order not moved",
-    "notMoved_other": "{{count}} orders not moved"
+    "notMoved_other": "{{count}} orders not moved",
+    "scanLabel": {
+      "title": "Scan Label",
+      "help": "Scan the parcel's label — its tracking number, marketplace ref or order id. One order of this warehouse opens its pick page.",
+      "searching": "Looking for {{code}}…",
+      "none": "No order of this warehouse carries {{code}}.",
+      "cancelledOnly": "Only a cancelled order carries {{code}} ({{orders}}) — there is nothing to pick.",
+      "several": "Several orders carry {{code}} — ask the selling team or the warehouse admin which one to process.",
+      "open": "Open",
+      "failed": "The label could not be looked up.",
+      "units_one": "{{count}} unit",
+      "units_other": "{{count}} units"
+    },
+    "emptyReturns": "No returns to this warehouse."
   },
   "settlementImports": {
     "title": "Settlement Imports",

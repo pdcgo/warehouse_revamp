@@ -29,6 +29,21 @@ export function resetReturnConfigurationStub() {
   table = seed();
 }
 
+/**
+ * A `beforeEach`: `teamId` returns to `warehouseId` for this story — 0n takes its return warehouse away. preview.tsx's
+ * reset puts the seed back before the next story. (The return accept's wrong-building and no-warehouse cases.)
+ */
+export function withReturnWarehouse(teamId: bigint, warehouseId: bigint) {
+  return () => {
+    if (warehouseId === 0n) {
+      table.delete(teamId);
+      return;
+    }
+
+    table.set(teamId, { warehouseId, updatedAtUnix: SEEDED_AT });
+  };
+}
+
 /** The team's saved return warehouse, 0n when none — what a story asserts a save wrote. */
 export function returnWarehouseOf(teamId: bigint): bigint {
   return table.get(teamId)?.warehouseId ?? 0n;

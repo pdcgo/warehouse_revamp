@@ -31,6 +31,8 @@ Users & Role System, Documents, region, shipping, expense.
 | **A shop's own settlement rows have a page** | *Entri Toko* lists withdrawals, adjustments, shop fees and lines that found no order, each with the statement it came from; a wrong one is reversed in place. The report's shop rows open it |
 | **Ekspor gives a real file** | the supplier Toko and Statistik tabs, the Supplier Report and the Account Report download an .xlsx of everything the screen shows as filtered — every page, exact money |
 | **Every date range is the Jakarta day** | lists, reports, Analytic and the date picker cut days at Jakarta's midnight, wherever the reader is |
+| **The new warehouse order list is live** | the old system's columns and a *Returns* tab; *Scan Label* opens the order's pick page, and *Set Picked* only comes after every item is scanned; labels print together as one PDF from the bulk bar |
+| **Returns go back on the shelf** | the team's return warehouse accepts a returned parcel on a page: racks for the sound units, broken and missing counted with a note — those are the seller's, named for customer service to claim; stock comes back at its original price and expiry |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

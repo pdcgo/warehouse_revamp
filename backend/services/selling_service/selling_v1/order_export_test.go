@@ -63,7 +63,7 @@ type exportRun struct {
 func export(t *testing.T, db *gorm.DB, store *fakeExports, req *sellingv1.OrderExportRequest) exportRun {
 	t.Helper()
 
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, store, nil, nil, nil)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, store, nil, nil, nil, nil)
 
 	mux := http.NewServeMux()
 	mux.Handle(sellingv1connect.NewOrderServiceHandler(svc))

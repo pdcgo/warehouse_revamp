@@ -10,7 +10,7 @@ flowchart LR
   A["design decided"] --> P["prototype - 2026-10-14"]
   P --> D["design_accept - 2026-11-02"]
   D --> B["backend step - built 2026-11-02"]
-  B --> N["next - the owner's adjustment.md, the open points below"]
+  B --> N["next - the open points below; adjustment.md retired 2026-11-09"]
 ```
 
 ## What exists
@@ -136,7 +136,7 @@ flowchart LR
 | two identical reports | two requests — `FoundRequestCreate` has no idempotency key (none was decided); the approver rejects the duplicate |
 | the warehouse product page | ✅ fixed 2026-11-03: `/inventories/products/:id` reads `StockCost`, whose policy was the selling roles' only (from when it was an order's cost), so it answered permission_denied to every warehouse role. The policy now admits warehouse Owner, Admin and Staff — RackDetail and RackStock already give them the same average — and a warehouse caller reads its own building only (`filter.warehouse_id` must be its `team_id`, else PermissionDenied). Tests: `TestStockCost_PolicyAdmitsTheWarehouse`, `TestStockCost_AWarehouseReadsItsOwnBuildingOnly`; e2e *the warehouse product page opens for the warehouse's Admin and Staff* |
 | the Stock screen | ✅ verified live, then decided and built 2026-11-04: it listed the warehouse team's own catalogue (always empty) — it now lists what the warehouse has held, [below](#the-stock-screen-lists-what-the-warehouse-has-held--built) |
-| the Adjust screen itself | still undesigned ([adjustment.md](../../business/inventory/adjustment.md) is empty) |
+| the Adjust screen itself | still undesigned ([adjustment.md](../../business/inventory/adjustment_decision.md#adjustment-md-is-retired) is empty) |
 | the list on the screen rules | ✅ 2026-11-10 ([the-found-list-follows-the-screen-rules](../../technical/frontend/found_stock_decision.md#the-found-list-follows-the-screen-rules), a new `found_stock_decision.md`): the page rises in, a skeleton for the first load; each card's product is `ProductListItem` (picture from one `useProductsByIds`, the code copyable) and its owner `TeamItem size="xs"`; posting lines light up; a claim line's loss date is short. Then a TABLE, one request a row ([the-found-list-is-a-table](../../technical/frontend/found_stock_decision.md#the-found-list-is-a-table)): `FoundRequestTable` (a block per request on a phone), the note and the posting lines in `FoundRequestDetail` — a dialog, a bottom sheet on a phone — opened by a click on the row; `FoundRequestCard` is gone. The tab row draws no scrollbar ([the-found-tab-row-never-scrolls](../../technical/frontend/found_stock_decision.md#the-found-tab-row-never-scrolls)). Stories: FoundStock 12 |
 | ⚠ NOT FINISHED (2026-11-11) | committed at the owner's *"commit aja, tandai belum selesai"* — the Found Stock table awaits the owner's review, and two questions are open: **the screen's name** (menu and title *Stok Ditemukan*, the rack's act *Temuan*, Koreksi's reason *Ditemukan* — recommended *Temuan*); **the same tab-row scrollbar** on four other screens (`overflowX="auto"` alone: the warehouse's and the seller's transfer lists, the stock counts, a count's page) — offered, not touched |
 

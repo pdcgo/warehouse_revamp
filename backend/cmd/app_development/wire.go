@@ -63,6 +63,8 @@ func InitializeApp() (*App, error) {
 		NewRoleReader,
 		// Joins selling to inventory (#149/#70) — see stock_picker.go.
 		NewStockPicker,
+		// The warehouse a refused return accept names — see selling_team_names.go.
+		NewSellingTeamNamer,
 		NewProductCatalog,
 		NewInventoryProductReader,
 		// The link to an order's label, for the warehouse that ships it — see order_label_linker.go.

@@ -82,7 +82,7 @@ flow in [rpc.md](../../services/inventory_service/rpc.md#stocktakequote--what-th
 | the placement page | ✅ *(2026-11-04, slices 5–6)* `pick-order` → `OrderDetail`, then `StockPickLocations(warehouse_id, transaction_id)` = the order's `transactionId`, read off `product_placement_logs` by `transaction_id` AND the caller's `warehouse_id`, netted against a rollback (`HAVING SUM(-stock_change) > 0`). `ref` (2) reserved; no `idempotency_order_check` join | — matches |
 | the order's history | `order_events` (selling_service `00011`), the Timeline tab | `order_timeline_logs` replaces it ([order-timeline-logs-replaces-order-events](../../business/order/context_decision.md#order-timeline-logs-replaces-order-events)) |
 | the settlement importer | `orderInShop` pays the newest of two live orders | the shop, naming both |
-| the order's statuses | `OrderStatus` placed · confirmed · picking · packed · shipped; `pick-order` advances one step per button, with no item scan (the scan is only in the `PickQueueNextPage` preview) | `processed` · `picked` at *Set Picked* after every good is scanned · `shipping` at the handover |
+| the order's statuses | ✅ *(2026-11-09)* `processed` · `picked` · `shipping` (00015); `pick-order` moves processed → picked only by its item scan's *Set Picked*, every line exact (`pages/pick-order/components/ItemScan.tsx`); the list's menu and Change Step never offer it; the label opens the page (Scan Label, `features/picking/labelLookup.ts`) | — matches |
 
 ## Left for the owner to draw
 

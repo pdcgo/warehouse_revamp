@@ -92,9 +92,72 @@ type StockPicker interface {
 	// OrderCancelled, which then waits (redelivered) until the count ends. A key with no take of this team answers nil.
 	StockLockCheck(ctx context.Context, sellingTeamID, warehouseID uint64, key string) (*StockLock, error)
 
+	// ReturnStock puts an accepted return back on the RETURN warehouse's shelves (return_decision.md): one `return`
+	// transaction of the ordering team, minting one batch per batch the order's take drew from, the sound units onto the
+	// racks named, the broken and missing units as door rows with the crew's note. The order's return accept calls it
+	// BEFORE it moves the order (the order_return.md flow: the return transaction, then the status), so a refusal — a
+	// stock count holding a rack, a rack that is not the warehouse's — comes back as inventory's own Connect error and
+	// refuses the whole accept, the order still `return`.
+	//
+	// ONCE PER TAKE: a take already returned answers that return (Posted false) and writes nothing, so a retried accept
+	// whose status move failed after the stock went in can finish, and two accepts in one second stock the parcel once.
+	ReturnStock(ctx context.Context, in StockReturn) (ReturnedStock, error)
+
 	// ⚠ There is no cost read beside Pick any more. An order is costed at the units that leave the shelf
 	// (an-order-is-costed-at-what-leaves-the-shelf), which only the take knows — the shelf's average, read before it,
 	// was a different figure and is never an order's cost.
+}
+
+// StockReturn is an accepted return as the stock side needs it — in this service's own terms.
+type StockReturn struct {
+	// The return warehouse — the accepting team, checked to be the selling team's configured one.
+	ReturnWarehouseID uint64
+	// The ordering team: the return's team and the owner of every unit it puts back.
+	SellingTeamID uint64
+	// The order's take (orders.transaction_id) — the layers the return mints from, and its once-only key.
+	TakeTransactionID uint64
+	// Written on the stock transaction.
+	Description string
+	// Every product the take drew, once.
+	Lines []StockReturnLine
+}
+
+// StockReturnLine is one order line as the crew counted it.
+type StockReturnLine struct {
+	// The line's product — what the take drew.
+	ProductID uint64
+	// What the units come back as: ProductID on the team's own line, its mapped own product on a borrowed one.
+	ReturnProductID uint64
+	// The markup the team paid on a borrowed line, over its cost (the line's frozen markup_total ÷ its cost); 0 on its own.
+	MarkupRate float64
+	Sound      int64
+	Broken     int64
+	Missing    int64
+	// The crew's note on the broken and missing units (a-return-door-row-carries-an-optional-note).
+	Note       string
+	Placements []StockReturnPlacement
+}
+
+// StockReturnPlacement is some of a line's sound units on one rack.
+type StockReturnPlacement struct {
+	RackID   uint64
+	Quantity int64
+}
+
+// ReturnedStock is what the return wrote: its stock transaction, and the door rows — what came back broken or missing.
+type ReturnedStock struct {
+	TransactionID uint64
+	// False when the take had been returned already and this is that return.
+	Posted   bool
+	Problems []ReturnedProblem
+}
+
+// ReturnedProblem is one door row: a product's broken or missing units, with the crew's note.
+type ReturnedProblem struct {
+	ProductID uint64
+	Broken    bool
+	Count     int64
+	Note      string
 }
 
 // StockLock is a stock count holding a rack an order's take came from: the count's session, and the warehouse's own

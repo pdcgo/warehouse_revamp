@@ -36,6 +36,8 @@ var orderRaceTables = []string{
 	"order_drafts",
 	"shops",
 	"warehouse_fees",
+	"order_return_problem_items",
+	"order_return_checks",
 	"idempotency_order_check",
 	"inventory_transaction_items",
 	"batch_price_logs",
@@ -108,7 +110,7 @@ func orderService(db *gorm.DB, fees selling_v1.WarehouseFeePricer) *selling_v1.S
 		fees = NewWarehouseFeePricer(warehouse_v1.NewService(db, nil))
 	}
 
-	return selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, fees, nil, nil)
+	return selling_v1.NewService(db, NewStockPicker(inventory), nil, nil, nil, runsEveryShop{}, nil, fees, nil, nil, nil)
 }
 
 func twoUnits(shop uint64) *sellingv1.OrderCreateRequest {

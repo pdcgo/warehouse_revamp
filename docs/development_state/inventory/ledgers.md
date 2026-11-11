@@ -286,7 +286,7 @@ No `batch_id` — a rack never knows its batch ([expiry-is-a-report](../../busin
 | --- | --- | --- |
 | `order` | `order` | `order` |
 | `restock` | `restock` | `restock` |
-| `return` *(parked)* | `return` | `return` |
+| `return` *(built 2026-11-09)* | `return` | `return` |
 | `sample` | `sample` | `sample` |
 | `transfer_in` | `transfer_in` | `transfer_in` |
 | `transfer_out` | `transfer_out` | `transfer_out` |
@@ -304,11 +304,11 @@ So `batch_logs.change_type` = {order, revaluation, return, restock, adjustment, 
 | --- | --- | --- | --- | --- | --- |
 | `order` | `PostOrder` | take, FIFO | system picks: unlocked first, fewest first | ordering team | ✅ by K |
 | `restock` | `PostRestock` | mint 1 per line with good units, landed price | staff name racks (good units only) | restock's team | ❌ → adjustment |
-| `return` | `PostReturn` | ⏸ parked | ⏸ parked | — | ❌ |
+| `return` | `PostReturn` ✅ *(2026-11-09, backlog #40)* | mint 1 per layer the order's take drew with sound units — price, expiry, suppliers kept; a borrowed line at the markup paid, as the mapped own product ([a-return-mints-one-batch-per-batch-the-order-took](../../business/inventory/return_decision.md#a-return-mints-one-batch-per-batch-the-order-took)); broken / missing off the newest layers → `order_return_problem_items`, the selling team's (no payable, no claim) | the return warehouse's crew name racks (sound units only), refused under a count lock | ordering team | ❌ — once per take (`order_return_checks`) |
 | `sample` | `PostSample` | take, FIFO | the page's rack (staff) | owner, 1 tx per team | ❌ |
 | `transfer_out` | `PostTransferOut` | take, FIFO, at A | system picks, fewest first | transfer's team | ✅ cancel while `created` |
 | `transfer_in` | `PostTransferIn` | mint 1 per source batch with good units | staff name racks at B | transfer's team | ❌ |
-| `adjustment` | `PostAdjustment` | ⚠ undesigned (adjustment.md empty) | staff | owner | ❌ |
+| `adjustment` | `PostAdjustment` | ⚠ the recount and the wrong-stock-in correction are undesigned ([adjustment-md-is-retired](../../business/inventory/adjustment_decision.md#adjustment-md-is-retired)) | staff | owner | ❌ |
 | `revaluation` | `PostRevaluation` | 1 row, `change_count` 0, + price log | none | owner | ❌ |
 | `problem` | `PostCountFinalize` · `PostShelfProblem` | take FIFO, broken before lost, + problem rows (a shelf report: its named batch) | reported rack / per-rack correction | owner | ❌ |
 | `found` | `PostCountFinalize` | claim oldest lost into its batch, rest mint at last price | rack rows `found` | owner | ❌ |
@@ -456,8 +456,8 @@ Mutation names: [one-mutation-per-operation](../../business/inventory/context_de
 21. Lock position of `warehouse_stock_problems` (found), `idempotency_order_check` and the tx row (rollback) relative to batches → shelves is unstated. Recommend record rows first. → **built as** (the count): session → open losses → batches → racks.
 22. `transfer_out` on a count-locked rack: only *"an order's take"* is allowed there — the transfer create is not stated (last, like an order, or refused?). → **built as**: like an order — it shares the take, counted racks last. ✅ **2026-11-03**: refused like an order, its cancel too ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
 23. Actor for an event-driven rollback (Order Cancel / `InventoryTxCancel` from Pub/Sub): no user for `actor_id` / the rollback's actor.
-24. `adjustment` is undesigned (adjustment.md is empty): its sign, mint vs existing batch, and how it names what it corrects (a returned sample, a wrong stock-in).
-25. `return` is in both enums but parked ([return-is-unplanned](../../business/inventory/context_decision.md#return-is-unplanned)).
+24. `adjustment` is undesigned ([adjustment-md-is-retired](../../business/inventory/adjustment_decision.md#adjustment-md-is-retired) — `adjustment.md` was deleted 2026-11-09; correcting a wrong stock-in waits in the backlog): its sign, mint vs existing batch, and how it names what it corrects (a returned sample, a wrong stock-in).
+25. `return` is in both enums but parked ([return-is-unplanned](../../business/inventory/context_decision.md#return-is-unplanned)). ✅ *(2026-11-09)* built: `PostReturn` through `OrderTransactionReturn`, called by the order's return accept ([return_decision.md](../../business/inventory/return_decision.md), [rpc.md](../../services/inventory_service/rpc.md#an-order-comes-back--ordertransactionreturn)).
 26. Who confirms a shelf `found` (rule 59): no column records the second person. ✅ *(2026-11-03)* built: a found is reported through `FoundRequestCreate` and waits for the Owner or Admin ([an-adjust-found-waits-for-the-owner-or-admin](../../business/inventory/opname_decision.md#an-adjust-found-waits-for-the-owner-or-admin)); `StockAdjust` refuses `STOCK_ADJUST_REASON_FOUND`.
 27. A restock item's total: [an-item-equals-its-batch-rows](../../business/inventory/transaction_decision.md#an-item-equals-its-batch-rows) says *"what was paid"*, but with broken/missing the batch value is good × landed price < paid. Rule 15 makes it good × landed.
 28. `expired_at`: a date or a timestamp — not stated.

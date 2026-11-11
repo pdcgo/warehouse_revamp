@@ -238,7 +238,7 @@ flowchart LR
 | its rack | the one staff put it on, which need not be the rack it left |
 
 **What it does NOT settle**: how an adjustment names what it answers, which is the same open point as a found unit
-answering its loss ([context Q14b](./context_clarify.md#question)) and waits on your [adjustment.md](./adjustment.md).
+answering its loss ([context Q14b](./context_clarify.md#question)) and waits on your [adjustment.md](./adjustment_decision.md#adjustment-md-is-retired).
 
 ## an-order-line-may-be-taken-from-several-racks
 

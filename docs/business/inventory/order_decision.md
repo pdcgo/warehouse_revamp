@@ -458,6 +458,8 @@ sequenceDiagram
 🔄 *(2026-10-16)* **Amended by [picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)**:
 *Set Picked* writes the status and its timeline row only. Inventory is not told.
 
+✅ **Built 2026-11-09 — the item scan is on the pick page.** `pages/pick-order/components/ItemScan.tsx`, shown for a `processed` order under its racks: each scan counts on the page only, an unknown good or one too many is refused with the wrong sound, and *Set Picked* turns on only when every line is exact — one `OrderStatusChange` to `picked`. The pick page's plain *Mark Picked* is gone, and the warehouse list's row menu and Change Step no longer offer *Sudah diambil*. A monitoring team gets no scan. ⏸ The barcode is parked: an item is matched by its product code.
+
 ## the-pick-page-opens-first-by-the-label
 
 > Owner, in chat (2026-10-16): *"for inventory order Q11, yes"* — answering [order_clarify Q11](./order_clarify.md#question),
@@ -487,6 +489,8 @@ flowchart LR
 | then | the item scans, counted on the page, and *Set Picked* |
 | one page | the placement list and the verification scan are not two screens |
 | a missing good | the way back to `pending` ([missing-goods-send-the-order-back-to-pending](#missing-goods-send-the-order-back-to-pending)) starts from this page |
+
+✅ **Built 2026-11-09.** *Scan Label* on the warehouse list ([scan-label-opens-the-pick-page](../../technical/frontend/warehouse_order_list_decision.md#scan-label-opens-the-pick-page)) opens the order's one page: the racks first (`StockPickLocations` by the transaction id), then the item scans and *Set Picked* below them — no second lookup, no second screen.
 
 ## a-label-scan-reads-the-ref-or-the-receipt
 

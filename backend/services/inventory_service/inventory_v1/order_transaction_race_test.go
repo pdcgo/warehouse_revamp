@@ -35,6 +35,8 @@ var ledgerTables = []string{
 	"opname_surplus_drafts",
 	"opname_session_snapshots",
 	"opname_sessions",
+	"order_return_problem_items",
+	"order_return_checks",
 	"idempotency_order_check",
 	"inventory_transaction_items",
 	"batch_price_logs",

@@ -41,7 +41,7 @@ import { OrderDetailPage } from "../index";
 //   | TheTimelineKeepsStatusRowsOnly    | a note is not a step; a hand-back's reason stays on it    |
 //   | WarehouseDetailShowsTheNotes…     | the warehouse reads the notes and writes as the warehouse |
 //   | WarehouseTimelineKeepsStatus…     | the warehouse's Timeline tab drops the notes too          |
-//   | WarehouseForcesAReturn            | completed → Force Return, confirmed → Accept Return       |
+//   | WarehouseForcesAReturn            | completed → Force Return, confirmed → Accept Return, page |
 
 export const SELLER = teams[1]!; // Toko Melati (12)
 export const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
@@ -57,6 +57,8 @@ export const Routed = (path: string) =>
     [
       { path: "/orders/:orderId", element: <OrderDetailPage /> },
       marker("/orders", "at-order-list"),
+      // The return accept page (the-return-accept-page-is-accepted) — the warehouse order detail is one of its ways in.
+      marker("/warehouse-orders/:orderId/accept-return", "at-return-accept"),
     ],
     path,
   );

@@ -51,7 +51,7 @@ func TestDraftRegionMatcher_PrefillsADraftsAddressFromTheRegionList(t *testing.T
 	plantRegion(t, db, "98.71.01.1001", "98.71.01", 4, "Menteng", "16112")
 
 	drafts := selling_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil,
-		NewDraftRegionMatcher(region_v1.NewService(db)))
+		NewDraftRegionMatcher(region_v1.NewService(db)), nil)
 	ctx := san_auth.WithIdentity(context.Background(), &role_basev1.Identity{IdentityId: 7})
 
 	pushed := func(ref, kabupaten string) *sellingv1.OrderDraft {

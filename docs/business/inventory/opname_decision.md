@@ -455,7 +455,7 @@ flowchart LR
 | an adjustment's broken or lost | the same row, per [a-shortage-writes-a-row-per-batch](#a-shortage-writes-a-row-per-batch) |
 | an adjustment's found | a claim, per [a-surplus-claims-the-oldest-loss-first](#a-surplus-claims-the-oldest-loss-first) |
 | a found, by either door | erases a warehouse debt, so it is confirmed by a second person — who confirms is [Q8](./opname_clarify.md#question) |
-| the adjustment's screen and rules | yours to write in [adjustment.md](./adjustment.md) |
+| the adjustment's screen and rules | yours to write in [adjustment.md](./adjustment_decision.md#adjustment-md-is-retired) |
 
 🔄 *(2026-10-16)* **Amended by [problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)**: both
 doors now write `problem` and `found` transactions, so the door is no longer the type — it is whether
@@ -1893,7 +1893,7 @@ flowchart LR
 | a counted product | the request is refused while a count holds it ([a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too)) |
 | retired | the provisional `adjustment` found into a named batch |
 
-**What it does NOT settle:** the Adjust screen's own design — [adjustment.md](./adjustment.md) is still empty; the request
+**What it does NOT settle:** the Adjust screen's own design — [adjustment.md](./adjustment_decision.md#adjustment-md-is-retired) is still empty; the request
 and the approval list are drawn in Storybook first, at the build.
 
 ⛔ **Not built.** Today the Adjust *found* is still the provisional `adjustment` into the named batch, outside the register.

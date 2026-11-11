@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -30,8 +29,11 @@ import { usePickOrder } from "../../features/picking/queries";
 import { useOrderStatusChange } from "../../features/orders/queries";
 import { orderNotes, timelineFromKey } from "../../features/orders/timelineLogs";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { AcceptReturnDialog } from "../../features/orders/AcceptReturnDialog";
+import { useOpenReturnAccept } from "../../features/orders/returnAccept";
 import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ItemScan } from "./components/ItemScan";
+import { PICK_ORDER_PENDING } from "./pending";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -52,11 +54,14 @@ function parseOrderId(raw: string | undefined): bigint {
 // the selling team's button until now (#91), which is why a warehouse opening a just-placed order used
 // to find a screen with nothing on it to press.
 //
-// The warehouse's three forward moves of the status diagram, each an OrderStatusChange: confirm, Set
-// Picked, and the handover. A move back to pending is the list's (it asks for a reason).
+// The warehouse's forward moves of the status diagram that are a plain button, each an OrderStatusChange: confirm, and
+// the handover. A move back to pending is the list's (it asks for a reason).
+//
+// ⚠ SET PICKED IS NOT ONE OF THEM (the-item-scans-live-on-the-page): a processed order moves to picked only from the
+// item scan below the racks, once every line is scanned exact. The plain "Mark Picked" this ladder used to offer moved an
+// order with nothing scanned at all.
 const NEXT_STEP: Partial<Record<OrderStatus, { labelKey: string; toastKey: string; to: OrderStatus }>> = {
   [OrderStatus.PENDING]: { labelKey: "picking.action.confirm", toastKey: "picking.toast.confirmed", to: OrderStatus.PROCESSED },
-  [OrderStatus.PROCESSED]: { labelKey: "picking.action.markPicked", toastKey: "picking.toast.picked", to: OrderStatus.PICKED },
   [OrderStatus.PICKED]: { labelKey: "picking.action.markHandedOver", toastKey: "picking.toast.handedOver", to: OrderStatus.SHIPPING },
 };
 
@@ -83,8 +88,8 @@ export function PickOrderPage() {
   const query = usePickOrder({ warehouseId, orderId });
   // The move invalidates the orders and the stock screens together.
   const moveMutation = useOrderStatusChange();
-  // THE RETURN ACCEPT's dialog (the-accept-is-the-status-return-completed).
-  const [accepting, setAccepting] = useState(false);
+  // THE RETURN ACCEPT's page (the-return-accept-page-is-accepted).
+  const openReturnAccept = useOpenReturnAccept();
   // THE FORCED RETURN (a-return-is-received-by-search-then-forced, A): the parcel is in hand before customer service
   // claimed it. Once moved, the order re-reads in `return` and Accept Return takes the button's place.
   const forceReturn = useForceReturn({ teamId: warehouseId });
@@ -100,18 +105,30 @@ export function PickOrderPage() {
     const step = NEXT_STEP[order.status];
     if (!step) return;
 
+    await moveTo(step.to, step.toastKey);
+  }
+
+  // SET PICKED — the item scan's one write, once every line is exact (the-item-scans-live-on-the-page). A second person's
+  // Set Picked on the same order is refused by the server and says so; the order stays picked.
+  async function setPicked() {
+    await moveTo(OrderStatus.PICKED, "picking.toast.picked");
+  }
+
+  async function moveTo(to: OrderStatus, toastKey: string) {
+    if (warehouseId === undefined) return;
+
     try {
       // The move is read off NEXT_STEP rather than re-derived from the status here. The two used to be
       // separate ladders — a label table and a chain of ternaries — and adding a state to one and not
       // the other is how a button ends up making the previous step's move.
-      const [result] = await moveMutation.mutateAsync({ teamId: warehouseId, orderIds: [orderId], to: step.to });
+      const [result] = await moveMutation.mutateAsync({ teamId: warehouseId, orderIds: [orderId], to });
 
       if (!result?.moved) {
         toaster.create({ type: "error", title: t("picking.toast.stepFailed"), description: result?.refusedReason });
         return;
       }
 
-      toaster.create({ type: "success", title: t(step.toastKey) });
+      toaster.create({ type: "success", title: t(toastKey) });
     } catch (err) {
       toaster.create({
         type: "error",
@@ -184,10 +201,14 @@ export function PickOrderPage() {
   const step = NEXT_STEP[order.status];
   // The order's notes, newest first — timeline rows with no status (a-note-is-a-timeline-row).
   const notes = orderNotes(order.timelineLogs);
+  // THE ITEM SCAN — a processed order, being picked, by someone who may write (a monitor reads the page only).
+  const scanning = order.status === OrderStatus.PROCESSED && canWrite(current);
 
   return (
     <Stack gap="section">
       {back}
+
+      {scanning && <NotImplementedSummary list={PICK_ORDER_PENDING} />}
 
       <Flex align="center" gap="card">
         <Heading size="md">{t("picking.detail.title", { id: String(order.id) })}</Heading>
@@ -204,10 +225,10 @@ export function PickOrderPage() {
           </Button>
         )}
         {/* A RETURN'S ONE STEP IS THE ACCEPT (the-accept-is-the-status-return-completed): the parcel is in the crew's
-            hands. It is not one of NEXT_STEP's plain moves — it asks what is missing and what the courier charged, and
-            answers the labels to print — so it opens its own dialog. */}
+            hands. It is not one of NEXT_STEP's plain moves — per line it asks what is missing and broken and where the sound
+            units go — so it opens its own page (the-return-accept-page-is-accepted). */}
         {order.status === OrderStatus.RETURN && canWrite(current) && (
-          <Button colorPalette="brand" onClick={() => setAccepting(true)} data-testid="pick-order-accept-return">
+          <Button colorPalette="brand" onClick={() => openReturnAccept(order.id)} data-testid="pick-order-accept-return">
             <Icon as={PackageCheck} boxSize="4" />
             {t("picking.action.acceptReturn")}
           </Button>
@@ -227,12 +248,6 @@ export function PickOrderPage() {
         )}
       </Flex>
       {forceReturn.dialog}
-
-      {/* Mounted whatever the status: the accept re-reads the order as return_completed, and a dialog under the button
-          would vanish with the labels it is about to show. */}
-      {warehouseId !== undefined && (
-        <AcceptReturnDialog open={accepting} onOpenChange={setAccepting} teamId={warehouseId} order={order} />
-      )}
 
       {/* WHERE IT IS GOING — the block this screen was missing entirely (owner).
           It used to show the customer's NAME and nothing else, while the order carried a phone, a frozen
@@ -372,6 +387,18 @@ export function PickOrderPage() {
           </Stack>
         </Card.Body>
       </Card.Root>
+
+      {/* ONE PAGE, THE RACKS FIRST (the-pick-page-opens-first-by-the-label): the walk reads the shelves above, and back at
+          the table the same page takes the item scans, then Set Picked. Keyed by the order, so another order's page never
+          inherits a count. */}
+      {scanning && (
+        <ItemScan
+          key={order.id.toString()}
+          items={order.items}
+          setting={moveMutation.isPending}
+          onSetPicked={() => void setPicked()}
+        />
+      )}
     </Stack>
   );
 }

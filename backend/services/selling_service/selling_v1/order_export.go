@@ -65,9 +65,8 @@ func (s *Service) OrderExport(
 	base := func() *gorm.DB {
 		query := scopedOrders(s.db.WithContext(ctx).Model(&selling_service_models.Order{}), teamID, filter)
 
-		if status := orderStatusToText(filter.GetStatus()); status != "" {
-			query = query.Where("status = ?", status)
-		}
+		// The tab — one status or several (statusFilter, as the list reads it).
+		query = statusFilter(query, filter)
 
 		// The ticked rows, when the bar exports a selection (the-bulk-actions-are-always-on-screen).
 		if ids := req.Msg.GetOrderIds(); len(ids) > 0 {

@@ -180,7 +180,8 @@ the wire and in the tables a double, as the ledgers hold it
 
 ## Order transactions — an order's take and its release, on the ledgers
 
-`OrderTransactionService` (`order_transaction.proto`): the order service calls it while it creates an order, before the
+`OrderTransactionService` (`order_transaction.proto`) — and since 2026-11-09 an accepted return's way back onto a shelf
+([below](#an-order-comes-back--ordertransactionreturn)): the order service calls it while it creates an order, before the
 order exists, so inventory knows the take only by the order form's key K
 ([every-release-goes-by-the-key](../../business/order/context_decision.md#every-release-goes-by-the-key)). ✅ *(2026-10-17)*
 **Selling's order calls it** through the composition root's stock picker. ✅ *(2026-11-04, backlog #10 slice 3)* With the
@@ -432,6 +433,69 @@ sequenceDiagram
 Tests: `stock_take_quote_test.go` — a two-batch product quoted for 1, 2 and 3 units matches the batches and cost a
 real take then draws. Performance: [StockTakeQuote.md](../../../audits/services/inventory_service/performances/StockTakeQuote.md)
 — one query for own lines at any count, but the reserve rule it shares with the take reads once per borrowed line.
+
+### An order comes back — `OrderTransactionReturn`
+
+✅ *(2026-11-09, backlog #40)* An accepted return's parcel back on the **return warehouse's** shelves
+([return_decision.md](../../business/inventory/return_decision.md)). Called in process by selling's
+[`OrderReturnAccept`](../selling_service/rpc.md#the-return-warehouse-accepts-a-return--orderreturnaccept) through
+`StockPicker.ReturnStock` (`cmd/app_development/stock_picker.go`), **before** the order moves — the accept has already
+checked that the caller is the selling team's return warehouse
+([only-the-return-warehouse-accepts-a-return](../../business/order/context_decision.md#only-the-return-warehouse-accepts-a-return)).
+`inventory_v1.Service.OrderTransactionReturn`
+([order_transaction_return.go](../../../backend/services/inventory_service/inventory_v1/order_transaction_return.go)) →
+`inventory_mutations.PostReturn`
+([post_return.go](../../../backend/services/inventory_service/inventory_mutations/post_return.go)), on the transfer's
+own layer helpers (`outboundLayers`, `splitLayers`).
+
+```mermaid
+sequenceDiagram
+    participant S as selling OrderReturnAccept - the stock picker, in process
+    participant H as OrderTransactionReturn
+    participant DB as Postgres
+
+    S->>H: team_id = the return warehouse, selling_team_id, take_transaction_id, lines - sound, broken, missing, note, racks
+    H->>DB: order_return_checks by the take - a plain read
+    alt already returned
+        H-->>S: that return and its door rows, posted false - nothing written
+    end
+    H->>DB: BEGIN
+    H->>DB: the take FOR UPDATE - an order take of this selling team, not rolled back
+    alt no such take
+        H-->>S: NotFound - nothing written
+    end
+    H->>DB: order_return_checks again, under the lock - a twin that waited answers the first one's return
+    H->>DB: the racks named are the return warehouse's
+    H->>DB: the take's batch rows - its layers, each at its price when it left the shelf
+    Note over H: every product once, sound + broken + missing = what it drew, the racks hold exactly the sound units
+    H->>DB: one return transaction of the selling team at the return warehouse
+    H->>DB: one batch per sound layer - price, expiry, suppliers kept, a borrowed line at the markup paid, as the mapped own product
+    H->>DB: the sound units onto the racks named - refused whole under a count lock
+    H->>DB: one item per product, equal to its batches
+    H->>DB: order_return_problem_items - broken then missing off the newest layers, with the crew's note
+    H->>DB: warehouse_products - the products the units came back as, linked to the return warehouse
+    H->>DB: order_return_checks INSERT - the take claimed with its return, last
+    H->>DB: COMMIT
+    H-->>S: transaction_id, posted true, the door rows
+```
+
+| | |
+| --- | --- |
+| request | `team_id` = the RETURN warehouse (`use_scope`) · `selling_team_id` = the ordering team, the transaction's team and every minted batch's owner · `take_transaction_id` = the order's `transaction_id` · `lines` (1–200): per product the take drew `product_id`, `return_product_id`, `markup_rate`, `sound` / `broken` / `missing`, `note`, `placements` (racks of the return warehouse, ≤ 50) · `description` (*"return of order #12"*) |
+| policy | Root, Administrator, Warehouse Owner / Admin / Staff — the people holding the parcel. The in-process call runs no interceptor: the accept's own policy and its return-warehouse check are the gate |
+| once per take | `order_return_checks` (the take is the primary key, claimed in the return's own transaction, last). A take already returned answers that return with `posted = false` and writes nothing — so an accept whose status move failed after the stock went in is retried to the same transaction |
+| the batches | one per layer the take drew with sound units, each keeping its price (the take's batch row's `price_unit_after`), expiry and suppliers, owned by the selling team; the minted total of a whole parcel is the order line's frozen total ([a-return-mints-one-batch-per-batch-the-order-took](../../business/inventory/return_decision.md#a-return-mints-one-batch-per-batch-the-order-took), the transfer's [the-receiver-mints-one-batch-per-source-batch](../../business/inventory/warehouse_transfer_decision.md#the-receiver-mints-one-batch-per-source-batch)) |
+| a borrowed line | comes back as the selling team's mapped own product (`return_product_id`, which must differ from `product_id`; an own line must keep it) and each layer at its price × (1 + the markup the team paid) — at 20 %, Rp 10.000 comes back as Rp 12.000 ([a-returned-borrowed-unit-is-relabelled-at-the-accept](../../business/order/context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept), [an-own-line-never-touches-the-map](../../business/order/context_decision.md#an-own-line-never-touches-the-map)). The lender's batches are untouched |
+| broken / missing | `order_return_problem_items`, one row per product and kind, off the **newest** layers (broken before missing), priced at what the team paid, with the crew's note — the **selling team's**: no payable, no claim, not in Inventory Lost ([a-short-return-is-missing-at-the-door](../../business/inventory/return_decision.md#a-short-return-is-missing-at-the-door), [a-broken-returned-unit-is-thrown-away-at-the-door](../../business/inventory/return_decision.md#a-broken-returned-unit-is-thrown-away-at-the-door), [a-return-door-row-carries-an-optional-note](../../business/inventory/return_decision.md#a-return-door-row-carries-an-optional-note)) |
+| nothing sound | still one `return` transaction, with no batch and no item — the count happened ([a-transaction-is-made-when-the-act-happens](../../business/inventory/transaction_decision.md#a-transaction-is-made-when-the-act-happens)) |
+| the racks | refused whole, naming the count, when a stock count holds the product on a rack named ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)); the products the sound units came back as are linked to the return warehouse ([a-transfer-links-its-products-to-the-receiver](../../business/inventory/context_decision.md#a-transfer-links-its-products-to-the-receiver)) |
+| refusals | a count holding a rack — `FailedPrecondition` with the count's `CountedError`; a rack of another building, or a take that is not this team's standing order take (another team's, a rolled-back one) — `NotFound`; a count that does not fit the take (a product it never drew, one named twice or not at all, the three counts not what it drew, racks not holding exactly the sound units, a borrowed line not relabelled) — `InvalidArgument`; a twin's claim met at commit — `AlreadyExists` |
+| performance | 20 statements for 1 line and for 20, 7.7 / 15.3 ms median over the background volume (an earlier run 20 / 18 ms) — flat, no N+1, every read an index scan; over the 5-statement line by the count alone, no fix proposed: [OrderTransactionReturn.md](../../../audits/services/inventory_service/performances/OrderTransactionReturn.md) |
+| races | `TestInterleave_OrderTransactionReturn_SecondWaitsOnTheTake`, `TestRace_OrderTransactionReturn_OnceForEightCallers`; over the real stack with the accept, `TestRace_OrderReturnAccept_OneReturnTransaction` (`cmd/app_development`) — [lock-order](../../../audits/services/inventory_service/concurrency/lock-order.md#an-order-comes-back-on-its-return-2026-11-09) |
+
+Tests: `order_transaction_return_test.go` — a batch per batch the take drew (price, expiry, supplier), a borrowed line
+back as the own product at the markup, broken and missing as door rows (no payable, no problem row), written once, every
+refusal above, a rolled-back take, a rack a count holds.
 
 ---
 

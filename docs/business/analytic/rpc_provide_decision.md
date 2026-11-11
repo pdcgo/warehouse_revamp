@@ -2066,3 +2066,27 @@ The owner's tree listed Ads Expense only; this adds *Expenses*. Groups, filters,
 **The verdict.** The prototype is the design for [expense-has-ads-and-expenses](#expense-has-ads-and-expenses) and the decisions after it, with one rule settled with it: **when the figures are grouped by Seller, the headline counts only the sellers' rows** — a warehouse team's expenses (grouped under *Warehouse*) are not in a Seller headline, so the top always equals the rows. Grouped by Warehouse, the headline is the warehouses'. Ungrouped (summary / time only), the headline is every expense the reader can see. ⚠ Not built.
 
 ✅ Built 2026-11-06 — the 18 accepted stories pass through the real wire path (stub `expenseAnalyticStub.ts`); the headline rule is `MetricDataRequest.rows_group` — the provider sends the table's group, and by Seller / Warehouse the server sums only that group's rows (`TestMetricData_TheHeadlineCountsOnlyTheGroupsRows`, story `RootReadsEveryTeamsExpenses`).
+
+---
+
+## the-four-inventory-metrics-filter-like-lost-stock
+
+> Owner, in chat (2026-11-09): *"for 2 deciding possible filter for that four"*, then *"A"*, as recommended — to the filters of
+> the four Inventory metrics [rpc_provide.md](./rpc_provide.md)'s tree lists (*Transfer, Ready, Restock, Return*), proposed on
+> the accepted [the-inventory-lost-prototype-is-accepted](#the-inventory-lost-prototype-is-accepted)'s set.
+
+**The verdict.** Each of the four takes **Lost stock's filters** — *date range (required) · team · warehouse · product ·
+supplier* — and groups like it — *summary · daily · weekly · monthly · yearly · product · supplier · team · warehouse*. No
+**user** filter: these are about goods, not who typed them. No **shop** filter: inventory's figures are not a shop's; the
+order-side return metrics already read returns by shop.
+
+| metric | what it counts | the warehouse filter means |
+| --- | --- | --- |
+| **Restock** | units and value **accepted**, per day | where it was received |
+| **Transfer** | units and value moved | **either side**; grouped by warehouse, each warehouse shows **sent** and **received** |
+| **Return** | units back on the shelf, plus **broken** and **missing** ([return-md-is-retired](../inventory/return_decision.md#return-md-is-retired)) | the return warehouse |
+| **Ready** | stock on hand at the end of each day — a **position**, like the finance balances ([a-position-is-its-own-stat-type](#a-position-is-its-own-stat-type)) | where the stock sits |
+
+**What it does NOT settle:** each metric's exact fields, its day (the accept's or the send's, for a transfer), who reads it
+(a warehouse its own, as [a-warehouse-sees-its-own-fee-amount](#a-warehouse-sees-its-own-fee-amount)?) — asked from the
+Storybook prototype, as Warehouse Fee's were. ⚠ Not built.

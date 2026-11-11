@@ -22,7 +22,7 @@ import (
 
 // compensationService is a service with the given picker, event recorder and fee pricer (nil = prices nothing).
 func compensationService(db *gorm.DB, picker *fakePicker, rec *recorder, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
-	return selling_v1.NewService(db, picker, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil)
+	return selling_v1.NewService(db, picker, rec.send, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, fees, nil, nil, nil)
 }
 
 // txCancels is every InventoryTxCancel the recorder saw.

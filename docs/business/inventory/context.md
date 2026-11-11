@@ -3,7 +3,7 @@
 
 ## General.
 1. for restock reference, [see this](./restock.md)
-2. for return reference,  [see this](./return.md)
+2. for return reference,  [see this](./return_decision.md#return-md-is-retired)
 3. when we on git branch `thoni`. avoid this context, `thoni` have own consideration. dont make this context as reference, decision and other. make this context folder like dont exists and ignored
 
 ## Responsbility.

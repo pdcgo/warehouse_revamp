@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/order_transaction.proto.
  */
 export const file_warehouse_inventory_v1_order_transaction: GenFile = /*@__PURE__*/
-  fileDesc("Ci53YXJlaG91c2UvaW52ZW50b3J5L3YxL29yZGVyX3RyYW5zYWN0aW9uLnByb3RvEhZ3YXJlaG91c2UuaW52ZW50b3J5LnYxIk4KFE9yZGVyVHJhbnNhY3Rpb25MaW5lEhsKCnByb2R1Y3RfaWQYASABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYAiABKANCB7pIBCICIAAi2AEKHU9yZGVyVHJhbnNhY3Rpb25DcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEiMKD2lkZW1wb3RlbmN5X2tleRgCIAEoCUIKukgHcgUQARiAARIdCgx3YXJlaG91c2VfaWQYAyABKARCB7pIBDICIAASSAoFbGluZXMYBCADKAsyLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25MaW5lQgu6SAiSAQUIARDIAToLkrUYBwoFAQIDBAUiqgEKFE9yZGVyVHJhbnNhY3Rpb25JdGVtEhIKCnByb2R1Y3RfaWQYASABKAQSFQoNb3duZXJfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoAxIRCgl1bml0X2Nvc3QYBCABKAESHQoVdW5pdF9jb3N0X3dpdGhfbWFya3VwGAUgASgBEhQKDG1hcmt1cF90b3RhbBgGIAEoARINCgV0b3RhbBgHIAEoASKaAQoeT3JkZXJUcmFuc2FjdGlvbkNyZWF0ZVJlc3BvbnNlEhYKDnRyYW5zYWN0aW9uX2lkGAEgASgEEhQKDHdhcmVob3VzZV9pZBgCIAEoBBINCgV0b3RhbBgDIAEoARI7CgVpdGVtcxgEIAMoCzIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuT3JkZXJUcmFuc2FjdGlvbkl0ZW0icQobT3JkZXJUcmFuc2FjdGlvblJlZnVzZWRMaW5lEhIKCnByb2R1Y3RfaWQYASABKAQSDgoGd2FudGVkGAIgASgDEhEKCWF2YWlsYWJsZRgDIAEoAxIbChNjb3VudGluZ19zZXNzaW9uX2lkGAQgASgEIqQBChdPcmRlclRyYW5zYWN0aW9uUmVmdXNhbBJFCgZyZWFzb24YASABKA4yNS53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZWZ1c2FsUmVhc29uEkIKBWxpbmVzGAIgAygLMjMud2FyZWhvdXNlLmludmVudG9yeS52MS5PcmRlclRyYW5zYWN0aW9uUmVmdXNlZExpbmUicAoeT3JkZXJUcmFuc2FjdGlvblJlbGVhc2VSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEiMKD2lkZW1wb3RlbmN5X2tleRgCIAEoCUIKukgHcgUQARiAAToLkrUYBwoFAQIDBAUiSwofT3JkZXJUcmFuc2FjdGlvblJlbGVhc2VSZXNwb25zZRIWCg50cmFuc2FjdGlvbl9pZBgBIAEoBBIQCghyZWxlYXNlZBgCIAEoCCqdAgodT3JkZXJUcmFuc2FjdGlvblJlZnVzYWxSZWFzb24SMAosT1JERVJfVFJBTlNBQ1RJT05fUkVGVVNBTF9SRUFTT05fVU5TUEVDSUZJRUQQABItCilPUkRFUl9UUkFOU0FDVElPTl9SRUZVU0FMX1JFQVNPTl9LRVlfVVNFRBABEjAKLE9SREVSX1RSQU5TQUNUSU9OX1JFRlVTQUxfUkVBU09OX05PVF9BTExPV0VEEAISNQoxT1JERVJfVFJBTlNBQ1RJT05fUkVGVVNBTF9SRUFTT05fTk9UX0VOT1VHSF9TVE9DSxADEjIKLk9SREVSX1RSQU5TQUNUSU9OX1JFRlVTQUxfUkVBU09OX0JFSU5HX0NPVU5URUQQBDKwAgoXT3JkZXJUcmFuc2FjdGlvblNlcnZpY2UShwEKFk9yZGVyVHJhbnNhY3Rpb25DcmVhdGUSNS53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25DcmVhdGVSZXF1ZXN0GjYud2FyZWhvdXNlLmludmVudG9yeS52MS5PcmRlclRyYW5zYWN0aW9uQ3JlYXRlUmVzcG9uc2USigEKF09yZGVyVHJhbnNhY3Rpb25SZWxlYXNlEjYud2FyZWhvdXNlLmludmVudG9yeS52MS5PcmRlclRyYW5zYWN0aW9uUmVsZWFzZVJlcXVlc3QaNy53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZWxlYXNlUmVzcG9uc2VCUlpQZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9pbnZlbnRvcnkvdjE7aW52ZW50b3J5djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_role_base_v1_role]);
+  fileDesc("Ci53YXJlaG91c2UvaW52ZW50b3J5L3YxL29yZGVyX3RyYW5zYWN0aW9uLnByb3RvEhZ3YXJlaG91c2UuaW52ZW50b3J5LnYxIk4KFE9yZGVyVHJhbnNhY3Rpb25MaW5lEhsKCnByb2R1Y3RfaWQYASABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYAiABKANCB7pIBCICIAAi2AEKHU9yZGVyVHJhbnNhY3Rpb25DcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEiMKD2lkZW1wb3RlbmN5X2tleRgCIAEoCUIKukgHcgUQARiAARIdCgx3YXJlaG91c2VfaWQYAyABKARCB7pIBDICIAASSAoFbGluZXMYBCADKAsyLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25MaW5lQgu6SAiSAQUIARDIAToLkrUYBwoFAQIDBAUiqgEKFE9yZGVyVHJhbnNhY3Rpb25JdGVtEhIKCnByb2R1Y3RfaWQYASABKAQSFQoNb3duZXJfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoAxIRCgl1bml0X2Nvc3QYBCABKAESHQoVdW5pdF9jb3N0X3dpdGhfbWFya3VwGAUgASgBEhQKDG1hcmt1cF90b3RhbBgGIAEoARINCgV0b3RhbBgHIAEoASKaAQoeT3JkZXJUcmFuc2FjdGlvbkNyZWF0ZVJlc3BvbnNlEhYKDnRyYW5zYWN0aW9uX2lkGAEgASgEEhQKDHdhcmVob3VzZV9pZBgCIAEoBBINCgV0b3RhbBgDIAEoARI7CgVpdGVtcxgEIAMoCzIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuT3JkZXJUcmFuc2FjdGlvbkl0ZW0icQobT3JkZXJUcmFuc2FjdGlvblJlZnVzZWRMaW5lEhIKCnByb2R1Y3RfaWQYASABKAQSDgoGd2FudGVkGAIgASgDEhEKCWF2YWlsYWJsZRgDIAEoAxIbChNjb3VudGluZ19zZXNzaW9uX2lkGAQgASgEIqQBChdPcmRlclRyYW5zYWN0aW9uUmVmdXNhbBJFCgZyZWFzb24YASABKA4yNS53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZWZ1c2FsUmVhc29uEkIKBWxpbmVzGAIgAygLMjMud2FyZWhvdXNlLmludmVudG9yeS52MS5PcmRlclRyYW5zYWN0aW9uUmVmdXNlZExpbmUicAoeT3JkZXJUcmFuc2FjdGlvblJlbGVhc2VSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEiMKD2lkZW1wb3RlbmN5X2tleRgCIAEoCUIKukgHcgUQARiAAToLkrUYBwoFAQIDBAUiSwofT3JkZXJUcmFuc2FjdGlvblJlbGVhc2VSZXNwb25zZRIWCg50cmFuc2FjdGlvbl9pZBgBIAEoBBIQCghyZWxlYXNlZBgCIAEoCCKBAgodT3JkZXJUcmFuc2FjdGlvblJldHVyblJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESIAoPc2VsbGluZ190ZWFtX2lkGAIgASgEQge6SAQyAiAAEiQKE3Rha2VfdHJhbnNhY3Rpb25faWQYAyABKARCB7pIBDICIAASTgoFbGluZXMYBCADKAsyMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZXR1cm5MaW5lQgu6SAiSAQUIARDIARIdCgtkZXNjcmlwdGlvbhgFIAEoCUIIukgFcgMYyAE6C5K1GAcKBQECBgkIIr4CChpPcmRlclRyYW5zYWN0aW9uUmV0dXJuTGluZRIbCgpwcm9kdWN0X2lkGAEgASgEQge6SAQyAiAAEiIKEXJldHVybl9wcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEiUKC21hcmt1cF9yYXRlGAMgASgBQhC6SA0SC0ABKQAAAAAAAAAAEhYKBXNvdW5kGAQgASgDQge6SAQiAigAEhcKBmJyb2tlbhgFIAEoA0IHukgEIgIoABIYCgdtaXNzaW5nGAYgASgDQge6SAQiAigAEhYKBG5vdGUYByABKAlCCLpIBXIDGMgBElUKCnBsYWNlbWVudHMYCCADKAsyNy53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZXR1cm5QbGFjZW1lbnRCCLpIBZIBAhAyIlsKH09yZGVyVHJhbnNhY3Rpb25SZXR1cm5QbGFjZW1lbnQSHQoMcGxhY2VtZW50X2lkGAEgASgEQge6SAQyAiAAEhkKCHF1YW50aXR5GAIgASgDQge6SAQiAiAAIqgBCh1PcmRlclRyYW5zYWN0aW9uUmV0dXJuUHJvYmxlbRISCgpwcm9kdWN0X2lkGAEgASgEEkcKBHR5cGUYAiABKA4yOS53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZXR1cm5Qcm9ibGVtVHlwZRINCgVjb3VudBgDIAEoAxINCgV0b3RhbBgEIAEoARIMCgRub3RlGAUgASgJIpEBCh5PcmRlclRyYW5zYWN0aW9uUmV0dXJuUmVzcG9uc2USFgoOdHJhbnNhY3Rpb25faWQYASABKAQSDgoGcG9zdGVkGAIgASgIEkcKCHByb2JsZW1zGAMgAygLMjUud2FyZWhvdXNlLmludmVudG9yeS52MS5PcmRlclRyYW5zYWN0aW9uUmV0dXJuUHJvYmxlbSqdAgodT3JkZXJUcmFuc2FjdGlvblJlZnVzYWxSZWFzb24SMAosT1JERVJfVFJBTlNBQ1RJT05fUkVGVVNBTF9SRUFTT05fVU5TUEVDSUZJRUQQABItCilPUkRFUl9UUkFOU0FDVElPTl9SRUZVU0FMX1JFQVNPTl9LRVlfVVNFRBABEjAKLE9SREVSX1RSQU5TQUNUSU9OX1JFRlVTQUxfUkVBU09OX05PVF9BTExPV0VEEAISNQoxT1JERVJfVFJBTlNBQ1RJT05fUkVGVVNBTF9SRUFTT05fTk9UX0VOT1VHSF9TVE9DSxADEjIKLk9SREVSX1RSQU5TQUNUSU9OX1JFRlVTQUxfUkVBU09OX0JFSU5HX0NPVU5URUQQBCq/AQohT3JkZXJUcmFuc2FjdGlvblJldHVyblByb2JsZW1UeXBlEjUKMU9SREVSX1RSQU5TQUNUSU9OX1JFVFVSTl9QUk9CTEVNX1RZUEVfVU5TUEVDSUZJRUQQABIwCixPUkRFUl9UUkFOU0FDVElPTl9SRVRVUk5fUFJPQkxFTV9UWVBFX0JST0tFThABEjEKLU9SREVSX1RSQU5TQUNUSU9OX1JFVFVSTl9QUk9CTEVNX1RZUEVfTUlTU0lORxACMroDChdPcmRlclRyYW5zYWN0aW9uU2VydmljZRKHAQoWT3JkZXJUcmFuc2FjdGlvbkNyZWF0ZRI1LndhcmVob3VzZS5pbnZlbnRvcnkudjEuT3JkZXJUcmFuc2FjdGlvbkNyZWF0ZVJlcXVlc3QaNi53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25DcmVhdGVSZXNwb25zZRKKAQoXT3JkZXJUcmFuc2FjdGlvblJlbGVhc2USNi53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZWxlYXNlUmVxdWVzdBo3LndhcmVob3VzZS5pbnZlbnRvcnkudjEuT3JkZXJUcmFuc2FjdGlvblJlbGVhc2VSZXNwb25zZRKHAQoWT3JkZXJUcmFuc2FjdGlvblJldHVybhI1LndhcmVob3VzZS5pbnZlbnRvcnkudjEuT3JkZXJUcmFuc2FjdGlvblJldHVyblJlcXVlc3QaNi53YXJlaG91c2UuaW52ZW50b3J5LnYxLk9yZGVyVHJhbnNhY3Rpb25SZXR1cm5SZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_role_base_v1_role]);
 
 /**
  * OrderTransactionLine is one product the order wants from the warehouse.
@@ -284,6 +284,220 @@ export const OrderTransactionReleaseResponseSchema: GenMessage<OrderTransactionR
   messageDesc(file_warehouse_inventory_v1_order_transaction, 7);
 
 /**
+ * @generated from message warehouse.inventory.v1.OrderTransactionReturnRequest
+ */
+export type OrderTransactionReturnRequest = Message<"warehouse.inventory.v1.OrderTransactionReturnRequest"> & {
+  /**
+   * The RETURN warehouse — where the parcel is, and where the sound units are minted and shelved.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The ORDERING team — the return transaction's team and every minted batch's owner, borrowed lines too
+   * (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+   *
+   * @generated from field: uint64 selling_team_id = 2;
+   */
+  sellingTeamId: bigint;
+
+  /**
+   * The order's take (orders.transaction_id): its batch rows are the layers the return mints from, and it is the
+   * once-only key — one return per take.
+   *
+   * @generated from field: uint64 take_transaction_id = 3;
+   */
+  takeTransactionId: bigint;
+
+  /**
+   * Every product the take drew, once.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.OrderTransactionReturnLine lines = 4;
+   */
+  lines: OrderTransactionReturnLine[];
+
+  /**
+   * Written on the transaction, e.g. "return of order #12".
+   *
+   * @generated from field: string description = 5;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.OrderTransactionReturnRequest.
+ * Use `create(OrderTransactionReturnRequestSchema)` to create a new message.
+ */
+export const OrderTransactionReturnRequestSchema: GenMessage<OrderTransactionReturnRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_order_transaction, 8);
+
+/**
+ * OrderTransactionReturnLine is one product of the take as the return warehouse's crew counted it. sound + broken +
+ * missing is what the take drew of it.
+ *
+ * @generated from message warehouse.inventory.v1.OrderTransactionReturnLine
+ */
+export type OrderTransactionReturnLine = Message<"warehouse.inventory.v1.OrderTransactionReturnLine"> & {
+  /**
+   * The product the take drew — the order line's.
+   *
+   * @generated from field: uint64 product_id = 1;
+   */
+  productId: bigint;
+
+  /**
+   * The product the units come back as: product_id itself for the team's own, the team's mapped own product for a
+   * borrowed line (a-return-never-clones-a-product).
+   *
+   * @generated from field: uint64 return_product_id = 2;
+   */
+  returnProductId: bigint;
+
+  /**
+   * The markup the team paid on a borrowed line, as a fraction of its cost (0.2 = 20 %) — the line's frozen
+   * markup_total over its cost. 0 on the team's own line. Each layer is minted at its price × (1 + markup_rate).
+   *
+   * @generated from field: double markup_rate = 3;
+   */
+  markupRate: number;
+
+  /**
+   * @generated from field: int64 sound = 4;
+   */
+  sound: bigint;
+
+  /**
+   * @generated from field: int64 broken = 5;
+   */
+  broken: bigint;
+
+  /**
+   * @generated from field: int64 missing = 6;
+   */
+  missing: bigint;
+
+  /**
+   * The crew's note on the broken and missing units (a-return-door-row-carries-an-optional-note); kept on the line's
+   * door rows. Ignored when both are 0.
+   *
+   * @generated from field: string note = 7;
+   */
+  note: string;
+
+  /**
+   * Where the sound units went — together exactly `sound`, racks of the return warehouse.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.OrderTransactionReturnPlacement placements = 8;
+   */
+  placements: OrderTransactionReturnPlacement[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.OrderTransactionReturnLine.
+ * Use `create(OrderTransactionReturnLineSchema)` to create a new message.
+ */
+export const OrderTransactionReturnLineSchema: GenMessage<OrderTransactionReturnLine> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_order_transaction, 9);
+
+/**
+ * @generated from message warehouse.inventory.v1.OrderTransactionReturnPlacement
+ */
+export type OrderTransactionReturnPlacement = Message<"warehouse.inventory.v1.OrderTransactionReturnPlacement"> & {
+  /**
+   * @generated from field: uint64 placement_id = 1;
+   */
+  placementId: bigint;
+
+  /**
+   * @generated from field: int64 quantity = 2;
+   */
+  quantity: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.OrderTransactionReturnPlacement.
+ * Use `create(OrderTransactionReturnPlacementSchema)` to create a new message.
+ */
+export const OrderTransactionReturnPlacementSchema: GenMessage<OrderTransactionReturnPlacement> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_order_transaction, 10);
+
+/**
+ * OrderTransactionReturnProblem is one door row: one product's broken or missing units, priced from the layers they
+ * came off, newest first, at what the team paid.
+ *
+ * @generated from message warehouse.inventory.v1.OrderTransactionReturnProblem
+ */
+export type OrderTransactionReturnProblem = Message<"warehouse.inventory.v1.OrderTransactionReturnProblem"> & {
+  /**
+   * The product the take drew — the order line's.
+   *
+   * @generated from field: uint64 product_id = 1;
+   */
+  productId: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.OrderTransactionReturnProblemType type = 2;
+   */
+  type: OrderTransactionReturnProblemType;
+
+  /**
+   * @generated from field: int64 count = 3;
+   */
+  count: bigint;
+
+  /**
+   * @generated from field: double total = 4;
+   */
+  total: number;
+
+  /**
+   * @generated from field: string note = 5;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.OrderTransactionReturnProblem.
+ * Use `create(OrderTransactionReturnProblemSchema)` to create a new message.
+ */
+export const OrderTransactionReturnProblemSchema: GenMessage<OrderTransactionReturnProblem> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_order_transaction, 11);
+
+/**
+ * @generated from message warehouse.inventory.v1.OrderTransactionReturnResponse
+ */
+export type OrderTransactionReturnResponse = Message<"warehouse.inventory.v1.OrderTransactionReturnResponse"> & {
+  /**
+   * The take's one `return` transaction.
+   *
+   * @generated from field: uint64 transaction_id = 1;
+   */
+  transactionId: bigint;
+
+  /**
+   * True when this call wrote it; false when the take was already returned — the answer is then what was written.
+   *
+   * @generated from field: bool posted = 2;
+   */
+  posted: boolean;
+
+  /**
+   * The door rows, broken before missing per product.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.OrderTransactionReturnProblem problems = 3;
+   */
+  problems: OrderTransactionReturnProblem[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.OrderTransactionReturnResponse.
+ * Use `create(OrderTransactionReturnResponseSchema)` to create a new message.
+ */
+export const OrderTransactionReturnResponseSchema: GenMessage<OrderTransactionReturnResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_order_transaction, 12);
+
+/**
  * Why a take was refused — exactly one per refusal.
  *
  * @generated from enum warehouse.inventory.v1.OrderTransactionRefusalReason
@@ -332,6 +546,38 @@ export const OrderTransactionRefusalReasonSchema: GenEnum<OrderTransactionRefusa
   enumDesc(file_warehouse_inventory_v1_order_transaction, 0);
 
 /**
+ * What happened to a returned unit that did not go back on a shelf.
+ *
+ * @generated from enum warehouse.inventory.v1.OrderTransactionReturnProblemType
+ */
+export enum OrderTransactionReturnProblemType {
+  /**
+   * @generated from enum value: ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * In the parcel, too damaged to sell — thrown away (a-broken-returned-unit-is-thrown-away-at-the-door).
+   *
+   * @generated from enum value: ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_BROKEN = 1;
+   */
+  BROKEN = 1,
+
+  /**
+   * Not in the parcel (a-short-return-is-missing-at-the-door).
+   *
+   * @generated from enum value: ORDER_TRANSACTION_RETURN_PROBLEM_TYPE_MISSING = 2;
+   */
+  MISSING = 2,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.OrderTransactionReturnProblemType.
+ */
+export const OrderTransactionReturnProblemTypeSchema: GenEnum<OrderTransactionReturnProblemType> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_order_transaction, 1);
+
+/**
  * OrderTransactionService is inventory's side of an order (docs/business/inventory/order.md §Inventory Service Flow When
  * Order Created Called Our `OrderTransactionCreate`): the order's TAKE on the decided ledgers, and its RELEASE by the
  * idempotency key.
@@ -370,6 +616,28 @@ export const OrderTransactionService: GenService<{
     methodKind: "unary";
     input: typeof OrderTransactionReleaseRequestSchema;
     output: typeof OrderTransactionReleaseResponseSchema;
+  },
+  /**
+   * THE RETURN (return_decision.md): an order's returned parcel, accepted at the selling team's return warehouse
+   * (only-the-return-warehouse-accepts-a-return), back on its shelves. ONE `return` transaction of the ORDERING team at
+   * the return warehouse, per take, once (a second call answers the first one's transaction, posted = false):
+   *
+   *   sound     one batch minted per batch the take drew from, price, expiry and supplier kept — a borrowed line at the
+   *             markup the team paid, under its mapped own product (a-return-mints-one-batch-per-batch-the-order-took) —
+   *             onto the named racks of the return warehouse, its products linked there
+   *   missing   a door row, off the NEWEST layer first (a-short-return-is-missing-at-the-door)
+   *   broken    a door row, thrown away (a-broken-returned-unit-is-thrown-away-at-the-door)
+   *
+   * Door rows carry the crew's note (a-return-door-row-carries-an-optional-note) and are the selling team's: never the
+   * warehouse's payable, never claimable, never Inventory Lost. A rack a stock count holds the product on, or a rack
+   * that is not the return warehouse's, refuses the whole return (a-lock-stops-sales-and-cancels-too).
+   *
+   * @generated from rpc warehouse.inventory.v1.OrderTransactionService.OrderTransactionReturn
+   */
+  orderTransactionReturn: {
+    methodKind: "unary";
+    input: typeof OrderTransactionReturnRequestSchema;
+    output: typeof OrderTransactionReturnResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_inventory_v1_order_transaction, 0);

@@ -255,6 +255,32 @@ func dateEnteredWindow(query *gorm.DB, status string, from, to int64) *gorm.DB {
 	return query.Where(clause, args...)
 }
 
+// statusFilter narrows to the list's TAB: one `status`, or any of `statuses` — a tab that is more than one status, as the
+// warehouse's Returns tab is `return` and `return_completed` together (the-warehouse-list-has-a-returns-tab). Both set
+// AND together, like every other filter. OrderList and OrderExport share it, so the file holds exactly the tab's rows.
+//
+// `status IN (…)` stays on the status index as `status = ?` does; the request caps the list at the eleven statuses.
+func statusFilter(query *gorm.DB, filter *sellingv1.OrderListFilter) *gorm.DB {
+	status := orderStatusToText(filter.GetStatus())
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	statuses := make([]string, 0, len(filter.GetStatuses()))
+	for _, s := range filter.GetStatuses() {
+		text := orderStatusToText(s)
+		if text != "" {
+			statuses = append(statuses, text)
+		}
+	}
+
+	if len(statuses) > 0 {
+		query = query.Where("status IN ?", statuses)
+	}
+
+	return query
+}
+
 // orderListColumns is what a list row selects: the order, plus the facts it carries without its children — the unit
 // count over its lines (the-warehouse-row-fills-from-shop-and-user-by-ids), when it entered its current status
 // (a-filtered-status-shows-its-own-date) and, when the date filter reads a status, when it FIRST entered that one
@@ -263,7 +289,10 @@ func dateEnteredWindow(query *gorm.DB, status string, from, to int64) *gorm.DB {
 func orderListColumns(filter orderScopeFilter) (string, []any) {
 	columns := "orders.*, " +
 		"(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity, " +
-		"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at"
+		"(SELECT MAX(tl.created_at) FROM order_timeline_logs tl WHERE tl.order_id = orders.id AND tl.status = orders.status) AS status_at, " +
+		// Where a return of it goes (only-the-return-warehouse-accepts-a-return) — the team's one configuration row, by its
+		// unique team index, so Receive a Return can say a parcel goes elsewhere.
+		"COALESCE((SELECT c.warehouse_id FROM team_return_configurations c WHERE c.team_id = orders.team_id), 0) AS return_warehouse_id"
 
 	status, ok := dateFieldStatuses[filter.GetDateField()]
 	if !ok {
@@ -290,12 +319,10 @@ func (s *Service) OrderList(
 		req.Msg.GetFilter(),
 	)
 
-	// One status, or all of them — the ONE filter the stat above this list does not share, because it
+	// One status, several, or all of them — the ONE filter the stat above this list does not share, because it
 	// is the tab. Server-side because the list is PAGINATED: a client-side filter would narrow the
 	// loaded page only, and the count would still be the unfiltered total.
-	if status := orderStatusToText(req.Msg.GetFilter().GetStatus()); status != "" {
-		query = query.Where("status = ?", status)
-	}
+	query = statusFilter(query, req.Msg.GetFilter())
 
 	var total int64
 

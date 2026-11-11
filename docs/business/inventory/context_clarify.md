@@ -360,7 +360,7 @@ calculate valid quantity · **set placements**. *(§How Warehouse Team Member Ac
 Arrived)*
 
 🔄 *(2026-10-14)* **That section is deleted.** A restock's receiving is drawn in [restock.md](./restock.md), and a return's
-will be in [return.md](./return.md) ([each-flow-draws-its-own-receiving](./context_decision.md#each-flow-draws-its-own-receiving)).
+will be in [return.md](./return_decision.md#return-md-is-retired) ([each-flow-draws-its-own-receiving](./context_decision.md#each-flow-draws-its-own-receiving)).
 The closure below went with it: [the-receiving-boundary-gap](#the-receiving-boundary-gap).
 
 ✅ **This closes what "at receiving" means.** The word in [selling-team-bears-the-receiving-loss](#selling-team-bears-the-receiving-loss)
@@ -668,6 +668,6 @@ flowchart LR
 
 - 🔄 *(2026-10-08)* **Places, batches and the transaction now exist** — §Placements, §Batches and the two ledger docs.
   Still unsaid: **the unit**, **what "available" means** ([Q11](#question)), and the four empty docs —
-  [opname.md](./opname.md), [order.md](./order.md), [return.md](./return.md), and transfer, which
+  [opname.md](./opname.md), [order.md](./order.md), [return.md](./return_decision.md#return-md-is-retired), and transfer, which
   has a `tx_type` and no doc. 🔄 *(2026-10-14)* opname.md and transfer are written since; return.md now says
   *unplanned* ([return-is-unplanned](./context_decision.md#return-is-unplanned)).

@@ -466,8 +466,8 @@ flowchart LR
 
 ## return-is-unplanned
 
-> Owner, in [context.md](./context.md) §General item 2 *(2026-10-14)*: *"for return reference, [see this](./return.md)"*, and
-> [return.md](./return.md) *(2026-10-14)*: *"# Return Contexts. **unplanned**"*.
+> Owner, in [context.md](./context.md) §General item 2 *(2026-10-14)*: *"for return reference, [see this](./return_decision.md#return-md-is-retired)"*, and
+> [return.md](./return_decision.md#return-md-is-retired) *(2026-10-14)*: *"# Return Contexts. **unplanned**"*.
 
 **The verdict.** A return has its own reference doc, as a restock does, and nothing is designed in it yet. Until it is,
 inventory designs nothing for a return. A point that depends on one is **parked**: kept, but neither answered nor asked.
@@ -493,7 +493,7 @@ flowchart LR
 > **deleted**, after §General gained one reference per flow ([return-is-unplanned](#return-is-unplanned)).
 
 **The verdict.** Receiving is drawn once, in the doc of the flow that receives. A restock's door is
-[restock.md](./restock.md); a return's will be [return.md](./return.md). context.md keeps the rules that hold for every
+[restock.md](./restock.md); a return's will be [return.md](./return_decision.md#return-md-is-retired). context.md keeps the rules that hold for every
 flow (§Stock loss) and draws no procedure of its own, so a person's steps and a transaction's steps cannot disagree.
 
 ```mermaid
@@ -748,7 +748,7 @@ flowchart LR
 
 **The verdict.** [return-is-unplanned](#return-is-unplanned) parks **inventory's** half of a return, not the order's.
 [order_return.md](../order/order_return.md) stands as written, and the three places it calls into inventory are the brief
-[return.md](./return.md) starts from: when it is designed, it answers exactly these.
+[return.md](./return_decision.md#return-md-is-retired) starts from: when it is designed, it answers exactly these.
 
 ```mermaid
 flowchart LR

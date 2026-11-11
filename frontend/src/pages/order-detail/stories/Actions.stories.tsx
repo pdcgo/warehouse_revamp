@@ -78,7 +78,7 @@ export const TheWarehouseHasNoEditResi: Story = {
 /**
  * THE WAREHOUSE FORCES A RETURN FROM ITS ORDER DETAIL (a-return-is-received-by-search-then-forced, A) — 106 read as
  * completed: the buyer sent it back after delivery. Force Return confirms, the order re-reads in `return`, and Accept
- * Return is offered on the same header.
+ * Return is offered on the same header — opening the accept page.
  */
 const AtCompleted = Routed("/orders/106");
 
@@ -102,5 +102,8 @@ export const WarehouseForcesAReturn: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("order-accept-return")).toBeInTheDocument());
     await expect(canvas.queryByTestId("order-force-return")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("order-accept-return"));
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
   },
 };

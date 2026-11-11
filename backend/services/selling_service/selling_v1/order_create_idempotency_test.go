@@ -44,7 +44,7 @@ func keyedService(t *testing.T) (*selling_v1.Service, *gorm.DB, *fakePicker, *co
 	picker := &fakePicker{}
 	catalog := &countingCatalog{}
 	credit := &fakeCredit{}
-	svc := selling_v1.NewService(db, picker, nil, catalog, credit, everyoneMayWrite{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, picker, nil, catalog, credit, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 	shop := insertShop(t, db, 2, "Toko Kunci", "TOKO-KUNCI", "shopee")
 
 	return svc, db, picker, catalog, credit, shop
@@ -199,7 +199,7 @@ func TestOrderCreate_OnlyTheOrderPrefixIsReserved(t *testing.T) {
 // and an order of ANOTHER team under the key is refused the same, never disclosed.
 func TestOrderCreate_AKeyHeldByAnotherTeamIsRefusedWithoutItsOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil)
+	svc := selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, everyoneMayWrite{}, nil, nil, nil, nil, nil)
 	theirs := insertShop(t, db, 3, "Toko Lain", "TOKO-LAIN", "shopee")
 	ours := insertShop(t, db, 2, "Toko Kami", "TOKO-KAMI", "shopee")
 

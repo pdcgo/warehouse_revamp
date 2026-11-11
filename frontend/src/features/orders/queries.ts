@@ -95,9 +95,11 @@ export function useOrders(args: {
   page: number;
   pageSize: number;
   status: OrderStatus;
+  /** A tab that is more than one status — the warehouse's Returns (the-warehouse-list-has-a-returns-tab). */
+  statuses?: OrderStatus[];
   filters?: OrderFilters;
 }) {
-  const { teamId, page, pageSize, status, filters = NO_ORDER_FILTERS } = args;
+  const { teamId, page, pageSize, status, statuses = [], filters = NO_ORDER_FILTERS } = args;
 
   return useQuery({
     // `listQuery`: the status tab, the filter bar and the pager all REFINE the same question — "this
@@ -106,12 +108,12 @@ export function useOrders(args: {
     // and a table that blanked between keystrokes would be unusable however fast the server answered.
     // The page pairs it with a RefreshOverlay, which is the other half.
     ...listQuery,
-    queryKey: key.orders(teamId, { page, pageSize, status, ...filterKey(filters) }),
+    queryKey: key.orders(teamId, { page, pageSize, status, statuses: statuses.join(","), ...filterKey(filters) }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await orderClient.orderList({
         teamId: teamId!,
-        filter: { status, ...filterMsg(filters) },
+        filter: { status, statuses, ...filterMsg(filters) },
         dataRequest: orderListRowData(),
         page: { page, limit: pageSize },
       });
@@ -287,6 +289,23 @@ export function useAcceptReturn() {
   return useMutation({
     mutationFn: (vars: Parameters<typeof orderClient.orderReturnAccept>[0]) => orderClient.orderReturnAccept(vars),
     onSuccess: () => invalidate(),
+  });
+}
+
+// THE ACCEPT PAGE'S READ (the-return-accept-page-is-accepted): the order, and — for an order in `return` — the code each
+// borrowed line's units are relabelled with (a-returned-borrowed-unit-is-relabelled-at-the-accept), both from
+// OrderDetail. The order says where its return goes (`returnWarehouseId`, only-the-return-warehouse-accepts-a-return).
+export function useReturnAcceptOrder(args: { teamId: bigint | undefined; orderId: bigint }) {
+  const { teamId, orderId } = args;
+
+  return useQuery({
+    queryKey: key.orders(teamId, { orderId: orderId.toString(), returnAccept: "1" }),
+    enabled: teamId !== undefined && orderId > 0n,
+    queryFn: async () => {
+      const res = await orderClient.orderDetail({ teamId: teamId!, orderId });
+
+      return { order: res.order ?? null, returnLabels: res.returnLabels };
+    },
   });
 }
 

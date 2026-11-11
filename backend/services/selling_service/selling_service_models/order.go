@@ -54,6 +54,10 @@ type Order struct {
 	// The inventory transaction the take wrote — the take's answer, stored in the transaction that inserts the order
 	// (the-placement-page-reads-racks-by-transaction-id). nil = none recorded (a developer's row from before 00036).
 	TransactionID *uint64
+	// THE RETURN'S inventory transaction (00049) — the `return` transaction the accepted return was put back on the shelf
+	// in (inventory's OrderTransactionReturn), written by OrderReturnAccept in the move to return_completed. nil = not
+	// accepted back.
+	ReturnTransactionID *uint64
 
 	// THE ORDER'S MONEY — the owner's three header figures (00027), and nothing else: no subtotal, no shipping
 	// (an-order-records-no-shipping-cost).
@@ -131,6 +135,10 @@ type Order struct {
 	// WHEN IT FIRST ENTERED THE STATUS THE LIST'S DATE FILTER READS (the-order-list-filters-by-seven-dates). Not a
 	// column: OrderList selects it only when the filter dates a status. nil = not asked, or no row records it.
 	DateEnteredAt *time.Time `gorm:"->;-:migration"`
+
+	// WHERE A RETURN OF IT GOES — the selling team's configured return warehouse, read with the order (OrderList's column,
+	// OrderDetail's own read), never stored on it (the-return-warehouse-is-read-when-the-return-happens). 0 = none.
+	ReturnWarehouseID uint64 `gorm:"->;-:migration"`
 
 	// The lines; loaded on demand (OrderDetail).
 	Items []OrderItem `gorm:"foreignKey:OrderID"`

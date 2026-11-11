@@ -51,10 +51,15 @@ export const orderExportScenario = {
 /**
  * OrderLabels (a-warehouse-prints-the-labels-of-orders-it-ships): who asked for which order's label, and — when a story
  * sets it — the refusal the stub answers every asked order with, so a story can show what the screen says.
+ *
+ * A print of SEVERAL reads the files: `labelled` names orders the stub treats as having a label beside the fixtures'
+ * (list rows carry no file of their own), and `unreadable` the ones whose file it answers as unreadable.
  */
 export const orderLabelScenario = {
   last: undefined as undefined | { teamId: bigint; orderIds: bigint[] },
   refusal: undefined as undefined | OrderLabelReason,
+  labelled: [] as bigint[],
+  unreadable: [] as bigint[],
 };
 
 export const receiptUpdateScenario = {
@@ -116,7 +121,8 @@ export const orderStatScenario = { calls: 0 };
  * every count a list story pins — so a story names the orders the stub reads in `return` (`inReturn`), and an accept moves
  * one to `return_completed` (`accepted`) for the rest of that story. `labels` is what the accept answers for borrowed lines
  * (the server works them out from the return maps; a story says what it answered), `refusal` makes it refuse with that
- * message, and `last` is what the last OrderReturnAccept carried.
+ * message, and `last` is what the last OrderReturnAccept carried — per line the broken and missing counts, the note and
+ * the sound units' racks (return_decision.md); `calls` counts them.
  */
 export const returnAcceptScenario = {
   inReturn: [] as bigint[],
@@ -133,7 +139,20 @@ export const returnAcceptScenario = {
   refusal: undefined as string | undefined,
   last: undefined as
     | undefined
-    | { orderId: bigint; missing: { orderItemId: bigint; quantity: number }[]; courierCharge: number; courierChargeNote: string },
+    | {
+        teamId: bigint;
+        orderId: bigint;
+        lines: {
+          orderItemId: bigint;
+          broken: number;
+          missing: number;
+          note: string;
+          placements: { rackId: bigint; quantity: number }[];
+        }[];
+        courierCharge: number;
+        courierChargeNote: string;
+      },
+  calls: 0,
   /**
    * The status a story reads an order in, by id — no fixture is shipped, completed or in a problem, and a parcel the
    * warehouse receives (a-return-is-received-by-search-then-forced) is one of those. `inReturn` and `accepted` win over
@@ -156,7 +175,32 @@ export function withOrdersInReturn(...orderIds: bigint[]) {
   };
 }
 
+/**
+ * THE LABEL SCANS' KNOBS (scan-label-opens-the-pick-page, two-orders-on-one-label-are-shown-not-chosen): orders a story
+ * reads under ANOTHER tracking number — so two can share one label, as a duplicated marketplace ref does — and every
+ * OrderList search the stub was asked, so a story can show a scan went to the server.
+ */
+export const labelScanScenario = {
+  receiptOf: {} as Record<string, string>,
+  searches: [] as string[],
+};
+
+/** A `beforeEach`: these orders all carry the tracking number `code`. */
+export function withSharedLabel(code: string, ...orderIds: bigint[]) {
+  return () => {
+    labelScanScenario.receiptOf = Object.fromEntries(orderIds.map((id) => [id.toString(), code]));
+  };
+}
+
+/** Every OrderStatusChange the stub answered, in order — the moves a story made (Set Picked among them). */
+export const statusChangeScenario = {
+  calls: [] as { teamId: bigint; orderIds: bigint[]; to: OrderStatus }[],
+};
+
 export function resetSessionScenario() {
+  labelScanScenario.receiptOf = {};
+  labelScanScenario.searches = [];
+  statusChangeScenario.calls = [];
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
   sessionScenario.memberOf = null;
   sessionScenario.teamNames = {};
@@ -166,6 +210,8 @@ export function resetSessionScenario() {
   receiptUpdateScenario.last = undefined;
   orderLabelScenario.last = undefined;
   orderLabelScenario.refusal = undefined;
+  orderLabelScenario.labelled = [];
+  orderLabelScenario.unreadable = [];
   receiptCheckScenario.refused = 0;
   takeRefusalScenario.refusal = undefined;
   orderKeyScenario.sent = [];
@@ -177,6 +223,7 @@ export function resetSessionScenario() {
   returnAcceptScenario.refusal = undefined;
   returnAcceptScenario.last = undefined;
   returnAcceptScenario.statusOf = {};
+  returnAcceptScenario.calls = 0;
 }
 
 /** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */

@@ -2,7 +2,13 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { returnAcceptScenario, withOrderStatus, withOrdersInReturn } from "../../../.storybook/sessionScenario";
+import {
+  asAdminTeam,
+  returnAcceptScenario,
+  statusChangeScenario,
+  withOrderStatus,
+  withOrdersInReturn,
+} from "../../../.storybook/sessionScenario";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { PickOrderPage } from "./index";
@@ -24,11 +30,16 @@ import { PickOrderPage } from "./index";
 //   | AShippedOrderHasNoStepLeft      | a handed-over order leaves nothing to press                  |
 //   | AnOrderShippingElsewhereIsNot…  | the scope is this building                                   |
 //   | ASellingTeamIsTurnedAway        | no shelves, no pick list                                     |
-//   | AReturnIsAcceptedHere           | RETURN → Accept Return, then return_completed — nothing left |
+//   | AReturnOpensTheAcceptPage       | RETURN → Accept Return opens the accept page                 |
 //   | OnlyAReturnOffersTheAccept      | a pending order is confirmed, never accepted as a return     |
-//   | TheReturnWarehouseAccepts…      | the configured return warehouse opens and accepts a return   |
-//   | ForceReturnOnTheOrderPage       | shipped → Force Return, confirmed → Accept Return is offered  |
+//   | TheReturnWarehouseAccepts…      | the configured return warehouse opens a return's accept      |
+//   | ForceReturnOnTheOrderPage       | shipped → Force Return, confirmed → Accept Return, the page   |
 //   | ForceReturnIsOnlyForAParcel…    | a pending order offers no Force Return                       |
+//   | SetPickedIsTheScans             | processed: the racks, then the item scans — wrong refused,   |
+//   |                                 | too many refused, every line exact turns Set Picked on       |
+//   | NoPlainMarkPicked               | a processed order has no plain "Mark Picked" to press        |
+//   | OnlyAProcessedOrderIsScanned    | a pending or picked order shows no item scan                 |
+//   | AMonitorReadsThePickPageOnly    | a monitoring team reads the racks; no scan, no step          |
 
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLER = teams[1]!; // Toko Melati (12)
@@ -43,11 +54,16 @@ const Routed = (path: string) =>
     [
       { path: "/warehouse-orders/:orderId", element: <PickOrderPage /> },
       marker("/warehouse-orders", "at-pick-queue"),
+      // The accept page (the-return-accept-page-is-accepted) — its own stories are Pages/Warehouse/OrderReturnAccept.
+      marker("/warehouse-orders/:orderId/accept-return", "at-return-accept"),
     ],
     path,
   );
 
 const AtFull = Routed(`/warehouse-orders/${FULL.id}`);
+// Confirmed, being picked — the order the item scan is for (the-item-scans-live-on-the-page).
+const PROCESSED = orderDetailFor(orders.find((o) => o.warehouseId === WAREHOUSE.id && o.status === OrderStatus.PROCESSED)!.id)!;
+const AtProcessed = Routed(`/warehouse-orders/${PROCESSED.id}`);
 const AtShipped = Routed(`/warehouse-orders/${SHIPPED.id}`);
 const AtElsewhere = Routed(`/warehouse-orders/${ELSEWHERE.id}`);
 
@@ -200,23 +216,21 @@ export const ASellingTeamIsTurnedAway: Story = {
 // ── The return accept (the-accept-is-the-status-return-completed) ─────────────────────────────────
 
 /**
- * A RETURN'S ONE STEP IS THE ACCEPT. Order 101 read in `return`: the crew's screen offers Accept Return — not a plain move,
- * so it opens its dialog — and the accept moves it to return_completed, after which nothing is left to press.
+ * A RETURN'S ONE STEP IS THE ACCEPT. Order 101 read in `return`: the crew's screen offers Accept Return and no plain move
+ * — it opens the accept page (the-return-accept-page-is-accepted), where the parcel is counted and racked.
  */
-export const AReturnIsAcceptedHere: Story = {
+export const AReturnOpensTheAcceptPage: Story = {
   beforeEach: withOrdersInReturn(FULL.id),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(await canvas.findByTestId("pick-order-accept-return"));
+    const button = await canvas.findByTestId("pick-order-accept-return");
     await expect(canvas.queryByTestId("pick-order-advance")).toBeNull();
 
-    await userEvent.click(await screen.findByTestId("accept-return-submit"));
-
-    // A toast from an earlier story may still be on screen — at least one says so.
-    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
-    await waitFor(() => expect(canvas.queryByTestId("pick-order-accept-return")).toBeNull());
-    await expect(returnAcceptScenario.last?.orderId).toBe(FULL.id);
+    await userEvent.click(button);
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
+    // Nothing is accepted by opening it.
+    await expect(returnAcceptScenario.calls).toBe(0);
   },
 };
 
@@ -231,9 +245,8 @@ export const OnlyAReturnOffersTheAccept: Story = {
 };
 
 /**
- * THE RETURN WAREHOUSE ACCEPTS AN ORDER IT DID NOT SHIP (the-accept-records-where-it-was-accepted). Order 109 shipped from
- * Gudang Cabang; Toko Melati returns to Gudang Pusat, whose crew opens it, accepts it — and the accept is scoped on Gudang
- * Pusat, the warehouse recorded as where it was accepted.
+ * THE RETURN WAREHOUSE ACCEPTS AN ORDER IT DID NOT SHIP (only-the-return-warehouse-accepts-a-return). Order 109 shipped
+ * from Gudang Cabang; Toko Melati returns to Gudang Pusat, whose crew opens it and its Accept Return — the page.
  */
 const AtReturnedElsewhere = Routed("/warehouse-orders/109");
 
@@ -244,11 +257,7 @@ export const TheReturnWarehouseAcceptsAnOrderItDidNotShip: Story = {
     const canvas = within(canvasElement);
 
     await userEvent.click(await canvas.findByTestId("pick-order-accept-return"));
-    await userEvent.click(await screen.findByTestId("accept-return-submit"));
-
-    // A toast from an earlier story may still be on screen — at least one says so.
-    await expect((await screen.findAllByText("Return accepted")).length).toBeGreaterThan(0);
-    await expect(returnAcceptScenario.last?.orderId).toBe(109n);
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
   },
 };
 
@@ -279,7 +288,7 @@ export const ForceReturnOnTheOrderPage: Story = {
     await expect(canvas.queryByTestId("pick-order-force-return")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("pick-order-accept-return"));
-    await expect(await screen.findByTestId("accept-return-dialog")).toHaveTextContent(`Accept Return #${SHIPPED.id}`);
+    await waitFor(() => expect(canvas.getByTestId("at-return-accept")).toBeInTheDocument());
   },
 };
 
@@ -290,5 +299,118 @@ export const ForceReturnIsOnlyForAParcelThatLeft: Story = {
 
     await expect(await canvas.findByTestId("pick-order-advance")).toBeInTheDocument();
     await expect(canvas.queryByTestId("pick-order-force-return")).toBeNull();
+  },
+};
+
+// ── Set Picked is the scan's (the-item-scans-live-on-the-page, the-pick-page-opens-first-by-the-label) ────────────────
+
+/** What a handheld scanner does: types the whole code, then presses Enter. */
+async function scan(input: HTMLElement, code: string) {
+  await userEvent.type(input, `${code}{Enter}`, { delay: 10 });
+}
+
+/**
+ * ONE PAGE: THE RACKS FOR THE WALK, THEN THE ITEM SCANS, THEN SET PICKED. An item not on the order is refused, every line
+ * counts up to its quantity, Set Picked turns on only when every line is exact, one more is refused, and Set Picked is
+ * the one write — processed → picked.
+ */
+export const SetPickedIsTheScans: Story = {
+  render: () => <AtProcessed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const scanCard = await canvas.findByTestId("pick-scan", {}, { timeout: 4000 });
+    // The racks first: the pick list sits above the scan.
+    const list = canvas.getByTestId("pick-list-table");
+    await expect(list.compareDocumentPosition(scanCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const input = canvas.getByTestId("pick-scan-input");
+    await waitFor(() => expect(input).toHaveFocus());
+    const setPicked = canvas.getByTestId("pick-order-set-picked");
+    await expect(setPicked).toHaveTextContent("Set Picked");
+    await expect(setPicked).toBeDisabled();
+
+    await scan(input, "NO-SUCH-SKU");
+    await expect(canvas.getByTestId("pick-scan-problem")).toHaveTextContent("Not on this order: NO-SUCH-SKU");
+    await expect(setPicked).toBeDisabled();
+
+    for (const line of PROCESSED.items) {
+      for (let n = 0; n < line.quantity; n += 1) {
+        await scan(input, line.productCode.toLowerCase());
+      }
+      await waitFor(() => expect(canvas.getByTestId(`pick-scan-line-${line.id}`)).toHaveAttribute("data-exact", "true"));
+    }
+    await waitFor(() => expect(canvas.getByTestId("pick-scan-complete")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("pick-scan-problem")).toBeNull();
+    await expect(setPicked).toBeEnabled();
+
+    // One more of the first line is too many — refused, and the count stays exact.
+    const first = PROCESSED.items[0]!;
+    await scan(input, first.productCode);
+    await expect(canvas.getByTestId("pick-scan-problem")).toHaveTextContent("more than ordered");
+    await expect(canvas.getByTestId(`pick-scan-line-${first.id}`)).toHaveTextContent(`${first.quantity} / ${first.quantity}`);
+
+    await userEvent.click(setPicked);
+    await expect((await screen.findAllByText("Marked picked")).length).toBeGreaterThan(0);
+    await expect(statusChangeScenario.calls.at(-1)).toEqual({
+      teamId: WAREHOUSE.id,
+      orderIds: [PROCESSED.id],
+      to: OrderStatus.PICKED,
+    });
+  },
+};
+
+/** NO PLAIN "MARK PICKED": a processed order offers no step button — the scan is the only way to picked. */
+export const NoPlainMarkPicked: Story = {
+  render: () => <AtProcessed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await canvas.findByTestId("pick-scan", {}, { timeout: 4000 });
+    await expect(canvas.queryByTestId("pick-order-advance")).toBeNull();
+    await expect(canvas.queryByText("Mark Picked")).toBeNull();
+    // The barcode is parked, and says so where the scan is.
+    await expect(canvas.getAllByTestId("not-implemented-barcode").length).toBeGreaterThan(0);
+  },
+};
+
+/** ONLY A PROCESSED ORDER IS SCANNED — pending is confirmed first. */
+export const OnlyAProcessedOrderIsScanned: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("pick-order-advance")).toHaveTextContent("Confirm Order");
+    await expect(canvas.queryByTestId("pick-scan")).toBeNull();
+  },
+};
+
+const PICKED = orders.find((o) => o.warehouseId === WAREHOUSE.id && o.status === OrderStatus.PICKED)!;
+const AtPicked = Routed(`/warehouse-orders/${PICKED.id}`);
+
+/** …and a picked one is handed over next, with no scan left on it. */
+export const APickedOrderGoesToTheHandover: Story = {
+  render: () => <AtPicked />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("pick-order-advance")).toHaveTextContent("Mark Handed Over");
+    await expect(canvas.queryByTestId("pick-scan")).toBeNull();
+  },
+};
+
+/** A MONITOR READS THE PAGE ONLY — the racks and the lines, and no item scan, no Set Picked, no step. */
+export const AMonitorReadsThePickPageOnly: Story = {
+  beforeEach: () => {
+    asAdminTeam()();
+    asTeam(WAREHOUSE.id)();
+  },
+  render: () => <AtProcessed />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("pick-list-table")).toBeInTheDocument(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("pick-scan")).toBeNull();
+    await expect(canvas.queryByTestId("pick-order-set-picked")).toBeNull();
+    await expect(canvas.queryByTestId("pick-order-advance")).toBeNull();
   },
 };

@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
+| Last swept | 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
 
 ---
 
@@ -194,4 +194,39 @@ acknowledged with nothing claimed, another team's take acknowledged and kept, a 
 
 ```sh
 go test -tags raceaudit -p 1 -run 'TestRace_OrderCancelled' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## An order comes back on its return (2026-11-09)
+
+Backlog #40 ([return_decision.md](../../../../docs/business/inventory/return_decision.md)): selling's `OrderReturnAccept`
+calls `OrderTransactionReturn` in process **before** it takes its own `orders` row, outside its transaction — so no
+selling lock is held across any of these ([selling's row](../../selling_service/concurrency/lock-order.md#per-handler-in-acquisition-order)).
+
+| Handler | Locks, in order |
+| --- | --- |
+| `OrderTransactionReturn` | *(before the transaction: `order_return_checks` by the take, a plain read — a hit answers and locks nothing)* → **`inventory_transactions` — the TAKE's row `FOR UPDATE`** (an order take of this selling team, not rolled back) → `order_return_checks` re-read under it → the return warehouse's `racks` (a plain count) → the take's `batch_logs` ⋈ `batches` (a plain read of its layers) → `inventory_transactions` INSERT (the `return`) → `batches` INSERT (the mints) + `batch_logs` + `batch_price_logs` → `product_placements` (`EnsureAndLockRacks`: the named rack rows ensured and `FOR UPDATE`, in rack-key order) → `RefuseCounted` (a read of the open snapshots over them) → `product_placement_logs` → `inventory_transaction_items` → `order_return_problem_items` INSERT → `warehouse_products` (the link upsert) → **`order_return_checks` INSERT last** (the once-only key, primary key = the take) |
+
+**The take's row is the queue.** Every return of one parcel locks the same take row first, so a same-second twin waits
+there, then re-reads `order_return_checks` and answers the first one's return — it never mints the parcel again. The
+claim's primary key is the backstop: a caller that somehow passed both reads meets it at commit (`AlreadyExists`).
+
+**No cycle.** Nothing else takes the take's row after a shelf: `OrderTransactionCreate` INSERTs a take (it never locks
+an existing one), and a release (`releaseByKey` → `RollbackTake`) locks `idempotency_order_check`, then the take's row
+`FOR UPDATE`, and only then the take's own batches and racks. A return locks the take's row first too, then only NEW
+batches and the RETURN warehouse's rack rows of the selling team — so a release and a return of one take would queue on
+the take's row, never cross. They cannot meet anyway: an order is cancelled before its handover and returned after it.
+(Were they to, a return that waited would re-read the row as rolled back — `NOT is_rollback` is re-checked under
+READ COMMITTED — and answer `NotFound`.) Against a stock count: the rack rows are locked before `RefuseCounted` reads
+the open snapshots, as every put-away does
+([a-lock-stops-sales-and-cancels-too](../../../../docs/business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
+
+| Claim | Proof |
+| --- | --- |
+| **The take's row lock holds**, and the waiter re-reads the claim after it | `TestInterleave_OrderTransactionReturn_SecondWaitsOnTheTake` — B blocked on A's `FOR UPDATE`, released on A's commit, answered A's return (`posted` false, its door row) — one return, one claim, one door row |
+| Eight returns of one take at once stock the parcel once | `TestRace_OrderTransactionReturn_OnceForEightCallers` — ×5 rounds: every caller answered, exactly one posted, all answered the same transaction, one return and one claim, the units on the racks once |
+| Eight accepts of one parcel over the REAL stack (selling's accept → the stock picker → this handler) leave one return | `TestRace_OrderReturnAccept_OneReturnTransaction` (`backend/cmd/app_development`) — ×5 rounds: one accept, seven *"already accepted"*, one return transaction and one claim, the units on the rack once, the order `return_completed` naming that return |
+
+```sh
+go test -tags raceaudit -p 1 -run 'TestRace_OrderTransactionReturn|TestInterleave_OrderTransactionReturn' -v ./backend/services/inventory_service/inventory_v1/
+go test -tags raceaudit -p 1 -run 'TestRace_OrderReturnAccept' -v ./backend/cmd/app_development/
 ```

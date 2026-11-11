@@ -31,7 +31,7 @@ const rolloutPage = 200
 // who is not a member of the shop's team or is suspended (refuseUngrantable). Nothing else is wired: no command here
 // places an order, so stock, credit, fees, labels and exports stay nil, and its events fall to EmptySender.
 func NewShopGrants(db *gorm.DB, resolver access_interceptors.RoleResolver) *selling_v1.Service {
-	return selling_v1.NewService(db, nil, nil, nil, nil, sanRoleReader{resolver: resolver}, nil, nil, nil, nil)
+	return selling_v1.NewService(db, nil, nil, nil, nil, sanRoleReader{resolver: resolver}, nil, nil, nil, nil, nil)
 }
 
 // sanRoleReader answers selling's RoleReader from user_service's resolver — the server's adapter, in this binary.

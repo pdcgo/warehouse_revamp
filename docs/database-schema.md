@@ -399,6 +399,7 @@ erDiagram
         text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — a duplicate is warned by the order form, never refused (a-duplicate-ref-is-warned-not-refused)"
         text        idempotency_key     "UK - the key the submit that created it minted (00035). NOT NULL, UNIQUE. Older dev rows filled as order:id. The key its stock take is filed under"
         bigint      transaction_id      "the inventory transaction its stock take wrote (00036) - no FK, another service's id. NULL = none recorded, no backfill"
+        bigint      return_transaction_id "the inventory return transaction its accepted return was put back on the shelf in (00049) - no FK, another service's id. NULL = not accepted back, no backfill"
         timestamptz settlement_opened_at "when its settlement account opened (00040) - stamped once by settlement in-process at the first initial_total. NULL = NOT YET. Partial index orders_settlement_not_opened_idx on the NULLs"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         boolean     is_override         "the creator was Root or the Administrator, not a member - set at placement, never updated (00033)"
@@ -656,6 +657,14 @@ erDiagram
   ([the-placement-page-reads-racks-by-transaction-id](business/inventory/order_decision.md#the-placement-page-reads-racks-by-transaction-id)).
   NULL = none recorded; no backfill ([revamp-has-no-real-orders-yet](business/order/context_decision.md#revamp-has-no-real-orders-yet)).
   The Down drops the column.
+- **`orders.return_transaction_id`** (`00049`, backlog #40, 2026-11-09) — the inventory `return` transaction the order's
+  accepted return was put back on the shelf in (inventory's `OrderTransactionReturn`,
+  [return_decision.md](business/inventory/return_decision.md)), stored by `OrderReturnAccept` in the same transaction as
+  the move to `return_completed`, beside `transaction_id` (the take's). `BIGINT NULL`, no FK (inventory_service's id, HARD
+  RULE 3) and no index (nothing reads orders by it); on the wire as `Order.return_transaction_id`. NULL = not accepted
+  back — a developer's order accepted before the stock half names none, no backfill
+  ([revamp-has-no-real-orders-yet](business/order/context_decision.md#revamp-has-no-real-orders-yet)). The Down drops the
+  column.
 - **`orders.settlement_opened_at`** (`00040`) — when the order's settlement account OPENED
   ([a-missing-account-is-found-by-its-opened-at](business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at)).
   `TIMESTAMPTZ NULL`; **NULL = not yet** — the open failed, is dead-lettered, or never ran, and the order committed all the
@@ -951,7 +960,7 @@ erDiagram
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement | order_export | table_export (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement | order_export | table_export | order_labels (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -989,7 +998,11 @@ erDiagram
   ([one-export-is-the-list-as-a-file](technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)),
   stored as the person who exported it: it names buyers and their phone numbers. And `table_export` (`00010`) — a
   screen's table exported as .xlsx the same way, a supplier page tab's
-  ([each-supplier-tab-exports-its-own-table](technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table)). A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
+  ([each-supplier-tab-exports-its-own-table](technical/frontend/suppliers_decision.md#each-supplier-tab-exports-its-own-table)).
+  And `order_labels` (`00011`) — several orders' shipping labels merged into ONE PDF for the warehouse that prints them
+  ([a-warehouse-prints-the-labels-of-orders-it-ships](technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)):
+  written ACTIVE by the order service's `OrderLabels` under the WAREHOUSE's team (never uploaded — `RequestUpload`
+  refuses the type), its object straight under `assets/`; private, since every label on it names a buyer. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
   `ProfilePictureErase` ([erase-deletes-the-photo-file](business/user/context_decision.md#erase-deletes-the-photo-file)),
   which deletes every photo one person uploaded — removing their share rows first, deliberately, since `RESTRICT`
   would otherwise refuse it.
@@ -1659,6 +1672,54 @@ erDiagram
 - **`lost_amount` is `double precision`** since `00038` (numeric-money-moves-to-double-too) — `NUMERIC(20,2)` before. The
   fold writes each row's units × price EXACT ([the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money); it rounded to whole rupiah before); the cast was exact
   and nothing was backfilled.
+
+### An order's return (`00040`)
+
+An accepted return's parcel back on the return warehouse's shelves (backlog #40, built 2026-11-09 —
+[return_decision.md](business/inventory/return_decision.md)). The return itself is an `inventory_transactions` row of type
+`return` (already in every CHECK list) with the ledgers' own batches, items and rack rows; two tables are new — the
+once-only key and the return's door table.
+
+```mermaid
+erDiagram
+    order_return_checks {
+        bigint      take_transaction_id PK "-> inventory_transactions(id), the order's take - one return per take"
+        bigint      transaction_id      FK "-> inventory_transactions(id), UNIQUE - the return it bought. CHECK not the take"
+        timestamptz created_at
+    }
+    order_return_problem_items {
+        bigserial   id             PK
+        bigint      transaction_id FK "-> inventory_transactions(id), the return"
+        bigint      product_id     "the product the take drew - the order line's. UNIQUE with transaction_id and problem_type"
+        text        problem_type   "broken missing - CHECK"
+        text        note           "the crew's optional note, '' = none"
+        bigint      count          "CHECK above 0"
+        float8      price_unit     "total over count, display only"
+        float8      total          "priced from the layers it came off, newest first, at what the selling team paid"
+        timestamptz created_at
+    }
+    inventory_transactions ||--o| order_return_checks : "a take returned once"
+    inventory_transactions ||--o| order_return_checks : "the return it bought"
+    inventory_transactions ||--o{ order_return_problem_items : "broken or missing at the return's door"
+```
+
+- **`order_return_checks`** — the take is the **primary key**, claimed LAST in the return's own transaction, after the
+  take's row lock: a retried or raced accept reads it and is answered with the first one's return, never a second
+  stock-in; a twin that slipped past both reads meets the key at commit. `transaction_id` is UNIQUE (one return claims one
+  take), and `order_return_checks_not_itself` keeps it from naming the take. Both FKs `ON DELETE RESTRICT`.
+- **`order_return_problem_items`** — shaped like `warehouse_transfer_problem_items`, keyed by the return transaction instead
+  of a transfer: one row per product and kind (`order_return_problem_items_one_per_kind`). The units are the **selling
+  team's** loss ([a-short-return-is-missing-at-the-door](business/inventory/return_decision.md#a-short-return-is-missing-at-the-door),
+  [a-broken-returned-unit-is-thrown-away-at-the-door](business/inventory/return_decision.md#a-broken-returned-unit-is-thrown-away-at-the-door)) —
+  so, unlike `warehouse_stock_problems`, nothing posts from it: no payable, no claim, no Inventory Lost fold. The note
+  ([a-return-door-row-carries-an-optional-note](business/inventory/return_decision.md#a-return-door-row-carries-an-optional-note))
+  is also copied onto the order's warehouse timeline note by selling.
+- **The minted batches** are ordinary `batches` rows of the return transaction, owned by the selling team at the return
+  warehouse, one per layer the take drew with sound units — each keeping that layer's price (× 1 + the markup paid, on a
+  borrowed line), expiry and suppliers
+  ([a-return-mints-one-batch-per-batch-the-order-took](business/inventory/return_decision.md#a-return-mints-one-batch-per-batch-the-order-took)).
+- **No index added**: the claim is read by its primary key, the door rows by `transaction_id` through the one-per-kind
+  unique index, whose leading column it is.
 
 ---
 

@@ -39,6 +39,9 @@ const (
 	// OrderTransactionServiceOrderTransactionReleaseProcedure is the fully-qualified name of the
 	// OrderTransactionService's OrderTransactionRelease RPC.
 	OrderTransactionServiceOrderTransactionReleaseProcedure = "/warehouse.inventory.v1.OrderTransactionService/OrderTransactionRelease"
+	// OrderTransactionServiceOrderTransactionReturnProcedure is the fully-qualified name of the
+	// OrderTransactionService's OrderTransactionReturn RPC.
+	OrderTransactionServiceOrderTransactionReturnProcedure = "/warehouse.inventory.v1.OrderTransactionService/OrderTransactionReturn"
 )
 
 // OrderTransactionServiceClient is a client for the warehouse.inventory.v1.OrderTransactionService
@@ -56,6 +59,20 @@ type OrderTransactionServiceClient interface {
 	// K claimed with a transaction → that transaction is rolled back, once · claimed with none → nothing · not claimed
 	// yet → claimed with none, so a take arriving late is refused.
 	OrderTransactionRelease(context.Context, *connect.Request[v1.OrderTransactionReleaseRequest]) (*connect.Response[v1.OrderTransactionReleaseResponse], error)
+	// THE RETURN (return_decision.md): an order's returned parcel, accepted at the selling team's return warehouse
+	// (only-the-return-warehouse-accepts-a-return), back on its shelves. ONE `return` transaction of the ORDERING team at
+	// the return warehouse, per take, once (a second call answers the first one's transaction, posted = false):
+	//
+	//	sound     one batch minted per batch the take drew from, price, expiry and supplier kept — a borrowed line at the
+	//	          markup the team paid, under its mapped own product (a-return-mints-one-batch-per-batch-the-order-took) —
+	//	          onto the named racks of the return warehouse, its products linked there
+	//	missing   a door row, off the NEWEST layer first (a-short-return-is-missing-at-the-door)
+	//	broken    a door row, thrown away (a-broken-returned-unit-is-thrown-away-at-the-door)
+	//
+	// Door rows carry the crew's note (a-return-door-row-carries-an-optional-note) and are the selling team's: never the
+	// warehouse's payable, never claimable, never Inventory Lost. A rack a stock count holds the product on, or a rack
+	// that is not the return warehouse's, refuses the whole return (a-lock-stops-sales-and-cancels-too).
+	OrderTransactionReturn(context.Context, *connect.Request[v1.OrderTransactionReturnRequest]) (*connect.Response[v1.OrderTransactionReturnResponse], error)
 }
 
 // NewOrderTransactionServiceClient constructs a client for the
@@ -82,6 +99,12 @@ func NewOrderTransactionServiceClient(httpClient connect.HTTPClient, baseURL str
 			connect.WithSchema(orderTransactionServiceMethods.ByName("OrderTransactionRelease")),
 			connect.WithClientOptions(opts...),
 		),
+		orderTransactionReturn: connect.NewClient[v1.OrderTransactionReturnRequest, v1.OrderTransactionReturnResponse](
+			httpClient,
+			baseURL+OrderTransactionServiceOrderTransactionReturnProcedure,
+			connect.WithSchema(orderTransactionServiceMethods.ByName("OrderTransactionReturn")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -89,6 +112,7 @@ func NewOrderTransactionServiceClient(httpClient connect.HTTPClient, baseURL str
 type orderTransactionServiceClient struct {
 	orderTransactionCreate  *connect.Client[v1.OrderTransactionCreateRequest, v1.OrderTransactionCreateResponse]
 	orderTransactionRelease *connect.Client[v1.OrderTransactionReleaseRequest, v1.OrderTransactionReleaseResponse]
+	orderTransactionReturn  *connect.Client[v1.OrderTransactionReturnRequest, v1.OrderTransactionReturnResponse]
 }
 
 // OrderTransactionCreate calls
@@ -101,6 +125,12 @@ func (c *orderTransactionServiceClient) OrderTransactionCreate(ctx context.Conte
 // warehouse.inventory.v1.OrderTransactionService.OrderTransactionRelease.
 func (c *orderTransactionServiceClient) OrderTransactionRelease(ctx context.Context, req *connect.Request[v1.OrderTransactionReleaseRequest]) (*connect.Response[v1.OrderTransactionReleaseResponse], error) {
 	return c.orderTransactionRelease.CallUnary(ctx, req)
+}
+
+// OrderTransactionReturn calls
+// warehouse.inventory.v1.OrderTransactionService.OrderTransactionReturn.
+func (c *orderTransactionServiceClient) OrderTransactionReturn(ctx context.Context, req *connect.Request[v1.OrderTransactionReturnRequest]) (*connect.Response[v1.OrderTransactionReturnResponse], error) {
+	return c.orderTransactionReturn.CallUnary(ctx, req)
 }
 
 // OrderTransactionServiceHandler is an implementation of the
@@ -118,6 +148,20 @@ type OrderTransactionServiceHandler interface {
 	// K claimed with a transaction → that transaction is rolled back, once · claimed with none → nothing · not claimed
 	// yet → claimed with none, so a take arriving late is refused.
 	OrderTransactionRelease(context.Context, *connect.Request[v1.OrderTransactionReleaseRequest]) (*connect.Response[v1.OrderTransactionReleaseResponse], error)
+	// THE RETURN (return_decision.md): an order's returned parcel, accepted at the selling team's return warehouse
+	// (only-the-return-warehouse-accepts-a-return), back on its shelves. ONE `return` transaction of the ORDERING team at
+	// the return warehouse, per take, once (a second call answers the first one's transaction, posted = false):
+	//
+	//	sound     one batch minted per batch the take drew from, price, expiry and supplier kept — a borrowed line at the
+	//	          markup the team paid, under its mapped own product (a-return-mints-one-batch-per-batch-the-order-took) —
+	//	          onto the named racks of the return warehouse, its products linked there
+	//	missing   a door row, off the NEWEST layer first (a-short-return-is-missing-at-the-door)
+	//	broken    a door row, thrown away (a-broken-returned-unit-is-thrown-away-at-the-door)
+	//
+	// Door rows carry the crew's note (a-return-door-row-carries-an-optional-note) and are the selling team's: never the
+	// warehouse's payable, never claimable, never Inventory Lost. A rack a stock count holds the product on, or a rack
+	// that is not the return warehouse's, refuses the whole return (a-lock-stops-sales-and-cancels-too).
+	OrderTransactionReturn(context.Context, *connect.Request[v1.OrderTransactionReturnRequest]) (*connect.Response[v1.OrderTransactionReturnResponse], error)
 }
 
 // NewOrderTransactionServiceHandler builds an HTTP handler from the service implementation. It
@@ -139,12 +183,20 @@ func NewOrderTransactionServiceHandler(svc OrderTransactionServiceHandler, opts 
 		connect.WithSchema(orderTransactionServiceMethods.ByName("OrderTransactionRelease")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderTransactionServiceOrderTransactionReturnHandler := connect.NewUnaryHandler(
+		OrderTransactionServiceOrderTransactionReturnProcedure,
+		svc.OrderTransactionReturn,
+		connect.WithSchema(orderTransactionServiceMethods.ByName("OrderTransactionReturn")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.OrderTransactionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderTransactionServiceOrderTransactionCreateProcedure:
 			orderTransactionServiceOrderTransactionCreateHandler.ServeHTTP(w, r)
 		case OrderTransactionServiceOrderTransactionReleaseProcedure:
 			orderTransactionServiceOrderTransactionReleaseHandler.ServeHTTP(w, r)
+		case OrderTransactionServiceOrderTransactionReturnProcedure:
+			orderTransactionServiceOrderTransactionReturnHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -160,4 +212,8 @@ func (UnimplementedOrderTransactionServiceHandler) OrderTransactionCreate(contex
 
 func (UnimplementedOrderTransactionServiceHandler) OrderTransactionRelease(context.Context, *connect.Request[v1.OrderTransactionReleaseRequest]) (*connect.Response[v1.OrderTransactionReleaseResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.OrderTransactionService.OrderTransactionRelease is not implemented"))
+}
+
+func (UnimplementedOrderTransactionServiceHandler) OrderTransactionReturn(context.Context, *connect.Request[v1.OrderTransactionReturnRequest]) (*connect.Response[v1.OrderTransactionReturnResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.OrderTransactionService.OrderTransactionReturn is not implemented"))
 }

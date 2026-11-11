@@ -16,7 +16,8 @@ import (
 // the stock count (post_count.go) replaced it; a broken or lost unit reported at the shelf writes the register's row
 // (post_problem.go); and the provisional found into a named batch (`PostBatchFound`) is retired — a found waits for the
 // Owner or Admin as a request and its approval posts the count's own found (post_found.go,
-// an-adjust-found-waits-for-the-owner-or-admin). What is left waits on the owner's adjustment.md.
+// an-adjust-found-waits-for-the-owner-or-admin). What is left — correcting a wrong stock-in — is undesigned
+// (adjustment-md-is-retired; a-rollback-only-undoes-a-take gives its direction).
 
 var (
 	// ErrNeverStockedHere refuses a surplus of a product this warehouse never held: it has no owner to give it to, and
