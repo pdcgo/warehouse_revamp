@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { TriangleAlert } from "lucide-react";
 
 import type { PendingList } from "./registry";
-import { pendingNumber } from "./registry";
+import { pendingNumber, pendingPart } from "./registry";
 import { usePendingMarks } from "./PendingMarks";
 
 // THE MARK ON A CARD THAT IS AHEAD OF THE SYSTEM — an icon and a NUMBER, and nothing else (owner).
@@ -36,6 +36,10 @@ export function NotImplemented<Id extends string>({
     return null;
   }
   const label = t(`${list.ns}.pending.${id}.label`);
+  // A part against a business decision says so on hover too (a-conflict-with-a-business-decision-is-said-in-its-mark).
+  const conflict = pendingPart(list, id).conflict
+    ? ` ${t("pending.conflict")} ${t(`${list.ns}.pending.${id}.conflict`)}`
+    : "";
 
   return (
     <Badge
@@ -46,7 +50,7 @@ export function NotImplemented<Id extends string>({
       gap="1"
       // The label and the reason ride in `title`, so hovering answers "which one is 7?" without a
       // trip to the top — a convenience, never the only route, which is why the number is painted.
-      title={`${n}. ${label} — ${t(`${list.ns}.pending.${id}.reason`)}`}
+      title={`${n}. ${label} — ${t(`${list.ns}.pending.${id}.reason`)}${conflict}`}
       aria-label={t("pending.markAria", { n, label })}
       data-testid={`not-implemented-${id}`}
     >

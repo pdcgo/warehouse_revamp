@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { inventoryClient, restockClient } from "../../api/clients";
+import { restockClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
 import { fetchActors, peopleFor, useActors, WHO_FILTER_SIZE } from "../users/queries";
-import type { RestockActorRole, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockDateField } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import type { RestockActorRole } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockDateField, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { useDebounced } from "../../lib/useDebounced";
 import { restocksFromList, restockListRowData } from "./adapt";
 
 // The restock screens' reads (#176).
@@ -93,11 +94,10 @@ export function useRestockRequests(args: RestockListArgs) {
 
       const requests = restocksFromList(res.items, res.ids);
 
-      // WHO RAISED IT AND WHO ACCEPTED IT, resolved in the same query rather than by each row —
-      // one call for the whole page. Both columns come from the same map: the same person often
-      // does both.
+      // WHO RAISED IT, WHO SIGNED FOR THE BOX AND WHO ACCEPTED IT, resolved in the same query rather than by each row —
+      // one call for the whole page. Every column comes from the same map: the same person often does two.
       const actors = await fetchActors(
-        requests.flatMap((r) => [r.createdByUserId, r.acceptedByUserId]),
+        requests.flatMap((r) => [r.createdByUserId, r.arrivedByUserId, r.acceptedByUserId]),
       );
 
       return {
@@ -107,6 +107,85 @@ export function useRestockRequests(args: RestockListArgs) {
       };
     },
   });
+}
+
+/** Which of a restock's references a check is about — the resi, or the store's Order ID. */
+export type RestockRef = "receipt" | "invoiceRef";
+
+/**
+ * What the form knows about a reference it was given:
+ *
+ *   idle      nothing typed, or the field is closed
+ *   checking  typed, and the answer is not in yet — the debounce, then the read
+ *   free      no other restock holds it
+ *   taken     the newest restock holding it, which is not cancelled
+ *   failed    the read failed — said under the field, and nothing is held back on it
+ */
+export type RefCheck =
+  | { state: "idle" | "checking" | "free" | "failed" }
+  | { state: "taken"; id: bigint; status: RestockRequestStatus };
+
+// How many search hits are read. The search is a substring match over the resi, the Order ID and the lines' SKU and
+// name, and the exact match is picked out of it here — a full reference matches a handful, never a page.
+const IN_USE_PAGE = 50;
+
+const normalised = (ref: string) => ref.trim().toLowerCase();
+
+// IS THIS RESI — OR THIS ORDER ID — ALREADY ON ANOTHER RESTOCK? (owner: *"ada checker … untuk cek resi dan order id ->
+// danger langsung di formnya"*, *"hasil checkernya jadi validasi juga"*, a-reference-in-use-stops-the-restock-form).
+//
+// Asked of the LIST's own search (`filter.q` reaches the resi and the Order ID), then matched EXACTLY, letter case
+// aside: `jne0123` and `JNE0123` are one parcel. A CANCELLED restock holds nothing — its parcel never came — and the
+// restock being edited is not its own duplicate. Every other status holds it: an accepted box cannot arrive twice, and
+// a lost one may still turn up.
+//
+// ⚠ THIS TEAM'S RESTOCKS ONLY — the list a selling team may read. A resi on another team's restock is not caught, and
+// nothing on the server refuses a repeated one: the form's two pending marks say so (`restock-form/pending.ts`).
+//
+// Keyed on the value, so each one typed is its own question — never `listQuery`, which would show the answer about the
+// previous value while asking about this one.
+export function useRestockRefInUse(args: {
+  teamId: bigint | undefined;
+  ref: RestockRef;
+  value: string;
+  /** The restock being edited; 0n on create. */
+  exceptId: bigint;
+  /** False while the field is closed — an arrived restock's references are not asked about again. */
+  enabled: boolean;
+}): RefCheck {
+  const { teamId, ref, value, exceptId, enabled } = args;
+  const typed = normalised(value);
+  // Asked once the typing pauses, not per keystroke.
+  const asked = useDebounced(typed, 400);
+  const on = enabled && teamId !== undefined && asked !== "";
+
+  const query = useQuery({
+    queryKey: key.restock(teamId, { inUse: ref, value: asked, except: exceptId.toString() }),
+    enabled: on,
+    queryFn: async () => {
+      const res = await restockClient.restockRequestList({
+        teamId: teamId!,
+        filter: { q: asked },
+        dataRequest: restockListRowData(),
+        page: { page: 1, limit: IN_USE_PAGE },
+      });
+
+      const holder = restocksFromList(res.items, res.ids).find(
+        (r) =>
+          r.id !== exceptId &&
+          r.status !== RestockRequestStatus.CANCELLED &&
+          normalised(ref === "receipt" ? r.receipt : r.invoiceRefId) === asked,
+      );
+
+      return holder ? { id: holder.id, status: holder.status } : null;
+    },
+  });
+
+  if (!enabled || teamId === undefined || typed === "") return { state: "idle" };
+  if (asked !== typed || query.isPending) return { state: "checking" };
+  if (query.isError) return { state: "failed" };
+
+  return query.data ? { state: "taken", ...query.data } : { state: "free" };
 }
 
 // WHO A RESTOCK LIST'S "WHO" FILTER OFFERS (a-who-filter-lists-the-people-on-its-rows): everyone who raised — or
@@ -134,38 +213,7 @@ export function useRestockPeople(args: { teamId: bigint | undefined; role: Resto
   });
 }
 
-// THE ONGOING STOCK HEADLINE (owner) — how much this team has bought that has not landed yet, and
-// what it is worth.
-//
-// It is `OwnerStockStat`, not a total of the rows on screen, and that is the point: the tile
-// describes what the team has in flight, while the table beside it shows twenty rows narrowed by a
-// search box and a status tab. Adding up the visible rows would make the headline move every time
-// somebody typed, which is the one thing a headline must not do.
-//
-// Server-side "ongoing" is exactly this screen's subject: Σ of the lines on PENDING restocks, scoped
-// to the requesting team — so the tile and the Pending tab can never tell different stories.
-//
-// It takes the WAREHOUSE FILTER and nothing else. A warehouse lens restates the question ("what is
-// in flight to Jakarta") rather than narrowing a list; a date range or a search box does not — those
-// pick rows, and a headline that followed them would stop being a headline.
-export function useRestockOngoing(args: { teamId: bigint | undefined; warehouseId?: bigint }) {
-  const { teamId, warehouseId = 0n } = args;
-
-  return useQuery({
-    queryKey: key.restock(teamId, { ongoing: true, warehouseId: warehouseId.toString() }),
-    enabled: teamId !== undefined,
-    queryFn: async () => {
-      const res = await inventoryClient.ownerStockStat({ teamId: teamId!, filter: { warehouseId } });
-
-      return {
-        qty: res.preview?.ongoingQty ?? 0n,
-        value: res.preview?.ongoingValueEst ?? 0n,
-      };
-    },
-  });
-}
-
-// THE INBOUND HEADLINE (owner) — the warehouse side's mirror of useRestockOngoing above: what is
+// THE INBOUND HEADLINE (owner) — the warehouse side's in-flight figures (the selling list's were OwnerStockStat): what is
 // still waiting at this warehouse's door, over every PENDING restock targeting it.
 //
 // A SEPARATE RPC rather than the same one read differently, and the reason is not tidiness. The
@@ -206,10 +254,12 @@ export function useRestockInbound(args: { teamId: bigint | undefined; requesting
 // The printable labels for a fulfilled restock (#207), scoped to the accepting warehouse. Its own
 // key params so it caches independently of the request detail — a different question about the same
 // receipt. Only enabled once we have a warehouse team and a real request id.
-export function useRestockLabels(args: { teamId: bigint | undefined; requestId: bigint }) {
-  const { teamId, requestId } = args;
-
-  return useQuery({
+//
+// The OPTIONS are exported as well as the hook, so a page reading several restocks at once (Cetak Label over many,
+// labels-print-several-restocks) asks `useQueries` the very same question — one cache entry per restock, shared with
+// the single reads.
+export function restockLabelsQuery(teamId: bigint | undefined, requestId: bigint) {
+  return {
     queryKey: key.restock(teamId, { labels: requestId.toString() }),
     enabled: teamId !== undefined && requestId > 0n,
     queryFn: async () => {
@@ -217,19 +267,61 @@ export function useRestockLabels(args: { teamId: bigint | undefined; requestId: 
 
       return res;
     },
-  });
+  };
 }
 
-export function useRestockRequest(args: { teamId: bigint | undefined; requestId: bigint }) {
-  const { teamId, requestId } = args;
+export function useRestockLabels(args: { teamId: bigint | undefined; requestId: bigint }) {
+  return useQuery(restockLabelsQuery(args.teamId, args.requestId));
+}
 
-  return useQuery({
+export function restockRequestQuery(teamId: bigint | undefined, requestId: bigint) {
+  return {
     queryKey: key.restock(teamId, { requestId: requestId.toString() }),
     enabled: teamId !== undefined && requestId > 0n,
     queryFn: async () => {
       const res = await restockClient.restockRequestDetail({ teamId: teamId!, requestId });
 
       return res.request ?? null;
+    },
+  };
+}
+
+export function useRestockRequest(args: { teamId: bigint | undefined; requestId: bigint }) {
+  return useQuery(restockRequestQuery(args.teamId, args.requestId));
+}
+
+// How many of each printable status the picker offers before anything is typed.
+const LABELABLE_PAGE = 10;
+
+// THE RESTOCKS THAT HAVE LABELS — Tiba and Diterima, for Cetak Label's *Tambah Restok* (labels-print-several-restocks):
+// the newest of each, narrowed by the list's own search (number, resi, Order ID, a line's SKU or name). The list takes
+// ONE status, so it is asked twice and the two answers merged, newest first — a picker that offered every status
+// would open on boxes still on the road, none of which can be picked.
+//
+// `referenceQuery`: a picker feed (HARD RULE 10). What is picked is read again, whole, by the page.
+export function useLabelableRestocks(args: { teamId: bigint | undefined; q: string }) {
+  const { teamId, q } = args;
+
+  return useQuery({
+    queryKey: key.restock(teamId, { labelable: q }),
+    ...referenceQuery,
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const ask = (status: RestockRequestStatus) =>
+        restockClient.restockRequestList({
+          teamId: teamId!,
+          filter: { status, q },
+          dataRequest: restockListRowData(),
+          page: { page: 1, limit: LABELABLE_PAGE },
+        });
+      const [arrived, accepted] = await Promise.all([
+        ask(RestockRequestStatus.ARRIVED),
+        ask(RestockRequestStatus.ACCEPTED),
+      ]);
+
+      return [...restocksFromList(arrived.items, arrived.ids), ...restocksFromList(accepted.items, accepted.ids)].sort(
+        (a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0),
+      );
     },
   });
 }

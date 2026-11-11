@@ -26,6 +26,20 @@ export const WithRole: Story = {
   args: { role: Role.WAREHOUSE_ADMIN },
 };
 
+/**
+ * THE SMALL ONE — a small avatar and the name alone, for a dense list (a restock's timeline: *"riwayat usernya terlalu
+ * besar, gambar kecil dan nama saja"*). No username line, even with a role.
+ */
+export const Small: Story = {
+  args: { size: "xs", role: Role.WAREHOUSE_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByText(users[0]!.name)).toBeVisible();
+    await expect(canvas.queryByText(`@${users[0]!.username}`)).toBeNull();
+  },
+};
+
 export const Medium: Story = {
   args: { size: "md" },
 };

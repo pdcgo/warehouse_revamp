@@ -152,3 +152,23 @@ export function formatRupiahCompact(amount: Rupiah): string {
 
   return formatRupiah(amount);
 }
+
+/**
+ * A COUNT → the same short scale as {@link formatRupiahCompact}, without the Rp: 1_240n → "1,2rb". For a card that puts
+ * a count of units beside a compact amount, so the two read alike. Below a thousand it is the plain number.
+ */
+export function formatCountCompact(count: bigint | number): string {
+  const n = Number(count);
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "−" : "";
+
+  for (const { limit, suffix } of COMPACT_UNITS) {
+    if (abs >= limit) {
+      const scaled = abs / limit;
+      const text = scaled < 100 ? scaled.toFixed(1).replace(/\.0$/, "") : scaled.toFixed(0);
+      return `${sign}${text.replace(".", ",")}${suffix}`;
+    }
+  }
+
+  return `${sign}${abs.toLocaleString("id-ID")}`;
+}

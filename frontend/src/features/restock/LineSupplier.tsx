@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { HStack, Span, Stack } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
@@ -31,10 +32,12 @@ export interface LineSupplierProps {
   supplierChannelId: bigint;
   suppliers: Record<string, SupplierRecord>;
   channels: Record<string, SupplierChannel>;
+  /** Said after the supplier's name, on its line — the list's "+1 more supplier", so a cell stays two lines. */
+  after?: ReactNode;
   testId?: string;
 }
 
-export function LineSupplier({ supplierId, supplierChannelId, suppliers, channels, testId }: LineSupplierProps) {
+export function LineSupplier({ supplierId, supplierChannelId, suppliers, channels, after, testId }: LineSupplierProps) {
   const { t } = useTranslation();
 
   if (supplierId === 0n) {
@@ -55,6 +58,7 @@ export function LineSupplier({ supplierId, supplierChannelId, suppliers, channel
           {supplier?.name ?? t("restock.lineSupplier.unknownSupplier", { id: supplierId.toString() })}
         </Span>
         {supplier?.deleted && <DeletedBadge />}
+        {after}
       </HStack>
       {supplierChannelId > 0n ? (
         <HStack gap="1.5" minW="0">

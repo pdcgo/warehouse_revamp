@@ -78,8 +78,32 @@ when it applies one of these.
 | [a-narrowed-page-stays-at-the-left](#a-narrowed-page-stays-at-the-left) | a page held narrower than the canvas — a form, a detail — stays at the canvas's LEFT edge; centring it was tried on the product form and withdrawn | every narrowed page |
 | [sticky-sticks-to-the-window](#sticky-sticks-to-the-window) | the desktop shell lets the window scroll, so `<main>` is `overflowX="clip"`, never `overflow="auto"` — anything else made every sticky header inside a page never stick | every desktop page |
 | [a-nav-jump-blinks-where-it-lands](#a-nav-jump-blinks-where-it-lands) | a detail page's section nav scrolls to the clicked section and that card BLINKS — a pale tint of the main tone, once, no ring or border | the product page and the order detail, every page on the shared `SectionNav` |
+| [a-selected-tab-is-bold](#a-selected-tab-is-bold) | the picked tab is **bold** as well as rose — on every tab row, set once in the theme | [the restock list](restock_decision.md#the-restock-statistics-count-transactions-under-the-tabs) |
+| [a-statistics-button-ends-the-tab-row](#a-statistics-button-ends-the-tab-row) | a list's **Statistik** button ends its status-tab row on a desktop and is an icon beside Filter on a phone — never a row of its own; `StatsToggle` | [the restock list](restock_decision.md#the-statistics-button-ends-the-tab-row), then the order list |
+| [a-date-range-panel-fits-a-phone](#a-date-range-panel-fits-a-phone) | on a phone the date range panel is the screen's width, stacked — the date types wrap, the quick ranges a wrapped row over the calendar — and scrolls inside rather than off the screen | every `DateRangePicker`, found on the restock list |
+| [nothing-runs-past-a-phones-edge](#nothing-runs-past-a-phones-edge) | on a phone — down to 320px — nothing runs past the screen's edge: a panel is capped at the screen, a row of tabs or a table scrolls inside its own box, a row of controls lets its search give way | every screen; swept on every Mobile story |
+| [a-phone-card-shows-no-note](#a-phone-card-shows-no-note) | on a phone a summary card drops its NOTE — how the figure is made — and keeps its label, figure and data line; `SummaryCard` does it on every screen | [the supplier figures](suppliers_decision.md#a-phone-card-shows-no-note), then every card |
+| [a-sticky-bar-waits-for-the-whole-title-row](#a-sticky-bar-waits-for-the-whole-title-row) | a detail page's sticky title bar shows once its WHOLE title row has gone behind it — the heading, what wrapped beside it, the reference line under it — never while part of the row still shows below; `useStickyTitle` | the restock page on a phone, then every detail page with a sticky title |
+| [a-dialog-pages-simply](#a-dialog-pages-simply) | a list inside a dialog pages with `Pagination` — ‹ 1 of 3 › — never the page's numbered `GrowingPager` | every product picker, from the restock form |
+| [a-dialog-pager-is-one-number](#a-dialog-pager-is-one-number) | a dialog's pager is `GrowingPager compact` — ‹ [2] ›, the current page alone in the app's pager boxes; it REPLACES the ‹ 1 of 3 › of [a-dialog-pages-simply](#a-dialog-pages-simply) | every product picker |
+| [a-save-button-says-what-it-waits-for](#a-save-button-says-what-it-waits-for) | a form's save button has ONE line by it — the first thing still missing, the rest on asking, or a green ✓ *Siap dibuat* once nothing is; `ReadyLine` | [the restock form](restock_decision.md#what-is-missing-is-one-line-over-buat), then the bundle and product forms |
+| [a-form-returns-where-it-was-opened](#a-form-returns-where-it-was-opened) | every way out of a form — save, Back, the top arrow — goes to the screen that opened it: a record's page, or a list with its filters; reached by a link, the list | [the product form](products_decision.md#the-form-returns-where-it-was-opened), then the restock form |
+| [every-combobox-reopens-whole](#every-combobox-reopens-whole) | EVERY combobox, opened again after a pick, shows its whole list — the person filter and the product search were the two that did not; the product search opens on its catalogue's first page | every combobox; swept 2026-11-04 |
+| [a-conflict-with-a-business-decision-is-said-in-its-mark](#a-conflict-with-a-business-decision-is-said-in-its-mark) | a part of a screen that does what the owner asked AGAINST a written business decision says so in its pending mark — `conflict: true`, and the decision in plain words in the strip's row and on the badge's hover | every pending list; restock's three, 2026-11-05 |
+| [stories-are-grouped-by-the-part-of-the-screen](#stories-are-grouped-by-the-part-of-the-screen) | a big page's stories are folders by the part of the screen they are about, each story with a short name; Default and Mobile lead, straight under the page | every page over 15 stories — 24 pages, 2026-11-05 |
+| [a-phone-card-is-padded-less](#a-phone-card-is-padded-less) | on a phone a card pads 16px a side — Chakra's `sm` — not its `md` 24px; from `md` up nothing changes; set once in the theme | every card, from Terima's Mobile story, 2026-11-05 |
+| [a-quantity-field-shows-its-minimum-until-typed](#a-quantity-field-shows-its-minimum-until-typed) | an empty quantity box shows its minimum — **0**, or 1 where 1 is the least — as the placeholder, never the value; `QuantityInput` does it on every screen | every `QuantityInput`, from Terima, 2026-11-06 |
+| [every-phone-title-is-20px](#every-phone-title-is-20px) | on a phone every page title is 20px — the page title (`Heading md`, 22 from `md`) and a detail page's larger one (`lg`, 26 from `md`) alike; a title row's gaps are 8px | every screen, from a restock's title row, 2026-11-05 |
+| [a-sticky-side-column-ends-above-the-windows-foot](#a-sticky-side-column-ends-above-the-windows-foot) | a column sticking beside a page ends a gutter above the window's foot wherever it stands — its title stays, the rest scrolls inside its card, the bar on the card's edge; one hook, `useFitToWindow` | every sticky side column — Product Discover, Cetak Label, 2026-11-06 |
+| [an-interim-read-is-marked](#an-interim-read-is-marked) | a part that works and is true but reads one call per row, where one call for all should be, carries a pending mark of a fifth kind, `interim` — *pembacaan sementara* | every pending list — from Cetak Label, 2026-11-06 |
+| [a-day-without-a-time-is-shown-alone](#a-day-without-a-time-is-shown-alone) | a date that is a day with no clock — an expiry — is the day alone, `27 Nov`; beside a moment it is the same size; a limit coming up may say how long is left under it | every table — from the batch list, 2026-11-09 |
+| [a-team-of-a-known-type-shows-no-badge](#a-team-of-a-known-type-shows-no-badge) | where the screen already says what type a team is — a batch's owner, a restock's team — it is the small avatar and the name, `TeamItem size="xs"`; no type badge | the batch screens, Terima — 2026-11-09 |
 | [the-phone-menu-carries-no-count-for-now](#the-phone-menu-carries-no-count-for-now) | the phone shell shows no waiting count — not on a menu item, not on More — for Kewajiban or Found Stock; the counts stay the desktop sidebar's, for now | the phone shell |
-| [a-report-export-is-the-whole-view-as-a-file](#a-report-export-is-the-whole-view-as-a-file) | a report's Ekspor holds everything the report shows as filtered, every page, the screen's columns | owner, as recommended | — |
+| [a-report-export-is-the-whole-view-as-a-file](#a-report-export-is-the-whole-view-as-a-file) | a report's Ekspor holds everything the report shows as filtered, every page, the screen's columns | the Supplier Report and the Financial Account Report, 2026-11-07 |
+| [monitoring-keeps-what-only-reads](#monitoring-keeps-what-only-reads) | while the admin team monitors a team, an action that only READS stays — Catatan (read, no Ubah), Cetak label; every write goes | the restock lists and pages, 2026-11-09 |
+| [a-product-picker-needs-no-two-letters](#a-product-picker-needs-no-two-letters) | a product picker has no two-letter minimum — opened, it lists its first page; one letter is a search. ⚠ A warehouse's picker still needs two (its server refuses fewer): it says so, marked | every `ProductSelect` — from Temuan, 2026-11-09 |
+| [a-product-option-shows-its-picture](#a-product-option-shows-its-picture) | every option of the product picker shows the product's picture beside its code and name — the package placeholder when it has none | every `ProductSelect` — from Temuan, 2026-11-09 |
+| [every-screen-says-product-code](#every-screen-says-product-code) | no screen says "SKU" — it is *Kode produk* / *Product code*, on the product screens and every other | the product form, restock statistics, Cetak Label, the product picker — 2026-11-09 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1750,6 +1774,476 @@ sequenceDiagram
 | where | `useScrollSpy` sets `data-flash`, `DetailSection`'s card animates on it — every page built on the shared kit gets it: the product page and the order detail today |
 | ✅ built *(2026-10-26)* | the product page's story `EverySectionIsOnThePage` waits for the blink and for it to end |
 
+## a-selected-tab-is-bold
+
+> Owner, in chat (2026-10-31), on the restock list: *"sepertinya tab aktif perlu bold"* — then, asked whether it holds for
+> every screen, *"lebih baik iya"*.
+
+```
+before                                       now
+Semua Status · Dalam Perjalanan · Tiba        **Semua Status** · Dalam Perjalanan · Tiba
+‾‾‾‾‾‾‾‾‾‾‾‾ rose, regular                    ‾‾‾‾‾‾‾‾‾‾‾‾ rose, bold
+```
+
+| | |
+| --- | --- |
+| the rule | the picked tab's label is **bold**, besides rose ([a-selected-tab-is-in-the-main-tone](#a-selected-tab-is-in-the-main-tone)) — every tab row on every screen |
+| where | `theme.ts`, the `tabs` recipe's `line` variant, `_selected` — once, so no screen sets it |
+| the cost | Lato has no medium weight, so the step is regular → bold, and a label grows a little as it is picked; the row does not wrap for it |
+| pinned by | the restock list's `TheScreenRules` story reads the picked tab's weight |
+
+## a-statistics-button-ends-the-tab-row
+
+> Owner, in chat (2026-10-31), on the restock list: *"apa ada desain lain buka tutup statistik? kurasa banyak ruang
+> kosong"* — *"A, tapi dimobile akan masalah"*; then, asked whether the seller's order list follows, *"samakan"*.
+
+```
+a desktop                                                        a phone
+Semua Status · Dibuat · Diproses · …→       [📊 Statistik ⌄]     [⌕ Cari …] [⚙ Filter] [📊]
+──────────────────────────────────────────────────────────       Semua Status · Dibuat · …→
+[the statistics, when open]                                      [the statistics, when open]
+```
+
+| | |
+| --- | --- |
+| the rule | a list whose statistics open under its status tabs puts the **Statistik** button at the **right end of the tab row** on a desktop — it never takes a row of its own. The tabs scroll in the width left to them; the row's rule runs on under the button |
+| a phone | the button is an **icon beside Filter**, in `FilterBar`'s `actions` — the tab row there already scrolls sideways under its tabs, and a button pinned to it would cover them. Drawn in the main tone while open |
+| the component | `StatsToggle` (`components/chrome/`) — `compact` for the phone's icon; it carries `aria-expanded`. `StageTabs` takes it as `end` |
+| unchanged | [the-statistics-are-shut-and-read-when-opened](order_list_decision.md#the-statistics-are-shut-and-read-when-opened): shut on every visit, page state only, nothing read until opened |
+| applied to | the restock list ([the-statistics-button-ends-the-tab-row](restock_decision.md#the-statistics-button-ends-the-tab-row)), the seller's order list |
+
+## a-date-range-panel-fits-a-phone
+
+> Owner, in chat (2026-11-02), on the restock list: *"ternyata yang tanggal kepotong di mobile"*.
+
+```
+before — a phone                          now
+┌ Date ──────────────────────────┐…      ┌ Date ───────────────────────┐
+│ (●Created) (○Arrived) (○Accep… │…      │ (●Created) (○Arrived)       │
+│ Absolute range │ Quick ran…    │…      │ (○Accepted) (○Lost) (○Canc…)│   ← the types wrap
+│  November 2026 │ Today         │…      │ Quick ranges                │
+│  …calendar…    │ Last 7 da…    │…      │ [Today] [Last 7 days] [14…] │   ← a wrapped row
+└────────────────┴── cut by the screen   │ [1 month] [3 months] …      │
+                                          │ Absolute range · calendar   │
+                                          │ [Apply Range]               │
+                                          └─────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the cause | the panel drew its two panes side by side, ~29rem — wider than a phone, so the quick ranges and the last date types ran off the right edge |
+| a phone | the panel is the screen's width less its gutters; the date types wrap; the **quick ranges** come first, as a wrapped row of outlined buttons — one tap, the common answer — and the calendar with Apply under them. No taller than the room it has: it scrolls inside |
+| a desktop | unchanged — the calendar left, the quick ranges a column on its right |
+| how | a JS breakpoint in `DateRangePicker` (`md`, as `FilterBar`'s), so one layout mounts. Every screen with a date range takes it at once |
+| pinned by | `OnAPhoneThePanelFitsTheScreen` (320px): nothing past the right edge, the quick ranges over the calendar |
+| found with it | on a 320px phone the search row — the search, Filter and the 📊 of [a-statistics-button-ends-the-tab-row](#a-statistics-button-ends-the-tab-row) — pushed the icon off the screen: `FilterSearch` would not shrink below its content. It may now (`minW="0"`), pinned by the restock list's `OnAPhoneTheStatisticsButtonSitsBesideFilter` at 320px |
+
+## nothing-runs-past-a-phones-edge
+
+> Owner, in chat (2026-11-02), after [a-date-range-panel-fits-a-phone](#a-date-range-panel-fits-a-phone): *"di tempat lain
+> harusnya ada yang kasusnya serupa"*.
+
+```mermaid
+flowchart LR
+  P["a phone, 320px"] --> A["a panel"] --> A2["capped at the screen width less its gutters, scrolls inside"]
+  P --> B["a row of tabs"] --> B2["one row, scrolls sideways, a tab never shrinks"]
+  P --> C["a table"] --> C2["scrolls inside its own box, never drags the page"]
+  P --> D["a row of controls"] --> D2["the search gives way first"]
+```
+
+| | |
+| --- | --- |
+| the rule | on a phone, down to **320px**, nothing a person needs runs past the screen's edge. A popover or panel is capped at the screen's width; a min-width never beats that cap. A tab row and a table scroll **inside their own box**; the page itself never scrolls sideways |
+| how it was swept | every page's **Mobile** story and every popover-owning component at 320 and 360px: each popover, date picker, menu and combobox opened in turn, and every visible element measured against the edge, a scrolling box counting only when the box itself fits |
+| found and fixed | `DateRangePicker` ([a-date-range-panel-fits-a-phone](#a-date-range-panel-fits-a-phone)); `FilterSearch` (the 📊 pushed off); `ProductLinesPopover` — its `sm` floor beat its cap, 384px on a 320px screen; `DateTimeRangePicker` — the same two panes as the date range, stacked the same way; `OrderTabs` (the warehouse's order list) — the last status tabs ran off; the warehouse's order **table** — no box of its own, so it dragged the whole page sideways |
+| clean | every other Mobile story and popover at 320 and 360px |
+| pinned by | a 320px story each: `OnAPhoneThePanelFitsTheScreen` (both range pickers), `OnAPhoneThePopoverFitsTheScreen`, `OnAPhoneTheTabsScrollSideways` (with the table and the page width), `OnAPhoneTheStatisticsButtonSitsBesideFilter` |
+| a new screen | its Mobile story is looked at at 320px too, not only at the workbench's default phone |
+
+## a-phone-card-shows-no-note
+
+> Owner, in chat (2026-11-02), asked whether the supplier screens' rule holds for every screen — a card's explanatory line
+> cut mid-word on a phone: *"disembunyikan"*. Decided first on [the supplier figures](suppliers_decision.md#a-phone-card-shows-no-note).
+
+```
+a phone, two cards a row
+before                          now
+┌ Ongkir COD        ┐           ┌ Ongkir COD        ┐
+│ Rp 104.000        │           │ Rp 104.000        │
+│ dibayar gudang k… │  ← cut    └───────────────────┘
+└───────────────────┘
+```
+
+| | |
+| --- | --- |
+| the rule | on a phone a `SummaryCard` draws no **note** — the quiet second line saying how the figure is made. Its label, figure and **line** stay |
+| line vs note | a figure's own data (*12 transaksi · Rp 24,5jt*, a count) belongs in `line`, which a phone keeps; an explanation (*barang + ongkir*, *dibayar gudang ke kurir*) is a `note`. The restock statistics moved their three explanations from `line` to `note` |
+| a note that is data | `keepNote` — a supplier's warehouse cards split a count from its date on a phone, and the date stays |
+| where | `SummaryCard` itself, a JS breakpoint — every screen at once: the supplier figures (whose local switch is gone), the account report, the order settlement, the restock statistics |
+
+## a-sticky-bar-waits-for-the-whole-title-row
+
+> Owner, in chat (2026-11-02), a screenshot of a restock on a phone: *"mobile heading bug seperti ini"* — the bar showing
+> the order id, the status and the tracking number, and under it the page's own status and tracking number still in view.
+
+```
+  BEFORE — the heading has gone          AFTER — the whole row has gone
+┌ [Kiriman] [Pembayaran] [Produk] ┐   ┌ [Kiriman] [Pembayaran] [Produk] ┐
+│ ←  INV/202… ⧉ [Dalam Perjalanan] │   │ ←  INV/202… ⧉ [Dalam Perjalanan] │
+│    Resi JNE0123456789 ⧉          │   │    Resi JNE0123456789 ⧉          │
+├──────────────────────────────────┤   ├──────────────────────────────────┤
+│    [Dalam Perjalanan]       ← twice   │ ┌ Kiriman ─────────────────────┐ │
+│    Resi JNE0123456789 ⧉     ← twice   │ │ …                             │ │
+│ ┌ Kiriman ────────────────────┐  │   │                                  │
+```
+
+| | |
+| --- | --- |
+| the rule | the bar shows once the page's **whole title row** has gone behind it — never while part of that row still shows below the bar |
+| why the row | on a phone the title row is taller than its heading: the status wraps under the order id, and the tracking number (a product's SKU) sits under that. Watching the heading alone showed the bar while those still stood under it, so the status and the reference read twice |
+| where | `useStickyTitle` — its `title` ref is the row (`HTMLDivElement`), which `ProductTitleRow` and `RestockTitleRow` hang on their outer row. Every detail page with a sticky title at once: the product, the discover detail, the restock |
+| pinned by | `OnAPhoneTheBarWaitsForTheWholeTitle` (the restock page) — scrolled 6px at a time on a phone, the page's row never shows below a shown bar, and the bar does show. Against the heading it failed by 37px, as the screenshot |
+
+**What it refines:** [the-title-row-is-the-sticky-bar](products_decision.md#the-title-row-is-the-sticky-bar) said
+the bar shows *"once the title has gone behind it"*, and *the title* was built as the heading. It is the row.
+
+## a-dialog-pages-simply
+
+> Owner, in chat (2026-11-03), on the restock form's product picker: *"paginasi di modal simpel saja, < page >, bukan
+> seperti halaman"*.
+
+```
+a page — GrowingPager                    a dialog — Pagination
+[‹] [1] [2] [3] [›]                      ‹  1 of 3  ›
+```
+
+| | |
+| --- | --- |
+| the rule | a list inside a **dialog** pages with `Pagination` — ‹, the page of the total, › — never the page's numbered `GrowingPager` |
+| why | a picker is a quick pass over a small window of rows; a trail of page numbers is a page's tool for walking a long list and back |
+| still on screen | on one page and on none, ‹ 1 of 1 › — [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) holds |
+| where | every product picker at once, through `ProductPickerShell`; the supplier picker already paged so |
+| pinned by | `ThePickerPagesSimply` (the restock form) |
+
+**What it narrows:** [every-list-pages-with-the-growing-pager](#every-list-pages-with-the-growing-pager) is for a
+page's lists — a dialog's list is not one of them. It reverses the picker's pager in
+[the-restock-form-is-three-columns](restock_decision.md#the-restock-form-is-three-columns), which had moved it to
+`GrowingPager` the same day.
+
+## a-dialog-pager-is-one-number
+
+> Owner, in chat (2026-11-03), seeing ‹ 1 of 3 › in the product picker: *"paginasinya aku ga mau yang num of num, nomor
+> saja, ui mirip yang sudah pernah dibuat"*.
+
+```
+a page — the trail          a dialog — one number          withdrawn
+[‹] [1] [2] [3] [›]          [‹] [2] [›]                    ‹  2 of 3  ›
+```
+
+| | |
+| --- | --- |
+| the rule | a list inside a dialog pages with **`GrowingPager` `compact`**: ‹, the current page alone, › — the same outlined boxes as a page's pager, the page filled in the main tone ([a-chosen-option-is-in-the-main-tone](#a-chosen-option-is-in-the-main-tone)) |
+| never | "2 of 3", and never a trail of numbers |
+| the arrows | ‹ off on page 1, › off on the last — still on screen on one page, ‹ [1] › ([the-pager-is-always-on-screen](#the-pager-is-always-on-screen)) |
+| the number | not a button — it says where you are (`aria-current="page"`) |
+| where | every product picker, through `ProductPickerShell` |
+| pinned by | `CompactIsOneNumber` (`GrowingPager`), `ThePickerPagerIsOneNumber` (the restock form) |
+
+**What it replaces:** the control in [a-dialog-pages-simply](#a-dialog-pages-simply) — `Pagination`, ‹ 1 of 3 ›. That a
+dialog pages more simply than a page still holds; *how* is this.
+
+## a-save-button-says-what-it-waits-for
+
+> Owner, in chat (2026-11-03), on the restock form: *"catatan di bawah buat tidak butuh, atau buat lebih bagus sebelum
+> buat restok, tapi jangan makan tempat"*; asked which other forms still listed what was missing: *"aku ingin info 1 aja
+> ditampilkan yang belum saja, kalau sudah semua berarti ada tanda siap, masih bisa didetailkan"*.
+
+```
+not ready    ⓘ Belum diisi: gudang  +2 lainnya      ← +2 lainnya opens the whole list
+             [ + Buat Restok ]  (off)
+ready        ✓ Siap dibuat                          ← green
+             [ + Buat Restok ]
+```
+
+| | |
+| --- | --- |
+| the rule | a form whose save button can be OFF has **one line by it** saying why — or that it is ready |
+| not ready | the **first** thing still missing, in the order the form asks for it — *Belum diisi: gudang*. More than one: **+N lainnya**, which opens every missing part in a popover ("masih bisa didetailkan") |
+| ready | a green ✓ and the form's word — *Siap dibuat* on a new record, *Siap disimpan* on an edit |
+| the words | each part a word or two — *gudang*, *rekening*, *produk*, *kategori* — never a sentence |
+| the space | one line, 18px — over the button in a narrow column, beside it in a row of buttons; never a list under the button |
+| the component | [`ReadyLine`](../../../frontend/src/components/feedback/ReadyLine.tsx) — `missing` (id + label), `readyLabel`, `testId`; story *Components/Feedback/ReadyLine* |
+| applied to | the restock form (over Buat Restok), the bundle form (over Simpan), the product form (beside Kembali · Buat, in the foot) |
+| not | the order form — its Buat is never off, its checks run on the click; a small dialog whose two or three required fields all show their `*` |
+| the rest | the warehouse transfer form says what it needs in a line beside its button already — it moves to `ReadyLine` when it is next worked on |
+
+**What it replaces:** the list under the button on the bundle form (*Masih kurang:* and a line per part), the product
+form's Buat that was off with no reason given, and on the restock form the every-part line of
+[what-is-missing-is-one-line-over-buat](restock_decision.md#what-is-missing-is-one-line-over-buat) — now the first part,
+and the ready mark.
+
+## a-form-returns-where-it-was-opened
+
+> Owner, in chat (2026-11-04), on the restock form: *"untuk navigasi edit bukan ke detail, tapi sesuai halaman
+> sebelumnya, kalau detail ke detail, kalau list ke list"* — the rule the product form was given on 2026-10-23
+> ([the-form-returns-where-it-was-opened](products_decision.md#the-form-returns-where-it-was-opened)), said on a second
+> screen, so it is every form's.
+
+```
+a record's page ── Ubah ──► the form ── Simpan · Kembali · ← ──► that record's page
+a list, filtered ── Ubah ──► the form ── Simpan · Kembali · ← ──► the list, its filters kept
+a pasted link ─────────────► the form ── Simpan · Kembali · ← ──► the list
+```
+
+| | |
+| --- | --- |
+| the rule | every way out of a form — its save, its Back, the top arrow — goes to **one** place: the screen that opened it |
+| how | the opening screen passes its own path and query in the navigation's state (`fromHere`); the form reads it (`cameFrom`) — [lib/cameFrom.ts](../../../frontend/src/lib/cameFrom.ts). Never the browser's history: a step back after a save lands on the form's own past, and a pasted link has none |
+| reached by a link | the form's list |
+| applied to | the product form; the restock form — its Ubah, from the list's row menu and from the restock's page, both carry where they were (`SellingRestockActions`) |
+| pinned by | the product form's four stories in its entry; the restock form's `AnEditFromTheListSavesBackToTheList`, `AnEditFromTheListGoesBackToTheList`, `AnEditFromTheDetailSavesBackToTheDetail`, `ArrivedAddsALineOnlyWithANote` (by a link: the list) |
+
+## every-combobox-reopens-whole
+
+> Owner, in chat (2026-11-04): *"semua combobox kalau sudah select opsinya munculkan semua saat dibuka kembali, selalu
+> bermasalah jika hanya menampilkan satu"*.
+
+```
+pick "Eko"   → the field reads Eko
+open again   → Ani · Budi · Citra · Eko · …        never  → Eko   (the picked name taken as a search)
+```
+
+| | |
+| --- | --- |
+| the rule | [a-search-select-reopens-whole](#a-search-select-reopens-whole), for **every** combobox — a bounded one shows everything; it searches only what is typed (`searchOnlyWhatIsTyped`) |
+| the sweep | fourteen comboboxes. Ten spread the helper already, and `AddressPicker` carries the rule inline. **Two did not**: `PersonFilterSelect` (every list's who-filter) filtered by the picked name, and `ProductSelect` sent the picked "SKU — name" to the server as its search — each reopened on the one picked. Both spread the helper now. `SearchSelectInput` is legacy and used nowhere, so it is left |
+| an unbounded search | **`ProductSelect` opens on its catalogue's first page** with nothing typed — a catalogue cannot load whole, so "everything" is its first page — and opens on a click (`openOnClick`). One character still waits for a second; two or more search the server. The picked product stays on the list, so the field always names it |
+| not comboboxes | the dialogs (product, supplier) and `CategorySelect` start their search over each time they open — already so |
+| pinned by | `AReopenedPickerShowsEveryone` (PersonFilterSelect), `AReopenedPickerShowsTheList` (ProductSelect), and the four already there: RoleSelect, ShopSelect, UserSelect |
+
+What it replaces: `ProductSelect` withholding its list until two characters were typed.
+
+## a-conflict-with-a-business-decision-is-said-in-its-mark
+
+> Owner, in chat (2026-11-05), after a screen choice was recorded as going against a business decision only in the
+> decision file: *"kalau bertentangan kamu kasih catatan di unimplemented"*.
+
+```
+⚠ 3 bagian layar ini belum diimplementasi                         [ Lihat 3 bagiannya ]
+  3. Rak barang rusak — Pilihan Ditaruh di rak belum tersimpan — … · tidak terkirim
+     Bertentangan dengan keputusan bisnis: barang rusak dibuang — tidak ada rak yang menyimpannya.
+```
+
+| | |
+| --- | --- |
+| when | a screen part the owner asked for goes against a WRITTEN business decision. The technical decision entry still records it ("Conflict with the business docs") — and now the screen says it too |
+| how | the part's entry in the page's `pending.ts` gets `conflict: true`; its words are `<ns>.pending.<id>.conflict` — which decision, **in plain words, never its slug**: the strip is read in the real app, not only in review |
+| where it shows | the part's row in `NotImplementedSummary`, on a line of its own, after *Bertentangan dengan keputusan bisnis:* (`pending.conflict`); and the `NotImplemented` badge's hover |
+| a part with no other gap | the mark is still the vehicle — give the part the kind that fits what is unfinished. A conflict alone, with nothing unfinished, has not come up |
+| applied | restock: the broken units' rack at Terima ([a-broken-product-may-go-on-a-rack](restock_decision.md#a-broken-product-may-go-on-a-rack)); the courier's charge at Tandai Tiba, on the warehouse list and its detail ([the-cod-can-be-noted-when-the-box-arrives](restock_decision.md#the-cod-can-be-noted-when-the-box-arrives)) |
+| pinned by | `AConflictIsSaidInItsRow` (`Features/Pending/PendingMarks`), `BrokenUnitsCanGoOnARack` |
+
+What it replaces: a conflict recorded only in the technical decision entry.
+
+## stories-are-grouped-by-the-part-of-the-screen
+
+> Owner, in chat (2026-11-05): *"aku sekarang punya masalah pada story yang kebanyakan, misal restok selling ada banyak
+> sekali, namanya juga kepanjangan"* — the rules to stay visible, so grouped rather than hidden: *"ya begini saja"*, then
+> *"default dan mobile taruh di depan saja"*; then for every big page — *"setidaknya untuk yang aku ubah saja"*, every page over
+> 15 stories.
+
+```
+BEFORE  RestockSelling (27 in one list)        NOW  RestockSelling
+          Default                                   Default
+          Mobile                                    Mobile
+          Ongoing Row Menu                          ▸ Actions     Ongoing menu · Menu by status · Edit lines · Cancel · Mark lost
+          The Screen Rules                          ▸ Filters     Status tabs · Arrived tab · In the URL · Nothing matches · …
+          Export And The Courier Filter Are …       ▸ Notes       Open and save · Phone · edit in place · Arrived · not kept
+          On A Phone The Statistics Button …        ▸ Rows        Screen rules · Columns · Copy, and a long one cut · …
+          … 21 more                                 ▸ Statistics  Shut, then counted · Per tab, and payments · …
+```
+
+| | |
+| --- | --- |
+| which pages | a page with more than ~15 stories. A small page or a component keeps one file, and only takes the short names |
+| the files | `pages/<page>/index.stories.tsx` — Default and Mobile, title `…/<Page>`; `pages/<page>/stories/<Part>.stories.tsx` — one per part, title `…/<Page>/<Part>`; `pages/<page>/stories/kit.tsx` — the meta (bar its title), the routes and the helpers they share |
+| Default and Mobile first | the page's own title also holds the folders, so Storybook draws it as a folder with those two stories leading it — they load first, from `index.stories.tsx` |
+| ⚠ the title is written in each file | Storybook reads `title` statically; the rest of the meta is spread from the kit |
+| ⚠ so are the tags | `tags` is read statically too, and ignored inside a spread — a page hidden with `tags: ["!dev"]` (the pick queue) writes it in every one of its files, or every part shows in the sidebar |
+| no Default | a page with no Default story leads with its first plain look (the warehouse's restock page: Ongoing) |
+| States | plain look stories other than Default and Mobile — one per status, say — are a part of their own |
+| the parts | named by what is on the screen — Actions, Filters, Notes, Rows, Statistics on the restock list; another page has its own |
+| short names | `name: "Menu by status"` — a few words, the part's folder says the rest; a phone story starts *Phone ·*. The export keeps its long name, so a decision's *pinned by* and the comment above the story still read as the rule. A one-line story (`{ render: () => <AtX /> }`) keeps its automatic name, already short |
+| tests | unchanged — the same play() bodies, moved; only the story ids (the URL) follow the new titles |
+| applied | restock: the selling list and detail, the form, the warehouse list and detail · order create and detail · the pick queue · shops and a shop · suppliers, a supplier, its report, discover and its detail · products, a product, its form, discover and its detail · the accounts, an account, the report · categories |
+| pinned by | every story of those pages, passing in their folders |
+
+What it replaces: one `index.stories.tsx` per page, every story in one list under its long name.
+
+## a-phone-card-is-padded-less
+
+> Owner, in chat (2026-11-05), on Terima's Mobile story: *"padding default kebesaran di mobile"*.
+
+```
+a phone, 375px                     before                       now
+shell gutter                       12px                         12px
+a card's padding (Chakra md)       24px                         16px   ← Chakra's own sm
+room for a field                   375 − 72 = 303px             375 − 56 = 319px
+from md (the desktop shell)        24px                         24px   unchanged
+```
+
+| | |
+| --- | --- |
+| the rule | below `md` — the phone shell (`shell.ts`) — a card pads **16px** a side, Chakra's `sm` padding; from `md` up the `md` card keeps its 24px |
+| where | `theme.ts`, the card recipe's `md` size (`--card-padding`) — header, body and footer read the one variable, so every card on every screen moved at once; nothing is set per screen |
+| a box inside a card | keeps its own padding (`card`, 12px) — Terima's *Yang tiba* and *Taruh ke penempatan* panels |
+| `size="sm"` cards | already 16px everywhere, unchanged |
+| pinned by | Terima's `Mobile` story (a line's card body pads 16px); read at 1280px, the same card pads 24px |
+
+What it replaces: Chakra's 24px card padding on a phone.
+
+## every-phone-title-is-20px
+
+> Owner, in chat (2026-11-05), a screenshot of a restock's title row on a phone — *INV/2026/1…* cut beside the back
+> arrow and ⋯: *"judul kebesaran di mobile"*. Then, to a detail title brought down to 22px: *"20?"* — and to the
+> question whether for that title alone or every title on a phone: *"iya"*, every one.
+
+```
+a phone, 320px                   before                         now
+←  INV/2026/1… ⧉       [⋯]       26px, cut after 9 characters    ←  INV/2026/10/1001 ⧉  [⋯]   20px, whole
+   [Dalam Perjalanan]            gaps 12px                          [Dalam Perjalanan]       gaps 8px
+   Resi JNE0123456789 ⧉                                             Resi JNE0123456789 ⧉
+
+                     phone (below md)    from md
+Heading md           22 → 20             22        the page title — Pesanan, Terima Kiriman, every list
+Heading lg           26 → 20             26        a detail page's — a restock, a product, a rack, a batch
+Card.Title           18                  18        still a step under every title
+```
+
+| | |
+| --- | --- |
+| the size | below `md` — the phone shell (`shell.ts`) — **every page title is 20px**: `Heading md` and `Heading lg` are one size there. From `md` up nothing changes, 22 and 26. Set once on the heading recipe in `theme.ts`; no screen sizes its own title |
+| why one size | a detail title alone at 20 would have been the smallest title on a phone, and smaller than its own sticky bar's (`md`) — the bar showing the same words larger once the page scrolls |
+| the row | the restock's and the product's title rows (`RestockTitleRow`, `ProductTitleRow`) space back, title and actions **8px** apart on a phone — the sticky bar's gap; 12px from `md` |
+| a longer id | still cuts, with the copy button beside it copying the whole value — a store's invoice can be 27 characters, and no size fits that beside two buttons |
+| pinned by | the restock selling detail's `Mobile` story — the title 20px, nothing in it cut |
+
+What it replaces: the 22px page title and the 26px `lg` title on a phone.
+
+## a-quantity-field-shows-its-minimum-until-typed
+
+> Owner, in chat (2026-11-06), on Terima's count fields: *"input number default 0"*.
+
+```
+before   [−][    ][+]          an empty box, nothing in it
+now      [−][  0 ][+]          the 0 in the quiet placeholder ink — the value is still ""
+         [−][  1 ][+]          a field whose least is 1 (an order's quantity, a restock's count) shows 1
+```
+
+| | |
+| --- | --- |
+| the rule | an empty `QuantityInput` shows its **minimum** as its placeholder — `0`, or `1` where `min` is 1 — as every money field shows its 0 ([a-money-field-shows-0-until-typed](#a-money-field-shows-0-until-typed)). A caller's own `placeholder` still wins |
+| a placeholder, not a value | the box's VALUE stays `""` until something is typed or stepped. On Terima a real 0 in *Diterima* would mean "nothing came" — every unit missing — and Terima would press on a box nobody counted; the grey 0 says what the field holds while the empty value still says nobody answered |
+| where | `QuantityInput` itself (`placeholder ?? String(min)`) — every screen at once: Terima, the transfer's accept, the order form, bundles, the restock form, the stock count, the rack dialogs |
+| pinned by | Terima's `Default` (*Diterima* shows 0 and holds "") |
+
+What it replaces: an empty quantity box with nothing in it — and the row *counts keep their blank* of
+[the-restock-accept-follows-the-screen-rules](restock_decision.md#the-restock-accept-follows-the-screen-rules), which held
+that a number in an uncounted box would read as counted. The placeholder answers that: grey, and never the value.
+
+## a-sticky-side-column-ends-above-the-windows-foot
+
+> Owner, in chat (2026-11-06), on Cetak Label: *"scrollbarnya settingnya seperti di product discover, heightnya
+> menyesuaikan"* — the rule first given on Product Discover
+> ([the-filter-panel-ends-above-the-windows-foot](products_decision.md#the-filter-panel-ends-above-the-windows-foot)).
+
+```
+┌ Title              ↺ ┐  ← stays
+│ group               ▐│
+│ group               ▐│  ← scrolls; the bar on the card's right edge
+│ group               ▐│
+└──────────────────────┘
+        gutter              ← the box's own sticky `top`, below as above
+═══════ window's foot ═══
+```
+
+| | |
+| --- | --- |
+| the rule | a column that sticks beside a page (filters, settings) **ends a gutter above the window's foot wherever it stands** — lower at rest under the title, taller once it sticks — re-measured on scroll and resize. Its title stays; what overflows scrolls INSIDE its card, the bar on the card's right edge (`scrollList`, pulled out through the card's padding) |
+| why measured | a fixed `100dvh` cap still runs past the foot while the column rests under the page's title; a sticky box taller than the window hides its last part until the page beside it is scrolled |
+| one card, the whole column | the panel is the column — nothing else sticks with it. On Cetak Label a Restok card above the settings left them ~430px of a 800px window for ~900px of groups, and the owner: *"scrollbar di label settingnya tidak enak"*. Anything else goes to the other column |
+| one hook | `lib/useFitToWindow` — `FilterPanel` and Cetak Label's column. Only while the column is sticky: stacked on a narrow screen it is as tall as it is. Never measured from above its sticky top, or at the page's end it grows and lengthens the page |
+| applied | Product Discover's filter panel · Cetak Label's settings ([the-label-settings-scroll-inside-their-card](restock_decision.md#the-label-settings-scroll-inside-their-card)) |
+
+What it replaces: each sticky column capping and scrolling itself its own way.
+
+## an-interim-read-is-marked
+
+> Owner, in chat (2026-11-06), on Cetak Label: *"restock detail harusnya ada yang dipanggil ids"*, then *"kasih
+> unimplemented"*.
+
+```
+⚠ 1 bagian layar ini belum diimplementasi                              [Lihat bagiannya]
+  1. Restok dibaca satu per satu — Belum ada pembacaan beberapa restok sekaligus, … · pembacaan sementara
+
+Restok 2 [⚠ 1]                 ← the badge on what reads one by one
+```
+
+| | |
+| --- | --- |
+| the kind | a fifth pending kind, **`interim`** — the part works and what is on screen is true, but it is read the long way round until the read it needs exists: one call per row where one call for all should be. Its tag is *· pembacaan sementara* / *· interim read* |
+| why not the four | `dropped` loses a value, `sample` shows invented figures, `derived` computes by an unsettled rule, `missing` is not on screen — none of them is "right, and slower than it will be" |
+| where the badge goes | on the control or card that does the reading (Cetak Label: the Restok card's title); the strip under the title as on every screen ([a-conflict-with-a-business-decision-is-said-in-its-mark](#a-conflict-with-a-business-decision-is-said-in-its-mark) and the rest of the marks' rules hold) |
+| applied | Cetak Label — `restock.labels.pending.byIds` ([the-labels-mark-their-one-by-one-read](restock_decision.md#the-labels-mark-their-one-by-one-read)) |
+| also | the strip's toggle says *Lihat bagiannya* for one part — it read *Lihat 1 bagiannya* / *Show the 1 parts* |
+
+What it replaces: no way to mark a part that works but reads one by one — it would have been marked as something it is
+not, or not at all.
+
+## a-day-without-a-time-is-shown-alone
+
+> Owner, in chat (2026-11-09), on the batch list's *Tiba* and *Kedaluwarsa*: *"ukuran kadaluarsa dan tiba kenapa beda?
+> ada alasan?"*, then *"kalau melihat keputusan sebelumnya, kira-kira seperti apa?"* — and to the answer, *"oke"*.
+
+```
+Tiba           Kedaluwarsa
+1 Nov 13:05    27 Nov          ← both 12px; a moment carries its clock, a day does not
+               18 hari lagi
+```
+
+| | |
+| --- | --- |
+| the rule | a date that is a DAY, with no clock to it — an expiry, a printed best-before — is shown as the day alone: `27 Nov`, the year only when it is not this year, Jakarta's calendar. `formatUnixDateShort` in `lib/datetime.ts`. It widens [a-table-date-is-short-and-every-time-is-wib](#a-table-date-is-short-and-every-time-is-wib), which set the short form for a moment (`29 Okt 13:05`) and said nothing of a day |
+| a moment | keeps its clock — when something happened (arrived, accepted, ordered) |
+| side by side | a day beside a moment in one table is the same size — the two were 12px and 14px on the batch list for no reason |
+| a limit coming up | may say how long is left under the day, as the order list's ship-by deadline does — one fact read twice, so one cell ([one-context-per-column-and-never-three-lines](#one-context-per-column-and-never-three-lines)). Counted in Jakarta calendar days (`daysUntilUnix`) |
+| applied | the batch list's *Kedaluwarsa* ([an-expiry-says-how-long-is-left](batches_decision.md#an-expiry-says-how-long-is-left)) |
+
+What it replaces: a day printed the way each screen happened to — with the browser's date, or as a moment's form.
+
+## a-team-of-a-known-type-shows-no-badge
+
+> Owner, in chat (2026-11-09), on the batch list's team column: *"tim jelas selling, jadi simpel gambar kecil dan nama
+> saja"* — the second screen to say it, after Terima's info column: *"id restok, tim dan usernya simpel saja, gambarnya
+> kecil"* ([the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid](restock_decision.md#the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid)).
+
+```
+before                     now
+[TM] Toko Melati           ▪ Toko Melati        ← the smallest avatar, the name, one line
+     [Selling]
+```
+
+| | |
+| --- | --- |
+| the rule | where the screen already says what type a team is — a batch's owner, a restock's team: always a selling team — the team is `TeamItem size="xs"`: the smallest avatar, still tinted by its type, and the name on one line. No type badge |
+| why | the badge repeats what the column already means, and it made a row two lines for one fact |
+| unchanged | a list where teams of several types sit together keeps `TeamItem`'s badge; a filter follows its sibling, [a-one-type-picker-shows-the-name-alone](#a-one-type-picker-shows-the-name-alone) |
+| applied | Terima's info column · the batch list's *Tim* column and its phone block · a batch's page, beside the product (it was a brand-coloured name badge) |
+| pinned by | BatchList `Default`, BatchDetail `Default` — the name, no *Selling* |
+
+What it replaces: on the batch list, the full `TeamItem` (a larger avatar, the name, the *Selling* badge under it); on a
+batch's page, the owner as a name badge.
+
 ## Recorded elsewhere
 
 The owner's earlier rules for every screen were written into [CLAUDE.md](../../../CLAUDE.md) as it grew, and are
@@ -1800,3 +2294,91 @@ flowchart LR
 ⚠ Not built for these two.
 
 ✅ Built 2026-11-07 — both: the Supplier Report's Ekspor is `SupplierReportExport` (the whole ranking as narrowed, sheet *Peringkat*), the Financial Account Report's is `FinancialAccountReportExport` (Periode: every period at the grain, quiet ones included; Rincian: sheets *Per Akun · Per Penyedia · Per Jenis*); both pages' `pending.ts` deleted. See [supplier state](../../development_state/supplier/context.md), [financial_account state](../../development_state/financial_account/context.md).
+
+## monitoring-keeps-what-only-reads
+
+> Owner, in chat (2026-11-09): *"2 oke"* — to keeping, in the admin team's read-only view, the two restock actions that
+> change nothing: Catatan and Cetak label. Found while merging `backup/inventory`, whose screens hid every action there.
+
+```
+monitoring a selling team                 monitoring a warehouse
+row ⋯   Catatan                           row     [Cetak]                 ← kept: they only read
+        (no Ubah, Batal, Tandai Hilang)           (no Tandai Tiba, Terima)
+```
+
+| | |
+| --- | --- |
+| the rule | while the admin team monitors a team ([the-admin-team-monitors-read-only](../../business/user/context_decision.md#the-admin-team-monitors-read-only)), an action that only READS stays on screen; every write is gone, as that decision says |
+| kept | **Catatan** — the notes dialog, read: its **Ubah** is a write and is not offered (`NoteEditor` reads `useCanWrite`) · **Cetak label** — `RestockRequestLabels` is marked a read in the proto, so the server lets the monitor through |
+| where | `SellingRestockActions` (Catatan with the writes filtered out), `WarehouseRestockActions` (Print only), `NoteEditor` |
+| the test for a new one | the RPC behind it carries `idempotency_level = NO_SIDE_EFFECTS` — the same marker the server passes a monitor on. An action whose RPC is not marked is a write, whatever it looks like |
+| pinned by | RestockSelling `Notes / Monitoring, read only` · RestockWarehouse `Actions / Monitoring, Print only` |
+
+What it replaces: `backup/inventory`'s restock actions returning nothing at all for a monitor.
+
+## a-product-picker-needs-no-two-letters
+
+> Owner, in chat (2026-11-09), on Temuan's product picker opening empty: *"di semua contoh, produknya kosong?"*, then,
+> told a warehouse's search refuses fewer than two letters, *"harusnya tidak perlu minimal 2 huruf"*.
+
+```
+the team's / every team's catalogue           a warehouse's (Temuan, a count's plan and its found)
+opened   → the first page                      opened   → "Ketik minimal 2 huruf nama atau kode produk" ⚠
+"k"      → Kopi, Kecap, …  (it was: wait)      "g"      → the same hint ⚠
+"ko"     → Kopi                                "gu"     → Gula Pasir · Toko Kenanga
+```
+
+| | |
+| --- | --- |
+| the rule | a product picker has NO two-letter minimum: opened with nothing typed it lists its first page ([every-combobox-reopens-whole](#every-combobox-reopens-whole)), and ONE letter is a search. The catalogue's own wait for a second letter (`useProductSearch`) is gone — ProductList and ProductDiscover never asked for one |
+| ⚠ a warehouse's picker | `WarehouseProductSearch` refuses fewer than two characters (`min_len: 2`, and its handler), so with fewer typed the picker does not ask: its panel says *Ketik minimal 2 huruf nama atau kode produk* with ⚠ `warehouseOpensEmpty` (`missing`, `features/products/pickerPending.ts`) — never *Produk tidak ditemukan*, which was what an empty search's refusal read as. The mark sits in the picker, where the gap shows, since the three screens using it have no pending list of their own |
+| the words | *Produk tidak ditemukan* and the hint are i18n now (`products.picker.none`, `typeTwo`) — they were English in code |
+| pinned by | ProductSelect `OneLetterSearches`, `Warehouse, opened empty` (the hint and its mark, one letter still short, two list) |
+
+What it replaces: the picker's wait for a second letter, and a warehouse picker that opened on *No products found*.
+
+## a-product-option-shows-its-picture
+
+> Owner, in chat (2026-11-09), on Temuan's product picker: *"select product ada gambarnya"*.
+
+```
+┌──────────────────────────────────────────┐
+│ [🖼] SL-01-BERAS-5K                       │   ← the cover, as ProductListItem draws it, a size smaller
+│      Beras Pandan Wangi 5kg · Toko Melati │
+│ [📦] SL-02-GULA-1K                        │   ← no cover: the package placeholder
+│      Gula Pasir 1kg · Toko Kenanga        │
+└──────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the rule | every option of `ProductSelect` shows the product's picture on its left — the thumbnail, else the full image; the package icon when there is none — then its code and name (and, on a warehouse's, its owner and *Arsip*) as before |
+| the read | a team's and every team's catalogue already carry the cover; a warehouse's search (`WarehouseProductSearch`) names a product without one, so its options' covers are ONE `ProductByIds` per search, beside the owners' names — best-effort, a failed read leaves the placeholder |
+| where | every screen with the picker: Temuan, a count's product plan and its found, the order form's product filter, analytic's product filter |
+| pinned by | ProductSelect `Option picture` (Beras's cover on its option) |
+
+What it replaces: options of text alone.
+
+## every-screen-says-product-code
+
+> Owner, in chat (2026-11-09): *"1. oke"* — to replacing every "SKU" still on a screen after the `backup/inventory` merge
+> brought [the-screen-says-product-code](products_decision.md#the-screen-says-product-code), which had changed the product
+> screens' words only.
+
+```
+before                                        now
+Belum diisi: SKU                              Belum diisi: kode produk
+Jumlah SKU                                    Jumlah kode produk
+Tambah restok — no., resi, SKU                Tambah restok — no., resi, kode produk
+Pengaturan Label · SKU                        Pengaturan Label · Kode produk
+Search products by name or SKU                Search products by name or product code
+```
+
+| | |
+| --- | --- |
+| the rule | no screen says "SKU": the product's code is **Kode produk** — *Product code* in English — on every screen, a label, a placeholder, a count. Sentence case, as [the-screen-says-product-code](products_decision.md#the-screen-says-product-code) set it |
+| applied | the product form's line by Simpan (`products.form.missing.sku`, `skuTaken`), the selling restock statistics' card (`restock.selling.summary.skus`), Cetak Label's add-a-restock field and its settings row (`restock.labels.restocks.add`, `restock.labels.settings.sku`), `ProductSelect`'s default placeholder |
+| not changed | the i18n KEYS, props, test ids and the wire's names still say `sku` — words only, as the product decision did; the old screens under `frontend/src/legacy*/` |
+| pinned by | ProductEdit `Save` — *Not filled in: product code* |
+
+What it replaces: the five strings and one placeholder above, which still said SKU.

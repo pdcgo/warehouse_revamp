@@ -273,6 +273,10 @@ export function WarehouseOrdersPage() {
             ) : (
               <Box animationStyle="swap">
               <RefreshOverlay busy={query.isFetching && !query.isPending}>
+                {/* THE TABLE SCROLLS INSIDE ITS OWN BOX, never the page — as the seller's list. On a phone its columns ran
+                    past the screen's edge and dragged the whole page sideways (a-date-range-panel-fits-a-phone, found
+                    beside it). `minW` because a flex child's min-width is `auto`. */}
+                <Box overflowX="auto" w="full" maxW="full" minW="0">
                 <Table.Root size="sm" data-testid="orders-table">
                   <Table.Header>
                     <Table.Row>
@@ -336,6 +340,7 @@ export function WarehouseOrdersPage() {
                     ))}
                   </Table.Body>
                 </Table.Root>
+                </Box>
               </RefreshOverlay>
               </Box>
             )}

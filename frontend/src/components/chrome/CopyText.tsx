@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
-import { Icon, chakra } from "@chakra-ui/react";
+import { Icon, Portal, Tooltip, chakra } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, TriangleAlert } from "lucide-react";
 
@@ -25,14 +25,20 @@ import { writeClipboard } from "../../lib/clipboard";
 //
 // ⚠ DESIGN-SYSTEM FURNITURE NOW — the order list, the order detail and the drafts screen all copy
 // with it, so it moved out of `pages/orders/` and carries a story.
+//
+// A CAP FOR A VALUE THAT CAN RUN LONG (owner, on the restock list: *"resi kemungkinan bisa sangat panjang, jadi harus
+// ada pembatasan tapi juga harus ada cara lihat fullnya"*). `maxW` cuts the shown text with an ellipsis, and a tooltip
+// says the WHOLE value — only while it is cut, measured when the pointer or the focus arrives. The copy is always the
+// whole value.
 export const description =
-  "A value somebody has to paste somewhere else — a marketplace order id, a tracking number, an amount. Click copies it, and the icon says ✓ only when the browser accepted the write (⚠ when it refused, leaving the text selectable). It stops the click from reaching a clickable row, so copying never also navigates.";
+  "A value somebody has to paste somewhere else — a marketplace order id, a tracking number, an amount. Click copies it, and the icon says ✓ only when the browser accepted the write (⚠ when it refused, leaving the text selectable). It stops the click from reaching a clickable row, so copying never also navigates. With `maxW`, a long value is cut with an ellipsis and a tooltip shows it whole; the copy is always the whole value.";
 
 export function CopyText({
   value,
   display,
   mono = false,
   fontSize,
+  maxW,
   testId,
 }: {
   /** What lands on the clipboard. */
@@ -46,11 +52,21 @@ export function CopyText({
   mono?: boolean;
   /** Overrides the default size — a table cell keeps a mono value small, a headline reference does not. */
   fontSize?: string;
+  /** The widest the shown text may be — longer is cut with an ellipsis, and a tooltip shows it whole. */
+  maxW?: string;
   testId?: string;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const timer = useRef<number | undefined>(undefined);
+  // Whether the capped text is cut right now — measured when the pointer or the focus arrives, so a value that fits
+  // gets no tooltip repeating it.
+  const shown = useRef<HTMLSpanElement | null>(null);
+  const [cut, setCut] = useState(false);
+  const measure = () => {
+    const el = shown.current;
+    setCut(el !== null && el.scrollWidth > el.clientWidth);
+  };
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -68,7 +84,7 @@ export function CopyText({
   const label =
     state === "copied" ? t("common.copied") : state === "failed" ? t("common.copyFailed") : t("common.copy");
 
-  return (
+  const button = (
     <chakra.button
       type="button"
       display="inline-flex"
@@ -87,13 +103,22 @@ export function CopyText({
       _hover={{ color: "brand.fg" }}
       _focusVisible={{ outline: "2px solid", outlineColor: "brand.focusRing", outlineOffset: "2px", rounded: "sm" }}
       aria-label={`${label}: ${value}`}
-      title={label}
+      // A cut value's tooltip says it whole; the browser's own title would stack a second box on it.
+      title={maxW && cut ? undefined : label}
       data-testid={testId}
       data-copied={state === "copied" ? "" : undefined}
       data-copy-failed={state === "failed" ? "" : undefined}
       onClick={copy}
+      onPointerEnter={maxW ? measure : undefined}
+      onFocus={maxW ? measure : undefined}
     >
-      {display ?? value}
+      {maxW ? (
+        <chakra.span ref={shown} truncate minW="0" maxW={maxW} data-testid={testId ? `${testId}-shown` : undefined}>
+          {display ?? value}
+        </chakra.span>
+      ) : (
+        (display ?? value)
+      )}
       {state === "copied" ? (
         <Icon as={Check} boxSize="3" color="success.fg" />
       ) : state === "failed" ? (
@@ -102,5 +127,20 @@ export function CopyText({
         <Icon as={Copy} boxSize="3" color="fg.subtle" />
       )}
     </chakra.button>
+  );
+
+  if (!maxW) return button;
+
+  return (
+    <Tooltip.Root openDelay={150} closeDelay={80} disabled={!cut}>
+      <Tooltip.Trigger asChild>{button}</Tooltip.Trigger>
+      <Portal>
+        <Tooltip.Positioner>
+          <Tooltip.Content fontFamily={mono ? "mono" : undefined} data-testid={testId ? `${testId}-whole` : undefined}>
+            {value}
+          </Tooltip.Content>
+        </Tooltip.Positioner>
+      </Portal>
+    </Tooltip.Root>
   );
 }

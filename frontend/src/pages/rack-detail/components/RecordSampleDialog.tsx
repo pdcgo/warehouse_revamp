@@ -15,11 +15,13 @@ import {
   Spinner,
   Stack,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
-import { Lock } from "lucide-react";
+import { Gift, Lock } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import { toaster } from "../../../components/feedback/Toaster";
+import { CharCount } from "../../../components/inputs/CharCount";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { useRackContents, useRackSample } from "../../../features/racks/queries";
@@ -239,17 +241,21 @@ export function RecordSampleDialog({
                       onChange={(e) => setRecipient(e.target.value)}
                     />
                     <Field.HelperText>{t("racks.sample.recipientHelp")}</Field.HelperText>
+                    <CharCount value={recipient} max={200} testId="sample-recipient-count" />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("racks.move.note")}</Field.Label>
-                    <Input
+                    {/* A note is a two-row box, its count against the limit (a-limited-field-shows-its-count). */}
+                    <Textarea
+                      rows={2}
                       value={note}
                       maxLength={500}
                       placeholder={t("racks.sample.notePlaceholder")}
                       data-testid="sample-note"
                       onChange={(e) => setNote(e.target.value)}
                     />
+                    <CharCount value={note} max={500} testId="sample-note-count" />
                   </Field.Root>
 
                   {plan.total > 0 && (
@@ -273,6 +279,7 @@ export function RecordSampleDialog({
                   loading={sample.isPending}
                   data-testid="sample-submit"
                 >
+                  <Icon as={Gift} boxSize="4" />
                   {t("racks.sample.submit")}
                 </Button>
               </Dialog.Footer>

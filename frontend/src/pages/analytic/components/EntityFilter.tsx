@@ -78,7 +78,7 @@ export function EntityFilter({ kind, teamId, teamType, value, onChange, placehol
       <ProductSelect
         teamId={teamId}
         scope={productScopeOf(teamType)}
-        onChange={(p) => onChange(p.id.toString())}
+        onChange={(p) => onChange(p ? p.id.toString() : "")}
         placeholder={placeholder}
         portalled={portalled}
       />

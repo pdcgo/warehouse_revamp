@@ -1,9 +1,11 @@
 import { Stack } from "@chakra-ui/react";
 
 import { ProductCard } from "../../../components/products/ProductCard";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
 import type { OwnerStockRow } from "../../../features/products/adapt";
+import { DiscoverBadges } from "../../../features/products/DiscoverBadges";
 import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
-import { DiscoverBadges } from "./DiscoverBadges";
+import { DISCOVER_PENDING } from "../pending";
 import { DiscoverPrice } from "./DiscoverPrice";
 import { DiscoverStock } from "./DiscoverStock";
 
@@ -49,7 +51,9 @@ export function DiscoverCard({
         </Stack>
       }
       // The division and the lock, ON THE COVER — the first thing seen.
-      coverBadges={<DiscoverBadges product={product} />}
+      coverBadges={
+        <DiscoverBadges product={product} divisionMark={<NotImplemented list={DISCOVER_PENDING} id="divisionBadge" />} />
+      }
     />
   );
 }

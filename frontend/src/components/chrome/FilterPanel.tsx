@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { Button, Card, HStack, Heading, Icon, Spacer, Stack, Text, useSlotRecipe } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { SlidersHorizontal } from "lucide-react";
+
+import { useFitToWindow } from "../../lib/useFitToWindow";
 
 export const description =
   "A list's filters as a column BESIDE it — for a browse with many filters, where a strip would hide most of them behind a button. A titled card that sticks as the page scrolls, one labelled FilterGroup per filter, top to bottom in reading order, and Hapus Filter in its header only while something narrows the list. A desktop's: below `lg` the same groups go into FilterBar's sheet (`sheetBelow=\"lg\"`).";
@@ -35,9 +36,10 @@ export interface FilterPanelProps {
 // NEVER PAST THE WINDOW'S FOOT (owner: *"filternya tenggelam di bawah, kudu scroll produk"*): with its range pills the
 // panel outgrew a screen, and a sticky box taller than the window keeps its foot below the fold — the last filters were
 // reached only by scrolling the products. So the card ends a gutter above the window's bottom WHEREVER IT STANDS — lower
-// at rest, under the page's title, and taller once it sticks — re-measured on every scroll and resize; its title and
-// Hapus Filter stay put, and the GROUPS scroll inside it, the bar on the card's right edge (`scrollList`). A fixed
-// `100dvh` cap was not enough: at rest the card starts ~175px down, so its last 135px were still off the screen.
+// at rest, under the page's title, and taller once it sticks — re-measured on every scroll and resize (`useFitToWindow`,
+// shared with Cetak Label's settings); its title and Hapus Filter stay put, and the GROUPS scroll inside it, the bar on
+// the card's right edge (`scrollList`). A fixed `100dvh` cap was not enough: at rest the card starts ~175px down, so its
+// last 135px were still off the screen.
 // ⚠ A picker inside that is not portalled must position itself `fixed`, or the scroller cuts it off (CategorySelect's
 // `positioningStrategy`).
 //
@@ -45,35 +47,8 @@ export interface FilterPanelProps {
 // `sheetBelow="lg"`, where they stand in the bottom sheet — one set of controls, two containers, never both mounted.
 export function FilterPanel({ children, active = false, onClear, testId = "filter-panel" }: FilterPanelProps) {
   const { t } = useTranslation();
-  const card = useRef<HTMLDivElement>(null);
-
-  // The card's height, from where it stands to a gutter above the window's foot. The sticky `top` IS the gutter, so the
-  // card has the same margin below as above once it sticks. The listener is captured on `window`, so it hears whichever
-  // scroller is moving (sticky-sticks-to-the-window).
-  useEffect(() => {
-    const el = card.current;
-    if (!el) return;
-
-    let frame = 0;
-    const fit = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const gutter = parseFloat(getComputedStyle(el).top) || 0;
-        const top = el.getBoundingClientRect().top;
-        // Never below a usable height, however low the card starts.
-        el.style.maxHeight = `${Math.max(240, window.innerHeight - top - gutter)}px`;
-      });
-    };
-
-    fit();
-    window.addEventListener("scroll", fit, { capture: true, passive: true });
-    window.addEventListener("resize", fit);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", fit, { capture: true });
-      window.removeEventListener("resize", fit);
-    };
-  }, []);
+  // The card's height, from where it stands to a gutter above the window's foot.
+  const card = useFitToWindow<HTMLDivElement>();
 
   return (
     <Card.Root

@@ -20,12 +20,21 @@
  *   derived → computed here and now from real figures, but by a RULE that is not settled yet.
  *   missing → NOT ON THE SCREEN AT ALL, and a total is short because of it. There is no control to
  *             mark, which is exactly why it needs an entry.
+ *   interim → WORKS, and what is on screen is true — but read the long way round until the read it needs
+ *             exists: one call per row where one call for all should be (Cetak Label reads each restock on
+ *             its own, an-interim-read-is-marked). Nothing is lost or wrong; it is slower than it will be.
  */
-export type PendingKind = "dropped" | "sample" | "derived" | "missing";
+export type PendingKind = "dropped" | "sample" | "derived" | "missing" | "interim";
 
 export interface PendingPart<Id extends string = string> {
   id: Id;
   kind: PendingKind;
+  /**
+   * The part does what the owner asked AGAINST A WRITTEN BUSINESS DECISION (owner: *"kalau bertentangan kamu kasih
+   * catatan di unimplemented"*, a-conflict-with-a-business-decision-is-said-in-its-mark). Its words are
+   * `<ns>.pending.<id>.conflict` — WHICH decision, said plainly, never its slug: the strip is read in the real app too.
+   */
+  conflict?: boolean;
 }
 
 /** Every screen's list is read through this, so the two components need nothing else. */

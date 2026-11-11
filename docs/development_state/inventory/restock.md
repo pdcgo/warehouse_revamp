@@ -1,5 +1,219 @@
 # Development state — inventory / restock
 
+🔀 **2026-11-09: after the `backup/inventory` merge, monitoring keeps what only reads**
+([monitoring-keeps-what-only-reads](../../technical/frontend/context_decision.md#monitoring-keeps-what-only-reads)) —
+uncommitted. The admin team reading a team keeps Catatan (read, `NoteEditor` hides its Ubah through `useCanWrite`) and
+Cetak label; every other restock action is gone. Stories: RestockSelling `Notes / Monitoring, read only`,
+RestockWarehouse `Actions / Monitoring, Print only`.
+
+🔀 **2026-11-02: the selling detail follows the screen rules** — uncommitted, for the owner's pass
+([the-restock-detail-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-detail-follows-the-screen-rules)).
+`pages/restock-selling-detail`: icon actions on a phone (`SellingRestockActions` `compact`), product lines as blocks on a
+phone, two-line cells, Default and Mobile stories. Then the product page's shape
+([the-restock-detail-is-the-product-pages-shape](../../technical/frontend/restock_decision.md#the-restock-detail-is-the-product-pages-shape)):
+one page of sections with the nav on the left, the order id and the tracking number as the title, no tabs; *Faktur* is
+*Order ID* everywhere ([the-store-reference-is-the-order-id](../../technical/frontend/restock_decision.md#the-store-reference-is-the-order-id)).
+The notes: one per writer ([the-notes-are-one-per-writer](../../technical/frontend/restock_decision.md#the-notes-are-one-per-writer)),
+⚠ the warehouse note, the note's author and an edit's content all unstored. **Backend needed:** a warehouse note with its
+author and time, the selling note's author and time, an edit's trail row naming what changed.
+The selling note is edited in any status ([the-note-is-edited-in-any-status](../../technical/frontend/restock_decision.md#the-note-is-edited-in-any-status)),
+⚠ kept only while ongoing. **Backend needed:** a note change the server takes in any status.
+On a phone the restock page edits it in a bottom sheet, the list's dialog in place
+([a-phone-edits-the-note-in-a-sheet](../../technical/frontend/restock_decision.md#a-phone-edits-the-note-in-a-sheet)).
+The timeline centres each icon, gives every person one width, and runs its line icon to icon
+([the-timeline-is-centred-and-lines-up](../../technical/frontend/restock_decision.md#the-timeline-is-centred-and-lines-up)).
+The form is `pages/restock-form/` (`RestockFormPage`, stories *RestockForm*), on the screen rules
+([the-restock-form-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-form-follows-the-screen-rules)):
+Order ID, an example and a count in every typed field, lines as rows, Default and Mobile stories. No proto change. Then three columns from 2xl, the warehouse over the note, the money
+sticky ([the-restock-form-is-three-columns](../../technical/frontend/restock_decision.md#the-restock-form-is-three-columns)).
+The product picker's pager is one number, ‹ [2] › — `GrowingPager compact`
+([a-dialog-pager-is-one-number](../../technical/frontend/context_decision.md#a-dialog-pager-is-one-number)).
+The card is Produk dan Supplier: a supplier for all products leads it, from the start — Pilih Supplier, then a pick;
+lines follow it, a line may pick its own ([one-supplier-for-all-in-two-steps](../../technical/frontend/restock_decision.md#one-supplier-for-all-in-two-steps),
+[the-supplier-leads-the-produk-card](../../technical/frontend/restock_decision.md#the-supplier-leads-the-produk-card)).
+Now two titled parts — Supplier, a rule, Produk with Pilih Produk; the supplier popup keeps its height
+([the-card-is-supplier-then-produk](../../technical/frontend/restock_decision.md#the-card-is-supplier-then-produk)).
+The warehouse over the payment; the note between Rincian and Buat Restok in the sticky column, which is capped at
+the window ([the-note-sits-over-buat-restok](../../technical/frontend/restock_decision.md#the-note-sits-over-buat-restok)).
+Over Buat Restok, `ReadyLine`: the first thing missing (+N on asking), or ✓ Siap dibuat
+([a-save-button-says-what-it-waits-for](../../technical/frontend/context_decision.md#a-save-button-says-what-it-waits-for)).
+The checks run products (each with a supplier) → warehouse → account → resi; the supplier and the resi are required on
+the form, ⚠ not by the server and against the business record
+([the-checks-run-products-warehouse-account-resi](../../technical/frontend/restock_decision.md#the-checks-run-products-warehouse-account-resi)).
+Every product's count and total (above 0) are required too
+([the-count-and-total-are-required](../../technical/frontend/restock_decision.md#the-count-and-total-are-required)); a product's
+*Dibeli dari* is the supplier part's `SupplierBox` ([a-product-picks-its-supplier-from-the-same-box](../../technical/frontend/restock_decision.md#a-product-picks-its-supplier-from-the-same-box)).
+A product's note is two rows; the empty Produk hint is full size; Rincian's product list folds
+([a-line-note-is-two-rows](../../technical/frontend/restock_decision.md#a-line-note-is-two-rows),
+[an-empty-produk-is-the-full-size-hint](../../technical/frontend/restock_decision.md#an-empty-produk-is-the-full-size-hint),
+[the-summary-folds-its-products](../../technical/frontend/restock_decision.md#the-summary-folds-its-products)).
+No scrollbar flashes through the fold ([the-summary-folds-without-a-scrollbar](../../technical/frontend/restock_decision.md#the-summary-folds-without-a-scrollbar)).
+An edit opens with its one shared supplier on top, one product included ([an-edit-opens-with-its-one-supplier](../../technical/frontend/restock_decision.md#an-edit-opens-with-its-one-supplier)).
+The form goes back where it was opened — the list or the restock's page; by a link, the list ([the-restock-form-returns-where-it-was-opened](../../technical/frontend/restock_decision.md#the-restock-form-returns-where-it-was-opened)).
+
+🔀 **2026-11-04: the warehouse's inbound list follows the screen rules** — uncommitted, for the owner's pass
+([the-warehouse-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-warehouse-restock-list-follows-the-screen-rules)).
+`pages/restock-warehouse`: the card strip, `FilterBar` with a search (`q`), short dates, a block per restock on a phone,
+the empty hints, `GrowingPager`, Default and Mobile stories. No proto change.
+Then Dari is the team with who raised it under it, and Dibuat and Sampai are columns — Sampai with who signed for the box
+([the-inbound-row-says-who-and-when](../../technical/frontend/restock_decision.md#the-inbound-row-says-who-and-when)).
+No restock value on the warehouse's list; its money card is the COD it paid this month — ⚠ a sample. **Backend needed:**
+a sum of `warehouse_additional_cost` over the restocks a warehouse accepted in a window
+([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)).
+Screen state only: each line still saves its own supplier.
+
+🔀 **2026-11-04: the form takes the courier and checks its references** — uncommitted, for the owner's pass. The courier
+is required ([the-courier-is-required-on-the-form](../../technical/frontend/restock_decision.md#the-courier-is-required-on-the-form)). A resi or Order ID already on another
+restock of this team is in danger under its field and holds Buat back — `useRestockRefInUse` over `RestockRequestList`'s
+search, no proto change ([a-reference-in-use-stops-the-restock-form](../../technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form)).
+**Backend needed:** a resi refused on create and update while another restock not cancelled holds it, across teams; the
+same for the Order ID; and `shipment_id > 0`.
+
+🔀 **2026-11-04: the courier's charge at Tandai Tiba** — uncommitted, for the owner's pass. The sign dialog carries the
+accept page's charge (`CourierCharge`, moved to `features/restock/`): optional at Tiba, final at Terima, one charge
+([the-cod-can-be-noted-when-the-box-arrives](../../technical/frontend/restock_decision.md#the-cod-can-be-noted-when-the-box-arrives)). ⚠ `dropped`: Arrive takes no charge.
+**Backend needed:** the charge and its note on `RestockRequestArrive`, and the accept page opening with them.
+The words: Tiba marks, Terima is final; the sign toast and the list's *Sampai* column fixed
+([tiba-marks-and-terima-is-final](../../technical/frontend/restock_decision.md#tiba-marks-and-terima-is-final)).
+Then a photo of the broken units on the accept page — one per line, optional, the camera on a phone
+([a-broken-product-carries-a-photo](../../technical/frontend/restock_decision.md#a-broken-product-carries-a-photo)). ⚠ `dropped`: never uploaded.
+**Backend needed:** a photo per broken row on `RestockRequestReceivedLine`, shown back on both detail pages.
+Both detail pages show where it is read back — the selling page's Penyesuaian dialog and phone block, the warehouse
+page's broken cell — with a sample drawing, ⚠ `sample` ([the-detail-pages-show-the-broken-photo](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-broken-photo)).
+At Terima the broken units are thrown away or put on a rack, then required — ⚠ `dropped`
+([a-broken-product-may-go-on-a-rack](../../technical/frontend/restock_decision.md#a-broken-product-may-go-on-a-rack)); the courier's charge takes an optional photo of the
+slip at Tiba and Terima — ⚠ `dropped` ([the-courier-slip-has-an-optional-photo](../../technical/frontend/restock_decision.md#the-courier-slip-has-an-optional-photo)). The `thoni`
+comparison is closed: the rest stays ours ([the-rest-of-thonis-restock-stays-ours](../../technical/frontend/restock_decision.md#the-rest-of-thonis-restock-stays-ours)).
+The two parts that go against a business decision — the broken rack, the charge at Tiba — say so in their marks
+([a-conflict-with-a-business-decision-is-said-in-its-mark](../../technical/frontend/context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)).
+The detail pages show the slip photo, and the warehouse's the broken rack — samples
+([the-detail-pages-show-the-slip-and-the-broken-rack](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-slip-and-the-broken-rack)); Terima opens with the restock's own charge, empty
+today, marked missing ([terima-starts-from-the-charge-noted-at-tiba](../../technical/frontend/restock_decision.md#terima-starts-from-the-charge-noted-at-tiba)).
+The warehouse's restock page follows the screen rules and the selling page's shape — sections under a nav, the resi
+as its title ([the-warehouse-restock-detail-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-warehouse-restock-detail-follows-the-screen-rules)); the box, not the purchase — pictures, no
+supplier, price, total or Pembayaran ([the-warehouse-reads-the-box-not-the-purchase](../../technical/frontend/restock_decision.md#the-warehouse-reads-the-box-not-the-purchase)); the warehouse
+writes its own note there, dropped ([the-warehouse-writes-its-own-note](../../technical/frontend/restock_decision.md#the-warehouse-writes-its-own-note)).
+Terima follows the screen rules ([the-restock-accept-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-accept-follows-the-screen-rules)):
+`ReadyLine` by its button (the charge, then each unfinished line by product and first blocker), its icon on a phone's
+header row, Back and Terima to where it was opened (`WarehouseRestockActions` records the opener; by a link, the
+restock's page), a problem's note labelled with an example and 0/200, `formatUnixDate`, `ListSkeleton`; stories in
+folders (Accept, Charge, Count, PutAway, States) behind Default and Mobile. No proto change, the marks unchanged.
+Then the box left, the info right from `xl` — the lines first when narrower; a line card arranges its parts by the
+lines column's width (three, two, stacked); back is an icon; the marks renumbered to the page's order
+([the-accept-page-puts-the-box-left-and-the-info-right](../../technical/frontend/restock_decision.md#the-accept-page-puts-the-box-left-and-the-info-right)).
+Then the info is who (one line each, small pictures — `TeamItem size="xs"`) and the parcel, ending with the COD charge
+the warehouse pays; no goods, shipping or total
+([the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid](../../technical/frontend/restock_decision.md#the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid));
+no price per piece on a line, the worth of a broken or missing unit kept
+([the-accept-line-shows-no-price](../../technical/frontend/restock_decision.md#the-accept-line-shows-no-price)); *n dari n pcs*
+a badge in its state's tone ([the-box-count-says-its-state-in-colour](../../technical/frontend/restock_decision.md#the-box-count-says-its-state-in-colour));
+a problem's note two rows ([a-problem-note-is-a-two-row-textarea](../../technical/frontend/restock_decision.md#a-problem-note-is-a-two-row-textarea)).
+Fixed: the broken units' rack picker stood 12rem tall in its column (`PlacementSelect alone`).
+Then a line's placement rows never share a rack — taken racks disabled in each picker (`RackSelect takenRackIds`,
+[one-rack-once-per-line](../../technical/frontend/restock_decision.md#one-rack-once-per-line)); *Dipesan 12 pcs* highlighted — only the *n pcs*, a small badge, there and in the header's count
+([the-pcs-alone-is-highlighted](../../technical/frontend/restock_decision.md#the-pcs-alone-is-highlighted));
+Paket carries no ongkir; the courier-charge section says as text what the warehouse paid, and Ubah opens its form with
+Tiba's values (`ChargeSection`); Terima waits for nothing about it
+([the-cod-paid-is-said-in-its-own-section](../../technical/frontend/restock_decision.md#the-cod-paid-is-said-in-its-own-section));
+every empty `QuantityInput` shows its minimum as placeholder
+([a-quantity-field-shows-its-minimum-until-typed](../../technical/frontend/context_decision.md#a-quantity-field-shows-its-minimum-until-typed)).
+Then a line names no supplier (the page reads none), its good/broken/missing sit under *Dipesan*, and broken and missing
+are each a block of their own
+([the-line-reads-ordered-then-what-it-came-to](../../technical/frontend/restock_decision.md#the-line-reads-ordered-then-what-it-came-to),
+[the-broken-and-the-missing-are-blocks-of-their-own](../../technical/frontend/restock_decision.md#the-broken-and-the-missing-are-blocks-of-their-own)).
+The put-away panel is off until Diterima is set, a good row holds at most Diterima − Rusak, and broken units on a rack
+get their rack as a row of that panel, marked Rusak
+([putaway-waits-for-the-count](../../technical/frontend/restock_decision.md#putaway-waits-for-the-count),
+[the-broken-units-rack-is-a-marked-placement](../../technical/frontend/restock_decision.md#the-broken-units-rack-is-a-marked-placement));
+Rusak is off while Diterima is blank or 0, and empties when it goes back to 0
+([broken-waits-for-something-received](../../technical/frontend/restock_decision.md#broken-waits-for-something-received)).
+Terima keeps the store's reference in Paket, named *Order ID*, not *Invoice* — unlike the warehouse's restock page
+([terima-keeps-the-order-id](../../technical/frontend/restock_decision.md#terima-keeps-the-order-id)). No open
+difference with the warehouse page is left. The ready line's names jump to their line or the charge and blink
+(`ReadyLine onSelect`, `jumpTo` in `lib/useScrollSpy`); the confirm shows the box in figures
+([the-ready-line-jumps-to-what-it-names](../../technical/frontend/restock_decision.md#the-ready-line-jumps-to-what-it-names),
+[the-confirm-says-the-count](../../technical/frontend/restock_decision.md#the-confirm-says-the-count)).
+Reviewed complete for this stage on 2026-11-06: every screen rule applied, desktop and phone checked; only the four
+pending marks remain.
+
+🔀 **2026-10-31: the selling list follows the screen rules** — uncommitted, for the owner's pass
+([the-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-list-follows-the-screen-rules)).
+`pages/restock-selling`: a title, the card strip, `FilterBar`, two-line cells, a block per restock on a phone,
+`EmptyHint`, `GrowingPager`, a Mobile story. Then the owner's column order
+([the-restock-list-leads-with-its-references](../../technical/frontend/restock_decision.md#the-restock-list-leads-with-its-references)):
+Referensi first, the order and tracking numbers copyable and capped (`CopyText` `maxW`), no #id on the desktop row.
+Then the statistics
+([the-restock-statistics-count-transactions-under-the-tabs](../../technical/frontend/restock_decision.md#the-restock-statistics-count-transactions-under-the-tabs)):
+under the tabs, shut until opened, ⚠ **all sample** (`pages/restock-selling/pending.ts`: `summary`, `payments`). **Backend
+needed:** one read under the list's own filters returning, per status and in total, the restock count, the units, the
+distinct products, the goods value, the shipping, the courier's charge at the door — and the transaction value per paying
+account. The selling list no longer reads `OwnerStockStat`. Then Ekspor and a courier filter
+([the-restock-list-exports-and-filters-by-courier](../../technical/frontend/restock_decision.md#the-restock-list-exports-and-filters-by-courier)),
+⚠ both `dropped`. **Backend needed:** `shipment_id` on `RestockRequestListFilter` (and on the statistics read), and a
+restock export — a server stream ending in a file link, as `OrderExport`, over the list's own filter and tab.
+The cancel dialog warns that a cancellation will be checked
+([a-restock-cancel-warns-it-will-be-checked](../../technical/frontend/restock_decision.md#a-restock-cancel-warns-it-will-be-checked)),
+⚠ marked `missing` on the list and the selling detail: nothing checks one yet. The Statistik button ends the tab row on a desktop and is an
+icon beside Filter on a phone
+([the-statistics-button-ends-the-tab-row](../../technical/frontend/restock_decision.md#the-statistics-button-ends-the-tab-row)),
+since a rule for every list, the seller's order list included
+([a-statistics-button-ends-the-tab-row](../../technical/frontend/context_decision.md#a-statistics-button-ends-the-tab-row),
+`components/chrome/StatsToggle`).
+Screen decisions for the restock screens now go in
+[docs/technical/frontend/restock_decision.md](../../technical/frontend/restock_decision.md). On the screen rules
+(2026-11-06): the selling list and detail, the form, the warehouse list and detail, Terima, Cetak Label
+([the-restock-labels-follow-the-screen-rules](../../technical/frontend/restock_decision.md#the-restock-labels-follow-the-screen-rules)).
+Cetak Label is then set up in mm — paper, grid, padding, each text and its size, the run's limit and page; one paper a
+printed page; defaults 35 × 15 mm, padding 2 mm; the settings auto-saved to the device's local storage (owner-confirmed),
+only what differs from the defaults (key v3)
+([the-label-is-set-up-in-mm](../../technical/frontend/restock_decision.md#the-label-is-set-up-in-mm),
+[the-label-settings-are-remembered](../../technical/frontend/restock_decision.md#the-label-settings-are-remembered));
+the sticker carries no price any more. The page is the settings held in view beside a Pratinjau card — white stickers
+on a grey ground, three a row
+([the-label-page-is-settings-and-a-preview](../../technical/frontend/restock_decision.md#the-label-page-is-settings-and-a-preview));
+then one paper in Pratinjau and, under it, Yang Dicetak — each label once with its count to print, typed over; what
+prints is exactly those counts
+([the-print-list-is-each-label-and-its-count](../../technical/frontend/restock_decision.md#the-print-list-is-each-label-and-its-count));
+Ctrl+P / ⌘P on the page is its own print, as Cetak
+([ctrl-p-prints-the-labels](../../technical/frontend/restock_decision.md#ctrl-p-prints-the-labels)).
+Cetak Label opens from Tiba too, beside Terima: the labels are built on the screen from the restock's own lines — one per
+line, counted as ordered, no placement, the SKU alone in the QR, and `RestockRequestLabels` is not called (it answers
+an accepted restock only)
+([labels-print-from-arrived](../../technical/frontend/restock_decision.md#labels-print-from-arrived)).
+Several restocks print in one run: a Restok card over the Pratinjau — a row jumps to its group in Yang Dicetak
+([labels-a-restock-jumps-to-its-labels](../../technical/frontend/restock_decision.md#labels-a-restock-jumps-to-its-labels)) — (each restock, its label count, ✕; *Tambah Restok*,
+a search select over `RestockRequestList` asked twice — ARRIVED and ACCEPTED — and merged), Yang Dicetak grouped by
+restock. ONE address for one restock or several, `/inventories/restock/labels?ids=503,502`; every Cetak opens it and
+the old `/inventories/restock/:id/labels` is a loader redirect to `?ids=:id`
+([the-labels-have-one-address](../../technical/frontend/restock_decision.md#the-labels-have-one-address)). ⚠ Each restock is
+read on its own — no read takes several ids — and the page marks it, a pending part of the new kind `interim`
+([the-labels-mark-their-one-by-one-read](../../technical/frontend/restock_decision.md#the-labels-mark-their-one-by-one-read)). Each restock is read
+with the shared `restockRequestQuery` / `restockLabelsQuery` options through `useQueries`
+(`pages/restock-labels/labelSets.ts`)
+([labels-print-several-restocks](../../technical/frontend/restock_decision.md#labels-print-several-restocks)). The
+labels' action reads *Cetak* ([print-is-the-labels-action](../../technical/frontend/restock_decision.md#print-is-the-labels-action)),
+and on the page *Cetak* is the one print button — *Unduh PDF* is gone, a PDF is saved from the print dialog
+([cetak-is-the-one-print-button](../../technical/frontend/restock_decision.md#cetak-is-the-one-print-button)).
+The warehouse list ticks restocks — a box per row, enabled when Cetak is one of its acts, a page box in the head — and
+*Cetak N Restok* in the title's row opens Cetak Label with them; the ticks are ids, outlasting pages, tabs and filters
+([the-list-prints-the-ticked-restocks](../../technical/frontend/restock_decision.md#the-list-prints-the-ticked-restocks);
+`features/restock/labelsPath.ts` builds the address for both). Cetak Label's left column now fits the window as
+Product Discover's filters do — one hook, `lib/useFitToWindow`, which `FilterPanel` moved onto
+([the-label-settings-scroll-inside-their-card](../../technical/frontend/restock_decision.md#the-label-settings-scroll-inside-their-card),
+[a-sticky-side-column-ends-above-the-windows-foot](../../technical/frontend/context_decision.md#a-sticky-side-column-ends-above-the-windows-foot)).
+**There is no Struk** (2026-11-07): `pages/batch-receipt` (#219) was built without a decision and is not needed — the
+page, its action, `useBatchReceipt` and its copy are gone; an accepted restock offers Cetak alone, and
+`/inventories/restock/:id/receipt` is a loader redirect to the restock
+([there-is-no-struk](../../technical/frontend/restock_decision.md#there-is-no-struk)). inventory_service's `BatchReceipt`
+RPC is untouched and no longer read by any screen. With it the restock flow's screens are all on the screen rules.
+Cetak Label's last three (2026-11-07): a typed count is keyed by the restock, product, batch and placement
+([a-label-count-follows-its-label](../../technical/frontend/restock_decision.md#a-label-count-follows-its-label)); at
+most 50 restocks a print, `LABELS_MAX_RESTOCKS` in `features/restock/labelsPath.ts`, on the page and the list's ticks
+([at-most-fifty-restocks-a-print](../../technical/frontend/restock_decision.md#at-most-fifty-restocks-a-print)); the
+stories' address probe is hidden (`LocationProbe hidden`,
+[the-labels-address-probe-is-hidden](../../technical/frontend/restock_decision.md#the-labels-address-probe-is-hidden)).
+What is left on restock is the ⚠ marks — each waits on a read or a write the screen cannot make yet.
+
 ✅ **2026-11-05: the paying account is checked server-side** — uncommitted
 ([a-restock-names-its-paying-account](../../business/inventory/restock_decision.md#a-restock-names-its-paying-account)).
 `RestockRequestCreate`, and an ongoing `RestockRequestUpdate` that CHANGES the account, refuse one that is not the team's
@@ -122,17 +336,29 @@ stateDiagram-v2
 | backend: ported | accept (git-mv'd from fulfill), create, update, cancel, labels, the accepted event, stock cost, owner stock, product stock summary, inbound stat (`status IN restockInboundStatuses`, which is ongoing + arrived), and supplier's `analytic_fold.go` (`GetMissingCount`) |
 | frontend: features | `features/restock/`: `summary.ts`, `lines.ts`, `counting.ts`, `statusTabs.ts`, `dateFields.ts`, `problemType.ts`, `queries.ts` (+ Accept/Arrive/MarkLost hooks), `LineSupplier`, `RestockItemsCell`, `SellingRestockActions`, `WarehouseRestockActions`, `RestockTimeline` (each with a story), `storyRestock.ts` (stories only) · `features/suppliers/queries.ts`: `useSupplierChannelsByIds` |
 | frontend: components | `badges/RestockStatusBadge` (5 statuses) · new `badges/DeletedBadge` · new `pickers/SupplierChannelPicker` (the Connect Supplier Channel popup, all suppliers) · `pickers/RackSelect` `allowUnplaced` (default true; the accept passes false, per [there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile)) · `feedback/ConfirmDialog`: optional body, `confirmDisabled`, `dismissLabel` · `pickers/DamageTypeSelect` **removed** |
-| frontend: pages | restock-request-form, restock-accept, restock-selling, restock-selling-detail, restock-warehouse, restock-warehouse-detail, restock-labels (each with an `index.stories.tsx`; all but labels have a `pending.ts`) · warehouse-product type fixes |
+| frontend: pages | restock-form, restock-accept, restock-selling, restock-selling-detail, restock-warehouse, restock-warehouse-detail, restock-labels (each with an `index.stories.tsx`; all but labels have a `pending.ts`) · warehouse-product type fixes |
 | Storybook | `.storybook/restockFixtures.ts` (restocks 501–507, one per state) · `.storybook/restockStub.ts` plays the decided rules (`resetRestockStub` runs in preview's `beforeEach`, `restockWire(id)`) · `supplierStub.ts` + `supplierChannelByIds` |
 | docs | `docs/services/inventory_service/rpc.md` restock section (lifecycle, the accept transaction, the rules, the event) · liability, selling and supplier `rpc.md`: Fulfill renamed to Accept |
 | tests | Go: every package green from the root, 0 skips · stories: **1171** green · mermaid: 1006 parse |
 
-## Pending marks: none
+## Pending marks
+
+⚠ *(2026-11-05)* **Ten are back** — the accept page's slip photo and broken rack are `dropped` too. The warehouse list's COD
+card is a `sample`; the broken photo on both detail pages is a
+`sample` ([the-detail-pages-show-the-broken-photo](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-broken-photo)); the accept page's broken photo is `dropped`
+([a-broken-product-carries-a-photo](../../technical/frontend/restock_decision.md#a-broken-product-carries-a-photo)); the courier's charge noted at Tandai Tiba is
+`dropped` on the warehouse list and its detail ([the-cod-can-be-noted-when-the-box-arrives](../../technical/frontend/restock_decision.md#the-cod-can-be-noted-when-the-box-arrives)); and the form's two reference checks are
+`derived` — screen-only, this team's restocks only ([a-reference-in-use-stops-the-restock-form](../../technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form)).
+The COD card:
+([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)).
+A `thoni` feature not yet taken is deliberately NOT marked
+([thonis-restock-is-weighed-one-feature-at-a-time](../../technical/frontend/restock_decision.md#thonis-restock-is-weighed-one-feature-at-a-time)).
 
 ✅ *(2026-10-15)* **Removed from all six restock pages**, with their `pending.ts` files, the action components' `pending`
 prop and the `restock.*.pending` translations: every one of the 28 marks named something stages 1–3 now store or do.
 Checked against the real dev API (screens shot, `[data-testid^=not-implemented]` counted at 0).
-`NothingIsMarkedNotImplemented` on the request form fails the day a mark comes back.
+`OnlyTheReferenceChecksAreMarked` (was `NothingIsMarkedNotImplemented`) on the request form fails the day a third mark
+comes back.
 
 ## The label photo opens (#18, 2026-11-04)
 
@@ -232,7 +458,8 @@ stage hunk by hunk.
 
 ## Elsewhere
 
-- The list pages have no phone arrangement yet (one block per row, FilterBar sheet).
+- The `thoni` branch's restock design is a reference the owner weighs one feature at a time; this branch does not
+  follow it ([thonis-restock-is-weighed-one-feature-at-a-time](../../technical/frontend/restock_decision.md#thonis-restock-is-weighed-one-feature-at-a-time)).
 - warehouse-product's **Incoming** reads ongoing restocks only (comment at `pages/warehouse-product/index.tsx:99`).
   An arrived box is incoming too, but the activity read takes one status.
 - The receipt photo's upload type is not designed. It stays a `dropped` mark.

@@ -17,7 +17,8 @@ export interface UserItemProps {
   teamType?: TeamType;
   // Optional trailing content: action buttons, a check, etc.
   action?: ReactNode;
-  size?: "sm" | "md";
+  /** `xs` — a small avatar and the name alone, for a dense list (a restock's timeline). */
+  size?: "xs" | "sm" | "md";
 }
 
 // UserItem is the shared way to show a user in a list, a menu, a search result (#41): their avatar
@@ -34,6 +35,23 @@ export function UserItem({ user, role, teamType, action, size = "sm" }: UserItem
   const formerId = formerUserId(user);
   const display = personName(user);
   const showRole = role !== undefined && role !== Role.UNSPECIFIED;
+
+  // THE SMALL ONE (owner, on a restock's timeline: *"riwayat usernya terlalu besar, gambar kecil dan nama saja"*) — the
+  // avatar at its smallest and the name on one line; no username, no role.
+  if (size === "xs") {
+    return (
+      <HStack gap="1.5" minW="0">
+        <Avatar.Root size="2xs" colorPalette="brand" flexShrink={0}>
+          <Avatar.Fallback name={display} />
+          <Avatar.Image src={user.avatarUrl || undefined} alt={display} />
+        </Avatar.Root>
+        <Text fontSize="sm" fontWeight="medium" lineClamp={1}>
+          {display}
+        </Text>
+        {action}
+      </HStack>
+    );
+  }
 
   return (
     <HStack gap="card" w="full">

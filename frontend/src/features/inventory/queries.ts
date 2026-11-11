@@ -39,10 +39,10 @@ import {
   warehouseStockListRowData,
 } from "./adapt";
 import type {
-  BatchReceiptResponse,
   StockBatch,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/product_pb";
+import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import type { Costs } from "../orders/lines";
 import { useDebounced } from "../../lib/useDebounced";
 
@@ -553,6 +553,8 @@ export function useWarehouseBatches(args: {
   const { warehouseId, search, supplierId, expiry, dateField, fromUnix, toUnix, page, pageSize } = args;
 
   return useQuery({
+    // A page turn, a search or a filter REFINES the same list, so the previous rows stay while it refetches (RULE 10).
+    ...listQuery,
     queryKey: key.inventory(warehouseId, {
       batchList: "all",
       search,
@@ -583,6 +585,8 @@ export function useWarehouseBatches(args: {
       // Resolve the owning team NAME for each row's product, best-effort — product → team, both
       // batched into one call each. An unresolved id simply leaves the cell blank.
       const ownerByProduct = new Map<string, string>();
+      // The owning team itself, for TeamItem — avatar, name and type, the way a team is shown everywhere.
+      const teamByProductId = new Map<string, Team>();
       const productIds = [...new Set(res.batches.map((b) => b.productId).filter((id) => id > 0n))];
       if (productIds.length > 0) {
         try {
@@ -601,8 +605,9 @@ export function useWarehouseBatches(args: {
               await teamClient.teamByIds({ filter: { ids: teamIds }, dataRequest: teamByIdsRowData() }),
             );
             for (const [productId, teamId] of teamByProduct) {
-              const name = teams[teamId.toString()]?.name;
-              if (name) ownerByProduct.set(productId, name);
+              const team = teams[teamId.toString()];
+              if (team?.name) ownerByProduct.set(productId, team.name);
+              if (team) teamByProductId.set(productId, team);
             }
           }
         } catch {
@@ -610,7 +615,7 @@ export function useWarehouseBatches(args: {
         }
       }
 
-      return { res, ownerByProduct };
+      return { res, ownerByProduct, teamByProductId };
     },
   });
 }
@@ -628,6 +633,8 @@ export interface BatchDetail {
   // The catalogue entry, for the header's Move / Adjust dialogs (they take a full Product). Best-effort.
   product: Product | null;
   ownerName: string;
+  // The owning team itself, for TeamItem's small avatar beside its name (a-team-of-a-known-type-shows-no-badge).
+  owner: Team | null;
   rackCodes: Map<string, string>;
   // NB: the placements themselves are their OWN paged read (useBatchPlacements, #218), so they can page
   // independently of this aggregate — rackCodes still lives here to resolve their labels.
@@ -654,6 +661,7 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
           batch: null,
           product: null,
           ownerName: "",
+          owner: null,
           rackCodes: new Map(),
           supplierName: "",
           acceptedByName: "",
@@ -678,6 +686,7 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
       // kept for the header's Move / Adjust dialogs.
       let product: Product | null = null;
       let ownerName = "";
+      let owner: Team | null = null;
       try {
         const found = await productClient.productByIds({
           teamId: warehouseId!,
@@ -693,11 +702,13 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
               dataRequest: teamByIdsRowData(),
             }),
           );
-          ownerName = teams[ownerTeamId.toString()]?.name ?? "";
+          owner = teams[ownerTeamId.toString()] ?? null;
+          ownerName = owner?.name ?? "";
         }
       } catch {
         product = null;
         ownerName = "";
+        owner = null;
       }
 
       // Restock info (#218): the supplier who delivered it, and who accepted it — names resolved
@@ -739,6 +750,7 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
         batch,
         product,
         ownerName,
+        owner,
         rackCodes,
         supplierName,
         acceptedByName,
@@ -810,70 +822,6 @@ export function useBatchHistory(args: {
         page: { page, limit: pageSize },
       });
       return { movements: movementsFromList(res), pageInfo: res.pageInfo };
-    },
-  });
-}
-
-// The goods-received receipt for one delivery (#219) — the printable document. The read returns ids;
-// the page needs names, so resolve the destination warehouse (a team) and the two actors here,
-// best-effort. Supplier and the restock CREATOR are not resolvable/captured yet — see the page.
-export interface BatchReceipt {
-  data: BatchReceiptResponse | null;
-  warehouseName: string;
-  actorNames: Map<string, string>;
-  rackCodes: Map<string, string>;
-}
-
-export function useBatchReceipt(args: { warehouseId: bigint | undefined; deliveryId: bigint }) {
-  const { warehouseId, deliveryId } = args;
-
-  return useQuery<BatchReceipt>({
-    queryKey: key.inventory(warehouseId, { receipt: deliveryId.toString() }),
-    enabled: warehouseId !== undefined && deliveryId > 0n,
-    queryFn: async () => {
-      const res = await inventoryClient.batchReceipt({ teamId: warehouseId!, deliveryId });
-
-      const rackCodes = new Map<string, string>();
-      try {
-        const racks = await rackClient.rackList({
-          teamId: warehouseId!,
-          dataRequest: rackListRowData(),
-          page: { page: 1, limit: 200 },
-        });
-        for (const r of racksFromList(racks.items, racks.ids)) {
-          rackCodes.set(r.id.toString(), r.code);
-        }
-      } catch {
-        // leave empty — a line's rack falls back to "#id".
-      }
-
-      let warehouseName = "";
-      try {
-        const teams = teamsByIds(
-          await teamClient.teamByIds({
-            filter: { ids: [res.warehouseId] },
-            dataRequest: teamByIdsRowData(),
-          }),
-        );
-        warehouseName = teams[res.warehouseId.toString()]?.name ?? "";
-      } catch {
-        warehouseName = "";
-      }
-
-      const actorNames = new Map<string, string>();
-      const actorIds = [...new Set([res.createdBy, res.acceptedBy].filter((id) => id > 0n))];
-      if (actorIds.length > 0) {
-        try {
-          const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
-          for (const [id, u] of Object.entries(users)) {
-            actorNames.set(id, personName(u));
-          }
-        } catch {
-          // leave empty — the page falls back to "#id".
-        }
-      }
-
-      return { data: res, warehouseName, actorNames, rackCodes };
     },
   });
 }

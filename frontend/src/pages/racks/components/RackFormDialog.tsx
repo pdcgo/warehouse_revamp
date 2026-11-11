@@ -1,66 +1,51 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Field, Icon, Input, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
+import { Plus, Save } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../../api/clients";
 import type { Rack } from "../../../gen/warehouse/inventory/v1/rack_pb";
 import { useTeam } from "../../../features/team/TeamContext";
+import { CharCount } from "../../../components/inputs/CharCount";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveRack } from "../queries";
+
+// The proto's limits (rack.proto: code 1–32, name 200, description 500) — the box stops where the server would refuse,
+// and the count under it says so (a-limited-field-shows-its-count).
+const CODE_MAX = 32;
+const NAME_MAX = 200;
+const DESCRIPTION_MAX = 500;
 
 // RackFormDialog creates OR edits a rack in the CURRENT team — and for racks the team IS the
 // warehouse the shelf stands in. The team travels in the message body (the backend's use_scope
 // reads it there, never a header).
 //
-// Two modes, one form:
-//  - create — `rack` undefined; the dialog renders its own "New Rack" trigger.
-//  - edit — `rack` set; the dialog is controlled (open/onOpenChange), pre-filled, calls RackUpdate.
+// Two modes, one form, opened by the page (its Rak Baru, a row's ✎):
+//  - create — `rack` undefined.
+//  - edit — `rack` set; pre-filled, calls RackUpdate.
 //
 // RackUpdate's code/name/description are optional (absent = leave alone), but the form shows all
 // three pre-filled, so it always sends all three: what is on screen is what gets written, and
 // clearing a field clears it.
+//
+// ON THE SCREEN RULES (the-racks-follow-the-screen-rules): every typed field shows an example
+// (every-form-field-shows-an-example) and its count against the limit; the description is a two-row box; the save
+// button carries its icon (an-action-button-carries-its-icon).
 export function RackFormDialog({
   rack,
-  open: openProp,
+  open,
   onOpenChange,
 }: {
   rack?: Rack;
-  open?: boolean;
-  /**
-   * The dialog's open state changed — including the close that follows a successful save.
-   *
-   * LIFECYCLE ONLY. It used to be joined by an `onDone` that existed purely so the page could refetch
-   * (#177); the write now invalidates the cache itself, so the parent is told the dialog closed and
-   * nothing more. In edit mode that is what clears `editing`.
-   */
-  onOpenChange?: (open: boolean) => void;
+  open: boolean;
+  /** The dialog's open state changed — including the close that follows a successful save. */
+  onOpenChange: (open: boolean) => void;
 }) {
   const { current } = useTeam();
   const { t } = useTranslation();
 
   const editing = rack !== undefined;
-  const isControlled = openProp !== undefined;
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const open = isControlled ? openProp : uncontrolledOpen;
-
-  function setOpen(next: boolean) {
-    if (isControlled) {
-      onOpenChange?.(next);
-    } else {
-      setUncontrolledOpen(next);
-    }
-  }
-
   const [error, setError] = useState("");
 
   // The write, and what it invalidates, declared together in queries.ts (#177). There is no `busy`
@@ -96,21 +81,14 @@ export function RackFormDialog({
       },
       {
         onSuccess: () => {
-          if (editing) {
-            toaster.create({ type: "success", title: t("racks.form.saved") });
-          } else {
-            toaster.create({ type: "success", title: t("racks.form.created", { code }) });
-
-            // Only after a CREATE: the trigger stays on screen, so the next "New Rack" must open an
-            // empty form rather than the shelf that was just registered.
-            setCode("");
-            setName("");
-            setDescription("");
-          }
-
-          // Closing is what tells the parent the dialog is gone — in edit mode that is what clears
-          // `editing`. It is NOT a refetch signal: the hook already invalidated before this ran.
-          setOpen(false);
+          toaster.create(
+            editing
+              ? { type: "success", title: t("racks.form.saved") }
+              : { type: "success", title: t("racks.form.created", { code }) },
+          );
+          // Closing is what tells the page the form is gone. It is NOT a refetch signal: the hook already
+          // invalidated before this ran.
+          onOpenChange(false);
         },
         onError: (err) => {
           // A code is unique per warehouse among ACTIVE racks, so the one error a person will
@@ -129,19 +107,11 @@ export function RackFormDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
-      {!isControlled && (
-        <Dialog.Trigger asChild>
-          <Button size="xs" colorPalette="brand" data-testid="open-create-rack">
-            {t("racks.form.newRack")}
-          </Button>
-        </Dialog.Trigger>
-      )}
-
+    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)}>
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content>
+          <Dialog.Content data-testid="rack-form">
             <form onSubmit={submit}>
               <Dialog.Header>
                 <Dialog.Title>
@@ -159,23 +129,41 @@ export function RackFormDialog({
 
                   <Field.Root required>
                     <Field.Label>{t("racks.form.code")}</Field.Label>
-                    <Input value={code} data-testid="rack-code" onChange={(e) => setCode(e.target.value)} />
+                    <Input
+                      value={code}
+                      maxLength={CODE_MAX}
+                      placeholder={t("racks.form.codePlaceholder")}
+                      data-testid="rack-code"
+                      onChange={(e) => setCode(e.target.value)}
+                    />
                     <Field.HelperText>{t("racks.form.codeHelp")}</Field.HelperText>
+                    <CharCount value={code} max={CODE_MAX} testId="rack-code-count" />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("racks.form.name")}</Field.Label>
-                    <Input value={name} data-testid="rack-name" onChange={(e) => setName(e.target.value)} />
+                    <Input
+                      value={name}
+                      maxLength={NAME_MAX}
+                      placeholder={t("racks.form.namePlaceholder")}
+                      data-testid="rack-name"
+                      onChange={(e) => setName(e.target.value)}
+                    />
                     <Field.HelperText>{t("racks.form.nameHelp")}</Field.HelperText>
+                    <CharCount value={name} max={NAME_MAX} testId="rack-name-count" />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("racks.form.description")}</Field.Label>
-                    <Input
+                    <Textarea
+                      rows={2}
                       value={description}
+                      maxLength={DESCRIPTION_MAX}
+                      placeholder={t("racks.form.descriptionPlaceholder")}
                       data-testid="rack-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />
+                    <CharCount value={description} max={DESCRIPTION_MAX} testId="rack-description-count" />
                   </Field.Root>
                 </Stack>
               </Dialog.Body>
@@ -192,6 +180,7 @@ export function RackFormDialog({
                   disabled={!canSave}
                   data-testid="submit-rack"
                 >
+                  <Icon as={editing ? Save : Plus} boxSize="4" />
                   {editing ? t("racks.form.save") : t("racks.form.create")}
                 </Button>
               </Dialog.Footer>

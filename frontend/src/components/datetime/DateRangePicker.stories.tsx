@@ -67,6 +67,39 @@ export const WithADateType: Story = {
   },
 };
 
+// ON A PHONE THE PANEL FITS THE SCREEN (owner: *"ternyata yang tanggal kepotong di mobile"*,
+// a-date-range-panel-fits-a-phone) — stacked: the date types wrap, the quick ranges are a wrapped row over the calendar,
+// and nothing runs off the right edge. Side by side the panes were wider than a phone.
+export const OnAPhoneThePanelFitsTheScreen: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  args: {
+    value: { kind: "relative", days: 7 },
+    fields: [
+      { value: "created", label: "Created" },
+      { value: "arrived", label: "Arrived" },
+      { value: "accepted", label: "Accepted" },
+      { value: "lost", label: "Lost" },
+      { value: "cancelled", label: "Cancelled" },
+    ],
+    field: "created",
+    onFieldChange: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByTestId("range"));
+    const panel = await screen.findByTestId("range-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+
+    const edge = window.innerWidth;
+    for (const id of ["range-panel", "range-field-cancelled", "range-quick-12m", "range-apply"]) {
+      await expect(screen.getByTestId(id).getBoundingClientRect().right).toBeLessThanOrEqual(edge);
+    }
+    // The quick ranges sit over the calendar, not beside it.
+    await expect(screen.getByTestId("range-quick-1").getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      screen.getByTestId("range-apply").getBoundingClientRect().top,
+    );
+  },
+};
+
 // One date type is SHOWN, not offered: the trigger and the panel name it, and there is no radio to pick.
 export const WithOneDateType: Story = {
   args: {

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Box, Button, Flex, Icon, Popover, Portal, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Icon, Popover, Portal, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Calendar, ChevronDown, X } from "lucide-react";
 import { parseLocalDate } from "../../lib/datetime";
@@ -128,6 +128,10 @@ export function DateRangePicker<T extends string | number = string>({
 }: DateRangePickerProps<T>) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
+  // A PHONE GETS THE PANEL STACKED, AT THE SCREEN'S WIDTH (owner: *"ternyata yang tanggal kepotong di mobile"*,
+  // a-date-range-panel-fits-a-phone) — the two panes side by side are ~29rem, wider than a phone, so the quick ranges and
+  // the date types ran off its right edge. A JS breakpoint, as FilterBar's, so one layout mounts.
+  const phone = useBreakpointValue({ base: true, md: false }) ?? false;
   // The absolute pane is a draft: typing in From/To must not fire onChange on every keystroke; it
   // commits on Apply.
   const [draftFrom, setDraftFrom] = useState(value.kind === "absolute" ? value.from : "");
@@ -186,6 +190,78 @@ export function DateRangePicker<T extends string | number = string>({
     setOpen(next);
   }
 
+  // The quick relative ranges — a live window that keeps meaning "the last N days" (or months, or years) — and the clear
+  // back to no bound. A column of buttons beside the calendar; on a phone a wrapped row over it.
+  const quickButtons = (
+    <>
+      {QUICK_RANGES.map((range) => {
+        const active =
+          value.kind === "relative" &&
+          (range.months !== undefined ? value.months === range.months : value.days === range.days);
+        // `7` for days, `3m` for months — a test id per preset.
+        const key = range.months !== undefined ? `${range.months}m` : String(range.days);
+        return (
+          <Button
+            key={key}
+            variant={phone ? (active ? "subtle" : "outline") : active ? "subtle" : "ghost"}
+            colorPalette={active ? "brand" : "gray"}
+            justifyContent="start"
+            size="sm"
+            onClick={() => pickRelative(range)}
+            data-testid={testId ? `${testId}-quick-${key}` : undefined}
+          >
+            {relativeLabel(range, t)}
+          </Button>
+        );
+      })}
+      {/* Clear back to an unbounded window — a filter must be able to return to "no bound". */}
+      {!isAllDates(value) ? (
+        <Button
+          variant="ghost"
+          colorPalette="gray"
+          justifyContent="start"
+          size="sm"
+          mt={phone ? undefined : "1"}
+          color="fg.muted"
+          onClick={() => {
+            onChange(ALL_DATES);
+            setOpen(false);
+          }}
+          data-testid={testId ? `${testId}-clear` : undefined}
+        >
+          <Icon as={X} boxSize="4" />
+          {t("dateRange.clear")}
+        </Button>
+      ) : null}
+    </>
+  );
+
+  // The absolute pane — a calendar range, committed on Apply.
+  const absolutePane = (
+    <>
+      <Flex align="baseline" justify="space-between" gap="3">
+        <Text fontWeight="semibold" fontSize="sm">
+          {t("dateRange.absolute")}
+        </Text>
+        <Text fontSize="xs" color="fg.muted" truncate>
+          {draftLabel()}
+        </Text>
+      </Flex>
+      <RangeCalendar
+        from={draftFrom}
+        to={draftTo}
+        onChange={(from, to) => {
+          setDraftFrom(from);
+          setDraftTo(to);
+        }}
+        testId={testId}
+      />
+      <Button colorPalette="brand" onClick={applyAbsolute} data-testid={testId ? `${testId}-apply` : undefined}>
+        {t("dateRange.apply")}
+      </Button>
+    </>
+  );
+
   return (
     <Popover.Root
       open={open}
@@ -211,7 +287,14 @@ export function DateRangePicker<T extends string | number = string>({
           table below it would otherwise crop the calendar (a filter popover renders above content). */}
       <Portal>
       <Popover.Positioner>
-        <Popover.Content width="auto">
+        <Popover.Content
+          // On a phone: the screen's width less its gutters, and no taller than the room the panel has — it scrolls
+          // inside rather than off the screen.
+          width={phone ? "calc(100vw - 1.5rem)" : "auto"}
+          maxH={phone ? "var(--available-height)" : undefined}
+          overflowY={phone ? "auto" : undefined}
+          data-testid={testId ? `${testId}-panel` : undefined}
+        >
           <Popover.Body p="0">
             {chosen && fields ? (
               // THE DATE ROW — over both panes, answered first. `w="0" minW="full"` keeps the pills from widening the
@@ -244,81 +327,34 @@ export function DateRangePicker<T extends string | number = string>({
                 )}
               </Stack>
             ) : null}
-            <Flex align="stretch">
-              {/* Absolute pane — a calendar range, committed on Apply. */}
-              <Stack gap="card" p="card" minW="72" borderRightWidth="1px" borderColor="border">
-                <Flex align="baseline" justify="space-between" gap="3">
+            {phone ? (
+              // A PHONE: the quick ranges first — one tap, the common answer — wrapped in a row, the calendar under them.
+              <Stack gap="0">
+                <Stack gap="2" p="card" borderBottomWidth="1px" borderColor="border">
                   <Text fontWeight="semibold" fontSize="sm">
-                    {t("dateRange.absolute")}
+                    {t("dateRange.quick")}
                   </Text>
-                  <Text fontSize="xs" color="fg.muted" truncate>
-                    {draftLabel()}
+                  <Flex wrap="wrap" gap="2">
+                    {quickButtons}
+                  </Flex>
+                </Stack>
+                <Stack gap="card" p="card">
+                  {absolutePane}
+                </Stack>
+              </Stack>
+            ) : (
+              <Flex align="stretch">
+                <Stack gap="card" p="card" minW="72" borderRightWidth="1px" borderColor="border">
+                  {absolutePane}
+                </Stack>
+                <Stack gap="1" p="card" minW="44">
+                  <Text fontWeight="semibold" fontSize="sm" mb="1">
+                    {t("dateRange.quick")}
                   </Text>
-                </Flex>
-                <RangeCalendar
-                  from={draftFrom}
-                  to={draftTo}
-                  onChange={(from, to) => {
-                    setDraftFrom(from);
-                    setDraftTo(to);
-                  }}
-                  testId={testId}
-                />
-                <Button
-                  colorPalette="brand"
-                  onClick={applyAbsolute}
-                  data-testid={testId ? `${testId}-apply` : undefined}
-                >
-                  {t("dateRange.apply")}
-                </Button>
-              </Stack>
-
-              {/* Quick relative pane — a live window that keeps meaning "the last N days" (or months, or years). */}
-              <Stack gap="1" p="card" minW="44">
-                <Text fontWeight="semibold" fontSize="sm" mb="1">
-                  {t("dateRange.quick")}
-                </Text>
-                {QUICK_RANGES.map((range) => {
-                  const active =
-                    value.kind === "relative" &&
-                    (range.months !== undefined ? value.months === range.months : value.days === range.days);
-                  // `7` for days, `3m` for months — a test id per preset.
-                  const key = range.months !== undefined ? `${range.months}m` : String(range.days);
-                  return (
-                    <Button
-                      key={key}
-                      variant={active ? "subtle" : "ghost"}
-                      colorPalette={active ? "brand" : "gray"}
-                      justifyContent="start"
-                      size="sm"
-                      onClick={() => pickRelative(range)}
-                      data-testid={testId ? `${testId}-quick-${key}` : undefined}
-                    >
-                      {relativeLabel(range, t)}
-                    </Button>
-                  );
-                })}
-                {/* Clear back to an unbounded window — a filter must be able to return to "no bound". */}
-                {!isAllDates(value) ? (
-                  <Button
-                    variant="ghost"
-                    colorPalette="gray"
-                    justifyContent="start"
-                    size="sm"
-                    mt="1"
-                    color="fg.muted"
-                    onClick={() => {
-                      onChange(ALL_DATES);
-                      setOpen(false);
-                    }}
-                    data-testid={testId ? `${testId}-clear` : undefined}
-                  >
-                    <Icon as={X} boxSize="4" />
-                    {t("dateRange.clear")}
-                  </Button>
-                ) : null}
-              </Stack>
-            </Flex>
+                  {quickButtons}
+                </Stack>
+              </Flex>
+            )}
           </Popover.Body>
         </Popover.Content>
       </Popover.Positioner>

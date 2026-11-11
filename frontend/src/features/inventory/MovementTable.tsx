@@ -7,7 +7,7 @@ import { ActorName } from "../../components/entity/ActorName";
 import { useIsMobile } from "../../layouts/shell";
 import type { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRfc3339DateTimeShort } from "../../lib/datetime";
-import { kindLabel } from "./movementKind";
+import { kindLabel, transactionLabel } from "./movementKind";
 
 // THE stock ledger. One movement reads identically wherever it is shown — a warehouse product's
 // history, a shelf's history, a batch's history — because it is one component, not three copies.
@@ -99,6 +99,13 @@ export interface MovementTableProps {
   /** Used by the `product` column; without it a product shows as `#id`. */
   productLabel?: (productId: bigint) => string;
   striped?: boolean;
+  /**
+   * HOW THE KIND IS SAID. `warehouse` (the default) names what happened at the shelf — Diterima, Diambil — under
+   * *Kegiatan*: the warehouse's own screens. `transaction` names the transaction that moved the stock — Restok, Pesanan —
+   * under *Transaksi*: the product's pages, read by the selling team (owner: *"diterima diambil itu type transaksi
+   * harusnya"*, the-product-history-names-the-transaction).
+   */
+  wording?: "warehouse" | "transaction";
 }
 
 export function MovementTable({
@@ -114,8 +121,10 @@ export function MovementTable({
   warehouseLabel,
   productLabel,
   striped,
+  wording = "warehouse",
 }: MovementTableProps) {
   const { t } = useTranslation();
+  const kindOf = (kind: MovementKind) => (wording === "transaction" ? transactionLabel(t, kind) : kindLabel(t, kind));
   const isMobile = useIsMobile();
   // A reworked screen's ledger — the hint, the lit rows and the phone's lines come together (see `emptyIcon`).
   const reworked = emptyIcon !== undefined;
@@ -186,7 +195,7 @@ export function MovementTable({
             <HStack justify="space-between" gap="2" fontSize="sm">
               <Text truncate minW="0">
                 <Text as="span" fontWeight="bold">
-                  {kindLabel(t, m.kind)}
+                  {kindOf(m.kind)}
                 </Text>
                 {columns.map((c) => (
                   <Text as="span" key={c} color="fg.muted">
@@ -219,7 +228,9 @@ export function MovementTable({
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("inventory.movement.when")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("inventory.movement.what")}</Table.ColumnHeader>
+            <Table.ColumnHeader>
+              {wording === "transaction" ? t("inventory.movement.transaction") : t("inventory.movement.what")}
+            </Table.ColumnHeader>
             {columns.map((c) => (
               <Table.ColumnHeader key={c}>{header[c]}</Table.ColumnHeader>
             ))}
@@ -238,7 +249,7 @@ export function MovementTable({
               css={reworked ? { _hover: { "& > td": { bg: "bg.muted" } } } : undefined}
             >
               <Table.Cell>{formatRfc3339DateTimeShort(m.createdAt)}</Table.Cell>
-              <Table.Cell>{kindLabel(t, m.kind)}</Table.Cell>
+              <Table.Cell>{kindOf(m.kind)}</Table.Cell>
               {columns.map((c) => (
                 <Table.Cell key={c}>{cell(c, m)}</Table.Cell>
               ))}

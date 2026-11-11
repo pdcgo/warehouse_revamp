@@ -70,6 +70,25 @@ export const Mobile: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
+// ON THE NARROWEST PHONE THE STATUS TABS SCROLL SIDEWAYS (a-date-range-panel-fits-a-phone, found beside it) — the row
+// stays inside the screen and scrolls; the last tabs had run past its edge.
+export const OnAPhoneTheTabsScrollSideways: Story = {
+  globals: { viewport: { value: "mobile1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("orders-tab-all", {}, { timeout: 4000 });
+    const row = canvas.getAllByRole("tablist")[0]!;
+
+    await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(row.scrollWidth).toBeGreaterThan(row.clientWidth);
+
+    // …and the table scrolls inside its own box rather than dragging the page sideways.
+    const table = await canvas.findByTestId("orders-table", {}, { timeout: 4000 });
+    await expect(table.parentElement!.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};
+
 // ⚠ THE SCOPE IS THE BUILDING, NOT THE SELLER. Every order shipping from here is here — including
 // the ones belonging to a selling team whose own list this crew can never see — and an order placed
 // by a team it serves is NOT here if the goods leave from somewhere else. Both halves matter: the

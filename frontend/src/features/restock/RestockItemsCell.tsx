@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Span, Stack } from "@chakra-ui/react";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { ProductLinesPopover } from "../../components/products/ProductLinesPopover";
-import type { ProductLine } from "../../components/products/ProductLinesPopover";
+import { ProductLinesDialog } from "../../components/products/ProductLinesDialog";
+import type { ProductLine } from "../../components/products/ProductLinesDialog";
 import { askedQuantity } from "./summary";
 
 // The "what is in this restock" cell, shared by the selling list and the warehouse list (#105/#133).
@@ -11,7 +11,7 @@ import { askedQuantity } from "./summary";
 // many products and how many pieces, the two numbers that decide whether it is a padded envelope or
 // a pallet — and names the first line so a row is still recognisable by its goods.
 //
-// The whole list is one click away behind the shared ProductLinesPopover, which is where the design
+// The whole list is one click away behind the shared ProductLinesDialog, which is where the design
 // of that summary lives; this file's job is only to say what a RESTOCK line is in its terms.
 //
 // `items` is defensively allowed to be empty. The contract requires at least one line, so an empty
@@ -68,7 +68,7 @@ export function RestockItemsCell({
           {first.productCode}
         </Span>
       ) : (
-        <ProductLinesPopover
+        <ProductLinesDialog
           lines={lines}
           showPrices={showPrices}
           label={t("restock.table.firstAndMore", { productCode: first.productCode, count: rest.length })}

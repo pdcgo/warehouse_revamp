@@ -1,4 +1,5 @@
-import { Box, Card, Flex, Separator, SimpleGrid, Stack, Stat, Text } from "@chakra-ui/react";
+import type { ReactNode } from "react";
+import { Box, Card, Grid, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import type { RestockRequest } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -6,28 +7,27 @@ import { ShippingBadge } from "../../../components/badges/ShippingBadge";
 import { TeamItem } from "../../../components/entity/TeamItem";
 import { UserItem } from "../../../components/entity/UserItem";
 import { useRestockActors } from "../../../features/restock/queries";
-import { committedValue, goodsTotal } from "../../../features/restock/summary";
 import { useShipmentChannelsByIds } from "../../../features/shipment/queries";
 import { useTeamDetail } from "../../../features/teams/queries";
-import { formatRupiahNumber } from "../../../lib/money";
+// In the app's language and Jakarta time, never the browser's (a-date-speaks-the-apps-language,
+// a-table-date-is-short-and-every-time-is-wib) — "—" for a date that never happened.
+import { formatUnixDate } from "../../../lib/datetime";
 
-function formatDate(unix: bigint): string {
-  if (unix <= 0n) return "";
-
-  return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-// THE RESTOCK BEING COUNTED, read-only, as three cards (owner): WHO sent it · THE PARCEL it came in · WHAT IT IS WORTH.
-// Everything here is already on the record; the person at the door reads it and types nothing.
+// THE RESTOCK BEING COUNTED, read-only, as two cards: WHO sent it · THE PARCEL it came in. Everything here is already on
+// the record; the person at the door reads it and types nothing.
 //
-// The money card keeps the courier's charge OUT of the total (the-couriers-charge-stays-out-of-total): the total is
-// what the selling team paid when it raised the restock, and the charge the warehouse paid at the door is its own debt,
-// shown on its own line as owed by the selling team.
-export function AcceptSummary({ request, courierCharge }: { request: RestockRequest; courierCharge: number }) {
+// NO VALUE CARD (owner: *"nilai tidak perlu, kecuali ongkir yang dibayar gudang"*,
+// the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid) — the goods, the shipping and the total are the selling team's
+// purchase. The ongkir the warehouse paid is said in the courier's charge section, not here (owner: *"di paket ongkir
+// hilangkan"*, the-cod-paid-is-said-in-its-own-section).
+export function AcceptSummary({
+  request,
+  narrow = false,
+}: {
+  request: RestockRequest;
+  /** In the info column beside the lines — the cards one under another. */
+  narrow?: boolean;
+}) {
   const { t } = useTranslation();
 
   const requester = useTeamDetail({ teamId: request.requestingTeamId, enabled: request.requestingTeamId > 0n });
@@ -38,52 +38,45 @@ export function AcceptSummary({ request, courierCharge }: { request: RestockRequ
 
   return (
     // The 7xl cap is HERE and nowhere else (owner): read-only blocks of short values strung across a wide monitor
-    // read as nothing; the counting below keeps the full width.
-    <SimpleGrid columns={{ base: 1, lg: 3 }} gap="card" maxW="7xl" alignItems="stretch">
-      {/* 1 — WHO. The team that raised it and the person who did — "who do I ask about this?" is the first question a
-          short count produces. */}
+    // read as nothing; the counting keeps the full width. In the info column the column is the cap.
+    <SimpleGrid
+      columns={narrow ? 1 : { base: 1, lg: 2 }}
+      gap={narrow ? "section" : "card"}
+      maxW={narrow ? undefined : "5xl"}
+      alignItems="stretch"
+    >
+      {/* 1 — WHO, SIMPLY (owner: *"id restok, tim dan usernya simpel saja, gambarnya kecil"*): one line each — the
+          restock's number, the team that raised it, the person who did — small avatars, names alone. "Who do I ask about
+          this?" is the first question a short count produces. */}
       <Card.Root>
         <Card.Body>
-          <Stack gap="card">
-            <Stack gap="0.5">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.accept.summary.restock")}
-              </Text>
-              <Text fontSize="lg" fontWeight="bold" data-testid="accept-restock-id">
-                #{request.id.toString()}
-              </Text>
-            </Stack>
+          <Grid templateColumns="auto minmax(0, 1fr)" columnGap="card" rowGap="2" alignItems="center">
+            <FactLabel>{t("restock.accept.summary.restock")}</FactLabel>
+            <Text fontSize="sm" fontWeight="bold" data-testid="accept-restock-id">
+              #{request.id.toString()}
+            </Text>
 
-            <Separator />
-
-            <Stack gap="0.5" data-testid="accept-team">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.accept.summary.team")}
-              </Text>
+            <FactLabel>{t("restock.accept.summary.team")}</FactLabel>
+            <Box minW="0" data-testid="accept-team">
               <TeamItem
-                team={{
-                  teamId: request.requestingTeamId,
-                  teamName: requester.data?.name,
-                  teamType: requester.data?.type,
-                }}
+                size="xs"
+                team={{ teamId: request.requestingTeamId, teamName: requester.data?.name, teamType: requester.data?.type }}
               />
-            </Stack>
+            </Box>
 
-            <Stack gap="0.5" data-testid="accept-created-by">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.accept.summary.raisedBy")}
-              </Text>
+            <FactLabel>{t("restock.accept.summary.raisedBy")}</FactLabel>
+            <Box minW="0" data-testid="accept-created-by">
               {creator ? (
-                <UserItem user={creator} />
+                <UserItem size="xs" user={creator} />
               ) : (
-                <Text color="fg.muted">
+                <Text fontSize="sm" color="fg.muted">
                   {request.createdByUserId === 0n
                     ? "—"
                     : t("restock.table.userRef", { id: request.createdByUserId.toString() })}
                 </Text>
               )}
-            </Stack>
-          </Stack>
+            </Box>
+          </Grid>
         </Card.Body>
       </Card.Root>
 
@@ -102,26 +95,23 @@ export function AcceptSummary({ request, courierCharge }: { request: RestockRequ
                 value={request.receipt || "—"}
                 testId="accept-receipt"
               />
-              <Stack gap="0.5">
-                <Flex gap="1" align="center">
-                  <Text fontSize="xs" color="fg.muted">
-                    {t("restock.accept.summary.courier")}
-                  </Text>
-                </Flex>
-                <Box data-testid="accept-courier-name">
-                  <ShippingBadge code={courier?.code ?? ""} />
-                </Box>
-              </Stack>
               <SummaryField
-                label={t("restock.accept.summary.invoice")}
+                label={t("restock.accept.summary.courier")}
+                value={<ShippingBadge code={courier?.code ?? ""} />}
+                testId="accept-courier-name"
+              />
+              <SummaryField
+                // The store's reference, by the word the selling pages use (the-store-reference-is-the-order-id) — kept on
+                // Terima (terima-keeps-the-order-id).
+                label={t("restock.accept.summary.orderId")}
                 value={request.invoiceRefId || "—"}
                 testId="accept-invoice"
               />
-              <SummaryField label={t("restock.accept.summary.raised")} value={formatDate(request.createdAtUnix) || "—"} />
+              <SummaryField label={t("restock.accept.summary.raised")} value={formatUnixDate(request.createdAtUnix)} />
               {request.arrivedAtUnix > 0n && (
                 <SummaryField
                   label={t("restock.accept.summary.signedFor")}
-                  value={formatDate(request.arrivedAtUnix)}
+                  value={formatUnixDate(request.arrivedAtUnix)}
                   testId="accept-signed-for"
                 />
               )}
@@ -138,57 +128,27 @@ export function AcceptSummary({ request, courierCharge }: { request: RestockRequ
           </Stack>
         </Card.Body>
       </Card.Root>
-
-      {/* 3 — WHAT IT IS WORTH, as Stats: the figures that say whether the invoice in the courier's hand matches. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="xs" fontWeight="bold" color="fg.muted">
-              {t("restock.accept.summary.value")}
-            </Text>
-
-            <SimpleGrid columns={2} gap="card">
-              <Stat.Root size="sm">
-                <Stat.Label>{t("restock.accept.summary.goods")}</Stat.Label>
-                <Stat.ValueText data-testid="accept-goods-total">{formatRupiahNumber(goodsTotal(request.items))}</Stat.ValueText>
-              </Stat.Root>
-
-              <Stat.Root size="sm">
-                <Stat.Label>{t("restock.accept.summary.shipping")}</Stat.Label>
-                <Stat.ValueText data-testid="accept-shipping-total">{formatRupiahNumber(request.shipmentCost)}</Stat.ValueText>
-              </Stat.Root>
-            </SimpleGrid>
-
-            <Stat.Root size="md">
-              <Stat.Label>{t("restock.accept.summary.total")}</Stat.Label>
-              <Stat.ValueText data-testid="accept-grand-total">{formatRupiahNumber(committedValue(request))}</Stat.ValueText>
-              <Stat.HelpText>{t("restock.accept.summary.totalHint")}</Stat.HelpText>
-            </Stat.Root>
-
-            <Separator />
-
-            {/* OUTSIDE the total, on purpose — the warehouse paid it, later, from its own money. */}
-            <Stat.Root size="sm">
-              <Stat.Label>{t("restock.accept.summary.courierOwed")}</Stat.Label>
-              <Stat.ValueText data-testid="accept-courier-owed">{formatRupiahNumber(courierCharge)}</Stat.ValueText>
-              <Stat.HelpText>{t("restock.accept.summary.courierOwedHint")}</Stat.HelpText>
-            </Stat.Root>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
     </SimpleGrid>
   );
 }
 
-function SummaryField({ label, value, testId }: { label: string; value: string; testId?: string }) {
+function FactLabel({ children }: { children: ReactNode }) {
+  return (
+    <Text fontSize="xs" color="fg.muted">
+      {children}
+    </Text>
+  );
+}
+
+function SummaryField({ label, value, testId }: { label: string; value: ReactNode; testId?: string }) {
   return (
     <Stack gap="0.5" minW="0">
       <Text fontSize="xs" color="fg.muted">
         {label}
       </Text>
-      <Text data-testid={testId} wordBreak="break-word">
+      <Box data-testid={testId} wordBreak="break-word">
         {value}
-      </Text>
+      </Box>
     </Stack>
   );
 }

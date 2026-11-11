@@ -58,6 +58,7 @@ export function SummaryCard({
   value,
   line,
   note,
+  keepNote = false,
   muted = false,
   emphasis = false,
   wide = false,
@@ -74,8 +75,14 @@ export function SummaryCard({
   value: ReactNode;
   /** The quiet line under it. */
   line?: ReactNode;
-  /** A second quiet line, under `line` — how the figure is made, where it is not obvious. */
+  /**
+   * A second quiet line, under `line` — how the figure is made, where it is not obvious. NOT DRAWN ON A PHONE
+   * (a-phone-card-shows-no-note): two cards share a row there and a note was always cut mid-word. A figure's own data
+   * belongs in `line`, which a phone keeps.
+   */
   note?: ReactNode;
+  /** The note is DATA, not how the figure is made — a date a phone splits off its count — so a phone keeps it. */
+  keepNote?: boolean;
   /** Grey the figure — a pile the contract cannot count. */
   muted?: boolean;
   /**
@@ -93,6 +100,9 @@ export function SummaryCard({
   double?: boolean;
   testId?: string;
 }) {
+  // A phone drops the note — a JS breakpoint, as the shells read it.
+  const phone = useBreakpointValue({ base: true, md: false }) ?? false;
+
   return (
     // A GREY GROUND AND A THIN LINE (owner: *"background subtle / border tipis"*). `bg.subtle` is white in
     // this theme — the same as the page and the card it sits on — so the card read as an outline only.
@@ -137,7 +147,7 @@ export function SummaryCard({
         </Text>
       )}
 
-      {note !== undefined && (
+      {note !== undefined && (keepNote || !phone) && (
         <Text fontSize="xs" color="fg.subtle" lineClamp={1} data-testid={testId ? `${testId}-note` : undefined}>
           {note}
         </Text>

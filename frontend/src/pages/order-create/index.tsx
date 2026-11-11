@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
+import { useBlocker, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -54,6 +54,8 @@ import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { DatePicker } from "../../components/datetime/DatePicker";
 import { dateTimeInputToUnix, todayDateInput, unixToDateTimeInput } from "../../lib/datetime";
 import { useProductsByIds } from "../../features/products/queries";
+import { usePresetProduct } from "../../features/products/presetProduct";
+import { cameFrom } from "../../lib/cameFrom";
 import { useTeams } from "../../features/teams/queries";
 import type { BundleDraft } from "../../features/orders/form/bundles";
 import { type PickedBundle, bundleFor, bundleLines, fillFor } from "../../features/orders/form/bundles";
@@ -188,6 +190,13 @@ export function OrderCreatePage() {
   const externalDraft = useOrderDraft({ teamId, draftId: externalDraftId });
   const draft = externalDraft.data ?? null;
   const draftMode = externalDraftId > 0n;
+  // OPENED FROM A PRODUCT'S PAGE (a-product-page-opens-the-order-and-restock-forms) — `?product=` starts the form with
+  // that product as its first line, and `&warehouse=` with that warehouse. Never on a draft, which seeds its own.
+  const preset = usePresetProduct(draftMode ? undefined : teamId);
+  const presetMode = !draftMode && preset.productId > 0n;
+  // Where Back and Create return to — the product's page that opened the form, else the order screens as before.
+  const location = useLocation();
+  const openedFrom = cameFrom(location);
   const deleteDrafts = useDeleteOrderDrafts();
   const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(false);
   // What the form held right after it was seeded — the leave-guard's "nothing changed" on a draft.
@@ -209,7 +218,9 @@ export function OrderCreatePage() {
   // the SYSTEM invents would move real goods out of the wrong building; a default the TEAM configured
   // is the team stating where it ships from, and it stays visible and changeable on every order. The
   // server also still refuses an order that names no warehouse, so nothing here can let one through.
-  const [warehouseId, setWarehouseId] = useState<bigint>(0n);
+  // A product page's warehouse lens, when it opened the form with one (a-product-page-opens-the-order-and-restock-forms)
+  // — set before the team's default arrives, so the default (which only fills an untouched field) leaves it alone.
+  const [warehouseId, setWarehouseId] = useState<bigint>(() => (draftMode ? 0n : preset.warehouseId));
   // The courier — a shipment channel id (shipment-channel-is-an-id-into-shipment-service). 0n = none picked; the server
   // refuses an order without one (no-order-without-a-courier).
   const [shipmentChannelId, setShipmentChannelId] = useState<bigint>(0n);
@@ -352,6 +363,17 @@ export function OrderCreatePage() {
       cancelled = true;
     };
   }, [teamId]);
+
+  // SEED FROM THE PRODUCT'S PAGE, once — the product as the first line, quantity 1, as a pick would add it. After this
+  // the form is the person's; its "nothing changed" is the form as seeded, so leaving untouched asks nothing.
+  const seededPreset = useRef<string | null>(null);
+  const [capturePreset, setCapturePreset] = useState(false);
+  useEffect(() => {
+    if (!presetMode || !preset.product || seededPreset.current === preset.productId.toString()) return;
+    seededPreset.current = preset.productId.toString();
+    setLines([{ ...lineFor(preset.product), quantity: preset.quantity }]);
+    setCapturePreset(true);
+  }, [presetMode, preset.product, preset.productId, preset.quantity]);
 
   // SEED FROM THE DRAFT, once per draft — after this the form is the person's. The draft's warehouse wins over the
   // team's default: the app read where this order ships from. A draft the app pushed carries the marketplace's own
@@ -768,7 +790,15 @@ export function OrderCreatePage() {
     deadline,
     buyerUsername,
   });
-  const dirty = draftMode
+  // The preset form's seed, taken on the render after its line went in — what "untouched" means for it.
+  useEffect(() => {
+    if (capturePreset && lines.length > 0) {
+      setSeedSignature(workNow);
+      setCapturePreset(false);
+    }
+  }, [capturePreset, lines.length, workNow]);
+  const dirty =
+    draftMode || presetMode
     ? seedSignature !== null && workNow !== seedSignature
     : customerName.trim() !== "" ||
     customerPhone.trim() !== "" ||
@@ -949,7 +979,8 @@ export function OrderCreatePage() {
       savedRef.current = true;
 
       const id = answer.value.order?.id;
-      void navigate(id ? `/orders/${id}` : "/orders");
+      // Back to the product's page it was opened from (a-product-page-opens-the-order-and-restock-forms); else the order.
+      void navigate(openedFrom ?? (id ? `/orders/${id}` : "/orders"));
       return;
     }
 
@@ -1037,7 +1068,7 @@ export function OrderCreatePage() {
           variant="ghost"
           aria-label="Back"
           data-testid="order-create-back"
-          onClick={() => navigate("/orders")}
+          onClick={() => navigate(openedFrom ?? "/orders")}
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>

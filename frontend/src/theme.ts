@@ -309,10 +309,15 @@ const customConfig = defineConfig({
           size: {
             // A SECTION inside a card — "Customer", "Delivery address".
             sm: { fontSize: "0.9375rem", lineHeight: "1.35", fontWeight: "700" }, // 15px
+            // EVERY TITLE ON A PHONE IS 20px (owner, a restock's title row: *"judul kebesaran di mobile"*, then *"20?"* —
+            // for every page title, `every-phone-title-is-20px`). Below `md` (the phone shell, shell.ts) `md` and `lg` are
+            // one size, so a page's title and its sticky bar's never differ; still above an 18px card title.
+            //
             // The PAGE title — `.page-head h1`. The dominant heading in the app.
-            md: { fontSize: "1.375rem", lineHeight: "1.2", fontWeight: "700" }, // 22px
-            // The rare larger page title.
-            lg: { fontSize: "1.625rem", lineHeight: "1.2", fontWeight: "700" }, // 26px
+            md: { fontSize: { base: "1.25rem", md: "1.375rem" }, lineHeight: "1.2", fontWeight: "700" }, // 20px · 22px
+            // The rare larger page title — a detail page's (a restock, a product, a rack, a batch) — larger ONLY from `md`.
+            // Beside the back arrow and the actions, 26px cut an order id after nine characters.
+            lg: { fontSize: { base: "1.25rem", md: "1.625rem" }, lineHeight: "1.2", fontWeight: "700" }, // 20px · 26px
           },
         },
       },
@@ -503,6 +508,9 @@ const customConfig = defineConfig({
                 "&:has(~ [data-part=indicator])": { "--indicator-thickness": "0px" },
                 _selected: {
                   color: "brand.fg",
+                  // BOLD TOO (owner, on the restock list: *"tab aktif perlu bold"*, then *"lebih baik iya"* for every
+                  // screen; a-selected-tab-is-bold) — the picked tab reads at a glance, not only by its colour.
+                  fontWeight: "bold",
                   _horizontal: { "--indicator-color": "colors.brand.solid" },
                   _vertical: { "--indicator-color": "colors.brand.solid" },
                 },
@@ -594,7 +602,7 @@ const customConfig = defineConfig({
       // Lato ships only 400 and 700 (no 500/600), so the levels are told apart by SIZE and COLOUR,
       // with bold as the single strong weight:
       //
-      //   page title      Heading md          22px  700  fg
+      //   page title      Heading md          22px  700  fg         (20px on a phone, Heading lg too)
       //   card title      Card.Title          18px  700  fg
       //   card subtitle   Card.Description    14px  400  fg.muted
       //   section         Heading sm          15px  700  fg
@@ -606,6 +614,11 @@ const customConfig = defineConfig({
         // Explicit bold: Chakra's `semibold` (600) only BECOMES 700 because Lato has no 600, and a rule
         // that works by accident is one somebody "fixes" into a different weight.
         base: { title: { fontWeight: "bold" } },
+        // A PHONE'S CARD IS PADDED LESS (owner, on Terima: *"padding default kebesaran di mobile"*,
+        // `a-phone-card-is-padded-less`) — Chakra's `md` card pads 24px a side, which on a phone sits inside the shell's
+        // 12px gutter and leaves a field 72px narrower than the screen. Below `md` (the phone shell, shell.ts) it is
+        // Chakra's own `sm` padding, 16px; from `md` the 24px stays. Header, body and footer all read the same variable.
+        variants: { size: { md: { root: { "--card-padding": { base: "spacing.4", md: "spacing.6" } } } } },
       },
       field: {
         base: {

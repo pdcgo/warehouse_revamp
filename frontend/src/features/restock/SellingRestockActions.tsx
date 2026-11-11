@@ -1,8 +1,10 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useCanWrite } from "../team/TeamContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
+  Alert,
   Button,
   Field,
   HStack,
@@ -15,7 +17,7 @@ import {
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { Ban, MoreHorizontal, PackageX, Pencil, PencilLine } from "lucide-react";
+import { Ban, MoreHorizontal, NotebookText, PackageX, Pencil, PencilLine } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
@@ -26,6 +28,9 @@ import { committedValue } from "./summary";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatRupiahNumber } from "../../lib/money";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { fromHere } from "../../lib/cameFrom";
+import { RestockNotesDialog } from "./RestockNotesDialog";
 
 // WHAT THE SELLING TEAM MAY DO TO ITS RESTOCK, BY STATUS — the one matrix both the selling list's row menu and the
 // selling detail's header read (the-warehouse-signs-and-accepts-the-team-does-the-rest):
@@ -38,8 +43,12 @@ import { formatRupiahNumber } from "../../lib/money";
 //                                          applies the arrived rules
 //   accepted · lost · cancelled → nothing  a record of what happened
 //
+// …and, on the list only, Catatan in every status (`withNotes`, the-list-opens-the-notes-in-a-dialog): the notes are
+// read whatever the status, and the selling team's is edited while it is on its way. The restock's page shows them in a
+// section of its own, so it does not offer them.
+//
 // Signing for the box and accepting it are the WAREHOUSE's, and never appear here.
-export type SellingAction = "edit" | "editLines" | "cancel" | "markLost";
+export type SellingAction = "edit" | "editLines" | "cancel" | "markLost" | "notes";
 
 export function sellingActions(status: RestockRequestStatus): SellingAction[] {
   switch (status) {
@@ -57,29 +66,55 @@ const LOOK: Record<SellingAction, { icon: LucideIcon; labelKey: string; slug: st
   editLines: { icon: PencilLine, labelKey: "restock.actions.editLines", slug: "edit-lines" },
   cancel: { icon: Ban, labelKey: "restock.actions.cancel", slug: "cancel", danger: true },
   markLost: { icon: PackageX, labelKey: "restock.actions.markLost", slug: "mark-lost" },
+  notes: { icon: NotebookText, labelKey: "restock.actions.notes", slug: "notes" },
 };
 
 export interface SellingRestockActionsProps {
   request: RestockRequest;
   teamId: bigint;
   /**
-   * `menu` — one ⋯ trigger opening the actions (a list row, a phone header). `buttons` — each action a labelled button
-   * (a desktop header, where there is room to name them).
+   * `menu` — one ⋯ trigger opening the actions (a list row). `buttons` — each action a labelled button (a desktop
+   * header, where there is room to name them). `compact` — a phone header's: each action its icon, past two all of them
+   * in one ⋯ (a-phone-header-action-is-an-icon).
    */
-  variant: "menu" | "buttons";
+  variant: "menu" | "buttons" | "compact";
+  /**
+   * The screen's ⚠ mark for the cancel dialog's warning — nothing checks a cancellation yet
+   * (a-restock-cancel-warns-it-will-be-checked). Each screen numbers it in its own pending list.
+   */
+  cancelReviewMark?: ReactNode;
+  /** Appended to every test id — a second copy of the same actions (a sticky title bar) passes `-sticky`. */
+  idSuffix?: string;
+  /** Offer Catatan, in every status — the list's rows (the-list-opens-the-notes-in-a-dialog). */
+  withNotes?: boolean;
+  /** The screen's ⚠ marks for the notes dialog — who wrote the note, the warehouse's note. */
+  notesMarks?: { sellingBy?: ReactNode; late?: ReactNode; warehouse?: ReactNode };
 }
 
 // The actions, and the two dialogs behind them. Nothing renders when the status allows nothing — a disabled button
 // would offer an act the server can only refuse.
-export function SellingRestockActions({ request, teamId, variant }: SellingRestockActionsProps) {
+export function SellingRestockActions({
+  request,
+  teamId,
+  variant,
+  cancelReviewMark,
+  idSuffix = "",
+  withNotes = false,
+  notesMarks,
+}: SellingRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [dialog, setDialog] = useState<"" | "cancel" | "markLost">("");
-  // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
+  const location = useLocation();
+  const [dialog, setDialog] = useState<"" | "cancel" | "markLost" | "notes">("");
+  // Nothing to change here while the admin team monitors the team (the-admin-team-monitors-read-only) — the notes are
+  // still there to read.
   const writable = useCanWrite();
 
-  const actions = sellingActions(request.status);
-  if (actions.length === 0 || !writable) return null;
+  const actions: SellingAction[] = [
+    ...(writable ? sellingActions(request.status) : []),
+    ...(withNotes ? (["notes"] as const) : []),
+  ];
+  if (actions.length === 0) return null;
 
   const id = request.id.toString();
 
@@ -87,10 +122,12 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
     switch (action) {
       case "edit":
       case "editLines":
-        navigate(`/inventories/restock/${id}/edit`);
+        // The form returns here — the list, filters and all, or the restock's page (a-form-returns-where-it-was-opened).
+        navigate(`/inventories/restock/${id}/edit`, { state: fromHere(location) });
         return;
       case "cancel":
       case "markLost":
+      case "notes":
         setDialog(action);
         return;
     }
@@ -99,14 +136,27 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
 
   return (
     <>
-      {variant === "buttons" ? (
+      {variant === "compact" ? (
+        <CompactActions
+          menuLabel={t("restock.actions.menu")}
+          menuTestId={`restock-actions-${id}${idSuffix}`}
+          actions={actions.map((action) => ({
+            id: action,
+            label: t(LOOK[action].labelKey),
+            icon: LOOK[action].icon,
+            danger: LOOK[action].danger,
+            testId: `restock-action-${LOOK[action].slug}-${id}${idSuffix}`,
+            onClick: () => run(action),
+          }))}
+        />
+      ) : variant === "buttons" ? (
         <HStack gap="2" wrap="wrap">
           {actions.map((action) => (
             <Button
               key={action}
               variant="outline"
               colorPalette={LOOK[action].danger ? "error" : undefined}
-              data-testid={`restock-action-${LOOK[action].slug}-${id}`}
+              data-testid={`restock-action-${LOOK[action].slug}-${id}${idSuffix}`}
               onClick={() => run(action)}
             >
               <Icon as={LOOK[action].icon} boxSize="4" />
@@ -121,7 +171,7 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
               size="xs"
               variant="ghost"
               aria-label={t("restock.actions.menu")}
-              data-testid={`restock-actions-${id}`}
+              data-testid={`restock-actions-${id}${idSuffix}`}
             >
               <Icon as={MoreHorizontal} boxSize="4" />
             </IconButton>
@@ -134,7 +184,7 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
                     key={action}
                     value={action}
                     color={LOOK[action].danger ? "error.fg" : undefined}
-                    data-testid={`restock-action-${LOOK[action].slug}-${id}`}
+                    data-testid={`restock-action-${LOOK[action].slug}-${id}${idSuffix}`}
                     onSelect={() => run(action)}
                   >
                     <Icon as={LOOK[action].icon} boxSize="4" />
@@ -149,10 +199,19 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
 
       {/* Mounted only while open, so each opening starts from an unanswered question. */}
       {dialog === "cancel" && (
-        <CancelRestockDialog request={request} teamId={teamId} onClose={() => setDialog("")} />
+        <CancelRestockDialog request={request} teamId={teamId} reviewMark={cancelReviewMark} onClose={() => setDialog("")} />
       )}
       {dialog === "markLost" && (
         <MarkLostDialog request={request} teamId={teamId} onClose={() => setDialog("")} />
+      )}
+      {dialog === "notes" && (
+        <RestockNotesDialog
+          open
+          onOpenChange={(open) => !open && setDialog("")}
+          teamId={teamId}
+          requestId={request.id}
+          marks={notesMarks}
+        />
       )}
     </>
   );
@@ -163,10 +222,12 @@ export function SellingRestockActions({ request, teamId, variant }: SellingResto
 function CancelRestockDialog({
   request,
   teamId,
+  reviewMark,
   onClose,
 }: {
   request: RestockRequest;
   teamId: bigint;
+  reviewMark?: ReactNode;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -193,6 +254,18 @@ function CancelRestockDialog({
       confirmDisabled={answer === ""}
       onConfirm={confirm}
     >
+      {/* A CANCELLATION IS CHECKED (owner: *"untuk cancel order kasih warning akan diperiksa katanya"*,
+          a-restock-cancel-warns-it-will-be-checked) — said before the confirm, in the warning tone, so nobody cancels
+          thinking it goes unseen. Who checks it, and how, is not on this screen. */}
+      <Alert.Root status="warning" mb="field" data-testid="restock-cancel-review">
+        <Alert.Indicator />
+        <Alert.Title>
+          <HStack gap="1.5">
+            {t("restock.cancel.review")}
+            {reviewMark}
+          </HStack>
+        </Alert.Title>
+      </Alert.Root>
       <Field.Root required>
         <Field.Label>
           <HStack gap="1.5">

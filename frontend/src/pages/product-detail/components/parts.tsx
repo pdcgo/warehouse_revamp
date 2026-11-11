@@ -1,14 +1,11 @@
-import { Box, HStack, Text } from "@chakra-ui/react";
+import { HStack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { TeamSelect } from "../../../components/teams/TeamSelect";
-import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import { formatUnixDate } from "../../../lib/datetime";
 
-// The small shared pieces of the product detail — the two "we do not know yet" renderers, and the
-// warehouse lens. Used by the page's own Info panel and by all three tab panels beside this file,
-// which is what makes them page components rather than one panel's. (The labelled Field and Stat
-// moved to features/products/RecordField once the discover detail needed them too.)
+// The small shared pieces of the product detail — the two "we do not know yet" renderers and a row's hover. Used by
+// the page's own Info panel and by the tab panels beside this file, which is what makes them page components rather
+// than one panel's. (The warehouse lens moved to features/products/WarehouseLens once the discover detail needed it.)
 
 // A figure whose read has not answered yet. It renders as a dash with the reason beside it rather
 // than as a 0: an unknown figure is not a zero one (#74), and a screen that prints Rp 0 where it means
@@ -49,61 +46,5 @@ export function WhenOrNever({ unix }: { unix?: bigint }) {
   return <Text>{formatUnixDate(unix)}</Text>;
 }
 
-// The WAREHOUSE LENS control — ONE on the page, over the figures and every section that is per-warehouse
-// (the-product-page-is-one-page-of-sections); it was one per tab while the page had tabs.
-//
-// The shared TeamSelect restricted to WAREHOUSE teams — the same picker the product list uses, not a
-// second dropdown of this page's own. It carries its own ✕ (every-filter-clears-from-its-own-x), so there is
-// no separate clear button; every option is a warehouse, so the pick reads as its name alone
-// (a-one-type-picker-shows-the-name-alone). The full width of a phone, a field's width beside a heading.
-export function WarehouseFilter({
-  value,
-  onChange,
-  testId,
-}: {
-  value: bigint;
-  onChange: (id: bigint) => void;
-  testId: string;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <Box w={{ base: "full", sm: "16rem" }} data-testid={testId}>
-      <TeamSelect
-        value={value > 0n ? value : undefined}
-        onChange={onChange}
-        teamType={TeamType.WAREHOUSE}
-        showType={false}
-        placeholder={t("products.allWarehouses")}
-      />
-    </Box>
-  );
-}
-
 // A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up); Chakra's `_hover` honours `data-hover`.
 export const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
-
-// Choosing a warehouse RESTATES every figure below as that warehouse's — it does not merely hide
-// rows. Saying so is the point: a stock number that quietly became one building's, while still
-// looking like the total, is the way this screen could lie without a single wrong value on it.
-export function WarehouseNote({
-  warehouseId,
-  warehouseName,
-}: {
-  warehouseId: bigint;
-  warehouseName?: string;
-}) {
-  const { t } = useTranslation();
-
-  if (warehouseId === 0n) {
-    return null;
-  }
-
-  return (
-    <Text fontSize="sm" color="fg.muted" data-testid="pd-warehouse-note">
-      {t("products.detail.warehouseNote", {
-        warehouse: warehouseName || `#${warehouseId}`,
-      })}
-    </Text>
-  );
-}

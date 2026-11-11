@@ -34,6 +34,7 @@ import { formatUnixRelative } from "../../lib/datetime";
 import { canChangeBundle, canCreateBundle } from "../../lib/roles";
 import { AllProductPicker } from "../../components/products/AllProductPicker";
 import type { PickedProduct } from "../../components/products/ProductSelect";
+import { ReadyLine } from "../../components/feedback/ReadyLine";
 import { toaster } from "../../components/feedback/Toaster";
 import { BundleLineCard } from "./components/BundleLineCard";
 
@@ -80,8 +81,8 @@ function CardTitle({ children, aside }: { children: ReactNode; aside?: ReactNode
 //       Created by Ani Rahayu · changed yesterday
 //   LEFT (2/3)                                       RIGHT (1/3)
 //   ┌ Products                  [＋ Add Products] ┐  ┌ Details ─ name, description ┐
-//   │ Beras Pandan Wangi 5kg       Per bundle [1] │  [Save Changes]
-//   │ Gula Pasir 1kg · Toko Kenanga          [2] │  still missing: …
+//   │ Beras Pandan Wangi 5kg       Per bundle [1] │  ⓘ Belum diisi: nama  +1 lainnya
+//   │ Gula Pasir 1kg · Toko Kenanga          [2] │  [Save Changes]
 //   └─────────────────────────────────────────────┘
 //
 // One form for both, because BundleUpdate replaces every field BundleCreate sets.
@@ -371,7 +372,14 @@ export function BundleEditPage() {
             </Card.Root>
 
             {!readOnly && (
-              <>
+              <Stack gap="2">
+                {/* READY, OR THE ONE THING IT WAITS FOR — one line over the button, the rest on asking
+                    (a-save-button-says-what-it-waits-for). It was a list growing under the button. */}
+                <ReadyLine
+                  missing={missing.map((m) => ({ id: m, label: t(`bundles.form.missing.${m}`) }))}
+                  readyLabel={isEdit ? t("readyLine.readySave") : t("readyLine.readyCreate")}
+                  testId="bundle-form"
+                />
                 <Button
                   type="submit"
                   colorPalette="brand"
@@ -381,21 +389,7 @@ export function BundleEditPage() {
                 >
                   {isEdit ? t("bundles.form.saveChanges") : t("bundles.form.create")}
                 </Button>
-
-                {/* A disabled button says nothing about WHY — so what is missing is listed under it. */}
-                {missing.length > 0 && (
-                  <Stack gap="1" data-testid="bundle-form-missing">
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("bundles.form.missing.title")}
-                    </Text>
-                    {missing.map((m) => (
-                      <Text key={m} fontSize="xs" color="fg.muted" data-testid={`bundle-form-missing-${m}`}>
-                        · {t(`bundles.form.missing.${m}`)}
-                      </Text>
-                    ))}
-                  </Stack>
-                )}
-              </>
+              </Stack>
             )}
           </Stack>
         </Flex>

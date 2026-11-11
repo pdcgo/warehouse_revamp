@@ -150,3 +150,24 @@ export const Interactive: Story = {
     await waitFor(() => expect(input).toHaveValue(citra.name));
   },
 };
+
+// OPENED AGAIN AFTER A PICK, IT SHOWS EVERYONE (owner: *"semua combobox kalau sudah select opsinya munculkan semua saat
+// dibuka kembali"*, a-search-select-reopens-whole) — the picked name in the field is not a search.
+export const AReopenedPickerShowsEveryone: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<bigint | undefined>(undefined);
+
+    return <PersonFilterSelect {...args} value={value} onChange={setValue} />;
+  },
+  play: async ({ canvasElement }) => {
+    const input = await open(canvasElement);
+    await userEvent.type(input, "eko", { delay: 40 });
+    const option = await screen.findByTestId(`person-filter-option-${eko.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(input).toHaveValue(eko.name));
+
+    await userEvent.click(input);
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(people.length));
+  },
+};

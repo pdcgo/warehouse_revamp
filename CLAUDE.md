@@ -557,6 +557,7 @@ frontend/    React + TypeScript (Vite), Connect RPC client
 docs/business/    what the business needs — owner-written (HARD RULE 7)
 docs/technical/   how it gets built — owner-written (HARD RULE 7)
 docs/development_state/  how far each context has got — agent-written (HARD RULE 7)
+docs/acceptances/  the owner's Given-When-Then checklist per small feature (see Development lifecycle)
 guidelines/  programmer-authoritative service + code guidelines
 docs/faq/    the team FAQ — every question already asked, with its answer (see below)
 ```
@@ -866,7 +867,7 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
 | `entity/` | 6 | show a product / a team / a shop / a person the same way everywhere |
 | `badges/` | 6 | a status or a kind, in its ONE standard colour |
-| `feedback/` | 5 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ListSkeleton`, `RefreshOverlay`, `Toaster` |
+| `feedback/` | 6 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ListSkeleton`, `ReadyLine` (by a save button: the first thing missing, or ✓ ready), `RefreshOverlay`, `Toaster` |
 | `chrome/` | 9 | app furniture — `FilterBar`, `FilterChips`, `GrowingPager`, `SortableHeader`, `CompactActions` (a phone header's actions), `CopyText`, `Logo`, `Pagination`, `ColorModeToggle` |
 | `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
 | `charts/` | 1 | a graph — `LineGraph`, on Chakra's `@chakra-ui/charts` ([a-chart-is-chakras-chart](docs/technical/frontend/context_decision.md#a-chart-is-chakras-chart)); a screen never draws Recharts itself |
@@ -910,7 +911,8 @@ native element is genuinely needed, get an explicit ask first.
 - **A quantity is [`QuantityInput`](frontend/src/components/inputs/QuantityInput.tsx)** — Chakra's
   NumberInput with a − and a + flanking the box. `<input type="number">` draws the browser's own 15px
   spinners, **changes its value when somebody scrolls past it**, and accepts `1e3`. The value stays a
-  STRING, so a cleared box is empty rather than 0.
+  STRING, so a cleared box is empty rather than 0 — and an empty box SHOWS its minimum (0 or 1) as the
+  placeholder ([a-quantity-field-shows-its-minimum-until-typed](docs/technical/frontend/context_decision.md#a-quantity-field-shows-its-minimum-until-typed)).
 
 **A picker over data that GROWS is a SEARCH SELECT** (owner). Chakra's `Combobox` — a field you type
 into — not a `Select` you scroll. The exception is a set that is **static AND small**: it stays a plain
@@ -938,7 +940,9 @@ list, because searching seven options you can already see in full is a keystroke
 - ⚠ **A search select searches ONLY what is typed** — spread `searchOnlyWhatIsTyped(filter)`
   ([lib/comboboxSearch.ts](frontend/src/lib/comboboxSearch.ts)) on the Root. Filtering on every `onInputValueChange`
   also filters on the picked label the machine writes into the field, so the panel reopens with one option
-  ([a-search-select-reopens-whole](docs/technical/frontend/context_decision.md#a-search-select-reopens-whole)).
+  ([a-search-select-reopens-whole](docs/technical/frontend/context_decision.md#a-search-select-reopens-whole)). That is EVERY
+  combobox, and an unbounded one opens on its first page — `ProductSelect` does
+  ([every-combobox-reopens-whole](docs/technical/frontend/context_decision.md#every-combobox-reopens-whole)).
 - **Clearing emits the "none" sentinel** (`0n`, or `undefined`) — never nothing. #131 again: a field
   that empties while the parent still holds the old id filters on a shop the screen no longer shows.
 
@@ -946,11 +950,13 @@ list, because searching seven options you can already see in full is a keystroke
 not a comment and not a sentence typed into each card. The screen declares a `PendingList` (`{ns, parts}`,
 one `pending.ts` per page); `<NotImplementedSummary list>` renders the folded strip at the top and
 `<NotImplemented list id>` the ⚠ + NUMBER on the control it belongs to. **The number is the position
-in the list**, so a badge and its row cannot drift, and removing an entry removes both. Four kinds,
+in the list**, so a badge and its row cannot drift, and removing an entry removes both. Five kinds,
 and they cost the reader different things: `dropped` (typed and thrown away), `sample` (invented
 figures), `derived` (real figures, unsettled rule), `missing` (not on screen at all, and a total is
-short because of it). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
-`<ns>.pending.<id>.label|reason`.
+short because of it), `interim` (true and working, but read the long way — one call per row until a read for all
+exists, [an-interim-read-is-marked](docs/technical/frontend/context_decision.md#an-interim-read-is-marked)). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
+`<ns>.pending.<id>.label|reason`. A part that goes **against a written business decision** says so in its mark — `conflict: true`, the decision
+in plain words at `<ns>.pending.<id>.conflict` ([a-conflict-with-a-business-decision-is-said-in-its-mark](docs/technical/frontend/context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)).
 
 **The marks can be switched off — in STORYBOOK ONLY** (owner, 2026-09-29). The toolbar's *Pending
 marks* global hides the badges and the strip together, so a layout is reviewable without the
@@ -1036,6 +1042,11 @@ against a real Go server and a real Postgres, while a story pins ONE component w
 A regression in `RackSelect` should fail here in a second, naming the component — not as a mysterious
 timeout in an order-flow spec.
 
+**A big page's stories are folders by the part of the screen** (owner) — `index.stories.tsx` holds Default and Mobile,
+`stories/<Part>.stories.tsx` one part each, `stories/kit.tsx` what they share; every story a short `name`
+([stories-are-grouped-by-the-part-of-the-screen](docs/technical/frontend/context_decision.md#stories-are-grouped-by-the-part-of-the-screen)) — every page over
+15 stories. ⚠ `title` AND `tags` are read statically: write both in each file, never only in the kit's spread.
+
 **Only `Pages/*` stories get the page gutter** (owner) — the shell's own gutter, applied by `preview.tsx` to
 those and to nothing else: `card` (12px) on a phone viewport, as `MobileLayout` has it, and `page` (20px) from
 `md` up, as `DesktopLayout` has it. A page story is framed the way the app frames it while a component
@@ -1076,6 +1087,9 @@ are set. Three things are centralised there on purpose:
   rare (e.g. `size="xs"` on a table row action).
 - **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
   those, never raw spacing values, so the whole app's density is retuned in one place.
+- **A phone's card pads 16px, not 24px** (owner) — the card recipe's `md` size, below `md`
+  ([a-phone-card-is-padded-less](docs/technical/frontend/context_decision.md#a-phone-card-is-padded-less)). Never
+  re-pad a `Card.Body` per screen to get there.
 - **The palette is seven TONES, each a Tailwind colour** (owner): main **rose** (`brand`), primary
   **indigo** (`primary`), success **emerald**, warning **amber**, info **sky**, error **red**,
   plain **gray**. Each tone is a `colorPalette` of its own name, defined once in theme.ts.
@@ -1089,7 +1103,8 @@ are set. Three things are centralised there on purpose:
   told apart by SIZE and COLOUR with bold as the single strong weight: page title 22, card title 18,
   section 15, **field label 13 bold in `fg.label` with a red `*` when required**, helper text 12
   `fg.muted`. It is set on the `heading`, `card` and `field` recipes — ⚠ under `variants.size`, never
-  `sizes`, which Chakra v3 silently ignores.
+  `sizes`, which Chakra v3 silently ignores. **On a phone every title is 20** — the page title (`md`) and a detail
+  page's larger one (`lg`, 26 from `md`) alike ([every-phone-title-is-20px](docs/technical/frontend/context_decision.md#every-phone-title-is-20px)).
 - **Fields react in the main tone, thinly** (owner): hover and focus change the BORDER to
   `border.fieldHover` / `brand.focusRing`, with `focusVisibleRing: "none"` — Chakra's own ring plus a
   border reads as a 2px double line. `FIELD_OUTLINE` is applied by NAME to every recipe that draws a
@@ -1182,6 +1197,13 @@ says how many are not shown and where they live.
 
 **At the end of a pass, write the state report** — `docs/development_state/<big>/<small>.md`. It is
 written for the next agent, not for a person: what exists, what does not, what was decided.
+
+**Acceptances are made semi-automatically, and nothing outside that loop changes them** (owner) —
+[docs/acceptances/guide.md](docs/acceptances/guide.md). A row is written only by discussing one given + when with the
+owner, and a status changes only on the owner's instruction. A code change, a refactor, or an edit to a business or
+technical doc never rewrites a row. When the code disagrees with a then, report it in chat and leave the row alone.
+**An acceptance has no test file of its own:** the agent's check for a then goes in the regression spec of the WHEN's
+feature (create restock → `frontend/e2e/restock.spec.ts`).
 
 ## Git workflow
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Field, Flex, Icon, Input, Popover, Stack, Text } from "@chakra-ui/react";
+import { Button, Field, Flex, Icon, Input, Popover, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Clock, ChevronDown, X } from "lucide-react";
 import { parseLocalDateTime, unixSeconds } from "../../lib/datetime";
@@ -81,6 +81,9 @@ export interface DateTimeRangePickerProps {
 export function DateTimeRangePicker({ value, onChange, disabled, testId }: DateTimeRangePickerProps) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
+  // A PHONE GETS THE PANEL STACKED, AT THE SCREEN'S WIDTH (a-date-range-panel-fits-a-phone) — side by side the panes
+  // are ~28rem, past a phone's edge. A JS breakpoint, so one layout mounts.
+  const phone = useBreakpointValue({ base: true, md: false }) ?? false;
   const [draftFrom, setDraftFrom] = useState(value.kind === "absolute" ? value.from : "");
   const [draftTo, setDraftTo] = useState(value.kind === "absolute" ? value.to : "");
 
@@ -140,11 +143,24 @@ export function DateTimeRangePicker({ value, onChange, disabled, testId }: DateT
       </Popover.Trigger>
 
       <Popover.Positioner>
-        <Popover.Content width="auto">
+        <Popover.Content
+          width={phone ? "calc(100vw - 1.5rem)" : "auto"}
+          maxH={phone ? "var(--available-height)" : undefined}
+          overflowY={phone ? "auto" : undefined}
+          data-testid={testId ? `${testId}-panel` : undefined}
+        >
           <Popover.Body p="0">
-            <Flex align="stretch">
+            {/* On a phone the two panes stack, the window over the quick ranges; beside each other otherwise. */}
+            <Flex align="stretch" direction={phone ? "column" : "row"}>
               {/* Absolute pane — an explicit window with time-of-day, committed on Apply. */}
-              <Stack gap="card" p="card" minW="64" borderRightWidth="1px" borderColor="border">
+              <Stack
+                gap="card"
+                p="card"
+                minW={phone ? undefined : "64"}
+                borderRightWidth={phone ? undefined : "1px"}
+                borderBottomWidth={phone ? "1px" : undefined}
+                borderColor="border"
+              >
                 <Text fontWeight="semibold" fontSize="sm">
                   {t("dateTimeRange.absolute")}
                 </Text>
@@ -178,7 +194,7 @@ export function DateTimeRangePicker({ value, onChange, disabled, testId }: DateT
               </Stack>
 
               {/* Quick relative pane — a live window; the list scrolls because it runs minutes→days. */}
-              <Stack gap="1" p="card" minW="48" maxH="72" overflowY="auto">
+              <Stack gap="1" p="card" minW={phone ? undefined : "48"} maxH={phone ? undefined : "72"} overflowY={phone ? undefined : "auto"}>
                 <Text fontWeight="semibold" fontSize="sm" mb="1">
                   {t("dateTimeRange.quick")}
                 </Text>

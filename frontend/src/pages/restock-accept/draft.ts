@@ -33,6 +33,9 @@ export interface PlacementDraft {
   quantity: string;
 }
 
+/** The two choices for a line's broken units (a-broken-product-may-go-on-a-rack). */
+export type BrokenTo = "discard" | "rack";
+
 export interface LineDraft {
   /** "" = not counted yet, which is NOT 0 — a blank blocks Accept. */
   received: string;
@@ -41,6 +44,18 @@ export interface LineDraft {
   /** The warehouse's optional notes on the broken / missing rows (three-notes-one-writer-each). */
   brokenNote: string;
   missingNote: string;
+  /**
+   * A photo of the broken units — optional, one per line (a-broken-product-carries-a-photo). ⚠ Held on screen only:
+   * the received line has no photo, so it is never sent.
+   */
+  brokenPhoto: File | null;
+  /**
+   * Where the broken units go (a-broken-product-may-go-on-a-rack): thrown away — the default — or put on a rack, which
+   * then needs one. ⚠ Held on screen only: the received line has no place for broken units, so it is never sent.
+   */
+  brokenTo: BrokenTo;
+  /** The placement chosen for the broken units; "" = none yet. */
+  brokenPlace: string;
   placements: PlacementDraft[];
   /**
    * The FIRST row holds whatever the other rows do not — the good units, until the line is split — until somebody
@@ -62,6 +77,9 @@ export function emptyLine(): LineDraft {
     broken: "",
     brokenNote: "",
     missingNote: "",
+    brokenPhoto: null,
+    brokenTo: "discard",
+    brokenPlace: "",
     placements: [{ key: "first", place: "", quantity: "" }],
     firstFollows: true,
   };
@@ -94,6 +112,8 @@ export interface LineState {
   toPlace: bigint;
   needsPlace: boolean;
   duplicate: boolean;
+  /** Broken units put on a rack, and no rack chosen yet (a-broken-product-may-go-on-a-rack). */
+  brokenNeedsPlace: boolean;
   ready: boolean;
 }
 
@@ -146,11 +166,14 @@ export function lineState(item: RestockRequestItem, draft: LineDraft, landed: nu
   const toPlace = relevant ? good - placed : 0n;
   const needsPlace = relevant && rows.some((row) => row.needsPlace);
   const duplicate = relevant && rows.some((row) => row.duplicate);
+  // Put on a rack, the broken units need one — a choice that names no rack is not finished.
+  const brokenNeedsPlace = counted && !brokenOver && broken > 0n && draft.brokenTo === "rack" && draft.brokenPlace === "";
 
   const ready =
     counted &&
     over === 0n &&
     !brokenOver &&
+    !brokenNeedsPlace &&
     (!relevant || (toPlace === 0n && !needsPlace && !duplicate));
 
   return {
@@ -168,12 +191,14 @@ export function lineState(item: RestockRequestItem, draft: LineDraft, landed: nu
     toPlace,
     needsPlace,
     duplicate,
+    brokenNeedsPlace,
     ready,
   };
 }
 
 // The line as RestockRequestReceivedLine — only called once every line is ready, so every number here is one the
-// handler accepts. A note is sent only beside a row it can belong to.
+// handler accepts. A note is sent only beside a row it can belong to. The broken photo and the broken units' rack are
+// NOT — the message has no field for either.
 export function receivedLine(
   item: RestockRequestItem,
   draft: LineDraft,

@@ -114,6 +114,17 @@ export function NotImplementedSummary<Id extends string>({ list }: { list: Pendi
                     <Text as="span" color="fg.subtle">
                       {t(`pending.tag.${part.kind}`)}
                     </Text>
+                    {/* AGAINST A BUSINESS DECISION — said in the row, on a line of its own, so the reader who wonders why
+                        the screen does what a rule forbids finds the answer where the part is explained
+                        (a-conflict-with-a-business-decision-is-said-in-its-mark). */}
+                    {part.conflict && (
+                      <Text as="span" display="block" color="fg.muted" data-testid={`pending-row-${part.id}-conflict`}>
+                        <Text as="span" fontWeight="bold">
+                          {t("pending.conflict")}
+                        </Text>{" "}
+                        {t(`${list.ns}.pending.${part.id}.conflict`)}
+                      </Text>
+                    )}
                   </Text>
                 </Flex>
               ))}

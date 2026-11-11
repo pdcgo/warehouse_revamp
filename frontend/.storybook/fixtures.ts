@@ -225,6 +225,22 @@ export const products = [
   // the four named products above keep the first rows of every page-1 they appear on — a story that
   // ticks product 74 on the "Other" tab would otherwise have to page to find it.
   ...anggrek,
+  // MORE OF TEAM 12'S OWN CATALOGUE — with Beras alone, a restock's picker offered one product and a restock of several
+  // could not be built in a story (owner: *"di halaman ini aku tidak bisa multi produk … maksudku di storynya"*).
+  // After Anggrek, so every row above keeps its place.
+  //
+  // ⚠ THE WHOLE LIST IS 50 NOW, and the discover page's `FiftyPerPageHoldsTheCatalogue` holds it on one page of 50. A
+  // product added past this one is a second page there — change that story with it.
+  {
+    id: 75n, teamId: 12n, productCode: "SKU-TEPUNG-1K", name: "Tepung Terigu 1kg",
+    description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
+    archived: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
+  },
+  {
+    id: 76n, teamId: 12n, productCode: "SKU-KECAP-600", name: "Kecap Manis 600ml",
+    description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
+    archived: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
+  },
 ];
 
 // ── Courier catalogue — shipment_service (docs/business/shipment) ────────────────────────────────

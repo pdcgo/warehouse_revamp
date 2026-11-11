@@ -179,8 +179,9 @@ test("Found: the Admin reports two units on the Adjust dialog — nothing posts,
   await expect(dialog).toBeVisible();
   await dialog.getByTestId("rack-select").click();
   await dialog.getByTestId(`rack-select-option-${state.rakA}`).click();
-  await dialog.getByTestId("adjust-reason-type").selectOption("found");
-  await expect(dialog.getByTestId("adjust-found-waits")).toContainText("Waits for the warehouse Owner or Admin");
+  // The reason is a radio pill, every one on screen (the-adjust-reason-is-a-radio-pill).
+  await dialog.getByTestId("adjust-reason-option-found").click();
+  await expect(dialog.getByTestId("adjust-found-waits")).toContainText("Stock changes once another Owner or Admin");
   await expect(dialog.getByTestId("adjust-batch")).toHaveCount(0);
   await dialog.getByTestId("adjust-amount").fill("2");
   await dialog.getByTestId("adjust-reason").fill("behind the cartons");
@@ -208,8 +209,8 @@ test("Found: the Admin reports two units on the Adjust dialog — nothing posts,
   await page.goto("/inventories/found-stock");
   await expect(page.getByTestId("found-requests-page")).toBeVisible();
   await expect(page.getByTestId("nav-count-/inventories/found-stock")).toHaveText("1");
-  const card = page.getByTestId(`found-request-${state.request}`);
-  await expect(card).toContainText("2 units on");
+  // One request a row (the-found-list-is-a-table): what was found is its own cell.
+  await expect(page.getByTestId(`found-request-units-${state.request}`)).toContainText("2 units");
   await expect(page.getByTestId(`found-request-approve-${state.request}`)).toBeDisabled();
   await expect(page.getByTestId(`found-request-block-${state.request}`)).toContainText("You reported it");
   await expect(page.getByTestId(`found-request-reject-${state.request}`)).toHaveText("Withdraw");

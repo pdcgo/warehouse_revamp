@@ -403,6 +403,34 @@ export function useProductActivity(args: {
   });
 }
 
+// WHAT THE TEAM'S OWN PRODUCT COST IN EACH WAREHOUSE — the discover detail's price per warehouse (owner: *"harga tiap
+// gudang bisa berbeda, dan bisa range juga per gudang"*, each-warehouse-says-ready-and-its-price). OwnerStockByIds in each
+// warehouse's lens, asked once per warehouse as useAvailabilityByWarehouse asks StockAvailability: the fan-out is bounded
+// by the warehouse list, and the answers arrive together, so the table never shows half its prices.
+//
+// The owner's figures — no other team may read them — so the caller asks only for its OWN product (`productId` 0n for
+// anybody else's disables it). A warehouse the read says nothing about stays undefined: unknown, never a zero cost.
+export function useOwnerStockByWarehouse(args: { teamId: bigint | undefined; productId: bigint; warehouseIds: bigint[] }) {
+  const { teamId, productId } = args;
+  const warehouses = Array.from(new Set(args.warehouseIds.map((id) => id.toString()))).sort();
+
+  return useQuery({
+    queryKey: key.products(teamId, { ownerStockOf: productId.toString(), warehouses }),
+    enabled: teamId !== undefined && productId > 0n && warehouses.length > 0,
+    queryFn: async () => {
+      const answers = await Promise.all(
+        warehouses.map((w) =>
+          inventoryClient.ownerStockByIds({ teamId: teamId!, filter: { productIds: [productId], warehouseId: BigInt(w) } }),
+        ),
+      );
+
+      return new Map<string, OwnerStockRow | undefined>(
+        warehouses.map((w, i) => [w, ownerStockFromByIds(answers[i]!).get(productId.toString())]),
+      );
+    },
+  });
+}
+
 // ── The detail page's three ROW-level reads (#232) ──────────────────────────────────────────────
 //
 // Price, Batch and Stock history. Each is its OWN entry rather than one call per tab-switch: the three
@@ -626,7 +654,10 @@ export function useProductSearch(args: {
   return useQuery({
     queryKey: key.products(teamId, { search: q, scope }),
     ...referenceQuery,
-    enabled: q.length >= 2 && teamId > 0n,
+    // Nothing typed is a browse of the first page (a-search-select-reopens-whole), and ONE character is a search
+    // (a-product-picker-needs-no-two-letters). ⚠ Except a warehouse's: its server still refuses fewer than two
+    // characters, so the picker does not ask and says so (ProductSelect, pickerPending.ts).
+    enabled: teamId > 0n && (scope !== "warehouse" || q.length >= 2),
     queryFn: async (): Promise<SearchedProduct[]> => {
       // A warehouse picks only what has had a batch in it — inventory's read, named by product_service on the server. A
       // warehouse role may not call ProductDiscover, and a warehouse never browses every team's catalogue.
@@ -638,12 +669,16 @@ export function useProductSearch(args: {
           page: { page: 1, limit: 10 },
         });
         const found = productsFromWarehouseSearch(res);
-        const owners = await ownerNames(client, found.map((p) => p.teamId));
+        const [owners, covers] = await Promise.all([
+          ownerNames(client, found.map((p) => p.teamId)),
+          coversOf(teamId, found.map((p) => p.id)),
+        ]);
 
         return found.map((p) => ({
           id: p.id,
           productCode: p.productCode,
           name: p.name,
+          imageUrl: covers.get(p.id.toString()) ?? "",
           ownerName: owners[p.teamId.toString()] ?? "",
           archived: p.archived,
         }));
@@ -660,9 +695,39 @@ export function useProductSearch(args: {
           ? await productClient.productDiscover(req)
           : await productClient.productList(req);
 
-      return productsFromList(res.items, res.ids).map((p) => ({ id: p.id, productCode: p.productCode, name: p.name }));
+      return productsFromList(res.items, res.ids).map((p) => ({
+        id: p.id,
+        productCode: p.productCode,
+        name: p.name,
+        imageUrl: p.defaultImageThumbnailUrl || p.defaultImageUrl,
+      }));
     },
   });
+}
+
+// THE COVERS OF A WAREHOUSE SEARCH'S PRODUCTS — the picker shows each option's picture (owner: *"select product ada
+// gambarnya"*, a-product-option-shows-its-picture), and WarehouseProductSearch names a product without one. ONE ProductByIds
+// for the page of options, as a warehouse resolves its shelf (the rack page); best-effort — a failed read leaves the
+// options with the placeholder, never without their names.
+async function coversOf(warehouseId: bigint, ids: bigint[]): Promise<Map<string, string>> {
+  const covers = new Map<string, string>();
+  const wanted = [...new Set(ids.filter((id) => id > 0n))];
+  if (wanted.length === 0) return covers;
+
+  try {
+    const res = await productClient.productByIds({
+      teamId: warehouseId,
+      filter: { ids: wanted },
+      dataRequest: productByIdsRowData(),
+    });
+    for (const p of productsFromByIds(res)) {
+      covers.set(p.id.toString(), p.defaultImageThumbnailUrl || p.defaultImageUrl);
+    }
+  } catch {
+    // The placeholder stands in.
+  }
+
+  return covers;
 }
 
 /** Which catalogue a picker searches: the team's own, every team's, or what this warehouse has held. */
@@ -676,6 +741,8 @@ export interface SearchedProduct {
   id: bigint;
   productCode: string;
   name: string;
+  /** Its cover — the thumbnail, else the full image; "" when it has none (the option shows the placeholder). */
+  imageUrl?: string;
   ownerName?: string;
   archived?: boolean;
 }

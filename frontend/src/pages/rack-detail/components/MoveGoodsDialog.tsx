@@ -11,16 +11,17 @@ import {
   HStack,
   Icon,
   IconButton,
-  Input,
   Portal,
   Spinner,
   Stack,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
-import { Lock, Pencil, Split, Undo2, X } from "lucide-react";
+import { ArrowRightLeft, Lock, Pencil, Split, Undo2, X } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import { toaster } from "../../../components/feedback/Toaster";
+import { CharCount } from "../../../components/inputs/CharCount";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { RackSelect } from "../../../components/pickers/RackSelect";
 import { ProductListItem } from "../../../components/products/ProductListItem";
@@ -427,13 +428,16 @@ export function MoveGoodsDialog({
 
                   <Field.Root>
                     <Field.Label>{t("racks.move.note")}</Field.Label>
-                    <Input
+                    {/* A note is a two-row box, its count against the limit (a-limited-field-shows-its-count). */}
+                    <Textarea
+                      rows={2}
                       value={note}
                       maxLength={500}
                       placeholder={t("racks.move.notePlaceholder")}
                       data-testid="move-note"
                       onChange={(e) => setNote(e.target.value)}
                     />
+                    <CharCount value={note} max={500} testId="move-note-count" />
                   </Field.Root>
 
                   {plan.problems.map((problem) => (
@@ -467,6 +471,7 @@ export function MoveGoodsDialog({
                   loading={move.isPending}
                   data-testid="move-submit"
                 >
+                  <Icon as={ArrowRightLeft} boxSize="4" />
                   {t("racks.move.submit")}
                 </Button>
               </Dialog.Footer>

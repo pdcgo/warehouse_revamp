@@ -23,7 +23,7 @@ import { boolCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../li
 import { type DiscoverFilters, DiscoverFilterGroups, LOCK_FILTERS } from "./components/DiscoverFilterGroups";
 import { DiscoverCard } from "./components/DiscoverCard";
 import { DISCOVER_SORTS, DiscoverSortSelect } from "./components/DiscoverSortSelect";
-import { DIVISION } from "./division";
+import { DIVISION } from "../../features/products/division";
 import { DISCOVER_PENDING } from "./pending";
 import { CUSTOM, NO_RANGE, PRICE_BANDS, type RangePick, STOCK_BANDS, bandCodec, rangeOn } from "./ranges";
 

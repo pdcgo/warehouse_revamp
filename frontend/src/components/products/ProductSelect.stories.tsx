@@ -30,10 +30,9 @@ export const CrossTeamDiscovery: Story = { args: { scope: "all" } };
 
 export const Disabled: Story = { args: { disabled: true } };
 
-// ⚠ Unlike the bounded pickers, this one WITHHOLDS its list until you type — a catalogue grows
-// without limit, so there is no "show me everything" to offer. That is why it has no `openOnClick`
-// while TeamSelect and SupplierSelect do.
-export const BelowTwoCharactersItDoesNotSearch: Story = {
+// ONE LETTER IS A SEARCH (a-product-picker-needs-no-two-letters) — no two-letter minimum: "k" finds Kopi. (With NOTHING
+// typed it lists the first page — below.)
+export const OneLetterSearches: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = canvas.getByRole("combobox");
@@ -41,7 +40,9 @@ export const BelowTwoCharactersItDoesNotSearch: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "k");
 
-    await expect(await screen.findByText("Type at least 2 characters")).toBeInTheDocument();
+    const option = await screen.findByTestId(`product-select-option-${products[0]!.productCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(screen.queryByTestId("product-select-type-two")).toBeNull();
   },
 };
 
@@ -149,6 +150,45 @@ export const Interactive: Story = {
   },
 };
 
+// THE × EMPTIES IT (owner: *"produk close ablenya tidak hilang saat produknya sudah close"*): it says `null` to a caller
+// holding the value, the caller lets go, and the × goes with the product. Swallowed, the field was put back to the old
+// product and the × stayed.
+export const TheClearEmptiesIt: Story = {
+  name: "The × empties it",
+  render: (args) => {
+    const [picked, setPicked] = useState<PickedProduct | null>(null);
+
+    return (
+      <>
+        <ProductSelect {...args} value={picked?.id ?? 0n} onChange={setPicked} />
+        <Text mt="3" fontSize="sm" data-testid="picked">
+          {picked ? picked.name : "(nothing picked)"}
+        </Text>
+      </>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+    const clear = canvas.getByTestId("product-select-clear");
+    await expect(clear).not.toBeVisible();
+
+    await userEvent.click(input);
+    await userEvent.type(input, "kopi", { delay: 20 });
+    const option = await screen.findByTestId(`product-select-option-${products[0]!.productCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent(products[0]!.name));
+    await waitFor(() => expect(clear).toBeVisible());
+
+    // The caller heard `null` and let go — the line under it says so.
+    await userEvent.click(clear);
+    await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent("(nothing picked)"));
+    await waitFor(() => expect(clear).not.toBeVisible());
+    await expect(input).toHaveValue("");
+  },
+};
+
 // INSIDE A MODAL DIALOG the list must not portal: a portalled listbox lands outside the dialog, where the modal makes it
 // inert. `portalled={false}` renders it inline, so it opens and takes a click (the stock count's found-product dialog).
 export const InsideADialog: Story = {
@@ -182,6 +222,35 @@ export const InsideADialog: Story = {
   },
 };
 
+// OPENED WITH NOTHING TYPED IT LISTS THE CATALOGUE'S FIRST PAGE — and OPENED AGAIN AFTER A PICK it lists it again, the
+// picked product among them, not the one picked alone (owner: *"semua combobox kalau sudah select opsinya munculkan semua
+// saat dibuka kembali, selalu bermasalah jika hanya menampilkan satu"*, a-search-select-reopens-whole).
+export const AReopenedPickerShowsTheList: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<bigint | undefined>(undefined);
+
+    return <ProductSelect {...args} value={value} onChange={(p) => setValue(p?.id)} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1), { timeout: 4000 });
+    const browsed = screen.getAllByRole("option").length;
+
+    await userEvent.type(input, "kopi", { delay: 30 });
+    const option = await screen.findByTestId(`product-select-option-${products[0]!.productCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(input).toHaveValue(`${products[0]!.productCode} — ${products[0]!.name}`));
+
+    await userEvent.click(input);
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThanOrEqual(browsed), { timeout: 4000 });
+    await expect(screen.getByTestId(`product-select-option-${products[0]!.productCode}`)).toBeInTheDocument();
+  },
+};
+
 // ── The WAREHOUSE scope (a-warehouse-picks-only-what-it-has-held) ──────────────────────────────────────────────────────
 //
 // What a warehouse screen picks from — Report Found, a count's product plan and its found: ONLY the products with a batch
@@ -202,6 +271,29 @@ export const WarehouseScope: Story = {
     const option = await screen.findByTestId(`product-select-option-${products[2]!.productCode}`);
     await waitFor(() => expect(option).toBeVisible());
     await expect(option).toHaveTextContent("Gula Pasir 1kg · Toko Kenanga");
+  },
+};
+
+// ⚠ OPENED WITH NOTHING TYPED, A WAREHOUSE'S PICKER SAYS TO TYPE TWO LETTERS (a-product-picker-needs-no-two-letters) — its
+// server still refuses fewer, so it does not ask, and the panel says so with its mark instead of "No products found".
+// One letter is still short here; the second lists.
+export const WarehouseScopeOpensWithAHint: Story = {
+  name: "Warehouse, opened empty",
+  args: { scope: "warehouse" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    const hint = await screen.findByTestId("product-select-type-two");
+    await expect(hint).toHaveTextContent("Type at least 2 letters");
+    await expect(within(hint).getByTestId("not-implemented-warehouseOpensEmpty")).toBeVisible();
+    await expect(screen.queryByText("No products found")).toBeNull();
+
+    await userEvent.type(input, "g", { delay: 20 });
+    await expect(screen.getByTestId("product-select-type-two")).toBeInTheDocument();
+    await userEvent.type(input, "u", { delay: 20 });
+    await waitFor(() => expect(screen.getByTestId(`product-select-option-${products[2]!.productCode}`)).toBeVisible());
   },
 };
 
@@ -262,6 +354,29 @@ export const WarehouseScopeOffersAnArchivedProductHeldHere: Story = {
     await waitFor(() => expect(old).toBeVisible());
     await expect(screen.getByTestId("product-select-archived-SL-03-ANG-001-L")).toHaveTextContent("Archived");
     await expect(screen.queryByTestId("product-select-archived-SL-03-ANG-001")).toBeNull();
+  },
+};
+
+// EACH OPTION SHOWS ITS PICTURE (a-product-option-shows-its-picture) — Beras carries a cover, read for the warehouse's
+// options in one ProductByIds; a product with none keeps the package placeholder.
+export const AnOptionShowsItsPicture: Story = {
+  name: "Option picture",
+  args: { scope: "warehouse" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "beras", { delay: 20 });
+
+    const option = await screen.findByTestId(`product-select-option-${products[3]!.productCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await waitFor(() =>
+      expect(within(option).getByTestId(`product-select-image-${products[3]!.productCode}`)).toHaveAttribute(
+        "src",
+        expect.stringMatching(/^data:image/),
+      ),
+    );
   },
 };
 

@@ -110,8 +110,10 @@ import {
   ownerStockSample,
   ownerStockStat,
   productService,
+  shelfSample,
 } from "./productStub";
 import { restockRequestService } from "./restockStub";
+import { batchStubService } from "./batchStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
 import { opnameService } from "./opnameStub";
@@ -1279,6 +1281,8 @@ export const transport = createRouterTransport(({ service }) => {
     ownerCostLayerList: (req) => ownerCostLayerList(req),
     ownerBatchList: (req) => ownerBatchList(req),
     ownerStockHistory: (req) => ownerStockHistory(req),
+    // The warehouse's batches — the Batch list and a batch's page (batchStub.ts).
+    ...batchStubService,
     // What the warehouse HOLDS, paged — the catalogue the order form's picker browses. Note the
     // shape: a flat `items` array of {product_id, available}, NOT the columnar envelope the governed
     // List RPCs use. Inventory answers with the figure the list was built from, so there is no second
@@ -1314,10 +1318,14 @@ export const transport = createRouterTransport(({ service }) => {
     // ⚠ PER WAREHOUSE. The fixture stock is one building's (WAREHOUSE_ID), so any other warehouse
     // answers zeros. Answering every warehouse with the same shelf made a screen that lists several
     // warehouses side by side (the discover detail) show one stock as if it were held twice.
+    // Team 15's catalogue answers from its batches (productStub.ts), in both warehouses; every other product keeps the
+    // fixture shelf rule — only WAREHOUSE_ID holds it.
     stockAvailability: (req) => ({
       items: req.productIds.map((id) => ({
         productId: id,
-        available: req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n,
+        available:
+          shelfSample(id, req.warehouseId) ??
+          (req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n),
       })),
     }),
 
@@ -1450,7 +1458,11 @@ export const transport = createRouterTransport(({ service }) => {
     // The Adjust dialog (features/inventory/AdjustStockDialog): its write, and the batches Damaged and Lost pick from.
     // FOUND is refused here, as on the server — the dialog reports it through FoundRequestCreate (foundRequestStub.ts).
     stockAdjust: (req) => stockAdjust(req),
-    batchList: (req) => batchList(req),
+    // ONE BatchList, TWO READERS: the Adjust dialog asks for ONE PRODUCT's batches (foundRequestStub.ts's register); the
+    // Batch list asks for a warehouse's batches, never by product (batchStub.ts). Both registered under one key, the
+    // later silently answered the Batch list too.
+    batchList: (req, ctx) =>
+      req.filter?.productId ? batchList(req) : batchStubService.batchList!(req, ctx),
 
     // THE WAREHOUSE'S PRODUCT PICKER (a-warehouse-picks-only-what-it-has-held) — Report Found, a count's product plan and
     // its found. ONLY what has had a batch in this warehouse comes back, read off the found and count stubs' registers, and

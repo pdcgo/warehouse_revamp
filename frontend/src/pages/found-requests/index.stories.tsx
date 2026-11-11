@@ -9,7 +9,8 @@ import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { FoundRequestsPage } from "./index";
 
 // FOUND STOCK — the approval list of an-adjust-found-waits-for-the-owner-or-admin. foundRequestStub.ts plays the
-// server's rules (inventory_v1/found_request_*.go).
+// server's rules (inventory_v1/found_request_*.go). A TABLE, one request a row, its note and its posting lines behind a
+// click on the row (the-found-list-is-a-table).
 //
 // Gudang Pusat (11). The signed-in person is Ani, the warehouse Admin here (foundRequestFixtures.ts):
 //
@@ -53,44 +54,105 @@ async function loaded(canvasElement: HTMLElement, first = "found-request-301") {
   return canvas;
 }
 
-const card = (canvas: ReturnType<typeof within>, id: string) => within(canvas.getByTestId(`found-request-${id}`));
+const row = (canvas: ReturnType<typeof within>, id: string) => within(canvas.getByTestId(`found-request-${id}`));
 
-// Waiting first: each request says what was found where, by whom, its note — and what approving it would post.
+const rowIds = (canvas: ReturnType<typeof within>) =>
+  within(canvas.getByTestId("found-requests-list"))
+    .getAllByTestId(/^found-request-\d+$/)
+    .map((el) => el.dataset.testid);
+
+/** Opens a request's Rincian by clicking its row — a dialog on a desktop, a sheet on a phone. */
+async function openDetail(canvas: ReturnType<typeof within>, id: string) {
+  await userEvent.click(canvas.getByTestId(`found-request-${id}`));
+  const detail = await screen.findByTestId("found-detail");
+  await waitFor(() => expect(detail).toBeVisible());
+  return within(detail);
+}
+
+// ONE REQUEST A ROW (the-found-list-is-a-table) — the reference with its status under it, the product with its picture
+// and code, whose goods, what was found where, who reported it, and what approving it would post; Setujui and Tolak at
+// its end. Two lines a row, not a card that opened everything (owner: *"desainnya kok gemuk begini"*).
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     // Newest report first.
-    const order = within(canvas.getByTestId("found-requests-list"))
-      .getAllByTestId(/^found-request-\d+$/)
-      .map((el) => el.dataset.testid);
-    await expect(order).toEqual(["found-request-302", "found-request-301", "found-request-303"]);
+    await expect(rowIds(canvas)).toEqual(["found-request-302", "found-request-301", "found-request-303"]);
 
-    const beras = card(canvas, "301");
-    await expect(beras.getByTestId("found-request-units-301")).toHaveTextContent("4 units on B-02-1");
-    await expect(beras.getByTestId("found-request-reported-301")).toHaveTextContent("Reported by Budi Santoso");
-    await expect(beras.getByTestId("found-request-note-301")).toHaveTextContent("Behind the cartons on the bottom shelf");
-    // The oldest loss first, back into its batch at its price — then the rest minted at the newest price here.
-    await expect(beras.getByTestId("found-request-line-301-0")).toHaveTextContent("#7 · loss #91");
-    await expect(beras.getByTestId("found-request-line-301-0")).toHaveTextContent("Rp 62.000");
-    await expect(beras.getByTestId("found-request-line-301-1")).toHaveTextContent("#9 · loss #95");
-    await expect(beras.getByTestId("found-request-line-301-2")).toHaveTextContent("New batch");
-    await expect(beras.getByTestId("found-request-line-301-2")).toHaveTextContent("Rp 65.000");
+    const beras = row(canvas, "301");
+    // THE PRODUCT AS EVERY LIST SHOWS ONE (the-found-list-follows-the-screen-rules) — its picture, its name, its code to
+    // copy; whose goods they are as the small avatar and the name, no type badge (a-team-of-a-known-type-shows-no-badge).
+    const product = beras.getByTestId("product-list-item-74");
+    await expect(product).toHaveTextContent("Beras Pandan Wangi 5kg");
+    await expect(beras.getByTestId("product-list-item-sku-74")).toHaveTextContent("SKU-BERAS-5K");
+    await waitFor(() => expect(within(product).getByRole("img")).toHaveAttribute("src", expect.stringMatching(/^data:image/)));
+    const owner = beras.getByTestId("found-request-owner-301");
+    await waitFor(() => expect(owner).toHaveTextContent("Toko Melati"));
+    await expect(owner).not.toHaveTextContent("Selling");
+
+    await expect(beras.getByTestId("found-request-units-301")).toHaveTextContent("4 units");
+    await expect(beras.getByTestId("found-request-units-301")).toHaveTextContent("B-02-1");
+    await expect(beras.getByTestId("found-request-reported-301")).toHaveTextContent("Budi Santoso");
     await expect(beras.getByTestId("found-request-claimed-301")).toHaveTextContent("Claimed back Rp 189.000");
     await expect(beras.getByTestId("found-request-minted-301")).toHaveTextContent("New stock Rp 65.000");
     await expect(beras.getByTestId("found-request-approve-301")).toBeEnabled();
+    // The note and the posting lines are the Rincian's, not the row's.
+    await expect(beras.queryByText("Behind the cartons on the bottom shelf")).toBeNull();
+    // Nothing is decided yet, so there is no Decided column.
+    await expect(canvas.queryByRole("columnheader", { name: "Decided" })).toBeNull();
+
+    // A ROW IS A ROW — a product's two lines, never the twelve of the card it replaced.
+    await expect(canvas.getByTestId("found-request-301").getBoundingClientRect().height).toBeLessThan(110);
+
+    // THE TAB ROW DOES NOT SCROLL (the-found-tab-row-never-scrolls) — nothing past its height, so no bar beside the tabs.
+    const tabs = canvas.getByTestId("found-requests-tabs");
+    await expect(getComputedStyle(tabs).overflowY).toBe("hidden");
+    await expect(tabs.scrollWidth).toBeLessThanOrEqual(tabs.clientWidth);
   },
 };
 
-// A phone reads each posting line as a block, not a squeezed table.
+// A PHONE (every-page-has-a-mobile-story) — each request is a block (a-phone-reads-each-line-as-a-block), and its Rincian
+// a sheet from the bottom whose posting lines are blocks too; nothing runs past the screen's edge.
 export const Mobile: Story = {
+  name: "Mobile",
   globals: { viewport: { value: "mobile2" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const beras = card(canvas, "301");
 
-    await expect(beras.getByTestId("found-request-line-301-0")).toHaveTextContent("2 × Rp 62.000");
-    await expect(beras.queryByRole("table")).toBeNull();
+    await expect(canvas.queryByRole("table")).toBeNull();
+    await expect(row(canvas, "301").getByTestId("found-request-units-301")).toHaveTextContent("4 units · B-02-1");
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+
+    const detail = await openDetail(canvas, "301");
+    await expect(detail.getByTestId("found-detail-line-0")).toHaveTextContent("2 × Rp 62.000");
+    await expect(detail.queryByRole("table")).toBeNull();
+  },
+};
+
+// THE RINCIAN — a click on the row opens what it leaves out: the reporter's note, and what approving posts line by line,
+// the oldest loss first back into its batch at its price, then the rest minted at the newest price here. Setujui at its
+// foot shuts it and asks to confirm.
+export const TheRincian: Story = {
+  name: "Rincian",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const detail = await openDetail(canvas, "301");
+    await expect(screen.getByTestId("found-detail")).toHaveTextContent("Found #301 Details");
+    await expect(detail.getByTestId("found-detail-units")).toHaveTextContent("4 units on B-02-1");
+    await expect(detail.getByTestId("found-detail-reported")).toHaveTextContent("Reported by Budi Santoso");
+    await expect(detail.getByTestId("found-detail-note")).toHaveTextContent("Behind the cartons on the bottom shelf");
+    await expect(detail.getByTestId("found-detail-lines")).toHaveTextContent("If approved");
+    await expect(detail.getByTestId("found-detail-line-0")).toHaveTextContent("#7 · loss #91");
+    await expect(detail.getByTestId("found-detail-line-0")).toHaveTextContent("Rp 62.000");
+    await expect(detail.getByTestId("found-detail-line-1")).toHaveTextContent("#9 · loss #95");
+    await expect(detail.getByTestId("found-detail-line-2")).toHaveTextContent("New batch");
+    await expect(detail.getByTestId("found-detail-line-2")).toHaveTextContent("Rp 65.000");
+
+    await userEvent.click(detail.getByTestId("found-detail-approve"));
+    const confirm = await screen.findByRole("alertdialog");
+    await expect(confirm).toHaveTextContent("Approve Found Stock #301");
+    await waitFor(() => expect(screen.queryByTestId("found-detail")).toBeNull());
   },
 };
 
@@ -100,6 +162,8 @@ export const ApproveClaimsTheOldestLossFirst: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("found-request-approve-301"));
+    // A click on the row's button never opens the row.
+    await expect(screen.queryByTestId("found-detail")).toBeNull();
     const dialog = await screen.findByRole("alertdialog");
     await expect(dialog).toHaveTextContent("Approve Found Stock #301");
     await expect(dialog).toHaveTextContent("claimed back Rp 189.000, new stock Rp 65.000");
@@ -108,27 +172,29 @@ export const ApproveClaimsTheOldestLossFirst: Story = {
     await expect(await screen.findByText("Found stock #301 approved — transaction #5100")).toBeInTheDocument();
     await waitFor(() => expect(canvas.queryByTestId("found-request-301")).toBeNull());
 
-    // The history keeps what it posted.
+    // The history keeps who decided, and what it posted.
     await userEvent.click(canvas.getByTestId("found-requests-tab-approved"));
-    const approved = within(await canvas.findByTestId("found-request-301"));
-    await expect(approved.getByTestId("found-request-decided-301")).toHaveTextContent("Approved by Ani Rahayu");
-    await expect(approved.getByTestId("found-request-lines-301")).toHaveTextContent("Posted in transaction #5100");
-    await expect(approved.getByTestId("found-request-line-301-2")).toHaveTextContent("New batch #100");
+    await canvas.findByTestId("found-request-301");
+    await expect(row(canvas, "301").getByTestId("found-request-decided-301")).toHaveTextContent("Ani Rahayu");
+    const detail = await openDetail(canvas, "301");
+    await expect(detail.getByTestId("found-detail-decided")).toHaveTextContent("Approved by Ani Rahayu");
+    await expect(detail.getByTestId("found-detail-lines")).toHaveTextContent("Posted in transaction #5100");
+    await expect(detail.getByTestId("found-detail-line-2")).toHaveTextContent("New batch #100");
   },
 };
 
-// The person who reported it never approves it — checked against the person, not the role. Approve is off, and says why.
-// They may WITHDRAW it (the-reporter-may-withdraw-their-found): a rejection with a reason, said as theirs.
+// The person who reported it never approves it — checked against the person, not the role. Approve is off, and says why,
+// under it. They may WITHDRAW it (the-reporter-may-withdraw-their-found): a rejection with a reason, said as theirs.
 export const TheReporterCannotApproveButMayWithdraw: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const own = card(canvas, "302");
+    const own = row(canvas, "302");
 
     await expect(own.getByTestId("found-request-approve-302")).toBeDisabled();
     await expect(own.getByTestId("found-request-block-302")).toHaveTextContent(
       "You reported it — another Owner or Admin approves it.",
     );
-    // Clicking the disabled button reaches nothing.
+    // Clicking the disabled button reaches nothing — neither the write nor the row.
     await userEvent.click(own.getByTestId("found-request-approve-302"), { pointerEventsCheck: 0 });
     await expect(screen.queryByRole("alertdialog")).toBeNull();
 
@@ -143,9 +209,10 @@ export const TheReporterCannotApproveButMayWithdraw: Story = {
 
     await expect(await screen.findByText("Found stock #302 withdrawn")).toBeInTheDocument();
     await userEvent.click(canvas.getByTestId("found-requests-tab-rejected"));
-    const withdrawn = within(await canvas.findByTestId("found-request-302"));
+    await canvas.findByTestId("found-request-302");
+    const withdrawn = row(canvas, "302");
     await expect(withdrawn.getByTestId(`found-request-status-${FoundRequestStatus.REJECTED}`)).toHaveTextContent("Withdrawn");
-    await expect(withdrawn.getByTestId("found-request-decided-302")).toHaveTextContent("Withdrawn by Ani Rahayu");
+    await expect(withdrawn.getByTestId("found-request-decided-302")).toHaveTextContent("Ani Rahayu");
   },
 };
 
@@ -153,7 +220,7 @@ export const TheReporterCannotApproveButMayWithdraw: Story = {
 export const ACountedProductWaitsForTheCount: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const counted = card(canvas, "303");
+    const counted = row(canvas, "303");
 
     await expect(counted.getByTestId("found-request-approve-303")).toBeDisabled();
     await expect(counted.getByTestId("found-request-block-303")).toHaveTextContent(
@@ -180,10 +247,12 @@ export const RejectNeedsAReason: Story = {
     await expect(await screen.findByText("Found stock #301 rejected")).toBeInTheDocument();
     await waitFor(() => expect(canvas.queryByTestId("found-request-301")).toBeNull());
 
+    // A rejected row shows why, where an approved one shows its money — and posts nothing.
     await userEvent.click(canvas.getByTestId("found-requests-tab-rejected"));
-    const rejected = within(await canvas.findByTestId("found-request-301"));
+    await canvas.findByTestId("found-request-301");
+    const rejected = row(canvas, "301");
     await expect(rejected.getByTestId("found-request-reject-reason-301")).toHaveTextContent("Why: Order parcel, not stock");
-    await expect(rejected.queryByTestId("found-request-lines-301")).toBeNull();
+    await expect(rejected.queryByTestId("found-request-claimed-301")).toBeNull();
   },
 };
 
@@ -194,31 +263,42 @@ export const TheHistory: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("found-requests-tab-approved"));
-    const approved = within(await canvas.findByTestId("found-request-290"));
-    await expect(approved.getByTestId("found-request-lines-290")).toHaveTextContent("Posted in transaction #4810");
-    await expect(approved.getByTestId("found-request-decided-290")).toHaveTextContent("Approved by Dewi Lestari");
-    await expect(approved.queryByTestId("found-request-approve-290")).toBeNull();
+    await canvas.findByTestId("found-request-290");
+    await expect(row(canvas, "290").getByTestId("found-request-decided-290")).toHaveTextContent("Dewi Lestari");
+    await expect(row(canvas, "290").queryByTestId("found-request-approve-290")).toBeNull();
+    await expect(canvas.getByRole("columnheader", { name: "Decided" })).toBeInTheDocument();
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("?status=approved"));
+    const approved = await openDetail(canvas, "290");
+    await expect(approved.getByTestId("found-detail-lines")).toHaveTextContent("Posted in transaction #4810");
+    await expect(approved.queryByTestId("found-detail-approve")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("found-detail")).toBeNull());
 
     await userEvent.click(canvas.getByTestId("found-requests-tab-rejected"));
-    const rejected = within(await canvas.findByTestId("found-request-285"));
-    await expect(rejected.getByTestId("found-request-reject-reason-285")).toHaveTextContent("Order #900's parcel");
-    await expect(rejected.queryByTestId("found-request-reject-285")).toBeNull();
+    await canvas.findByTestId("found-request-285");
+    await expect(row(canvas, "285").getByTestId("found-request-reject-reason-285")).toHaveTextContent("Order #900's parcel");
+    await expect(row(canvas, "285").queryByTestId("found-request-reject-285")).toBeNull();
     // A reporter's own rejection reads as their withdrawal.
-    await expect(canvas.getByTestId("found-request-decided-288")).toHaveTextContent("Withdrawn by Ani Rahayu");
+    await expect(row(canvas, "288").getByTestId(`found-request-status-${FoundRequestStatus.REJECTED}`)).toHaveTextContent(
+      "Withdrawn",
+    );
+    await expect(row(canvas, "288").getByTestId("found-request-decided-288")).toHaveTextContent("Ani Rahayu");
 
     // Under All, the one a stock count settled names the count and links to it (a-count-settles-the-found-it-counted).
     await userEvent.click(canvas.getByTestId("found-requests-tab-all"));
-    const settled = within(await canvas.findByTestId("found-request-286"));
+    await canvas.findByTestId("found-request-286");
+    const settled = row(canvas, "286");
     await expect(settled.getByTestId(`found-request-status-${FoundRequestStatus.SETTLED_BY_COUNT}`)).toHaveTextContent(
       "Settled by count",
     );
     const link = settled.getByTestId("found-request-settled-link-286");
     await expect(link).toHaveTextContent("Settled by count #12");
     await expect(link).toHaveAttribute("href", "/inventories/opname/sessions/12");
-    await expect(settled.getByTestId("found-request-decided-286")).toHaveTextContent("Closed by Dewi Lestari's finalize");
-    await expect(settled.queryByTestId("found-request-lines-286")).toBeNull();
-    await expect(settled.queryByTestId("found-request-approve-286")).toBeNull();
+    const detail = await openDetail(canvas, "286");
+    await expect(detail.getByTestId("found-detail-decided")).toHaveTextContent("Closed by Dewi Lestari's finalize");
+    await expect(detail.getByTestId("found-detail-settled-link")).toHaveAttribute("href", "/inventories/opname/sessions/12");
+    await expect(detail.queryByTestId("found-detail-lines")).toBeNull();
+    await expect(detail.queryByTestId("found-detail-approve")).toBeNull();
   },
 };
 
@@ -234,15 +314,22 @@ export const NothingWaiting: Story = {
   },
 };
 
-// The admin team monitors read-only: every request and what it would post, and no Approve or Reject.
+// The admin team monitors read-only: every request and what it would post, and no Approve or Reject — not on the row, not
+// in the Rincian, and no Actions column.
 export const AMonitorDecidesNothing: Story = {
   beforeEach: asAdminTeam(),
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("found-request-lines-301")).toBeInTheDocument();
+    await expect(canvas.getByTestId("found-request-claimed-301")).toBeInTheDocument();
     await expect(canvas.queryByTestId("found-request-approve-301")).toBeNull();
     await expect(canvas.queryByTestId("found-request-reject-301")).toBeNull();
+    await expect(canvas.queryByRole("columnheader", { name: "Actions" })).toBeNull();
+
+    const detail = await openDetail(canvas, "301");
+    await expect(detail.getByTestId("found-detail-lines")).toBeInTheDocument();
+    await expect(screen.queryByTestId("found-detail-approve")).toBeNull();
+    await expect(screen.queryByTestId("found-detail-reject")).toBeNull();
   },
 };
 
@@ -253,12 +340,9 @@ export const StaffSeeAndWithdrawTheirOwn: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, "found-request-302");
 
-    const order = within(canvas.getByTestId("found-requests-list"))
-      .getAllByTestId(/^found-request-\d+$/)
-      .map((el) => el.dataset.testid);
-    await expect(order).toEqual(["found-request-302"]);
+    await expect(rowIds(canvas)).toEqual(["found-request-302"]);
 
-    const own = card(canvas, "302");
+    const own = row(canvas, "302");
     await expect(own.queryByTestId("found-request-approve-302")).toBeNull();
     await userEvent.click(own.getByTestId("found-request-reject-302"));
     const dialog = await screen.findByRole("alertdialog");
@@ -270,13 +354,7 @@ export const StaffSeeAndWithdrawTheirOwn: Story = {
 
     // Their history is their own too: the two Ani reported, nobody else's.
     await userEvent.click(canvas.getByTestId("found-requests-tab-all"));
-    await waitFor(() =>
-      expect(
-        within(canvas.getByTestId("found-requests-list"))
-          .getAllByTestId(/^found-request-\d+$/)
-          .map((el) => el.dataset.testid),
-      ).toEqual(["found-request-302", "found-request-288"]),
-    );
+    await waitFor(() => expect(rowIds(canvas)).toEqual(["found-request-302", "found-request-288"]));
   },
 };
 

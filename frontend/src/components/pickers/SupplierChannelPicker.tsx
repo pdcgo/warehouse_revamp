@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
+  Box,
   Button,
   CloseButton,
   Dialog,
@@ -26,7 +27,7 @@ import { type DiscoverSupplier, useDiscoverSupplier, useDiscoverSuppliers } from
 import { useSupplierChannels } from "../../features/suppliers/queries";
 import { useDebounced } from "../../lib/useDebounced";
 import { MarketplaceBadge } from "../badges/MarketplaceBadge";
-import { Pagination } from "../chrome/Pagination";
+import { GrowingPager } from "../chrome/GrowingPager";
 import { RefreshOverlay } from "../feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
 
@@ -55,7 +56,7 @@ const PAGE_SIZE = 8;
 const NO_STORE = "none";
 
 export const description =
-  "Dialog that connects something to ANY team's supplier and, optionally, one of its stores (a-line-connects-to-any-teams-supplier-from-a-popup). Searches every team's suppliers on the server, debounced; each row shows the supplier, the team that keeps it and how many live stores it has. Picking a supplier lists its live stores (marketplace badge + name) plus an explicit \"No store — bought offline\" choice, pre-chosen when the supplier has no store at all. Connect emits { supplierId, supplierChannelId } — 0n for no store; Cancel emits nothing.";
+  "Dialog that connects something to ANY team's supplier and, optionally, one of its stores (a-line-connects-to-any-teams-supplier-from-a-popup). Searches every team's suppliers on the server, debounced; each row shows the supplier, the team that keeps it and how many live stores it has. Picking a supplier lists its live stores (marketplace badge + name) plus an explicit \"No store — bought offline\" choice, pre-chosen when the supplier has no store at all. Connect emits { supplierId, supplierChannelId } — 0n for no store; Cancel emits nothing. The dialog keeps one height and only its lists scroll (a-picker-dialog-keeps-its-height); the suppliers page with one number, ‹ [2] › (a-dialog-pager-is-one-number).";
 
 // SupplierChannelPicker — WHERE SOMETHING WAS BOUGHT, picked from every team's suppliers.
 //
@@ -304,6 +305,26 @@ export function SupplierChannelPicker({
     );
   }
 
+  const columnHeading = (label: string) => (
+    <Text fontSize="sm" fontWeight="bold" color="fg.label">
+      {label}
+    </Text>
+  );
+
+  // ONE NUMBER, ALWAYS ON SCREEN (a-dialog-pager-is-one-number, the-pager-is-always-on-screen) — ‹ [2] ›; a new search
+  // starts it over.
+  const pager = (
+    <GrowingPager
+      compact
+      page={page}
+      onPageChange={setPage}
+      hasNext={suppliers.isFetching ? undefined : page * PAGE_SIZE < totalItems}
+      resetKey={term}
+      pageSize={PAGE_SIZE}
+      testId={`${testId}-pager`}
+    />
+  );
+
   return (
     <Dialog.Root
       open={open}
@@ -326,13 +347,16 @@ export function SupplierChannelPicker({
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content data-testid={`${testId}-dialog`}>
+          {/* A FIXED HEIGHT, AND ONLY THE LISTS SCROLL (a-picker-dialog-keeps-its-height — owner, on the restock form:
+              *"ingat, buat modal heightnya fix kalau bentuknya select, ini supplier tidak fix, tidak konsisten"*). It
+              grew and shrank with each search and each supplier's stores, moving Connect from under the pointer. */}
+          <Dialog.Content data-testid={`${testId}-dialog`} h="min(88dvh, 48rem)">
             <Dialog.Header>
               <Dialog.Title>{t("restock.supplierPicker.title")}</Dialog.Title>
             </Dialog.Header>
 
-            <Dialog.Body>
-              <Stack gap="card">
+            <Dialog.Body display="flex" flexDirection="column" minH="0" overflow="hidden">
+              <Stack gap="card" flex="1" minH="0">
                 <InputGroup startElement={<Icon as={Search} boxSize="4" />}>
                   <Input
                     value={q}
@@ -347,26 +371,42 @@ export function SupplierChannelPicker({
                   />
                 </InputGroup>
 
-                {/* Side by side from `md` — the supplier and its stores read as one decision. Stacked on a phone,
-                    where the stores follow the supplier they belong to. */}
-                <SimpleGrid columns={{ base: 1, md: 2 }} gap="section" alignItems="start">
-                  <Stack gap="2" minW="0">
-                    <Text fontSize="sm" fontWeight="bold" color="fg.label">
-                      {t("restock.supplierPicker.supplier")}
-                    </Text>
-                    {supplierList()}
-                    {totalItems > PAGE_SIZE && (
-                      <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
-                    )}
-                  </Stack>
+                {/* Side by side from `md` — the supplier and its stores read as one decision, each column its own
+                    scroller under a heading that stays, the pager pinned under the suppliers. Stacked on a phone, where
+                    the stores follow the supplier they belong to in ONE scroller. Either way the scroller is pulled out
+                    through the body's padding, so its bar rides the dialog's edge (layerStyle scrollList). */}
+                {isMobile ? (
+                  <Box flex="1" minH="0" layerStyle="scrollList" me="-6" pe="6" data-testid={`${testId}-scroll`}>
+                    <Stack gap="section">
+                      <Stack gap="2" minW="0">
+                        {columnHeading(t("restock.supplierPicker.supplier"))}
+                        {supplierList()}
+                        {pager}
+                      </Stack>
+                      <Stack gap="2" minW="0" ref={storesRef}>
+                        {columnHeading(t("restock.supplierPicker.store"))}
+                        {storeList()}
+                      </Stack>
+                    </Stack>
+                  </Box>
+                ) : (
+                  <SimpleGrid columns={2} gap="section" flex="1" minH="0" gridTemplateRows="minmax(0, 1fr)">
+                    <Stack gap="2" minW="0" minH="0">
+                      {columnHeading(t("restock.supplierPicker.supplier"))}
+                      <Box flex="1" minH="0" layerStyle="scrollList" data-testid={`${testId}-scroll`}>
+                        {supplierList()}
+                      </Box>
+                      {pager}
+                    </Stack>
 
-                  <Stack gap="2" minW="0" ref={storesRef}>
-                    <Text fontSize="sm" fontWeight="bold" color="fg.label">
-                      {t("restock.supplierPicker.store")}
-                    </Text>
-                    {storeList()}
-                  </Stack>
-                </SimpleGrid>
+                    <Stack gap="2" minW="0" minH="0" ref={storesRef}>
+                      {columnHeading(t("restock.supplierPicker.store"))}
+                      <Box flex="1" minH="0" layerStyle="scrollList" me="-6" pe="6">
+                        {storeList()}
+                      </Box>
+                    </Stack>
+                  </SimpleGrid>
+                )}
               </Stack>
             </Dialog.Body>
 

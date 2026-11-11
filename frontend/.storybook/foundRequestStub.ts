@@ -367,7 +367,7 @@ export function batchList(req: { teamId: bigint; filter?: { productId: bigint } 
           case: "batch" as const,
           value: {
             mapData: Object.fromEntries(
-              its.map((b) => [b.id.toString(), { id: b.id, deliveryId: b.id + 1000n, productId: b.productId, unitCost: b.priceUnit, costKnown: true, ready: 3n }]),
+              its.map((b) => [b.id.toString(), { id: b.id, deliveryId: b.id + 1000n, productId: b.productId, unitCost: Number(b.priceUnit), costKnown: true, ready: 3n }]),
             ),
           },
         },

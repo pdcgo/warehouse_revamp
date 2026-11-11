@@ -1,13 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { Span, Stack } from "@chakra-ui/react";
 import type { WarehouseTransferItem } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
-import { ProductLinesPopover } from "../../components/products/ProductLinesPopover";
-import type { ProductLine } from "../../components/products/ProductLinesPopover";
+import { ProductLinesDialog } from "../../components/products/ProductLinesDialog";
+import type { ProductLine } from "../../components/products/ProductLinesDialog";
 import { unitsSent } from "./summary";
 
 // The "what is in this transfer" cell, shared by both transfer lists. It leads with the size of the box — how many
 // products and how many pieces — and names the first line, with the whole list one click away in the shared
-// ProductLinesPopover. One line per product (a-product-appears-once-per-transfer), so a product never repeats here.
+// ProductLinesDialog. One line per product (a-product-appears-once-per-transfer), so a product never repeats here.
 export function TransferItemsCell({
   items,
   showPrices = true,
@@ -49,7 +49,7 @@ export function TransferItemsCell({
           {first.productCode}
         </Span>
       ) : (
-        <ProductLinesPopover
+        <ProductLinesDialog
           lines={lines}
           showPrices={showPrices}
           label={t("warehouseTransfer.table.firstAndMore", { productCode: first.productCode, count: rest.length })}

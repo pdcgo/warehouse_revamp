@@ -54,6 +54,24 @@ export function daysSinceUnix(unix: bigint): number {
   return jakartaDaysSince(unix);
 }
 
+/**
+ * CALENDAR DAYS FROM TODAY TO `unix`, on Jakarta's calendar — signed: 18 is eighteen days ahead, 0 today, -3 three days
+ * past. For a limit coming up (an expiry, an-expiry-says-how-long-is-left): every reader counts from the same day,
+ * whatever their machine's zone (a-table-date-is-short-and-every-time-is-wib).
+ */
+export function daysUntilUnix(unix: bigint): number {
+  const dayNumber = (at: Date) => {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: APP_TIME_ZONE })
+        .formatToParts(at)
+        .map((x) => [x.type, x.value]),
+    );
+    return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)) / 86_400_000;
+  };
+
+  return dayNumber(new Date(Number(unix) * 1000)) - dayNumber(new Date());
+}
+
 /** A `<input type="date">` value (`yyyy-mm-dd`) parsed at LOCAL midnight. `""`/malformed → null. */
 export function parseLocalDate(s: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
@@ -255,6 +273,26 @@ export function formatUnixDateTimeShort(unix: bigint): string {
   if (unix <= 0n) return "—";
 
   return shortDateTime(new Date(Number(unix) * 1000));
+}
+
+/**
+ * A table cell's DAY, no clock — `29 Okt`, the year only when it is not this year — for a date whose time means nothing
+ * (an expiry). The short form of {@link formatUnixDate}, as {@link formatUnixDateTimeShort} is of the full date and time
+ * (a-table-date-is-short-and-every-time-is-wib). `0n` and below render as an em dash.
+ */
+export function formatUnixDateShort(unix: bigint): string {
+  if (unix <= 0n) return "—";
+
+  const day = (at: Date) =>
+    Object.fromEntries(
+      new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: APP_TIME_ZONE })
+        .formatToParts(at)
+        .map((p) => [p.type, p.value]),
+    );
+  const p = day(new Date(Number(unix) * 1000));
+  const year = p.year !== day(new Date()).year ? ` ${p.year}` : "";
+
+  return `${p.day} ${p.month}${year}`;
 }
 
 /** {@link formatUnixDateTimeShort} for an RFC3339 string, with {@link formatRfc3339DateTime}'s fallbacks. */

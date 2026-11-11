@@ -74,14 +74,34 @@ export function routedPage(routes: RouteObject[], initialEntry: StoryEntry) {
 /**
  * The router's query string, on screen — what a story reads to see a filter written to the URL
  * (a-lists-filters-live-in-the-url). Place it beside the page in the route's element.
+ *
+ * `hidden` keeps it for the test and off the screen being reviewed — a `?ids=503,502` under the page reads as the page's
+ * own text (owner, on Cetak Label: *"ada ids di bawah options?"*). It is still in the DOM, so `toHaveTextContent` reads it.
  */
-export function LocationProbe() {
+export function LocationProbe({ hidden = false }: { hidden?: boolean }) {
   const { search } = useLocation();
-  return <Text data-testid="location-search">{search}</Text>;
+  return (
+    <Text data-testid="location-search" srOnly={hidden || undefined}>
+      {search}
+    </Text>
+  );
 }
 
 export function marker(path: string, testId: string): RouteObject {
   return { path, element: <Text data-testid={testId}>{testId}</Text> };
+}
+
+/** A marker that also says the QUERY it was reached with (`location-search`) — for a page that opens a form preset by it. */
+export function markerWithSearch(path: string, testId: string): RouteObject {
+  return {
+    path,
+    element: (
+      <>
+        <Text data-testid={testId}>{testId}</Text>
+        <LocationProbe />
+      </>
+    ),
+  };
 }
 
 // ── Picking a team in a filter ──────────────────────────────────────────────────────────────────

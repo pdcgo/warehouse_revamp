@@ -30,6 +30,33 @@ export function kindLabel(t: ReturnType<typeof useTranslation>["t"], kind: Movem
   }
 }
 
+// THE SAME KINDS, SAID AS THE TRANSACTION THAT MOVED THE STOCK — Restok, Pesanan, Transfer, Penyesuaian, Retur — for the
+// product's pages, read by the selling team (owner: *"diterima diambil itu type transaksi harusnya"*,
+// the-product-history-names-the-transaction). The warehouse's screens keep `kindLabel`: there the shelf's work is the
+// point. One switch beside the other, so a kind added to one is not missed in the other.
+export function transactionLabel(t: ReturnType<typeof useTranslation>["t"], kind: MovementKind): string {
+  switch (kind) {
+    case MovementKind.RECEIVE:
+      return t("inventory.transaction.restock");
+    case MovementKind.PICK:
+      return t("inventory.transaction.order");
+    case MovementKind.TRANSFER_IN:
+      return t("inventory.transaction.transferIn");
+    case MovementKind.TRANSFER_OUT:
+      return t("inventory.transaction.transferOut");
+    case MovementKind.ADJUST:
+      return t("inventory.transaction.adjustment");
+    case MovementKind.RETURN:
+      return t("inventory.transaction.return");
+    case MovementKind.MOVE:
+      return t("inventory.transaction.move");
+    case MovementKind.SAMPLE:
+      return t("inventory.transaction.sample");
+    default:
+      return t("warehouseProduct.kind.unknown");
+  }
+}
+
 // THE PUT-AWAYS — the movements that decided goods LIVE somewhere, as opposed to the ones that merely
 // changed a count (#197).
 //

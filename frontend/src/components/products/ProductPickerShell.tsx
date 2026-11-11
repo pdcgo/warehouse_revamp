@@ -21,7 +21,7 @@ import { productClient, rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
-import { Pagination } from "../chrome/Pagination";
+import { GrowingPager } from "../chrome/GrowingPager";
 import { ProductListItem } from "./ProductListItem";
 import type { PickedProduct } from "./ProductSelect";
 
@@ -735,7 +735,7 @@ export function ProductPickerShell({
             │ tabs · [team ▾][search] · notes │  pinned — a filter you cannot see cannot be cleared
             │ ╭ rows ───────────────── ▲ ╮    │  THE ONLY SCROLLER, both axes
             │ ╰──────────────────────── ╯    │
-            │ ‹ 3 of 5 ›                      │  pinned — paging never means scrolling first
+            │ ‹ [3] ›                         │  pinned — paging never means scrolling first
             └ Cancel  Confirm ────────────────┘  pinned
 
           `scrollBehavior="inside"` alone gave the whole Body one scrollbar, which scrolled the search
@@ -871,11 +871,17 @@ export function ProductPickerShell({
                       {!loading && !error && products.length > 0 && rows}
                     </Box>
 
-                    <Pagination
-                      count={totalItems}
-                      pageSize={PAGE_SIZE}
+                    {/* A DIALOG'S PAGER IS ONE NUMBER — ‹ [2] ›, the app's pager boxes with the current page alone:
+                        no "2 of 5", no trail of numbers (owner, on the restock form: *"paginasi di modal simpel saja"*,
+                        then *"nomor saja, ui mirip yang sudah pernah dibuat"*, a-dialog-pager-is-one-number). */}
+                    <GrowingPager
+                      compact
                       page={page}
                       onPageChange={setPage}
+                      hasNext={loading ? undefined : page * PAGE_SIZE < totalItems}
+                      resetKey={`${activeKey}:${q}`}
+                      pageSize={PAGE_SIZE}
+                      testId="product-picker-pager"
                     />
                   </>
                 )}

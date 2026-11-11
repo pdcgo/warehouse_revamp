@@ -110,7 +110,11 @@ in the field (`ShopSelect`, `TeamSelect`), an unbounded one searches the server,
   the input text at init and on `value` change only) → `key={filled ? "ready" : "loading"}` on the
   Root, remounting once when the list lands;
 - **clearing emits the "none" sentinel** (`0n` / `undefined`), never nothing — otherwise the field
-  empties while the parent still filters on the old id.
+  empties while the parent still filters on the old id;
+- **opened again after a pick it shows the WHOLE list**, never the one picked — spread
+  `searchOnlyWhatIsTyped` on the Root, so only a keystroke searches. Every combobox, and an unbounded one
+  opens on its first page (`ProductSelect`) —
+  [every-combobox-reopens-whole](../technical/frontend/context_decision.md#every-combobox-reopens-whole).
 
 Authority: [CLAUDE.md](../../CLAUDE.md) → *The design system*.
 

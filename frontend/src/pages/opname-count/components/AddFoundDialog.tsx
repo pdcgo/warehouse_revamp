@@ -98,7 +98,7 @@ export function AddFoundDialog({
                     value={product?.id ?? 0n}
                     placeholder={t("opnameSession.found.productPlaceholder")}
                     onChange={(p) => {
-                      setProduct({ id: p.id, name: p.name });
+                      setProduct(p ? { id: p.id, name: p.name } : null);
                       setNeverHere(false);
                     }}
                   />

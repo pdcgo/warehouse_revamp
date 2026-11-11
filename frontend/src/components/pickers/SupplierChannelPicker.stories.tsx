@@ -191,3 +191,25 @@ export const Interactive: Story = {
     );
   },
 };
+
+// A FIXED HEIGHT, AND ONLY THE LISTS SCROLL (a-picker-dialog-keeps-its-height — owner: *"ingat, buat modal heightnya fix
+// kalau bentuknya select, ini supplier tidak fix"*) — a search that narrows the list to one supplier, and picking it,
+// leave the dialog the height it opened at; the pager is one number (a-dialog-pager-is-one-number).
+export const TheDialogKeepsItsHeight: Story = {
+  play: async ({ canvasElement }) => {
+    const dialog = await openPicker(canvasElement);
+    const content = screen.getByTestId(`${ID}-dialog`);
+    await dialog.findByTestId(`${ID}-supplier-${BATIK.id}`, {}, { timeout: 4000 });
+    const opened = content.getBoundingClientRect().height;
+
+    await expect(dialog.getByTestId(`${ID}-pager-page-1`)).toHaveAttribute("aria-current", "page");
+    await expect(dialog.getByTestId(`${ID}-pager`)).not.toHaveTextContent(/ of /);
+
+    await search(dialog, "Cahaya");
+    await waitFor(() => expect(dialog.queryByTestId(`${ID}-supplier-${BATIK.id}`)).toBeNull(), { timeout: 4000 });
+    await pickSupplier(dialog, CAHAYA.id);
+
+    await expect(Math.abs(content.getBoundingClientRect().height - opened)).toBeLessThan(1);
+    await expect(dialog.getByTestId(`${ID}-confirm`)).toBeVisible();
+  },
+};

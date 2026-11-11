@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
-import { Field, HStack, Heading, Spinner, Stack, Tabs, Text, Textarea } from "@chakra-ui/react";
+import { Field, Heading, Stack, Tabs, Text, Textarea } from "@chakra-ui/react";
 import { History, Inbox } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
@@ -13,6 +13,7 @@ import {
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeamsByIds } from "../../features/teams/queries";
+import { useProductsByIds } from "../../features/products/queries";
 import {
   useApproveFoundRequest,
   useFoundRequests,
@@ -21,14 +22,15 @@ import {
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import { CharCount } from "../../components/inputs/CharCount";
-import { useIsMobile } from "../../layouts/shell";
 import { formatRupiahNumber } from "../../lib/money";
 import { canDecideFound, canReportFound } from "../../lib/roles";
 import { oneOfCodec, useUrlState } from "../../lib/urlState";
-import { FoundRequestCard } from "./components/FoundRequestCard";
+import { FoundRequestDetail } from "./components/FoundRequestDetail";
+import { FoundRequestTable } from "./components/FoundRequestTable";
 
 const TABS = [
   { value: "waiting", status: FoundRequestStatus.WAITING, labelKey: "foundRequest.tabs.waiting" },
@@ -53,10 +55,17 @@ const REASON_MAX = 500;
 //
 // In the menu as Inventories ▸ Stock Opname · Found Stock, with the waiting count for the deciders
 // (found-stock-sits-after-stock-opname-with-its-count).
+//
+// ON THE SCREEN RULES (owner: *"inisiasi found"*, the-found-list-follows-the-screen-rules): the page rises in and a first
+// load is a skeleton; each request shows its product with its picture and its owner as the small avatar and the name.
+// Its one filter is the status — the contract's only one — so it stays the tab row, in the URL.
+//
+// A TABLE, AS EVERY LIST (owner: *"desainnya kok gemuk begini"*, then *"listnya buat seperti yang lain, atau tabel saja"*,
+// the-found-list-is-a-table) — one request a row; the note and what it posts line by line are its Rincian, opened by a
+// click on the row (FoundRequestDetail). Each request was a card that opened all of it at once, about twelve lines each.
 export function FoundRequestsPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
 
   // The tab narrows the list, so it lives in the URL (a-lists-filters-live-in-the-url).
   const [tab, setTab] = useUrlState<Tab>("status", "waiting", TAB_CODEC);
@@ -65,6 +74,7 @@ export function FoundRequestsPage() {
   const [approving, setApproving] = useState<FoundRequest | null>(null);
   const [rejecting, setRejecting] = useState<FoundRequest | null>(null);
   const [reason, setReason] = useState("");
+  const [openedId, setOpenedId] = useState<bigint | null>(null);
 
   const teamId = current?.teamId;
   const decider = canDecideFound(current?.role);
@@ -77,6 +87,9 @@ export function FoundRequestsPage() {
   const list = useFoundRequests({ teamId: reader ? teamId : undefined, status, page, pageSize });
   const requests = list.data?.requests ?? [];
   const teams = useTeamsByIds({ ids: requests.map((r) => r.teamId) });
+  // The pictures — one read for the page's products, any team's (a warehouse holds several sellers' goods). Best-effort:
+  // a product it cannot name keeps the report's snapshot and the package placeholder.
+  const products = useProductsByIds({ teamId, productIds: requests.map((r) => r.productId) });
   const approve = useApproveFoundRequest();
   const reject = useRejectFoundRequest();
 
@@ -91,9 +104,22 @@ export function FoundRequestsPage() {
 
   const actors = list.data?.actors ?? new Map<string, PublicUser>();
   const nameOf = (id: bigint) => (id > 0n ? personName(actors.get(id.toString()), `#${id}`) : "—");
-  const teamName = (id: bigint) => teams.data?.[id.toString()]?.name ?? `#${id}`;
   const error = list.isError ? rpcError(list.error) : "";
   const rejectingOwn = rejecting?.block === FoundRequestApproveBlock.OWN_REPORT;
+  // The Rincian reads the request off the CURRENT page, so a refetch after a decision shows its new state — and one that
+  // has left the tab shuts it.
+  const opened = openedId === null ? null : (requests.find((r) => r.id === openedId) ?? null);
+
+  // Setujui and Tolak are offered on the row and at the Rincian's foot; either way the Rincian shuts and the confirm asks.
+  const startApprove = (r: FoundRequest) => {
+    setOpenedId(null);
+    setApproving(r);
+  };
+  const startReject = (r: FoundRequest) => {
+    setOpenedId(null);
+    setReason("");
+    setRejecting(r);
+  };
 
   async function confirmApprove() {
     if (!approving) return;
@@ -123,19 +149,16 @@ export function FoundRequestsPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="found-requests-page">
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack gap="section" animationStyle="enter" data-testid="found-requests-page">
       <Stack gap="1">
-        <HStack gap="2">
-          <Heading size="md" data-testid="found-requests-heading">
-            {t("foundRequest.title")}
-          </Heading>
-        </HStack>
+        <Heading size="md" data-testid="found-requests-heading">
+          {t("foundRequest.title")}
+        </Heading>
         <Text fontSize="sm" color="fg.muted">
           {t(decider || !reader ? "foundRequest.subtitle" : "foundRequest.staffSubtitle")}
         </Text>
       </Stack>
-
-      {/* Staff's view of their own reports awaits design accept — the deciders' list is the accepted one. */}
 
       {!reader ? (
         <Text color="fg.muted" data-testid="found-requests-not-for-you">
@@ -149,7 +172,10 @@ export function FoundRequestsPage() {
             setPage(1);
           }}
         >
-          <Tabs.List overflowX="auto">
+          {/* NO SCROLLBAR ON THE TAB ROW (owner: *"tabnya ada scroll, hilangkan"*, the-found-tab-row-never-scrolls) —
+              `overflowX` alone turns `overflowY` to auto as well, and the underline's 1px below the row drew a vertical
+              scrollbar beside the tabs. The row still slides sideways where a phone is too narrow, with no bar drawn. */}
+          <Tabs.List flexWrap="nowrap" overflowX="auto" overflowY="hidden" css={{ scrollbarWidth: "none" }} data-testid="found-requests-tabs">
             {TABS.map((item) => (
               <Tabs.Trigger key={item.value} value={item.value} data-testid={`found-requests-tab-${item.value}`}>
                 {t(item.labelKey)}
@@ -167,7 +193,8 @@ export function FoundRequestsPage() {
                 )}
 
                 {list.isPending ? (
-                  <Spinner colorPalette="brand" />
+                  // The first load shows the list's shape (motion-is-small-quick-and-shared).
+                  <ListSkeleton rows={3} testId="found-requests-loading" />
                 ) : requests.length === 0 && !error ? (
                   tab === "waiting" ? (
                     <EmptyHint
@@ -185,24 +212,19 @@ export function FoundRequestsPage() {
                     />
                   )
                 ) : (
-                  <Stack gap="card" data-testid="found-requests-list">
-                    {requests.map((r) => (
-                      <FoundRequestCard
-                        key={r.id.toString()}
-                        request={r}
-                        teamName={teamName(r.teamId)}
-                        nameOf={nameOf}
-                        compact={isMobile}
-                        canApprove={writable && decider}
-                        canReject={writable}
-                        onApprove={() => setApproving(r)}
-                        onReject={() => {
-                          setReason("");
-                          setRejecting(r);
-                        }}
-                      />
-                    ))}
-                  </Stack>
+                  // ONE REQUEST A ROW, its Rincian behind a click (the-found-list-is-a-table).
+                  <FoundRequestTable
+                    requests={requests}
+                    products={products.data}
+                    teams={teams.data}
+                    nameOf={nameOf}
+                    showDecided={tab !== "waiting"}
+                    canApprove={writable && decider}
+                    canReject={writable}
+                    onOpen={(r) => setOpenedId(r.id)}
+                    onApprove={startApprove}
+                    onReject={startReject}
+                  />
                 )}
 
                 <GrowingPager
@@ -223,6 +245,18 @@ export function FoundRequestsPage() {
           </Tabs.Content>
         </Tabs.Root>
       )}
+
+      <FoundRequestDetail
+        request={opened}
+        product={opened ? products.data?.get(opened.productId.toString()) : undefined}
+        team={opened ? teams.data?.[opened.teamId.toString()] : undefined}
+        nameOf={nameOf}
+        onClose={() => setOpenedId(null)}
+        canApprove={writable && decider}
+        canReject={writable}
+        onApprove={startApprove}
+        onReject={startReject}
+      />
 
       {/* Approving posts money back and stock in at once — it confirms, saying what posts. */}
       <ConfirmDialog

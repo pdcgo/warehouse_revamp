@@ -236,7 +236,8 @@ export const restockFixtures: RestockFixture[] = [
     id: 504n,
     status: LOST,
     createdAtUnix: daysAgo(20),
-    receipt: "JNE0000111122",
+    // A tracking number that runs long — the restock list cuts it and its tooltip says it whole.
+    receipt: "JNE-CGK-20260911-0000111122-REG",
     shipmentId: 91n,
     invoiceRefId: "INV/2026/09/0200",
     shipmentCost: 18000,

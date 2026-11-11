@@ -18,7 +18,7 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { BarChart3, ChevronDown, CircleAlert, Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
+import { CircleAlert, Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { OrderDateField, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -84,6 +84,7 @@ import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
+import { StatsToggle } from "../../components/chrome/StatsToggle";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -393,6 +394,18 @@ export function SellerOrdersPage() {
     );
   }
 
+  // The Statistik button — the end of the tab row on a desktop, an icon beside Filter on a phone
+  // (a-statistics-button-ends-the-tab-row). One mounts, so its test id is the same on both.
+  const statsToggle = (
+    <StatsToggle
+      open={statsOpen}
+      onToggle={() => setStatsOpen((open) => !open)}
+      label={t("orders.summary.toggle")}
+      compact={isMobile}
+      testId="order-summary-toggle"
+    />
+  );
+
   return (
     // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
     <Stack gap="section" animationStyle="enter">
@@ -484,6 +497,8 @@ export function SellerOrdersPage() {
         active={filtered}
         count={filterCount}
         testId="orders-filters"
+        // On a phone the Statistik button is an icon beside Filter (a-statistics-button-ends-the-tab-row).
+        actions={isMobile ? statsToggle : undefined}
         onClear={() =>
           refilter(() => {
             setSearch("");
@@ -593,12 +608,17 @@ export function SellerOrdersPage() {
         </FilterField>
       </FilterBar>
 
+      {/* The tabs and the statistics under them are ONE block — shut, the strip leaves no gap of its own. */}
+      <Box>
       <StageTabs
         value={tab}
         onSelect={(value) => {
           setTab(value);
           setPage(1);
         }}
+        // THE STATISTIK BUTTON ENDS THE TAB ROW on a desktop (owner: *"samakan"*, a-statistics-button-ends-the-tab-row) —
+        // it had a row of its own under the tabs. On a phone it is an icon beside Filter, in the strip above.
+        end={isMobile ? undefined : statsToggle}
       />
 
       {/* BY STATUS FIRST (owner), and BELOW THE STATUS FILTER — the tab strip above decides which
@@ -611,22 +631,9 @@ export function SellerOrdersPage() {
           ⚠ NO 30-DAY TILES any more. Every figure follows the filter bar's date range, so the screen
           has ONE window instead of two; the old pair was labelled "30d" while the filter silently
           narrowed them to whatever was picked. */}
-      {/* SHUT BY DEFAULT (`the-statistics-are-shut-and-read-when-opened`): a button under the tabs, and the strip is
-          mounted — and read — only while it is open. */}
-      <Collapsible.Root open={statsOpen} onOpenChange={(e) => setStatsOpen(e.open)} lazyMount unmountOnExit>
-        <Collapsible.Trigger asChild>
-          <Button variant="ghost" size="xs" alignSelf="flex-start" data-testid="order-summary-toggle">
-            <Icon as={BarChart3} boxSize="4" />
-            {t("orders.summary.toggle")}
-            <Icon
-              as={ChevronDown}
-              boxSize="4"
-              color="fg.muted"
-              transform={statsOpen ? "rotate(180deg)" : undefined}
-              transition="transform 120ms"
-            />
-          </Button>
-        </Collapsible.Trigger>
+      {/* SHUT BY DEFAULT (`the-statistics-are-shut-and-read-when-opened`): the Statistik button ends the tab row, and the
+          strip is mounted — and read — only while it is open. */}
+      <Collapsible.Root open={statsOpen} lazyMount unmountOnExit>
         <Collapsible.Content>
           <Box pt="card">
             {statQuery.isPending ? (
@@ -651,6 +658,7 @@ export function SellerOrdersPage() {
           </Box>
         </Collapsible.Content>
       </Collapsible.Root>
+      </Box>
 
       <Tabs.Root value={tab}>
         <Tabs.Content value={tab}>

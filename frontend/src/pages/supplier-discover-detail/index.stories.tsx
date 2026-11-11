@@ -1,269 +1,36 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { asRole } from "../../../.storybook/sessionScenario";
-import { supplierFixture } from "../../../.storybook/supplierFixtures";
-import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
-import { DiscoverSupplierDetailPage } from "./index";
+import { SUPPLIER_DISCOVER_DETAIL_META, loaded } from "./stories/kit";
 
-// Another team's supplier, read in full (another-team-sees-everything-of-a-supplier), from Discover Suppliers.
-// Read-only, with the same Channels and Products tabs as the manage detail
-// (supplier-detail-has-channels-and-products-tabs). The supplier and its stores are real reads of the stub's
-// supplier_service (supplierStub.ts); the Products tab is still sample rows.
-
-function routedAt(supplierId: bigint) {
-  return routedPage(
-    [
-      { path: "/inventories/suppliers/discover/:supplierId", element: <DiscoverSupplierDetailPage /> },
-      marker("/inventories/suppliers/discover", "at-discover"),
-    ],
-    `/inventories/suppliers/discover/${supplierId}`,
-  );
-}
-
-const NUSANTARA = supplierFixture("PT Tekstil Nusantara"); // Toko Anggrek's — three stores on three marketplaces
-const SINAR = supplierFixture("Toko Grosir Sinar"); // no stores at all
-const LAMA_TUTUP = supplierFixture("CV Lama Tutup"); // deleted
-
-const AtNusantara = routedAt(NUSANTARA.id);
-const AtSinar = routedAt(SINAR.id);
-const AtDeleted = routedAt(LAMA_TUTUP.id);
-const AtUnknown = routedAt(999n);
+// DISCOVER SUPPLIER DETAIL — the screen as it is, on a desktop and on a phone: Default and Mobile sit FIRST, straight
+// under DiscoverSupplierDetail. The same title also holds the folders below, so Storybook draws
+// DiscoverSupplierDetail as a folder with these two stories leading it. Its rules are grouped by the part of the
+// screen they are about, one file each in ./stories (stories-are-grouped-by-the-part-of-the-screen):
+//
+//   Header  the name and whose it is, who it is, the warehouses over the tabs, the way back, a supplier that won't open
+//   States  a supplier with no stores
+//   Stores  the Stores tab — read-only, Sold and Ready, the search and the type filter
+//   Tabs    Products, Statistics counting every team, what is marked, each tab's Export
 
 const meta = {
   title: "Pages/Suppliers/DiscoverSupplierDetail",
-  component: AtNusantara,
-  parameters: { signedIn: true, dataRouter: true },
-  beforeEach: () => {
-    asTeam(12n)();
-    asRole(Role.SELLING_CS)();
-  },
+  ...SUPPLIER_DISCOVER_DETAIL_META,
 } satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function loaded(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement);
-  await canvas.findByTestId("discover-detail-page", {}, { timeout: 4000 });
-  return canvas;
-}
-
-// ── The states worth looking at ─────────────────────────────────────────────────────────────────
-
 export const Default: Story = {};
 
 // A PHONE: the name, the team, the identity line, then the tabs — the supplier page on a phone, read-only.
 export const Mobile: Story = {
+  name: "Mobile",
   globals: { viewport: { value: "mobile2" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     // Stacked on a phone: the identity line under the team.
     const team = (await canvas.findByTestId("discover-detail-team")).getBoundingClientRect();
     await expect(canvas.getByTestId("discover-detail-meta").getBoundingClientRect().top).toBeGreaterThanOrEqual(team.bottom);
-  },
-};
-
-export const ProductsTab: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await userEvent.click(canvas.getByTestId("supplier-tab-products"));
-    await canvas.findByTestId("products-table");
-  },
-};
-
-// the-figures-are-a-statistics-tab-and-a-supplier-report — the figures supplier_service folds (SupplierStatistics).
-export const StatisticsTab: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await userEvent.click(canvas.getByTestId("supplier-tab-statistics"));
-    await canvas.findByTestId("statistics-summary");
-  },
-};
-
-export const NoStores: Story = { render: () => <AtSinar /> };
-
-// every-selling-team-sees-every-teams-figures: another team's supplier shows EVERY team's restocks from it — Toko
-// Anggrek keeps PT Tekstil Nusantara, and Toko Melati's Beras bought there is on the by-product table, named.
-export const StatisticsCountEveryTeam: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await userEvent.click(canvas.getByTestId("supplier-tab-statistics"));
-
-    // The team picker starts EMPTY — the filter left empty is every team (the-team-filter-picks-any-selling-team).
-    const picker = within(await canvas.findByTestId("statistics-team")).getByRole("combobox");
-    await expect(picker).toHaveValue("");
-    await expect(picker).toHaveAttribute("placeholder", "Every team");
-    await userEvent.click(canvas.getByTestId("statistics-view-product"));
-    const named = await canvas.findAllByTestId("statistics-product-team");
-    await expect(named.map((cell) => cell.textContent)).toContain("Toko Melati");
-  },
-};
-
-// ── The rules worth failing on ──────────────────────────────────────────────────────────────────
-
-// Whose supplier it is, on top — the thing worth knowing on a cross-team page.
-export const NamesTheOwningTeam: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await expect(canvas.getByTestId("discover-detail-name")).toHaveTextContent(NUSANTARA.name);
-    await waitFor(() => expect(canvas.getByTestId("discover-detail-team")).toHaveTextContent("Toko Anggrek"));
-    await expect(canvas.getByTestId("discover-detail-address")).toHaveTextContent(NUSANTARA.address);
-  },
-};
-
-// Read-only: another team's supplier offers no Add Channel and no row actions.
-export const ReadOnly: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await canvas.findByTestId("channels-table");
-    await expect(canvas.queryByTestId("add-channel")).toBeNull();
-    await expect(canvas.queryAllByTestId(/^edit-channel-|^delete-channel-/)).toHaveLength(0);
-  },
-};
-
-// The Products tab and the stores' and products' figures are marked — the supplier itself is a real read now.
-export const TheProductsAndTheFiguresAreSample: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
-    await expect(
-      within(canvas.getByTestId("supplier-tab-products")).getByTestId("not-implemented-products"),
-    ).toBeVisible();
-    await expect(canvas.queryByTestId("not-implemented-supplier")).toBeNull();
-  },
-};
-
-// A STORE SHOWS ITS SOLD AND READY, as on the manage detail (the-detail-tabs-show-sold-and-ready) — read-only, so the
-// two columns are the table's last; real and unmarked — another team's supplier's goods, all of them
-// (every-selling-team-sees-every-teams-figures). A store nothing was bought at reads a dash.
-export const AStoreShowsItsSoldAndReady: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    const table = await canvas.findByTestId("channels-table");
-    await waitFor(() => expect(within(table).getAllByRole("row").length).toBeGreaterThan(1));
-    const headers = within(table).getAllByRole("columnheader");
-    await expect(headers.at(-2)).toHaveTextContent(/^Sold/);
-    await expect(headers.at(-1)).toHaveTextContent(/^Ready/);
-    await expect(within(headers.at(-2)!).queryByTestId("not-implemented-sold")).toBeNull();
-    await waitFor(() => expect(canvas.getByTestId("channel-sold-371")).toHaveTextContent(/^640ordered /));
-    await expect(canvas.getByTestId("channel-ready-371")).toHaveTextContent(/^90restocked /);
-    await expect(canvas.getByTestId("channel-sold-372")).toHaveTextContent("—");
-  },
-};
-
-// The same Channels browser as the manage detail — searched and filtered by type, on the server.
-export const ChannelsSearchAndFilter: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    const table = await canvas.findByTestId("channels-table");
-    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + 3));
-
-    await userEvent.click(within(canvas.getByTestId("channels-type-filter")).getByTestId("marketplace-select"));
-    const blibli = await canvas.findByRole("option", { name: "Blibli" });
-    await waitFor(() => expect(blibli).toBeVisible());
-    await userEvent.click(blibli);
-    await waitFor(() => expect(within(canvas.getByTestId("channels-table")).getAllByRole("row")).toHaveLength(1 + 1));
-    await expect(canvas.getByTestId("channels-table")).toHaveTextContent("Nusantara Official");
-  },
-};
-
-export const UnknownSupplierIsNotFound: Story = {
-  render: () => <AtUnknown />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByTestId("discover-detail-error", {}, { timeout: 4000 });
-  },
-};
-
-// a-deleted-supplier-is-kept-for-its-figures: kept for past restocks and the figures, but never opened as a record.
-export const ADeletedSupplierIsNotFound: Story = {
-  render: () => <AtDeleted />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByTestId("discover-detail-error", {}, { timeout: 4000 });
-  },
-};
-
-export const BackGoesToDiscover: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await userEvent.click(canvas.getByTestId("discover-detail-back"));
-    await canvas.findByTestId("at-discover");
-  },
-};
-
-// ── It reads as the supplier's own page (`the-discover-detail-reads-as-the-supplier-page`) ──────────────────────
-
-// THE NAME, THEN WHOSE ON THE LEFT AND WHO IT IS BESIDE IT — the supplier page's identity line right of the team, not a
-// card of uppercase labels (discover-detail-puts-the-team-left-and-the-contact-right); the contact copies with one click.
-export const TheTeamThenWhoItIs: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    const team = (await canvas.findByTestId("discover-detail-team")).getBoundingClientRect();
-    const meta = canvas.getByTestId("discover-detail-meta");
-    const at = meta.getBoundingClientRect();
-    // Beside the team, close to it — not from the middle of the page — and top-aligned.
-    await expect(at.left).toBeGreaterThan(team.right);
-    await expect(at.left - team.right).toBeLessThan(48);
-    await expect(Math.abs(at.top - team.top)).toBeLessThan(4);
-    await expect(canvas.getByTestId("discover-detail-contact")).toHaveTextContent(NUSANTARA.contact);
-    await expect(canvas.getByTestId("discover-detail-description")).toHaveTextContent(NUSANTARA.description);
-    await expect(within(meta).getByRole("button", { name: /copy/i })).toBeInTheDocument();
-    await expect(within(meta).queryByText("CONTACT")).toBeNull();
-    // Read-only: no Edit or Delete.
-    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
-  },
-};
-
-// …and a supplier with nothing but a name shows its name and its team — no empty line.
-export const AnEmptySupplierShowsItsNameAndTeam: Story = {
-  render: () => <AtSinar />,
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await canvas.findByTestId("discover-detail-team");
-    await expect(canvas.queryByTestId("discover-detail-meta")).toBeNull();
-  },
-};
-
-// GUDANG TERKAIT, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — over the tabs, real; the pick
-// marked 4.
-export const TheWarehousesScopeThePage: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    const row = await canvas.findByTestId("supplier-warehouses");
-    await expect(within(row).queryByTestId("not-implemented-warehouses")).toBeNull();
-    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("4");
-    await waitFor(() =>
-      expect(within(row).getByTestId("supplier-warehouses-chips")).toHaveTextContent(/^AllGudang Cabang$/),
-    );
-    await expect(within(row).getByTestId("supplier-warehouse-summary-sold")).toHaveTextContent(/640 units.*from 52 orders · last /);
-    await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      canvas.getByTestId("supplier-tabs").getBoundingClientRect().top,
-    );
-  },
-};
-
-// EACH TAB EXPORTS ITS OWN TABLE, as on the manage detail (each-supplier-tab-exports-its-own-table) — read-only, so the
-// Export is the Toko strip's only action. It exports (no mark); the Produk tab's, over invented rows, keeps THIS page's
-// mark (5).
-export const EachTabExportsItsOwnTable: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    const button = await canvas.findByTestId("channels-export");
-    await expect(within(button).queryByTestId("not-implemented-export")).toBeNull();
-
-    await userEvent.click(canvas.getByTestId("supplier-tab-products"));
-    const products = await canvas.findByTestId("products-export");
-    await expect(within(products).getByTestId("not-implemented-export")).toHaveTextContent("5");
   },
 };

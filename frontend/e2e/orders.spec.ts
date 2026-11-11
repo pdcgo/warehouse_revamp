@@ -1423,10 +1423,9 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   const line = page.getByTestId(`accept-line-${pid}`);
   await expect(line).toBeVisible();
 
-  // The vendor is named, not numbered. This is the whole point of SupplierByIds: the supplier belongs to a selling
-  // team and we are reading as the WAREHOUSE — by id, which still names a vendor deleted since the restock was raised.
-  // If this regresses to "Supplier #<id>", the crew at the door is back to matching a carton against a number.
-  await expect(page.getByTestId(`accept-supplier-${pid}`)).toContainText(seeded.supplierName);
+  // No supplier at the door (the-line-reads-ordered-then-what-it-came-to): where it was bought is the selling team's
+  // purchase, so the warehouse's Terima names none.
+  await expect(page.getByTestId(`accept-supplier-${pid}`)).toHaveCount(0);
 
   // Nothing counted yet, so nothing can be accepted.
   await expect(page.getByTestId("accept-submit")).toBeDisabled();
@@ -1455,12 +1454,16 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(page.getByTestId(`accept-placement-qty-${pid}-0`)).toHaveValue("5");
   await expect(page.getByTestId(`accept-balanced-${pid}`)).toBeVisible();
 
-  // The courier's charge changes what every unit cost, and the HPP must move as it is typed
-  // (the-couriers-ask-is-in-the-unit-price).
-  const hpp = page.getByTestId(`accept-hpp-${pid}`);
-  const before = await hpp.innerText();
+  // The courier's charge changes what every unit cost, so what the 2 broken units were worth must move as it is typed
+  // (the-couriers-ask-is-in-the-unit-price). The line shows no price per piece (the-accept-line-shows-no-price).
+  const worth = page.getByTestId(`accept-broken-value-${pid}`);
+  const before = await worth.innerText();
+  // Said as text, changed on Ubah (the-cod-paid-is-said-in-its-own-section); then asked first
+  // (the-charge-is-asked-for-before-it-is-filled) — Ada reveals the charge.
+  await page.getByTestId("accept-courier-edit").click();
+  await page.getByTestId("accept-courier-asked-yes").click();
   await page.getByTestId("accept-courier-charge").fill("8000");
-  await expect(hpp).not.toHaveText(before);
+  await expect(worth).not.toHaveText(before);
 
   // ⚠ THE NOTE IS REQUIRED once there is a charge (the-courier-is-paid-once-per-restock), and without it Accept stays
   // disabled.
@@ -1478,22 +1481,26 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(page.getByTestId("restock-detail-page")).toContainText("acc-02 (3)");
 
   // #207 — once accepted, the warehouse prints the shelf labels for exactly what entered stock.
+  // The OLD address — it lands on the labels' one address with this restock on it (the-labels-have-one-address).
   await page.goto(`/inventories/restock/${seeded.requestId}/labels`);
+  await expect(page).toHaveURL(new RegExp(`/inventories/restock/labels\\?ids=${seeded.requestId}$`));
   await expect(page.getByTestId("labels-sheet")).toBeVisible();
 
-  // Piece mode by default: 8 good units (5 + 3) → 8 labels. The 2 broken got none, and the screen says so.
-  await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(8);
+  // Yang Dicetak lists each label once — the two shelves — with its count (the-print-list-is-each-label-and-its-count).
+  // Piece mode by default: 8 good units (5 + 3) → 8 labels to print. The 2 broken got none, and the screen says so.
+  const printed = page.getByTestId("labels-print-root").locator(".print-label");
+  await expect(page.getByTestId("labels-sheet").locator(".label-sticker")).toHaveCount(2);
+  await expect(printed).toHaveCount(8);
   await expect(page.getByTestId("labels-excluded")).toContainText("2");
 
-  // One-per-shelf collapses the run to one label per placement — the two shelves, two labels.
+  // One-per-shelf starts each count at 1 — the two shelves, two labels.
   await page.getByTestId("labels-mode").getByText("Shelf").click();
-  await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(2);
+  await expect(printed).toHaveCount(2);
 
-  // #219 — the goods-received receipt for the whole delivery: 10 arrived, 2 broken, 8 accepted into stock.
+  // THERE IS NO STRUK (there-is-no-struk) — the receipt's old address lands on the restock itself.
   await page.goto(`/inventories/restock/${seeded.requestId}/receipt`);
-  await expect(page.getByTestId("batch-receipt-doc")).toBeVisible();
-  await expect(page.getByTestId("batch-receipt-lines")).toContainText("e2e accept");
-  await expect(page.getByTestId("batch-receipt-total-accepted")).toHaveText("8");
+  await expect(page).toHaveURL(new RegExp(`/inventories/restock/${seeded.requestId}$`));
+  await expect(page.getByTestId("restock-detail-page")).toBeVisible();
 });
 
 // #145 — a selling team's DEFAULT SHIPPING WAREHOUSE pre-fills the order form.

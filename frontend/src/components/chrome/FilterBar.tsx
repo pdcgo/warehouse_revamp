@@ -232,6 +232,9 @@ export function FilterSearch({ value, onChange, placeholder, testId }: FilterSea
   return (
     <InputGroup
       flex="1 1 14rem"
+      // It may shrink below its own content: on a narrow phone the row is the search, Filter and a page's icon actions,
+      // and an input that would not give way pushed the last one off the screen.
+      minW="0"
       maxW="sm"
       startElement={<Icon as={Search} boxSize="4" color="fg.subtle" />}
       endElement={

@@ -65,3 +65,38 @@ export const CopyingDoesNotClickTheRow: Story = {
     await expect(rowClicks).toBe(0);
   },
 };
+
+/**
+ * A LONG VALUE IS CUT, AND ITS TOOLTIP SAYS IT WHOLE (owner, on the restock list: *"harus ada pembatasan tapi juga harus
+ * ada cara lihat fullnya"*) — `maxW` cuts the shown text with an ellipsis; under the pointer the tooltip shows every
+ * character. The copy is the whole value, which the button's accessible name carries.
+ */
+export const ALongValueIsCut: Story = {
+  args: { value: "JNE-CGK-20260911-0000111122-REG", mono: true, maxW: "10rem" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const shown = canvas.getByTestId("copy-shown");
+
+    await expect(shown.scrollWidth).toBeGreaterThan(shown.clientWidth);
+    await expect(canvas.getByTestId("copy")).toHaveAccessibleName("Copy: JNE-CGK-20260911-0000111122-REG");
+
+    await userEvent.hover(canvas.getByTestId("copy"));
+    const whole = await within(document.body).findByTestId("copy-whole");
+    await waitFor(() => expect(whole).toBeVisible());
+    await expect(whole).toHaveTextContent("JNE-CGK-20260911-0000111122-REG");
+  },
+};
+
+/** …and a value that fits under its cap is not cut, so no tooltip repeats it. */
+export const AShortValueUnderACapHasNoTooltip: Story = {
+  args: { value: "JNE0123456789", mono: true, maxW: "10rem" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const shown = canvas.getByTestId("copy-shown");
+
+    await expect(shown.scrollWidth).toBeLessThanOrEqual(shown.clientWidth);
+    await userEvent.hover(canvas.getByTestId("copy"));
+    await new Promise((r) => setTimeout(r, 400));
+    await expect(within(document.body).queryByTestId("copy-whole")).toBeNull();
+  },
+};

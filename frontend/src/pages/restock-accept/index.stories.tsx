@@ -1,383 +1,126 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { restockFixture } from "../../../.storybook/restockFixtures";
-import { restockRequestService } from "../../../.storybook/restockStub";
-import { asRole } from "../../../.storybook/sessionScenario";
-import { RestockProblemType, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
-import { RestockAcceptPage } from "./index";
+import { ACCEPT_META, COFFEE, RICE, acceptControl, lineOf, loaded } from "./stories/kit";
 
-// ⚠ PROTOTYPE for implementation_analysis — the restock rewrite (docs/business/inventory/restock_decision.md).
+// RESTOCK ACCEPT — the screen as it opens: Default and Mobile sit FIRST, straight under RestockAccept (owner: *"default
+// dan mobile taruh di depan saja"*). The same title also holds the folders below. Its rules are grouped by the part of
+// the screen they are about, one file each in ./stories (stories-are-grouped-by-the-part-of-the-screen):
 //
-// The warehouse counts the box in (any-warehouse-member-counts-what-arrived): per line it types what is in the box and
-// how many of those are broken; good and missing are worked out; the good units go onto placements; the courier's
-// charge at the door is one amount with a note. The stub plays the accept handler's rules (restockStub.ts).
-//
-// Gudang Pusat (11), as WAREHOUSE STAFF — any member of the warehouse counts. Restock 502 has ARRIVED and its coffee
-// line was edited 10 → 12 by the selling team, with a note; 501 is still ONGOING; 503 is already ACCEPTED.
-//
-// ⚠ THE RUNNER'S CANVAS IS PHONE-WIDTH, so the Accept control is the ⋯ menu's item there and a button on a desktop.
-// `acceptControl` finds whichever this canvas has.
-
-const ARRIVED = restockFixture(502n);
-const COFFEE = ARRIVED.items[0]!; // 12 ordered — "extra stock"
-const RICE = ARRIVED.items[1]!; // 5 ordered
-
-const A_01_1 = 41n;
-const A_01_2 = 42n;
-const B_02_1 = 43n;
-
-function routedAt(requestId: bigint) {
-  return routedPage(
-    [
-      { path: "/inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
-      marker("/inventories/restock/:requestId", "at-restock-detail"),
-    ],
-    `/inventories/restock/${requestId}/accept`,
-  );
-}
-
-// Built ONCE, at module scope — a router built inside `render` is a fresh history on every re-render (pageStory.tsx).
-const AtArrived = routedAt(502n);
-const AtOngoing = routedAt(501n);
-const AtAccepted = routedAt(503n);
+//   Accept   Terima — what it waits for, what it sends, where it returns
+//   Charge   the courier's COD charge — asked first, its note, its slip, out of the total
+//   Count    a line's count — missing worked out, broken units, their note, photo and rack
+//   PutAway  a line's good units onto placements
+//   States   the restock in each other status, as it opens
 
 const meta = {
   title: "Pages/Inventory/Restock/RestockAccept",
-  component: AtArrived,
-  parameters: { signedIn: true, dataRouter: true },
-  beforeEach: () => {
-    asTeam(11n)();
-    asRole(Role.WAREHOUSE_STAFF)();
-  },
+  ...ACCEPT_META,
 } satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// ── Helpers ─────────────────────────────────────────────────────────────────────────────────────
-
-async function loaded(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement);
-  await canvas.findByTestId("restock-accept-page", {}, { timeout: 4000 });
-  return canvas;
-}
-
-async function lineOf(canvasElement: HTMLElement, productId: bigint) {
-  const canvas = await loaded(canvasElement);
-  return within(await canvas.findByTestId(`accept-line-${productId}`, {}, { timeout: 4000 }));
-}
-
-// A controlled field drops characters at machine speed — type with a delay.
-async function typeInto(el: HTMLElement, value: string) {
-  await userEvent.clear(el);
-  if (value !== "") await userEvent.type(el, value, { delay: 40 });
-}
-
-async function count(canvasElement: HTMLElement, productId: bigint, received: string, broken?: string) {
-  const line = await lineOf(canvasElement, productId);
-  await typeInto(line.getByTestId(`accept-received-${productId}`), received);
-  if (broken !== undefined) await typeInto(line.getByTestId(`accept-broken-${productId}`), broken);
-}
-
-// RackSelect renders inline (no portal), so its options are found inside the row.
-async function place(canvasElement: HTMLElement, productId: bigint, index: number, placementId: bigint) {
-  const line = await lineOf(canvasElement, productId);
-  const field = within(line.getByTestId(`accept-placement-${productId}-${index}`));
-
-  await userEvent.click(field.getByTestId("rack-select"));
-  const option = await field.findByTestId(`rack-select-option-${placementId}`);
-  await waitFor(() => expect(option).toBeVisible());
-  await userEvent.click(option);
-  await waitFor(() => expect(field.getByTestId("rack-select")).not.toHaveTextContent(/select a placement/i));
-}
-
-// Count a whole line as it should be: all arrived, nothing broken, onto one placement.
-async function countWhole(canvasElement: HTMLElement, productId: bigint, placementId: bigint) {
-  const line = await lineOf(canvasElement, productId);
-  await userEvent.click(line.getByTestId(`accept-all-arrived-${productId}`));
-  await place(canvasElement, productId, 0, placementId);
-  await waitFor(() => expect(line.getByTestId(`accept-balanced-${productId}`)).toBeInTheDocument());
-}
-
-// The Accept control: a button on a desktop canvas, the ⋯ menu's item on a phone (the menu portals).
-async function acceptControl(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement);
-  const button = canvas.queryByTestId("accept-submit");
-  if (button) return button;
-
-  await userEvent.click(canvas.getByTestId("accept-actions"));
-  const item = await screen.findByTestId("accept-submit");
-  await waitFor(() => expect(item).toBeVisible());
-  return item;
-}
-
-function blocked(el: HTMLElement) {
-  return el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true" || el.hasAttribute("data-disabled");
-}
-
-async function expectAccept(canvasElement: HTMLElement, enabled: boolean) {
-  const el = await acceptControl(canvasElement);
-  await waitFor(() => expect(blocked(el)).toBe(!enabled));
-
-  if (el.getAttribute("role") === "menuitem") {
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() => expect(el).not.toBeVisible());
-  }
-}
-
-// ── The states worth looking at ─────────────────────────────────────────────────────────────────
-
-/** 502, at the door: the coffee line says 12, and the selling team's note says why. */
-export const ArrivedWithAnEditedLine: Story = {
+/**
+ * 502 at the door — THE SCREEN RULES (the-restock-accept-follows-the-screen-rules): Terima carries its icon, and the one
+ * line by it names the first thing still missing (a-save-button-says-what-it-waits-for). The coffee line says 12, and
+ * the selling team's note says why (extra-units-are-added-by-the-selling-teams-edit).
+ */
+export const Default: Story = {
   play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
     const line = await lineOf(canvasElement, COFFEE.productId);
 
-    // extra-units-are-added-by-the-selling-teams-edit — the counter sees why the line says 12, beside "ordered".
-    await expect(line.getByTestId(`accept-ordered-${COFFEE.productId}`)).toHaveTextContent("12");
+    // Nothing counted: Terima is off, and the line by it says what to do first — the coffee's count — with the rice
+    // one click away.
+    const accept = acceptControl(canvasElement);
+    await expect(accept).toHaveAccessibleName(/Accept Delivery/);
+    await expect(accept.querySelector("svg")).not.toBeNull();
+
+    // Back is its icon alone, its words its name (the-accept-page-puts-the-box-left-and-the-info-right).
+    const back = canvas.getByTestId("accept-back");
+    await expect(back).toHaveAccessibleName("Back to the Restock");
+    await expect(back).toHaveTextContent("");
+
+    // THE BOX FIRST: every line, then the info — beside them where there is room, under them here.
+    const lines = canvas.getByTestId("accept-lines");
+    const info = canvas.getByTestId("accept-info");
+    await expect(lines.compareDocumentPosition(info) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await expect(within(info).getByTestId("accept-courier")).toBeInTheDocument();
+
+    // THE BOX'S COUNT IN ITS COLOUR (the-box-count-says-its-state-in-colour) — nothing counted yet: info.
+    await expect(canvas.getByTestId("accept-restock-count")).toHaveAttribute("data-tone", "info");
+    await expect(canvas.getByTestId("accept-restock-count-pcs")).toHaveTextContent("0 of 17 pcs");
+    await expect(canvas.getByTestId("accept-restock-count")).toHaveTextContent("in the box");
+
+    // THE ORDER ID, BY THAT NAME (terima-keeps-the-order-id) — never "Invoice".
+    await expect(canvas.getByTestId("accept-invoice")).toHaveTextContent("INV/2026/10/0987");
+    await expect(within(canvas.getByTestId("accept-info")).getByText("Order ID")).toBeVisible();
+    await expect(within(canvas.getByTestId("accept-info")).queryByText("Invoice")).toBeNull();
+
+    // WHO, SIMPLY (the-accept-info-is-who-the-parcel-and-the-ongkir-it-paid) — the team and the person by name, small,
+    // no type badge and no username.
+    await waitFor(() => expect(canvas.getByTestId("accept-team")).toHaveTextContent("Toko Melati"));
+    await expect(within(canvas.getByTestId("accept-team")).queryByText("Selling")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId("accept-created-by")).toHaveTextContent("Ani Rahayu"));
+    await expect(canvas.getByTestId("accept-created-by")).not.toHaveTextContent("@");
+    await expect(canvas.getByTestId(`accept-ready-line-missing-line-${COFFEE.productId}`)).toHaveTextContent(
+      "received · Kopi Arabika 250g",
+    );
+    await expect(canvas.getByTestId("accept-ready-line-missing-more")).toHaveTextContent("+1 more");
+
+    // extra-units-are-added-by-the-selling-teams-edit — the counter sees why the line says 12, beside "ordered". The
+    // count is in pcs, and only the pcs is HIGHLIGHTED, at the text's size (the-pcs-alone-is-highlighted).
+    await expect(line.getByTestId(`accept-ordered-${COFFEE.productId}`)).toHaveTextContent("Ordered");
+    const pcs = line.getByTestId(`accept-ordered-${COFFEE.productId}-pcs`);
+    await expect(pcs).toHaveTextContent("12 pcs");
+    await expect(getComputedStyle(pcs).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+    await expect(parseFloat(getComputedStyle(pcs).fontSize)).toBeLessThanOrEqual(14);
+    // An empty count shows its 0 — the placeholder, never the value (a-quantity-field-shows-its-minimum-until-typed).
+    const received = line.getByTestId(`accept-received-${COFFEE.productId}`);
+    await expect(received).toHaveAttribute("placeholder", "0");
+    await expect(received).toHaveValue("");
     await expect(line.getByTestId(`accept-line-note-${COFFEE.productId}`)).toHaveTextContent("extra stock");
 
-    // Where it was bought — per line (a-line-names-the-channel-it-was-bought-from).
-    await waitFor(() =>
-      expect(line.getByTestId(`accept-supplier-${COFFEE.productId}`)).toHaveTextContent("CV Cahaya Abadi"),
-    );
+    // THE LINE READS ORDERED, THEN WHAT IT CAME TO (the-line-reads-ordered-then-what-it-came-to): no supplier; good,
+    // broken and missing under Dipesan, in the product's column — not counted yet, each a dash.
+    await expect(line.queryByTestId(`accept-supplier-${COFFEE.productId}`)).toBeNull();
+    await expect(line.queryByText("CV Cahaya Abadi")).toBeNull();
+    const outcome = line.getByTestId(`accept-outcome-${COFFEE.productId}`);
+    await expect(within(outcome).getByTestId(`accept-good-${COFFEE.productId}`)).toHaveTextContent("—");
+    await expect(within(outcome).getByTestId(`accept-missing-${COFFEE.productId}`)).toHaveTextContent("—");
+    const orderedRow = line.getByTestId(`accept-ordered-${COFFEE.productId}`);
+    await expect(orderedRow.compareDocumentPosition(outcome) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await expect(canvas.getByTestId(`accept-line-${RICE.productId}`)).toBeInTheDocument();
   },
 };
 
-/** 501, still on its way — a box that turns up before anybody signed for it can still be counted in. */
-export const OngoingRestock: Story = {
-  render: () => <AtOngoing />,
+// A PHONE (every-page-has-a-mobile-story) — the header is ONE row: back, the title, the status, and Terima as its icon,
+// not a ⋯ holding one item (the-phone-header-is-one-row, a-phone-header-action-is-an-icon); what Terima waits for comes
+// down under it; nothing runs past the screen's edge (nothing-runs-past-a-phones-edge); a card pads 16px
+// (a-phone-card-is-padded-less).
+export const Mobile: Story = {
+  name: "Mobile",
+  globals: { viewport: { value: "mobile1" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
+    await lineOf(canvasElement, COFFEE.productId);
 
-    // accept-locks-the-restock: ongoing is acceptable — the form is here, three lines, nothing counted yet.
-    await expect(await canvas.findByTestId("accept-line-74")).toBeInTheDocument();
-    await expect(canvas.getByTestId("accept-line-71")).toBeInTheDocument();
-    await expect(canvas.getByTestId("accept-line-72")).toBeInTheDocument();
-    await expect(canvas.queryByTestId("accept-not-acceptable")).toBeNull();
-    await expectAccept(canvasElement, false);
-  },
-};
+    const accept = acceptControl(canvasElement);
+    await expect(accept).toHaveAccessibleName("Accept Delivery");
+    await expect(canvas.queryByRole("button", { name: "Actions" })).toBeNull();
+    // On the back arrow's row — their middles level, not a row of its own.
+    const middle = (el: HTMLElement) => {
+      const box = el.getBoundingClientRect();
+      return (box.top + box.bottom) / 2;
+    };
+    await expect(Math.abs(middle(accept) - middle(canvas.getByTestId("accept-back")))).toBeLessThan(4);
 
-/** 503 is already accepted — accept-locks-the-restock refuses it, so the page says so instead of offering a count. */
-export const AlreadyAcceptedIsNotAcceptable: Story = {
-  render: () => <AtAccepted />,
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("accept-ready-line-missing")).toBeVisible();
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
 
-    await expect(await canvas.findByTestId("accept-not-acceptable")).toBeInTheDocument();
-    await expect(canvas.getByTestId(`restock-status-${RestockRequestStatus.ACCEPTED}`)).toBeInTheDocument();
-    await expect(canvas.queryByTestId("accept-submit")).toBeNull();
-    await expect(canvas.queryByTestId("accept-actions")).toBeNull();
-    await expect(canvas.queryByTestId(/^accept-line-/)).toBeNull();
-  },
-};
-
-// ── The rules worth failing on ──────────────────────────────────────────────────────────────────
-
-/**
- * a-short-unit-at-the-door-is-missing — MISSING IS WORKED OUT, never typed: 9 in a box of 12 is 3 missing, priced by
- * the system from the line (the-problem-price-is-filled-by-the-system). There is no picker for a kind of problem.
- */
-export const MissingIsWorkedOutFromReceived: Story = {
-  play: async ({ canvasElement }) => {
-    const id = COFFEE.productId;
-    await count(canvasElement, id, "9");
-    const line = await lineOf(canvasElement, id);
-
-    await waitFor(() => expect(line.getByTestId(`accept-missing-${id}`)).toHaveTextContent("3"));
-    await expect(line.getByTestId(`accept-good-${id}`)).toHaveTextContent("9");
-    // 3 × the landed price 34.215,69 (400.000 ÷ 12 + 15.000 ÷ 17), the same as a good unit (all-qty-is-every-unit-ordered).
-    await expect(line.getByTestId(`accept-missing-value-${id}`)).toHaveTextContent("102.647");
-    // The warehouse's optional word on the missing units appears beside them (three-notes-one-writer-each).
-    await expect(line.getByTestId(`accept-missing-note-${id}`)).toBeInTheDocument();
-
-    // No "broken / lost" picker, and no price field to type.
-    await expect(line.queryByTestId(/accept-problem-type/)).toBeNull();
-    await expect(line.queryByText(/^lost$/i)).toBeNull();
-  },
-};
-
-/** accept-refuses-more-than-the-line-says — 13 in a box the line says 12 stops Accept and asks for the selling team. */
-export const MoreThanOrderedBlocksAccept: Story = {
-  play: async ({ canvasElement }) => {
-    await countWhole(canvasElement, RICE.productId, A_01_2);
-
-    const id = COFFEE.productId;
-    await count(canvasElement, id, "13");
-    await place(canvasElement, id, 0, A_01_1);
-    const line = await lineOf(canvasElement, id);
-
-    await waitFor(() => expect(line.getByTestId(`accept-over-${id}`)).toBeInTheDocument());
-    await expectAccept(canvasElement, false);
-
-    // The count goes back to what the line says — Accept presses.
-    await typeInto(line.getByTestId(`accept-received-${id}`), "12");
-    await waitFor(() => expect(line.queryByTestId(`accept-over-${id}`)).toBeNull());
-    await expectAccept(canvasElement, true);
-  },
-};
-
-/** any-warehouse-member-counts-what-arrived — broken units are among those that arrived: 5 of 3 is invalid. */
-export const BrokenAboveReceivedIsInvalid: Story = {
-  play: async ({ canvasElement }) => {
-    await countWhole(canvasElement, RICE.productId, A_01_2);
-
-    const id = COFFEE.productId;
-    await count(canvasElement, id, "3", "5");
-    const line = await lineOf(canvasElement, id);
-
-    await waitFor(() => expect(line.getByTestId(`accept-broken-error-${id}`)).toBeInTheDocument());
-    await expect(line.getByTestId(`accept-good-${id}`)).toHaveTextContent("—");
-    await expectAccept(canvasElement, false);
-  },
-};
-
-/**
- * there-is-no-unplaced-pile — every good unit goes onto a placement, and the placements hold EXACTLY received −
- * broken. 12 with 2 broken is 10 good: 6 on one placement leaves 4 to place, and Accept waits for them.
- */
-export const GoodUnitsMustBeFullyPlaced: Story = {
-  play: async ({ canvasElement }) => {
-    const id = COFFEE.productId;
-    await count(canvasElement, id, "12", "2");
-    await countWhole(canvasElement, RICE.productId, A_01_2);
-    const line = await lineOf(canvasElement, id);
-
-    // Counted, nothing placed yet.
-    await expect(line.getByTestId(`accept-good-${id}`)).toHaveTextContent("10");
-    // 2 × the landed price 34.215,69, filled by the system.
-    await expect(line.getByTestId(`accept-broken-value-${id}`)).toHaveTextContent("68.431");
-    await expect(line.getByTestId(`accept-unbalanced-${id}`)).toBeInTheDocument();
-    await expectAccept(canvasElement, false);
-
-    // There is no "unplaced" choice in the picker.
-    const field = within(line.getByTestId(`accept-placement-${id}-0`));
-    await userEvent.click(field.getByTestId("rack-select"));
-    // The real options render first, so the unplaced pile's absence is not just the list still loading.
-    await field.findByTestId(`rack-select-option-${A_01_1}`);
-    await expect(field.queryByTestId("rack-select-option-unplaced")).toBeNull();
-    await userEvent.keyboard("{Escape}");
-
-    // 6 onto A-01-1 — 4 still to place.
-    await place(canvasElement, id, 0, A_01_1);
-    await typeInto(line.getByTestId(`accept-placement-qty-${id}-0`), "6");
-    await waitFor(() => expect(line.getByTestId(`accept-unbalanced-${id}`)).toHaveTextContent("4"));
-    await expectAccept(canvasElement, false);
-
-    // The other 4 onto B-02-1 — every good unit placed.
-    await userEvent.click(line.getByTestId(`accept-add-placement-${id}`));
-    await place(canvasElement, id, 1, B_02_1);
-    await typeInto(line.getByTestId(`accept-placement-qty-${id}-1`), "4");
-    await waitFor(() => expect(line.getByTestId(`accept-balanced-${id}`)).toBeInTheDocument());
-    await expectAccept(canvasElement, true);
-  },
-};
-
-/** the-courier-is-paid-once-per-restock — the charge's note is required once it is above 0. */
-export const ACourierChargeNeedsANote: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await countWhole(canvasElement, COFFEE.productId, A_01_1);
-    await countWhole(canvasElement, RICE.productId, A_01_2);
-    await expectAccept(canvasElement, true);
-
-    await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
-    await expect(await canvas.findByTestId("accept-courier-note-error")).toBeInTheDocument();
-    await expectAccept(canvasElement, false);
-
-    await typeInto(canvas.getByTestId("accept-courier-note"), "Biaya COD");
-    await waitFor(() => expect(canvas.queryByTestId("accept-courier-note-error")).toBeNull());
-    await expectAccept(canvasElement, true);
-  },
-};
-
-/**
- * the-couriers-charge-stays-out-of-total — the charge is shown on its own line, owed by the selling team, and the total
- * stays goods + shipping. It is still in the unit price: the HPP moves (the-couriers-ask-is-in-the-unit-price).
- */
-export const TheChargeStaysOutOfTheTotal: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await countWhole(canvasElement, COFFEE.productId, A_01_1);
-    await countWhole(canvasElement, RICE.productId, A_01_2);
-
-    // 400.000 + 325.000 + 15.000 shipping.
-    await expect(canvas.getByTestId("accept-grand-total")).toHaveTextContent("740.000");
-    // 400.000 ÷ 12 + 15.000 ÷ 17 units ordered = 34.215,686… — an unfrozen unit price, shown to three decimals
-    // (a-fraction-of-a-rupiah-shows-three-decimals).
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
-
-    await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
-
-    await waitFor(() => expect(canvas.getByTestId("accept-courier-owed")).toHaveTextContent("5.000"));
-    await expect(canvas.getByTestId("accept-grand-total")).toHaveTextContent("740.000");
-    // (15.000 + 5.000) ÷ 17 — the charge is in the unit price.
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.509,804");
-  },
-};
-
-/**
- * all-qty-is-every-unit-ordered — the costs are spread over every unit ORDERED, so the landed price does not move when
- * units arrive broken or short, and a broken or missing unit is worth exactly what a good one costs. Coffee 12 with 1
- * broken, rice 4 of 5: the coffee's HPP stays 34.215,69 (dividing by the 15 good units would make it 37.363,64).
- */
-export const ProblemUnitsCarryTheLandedPrice: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-    await count(canvasElement, COFFEE.productId, "12", "1");
-    await count(canvasElement, RICE.productId, "4");
-
-    // 400.000 ÷ 12 + 15.000 ÷ 17 — every unit ordered, not the good ones.
-    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
-    const coffee = await lineOf(canvasElement, COFFEE.productId);
-    await expect(coffee.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.215,686");
-
-    // 325.000 ÷ 5 + 15.000 ÷ 17 — the missing unit carries the rice's landed price.
-    const rice = await lineOf(canvasElement, RICE.productId);
-    await expect(rice.getByTestId(`accept-missing-value-${RICE.productId}`)).toHaveTextContent("65.882");
-  },
-};
-
-/**
- * Accepting sends the count and lands on the restock. The stub keeps what the handler would: received 12 with 1
- * broken on coffee, the rice 1 short (missing, worked out), the charge and its note.
- */
-export const AcceptingCountsTheBoxIn: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await count(canvasElement, COFFEE.productId, "12", "1");
-    await typeInto(canvas.getByTestId(`accept-broken-note-${COFFEE.productId}`), "Bungkus sobek");
-    await place(canvasElement, COFFEE.productId, 0, A_01_1);
-
-    await count(canvasElement, RICE.productId, "4");
-    await place(canvasElement, RICE.productId, 0, A_01_2);
-
-    await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
-    await typeInto(canvas.getByTestId("accept-courier-note"), "Biaya COD");
-
-    await userEvent.click(await acceptControl(canvasElement));
-    const confirm = await screen.findByTestId("confirm-action");
-    await waitFor(() => expect(confirm).toBeVisible());
-    await userEvent.click(confirm);
-
-    await expect(await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 })).toBeInTheDocument();
-
-    const stored = (
-      await restockRequestService.restockRequestDetail!({ teamId: 11n, requestId: 502n } as never, {} as never)
-    ).request!;
-    await expect(stored.status).toBe(RestockRequestStatus.ACCEPTED);
-    await expect(stored.warehouseAdditionalCost).toBe(5000);
-
-    const coffee = stored.items!.find((l) => l.productId === COFFEE.productId)!;
-    await expect(coffee.receivedCount).toBe(12n);
-    await expect(coffee.placements).toEqual([{ placementId: A_01_1, quantity: 11n }]);
-    await expect(coffee.problems!.find((p) => p.type === RestockProblemType.BROKEN)?.note).toBe("Bungkus sobek");
-
-    const rice = stored.items!.find((l) => l.productId === RICE.productId)!;
-    await expect(rice.problems!.find((p) => p.type === RestockProblemType.MISSING)?.count).toBe(1n);
+    // A phone's card pads 16px, not Chakra's 24px (a-phone-card-is-padded-less).
+    const body = canvas.getByTestId(`accept-line-${COFFEE.productId}`).querySelector<HTMLElement>(".chakra-card__body")!;
+    await expect(getComputedStyle(body).paddingLeft).toBe("16px");
   },
 };

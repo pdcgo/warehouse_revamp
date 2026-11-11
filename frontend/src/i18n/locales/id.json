@@ -248,6 +248,13 @@
       "noFile": "Ekspor berakhir tanpa file"
     }
   },
+  "readyLine": {
+    "missing": "Belum diisi:",
+    "more": "+{{count}} lainnya",
+    "detailTitle": "Yang belum diisi",
+    "readyCreate": "Siap dibuat",
+    "readySave": "Siap disimpan"
+  },
   "dateRange": {
     "all": "Semua tanggal",
     "today": "Hari ini",
@@ -509,45 +516,56 @@
     }
   },
   "discoverDetail": {
-    "back": "Temukan Produk",
+    "backTo": "Kembali ke Temukan Produk",
     "selectTeam": "Pilih tim untuk menemukan produk.",
     "invalidId": "ID produk tidak valid.",
     "notFound": "Produk tidak ditemukan.",
-    "owner": "Pemilik",
-    "markupHint": "Yang Anda bayar di atas modal pemilik, per unit.",
-    "reservedHint": "Pemilik menyimpan sebanyak ini di setiap rak — tidak dibagikan.",
-    "noImage": "Tidak ada gambar.",
-    "own": "Ini produk tim Anda sendiri.",
+    "team": "Tim",
+    "coverOnly": "Hanya sampul",
+    "crossPrice": "Harga cross",
+    "cost": "Harga modal",
     "openOwn": "Buka di Produk Saya",
     "archived": "Diarsipkan oleh pemiliknya — tidak lagi ditawarkan ke tim lain.",
     "locked": "Dikunci oleh pemiliknya — tim lain tidak dapat memakainya.",
-    "stockHeading": "Stok di Setiap Gudang",
-    "stockHelp": "Pesanan dikirim dari satu gudang, jadi di sinilah Anda bisa mengambilnya, dan berapa banyak.",
+    "notOffered": "Tidak ditawarkan ke tim lain, jadi tidak ada stok yang bisa diambil.",
+    "priceHeading": "Harga per Gudang",
+    "priceNav": "Harga",
+    "stockHelp": "Pesanan dikirim dari satu gudang — di sinilah stoknya siap, dan berapa harganya di gudang itu.",
     "warehouse": "Gudang",
-    "onShelf": "Di rak",
-    "canTake": "Bisa Anda ambil",
+    "ready": "Siap",
     "noWarehouses": "Belum ada gudang.",
-    "suppliersHeading": "Pemasok",
-    "suppliersHelp": "Toko pemasok yang menjual produk ini. Tim mana pun boleh restok dari mereka, bukan hanya pemiliknya.",
-    "noSuppliers": "Belum ada pemasok yang mencantumkan produk ini.",
-    "supplier": "Pemasok",
-    "store": "Toko",
     "pending": {
-      "canTake": {
-        "label": "Bisa Anda ambil",
-        "reason": "stok di rak dikurangi stok cadangan pemilik — apakah cadangan hanya mengikat tim lain, dan di mana batasnya, masih terbuka"
-      },
-      "unitCost": {
-        "label": "Modal Anda per unit",
-        "reason": "harga satuan ditambah markup — siapa yang boleh melihat harga satuan pemilik belum diputuskan, jadi tidak ditampilkan"
+      "division": {
+        "label": "Prioritas / Riset",
+        "reason": "data contoh — pembagian produk diatur per produk tapi belum disimpan di mana pun, jadi sama dengan contoh di kartu Temukan Produk"
       },
       "gallery": {
         "label": "Gambar",
         "reason": "hanya sampul — galeri lengkap datang dari ProductDetail, yang hanya menjawab tim pemilik"
       },
+      "ongoing": {
+        "label": "Dalam pengiriman",
+        "reason": "data contoh — stok tim lain yang masih dikirim belum bisa dibaca lintas tim; stok siap di atasnya nyata, jumlah semua rak"
+      },
+      "crossPrice": {
+        "label": "Harga cross",
+        "reason": "data contoh — modal dikarang lalu ditambah markup asli produk, di Info dan dibagi per gudang yang menyimpannya; modal tim lain belum bisa dibaca, dan siapa yang boleh melihatnya belum diputuskan"
+      },
+      "derived": {
+        "label": "Produk turunan",
+        "reason": "data contoh — barang yang diretur ke tim lain menjadi produk tim itu; tautan itu belum dicatat, jadi baris yang tampil sama dengan contoh di halaman produk pemiliknya"
+      },
       "suppliers": {
         "label": "Pemasok",
-        "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, yang belum dibangun, jadi toko yang menjualnya masih karangan"
+        "reason": "data contoh — pemasok, toko pemasok, dan link tokonya asli; bahwa produk ini dibeli di toko itu, serta jumlah kiriman dan unitnya, masih karangan sampai restok yang diterima mencatat tokonya"
+      },
+      "daily": {
+        "label": "Keluar masuk harian",
+        "reason": "data contoh — pergerakan stok belum dijumlahkan per hari; sama dengan contoh di halaman produk pemiliknya"
+      },
+      "history": {
+        "label": "Riwayat stok",
+        "reason": "data contoh — riwayat stok boleh dibaca semua tim, tapi baru tim pemilik yang bisa membacanya; tiap gudang berakhir di stok siapnya yang asli. Produk tim Anda sendiri memakai riwayat asli"
       }
     }
   },
@@ -560,6 +578,9 @@
       "uploadFailed": "Gagal mengunggah",
       "tooManyImages": "Hanya {{max}} gambar yang diizinkan",
       "keptFirst": "Menyimpan {{room}} yang pertama.",
+      "webImageBlocked": "Situs itu tidak mengizinkan gambarnya diambil",
+      "webImageBlockedHow": "Klik kanan gambarnya, pilih Salin gambar, lalu tempel di sini dengan Ctrl+V.",
+      "webNotImage": "Yang diseret bukan gambar",
       "archived": "Produk \"{{productCode}}\" diarsipkan",
       "archiveFailed": "Gagal mengarsipkan",
       "restored": "Produk \"{{productCode}}\" dikeluarkan dari arsip",
@@ -623,13 +644,24 @@
     "empty": "Produk tidak ditemukan.",
     "backToProducts": "Kembali ke Produk",
     "edit": "Ubah",
+    "newOrder": "Buat Pesanan",
+    "newRestock": "Restok",
+    "start": {
+      "warehouse": "Gudang",
+      "quantity": "Jumlah",
+      "ready": "Siap {{n}} pcs",
+      "ofReady": "Dari {{n}} pcs siap di gudang ini.",
+      "overReady": "Melebihi stok siap di gudang ini ({{n}} pcs).",
+      "continue": "Lanjutkan",
+      "noStock": "Stok siap habis di semua gudang."
+    },
     "save": "Simpan",
     "create": "Buat",
     "images": "Gambar",
     "cover": "Sampul",
     "addImages": "Tambah Gambar",
     "imagesHelp": "{{used}}/{{max}} gambar. Seret ke kotak atau klik kotak kosong — kotak besar adalah sampul. JPG atau PNG.",
-    "imageDrop": "Seret gambar ke sini, atau klik untuk memilih",
+    "imageDrop": "Seret atau tempel (Ctrl+V) gambar ke sini, atau klik untuk memilih",
     "makeCover": "Jadikan sampul",
     "removeImage": "Hapus gambar",
     "imageAlt": "Gambar {{n}}",
@@ -713,7 +745,7 @@
       "pending": {
         "suppliers": {
           "label": "Pemasok",
-          "reason": "Setiap batch mencatat pemasoknya, tapi batch dibaca per halaman — daftar semua pemasok perlu dikelompokkan oleh server. Baris yang tampil adalah contoh."
+          "reason": "Pemasok, toko pemasok, dan link tokonya asli. Bahwa produk ini dibeli di toko itu masih karangan sampai restok yang diterima mencatat tokonya, dan kiriman, unit, serta modal terakhir perlu batch dikelompokkan per pemasok oleh server."
         },
         "derived": {
           "label": "Produk turunan",
@@ -726,11 +758,13 @@
       },
       "suppliers": {
         "supplier": "Pemasok",
+        "store": "Toko pemasok",
         "deliveries": "Kiriman",
         "units": "Unit",
         "lastCost": "Modal terakhir",
         "last": "Kiriman terakhir",
-        "deliveriesCount_other": "{{count}} kiriman"
+        "deliveriesCount_other": "{{count}} kiriman",
+        "none": "Belum ada pemasok yang tercatat untuk produk ini."
       },
       "derived": {
         "from": "Turunan dari",
@@ -782,6 +816,14 @@
       "crossLocked": "Hanya milik kami"
     },
     "form": {
+      "missing": {
+        "sku": "kode produk",
+        "skuTaken": "kode produk yang belum dipakai",
+        "name": "nama",
+        "category": "kategori",
+        "markup": "markup cross yang benar",
+        "minimum": "stok minimum"
+      },
       "editTitle": "Ubah Produk",
       "newTitle": "Produk Baru",
       "infoTitle": "Info Produk",
@@ -835,7 +877,15 @@
       "confirmLabel": "Hapus"
     },
     "picker": {
-      "archived": "Arsip"
+      "archived": "Arsip",
+      "none": "Produk tidak ditemukan",
+      "typeTwo": "Ketik minimal 2 huruf nama atau kode produk",
+      "pending": {
+        "warehouseOpensEmpty": {
+          "label": "Produk gudang ini, dibuka tanpa ketikan",
+          "reason": "Pencarian produk gudang masih meminta 2 huruf, jadi daftarnya belum bisa tampil sebelum diketik."
+        }
+      }
     }
   },
   "bundles": {
@@ -904,10 +954,9 @@
       "created": "Bundel \"{{name}}\" dibuat",
       "saved": "Bundel disimpan",
       "missing": {
-        "title": "Masih kurang:",
         "name": "nama",
-        "lines": "minimal satu produk",
-        "quantity": "jumlah 1 sampai 9999 di setiap produk"
+        "lines": "produk",
+        "quantity": "jumlah tiap produk"
       }
     },
     "detail": {
@@ -1382,8 +1431,8 @@
   "restock": {
     "title": "Permintaan Restok",
     "selectTeam": "Pilih tim untuk melihat permintaan restoknya.",
-    "selectTeamCreate": "Pilih tim untuk membuat permintaan restok.",
-    "selectTeamEdit": "Pilih tim untuk mengubah permintaan restok.",
+    "selectTeamCreate": "Pilih tim untuk membuat restok.",
+    "selectTeamEdit": "Pilih tim untuk mengubah restok.",
     "newRequest": "Restok Baru",
     "newRequestTitle": "Permintaan Restok Baru",
     "editRequestTitle": "Ubah Permintaan Restok",
@@ -1394,21 +1443,79 @@
     "teamRef": "Tim #{{id}}",
     "warehouseRef": "Gudang #{{id}}",
     "selling": {
-      "searchPlaceholder": "Cari restok, resi, faktur, atau kode produk"
+      "title": "Restok",
+      "actions": "Aksi restok",
+      "searchPlaceholder": "Cari restok, resi, order ID, atau kode produk",
+      "none": "Tidak ada restok yang cocok.",
+      "emptyHint": "Restok dibuat saat tim ini membeli barang untuk dikirim ke gudang.",
+      "statistics": "Statistik",
+      "summary": {
+        "total": "Total",
+        "transactionCount_one": "{{count}} transaksi",
+        "transactionCount_other": "{{count}} transaksi",
+        "pileLine": "{{units}} pcs · {{value}}",
+        "transactions": "Transaksi",
+        "units": "Jumlah barang",
+        "pcs": "{{count}} pcs",
+        "skus": "Jumlah kode produk",
+        "skusLine": "produk yang berbeda",
+        "goods": "Nilai barang",
+        "courierCharge": "Ongkir COD",
+        "courierChargeLine": "dibayar gudang ke kurir",
+        "value": "Nilai transaksi",
+        "valueLine": "barang + ongkir",
+        "details": "Rincian",
+        "paymentsTitle": "Nilai Transaksi per Akun Pembayar",
+        "paymentsNone": "Belum ada akun operasional untuk membayar restok."
+      },
+      "pending": {
+        "export": {
+          "label": "Ekspor",
+          "reason": "Belum ada yang membuat file restok — kliknya dibuang."
+        },
+        "courier": {
+          "label": "Filter kurir",
+          "reason": "Daftar restok belum bisa memfilter kurir — pilihannya disimpan, barisnya tidak berubah."
+        },
+        "summary": {
+          "label": "Statistik restok",
+          "reason": "Belum ada yang menghitung restok tim per status — semua angka contoh, dan tidak mengikuti filter."
+        },
+        "payments": {
+          "label": "Nilai per akun pembayar",
+          "reason": "Setiap restok menyimpan akun pembayarnya, tapi belum ada yang menjumlahkannya — akunnya asli, pembagiannya contoh."
+        },
+        "cancelReview": {
+          "label": "Pemeriksaan pembatalan",
+          "reason": "Dialog pembatalan bilang pembatalan akan diperiksa; belum ada yang memeriksanya."
+        },
+        "sellingNoteBy": {
+          "label": "Siapa dan kapan catatan ditulis",
+          "reason": "Tidak tersimpan — yang tampil adalah pembuatan atau perubahan terakhir restok, yang mungkin hanya mengubah baris."
+        },
+        "warehouseNote": {
+          "label": "Catatan gudang",
+          "reason": "Belum ada tempat menyimpan catatan gudang pada restok."
+        },
+        "lateNote": {
+          "label": "Mengubah catatan setelahnya",
+          "reason": "Setelah restok tiba, server mengunci catatannya — perubahan saat itu tidak tersimpan."
+        }
+      },
+      "export": "Ekspor",
+      "exportPending": "Ekspor restok belum tersedia.",
+      "courierAll": "Semua kurir"
     },
     "searchPlaceholder": "Cari restok, resi, pesanan atau kode produk",
     "warehouseAll": "Semua gudang",
     "stat": {
-      "ongoing": "Masuk",
-      "ongoingHint": "pcs dipesan, belum tiba",
-      "ongoingValue": "Nilai barang masuk",
-      "ongoingValueHint": "yang sudah kamu keluarkan untuknya",
+      "codPaid": "Ongkir COD dibayar",
+      "codPaidLine_other": "bulan ini · {{count}} restok",
+      "codPaidNote": "ditagih kembali ke tim penjual",
       "inboundProducts": "Produk menunggu",
       "inboundProductsHint": "jenis barang untuk dirakkan",
       "inboundUnits": "Pcs menunggu",
       "inboundUnitsHint": "untuk dihitung di pintu",
-      "inboundAmount": "Nilai antrean",
-      "inboundAmountHint": "barang yang belum dihitung masuk",
       "oldestPending": "Menunggu terlama",
       "oldestDays_other": "{{count}} hari",
       "inboundRestocks": "Restock menunggu",
@@ -1422,9 +1529,27 @@
       "lost": "Hilang"
     },
     "inbound": {
+      "pickOne": "Pilih restok #{{id}} untuk dicetak",
+      "pickAll": "Pilih semua restok di halaman ini yang bisa dicetak",
+      "printPicked_one": "Cetak {{count}} Restok",
+      "printPicked_other": "Cetak {{count}} Restok",
+      "clearPicked": "Hapus pilihan",
+      "pickFull": "Maksimal {{max}} restok sekali cetak — sisanya tidak bisa dicentang.",
+      "pending": {
+        "cod": {
+          "label": "Ongkir COD dibayar",
+          "reason": "Belum ada yang menjumlahkan ongkir COD yang dibayar gudang — angkanya contoh."
+        },
+        "arrivalCod": {
+          "label": "Ongkir COD saat Tandai Tiba",
+          "reason": "Ongkir COD, keterangan dan foto nota yang diisi di dialog Tandai Tiba belum tersimpan — Tandai Tiba belum menerimanya. Isi lagi saat Terima.",
+          "conflict": "ongkir COD diisi saat Terima."
+        }
+      },
       "title": "Restok Masuk",
       "subtitle": "Kiriman yang menuju gudang ini — tandai tiba saat paket datang, terima untuk menghitungnya ke rak.",
       "empty": "Belum ada kiriman masuk ke gudang ini.",
+      "emptyHint": "Restok muncul di sini saat tim penjual mengirim barang ke gudang ini.",
       "fromAll": "Dari semua tim",
       "actorCreated": "Dibuat oleh",
       "actorAccepted": "Dihitung oleh",
@@ -1432,9 +1557,9 @@
       "restocksHint": "dalam perjalanan atau di pintu"
     },
     "detail": {
-      "title": "Permintaan Restok",
-      "requestTitle": "Permintaan Restok #{{id}}",
-      "back": "Kembali ke Permintaan Restok",
+      "title": "Restok",
+      "requestTitle": "Restok #{{id}}",
+      "back": "Kembali ke Restok",
       "notFound": "Permintaan restok tidak ditemukan.",
       "invalidId": "ID permintaan restok tidak valid.",
       "delivery": "Kiriman",
@@ -1452,13 +1577,14 @@
       "from": "Dari",
       "courier": "Kurir",
       "tracking": "Nomor resi",
-      "openReceiptPhoto": "Buka Foto Label",
-      "noReceiptPhoto": "Belum ada foto label",
+      "receiptPhoto": "Foto resi",
+      "openReceiptPhoto": "Buka Foto Resi",
+      "noReceiptPhoto": "Belum ada foto resi",
       "arrivedAt": "Tiba",
       "payment": "Pembayaran",
       "paidFrom": "Dibayar dari",
       "accountRef": "Akun #{{id}}",
-      "invoice": "Faktur",
+      "invoice": "Order ID",
       "subtotal": "Barang",
       "shipping": "Ongkir",
       "total": "Total",
@@ -1475,9 +1601,81 @@
       "placement": "Penempatan",
       "lineNote": "Catatan: {{note}}",
       "problemWorth": "senilai {{amount}}",
-      "goodOfOrdered": "Unit baik masuk stok",
+      "goodOfOrdered": "Stok aman untuk diterima gudang",
       "missingBadge_one": "kurang {{count}}",
-      "missingBadge_other": "kurang {{count}}"
+      "missingBadge_other": "kurang {{count}}",
+      "pending": {
+        "cancelReview": {
+          "label": "Pemeriksaan pembatalan",
+          "reason": "Dialog pembatalan bilang pembatalan akan diperiksa; belum ada yang memeriksanya."
+        },
+        "sellingNoteBy": {
+          "label": "Siapa dan kapan catatan ditulis",
+          "reason": "Tidak tersimpan — yang tampil adalah pembuatan atau perubahan terakhir restok, yang mungkin hanya mengubah baris."
+        },
+        "warehouseNote": {
+          "label": "Catatan gudang",
+          "reason": "Belum ada tempat menyimpan catatan gudang pada restok."
+        },
+        "trailChanges": {
+          "label": "Isi perubahan di Riwayat",
+          "reason": "Server mencatat bahwa restok diubah, bukan apa yang berubah."
+        },
+        "lateNote": {
+          "label": "Mengubah catatan setelahnya",
+          "reason": "Setelah restok tiba, server mengunci catatannya — perubahan saat itu tidak tersimpan."
+        },
+        "arrivalCod": {
+          "label": "Ongkir COD saat Tandai Tiba",
+          "reason": "Ongkir COD, keterangan dan foto nota yang diisi di dialog Tandai Tiba belum tersimpan — Tandai Tiba belum menerimanya. Isi lagi saat Terima.",
+          "conflict": "ongkir COD diisi saat Terima."
+        },
+        "brokenPhoto": {
+          "label": "Foto barang rusak",
+          "reason": "Contoh — belum ada foto yang tersimpan, jadi setiap baris rusak menampilkan gambar yang sama."
+        },
+        "courierPhoto": {
+          "label": "Foto nota",
+          "reason": "Contoh — foto nota belum tersimpan, jadi setiap restok yang punya ongkir COD menampilkan gambar yang sama."
+        },
+        "brokenRack": {
+          "label": "Rak barang rusak",
+          "reason": "Contoh — pilihan Ditaruh di rak belum tersimpan, jadi tempat pertama baris ini ditampilkan sebagai rak barang rusaknya.",
+          "conflict": "barang rusak dibuang — tidak ada rak yang menyimpannya."
+        },
+        "warehouseNoteKept": {
+          "label": "Catatan gudang",
+          "reason": "Ditulis di sini dan belum tersimpan — catatan gudang belum punya tempat; simpan mengatakannya."
+        }
+      },
+      "navLabel": "Bagian restok",
+      "receiptPhotoLabel": "Foto resi",
+      "section": {
+        "courier": "Ongkir COD"
+      },
+      "warehouseNoteNone": "Belum ada catatan dari gudang.",
+      "adjustment": "Penyesuaian",
+      "adjustmentOpen": "Penyesuaian {{name}}",
+      "asOrdered": "Sesuai",
+      "goodShort": "Baik {{count}}",
+      "notCounted": "Belum dihitung",
+      "brokenPhoto": {
+        "title": "Foto Barang Rusak",
+        "alt": "Foto {{name}} yang rusak"
+      },
+      "photoOpen": "Buka {{what}}",
+      "slipPhoto": {
+        "title": "Foto Nota",
+        "alt": "Foto nota kurir"
+      },
+      "brokenRack": "Rusak {{count}} → {{rack}}",
+      "stat": {
+        "products": "Produk",
+        "ordered_other": "{{count}} pcs dipesan",
+        "ofOrdered_other": "dari {{count}} dipesan",
+        "intoStock": "masuk stok",
+        "pcs_other": "{{count}} pcs"
+      }
     },
     "timeline": {
       "created": "Restok dibuat",
@@ -1512,16 +1710,13 @@
     "table": {
       "status": "Status",
       "restock": "Restok",
-      "destination": "Tujuan",
       "from": "Dari",
       "supplier": "Pemasok",
       "product": "Produk",
-      "value": "Nilai",
       "shipment": "Pengiriman",
-      "receipt": "Tanda terima",
       "accepted": "Diterima",
+      "arrived": "Tiba",
       "reference": "Referensi",
-      "receiptValue": "Resi {{value}}",
       "by": "oleh {{name}}",
       "userRef": "Pengguna #{{id}}",
       "actions": "Aksi",
@@ -1529,11 +1724,15 @@
       "itemsSummary_other": "{{count}} produk · {{pieces}} pcs",
       "firstAndMore": "{{productCode}} +{{count}} lainnya",
       "noProducts": "Tidak ada produk",
-      "invoiceValue": "Faktur {{value}}",
       "missingBadge_one": "kurang {{count}}",
       "missingBadge_other": "kurang {{count}}",
       "moreSuppliers_one": "+{{count}} pemasok lain",
-      "moreSuppliers_other": "+{{count}} pemasok lain"
+      "moreSuppliers_other": "+{{count}} pemasok lain",
+      "warehouse": "Gudang",
+      "total": "Total",
+      "created": "Dibuat",
+      "invoiceLabel": "Order ID",
+      "receiptLabel": "Resi"
     },
     "form": {
       "warehouse": "Gudang",
@@ -1541,7 +1740,8 @@
       "products": "Produk",
       "addProduct": "Pilih Produk",
       "removeProduct": "Hapus produk",
-      "noProducts": "Belum ada produk — pilih produk yang diminta restock ini.",
+      "noProducts": "Belum ada produk",
+      "noProductsHint": "Pilih produk yang dibawa restok ini.",
       "shippingCost": "Ongkos kirim",
       "shippingCostHelp": "Biaya pengiriman itu sendiri, di luar harga barang.",
       "paymentTypeNone": "Tidak dicatat",
@@ -1549,37 +1749,46 @@
       "paymentBankAccount": "Rekening bank",
       "note": "Catatan",
       "noteHelp": "Hal yang perlu diketahui gudang tentang restok ini.",
-      "notePlaceholder": "Tambahkan catatan tentang restok ini…",
-      "submit": "Buat Permintaan",
+      "notePlaceholder": "Contoh: Untuk promo 10.10",
+      "submit": "Buat Restok",
       "saveChanges": "Simpan Perubahan",
-      "newTitle": "Permintaan Restok Baru",
-      "editTitle": "Ubah Permintaan Restok",
+      "newTitle": "Restok Baru",
+      "editTitle": "Ubah Restok",
       "back": "Kembali",
-      "selectTeamCreate": "Pilih tim untuk membuat permintaan restok.",
-      "selectTeamEdit": "Pilih tim untuk mengubah permintaan restok.",
-      "invalidId": "ID permintaan restok tidak valid.",
-      "notFound": "Permintaan restok tidak ditemukan.",
-      "backToList": "Kembali ke Permintaan Restok",
+      "selectTeamCreate": "Pilih tim untuk membuat restok.",
+      "selectTeamEdit": "Pilih tim untuk mengubah restok.",
+      "invalidId": "ID restok tidak valid.",
+      "notFound": "Restok tidak ditemukan.",
+      "backToList": "Kembali ke Restok",
       "count": "Jumlah",
       "lineTotal": "Total",
       "perPiece": "{{price}} / pcs",
       "boughtFrom": "Dibeli dari",
       "changeSupplier": "Ganti",
       "clearSupplier": "Hapus supplier",
+      "allSupplierPick": "Pilih Supplier",
+      "supplierTitle": "Supplier",
+      "supplierHelp": "Setiap produk perlu supplier — pilih satu untuk semua, atau atur di tiap produk.",
+      "allSupplierNone": "Belum dipilih",
+      "clearAllSupplier": "Hapus supplier semua produk",
+      "followsAll": "Ikut semua",
+      "followAll": "Ikut Semua",
       "lineNote": "Catatan baris",
-      "lineNotePlaceholder": "mis. stok lebih",
+      "lineNotePlaceholder": "Contoh: stok lebih",
       "lineNoteRequired": "Produk yang ditambahkan setelah paket tiba wajib diberi catatan.",
       "addedLine": "Ditambahkan",
       "paymentAndParcel": "Pembayaran dan Paket",
       "financeAccount": "Dibayar dari",
       "financeAccountHelp": "Rekening operasional tim yang membayar restok ini.",
-      "invoiceRef": "Nomor invoice atau pesanan",
-      "invoiceRefHelp": "Nomor invoice atau pesanan dari toko — satu per restok.",
+      "invoiceRef": "Order ID",
+      "invoiceRefHelp": "Order ID dari toko tempat membeli — satu per restok.",
+      "invoiceRefPlaceholder": "Contoh: INV/2026/10/1001",
       "courier": "Kurir",
       "courierHelp": "Yang membawa paket ke gudang.",
       "trackingNumber": "Nomor resi",
       "trackingNumberHelp": "Resi pada label paket — cara gudang menemukan restok ini saat paket tiba.",
-      "labelPhoto": "Foto label",
+      "trackingNumberPlaceholder": "Contoh: JNE0123456789",
+      "labelPhoto": "Foto resi",
       "restockNote": "Catatan Restok",
       "lockedArrived": "Ditutup sejak paket tiba",
       "linesLockedHint": "Jumlah, total, dan catatan masih bisa diubah. Baris yang sudah dipesan tetap dengan supplier dan tokonya; baris yang Anda tambahkan bisa memilih sendiri.",
@@ -1588,8 +1797,8 @@
       "notEditable": "Restok ini tidak bisa diubah lagi — hanya restok yang masih berjalan, atau baris dari restok yang sudah tiba, yang bisa diubah.",
       "notEditableOwner": "Hanya tim yang membuat restok ini yang bisa mengubahnya.",
       "backToRestock": "Kembali ke Restok",
-      "toastCreated": "Permintaan restok dibuat",
-      "toastUpdated": "Permintaan restok diperbarui",
+      "toastCreated": "Restok dibuat",
+      "toastUpdated": "Restok diperbarui",
       "summary": {
         "products": "Produk",
         "none": "Belum ada produk dipilih.",
@@ -1599,17 +1808,38 @@
         "courierNote": "Biaya kurir di depan pintu tidak termasuk total ini — gudang mengisinya saat menerima paket."
       },
       "missing": {
-        "title": "Masih dibutuhkan sebelum menyimpan:",
+        "lines": "produk",
+        "supplier": "supplier tiap produk",
+        "count": "jumlah tiap produk",
+        "total": "total tiap produk",
+        "newLineNote": "catatan produk tambahan",
         "warehouse": "gudang",
-        "account": "rekening yang membayar",
-        "lines": "minimal satu produk",
-        "count": "jumlah minimal 1 di setiap baris",
-        "newLineNote": "catatan pada setiap produk yang ditambahkan setelah paket tiba"
+        "account": "rekening",
+        "invoiceRefTaken": "Order ID yang belum dipakai restok lain",
+        "invoiceRefChecking": "Order ID (sedang dicek)",
+        "courier": "kurir",
+        "receipt": "resi",
+        "receiptTaken": "resi yang belum dipakai restok lain",
+        "receiptChecking": "resi (sedang dicek)"
+      },
+      "invoiceRefTaken": "Order ID ini sudah dipakai restok #{{id}}",
+      "receiptTaken": "Resi ini sudah dipakai restok #{{id}}",
+      "refCheckFailed": "Belum bisa dicek apakah sudah dipakai restok lain.",
+      "pending": {
+        "invoiceRefCheck": {
+          "label": "Cek Order ID",
+          "reason": "Dicek di layar ini saja. Server belum menolak Order ID yang sama, jadi dua simpan di saat yang sama tetap lolos."
+        },
+        "receiptCheck": {
+          "label": "Cek resi",
+          "reason": "Dicek di layar ini, hanya atas restok tim ini — resi yang sudah dipakai restok tim lain belum tertangkap, dan server belum menolak resi yang sama."
+        }
       }
     },
     "cancel": {
       "title": "Batalkan Restok #{{id}}",
       "message": "Restok ini masih dalam perjalanan. Setelah dibatalkan, tidak bisa dibuka lagi.",
+      "review": "Pembatalan restok akan diperiksa.",
       "confirm": "Batalkan Restok",
       "keep": "Simpan Restok",
       "moneyQuestion": "Apakah uangnya kembali?",
@@ -1630,7 +1860,7 @@
       "fulfilled": "Permintaan restok terpenuhi"
     },
     "labels": {
-      "action": "Cetak Label",
+      "action": "Cetak",
       "title": "Cetak Label",
       "heading": "Label · Restok #{{id}}",
       "back": "Kembali ke Restok #{{id}}",
@@ -1638,25 +1868,78 @@
       "notFound": "Label tersebut tidak tersedia.",
       "accepted": "Diterima",
       "count": "label · {{products}} produk",
-      "perPiece": "satu per pcs",
-      "perShelf": "satu per penempatan",
       "print": "Cetak",
-      "downloadPdf": "Unduh PDF",
-      "controls": "Label untuk dicetak",
-      "qrHint": "Setiap QR memuat kode-produk / id-batch — dicetak di bawahnya sebagai teks cadangan.",
       "oneLabelPer": "Satu label per",
       "piece": "Pcs",
       "shelf": "Rak",
-      "size": "Ukuran label",
-      "showOn": "Tampilkan di label",
-      "showRef": "Ref & tanggal restok",
-      "showHpp": "HPP / harga pokok",
       "excluded_one": "{{count}} unit datang rusak atau kurang — tidak masuk stok, jadi tidak diberi label.",
       "excluded_other": "{{count}} unit datang rusak atau kurang — tidak masuk stok, jadi tidak diberi label.",
-      "previewNote": "Menampilkan {{shown}} pertama dari {{total}} — semua {{total}} akan dicetak.",
       "none": "Tidak ada yang masuk stok pada kiriman ini, jadi tidak ada yang perlu dilabeli.",
-      "showPlacement": "Penempatan",
-      "notAccepted": "Hanya restok yang sudah diterima yang punya label — belum ada yang masuk stok sebelum dihitung."
+      "notAccepted": "Label bisa dicetak saat restok sudah Tiba atau Diterima.",
+      "notAcceptedTitle": "Restok #{{id}} belum bisa dilabeli",
+      "arrivedNote": "Restok ini baru Tiba — label tanpa penempatan, dan jumlahnya dari yang dipesan. Setelah diterima, labelnya per penempatan.",
+      "printShortcut": "Cetak (Ctrl+P)",
+      "nothingToPrint": "Tidak ada label untuk dicetak — semua jumlahnya 0.",
+      "headingMany": "Label · {{count}} Restok",
+      "pending": {
+        "byIds": {
+          "label": "Restok dibaca satu per satu",
+          "reason": "Belum ada pembacaan beberapa restok sekaligus, jadi tiap restok dibaca sendiri — detailnya, dan label untuk yang Diterima: 5 restok sampai 10 panggilan, 50 sampai 100. Dengan pembacaan per ids cukup 2."
+        }
+      },
+      "backAny": "Kembali",
+      "restocks": {
+        "title": "Restok",
+        "add": "Tambah restok — no., resi, kode produk",
+        "addLabel": "Tambah restok",
+        "loading": "Memuat…",
+        "noMatch": "Tidak ada restok Tiba atau Diterima yang cocok",
+        "remove": "Lepas restok #{{id}}",
+        "jump": "Ke label restok #{{id}}",
+        "labelCount_one": "{{count}} label",
+        "labelCount_other": "{{count}} label",
+        "notPrintable": "belum bisa dilabeli",
+        "full": "Maksimal {{max}} restok sekali cetak — lepas satu untuk menambah."
+      },
+      "settings": {
+        "title": "Pengaturan Label",
+        "reset": "Kembalikan Default",
+        "paper": "Kertas",
+        "width": "Lebar",
+        "height": "Tinggi",
+        "rows": "Baris",
+        "columns": "Kolom",
+        "gap": "Jarak",
+        "padding": "Padding",
+        "paddingAll": "Semua sisi",
+        "paddingSides": "Per sisi",
+        "top": "Atas",
+        "right": "Kanan",
+        "bottom": "Bawah",
+        "left": "Kiri",
+        "text": "Teks",
+        "sku": "Kode produk",
+        "placement": "Penempatan",
+        "name": "Nama produk",
+        "nameLines": "maks baris",
+        "date": "Tanggal cetak",
+        "bold": "Tebal",
+        "center": "Rata tengah",
+        "condensed": "Font condensed",
+        "qrGap": "Jarak QR dan teks",
+        "run": "Cetak",
+        "limit": "Limit",
+        "page": "Halaman",
+        "ofPages": "dari {{pages}}",
+        "runLine": "label {{from}}–{{to}} dari {{total}} · {{papers}} kertas",
+        "preview": "Pratinjau",
+        "toPrint": "Yang Dicetak",
+        "toPrintLine": "{{total}} label dari {{kinds}} jenis",
+        "onPlacement": "{{count}} pcs di rak",
+        "ordered": "Dipesan {{count}} pcs",
+        "countOf": "Jumlah label {{name}} di {{placement}}",
+        "previewSize": "kertas {{width}} × {{height}} mm · {{rows}} × {{columns}} label"
+      }
     },
     "accept": {
       "title": "Terima Kiriman",
@@ -1664,43 +1947,37 @@
       "warehouseOnly": "Hanya gudang tujuan restok yang dapat menerimanya.",
       "notFound": "Restok itu bukan untuk gudang ini.",
       "action": "Terima Kiriman",
-      "goodsPrice": "Harga / pcs",
-      "hpp": "Biaya / pcs (HPP)",
-      "perPiece": "{{price}} / pcs",
       "putaway": "Taruh ke penempatan",
-      "ordered": "Dipesan {{n}}",
+      "ordered": "Dipesan",
+      "pcs": "{{n}} pcs",
       "toPlace": "{{count}} belum ditempatkan",
       "placedBefore": "Pernah ditaruh di sini",
       "hereCount": "{{count}} di sini",
       "addPlacement": "Pisah ke Penempatan Lain",
       "removePlacement": "Hapus penempatan ini",
       "summary": {
-        "restock": "Restock",
+        "restock": "Restok",
         "team": "Tim",
         "raisedBy": "Orang",
-        "shipping": "Ongkir",
         "courier": "Kurir",
         "parcel": "Paket",
         "tracking": "Nomor resi",
-        "invoice": "Invoice",
+        "orderId": "Order ID",
         "raised": "Dibuat",
         "signedFor": "Diterima di pintu",
-        "note": "Catatan tim penjual",
-        "value": "Nilai",
-        "goods": "Barang",
-        "total": "Total",
-        "totalHint": "Barang + ongkir — yang dibayar tim penjual",
-        "courierOwed": "Biaya kurir — utang tim penjual",
-        "courierOwedHint": "Tidak termasuk total"
+        "note": "Catatan tim penjual"
       },
       "confirm": {
         "title": "Terima Kiriman Ini",
         "message": "Barang baik masuk ke penempatan yang Anda pilih, dan barang rusak serta kurang dicatat atas tim penjual. Ini tidak dapat dibatalkan.",
-        "label": "Terima"
+        "label": "Terima",
+        "good": "Baik",
+        "charge": "Ongkir COD dibayar gudang"
       },
       "toast": {
         "accepted": "Kiriman diterima",
-        "failed": "Tidak dapat menerima kiriman"
+        "failed": "Tidak dapat menerima kiriman",
+        "notKept": "Belum tersimpan: {{parts}}."
       },
       "actions": "Aksi",
       "notAcceptable": {
@@ -1708,10 +1985,17 @@
         "description": "Hanya restok yang dalam perjalanan atau sudah tiba yang dapat dihitung masuk, jadi tidak ada yang bisa diterima di sini."
       },
       "openRestock": "Buka Restok",
-      "countSummary": "{{received}} dari {{ordered}} pcs di dalam paket",
-      "progress_one": "{{count}} baris belum selesai",
-      "progress_other": "{{count}} baris belum selesai",
-      "ready": "Semua baris sudah dihitung dan ditempatkan",
+      "countPcs": "{{received}} dari {{ordered}} pcs",
+      "countInBox": "di dalam paket",
+      "readyToAccept": "Siap diterima",
+      "missing": {
+        "chargeAmount": "jumlah ongkir COD",
+        "chargeNote": "untuk apa ongkir COD",
+        "received": "jumlah diterima · {{name}}",
+        "count": "hitungan yang pas · {{name}}",
+        "brokenRack": "rak barang rusak · {{name}}",
+        "placement": "penempatan · {{name}}"
+      },
       "lineNote": "Tim penjual:",
       "count": "Yang tiba",
       "received": "Diterima",
@@ -1722,8 +2006,10 @@
       "brokenOverReceived": "Jumlah rusak tidak boleh lebih dari yang diterima ({{n}}).",
       "good": "Baik — masuk stok",
       "worth": "senilai {{value}}",
-      "brokenNote": "Catatan untuk barang rusak (opsional)",
-      "missingNote": "Catatan untuk barang kurang (opsional)",
+      "brokenNote": "Catatan barang rusak",
+      "brokenNotePlaceholder": "Contoh: karung sobek, isi tumpah",
+      "missingNote": "Catatan barang kurang",
+      "missingNotePlaceholder": "Contoh: kurang 1 dus saat diserahkan kurir",
       "countFirst": "Hitung dulu",
       "nothingToPlace": "Tidak ada yang ditempatkan",
       "nothingToPlaceHint": "Tidak ada barang baik di baris ini — tidak ada yang masuk ke penempatan.",
@@ -1734,12 +2020,57 @@
       "placementPlaceholder": "Pilih penempatan",
       "placementQty": "Jumlah di penempatan ini",
       "courier": {
-        "title": "Biaya kurir di pintu",
-        "hint": "Yang diminta kurir saat menyerahkan paket. Gudang membayarnya dan tim penjual menggantinya — tidak termasuk total restok.",
+        "title": "Ongkir COD dari kurir",
+        "hint": "Diminta kurir saat paket diserahkan.",
         "amount": "Jumlah",
         "note": "Untuk apa",
-        "notePlaceholder": "mis. biaya penanganan COD",
-        "noteRequired": "Tulis untuk apa biaya kurir ini."
+        "notePlaceholder": "Contoh: biaya penanganan COD",
+        "noteRequired": "Tulis untuk apa biaya kurir ini.",
+        "photo": "Foto nota",
+        "photoAlt": "Foto nota kurir",
+        "optional": "(opsional)",
+        "askedNone": "Tidak ada",
+        "askedYes": "Ada",
+        "edit": "Ubah",
+        "done": "Selesai",
+        "paidBy": "Dibayar gudang",
+        "paidLine": "{{note}} · diganti oleh {{team}}",
+        "owedBy": "Diganti oleh {{team}}",
+        "none": "Tidak ada ongkir COD yang dibayar gudang."
+      },
+      "brokenPhoto": {
+        "alt": "Foto barang rusak"
+      },
+      "pending": {
+        "brokenPhoto": {
+          "label": "Foto barang rusak",
+          "reason": "Dipilih di layar ini dan tidak diunggah — Terima belum menyimpan foto."
+        },
+        "courierPhoto": {
+          "label": "Foto nota",
+          "reason": "Dipilih di layar ini dan tidak diunggah — Terima menyimpan ongkir dan keterangannya, belum fotonya."
+        },
+        "brokenRack": {
+          "label": "Rak barang rusak",
+          "reason": "Pilihan Ditaruh di rak belum tersimpan — barang rusak tetap tercatat dibuang.",
+          "conflict": "barang rusak dibuang — tidak ada rak yang menyimpannya."
+        },
+        "codFromArrival": {
+          "label": "Ongkir COD dari Tandai Tiba",
+          "reason": "Isian ongkir dibuka dengan ongkir restok ini — dan Tandai Tiba belum menyimpannya, jadi yang dicatat di sana perlu diisi lagi."
+        }
+      },
+      "brokenTo": {
+        "label": "Barang rusak",
+        "discard": "Dibuang",
+        "rack": "Ditaruh di rak",
+        "rackRequired": "Pilih rak untuk barang rusak.",
+        "pickInPutaway": "Raknya dipilih di Taruh ke penempatan."
+      },
+      "notKept": {
+        "courierPhoto": "foto nota",
+        "brokenPhoto": "foto barang rusak",
+        "brokenRack": "rak barang rusak"
       }
     },
     "createdByAll": "Siapa saja yang membuat",
@@ -1782,20 +2113,23 @@
       "menu": "Aksi restok",
       "sign": {
         "title": "Tandai Tiba Restok #{{id}}",
-        "message": "Pastikan kurir sudah menyerahkan paket ini. Restok menjadi Tiba — tim penjual masih bisa memperbaiki barisnya sampai kamu menerimanya.",
+        "message": "Pastikan kurir sudah menyerahkan paket ini. Restok menjadi Tiba — stok belum bertambah sampai kamu menerimanya, dan tim penjual masih bisa memperbaiki barisnya sampai saat itu.",
         "messageLost": "Restok ini sudah ditandai hilang, dan paketnya ternyata datang. Menandainya tiba memindahkannya ke Tiba, lalu terima seperti biasa.",
         "dismiss": "Belum",
         "tracking": "Nomor resi di label: {{receipt}}",
-        "noTracking": "Tidak ada nomor resi — cocokkan paket dengan barisnya."
+        "noTracking": "Tidak ada nomor resi — cocokkan paket dengan barisnya.",
+        "courierHint": "Kalau kurir meminta biaya saat menyerahkan paket — masih bisa diisi atau diubah saat Terima."
       },
       "toast": {
         "cancelled": "Restok dibatalkan",
         "cancelFailed": "Gagal membatalkan",
         "lost": "Restok ditandai hilang",
         "lostFailed": "Gagal menandai hilang",
-        "arrived": "Paket diterima — restok sudah tiba",
+        "arrived": "Restok ditandai tiba",
+        "arrivedCodNotKept": "Isian biaya kurir belum tersimpan — isi lagi saat Terima.",
         "arriveFailed": "Gagal menandai tiba"
-      }
+      },
+      "notes": "Catatan"
     },
     "lost": {
       "title": "Tandai Restok #{{id}} Hilang",
@@ -1805,6 +2139,24 @@
       "reason": "Alasan",
       "reasonPlaceholder": "mis. kurir mengembalikannya ke pengirim",
       "reasonHint": "Opsional — disimpan di riwayat restok."
+    },
+    "notes": {
+      "title": "Catatan Restok",
+      "edit": "Ubah",
+      "editTitle": "Ubah Catatan",
+      "sellingLabel": "Catatan tim penjual",
+      "save": "Simpan Catatan",
+      "saved": "Catatan disimpan",
+      "saveFailed": "Gagal menyimpan catatan",
+      "notStored": "Catatan belum tersimpan — setelah restok tiba, server belum menerima perubahan catatan.",
+      "warehouseNotStored": "Catatan gudang belum tersimpan — belum ada tempat menyimpannya.",
+      "warehouseLabel": "Catatan gudang",
+      "warehouseEditTitle": "Ubah Catatan Gudang"
+    },
+    "photo": {
+      "add": "Tambah Foto",
+      "replace": "Ganti Foto",
+      "remove": "Hapus foto"
     }
   },
   "shops": {
@@ -1988,7 +2340,10 @@
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat"
+      "create": "Buat",
+      "codePlaceholder": "Contoh: A-01-1",
+      "namePlaceholder": "Contoh: Lorong depan, rak bawah",
+      "descriptionPlaceholder": "Contoh: Dekat pintu bongkar, untuk barang yang cepat keluar"
     },
     "select": {
       "placeholder": "Pilih tempat",
@@ -2013,9 +2368,9 @@
       "neverCounted": "Belum pernah diopname",
       "code": "Kode",
       "name": "Nama",
-      "noName": "(tanpa nama)",
       "description": "Deskripsi",
-      "noDescription": "(tanpa keterangan)",
+      "noName": "(tanpa nama)",
+      "noDescription": "(tanpa deskripsi)",
       "unitCost": "Harga satuan",
       "lineValue": "Nilai",
       "costUnknown": "Tidak diketahui",
@@ -2029,13 +2384,27 @@
         "products": "Produk",
         "prices": "Harga",
         "stockHistory": "Riwayat Stok",
-        "placementHistory": "Riwayat Penempatan"
+        "placementHistory": "Riwayat Penempatan",
+        "history": "Riwayat"
       },
-      "actions": "Aksi rak"
+      "navLabel": "Bagian rak",
+      "historyLens": "Gerakan yang ditampilkan",
+      "historyAll": "Semua",
+      "historyPlacement": "Hanya penempatan",
+      "historyPlacementTitle": "Hanya yang diterima dan pindah rak — yang menentukan barang ada di rak ini",
+      "actions": "Aksi rak",
+      "pending": {
+        "countLock": {
+          "label": "Kunci opname",
+          "reason": "Produk yang sedang diopname terkunci di 0 di sini — opname menghentikan perpindahan barang (sudah diputuskan), tetapi opname belum dibangun, jadi hanya prototipe yang mengisinya."
+        }
+      },
+      "emptyHint": "Barang masuk ke sini saat kiriman diterima ke rak ini, atau dipindah dari rak lain.",
+      "noHistoryHint": "Setiap barang yang ditaruh, dipindah, atau diambil sebagai sampel di rak ini muncul di sini."
     },
     "move": {
-      "action": "Pindahkan Barang",
-      "title": "Pindahkan Barang dari {{code}}",
+      "action": "Pindah Rak",
+      "title": "Pindah Rak dari {{code}}",
       "defaultTo": "Ke rak",
       "defaultToHelp": "Semua baris ke sini kecuali Anda mengubahnya.",
       "products": "Produk di {{code}}",
@@ -2052,7 +2421,7 @@
       "counting": "Sedang diopname",
       "countingHelp": "Terkunci sampai opname selesai.",
       "note": "Catatan",
-      "notePlaceholder": "Opsional, mis. merapikan rak",
+      "notePlaceholder": "Contoh: Merapikan lorong A untuk barang baru",
       "summary": "{{units}} unit dari {{products}} produk ke {{racks}} rak",
       "problem": {
         "noRack": "Pilih ke mana {{name}} dipindahkan.",
@@ -2067,23 +2436,49 @@
       "done": "{{count}} unit dipindahkan dari {{code}}"
     },
     "sample": {
-      "action": "Catat Sampel",
+      "action": "Sampel",
       "title": "Catat Sampel dari {{code}}",
       "intro": "Unit yang diserahkan kepada seseorang di gudang. Sampel bersifat final: tidak bisa dibatalkan.",
       "quantity": "Jumlah {{name}} yang diberikan",
       "given": "diberikan",
       "recipient": "Diberikan kepada",
-      "recipientPlaceholder": "Nama orang yang menerimanya",
+      "recipientPlaceholder": "Contoh: Pak Budi, fotografer",
       "recipientHelp": "Sesuai yang disebutkan orangnya, agar sampel bisa dilacak nanti.",
-      "notePlaceholder": "Opsional, mis. untuk foto produk",
+      "notePlaceholder": "Contoh: Untuk foto produk",
       "summary": "{{units}} unit dari {{products}} produk",
       "empty": "Tidak ada yang bisa diberikan dari rak ini.",
       "refused": "Tidak ada yang dicatat",
       "submit": "Catat Sampel",
       "done": "Sampel {{count}} unit dari {{code}} dicatat"
     },
+    "subtitle": "Rak di gudang ini — kode yang tertempel di rak, dan apa isinya.",
+    "none": "Belum ada rak",
+    "emptyHint": "Daftarkan rak yang ada di gudang ini, dengan kode yang tertempel di raknya.",
+    "editOne": "Ubah rak {{code}}",
+    "deleteOne": "Hapus rak {{code}}",
+    "productCount_one": "{{count}} produk",
+    "productCount_other": "{{count}} produk",
+    "stockCount_one": "{{count}} pcs",
+    "stockCount_other": "{{count}} pcs",
+    "emptyBadge": "Kosong",
+    "stat": {
+      "racks": "Rak",
+      "racksNote": "terdaftar di gudang ini",
+      "filled": "Terisi",
+      "filledNote": "rak yang ada barangnya",
+      "empty": "Kosong",
+      "emptyNote": "bisa diisi, atau dihapus",
+      "stock": "Stok di rak",
+      "stockNote": "pcs semua rak, dijumlah"
+    },
+    "pending": {
+      "pageTotals": {
+        "label": "Terisi, Kosong dan Stok di rak",
+        "reason": "Belum ada yang menjumlahkan semua rak, jadi ketiganya dihitung dari rak di halaman ini — rak di halaman lain tidak masuk."
+      }
+    },
     "reportFound": {
-      "action": "Laporkan Temuan",
+      "action": "Temuan",
       "title": "Laporkan Temuan di {{code}}",
       "product": "Produk yang ditemukan",
       "productPlaceholder": "Cari produk yang Anda temukan"
@@ -2667,7 +3062,10 @@
     "adjustReasonLost": "Hilang",
     "adjustReasonFound": "Ditemukan",
     "adjustBatch": "Batch",
-    "adjustBatchPlaceholder": "Unit dari pengiriman mana…",
+    "batchSelectPlaceholder": "Cari nomor batch atau restok",
+    "batchSelectNone": "Tidak ada batch yang cocok",
+    "batchSelectNoStock": "Tidak ada batch yang masih berstok",
+    "batchSelectError": "Batch tidak bisa dimuat",
     "adjustBatchRequiredError": "Pilih batch unit tersebut.",
     "adjustQtyRecount": "Jumlah hasil hitung baru",
     "adjustQty_damaged": "Jumlah rusak",
@@ -2682,7 +3080,7 @@
     "moveFromHelper": "Tempat stok berada sekarang — sebuah rak, atau tumpukan yang belum ditempatkan.",
     "moveTo": "Ke",
     "moveToHelper": "Tempat tujuannya. Total gudang tidak berubah — hanya letak barangnya.",
-    "moveBatchOption": "#{{id}} · {{ready}} siap",
+    "batchOption": "#{{id}} · {{ready}} siap",
     "moveQuantityHelper": "Berapa banyak yang dipindahkan. Memindahkan lebih dari isi tempat asal akan ditolak.",
     "moveReasonPlaceholder": "mis. penempatan barang, penataan ulang rak",
     "movePlacesRequiredError": "Pilih kedua tempat — lokasi stok sekarang, dan tujuannya.",
@@ -2691,6 +3089,7 @@
     "movement": {
       "when": "Waktu",
       "what": "Kegiatan",
+      "transaction": "Transaksi",
       "change": "Perubahan",
       "by": "Oleh",
       "batch": "Batch",
@@ -2698,10 +3097,18 @@
       "product": "Produk",
       "warehouse": "Gudang"
     },
-    "adjustFoundWaitsTitle": "Menunggu Owner atau Admin gudang",
-    "adjustFoundWaitsNothing": "Tidak ada yang berubah sampai salah satu dari mereka menyetujuinya — tidak ada stok, batch, atau uang.",
+    "transaction": {
+      "restock": "Restok",
+      "order": "Pesanan",
+      "transferIn": "Transfer masuk",
+      "transferOut": "Transfer keluar",
+      "adjustment": "Penyesuaian",
+      "return": "Retur",
+      "move": "Pindah rak",
+      "sample": "Sampel"
+    },
+    "foundWaits": "Stok berubah setelah disetujui Owner atau Admin gudang lain.",
     "adjustFoundWaitsApproval": "Setelah disetujui, unitnya lebih dulu mengklaim kembali kehilangan terlama produk ini yang masih terbuka, dengan harga saat hilang; sisanya masuk sebagai stok baru dengan harga terakhir di gudang ini.",
-    "adjustFoundWaitsNotYou": "Owner atau Admin lain yang menyetujuinya — bukan orang yang melaporkannya.",
     "adjustFoundHelper": "Berapa unit yang Anda temukan di rak ini.",
     "adjustFoundNotePlaceholder": "Contoh: di belakang karton di rak paling bawah, masih tersegel",
     "adjustFoundSend": "Kirim untuk Disetujui",
@@ -3045,6 +3452,7 @@
     "statExpiring": "Kedaluwarsa ≤ 30 hari",
     "searchPlaceholder": "Cari batch, resi, atau produk…",
     "expiryAll": "Semua kedaluwarsa",
+    "teamAll": "Semua tim",
     "expirySoon": "Kedaluwarsa ≤ 30 hari",
     "expiryNone": "Tanpa kedaluwarsa",
     "colBatch": "Batch",
@@ -3062,7 +3470,45 @@
     "costUnknown": "Tidak diketahui",
     "depleted": "Habis",
     "empty": "Tidak ada batch yang cocok.",
-    "backToList": "Kembali ke Batch"
+    "backToList": "Kembali ke Batch",
+    "subtitle": "Stok yang masuk bersamaan dengan harga yang sama — satu per produk di tiap restok yang diterima.",
+    "fromRestock": "Restok #{{id}}",
+    "fromReturn": "Retur",
+    "none": "Belum ada batch",
+    "noneHint": "Batch dibuat saat restok diterima — satu untuk tiap produk yang ada unit bagusnya.",
+    "statBatchesNote": "di daftar ini",
+    "statReadyValueNote": "nilai unit yang siap",
+    "statExpiringNote": "kedaluwarsa dalam 30 hari",
+    "expiryLabel": "Kedaluwarsa",
+    "explainer": {
+      "toggle": "Apa itu batch?",
+      "lead": "Batch adalah stok yang masuk bersamaan dengan harga yang sama — satu produk, satu pemilik, satu harga satuan.",
+      "made": "Dibuat saat restok diterima — satu untuk tiap produk yang ada unit bagusnya. Retur, transfer masuk, dan opname juga membuat batch.",
+      "price": "Harga satuannya adalah harga beli ditambah ongkir dan ongkos COD kurir, dibagi rata ke semua unit restok.",
+      "oldestFirst": "Barang keluar diambil dari batch terlama dulu, jadi barang yang keluar membawa harga saat ia masuk.",
+      "notPlace": "Batch mencatat nilai, bukan tempat — letak barang ada di Rak. Satu batch bisa tersebar di beberapa rak.",
+      "exampleRestock": "Restok #503 diterima",
+      "exampleRice": "Beras · 7 pcs",
+      "exampleTea": "Teh · 20 pcs",
+      "exampleNote": "dua batch — baris yang semua unitnya rusak tidak jadi batch"
+    },
+    "expiry": {
+      "left_one": "{{count}} hari lagi",
+      "left_other": "{{count}} hari lagi",
+      "today": "hari ini",
+      "ago_one": "lewat {{count}} hari",
+      "ago_other": "lewat {{count}} hari"
+    },
+    "pending": {
+      "returnLink": {
+        "label": "Retur asal batch",
+        "reason": "Data batch hanya membawa nomor restok, jadi batch dari retur belum tahu nomor returnya — belum bisa membuka halaman returnya."
+      },
+      "teamFilter": {
+        "label": "Filter tim",
+        "reason": "Daftar batch belum bisa disaring per tim — pilihannya disimpan, tapi semua batch tetap tampil."
+      }
+    }
   },
   "batchDetail": {
     "title": "Batch",
@@ -3071,7 +3517,6 @@
     "order": "Order #{{id}}",
     "originRestock": "Restok",
     "originReturn": "Retur",
-    "receivedBy": "Diterima oleh {{name}}",
     "expiring": "Kedaluwarsa {{date}}",
     "openProduct": "Buka Produk",
     "move": "Pindah",
@@ -3081,7 +3526,7 @@
     "product": "Produk",
     "owner": "Pemilik",
     "delivery": "Pengiriman · resi",
-    "unitCost": "Biaya / pcs (beku)",
+    "unitCost": "Harga satuan",
     "restockInfo": "Restok",
     "returnInfo": "Retur",
     "supplier": "Pemasok",
@@ -3098,7 +3543,11 @@
     "used": "Terpakai",
     "ready": "Siap",
     "tabPlacements": "Ditaruh Saat Diterima",
+    "tabInfo": "Info Batch",
     "tabHistory": "Riwayat",
+    "navLabel": "Bagian batch",
+    "source": "Dari",
+    "expiry": "Kedaluwarsa",
     "place": "Tempat",
     "readyHere": "Ditaruh",
     "noPlacements": "Batch ini tidak ditaruh di rak saat masuk. Letak produk sekarang ada di tab Rak produknya.",
@@ -3113,34 +3562,9 @@
     "searchRack": "Cari rak…",
     "noRackMatch": "Tidak ada rak yang cocok.",
     "lastOpname": "Opname terakhir",
-    "neverCounted": "Belum pernah dihitung"
-  },
-  "batchReceipt": {
-    "title": "Resi",
-    "back": "Kembali",
-    "print": "Cetak",
-    "notFound": "Pengiriman ini tidak ditemukan.",
-    "warehouseFallback": "Gudang",
-    "subtitle": "Barang diterima — resi pengiriman",
-    "noReceiptNo": "Tanpa no. resi",
-    "deliveryNo": "Pengiriman #{{id}}",
-    "supplier": "Pemasok",
-    "supplierRef": "Pemasok #{{id}}",
-    "warehouse": "Gudang",
-    "arrived": "Tiba",
-    "createdBy": "Dibuat oleh",
-    "acceptedBy": "Diterima oleh",
-    "product": "Produk",
-    "colArrived": "Tiba",
-    "colDamaged": "Rusak",
-    "colAccepted": "Diterima",
-    "colUnitCost": "Biaya satuan",
-    "colLineCost": "Biaya baris",
-    "colRack": "Rak",
-    "total": "Total",
-    "thisBatch": "Batch ini",
-    "costUnknown": "Tidak diketahui",
-    "note": "Diterima = tiba − rusak: hanya unit yang diterima masuk stok dan membekukan biayanya (HPP); unit rusak tidak pernah jadi stok. Biaya baris adalah yang ditagih pemasok (tiba × biaya satuan)."
+    "neverCounted": "Belum pernah dihitung",
+    "actions": "Aksi batch",
+    "noHistoryHint": "Setiap barang batch ini yang ditaruh, diambil, dipindah, atau dihitung muncul di sini."
   },
   "warehouseProduct": {
     "title": "Produk di Gudang Ini",
@@ -4175,14 +4599,17 @@
     "title_other": "{{count}} bagian layar ini belum diimplementasi",
     "lead_one": "Bagian ini hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
     "lead_other": "Bagian berikut hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
-    "toggle": "Lihat {{count}} bagiannya",
+    "toggle_one": "Lihat bagiannya",
+    "toggle_other": "Lihat {{count}} bagiannya",
     "markAria": "Belum diimplementasi, nomor {{n}}: {{label}}",
     "tag": {
       "dropped": "· tidak terkirim",
       "sample": "· angka contoh",
       "derived": "· rumus belum final",
-      "missing": "· tidak masuk total"
-    }
+      "missing": "· tidak masuk total",
+      "interim": "· pembacaan sementara"
+    },
+    "conflict": "Bertentangan dengan keputusan bisnis:"
   },
   "orderForm": {
     "source": {
@@ -4549,7 +4976,7 @@
       "courier": "Kurir",
       "courierPlaceholder": "Pilih kurir",
       "tracking": "Nomor resi",
-      "labelPhoto": "Foto label",
+      "labelPhoto": "Foto resi",
       "optionalHint": "Semua opsional — kendaraan gudang sendiri tidak punya resi.",
       "dismiss": "Nanti Saja"
     },
@@ -4647,8 +5074,8 @@
       "total": "Nilai dipindahkan: {{amount}}",
       "loss": "Rusak atau kurang: {{amount}} — kerugian tim Anda",
       "pickHint": "Ambil tiap produk dari rak yang tercantum — dipilih saat transfer dibuat, yang paling sedikit dulu.",
-      "labelPhoto": "Foto label",
-      "noLabelPhoto": "Belum ada foto label",
+      "labelPhoto": "Foto resi",
+      "noLabelPhoto": "Belum ada foto resi",
       "openLabelPhoto": "Buka Foto"
     },
     "accept": {
@@ -5245,6 +5672,21 @@
       "newBatch": "Batch baru",
       "newBatchId": "Batch baru #{{id}}",
       "claims": "kehilangan #{{id}} tanggal {{date}}"
+    },
+    "table": {
+      "no": "No.",
+      "product": "Produk",
+      "owner": "Pemilik",
+      "found": "Ditemukan",
+      "reported": "Dilaporkan",
+      "decided": "Diputuskan",
+      "value": "Nilai",
+      "actions": "Aksi",
+      "units_one": "{{count}} unit",
+      "units_other": "{{count}} unit"
+    },
+    "detail": {
+      "title": "Rincian Temuan #{{id}}"
     },
     "post": {
       "unspecified": "—",
