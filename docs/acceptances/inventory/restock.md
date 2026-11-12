@@ -48,16 +48,41 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 | | | courier's charge recorded in liability | ✅ ok |
 | `warehouse:all` wants to accept a restock<br>(1 supplier) | accept restock | recorded at supplier | ✅ ok |
 | `warehouse:all` wants to accept a restock<br>(multi suppliers) | accept restock | recorded at supplier | [❌ error](#a-multi-supplier-restock-is-recorded-at-no-supplier) |
-| `selling:all` wants to edit a restock<br>(ongoing) | edit | restock shows changes | ⬜ untested |
-| `selling:all` wants to edit a restock<br>(arrived) | edit | restock shows changed lines | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: edit product, add) | edit restock | new product added | ✅ ok |
+| | | ongoing total adjusted | ✅ ok |
+| | | total warehouse receive changes | ✅ ok |
+| | | paying account balance adjusted (decrease) | ✅ ok |
+| | | edit recorded in account history | ✅ ok |
+| `selling:all` wants to edit a restock<br>(ongoing: edit product, change) | edit restock | restock shows new count, total and note | ✅ ok |
+| | | ongoing total adjusted | ✅ ok |
+| | | total warehouse receive changes | ✅ ok |
+| | | paying account balance adjusted (decrease/increase) | ✅ ok |
+| | | edit recorded in account history | ✅ ok |
+| `selling:all` wants to edit a restock<br>(ongoing: edit product, removed) | edit restock | restock no longer shows removed product | ⬜ untested |
+| | | ongoing stock of removed product decreases | ⬜ untested |
+| | | target warehouse no longer sees removed product | ⬜ untested |
+| | | paying account balance increases by removed product | ⬜ untested |
+| | | edit recorded in account history | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: supplier and store) | edit restock | restock shows new supplier and store | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: target warehouse) | edit restock | restock shows new warehouse | ⬜ untested |
+| | | recorded at new warehouse | ⬜ untested |
+| | | removed from old warehouse | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: paying account) | edit restock | restock shows new account | ⬜ untested |
+| | | old account balance back up | ⬜ untested |
+| | | new account balance decreases | ⬜ untested |
+| | | move recorded in old account history | ⬜ untested |
+| | | move recorded in new account history | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: order ID, courier, tracking and receipt photo) | edit restock | restock shows new order ID, courier, tracking and photo | ⬜ untested |
+| | | target warehouse sees new courier and tracking | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: shipping cost) | edit restock | restock shows new shipping cost | ⬜ untested |
+| | | paying account balance follows difference | ⬜ untested |
+| | | edit recorded in account history | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: restock note) | edit restock | restock shows new note | ⬜ untested |
+| | | target warehouse sees new note | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(arrived) | edit restock | restock shows changed lines | ⬜ untested |
 | | | restock shows added product | ⬜ untested |
 | | | ongoing stock follows new count | ⬜ untested |
 | | | target warehouse sees new lines | ⬜ untested |
-| `selling:all` wants to edit a restock<br>(amount changed) | edit | paying account balance follows difference | ⬜ untested |
-| | | edit recorded in account history | ⬜ untested |
-| `selling:all` wants to edit a restock<br>(account changed) | edit | payment moves to new account | ⬜ untested |
-| `selling:all` wants to edit a restock<br>(warehouse changed) | edit | recorded at new warehouse | ⬜ untested |
-| | | removed from old warehouse | ⬜ untested |
 
 ## Not discussed yet
 

@@ -69,6 +69,8 @@ so each status sits beside its own then. A blank given and when continue the row
   `` `warehouse:all` wants to accept a restock<br>(multi suppliers) ``.
 - **The case goes in brackets on its own line**, after a `<br>`. It holds the state the action starts from and the
   condition it is tested under, so a then carries no brackets of its own.
+- **A state and a part read `state: part`**: `` `selling:all` wants to edit a restock<br>(ongoing: shipping cost) `` — the
+  state the restock is in, then the part of it that changes.
 - **One given, one when.** A different case is a different given, and so is a different goal, even on the same restock:
   editing a restock is not wanting to restock, and accepting it is not receiving it.
 - **Each given is tested in its own run**, set up to meet its case.
@@ -83,7 +85,7 @@ so each status sits beside its own then. A blank given and when continue the row
 
 ## when-is-one-action
 
-- The action alone, in lowercase: `create restock`, `mark arrived restock`, `accept restock`, `edit`. Its case lives in the given.
+- The action alone, in lowercase: `create restock`, `mark arrived restock`, `accept restock`, `edit restock`. Its case lives in the given.
 - A read (a list, a detail) is never a when: what a person can read shows up as a then of the action that caused it.
 
 ## every-candidate-is-listed
