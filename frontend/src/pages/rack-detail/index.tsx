@@ -22,6 +22,7 @@ import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { SectionNav } from "../../components/chrome/SectionNav";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { cameFrom } from "../../lib/cameFrom";
@@ -111,7 +112,10 @@ export function RackDetailPage() {
 
   // The writes off this rack (placement_decision.md): Move Goods, Record Sample (a-sample-is-recorded-on-rack-detail) and
   // Report Found. The reads are hand-rolled effects rather than query hooks, so a write bumps `reloadKey` and every read on
-  // the page — header, the shelf, the history — asks again.
+  // the page — header, the shelf, the history — asks again, IN PLACE: a refresh moves nothing
+  // (motion-is-small-quick-and-shared; HARD RULE 10). The page stays drawn while it asks and the new answer lands where the
+  // old one was; only the shelf's and the history's rows dim under RefreshOverlay. The skeletons are the FIRST load's alone
+  // — re-drawing them on a refresh swapped the whole page out and made it rise in again (backlog #45).
   const [dialog, setDialog] = useState<"move" | "sample" | "found" | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const reload = () => setReloadKey((k) => k + 1);
@@ -140,9 +144,11 @@ export function RackDetailPage() {
 
   // Which rack is this, and the header's figures. Kept apart from the shelves so that paging one does not re-ask for the
   // header, and a rack that fails to load fails the whole page — there is no useful "contents of a rack we cannot name".
+  //
+  // ⚠ NOT KEYED ON `t`: the words are the render's business (an invalid id is said below, in the app's language), and an
+  // effect that re-runs on a new `t` would re-read the rack for a language switch.
   useEffect(() => {
     if (teamId === undefined || rackId === 0n) {
-      setError(rackId === 0n ? t("racks.detail.invalidId") : "");
       setLoading(false);
       return;
     }
@@ -175,7 +181,7 @@ export function RackDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [teamId, rackId, t, reloadKey]);
+  }, [teamId, rackId, reloadKey]);
 
   // No current team means there is no warehouse to read a rack against — the whole page is meaningless.
   if (!current) {
@@ -191,17 +197,22 @@ export function RackDetailPage() {
 
   const back = () => navigate(backTo);
 
-  // The first load shows the page's shape (motion-is-small-quick-and-shared).
-  if (loading) {
+  // THIS rack is on screen — a refresh keeps it drawn; another rack's (the address changed) is not this page's to show.
+  const shown = rack !== null && rack.id === rackId;
+  const failure = rackId === 0n ? t("racks.detail.invalidId") : error;
+
+  // The FIRST load shows the page's shape (motion-is-small-quick-and-shared) — and only the first: a re-read of a rack
+  // already drawn keeps it drawn, so the page never swaps itself for its skeleton and rises in again (backlog #45).
+  if (loading && !shown && !failure) {
     return <ListSkeleton heading rows={3} testId="rack-detail-loading" />;
   }
 
-  if (error || !rack) {
+  if (failure || !rack || !shown) {
     return (
       <Stack gap="section">
         <RackTitleRow stuck={false} code={t("racks.detail.title")} name="" backLabel={t("racks.detail.back")} onBack={back} />
         <Text color="error.fg" data-testid="rack-detail-error">
-          {error || t("racks.detail.notFound")}
+          {failure || t("racks.detail.notFound")}
         </Text>
       </Stack>
     );
@@ -410,30 +421,26 @@ export function RackDetailPage() {
         )}
 
         {/* THE SHELF IN THE MAIN COLUMN, INFO BESIDE IT where there is room — in the nav's order in one column otherwise. A
-            JS branch, so no card exists twice. */}
-        {wide ? (
-          <Stack gap="section" minW="0" w="full">
-            {title}
-            {figures}
-            <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
-              <Stack gap="section" minW="0">
-                {products}
-                {history}
-              </Stack>
+            JS branch, so no card exists twice. ⚠ ONE TREE FOR BOTH WIDTHS: crossing the breakpoint (a window dragged, a
+            screenshot's viewport) re-mounts nothing that reads — Riwayat keeps its slot, and with it its chip, its page and
+            its rows, rather than drawing its skeleton and asking again (backlog #45). Only Info, which holds no state,
+            moves between the columns. */}
+        <Stack gap="section" minW="0" w="full">
+          {title}
+          {figures}
+          <Grid templateColumns={wide ? "minmax(0, 1fr) 20rem" : "minmax(0, 1fr)"} gap="section" alignItems="start" minW="0">
+            <Stack gap="section" minW="0">
+              {products}
+              {!wide && info}
+              {history}
+            </Stack>
+            {wide && (
               <Stack gap="section" minW="0">
                 {info}
               </Stack>
-            </Grid>
-          </Stack>
-        ) : (
-          <Stack gap="section" minW="0" w="full">
-            {title}
-            {figures}
-            {products}
-            {info}
-            {history}
-          </Stack>
-        )}
+            )}
+          </Grid>
+        </Stack>
       </Grid>
 
       {teamId !== undefined && (
@@ -469,17 +476,20 @@ export function RackDetailPage() {
   );
 }
 
-// THE SHELF SECTION — the table (or a phone's blocks) and its pager under it.
+// THE SHELF SECTION — the table (or a phone's blocks) and its pager under it. A re-read (a write on the page, a page
+// turned) keeps the rows on screen under RefreshOverlay (HARD RULE 10); the skeleton is the first load's.
 function ShelfSection({ shelf }: { shelf: RackShelf }) {
   return (
     <Stack gap="card">
-      <RackStockTable
-        lines={shelf.lines}
-        products={shelf.products}
-        teams={shelf.teams}
-        loading={shelf.loading}
-        error={shelf.error}
-      />
+      <RefreshOverlay busy={shelf.refreshing}>
+        <RackStockTable
+          lines={shelf.lines}
+          products={shelf.products}
+          teams={shelf.teams}
+          loading={shelf.loading}
+          error={shelf.error}
+        />
+      </RefreshOverlay>
       <GrowingPager
         page={shelf.page}
         onPageChange={shelf.setPage}
@@ -722,7 +732,10 @@ function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
   // row names its person) and to WHAT. One batch each, committed with the rows; a failed lookup falls back to "#id".
   const [actorNames, setActorNames] = useState<Map<string, string>>(new Map());
   const [productNames, setProductNames] = useState<Map<string, string>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(true);
+  // Which rack the rows on screen are: a re-read of the same rack — a write on the page, the other chip, a page turned —
+  // keeps them drawn under RefreshOverlay (HARD RULE 10, backlog #45); another rack's are a first load.
+  const [shownFor, setShownFor] = useState<bigint | null>(null);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -734,13 +747,13 @@ function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
 
   useEffect(() => {
     if (teamId === undefined || rackId === 0n) {
-      setLoading(false);
+      setFetching(false);
       return;
     }
 
     let ignore = false;
 
-    setLoading(true);
+    setFetching(true);
     setError("");
 
     rackClient
@@ -772,22 +785,28 @@ function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
         setActorNames(people);
         setProductNames(names);
         setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
+        setShownFor(rackId);
       })
       .catch((err) => {
         if (!ignore) {
           setError(rpcError(err));
           setMovements([]);
           setTotalItems(0);
+          setShownFor(null);
         }
       })
       .finally(() => {
-        if (!ignore) setLoading(false);
+        if (!ignore) setFetching(false);
       });
 
     return () => {
       ignore = true;
     };
   }, [teamId, rackId, page, pageSize, kindKey, reloadKey]);
+
+  // The FIRST read draws the skeleton; a re-read dims the rows already drawn.
+  const shown = shownFor === rackId;
+  const loading = fetching && !shown;
 
   // The chips stay put while the ledger under them loads or fails — a lens is chosen, then answered.
   const chips = (
@@ -834,19 +853,21 @@ function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
       {/* The shared ledger (features/inventory/MovementTable): this shelf's history names the PRODUCT
           that moved, since the rack is already the thing you are looking at. "On shelf after" stays
           this page's wording — it is one shelf's count, not the warehouse's (#135). */}
-      <MovementTable
-        movements={movements}
-        testId={testId}
-        columns={["product", "by"]}
-        actorNames={actorNames}
-        productLabel={(id) => productNames.get(id.toString()) ?? `#${id}`}
-        afterLabel={t("racks.detail.after")}
-        emptyText={t("racks.detail.noHistory")}
-        // THE REWORKED LEDGER (an-empty-list-shows-a-hint, a-table-row-lights-up, a-phone-reads-each-line-as-a-block):
-        // an empty history is a hint, the rows light up, and a phone reads each movement as two lines.
-        emptyIcon={History}
-        emptyDescription={t("racks.detail.noHistoryHint")}
-      />
+      <RefreshOverlay busy={fetching && shown}>
+        <MovementTable
+          movements={movements}
+          testId={testId}
+          columns={["product", "by"]}
+          actorNames={actorNames}
+          productLabel={(id) => productNames.get(id.toString()) ?? `#${id}`}
+          afterLabel={t("racks.detail.after")}
+          emptyText={t("racks.detail.noHistory")}
+          // THE REWORKED LEDGER (an-empty-list-shows-a-hint, a-table-row-lights-up, a-phone-reads-each-line-as-a-block):
+          // an empty history is a hint, the rows light up, and a phone reads each movement as two lines.
+          emptyIcon={History}
+          emptyDescription={t("racks.detail.noHistoryHint")}
+        />
+      </RefreshOverlay>
 
       <GrowingPager
         page={page}

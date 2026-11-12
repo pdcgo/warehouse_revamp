@@ -136,8 +136,17 @@ let historyActorOf: Record<string, { userId: bigint; isOverride: boolean }> = {}
  * A RACE, armed for the next write only: just before RackMove or RackSample checks the shelf, somebody else has taken
  * units, so `productId` on `rackId` holds `onHand`. The dialog allowed the quantity; the server refuses the whole write.
  */
-export const rackStubScenario: { raceBeforeNextWrite: { rackId: bigint; productId: bigint; onHand: bigint } | null } = {
+export const rackStubScenario: {
+  raceBeforeNextWrite: { rackId: bigint; productId: bigint; onHand: bigint } | null;
+  /**
+   * THE NETWORK A RE-READ WAITS ON: RackDetail, RackStock and RackHistory answer after this many ms (0 = at once). A story
+   * sets it after the first load, so a refresh is slow enough to be SEEN — an instant answer lands in the same tick as
+   * the refetch starts and would hide a page that swaps itself for its skeleton while it waits (backlog #45).
+   */
+  readLatencyMs: number;
+} = {
   raceBeforeNextWrite: null,
+  readLatencyMs: 0,
 };
 
 export function resetRackStub() {
@@ -151,6 +160,7 @@ export function resetRackStub() {
   historyActor = SELF_ID;
   historyActorOf = {};
   rackStubScenario.raceBeforeNextWrite = null;
+  rackStubScenario.readLatencyMs = 0;
 }
 
 /** For a story: who the rack history names on every row — e.g. a former user (erase-keeps-the-row). */
@@ -548,3 +558,22 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
     return { transactions };
   },
 };
+
+// The three reads the rack page makes, answered after `readLatencyMs` when a story asks for a slow network.
+for (const read of ["rackDetail", "rackStock", "rackHistory"] as const) {
+  const answer = rackService[read] as (req: unknown, ctx: unknown) => unknown;
+  (rackService as Record<string, unknown>)[read] = (req: unknown, ctx: unknown) => {
+    const ms = rackStubScenario.readLatencyMs;
+    if (ms <= 0) return answer(req, ctx);
+
+    return new Promise((resolve, reject) =>
+      setTimeout(() => {
+        try {
+          resolve(answer(req, ctx));
+        } catch (err) {
+          reject(err);
+        }
+      }, ms),
+    );
+  };
+}

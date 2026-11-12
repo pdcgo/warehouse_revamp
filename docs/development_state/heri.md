@@ -41,6 +41,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **A wrong batch price can be corrected** | the owning team's Owner or Admin uses *Koreksi Harga* on a product's batch: new price above Rp 0, a reason, what changes shown first; the warehouse sees *Harga dikoreksi* in the batch history; units already sold, lost or moved keep their price; a big product's stock history went from 12.5 s to 19 ms |
 | **Analytic reads the stock** | four new Inventory metrics — *Restock*, *Transfer* (sent, received, in transit), *Returned stock*, *Ready stock* (on hand at each day's end) — with Lost stock's filters; a warehouse sees units only on the first three; switching a grouping no longer crashes the page |
 | **A shelf shows the warehouse units only** | on a rack page a warehouse's staff see what sits there and how many — no price per piece, no value; root still sees both |
+| **Small fixes** | the rack page no longer flashes back to loading after a sample or move; the daily statement says *Order fees* instead of *Handling fees*, and *Ongkir COD* for the courier's money |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

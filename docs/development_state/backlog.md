@@ -28,9 +28,7 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
-| 45 | **The rack page flashes back to its loading skeleton after it has loaded** (seen 2026-11-12 while screenshotting #44; predates it) | bug · frontend | inventory | S | `pages/rack-detail/index.tsx` |
-| 27 | **Old dev orders have no Team Balance fees** — liability's order routes were never mounted until 2026-11-06, so their `order-placed` events dead-lettered; `san pubsub redrive --topic order-placed` replays them if wanted | data | liability | S | `docs/tools/san.md` |
-| 35 | **The warehouse daily statement's old words** — still says *COD* and *Handling fees* (the report is deferred: `the-daily-report-is-deferred`) | frontend | balance | S | `DailyStatementPage` |
+| 27 | **Old dev orders have no Team Balance fees** — the dead-lettered `order-placed` events are GONE (the Pub/Sub emulator keeps them in memory; restarted 2026-11-12), so `san pubsub redrive` replays nothing. Only dev orders 5 and 6 miss fees (15.000 warehouse fee each, order 6 also a product fee). Recovery (a one-off backfill / re-publish) or leave dev as is — the owner's call | data | liability | S | `docs/tools/san.md` |
 
 ### Later — decided, bigger
 
@@ -60,7 +58,9 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 
 | Date | Item | Commit |
 | --- | --- | --- |
-| 2026-11-12 | **#44 A shelf shows a warehouse units only** (`a-warehouse-sees-ready-value-but-a-shelf-only-units`) — `RackDetail` / `RackStock` leave price + value unset for a warehouse-role caller (5 `optional` fields); the rack page draws money only when sent; root / the monitor keep it; e2e `the_warehouse_reads_a_shelf_in_units.spec.ts`; full e2e 302 passed | uncommitted |
+| 2026-11-12 | **#45 The rack page no longer flashes its skeleton** — skeletons only until first drawn, a re-read dims under `RefreshOverlay`; one layout tree at every width; story *A refresh keeps the page drawn* | uncommitted |
+| 2026-11-12 | **#35 The daily statement's words** — *Order fees* / *Biaya pesanan* (`the-ledger-speaks-the-business-words`) and *Courier COD* / *Ongkir COD* (`the-warehouse-statement-says-ongkir-cod`); `StatementWords.stories.tsx`; full e2e 300 passed | uncommitted |
+| 2026-11-12 | **#44 A shelf shows a warehouse units only** (`a-warehouse-sees-ready-value-but-a-shelf-only-units`) — `RackDetail` / `RackStock` leave price + value unset for a warehouse-role caller (5 `optional` fields); the rack page draws money only when sent; root / the monitor keep it; e2e `the_warehouse_reads_a_shelf_in_units.spec.ts`; full e2e 302 passed | `078971d5` |
 | 2026-11-12 | **Four Inventory metrics on Analytic** — Restock, Transfer, Returned stock, Ready stock (`the-inventory-metrics-prototype-is-accepted` + 3 answers): inventory 00042 daily changes + door reports folded in all 13 stock writers (order take +0.5–0.9 ms); `MetricSearch`/`MetricData` serve them; units-position kind + *Positions (units)* graph; a warehouse sees no value on the three movement metrics; prototype deleted; e2e `the_inventory_metrics.spec.ts`; full e2e 265 passed | `00215cc8` |
 | 2026-11-12 | **#43 Analytic no longer crashes switching an id group to a time group** — stale rows keep their own group's labels; story `SwitchingWarehouseToMonthly` | `00215cc8` |
 | 2026-11-12 | **Koreksi Harga live** (`the-correct-price-prototype-is-accepted`, `a-corrected-price-is-above-zero`) — `BatchRevalue` (batch row locked first; refuses stale form, ≤ Rp 0, same price, no units left, empty reason); history *Harga dikoreksi* rows; BatchDetail figures from their own rows, not the current price; inventory 00041 history ref indexes (OwnerStockHistory 12.5 s → 19 ms); e2e `the_owner_corrects_a_batch_price.spec.ts`; full e2e 261 passed | `6c49c708` |

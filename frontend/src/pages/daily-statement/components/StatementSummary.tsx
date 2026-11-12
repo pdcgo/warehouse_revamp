@@ -14,7 +14,7 @@ export interface StatementSummaryProps {
   mode: StatementMode;
   /** Which unit the average below is per — the table's row grain, so the two agree. */
   grain: PeriodGrain;
-  /** The period's income — the handling fees it charged. */
+  /** The period's income — the order fees it charged. */
   income: number;
   liability: LiabilityDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
@@ -154,11 +154,13 @@ export function StatementSummary({
           </Stack>
         </SimpleGrid>
 
-        {/* ⚠ COD IS NOT INCOME, and saying so is the only way the number above stops looking wrong.
-            A warehouse pays a courier at the door for goods it does not own and is owed that money
-            back — so it is a reimbursement of cash already gone, not something earned. It is shown
-            because the warehouse is genuinely owed it, and excluded from profit because counting it
-            would inflate income against an outflow that was never recorded as an expense. */}
+        {/* ⚠ THE COURIER'S CHARGES ARE NOT INCOME, and saying so is the only way the number above stops
+            looking wrong. A warehouse pays what a courier asks at its door (cod-fee-is-the-couriers-incidental-ask
+            — not cash on delivery for the goods, which is why the word is no longer COD:
+            the-ledger-speaks-the-business-words) and is owed that money back — so it is a reimbursement of
+            cash already gone, not something earned. It is shown because the warehouse is genuinely owed it,
+            and excluded from profit because counting it would inflate income against an outflow that was
+            never recorded as an expense. */}
         {!loading && mode === "warehouse" && codFees !== 0 && (
           <Flex align="center" gap="2" mt="card" color="fg.muted" data-testid="statement-cod-notice">
             <Icon as={TriangleAlert} boxSize="4" />

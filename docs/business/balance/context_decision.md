@@ -32,6 +32,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-operating-cost-never-moves-a-team-balance](#an-operating-cost-never-moves-a-team-balance) | an operating cost — payroll, electricity, ads — is its own team's expense and never moves a team balance |
 | [an-orders-warehouse-fee-is-read-on-the-order](#an-orders-warehouse-fee-is-read-on-the-order) | an order's warehouse fee is kept on the order and read on its page, beside its settlement — no `order_id` filter on the entries |
 | [the-liability-day-is-the-jakarta-day](#the-liability-day-is-the-jakarta-day) | the liability daily view groups by the Jakarta day, not UTC | owner, as recommended | — |
+| [the-warehouse-statement-says-ongkir-cod](#the-warehouse-statement-says-ongkir-cod) | the warehouse's daily statement calls the courier money Ongkir COD / Courier COD | owner, as recommended | — |
 
 ---
 
@@ -1409,3 +1410,11 @@ flowchart LR
 **The verdict.** Yes. The liability daily view groups by the **Jakarta day** with Jakarta-midnight bounds, like every other day in the system ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)): an amount owed at 06:00 WIB lands on that WIB day, not the UTC day before. Its tests move with it. ⚠ Not built.
 
 ✅ Built 2026-11-05 — `liability_v1/liability_daily.go` groups by `(created_at AT TIME ZONE 'Asia/Jakarta')::date` and reads the period's dates as Jakarta midnights; tests `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay`, `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` (now in WIB); perf `TestPerf_LiabilityDaily` — plan unchanged, not heavy ([rpc.md](../../services/liability_service/rpc.md#bucketing--the-jakarta-day)).
+
+---
+
+## the-warehouse-statement-says-ongkir-cod
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to: the warehouse's daily statement's old *COD* column and notice were renamed *Biaya kurir* / *Courier charges* (Team Balance's ledger word, [the-ledger-speaks-the-business-words](#the-ledger-speaks-the-business-words)); the restock screens call the same money *Ongkir COD* from the warehouse's side ([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)). A: *Ongkir COD*, the warehouse's own word; B: keep *Biaya kurir*.
+
+**The verdict.** On the warehouse's daily statement the courier's money is **Ongkir COD** (id) / **Courier COD** (en) — the words its restock screens already use. *Handling fees* stays renamed *Biaya pesanan* / *Order fees*. Team Balance's ledger keeps its own *Biaya kurir …* rows. The page stays deferred ([the-daily-report-is-deferred](#the-daily-report-is-deferred)).

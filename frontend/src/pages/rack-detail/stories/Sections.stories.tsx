@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { RACK_DETAIL_META, loaded, stock } from "./kit";
+import { rackStubScenario } from "../../../../.storybook/rackStub";
+import { RACK_DETAIL_META, loaded, openSample, stock, type } from "./kit";
 
 // RACK DETAIL — the page's shape: one page of sections under a nav (a-rack-page-is-one-page-of-sections), the product
 // page's and the restock pages' — no tabs. The page's stories are grouped by the part of the screen they are about
@@ -61,5 +62,65 @@ export const TheNavJumps: Story = {
     await userEvent.click(canvas.getByTestId("section-nav-history"));
     await waitFor(() => expect(canvas.getByTestId("section-nav-history")).toHaveAttribute("aria-current", "location"));
     await waitFor(() => expect(canvas.getByTestId("rack-history-panel").getBoundingClientRect().top).toBeLessThan(window.innerHeight));
+  },
+};
+
+// A REFRESH MOVES NOTHING (motion-is-small-quick-and-shared; HARD RULE 10, never blanks while it refreshes). A write on
+// the page — here a sample — reads the header, the shelf and the history again, and the page that is already drawn
+// STAYS: no skeleton comes back, nothing re-mounts, and the new figures land in place. The skeleton is the FIRST load's
+// alone. (Backlog #45: the page used to swap itself for its loading skeleton on every re-read, then rise in again.)
+export const ARefreshKeepsThePageDrawn: Story = {
+  name: "A refresh keeps the page drawn",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("rack-history-table")).toBeInTheDocument());
+
+    const page = canvas.getByTestId("rack-detail-page");
+    const shelf = canvas.getByTestId("rack-detail-stock");
+    const history = canvas.getByTestId("rack-history-table");
+
+    // Every skeleton drawn on the page from here on, however briefly. The dialog portals outside the canvas.
+    const skeletons: string[] = [];
+    const watch = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          for (const el of [node, ...node.querySelectorAll("[data-testid]")]) {
+            const id = el.getAttribute("data-testid") ?? "";
+            if (id.endsWith("-loading")) skeletons.push(id);
+          }
+        }
+      }
+    });
+    watch.observe(canvasElement, { childList: true, subtree: true });
+
+    // A network the re-read has to wait on, as the live app's does — an instant stub answer lands in the same tick as the
+    // refetch starts, and a page that swaps itself for its skeleton while it waits would pass unseen.
+    rackStubScenario.readLatencyMs = 400;
+
+    try {
+      await openSample();
+      await type(await screen.findByTestId("sample-qty-71"), "2");
+      await type(screen.getByTestId("sample-recipient"), "Pak Budi");
+      await userEvent.click(screen.getByTestId("sample-submit"));
+      await waitFor(() => expect(screen.queryByTestId("record-sample-dialog")).toBeNull());
+
+      // While it waits, the shelf's rows stay under RefreshOverlay — dimmed, a thin bar above them — never a skeleton.
+      await waitFor(() =>
+        expect(within(canvas.getByTestId("rack-products-panel")).getByTestId("refresh-overlay")).toHaveAttribute("data-busy", "true"),
+      );
+
+      // The re-read landed: the header, the shelf and the history all say so.
+      await waitFor(() => expect(canvas.getByTestId("rack-summary-count")).toHaveTextContent("23"));
+      await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("10"));
+      await waitFor(() => expect(canvas.getByTestId("rack-history-table")).toHaveTextContent(/sample/i));
+    } finally {
+      watch.disconnect();
+    }
+
+    await expect(skeletons).toEqual([]);
+    await expect(canvas.getByTestId("rack-detail-page")).toBe(page);
+    await expect(canvas.getByTestId("rack-detail-stock")).toBe(shelf);
+    await expect(canvas.getByTestId("rack-history-table")).toBe(history);
   },
 };

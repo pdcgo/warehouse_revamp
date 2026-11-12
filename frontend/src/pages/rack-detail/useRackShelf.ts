@@ -15,7 +15,10 @@ export interface RackShelf {
   products: Map<string, Product>;
   /** teamId → team, for each row's Tim column — resolved after the rows, cached for the page's life. */
   teams: Map<string, Team>;
+  /** The FIRST read of this rack's shelf, nothing of it drawn yet — the section shows its skeleton. */
   loading: boolean;
+  /** A re-read over rows already drawn (a write on the page, a page turned) — they stay, under RefreshOverlay. */
+  refreshing: boolean;
   error: string;
   page: number;
   setPage: (page: number) => void;
@@ -38,7 +41,10 @@ export function useRackShelf(teamId: bigint | undefined, rackId: bigint, reloadK
   const [lines, setLines] = useState<RackStockLine[]>([]);
   const [products, setProducts] = useState<Map<string, Product>>(new Map());
   const [teams, setTeams] = useState<Map<string, Team>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(true);
+  // Which rack the lines on screen are: a re-read of the SAME rack keeps them drawn while it asks (a refresh moves
+  // nothing — HARD RULE 10, backlog #45); another rack's lines are not this one's to show, so that is a first load.
+  const [shownFor, setShownFor] = useState<bigint | null>(null);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(20);
@@ -51,13 +57,13 @@ export function useRackShelf(teamId: bigint | undefined, rackId: bigint, reloadK
 
   useEffect(() => {
     if (teamId === undefined || rackId === 0n) {
-      setLoading(false);
+      setFetching(false);
       return;
     }
 
     let ignore = false;
 
-    setLoading(true);
+    setFetching(true);
     setError("");
 
     void (async () => {
@@ -102,15 +108,17 @@ export function useRackShelf(teamId: bigint | undefined, rackId: bigint, reloadK
         setLines(stockLines);
         setProducts(resolved);
         setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
+        setShownFor(rackId);
       } catch (err) {
         if (!ignore) {
           setError(rpcError(err));
           setLines([]);
           setProducts(new Map());
           setTotalItems(0);
+          setShownFor(null);
         }
       } finally {
-        if (!ignore) setLoading(false);
+        if (!ignore) setFetching(false);
       }
     })();
 
@@ -165,5 +173,19 @@ export function useRackShelf(teamId: bigint | undefined, rackId: bigint, reloadK
     setPage(1);
   };
 
-  return { lines, products, teams, loading, error, page, setPage, pageSize, setPageSize, totalItems };
+  const shown = shownFor === rackId;
+
+  return {
+    lines,
+    products,
+    teams,
+    loading: fetching && !shown,
+    refreshing: fetching && shown,
+    error,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+  };
 }
