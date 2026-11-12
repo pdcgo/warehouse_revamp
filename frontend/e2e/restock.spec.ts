@@ -1720,8 +1720,8 @@ test.describe("warehouse:all wants to accept a restock", () => {
 // Every selling role edits through its own restock page and form. The restocks are the GIVEN, seeded through the API;
 // each has its OWN paying account, so a balance read in one test is never moved by another test's events.
 //
-// (ongoing: edit product, change) and (ongoing: edit product, add) are one test each per role, each THEN a step named as
-// its row. The other two tests — an
+// (ongoing: edit product, change), (ongoing: edit product, add) and (ongoing: edit product, removed) are one test each per
+// role, each THEN a step named as its row. The other two tests — an
 // ongoing restock moved to another warehouse and account, and an arrived restock's count with a product added — predate
 // the edit givens' rediscussion: they keep their old step names until their givens are tested by hand
 // (ongoing: target warehouse, ongoing: paying account, arrived).
@@ -1734,11 +1734,12 @@ test.describe("selling:all wants to edit a restock", () => {
     { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
     { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
   ] as const;
-  // The restocks seeded per role: "on" for (ongoing: edit product, change), "ad" for (ongoing: edit product, add), and
-  // the two that predate the rediscussion.
+  // The restocks seeded per role: "on" for (ongoing: edit product, change), "ad" for (ongoing: edit product, add), "rm"
+  // for (ongoing: edit product, removed), and the two that predate the rediscussion.
   const CASES = [
     { cond: "ongoing", key: "on" },
     { cond: "ongoing: edit product, add", key: "ad" },
+    { cond: "ongoing: edit product, removed", key: "rm" },
     { cond: "ongoing, moved to another warehouse and account", key: "mv" },
     { cond: "arrived", key: "ar" },
   ] as const;
@@ -1828,18 +1829,24 @@ test.describe("selling:all wants to edit a restock", () => {
         const p = code(r.key, c.key, "P");
         const productId = await product(p);
         ground.products[p] = productId;
-        if (c.key === "ar" || c.key === "ad") await product(code(r.key, c.key, "Q"));
+        const q = code(r.key, c.key, "Q");
+        const qId = c.key === "ar" || c.key === "ad" || c.key === "rm" ? await product(q) : "";
 
         const accountId = await account(`E2E Edt ${r.key} ${c.key} ${SUFFIX}`, `80${SUFFIX}${++n}`);
         ground.accounts[at(r.key, c.key)] = accountId;
 
-        // GIVEN — an ongoing restock of 10 × Rp 10.000 to warehouse A, one supplier, paid from its own account.
+        // GIVEN — an ongoing restock of 10 × Rp 10.000 to warehouse A, one supplier, paid from its own account; the
+        // removed case's also carries Q, 4 for Rp 40.000, to be taken off.
+        const items = [{ productId, productCode: p, name: `E2E ${p}`, count: 10, total: 100_000, supplierId: ground.supplier }];
+        if (c.key === "rm") {
+          items.push({ productId: qId, productCode: q, name: `E2E ${q}`, count: 4, total: 40_000, supplierId: ground.supplier });
+        }
         const created = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
           teamId: ground.team,
           warehouseId: ground.w1,
           financeAccountId: accountId,
           receipt: `E2E-EDT-${r.key}-${c.key}-${SUFFIX}`.toUpperCase(),
-          items: [{ productId, productCode: p, name: `E2E ${p}`, count: 10, total: 100_000, supplierId: ground.supplier }],
+          items,
         });
         const id = String(created.request.id);
         // …and for the arrived case, signed for by warehouse A.
@@ -1988,6 +1995,61 @@ test.describe("selling:all wants to edit a restock", () => {
       await signIn(page, W1_USER, ground.w1);
       await test.step("then: total warehouse receive changes", async () => {
         await expect.soft(await inboundRow(page, id)).toContainText("2 products · 15 pcs");
+      });
+    });
+
+    // (ongoing: edit product, removed) — the restock of 10 × P and 4 × Q (Rp 100.000 + Rp 40.000) loses Q.
+    test(`${r.given} edit restock (ongoing: edit product, removed)`, async ({ page }) => {
+      const id = ground.restocks[at(r.key, "rm")];
+      const account = ground.accounts[at(r.key, "rm")];
+      const p = code(r.key, "rm", "P");
+      const q = code(r.key, "rm", "Q");
+
+      await signIn(page, username(r.key), ground.team);
+      const before = await balanceOnceRecorded(page, account, `Restock #${id}`);
+
+      // WHEN — Edit on the restock's own page, as this role, while it is ongoing: Q unticked in the picker.
+      await page.goto(`/inventories/restock/${id}`);
+      await page.getByTestId(`restock-action-edit-${id}`).click();
+      await expect(page.getByTestId("restock-edit-page")).toBeVisible();
+      await page.getByTestId("restock-pick-products").click();
+      await tick(page, q, false);
+      await page.getByTestId("product-picker-confirm").click();
+      await expect(page.getByTestId("restock-line-1")).toHaveCount(0);
+      // The courier is asked for while the parcel is open (the-courier-is-required-on-the-form); the seed named none.
+      await page.getByTestId("restock-courier").getByRole("combobox").click();
+      await page.getByTestId("shipment-channel-option-jne").click();
+      await expect(page.getByTestId("restock-form-ready")).toBeVisible();
+      await page.getByTestId("submit-restock").click();
+      await expect(page).toHaveURL(new RegExp(`/inventories/restock/${id}$`));
+
+      // THEN — as the seller.
+      await test.step("then: product removed", async () => {
+        await page.getByTestId("section-nav-products").click();
+        const products = page.getByTestId("restock-detail-products");
+        await expect.soft(products).toContainText(p);
+        await expect.soft(products).not.toContainText(q);
+      });
+
+      // Q comes off Ongoing — a dash or a 0, whichever the picker draws for none — and P keeps its 10.
+      await test.step("then: ongoing total adjusted (Q from 4 to none, P still 10)", async () => {
+        await expect.soft(await ongoingOf(page, q)).toHaveText(/^(0|—)$/);
+        await expect.soft(await ongoingOf(page, p)).toHaveText("10");
+      });
+
+      await test.step(`then: paying account balance adjusted (increase) (by ${rupiah(40_000)})`, async () => {
+        await expect.soft(async () => balanceIs(page, account, before + 40_000)).toPass({ timeout: 35_000 });
+      });
+
+      await test.step("then: edit recorded in account history", async () => {
+        await page.goto(`/financial-accounts/${account}`);
+        await expect.soft(page.getByTestId("account-log-table")).toContainText(`Restock #${id} edited`);
+      });
+
+      // THEN — as the warehouse it goes to.
+      await signIn(page, W1_USER, ground.w1);
+      await test.step("then: total warehouse receive changes", async () => {
+        await expect.soft(await inboundRow(page, id)).toContainText("1 product · 10 pcs");
       });
     });
   }

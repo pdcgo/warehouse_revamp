@@ -58,11 +58,11 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 | | | total warehouse receive changes | ✅ ok |
 | | | paying account balance adjusted (decrease/increase) | ✅ ok |
 | | | edit recorded in account history | ✅ ok |
-| `selling:all` wants to edit a restock<br>(ongoing: edit product, removed) | edit restock | restock no longer shows removed product | ⬜ untested |
-| | | ongoing stock of removed product decreases | ⬜ untested |
-| | | target warehouse no longer sees removed product | ⬜ untested |
-| | | paying account balance increases by removed product | ⬜ untested |
-| | | edit recorded in account history | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing: edit product, removed) | edit restock | product removed | ✅ ok |
+| | | ongoing total adjusted | ✅ ok |
+| | | total warehouse receive changes | ✅ ok |
+| | | paying account balance adjusted (increase) | ✅ ok |
+| | | edit recorded in account history | ✅ ok |
 | `selling:all` wants to edit a restock<br>(ongoing: supplier and store) | edit restock | restock shows new supplier and store | ⬜ untested |
 | `selling:all` wants to edit a restock<br>(ongoing: target warehouse) | edit restock | restock shows new warehouse | ⬜ untested |
 | | | recorded at new warehouse | ⬜ untested |
