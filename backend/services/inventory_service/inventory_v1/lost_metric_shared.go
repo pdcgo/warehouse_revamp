@@ -68,10 +68,16 @@ type lostFilters struct {
 	supplierID  uint64
 }
 
-// parseLostFilters reads a request's filters. Each case's field number IS its FilterType
-// (a-filter-names-one-id-and-shares-its-types-number). One the metric does not support (a shop — lost stock has none),
-// a repeated one, or a missing date range is InvalidArgument.
+// parseLostFilters reads a request's filters for Lost stock.
 func parseLostFilters(items []*analytic_basev1.FilterItem) (lostFilters, error) {
+	return parseInventoryFilters(lostMetricOption, items)
+}
+
+// parseInventoryFilters reads a request's filters for one of inventory's metrics — Lost stock and the four beside it
+// share the set (the-four-inventory-metrics-filter-like-lost-stock). Each case's field number IS its FilterType
+// (a-filter-names-one-id-and-shares-its-types-number). One the metric does not support (a shop — inventory's figures
+// have none), a repeated one, or a missing date range is InvalidArgument.
+func parseInventoryFilters(option *analytic_basev1.MetricOption, items []*analytic_basev1.FilterItem) (lostFilters, error) {
 	var filters lostFilters
 
 	seen := map[analytic_basev1.FilterType]bool{}
@@ -86,8 +92,8 @@ func parseLostFilters(items []*analytic_basev1.FilterItem) (lostFilters, error) 
 
 		kind := analytic_basev1.FilterType(set.Number())
 
-		if !slices.Contains(lostMetricOption.GetSupportedFilters(), kind) {
-			return filters, invalidLost("%s does not support %s", lostMetricOption.GetMetricId(), kind)
+		if !slices.Contains(option.GetSupportedFilters(), kind) {
+			return filters, invalidLost("%s does not support %s", option.GetMetricId(), kind)
 		}
 
 		if seen[kind] {
@@ -132,9 +138,9 @@ func parseLostFilters(items []*analytic_basev1.FilterItem) (lostFilters, error) 
 		}
 	}
 
-	for _, required := range lostMetricOption.GetRequiredFilters() {
+	for _, required := range option.GetRequiredFilters() {
 		if !seen[required] {
-			return filters, invalidLost("%s requires %s", lostMetricOption.GetMetricId(), required)
+			return filters, invalidLost("%s requires %s", option.GetMetricId(), required)
 		}
 	}
 
@@ -182,11 +188,17 @@ type lostKey struct {
 	isDay bool
 }
 
-// lostKeyOf reads a GroupType the metric supports. SUMMARY has no key. A week runs Monday to Sunday
-// (a-week-is-monday-to-sunday-jakarta) — date_trunc('week') is ISO, Monday — and the days are already Jakarta days.
+// lostKeyOf reads a GroupType Lost stock supports.
 func lostKeyOf(group analytic_basev1.GroupType) (lostKey, error) {
-	if !slices.Contains(lostMetricOption.GetSupportedGroupBy(), group) {
-		return lostKey{}, invalidLost("%s cannot be grouped by %s", lostMetricOption.GetMetricId(), group)
+	return inventoryKeyOf(lostMetricOption, group)
+}
+
+// inventoryKeyOf reads a GroupType the metric supports, as SQL over a row aliased `r`. SUMMARY has no key. A week runs
+// Monday to Sunday (a-week-is-monday-to-sunday-jakarta) — date_trunc('week') is ISO, Monday — and the days are already
+// Jakarta days.
+func inventoryKeyOf(option *analytic_basev1.MetricOption, group analytic_basev1.GroupType) (lostKey, error) {
+	if !slices.Contains(option.GetSupportedGroupBy(), group) {
+		return lostKey{}, invalidLost("%s cannot be grouped by %s", option.GetMetricId(), group)
 	}
 
 	switch group {

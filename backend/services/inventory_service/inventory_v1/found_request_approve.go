@@ -48,7 +48,7 @@ func (s *Service) FoundRequestApprove(
 
 	db := s.db.WithContext(ctx)
 
-	err := db.Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(db, func(tx *gorm.DB) error {
 		var lockErr error
 
 		row, lockErr = foundRequestOf(tx, warehouseID, req.Msg.GetFoundRequestId(), "UPDATE")

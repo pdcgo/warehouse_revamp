@@ -12,6 +12,7 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -44,7 +45,7 @@ func (s *Service) RestockRequestAccept(
 		acceptLog inventory_service_models.RestockLog
 	)
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			// The lock is on the restock row — the SAME lock cancel takes, so an accept and a cancel at the same
@@ -246,6 +247,30 @@ func (s *Service) RestockRequestAccept(
 			}
 
 			rr.Problems = append(rr.Problems, problems...)
+		}
+
+		// THE DOOR on Analytic's Restock (the-inventory-metrics-prototype-is-accepted: broken and missing at the door),
+		// keyed like the batch the line's good units mint — the restock's warehouse and team, the line's supplier — and
+		// written as the transaction's last rows, with its stock changes (inventory_ledgers.StockTransaction).
+		door := make([]inventory_ledgers.DoorRow, 0, len(rr.Items))
+		for i := range rr.Items {
+			item := rr.Items[i]
+			line := counted[item.ID]
+
+			door = append(door, inventory_ledgers.DoorRow{
+				WarehouseID: rr.WarehouseID,
+				TeamID:      rr.TeamID,
+				ProductID:   item.ProductID,
+				SupplierID:  derefID(item.SupplierID),
+				Source:      inventory_ledgers.DoorRestock,
+				Broken:      line.broken,
+				Missing:     item.Count - line.received,
+			})
+		}
+
+		doorErr := inventory_ledgers.NoteDoor(tx, door...)
+		if doorErr != nil {
+			return doorErr
 		}
 
 		// THE DECIDED LEDGERS, in the same transaction (the-decided-ledgers-come-before-the-restock-accept): one batch per

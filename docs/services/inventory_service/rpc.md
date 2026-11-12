@@ -1334,6 +1334,65 @@ Perf on 219 000 rows: 1–6 ms for a warehouse or a seller, 30–40 ms for root 
 
 ---
 
+## Restock, Transfer, Returned stock and Ready stock on the Analytic composer — `InventoryAnalyticService`
+
+Built 2026-11-12, the backend ([the-four-inventory-metrics-filter-like-lost-stock](../../business/analytic/rpc_provide_decision.md#the-four-inventory-metrics-filter-like-lost-stock),
+[the-inventory-metrics-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-inventory-metrics-prototype-is-accepted),
+[a-transfer-counts-each-side-on-its-own-day](../../business/analytic/rpc_provide_decision.md#a-transfer-counts-each-side-on-its-own-day),
+[a-warehouse-sees-ready-value-but-a-shelf-only-units](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-ready-value-but-a-shelf-only-units),
+[ready-stock-is-folded-in-the-stock-changes-own-step](../../business/analytic/rpc_provide_decision.md#ready-stock-is-folded-in-the-stock-changes-own-step)) —
+[inventory_analytic.proto](../../../proto/warehouse/inventory/v1/inventory_analytic.proto),
+`inventory_v1/inventory_metric_{shared,restock,return,transfer,ready}.go`, served by Lost stock's two RPCs
+(`lost_metric_search.go` / `lost_metric_data.go` dispatch by `metric_id`; MetricData answers every asked metric, in the
+asked order). The screens are not wired yet.
+
+| metric (`metric_id`, oneof prefix) | fields — `field_stat_type` | its day | warehouse · seller · supplier |
+| --- | --- | --- | --- |
+| **Restock** `metrics/inventory/restock`, `restock_` | `accepted_count` QTY · `accepted_value` CURRENCY (*optional*) · `broken_count` QTY · `missing_count` QTY | the accept's Jakarta day | the receiving warehouse · the restocking team · the line's supplier |
+| **Transfer** `metrics/inventory/transfer`, `transfer_` | `sent_count` QTY · `sent_value` CURRENCY (*opt.*) · `received_count` QTY · `received_value` CURRENCY (*opt.*) · `in_transit_count` **QTY_POSITION** · `in_transit_value` POSITION (*opt.*) | sent: the create day, under the SENDER (a cancel takes it back on the cancel day); received (good units): the accept day, under the RECEIVER; in transit: every day from the create to the day before the accept or cancel, under the RECEIVER | as said · the batch's owner · the batch's |
+| **Returned stock** `metrics/inventory/return`, `return_` | `back_count` QTY · `back_value` CURRENCY (*opt.*) · `broken_count` QTY · `missing_count` QTY | the return accept's Jakarta day | the return warehouse · the ordering team (a borrowed line under its own mapped product) · the layer's batch's |
+| **Ready stock** `metrics/inventory/ready`, `ready_` | `on_hand_count` **QTY_POSITION** · `on_hand_value` POSITION | the end of each Jakarta day | where it sits · the batch's owner · the batch's |
+
+| | |
+| --- | --- |
+| groups / filters | Lost stock's: summary, daily–yearly, product, supplier, team (the owning seller), warehouse / date range (required, ≤ 366 days), team, warehouse, product, supplier — no shop, no user |
+| answers | MetricData's oneof `<prefix>_by_id` (map uint64 → the metric), `<prefix>_by_day` (map of a period's FIRST Jakarta day `YYYY-MM-DD`), `<prefix>_summary` — every asked key, all zero when nothing. `as_of_unix` = the read's time (every report is written in its change's own transaction) |
+| reader | Lost stock's: `warehouse_id = T OR team_id = T` of the request's `team_id` — the warehouse where it happened and the seller owning the goods; root every team's; any other team nothing. Roles: root, administrator, selling owner / admin / CS, warehouse owner / admin / staff |
+| a warehouse caller | a WAREHOUSE role (`isWarehouseRole` of the caller's role) gets Restock's, Transfer's and Returned stock's value fields **unset** (optional — absent, not 0) and cannot sort by one (InvalidArgument); Ready stock's value it reads ([a-warehouse-sees-ready-value-but-a-shelf-only-units](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-ready-value-but-a-shelf-only-units)) |
+| movements | the window's sum (headline = the sum of its rows) |
+| **positions** (Ready's two fields, in transit) | read at an EDGE, never summed over time: the headline and an id row at the window's last day; a time row at its period's last day — both cut by the window's end and by today; keys add up. Ready is read **backwards from today**: Σ batches now (key) − Σ changes after the edge (key) — a window ending today reads the batches alone. In transit is read live from `warehouse_transfers` × the out-leg's `batch_logs` (⚠ a box set lost stays in transit until it turns up and is accepted) |
+| search | MetricSearch ranks every key of the scope with any figure, in Go, the key DESC breaking ties, `has_next` past the page; key 0 (a batch naming no supplier) counts everywhere but is never a Supplier row. A position's time search ranks every period of the window up to today |
+| source | `inventory_stock_daily_changes` (00042: day × warehouse × owner × product × supplier × `change_type`, the signed units and value of every `batch_logs` row) — Restock = `restock`, Transfer = `transfer_out` negated / `transfer_in`, Returned stock = `return`, Ready = all; `inventory_door_daily_reports` (00042: a restock's or a return's broken / missing). Both folded by `inventory_ledgers.StockTransaction` ([database-schema.md](../../database-schema.md#the-four-inventory-metrics-reports-00042)) |
+
+```mermaid
+sequenceDiagram
+  participant w as Any stock writer - take, release, restock or return accept, transfer, adjust, count, found, sample, revalue
+  participant db as inventory DB
+  participant ui as Analytic
+  w->>db: one tx - batches, batch_logs, racks, items - each log row noted on the tx report
+  w->>db: same tx, last - upsert the door rows, then the day's change rows, keys sorted
+  ui->>db: MetricSearch or MetricData - the reader's rows, a window of days
+  ui->>db: Ready - today's batches minus the changes after the edge
+```
+
+**Every stock writer folds** — `OrderTransactionCreate`, `releaseByKey` (the release RPC and the two cancel listeners),
+`RestockRequestAccept`, `WarehouseTransferCreate` / `Accept` / `Cancel`, `OrderTransactionReturn`, `StockAdjust`,
+`OpnameSessionFinalize`, `FoundRequestApprove`, `RackSample`, `RackMove`, `BatchRevalue` run in `StockTransaction`; the
+ledger's three `batch_logs` writers (`MintBatches`, `BatchWrites.Flush`, `Revalue`) note each row and refuse to write
+outside one (`ErrNoStockReport`), so Σ report = Σ `batch_logs` per key and day by construction. The transaction's clock
+stamps its log rows, its report day, and a transfer's `accepted_at` / `cancelled_at` (`TxNow`), so a status and its stock
+land on one Jakarta day. The migration replayed `batch_logs` into the change table (Ready reads backwards, so a past day
+needs every change after it); the door rows count from the build. Lock order:
+[lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12).
+
+Perf (busy year, 1.46 M change rows): a seller's or a warehouse's read of any of the four 1–22 ms, 1 statement (Transfer
+2); root's year headline ≈ 0.3 s and Ready by month over a year ≈ 0.6 s — page I/O, open with the owner
+([MetricData.md](../../../audits/services/inventory_service/performances/MetricData.md)). The order take: 12 → 13
+statements, committed median +0.5 ms at one line, +0.9 ms at twenty
+([OrderTransactionCreate.md](../../../audits/services/inventory_service/performances/OrderTransactionCreate.md#after-the-ready-fold-2026-11-12)).
+
+---
+
 ## The warehouse's product picker — `WarehouseProductSearch`
 
 A warehouse picks a product from **what it holds or has held**

@@ -62,7 +62,7 @@ func (s *Service) RackMove(
 
 	var posted []inventory_service_models.InventoryTransaction
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		// Every rack of THIS warehouse and not deleted — another warehouse's reads as NotFound.
 		ids := make([]uint64, 0, len(racks))
 		for rack := range racks {

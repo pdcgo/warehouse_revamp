@@ -120,7 +120,7 @@ func batchByID(t *testing.T, db *gorm.DB, id uint64) models.Batch {
 
 // A mint writes the batch, its first log row and its first price, and keeps the minted figures in init_*.
 func TestMintBatch_WritesTheBatchItsLogAndItsFirstPrice(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	batch := mint(t, db, melati, kaosHitam, 10, 11200)
 
@@ -149,7 +149,7 @@ func TestMintBatch_WritesTheBatchItsLogAndItsFirstPrice(t *testing.T) {
 
 // The oldest batch gives up its units first, and a take spills into the next batch.
 func TestTakeOldestFirst_TakesTheOldestBatchFirstAndSpills(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	older := mint(t, db, melati, kaosHitam, 2, 10000)
 	newer := mint(t, db, melati, kaosHitam, 5, 12000)
@@ -179,7 +179,7 @@ func TestTakeOldestFirst_TakesTheOldestBatchFirstAndSpills(t *testing.T) {
 // 3 units bought for Rp 10.000, taken one at a time: the batch ends at exactly 0, not 0,0001
 // (an-emptying-take-takes-all-the-value).
 func TestTakeOldestFirst_TheEmptyingTakeTakesAllTheValue(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	batch := mint(t, db, melati, kaosHitam, 3, 10000.0/3)
 
@@ -210,7 +210,7 @@ func TestTakeOldestFirst_TheEmptyingTakeTakesAllTheValue(t *testing.T) {
 
 // Too few units is refused, names both numbers, and writes nothing.
 func TestTakeOldestFirst_RefusesMoreThanTheBatchesHoldAndWritesNothing(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	batch := mint(t, db, melati, kaosHitam, 2, 10000)
 	order := transaction(t, db, melati, models.TxOrder)
@@ -237,7 +237,7 @@ func TestTakeOldestFirst_RefusesMoreThanTheBatchesHoldAndWritesNothing(t *testin
 
 // A take reaches only the owner's batches of the product in the transaction's warehouse.
 func TestTakeOldestFirst_OnlyTheOwnersBatchesOfTheProduct(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	mint(t, db, sinar, kaosHitam, 9, 10000)
 	mint(t, db, melati, kaosPolos, 9, 10000)
@@ -260,7 +260,7 @@ func TestTakeOldestFirst_OnlyTheOwnersBatchesOfTheProduct(t *testing.T) {
 
 // A put creates the rack row at 0 first, then adds, and logs the balance after.
 func TestPutOnPlacements_CreatesTheRackRowAndLogsTheBalanceAfter(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	rakA := rack(t, db, "rak-a")
 	restock := transaction(t, db, melati, models.TxRestock)
@@ -286,7 +286,7 @@ func TestPutOnPlacements_CreatesTheRackRowAndLogsTheBalanceAfter(t *testing.T) {
 
 // The rack holding the fewest goes first, a line splits across racks, and the logs carry each rack's balance after.
 func TestTakeFewestFirst_TakesTheFewestRackFirstAndSplits(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	rakA := rack(t, db, "rak-a")
 	rakB := rack(t, db, "rak-b")
@@ -317,7 +317,7 @@ func TestTakeFewestFirst_TakesTheFewestRackFirstAndSplits(t *testing.T) {
 
 // Too few units across all racks is refused and writes nothing (a-shelf-never-goes-below-zero).
 func TestTakeFewestFirst_RefusesBelowZeroAndWritesNothing(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	rakA := rack(t, db, "rak-a")
 
@@ -347,7 +347,7 @@ func TestTakeFewestFirst_RefusesBelowZeroAndWritesNothing(t *testing.T) {
 
 // An item is owned when its product's owner is the transaction's team — false only on a borrowed order line.
 func TestAddItems_IsOwnedFollowsTheOwner(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	order := transaction(t, db, melati, models.TxOrder)
 
@@ -369,7 +369,7 @@ func TestAddItems_IsOwnedFollowsTheOwner(t *testing.T) {
 
 // A restock-shaped transaction — a mint, a put, an item — keeps both invariants; an item that disagrees is caught.
 func TestVerify_ABalancedTransactionPassesAndAWrongItemIsCaught(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	rakA := rack(t, db, "rak-a")
 	restock := transaction(t, db, melati, models.TxRestock)

@@ -5578,6 +5578,7 @@
       "count": "Counts",
       "money": "Amounts (Rp)",
       "position": "Positions (Rp)",
+      "unitsPosition": "Positions (units)",
       "ratio": "Rates (%)"
     },
     "view": {

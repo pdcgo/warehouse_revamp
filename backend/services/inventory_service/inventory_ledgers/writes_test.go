@@ -13,7 +13,7 @@ import (
 // Two takes of one batch in one call: the batch is stored once, at its last state, and each log row carries the state
 // after its own change (ledger-writes-are-set-based).
 func TestBatchWrites_ARowChangedTwiceIsStoredOnceAndLoggedTwice(t *testing.T) {
-	db := san_testdb.DB(t)
+	db := inventory_ledgers.InStockReport(san_testdb.DB(t))
 
 	batch := mint(t, db, melati, kaosHitam, 5, 10000)
 	order := transaction(t, db, melati, models.TxOrder)
@@ -59,7 +59,7 @@ func TestBatchWrites_ARowChangedTwiceIsStoredOnceAndLoggedTwice(t *testing.T) {
 // read the stock count's lock once, in a statement of its own after the racks are locked (count_lock.go says why it
 // cannot ride the locking SELECT).
 func TestLedgerWrites_TheStatementsDoNotGrowWithTheLines(t *testing.T) {
-	db, probe := san_perf.Wrap(san_testdb.DB(t))
+	db, probe := san_perf.Wrap(inventory_ledgers.InStockReport(san_testdb.DB(t)))
 
 	products := []uint64{kaosHitam, kaosPolos, 76, 77, 78, 79, 80, 81, 82, 83}
 	rakA := rack(t, db, "rak-a")

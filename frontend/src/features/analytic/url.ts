@@ -131,13 +131,14 @@ export function formatReportState(state: ReportState): URLSearchParams {
 
 /**
  * The sort a table falls back to: a time group reads newest first; an id group ranks by the first selected metric's first
- * sortable field, largest first. Unspecified reads DESC (the-key-breaks-every-tie).
+ * sortable field the reader is given, largest first — a warehouse is never given a seller's money (`warehouseHidden`).
+ * Unspecified reads DESC (the-key-breaks-every-tie).
  */
-export function defaultSort(groupBy: TableGroup, metricIds: string[]): ReportSort | null {
+export function defaultSort(groupBy: TableGroup, metricIds: string[], readerIsWarehouse = false): ReportSort | null {
   if (isTimeGroup(groupBy)) return { by: "key", dir: "desc" };
 
   for (const id of metricIds) {
-    const field = metricById(id)?.fields.find((f) => f.canSort);
+    const field = metricById(id)?.fields.find((f) => f.canSort && !(readerIsWarehouse && f.warehouseHidden));
     if (field) return { by: "field", metricId: id, field: field.name, dir: "desc" };
   }
 

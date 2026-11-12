@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/inventory_analytic.proto.
  */
 export const file_warehouse_inventory_v1_inventory_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Ci93YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeV9hbmFseXRpYy5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSKJAQoTSW52ZW50b3J5TG9zdE1ldHJpYxIeCgpsb3N0X2NvdW50GAEgASgDQgqatRgCCAGgtRgCEh8KC2xvc3RfYW1vdW50GAIgASgBQgqatRgCCAGgtRgDOjGatRgtCgUBBAcDBhIBARoJAQIDBAUGCAkLIhZtZXRyaWNzL2ludmVudG9yeS9sb3N0Ir8BChdJbnZlbnRvcnlMb3N0TWV0cmljQnlJRBJJCgVpdGVtcxgBIAMoCzI6LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpY0J5SUQuSXRlbXNFbnRyeRpZCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI6CgV2YWx1ZRgCIAEoCzIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpYzoCOAEiwQEKGEludmVudG9yeUxvc3RNZXRyaWNCeURheRJKCgVpdGVtcxgBIAMoCzI7LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaWQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSOgoFdmFsdWUYAiABKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeUxvc3RNZXRyaWM6AjgBIs8CChNNZXRyaWNTZWFyY2hSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkUKCGdyb3VwX2J5GAIgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQgy6SAmCAQYQASAAIAESQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhAGEjwKBHNvcnQYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNTb3J0Qga6SAPIAQESQgoEcGFnZRgFIAEoCzIsLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlBhZ2luYXRpb25GaWx0ZXJCBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgiXgoUTWV0cmljU2VhcmNoUmVzcG9uc2USNAoEa2V5cxgBIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSEAoIaGFzX25leHQYAiABKAgioQIKEU1ldHJpY0RhdGFSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkMKCGdyb3VwX2J5GAIgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQgq6SAeCAQQQASAAEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBhI0CgRrZXlzGAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIgCgptZXRyaWNfaWRzGAUgAygJQgy6SAmSAQYIARAKGAE6DpK1GAoKCAECAwQFBgkIIuYBCgpNZXRyaWNEYXRhEkUKCmxvc3RfYnlfaWQYASABKAsyLy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeUxvc3RNZXRyaWNCeUlESAASRwoLbG9zdF9ieV9kYXkYAiABKAsyMC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeUxvc3RNZXRyaWNCeURheUgAEkMKDGxvc3Rfc3VtbWFyeRgDIAEoCzIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpY0gAQgMKAW0iYgoSTWV0cmljRGF0YVJlc3BvbnNlEjgKDG1ldHJpY19kYXRhcxgBIAMoCzIiLndhcmVob3VzZS5pbnZlbnRvcnkudjEuTWV0cmljRGF0YRISCgphc19vZl91bml4GAIgASgDMvQBChhJbnZlbnRvcnlBbmFseXRpY1NlcnZpY2USbgoMTWV0cmljU2VhcmNoEisud2FyZWhvdXNlLmludmVudG9yeS52MS5NZXRyaWNTZWFyY2hSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5NZXRyaWNTZWFyY2hSZXNwb25zZSIDkAIBEmgKCk1ldHJpY0RhdGESKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLk1ldHJpY0RhdGFSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5NZXRyaWNEYXRhUmVzcG9uc2UiA5ACAUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
+  fileDesc("Ci93YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeV9hbmFseXRpYy5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSKJAQoTSW52ZW50b3J5TG9zdE1ldHJpYxIeCgpsb3N0X2NvdW50GAEgASgDQgqatRgCCAGgtRgCEh8KC2xvc3RfYW1vdW50GAIgASgBQgqatRgCCAGgtRgDOjGatRgtCgUBBAcDBhIBARoJAQIDBAUGCAkLIhZtZXRyaWNzL2ludmVudG9yeS9sb3N0Ir8BChdJbnZlbnRvcnlMb3N0TWV0cmljQnlJRBJJCgVpdGVtcxgBIAMoCzI6LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpY0J5SUQuSXRlbXNFbnRyeRpZCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI6CgV2YWx1ZRgCIAEoCzIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpYzoCOAEiwQEKGEludmVudG9yeUxvc3RNZXRyaWNCeURheRJKCgVpdGVtcxgBIAMoCzI7LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaWQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSOgoFdmFsdWUYAiABKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeUxvc3RNZXRyaWM6AjgBIvMBChZJbnZlbnRvcnlSZXN0b2NrTWV0cmljEiIKDmFjY2VwdGVkX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEicKDmFjY2VwdGVkX3ZhbHVlGAIgASgBQgqatRgCCAGgtRgDSACIAQESIAoMYnJva2VuX2NvdW50GAMgASgDQgqatRgCCAGgtRgCEiEKDW1pc3NpbmdfY291bnQYBCABKANCCpq1GAIIAaC1GAI6NJq1GDAKBQEEBwMGEgEBGgkBAgMEBQYICQsiGW1ldHJpY3MvaW52ZW50b3J5L3Jlc3RvY2tCEQoPX2FjY2VwdGVkX3ZhbHVlIsgBChpJbnZlbnRvcnlSZXN0b2NrTWV0cmljQnlJRBJMCgVpdGVtcxgBIAMoCzI9LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5UmVzdG9ja01ldHJpY0J5SUQuSXRlbXNFbnRyeRpcCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI9CgV2YWx1ZRgCIAEoCzIuLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5UmVzdG9ja01ldHJpYzoCOAEiygEKG0ludmVudG9yeVJlc3RvY2tNZXRyaWNCeURheRJNCgVpdGVtcxgBIAMoCzI+LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5UmVzdG9ja01ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaXAoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSPQoFdmFsdWUYAiABKAsyLi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJlc3RvY2tNZXRyaWM6AjgBIuoCChdJbnZlbnRvcnlUcmFuc2Zlck1ldHJpYxIeCgpzZW50X2NvdW50GAEgASgDQgqatRgCCAGgtRgCEiMKCnNlbnRfdmFsdWUYAiABKAFCCpq1GAIIAaC1GANIAIgBARIiCg5yZWNlaXZlZF9jb3VudBgDIAEoA0IKmrUYAggBoLUYAhInCg5yZWNlaXZlZF92YWx1ZRgEIAEoAUIKmrUYAggBoLUYA0gBiAEBEiQKEGluX3RyYW5zaXRfY291bnQYBSABKANCCpq1GAIIAaC1GAUSKQoQaW5fdHJhbnNpdF92YWx1ZRgGIAEoAUIKmrUYAggBoLUYBEgCiAEBOjWatRgxCgUBBAcDBhIBARoJAQIDBAUGCAkLIhptZXRyaWNzL2ludmVudG9yeS90cmFuc2ZlckINCgtfc2VudF92YWx1ZUIRCg9fcmVjZWl2ZWRfdmFsdWVCEwoRX2luX3RyYW5zaXRfdmFsdWUiywEKG0ludmVudG9yeVRyYW5zZmVyTWV0cmljQnlJRBJNCgVpdGVtcxgBIAMoCzI+LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5VHJhbnNmZXJNZXRyaWNCeUlELkl0ZW1zRW50cnkaXQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSPgoFdmFsdWUYAiABKAsyLy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVRyYW5zZmVyTWV0cmljOgI4ASLNAQocSW52ZW50b3J5VHJhbnNmZXJNZXRyaWNCeURheRJOCgVpdGVtcxgBIAMoCzI/LndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5VHJhbnNmZXJNZXRyaWNCeURheS5JdGVtc0VudHJ5Gl0KCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEj4KBXZhbHVlGAIgASgLMi8ud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlUcmFuc2Zlck1ldHJpYzoCOAEi5QEKFUludmVudG9yeVJldHVybk1ldHJpYxIeCgpiYWNrX2NvdW50GAEgASgDQgqatRgCCAGgtRgCEiMKCmJhY2tfdmFsdWUYAiABKAFCCpq1GAIIAaC1GANIAIgBARIgCgxicm9rZW5fY291bnQYAyABKANCCpq1GAIIAaC1GAISIQoNbWlzc2luZ19jb3VudBgEIAEoA0IKmrUYAggBoLUYAjozmrUYLwoFAQQHAwYSAQEaCQECAwQFBggJCyIYbWV0cmljcy9pbnZlbnRvcnkvcmV0dXJuQg0KC19iYWNrX3ZhbHVlIsUBChlJbnZlbnRvcnlSZXR1cm5NZXRyaWNCeUlEEksKBWl0ZW1zGAEgAygLMjwud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlSZXR1cm5NZXRyaWNCeUlELkl0ZW1zRW50cnkaWwoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSPAoFdmFsdWUYAiABKAsyLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJldHVybk1ldHJpYzoCOAEixwEKGkludmVudG9yeVJldHVybk1ldHJpY0J5RGF5EkwKBWl0ZW1zGAEgAygLMj0ud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlSZXR1cm5NZXRyaWNCeURheS5JdGVtc0VudHJ5GlsKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjwKBXZhbHVlGAIgASgLMi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlSZXR1cm5NZXRyaWM6AjgBIpABChRJbnZlbnRvcnlSZWFkeU1ldHJpYxIhCg1vbl9oYW5kX2NvdW50GAEgASgDQgqatRgCCAGgtRgFEiEKDW9uX2hhbmRfdmFsdWUYAiABKAFCCpq1GAIIAaC1GAQ6Mpq1GC4KBQEEBwMGEgEBGgkBAgMEBQYICQsiF21ldHJpY3MvaW52ZW50b3J5L3JlYWR5IsIBChhJbnZlbnRvcnlSZWFkeU1ldHJpY0J5SUQSSgoFaXRlbXMYASADKAsyOy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJlYWR5TWV0cmljQnlJRC5JdGVtc0VudHJ5GloKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjsKBXZhbHVlGAIgASgLMiwud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlSZWFkeU1ldHJpYzoCOAEixAEKGUludmVudG9yeVJlYWR5TWV0cmljQnlEYXkSSwoFaXRlbXMYASADKAsyPC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJlYWR5TWV0cmljQnlEYXkuSXRlbXNFbnRyeRpaCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRI7CgV2YWx1ZRgCIAEoCzIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5UmVhZHlNZXRyaWM6AjgBIs8CChNNZXRyaWNTZWFyY2hSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkUKCGdyb3VwX2J5GAIgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQgy6SAmCAQYQASAAIAESQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhAGEjwKBHNvcnQYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNTb3J0Qga6SAPIAQESQgoEcGFnZRgFIAEoCzIsLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLlBhZ2luYXRpb25GaWx0ZXJCBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgiXgoUTWV0cmljU2VhcmNoUmVzcG9uc2USNAoEa2V5cxgBIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSEAoIaGFzX25leHQYAiABKAgioQIKEU1ldHJpY0RhdGFSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkMKCGdyb3VwX2J5GAIgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQgq6SAeCAQQQASAAEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBhI0CgRrZXlzGAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIgCgptZXRyaWNfaWRzGAUgAygJQgy6SAmSAQYIARAKGAE6DpK1GAoKCAECAwQFBgkIIvYICgpNZXRyaWNEYXRhEkUKCmxvc3RfYnlfaWQYASABKAsyLy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeUxvc3RNZXRyaWNCeUlESAASRwoLbG9zdF9ieV9kYXkYAiABKAsyMC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeUxvc3RNZXRyaWNCeURheUgAEkMKDGxvc3Rfc3VtbWFyeRgDIAEoCzIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5TG9zdE1ldHJpY0gAEksKDXJlc3RvY2tfYnlfaWQYBCABKAsyMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJlc3RvY2tNZXRyaWNCeUlESAASTQoOcmVzdG9ja19ieV9kYXkYBSABKAsyMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJlc3RvY2tNZXRyaWNCeURheUgAEkkKD3Jlc3RvY2tfc3VtbWFyeRgGIAEoCzIuLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5UmVzdG9ja01ldHJpY0gAEk0KDnRyYW5zZmVyX2J5X2lkGAcgASgLMjMud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlUcmFuc2Zlck1ldHJpY0J5SURIABJPCg90cmFuc2Zlcl9ieV9kYXkYCCABKAsyNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVRyYW5zZmVyTWV0cmljQnlEYXlIABJLChB0cmFuc2Zlcl9zdW1tYXJ5GAkgASgLMi8ud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlUcmFuc2Zlck1ldHJpY0gAEkkKDHJldHVybl9ieV9pZBgKIAEoCzIxLndhcmVob3VzZS5pbnZlbnRvcnkudjEuSW52ZW50b3J5UmV0dXJuTWV0cmljQnlJREgAEksKDXJldHVybl9ieV9kYXkYCyABKAsyMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJldHVybk1ldHJpY0J5RGF5SAASRwoOcmV0dXJuX3N1bW1hcnkYDCABKAsyLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJldHVybk1ldHJpY0gAEkcKC3JlYWR5X2J5X2lkGA0gASgLMjAud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlSZWFkeU1ldHJpY0J5SURIABJJCgxyZWFkeV9ieV9kYXkYDiABKAsyMS53YXJlaG91c2UuaW52ZW50b3J5LnYxLkludmVudG9yeVJlYWR5TWV0cmljQnlEYXlIABJFCg1yZWFkeV9zdW1tYXJ5GA8gASgLMiwud2FyZWhvdXNlLmludmVudG9yeS52MS5JbnZlbnRvcnlSZWFkeU1ldHJpY0gAQgMKAW0iYgoSTWV0cmljRGF0YVJlc3BvbnNlEjgKDG1ldHJpY19kYXRhcxgBIAMoCzIiLndhcmVob3VzZS5pbnZlbnRvcnkudjEuTWV0cmljRGF0YRISCgphc19vZl91bml4GAIgASgDMvQBChhJbnZlbnRvcnlBbmFseXRpY1NlcnZpY2USbgoMTWV0cmljU2VhcmNoEisud2FyZWhvdXNlLmludmVudG9yeS52MS5NZXRyaWNTZWFyY2hSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5NZXRyaWNTZWFyY2hSZXNwb25zZSIDkAIBEmgKCk1ldHJpY0RhdGESKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLk1ldHJpY0RhdGFSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5NZXRyaWNEYXRhUmVzcG9uc2UiA5ACAUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_role_base_v1_role]);
 
 /**
  * LOST STOCK — the units lost in a warehouse's custody and their value at the batch's price. GROSS: a Found claim never
@@ -88,6 +88,334 @@ export const InventoryLostMetricByDaySchema: GenMessage<InventoryLostMetricByDay
   messageDesc(file_warehouse_inventory_v1_inventory_analytic, 2);
 
 /**
+ * RESTOCK — what the receiving warehouse accepted onto its racks on the accept's Jakarta day, and what its door found
+ * broken or missing. Warehouse = where it was received.
+ *
+ * @generated from message warehouse.inventory.v1.InventoryRestockMetric
+ */
+export type InventoryRestockMetric = Message<"warehouse.inventory.v1.InventoryRestockMetric"> & {
+  /**
+   * Good units accepted onto the racks.
+   *
+   * @generated from field: int64 accepted_count = 1;
+   */
+  acceptedCount: bigint;
+
+  /**
+   * Those units at their landed price (the batch's), rupiah. Unset for a warehouse.
+   *
+   * @generated from field: optional double accepted_value = 2;
+   */
+  acceptedValue?: number | undefined;
+
+  /**
+   * Units the door found broken.
+   *
+   * @generated from field: int64 broken_count = 3;
+   */
+  brokenCount: bigint;
+
+  /**
+   * Units the line ordered that were not in the box.
+   *
+   * @generated from field: int64 missing_count = 4;
+   */
+  missingCount: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryRestockMetric.
+ * Use `create(InventoryRestockMetricSchema)` to create a new message.
+ */
+export const InventoryRestockMetricSchema: GenMessage<InventoryRestockMetric> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 3);
+
+/**
+ * Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+ *
+ * @generated from message warehouse.inventory.v1.InventoryRestockMetricByID
+ */
+export type InventoryRestockMetricByID = Message<"warehouse.inventory.v1.InventoryRestockMetricByID"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.inventory.v1.InventoryRestockMetric> items = 1;
+   */
+  items: { [key: string]: InventoryRestockMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryRestockMetricByID.
+ * Use `create(InventoryRestockMetricByIDSchema)` to create a new message.
+ */
+export const InventoryRestockMetricByIDSchema: GenMessage<InventoryRestockMetricByID> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 4);
+
+/**
+ * Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+ *
+ * @generated from message warehouse.inventory.v1.InventoryRestockMetricByDay
+ */
+export type InventoryRestockMetricByDay = Message<"warehouse.inventory.v1.InventoryRestockMetricByDay"> & {
+  /**
+   * @generated from field: map<string, warehouse.inventory.v1.InventoryRestockMetric> items = 1;
+   */
+  items: { [key: string]: InventoryRestockMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryRestockMetricByDay.
+ * Use `create(InventoryRestockMetricByDaySchema)` to create a new message.
+ */
+export const InventoryRestockMetricByDaySchema: GenMessage<InventoryRestockMetricByDay> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 5);
+
+/**
+ * TRANSFER — each side on its own day (a-transfer-counts-each-side-on-its-own-day): SENT under the sending warehouse on
+ * the create day, a cancel taking it back on the cancel day; RECEIVED (the good units) under the receiving warehouse on
+ * the accept day; IN TRANSIT a position under the receiving warehouse, every day from the create to the day before the
+ * accept (or the cancel). The warehouse filter therefore matches either side, and by warehouse each shows its own.
+ *
+ * @generated from message warehouse.inventory.v1.InventoryTransferMetric
+ */
+export type InventoryTransferMetric = Message<"warehouse.inventory.v1.InventoryTransferMetric"> & {
+  /**
+   * Units sent.
+   *
+   * @generated from field: int64 sent_count = 1;
+   */
+  sentCount: bigint;
+
+  /**
+   * Those units at the price the out-leg took them at, rupiah. Unset for a warehouse.
+   *
+   * @generated from field: optional double sent_value = 2;
+   */
+  sentValue?: number | undefined;
+
+  /**
+   * Good units received onto the racks.
+   *
+   * @generated from field: int64 received_count = 3;
+   */
+  receivedCount: bigint;
+
+  /**
+   * Those units at their batch's price, rupiah. Unset for a warehouse.
+   *
+   * @generated from field: optional double received_value = 4;
+   */
+  receivedValue?: number | undefined;
+
+  /**
+   * Units on the road at the period's edge — a units position.
+   *
+   * @generated from field: int64 in_transit_count = 5;
+   */
+  inTransitCount: bigint;
+
+  /**
+   * Those units' value at the edge — a position, rupiah. Unset for a warehouse.
+   *
+   * @generated from field: optional double in_transit_value = 6;
+   */
+  inTransitValue?: number | undefined;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryTransferMetric.
+ * Use `create(InventoryTransferMetricSchema)` to create a new message.
+ */
+export const InventoryTransferMetricSchema: GenMessage<InventoryTransferMetric> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 6);
+
+/**
+ * Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+ *
+ * @generated from message warehouse.inventory.v1.InventoryTransferMetricByID
+ */
+export type InventoryTransferMetricByID = Message<"warehouse.inventory.v1.InventoryTransferMetricByID"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.inventory.v1.InventoryTransferMetric> items = 1;
+   */
+  items: { [key: string]: InventoryTransferMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryTransferMetricByID.
+ * Use `create(InventoryTransferMetricByIDSchema)` to create a new message.
+ */
+export const InventoryTransferMetricByIDSchema: GenMessage<InventoryTransferMetricByID> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 7);
+
+/**
+ * Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+ *
+ * @generated from message warehouse.inventory.v1.InventoryTransferMetricByDay
+ */
+export type InventoryTransferMetricByDay = Message<"warehouse.inventory.v1.InventoryTransferMetricByDay"> & {
+  /**
+   * @generated from field: map<string, warehouse.inventory.v1.InventoryTransferMetric> items = 1;
+   */
+  items: { [key: string]: InventoryTransferMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryTransferMetricByDay.
+ * Use `create(InventoryTransferMetricByDaySchema)` to create a new message.
+ */
+export const InventoryTransferMetricByDaySchema: GenMessage<InventoryTransferMetricByDay> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 8);
+
+/**
+ * RETURNED STOCK — an order's return accepted at the return warehouse, on the accept's Jakarta day: the sound units back
+ * on the shelf and the door's broken (thrown away) and missing. The seller is the ordering team — a borrowed line comes
+ * back as its own mapped product (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+ *
+ * @generated from message warehouse.inventory.v1.InventoryReturnMetric
+ */
+export type InventoryReturnMetric = Message<"warehouse.inventory.v1.InventoryReturnMetric"> & {
+  /**
+   * Units back on the shelf.
+   *
+   * @generated from field: int64 back_count = 1;
+   */
+  backCount: bigint;
+
+  /**
+   * Those units at the price the order took them at (the markup paid on a borrowed line), rupiah. Unset for a warehouse.
+   *
+   * @generated from field: optional double back_value = 2;
+   */
+  backValue?: number | undefined;
+
+  /**
+   * Units broken at the door, thrown away.
+   *
+   * @generated from field: int64 broken_count = 3;
+   */
+  brokenCount: bigint;
+
+  /**
+   * Units that never came back.
+   *
+   * @generated from field: int64 missing_count = 4;
+   */
+  missingCount: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryReturnMetric.
+ * Use `create(InventoryReturnMetricSchema)` to create a new message.
+ */
+export const InventoryReturnMetricSchema: GenMessage<InventoryReturnMetric> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 9);
+
+/**
+ * Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+ *
+ * @generated from message warehouse.inventory.v1.InventoryReturnMetricByID
+ */
+export type InventoryReturnMetricByID = Message<"warehouse.inventory.v1.InventoryReturnMetricByID"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.inventory.v1.InventoryReturnMetric> items = 1;
+   */
+  items: { [key: string]: InventoryReturnMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryReturnMetricByID.
+ * Use `create(InventoryReturnMetricByIDSchema)` to create a new message.
+ */
+export const InventoryReturnMetricByIDSchema: GenMessage<InventoryReturnMetricByID> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 10);
+
+/**
+ * Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+ *
+ * @generated from message warehouse.inventory.v1.InventoryReturnMetricByDay
+ */
+export type InventoryReturnMetricByDay = Message<"warehouse.inventory.v1.InventoryReturnMetricByDay"> & {
+  /**
+   * @generated from field: map<string, warehouse.inventory.v1.InventoryReturnMetric> items = 1;
+   */
+  items: { [key: string]: InventoryReturnMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryReturnMetricByDay.
+ * Use `create(InventoryReturnMetricByDaySchema)` to create a new message.
+ */
+export const InventoryReturnMetricByDaySchema: GenMessage<InventoryReturnMetricByDay> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 11);
+
+/**
+ * READY STOCK — on hand at the end of a Jakarta day: POSITIONS. A period reads its last day (cut by the window, never a
+ * day still to come), the headline the window's last day; keys add up. Read backwards from today's batches: the edge's
+ * position is today's minus every change after it. Warehouse = where it sits; every reader sees both fields.
+ *
+ * @generated from message warehouse.inventory.v1.InventoryReadyMetric
+ */
+export type InventoryReadyMetric = Message<"warehouse.inventory.v1.InventoryReadyMetric"> & {
+  /**
+   * Units on hand at the edge — a units position.
+   *
+   * @generated from field: int64 on_hand_count = 1;
+   */
+  onHandCount: bigint;
+
+  /**
+   * Their value at the edge (the batches' value), rupiah — a position.
+   *
+   * @generated from field: double on_hand_value = 2;
+   */
+  onHandValue: number;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryReadyMetric.
+ * Use `create(InventoryReadyMetricSchema)` to create a new message.
+ */
+export const InventoryReadyMetricSchema: GenMessage<InventoryReadyMetric> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 12);
+
+/**
+ * Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+ *
+ * @generated from message warehouse.inventory.v1.InventoryReadyMetricByID
+ */
+export type InventoryReadyMetricByID = Message<"warehouse.inventory.v1.InventoryReadyMetricByID"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.inventory.v1.InventoryReadyMetric> items = 1;
+   */
+  items: { [key: string]: InventoryReadyMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryReadyMetricByID.
+ * Use `create(InventoryReadyMetricByIDSchema)` to create a new message.
+ */
+export const InventoryReadyMetricByIDSchema: GenMessage<InventoryReadyMetricByID> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 13);
+
+/**
+ * Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+ *
+ * @generated from message warehouse.inventory.v1.InventoryReadyMetricByDay
+ */
+export type InventoryReadyMetricByDay = Message<"warehouse.inventory.v1.InventoryReadyMetricByDay"> & {
+  /**
+   * @generated from field: map<string, warehouse.inventory.v1.InventoryReadyMetric> items = 1;
+   */
+  items: { [key: string]: InventoryReadyMetric };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.InventoryReadyMetricByDay.
+ * Use `create(InventoryReadyMetricByDaySchema)` to create a new message.
+ */
+export const InventoryReadyMetricByDaySchema: GenMessage<InventoryReadyMetricByDay> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 14);
+
+/**
  * @generated from message warehouse.inventory.v1.MetricSearchRequest
  */
 export type MetricSearchRequest = Message<"warehouse.inventory.v1.MetricSearchRequest"> & {
@@ -126,7 +454,7 @@ export type MetricSearchRequest = Message<"warehouse.inventory.v1.MetricSearchRe
  * Use `create(MetricSearchRequestSchema)` to create a new message.
  */
 export const MetricSearchRequestSchema: GenMessage<MetricSearchRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 3);
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 15);
 
 /**
  * @generated from message warehouse.inventory.v1.MetricSearchResponse
@@ -148,7 +476,7 @@ export type MetricSearchResponse = Message<"warehouse.inventory.v1.MetricSearchR
  * Use `create(MetricSearchResponseSchema)` to create a new message.
  */
 export const MetricSearchResponseSchema: GenMessage<MetricSearchResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 4);
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 16);
 
 /**
  * @generated from message warehouse.inventory.v1.MetricDataRequest
@@ -177,7 +505,7 @@ export type MetricDataRequest = Message<"warehouse.inventory.v1.MetricDataReques
   keys?: MetricKeys | undefined;
 
   /**
-   * One metric only here, `metrics/inventory/lost`; repeated to keep the pattern's shape.
+   * Any of the five: `metrics/inventory/{lost,restock,transfer,return,ready}`.
    *
    * @generated from field: repeated string metric_ids = 5;
    */
@@ -189,7 +517,7 @@ export type MetricDataRequest = Message<"warehouse.inventory.v1.MetricDataReques
  * Use `create(MetricDataRequestSchema)` to create a new message.
  */
 export const MetricDataRequestSchema: GenMessage<MetricDataRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 5);
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 17);
 
 /**
  * @generated from message warehouse.inventory.v1.MetricData
@@ -216,6 +544,78 @@ export type MetricData = Message<"warehouse.inventory.v1.MetricData"> & {
      */
     value: InventoryLostMetric;
     case: "lostSummary";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryRestockMetricByID restock_by_id = 4;
+     */
+    value: InventoryRestockMetricByID;
+    case: "restockById";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryRestockMetricByDay restock_by_day = 5;
+     */
+    value: InventoryRestockMetricByDay;
+    case: "restockByDay";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryRestockMetric restock_summary = 6;
+     */
+    value: InventoryRestockMetric;
+    case: "restockSummary";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryTransferMetricByID transfer_by_id = 7;
+     */
+    value: InventoryTransferMetricByID;
+    case: "transferById";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryTransferMetricByDay transfer_by_day = 8;
+     */
+    value: InventoryTransferMetricByDay;
+    case: "transferByDay";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryTransferMetric transfer_summary = 9;
+     */
+    value: InventoryTransferMetric;
+    case: "transferSummary";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryReturnMetricByID return_by_id = 10;
+     */
+    value: InventoryReturnMetricByID;
+    case: "returnById";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryReturnMetricByDay return_by_day = 11;
+     */
+    value: InventoryReturnMetricByDay;
+    case: "returnByDay";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryReturnMetric return_summary = 12;
+     */
+    value: InventoryReturnMetric;
+    case: "returnSummary";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryReadyMetricByID ready_by_id = 13;
+     */
+    value: InventoryReadyMetricByID;
+    case: "readyById";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryReadyMetricByDay ready_by_day = 14;
+     */
+    value: InventoryReadyMetricByDay;
+    case: "readyByDay";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.InventoryReadyMetric ready_summary = 15;
+     */
+    value: InventoryReadyMetric;
+    case: "readySummary";
   } | { case: undefined; value?: undefined };
 };
 
@@ -224,7 +624,7 @@ export type MetricData = Message<"warehouse.inventory.v1.MetricData"> & {
  * Use `create(MetricDataSchema)` to create a new message.
  */
 export const MetricDataSchema: GenMessage<MetricData> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 6);
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 18);
 
 /**
  * @generated from message warehouse.inventory.v1.MetricDataResponse
@@ -236,7 +636,7 @@ export type MetricDataResponse = Message<"warehouse.inventory.v1.MetricDataRespo
   metricDatas: MetricData[];
 
   /**
-   * The read's own time: the report is written in the loss's own transaction, so nothing lags.
+   * The read's own time: every report is written in its stock change's own transaction, so nothing lags.
    *
    * @generated from field: int64 as_of_unix = 2;
    */
@@ -248,7 +648,7 @@ export type MetricDataResponse = Message<"warehouse.inventory.v1.MetricDataRespo
  * Use `create(MetricDataResponseSchema)` to create a new message.
  */
 export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 7);
+  messageDesc(file_warehouse_inventory_v1_inventory_analytic, 19);
 
 /**
  * LOST STOCK on the Analytic composer (docs/business/analytic/rpc_provide_decision.md —
@@ -257,11 +657,14 @@ export const MetricDataResponseSchema: GenMessage<MetricDataResponse> = /*@__PUR
  * a-warehouse-sees-its-lost-amount). Read from `inventory_lost_daily_reports`, folded in the transaction that writes the
  * loss (a stock count's shortage written off as lost, a Stock Adjust "lost").
  *
+ * And the four inventory metrics beside it — Restock, Transfer, Returned stock, Ready stock (see InventoryRestockMetric):
+ * one RPC pair serves all five; MetricData answers every asked metric, in the asked order.
+ *
  * @generated from service warehouse.inventory.v1.InventoryAnalyticService
  */
 export const InventoryAnalyticService: GenService<{
   /**
-   * The keys of one group, ranked by one field of `metrics/inventory/lost`, a page at a time — whether another page
+   * The keys of one group, ranked by one field of one of the five metrics, a page at a time — whether another page
    * follows, never a total (a-page-says-whether-another-follows); the key breaks every tie (the-key-breaks-every-tie).
    *
    * @generated from rpc warehouse.inventory.v1.InventoryAnalyticService.MetricSearch
@@ -272,7 +675,7 @@ export const InventoryAnalyticService: GenService<{
     output: typeof MetricSearchResponseSchema;
   },
   /**
-   * The figures of given keys — a key with no loss reads 0. The filters scope the numbers, never the keys
+   * The figures of given keys — a key with nothing reads 0. The filters scope the numbers, never the keys
    * (the-fill-step-scopes-its-numbers-by-the-filters).
    *
    * @generated from rpc warehouse.inventory.v1.InventoryAnalyticService.MetricData

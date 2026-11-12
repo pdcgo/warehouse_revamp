@@ -13,14 +13,17 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // inventory-lost-groups-and-sits-under-inventory, the-inventory-lost-prototype-is-accepted,
 // a-warehouse-sees-its-lost-amount). Read from `inventory_lost_daily_reports`, folded in the transaction that writes the
 // loss (a stock count's shortage written off as lost, a Stock Adjust "lost").
+//
+// And the four inventory metrics beside it — Restock, Transfer, Returned stock, Ready stock (see InventoryRestockMetric):
+// one RPC pair serves all five; MetricData answers every asked metric, in the asked order.
 service InventoryAnalyticService {
-  // The keys of one group, ranked by one field of `metrics/inventory/lost`, a page at a time — whether another page
+  // The keys of one group, ranked by one field of one of the five metrics, a page at a time — whether another page
   // follows, never a total (a-page-says-whether-another-follows); the key breaks every tie (the-key-breaks-every-tie).
   rpc MetricSearch(MetricSearchRequest) returns (MetricSearchResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  // The figures of given keys — a key with no loss reads 0. The filters scope the numbers, never the keys
+  // The figures of given keys — a key with nothing reads 0. The filters scope the numbers, never the keys
   // (the-fill-step-scopes-its-numbers-by-the-filters).
   rpc MetricData(MetricDataRequest) returns (MetricDataResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -77,6 +80,257 @@ message InventoryLostMetricByID {
 // Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
 message InventoryLostMetricByDay {
   map<string, InventoryLostMetric> items = 1;
+}
+
+// THE FOUR INVENTORY METRICS beside Lost stock (docs/business/analytic/rpc_provide_decision.md —
+// the-four-inventory-metrics-filter-like-lost-stock, the-inventory-metrics-prototype-is-accepted,
+// a-transfer-counts-each-side-on-its-own-day, a-warehouse-sees-ready-value-but-a-shelf-only-units,
+// ready-stock-is-folded-in-the-stock-changes-own-step). Each takes Lost stock's filters and groups; Seller is the team
+// owning the goods (the batch's owner), Warehouse where the stock changed, Supplier the batch's own (0 = none). No count
+// of restocks or returns: a restock or a return of two products lands in two product rows
+// (product-is-its-own-line-metric).
+//
+// Read from inventory's own reports, written in each stock change's own transaction (never behind): the day's net change
+// of every stock writer per key and change type (`inventory_stock_daily_changes`) and the door's broken / missing of a
+// restock or a return accept (`inventory_door_daily_reports`). Who reads: the warehouse its own side, the seller owning
+// the goods, the root team every team's, any other team nothing. A WAREHOUSE reads units only on Restock, Transfer and
+// Returned stock — their value fields come back UNSET (a-warehouse-sees-no-seller-money) — and Ready stock's units AND
+// value (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+
+// RESTOCK — what the receiving warehouse accepted onto its racks on the accept's Jakarta day, and what its door found
+// broken or missing. Warehouse = where it was received.
+message InventoryRestockMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/inventory/restock"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_PRODUCT,
+      FILTER_TYPE_SUPPLIER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_PRODUCT,
+      GROUP_TYPE_SUPPLIER,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_WAREHOUSE
+    ]
+  };
+
+  // Good units accepted onto the racks.
+  int64 accepted_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Those units at their landed price (the batch's), rupiah. Unset for a warehouse.
+  optional double accepted_value = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Units the door found broken.
+  int64 broken_count = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Units the line ordered that were not in the box.
+  int64 missing_count = 4 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+message InventoryRestockMetricByID {
+  map<uint64, InventoryRestockMetric> items = 1;
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+message InventoryRestockMetricByDay {
+  map<string, InventoryRestockMetric> items = 1;
+}
+
+// TRANSFER — each side on its own day (a-transfer-counts-each-side-on-its-own-day): SENT under the sending warehouse on
+// the create day, a cancel taking it back on the cancel day; RECEIVED (the good units) under the receiving warehouse on
+// the accept day; IN TRANSIT a position under the receiving warehouse, every day from the create to the day before the
+// accept (or the cancel). The warehouse filter therefore matches either side, and by warehouse each shows its own.
+message InventoryTransferMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/inventory/transfer"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_PRODUCT,
+      FILTER_TYPE_SUPPLIER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_PRODUCT,
+      GROUP_TYPE_SUPPLIER,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_WAREHOUSE
+    ]
+  };
+
+  // Units sent.
+  int64 sent_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Those units at the price the out-leg took them at, rupiah. Unset for a warehouse.
+  optional double sent_value = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Good units received onto the racks.
+  int64 received_count = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Those units at their batch's price, rupiah. Unset for a warehouse.
+  optional double received_value = 4 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Units on the road at the period's edge — a units position.
+  int64 in_transit_count = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY_POSITION
+  ];
+  // Those units' value at the edge — a position, rupiah. Unset for a warehouse.
+  optional double in_transit_value = 6 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_POSITION
+  ];
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+message InventoryTransferMetricByID {
+  map<uint64, InventoryTransferMetric> items = 1;
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+message InventoryTransferMetricByDay {
+  map<string, InventoryTransferMetric> items = 1;
+}
+
+// RETURNED STOCK — an order's return accepted at the return warehouse, on the accept's Jakarta day: the sound units back
+// on the shelf and the door's broken (thrown away) and missing. The seller is the ordering team — a borrowed line comes
+// back as its own mapped product (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+message InventoryReturnMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/inventory/return"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_PRODUCT,
+      FILTER_TYPE_SUPPLIER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_PRODUCT,
+      GROUP_TYPE_SUPPLIER,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_WAREHOUSE
+    ]
+  };
+
+  // Units back on the shelf.
+  int64 back_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Those units at the price the order took them at (the markup paid on a borrowed line), rupiah. Unset for a warehouse.
+  optional double back_value = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Units broken at the door, thrown away.
+  int64 broken_count = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Units that never came back.
+  int64 missing_count = 4 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+message InventoryReturnMetricByID {
+  map<uint64, InventoryReturnMetric> items = 1;
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+message InventoryReturnMetricByDay {
+  map<string, InventoryReturnMetric> items = 1;
+}
+
+// READY STOCK — on hand at the end of a Jakarta day: POSITIONS. A period reads its last day (cut by the window, never a
+// day still to come), the headline the window's last day; keys add up. Read backwards from today's batches: the edge's
+// position is today's minus every change after it. Warehouse = where it sits; every reader sees both fields.
+message InventoryReadyMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/inventory/ready"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_PRODUCT,
+      FILTER_TYPE_SUPPLIER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_PRODUCT,
+      GROUP_TYPE_SUPPLIER,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_WAREHOUSE
+    ]
+  };
+
+  // Units on hand at the edge — a units position.
+  int64 on_hand_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY_POSITION
+  ];
+  // Their value at the edge (the batches' value), rupiah — a position.
+  double on_hand_value = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_POSITION
+  ];
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+message InventoryReadyMetricByID {
+  map<uint64, InventoryReadyMetric> items = 1;
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+message InventoryReadyMetricByDay {
+  map<string, InventoryReadyMetric> items = 1;
 }
 
 message MetricSearchRequest {
@@ -138,7 +392,7 @@ message MetricDataRequest {
   repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated.max_items = 6];
   // The keys to read — none under SUMMARY.
   warehouse.analytic_base.v1.MetricKeys keys = 4;
-  // One metric only here, `metrics/inventory/lost`; repeated to keep the pattern's shape.
+  // Any of the five: `metrics/inventory/{lost,restock,transfer,return,ready}`.
   repeated string metric_ids = 5 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 10
@@ -151,11 +405,23 @@ message MetricData {
     InventoryLostMetricByID lost_by_id = 1;
     InventoryLostMetricByDay lost_by_day = 2;
     InventoryLostMetric lost_summary = 3;
+    InventoryRestockMetricByID restock_by_id = 4;
+    InventoryRestockMetricByDay restock_by_day = 5;
+    InventoryRestockMetric restock_summary = 6;
+    InventoryTransferMetricByID transfer_by_id = 7;
+    InventoryTransferMetricByDay transfer_by_day = 8;
+    InventoryTransferMetric transfer_summary = 9;
+    InventoryReturnMetricByID return_by_id = 10;
+    InventoryReturnMetricByDay return_by_day = 11;
+    InventoryReturnMetric return_summary = 12;
+    InventoryReadyMetricByID ready_by_id = 13;
+    InventoryReadyMetricByDay ready_by_day = 14;
+    InventoryReadyMetric ready_summary = 15;
   }
 }
 
 message MetricDataResponse {
   repeated MetricData metric_datas = 1;
-  // The read's own time: the report is written in the loss's own transaction, so nothing lags.
+  // The read's own time: every report is written in its stock change's own transaction, so nothing lags.
   int64 as_of_unix = 2;
 }

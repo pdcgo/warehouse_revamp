@@ -1730,6 +1730,60 @@ erDiagram
 - **No index added**: the claim is read by its primary key, the door rows by `transaction_id` through the one-per-kind
   unique index, whose leading column it is.
 
+### The four inventory metrics' reports (`00042`)
+
+What Restock, Transfer, Returned stock and Ready stock read (built 2026-11-12 —
+[the-inventory-metrics-prototype-is-accepted](business/analytic/rpc_provide_decision.md#the-inventory-metrics-prototype-is-accepted),
+[a-transfer-counts-each-side-on-its-own-day](business/analytic/rpc_provide_decision.md#a-transfer-counts-each-side-on-its-own-day),
+[ready-stock-is-folded-in-the-stock-changes-own-step](business/analytic/rpc_provide_decision.md#ready-stock-is-folded-in-the-stock-changes-own-step)).
+Keyed like Lost stock's: Jakarta day × warehouse × owning team × product × supplier. Both are written **in the stock
+change's own transaction, as its last statements** (`inventory_ledgers.StockTransaction`): every `batch_logs` row the
+ledger writes is noted on the transaction's report and summed per key, then one upsert per table, keys sorted, door
+rows first. A ledger write outside a stock transaction is refused, so no writer can skip it.
+
+```mermaid
+erDiagram
+    inventory_stock_daily_changes {
+        date        day          PK "the Jakarta day of the stock transaction - its log rows carry the same instant"
+        bigint      warehouse_id PK "where the batch sits"
+        bigint      team_id      PK "the batch's owner - the Seller group"
+        bigint      product_id   PK
+        bigint      supplier_id  PK "the batch's own, 0 when none"
+        text        change_type  PK "batch_logs' own CHECK list"
+        bigint      change_count "signed - out is negative"
+        double      change_value "signed, the exact sum of the log rows"
+        timestamptz last_updated
+    }
+    inventory_door_daily_reports {
+        date        day           PK "the accept's Jakarta day"
+        bigint      warehouse_id  PK "the receiving or the return warehouse"
+        bigint      team_id       PK "the restocking team, or the ordering team of a return"
+        bigint      product_id    PK "a borrowed return line under its mapped own product"
+        bigint      supplier_id   PK "the restock line's, or the return layer's batch's"
+        text        source        PK "restock return - CHECK"
+        bigint      broken_count  "CHECK 0 or more"
+        bigint      missing_count "CHECK 0 or more"
+        timestamptz last_updated
+    }
+    batch_logs }o--|| inventory_stock_daily_changes : "every row sums into"
+    restock_problem_items }o--|| inventory_door_daily_reports : "a restock's door"
+    order_return_problem_items }o--|| inventory_door_daily_reports : "a return's door"
+```
+
+- **`inventory_stock_daily_changes`** — Σ `change_count` / `change_value` = Σ `batch_logs` per key, day and type, by
+  construction (asserted after every writer: `ledgerMatchesReport`). Restock reads `restock`, Transfer `transfer_out`
+  (negated — a cancel's reversal nets on its own day) and `transfer_in`, Returned stock `return`, Ready stock every type:
+  a past day's position is **today's batches − the changes after it**. The migration replays the ledger's changes so far
+  into it (exact — the same sums), so a past day reads right; door rows count from the build, as Lost stock's.
+- **Primary keys**, no surrogate id: the fold's `ON CONFLICT DO UPDATE` target, one index fewer on every stock write. Two
+  writers into one row queue on it and both add.
+- **The readers**: `(warehouse_id, day, change_type)` and `(team_id, day, change_type)` — one
+  `warehouse_id = T OR team_id = T` condition, a BitmapOr of the two; the type rides last so a movement's read is judged
+  in the index. The door table has `(warehouse_id, day)` and `(team_id, day)`.
+- **In transit** has no table: it is read live from `warehouse_transfers` and the out-leg's `batch_logs` rows (created
+  on or before the edge, accepted or cancelled after it).
+- Logical links only (no FK): the reports are derived.
+
 ---
 
 ## region_service

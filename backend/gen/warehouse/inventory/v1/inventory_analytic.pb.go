@@ -174,6 +174,666 @@ func (x *InventoryLostMetricByDay) GetItems() map[string]*InventoryLostMetric {
 	return nil
 }
 
+// RESTOCK — what the receiving warehouse accepted onto its racks on the accept's Jakarta day, and what its door found
+// broken or missing. Warehouse = where it was received.
+type InventoryRestockMetric struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Good units accepted onto the racks.
+	AcceptedCount int64 `protobuf:"varint,1,opt,name=accepted_count,json=acceptedCount,proto3" json:"accepted_count,omitempty"`
+	// Those units at their landed price (the batch's), rupiah. Unset for a warehouse.
+	AcceptedValue *float64 `protobuf:"fixed64,2,opt,name=accepted_value,json=acceptedValue,proto3,oneof" json:"accepted_value,omitempty"`
+	// Units the door found broken.
+	BrokenCount int64 `protobuf:"varint,3,opt,name=broken_count,json=brokenCount,proto3" json:"broken_count,omitempty"`
+	// Units the line ordered that were not in the box.
+	MissingCount  int64 `protobuf:"varint,4,opt,name=missing_count,json=missingCount,proto3" json:"missing_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryRestockMetric) Reset() {
+	*x = InventoryRestockMetric{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryRestockMetric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryRestockMetric) ProtoMessage() {}
+
+func (x *InventoryRestockMetric) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryRestockMetric.ProtoReflect.Descriptor instead.
+func (*InventoryRestockMetric) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *InventoryRestockMetric) GetAcceptedCount() int64 {
+	if x != nil {
+		return x.AcceptedCount
+	}
+	return 0
+}
+
+func (x *InventoryRestockMetric) GetAcceptedValue() float64 {
+	if x != nil && x.AcceptedValue != nil {
+		return *x.AcceptedValue
+	}
+	return 0
+}
+
+func (x *InventoryRestockMetric) GetBrokenCount() int64 {
+	if x != nil {
+		return x.BrokenCount
+	}
+	return 0
+}
+
+func (x *InventoryRestockMetric) GetMissingCount() int64 {
+	if x != nil {
+		return x.MissingCount
+	}
+	return 0
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+type InventoryRestockMetricByID struct {
+	state         protoimpl.MessageState             `protogen:"open.v1"`
+	Items         map[uint64]*InventoryRestockMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryRestockMetricByID) Reset() {
+	*x = InventoryRestockMetricByID{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryRestockMetricByID) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryRestockMetricByID) ProtoMessage() {}
+
+func (x *InventoryRestockMetricByID) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryRestockMetricByID.ProtoReflect.Descriptor instead.
+func (*InventoryRestockMetricByID) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *InventoryRestockMetricByID) GetItems() map[uint64]*InventoryRestockMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+type InventoryRestockMetricByDay struct {
+	state         protoimpl.MessageState             `protogen:"open.v1"`
+	Items         map[string]*InventoryRestockMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryRestockMetricByDay) Reset() {
+	*x = InventoryRestockMetricByDay{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryRestockMetricByDay) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryRestockMetricByDay) ProtoMessage() {}
+
+func (x *InventoryRestockMetricByDay) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryRestockMetricByDay.ProtoReflect.Descriptor instead.
+func (*InventoryRestockMetricByDay) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *InventoryRestockMetricByDay) GetItems() map[string]*InventoryRestockMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// TRANSFER — each side on its own day (a-transfer-counts-each-side-on-its-own-day): SENT under the sending warehouse on
+// the create day, a cancel taking it back on the cancel day; RECEIVED (the good units) under the receiving warehouse on
+// the accept day; IN TRANSIT a position under the receiving warehouse, every day from the create to the day before the
+// accept (or the cancel). The warehouse filter therefore matches either side, and by warehouse each shows its own.
+type InventoryTransferMetric struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Units sent.
+	SentCount int64 `protobuf:"varint,1,opt,name=sent_count,json=sentCount,proto3" json:"sent_count,omitempty"`
+	// Those units at the price the out-leg took them at, rupiah. Unset for a warehouse.
+	SentValue *float64 `protobuf:"fixed64,2,opt,name=sent_value,json=sentValue,proto3,oneof" json:"sent_value,omitempty"`
+	// Good units received onto the racks.
+	ReceivedCount int64 `protobuf:"varint,3,opt,name=received_count,json=receivedCount,proto3" json:"received_count,omitempty"`
+	// Those units at their batch's price, rupiah. Unset for a warehouse.
+	ReceivedValue *float64 `protobuf:"fixed64,4,opt,name=received_value,json=receivedValue,proto3,oneof" json:"received_value,omitempty"`
+	// Units on the road at the period's edge — a units position.
+	InTransitCount int64 `protobuf:"varint,5,opt,name=in_transit_count,json=inTransitCount,proto3" json:"in_transit_count,omitempty"`
+	// Those units' value at the edge — a position, rupiah. Unset for a warehouse.
+	InTransitValue *float64 `protobuf:"fixed64,6,opt,name=in_transit_value,json=inTransitValue,proto3,oneof" json:"in_transit_value,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *InventoryTransferMetric) Reset() {
+	*x = InventoryTransferMetric{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryTransferMetric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryTransferMetric) ProtoMessage() {}
+
+func (x *InventoryTransferMetric) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryTransferMetric.ProtoReflect.Descriptor instead.
+func (*InventoryTransferMetric) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *InventoryTransferMetric) GetSentCount() int64 {
+	if x != nil {
+		return x.SentCount
+	}
+	return 0
+}
+
+func (x *InventoryTransferMetric) GetSentValue() float64 {
+	if x != nil && x.SentValue != nil {
+		return *x.SentValue
+	}
+	return 0
+}
+
+func (x *InventoryTransferMetric) GetReceivedCount() int64 {
+	if x != nil {
+		return x.ReceivedCount
+	}
+	return 0
+}
+
+func (x *InventoryTransferMetric) GetReceivedValue() float64 {
+	if x != nil && x.ReceivedValue != nil {
+		return *x.ReceivedValue
+	}
+	return 0
+}
+
+func (x *InventoryTransferMetric) GetInTransitCount() int64 {
+	if x != nil {
+		return x.InTransitCount
+	}
+	return 0
+}
+
+func (x *InventoryTransferMetric) GetInTransitValue() float64 {
+	if x != nil && x.InTransitValue != nil {
+		return *x.InTransitValue
+	}
+	return 0
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+type InventoryTransferMetricByID struct {
+	state         protoimpl.MessageState              `protogen:"open.v1"`
+	Items         map[uint64]*InventoryTransferMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryTransferMetricByID) Reset() {
+	*x = InventoryTransferMetricByID{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryTransferMetricByID) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryTransferMetricByID) ProtoMessage() {}
+
+func (x *InventoryTransferMetricByID) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryTransferMetricByID.ProtoReflect.Descriptor instead.
+func (*InventoryTransferMetricByID) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *InventoryTransferMetricByID) GetItems() map[uint64]*InventoryTransferMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+type InventoryTransferMetricByDay struct {
+	state         protoimpl.MessageState              `protogen:"open.v1"`
+	Items         map[string]*InventoryTransferMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryTransferMetricByDay) Reset() {
+	*x = InventoryTransferMetricByDay{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryTransferMetricByDay) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryTransferMetricByDay) ProtoMessage() {}
+
+func (x *InventoryTransferMetricByDay) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryTransferMetricByDay.ProtoReflect.Descriptor instead.
+func (*InventoryTransferMetricByDay) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *InventoryTransferMetricByDay) GetItems() map[string]*InventoryTransferMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// RETURNED STOCK — an order's return accepted at the return warehouse, on the accept's Jakarta day: the sound units back
+// on the shelf and the door's broken (thrown away) and missing. The seller is the ordering team — a borrowed line comes
+// back as its own mapped product (a-returned-borrowed-unit-is-relabelled-at-the-accept).
+type InventoryReturnMetric struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Units back on the shelf.
+	BackCount int64 `protobuf:"varint,1,opt,name=back_count,json=backCount,proto3" json:"back_count,omitempty"`
+	// Those units at the price the order took them at (the markup paid on a borrowed line), rupiah. Unset for a warehouse.
+	BackValue *float64 `protobuf:"fixed64,2,opt,name=back_value,json=backValue,proto3,oneof" json:"back_value,omitempty"`
+	// Units broken at the door, thrown away.
+	BrokenCount int64 `protobuf:"varint,3,opt,name=broken_count,json=brokenCount,proto3" json:"broken_count,omitempty"`
+	// Units that never came back.
+	MissingCount  int64 `protobuf:"varint,4,opt,name=missing_count,json=missingCount,proto3" json:"missing_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryReturnMetric) Reset() {
+	*x = InventoryReturnMetric{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryReturnMetric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryReturnMetric) ProtoMessage() {}
+
+func (x *InventoryReturnMetric) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryReturnMetric.ProtoReflect.Descriptor instead.
+func (*InventoryReturnMetric) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *InventoryReturnMetric) GetBackCount() int64 {
+	if x != nil {
+		return x.BackCount
+	}
+	return 0
+}
+
+func (x *InventoryReturnMetric) GetBackValue() float64 {
+	if x != nil && x.BackValue != nil {
+		return *x.BackValue
+	}
+	return 0
+}
+
+func (x *InventoryReturnMetric) GetBrokenCount() int64 {
+	if x != nil {
+		return x.BrokenCount
+	}
+	return 0
+}
+
+func (x *InventoryReturnMetric) GetMissingCount() int64 {
+	if x != nil {
+		return x.MissingCount
+	}
+	return 0
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+type InventoryReturnMetricByID struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Items         map[uint64]*InventoryReturnMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryReturnMetricByID) Reset() {
+	*x = InventoryReturnMetricByID{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryReturnMetricByID) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryReturnMetricByID) ProtoMessage() {}
+
+func (x *InventoryReturnMetricByID) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryReturnMetricByID.ProtoReflect.Descriptor instead.
+func (*InventoryReturnMetricByID) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *InventoryReturnMetricByID) GetItems() map[uint64]*InventoryReturnMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+type InventoryReturnMetricByDay struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Items         map[string]*InventoryReturnMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryReturnMetricByDay) Reset() {
+	*x = InventoryReturnMetricByDay{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryReturnMetricByDay) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryReturnMetricByDay) ProtoMessage() {}
+
+func (x *InventoryReturnMetricByDay) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryReturnMetricByDay.ProtoReflect.Descriptor instead.
+func (*InventoryReturnMetricByDay) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *InventoryReturnMetricByDay) GetItems() map[string]*InventoryReturnMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// READY STOCK — on hand at the end of a Jakarta day: POSITIONS. A period reads its last day (cut by the window, never a
+// day still to come), the headline the window's last day; keys add up. Read backwards from today's batches: the edge's
+// position is today's minus every change after it. Warehouse = where it sits; every reader sees both fields.
+type InventoryReadyMetric struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Units on hand at the edge — a units position.
+	OnHandCount int64 `protobuf:"varint,1,opt,name=on_hand_count,json=onHandCount,proto3" json:"on_hand_count,omitempty"`
+	// Their value at the edge (the batches' value), rupiah — a position.
+	OnHandValue   float64 `protobuf:"fixed64,2,opt,name=on_hand_value,json=onHandValue,proto3" json:"on_hand_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryReadyMetric) Reset() {
+	*x = InventoryReadyMetric{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryReadyMetric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryReadyMetric) ProtoMessage() {}
+
+func (x *InventoryReadyMetric) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryReadyMetric.ProtoReflect.Descriptor instead.
+func (*InventoryReadyMetric) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *InventoryReadyMetric) GetOnHandCount() int64 {
+	if x != nil {
+		return x.OnHandCount
+	}
+	return 0
+}
+
+func (x *InventoryReadyMetric) GetOnHandValue() float64 {
+	if x != nil {
+		return x.OnHandValue
+	}
+	return 0
+}
+
+// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+type InventoryReadyMetricByID struct {
+	state         protoimpl.MessageState           `protogen:"open.v1"`
+	Items         map[uint64]*InventoryReadyMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryReadyMetricByID) Reset() {
+	*x = InventoryReadyMetricByID{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryReadyMetricByID) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryReadyMetricByID) ProtoMessage() {}
+
+func (x *InventoryReadyMetricByID) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryReadyMetricByID.ProtoReflect.Descriptor instead.
+func (*InventoryReadyMetricByID) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *InventoryReadyMetricByID) GetItems() map[uint64]*InventoryReadyMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// Keyed by a period's first Jakarta day, `YYYY-MM-DD` (a-day-is-a-jakarta-date-string).
+type InventoryReadyMetricByDay struct {
+	state         protoimpl.MessageState           `protogen:"open.v1"`
+	Items         map[string]*InventoryReadyMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InventoryReadyMetricByDay) Reset() {
+	*x = InventoryReadyMetricByDay{}
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InventoryReadyMetricByDay) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InventoryReadyMetricByDay) ProtoMessage() {}
+
+func (x *InventoryReadyMetricByDay) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InventoryReadyMetricByDay.ProtoReflect.Descriptor instead.
+func (*InventoryReadyMetricByDay) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *InventoryReadyMetricByDay) GetItems() map[string]*InventoryReadyMetric {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 type MetricSearchRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The reader: every member of the scoped team reads it (every-member-reads-every-metric-of-their-team).
@@ -189,7 +849,7 @@ type MetricSearchRequest struct {
 
 func (x *MetricSearchRequest) Reset() {
 	*x = MetricSearchRequest{}
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[3]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -201,7 +861,7 @@ func (x *MetricSearchRequest) String() string {
 func (*MetricSearchRequest) ProtoMessage() {}
 
 func (x *MetricSearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[3]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -214,7 +874,7 @@ func (x *MetricSearchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricSearchRequest.ProtoReflect.Descriptor instead.
 func (*MetricSearchRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *MetricSearchRequest) GetTeamId() uint64 {
@@ -262,7 +922,7 @@ type MetricSearchResponse struct {
 
 func (x *MetricSearchResponse) Reset() {
 	*x = MetricSearchResponse{}
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[4]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -274,7 +934,7 @@ func (x *MetricSearchResponse) String() string {
 func (*MetricSearchResponse) ProtoMessage() {}
 
 func (x *MetricSearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[4]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +947,7 @@ func (x *MetricSearchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricSearchResponse.ProtoReflect.Descriptor instead.
 func (*MetricSearchResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *MetricSearchResponse) GetKeys() *v1.MetricKeys {
@@ -311,7 +971,7 @@ type MetricDataRequest struct {
 	Filters []*v1.FilterItem       `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
 	// The keys to read — none under SUMMARY.
 	Keys *v1.MetricKeys `protobuf:"bytes,4,opt,name=keys,proto3" json:"keys,omitempty"`
-	// One metric only here, `metrics/inventory/lost`; repeated to keep the pattern's shape.
+	// Any of the five: `metrics/inventory/{lost,restock,transfer,return,ready}`.
 	MetricIds     []string `protobuf:"bytes,5,rep,name=metric_ids,json=metricIds,proto3" json:"metric_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -319,7 +979,7 @@ type MetricDataRequest struct {
 
 func (x *MetricDataRequest) Reset() {
 	*x = MetricDataRequest{}
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[5]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -331,7 +991,7 @@ func (x *MetricDataRequest) String() string {
 func (*MetricDataRequest) ProtoMessage() {}
 
 func (x *MetricDataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[5]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -344,7 +1004,7 @@ func (x *MetricDataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricDataRequest.ProtoReflect.Descriptor instead.
 func (*MetricDataRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{5}
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *MetricDataRequest) GetTeamId() uint64 {
@@ -389,6 +1049,18 @@ type MetricData struct {
 	//	*MetricData_LostById
 	//	*MetricData_LostByDay
 	//	*MetricData_LostSummary
+	//	*MetricData_RestockById
+	//	*MetricData_RestockByDay
+	//	*MetricData_RestockSummary
+	//	*MetricData_TransferById
+	//	*MetricData_TransferByDay
+	//	*MetricData_TransferSummary
+	//	*MetricData_ReturnById
+	//	*MetricData_ReturnByDay
+	//	*MetricData_ReturnSummary
+	//	*MetricData_ReadyById
+	//	*MetricData_ReadyByDay
+	//	*MetricData_ReadySummary
 	M             isMetricData_M `protobuf_oneof:"m"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -396,7 +1068,7 @@ type MetricData struct {
 
 func (x *MetricData) Reset() {
 	*x = MetricData{}
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[6]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +1080,7 @@ func (x *MetricData) String() string {
 func (*MetricData) ProtoMessage() {}
 
 func (x *MetricData) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[6]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +1093,7 @@ func (x *MetricData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricData.ProtoReflect.Descriptor instead.
 func (*MetricData) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *MetricData) GetM() isMetricData_M {
@@ -458,6 +1130,114 @@ func (x *MetricData) GetLostSummary() *InventoryLostMetric {
 	return nil
 }
 
+func (x *MetricData) GetRestockById() *InventoryRestockMetricByID {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_RestockById); ok {
+			return x.RestockById
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetRestockByDay() *InventoryRestockMetricByDay {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_RestockByDay); ok {
+			return x.RestockByDay
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetRestockSummary() *InventoryRestockMetric {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_RestockSummary); ok {
+			return x.RestockSummary
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetTransferById() *InventoryTransferMetricByID {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_TransferById); ok {
+			return x.TransferById
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetTransferByDay() *InventoryTransferMetricByDay {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_TransferByDay); ok {
+			return x.TransferByDay
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetTransferSummary() *InventoryTransferMetric {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_TransferSummary); ok {
+			return x.TransferSummary
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetReturnById() *InventoryReturnMetricByID {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_ReturnById); ok {
+			return x.ReturnById
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetReturnByDay() *InventoryReturnMetricByDay {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_ReturnByDay); ok {
+			return x.ReturnByDay
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetReturnSummary() *InventoryReturnMetric {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_ReturnSummary); ok {
+			return x.ReturnSummary
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetReadyById() *InventoryReadyMetricByID {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_ReadyById); ok {
+			return x.ReadyById
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetReadyByDay() *InventoryReadyMetricByDay {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_ReadyByDay); ok {
+			return x.ReadyByDay
+		}
+	}
+	return nil
+}
+
+func (x *MetricData) GetReadySummary() *InventoryReadyMetric {
+	if x != nil {
+		if x, ok := x.M.(*MetricData_ReadySummary); ok {
+			return x.ReadySummary
+		}
+	}
+	return nil
+}
+
 type isMetricData_M interface {
 	isMetricData_M()
 }
@@ -474,16 +1254,88 @@ type MetricData_LostSummary struct {
 	LostSummary *InventoryLostMetric `protobuf:"bytes,3,opt,name=lost_summary,json=lostSummary,proto3,oneof"`
 }
 
+type MetricData_RestockById struct {
+	RestockById *InventoryRestockMetricByID `protobuf:"bytes,4,opt,name=restock_by_id,json=restockById,proto3,oneof"`
+}
+
+type MetricData_RestockByDay struct {
+	RestockByDay *InventoryRestockMetricByDay `protobuf:"bytes,5,opt,name=restock_by_day,json=restockByDay,proto3,oneof"`
+}
+
+type MetricData_RestockSummary struct {
+	RestockSummary *InventoryRestockMetric `protobuf:"bytes,6,opt,name=restock_summary,json=restockSummary,proto3,oneof"`
+}
+
+type MetricData_TransferById struct {
+	TransferById *InventoryTransferMetricByID `protobuf:"bytes,7,opt,name=transfer_by_id,json=transferById,proto3,oneof"`
+}
+
+type MetricData_TransferByDay struct {
+	TransferByDay *InventoryTransferMetricByDay `protobuf:"bytes,8,opt,name=transfer_by_day,json=transferByDay,proto3,oneof"`
+}
+
+type MetricData_TransferSummary struct {
+	TransferSummary *InventoryTransferMetric `protobuf:"bytes,9,opt,name=transfer_summary,json=transferSummary,proto3,oneof"`
+}
+
+type MetricData_ReturnById struct {
+	ReturnById *InventoryReturnMetricByID `protobuf:"bytes,10,opt,name=return_by_id,json=returnById,proto3,oneof"`
+}
+
+type MetricData_ReturnByDay struct {
+	ReturnByDay *InventoryReturnMetricByDay `protobuf:"bytes,11,opt,name=return_by_day,json=returnByDay,proto3,oneof"`
+}
+
+type MetricData_ReturnSummary struct {
+	ReturnSummary *InventoryReturnMetric `protobuf:"bytes,12,opt,name=return_summary,json=returnSummary,proto3,oneof"`
+}
+
+type MetricData_ReadyById struct {
+	ReadyById *InventoryReadyMetricByID `protobuf:"bytes,13,opt,name=ready_by_id,json=readyById,proto3,oneof"`
+}
+
+type MetricData_ReadyByDay struct {
+	ReadyByDay *InventoryReadyMetricByDay `protobuf:"bytes,14,opt,name=ready_by_day,json=readyByDay,proto3,oneof"`
+}
+
+type MetricData_ReadySummary struct {
+	ReadySummary *InventoryReadyMetric `protobuf:"bytes,15,opt,name=ready_summary,json=readySummary,proto3,oneof"`
+}
+
 func (*MetricData_LostById) isMetricData_M() {}
 
 func (*MetricData_LostByDay) isMetricData_M() {}
 
 func (*MetricData_LostSummary) isMetricData_M() {}
 
+func (*MetricData_RestockById) isMetricData_M() {}
+
+func (*MetricData_RestockByDay) isMetricData_M() {}
+
+func (*MetricData_RestockSummary) isMetricData_M() {}
+
+func (*MetricData_TransferById) isMetricData_M() {}
+
+func (*MetricData_TransferByDay) isMetricData_M() {}
+
+func (*MetricData_TransferSummary) isMetricData_M() {}
+
+func (*MetricData_ReturnById) isMetricData_M() {}
+
+func (*MetricData_ReturnByDay) isMetricData_M() {}
+
+func (*MetricData_ReturnSummary) isMetricData_M() {}
+
+func (*MetricData_ReadyById) isMetricData_M() {}
+
+func (*MetricData_ReadyByDay) isMetricData_M() {}
+
+func (*MetricData_ReadySummary) isMetricData_M() {}
+
 type MetricDataResponse struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	MetricDatas []*MetricData          `protobuf:"bytes,1,rep,name=metric_datas,json=metricDatas,proto3" json:"metric_datas,omitempty"`
-	// The read's own time: the report is written in the loss's own transaction, so nothing lags.
+	// The read's own time: every report is written in its stock change's own transaction, so nothing lags.
 	AsOfUnix      int64 `protobuf:"varint,2,opt,name=as_of_unix,json=asOfUnix,proto3" json:"as_of_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -491,7 +1343,7 @@ type MetricDataResponse struct {
 
 func (x *MetricDataResponse) Reset() {
 	*x = MetricDataResponse{}
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[7]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -503,7 +1355,7 @@ func (x *MetricDataResponse) String() string {
 func (*MetricDataResponse) ProtoMessage() {}
 
 func (x *MetricDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[7]
+	mi := &file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -516,7 +1368,7 @@ func (x *MetricDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricDataResponse.ProtoReflect.Descriptor instead.
 func (*MetricDataResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *MetricDataResponse) GetMetricDatas() []*MetricData {
@@ -557,7 +1409,104 @@ const file_warehouse_inventory_v1_inventory_analytic_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12A\n" +
-	"\x05value\x18\x02 \x01(\v2+.warehouse.inventory.v1.InventoryLostMetricR\x05value:\x028\x01\"\xf5\x02\n" +
+	"\x05value\x18\x02 \x01(\v2+.warehouse.inventory.v1.InventoryLostMetricR\x05value:\x028\x01\"\xac\x02\n" +
+	"\x16InventoryRestockMetric\x121\n" +
+	"\x0eaccepted_count\x18\x01 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\racceptedCount\x126\n" +
+	"\x0eaccepted_value\x18\x02 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\racceptedValue\x88\x01\x01\x12-\n" +
+	"\fbroken_count\x18\x03 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\vbrokenCount\x12/\n" +
+	"\rmissing_count\x18\x04 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\fmissingCount:4\x9a\xb5\x180\n" +
+	"\x05\x01\x04\a\x03\x06\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\x06\b\t\v\"\x19metrics/inventory/restockB\x11\n" +
+	"\x0f_accepted_value\"\xdb\x01\n" +
+	"\x1aInventoryRestockMetricByID\x12S\n" +
+	"\x05items\x18\x01 \x03(\v2=.warehouse.inventory.v1.InventoryRestockMetricByID.ItemsEntryR\x05items\x1ah\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12D\n" +
+	"\x05value\x18\x02 \x01(\v2..warehouse.inventory.v1.InventoryRestockMetricR\x05value:\x028\x01\"\xdd\x01\n" +
+	"\x1bInventoryRestockMetricByDay\x12T\n" +
+	"\x05items\x18\x01 \x03(\v2>.warehouse.inventory.v1.InventoryRestockMetricByDay.ItemsEntryR\x05items\x1ah\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12D\n" +
+	"\x05value\x18\x02 \x01(\v2..warehouse.inventory.v1.InventoryRestockMetricR\x05value:\x028\x01\"\xbe\x03\n" +
+	"\x17InventoryTransferMetric\x12)\n" +
+	"\n" +
+	"sent_count\x18\x01 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\tsentCount\x12.\n" +
+	"\n" +
+	"sent_value\x18\x02 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\tsentValue\x88\x01\x01\x121\n" +
+	"\x0ereceived_count\x18\x03 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\rreceivedCount\x126\n" +
+	"\x0ereceived_value\x18\x04 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\rreceivedValue\x88\x01\x01\x124\n" +
+	"\x10in_transit_count\x18\x05 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x05R\x0einTransitCount\x129\n" +
+	"\x10in_transit_value\x18\x06 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x04H\x02R\x0einTransitValue\x88\x01\x01:5\x9a\xb5\x181\n" +
+	"\x05\x01\x04\a\x03\x06\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\x06\b\t\v\"\x1ametrics/inventory/transferB\r\n" +
+	"\v_sent_valueB\x11\n" +
+	"\x0f_received_valueB\x13\n" +
+	"\x11_in_transit_value\"\xde\x01\n" +
+	"\x1bInventoryTransferMetricByID\x12T\n" +
+	"\x05items\x18\x01 \x03(\v2>.warehouse.inventory.v1.InventoryTransferMetricByID.ItemsEntryR\x05items\x1ai\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12E\n" +
+	"\x05value\x18\x02 \x01(\v2/.warehouse.inventory.v1.InventoryTransferMetricR\x05value:\x028\x01\"\xe0\x01\n" +
+	"\x1cInventoryTransferMetricByDay\x12U\n" +
+	"\x05items\x18\x01 \x03(\v2?.warehouse.inventory.v1.InventoryTransferMetricByDay.ItemsEntryR\x05items\x1ai\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12E\n" +
+	"\x05value\x18\x02 \x01(\v2/.warehouse.inventory.v1.InventoryTransferMetricR\x05value:\x028\x01\"\x96\x02\n" +
+	"\x15InventoryReturnMetric\x12)\n" +
+	"\n" +
+	"back_count\x18\x01 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\tbackCount\x12.\n" +
+	"\n" +
+	"back_value\x18\x02 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\tbackValue\x88\x01\x01\x12-\n" +
+	"\fbroken_count\x18\x03 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\vbrokenCount\x12/\n" +
+	"\rmissing_count\x18\x04 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\fmissingCount:3\x9a\xb5\x18/\n" +
+	"\x05\x01\x04\a\x03\x06\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\x06\b\t\v\"\x18metrics/inventory/returnB\r\n" +
+	"\v_back_value\"\xd8\x01\n" +
+	"\x19InventoryReturnMetricByID\x12R\n" +
+	"\x05items\x18\x01 \x03(\v2<.warehouse.inventory.v1.InventoryReturnMetricByID.ItemsEntryR\x05items\x1ag\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12C\n" +
+	"\x05value\x18\x02 \x01(\v2-.warehouse.inventory.v1.InventoryReturnMetricR\x05value:\x028\x01\"\xda\x01\n" +
+	"\x1aInventoryReturnMetricByDay\x12S\n" +
+	"\x05items\x18\x01 \x03(\v2=.warehouse.inventory.v1.InventoryReturnMetricByDay.ItemsEntryR\x05items\x1ag\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12C\n" +
+	"\x05value\x18\x02 \x01(\v2-.warehouse.inventory.v1.InventoryReturnMetricR\x05value:\x028\x01\"\xaa\x01\n" +
+	"\x14InventoryReadyMetric\x12.\n" +
+	"\ron_hand_count\x18\x01 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x05R\vonHandCount\x12.\n" +
+	"\ron_hand_value\x18\x02 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x04R\vonHandValue:2\x9a\xb5\x18.\n" +
+	"\x05\x01\x04\a\x03\x06\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\x06\b\t\v\"\x17metrics/inventory/ready\"\xd5\x01\n" +
+	"\x18InventoryReadyMetricByID\x12Q\n" +
+	"\x05items\x18\x01 \x03(\v2;.warehouse.inventory.v1.InventoryReadyMetricByID.ItemsEntryR\x05items\x1af\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12B\n" +
+	"\x05value\x18\x02 \x01(\v2,.warehouse.inventory.v1.InventoryReadyMetricR\x05value:\x028\x01\"\xd7\x01\n" +
+	"\x19InventoryReadyMetricByDay\x12R\n" +
+	"\x05items\x18\x01 \x03(\v2<.warehouse.inventory.v1.InventoryReadyMetricByDay.ItemsEntryR\x05items\x1af\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12B\n" +
+	"\x05value\x18\x02 \x01(\v2,.warehouse.inventory.v1.InventoryReadyMetricR\x05value:\x028\x01\"\xf5\x02\n" +
 	"\x13MetricSearchRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
 	"\bgroup_by\x18\x02 \x01(\x0e2%.warehouse.analytic_base.v1.GroupTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\agroupBy\x12J\n" +
@@ -579,13 +1528,29 @@ const file_warehouse_inventory_v1_inventory_analytic_proto_rawDesc = "" +
 	"metric_ids\x18\x05 \x03(\tB\f\xbaH\t\x92\x01\x06\b\x01\x10\n" +
 	"\x18\x01R\tmetricIds:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x88\x02\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xbe\n" +
+	"\n" +
 	"\n" +
 	"MetricData\x12O\n" +
 	"\n" +
 	"lost_by_id\x18\x01 \x01(\v2/.warehouse.inventory.v1.InventoryLostMetricByIDH\x00R\blostById\x12R\n" +
 	"\vlost_by_day\x18\x02 \x01(\v20.warehouse.inventory.v1.InventoryLostMetricByDayH\x00R\tlostByDay\x12P\n" +
-	"\flost_summary\x18\x03 \x01(\v2+.warehouse.inventory.v1.InventoryLostMetricH\x00R\vlostSummaryB\x03\n" +
+	"\flost_summary\x18\x03 \x01(\v2+.warehouse.inventory.v1.InventoryLostMetricH\x00R\vlostSummary\x12X\n" +
+	"\rrestock_by_id\x18\x04 \x01(\v22.warehouse.inventory.v1.InventoryRestockMetricByIDH\x00R\vrestockById\x12[\n" +
+	"\x0erestock_by_day\x18\x05 \x01(\v23.warehouse.inventory.v1.InventoryRestockMetricByDayH\x00R\frestockByDay\x12Y\n" +
+	"\x0frestock_summary\x18\x06 \x01(\v2..warehouse.inventory.v1.InventoryRestockMetricH\x00R\x0erestockSummary\x12[\n" +
+	"\x0etransfer_by_id\x18\a \x01(\v23.warehouse.inventory.v1.InventoryTransferMetricByIDH\x00R\ftransferById\x12^\n" +
+	"\x0ftransfer_by_day\x18\b \x01(\v24.warehouse.inventory.v1.InventoryTransferMetricByDayH\x00R\rtransferByDay\x12\\\n" +
+	"\x10transfer_summary\x18\t \x01(\v2/.warehouse.inventory.v1.InventoryTransferMetricH\x00R\x0ftransferSummary\x12U\n" +
+	"\freturn_by_id\x18\n" +
+	" \x01(\v21.warehouse.inventory.v1.InventoryReturnMetricByIDH\x00R\n" +
+	"returnById\x12X\n" +
+	"\rreturn_by_day\x18\v \x01(\v22.warehouse.inventory.v1.InventoryReturnMetricByDayH\x00R\vreturnByDay\x12V\n" +
+	"\x0ereturn_summary\x18\f \x01(\v2-.warehouse.inventory.v1.InventoryReturnMetricH\x00R\rreturnSummary\x12R\n" +
+	"\vready_by_id\x18\r \x01(\v20.warehouse.inventory.v1.InventoryReadyMetricByIDH\x00R\treadyById\x12U\n" +
+	"\fready_by_day\x18\x0e \x01(\v21.warehouse.inventory.v1.InventoryReadyMetricByDayH\x00R\n" +
+	"readyByDay\x12S\n" +
+	"\rready_summary\x18\x0f \x01(\v2,.warehouse.inventory.v1.InventoryReadyMetricH\x00R\freadySummaryB\x03\n" +
 	"\x01m\"y\n" +
 	"\x12MetricDataResponse\x12E\n" +
 	"\fmetric_datas\x18\x01 \x03(\v2\".warehouse.inventory.v1.MetricDataR\vmetricDatas\x12\x1c\n" +
@@ -608,50 +1573,98 @@ func file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP() []byte {
 	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescData
 }
 
-var file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_warehouse_inventory_v1_inventory_analytic_proto_goTypes = []any{
-	(*InventoryLostMetric)(nil),      // 0: warehouse.inventory.v1.InventoryLostMetric
-	(*InventoryLostMetricByID)(nil),  // 1: warehouse.inventory.v1.InventoryLostMetricByID
-	(*InventoryLostMetricByDay)(nil), // 2: warehouse.inventory.v1.InventoryLostMetricByDay
-	(*MetricSearchRequest)(nil),      // 3: warehouse.inventory.v1.MetricSearchRequest
-	(*MetricSearchResponse)(nil),     // 4: warehouse.inventory.v1.MetricSearchResponse
-	(*MetricDataRequest)(nil),        // 5: warehouse.inventory.v1.MetricDataRequest
-	(*MetricData)(nil),               // 6: warehouse.inventory.v1.MetricData
-	(*MetricDataResponse)(nil),       // 7: warehouse.inventory.v1.MetricDataResponse
-	nil,                              // 8: warehouse.inventory.v1.InventoryLostMetricByID.ItemsEntry
-	nil,                              // 9: warehouse.inventory.v1.InventoryLostMetricByDay.ItemsEntry
-	(v1.GroupType)(0),                // 10: warehouse.analytic_base.v1.GroupType
-	(*v1.FilterItem)(nil),            // 11: warehouse.analytic_base.v1.FilterItem
-	(*v1.MetricSort)(nil),            // 12: warehouse.analytic_base.v1.MetricSort
-	(*v1.PaginationFilter)(nil),      // 13: warehouse.analytic_base.v1.PaginationFilter
-	(*v1.MetricKeys)(nil),            // 14: warehouse.analytic_base.v1.MetricKeys
+	(*InventoryLostMetric)(nil),          // 0: warehouse.inventory.v1.InventoryLostMetric
+	(*InventoryLostMetricByID)(nil),      // 1: warehouse.inventory.v1.InventoryLostMetricByID
+	(*InventoryLostMetricByDay)(nil),     // 2: warehouse.inventory.v1.InventoryLostMetricByDay
+	(*InventoryRestockMetric)(nil),       // 3: warehouse.inventory.v1.InventoryRestockMetric
+	(*InventoryRestockMetricByID)(nil),   // 4: warehouse.inventory.v1.InventoryRestockMetricByID
+	(*InventoryRestockMetricByDay)(nil),  // 5: warehouse.inventory.v1.InventoryRestockMetricByDay
+	(*InventoryTransferMetric)(nil),      // 6: warehouse.inventory.v1.InventoryTransferMetric
+	(*InventoryTransferMetricByID)(nil),  // 7: warehouse.inventory.v1.InventoryTransferMetricByID
+	(*InventoryTransferMetricByDay)(nil), // 8: warehouse.inventory.v1.InventoryTransferMetricByDay
+	(*InventoryReturnMetric)(nil),        // 9: warehouse.inventory.v1.InventoryReturnMetric
+	(*InventoryReturnMetricByID)(nil),    // 10: warehouse.inventory.v1.InventoryReturnMetricByID
+	(*InventoryReturnMetricByDay)(nil),   // 11: warehouse.inventory.v1.InventoryReturnMetricByDay
+	(*InventoryReadyMetric)(nil),         // 12: warehouse.inventory.v1.InventoryReadyMetric
+	(*InventoryReadyMetricByID)(nil),     // 13: warehouse.inventory.v1.InventoryReadyMetricByID
+	(*InventoryReadyMetricByDay)(nil),    // 14: warehouse.inventory.v1.InventoryReadyMetricByDay
+	(*MetricSearchRequest)(nil),          // 15: warehouse.inventory.v1.MetricSearchRequest
+	(*MetricSearchResponse)(nil),         // 16: warehouse.inventory.v1.MetricSearchResponse
+	(*MetricDataRequest)(nil),            // 17: warehouse.inventory.v1.MetricDataRequest
+	(*MetricData)(nil),                   // 18: warehouse.inventory.v1.MetricData
+	(*MetricDataResponse)(nil),           // 19: warehouse.inventory.v1.MetricDataResponse
+	nil,                                  // 20: warehouse.inventory.v1.InventoryLostMetricByID.ItemsEntry
+	nil,                                  // 21: warehouse.inventory.v1.InventoryLostMetricByDay.ItemsEntry
+	nil,                                  // 22: warehouse.inventory.v1.InventoryRestockMetricByID.ItemsEntry
+	nil,                                  // 23: warehouse.inventory.v1.InventoryRestockMetricByDay.ItemsEntry
+	nil,                                  // 24: warehouse.inventory.v1.InventoryTransferMetricByID.ItemsEntry
+	nil,                                  // 25: warehouse.inventory.v1.InventoryTransferMetricByDay.ItemsEntry
+	nil,                                  // 26: warehouse.inventory.v1.InventoryReturnMetricByID.ItemsEntry
+	nil,                                  // 27: warehouse.inventory.v1.InventoryReturnMetricByDay.ItemsEntry
+	nil,                                  // 28: warehouse.inventory.v1.InventoryReadyMetricByID.ItemsEntry
+	nil,                                  // 29: warehouse.inventory.v1.InventoryReadyMetricByDay.ItemsEntry
+	(v1.GroupType)(0),                    // 30: warehouse.analytic_base.v1.GroupType
+	(*v1.FilterItem)(nil),                // 31: warehouse.analytic_base.v1.FilterItem
+	(*v1.MetricSort)(nil),                // 32: warehouse.analytic_base.v1.MetricSort
+	(*v1.PaginationFilter)(nil),          // 33: warehouse.analytic_base.v1.PaginationFilter
+	(*v1.MetricKeys)(nil),                // 34: warehouse.analytic_base.v1.MetricKeys
 }
 var file_warehouse_inventory_v1_inventory_analytic_proto_depIdxs = []int32{
-	8,  // 0: warehouse.inventory.v1.InventoryLostMetricByID.items:type_name -> warehouse.inventory.v1.InventoryLostMetricByID.ItemsEntry
-	9,  // 1: warehouse.inventory.v1.InventoryLostMetricByDay.items:type_name -> warehouse.inventory.v1.InventoryLostMetricByDay.ItemsEntry
-	10, // 2: warehouse.inventory.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	11, // 3: warehouse.inventory.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	12, // 4: warehouse.inventory.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
-	13, // 5: warehouse.inventory.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
-	14, // 6: warehouse.inventory.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
-	10, // 7: warehouse.inventory.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	11, // 8: warehouse.inventory.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
-	14, // 9: warehouse.inventory.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
-	1,  // 10: warehouse.inventory.v1.MetricData.lost_by_id:type_name -> warehouse.inventory.v1.InventoryLostMetricByID
-	2,  // 11: warehouse.inventory.v1.MetricData.lost_by_day:type_name -> warehouse.inventory.v1.InventoryLostMetricByDay
-	0,  // 12: warehouse.inventory.v1.MetricData.lost_summary:type_name -> warehouse.inventory.v1.InventoryLostMetric
-	6,  // 13: warehouse.inventory.v1.MetricDataResponse.metric_datas:type_name -> warehouse.inventory.v1.MetricData
-	0,  // 14: warehouse.inventory.v1.InventoryLostMetricByID.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryLostMetric
-	0,  // 15: warehouse.inventory.v1.InventoryLostMetricByDay.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryLostMetric
-	3,  // 16: warehouse.inventory.v1.InventoryAnalyticService.MetricSearch:input_type -> warehouse.inventory.v1.MetricSearchRequest
-	5,  // 17: warehouse.inventory.v1.InventoryAnalyticService.MetricData:input_type -> warehouse.inventory.v1.MetricDataRequest
-	4,  // 18: warehouse.inventory.v1.InventoryAnalyticService.MetricSearch:output_type -> warehouse.inventory.v1.MetricSearchResponse
-	7,  // 19: warehouse.inventory.v1.InventoryAnalyticService.MetricData:output_type -> warehouse.inventory.v1.MetricDataResponse
-	18, // [18:20] is the sub-list for method output_type
-	16, // [16:18] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	20, // 0: warehouse.inventory.v1.InventoryLostMetricByID.items:type_name -> warehouse.inventory.v1.InventoryLostMetricByID.ItemsEntry
+	21, // 1: warehouse.inventory.v1.InventoryLostMetricByDay.items:type_name -> warehouse.inventory.v1.InventoryLostMetricByDay.ItemsEntry
+	22, // 2: warehouse.inventory.v1.InventoryRestockMetricByID.items:type_name -> warehouse.inventory.v1.InventoryRestockMetricByID.ItemsEntry
+	23, // 3: warehouse.inventory.v1.InventoryRestockMetricByDay.items:type_name -> warehouse.inventory.v1.InventoryRestockMetricByDay.ItemsEntry
+	24, // 4: warehouse.inventory.v1.InventoryTransferMetricByID.items:type_name -> warehouse.inventory.v1.InventoryTransferMetricByID.ItemsEntry
+	25, // 5: warehouse.inventory.v1.InventoryTransferMetricByDay.items:type_name -> warehouse.inventory.v1.InventoryTransferMetricByDay.ItemsEntry
+	26, // 6: warehouse.inventory.v1.InventoryReturnMetricByID.items:type_name -> warehouse.inventory.v1.InventoryReturnMetricByID.ItemsEntry
+	27, // 7: warehouse.inventory.v1.InventoryReturnMetricByDay.items:type_name -> warehouse.inventory.v1.InventoryReturnMetricByDay.ItemsEntry
+	28, // 8: warehouse.inventory.v1.InventoryReadyMetricByID.items:type_name -> warehouse.inventory.v1.InventoryReadyMetricByID.ItemsEntry
+	29, // 9: warehouse.inventory.v1.InventoryReadyMetricByDay.items:type_name -> warehouse.inventory.v1.InventoryReadyMetricByDay.ItemsEntry
+	30, // 10: warehouse.inventory.v1.MetricSearchRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	31, // 11: warehouse.inventory.v1.MetricSearchRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	32, // 12: warehouse.inventory.v1.MetricSearchRequest.sort:type_name -> warehouse.analytic_base.v1.MetricSort
+	33, // 13: warehouse.inventory.v1.MetricSearchRequest.page:type_name -> warehouse.analytic_base.v1.PaginationFilter
+	34, // 14: warehouse.inventory.v1.MetricSearchResponse.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	30, // 15: warehouse.inventory.v1.MetricDataRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	31, // 16: warehouse.inventory.v1.MetricDataRequest.filters:type_name -> warehouse.analytic_base.v1.FilterItem
+	34, // 17: warehouse.inventory.v1.MetricDataRequest.keys:type_name -> warehouse.analytic_base.v1.MetricKeys
+	1,  // 18: warehouse.inventory.v1.MetricData.lost_by_id:type_name -> warehouse.inventory.v1.InventoryLostMetricByID
+	2,  // 19: warehouse.inventory.v1.MetricData.lost_by_day:type_name -> warehouse.inventory.v1.InventoryLostMetricByDay
+	0,  // 20: warehouse.inventory.v1.MetricData.lost_summary:type_name -> warehouse.inventory.v1.InventoryLostMetric
+	4,  // 21: warehouse.inventory.v1.MetricData.restock_by_id:type_name -> warehouse.inventory.v1.InventoryRestockMetricByID
+	5,  // 22: warehouse.inventory.v1.MetricData.restock_by_day:type_name -> warehouse.inventory.v1.InventoryRestockMetricByDay
+	3,  // 23: warehouse.inventory.v1.MetricData.restock_summary:type_name -> warehouse.inventory.v1.InventoryRestockMetric
+	7,  // 24: warehouse.inventory.v1.MetricData.transfer_by_id:type_name -> warehouse.inventory.v1.InventoryTransferMetricByID
+	8,  // 25: warehouse.inventory.v1.MetricData.transfer_by_day:type_name -> warehouse.inventory.v1.InventoryTransferMetricByDay
+	6,  // 26: warehouse.inventory.v1.MetricData.transfer_summary:type_name -> warehouse.inventory.v1.InventoryTransferMetric
+	10, // 27: warehouse.inventory.v1.MetricData.return_by_id:type_name -> warehouse.inventory.v1.InventoryReturnMetricByID
+	11, // 28: warehouse.inventory.v1.MetricData.return_by_day:type_name -> warehouse.inventory.v1.InventoryReturnMetricByDay
+	9,  // 29: warehouse.inventory.v1.MetricData.return_summary:type_name -> warehouse.inventory.v1.InventoryReturnMetric
+	13, // 30: warehouse.inventory.v1.MetricData.ready_by_id:type_name -> warehouse.inventory.v1.InventoryReadyMetricByID
+	14, // 31: warehouse.inventory.v1.MetricData.ready_by_day:type_name -> warehouse.inventory.v1.InventoryReadyMetricByDay
+	12, // 32: warehouse.inventory.v1.MetricData.ready_summary:type_name -> warehouse.inventory.v1.InventoryReadyMetric
+	18, // 33: warehouse.inventory.v1.MetricDataResponse.metric_datas:type_name -> warehouse.inventory.v1.MetricData
+	0,  // 34: warehouse.inventory.v1.InventoryLostMetricByID.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryLostMetric
+	0,  // 35: warehouse.inventory.v1.InventoryLostMetricByDay.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryLostMetric
+	3,  // 36: warehouse.inventory.v1.InventoryRestockMetricByID.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryRestockMetric
+	3,  // 37: warehouse.inventory.v1.InventoryRestockMetricByDay.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryRestockMetric
+	6,  // 38: warehouse.inventory.v1.InventoryTransferMetricByID.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryTransferMetric
+	6,  // 39: warehouse.inventory.v1.InventoryTransferMetricByDay.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryTransferMetric
+	9,  // 40: warehouse.inventory.v1.InventoryReturnMetricByID.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryReturnMetric
+	9,  // 41: warehouse.inventory.v1.InventoryReturnMetricByDay.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryReturnMetric
+	12, // 42: warehouse.inventory.v1.InventoryReadyMetricByID.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryReadyMetric
+	12, // 43: warehouse.inventory.v1.InventoryReadyMetricByDay.ItemsEntry.value:type_name -> warehouse.inventory.v1.InventoryReadyMetric
+	15, // 44: warehouse.inventory.v1.InventoryAnalyticService.MetricSearch:input_type -> warehouse.inventory.v1.MetricSearchRequest
+	17, // 45: warehouse.inventory.v1.InventoryAnalyticService.MetricData:input_type -> warehouse.inventory.v1.MetricDataRequest
+	16, // 46: warehouse.inventory.v1.InventoryAnalyticService.MetricSearch:output_type -> warehouse.inventory.v1.MetricSearchResponse
+	19, // 47: warehouse.inventory.v1.InventoryAnalyticService.MetricData:output_type -> warehouse.inventory.v1.MetricDataResponse
+	46, // [46:48] is the sub-list for method output_type
+	44, // [44:46] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_inventory_analytic_proto_init() }
@@ -659,10 +1672,25 @@ func file_warehouse_inventory_v1_inventory_analytic_proto_init() {
 	if File_warehouse_inventory_v1_inventory_analytic_proto != nil {
 		return
 	}
-	file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[6].OneofWrappers = []any{
+	file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[3].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[6].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[9].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_inventory_analytic_proto_msgTypes[18].OneofWrappers = []any{
 		(*MetricData_LostById)(nil),
 		(*MetricData_LostByDay)(nil),
 		(*MetricData_LostSummary)(nil),
+		(*MetricData_RestockById)(nil),
+		(*MetricData_RestockByDay)(nil),
+		(*MetricData_RestockSummary)(nil),
+		(*MetricData_TransferById)(nil),
+		(*MetricData_TransferByDay)(nil),
+		(*MetricData_TransferSummary)(nil),
+		(*MetricData_ReturnById)(nil),
+		(*MetricData_ReturnByDay)(nil),
+		(*MetricData_ReturnSummary)(nil),
+		(*MetricData_ReadyById)(nil),
+		(*MetricData_ReadyByDay)(nil),
+		(*MetricData_ReadySummary)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -670,7 +1698,7 @@ func file_warehouse_inventory_v1_inventory_analytic_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_inventory_analytic_proto_rawDesc), len(file_warehouse_inventory_v1_inventory_analytic_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

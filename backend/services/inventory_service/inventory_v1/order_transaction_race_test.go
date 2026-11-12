@@ -26,6 +26,8 @@ import (
 // Children first, so the harness's DELETEs do not fight the foreign keys. The stock count's tables and the found requests
 // point at the transactions, the batches and the racks, so they go first.
 var ledgerTables = []string{
+	"inventory_stock_daily_changes",
+	"inventory_door_daily_reports",
 	"inventory_lost_daily_reports",
 	"found_requests",
 	"problem_claimed_transactions",

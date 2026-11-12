@@ -11,7 +11,8 @@ import (
 )
 
 // MetricData FILLS the keys a search returned with Lost stock — or, grouped by SUMMARY with no keys, reads the headline:
-// the same figures over the whole scope (the-headline-is-the-metric-grouped-by-summary).
+// the same figures over the whole scope (the-headline-is-the-metric-grouped-by-summary). Restock, Transfer, Returned
+// stock and Ready stock are answered by stockMetricData (inventory_metric_shared.go), each asked metric in turn.
 //
 //   - The filters scope the numbers, never the keys (the-fill-step-scopes-its-numbers-by-the-filters): every asked key
 //     comes back, one with no loss all zero — never missing.
@@ -25,13 +26,45 @@ func (s *Service) MetricData(
 ) (*connect.Response[inventoryv1.MetricDataResponse], error) {
 	msg := req.Msg
 
+	// Every id is checked before anything is read.
 	for _, id := range msg.GetMetricIds() {
+		if stockMetricByID(id) != nil {
+			continue
+		}
+
 		err := checkLostMetric(id)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	// One answer per asked metric, in the asked order (one-call-answers-every-asked-metric).
+	datas := make([]*inventoryv1.MetricData, 0, len(msg.GetMetricIds()))
+
+	for _, id := range msg.GetMetricIds() {
+		var (
+			data *inventoryv1.MetricData
+			err  error
+		)
+
+		if metric := stockMetricByID(id); metric != nil {
+			data, err = s.stockMetricData(ctx, metric, msg)
+		} else {
+			data, err = s.lostData(ctx, msg)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		datas = append(datas, data)
+	}
+
+	return connect.NewResponse(&inventoryv1.MetricDataResponse{MetricDatas: datas, AsOfUnix: time.Now().Unix()}), nil
+}
+
+// lostData is Lost stock's answer — the asked keys, or the headline under SUMMARY.
+func (s *Service) lostData(ctx context.Context, msg *inventoryv1.MetricDataRequest) (*inventoryv1.MetricData, error) {
 	filters, err := parseLostFilters(msg.GetFilters())
 	if err != nil {
 		return nil, err
@@ -39,25 +72,11 @@ func (s *Service) MetricData(
 
 	reader := lostReaderOf(msg.GetTeamId())
 
-	var data *inventoryv1.MetricData
-
 	if msg.GetGroupBy() == analytic_basev1.GroupType_GROUP_TYPE_SUMMARY {
-		data, err = s.lostSummary(ctx, reader, filters, msg.GetKeys())
-	} else {
-		data, err = s.lostByKey(ctx, reader, filters, msg.GetGroupBy(), msg.GetKeys())
+		return s.lostSummary(ctx, reader, filters, msg.GetKeys())
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	// One answer per asked metric, in the asked order (one-call-answers-every-asked-metric) — one metric, so one each.
-	datas := make([]*inventoryv1.MetricData, 0, len(msg.GetMetricIds()))
-	for range msg.GetMetricIds() {
-		datas = append(datas, data)
-	}
-
-	return connect.NewResponse(&inventoryv1.MetricDataResponse{MetricDatas: datas, AsOfUnix: time.Now().Unix()}), nil
+	return s.lostByKey(ctx, reader, filters, msg.GetGroupBy(), msg.GetKeys())
 }
 
 func (s *Service) lostSummary(

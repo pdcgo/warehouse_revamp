@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -133,7 +134,9 @@ func moveTransfer(
 ) error {
 	// Read before the write: GORM copies an update map back into the row it was given.
 	from := t.Status
-	now := time.Now()
+	// The stock transaction's clock when the move rides one (an accept, a cancel): the status's day is the stock's day
+	// (a-transfer-counts-each-side-on-its-own-day) — time.Now() otherwise.
+	now := inventory_ledgers.TxNow(tx)
 
 	updates := map[string]any{"status": to, "updated_at": now}
 	if cols, ok := statusActorColumns[to]; ok {

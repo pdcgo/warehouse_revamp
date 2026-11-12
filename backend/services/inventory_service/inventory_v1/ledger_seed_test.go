@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
@@ -27,16 +28,25 @@ func stockOnLedger(
 ) models.InventoryTransaction {
 	t.Helper()
 
-	tx, err := inventory_mutations.PostRestock(db, inventory_mutations.Restock{
-		WarehouseID: warehouse,
-		TeamID:      team,
-		ActorID:     1,
-		Lines: []inventory_mutations.RestockLine{{
-			ProductID:  product,
-			Good:       count,
-			PriceUnit:  price,
-			Placements: []inventory_mutations.RestockPlacement{{PlacementID: rack, Count: count}},
-		}},
+	var tx models.InventoryTransaction
+
+	// A restock as the accept writes it — in a stock transaction, so its change row is reported too.
+	err := inventory_ledgers.StockTransaction(db, func(stockTx *gorm.DB) error {
+		var postErr error
+
+		tx, postErr = inventory_mutations.PostRestock(stockTx, inventory_mutations.Restock{
+			WarehouseID: warehouse,
+			TeamID:      team,
+			ActorID:     1,
+			Lines: []inventory_mutations.RestockLine{{
+				ProductID:  product,
+				Good:       count,
+				PriceUnit:  price,
+				Placements: []inventory_mutations.RestockPlacement{{PlacementID: rack, Count: count}},
+			}},
+		})
+
+		return postErr
 	})
 	if err != nil {
 		t.Fatalf("stock %d of product %d on rack %d: %v", count, product, rack, err)

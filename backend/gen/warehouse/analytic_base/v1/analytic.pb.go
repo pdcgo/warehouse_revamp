@@ -247,7 +247,7 @@ func (GroupType) EnumDescriptor() ([]byte, []int) {
 // FieldStatType — what kind of number a metric's field is (a-field-declares-its-stat-type). Every number field of a
 // metric carries one, checked at startup (every-number-field-carries-a-stat-type). The screen formats a cell by it and
 // draws one graph per type, so a count never shares an axis with an amount (the-graph-draws-the-table). It is never a
-// rule for summing: a total is the service's SUMMARY, and a POSITION is never summed over time at all.
+// rule for summing: a total is the service's SUMMARY, and a POSITION or QTY_POSITION is never summed over time at all.
 type FieldStatType int32
 
 const (
@@ -261,6 +261,10 @@ const (
 	// An amount of money at a MOMENT — a balance (a-position-is-its-own-stat-type). It adds up across keys, never across
 	// time: a period's position is its edge, served by the service. Shown as Rp, in a graph of its own.
 	FieldStatType_FIELD_STAT_TYPE_POSITION FieldStatType = 4
+	// A count of things at a MOMENT — units on hand, units in transit: the units sibling of POSITION
+	// (ready-stock-is-folded-in-the-stock-changes-own-step). It adds up across keys, never across time: a period's figure
+	// is its edge, served by the service. Shown as a count, in a graph of its own (Positions (units)).
+	FieldStatType_FIELD_STAT_TYPE_QTY_POSITION FieldStatType = 5
 )
 
 // Enum value maps for FieldStatType.
@@ -271,13 +275,15 @@ var (
 		2: "FIELD_STAT_TYPE_QTY",
 		3: "FIELD_STAT_TYPE_CURRENCY",
 		4: "FIELD_STAT_TYPE_POSITION",
+		5: "FIELD_STAT_TYPE_QTY_POSITION",
 	}
 	FieldStatType_value = map[string]int32{
-		"FIELD_STAT_TYPE_UNSPECIFIED": 0,
-		"FIELD_STAT_TYPE_RATIO":       1,
-		"FIELD_STAT_TYPE_QTY":         2,
-		"FIELD_STAT_TYPE_CURRENCY":    3,
-		"FIELD_STAT_TYPE_POSITION":    4,
+		"FIELD_STAT_TYPE_UNSPECIFIED":  0,
+		"FIELD_STAT_TYPE_RATIO":        1,
+		"FIELD_STAT_TYPE_QTY":          2,
+		"FIELD_STAT_TYPE_CURRENCY":     3,
+		"FIELD_STAT_TYPE_POSITION":     4,
+		"FIELD_STAT_TYPE_QTY_POSITION": 5,
 	}
 )
 
@@ -1485,13 +1491,14 @@ const file_warehouse_analytic_base_v1_analytic_proto_rawDesc = "" +
 	"\x14GROUP_TYPE_WAREHOUSE\x10\v\x12\x16\n" +
 	"\x12GROUP_TYPE_ACCOUNT\x10\f\x12\x17\n" +
 	"\x13GROUP_TYPE_PROVIDER\x10\r\x12\x1a\n" +
-	"\x16GROUP_TYPE_CHANGE_TYPE\x10\x0e*\xa0\x01\n" +
+	"\x16GROUP_TYPE_CHANGE_TYPE\x10\x0e*\xc2\x01\n" +
 	"\rFieldStatType\x12\x1f\n" +
 	"\x1bFIELD_STAT_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15FIELD_STAT_TYPE_RATIO\x10\x01\x12\x17\n" +
 	"\x13FIELD_STAT_TYPE_QTY\x10\x02\x12\x1c\n" +
 	"\x18FIELD_STAT_TYPE_CURRENCY\x10\x03\x12\x1c\n" +
-	"\x18FIELD_STAT_TYPE_POSITION\x10\x04:c\n" +
+	"\x18FIELD_STAT_TYPE_POSITION\x10\x04\x12 \n" +
+	"\x1cFIELD_STAT_TYPE_QTY_POSITION\x10\x05:c\n" +
 	"\x06metric\x12\x1f.google.protobuf.MessageOptions\x18ӆ\x03 \x01(\v2(.warehouse.analytic_base.v1.MetricOptionR\x06metric:h\n" +
 	"\vmetric_sort\x12\x1d.google.protobuf.FieldOptions\x18ӆ\x03 \x01(\v2&.warehouse.analytic_base.v1.SortOptionR\n" +
 	"metricSort:r\n" +

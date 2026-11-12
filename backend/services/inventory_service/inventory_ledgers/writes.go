@@ -67,6 +67,11 @@ func (w *BatchWrites) Flush(tx *gorm.DB) error {
 		return nil
 	}
 
+	// Refused before anything is written: a change outside a stock transaction would be missing from its report.
+	if reportOf(tx) == nil {
+		return ErrNoStockReport
+	}
+
 	ids := make([]int64, 0, len(w.order))
 	counts := make([]int64, 0, len(w.order))
 	values := make([]float64, 0, len(w.order))
@@ -88,6 +93,12 @@ func (w *BatchWrites) Flush(tx *gorm.DB) error {
 	).Error
 	if err != nil {
 		return fmt.Errorf("change %d batch(es): %w", len(ids), err)
+	}
+
+	// The report notes every row before it is written, and stamps it with the transaction's time (stock_report.go).
+	err = noteLogs(tx, w.logs, func(id uint64) *inventory_service_models.Batch { return w.changed[id] })
+	if err != nil {
+		return err
 	}
 
 	err = tx.CreateInBatches(&w.logs, writeBatchSize).Error

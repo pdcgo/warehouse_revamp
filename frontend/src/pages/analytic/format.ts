@@ -23,13 +23,13 @@ export function fieldLabel(t: TFunction, def: MetricDef, name: string): string {
 }
 
 /**
- * A figure as its kind reads — a count grouped id-ID, money and a position through the app's rupiah formatter (−Rp before
- * a loss), a rate as a percentage to two places. A figure the service left UNSET reads "—": a take rate with no sale to
- * divide by is not 0%.
+ * A figure as its kind reads — a count and a units position grouped id-ID, money and a position through the app's rupiah
+ * formatter (−Rp before a loss, a fraction to three places), a rate as a percentage to two places. A figure the service
+ * left UNSET reads "—": a take rate with no sale to divide by is not 0%.
  */
 export function formatFigure(kind: FieldKind, value: number | undefined): string {
   if (value === undefined) return "—";
-  if (kind === "count") return value.toLocaleString("id-ID");
+  if (kind === "count" || kind === "unitsPosition") return value.toLocaleString("id-ID");
   if (kind === "ratio") return `${(value * 100).toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
 
   return formatRupiahNumber(value);
@@ -95,6 +95,11 @@ export function keyLabel(group: TableGroup, key: string, t: TFunction, language:
 
     return group === "shop" ? sampleName(group, key) : `#${key}`;
   }
+
+  // A time group's key is a period's first day. Anything else is not a date — never handed to a date formatter, which
+  // throws "Invalid time value" and takes the page down (#43: an id group's rows, kept on screen while the new group
+  // loads). The page draws kept rows by their own group; this is the last guard.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return `#${key}`;
 
   const date = new Date(`${key}T00:00:00`);
   if (group === "monthly") return new Intl.DateTimeFormat(language, { month: "short", year: "numeric" }).format(date);

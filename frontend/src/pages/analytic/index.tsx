@@ -92,7 +92,16 @@ export function AnalyticPage() {
   // WHO THE "CREATED BY" FILTER OFFERS — the people on the chosen metrics' own rows, each service answering for its own
   // (a-who-filter-lists-the-people-on-its-rows), never the system-wide user search. Asked only while the filter shows.
   const people = useAnalyticPeople(teamId, shared.includes("user") ? defs : NO_METRICS);
-  const sort = state.sort ?? defaultSort(state.groupBy, state.metricIds);
+  // A WAREHOUSE IS NEVER GIVEN A SELLER'S MONEY (a-warehouse-sees-no-seller-money) — Restock, Transfer and Returned
+  // stock's values, the order totals — and the service refuses to rank by a field it does not give. A link sorted by one
+  // (sent by the seller) opens on the default sort instead of an error: a link carries the report, never access.
+  const readerIsWarehouse = current?.teamType === TeamType.WAREHOUSE;
+  const linked = state.sort;
+  const sortHidden =
+    readerIsWarehouse &&
+    linked?.by === "field" &&
+    metricById(linked.metricId)?.fields.some((f) => f.name === linked.field && f.warehouseHidden) === true;
+  const sort = (sortHidden ? null : linked) ?? defaultSort(state.groupBy, state.metricIds, readerIsWarehouse);
   const { from, to } = jakartaWindowOf(state.range);
   // A YEAR AT MOST (a-metric-reads-at-most-a-year) — the server refuses a longer range, so it is not sent, and the line
   // under the picker says why rather than showing a refusal.
@@ -126,11 +135,15 @@ export function AnalyticPage() {
       ),
   });
   const report = query.data ?? EMPTY_REPORT;
+  // THE ROWS' OWN GROUP (#43). While a new group loads, the last answer stays on screen behind the overlay (HARD RULE 10)
+  // — its keys are the OLD group's: warehouse ids under a page that already says Monthly. They are named and drawn by
+  // the group they are keys of, never formatted by the new one (an id is not a date).
+  const rowsGroup = report.groupBy ?? state.groupBy;
 
   // A column the service left unset is not the reader's to see — a warehouse reads no seller money
   // (a-warehouse-sees-no-seller-money) — so it goes, rather than reading 0.
-  const shown = answeredFields(defs, report);
-  const names = useKeyNames(state.groupBy, report.keys, teamId);
+  const shown = answeredFields(defs, report, readerIsWarehouse);
+  const names = useKeyNames(rowsGroup, report.keys, teamId);
 
   const commit = (next: Partial<ReportState>, restart = true) =>
     setParams(formatReportState({ ...state, ...next, ...(restart ? { page: 1 } : {}) }), { replace: true });
@@ -424,23 +437,23 @@ export function AnalyticPage() {
               )}
               <Tabs.Content value="table" p="0">
                 <ReportTable
-                  groupBy={state.groupBy}
+                  groupBy={rowsGroup}
                   keys={report.keys}
                   defs={shown}
                   cells={report.cells}
                   sort={sort}
                   onSortChange={(next) => commit({ sort: next })}
-                  labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language, names)}
+                  labelOf={(key) => keyLabel(rowsGroup, key, t, i18n.language, names)}
                 />
               </Tabs.Content>
               {/* THE TABLE AS GRAPHS — one per kind of number, drawn from the same cells (the-graph-draws-the-table). */}
               <Tabs.Content value="graph" p="0">
                 <ReportGraphs
-                  groupBy={state.groupBy}
+                  groupBy={rowsGroup}
                   keys={report.keys}
                   defs={shown}
                   cells={report.cells}
-                  labelOf={(key) => keyLabel(state.groupBy, key, t, i18n.language, names)}
+                  labelOf={(key) => keyLabel(rowsGroup, key, t, i18n.language, names)}
                 />
               </Tabs.Content>
               {/* AS OF WHEN the figures are (a-money-metric-says-as-of-when) — the oldest of the services read. */}

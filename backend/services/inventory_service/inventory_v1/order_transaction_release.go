@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -62,7 +63,7 @@ func (s *Service) releaseByKey(
 ) (*inventoryv1.OrderTransactionReleaseResponse, error) {
 	res := &inventoryv1.OrderTransactionReleaseResponse{}
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		var claim inventory_service_models.IdempotencyOrderCheck
 
 		found := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("idempotency_key = ?", key).Limit(1).Find(&claim)

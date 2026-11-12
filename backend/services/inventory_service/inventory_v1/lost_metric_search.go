@@ -13,7 +13,8 @@ import (
 )
 
 // MetricSearch RANKS the keys of one page of a Lost stock table — products, suppliers, sellers, warehouses or periods —
-// by `lost_count` or `lost_amount` (docs/business/analytic/rpc_provide.md).
+// by `lost_count` or `lost_amount` (docs/business/analytic/rpc_provide.md). Restock, Transfer, Returned stock and Ready
+// stock are ranked by stockMetricSearch (inventory_metric_shared.go).
 //
 //   - Only keys with a loss in the scope (the-rows-are-the-keys-step-one-sends).
 //   - ⚠ Supplier 0 — a batch naming no supplier — is LEFT OUT of the Supplier group: IDList's ids are > 0, so a row keyed
@@ -27,6 +28,16 @@ func (s *Service) MetricSearch(
 	req *connect.Request[inventoryv1.MetricSearchRequest],
 ) (*connect.Response[inventoryv1.MetricSearchResponse], error) {
 	msg := req.Msg
+
+	// Restock, Transfer, Returned stock or Ready stock (inventory_metric_shared.go).
+	if metric := stockMetricByID(msg.GetSort().GetMetricId()); metric != nil {
+		resp, searchErr := s.stockMetricSearch(ctx, metric, msg)
+		if searchErr != nil {
+			return nil, searchErr
+		}
+
+		return connect.NewResponse(resp), nil
+	}
 
 	err := checkLostMetric(msg.GetSort().GetMetricId())
 	if err != nil {

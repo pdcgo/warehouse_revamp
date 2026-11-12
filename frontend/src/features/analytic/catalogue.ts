@@ -24,15 +24,22 @@ import {
   AccountChangeMetricSchema,
   AccountChangeTypeMetricSchema,
 } from "../../gen/warehouse/financial_account/v1/financial_account_analytic_pb";
-import { InventoryLostMetricSchema } from "../../gen/warehouse/inventory/v1/inventory_analytic_pb";
+import {
+  InventoryLostMetricSchema,
+  InventoryReadyMetricSchema,
+  InventoryRestockMetricSchema,
+  InventoryReturnMetricSchema,
+  InventoryTransferMetricSchema,
+} from "../../gen/warehouse/inventory/v1/inventory_analytic_pb";
 import { AdsExpenseMetricSchema, ExpensesMetricSchema } from "../../gen/warehouse/expense/v1/expense_analytic_pb";
 
 // THE METRIC CATALOGUE. Every metric is SERVED and read off its generated descriptor with `getOption` — its id, its
 // filters, its groups, its fields' kinds and which can sort — so the screen states nothing the proto already does: the
 // five order metrics (order_statistic_metric.md), Warehouse Fee (the-warehouse-fee-prototype-is-accepted), the two
-// settlement metrics (settlement-serves-its-headline-and-its-breakdown), the two Finance metrics, Lost stock and the two
-// expense metrics (the-expense-prototype-is-accepted). A new metric is drawn first as a PROTOTYPE (below), backed by
-// sample.ts, until its service ships (HARD RULE 6 — the screen was built first).
+// settlement metrics (settlement-serves-its-headline-and-its-breakdown), the two Finance metrics, Lost stock, the two
+// expense metrics (the-expense-prototype-is-accepted) and the four inventory metrics beside Lost stock
+// (the-inventory-metrics-prototype-is-accepted). A new metric is drawn first as a PROTOTYPE (below), backed by sample.ts,
+// until its service ships (HARD RULE 6 — the screen was built first).
 //
 // Every entry obeys the decisions in rpc_provide_decision.md:
 //   a metric is ONE measure and names the groups it can be read by   the-table-picks-one-group
@@ -105,16 +112,28 @@ export type FilterType = "dateRange" | "shop" | "product" | "supplier" | "team" 
 export const FILTER_TYPES: FilterType[] = ["dateRange", "account", "shop", "team", "warehouse", "user", "product", "supplier"];
 
 /**
- * How a figure reads: a count, money that moved, money at a moment (a-position-is-its-own-stat-type), or a rate — 0 to 1,
- * shown as a percentage. The proto's FieldStatType, one for one: QTY, CURRENCY, POSITION, RATIO.
+ * How a figure reads: a count, money that moved, money at a moment (a-position-is-its-own-stat-type), a count at a
+ * moment — units on hand, units in transit (ready-stock-is-folded-in-the-stock-changes-own-step) — or a rate, 0 to 1,
+ * shown as a percentage. The proto's FieldStatType, one for one: QTY, CURRENCY, POSITION, QTY_POSITION, RATIO.
+ *
+ * A POSITION of either kind is never added up over time — a period's figure is its edge and the headline the window's,
+ * both served by the service; the screen only draws what it is given.
  */
-export type FieldKind = "count" | "money" | "position" | "ratio";
+export type FieldKind = "count" | "money" | "position" | "unitsPosition" | "ratio";
 
 export interface MetricField {
   /** The proto field name — also what a sort names (a-sort-field-is-its-proto-name). */
   name: string;
   kind: FieldKind;
   canSort: boolean;
+  /**
+   * A WAREHOUSE IS NOT GIVEN IT (a-warehouse-sees-no-seller-money): the contract declares a seller's money `optional` and
+   * leaves it UNSET for a warehouse caller — the order metrics' totals, Restock / Transfer / Returned stock's values
+   * (the-inventory-metrics-prototype-is-accepted). Ready stock's value is not optional: a warehouse reads it
+   * (a-warehouse-sees-ready-value-but-a-shelf-only-units). The answer stays the authority (answeredFields); this only
+   * lets a warehouse's screen leave the field out before the first answer, and never ask to sort by it.
+   */
+  warehouseHidden: boolean;
 }
 
 /** The menu's categories — the owner's tree in rpc_provide.md §Metric That Exist in Analytic (the-picker-follows-the-metric-tree). */
@@ -175,6 +194,7 @@ const known = <T,>(values: (T | undefined)[]): T[] => values.filter((v): v is T 
 function kindOf(statType: FieldStatType): FieldKind {
   if (statType === FieldStatType.CURRENCY) return "money";
   if (statType === FieldStatType.POSITION) return "position";
+  if (statType === FieldStatType.QTY_POSITION) return "unitsPosition";
   if (statType === FieldStatType.RATIO) return "ratio";
 
   return "count";
@@ -198,11 +218,16 @@ function servedMetric(schema: DescMessage, labelKey: string, service: string, ca
     supportedGroupBy: known(option.supportedGroupBy.map((g) => GROUP_OF[g])),
     fields: schema.fields
       .filter((f) => getOption(f, field_stat_type) !== FieldStatType.UNSPECIFIED)
-      .map((f) => ({
-        name: f.name,
-        kind: kindOf(getOption(f, field_stat_type)),
-        canSort: getOption(f, metric_sort).canSort,
-      })),
+      .map((f) => {
+        const kind = kindOf(getOption(f, field_stat_type));
+
+        return {
+          name: f.name,
+          kind,
+          canSort: getOption(f, metric_sort).canSort,
+          warehouseHidden: f.proto.proto3Optional && (kind === "money" || kind === "position"),
+        };
+      }),
     schema,
   };
 }
@@ -265,6 +290,24 @@ export const CHANGE_TYPE_FIELDS: string[] = FINANCE_METRICS[0]!.fields
 export const INVENTORY_LOST_METRIC: MetricDef = servedMetric(InventoryLostMetricSchema, "inventoryLost", "inventory", "inventory");
 
 /**
+ * THE FOUR INVENTORY METRICS beside Lost stock, served by inventory_service (the-inventory-metrics-prototype-is-accepted),
+ * each with Lost stock's filters and groups (the-four-inventory-metrics-filter-like-lost-stock), in the tree's order:
+ *   Restock — units and value accepted on the accept day, broken and missing at the door; the warehouse that received.
+ *   Transfer — sent under the sender on the create day, received under the receiver on the accept day, in transit a
+ *     units and value POSITION under the receiver (a-transfer-counts-each-side-on-its-own-day).
+ *   Returned stock — back on the shelf, its value, broken (thrown away) and missing, on the return accept day.
+ *   Ready stock — units on hand and stock value at the end of each day: POSITIONS, the headline the window's last day.
+ * A warehouse reads units only on the first three (their values come back unset) and Ready's value too
+ * (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+ */
+export const INVENTORY_METRICS: MetricDef[] = [
+  servedMetric(InventoryRestockMetricSchema, "inventoryRestock", "inventory", "inventory"),
+  servedMetric(InventoryTransferMetricSchema, "inventoryTransfer", "inventory", "inventory"),
+  servedMetric(InventoryReturnMetricSchema, "inventoryReturn", "inventory", "inventory"),
+  servedMetric(InventoryReadyMetricSchema, "inventoryReady", "inventory", "inventory"),
+];
+
+/**
  * THE EXPENSE METRICS, served by expense_service (the-expense-prototype-is-accepted) from its own records, written in the
  * expense's transaction (expense-figures-are-read-from-its-own-records):
  *   Ads expense — `metrics/ads`, `amount`: the typed ads; filters team, shop, user, date range; groups shop, seller,
@@ -285,6 +328,7 @@ export const METRICS: MetricDef[] = [
   ...ORDER_METRICS,
   ...SETTLEMENT_METRICS,
   INVENTORY_LOST_METRIC,
+  ...INVENTORY_METRICS,
   EXPENSE_METRICS[0]!,
   WAREHOUSE_FEE_METRIC,
   EXPENSE_METRICS[1]!,
@@ -302,7 +346,8 @@ export const EXPENSE_KIND_FIELDS: string[] = EXPENSE_METRICS[1]!.fields.map((f) 
  * ⚠ PROTOTYPES — metrics drawn for the owner's design accept, in Storybook only. They never reach the live screen: only a
  * story turns them on (`showPrototypeMetrics`), and the live app never calls it. Each goes into METRICS once the owner
  * accepts it and decides what it counts — Warehouse Fee, then Finance's two metrics and Lost stock (all served
- * 2026-11-05), then Ads expense and Expenses (served 2026-11-06). Empty now; the mechanism stays for the next prototype.
+ * 2026-11-05), then Ads expense and Expenses (served 2026-11-06), then Restock, Transfer, Returned stock and Ready stock
+ * (served 2026-11-12). Empty now; the mechanism stays for the next prototype.
  */
 export const PROTOTYPE_METRICS: MetricDef[] = [];
 

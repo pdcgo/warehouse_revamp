@@ -46,6 +46,11 @@ func MintBatches(tx *gorm.DB, mints []Mint) ([]inventory_service_models.Batch, e
 		return nil, nil
 	}
 
+	// Refused before anything is written: a mint outside a stock transaction would be missing from its report.
+	if reportOf(tx) == nil {
+		return nil, ErrNoStockReport
+	}
+
 	batches := make([]inventory_service_models.Batch, 0, len(mints))
 
 	for _, m := range mints {
@@ -105,6 +110,17 @@ func MintBatches(tx *gorm.DB, mints []Mint) ([]inventory_service_models.Batch, e
 			Description:    m.Description,
 			ActorID:        m.ActorID,
 		})
+	}
+
+	byID := make(map[uint64]*inventory_service_models.Batch, len(batches))
+	for i := range batches {
+		byID[batches[i].ID] = &batches[i]
+	}
+
+	// The report notes every row before it is written, and stamps it with the transaction's time (stock_report.go).
+	err = noteLogs(tx, logs, func(id uint64) *inventory_service_models.Batch { return byID[id] })
+	if err != nil {
+		return nil, err
 	}
 
 	err = tx.CreateInBatches(&logs, writeBatchSize).Error
@@ -515,7 +531,13 @@ func Revalue(tx *gorm.DB, b *inventory_service_models.Batch, r Revaluation) (Rev
 	var w BatchWrites
 	w.change(b, r.Transaction.ID, string(inventory_service_models.TxRevaluation), 0, change, r.ActorID, r.Description)
 
-	err := tx.CreateInBatches(&w.logs, writeBatchSize).Error
+	// The value moves on the day it is made (the-owning-team-revalues-with-a-reason) — noted for Ready stock.
+	err := noteLogs(tx, w.logs, func(uint64) *inventory_service_models.Batch { return b })
+	if err != nil {
+		return Revalued{}, err
+	}
+
+	err = tx.CreateInBatches(&w.logs, writeBatchSize).Error
 	if err != nil {
 		return Revalued{}, fmt.Errorf("log the revaluation of batch %d: %w", b.ID, err)
 	}

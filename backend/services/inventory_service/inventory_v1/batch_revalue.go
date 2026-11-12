@@ -11,6 +11,7 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 )
 
@@ -46,7 +47,7 @@ func (s *Service) BatchRevalue(
 
 	var posted inventory_mutations.Revalued
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		var postErr error
 
 		posted, postErr = inventory_mutations.PostRevaluation(tx, inventory_mutations.Revaluation{

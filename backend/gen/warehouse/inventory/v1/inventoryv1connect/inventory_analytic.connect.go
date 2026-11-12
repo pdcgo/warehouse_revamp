@@ -44,10 +44,10 @@ const (
 // InventoryAnalyticServiceClient is a client for the
 // warehouse.inventory.v1.InventoryAnalyticService service.
 type InventoryAnalyticServiceClient interface {
-	// The keys of one group, ranked by one field of `metrics/inventory/lost`, a page at a time — whether another page
+	// The keys of one group, ranked by one field of one of the five metrics, a page at a time — whether another page
 	// follows, never a total (a-page-says-whether-another-follows); the key breaks every tie (the-key-breaks-every-tie).
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
-	// The figures of given keys — a key with no loss reads 0. The filters scope the numbers, never the keys
+	// The figures of given keys — a key with nothing reads 0. The filters scope the numbers, never the keys
 	// (the-fill-step-scopes-its-numbers-by-the-filters).
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
 }
@@ -100,10 +100,10 @@ func (c *inventoryAnalyticServiceClient) MetricData(ctx context.Context, req *co
 // InventoryAnalyticServiceHandler is an implementation of the
 // warehouse.inventory.v1.InventoryAnalyticService service.
 type InventoryAnalyticServiceHandler interface {
-	// The keys of one group, ranked by one field of `metrics/inventory/lost`, a page at a time — whether another page
+	// The keys of one group, ranked by one field of one of the five metrics, a page at a time — whether another page
 	// follows, never a total (a-page-says-whether-another-follows); the key breaks every tie (the-key-breaks-every-tie).
 	MetricSearch(context.Context, *connect.Request[v1.MetricSearchRequest]) (*connect.Response[v1.MetricSearchResponse], error)
-	// The figures of given keys — a key with no loss reads 0. The filters scope the numbers, never the keys
+	// The figures of given keys — a key with nothing reads 0. The filters scope the numbers, never the keys
 	// (the-fill-step-scopes-its-numbers-by-the-filters).
 	MetricData(context.Context, *connect.Request[v1.MetricDataRequest]) (*connect.Response[v1.MetricDataResponse], error)
 }

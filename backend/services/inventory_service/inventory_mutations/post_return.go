@@ -90,6 +90,10 @@ func PostReturn(tx *gorm.DB, r Return) (models.InventoryTransaction, []PricedPro
 
 	var problems []PricedProblem
 
+	// The door on Analytic's Returned stock (the-inventory-metrics-prototype-is-accepted): per layer, under the product
+	// the units come back as and the layer's supplier, the ordering team's — noted for the transaction's last rows.
+	var door []inventory_ledgers.DoorRow
+
 	mints := make([]inventory_ledgers.Mint, 0, len(lines))
 	puts := make([]inventory_ledgers.Put, 0, len(lines))
 
@@ -116,6 +120,14 @@ func PostReturn(tx *gorm.DB, r Return) (models.InventoryTransaction, []PricedPro
 
 		problems = appendProblem(problems, line.ProductID, models.TransferProblemBroken, broken)
 		problems = appendProblem(problems, line.ProductID, models.TransferProblemMissing, missing)
+
+		for _, l := range broken {
+			door = append(door, returnDoorRow(r, line.ReturnProductID, l.SupplierID, l.Units, 0))
+		}
+
+		for _, l := range missing {
+			door = append(door, returnDoorRow(r, line.ReturnProductID, l.SupplierID, 0, l.Units))
+		}
 
 		for _, p := range line.Placements {
 			puts = append(puts, inventory_ledgers.Put{
@@ -164,7 +176,25 @@ func PostReturn(tx *gorm.DB, r Return) (models.InventoryTransaction, []PricedPro
 		return t, nil, err
 	}
 
+	err = inventory_ledgers.NoteDoor(tx, door...)
+	if err != nil {
+		return t, nil, err
+	}
+
 	return t, problems, nil
+}
+
+// returnDoorRow is one layer's broken or missing units at a return's door.
+func returnDoorRow(r Return, productID, supplierID uint64, broken, missing int64) inventory_ledgers.DoorRow {
+	return inventory_ledgers.DoorRow{
+		WarehouseID: r.WarehouseID,
+		TeamID:      r.TeamID,
+		ProductID:   productID,
+		SupplierID:  supplierID,
+		Source:      inventory_ledgers.DoorReturn,
+		Broken:      broken,
+		Missing:     missing,
+	}
 }
 
 // checkReturnLines holds the count to the take: every product it drew named exactly once, sound + broken + missing equal

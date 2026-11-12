@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
+import { inventoryAnalyticLatency } from "../../../.storybook/inventoryAnalyticStub";
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
 import { AnalyticPage } from "./index";
 
@@ -167,6 +168,42 @@ export const LostHasNoShopFilter: Story = {
     await waitFor(() => expect(canvas.getByTestId("analytic-filter-product")).toBeVisible());
     await expect(canvas.getByTestId("analytic-filter-supplier")).toBeVisible();
     await expect(canvas.queryByTestId("analytic-filter-shop")).toBeNull();
+  },
+};
+
+// AN ID GROUP TO A TIME GROUP (#43) — by warehouse, then Monthly. While the months load, the warehouses stay on screen
+// behind the overlay (HARD RULE 10), still named as warehouses — never read as dates: the page once fell over here with
+// "Invalid time value" (keyLabel formatted the kept rows' ids by the new group). Then the months replace them.
+export const SwitchingWarehouseToMonthly: Story = {
+  render: () => <ByWarehouse />,
+  beforeEach: [
+    () => {
+      inventoryAnalyticLatency.ms = 600;
+
+      return () => {
+        inventoryAnalyticLatency.ms = 0;
+      };
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("analytic-row-11")).toHaveTextContent("Gudang Pusat"), { timeout: 6000 });
+
+    await userEvent.click(canvas.getByTestId("analytic-group"));
+    await waitFor(() => expect(canvas.getByTestId("analytic-group-option-monthly")).toBeVisible());
+    await userEvent.click(canvas.getByTestId("analytic-group-option-monthly"));
+
+    // The months are on their way: the page stands, the warehouses still there and still named.
+    await expect(canvas.getByTestId("analytic-page")).toBeVisible();
+    await expect(canvas.getByTestId("analytic-row-11")).toHaveTextContent("Gudang Pusat");
+    await expect(canvas.getByTestId("analytic-row-14")).toHaveTextContent("Gudang Cabang");
+
+    // Then the months, each named as one.
+    await waitFor(() => expect(canvas.queryByTestId("analytic-row-11")).toBeNull(), { timeout: 6000 });
+    const months = canvas.getAllByTestId(/^analytic-row-2026-\d{2}-01$/);
+    await expect(months.length).toBeGreaterThan(0);
+    for (const row of months) await expect(row).toHaveTextContent(/(Aug|Sep|Oct) 2026/);
+    await expect(canvas.getAllByTestId(/^analytic-row-/)).toHaveLength(months.length);
   },
 };
 

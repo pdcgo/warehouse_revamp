@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -92,7 +93,7 @@ func (s *Service) OrderTransactionReturn(
 		posted   bool
 	)
 
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		// The take's row, locked: two accepts of one parcel in the same second queue here, and the second reads the
 		// first's claim instead of minting again. It is also the check that the take is this selling team's order, and
 		// still stands — a rolled-back take (a cancelled order) gave its units back already.

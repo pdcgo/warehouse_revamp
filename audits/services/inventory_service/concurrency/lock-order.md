@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
+| Last swept | 2026-11-12: every stock writer's report rows (the four inventory metrics) — see [The stock reports are every stock transaction's last locks](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12) · 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
 
 ---
 
@@ -260,4 +260,48 @@ off the old one. A take that waited on a correction costs at the NEW price (it r
 
 ```sh
 go test -tags raceaudit -p 1 -count=1 -run 'TestRace_BatchRevalue|TestInterleave_BatchRevalue' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## The stock reports are every stock transaction's last locks (2026-11-12)
+
+[ready-stock-is-folded-in-the-stock-changes-own-step](../../../../docs/business/analytic/rpc_provide_decision.md#ready-stock-is-folded-in-the-stock-changes-own-step):
+every stock change writes its daily change row in its own transaction, the report rows the transaction's LAST locks.
+Every handler that moves a batch runs in `inventory_ledgers.StockTransaction`; the ledger's three `batch_logs` writers
+(`MintBatches`, `BatchWrites.Flush`, `Revalue`) note each row on the transaction's report, a restock or return accept
+notes its door rows (`NoteDoor`), and the wrapper writes, after `fn` returned and before the commit:
+
+| order | statement | rows, in order |
+| --- | --- | --- |
+| 1 | `INSERT … ON CONFLICT DO UPDATE` into `inventory_door_daily_reports` (restock / return accepts only) | keys sorted (warehouse, team, product, supplier, source) |
+| 2 | `INSERT … ON CONFLICT DO UPDATE` into `inventory_stock_daily_changes` | keys sorted (warehouse, team, product, supplier, change type) |
+
+So each handler's row in the tables above gains, at its very end, **→ door report → change report** — after
+`idempotency_order_check` (the take), after `order_return_checks` (a return), after the liability / expense posts and
+after Lost stock's `inventory_lost_daily_reports` row (`foldLost` stays where it was, mid-transaction, before them).
+Wrapped: `OrderTransactionCreate`, `releaseByKey` (`OrderTransactionRelease`, the `InventoryTxCancel` and
+`OrderCancelled` listeners), `RestockRequestAccept`, `WarehouseTransferCreate` / `Accept` / `Cancel`,
+`OrderTransactionReturn`, `StockAdjust`, `OpnameSessionFinalize`, `FoundRequestApprove`, `RackSample`, `RackMove` (writes
+no batch row — nothing to fold), `BatchRevalue`. A ledger write outside one is refused (`ErrNoStockReport`), so a new
+writer cannot skip it.
+
+**No cycle.** Nothing takes any lock after a report row, so a transaction holding one waits on nobody; and every
+transaction takes its report rows in the same global order (door before changes, keys sorted). A report row's key is
+(day, warehouse, owner, product, supplier, type): the transactions that share one are the ones touching the same
+product's batches in the same warehouse — which already queue on those batches' row locks, taken first
+([batches-lock-before-shelves-by-id](../../../../docs/business/inventory/context_decision.md#batches-lock-before-shelves-by-id)) —
+or mints (restock, transfer in, return, found), which lock no existing batch and meet only on the report row, last.
+The take's key claim stays where it was relative to the shelves: a same-key twin still waits on the batches, then on
+`idempotency_order_check`'s unique index, never on a report row.
+
+| Claim | Proof |
+| --- | --- |
+| Twelve takes of one product at one second land on ONE change row, each added, none lost | `TestRace_StockReport_TwelveTakesIntoOneRow` — 12/12 ok, the row −12 / Rp −12.000, one row, ledger = report |
+| Two restock accepts of one key at one second add to the one change row and the one door row | `TestRace_StockReport_TwoAcceptsIntoOneRow` — ×5 rounds, 2/2 ok each, change row and door row exact, ledger = report |
+| A fold racing takes: restock accepts, takes of A and of A + B, and a price correction of an A batch at once — no deadlock, nothing refused | `TestRace_StockReport_AFoldRacingTakesAndAnAccept` — ×6 rounds, 9/9 ok each, ledger = report after every round |
+| Every writer's rows equal its `batch_logs`, per key, day and type | `ledgerMatchesReport` at the end of `TestStockReport_EveryWriterFoldsItsChanges` (take + release, Stock Adjust, count finalize, found, sample, revaluation) and of the restock / transfer / return / ready metric books |
+
+The race suites that commit (`ledgerTables`, selling's `orderRaceTables`) wipe both report tables.
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_StockReport' -v ./backend/services/inventory_service/inventory_v1/
 ```

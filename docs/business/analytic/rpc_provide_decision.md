@@ -2090,3 +2090,93 @@ order-side return metrics already read returns by shop.
 **What it does NOT settle:** each metric's exact fields, its day (the accept's or the send's, for a transfer), who reads it
 (a warehouse its own, as [a-warehouse-sees-its-own-fee-amount](#a-warehouse-sees-its-own-fee-amount)?) — asked from the
 Storybook prototype, as Warehouse Fee's were. ⚠ Not built.
+
+✅ Built 2026-11-12 — the backend: `InventoryAnalyticService` serves `metrics/inventory/restock`, `…/transfer`, `…/return` and `…/ready` beside Lost stock, with its filters (date range required, seller, warehouse, product, supplier) and groups (summary, daily–yearly, product, supplier, seller, warehouse) — [inventory rpc.md](../../services/inventory_service/rpc.md#restock-transfer-returned-stock-and-ready-stock-on-the-analytic-composer--inventoryanalyticservice). The Analytic screens are not wired yet.
+
+✅ Built 2026-11-12 — the screens: each of the four takes Lost stock's filters and groups on the Analytic composer (story `EachTakesLostStocksFilters`).
+
+---
+
+## the-inventory-metrics-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to the Storybook prototype (`pages/analytic/inventoryMetrics.stories.tsx`, screenshots of the catalogue, each metric by product / warehouse / day, desktop and phone) of [the-four-inventory-metrics-filter-like-lost-stock](#the-four-inventory-metrics-filter-like-lost-stock).
+
+**The verdict.** Accepted as shown — drawn like [Lost stock](#the-inventory-lost-prototype-is-accepted), with its filters and groups.
+
+| metric (en / id) | fields | its day |
+| --- | --- | --- |
+| **Restock** / Restok | units accepted, value accepted, broken at the door, missing at the door | the accept day |
+| **Transfer** / Transfer | units and value **sent** (under the sender), units and value **received** (under the receiver), units and value **in transit** (a position, under the receiving warehouse) | asked separately |
+| **Returned stock** / Stok retur | units back on the shelf, value back, broken (thrown away), missing | the return accept day |
+| **Ready stock** / Stok siap | units on hand, stock value — **positions**: the headline is the last day, never a sum | the end of each Jakarta day |
+
+| | |
+| --- | --- |
+| no count of restocks or returns | [product-is-its-own-line-metric](../order/order_statistic_metric_decision.md#product-is-its-own-line-metric) — one restock of two products would land in two product rows |
+| who reads | every member of the team ([every-member-reads-every-metric-of-their-team](#every-member-reads-every-metric-of-their-team)); a **warehouse** sees **units only** on Restock, Transfer and Returned stock ([a-warehouse-sees-no-seller-money](../order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money)); the seller and root see all |
+| still asked | the transfer's day; whether a warehouse sees Ready's value; how Ready's daily position is recorded |
+
+⚠ Not built.
+
+✅ Built 2026-11-12 — the backend: the accepted fields (`InventoryRestockMetric`, `InventoryTransferMetric`, `InventoryReturnMetric`, `InventoryReadyMetric`), no count of restocks or returns; Restock on the accept day, Returned stock on the return accept day; a warehouse caller gets the value fields of Restock, Transfer and Returned stock unset (`restock_metric_data_test.go`, `return_metric_data_test.go`, `transfer_metric_data_test.go`). The screens are still the Storybook prototype.
+
+✅ Built 2026-11-12 — the screens: Restock / Restok, Transfer / Transfer, Returned stock / Stok retur and Ready stock / Stok siap are live under Inventory on the Analytic composer, read off their served descriptors (`catalogue.ts` `INVENTORY_METRICS`) and answered by `MetricSearch` / `MetricData` — drawn as the prototype was; a warehouse reader gets no value tile, column or sort on Restock, Transfer and Returned stock (a link ranked by a value opens on units), Ready's value it reads; the prototype (`InventoryMetricsPrototype.tsx`, `inventoryPrototype.ts`, the sample-answerer hook) is deleted. Stories `pages/analytic/inventoryMetrics.stories.tsx` (24, through the stub), e2e `the_inventory_metrics.spec.ts`.
+
+---
+
+## a-transfer-counts-each-side-on-its-own-day
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to: which day does the Transfer metric ([the-inventory-metrics-prototype-is-accepted](#the-inventory-metrics-prototype-is-accepted)) count a transfer on? (A: each side on its own day; B: sent on the ship day; C: the whole transfer once, on the accept day.)
+
+**The verdict.** Each side counts on **its own day**, the day the stock really changed:
+
+| | the day |
+| --- | --- |
+| **sent** (under the sender) | the create day — the units leave the sender then ([a-transfer-takes-from-the-sender-at-create](../inventory/warehouse_transfer_decision.md#a-transfer-takes-from-the-sender-at-create)); a cancel takes it back on the **cancel** day |
+| **received** (under the receiver) | the accept day |
+| **in transit** (a position, under the receiver) | every day from create to the day before accept |
+
+*Example:* created on the 3rd, accepted on the 5th — sent on the 3rd, in transit on the 3rd and the 4th, received on the 5th. ⚠ Not built.
+
+✅ Built 2026-11-12 — the backend: sent = the out-leg's `transfer_out` change rows under the sender on the create day (a cancel's reversal nets on the cancel day), received = `transfer_in` under the receiver on the accept day, in transit a units and value position under the receiver from the create to the day before the accept or cancel; the accept and the cancel stamp their day with the stock transaction's clock (`TestTransferMetric_EachSideCountsOnItsOwnDay`). Screens not wired yet.
+
+✅ Built 2026-11-12 — the screens: Transfer by warehouse shows each warehouse's sent and received; in transit is drawn as a position, the headline the window's last day (stories `TransferByWarehouseStory`, `TransferDailyInTransitIsAPosition`; e2e `the_inventory_metrics.spec.ts`).
+
+---
+
+## a-warehouse-sees-ready-value-but-a-shelf-only-units
+
+> Owner (Heri), in chat (2026-11-12): *"B, but in placement level, just only unit"* — to: does a warehouse see Ready stock's value? (A, recommended: units only, like Restock / Transfer / Returned stock; B: units and value — the rack page already shows a warehouse each shelf's value, never decided either way: [racks_decision.md](../../technical/frontend/racks_decision.md) keeps *the value on the shelf (no decision about a warehouse's money here)*.)
+
+**The verdict.** Two levels, two answers:
+
+| level | a warehouse sees |
+| --- | --- |
+| **Ready stock** on Analytic (the warehouse's whole stock, by day / product / supplier / team / warehouse) | **units on hand and stock value** — unlike Restock, Transfer and Returned stock ([the-inventory-metrics-prototype-is-accepted](#the-inventory-metrics-prototype-is-accepted)) |
+| the **placement level** — a rack and what sits on it (the rack list's *Di rak ini*, the rack page's shelf with *Harga/pcs · Nilai*, a placement's figures) | **units only** — no unit price, no value |
+
+The owning seller and root keep every figure. ⚠ My reading of *"in placement level, just only unit"* — the owner may correct it. ⚠ Not built: Ready stock's warehouse reader; the rack screens drop price and value for a warehouse reader.
+
+✅ Built 2026-11-12 — Ready stock's warehouse reader, the backend: a warehouse reads `on_hand_count` and `on_hand_value` (`TestReadyMetric_ByWarehouseAndWhoReads`). The rack screens' units only for a warehouse are not built.
+
+✅ Built 2026-11-12 — Ready stock's warehouse reader on screen: units on hand and stock value, sortable by it (story `ReadyAWarehouseReadsItsOwn`, e2e `the_inventory_metrics.spec.ts`). The rack screens' units only for a warehouse are still not built.
+
+---
+
+## ready-stock-is-folded-in-the-stock-changes-own-step
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to: how is Ready stock's daily position ([the-inventory-metrics-prototype-is-accepted](#the-inventory-metrics-prototype-is-accepted)) recorded? (A: in the same step as each stock change, as Lost stock is; B: a job catching up every few minutes — the timer path [a-report-is-fed-by-events-only-for-now](./context_decision.md#a-report-is-fed-by-events-only-for-now) ruled out; C: no table, read from the stock history every time.)
+
+**The verdict.** Every stock change — the order take included, and restock accept, transfer send / receive / cancel, return accept, loss, adjustment, opname, sample, revaluation — writes its **daily change row in its own transaction**, as Lost stock's fold does. A past day's position is read back from today's stock and the changes after that day. The figure is never behind and no change can be missed.
+
+| | |
+| --- | --- |
+| the cost | measured on the order take before and after, recorded in its perf audit |
+| the lock order | the report rows are the transaction's **last** locks, as Lost stock's (lock-order.md) |
+| a units position | units on hand and in transit are drawn as a **units position** — the money-only position type of [a-position-is-its-own-stat-type](#a-position-is-its-own-stat-type) gains a units sibling (its own *Positions (units)* graph) — an implementation reading, not asked |
+
+⚠ Not built.
+
+✅ Built 2026-11-12 — `inventory_ledgers.StockTransaction` around all 13 stock writers: the day's change rows (`inventory_stock_daily_changes`, inventory 00042) as the transaction's last upsert, after the door rows; a ledger write outside one is refused; a past day read backwards from today's batches; `FIELD_STAT_TYPE_QTY_POSITION = 5` is the units position. The order take: 12 → 13 statements, committed median +0.5 ms at one line, +0.9 ms at twenty ([OrderTransactionCreate.md](../../../audits/services/inventory_service/performances/OrderTransactionCreate.md#after-the-ready-fold-2026-11-12)); concurrent writers safe ([lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12)). Ready far back and root's year read 0.3–0.6 s at a busy year — open ([MetricData.md](../../../audits/services/inventory_service/performances/MetricData.md)).
+
+✅ Built 2026-11-12 — the units position on screen: `QTY_POSITION` reads as the `unitsPosition` kind, written as units and drawn in its own *Positions (units)* / *Posisi (unit)* graph; positions are never added over time on screen — the headline and every row are the service's edges.

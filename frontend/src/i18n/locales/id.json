@@ -5547,6 +5547,7 @@
       "count": "Jumlah",
       "money": "Nilai (Rp)",
       "position": "Posisi (Rp)",
+      "unitsPosition": "Posisi (unit)",
       "ratio": "Rasio (%)"
     },
     "view": {

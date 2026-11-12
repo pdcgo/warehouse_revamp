@@ -140,7 +140,8 @@ func (t *tools) sources() []*metricSource {
 			},
 		},
 		{
-			// Lost stock (the-inventory-lost-prototype-is-accepted) — the warehouse's custody losses.
+			// Lost stock (the-inventory-lost-prototype-is-accepted) — the warehouse's custody losses — and Restock,
+			// Transfer, Returned stock and Ready stock beside it (the-inventory-metrics-prototype-is-accepted).
 			name: "inventory",
 			pkg:  "warehouse.inventory.v1",
 			newReq: func(search bool) proto.Message {
@@ -295,10 +296,11 @@ func (t *tools) addListMetrics(server *mcp.Server) {
 	body, _ := json.Marshal(map[string]any{
 		"metrics": all,
 		"stat_types": map[string]string{
-			"QTY":      "a count of things — units, orders",
-			"CURRENCY": "rupiah that moved in the period — sums across days",
-			"POSITION": "rupiah at a moment, a balance — sums across keys, never across days",
-			"RATIO":    "0 to 1, a share",
+			"QTY":          "a count of things — units, orders",
+			"CURRENCY":     "rupiah that moved in the period — sums across days",
+			"POSITION":     "rupiah at a moment, a balance — sums across keys, never across days",
+			"QTY_POSITION": "a count at a moment — units on hand or in transit; sums across keys, never across days",
+			"RATIO":        "0 to 1, a share",
 		},
 	})
 

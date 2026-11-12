@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -99,7 +100,7 @@ func (s *Service) WarehouseTransferCreate(
 		CreatedByUserID:  actor,
 	}
 
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		// The row first, so the out-leg can name it; a refused take rolls it back with everything else.
 		createErr := tx.Create(&t).Error
 		if createErr != nil {

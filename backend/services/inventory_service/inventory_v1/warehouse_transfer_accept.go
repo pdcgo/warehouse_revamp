@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_mutations"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -47,7 +48,7 @@ func (s *Service) WarehouseTransferAccept(
 
 	var t *models.WarehouseTransfer
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		var lockErr error
 
 		t, lockErr = lockTransfer(tx, msg.GetTransferId(), warehouseID, sideReceiver)

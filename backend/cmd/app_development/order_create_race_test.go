@@ -33,6 +33,8 @@ import (
 // Parents' children cascade; the ledgers are listed children first.
 var orderRaceTables = []string{
 	"orders",
+	"inventory_stock_daily_changes",
+	"inventory_door_daily_reports",
 	"order_drafts",
 	"shops",
 	"team_return_configurations",

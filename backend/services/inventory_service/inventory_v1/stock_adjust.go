@@ -84,7 +84,7 @@ func (s *Service) StockAdjust(
 		total    int64
 	)
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		exists, checkErr := rackExists(tx, warehouseID, rackID)
 		if checkErr != nil {
 			return checkErr

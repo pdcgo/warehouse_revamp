@@ -9,7 +9,8 @@
 //
 // A metric with a `schema` is SERVED: its service answers MetricSearch / MetricData over the wire — the five order
 // metrics and Warehouse Fee by selling_service, the two settlement metrics by settlement_service, the two Finance
-// metrics by financial_account_service, Lost stock by inventory_service, Ads expense and Expenses by expense_service.
+// metrics by financial_account_service, Lost stock and the four inventory metrics (Restock, Transfer, Returned stock,
+// Ready stock) by inventory_service, Ads expense and Expenses by expense_service.
 // Every live metric is served; a PROTOTYPE (catalogue.ts) is still a SAMPLE (sample.ts), answered here by the same two
 // steps, until its service ships. The steps do not change between the two.
 
@@ -74,6 +75,12 @@ export interface ReportRequest {
 }
 
 export interface ReportResult {
+  /**
+   * The group these rows are keys of. A screen keeps the last answer on screen while the next loads (HARD RULE 10), so
+   * right after a group change it still holds the OLD group's keys — warehouse ids under a page that already says
+   * Monthly. They are drawn and named by this group, never the new one: an id read as a day is not a date (#43).
+   */
+  groupBy?: TableGroup;
   /** The rows, in order — exactly the keys step 1 sent (the-rows-are-the-keys-step-one-sends). */
   keys: ReportKey[];
   /** Read limit + 1 — no total (a-page-says-whether-another-follows). */
@@ -467,18 +474,22 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
 
   const asOfUnix = asOfs.length > 0 ? asOfs.reduce((a, b) => (b < a ? b : a)) : undefined;
 
-  return { keys, hasNext, cells, summary, asOfUnix };
+  return { groupBy: req.groupBy, keys, hasNext, cells, summary, asOfUnix };
 }
 
 /**
  * THE COLUMNS A REPORT CAN SHOW — each metric without the fields its headline came back without. A served metric leaves
  * a field UNSET when the reader may not see it (a-warehouse-sees-no-seller-money: "the screen only drops a column that
- * came back unset"), so the column goes rather than reading 0. Before an answer, every field stays.
+ * came back unset"), so the column goes rather than reading 0. Before an answer every field stays — but a WAREHOUSE
+ * reader's screen already leaves out what its contract never gives a warehouse (`warehouseHidden`), so no tile, column
+ * or sort of a seller's money shows even for the moment before the first answer.
  */
-export function answeredFields(defs: MetricDef[], result: ReportResult): MetricDef[] {
+export function answeredFields(defs: MetricDef[], result: ReportResult, readerIsWarehouse = false): MetricDef[] {
   return defs.map((def) => {
     const headline = result.summary[def.metricId];
-    if (headline === undefined) return def;
+    if (headline === undefined) {
+      return readerIsWarehouse ? { ...def, fields: def.fields.filter((f) => !f.warehouseHidden) } : def;
+    }
 
     return { ...def, fields: def.fields.filter((f) => f.name in headline) };
   });

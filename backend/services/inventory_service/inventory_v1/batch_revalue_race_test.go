@@ -166,11 +166,14 @@ func TestInterleave_BatchRevalue_TheSecondWaitsAndSeesTheFirst(t *testing.T) {
 	seed := raceOldestBatch(t, h.DB())
 
 	post := func(tx *gorm.DB, to float64) error {
-		_, err := inventory_mutations.PostRevaluation(tx, inventory_mutations.Revaluation{
-			TeamID: raceOwner, BatchID: seed.ID, ExpectedPriceUnit: seed.PriceUnit, NewPriceUnit: to, Reason: "race",
-		})
+		// In a stock transaction, as BatchRevalue runs it — its change row is the step's last write.
+		return inventory_ledgers.StockTransaction(tx, func(tx *gorm.DB) error {
+			_, err := inventory_mutations.PostRevaluation(tx, inventory_mutations.Revaluation{
+				TeamID: raceOwner, BatchID: seed.ID, ExpectedPriceUnit: seed.PriceUnit, NewPriceUnit: to, Reason: "race",
+			})
 
-		return err
+			return err
+		})
 	}
 
 	var aErr, bErr error
@@ -229,16 +232,24 @@ func TestInterleave_BatchRevalue_ATakeWaitsAndCostsAtTheNewPrice(t *testing.T) {
 
 	sched := h.Interleave(t,
 		san_race.Do("A", "A corrects to 1.500", func(tx *gorm.DB) error {
-			_, aErr = inventory_mutations.PostRevaluation(tx, inventory_mutations.Revaluation{
-				TeamID: raceOwner, BatchID: seed.ID, ExpectedPriceUnit: seed.PriceUnit, NewPriceUnit: 1500, Reason: "race",
+			_ = inventory_ledgers.StockTransaction(tx, func(tx *gorm.DB) error {
+				_, aErr = inventory_mutations.PostRevaluation(tx, inventory_mutations.Revaluation{
+					TeamID: raceOwner, BatchID: seed.ID, ExpectedPriceUnit: seed.PriceUnit, NewPriceUnit: 1500, Reason: "race",
+				})
+
+				return aErr
 			})
 
 			return nil
 		}),
 		san_race.Block("B", second, func(tx *gorm.DB) error {
-			taken, _, takeErr = inventory_mutations.PostOrder(tx, inventory_mutations.Order{
-				WarehouseID: raceWarehouse, TeamID: raceOwner,
-				Lines: []inventory_mutations.OrderLine{{ProductID: raceProductA, OwnerTeamID: raceOwner, Quantity: 2}},
+			_ = inventory_ledgers.StockTransaction(tx, func(tx *gorm.DB) error {
+				taken, _, takeErr = inventory_mutations.PostOrder(tx, inventory_mutations.Order{
+					WarehouseID: raceWarehouse, TeamID: raceOwner,
+					Lines: []inventory_mutations.OrderLine{{ProductID: raceProductA, OwnerTeamID: raceOwner, Quantity: 2}},
+				})
+
+				return takeErr
 			})
 
 			return nil

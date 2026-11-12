@@ -505,3 +505,24 @@ lookups ([OwnerStockHistory.md](../../../audits/services/inventory_service/perfo
 `batch_revalue_test.go`, `batch_revalue_race_test.go` (lock-order.md § Koreksi Harga), the read tests in
 `batch_backend_test.go`, `stock_history_batch_test.go`, `owner_stock_history_test.go`; e2e
 `the_owner_corrects_a_batch_price.spec.ts`.
+
+## 2026-11-12 — every stock transaction writes its daily change rows (inventory `00042`)
+
+[ready-stock-is-folded-in-the-stock-changes-own-step](../../business/analytic/rpc_provide_decision.md#ready-stock-is-folded-in-the-stock-changes-own-step),
+for the four inventory metrics on Analytic ([analytic state](../analytic/rpc_provide.md#2026-11-12--restock-transfer-returned-stock-and-ready-stock-served--the-backend-phase-1-screens-next)).
+`inventory_ledgers/stock_report.go`: `StockTransaction(db, fn)` runs `fn` in one transaction carrying a `StockReport`; the
+three `batch_logs` writers — `MintBatches`, `BatchWrites.Flush`, `Revalue` — note each log row on it (units and value
+per warehouse, owner, product, supplier, change type) and stamp the row with the transaction's time; a restock or return
+accept notes its door rows (`NoteDoor`). After `fn`, the wrapper writes ONE upsert of `inventory_door_daily_reports`, then
+ONE of `inventory_stock_daily_changes` (keys summed and sorted, ≤ 1 000 a statement) — the transaction's last locks. A
+log write outside one is refused (`ErrNoStockReport`), so a new stock writer fails its first test instead of skipping the
+report. `TxNow(tx)` is that clock: the transfer accept / cancel stamp their status with it, so a status and its stock land
+on one Jakarta day; `WithNow(ctx, t)` sets it in tests.
+
+| | |
+| --- | --- |
+| wrapped (13) | `OrderTransactionCreate`, `releaseByKey` (`OrderTransactionRelease`, `InventoryTxCancel`, `OrderCancelled`), `RestockRequestAccept`, `WarehouseTransferCreate` / `Accept` / `Cancel`, `OrderTransactionReturn`, `StockAdjust`, `OpnameSessionFinalize`, `FoundRequestApprove`, `RackSample`, `RackMove`, `BatchRevalue` |
+| migration | `00042_inventory_metric_reports.sql` — both tables, reader indexes `(team_id, day, change_type)` / `(warehouse_id, day, change_type)`, and the change table replayed from `batch_logs` (Ready reads a past day backwards). ⚠ Applied to the dev database too (`san dev setup`, 2026-11-12) |
+| invariant | Σ `inventory_stock_daily_changes` = Σ `batch_logs` per key, Jakarta day and change type — `ledgerMatchesReport` in every metric book and `TestStockReport_EveryWriterFoldsItsChanges` |
+| cost | the order take 12 → 13 statements, committed median +0.5 ms (1 line) / +0.9 ms (20 lines) ([OrderTransactionCreate.md](../../../audits/services/inventory_service/performances/OrderTransactionCreate.md#after-the-ready-fold-2026-11-12)) |
+| race suites | `ledgerTables` and selling's `orderRaceTables` wipe both report tables; `stock_report_race_test.go` (raceaudit) |
