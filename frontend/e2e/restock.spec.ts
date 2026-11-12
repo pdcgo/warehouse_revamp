@@ -1256,6 +1256,9 @@ test.describe("warehouse:all wants to accept a restock", () => {
     account: "",
     supplierA: "",
     supplierB: "",
+    // The supplier every OTHER given's restock names, so A's Statistics holds the supplier givens' products alone — a
+    // product among dozens of bigger ones falls off the list, and reads as never recorded.
+    supplierC: "",
     products: {} as Record<string, string>,
     restocks: {} as Record<string, Raised>,
   };
@@ -1319,6 +1322,10 @@ test.describe("warehouse:all wants to accept a restock", () => {
       (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: `E2E Acp Sup B ${SUFFIX}` }))
         .supplier.id,
     );
+    ground.supplierC = String(
+      (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: `E2E Acp Sup C ${SUFFIX}` }))
+        .supplier.id,
+    );
 
     const category = await api(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Acp Cat ${SUFFIX}` });
     const product = async (code: string) => {
@@ -1370,7 +1377,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
       for (const c of CASES) {
         const code = caseSku(r.key, c.key);
         const counted = await raise(page, [
-          { code, supplierId: ground.supplierA, count: COUNTED, total: COUNTED_TOTAL },
+          { code, supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
         ]);
         if (c.key === "ar") {
           await api(page, "inventory.v1.RestockRequestService/RestockRequestArrive", {
@@ -1379,7 +1386,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
           });
         }
         ground.restocks[`${r.key}-${c.key}`] = counted;
-        await raise(page, [{ code, supplierId: ground.supplierA, count: LEFT_ONGOING, total: LEFT_ONGOING * 10_000 }]);
+        await raise(page, [{ code, supplierId: ground.supplierC, count: LEFT_ONGOING, total: LEFT_ONGOING * 10_000 }]);
       }
     }
 
@@ -1388,22 +1395,22 @@ test.describe("warehouse:all wants to accept a restock", () => {
     for (const r of ROLES) {
       const fresh = caseSku(r.key, "nw");
       ground.restocks[`${r.key}-nw`] = await raise(page, [
-        { code: fresh, supplierId: ground.supplierA, count: COUNTED, total: COUNTED_TOTAL },
+        { code: fresh, supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
 
       const listed = caseSku(r.key, "al");
-      const first = await raise(page, [{ code: listed, supplierId: ground.supplierA, count: COUNTED, total: COUNTED_TOTAL }]);
+      const first = await raise(page, [{ code: listed, supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL }]);
       await acceptWhole(page, [first], COUNTED);
       ground.restocks[`${r.key}-al`] = await raise(page, [
-        { code: listed, supplierId: ground.supplierA, count: COUNTED, total: COUNTED_TOTAL },
+        { code: listed, supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
 
       // …and two ongoing restocks: one that will come in with broken units, one with units missing.
       ground.restocks[`${r.key}-br`] = await raise(page, [
-        { code: caseSku(r.key, "br"), supplierId: ground.supplierA, count: COUNTED, total: COUNTED_TOTAL },
+        { code: caseSku(r.key, "br"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
       ground.restocks[`${r.key}-ms`] = await raise(page, [
-        { code: caseSku(r.key, "ms"), supplierId: ground.supplierA, count: COUNTED, total: COUNTED_TOTAL },
+        { code: caseSku(r.key, "ms"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
     }
 
