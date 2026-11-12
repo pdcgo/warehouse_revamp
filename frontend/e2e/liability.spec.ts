@@ -601,4 +601,31 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   await expect(paymentRow).toContainText("+Rp 5.000");
   await expect(paymentRow.locator('[data-testid^="liability-detail-balance-after-"]')).toHaveText("−Rp 20.000");
   await expect(page.getByTestId("liability-detail-all")).toContainText("Courier at a restock");
+
+  // ✅ AND EACH ROW NAMES WHO RECORDED IT (the-team-balance-recorded-by-is-accepted, every-entry-names-who-posted-it):
+  // the payment's ledger row names the person whose accept moved the money, its payment row the person who claimed it —
+  // both root here, who owns both teams, so neither carries the "by Root team" badge (root is a member, not outside).
+  const ledger = await call(page, "liability.v1.LiabilityService/LiabilityLogList", {
+    teamId: String(WAREHOUSE_TEAM),
+    filter: { counterpartyId: warehouseId },
+    page: { page: 1, limit: 50 },
+  });
+  expect(ledger.status).toBe(200);
+  const logs = Object.values(
+    (ledger.body.items as { log?: { mapData: Record<string, Record<string, unknown>> } }[]).find((it) => it.log)!.log!
+      .mapData,
+  );
+  const paymentLog = logs.find((l) => l.sourceType === "LIABILITY_SOURCE_TYPE_PAYMENT" && l.sourceId === confirmed.body.payment.id)!;
+  expect(paymentLog.actorId).toBe(ROOT_USER_ID);
+  expect(paymentLog.isOverride ?? false).toBe(false);
+
+  const paymentEntryBy = page.getByTestId(`liability-detail-by-${paymentLog.id}`);
+  await expect(paymentEntryBy).toHaveText("Root");
+  await expect(paymentEntryBy.getByTestId("root-team-badge")).toHaveCount(0);
+
+  await page.getByTestId("liability-detail-tab-mine").click();
+  const paymentBy = page.getByTestId("liability-detail-mine").getByTestId(`liability-detail-payment-by-${confirmed.body.payment.id}`);
+  await expect(paymentBy).toHaveText("Root");
+  await expect(paymentBy.getByTestId("root-team-badge")).toHaveCount(0);
+  expect(confirmed.body.payment.recordedBy).toBe(ROOT_USER_ID);
 });

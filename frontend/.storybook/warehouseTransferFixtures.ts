@@ -51,6 +51,8 @@ export interface TransferLogFixture {
   actorUserId: bigint;
   description: string;
   atUnix: bigint;
+  /** Root or the System Administrator took this step from outside the team (`is_override`); absent reads false. */
+  isOverride?: boolean;
 }
 
 export interface TransferFixture {

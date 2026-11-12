@@ -388,3 +388,53 @@ func TestEntryList_ABadPeriodIsRefused(t *testing.T) {
 		t.Fatalf("a one-day period: %v", err)
 	}
 }
+
+// ── who recorded each entry (the-team-balance-recorded-by-is-accepted) ──────────────────────────────────────────────
+
+// EVERY LINE NAMES WHO CAUSED IT, and says when that was Root or the Administrator from outside the team — the ledger's
+// Recorded by column and its "by Root team" badge. Both legs carry both, so either team's ledger reads the same person.
+func TestEntryList_EachLineNamesWhoRecordedIt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	member := codFee(15_000, 801)
+	member.ActorID = 42
+
+	override := codFee(9_000, 802)
+	override.ActorID = rootUser
+	override.IsOverride = true
+
+	for _, p := range []liability_v1.Posting{member, override} {
+		_, err := svc.PostEntry(context.Background(), db, p)
+		if err != nil {
+			t.Fatalf("post %d: %v", p.SourceID, err)
+		}
+	}
+
+	for _, side := range []struct {
+		name               string
+		team, counterparty uint64
+	}{
+		{"the warehouse's ledger", warehouse, selling},
+		{"the selling team's ledger", selling, warehouse},
+	} {
+		got := map[uint64]*liabilityv1.LiabilityLog{}
+		for _, e := range entryRows(history(t, svc, side.team, side.counterparty)) {
+			got[e.GetSourceId()] = e
+		}
+
+		if len(got) != 2 {
+			t.Fatalf("%s: %d entries, want 2", side.name, len(got))
+		}
+
+		if e := got[801]; e.GetActorId() != 42 || e.GetIsOverride() {
+			t.Errorf("%s: the member's entry reads actor %d, override %v — want 42, false",
+				side.name, e.GetActorId(), e.GetIsOverride())
+		}
+
+		if e := got[802]; e.GetActorId() != rootUser || !e.GetIsOverride() {
+			t.Errorf("%s: Root's entry reads actor %d, override %v — want %d, true",
+				side.name, e.GetActorId(), e.GetIsOverride(), rootUser)
+		}
+	}
+}

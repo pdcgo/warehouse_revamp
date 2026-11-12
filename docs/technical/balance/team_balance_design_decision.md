@@ -17,6 +17,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-debtor-sees-the-limits-set-on-it](#the-debtor-sees-the-limits-set-on-it) | a team sees each limit set ON it, its debt and its 80% warning — on the order form and the pair detail; never anybody else's |
 | [the-team-balance-screens-are-accepted](#the-team-balance-screens-are-accepted) | the Team Balance desktop screens pass design_accept; the balance log gains an All tab first | owner, as recommended | — |
 | [the-team-balance-phone-layout-is-accepted](#the-team-balance-phone-layout-is-accepted) | Team Balance on a phone: blocks, filters in a sheet, the tabs scroll in one row | owner, as recommended | — |
+| [the-team-balance-recorded-by-is-accepted](#the-team-balance-recorded-by-is-accepted) | the Team Balance ledger and payments gain a "Recorded by" column, the badge on a Root-written row | owner, as recommended | — |
 
 ---
 
@@ -464,3 +465,21 @@ Closes the phone half left open by [the-team-balance-screens-are-accepted](#the-
 ✅ Built 2026-11-07 — the phone layout is live: `/liability` and `/liability/:id` read `useIsMobile()` (the Storybook-only switch `features/liability/phonePrototype.tsx` is deleted), and the `PhonePrototype*` stories are the pages' `Mobile*` stories now ([development_state](../../development_state/balance/context.md)).
 
 ✅ Built 2026-11-07 — the list's search / type / awaiting and the pair's date range / direction / side are applied on the server before paging (backlog #34), so every tab, the All ledger included, reads the whole history; Balance after stays the true running balance.
+
+---
+
+## the-team-balance-recorded-by-is-accepted
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to the Storybook prototype (`Pages/Prototypes/TeamBalanceRecordedBy`, screenshots of the ledger and payments tables, desktop and phone) of [an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge)'s *a record that names nobody today gains the name and the badge*, for the two Team Balance tables that named nobody.
+
+**The verdict.** Accepted as shown. The Team Balance **ledger** and **payments** tables gain a **Recorded by** column on desktop and a muted *Recorded by …* line on phones — the same shape as the Expenses list's ([the-override-badge-is-accepted-as-by-root-team](../../business/user/context_decision.md#the-override-badge-is-accepted-as-by-root-team)) — naming the person (`ActorName`), with **by Root team** beside a row Root or the System Administrator wrote from outside the team. The wording follows [every-entry-names-who-posted-it](#every-entry-names-who-posted-it).
+
+| | |
+| --- | --- |
+| ledger | `LiabilityLog.actor_id` (stored, never filled) is served; `is_override` added |
+| payments | `recorded_by` (served) is shown; `recorded_is_override` added |
+| a person from the other team | named like any other — the ledger is shared by both teams |
+
+⚠ Not built.
+
+✅ Built 2026-11-12 — live: `LiabilityLogList` serves `actor_id` and the new `is_override` (12), `LiabilityPaymentList` `recorded_by` and the new `recorded_is_override` (15), both read off the row already loaded; the pair page's ledger and payments draw the **Recorded by** column on desktop and the *Recorded by …* line on phones with `ActorName` and the *by Root team* badge, the Storybook switch is deleted and its stories are the page's own ([development_state](../../development_state/balance/context.md)). e2e `the_team_balance_names_who_recorded.spec.ts`: root pays a debt from inside a seller and accepts it from inside the warehouse; the owner sees her own name on the courier's row and Root with the badge on the payment's.

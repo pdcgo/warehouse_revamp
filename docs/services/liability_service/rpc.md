@@ -422,6 +422,29 @@ Perf (`-tags perfaudit`): `LiabilityLogList` 6–15 ms / 3 queries over a 50 000
 on both history indexes); `LiabilityPositionList` 3–5 ms with a search — 7 queries, heavy by the query-count line only
 ([audit](../../../audits/services/liability_service/performances/LiabilityPositionList.md)). No index was added.
 
+## Who recorded each row — the ledger's and the payments' *Recorded by* (built 2026-11-12)
+
+[the-team-balance-recorded-by-is-accepted](../../technical/balance/team_balance_design_decision.md#the-team-balance-recorded-by-is-accepted),
+after [every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it)
+and [an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge): the pair
+page's ledger and payments name the person on every row, with the shared *by Root team* badge on a row Root or the System
+Administrator wrote from outside the team. Both reads serve what the row already stores — never a caller's word.
+
+| read | field | from |
+| --- | --- | --- |
+| `LiabilityLogList` | `LiabilityLog.actor_id` (11) — stored since `00005`, now filled by `entryToProto` | `liability_logs.actor_id`: the person whose act moved the money (a leg an event posted takes the event's `actor_id`) |
+| | `LiabilityLog.is_override` (12) | `liability_logs.is_override` (`00013`) — both legs carry it, so either team's ledger reads the same person and badge |
+| `LiabilityPaymentList` (and the Record / Confirm / Reject answers) | `LiabilityPayment.recorded_by` (7) | `liability_payments.recorded_by` |
+| | `LiabilityPayment.recorded_is_override` (15) | `liability_payments.recorded_is_override` — the RECORD's flag; the confirm's (`confirmed_is_override`) is not on the message, as the table names only who recorded |
+
+`actor_id = 0` (a row nobody was recorded for) shows a dash and never a badge. The names are user_service's: the screen
+resolves the page's ids in one `UserByIDs` (`useActors`), as the Expenses list does.
+
+Perf: **nil** — both reads already load the whole row (`Find` over the page), so the two columns add no statement, no
+join and no scan; `LiabilityLogList` stays 3 queries, `LiabilityPaymentList` 3. No audit file. The writes are untouched —
+the Record / Confirm / Reject answers only map one more column of the row they already return — so no concurrency
+audit changes.
+
 ## The rates and limits themselves — `LiabilityTermsService` (#189)
 
 Until this landed, `liability_terms` was a table only the fee code READ. Nothing could write it, so

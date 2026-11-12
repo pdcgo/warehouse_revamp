@@ -111,9 +111,22 @@ func (s *Service) RestockRequestList(
 		return nil, restockErr(err)
 	}
 
+	// WHO RAISED IT, SIGNED FOR IT AND COUNTED IT IN, AND WHETHER ROOT DID FROM OUTSIDE (an-override-shows-a-platform-badge):
+	// the restock carries no flag — its trail does, one per act — so the page's acts are read in ONE lookup, never per
+	// row.
+	overrides, err := restockStepOverrides(s.db.WithContext(ctx), rrs)
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
 	out := make([]*inventoryv1.RestockRequest, 0, len(rrs))
 	for i := range rrs {
-		out = append(out, restockRequestToProto(&rrs[i]))
+		r := restockRequestToProto(&rrs[i])
+		step := overrides[rrs[i].ID]
+		r.CreatedByIsOverride = step.Created
+		r.ArrivedByIsOverride = step.Arrived
+		r.AcceptedByIsOverride = step.Accepted
+		out = append(out, r)
 	}
 
 	items, ids := restockRequestListItems(out, req.Msg.GetDataRequest())
@@ -123,6 +136,68 @@ func (s *Service) RestockRequestList(
 		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
+}
+
+// restockOverrides is, for one restock, whether each act the lists name a person for was Root or the System
+// Administrator acting from outside the team (an-override-shows-a-platform-badge).
+type restockOverrides struct {
+	Created  bool
+	Arrived  bool
+	Accepted bool
+}
+
+// restockStepOverrides reads each restock of a page's trail ONCE — one GROUP BY over the page's ids, served by
+// `restock_logs_restock_idx` (restock_id, created_at, id) — and returns, per restock, the `is_override` of the three
+// acts the lists name a person for:
+//
+//   - created: the trail's FIRST row, in the trail's order — the create's ("" → ongoing, in the restock's own tx).
+//   - arrived: the row that moved it to arrived; a box counted straight from ongoing was signed for by that count
+//     (the accept stamps arrived_by with its own actor), so with no arrive row it is the accept's.
+//   - accepted: the row that moved it to accepted.
+//
+// An edit keeps the status (from = to), so it never stands for a step. A restock with no trail row reads all false.
+func restockStepOverrides(db *gorm.DB, rows []inventory_service_models.Restock) (map[uint64]restockOverrides, error) {
+	out := make(map[uint64]restockOverrides, len(rows))
+	if len(rows) == 0 {
+		return out, nil
+	}
+
+	ids := make([]uint64, 0, len(rows))
+	for i := range rows {
+		ids = append(ids, rows[i].ID)
+	}
+
+	var steps []struct {
+		RestockID uint64
+		Created   bool
+		Arrived   bool
+		Accepted  bool
+	}
+
+	err := db.
+		Model(&inventory_service_models.RestockLog{}).
+		Select(`restock_id,
+			(array_agg(is_override ORDER BY created_at, id))[1] AS created,
+			COALESCE(
+				bool_or(is_override) FILTER (WHERE to_status = ? AND from_status <> to_status),
+				bool_or(is_override) FILTER (WHERE to_status = ? AND from_status <> to_status),
+				false
+			) AS arrived,
+			COALESCE(bool_or(is_override) FILTER (WHERE to_status = ? AND from_status <> to_status), false) AS accepted`,
+			restockStatusArrived, restockStatusAccepted, restockStatusAccepted).
+		Where("restock_id IN ?", ids).
+		Group("restock_id").
+		Scan(&steps).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, step := range steps {
+		out[step.RestockID] = restockOverrides{Created: step.Created, Arrived: step.Arrived, Accepted: step.Accepted}
+	}
+
+	return out, nil
 }
 
 // restockDateColumn maps the caller's chosen date to its column (owner).

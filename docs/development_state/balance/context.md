@@ -352,3 +352,34 @@ was ever charged outside the unit tests, which call `ChargeOrder` directly. Both
 handler); test `TestRegister_TheOrderEventsReachTheLedger` drives them through the real mux. Orders placed on a dev
 database before this fix have no fee entries — revamp has no real orders (revamp-has-no-real-orders-yet), so nothing is
 backfilled; a dev DB's dead-lettered events can be redriven with `san pubsub redrive --topic order-placed`.
+
+## 2026-11-12 — who recorded each ledger row and payment: built
+
+[the-team-balance-recorded-by-is-accepted](../../technical/balance/team_balance_design_decision.md#the-team-balance-recorded-by-is-accepted)
+(accepted from the Storybook prototype the same day), after
+[every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it) and
+[an-override-shows-a-platform-badge](../../business/user/context_decision.md#an-override-shows-a-platform-badge). The pair
+page's ledger and payments name the person on every row — a **Recorded by** column on a desktop, a muted *Recorded by …*
+line on a phone, the Expenses list's shape — with **by Root team** beside a row Root or the System Administrator wrote
+from outside the team.
+
+| read | served now | from |
+| --- | --- | --- |
+| `LiabilityLogList` | `LiabilityLog.actor_id` (11, in the proto since `00005` but never filled — `entryToProto` fills it) and the new `bool is_override = 12` | `liability_logs.actor_id` / `is_override` — both legs carry both |
+| `LiabilityPaymentList` (+ Record / Confirm / Reject answers) | `recorded_by` (7) and the new `bool recorded_is_override = 15` (`paymentToProto`) | `liability_payments.recorded_by` / `recorded_is_override` |
+
+No migration, no query: both columns sit on the row each read already loads (perf nil —
+[rpc.md](../../services/liability_service/rpc.md)). Screens: `LiabilityLedgerTable`, `PaymentTable` read the fields and
+name the page's ids in one `useActors` (`UserByIDs`) batch; `actor_id = 0` shows a dash, never a badge. The prototype
+switch is deleted (`features/liability/recordedByPrototype.tsx`, `pages/liability-detail/RecordedByPrototype.stories.tsx`,
+`.storybook/liabilityRecordedByStub.ts`); its people moved into `.storybook/fixtures.ts` (`liabilityEntries[].actorId /
+isOverride`, `liabilityPayments[].recordedBy / recordedIsOverride` — 502 Fajar and 602 Gita are the override rows), and
+its four stories are `Pages/Liability/PairDetail` `TheLedgerNamesWhoRecordedEachRow`, `ThePaymentsNameWhoRecordedThem`,
+`MobileTheLedgerNamesWhoRecordedEachRow`, `MobileThePaymentsNameWhoRecordedThem`.
+
+Tests: `TestEntryList_EachLineNamesWhoRecordedIt` (both teams' ledgers: a member's row `actor_id` 42 / false, Root's
+`actor_id` 1 / true), `TestPaymentList_EachPaymentNamesWhoRecordedIt` (payer and creditor lists: the owner's claim false,
+Root's true) — both mutation-checked. e2e: `liability.spec.ts`'s payment test now reads the payment's ledger row and
+payment row naming root (its owner, no badge); the new `the_team_balance_names_who_recorded.spec.ts` drives a pair Dewi
+owns where root pays from inside the seller and accepts from inside the warehouse — Dewi sees her name on the courier's
+row and Root + the badge on the payment's ledger row and payment row, desktop and phone.

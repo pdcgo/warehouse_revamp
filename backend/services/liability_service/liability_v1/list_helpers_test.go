@@ -46,3 +46,23 @@ func entryRows(res *liabilityv1.LiabilityLogListResponse) []*liabilityv1.Liabili
 
 	return out
 }
+
+func paymentRows(res *liabilityv1.LiabilityPaymentListResponse) []*liabilityv1.LiabilityPayment {
+	var m map[uint64]*liabilityv1.LiabilityPayment
+	for _, it := range res.GetItems() {
+		p := it.GetPayment()
+		if p != nil {
+			m = p.GetMapData()
+		}
+	}
+
+	out := make([]*liabilityv1.LiabilityPayment, 0, len(res.GetIds()))
+	for _, id := range res.GetIds() {
+		r, ok := m[id]
+		if ok {
+			out = append(out, r)
+		}
+	}
+
+	return out
+}

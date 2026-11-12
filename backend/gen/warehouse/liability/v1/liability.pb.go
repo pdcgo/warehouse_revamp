@@ -786,8 +786,12 @@ type LiabilityLog struct {
 	// ⚠ 0 IS RESERVED FOR A GENUINELY UNATTENDED POSTING — a scheduled job. Nothing writes it today,
 	// and it must not become a shrug: a row that cannot name a person is a row that cannot answer the
 	// question this field exists for.
-	ActorId       uint64 `protobuf:"varint,11,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
-	CreatedAtUnix int64  `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	ActorId uint64 `protobuf:"varint,11,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// THE ACTOR WAS AN OVERRIDE — Root or the System Administrator caused it inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service). Both legs carry it, as both carry the actor. The ledger names the person
+	// with the shared "by Root team" badge beside them (the-team-balance-recorded-by-is-accepted).
+	IsOverride    bool  `protobuf:"varint,12,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	CreatedAtUnix int64 `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -890,6 +894,13 @@ func (x *LiabilityLog) GetActorId() uint64 {
 		return x.ActorId
 	}
 	return 0
+}
+
+func (x *LiabilityLog) GetIsOverride() bool {
+	if x != nil {
+		return x.IsOverride
+	}
+	return false
 }
 
 func (x *LiabilityLog) GetCreatedAtUnix() int64 {
@@ -2785,8 +2796,12 @@ type LiabilityPayment struct {
 	// *Paid from* existed — that one's acceptance posts only the `to` leg.
 	FromAccountId uint64 `protobuf:"varint,13,opt,name=from_account_id,json=fromAccountId,proto3" json:"from_account_id,omitempty"`
 	ToAccountId   uint64 `protobuf:"varint,14,opt,name=to_account_id,json=toAccountId,proto3" json:"to_account_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// `recorded_by` WAS AN OVERRIDE — Root or the System Administrator recorded the claim inside a team they hold no
+	// role in (an-override-is-stamped-in-every-service). The payments table names the person with the shared
+	// "by Root team" badge beside them (the-team-balance-recorded-by-is-accepted).
+	RecordedIsOverride bool `protobuf:"varint,15,opt,name=recorded_is_override,json=recordedIsOverride,proto3" json:"recorded_is_override,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *LiabilityPayment) Reset() {
@@ -2915,6 +2930,13 @@ func (x *LiabilityPayment) GetToAccountId() uint64 {
 		return x.ToAccountId
 	}
 	return 0
+}
+
+func (x *LiabilityPayment) GetRecordedIsOverride() bool {
+	if x != nil {
+		return x.RecordedIsOverride
+	}
+	return false
 }
 
 type LiabilityPaymentRecordRequest struct {
@@ -4616,7 +4638,7 @@ var File_warehouse_liability_v1_liability_proto protoreflect.FileDescriptor
 
 const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\n" +
-	"&warehouse/liability/v1/liability.proto\x12\x16warehouse.liability.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"\x82\x03\n" +
+	"&warehouse/liability/v1/liability.proto\x12\x16warehouse.liability.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"\xa3\x03\n" +
 	"\fLiabilityLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12'\n" +
@@ -4628,7 +4650,9 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\breversal\x18\a \x01(\bR\breversal\x12\x19\n" +
 	"\bgroup_id\x18\b \x01(\x04R\agroupId\x12#\n" +
 	"\rbalance_after\x18\t \x01(\x01R\fbalanceAfter\x12\x19\n" +
-	"\bactor_id\x18\v \x01(\x04R\aactorId\x12&\n" +
+	"\bactor_id\x18\v \x01(\x04R\aactorId\x12\x1f\n" +
+	"\vis_override\x18\f \x01(\bR\n" +
+	"isOverride\x12&\n" +
 	"\x0fcreated_at_unix\x18\n" +
 	" \x01(\x03R\rcreatedAtUnix\"\x9e\x02\n" +
 	"\x11LiabilityPosition\x12'\n" +
@@ -4764,7 +4788,7 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12N\n" +
-	"\x05value\x18\x02 \x01(\v28.warehouse.liability.v1.LiabilityCreditByIdsResponseListR\x05value:\x028\x01\"\x83\x04\n" +
+	"\x05value\x18\x02 \x01(\v28.warehouse.liability.v1.LiabilityCreditByIdsResponseListR\x05value:\x028\x01\"\xb5\x04\n" +
 	"\x10LiabilityPayment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\"\n" +
 	"\rpayer_team_id\x18\x02 \x01(\x04R\vpayerTeamId\x12(\n" +
@@ -4781,7 +4805,8 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\fdocument_ids\x18\v \x03(\tR\vdocumentIds\x12\x16\n" +
 	"\x06reason\x18\f \x01(\tR\x06reason\x12&\n" +
 	"\x0ffrom_account_id\x18\r \x01(\x04R\rfromAccountId\x12\"\n" +
-	"\rto_account_id\x18\x0e \x01(\x04R\vtoAccountId\"\xb6\x02\n" +
+	"\rto_account_id\x18\x0e \x01(\x04R\vtoAccountId\x120\n" +
+	"\x14recorded_is_override\x18\x0f \x01(\bR\x12recordedIsOverride\"\xb6\x02\n" +
 	"\x1dLiabilityPaymentRecordRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x121\n" +
 	"\x10creditor_team_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecreditorTeamId\x12(\n" +

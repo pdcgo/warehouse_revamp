@@ -36,6 +36,8 @@ Users & Role System, Documents, region, shipping, expense.
 | **No order without a return warehouse** | a team must set its return warehouse before it can create an order (form or draft); the form says which team and where to set it; dev teams 14 and 91 return to Dev Warehouse, 89 to Jakarta Warehouse |
 | **Old downloads clean themselves up** | merged label PDFs and exports are deleted after 7 days by a daily sweep (uploads never); a phone photo of a label prints the right way up; the order page reads *Platform total* instead of a raw key; an unused warehouse product list is gone |
 | **A team sees what Root did inside it** | wherever a screen says who did something — orders, timelines, stock history, expenses, settlement entries, imports, the member and limit logs — Root or the System Administrator acting inside a team shows by name with a green *by Root team* badge; Expenses gained a *Recorded by* column |
+| **Root's restocks and transfers are marked in the lists too** | a restock or transfer Root opened inside a team shows *by Root team* beside its creator on the lists, not only on its timeline |
+| **Team Balance names who recorded each line** | the ledger and payments show *Recorded by* (a line on phones), with *by Root team* when Root paid or accepted from outside the team |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

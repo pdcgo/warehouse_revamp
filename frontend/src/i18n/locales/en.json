@@ -217,7 +217,9 @@
     "emptyAll": "Nothing has moved between you in this range.",
     "balanceAfterLine": "Balance after {{amount}}",
     "recordProofAttach": "Attach Proof",
-    "recordProofAttachAnother": "Attach Another"
+    "recordProofAttachAnother": "Attach Another",
+    "colRecordedBy": "Recorded by",
+    "recordedBy": "Recorded by {{name}}"
   },
   "common": {
     "perPage": "Per page",

@@ -208,6 +208,81 @@ export const TheAllTabRunsTheWholeLedger: Story = {
   },
 };
 
+// ── WHO RECORDED EACH ROW (the-team-balance-recorded-by-is-accepted) ────────────────────────────────────────────────
+//
+// The ledger names who caused each movement (`LiabilityLog.actor_id`) and the payments who recorded each claim
+// (`LiabilityPayment.recorded_by`) — a Recorded by column on a desktop, a muted "Recorded by …" line on a phone, the
+// Expenses list's accepted shape — with the "by Root team" badge on the row Root or the System Administrator wrote from
+// outside the team (`is_override` / `recorded_is_override`). The people are fixtures.ts' liabilityEntries/Payments: 502
+// was Fajar (a Root) from outside the warehouse, 602 Gita (the Administrator) from outside Melati.
+
+const badgesIn = (el: HTMLElement) => within(el).queryAllByTestId("root-team-badge");
+
+async function teamPayments(canvas: ReturnType<typeof within>) {
+  await userEvent.click(await canvas.findByTestId("liability-detail-tab-team"));
+  const tab = await canvas.findByTestId("liability-detail-team");
+  await waitFor(() => expect(within(tab).getByTestId("liability-detail-payment-602")).toBeVisible());
+  return tab;
+}
+
+// THE LEDGER: who caused each movement, in its own column between the cause and the amount — the courier's charge at
+// restock #7001 was signed for by Fajar, a Root, from outside the warehouse, so it alone carries the badge.
+export const TheLedgerNamesWhoRecordedEachRow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const table = await within(canvas.getByTestId("liability-detail-all")).findByTestId("liability-ledger-table");
+
+    await expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
+      "Date",
+      "What caused it",
+      "Recorded by",
+      "Amount",
+      "Balance after",
+    ]);
+
+    await waitFor(() => expect(within(table).getByTestId("liability-detail-by-501")).toHaveTextContent("Eko Prasetyo"));
+    await expect(within(table).getByTestId("liability-detail-by-511")).toHaveTextContent("Dewi Lestari");
+
+    const override = within(table).getByTestId("liability-detail-by-502");
+    await expect(override).toHaveTextContent("Fajar Nugroho");
+    await expect(within(override).getByTestId("root-team-badge")).toHaveTextContent("by Root team");
+
+    // The badge is on the override row ONLY.
+    await expect(badgesIn(table)).toHaveLength(1);
+    await expect(badgesIn(within(table).getByTestId("liability-detail-entry-501"))).toHaveLength(0);
+  },
+};
+
+// THE PAYMENTS: who recorded each claim, after its note — Melati's 2.000.000 was recorded by Gita, the System
+// Administrator, from outside Melati; the refused one by Melati's own owner. Gudang Pusat's own payment, on My payments,
+// by its admin.
+export const ThePaymentsNameWhoRecordedThem: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const tab = await teamPayments(canvas);
+
+    await expect(within(tab).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
+      "Date",
+      "Amount",
+      "Note",
+      "Recorded by",
+      "Proof",
+      "Status",
+    ]);
+
+    const override = within(tab).getByTestId("liability-detail-payment-by-602");
+    await waitFor(() => expect(override).toHaveTextContent("Gita Ramadhani"));
+    await expect(within(override).getByTestId("root-team-badge")).toBeVisible();
+    await expect(within(tab).getByTestId("liability-detail-payment-by-603")).toHaveTextContent("Dewi Lestari");
+    await expect(badgesIn(tab)).toHaveLength(1);
+
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-mine"));
+    const mine = await canvas.findByTestId("liability-detail-mine");
+    await waitFor(() => expect(within(mine).getByTestId("liability-detail-payment-by-601")).toHaveTextContent("Budi Santoso"));
+    await expect(badgesIn(mine)).toHaveLength(0);
+  },
+};
+
 // ── MAKE PAYMENT IS THE DEBTOR'S (the-debtor-claims-the-creditor-decides) ──────────────────────────────────────────
 
 // ⛔ THE CREDITOR IS NOT OFFERED IT. Toko Melati owes Gudang Pusat 8.700.000, so Gudang Pusat may ask to be paid and
@@ -677,6 +752,43 @@ export const Mobile: Story = {
     await expect(list.scrollWidth).toBeGreaterThan(list.clientWidth);
     const top = canvas.getByTestId("liability-detail-tab-all").getBoundingClientRect().top;
     await expect(Math.abs(canvas.getByTestId("liability-detail-tab-terms").getBoundingClientRect().top - top)).toBeLessThan(2);
+  },
+};
+
+// A PHONE (the-team-balance-recorded-by-is-accepted): each ledger block gains a muted "Recorded by …" line, the badge
+// after the name on the override row only; a tap on it reads its sentence.
+export const MobileTheLedgerNamesWhoRecordedEachRow: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const ledger = await within(canvas.getByTestId("liability-detail-all")).findByTestId("liability-ledger-table");
+    await expect(ledger).toHaveAttribute("data-layout", "blocks");
+
+    await waitFor(() => expect(within(ledger).getByTestId("liability-detail-by-501")).toHaveTextContent("Recorded by Eko Prasetyo"));
+    const override = within(ledger).getByTestId("liability-detail-by-502");
+    await expect(override).toHaveTextContent("Recorded by Fajar Nugroho");
+    await expect(badgesIn(ledger)).toHaveLength(1);
+
+    await userEvent.click(within(override).getByTestId("root-team-badge"));
+    const hint = await screen.findByTestId("root-team-badge-hint");
+    await waitFor(() => expect(hint).toBeVisible());
+    await expect(hint).toHaveTextContent("not one of its members");
+  },
+};
+
+// The same line on each payment block — the override's badge, the member's name alone.
+export const MobileThePaymentsNameWhoRecordedThem: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const tab = await teamPayments(canvas);
+
+    await expect(within(tab).getByTestId("liability-payments-blocks")).toBeInTheDocument();
+    const override = within(tab).getByTestId("liability-detail-payment-by-602");
+    await waitFor(() => expect(override).toHaveTextContent("Recorded by Gita Ramadhani"));
+    await expect(within(override).getByTestId("root-team-badge")).toBeVisible();
+    await expect(within(tab).getByTestId("liability-detail-payment-by-603")).toHaveTextContent("Recorded by Dewi Lestari");
+    await expect(badgesIn(tab)).toHaveLength(1);
   },
 };
 

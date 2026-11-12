@@ -2045,6 +2045,7 @@ export const transport = createRouterTransport(({ service }) => {
         status: 1,
         note: req.note,
         recordedBy: 1n,
+        recordedIsOverride: false,
         confirmedBy: 0n,
         createdAtUnix: BigInt(Math.floor(Date.now() / 1000)),
         confirmedAtUnix: 0n,

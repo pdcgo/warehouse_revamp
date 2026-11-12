@@ -193,7 +193,8 @@ func documentIDs(docs []liability_service_models.LiabilityPaymentDocument) []str
 }
 
 // paymentToProto carries the nil ConfirmedAt through as 0 — "not confirmed yet" rather than a date at
-// the epoch. The status already says which, so a caller never has to read 0 as a timestamp.
+// the epoch. The status already says which, so a caller never has to read 0 as a timestamp. Who recorded the claim
+// comes with their override flag — the payments table's Recorded by (the-team-balance-recorded-by-is-accepted).
 func paymentToProto(p *liability_service_models.LiabilityPayment) *liabilityv1.LiabilityPayment {
 	var confirmedAt int64
 	if p.ConfirmedAt != nil {
@@ -201,19 +202,20 @@ func paymentToProto(p *liability_service_models.LiabilityPayment) *liabilityv1.L
 	}
 
 	return &liabilityv1.LiabilityPayment{
-		Id:              p.ID,
-		PayerTeamId:     p.PayerTeamID,
-		CreditorTeamId:  p.CreditorTeamID,
-		Amount:          p.Amount,
-		Status:          paymentStatusProto(p.Status),
-		Note:            p.Note,
-		RecordedBy:      p.RecordedBy,
-		ConfirmedBy:     p.ConfirmedBy,
-		CreatedAtUnix:   p.CreatedAt.Unix(),
-		ConfirmedAtUnix: confirmedAt,
-		DocumentIds:     documentIDs(p.Documents),
-		Reason:          p.Reason,
-		FromAccountId:   p.FromAccountID,
-		ToAccountId:     p.ToAccountID,
+		Id:                 p.ID,
+		PayerTeamId:        p.PayerTeamID,
+		CreditorTeamId:     p.CreditorTeamID,
+		Amount:             p.Amount,
+		Status:             paymentStatusProto(p.Status),
+		Note:               p.Note,
+		RecordedBy:         p.RecordedBy,
+		RecordedIsOverride: p.RecordedIsOverride,
+		ConfirmedBy:        p.ConfirmedBy,
+		CreatedAtUnix:      p.CreatedAt.Unix(),
+		ConfirmedAtUnix:    confirmedAt,
+		DocumentIds:        documentIDs(p.Documents),
+		Reason:             p.Reason,
+		FromAccountId:      p.FromAccountID,
+		ToAccountId:        p.ToAccountID,
 	}
 }

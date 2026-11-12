@@ -1075,23 +1075,28 @@ export const liabilityTermsChanges = [
 // ledger sees the business word for each event and a balance that adds up. The product fee is a SELLING↔SELLING cause
 // and has no row here (the-ledger-speaks-the-business-words); the Ledger Table story carries it. Relative days, like
 // the position's oldest unsettled day (12 days ago).
+//
+// WHO RECORDED EACH ROW (the-team-balance-recorded-by-is-accepted) — `actorId`, and `isOverride` when Root or the
+// System Administrator did it from outside the team. Dewi (64) owns both teams, Budi (62) is an admin of both, Eko (65)
+// is Gudang Pusat's staff and Melati's CS; Fajar (66) is a second Root and not a member. ONE override row: 502, the
+// courier's charge at restock #7001, signed for by Fajar from outside the warehouse.
 export const liabilityEntries = [
-  { id: 501n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 9001n, reversal: false, groupId: 1n, balanceAfter: 8_700_000, createdAtUnix: daysAgo(1) },
-  { id: 502n, teamId: 11n, counterpartyId: 12n, amount: 1_200_000, sourceType: 5, sourceId: 7001n, reversal: false, groupId: 2n, balanceAfter: 8_670_000, createdAtUnix: daysAgo(2) },
-  { id: 503n, teamId: 11n, counterpartyId: 12n, amount: -450_000, sourceType: 6, sourceId: 6001n, reversal: false, groupId: 3n, balanceAfter: 7_470_000, createdAtUnix: daysAgo(4) },
-  { id: 504n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 9000n, reversal: false, groupId: 4n, balanceAfter: 7_920_000, createdAtUnix: daysAgo(5) },
+  { id: 501n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 9001n, reversal: false, groupId: 1n, balanceAfter: 8_700_000, actorId: 65n, isOverride: false, createdAtUnix: daysAgo(1) },
+  { id: 502n, teamId: 11n, counterpartyId: 12n, amount: 1_200_000, sourceType: 5, sourceId: 7001n, reversal: false, groupId: 2n, balanceAfter: 8_670_000, actorId: 66n, isOverride: true, createdAtUnix: daysAgo(2) },
+  { id: 503n, teamId: 11n, counterpartyId: 12n, amount: -450_000, sourceType: 6, sourceId: 6001n, reversal: false, groupId: 3n, balanceAfter: 7_470_000, actorId: 62n, isOverride: false, createdAtUnix: daysAgo(4) },
+  { id: 504n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 9000n, reversal: false, groupId: 4n, balanceAfter: 7_920_000, actorId: 65n, isOverride: false, createdAtUnix: daysAgo(5) },
   // The courier Gudang Pusat paid at its door for a transfer in (a-transfer-charge-is-a-transfer-fee).
-  { id: 505n, teamId: 11n, counterpartyId: 12n, amount: 15_000, sourceType: 10, sourceId: 3101n, reversal: false, groupId: 5n, balanceAfter: 7_890_000, createdAtUnix: daysAgo(6) },
+  { id: 505n, teamId: 11n, counterpartyId: 12n, amount: 15_000, sourceType: 10, sourceId: 3101n, reversal: false, groupId: 5n, balanceAfter: 7_890_000, actorId: 62n, isOverride: false, createdAtUnix: daysAgo(6) },
   // The courier's ask at a return's door, keyed by the order (a-return-may-carry-the-couriers-ask).
-  { id: 506n, teamId: 11n, counterpartyId: 12n, amount: 10_000, sourceType: 9, sourceId: 8811n, reversal: false, groupId: 6n, balanceAfter: 7_875_000, createdAtUnix: daysAgo(7) },
+  { id: 506n, teamId: 11n, counterpartyId: 12n, amount: 10_000, sourceType: 9, sourceId: 8811n, reversal: false, groupId: 6n, balanceAfter: 7_875_000, actorId: 62n, isOverride: false, createdAtUnix: daysAgo(7) },
   // A unit lost in the warehouse's custody, then found: the find gives the charge back, marked a reversal.
-  { id: 507n, teamId: 11n, counterpartyId: 12n, amount: 120_000, sourceType: 8, sourceId: 6102n, reversal: true, groupId: 7n, balanceAfter: 7_865_000, createdAtUnix: daysAgo(8) },
-  { id: 508n, teamId: 11n, counterpartyId: 12n, amount: -120_000, sourceType: 7, sourceId: 6101n, reversal: false, groupId: 8n, balanceAfter: 7_745_000, createdAtUnix: daysAgo(9) },
+  { id: 507n, teamId: 11n, counterpartyId: 12n, amount: 120_000, sourceType: 8, sourceId: 6102n, reversal: true, groupId: 7n, balanceAfter: 7_865_000, actorId: 62n, isOverride: false, createdAtUnix: daysAgo(8) },
+  { id: 508n, teamId: 11n, counterpartyId: 12n, amount: -120_000, sourceType: 7, sourceId: 6101n, reversal: false, groupId: 8n, balanceAfter: 7_745_000, actorId: 62n, isOverride: false, createdAtUnix: daysAgo(9) },
   // An order placed and cancelled: its fee posts, then reverses (the-order-fee-posts-at-creation-and-reverses-on-cancel).
-  { id: 509n, teamId: 11n, counterpartyId: 12n, amount: -30_000, sourceType: 2, sourceId: 8990n, reversal: true, groupId: 9n, balanceAfter: 7_865_000, createdAtUnix: daysAgo(10) },
-  { id: 510n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 8990n, reversal: false, groupId: 10n, balanceAfter: 7_895_000, createdAtUnix: daysAgo(11) },
+  { id: 509n, teamId: 11n, counterpartyId: 12n, amount: -30_000, sourceType: 2, sourceId: 8990n, reversal: true, groupId: 9n, balanceAfter: 7_865_000, actorId: 64n, isOverride: false, createdAtUnix: daysAgo(10) },
+  { id: 510n, teamId: 11n, counterpartyId: 12n, amount: 30_000, sourceType: 2, sourceId: 8990n, reversal: false, groupId: 10n, balanceAfter: 7_895_000, actorId: 65n, isOverride: false, createdAtUnix: daysAgo(11) },
   // Payment 601, accepted: Gudang Pusat paid what it owed Melati for an earlier loss.
-  { id: 511n, teamId: 11n, counterpartyId: 12n, amount: 500_000, sourceType: 4, sourceId: 601n, reversal: false, groupId: 11n, balanceAfter: 7_865_000, createdAtUnix: daysAgo(12) },
+  { id: 511n, teamId: 11n, counterpartyId: 12n, amount: 500_000, sourceType: 4, sourceId: 601n, reversal: false, groupId: 11n, balanceAfter: 7_865_000, actorId: 64n, isOverride: false, createdAtUnix: daysAgo(12) },
 ];
 
 // One payment from each side, so both the "my payments" and "their payments" tabs have a row — and
@@ -1101,11 +1106,13 @@ export const liabilityEntries = [
 // would have refused, and it would let a story pass against a screen that cannot happen.
 // And each names the account it LEFT (a-team-payment-posts-on-accept) — 1307 BCA Gudang is team 11's,
 // 1301 BCA Operasional team 12's — and, once accepted, the one it LANDED in; 0 until then.
+// WHO RECORDED EACH (the-team-balance-recorded-by-is-accepted): 601 Budi, Gudang Pusat's admin; 603 Dewi, Melati's owner;
+// 602 Gita (67), the System Administrator, from outside Melati — the one override.
 export const liabilityPayments = [
-  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: daysAgo(12) - 3_600n, confirmedAtUnix: daysAgo(12), documentIds: ["doc-601"], reason: "", fromAccountId: 1307n, toAccountId: 1301n },
-  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: daysAgo(1), confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "", fromAccountId: 1301n, toAccountId: 0n },
+  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000, status: 2, note: "Transfer BCA", recordedBy: 62n, recordedIsOverride: false, confirmedBy: 2n, createdAtUnix: daysAgo(12) - 3_600n, confirmedAtUnix: daysAgo(12), documentIds: ["doc-601"], reason: "", fromAccountId: 1307n, toAccountId: 1301n },
+  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000, status: 1, note: "Transfer Mandiri", recordedBy: 67n, recordedIsOverride: true, confirmedBy: 0n, createdAtUnix: daysAgo(1), confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "", fromAccountId: 1301n, toAccountId: 0n },
   // A REFUSED CLAIM — status 4, nothing posted, and the reason the payer has to read.
-  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: daysAgo(3), confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account", fromAccountId: 1301n, toAccountId: 0n },
+  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000, status: 4, note: "Transfer BNI", recordedBy: 64n, recordedIsOverride: false, confirmedBy: 0n, createdAtUnix: daysAgo(3), confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account", fromAccountId: 1301n, toAccountId: 0n },
 ];
 
 // ── The settlement reports ──────────────────────────────────────────────────────────────────────

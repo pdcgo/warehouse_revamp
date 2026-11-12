@@ -220,6 +220,12 @@ message WarehouseTransfer {
   uint64 lost_by_user_id = 30;
   int64 lost_at_unix = 31;
 
+  // THE CREATE WAS AN OVERRIDE — Root or the System Administrator opened it inside a team they hold no role in
+  // (an-override-is-stamped-in-every-service); the list's created-by cell shows the shared "by Root team" badge beside
+  // the creator (an-override-shows-a-platform-badge). The transfer itself is not stamped: this is its trail's FIRST row's
+  // `warehouse_transfer_logs.is_override`, the create's. LIST ONLY — Detail carries the trail, whose first row says it.
+  bool created_by_is_override = 33;
+
   // The trail, oldest first. DETAIL ONLY — List leaves it empty.
   repeated WarehouseTransferLog logs = 32;
 }

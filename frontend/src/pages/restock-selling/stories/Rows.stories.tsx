@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { FORMER_USER_ID } from "../../../../.storybook/fixtures";
-import { restockRaisedByForStory } from "../../../../.storybook/restockStub";
+import { restockLogByForStory, restockRaisedByForStory, restockStepByForStory } from "../../../../.storybook/restockStub";
 import { SELLING_META, loaded } from "./kit";
 
 // RESTOCK SELLING — the screen's own rules and what a row shows — its columns, its references, its value, its badges, and who raised it. The page's stories are grouped by the part of the screen they are about
@@ -160,5 +160,89 @@ export const SupplierInvoiceAndCourier: Story = {
     await expect(canvas.getByTestId("restock-supplier-501")).toHaveTextContent("+1 more supplier");
     await expect(canvas.getByTestId("restock-invoice-503")).toHaveTextContent("INV/2026/09/0412");
     await expect(canvas.getByTestId("restock-receipt-503")).toHaveTextContent("SCP5544332211");
+  },
+};
+
+// RAISED BY ROOT FROM OUTSIDE (an-override-shows-a-platform-badge): Fajar, a Root, raised 501 inside Toko Melati, which he
+// is not in — its Created cell names him with the "by Root team" badge, read from the create's trail row. No other row
+// carries one: the badge is the override row's only.
+const raisedByRoot = () => {
+  restockRaisedByForStory(501n, 66n);
+  restockLogByForStory(501n, 1n, 66n, true);
+};
+
+export const RaisedByRootFromOutside: Story = {
+  name: "Raised by Root from outside",
+  beforeEach: raisedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const created = canvas.getByTestId("restock-created-by-501");
+
+    await waitFor(() => expect(created).toHaveTextContent("by Fajar Nugroho"));
+    await expect(within(created).getByTestId("root-team-badge")).toHaveTextContent("by Root team");
+    await expect(within(canvas.getByTestId("restock-requests-table")).getAllByTestId("root-team-badge")).toHaveLength(1);
+    await expect(within(canvas.getByTestId("restock-row-502")).queryByTestId("root-team-badge")).toBeNull();
+  },
+};
+
+// The same on a phone: the badge after the name on the block's when-and-who line, its sentence on a tap.
+export const MobileRaisedByRootFromOutside: Story = {
+  name: "Raised by Root from outside (phone)",
+  globals: { viewport: { value: "mobile2" } },
+  beforeEach: raisedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const created = canvas.getByTestId("restock-created-by-501");
+
+    await waitFor(() => expect(created).toHaveTextContent("Fajar Nugroho"));
+    const badge = within(created).getByTestId("root-team-badge");
+    await expect(badge).toBeVisible();
+    await expect(within(canvas.getByTestId("restock-requests-table")).getAllByTestId("root-team-badge")).toHaveLength(1);
+
+    await userEvent.click(badge);
+    const hint = await screen.findByTestId("root-team-badge-hint");
+    await waitFor(() => expect(hint).toBeVisible());
+    // The tap reads the sentence; it does not open the restock.
+    await expect(canvas.queryByTestId("at-restock-detail")).toBeNull();
+  },
+};
+
+// COUNTED IN BY ROOT FROM OUTSIDE (an-override-shows-a-platform-badge): Fajar, a Root, counted 503 in at Gudang Pusat,
+// which he is not in — its Accepted cell names him with the "by Root team" badge, read from the accept's own trail row.
+// The create (Ani's) and 507's accept (Budi's) stay plain: the badge is that one step's.
+const countedByRoot = () => {
+  restockStepByForStory(503n, "accepted", 66n);
+  restockLogByForStory(503n, 3n, 66n, true);
+};
+
+export const AcceptedByRootFromOutside: Story = {
+  name: "Accepted by Root from outside",
+  beforeEach: countedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const accepted = canvas.getByTestId("restock-accepted-by-503");
+
+    await waitFor(() => expect(accepted).toHaveTextContent("by Fajar Nugroho"));
+    await expect(within(accepted).getByTestId("root-team-badge")).toHaveTextContent("by Root team");
+    await expect(within(canvas.getByTestId("restock-requests-table")).getAllByTestId("root-team-badge")).toHaveLength(1);
+    await expect(within(canvas.getByTestId("restock-created-by-503")).queryByTestId("root-team-badge")).toBeNull();
+    await expect(within(canvas.getByTestId("restock-accepted-by-507")).queryByTestId("root-team-badge")).toBeNull();
+  },
+};
+
+// A phone block names only who raised it — the accepted date and its person are the detail page's, a tap away (the
+// block's own comment) — so the accept's badge is not drawn on the list there, and the create's line stays plain.
+export const MobileAcceptedByRootFromOutside: Story = {
+  name: "Accepted by Root from outside (phone)",
+  globals: { viewport: { value: "mobile2" } },
+  beforeEach: countedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const table = canvas.getByTestId("restock-requests-table");
+
+    await waitFor(() => expect(canvas.getByTestId("restock-created-by-503")).toHaveTextContent("Ani"));
+    await expect(table.tagName).not.toBe("TABLE");
+    await expect(canvas.queryByTestId("restock-accepted-by-503")).toBeNull();
+    await expect(within(table).queryAllByTestId("root-team-badge")).toHaveLength(0);
   },
 };

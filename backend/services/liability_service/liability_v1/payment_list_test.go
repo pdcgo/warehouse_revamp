@@ -11,6 +11,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
@@ -282,5 +283,47 @@ func TestPaymentList_ADateRangeNarrowsBeforeThePage(t *testing.T) {
 	var connectErr *connect.Error
 	if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeInvalidArgument {
 		t.Fatalf("an inverted period: err = %v, want InvalidArgument", err)
+	}
+}
+
+// ── who recorded each payment (the-team-balance-recorded-by-is-accepted) ────────────────────────────────────────────
+
+// EACH PAYMENT NAMES WHO RECORDED IT, and says when that was Root or the Administrator from outside the payer — the
+// payments table's Recorded by column and its "by Root team" badge. The creditor's list reads the same.
+func TestPaymentList_EachPaymentNamesWhoRecordedIt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	owes(t, svc, db, selling, warehouse, 50_000, 811)
+
+	record := func(ctx context.Context) uint64 {
+		res, err := svc.LiabilityPaymentRecord(ctx, connect.NewRequest(&liabilityv1.LiabilityPaymentRecordRequest{
+			TeamId: selling, CreditorTeamId: warehouse, Amount: 10_000, Note: "BCA 1234",
+		}))
+		if err != nil {
+			t.Fatalf("record: %v", err)
+		}
+
+		return res.Msg.GetPayment().GetId()
+	}
+
+	byMember := record(asCaller(42, selling, role_basev1.Role_ROLE_SELLING_OWNER))
+	byRoot := record(asCaller(rootUser, selling, role_basev1.Role_ROLE_UNSPECIFIED))
+
+	for _, team := range []uint64{selling, warehouse} {
+		got := map[uint64]*liabilityv1.LiabilityPayment{}
+		for _, p := range paymentRows(paymentList(t, svc, team, nil)) {
+			got[p.GetId()] = p
+		}
+
+		if p := got[byMember]; p.GetRecordedBy() != 42 || p.GetRecordedIsOverride() {
+			t.Errorf("team %d: the owner's payment reads recorded by %d, override %v — want 42, false",
+				team, p.GetRecordedBy(), p.GetRecordedIsOverride())
+		}
+
+		if p := got[byRoot]; p.GetRecordedBy() != rootUser || !p.GetRecordedIsOverride() {
+			t.Errorf("team %d: Root's payment reads recorded by %d, override %v — want %d, true",
+				team, p.GetRecordedBy(), p.GetRecordedIsOverride(), rootUser)
+		}
 	}
 }

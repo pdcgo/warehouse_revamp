@@ -14,6 +14,7 @@ import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { personName } from "../../lib/users";
+import { RootTeamBadge } from "../../components/entity/ActorName";
 import { useTeams } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { useRestockPeople, useRestockRequests } from "../../features/restock/queries";
@@ -270,8 +271,11 @@ export function RestockSellingPage() {
     return others.size > 0 ? `${name} ${t("restock.table.moreSuppliers", { count: others.size })}` : name;
   }
 
-  // A date cell: when, then by whom under it — two lines, one event. A dash until it happens.
-  function whenBy(unix: bigint, userId: bigint, testId: string) {
+  // A date cell: when, then by whom under it — two lines, one event. A dash until it happens. The person carries the
+  // "by Root team" badge when Root or the System Administrator did it from outside the team
+  // (an-override-shows-a-platform-badge) — on the same line, never a third one: the badge alone after the name, as the
+  // by-line already names the person.
+  function whenBy(unix: bigint, userId: bigint, testId: string, isOverride = false) {
     if (unix <= 0n) return <Span color="fg.muted">—</Span>;
     const by = actorLabel(userId);
 
@@ -283,6 +287,7 @@ export function RestockSellingPage() {
         {by && (
           <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap" data-testid={testId}>
             {t("restock.table.by", { name: by })}
+            {isOverride && <RootTeamBadge size="xs" ms="1.5" />}
           </Span>
         )}
       </Stack>
@@ -460,12 +465,21 @@ export function RestockSellingPage() {
                 <Flex align="center" gap="2">
                   <RestockStatusBadge status={request.status} />
                   {missingBadge(request)}
-                  <Text fontSize="xs" color="fg.muted" truncate flex="1" minW="0">
+                  {/* Root's restock from outside carries the "by Root team" badge after the name
+                      (an-override-shows-a-platform-badge); that line may take two rows rather than cut the badge off. */}
+                  <Text
+                    fontSize="xs"
+                    color="fg.muted"
+                    flex="1"
+                    minW="0"
+                    {...(request.createdByIsOverride ? { lineClamp: 2 } : { truncate: true })}
+                  >
                     {formatUnixDateTimeShort(request.createdAtUnix)}
                     {by && (
                       <Span data-testid={`restock-created-by-${request.id}`}>
                         {" · "}
                         {by}
+                        {request.createdByIsOverride && <RootTeamBadge size="xs" ms="1.5" />}
                       </Span>
                     )}
                   </Text>
@@ -554,13 +568,24 @@ export function RestockSellingPage() {
                   {/* Created: when, and BY WHOM — one event, so one cell. Date AND TIME (owner): several restocks are
                       raised in one morning, and the day alone cannot put them in order. */}
                   <Table.Cell>
-                    {whenBy(request.createdAtUnix, request.createdByUserId, `restock-created-by-${request.id}`)}
+                    {whenBy(
+                      request.createdAtUnix,
+                      request.createdByUserId,
+                      `restock-created-by-${request.id}`,
+                      request.createdByIsOverride,
+                    )}
                   </Table.Cell>
                   {/* Accepted: when the goods landed, and WHO counted them — the person on the other side to ask about
-                      a short delivery. Empty until it happens, which is the honest reading of a request nobody has
-                      opened the box for. */}
+                      a short delivery, with the "by Root team" badge when Root counted it in from outside the warehouse
+                      (an-override-shows-a-platform-badge). Empty until it happens, which is the honest reading of a
+                      request nobody has opened the box for. */}
                   <Table.Cell>
-                    {whenBy(request.acceptedAtUnix, request.acceptedByUserId, `restock-accepted-by-${request.id}`)}
+                    {whenBy(
+                      request.acceptedAtUnix,
+                      request.acceptedByUserId,
+                      `restock-accepted-by-${request.id}`,
+                      request.acceptedByIsOverride,
+                    )}
                   </Table.Cell>
                   {/* An overflow MENU (owner): ongoing has three actions, and named items with leading icons are the
                       house pattern for row actions. */}

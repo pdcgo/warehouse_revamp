@@ -277,6 +277,11 @@ message LiabilityLog {
   // question this field exists for.
   uint64 actor_id = 11;
 
+  // THE ACTOR WAS AN OVERRIDE — Root or the System Administrator caused it inside a team they hold no role in
+  // (an-override-is-stamped-in-every-service). Both legs carry it, as both carry the actor. The ledger names the person
+  // with the shared "by Root team" badge beside them (the-team-balance-recorded-by-is-accepted).
+  bool is_override = 12;
+
   int64 created_at_unix = 10;
 }
 
@@ -833,6 +838,11 @@ message LiabilityPayment {
   // *Paid from* existed — that one's acceptance posts only the `to` leg.
   uint64 from_account_id = 13;
   uint64 to_account_id = 14;
+
+  // `recorded_by` WAS AN OVERRIDE — Root or the System Administrator recorded the claim inside a team they hold no
+  // role in (an-override-is-stamped-in-every-service). The payments table names the person with the shared
+  // "by Root team" badge beside them (the-team-balance-recorded-by-is-accepted).
+  bool recorded_is_override = 15;
 }
 
 message LiabilityPaymentRecordRequest {

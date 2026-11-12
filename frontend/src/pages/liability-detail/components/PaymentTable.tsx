@@ -7,6 +7,9 @@ import type { LiabilityPayment } from "../../../gen/warehouse/liability/v1/liabi
 import { formatRupiah } from "../../../lib/money";
 import { formatUnixDateTimeShort } from "../../../lib/datetime";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
+import { ActorName } from "../../../components/entity/ActorName";
+import { useActors } from "../../../features/users/queries";
+import { personName } from "../../../lib/users";
 import { PaymentProof } from "./PaymentProof";
 
 function statusKey(status: LiabilityPaymentStatus): string {
@@ -64,6 +67,16 @@ export function PaymentTable({
   phone = false,
 }: PaymentTableProps) {
   const { t } = useTranslation();
+  // WHO RECORDED EACH PAYMENT (the-team-balance-recorded-by-is-accepted): the person who made the claim — `recorded_by`,
+  // named in one batch — with the "by Root team" badge when Root or the System Administrator recorded it from outside
+  // the payer (`recorded_is_override`). A column on a desktop, a muted line on a phone: the Expenses list's accepted
+  // shape. 0 is a claim nobody was recorded for — a dash, and never a badge.
+  const people = useActors(rows.map((p) => p.recordedBy)).data;
+  const byOf = (p: LiabilityPayment) => {
+    const name = p.recordedBy === 0n ? "—" : personName(people?.get(p.recordedBy.toString()), `#${p.recordedBy}`);
+
+    return { name, isOverride: p.recordedIsOverride && p.recordedBy !== 0n };
+  };
 
   // An empty tab says so with the list's hint, never a bare grey line (an-empty-list-shows-a-hint).
   if (rows.length === 0) {
@@ -129,6 +142,13 @@ export function PaymentTable({
               {formatUnixDateTimeShort(p.createdAtUnix)}
               {p.note ? ` · ${p.note}` : ""}
             </Text>
+            <Text fontSize="xs" color="fg.muted" mt="0.5" data-testid={`liability-detail-payment-by-${p.id}`}>
+              <ActorName
+                name={t("liabilityDetail.recordedBy", { name: byOf(p).name })}
+                isOverride={byOf(p).isOverride}
+                size="xs"
+              />
+            </Text>
             {reason(p)}
             <Flex justify="space-between" align="center" gap="2" mt="1.5" wrap="wrap">
               <PaymentProof teamId={readerTeamId} documentIds={p.documentIds} />
@@ -147,6 +167,7 @@ export function PaymentTable({
           <Table.ColumnHeader>{t("liabilityDetail.colDate")}</Table.ColumnHeader>
           <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
           <Table.ColumnHeader>{t("liabilityDetail.colNote")}</Table.ColumnHeader>
+          <Table.ColumnHeader>{t("liabilityDetail.colRecordedBy")}</Table.ColumnHeader>
           {/* §Payment Flow's middle step — *"Team B check manually"* — needs something to look at. */}
           <Table.ColumnHeader>{t("liabilityDetail.colProof")}</Table.ColumnHeader>
           <Table.ColumnHeader>{t("liabilityDetail.colStatus")}</Table.ColumnHeader>
@@ -164,6 +185,9 @@ export function PaymentTable({
                 <Text>{p.note || "—"}</Text>
                 {reason(p)}
               </Stack>
+            </Table.Cell>
+            <Table.Cell data-testid={`liability-detail-payment-by-${p.id}`}>
+              <ActorName name={byOf(p).name} isOverride={byOf(p).isOverride} />
             </Table.Cell>
             <Table.Cell>
               <PaymentProof teamId={readerTeamId} documentIds={p.documentIds} />

@@ -56,6 +56,17 @@ export function restockRaisedByForStory(id: bigint, userId: bigint) {
 }
 
 /**
+ * For a story: who signed for (`arrived`) or counted in (`accepted`) restock `id` — the person the lists' by-lines name.
+ * Pair it with `restockLogByForStory` on that step's trail row for its override flag.
+ */
+export function restockStepByForStory(id: bigint, step: "arrived" | "accepted", userId: bigint) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no restock ${id} in the stub`);
+  if (step === "arrived") row.arrivedByUserId = userId;
+  else row.acceptedByUserId = userId;
+}
+
+/**
  * For a story: who took ONE step of restock `id`'s timeline (the trail row `logId`), and whether it was Root or the
  * System Administrator from outside the team — served as `is_override`, the "by Root team" badge.
  */
@@ -139,6 +150,9 @@ function landedOf(r: RestockFixture, l: LineFixture): number {
   return unitHpp(l.total, l.count, r.shipmentCost + r.warehouseAdditionalCost, allQty);
 }
 
+// The trail row that moved restock `r` INTO `to` — never an edit, which keeps the status.
+const stepLog = (r: RestockFixture, to: S) => r.logs.find((l) => l.toStatus === to && l.fromStatus !== l.toStatus);
+
 // The restock as the wire carries it — prices worked out, totals summed, the trail only when asked. Money is a
 // double, unrounded, as the server stores it (money-is-double-in-the-api-too).
 function toWire(r: RestockFixture, withLogs: boolean) {
@@ -159,6 +173,12 @@ function toWire(r: RestockFixture, withLogs: boolean) {
     subtotal,
     total: subtotal + r.shipmentCost,
     logs: withLogs ? r.logs : [],
+    // Each by-line's flag, as the server reads it for the list (an-override-shows-a-platform-badge): the create's is the
+    // trail's FIRST row; the arrive's is the row that moved it to arrived — or, counted straight from ongoing, the
+    // accept's; the accept's is the row that moved it to accepted. An edit keeps the status and is no step.
+    createdByIsOverride: r.logs[0]?.isOverride === true,
+    arrivedByIsOverride: (stepLog(r, S.ARRIVED) ?? stepLog(r, S.ACCEPTED))?.isOverride === true,
+    acceptedByIsOverride: stepLog(r, S.ACCEPTED)?.isOverride === true,
   };
 }
 

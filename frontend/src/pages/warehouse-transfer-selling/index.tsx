@@ -21,6 +21,7 @@ import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseTransferStatusBadge";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
+import { RootTeamBadge } from "../../components/entity/ActorName";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
@@ -201,9 +202,17 @@ export function WarehouseTransferSellingPage() {
                                 <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
                                   {formatUnixDateTimeShort(transfer.createdAtUnix)}
                                 </Span>
+                                {/* Who opened it — with the "by Root team" badge when Root opened it from outside the
+                                    team (an-override-shows-a-platform-badge). */}
                                 {createdBy && (
-                                  <Span fontSize="xs" color="fg.muted">
+                                  <Span
+                                    fontSize="xs"
+                                    color="fg.muted"
+                                    whiteSpace={transfer.createdByIsOverride ? "nowrap" : undefined}
+                                    data-testid={`transfer-created-by-${transfer.id}`}
+                                  >
                                     {t("warehouseTransfer.table.by", { name: createdBy })}
+                                    {transfer.createdByIsOverride && <RootTeamBadge size="xs" ms="1.5" />}
                                   </Span>
                                 )}
                               </Stack>

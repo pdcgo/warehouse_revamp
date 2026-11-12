@@ -47,6 +47,7 @@ import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { RootTeamBadge } from "../../components/entity/ActorName";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
@@ -275,6 +276,9 @@ export function RestockWarehousePage() {
         {by && (
           <Span fontSize="xs" color="fg.muted" lineClamp={1} data-testid={`restock-created-by-${request.id}`}>
             {t("restock.table.by", { name: by })}
+            {/* The "by Root team" badge when Root raised it from outside the team (an-override-shows-a-platform-badge) —
+                after the name, on its line. */}
+            {request.createdByIsOverride && <RootTeamBadge size="xs" ms="1.5" />}
           </Span>
         )}
       </Stack>
@@ -282,8 +286,9 @@ export function RestockWarehousePage() {
   }
 
   // A DATE CELL — short, with its time, Jakarta's (a-table-date-is-short-and-every-time-is-wib); who did it small under
-  // it when it is worth saying. A dash until it happens.
-  function whenCell(unix: bigint, userId: bigint, testId: string) {
+  // it when it is worth saying, with the "by Root team" badge after the name when Root did it from outside the team
+  // (an-override-shows-a-platform-badge) — on the same line. A dash until it happens.
+  function whenCell(unix: bigint, userId: bigint, testId: string, isOverride = false) {
     if (unix <= 0n)
       return (
         <Span color="fg.muted" data-testid={testId}>
@@ -300,6 +305,7 @@ export function RestockWarehousePage() {
         {by && (
           <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap" data-testid={`${testId}-by`}>
             {t("restock.table.by", { name: by })}
+            {isOverride && <RootTeamBadge size="xs" ms="1.5" />}
           </Span>
         )}
       </Stack>
@@ -477,12 +483,18 @@ export function RestockWarehousePage() {
                   {formatUnixDateTimeShort(request.createdAtUnix)}
                 </Text>
               </Flex>
-              <Text fontSize="sm" truncate data-testid={`restock-from-${request.id}`}>
+              <Text
+                fontSize="sm"
+                // Root's restock from outside: the line may take two rows rather than cut the badge off.
+                {...(request.createdByIsOverride ? { lineClamp: 2 } : { truncate: true })}
+                data-testid={`restock-from-${request.id}`}
+              >
                 {teamLabel(request.requestingTeamId)}
                 {actorLabel(request.createdByUserId) && (
-                  <Span fontSize="xs" color="fg.muted">
+                  <Span fontSize="xs" color="fg.muted" data-testid={`restock-created-by-${request.id}`}>
                     {" · "}
                     {t("restock.table.by", { name: actorLabel(request.createdByUserId) })}
+                    {request.createdByIsOverride && <RootTeamBadge size="xs" ms="1.5" />}
                   </Span>
                 )}
               </Text>
@@ -572,7 +584,12 @@ export function RestockWarehousePage() {
                     under the team), and when the box reached the door with who signed for it. */}
                 <Table.Cell>{whenCell(request.createdAtUnix, 0n, `restock-created-${request.id}`)}</Table.Cell>
                 <Table.Cell>
-                  {whenCell(request.arrivedAtUnix, request.arrivedByUserId, `restock-arrived-${request.id}`)}
+                  {whenCell(
+                    request.arrivedAtUnix,
+                    request.arrivedByUserId,
+                    `restock-arrived-${request.id}`,
+                    request.arrivedByIsOverride,
+                  )}
                 </Table.Cell>
                 <Table.Cell textAlign="end">{rowActions(request)}</Table.Cell>
               </Table.Row>

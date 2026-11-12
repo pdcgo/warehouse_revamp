@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 )
 
 func listTransferIDs(t *testing.T, f *wtFixture, team uint64, filter *inventoryv1.WarehouseTransferListFilter) []uint64 {
@@ -74,6 +75,83 @@ func TestWarehouseTransferList_EachSideSeesItsOwn(t *testing.T) {
 		got := listTransferIDs(t, f, c.team, c.filter)
 		if !slices.Equal(got, c.want) && !(len(got) == 0 && len(c.want) == 0) {
 			t.Fatalf("%s: ids %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+// transferListOverrides is a page of WarehouseTransferList as `team`: each transfer's created_by_is_override, by id.
+func transferListOverrides(t *testing.T, f *wtFixture, team uint64) map[uint64]bool {
+	t.Helper()
+
+	res, err := f.svc.WarehouseTransferList(ctxUser(1), connect.NewRequest(&inventoryv1.WarehouseTransferListRequest{
+		TeamId: team, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("list as team %d: %v", team, err)
+	}
+
+	out := map[uint64]bool{}
+
+	for _, item := range res.Msg.GetItems() {
+		for id, tr := range item.GetWarehouseTransfer().GetMapData() {
+			out[id] = tr.GetCreatedByIsOverride()
+		}
+	}
+
+	return out
+}
+
+// WHO RAISED IT, AND WHETHER ROOT DID FROM OUTSIDE (an-override-shows-a-platform-badge): the list's created-by cell
+// draws the "by Root team" badge from `created_by_is_override`, read from the trail's FIRST row — the create's. Root
+// opening a transfer for a seller it is not in reads true on every side; the seller's own reads false, and stays false
+// when Root moves it on later (a later trail row, not the create's).
+func TestWarehouseTransferList_CreatedByIsOverride(t *testing.T) {
+	f := wtStocked(t)
+
+	res, err := f.svc.WarehouseTransferCreate(ctxAs(ovRoot, otMelati, role_basev1.Role_ROLE_UNSPECIFIED),
+		connect.NewRequest(&inventoryv1.WarehouseTransferCreateRequest{
+			TeamId: otMelati, FromWarehouseId: wtA, ToWarehouseId: wtB, Lines: []*inventoryv1.WarehouseTransferLine{wtLine(wtKaosHitam, 1)},
+		}))
+	if err != nil {
+		t.Fatalf("Root's create: %v", err)
+	}
+
+	byRoot := res.Msg.GetTransfer().GetId()
+
+	res, err = f.svc.WarehouseTransferCreate(ctxAs(wtSeller, otMelati, role_basev1.Role_ROLE_SELLING_ADMIN),
+		connect.NewRequest(&inventoryv1.WarehouseTransferCreateRequest{
+			TeamId: otMelati, FromWarehouseId: wtA, ToWarehouseId: wtB, Lines: []*inventoryv1.WarehouseTransferLine{wtLine(wtKaosPolos, 1)},
+		}))
+	if err != nil {
+		t.Fatalf("the seller's create: %v", err)
+	}
+
+	bySeller := res.Msg.GetTransfer().GetId()
+
+	// Root processes the seller's transfer from outside A: an override on the trail's SECOND row only.
+	_, err = f.svc.WarehouseTransferProcess(ctxAs(ovRoot, wtA, role_basev1.Role_ROLE_UNSPECIFIED),
+		connect.NewRequest(&inventoryv1.WarehouseTransferProcessRequest{TeamId: wtA, TransferId: bySeller}))
+	if err != nil {
+		t.Fatalf("Root's process: %v", err)
+	}
+
+	want := map[uint64]bool{byRoot: true, bySeller: false}
+
+	for _, side := range []struct {
+		name string
+		team uint64
+	}{{"the seller", otMelati}, {"A", wtA}, {"B", wtB}} {
+		got := transferListOverrides(t, f, side.team)
+
+		for id, w := range want {
+			v, ok := got[id]
+			if !ok {
+				t.Fatalf("%s: transfer %d not on the page %v", side.name, id, got)
+			}
+
+			if v != w {
+				t.Errorf("%s: transfer %d created_by_is_override = %v, want %v", side.name, id, v, w)
+			}
 		}
 	}
 }

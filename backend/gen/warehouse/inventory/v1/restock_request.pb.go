@@ -888,6 +888,16 @@ type RestockRequest struct {
 	AcceptedAtUnix    int64  `protobuf:"varint,22,opt,name=accepted_at_unix,json=acceptedAtUnix,proto3" json:"accepted_at_unix,omitempty"`
 	LostAtUnix        int64  `protobuf:"varint,34,opt,name=lost_at_unix,json=lostAtUnix,proto3" json:"lost_at_unix,omitempty"`
 	CancelledAtUnix   int64  `protobuf:"varint,23,opt,name=cancelled_at_unix,json=cancelledAtUnix,proto3" json:"cancelled_at_unix,omitempty"`
+	// THE CREATE WAS AN OVERRIDE — Root or the System Administrator raised it inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service); the list's created-by cell shows the shared "by Root team" badge beside
+	// the creator (an-override-shows-a-platform-badge). The restock itself is not stamped: this is its trail's FIRST row's
+	// `restock_logs.is_override`, the create's. LIST ONLY — Detail carries the trail, whose first row says it.
+	CreatedByIsOverride bool `protobuf:"varint,40,opt,name=created_by_is_override,json=createdByIsOverride,proto3" json:"created_by_is_override,omitempty"`
+	// THE SAME FOR THE TWO STEPS THE LISTS NAME A PERSON FOR — who signed for the box (`arrived_by_user_id`) and who
+	// counted it in (`accepted_by_user_id`): each step's trail row's `restock_logs.is_override`. A box counted straight
+	// from ongoing was signed for by that count, so its arrive reads the accept's row. LIST ONLY, like the one above.
+	ArrivedByIsOverride  bool `protobuf:"varint,41,opt,name=arrived_by_is_override,json=arrivedByIsOverride,proto3" json:"arrived_by_is_override,omitempty"`
+	AcceptedByIsOverride bool `protobuf:"varint,42,opt,name=accepted_by_is_override,json=acceptedByIsOverride,proto3" json:"accepted_by_is_override,omitempty"`
 	// The trail, oldest first. DETAIL ONLY — List leaves it empty.
 	Logs          []*RestockLog `protobuf:"bytes,37,rep,name=logs,proto3" json:"logs,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1118,6 +1128,27 @@ func (x *RestockRequest) GetCancelledAtUnix() int64 {
 		return x.CancelledAtUnix
 	}
 	return 0
+}
+
+func (x *RestockRequest) GetCreatedByIsOverride() bool {
+	if x != nil {
+		return x.CreatedByIsOverride
+	}
+	return false
+}
+
+func (x *RestockRequest) GetArrivedByIsOverride() bool {
+	if x != nil {
+		return x.ArrivedByIsOverride
+	}
+	return false
+}
+
+func (x *RestockRequest) GetAcceptedByIsOverride() bool {
+	if x != nil {
+		return x.AcceptedByIsOverride
+	}
+	return false
 }
 
 func (x *RestockRequest) GetLogs() []*RestockLog {
@@ -3486,7 +3517,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x17\n" +
 	"\aat_unix\x18\x06 \x01(\x03R\x06atUnix\x12\x1f\n" +
 	"\vis_override\x18\a \x01(\bR\n" +
-	"isOverride\"\x97\v\n" +
+	"isOverride\"\xb8\f\n" +
 	"\x0eRestockRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12,\n" +
 	"\x12requesting_team_id\x18\x02 \x01(\x04R\x10requestingTeamId\x12!\n" +
@@ -3518,7 +3549,10 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x10accepted_at_unix\x18\x16 \x01(\x03R\x0eacceptedAtUnix\x12 \n" +
 	"\flost_at_unix\x18\" \x01(\x03R\n" +
 	"lostAtUnix\x12*\n" +
-	"\x11cancelled_at_unix\x18\x17 \x01(\x03R\x0fcancelledAtUnix\x126\n" +
+	"\x11cancelled_at_unix\x18\x17 \x01(\x03R\x0fcancelledAtUnix\x123\n" +
+	"\x16created_by_is_override\x18( \x01(\bR\x13createdByIsOverride\x123\n" +
+	"\x16arrived_by_is_override\x18) \x01(\bR\x13arrivedByIsOverride\x125\n" +
+	"\x17accepted_by_is_override\x18* \x01(\bR\x14acceptedByIsOverride\x126\n" +
 	"\x04logs\x18% \x03(\v2\".warehouse.inventory.v1.RestockLogR\x04logsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fJ\x04\b\x13\x10\x14J\x04\b\x19\x10\x1aJ\x04\b\x1a\x10\x1bR\n" +
 	"product_idR\x03skuR\x04nameR\bquantityR\rshipping_codeR\border_idR\vsupplier_idR\x10cod_shipping_feeR\x06eventsR\n" +
 	"cost_lines\"\xf9\x04\n" +

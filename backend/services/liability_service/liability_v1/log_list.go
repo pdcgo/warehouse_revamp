@@ -116,6 +116,8 @@ func (s *Service) LiabilityLogList(
 	}), nil
 }
 
+// entryToProto carries WHO CAUSED the entry and whether they were Root or the Administrator from outside the team
+// (every-entry-names-who-posted-it, the-team-balance-recorded-by-is-accepted) — the ledger's Recorded by.
 func entryToProto(e *liability_service_models.LiabilityLog) *liabilityv1.LiabilityLog {
 	return &liabilityv1.LiabilityLog{
 		Id:             e.ID,
@@ -127,6 +129,8 @@ func entryToProto(e *liability_service_models.LiabilityLog) *liabilityv1.Liabili
 		Reversal:       e.Reversal,
 		GroupId:        e.GroupID,
 		BalanceAfter:   e.BalanceAfter,
+		ActorId:        e.ActorID,
+		IsOverride:     e.IsOverride,
 		CreatedAtUnix:  e.CreatedAt.Unix(),
 	}
 }

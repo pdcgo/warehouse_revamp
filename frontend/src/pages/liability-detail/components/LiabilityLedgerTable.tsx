@@ -7,6 +7,9 @@ import { formatRupiah } from "../../../lib/money";
 import { causeKey } from "../format";
 import { formatUnixDateTimeShort } from "../../../lib/datetime";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
+import { ActorName } from "../../../components/entity/ActorName";
+import { useActors } from "../../../features/users/queries";
+import { personName } from "../../../lib/users";
 
 // ONE RELATIONSHIP'S LEDGER — the All tab's whole running ledger, or one direction of it (the receivable or the payable
 // tab) on the liability detail.
@@ -30,6 +33,16 @@ export function LiabilityLedgerTable({
   phone?: boolean;
 }) {
   const { t } = useTranslation();
+  // WHO RECORDED EACH ENTRY (the-team-balance-recorded-by-is-accepted, every-entry-names-who-posted-it): the person whose
+  // act moved the money — `actor_id`, named in one batch — with the "by Root team" badge when Root or the System
+  // Administrator did it from outside the team (`is_override`). A column on a desktop, a muted line on a phone: the
+  // Expenses list's accepted shape. 0 is a row nobody was recorded for — a dash, and never a badge.
+  const people = useActors(rows.map((e) => e.actorId)).data;
+  const byOf = (e: LiabilityLog) => {
+    const name = e.actorId === 0n ? "—" : personName(people?.get(e.actorId.toString()), `#${e.actorId}`);
+
+    return { name, isOverride: e.isOverride && e.actorId !== 0n };
+  };
 
   if (rows.length === 0) {
     return (
@@ -75,6 +88,13 @@ export function LiabilityLedgerTable({
                 {t("liabilityDetail.balanceAfterLine", { amount: formatRupiah(e.balanceAfter) })}
               </Text>
             </Flex>
+            <Text fontSize="xs" color="fg.muted" mt="0.5" data-testid={`liability-detail-by-${e.id}`}>
+              <ActorName
+                name={t("liabilityDetail.recordedBy", { name: byOf(e).name })}
+                isOverride={byOf(e).isOverride}
+                size="xs"
+              />
+            </Text>
           </Box>
         ))}
       </Stack>
@@ -87,6 +107,7 @@ export function LiabilityLedgerTable({
         <Table.Row>
           <Table.ColumnHeader>{t("liabilityDetail.colDate")}</Table.ColumnHeader>
           <Table.ColumnHeader>{t("liabilityDetail.colCause")}</Table.ColumnHeader>
+          <Table.ColumnHeader>{t("liabilityDetail.colRecordedBy")}</Table.ColumnHeader>
           <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
           <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colBalance")}</Table.ColumnHeader>
         </Table.Row>
@@ -110,6 +131,9 @@ export function LiabilityLedgerTable({
                   </Badge>
                 )}
               </Flex>
+            </Table.Cell>
+            <Table.Cell data-testid={`liability-detail-by-${e.id}`}>
+              <ActorName name={byOf(e).name} isOverride={byOf(e).isOverride} />
             </Table.Cell>
             {/* The one place a sign is legitimate: an entry is a MOVEMENT, and +/− means "this made
                 the balance go up / down". */}

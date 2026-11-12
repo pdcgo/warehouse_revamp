@@ -217,7 +217,9 @@
     "emptyAll": "Tidak ada perubahan saldo antara Anda dalam rentang ini.",
     "balanceAfterLine": "Saldo sesudah {{amount}}",
     "recordProofAttach": "Lampirkan Bukti",
-    "recordProofAttachAnother": "Lampirkan Lagi"
+    "recordProofAttachAnother": "Lampirkan Lagi",
+    "colRecordedBy": "Dicatat oleh",
+    "recordedBy": "Dicatat oleh {{name}}"
   },
   "common": {
     "perPage": "Per halaman",

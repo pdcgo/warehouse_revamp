@@ -51,6 +51,18 @@ export function transferRaisedByForStory(id: bigint, userId: bigint) {
   row.createdByUserId = userId;
 }
 
+/**
+ * For a story: who took ONE step of transfer `id`'s trail (the trail row `logId`), and whether it was Root or the
+ * System Administrator from outside the team — served as `is_override`, the "by Root team" badge. Row 1 is the create,
+ * which the list's created-by cell reads.
+ */
+export function transferLogByForStory(id: bigint, logId: bigint, userId: bigint, isOverride: boolean) {
+  const log = rows.find((r) => r.id === id)?.logs.find((l) => l.id === logId);
+  if (!log) throw new Error(`no trail row ${logId} on transfer ${id} in the stub`);
+  log.actorUserId = userId;
+  log.isOverride = isOverride;
+}
+
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 
 // The one building the fixture stock is held in (stubTransport's stockAvailability answers the same).
@@ -128,6 +140,8 @@ function toWire(r: TransferFixture, withLogs: boolean) {
     items,
     total: r.items.reduce((sum, l) => sum + l.total, 0),
     logs: withLogs ? r.logs : [],
+    // The create's flag, as the server reads it for the list: the trail's FIRST row (an-override-shows-a-platform-badge).
+    createdByIsOverride: r.logs[0]?.isOverride === true,
   };
 }
 

@@ -665,6 +665,11 @@ type WarehouseTransfer struct {
 	CancelledAtUnix   int64  `protobuf:"varint,29,opt,name=cancelled_at_unix,json=cancelledAtUnix,proto3" json:"cancelled_at_unix,omitempty"`
 	LostByUserId      uint64 `protobuf:"varint,30,opt,name=lost_by_user_id,json=lostByUserId,proto3" json:"lost_by_user_id,omitempty"`
 	LostAtUnix        int64  `protobuf:"varint,31,opt,name=lost_at_unix,json=lostAtUnix,proto3" json:"lost_at_unix,omitempty"`
+	// THE CREATE WAS AN OVERRIDE — Root or the System Administrator opened it inside a team they hold no role in
+	// (an-override-is-stamped-in-every-service); the list's created-by cell shows the shared "by Root team" badge beside
+	// the creator (an-override-shows-a-platform-badge). The transfer itself is not stamped: this is its trail's FIRST row's
+	// `warehouse_transfer_logs.is_override`, the create's. LIST ONLY — Detail carries the trail, whose first row says it.
+	CreatedByIsOverride bool `protobuf:"varint,33,opt,name=created_by_is_override,json=createdByIsOverride,proto3" json:"created_by_is_override,omitempty"`
 	// The trail, oldest first. DETAIL ONLY — List leaves it empty.
 	Logs          []*WarehouseTransferLog `protobuf:"bytes,32,rep,name=logs,proto3" json:"logs,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -916,6 +921,13 @@ func (x *WarehouseTransfer) GetLostAtUnix() int64 {
 		return x.LostAtUnix
 	}
 	return 0
+}
+
+func (x *WarehouseTransfer) GetCreatedByIsOverride() bool {
+	if x != nil {
+		return x.CreatedByIsOverride
+	}
+	return false
 }
 
 func (x *WarehouseTransfer) GetLogs() []*WarehouseTransferLog {
@@ -2577,7 +2589,7 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x17\n" +
 	"\aat_unix\x18\x06 \x01(\x03R\x06atUnix\x12\x1f\n" +
 	"\vis_override\x18\a \x01(\bR\n" +
-	"isOverride\"\x85\v\n" +
+	"isOverride\"\xba\v\n" +
 	"\x11WarehouseTransfer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12*\n" +
@@ -2612,7 +2624,8 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x11cancelled_at_unix\x18\x1d \x01(\x03R\x0fcancelledAtUnix\x12%\n" +
 	"\x0flost_by_user_id\x18\x1e \x01(\x04R\flostByUserId\x12 \n" +
 	"\flost_at_unix\x18\x1f \x01(\x03R\n" +
-	"lostAtUnix\x12@\n" +
+	"lostAtUnix\x123\n" +
+	"\x16created_by_is_override\x18! \x01(\bR\x13createdByIsOverride\x12@\n" +
 	"\x04logs\x18  \x03(\v2,.warehouse.inventory.v1.WarehouseTransferLogR\x04logs\"^\n" +
 	"\x15WarehouseTransferLine\x12&\n" +
 	"\n" +

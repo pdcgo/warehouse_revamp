@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, waitFor, within } from "storybook/test";
 
+import { restockLogByForStory, restockRaisedByForStory, restockStepByForStory } from "../../../../.storybook/restockStub";
 import { WAREHOUSE_META, loaded } from "./kit";
 
 // RESTOCK WAREHOUSE — the screen's own rules and what a row shows — who and when, the courier, its products.
@@ -95,5 +96,77 @@ export const TheMoreProductsLineStartsAtTheLeft: Story = {
     const summary = more.parentElement!.firstElementChild as HTMLElement;
 
     await expect(Math.abs(more.getBoundingClientRect().left - summary.getBoundingClientRect().left)).toBeLessThan(1);
+  },
+};
+
+// RAISED BY ROOT FROM OUTSIDE (an-override-shows-a-platform-badge): Fajar, a Root, raised 501 inside Toko Melati — the
+// warehouse's From cell names him under the team with the "by Root team" badge. No other row carries one.
+const raisedByRoot = () => {
+  restockRaisedByForStory(501n, 66n);
+  restockLogByForStory(501n, 1n, 66n, true);
+};
+
+export const RaisedByRootFromOutside: Story = {
+  name: "Raised by Root from outside",
+  beforeEach: raisedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const created = canvas.getByTestId("restock-created-by-501");
+
+    await waitFor(() => expect(created).toHaveTextContent("by Fajar Nugroho"));
+    await expect(within(created).getByTestId("root-team-badge")).toHaveTextContent("by Root team");
+    await expect(within(canvas.getByTestId("restock-inbound-table")).getAllByTestId("root-team-badge")).toHaveLength(1);
+  },
+};
+
+export const MobileRaisedByRootFromOutside: Story = {
+  name: "Raised by Root from outside (phone)",
+  globals: { viewport: { value: "mobile2" } },
+  beforeEach: raisedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const created = await canvas.findByTestId("restock-created-by-501");
+
+    await waitFor(() => expect(created).toHaveTextContent("Fajar Nugroho"));
+    await expect(within(created).getByTestId("root-team-badge")).toBeVisible();
+    await expect(within(canvas.getByTestId("restock-inbound-table")).getAllByTestId("root-team-badge")).toHaveLength(1);
+  },
+};
+
+// SIGNED FOR BY ROOT FROM OUTSIDE (an-override-shows-a-platform-badge): Fajar, a Root, signed for 502 at Gudang Pusat,
+// which he is not in — its Arrived cell names him with the "by Root team" badge, read from the arrive's own trail row
+// (not the edit Ani made after it). Ani's create on the same row stays plain: the badge is that one step's.
+const signedByRoot = () => {
+  restockStepByForStory(502n, "arrived", 66n);
+  restockLogByForStory(502n, 2n, 66n, true);
+};
+
+export const ArrivedByRootFromOutside: Story = {
+  name: "Arrived by Root from outside",
+  beforeEach: signedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const arrived = canvas.getByTestId("restock-arrived-502-by");
+
+    await waitFor(() => expect(arrived).toHaveTextContent("by Fajar Nugroho"));
+    await expect(within(arrived).getByTestId("root-team-badge")).toHaveTextContent("by Root team");
+    await expect(within(canvas.getByTestId("restock-inbound-table")).getAllByTestId("root-team-badge")).toHaveLength(1);
+    await expect(within(canvas.getByTestId("restock-created-by-502")).queryByTestId("root-team-badge")).toBeNull();
+  },
+};
+
+// A phone block's Arrived line says only WHEN — it names nobody, so it carries no badge; who signed is the detail's
+// timeline, a tap away.
+export const MobileArrivedByRootFromOutside: Story = {
+  name: "Arrived by Root from outside (phone)",
+  globals: { viewport: { value: "mobile2" } },
+  beforeEach: signedByRoot,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const arrived = await canvas.findByTestId("restock-arrived-502");
+
+    await expect(arrived).toHaveTextContent("Arrived");
+    await expect(arrived).not.toHaveTextContent("Fajar");
+    await expect(within(canvas.getByTestId("restock-inbound-table")).queryAllByTestId("root-team-badge")).toHaveLength(0);
   },
 };

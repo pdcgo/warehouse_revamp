@@ -86,9 +86,18 @@ func (s *Service) WarehouseTransferList(
 		return nil, transferErr(err)
 	}
 
+	// WHO OPENED IT, AND WHETHER ROOT DID FROM OUTSIDE (an-override-shows-a-platform-badge): the transfer carries no
+	// flag — its trail does, one per act — so the page's creates are read in ONE lookup, never per row.
+	createdOverrides, err := transferCreatedOverrides(s.db.WithContext(ctx), rows)
+	if err != nil {
+		return nil, transferErr(err)
+	}
+
 	out := make([]*inventoryv1.WarehouseTransfer, 0, len(rows))
 	for i := range rows {
-		out = append(out, transferToProto(&rows[i], picks, putaway, false))
+		tr := transferToProto(&rows[i], picks, putaway, false)
+		tr.CreatedByIsOverride = createdOverrides[rows[i].ID]
+		out = append(out, tr)
 	}
 
 	items, ids := warehouseTransferListItems(out, req.Msg.GetDataRequest())
@@ -98,6 +107,44 @@ func (s *Service) WarehouseTransferList(
 		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
+}
+
+// transferCreatedOverrides is, for each transfer of a page, its trail's FIRST row's `is_override` — the create's row
+// (from_status empty, written in the create's own transaction), in the trail's order. ONE query for the page, keyed by
+// its ids and served by `warehouse_transfer_logs_transfer_idx` (transfer_id, id). A transfer with no trail row reads
+// false.
+func transferCreatedOverrides(db *gorm.DB, rows []models.WarehouseTransfer) (map[uint64]bool, error) {
+	out := make(map[uint64]bool, len(rows))
+	if len(rows) == 0 {
+		return out, nil
+	}
+
+	ids := make([]uint64, 0, len(rows))
+	for i := range rows {
+		ids = append(ids, rows[i].ID)
+	}
+
+	var firsts []struct {
+		TransferID uint64
+		IsOverride bool
+	}
+
+	err := db.
+		Model(&models.WarehouseTransferLog{}).
+		Select("DISTINCT ON (transfer_id) transfer_id, is_override").
+		Where("transfer_id IN ?", ids).
+		Order("transfer_id, id").
+		Scan(&firsts).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range firsts {
+		out[f.TransferID] = f.IsOverride
+	}
+
+	return out, nil
 }
 
 // applyTransferSearch narrows by free text over its number (a whole id only, with or without its #), the tracking
