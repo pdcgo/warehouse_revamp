@@ -16,6 +16,11 @@
 //                                                     slice sums it per rack and counts its products.
 //   (the built registry)                              a code is unique among the warehouse's undeleted racks
 //                                                     (AlreadyExists); a rack holding stock cannot be deleted.
+//   a-warehouse-sees-ready-value-but-a-shelf-only-units  a WAREHOUSE reader (sessionScenario.role a warehouse role)
+//                                                     reads RackDetail and RackStock in units only: the summary's value
+//                                                     and unknown-cost count and each line's price, cost-known and
+//                                                     value are left UNSET. Root, the Administrator and the admin
+//                                                     team's monitor (no role in the warehouse) keep them.
 //
 // WRITEABLE: a move made in one step is on the shelf in the next. preview.tsx resets it in its `beforeEach`.
 
@@ -29,8 +34,15 @@ import {
   type RackListResponseItemSchema,
   type RackService,
 } from "../src/gen/warehouse/inventory/v1/rack_pb";
+import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { products, racks } from "./fixtures";
+import { sessionScenario } from "./sessionScenario";
 import { SELF_ID } from "./userStub";
+
+// A WAREHOUSE READS A SHELF IN UNITS ONLY (a-warehouse-sees-ready-value-but-a-shelf-only-units) — the server's
+// `shelfInUnits`: the caller acts with a warehouse role in the scoped team.
+const WAREHOUSE_ROLES = new Set<Role>([Role.WAREHOUSE_OWNER, Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_STAFF]);
+const shelfInUnits = () => WAREHOUSE_ROLES.has(sessionScenario.role);
 
 interface ShelfLine {
   productId: bigint;
@@ -371,8 +383,13 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
       rack,
       summary: {
         totalOnHand: lines.reduce((acc, l) => acc + l.onHand, 0n),
-        totalValue: lines.reduce((acc, l) => acc + Number(l.onHand) * l.unitCost, 0),
-        unknownCostProducts: lines.filter((l) => l.unitCost === 0).length,
+        // Unset, not 0, for a warehouse.
+        ...(shelfInUnits()
+          ? {}
+          : {
+              totalValue: lines.reduce((acc, l) => acc + Number(l.onHand) * l.unitCost, 0),
+              unknownCostProducts: lines.filter((l) => l.unitCost === 0).length,
+            }),
         lastCountedAt: counted ?? "",
       },
     };
@@ -397,9 +414,10 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
                   {
                     productId: l.productId,
                     onHand: l.onHand,
-                    unitCost: l.unitCost,
-                    costKnown: l.unitCost > 0,
-                    value: Number(l.onHand) * l.unitCost,
+                    // Unset, not 0, for a warehouse — all three.
+                    ...(shelfInUnits()
+                      ? {}
+                      : { unitCost: l.unitCost, costKnown: l.unitCost > 0, value: Number(l.onHand) * l.unitCost }),
                     counting: l.counting,
                   },
                 ]),

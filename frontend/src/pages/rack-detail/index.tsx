@@ -70,6 +70,11 @@ function parseRackId(raw: string | undefined): bigint {
 // RackDetailPage answers the questions someone standing at a shelf has (#138/#197): which rack is this, what is on it,
 // what it is worth, and what has happened to it — a PAGE, not a dialog, because it is a record being read.
 //
+// WHAT IT IS WORTH IS NOT A WAREHOUSE'S (a-warehouse-sees-ready-value-but-a-shelf-only-units): a caller acting with a
+// warehouse role reads the shelf in UNITS ONLY, and the server leaves the money unset for it. The page draws the money
+// only where the server sent it — the tile's value line, Harga/pcs and Nilai, the phone block's price line — so a
+// warehouse sees no empty column and no Rp 0, and Root (from outside the warehouse) sees them all.
+//
 // ONE PAGE OF SECTIONS, AS EVERY OTHER DETAIL PAGE (owner: *"iya seperti usulmu, gunakan detail lain sebagai
 // referensi"*, a-rack-page-is-one-page-of-sections) — the product page's and the restock pages' shape. It REPLACES the
 // five vertical tabs of #197, and their pairs that read twice on one page are one section each: Produk carries Harga's
@@ -279,9 +284,12 @@ export function RackDetailPage() {
 
   const counted = summary?.lastCountedAt ? Date.parse(summary.lastCountedAt) : NaN;
   const unknownCost = summary?.unknownCostProducts ?? 0;
+  // The shelf's value, when the server gave it — never to a warehouse (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+  const totalValue = summary?.totalValue;
 
   // THE HEADER FIGURES, the order list's card strip (a-list-summary-is-the-order-lists-card-strip) — what is on the shelf
-  // and what it is worth, then when it was last counted. Under the title, over the sections: the whole rack's.
+  // and what it is worth, then when it was last counted. Under the title, over the sections: the whole rack's. A
+  // warehouse's tile is the units alone: no value line under them.
   const figures = (
     <SummaryStrip testId="rack-summary">
       <SummaryCard
@@ -293,17 +301,19 @@ export function RackDetailPage() {
           </Span>
         }
         line={
-          <>
-            <Span data-testid="rack-summary-value">{formatRupiah(summary?.totalValue ?? 0)}</Span>
-            {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds nothing to it, so a
-                shelf of never-restocked goods would otherwise read as a confident small number. */}
-            {unknownCost > 0 && (
-              <Span color="warning.fg" data-testid="rack-summary-unknown-cost">
-                {" · "}
-                {t("racks.detail.unknownCost", { count: unknownCost })}
-              </Span>
-            )}
-          </>
+          totalValue === undefined ? undefined : (
+            <>
+              <Span data-testid="rack-summary-value">{formatRupiah(totalValue)}</Span>
+              {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds nothing to it, so a
+                  shelf of never-restocked goods would otherwise read as a confident small number. */}
+              {unknownCost > 0 && (
+                <Span color="warning.fg" data-testid="rack-summary-unknown-cost">
+                  {" · "}
+                  {t("racks.detail.unknownCost", { count: unknownCost })}
+                </Span>
+              )}
+            </>
+          )
         }
         testId="rack-summary-stock"
       />
@@ -492,7 +502,10 @@ interface RackStockTableProps {
 }
 
 // THE SHELF, PRICED — what is on it, whose it is, how many here, the unit price and the value. It was two tabs, Produk and
-// Harga, the second this table with the money shown; on one page they read twice, so the money columns are always here.
+// Harga, the second this table with the money shown; on one page they read twice, so the money columns are here — for a
+// reader the server gives them to. A warehouse reads the shelf in units only
+// (a-warehouse-sees-ready-value-but-a-shelf-only-units): its lines carry no price, and the table draws neither column,
+// nor the phone block's price line.
 function RackStockTable({ lines, products, teams, loading, error }: RackStockTableProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -554,11 +567,15 @@ function RackStockTable({ lines, products, teams, loading, error }: RackStockTab
 
   // ⚠ UNKNOWN IS NOT FREE. A dash-like word rather than "Rp 0", because a zero would say the goods cost nothing — and
   // the difference is the whole reason the server sends `cost_known` rather than letting a screen infer it.
-  const money = (line: RackStockLine, v: number) => (line.costKnown ? formatRupiah(v) : t("racks.detail.costUnknown"));
+  const money = (line: RackStockLine, v: number | undefined) =>
+    line.costKnown ? formatRupiah(v ?? 0) : t("racks.detail.costUnknown");
+  // PRICED only when the server sent the money — `cost_known` is set (true or false) for every line of a reader given
+  // it, and unset on every line for a warehouse.
+  const priced = lines.some((line) => line.costKnown !== undefined);
 
   if (isMobile) {
     // A PHONE READS EACH PRODUCT AS A BLOCK (a-phone-reads-each-line-as-a-block) — the product at full width, whose it
-    // is, then the count on this rack, then its unit price × count = its value.
+    // is, then the count on this rack, then its unit price × count = its value (that last line not for a warehouse).
     return (
       <Stack gap="3" data-testid="rack-detail-stock">
         {lines.map((line) => {
@@ -585,13 +602,15 @@ function RackStockTable({ lines, products, teams, loading, error }: RackStockTab
                   </Span>
                 </Text>
               </Flex>
-              <Text fontSize="sm" color="fg.muted">
-                <Span data-testid={`rack-unit-cost-${line.productId}`}>{money(line, line.unitCost)}</Span>
-                {` × ${line.onHand.toString()} … `}
-                <Span fontWeight="bold" color="fg" data-testid={`rack-line-value-${line.productId}`}>
-                  {money(line, line.value)}
-                </Span>
-              </Text>
+              {priced && (
+                <Text fontSize="sm" color="fg.muted" data-testid={`rack-line-price-${line.productId}`}>
+                  <Span data-testid={`rack-unit-cost-${line.productId}`}>{money(line, line.unitCost)}</Span>
+                  {` × ${line.onHand.toString()} … `}
+                  <Span fontWeight="bold" color="fg" data-testid={`rack-line-value-${line.productId}`}>
+                    {money(line, line.value)}
+                  </Span>
+                </Text>
+              )}
             </Stack>
           );
         })}
@@ -610,8 +629,8 @@ function RackStockTable({ lines, products, teams, loading, error }: RackStockTab
             {/* NOT "On hand" — the app already uses that for the warehouse-wide number
                 (inventory.table.onHand), and this is one shelf's share of it. */}
             <Table.ColumnHeader textAlign="end">{t("racks.detail.onThisRack")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("racks.detail.unitCost")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("racks.detail.lineValue")}</Table.ColumnHeader>
+            {priced && <Table.ColumnHeader textAlign="end">{t("racks.detail.unitCost")}</Table.ColumnHeader>}
+            {priced && <Table.ColumnHeader textAlign="end">{t("racks.detail.lineValue")}</Table.ColumnHeader>}
           </Table.Row>
         </Table.Header>
 
@@ -631,12 +650,16 @@ function RackStockTable({ lines, products, teams, loading, error }: RackStockTab
                 <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-stock-onhand-${line.productId}`}>
                   {line.onHand.toString()}
                 </Table.Cell>
-                <Table.Cell textAlign="end" data-testid={`rack-unit-cost-${line.productId}`}>
-                  {money(line, line.unitCost)}
-                </Table.Cell>
-                <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-line-value-${line.productId}`}>
-                  {money(line, line.value)}
-                </Table.Cell>
+                {priced && (
+                  <Table.Cell textAlign="end" data-testid={`rack-unit-cost-${line.productId}`}>
+                    {money(line, line.unitCost)}
+                  </Table.Cell>
+                )}
+                {priced && (
+                  <Table.Cell textAlign="end" fontWeight="bold" data-testid={`rack-line-value-${line.productId}`}>
+                    {money(line, line.value)}
+                  </Table.Cell>
+                )}
               </Table.Row>
             );
           })}

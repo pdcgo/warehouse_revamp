@@ -36,7 +36,7 @@ func (s *Service) RackDetail(
 		return nil, rackDBError(err)
 	}
 
-	summary, err := s.rackSummary(ctx, req.Msg.GetTeamId(), req.Msg.GetRackId())
+	summary, err := s.rackSummary(ctx, req.Msg.GetTeamId(), req.Msg.GetRackId(), shelfInUnits(ctx))
 	if err != nil {
 		return nil, rackDBError(err)
 	}
@@ -53,9 +53,13 @@ func (s *Service) RackDetail(
 // ⚠ IT VALUES THE WHOLE SHELF, NOT ONE PAGE OF IT. The contents are paginated (`RackStock`), so a
 // total computed from the loaded page would be a header that changed as somebody paged — a number
 // that moves while the shelf does not.
+//
+// `unitsOnly` (shelfInUnits — a warehouse reader) leaves the value and the unknown-cost count UNSET and never asks what
+// the units cost (a-warehouse-sees-ready-value-but-a-shelf-only-units).
 func (s *Service) rackSummary(
 	ctx context.Context,
 	warehouseID, rackID uint64,
+	unitsOnly bool,
 ) (*inventoryv1.RackSummary, error) {
 	var levels []inventory_service_models.ProductPlacement
 
@@ -79,25 +83,11 @@ func (s *Service) rackSummary(
 		ids = append(ids, levels[i].ProductID)
 	}
 
-	// The same unit value StockCost answers — shared rather than copied, so the shelf's value and an
-	// order's COGS can never be computed two different ways (see unitCosts).
-	costs, err := s.unitCosts(ctx, warehouseID, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range levels {
-		unitCost, known := costs[levels[i].ProductID]
-		if !known {
-			// ⚠ AN UNKNOWN COST CONTRIBUTES NOTHING RATHER THAN A GUESS, and the count of those
-			// travels with the total — so a shelf of never-restocked goods reads as "worth little, and
-			// here is why" instead of as a confident small number.
-			summary.UnknownCostProducts++
-
-			continue
+	if !unitsOnly {
+		err = s.valueRackSummary(ctx, &summary, warehouseID, levels, ids)
+		if err != nil {
+			return nil, err
 		}
-
-		summary.TotalValue += float64(levels[i].StockCount) * unitCost
 	}
 
 	// WHEN THIS SHELF WAS LAST COUNTED — the later of a recount's `adjustment` rack row (0 when it found the rack exact)
@@ -125,4 +115,45 @@ func (s *Service) rackSummary(
 	}
 
 	return &summary, nil
+}
+
+// valueRackSummary sets what the shelf's units cost and how many of its products have no recorded cost — for a reader
+// given the shelf's money (not shelfInUnits). Both are SET, a 0 included: an empty shelf is worth Rp 0 to the owner.
+func (s *Service) valueRackSummary(
+	ctx context.Context,
+	summary *inventoryv1.RackSummary,
+	warehouseID uint64,
+	levels []inventory_service_models.ProductPlacement,
+	ids []uint64,
+) error {
+	// The same unit value StockCost answers — shared rather than copied, so the shelf's value and an
+	// order's COGS can never be computed two different ways (see unitCosts).
+	costs, err := s.unitCosts(ctx, warehouseID, ids)
+	if err != nil {
+		return err
+	}
+
+	var (
+		total   float64
+		unknown uint32
+	)
+
+	for i := range levels {
+		unitCost, known := costs[levels[i].ProductID]
+		if !known {
+			// ⚠ AN UNKNOWN COST CONTRIBUTES NOTHING RATHER THAN A GUESS, and the count of those
+			// travels with the total — so a shelf of never-restocked goods reads as "worth little, and
+			// here is why" instead of as a confident small number.
+			unknown++
+
+			continue
+		}
+
+		total += float64(levels[i].StockCount) * unitCost
+	}
+
+	summary.TotalValue = &total
+	summary.UnknownCostProducts = &unknown
+
+	return nil
 }

@@ -1064,11 +1064,15 @@ type RackSummary struct {
 	// than a guess, so a shelf full of never-restocked goods reads as worth little — which is why
 	// `unknown_cost_products` travels beside it rather than being left to be inferred from a low
 	// number.
-	TotalValue float64 `protobuf:"fixed64,2,opt,name=total_value,json=totalValue,proto3" json:"total_value,omitempty"`
+	//
+	// UNSET FOR A WAREHOUSE (a-warehouse-sees-ready-value-but-a-shelf-only-units): at the placement level a caller acting
+	// with a warehouse role reads units only — never 0, which would say the shelf is worth nothing. The owning seller and
+	// root (Root or the Administrator from outside the warehouse, and the admin team's monitor) are given it.
+	TotalValue *float64 `protobuf:"fixed64,2,opt,name=total_value,json=totalValue,proto3,oneof" json:"total_value,omitempty"`
 	// How many distinct products on this shelf have no recorded cost. Non-zero means `total_value` is
 	// understated, and by an unknown amount — the screen says so rather than presenting a confident
-	// figure built on a gap.
-	UnknownCostProducts uint32 `protobuf:"varint,3,opt,name=unknown_cost_products,json=unknownCostProducts,proto3" json:"unknown_cost_products,omitempty"`
+	// figure built on a gap. Unset with `total_value`.
+	UnknownCostProducts *uint32 `protobuf:"varint,3,opt,name=unknown_cost_products,json=unknownCostProducts,proto3,oneof" json:"unknown_cost_products,omitempty"`
 	// WHEN THIS SHELF WAS LAST COUNTED — the most recent stock-take (#139), RFC3339. Empty means never
 	// counted, which is a real and common answer for a new rack and must not render as a date.
 	//
@@ -1118,15 +1122,15 @@ func (x *RackSummary) GetTotalOnHand() int64 {
 }
 
 func (x *RackSummary) GetTotalValue() float64 {
-	if x != nil {
-		return x.TotalValue
+	if x != nil && x.TotalValue != nil {
+		return *x.TotalValue
 	}
 	return 0
 }
 
 func (x *RackSummary) GetUnknownCostProducts() uint32 {
-	if x != nil {
-		return x.UnknownCostProducts
+	if x != nil && x.UnknownCostProducts != nil {
+		return *x.UnknownCostProducts
 	}
 	return 0
 }
@@ -1155,11 +1159,14 @@ type RackStockLine struct {
 	// stock has no recorded cost. `cost_known` carries the distinction rather than leaving a screen to
 	// guess it from a zero, because "this shelf holds nothing of value" and "we never recorded what
 	// this cost" are opposite things to tell a manager.
-	UnitCost  float64 `protobuf:"fixed64,3,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
-	CostKnown bool    `protobuf:"varint,4,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
+	//
+	// UNSET FOR A WAREHOUSE, all three (a-warehouse-sees-ready-value-but-a-shelf-only-units): a caller acting with a
+	// warehouse role reads the shelf in units only. Set for everybody else, `cost_known` false included.
+	UnitCost  *float64 `protobuf:"fixed64,3,opt,name=unit_cost,json=unitCost,proto3,oneof" json:"unit_cost,omitempty"`
+	CostKnown *bool    `protobuf:"varint,4,opt,name=cost_known,json=costKnown,proto3,oneof" json:"cost_known,omitempty"`
 	// `on_hand × unit_cost`, exact — 0 when the cost is unknown. Computed here rather than in the
-	// client so the line and the header tile cannot disagree about the same multiplication.
-	Value float64 `protobuf:"fixed64,5,opt,name=value,proto3" json:"value,omitempty"`
+	// client so the line and the header tile cannot disagree about the same multiplication. Unset for a warehouse.
+	Value *float64 `protobuf:"fixed64,5,opt,name=value,proto3,oneof" json:"value,omitempty"`
 	// A COUNT HOLDS THIS PRODUCT ON THIS RACK (a-count-locks-the-product-on-the-rack): a move or a sample cannot take
 	// it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing). True while an open
 	// opname_session_snapshots row holds it (the-lock-is-the-open-snapshot-row).
@@ -1213,22 +1220,22 @@ func (x *RackStockLine) GetOnHand() int64 {
 }
 
 func (x *RackStockLine) GetUnitCost() float64 {
-	if x != nil {
-		return x.UnitCost
+	if x != nil && x.UnitCost != nil {
+		return *x.UnitCost
 	}
 	return 0
 }
 
 func (x *RackStockLine) GetCostKnown() bool {
-	if x != nil {
-		return x.CostKnown
+	if x != nil && x.CostKnown != nil {
+		return *x.CostKnown
 	}
 	return false
 }
 
 func (x *RackStockLine) GetValue() float64 {
-	if x != nil {
-		return x.Value
+	if x != nil && x.Value != nil {
+		return *x.Value
 	}
 	return 0
 }
@@ -2542,22 +2549,28 @@ const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\x05\x01\x02\x06\t\b\"\x85\x01\n" +
 	"\x12RackDetailResponse\x120\n" +
 	"\x04rack\x18\x01 \x01(\v2\x1c.warehouse.inventory.v1.RackR\x04rack\x12=\n" +
-	"\asummary\x18\x02 \x01(\v2#.warehouse.inventory.v1.RackSummaryR\asummary\"\xae\x01\n" +
+	"\asummary\x18\x02 \x01(\v2#.warehouse.inventory.v1.RackSummaryR\asummary\"\xe2\x01\n" +
 	"\vRackSummary\x12\"\n" +
-	"\rtotal_on_hand\x18\x01 \x01(\x03R\vtotalOnHand\x12\x1f\n" +
-	"\vtotal_value\x18\x02 \x01(\x01R\n" +
-	"totalValue\x122\n" +
-	"\x15unknown_cost_products\x18\x03 \x01(\rR\x13unknownCostProducts\x12&\n" +
-	"\x0flast_counted_at\x18\x04 \x01(\tR\rlastCountedAt\"\xb5\x01\n" +
+	"\rtotal_on_hand\x18\x01 \x01(\x03R\vtotalOnHand\x12$\n" +
+	"\vtotal_value\x18\x02 \x01(\x01H\x00R\n" +
+	"totalValue\x88\x01\x01\x127\n" +
+	"\x15unknown_cost_products\x18\x03 \x01(\rH\x01R\x13unknownCostProducts\x88\x01\x01\x12&\n" +
+	"\x0flast_counted_at\x18\x04 \x01(\tR\rlastCountedAtB\x0e\n" +
+	"\f_total_valueB\x18\n" +
+	"\x16_unknown_cost_products\"\xeb\x01\n" +
 	"\rRackStockLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x17\n" +
-	"\aon_hand\x18\x02 \x01(\x03R\x06onHand\x12\x1b\n" +
-	"\tunit_cost\x18\x03 \x01(\x01R\bunitCost\x12\x1d\n" +
+	"\aon_hand\x18\x02 \x01(\x03R\x06onHand\x12 \n" +
+	"\tunit_cost\x18\x03 \x01(\x01H\x00R\bunitCost\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"cost_known\x18\x04 \x01(\bR\tcostKnown\x12\x14\n" +
-	"\x05value\x18\x05 \x01(\x01R\x05value\x12\x1a\n" +
-	"\bcounting\x18\x06 \x01(\bR\bcounting\"Q\n" +
+	"cost_known\x18\x04 \x01(\bH\x01R\tcostKnown\x88\x01\x01\x12\x19\n" +
+	"\x05value\x18\x05 \x01(\x01H\x02R\x05value\x88\x01\x01\x12\x1a\n" +
+	"\bcounting\x18\x06 \x01(\bR\bcountingB\f\n" +
+	"\n" +
+	"_unit_costB\r\n" +
+	"\v_cost_knownB\b\n" +
+	"\x06_value\"Q\n" +
 	"\x0fRackTransaction\x12%\n" +
 	"\x0etransaction_id\x18\x01 \x01(\x04R\rtransactionId\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\"\xe4\x01\n" +
@@ -2837,6 +2850,8 @@ func file_warehouse_inventory_v1_rack_proto_init() {
 		(*RackListResponseItem_Rack)(nil),
 		(*RackListResponseItem_Stock)(nil),
 	}
+	file_warehouse_inventory_v1_rack_proto_msgTypes[13].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_rack_proto_msgTypes[14].OneofWrappers = []any{}
 	file_warehouse_inventory_v1_rack_proto_msgTypes[25].OneofWrappers = []any{
 		(*RackStockResponseItem_General)(nil),
 		(*RackStockResponseItem_RackStock)(nil),

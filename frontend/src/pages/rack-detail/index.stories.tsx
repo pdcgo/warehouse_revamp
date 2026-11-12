@@ -25,7 +25,8 @@ type Story = StoryObj<typeof meta>;
 
 // The rack as staff read it: the code, each product's team and stock count (a-rack-shows-its-stock-count-for-now), and
 // the acts; back is its icon, the acts carry theirs, the figures are the card strip, the sections are one page under a
-// nav (a-rack-page-is-one-page-of-sections).
+// nav (a-rack-page-is-one-page-of-sections). In units only — a warehouse is given no price and no value
+// (a-warehouse-sees-ready-value-but-a-shelf-only-units; Root's priced shelf is Shelf / Root reads the value).
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -44,6 +45,8 @@ export const Default: Story = {
     await expect(canvas.getByTestId("rack-action-sample").querySelector("svg")).not.toBeNull();
     await expect(canvas.getByTestId("rack-summary")).toBeVisible();
     await expect(canvas.getByTestId("rack-summary-count")).toHaveTextContent("25 units");
+    await expect(canvas.queryByTestId("rack-summary-value")).toBeNull();
+    await expect(stock(canvas).queryByTestId("rack-unit-cost-71")).toBeNull();
     await expect(canvas.getByTestId("section-nav")).toBeVisible();
   },
 };
@@ -51,7 +54,8 @@ export const Default: Story = {
 // A PHONE (every-page-has-a-mobile-story) — the title's row is one row and its acts fold into `⋯`: a staff member has
 // three — Report Found (staff-may-report-a-found) beside Record Sample and Move Goods — and past two they all fold
 // (a-phone-header-action-is-an-icon); the sections' chips stick at the top in place of the nav; each product is a block,
-// no headings (a-phone-reads-each-line-as-a-block); nothing runs past the screen's edge (nothing-runs-past-a-phones-edge).
+// no headings (a-phone-reads-each-line-as-a-block), and no price line under it for a warehouse
+// (a-warehouse-sees-ready-value-but-a-shelf-only-units); nothing runs past the screen's edge (nothing-runs-past-a-phones-edge).
 export const Mobile: Story = {
   name: "Mobile",
   globals: { viewport: { value: "mobile1" } },
@@ -71,8 +75,9 @@ export const Mobile: Story = {
     await expect(canvas.queryByTestId("section-nav")).toBeNull();
     await expect(within(canvas.getByTestId("rack-detail-stock")).queryAllByRole("columnheader")).toHaveLength(0);
     await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("12"));
-    // Its price on the block's last line — Rp … × 12 … Rp …
-    await expect(stock(canvas).getByTestId("rack-stock-row-71")).toHaveTextContent("× 12 …");
+    // No price on the block's last line for a warehouse — Root's *Rp … × 12 … Rp …* is Shelf / Root reads the value, phone.
+    await expect(stock(canvas).queryByTestId("rack-line-price-71")).toBeNull();
+    await expect(stock(canvas).getByTestId("rack-stock-row-71")).not.toHaveTextContent("Rp");
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

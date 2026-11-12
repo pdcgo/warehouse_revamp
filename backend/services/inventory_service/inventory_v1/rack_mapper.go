@@ -1,14 +1,25 @@
 package inventory_v1
 
 import (
+	"context"
 	"errors"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
+
+// shelfInUnits is whether the caller reads a rack and what sits on it in UNITS ONLY — no unit price, no value
+// (a-warehouse-sees-ready-value-but-a-shelf-only-units, docs/business/analytic/rpc_provide_decision.md): a caller acting
+// with a warehouse role in the scoped team, decided as the Analytic stock metrics decide a warehouse reader
+// (stockReaderOf). Root or the Administrator from outside the warehouse and the admin team's monitor hold no role there
+// (ROLE_UNSPECIFIED) and keep every figure. The money fields are then left UNSET, never 0.
+func shelfInUnits(ctx context.Context) bool {
+	return isWarehouseRole(san_auth.GetCallerRole(ctx))
+}
 
 func rackToProto(r *inventory_service_models.Rack) *inventoryv1.Rack {
 	return &inventoryv1.Rack{

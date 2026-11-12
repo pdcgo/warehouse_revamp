@@ -746,6 +746,25 @@ this screen could exist. Two things that decision is honest about: it is **new e
 roles**, and *"only what it holds"* is **not enforced** and cannot be by `product_service`, which
 does not know what any warehouse holds.
 
+### A warehouse reads a shelf in units (2026-11-12)
+
+[a-warehouse-sees-ready-value-but-a-shelf-only-units](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-ready-value-but-a-shelf-only-units):
+at the **placement level** — a rack and what sits on it — a caller acting with a warehouse role is given **units only**,
+no unit price and no value. Who that is is the Analytic stock metrics' warehouse reader: `shelfInUnits(ctx)`
+(`rack_mapper.go`) = `isWarehouseRole(san_auth.GetCallerRole(ctx))`. Root or the Administrator from outside the
+warehouse and the admin team's monitor hold no role there (`ROLE_UNSPECIFIED`) and keep every figure; a Root who is a
+member of the warehouse reads as that member.
+
+| read | a warehouse gets | everybody else | performance |
+| --- | --- | --- | --- |
+| `RackDetail` | `RackSummary.total_value` and `unknown_cost_products` **unset** (`optional` since this change — absent, never 0) | both set, a 0 included (an empty shelf is Rp 0 to Root) | the warehouse's read skips `unitCosts` (the batches aggregate): 3 statements instead of 4; the others' read unchanged — nil cost |
+| `RackStock` | each `RackStockLine`'s `unit_cost`, `cost_known`, `value` **unset** (`optional`) | all three set, `cost_known` false and `value` 0 for an unknown cost | the warehouse's read skips `unitCosts`: one statement fewer per page; the others' unchanged — nil cost |
+| unchanged — units already | `RackList` (STOCK slice: stock and product counts), `RackHistory` (rack rows carry no price), `PlacementList`, `BatchPlacementList`, `ProductPlaces`, `StockPickLocations`, `OpnameRackList` / `OpnameRackCount` | | |
+
+No read at this level sorts by value, so there is no sort to refuse. The rack page draws the money only where the read
+sent it (the tile's value line, *Harga/pcs* and *Nilai*, a phone block's *Rp … × 12 … Rp …*). Tests:
+`rack_detail_test.go`, `rack_stock_test.go`; stories `RackDetail / Shelf`; e2e `the_warehouse_reads_a_shelf_in_units.spec.ts`.
+
 ### Moving stock inside a warehouse (#136)
 
 A move is `RackMove` (below) — `StockMove`, `StockReceive`, `StockTransfer`, `StockPick` and `StockReturn` are gone:

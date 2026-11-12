@@ -69,14 +69,23 @@ func (s *Service) RackStock(
 	// WHAT EACH LINE IS WORTH (#197) — the same unit value StockCost answers, for THIS PAGE's products only.
 	// A cost per page rather than per shelf: the contents page, so valuing rows the caller cannot see
 	// would be work nobody asked for.
-	ids := make([]uint64, 0, len(levels))
-	for i := range levels {
-		ids = append(ids, levels[i].ProductID)
-	}
+	//
+	// A WAREHOUSE READS THE SHELF IN UNITS ONLY (a-warehouse-sees-ready-value-but-a-shelf-only-units, shelfInUnits): its
+	// lines carry no unit price, no cost-known flag and no value — UNSET, not 0 — and the costs are never read.
+	unitsOnly := shelfInUnits(ctx)
 
-	costs, err := s.unitCosts(ctx, warehouseID, ids)
-	if err != nil {
-		return nil, rackDBError(err)
+	var costs map[uint64]float64
+
+	if !unitsOnly {
+		ids := make([]uint64, 0, len(levels))
+		for i := range levels {
+			ids = append(ids, levels[i].ProductID)
+		}
+
+		costs, err = s.unitCosts(ctx, warehouseID, ids)
+		if err != nil {
+			return nil, rackDBError(err)
+		}
 	}
 
 	// Which of them a stock count holds on this rack — the Move and Sample dialogs lock those at 0
@@ -94,22 +103,27 @@ func (s *Service) RackStock(
 	lines := make([]*inventoryv1.RackStockLine, 0, len(levels))
 
 	for i := range levels {
-		unitCost, known := costs[levels[i].ProductID]
-
 		line := &inventoryv1.RackStockLine{
 			ProductId: levels[i].ProductID,
 			OnHand:    levels[i].StockCount,
-			// ⚠ 0 IS UNKNOWN, NOT FREE, and `cost_known` is what carries the difference. A screen left
-			// to infer it from a zero would show a shelf of never-restocked goods as worthless.
-			UnitCost:  unitCost,
-			CostKnown: known,
 			Counting:  isCounting(counting, levels[i].ProductID, rackID),
 		}
 
-		if known {
+		if !unitsOnly {
+			unitCost, known := costs[levels[i].ProductID]
+
+			// ⚠ 0 IS UNKNOWN, NOT FREE, and `cost_known` is what carries the difference. A screen left
+			// to infer it from a zero would show a shelf of never-restocked goods as worthless.
 			// Multiplied HERE rather than in the client, so a line and the header tile cannot disagree
-			// about the same arithmetic.
-			line.Value = float64(levels[i].StockCount) * unitCost
+			// about the same arithmetic — 0 when the cost is unknown.
+			value := 0.0
+			if known {
+				value = float64(levels[i].StockCount) * unitCost
+			}
+
+			line.UnitCost = &unitCost
+			line.CostKnown = &known
+			line.Value = &value
 		}
 
 		lines = append(lines, line)

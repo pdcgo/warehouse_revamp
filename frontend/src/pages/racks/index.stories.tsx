@@ -71,6 +71,9 @@ export const Default: Story = {
     await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
     await expect(canvas.getByTestId("rack-empty-B-02-1")).toHaveTextContent("Empty");
     await expect(canvas.queryByTestId("rack-empty-A-01-1")).toBeNull();
+    // UNITS ONLY AT THE PLACEMENT LEVEL (a-warehouse-sees-ready-value-but-a-shelf-only-units) — the strip and the rows
+    // count racks, products and pieces; no rupiah anywhere on the list.
+    await expect(canvasElement).not.toHaveTextContent("Rp");
   },
 };
 
@@ -85,6 +88,8 @@ export const Mobile: Story = {
 
     const row = await canvas.findByTestId("rack-row-A-01-1", {}, { timeout: 4000 });
     await waitFor(() => expect(row).toHaveTextContent("3 products · 25 pcs"));
+    // Units only, as on a desktop (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+    await expect(canvasElement).not.toHaveTextContent("Rp");
     await expect(canvas.getByTestId("open-create-rack")).toHaveAccessibleName("New Rack");
     await expect(canvas.getByTestId("open-create-rack")).toHaveTextContent("");
     await expect(canvas.queryAllByRole("columnheader")).toHaveLength(0);

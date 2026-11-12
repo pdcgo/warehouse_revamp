@@ -2161,6 +2161,8 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 
 ✅ Built 2026-11-12 — Ready stock's warehouse reader on screen: units on hand and stock value, sortable by it (story `ReadyAWarehouseReadsItsOwn`, e2e `the_inventory_metrics.spec.ts`). The rack screens' units only for a warehouse are still not built.
 
+✅ Built 2026-11-12 — the placement level in units for a warehouse: `RackDetail`'s value and unknown-cost count and `RackStock`'s unit price, cost-known and value are left unset for a caller acting with a warehouse role (Root from outside and the admin monitor keep them); the rack page draws the tile's value, *Harga/pcs · Nilai* and a phone block's price line only where sent (stories `RackDetail / Shelf`, e2e `the_warehouse_reads_a_shelf_in_units.spec.ts`). The rack list was units only already.
+
 ---
 
 ## ready-stock-is-folded-in-the-stock-changes-own-step

@@ -16,8 +16,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // THREE SECTIONS ON ONE PAGE, IN THE NAV'S ORDER — what is on the shelf first, then the rack's record, then what has
-// happened to it; none behind a tab, and no pair reading twice: Produk carries the price and the value, Riwayat the
-// Penempatan chip. Produk is lit as the page opens.
+// happened to it; none behind a tab, and no pair reading twice: Produk carries the price and the value (for a reader the
+// server gives them to — Shelf / Root reads the value; this staff member reads units only), Riwayat the Penempatan chip.
+// Produk is lit as the page opens.
 export const OnePageOfSections: Story = {
   name: "One page of sections",
   play: async ({ canvasElement }) => {
@@ -35,9 +36,11 @@ export const OnePageOfSections: Story = {
     }
     await expect(canvas.queryByRole("tablist")).toBeNull();
 
-    // Produk is priced — the Harga tab's two columns are its own.
-    await waitFor(() => expect(stock(canvas).getByTestId("rack-unit-cost-71")).toHaveTextContent(/^Rp/));
-    await expect(stock(canvas).getByTestId("rack-line-value-71")).toHaveTextContent(/^Rp/);
+    // Produk is the shelf; the Harga tab's two columns are its own, but not a warehouse's
+    // (a-warehouse-sees-ready-value-but-a-shelf-only-units) — staff read the units alone.
+    await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("12"));
+    await expect(stock(canvas).queryByTestId("rack-unit-cost-71")).toBeNull();
+    await expect(stock(canvas).queryByTestId("rack-line-value-71")).toBeNull();
     await expect(canvas.getByTestId("rack-info-code")).toHaveTextContent("A-01-1");
     // Info's three labels are words, never a raw i18n key (`racks.detail.description` was missing from both catalogues).
     const info = canvas.getByTestId("rack-info-panel");
