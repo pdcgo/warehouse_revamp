@@ -45,6 +45,7 @@ import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/prod
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import type { Costs } from "../orders/lines";
 import { useDebounced } from "../../lib/useDebounced";
+import { withPriceChanges } from "./priceChange";
 
 // The inventory screens' reads (#176).
 
@@ -645,6 +646,16 @@ export interface BatchDetail {
   acceptedByName: string;
   returnedQty: bigint;
   lastReturnUnix: bigint;
+
+  // WHAT EACH FIGURE WAS WORTH, from its own rows (BatchDetailResponse) — never re-priced at today's unit cost: a price
+  // correction reprices only the units left (a-late-cost-is-an-expense-not-a-revaluation). Tiba is `batch.lineCost`.
+  brokenValue: number;
+  lostValue: number;
+  usedValue: number;
+  // The batch's newest price correction: the price before it, for *dikoreksi dari Rp …* (the-correct-price-prototype-is-
+  // accepted). `priceCorrected` false = never corrected.
+  priceCorrected: boolean;
+  priceCorrectedFrom: number;
 }
 
 export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId: bigint }) {
@@ -667,6 +678,11 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
           acceptedByName: "",
           returnedQty: 0n,
           lastReturnUnix: 0n,
+          brokenValue: 0,
+          lostValue: 0,
+          usedValue: 0,
+          priceCorrected: false,
+          priceCorrectedFrom: 0,
         };
       }
 
@@ -756,6 +772,11 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
         acceptedByName,
         returnedQty: detail.returnedQty,
         lastReturnUnix: detail.lastReturnUnix,
+        brokenValue: detail.brokenValue,
+        lostValue: detail.lostValue,
+        usedValue: detail.usedValue,
+        priceCorrected: detail.priceCorrected,
+        priceCorrectedFrom: detail.priceCorrectedFrom,
       };
     },
   });
@@ -821,7 +842,9 @@ export function useBatchHistory(args: {
         dataRequest: stockHistoryRowData(),
         page: { page, limit: pageSize },
       });
-      return { movements: movementsFromList(res), pageInfo: res.pageInfo };
+      // A price correction reads as one — from → to, the value change, why and who (the-correct-price-prototype-is-
+      // accepted: the warehouse reads every correction of a batch it holds in its Riwayat).
+      return { movements: await withPriceChanges(movementsFromList(res)), pageInfo: res.pageInfo };
     },
   });
 }
@@ -900,5 +923,20 @@ export function useAdjustStock() {
     mutationFn: (vars: Parameters<typeof inventoryClient.stockAdjust>[0]) =>
       inventoryClient.stockAdjust(vars),
     onSuccess: () => invalidate(),
+  });
+}
+
+// KOREKSI HARGA — a batch's price correction by the owning team (the-owning-team-revalues-with-a-reason). It moves no
+// unit, but the price and the value it changes are read by the warehouse's stock screens AND the owner's product screens
+// (Batch, Price, Stock history, the stat row) — so it fans out to both prefixes.
+export function useBatchRevalue() {
+  const client = useQueryClient();
+  const invalidate = useInvalidateStock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof inventoryClient.batchRevalue>[0]) => inventoryClient.batchRevalue(vars),
+    onSuccess: async () => {
+      await Promise.all([invalidate(), client.invalidateQueries({ queryKey: ["products"] })]);
+    },
   });
 }

@@ -31,15 +31,17 @@ type batchRow struct {
 	SupplierID     uint64
 	PriceUnit      float64
 	InitStockCount int64
-	Ready          int64
-	StockValuation float64
-	Broken         int64
-	Lost           int64
-	ExpiredAt      *time.Time
-	CreatedAt      time.Time
-	CreatedBy      uint64
-	AcceptedBy     uint64
-	TxType         string
+	// What the minted units were worth at the price the batch was accepted at — kept for ever, never repriced.
+	InitStockValuation float64
+	Ready              int64
+	StockValuation     float64
+	Broken             int64
+	Lost               int64
+	ExpiredAt          *time.Time
+	CreatedAt          time.Time
+	CreatedBy          uint64
+	AcceptedBy         uint64
+	TxType             string
 }
 
 // The restock line's problem rows, by kind (#227): missing is LOST on this screen, broken is BROKEN. A problem row is
@@ -53,7 +55,7 @@ const (
 const batchSelect = `
 	b.id, COALESCE(r.id, 0) AS delivery_id, b.warehouse_id, COALESCE(r.receipt, '') AS receipt_no,
 	b.product_id, COALESCE(i.product_code, wti.product_code, '') AS product_code, COALESCE(i.name, wti.name, '') AS name, b.supplier_id,
-	b.price_unit, b.init_stock_count, b.stock_count AS ready, b.stock_valuation,
+	b.price_unit, b.init_stock_count, b.init_stock_valuation, b.stock_count AS ready, b.stock_valuation,
 	` + brokenExpr + ` AS broken,
 	` + lostExpr + ` AS lost,
 	b.expired_at, b.created_at,
@@ -73,8 +75,17 @@ func batchQuery(db *gorm.DB) *gorm.DB {
 // batchRowToProto maps a batch. Arrived = broken + lost + used + ready: the good units minted plus what the door found
 // wrong; used is what has left since. Every batch carries its price, so the cost is always known. Money is the stored
 // double, unrounded (money-is-double-in-the-api-too, the-backend-never-rounds-money).
+//
+// What arrived is worth at the price the batch was ACCEPTED at — the minted value per minted unit — never today's: a price
+// correction reprices only the units left (a-late-cost-is-an-expense-not-a-revaluation). Until a correction the two
+// agree.
 func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 	arrived := r.InitStockCount + r.Broken + r.Lost
+
+	acceptedPrice := r.PriceUnit
+	if r.InitStockCount > 0 {
+		acceptedPrice = r.InitStockValuation / float64(r.InitStockCount)
+	}
 
 	out := &inventoryv1.StockBatch{
 		Id:             r.ID,
@@ -92,7 +103,7 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 		Lost:           r.Lost,
 		Ready:          r.Ready,
 		Used:           r.InitStockCount - r.Ready,
-		LineCost:       float64(arrived) * r.PriceUnit,
+		LineCost:       float64(arrived) * acceptedPrice,
 		ReadyValue:     r.StockValuation,
 		CreatedAtUnix:  r.CreatedAt.Unix(),
 		AcceptedAtUnix: r.CreatedAt.Unix(),
@@ -142,33 +153,89 @@ func (s *Service) BatchDetail(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// UNITS THAT CAME BACK — an order's take released back into this batch. An order's transaction only ever takes, so
-	// its positive rows on the batch are its rollback (a-rollback-reverses-its-log-rows).
-	var returned struct {
-		Qty  int64
-		Last *time.Time
+	// ONE PASS OVER THE BATCH'S OWN ROWS (batch_logs_batch_idx):
+	//   - UNITS THAT CAME BACK — an order's take released back into this batch. An order's transaction only ever takes, so
+	//     its positive rows on the batch are its rollback (a-rollback-reverses-its-log-rows).
+	//   - ITS PRICE CORRECTIONS — what they changed the value by in all, and the newest one's price before it (priceExprs'
+	//     arithmetic): Terpakai's value below, and the screen's *dikoreksi dari Rp …*.
+	// The transaction is looked up only for a row that ADDED units (the AND stops at a take), never joined: a join over
+	// every row of a long-selling batch made the planner hash the whole inventory_transactions table — 10 ms at 3 000
+	// takes, growing with the table; 0.9 ms this way (TestPerf_BatchDetail_ALongCorrectedBatch).
+	var logs struct {
+		Qty           int64
+		Last          *time.Time
+		Revalued      float64
+		Corrections   int64
+		CorrectedFrom *float64
 	}
 
 	err = s.db.
 		WithContext(ctx).
-		Table("batch_logs AS l").
-		Joins("JOIN inventory_transactions t ON t.id = l.transaction_id").
-		Select("COALESCE(SUM(l.change_count), 0) AS qty, MAX(l.created_at) AS last").
-		Where("l.batch_id = ? AND t.tx_type = ? AND l.change_count > 0",
-			req.Msg.GetBatchId(), string(inventory_service_models.TxOrder)).
-		Scan(&returned).
+		Raw(`
+			SELECT
+				COALESCE(SUM(l.change_count) FILTER (WHERE l.came_back), 0) AS qty,
+				MAX(l.created_at) FILTER (WHERE l.came_back) AS last,
+				COALESCE(SUM(l.change_valuation) FILTER (WHERE l.change_type = @revaluation), 0) AS revalued,
+				COUNT(*) FILTER (WHERE l.change_type = @revaluation) AS corrections,
+				(ARRAY_AGG(l.price_unit_after - l.change_valuation / NULLIF(l.stock_count_after, 0) ORDER BY l.id DESC)
+					FILTER (WHERE l.change_type = @revaluation))[1] AS corrected_from
+			FROM (
+				SELECT l.id, l.created_at, l.change_count, l.change_type, l.change_valuation, l.price_unit_after,
+				       l.stock_count_after,
+				       l.change_count > 0 AND EXISTS (
+				           SELECT 1 FROM inventory_transactions t WHERE t.id = l.transaction_id AND t.tx_type = @order
+				       ) AS came_back
+				FROM batch_logs l
+				WHERE l.batch_id = @batch
+			) l`,
+			map[string]any{
+				"batch":       req.Msg.GetBatchId(),
+				"order":       string(inventory_service_models.TxOrder),
+				"revaluation": string(inventory_service_models.TxRevaluation),
+			}).
+		Scan(&logs).
 		Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	resp := &inventoryv1.BatchDetailResponse{
-		Batch:       batchRowToProto(&r),
-		ReturnedQty: returned.Qty,
+	// THE DOOR'S PROBLEM ROWS — Rusak and Hilang at the landed price they were written at; a transfer's batch has none.
+	var door struct {
+		Broken float64
+		Lost   float64
 	}
 
-	if returned.Last != nil {
-		resp.LastReturnUnix = returned.Last.Unix()
+	if r.DeliveryID != 0 {
+		err = s.db.
+			WithContext(ctx).
+			Table("restock_problem_items").
+			Select(`COALESCE(SUM(total) FILTER (WHERE problem_type = 'broken'), 0) AS broken,
+				COALESCE(SUM(total) FILTER (WHERE problem_type = 'missing'), 0) AS lost`).
+			Where("restock_id = ? AND product_id = ?", r.DeliveryID, r.ProductID).
+			Scan(&door).
+			Error
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	resp := &inventoryv1.BatchDetailResponse{
+		Batch:       batchRowToProto(&r),
+		ReturnedQty: logs.Qty,
+		BrokenValue: door.Broken,
+		LostValue:   door.Lost,
+		// What left, at the price each unit left at: the accepted value, moved by every correction, less what is left —
+		// the sum of the batch's own unit-moving rows, never units × today's price.
+		UsedValue:      r.InitStockValuation + logs.Revalued - r.StockValuation,
+		PriceCorrected: logs.Corrections > 0,
+	}
+
+	if logs.CorrectedFrom != nil {
+		resp.PriceCorrectedFrom = *logs.CorrectedFrom
+	}
+
+	if logs.Last != nil {
+		resp.LastReturnUnix = logs.Last.Unix()
 	}
 
 	return connect.NewResponse(resp), nil

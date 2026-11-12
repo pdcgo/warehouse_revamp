@@ -29,6 +29,7 @@ import { BatchOrigin, MovementKind } from "../src/gen/warehouse/inventory/v1/inv
 import { ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
 import { SAMPLE_LOST_WAREHOUSE, SAMPLE_PRODUCTS, SAMPLE_SELLER } from "../src/features/analytic/sample";
 import { products as productFixtures, teams as teamFixtures } from "./fixtures";
+import { isEmptied, priceLogsOf, priceNow } from "./batchPriceScenario";
 
 type Image = { url: string; thumbnailUrl: string };
 type ProductRow = (typeof productFixtures)[number] & { images: Image[] };
@@ -404,8 +405,37 @@ const figured = (productId: bigint) => {
   return row && row.teamId === FIGURED_TEAM ? row : undefined;
 };
 
-/** A product's batches — none for every sixth; one or two in Gudang Pusat and one in Gudang Cabang otherwise. */
+/**
+ * A product's batches as the reads answer them — as minted, unless a Koreksi Harga story corrected one's price or emptied
+ * it (batchPriceScenario.ts). Every other story reads the minted set.
+ */
 function batchesOf(productId: bigint): SampleBatch[] {
+  return mintedBatchesOf(productId).map((b) => ({
+    ...b,
+    unitCost: priceNow(b.id, b.unitCost),
+    ready: isEmptied(b.id) ? 0n : b.ready,
+  }));
+}
+
+/** One batch's facts for BatchRevalue's stub (batchPriceStub.ts) — `undefined` for one not sampled here. */
+export function sampleBatchForPrice(batchId: bigint) {
+  const productId = batchId / 10n;
+  const minted = mintedBatchesOf(productId).find((b) => b.id === batchId);
+  const b = batchesOf(productId).find((x) => x.id === batchId);
+  if (!minted || !b) return undefined;
+  return {
+    teamId: FIGURED_TEAM,
+    warehouseId: b.warehouseId,
+    productId,
+    units: b.ready,
+    price: b.unitCost,
+    value: Number(b.ready) * b.unitCost,
+    minted: minted.unitCost,
+  };
+}
+
+/** A product's batches as minted — none for every sixth; one or two in Gudang Pusat and one in Gudang Cabang otherwise. */
+function mintedBatchesOf(productId: bigint): SampleBatch[] {
   if (!figured(productId)) return [];
   const n = Number(productId % 997n);
   if (n % 6 === 0) return [];
@@ -557,31 +587,57 @@ export function ownerStockHistory(req: { teamId: bigint; filter?: { productId?: 
   const events = batchesOf(product.id)
     .filter(inLens(req.filter?.warehouseId))
     .flatMap((b) => {
-      const out = [{ batch: b, kind: MovementKind.RECEIVE, delta: b.arrived, at: b.acceptedAt, ref: `RST-${b.id}` }];
+      const out: {
+        batch: SampleBatch;
+        kind: MovementKind;
+        delta: bigint;
+        at: bigint;
+        ref: string;
+        logId?: bigint;
+        reason?: string;
+        actor?: bigint;
+        correction?: ReturnType<typeof priceLogsOf>[number];
+      }[] = [{ batch: b, kind: MovementKind.RECEIVE, delta: b.arrived, at: b.acceptedAt, ref: `RST-${b.id}` }];
       if (b.arrived > b.ready) {
         out.push({ batch: b, kind: MovementKind.PICK, delta: -(b.arrived - b.ready), at: b.acceptedAt + 2n * DAY, ref: `ORD-${b.id}` });
+      }
+      // Each Koreksi Harga is a row that moved no unit (a batch_logs row, change_count 0), read as REVALUATION with its
+      // price before and after and the value change (ledger_history.go). None unless a story corrected the batch.
+      for (const l of priceLogsOf(b.id)) {
+        out.push({ batch: b, kind: MovementKind.REVALUATION, delta: 0n, at: l.atUnix, ref: "", logId: l.id, reason: l.reason, actor: l.actorUserId, correction: l });
       }
       return out;
     })
     .sort((a, b) => (a.at < b.at ? -1 : 1));
 
+  // Every row carries its batch's price and the value it moved, as the server's do — each batch from its minted price.
+  const priceOf = new Map<string, number>();
+  const mintedPrice = (b: SampleBatch) => mintedBatchesOf(product.id).find((m) => m.id === b.id)?.unitCost ?? b.unitCost;
+
   let balance = 0n;
   const movements = events
     .map((e, i) => {
       balance += e.delta;
+      const before = priceOf.get(e.batch.id.toString()) ?? mintedPrice(e.batch);
+      const after = e.correction ? e.correction.to : before;
+      priceOf.set(e.batch.id.toString(), after);
       return {
-        id: product.id * 100n + BigInt(i + 1),
-        movementId: product.id * 100n + BigInt(i + 1),
+        id: e.logId ?? product.id * 100n + BigInt(i + 1),
+        movementId: e.logId ?? product.id * 100n + BigInt(i + 1),
         productId: product.id,
         warehouseId: e.batch.warehouseId,
         batchId: e.batch.id,
         kind: e.kind,
         delta: e.delta,
         balance,
-        reason: "",
+        reason: e.reason ?? "",
         ref: e.ref,
-        actorUserId: 61n,
+        actorUserId: e.actor ?? 61n,
         createdAtUnix: e.at,
+        isOverride: e.correction?.isOverride ?? false,
+        priceUnitBefore: before,
+        priceUnitAfter: after,
+        valueChange: e.correction ? e.correction.valueDelta : Number(e.delta) * after,
       };
     })
     .reverse();

@@ -5436,7 +5436,11 @@
       "warehouseFee": "Warehouse fee",
       "financialAccounts": "Account changes",
       "financialAccountTypes": "Change types",
-      "inventoryLost": "Lost stock"
+      "inventoryLost": "Lost stock",
+      "inventoryRestock": "Restock",
+      "inventoryTransfer": "Transfer",
+      "inventoryReturn": "Returned stock",
+      "inventoryReady": "Ready stock"
     },
     "field": {
       "created_count": "Orders created",
@@ -5511,6 +5515,30 @@
         "operational": "Operational",
         "other": "Other",
         "total": "Total expenses"
+      },
+      "inventoryRestock": {
+        "accepted_count": "Units accepted",
+        "accepted_value": "Value accepted",
+        "broken_count": "Broken at the door",
+        "missing_count": "Missing at the door"
+      },
+      "inventoryTransfer": {
+        "sent_count": "Units sent",
+        "sent_value": "Value sent",
+        "received_count": "Units received",
+        "received_value": "Value received",
+        "in_transit_count": "Units in transit",
+        "in_transit_value": "Value in transit"
+      },
+      "inventoryReturn": {
+        "back_count": "Units back on the shelf",
+        "back_value": "Value back",
+        "broken_count": "Broken, thrown away",
+        "missing_count": "Missing"
+      },
+      "inventoryReady": {
+        "on_hand_count": "Units on hand",
+        "on_hand_value": "Stock value"
       }
     },
     "cannotGroup": "Cannot be grouped by {{group}}",
@@ -5764,5 +5792,45 @@
   "override": {
     "byRootTeam": "by Root team",
     "byRootTeamHint": "Root or the System Administrator did this inside this team — they are not one of its members."
+  },
+  "correctPrice": {
+    "action": "Correct Price",
+    "actionsColumn": "Actions",
+    "title": "Correct Price",
+    "batchLine": "Batch #{{id}} · {{warehouse}}",
+    "current": "Current unit price",
+    "newPrice": "New unit price",
+    "newPriceHelper": "For a typo or a markdown. A cost that arrived after the accept is an expense, not a price correction.",
+    "reason": "Reason",
+    "reasonPlaceholder": "e.g. the invoice says Rp 44.500 — typed Rp 45.700 at the accept",
+    "reasonHelper": "Shown in the batch's history — the warehouse holding it reads it too.",
+    "save": "Save Price",
+    "saved": "Batch #{{id}}: {{from}} → {{to}}",
+    "effect": {
+      "title": "What changes",
+      "units": "Units left",
+      "unitsValue": "{{n}} pcs · unchanged",
+      "value": "Their stock value",
+      "delta": "Difference",
+      "sold": "Units already used, sold or lost keep the price they left at. No unit moves and no rack changes."
+    },
+    "confirm": {
+      "title": "Correct the price of batch #{{id}}?",
+      "message": "{{from}} → {{to}} for the {{units}} pcs left — their stock value changes by {{delta}}. It cannot be undone: a wrong price is put right by another correction.",
+      "action": "Correct Price",
+      "dismiss": "Back"
+    },
+    "error": {
+      "samePrice": "That is the current price — nothing to correct.",
+      "notPositive": "The price must be above Rp 0.",
+      "reasonRequired": "Say why — it is shown in the batch's history.",
+      "noUnits": "This batch has no units left. A price correction reprices only the units left, so there is nothing to correct."
+    },
+    "history": {
+      "kind": "Price corrected"
+    },
+    "info": {
+      "correctedFrom": "corrected from {{from}}"
+    }
   }
 }

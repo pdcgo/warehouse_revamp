@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, Flex, Grid, Heading, Icon, Span, Stack, Table, Text, useBreakpointValue } from "@chakra-ui/react";
-import { History, Pencil, Warehouse } from "lucide-react";
+import { History, Pencil, Tag, Warehouse } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -19,6 +19,8 @@ import { BATCH_PENDING } from "../../features/inventory/pending";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useBatchDetail, useBatchHistory, useBatchPlacements } from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
+import { CorrectPriceDialog } from "../../features/inventory/CorrectPriceDialog";
+import { canCorrectPrice } from "../../features/inventory/priceChange";
 import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { CompactActions } from "../../components/chrome/CompactActions";
@@ -104,6 +106,11 @@ export function BatchDetailPage() {
   const product = data?.product ?? null;
 
   const [adjusting, setAdjusting] = useState(false);
+
+  // KOREKSI HARGA (the-correct-price-prototype-is-accepted). This is the warehouse's page: the warehouse holding the batch
+  // never corrects its price, it READS each correction in Riwayat (the-owning-team-revalues-with-a-reason), so the button
+  // shows here only to Root and the Administrator — canCorrectPrice passes no warehouse role.
+  const [correcting, setCorrecting] = useState(false);
 
   // Placements pages on its own (#218) — its own read, independent of the detail aggregate. The rack
   // search filters the loaded page client-side (a batch sits on a handful of shelves); changing it
@@ -211,8 +218,13 @@ export function BatchDetailPage() {
   }
 
   const cost = (v: number) => (batch.costKnown ? formatRupiah(v) : t("batchDetail.costUnknown"));
-  // A lifecycle figure's value = its count × the frozen unit cost (Unknown when the cost isn't known).
-  const amount = (count: bigint) => cost(Number(count) * batch.unitCost);
+  // A lifecycle figure's value is the server's, from its OWN rows (BatchDetail) — never its count × today's unit cost:
+  // units that already left keep the price they left at, a correction reprices only the units left
+  // (a-late-cost-is-an-expense-not-a-revaluation). Unknown when the cost isn't known.
+  const correctable = canCorrectPrice(current) && batch.costKnown && product !== null;
+  const figureValue = { broken: data?.brokenValue ?? 0, lost: data?.lostValue ?? 0, used: data?.usedValue ?? 0 };
+  // The newest correction's price before it — undefined when the price was never corrected.
+  const correctedFrom = data?.priceCorrected ? data.priceCorrectedFrom : undefined;
   const isReturn = batch.origin === BatchOrigin.RETURN;
   const productName = product?.name ?? batch.name;
 
@@ -232,13 +244,33 @@ export function BatchDetailPage() {
             testId: `batch-detail-adjust${suffix}`,
             onClick: () => setAdjusting(true),
           },
+          // Koreksi Harga — Root and the Administrator only, here.
+          ...(correctable
+            ? [
+                {
+                  id: "correct-price",
+                  label: t("correctPrice.action"),
+                  icon: Tag,
+                  testId: `batch-detail-correct-price${suffix}`,
+                  onClick: () => setCorrecting(true),
+                },
+              ]
+            : []),
         ]}
       />
     ) : (
-      <Button variant="outline" flexShrink={0} data-testid="batch-detail-adjust" disabled={!product} onClick={() => setAdjusting(true)}>
-        <Icon as={Pencil} boxSize="4" />
-        {t("batchDetail.adjust")}
-      </Button>
+      <>
+        <Button variant="outline" flexShrink={0} data-testid="batch-detail-adjust" disabled={!product} onClick={() => setAdjusting(true)}>
+          <Icon as={Pencil} boxSize="4" />
+          {t("batchDetail.adjust")}
+        </Button>
+        {correctable && (
+          <Button variant="outline" flexShrink={0} data-testid="batch-detail-correct-price" onClick={() => setCorrecting(true)}>
+            <Icon as={Tag} boxSize="4" />
+            {t("correctPrice.action")}
+          </Button>
+        )}
+      </>
     );
 
   // Beside the number: where it came from — restock vs return (#218), UNSPECIFIED reads as a restock; categorical, so a
@@ -334,7 +366,7 @@ export function BatchDetailPage() {
             {batch.broken.toString()}
           </Span>
         }
-        line={amount(batch.broken)}
+        line={cost(figureValue.broken)}
         testId="batch-detail-broken-card"
       />
       <SummaryCard
@@ -344,13 +376,13 @@ export function BatchDetailPage() {
             {batch.lost.toString()}
           </Span>
         }
-        line={amount(batch.lost)}
+        line={cost(figureValue.lost)}
         testId="batch-detail-lost-card"
       />
       <SummaryCard
         label={t("batchDetail.used")}
         value={<Span data-testid="batch-detail-used">{batch.used.toString()}</Span>}
-        line={amount(batch.used)}
+        line={cost(figureValue.used)}
         testId="batch-detail-used-card"
       />
       <SummaryCard
@@ -469,6 +501,12 @@ export function BatchDetailPage() {
         <Text as="span" data-testid="batch-detail-unit-cost">
           {cost(batch.unitCost)}
         </Text>
+        {/* A corrected price says what it was — the newest correction's price before it. */}
+        {correctedFrom !== undefined && (
+          <Text fontSize="xs" color="fg.muted" data-testid="batch-detail-unit-cost-corrected">
+            {t("correctPrice.info.correctedFrom", { from: formatRupiah(correctedFrom) })}
+          </Text>
+        )}
       </Fact>
       {/* The day and how long is left, as the list says it (an-expiry-says-how-long-is-left); a dash when it has none. */}
       <Fact label={t("batchDetail.expiry")}>
@@ -593,6 +631,24 @@ export function BatchDetailPage() {
           currentOnHand={batch.ready}
           open={adjusting}
           onOpenChange={setAdjusting}
+        />
+      )}
+
+      {/* Koreksi Harga — scoped to the OWNING team (the batch's), never this warehouse. */}
+      {correctable && warehouseId !== undefined && product?.teamId !== undefined && (
+        <CorrectPriceDialog
+          open={correcting}
+          onOpenChange={setCorrecting}
+          batch={{
+            id: batch.id,
+            teamId: product.teamId,
+            warehouseId,
+            warehouseName: current.teamName,
+            productName,
+            units: batch.ready,
+            price: batch.unitCost,
+            value: batch.readyValue,
+          }}
         />
       )}
     </Stack>

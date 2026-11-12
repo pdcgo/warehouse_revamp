@@ -191,6 +191,13 @@ service InventoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
+  // KOREKSI HARGA — the OWNING team corrects one batch's unit price (the-owning-team-revalues-with-a-reason,
+  // the-correct-price-prototype-is-accepted, a-corrected-price-is-above-zero): a typo or a markdown, never a late cost
+  // (a-late-cost-is-an-expense-not-a-revaluation). It reprices the units LEFT only — no unit moves, no rack changes — as
+  // one `revaluation` transaction (revaluation-and-opname-are-transaction-types), never rolled back
+  // (a-rollback-only-undoes-a-take). A WRITE: no monitor and no agent's credential.
+  rpc BatchRevalue(BatchRevalueRequest) returns (BatchRevalueResponse);
+
   // A SUPPLIER'S GOODS — the supplier pages' Terjual and Siap with their last dates, and Gudang terkait's counts
   // (the-supplier-list-shows-sales-and-ready-stock, sales-are-all-time-with-their-last-dates,
   // the-detail-tabs-show-sold-and-ready, the-summary-is-sold-and-ready-with-their-counts). A supplier's goods are the
@@ -229,6 +236,11 @@ enum MovementKind {
   // A SAMPLE handed to a person at the warehouse (a-sample-is-handed-over-at-the-warehouse) — the owning team's units
   // leaving with no sale, off the rack staff took them from. Final: never rolled back (a-handed-over-sample-is-final).
   MOVEMENT_KIND_SAMPLE = 8;
+  // A batch's PRICE CORRECTED (the-owning-team-revalues-with-a-reason, BatchRevalue) — no unit moved (`delta` 0): the
+  // batch's unit price went from `price_unit_before` to `price_unit_after`, and its units left are worth `value_change`
+  // more or less; `reason` says why. A batch-ledger row only (no rack row is written), so a batch's history and the
+  // owner's show it and a rack's never does. Out of ADJUST, which keeps units found broken, lost or found.
+  MOVEMENT_KIND_REVALUATION = 9;
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
@@ -274,6 +286,14 @@ message StockMovement {
   // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
   // From `inventory_transactions.is_override` of the row's transaction; false for a row under no transaction.
   bool is_override = 13;
+
+  // THE BATCH'S PRICE AND VALUE ON THIS ROW — set on a BATCH-ledger row (a history narrowed to a batch); a rack row
+  // carries 0 in all three. `value_change` is what the row changed the batch's value by (`batch_logs.change_valuation`),
+  // `price_unit_after` the batch's unit price once it applied (batch-logs-carry-price-unit-after). Only a REVALUATION row
+  // changes a price: there `price_unit_before` is the price it corrected; on every other row it equals `price_unit_after`.
+  double price_unit_before = 14;
+  double price_unit_after = 15;
+  double value_change = 16;
 }
 
 // -------------------------------------------------------------------------- reads
@@ -1051,7 +1071,9 @@ message StockBatch {
   int64 ready = 13;
   int64 lost = 21;
 
-  // arrived × unit_cost (the supplier invoice) and ready × unit_cost (what is still on the shelf).
+  // What ARRIVED was worth at the price the batch was ACCEPTED at (the supplier invoice) — a price correction since never
+  // reprices it (a-late-cost-is-an-expense-not-a-revaluation: it changes the units left only) — and what is still on the
+  // shelf is worth now (`batches.stock_valuation`, at the current `unit_cost`).
   double line_cost = 14;
   double ready_value = 15;
 
@@ -1333,6 +1355,19 @@ message BatchDetailResponse {
   // it itself).
   int64 returned_qty = 2;
   int64 last_return_unix = 3;
+
+  // WHAT EACH FIGURE WAS WORTH, from its own rows — never re-priced at today's `unit_cost`: a price correction reprices
+  // only the units left (a-late-cost-is-an-expense-not-a-revaluation). Rusak and Hilang are the door's problem rows'
+  // totals (`restock_problem_items.total`, the landed price); Terpakai is what the batch's own rows took out, each unit
+  // at the price it left at (the accepted value, plus every correction, less what is left).
+  double broken_value = 4;
+  double lost_value = 5;
+  double used_value = 6;
+
+  // THE PRICE WAS CORRECTED (BatchRevalue) — the batch's newest correction's price BEFORE it: the screen's *dikoreksi dari
+  // Rp …* under the unit price. `price_corrected` false = never corrected (a batch may be accepted at Rp 0).
+  bool price_corrected = 7;
+  double price_corrected_from = 8;
 }
 
 // Where a batch's ready units sit right now (#209) — the batch-detail Placements tab.
@@ -1722,6 +1757,12 @@ message OwnerMovement {
   int64 created_at_unix = 12;
   // THE MOVE WAS AN OVERRIDE — as StockMovement.is_override: `inventory_transactions.is_override` of `movement_id`.
   bool is_override = 13;
+
+  // THE BATCH'S PRICE AND VALUE ON THIS ROW — as StockMovement's three: the row's value change, the batch's unit price
+  // after it, and before it (different only on a REVALUATION row — a price correction, BatchRevalue).
+  double price_unit_before = 14;
+  double price_unit_after = 15;
+  double value_change = 16;
 }
 
 message OwnerStockHistoryFilter {
@@ -1774,6 +1815,64 @@ message OwnerStockHistoryResponse {
   repeated OwnerStockHistoryResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// -------------------------------------------------------------------------- Koreksi Harga
+
+// BatchRevalueRequest corrects one batch's unit price. WHO (the-owning-team-revalues-with-a-reason): the Owner or Admin of
+// the team that OWNS the batch — `team_id`, scoped — plus Root and the System Administrator, stamped an override when
+// outside it (an-override-is-stamped-in-every-service). Never the warehouse holding it, never CS, never a monitor.
+// Another team's batch, or no such batch, is NotFound.
+//
+// Refused, nothing written: a reason that is empty or only spaces (InvalidArgument); a new price at or below Rp 0
+// (a-corrected-price-is-above-zero, InvalidArgument); and, under the batch's row lock, a batch with no units left, a
+// price that moved since the form showed `expected_price_unit` (someone corrected it first), or the same price
+// (FailedPrecondition each, naming the batch).
+message BatchRevalueRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  // The OWNING team — the batch's `team_id` (a-batch-carries-its-owner), not the warehouse holding it.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 batch_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The price the form SHOWED — an optimistic check: a batch whose price is no longer this (within 4 places) is refused,
+  // so two people correcting at once cannot overwrite each other unseen. It also refuses a retry of a correction that
+  // already landed.
+  double expected_price_unit = 3 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  // The new unit price — above Rp 0 (a-corrected-price-is-above-zero); a fraction is kept (rupiah-is-floating-point).
+  double new_price_unit = 4 [(buf.validate.field).double = {
+    gt: 0
+    finite: true
+  }];
+  // WHY — required, at most 200 (trimmed on the server); written to the transaction and both log rows' `description`,
+  // where the warehouse holding the batch reads it.
+  string reason = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+}
+
+message BatchRevalueResponse {
+  // The `revaluation` transaction the correction wrote.
+  uint64 transaction_id = 1;
+  double price_unit_before = 2;
+  double price_unit_after = 3;
+  // units × (after − before): what the units left are worth more (or less, negative) — batch.md §Change Price Flow.
+  double value_change = 4;
+  // The units left, each repriced — unchanged by the correction.
+  int64 units = 5;
 }
 
 // SupplierGoodsGroup — what one row of SupplierGoods is about: a supplier, one of its stores, or one warehouse its

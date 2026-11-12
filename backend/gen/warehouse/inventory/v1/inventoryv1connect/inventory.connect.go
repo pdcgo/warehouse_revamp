@@ -102,6 +102,9 @@ const (
 	// InventoryServiceOwnerStockHistoryProcedure is the fully-qualified name of the InventoryService's
 	// OwnerStockHistory RPC.
 	InventoryServiceOwnerStockHistoryProcedure = "/warehouse.inventory.v1.InventoryService/OwnerStockHistory"
+	// InventoryServiceBatchRevalueProcedure is the fully-qualified name of the InventoryService's
+	// BatchRevalue RPC.
+	InventoryServiceBatchRevalueProcedure = "/warehouse.inventory.v1.InventoryService/BatchRevalue"
 	// InventoryServiceSupplierGoodsProcedure is the fully-qualified name of the InventoryService's
 	// SupplierGoods RPC.
 	InventoryServiceSupplierGoodsProcedure = "/warehouse.inventory.v1.InventoryService/SupplierGoods"
@@ -176,6 +179,12 @@ type InventoryServiceClient interface {
 	OwnerCostLayerList(context.Context, *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error)
 	OwnerBatchList(context.Context, *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error)
 	OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error)
+	// KOREKSI HARGA — the OWNING team corrects one batch's unit price (the-owning-team-revalues-with-a-reason,
+	// the-correct-price-prototype-is-accepted, a-corrected-price-is-above-zero): a typo or a markdown, never a late cost
+	// (a-late-cost-is-an-expense-not-a-revaluation). It reprices the units LEFT only — no unit moves, no rack changes — as
+	// one `revaluation` transaction (revaluation-and-opname-are-transaction-types), never rolled back
+	// (a-rollback-only-undoes-a-take). A WRITE: no monitor and no agent's credential.
+	BatchRevalue(context.Context, *connect.Request[v1.BatchRevalueRequest]) (*connect.Response[v1.BatchRevalueResponse], error)
 	// A SUPPLIER'S GOODS — the supplier pages' Terjual and Siap with their last dates, and Gudang terkait's counts
 	// (the-supplier-list-shows-sales-and-ready-stock, sales-are-all-time-with-their-last-dates,
 	// the-detail-tabs-show-sold-and-ready, the-summary-is-sold-and-ready-with-their-counts). A supplier's goods are the
@@ -355,6 +364,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		batchRevalue: connect.NewClient[v1.BatchRevalueRequest, v1.BatchRevalueResponse](
+			httpClient,
+			baseURL+InventoryServiceBatchRevalueProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("BatchRevalue")),
+			connect.WithClientOptions(opts...),
+		),
 		supplierGoods: connect.NewClient[v1.SupplierGoodsRequest, v1.SupplierGoodsResponse](
 			httpClient,
 			baseURL+InventoryServiceSupplierGoodsProcedure,
@@ -390,6 +405,7 @@ type inventoryServiceClient struct {
 	ownerCostLayerList     *connect.Client[v1.OwnerCostLayerListRequest, v1.OwnerCostLayerListResponse]
 	ownerBatchList         *connect.Client[v1.OwnerBatchListRequest, v1.OwnerBatchListResponse]
 	ownerStockHistory      *connect.Client[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse]
+	batchRevalue           *connect.Client[v1.BatchRevalueRequest, v1.BatchRevalueResponse]
 	supplierGoods          *connect.Client[v1.SupplierGoodsRequest, v1.SupplierGoodsResponse]
 }
 
@@ -508,6 +524,11 @@ func (c *inventoryServiceClient) OwnerStockHistory(ctx context.Context, req *con
 	return c.ownerStockHistory.CallUnary(ctx, req)
 }
 
+// BatchRevalue calls warehouse.inventory.v1.InventoryService.BatchRevalue.
+func (c *inventoryServiceClient) BatchRevalue(ctx context.Context, req *connect.Request[v1.BatchRevalueRequest]) (*connect.Response[v1.BatchRevalueResponse], error) {
+	return c.batchRevalue.CallUnary(ctx, req)
+}
+
 // SupplierGoods calls warehouse.inventory.v1.InventoryService.SupplierGoods.
 func (c *inventoryServiceClient) SupplierGoods(ctx context.Context, req *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error) {
 	return c.supplierGoods.CallUnary(ctx, req)
@@ -583,6 +604,12 @@ type InventoryServiceHandler interface {
 	OwnerCostLayerList(context.Context, *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error)
 	OwnerBatchList(context.Context, *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error)
 	OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error)
+	// KOREKSI HARGA — the OWNING team corrects one batch's unit price (the-owning-team-revalues-with-a-reason,
+	// the-correct-price-prototype-is-accepted, a-corrected-price-is-above-zero): a typo or a markdown, never a late cost
+	// (a-late-cost-is-an-expense-not-a-revaluation). It reprices the units LEFT only — no unit moves, no rack changes — as
+	// one `revaluation` transaction (revaluation-and-opname-are-transaction-types), never rolled back
+	// (a-rollback-only-undoes-a-take). A WRITE: no monitor and no agent's credential.
+	BatchRevalue(context.Context, *connect.Request[v1.BatchRevalueRequest]) (*connect.Response[v1.BatchRevalueResponse], error)
 	// A SUPPLIER'S GOODS — the supplier pages' Terjual and Siap with their last dates, and Gudang terkait's counts
 	// (the-supplier-list-shows-sales-and-ready-stock, sales-are-all-time-with-their-last-dates,
 	// the-detail-tabs-show-sold-and-ready, the-summary-is-sold-and-ready-with-their-counts). A supplier's goods are the
@@ -758,6 +785,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceBatchRevalueHandler := connect.NewUnaryHandler(
+		InventoryServiceBatchRevalueProcedure,
+		svc.BatchRevalue,
+		connect.WithSchema(inventoryServiceMethods.ByName("BatchRevalue")),
+		connect.WithHandlerOptions(opts...),
+	)
 	inventoryServiceSupplierGoodsHandler := connect.NewUnaryHandler(
 		InventoryServiceSupplierGoodsProcedure,
 		svc.SupplierGoods,
@@ -813,6 +846,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceOwnerBatchListHandler.ServeHTTP(w, r)
 		case InventoryServiceOwnerStockHistoryProcedure:
 			inventoryServiceOwnerStockHistoryHandler.ServeHTTP(w, r)
+		case InventoryServiceBatchRevalueProcedure:
+			inventoryServiceBatchRevalueHandler.ServeHTTP(w, r)
 		case InventoryServiceSupplierGoodsProcedure:
 			inventoryServiceSupplierGoodsHandler.ServeHTTP(w, r)
 		default:
@@ -914,6 +949,10 @@ func (UnimplementedInventoryServiceHandler) OwnerBatchList(context.Context, *con
 
 func (UnimplementedInventoryServiceHandler) OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerStockHistory is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) BatchRevalue(context.Context, *connect.Request[v1.BatchRevalueRequest]) (*connect.Response[v1.BatchRevalueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.BatchRevalue is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) SupplierGoods(context.Context, *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error) {

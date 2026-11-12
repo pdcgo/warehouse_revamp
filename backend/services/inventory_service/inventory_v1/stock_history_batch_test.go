@@ -9,6 +9,7 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
@@ -108,4 +109,64 @@ func firstBatch(m []*inventoryv1.StockMovement) uint64 {
 		return 0
 	}
 	return m[0].GetBatchId()
+}
+
+// A BATCH'S HISTORY READS A PRICE CORRECTION AS ONE (the-correct-price-prototype-is-accepted: *"Harga dikoreksi · old →
+// new, the reason, who, the badge"*): its own kind, no unit moved, the price before and after, the value change, the
+// reason, who and the override stamp. The kind filter finds it, ADJUST no longer does, and a rack's history never shows
+// it — a correction writes no rack row.
+func TestStockHistory_ABatchsHistoryReadsAPriceCorrection(t *testing.T) {
+	svc, db, _, _ := otStocked(t)
+	b := hitamBatch(t, db)
+
+	_, err := svc.BatchRevalue(ctxAs(ovRoot, otMelati, rootOutsideRole), connect.NewRequest(revalueRequest(b.ID, 10000, 12000)))
+	if err != nil {
+		t.Fatalf("revalue: %v", err)
+	}
+
+	history := func(batch uint64, kind inventoryv1.MovementKind) []*inventoryv1.StockMovement {
+		res, hErr := svc.StockHistory(context.Background(), connect.NewRequest(&inventoryv1.StockHistoryRequest{
+			WarehouseId: otWarehouse,
+			Filter:      &inventoryv1.StockHistoryFilter{ProductId: otKaosHitam, BatchId: batch, Kind: kind},
+			Page:        page1(),
+		}))
+		if hErr != nil {
+			t.Fatalf("StockHistory: %v", hErr)
+		}
+
+		return stockHistoryRows(res.Msg)
+	}
+
+	rows := history(b.ID, inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED)
+	if len(rows) != 2 {
+		t.Fatalf("batch history = %d rows, want the receive and the correction", len(rows))
+	}
+
+	c := rows[0]
+	if c.GetKind() != inventoryv1.MovementKind_MOVEMENT_KIND_REVALUATION || c.GetDelta() != 0 || c.GetBalance() != 10 ||
+		c.GetReason() != revalueReason || c.GetActorUserId() != ovRoot || !c.GetIsOverride() || c.GetRackId() != 0 ||
+		!san_money.Equal(c.GetPriceUnitBefore(), 10000) || !san_money.Equal(c.GetPriceUnitAfter(), 12000) ||
+		!san_money.Equal(c.GetValueChange(), 20000) {
+		t.Fatalf("correction row = %+v, want REVALUATION 0 (10 left), 10000 → 12000, +20000, the reason, Root stamped", c)
+	}
+
+	r := rows[1]
+	if r.GetKind() != inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE || !san_money.Equal(r.GetPriceUnitBefore(), 10000) ||
+		!san_money.Equal(r.GetPriceUnitAfter(), 10000) || !san_money.Equal(r.GetValueChange(), 100000) {
+		t.Fatalf("receive row = %+v, want its price unchanged at 10000 and +100000", r)
+	}
+
+	if got := history(b.ID, inventoryv1.MovementKind_MOVEMENT_KIND_REVALUATION); len(got) != 1 || got[0].GetId() != c.GetId() {
+		t.Fatalf("REVALUATION filter = %d rows, want the correction", len(got))
+	}
+
+	if got := history(b.ID, inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST); len(got) != 0 {
+		t.Fatalf("ADJUST filter = %d rows, want none — a correction is not an adjust", len(got))
+	}
+
+	for _, m := range history(0, inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED) {
+		if m.GetKind() == inventoryv1.MovementKind_MOVEMENT_KIND_REVALUATION {
+			t.Fatalf("the racks' history shows a correction: %+v", m)
+		}
+	}
 }

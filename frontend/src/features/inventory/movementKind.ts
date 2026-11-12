@@ -25,6 +25,9 @@ export function kindLabel(t: ReturnType<typeof useTranslation>["t"], kind: Movem
       return t("warehouseProduct.kind.return");
     case MovementKind.SAMPLE:
       return t("warehouseProduct.kind.sample");
+    // A price correction moved no unit — said as one on every screen (the-correct-price-prototype-is-accepted).
+    case MovementKind.REVALUATION:
+      return t("correctPrice.history.kind");
     default:
       return t("warehouseProduct.kind.unknown");
   }
@@ -52,6 +55,8 @@ export function transactionLabel(t: ReturnType<typeof useTranslation>["t"], kind
       return t("inventory.transaction.move");
     case MovementKind.SAMPLE:
       return t("inventory.transaction.sample");
+    case MovementKind.REVALUATION:
+      return t("correctPrice.history.kind");
     default:
       return t("warehouseProduct.kind.unknown");
   }

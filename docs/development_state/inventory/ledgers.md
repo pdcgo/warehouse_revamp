@@ -309,7 +309,7 @@ So `batch_logs.change_type` = {order, revaluation, return, restock, adjustment, 
 | `transfer_out` | `PostTransferOut` | take, FIFO, at A | system picks, fewest first | transfer's team | ✅ cancel while `created` |
 | `transfer_in` | `PostTransferIn` | mint 1 per source batch with good units | staff name racks at B | transfer's team | ❌ |
 | `adjustment` | `PostAdjustment` | ⚠ the recount and the wrong-stock-in correction are undesigned ([adjustment-md-is-retired](../../business/inventory/adjustment_decision.md#adjustment-md-is-retired)) | staff | owner | ❌ |
-| `revaluation` | `PostRevaluation` | 1 row, `change_count` 0, + price log | none | owner | ❌ |
+| `revaluation` | `PostRevaluation` ✅ *(2026-11-12, Koreksi Harga)* | 1 row, `change_count` 0, value = units left × Δ, + price log; the batch row locked alone (`LockBatch`), priced by `Revalue` | none | owner | ❌ |
 | `problem` | `PostCountFinalize` · `PostShelfProblem` | take FIFO, broken before lost, + problem rows (a shelf report: its named batch) | reported rack / per-rack correction | owner | ❌ |
 | `found` | `PostCountFinalize` | claim oldest lost into its batch, rest mint at last price | rack rows `found` | owner | ❌ |
 | `move` | `PostMove` · `PostCountFinalize` | none | 1 source −, ≥1 destination + (a count: its racks' residuals) | owner, 1 tx per team | ❌ → move again |
@@ -448,7 +448,7 @@ Mutation names: [one-mutation-per-operation](../../business/inventory/context_de
 **Undecided — blocks or bends a build step**
 
 15. Count finalize: how per-rack corrections are split across a team's `problem` / `found` / `move` tx so each balances per product (rule 14) is not designed. → **built as**: broken off its drafts' racks; lost off the racks still short after their broken, found onto those still over, in rack id order; the rest nets 0 and is the move ([opname.md § Choices](opname.md#choices-made-in-the-build-where-the-decisions-are-silent)).
-16. Revaluation's item: items are *"always positive, one per product"*, but a revaluation moves 0 units and a markdown has negative value — whether it writes an item, and its sign, is undecided.
+16. Revaluation's item: items are *"always positive, one per product"*, but a revaluation moves 0 units and a markdown has negative value — whether it writes an item, and its sign, is undecided. → **built as** (2026-11-12): one item, quantity 0, total = \|units left × Δ\| — positive as every item; the batch row carries the sign, and `Verify`'s item = \|Σ the batch rows\| holds.
 17. A found claim into a batch revalued since the loss adds value at the old row price, so `stock_valuation ÷ stock_count` ≠ `price_unit`; what `price_unit_after` says on a reopened batch is undecided. → **built as**: the claim adds count × the row's price; `price_unit` and `price_unit_after` stay the batch's own.
 18. *Oldest batch* key: `created_at` or `id`? Is a transfer_in batch at B as old as its mint, or as its source batch?
 19. `batch_price_logs` has no `transaction_id`, so *"the two rows of one change"* join only by batch + time; and a mint's `delta_price_unit` is undefined (new − 0?).
@@ -488,3 +488,20 @@ The lost fold writes the exact Σ (no `san_money.Whole`); losses reach liability
 (a tolerance key) but reads the layer's exact stored price (`MIN(price_unit)`) instead of the 4-place key. The restock
 accept's log note writes the courier's charge with `san_money.Text`. Test
 `TestStockAdjust_AFractionalLossReachesTheLedgersExact` (owner owed 6.666,666…).
+
+## 2026-11-12 — Koreksi Harga: the `revaluation` type is written ([the-correct-price-prototype-is-accepted](../../business/inventory/context_decision.md#the-correct-price-prototype-is-accepted))
+
+`InventoryService.BatchRevalue` → `inventory_mutations.PostRevaluation` → `inventory_ledgers.LockBatch` + `Revalue` (the
+batch writes' `Flush` never changes a price, so the price change has its own ledger function). One transaction: the batch
+row `FOR UPDATE` first and alone; refused under it for another team's batch, no units left, a stale form
+(`expected_price_unit`) and the same price; then the `revaluation` transaction (`is_override` stamped), its `batch_logs`
+row (0 units, `change_valuation` = units left × Δ, `price_unit_after` = the new price), its `batch_price_logs` row, the
+batch's price and value, and one item (open point 16). No migration — the type, `price_unit_after`, `batch_price_logs`
+and the override flag existed. The reads: `ledger_history.go` maps `revaluation` to `MOVEMENT_KIND_REVALUATION` and gives
+every batch row its price before / after and value change (a correction's price before = after − value ÷ units: no join
+to `batch_price_logs`, which has no transaction id — open point 19); `BatchDetail` reads Tiba at the accepted price and
+Rusak / Hilang / Terpakai from their own rows. Inventory `00041`: two pure indexes for the history's by-transaction
+lookups ([OwnerStockHistory.md](../../../audits/services/inventory_service/performances/OwnerStockHistory.md)). Tests:
+`batch_revalue_test.go`, `batch_revalue_race_test.go` (lock-order.md § Koreksi Harga), the read tests in
+`batch_backend_test.go`, `stock_history_batch_test.go`, `owner_stock_history_test.go`; e2e
+`the_owner_corrects_a_batch_price.spec.ts`.

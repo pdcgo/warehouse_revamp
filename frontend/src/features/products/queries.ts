@@ -26,6 +26,7 @@ import {
   productsFromList,
 } from "./adapt";
 import type { OwnerStockRow, ProductActivityRow } from "./adapt";
+import { withPriceChanges } from "../inventory/priceChange";
 
 // The product screens' reads (#176). Hooks live beside their screens, per api/queryClient.ts.
 
@@ -542,7 +543,9 @@ export function useOwnerStockHistory(args: {
       });
 
       return {
-        movements: movementsFromList(res),
+        // A price correction reads as one — from → to, the value change, why and who (the-correct-price-prototype-is-
+        // accepted: the owning team's Stock history shows each correction of its batches).
+        movements: await withPriceChanges(movementsFromList(res)),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },

@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Flex, HStack, Stack, Table, Text } from "@chakra-ui/react";
-import { PackageOpen } from "lucide-react";
+import { Button, Flex, HStack, Icon, Stack, Table, Text } from "@chakra-ui/react";
+import { PackageOpen, Tag } from "lucide-react";
 
 import { GrowingPager } from "../../../components/chrome/GrowingPager";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { useOwnerBatches } from "../../../features/products/queries";
+import { CorrectPriceDialog } from "../../../features/inventory/CorrectPriceDialog";
+import { canCorrectPrice } from "../../../features/inventory/priceChange";
+import { useTeam } from "../../../features/team/TeamContext";
 import type { StockBatch as OwnerBatchRow } from "../../../gen/warehouse/inventory/v1/inventory_pb";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatUnixDate } from "../../../lib/datetime";
@@ -43,6 +46,21 @@ export function BatchSection({
 
   const batches = useOwnerBatches({ teamId, productId, warehouseId: 0n, page, pageSize: PAGE_SIZE });
   const rows = batches.data?.batches ?? [];
+
+  // KOREKSI HARGA (the-correct-price-prototype-is-accepted) — the owning team reaches its batches HERE (a batch's own page
+  // is the warehouse's), so each row offers it to its Owner and Admin, Root and the Administrator
+  // (the-owning-team-revalues-with-a-reason): a column on desktop, the foot of each block on a phone. A CS or a monitor
+  // reads the rows only.
+  const { current } = useTeam();
+  const correctable = canCorrectPrice(current);
+  const [correcting, setCorrecting] = useState<OwnerBatchRow | null>(null);
+  const correctButton = (b: OwnerBatchRow) =>
+    correctable && b.costKnown ? (
+      <Button size="xs" variant="outline" data-testid={`pd-batch-correct-${b.id}`} onClick={() => setCorrecting(b)}>
+        <Icon as={Tag} boxSize="4" />
+        {t("correctPrice.action")}
+      </Button>
+    ) : null;
 
   // ON PAGE 1, A LIST THAT FITS HAS NO PAGER (owner: *"harga modal dan batch tidak ada paginasi kalau jumlah datanya kurang
   // dari limit, di halaman 1 ya"*, `a-short-section-hides-its-pager`) — inside a section of the product's page, "1" and
@@ -96,6 +114,7 @@ export function BatchSection({
                 </Text>
                 <Text fontWeight="medium">{value(b)}</Text>
               </HStack>
+              {correctable && b.costKnown && <Flex justify="end">{correctButton(b)}</Flex>}
             </Stack>
           ))}
         </Stack>
@@ -112,6 +131,7 @@ export function BatchSection({
             <Table.ColumnHeader textAlign="end">{t("products.detail.batch.unitCost")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("products.detail.batch.ready")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("products.detail.batch.value")}</Table.ColumnHeader>
+            {correctable && <Table.ColumnHeader aria-label={t("correctPrice.actionsColumn")} />}
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -125,6 +145,11 @@ export function BatchSection({
               <Table.Cell textAlign="end">{unitCost(b)}</Table.Cell>
               <Table.Cell textAlign="end">{t("products.stat.pcs", { n: b.ready.toString() })}</Table.Cell>
               <Table.Cell textAlign="end">{value(b)}</Table.Cell>
+              {correctable && (
+                <Table.Cell textAlign="end" whiteSpace="nowrap">
+                  {correctButton(b)}
+                </Table.Cell>
+              )}
             </Table.Row>
           ))}
         </Table.Body>
@@ -160,6 +185,23 @@ export function BatchSection({
               />
             )}
           </Flex>
+
+          {correcting && teamId !== undefined && (
+            <CorrectPriceDialog
+              open
+              onOpenChange={(open) => !open && setCorrecting(null)}
+              batch={{
+                id: correcting.id,
+                teamId,
+                warehouseId: correcting.warehouseId,
+                warehouseName: warehouseLabel(correcting.warehouseId),
+                productName: correcting.name,
+                units: correcting.ready,
+                price: correcting.unitCost,
+                value: correcting.readyValue,
+              }}
+            />
+          )}
         </Stack>
   );
 }

@@ -471,6 +471,75 @@ func lockBatch(tx *gorm.DB, batchID uint64) (inventory_service_models.Batch, err
 	return b, nil
 }
 
+// LockBatch locks ONE batch row (`FOR UPDATE`) and returns it — the only lock a price correction takes, and the first
+// (batches-lock-before-shelves-by-id). A batch that does not exist is gorm.ErrRecordNotFound, wrapped.
+func LockBatch(tx *gorm.DB, batchID uint64) (inventory_service_models.Batch, error) {
+	return lockBatch(tx, batchID)
+}
+
+// Revaluation is a new unit price for one LOCKED batch — a price correction (the-owning-team-revalues-with-a-reason).
+type Revaluation struct {
+	Transaction  inventory_service_models.InventoryTransaction
+	NewPriceUnit float64
+	ActorID      uint64
+	// The reason — on both log rows (the-owning-team-revalues-with-a-reason: "written to description on both rows").
+	Description string
+}
+
+// Revalued is what a revaluation changed: the price from and to, and the units left's value by units × the difference.
+type Revalued struct {
+	PriceBefore float64
+	PriceAfter  float64
+	Units       int64
+	ValueChange float64
+}
+
+// Revalue gives a LOCKED batch a new unit price, as batch.md's *Change Price Flow* draws it: Δ = new − old; a `batch_logs`
+// row that moved no unit (`change_count` 0) and changed the value by Δ × the units LEFT; a `batch_price_logs` row (the
+// new price and Δ) — the two rows of one change, so `price_unit_after` = `new_price_unit`
+// (batch-logs-carry-price-unit-after); then the batch's price, value and `updated_at`. Units already gone keep the price
+// they left at (a-late-cost-is-an-expense-not-a-revaluation). Three statements; the batch is updated in place in `b`.
+//
+// It is its own function because BatchWrites.Flush never changes a price: every other change keeps it.
+func Revalue(tx *gorm.DB, b *inventory_service_models.Batch, r Revaluation) (Revalued, error) {
+	delta := r.NewPriceUnit - b.PriceUnit
+	// Δ × the units left — batch.md's change_valuation, literally, even where a found claim at an old loss's price left the
+	// value off price × units.
+	change := delta * float64(b.StockCount)
+
+	out := Revalued{PriceBefore: b.PriceUnit, PriceAfter: r.NewPriceUnit, Units: b.StockCount, ValueChange: change}
+
+	b.PriceUnit = r.NewPriceUnit
+	b.StockValuation += change
+
+	var w BatchWrites
+	w.change(b, r.Transaction.ID, string(inventory_service_models.TxRevaluation), 0, change, r.ActorID, r.Description)
+
+	err := tx.CreateInBatches(&w.logs, writeBatchSize).Error
+	if err != nil {
+		return Revalued{}, fmt.Errorf("log the revaluation of batch %d: %w", b.ID, err)
+	}
+
+	err = tx.Create(&inventory_service_models.BatchPriceLog{
+		BatchID:        b.ID,
+		NewPriceUnit:   r.NewPriceUnit,
+		DeltaPriceUnit: delta,
+		Description:    r.Description,
+		ActorID:        r.ActorID,
+	}).Error
+	if err != nil {
+		return Revalued{}, fmt.Errorf("price log of batch %d: %w", b.ID, err)
+	}
+
+	err = tx.Exec(`UPDATE batches SET price_unit = ?, stock_valuation = ?, updated_at = NOW() WHERE id = ?`,
+		b.PriceUnit, b.StockValuation, b.ID).Error
+	if err != nil {
+		return Revalued{}, fmt.Errorf("reprice batch %d: %w", b.ID, err)
+	}
+
+	return out, nil
+}
+
 // DrawInTurn is DrawOldestFirst for several takes of ONE product made one after another — a count's broken, then its
 // lost (broken-takes-its-batch-before-lost) — each drawing from what the one before it left, oldest batch first. It
 // changes nothing: it is what the takes WOULD give up, so a preview and the takes it describes are one rule. A count of

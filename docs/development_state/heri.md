@@ -38,6 +38,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **A team sees what Root did inside it** | wherever a screen says who did something — orders, timelines, stock history, expenses, settlement entries, imports, the member and limit logs — Root or the System Administrator acting inside a team shows by name with a green *by Root team* badge; Expenses gained a *Recorded by* column |
 | **Root's restocks and transfers are marked in the lists too** | a restock or transfer Root opened inside a team shows *by Root team* beside its creator on the lists, not only on its timeline |
 | **Team Balance names who recorded each line** | the ledger and payments show *Recorded by* (a line on phones), with *by Root team* when Root paid or accepted from outside the team |
+| **A wrong batch price can be corrected** | the owning team's Owner or Admin uses *Koreksi Harga* on a product's batch: new price above Rp 0, a reason, what changes shown first; the warehouse sees *Harga dikoreksi* in the batch history; units already sold, lost or moved keep their price; a big product's stock history went from 12.5 s to 19 ms |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

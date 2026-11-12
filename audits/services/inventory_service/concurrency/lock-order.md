@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
+| Last swept | 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
 
 ---
 
@@ -229,4 +229,35 @@ the open snapshots, as every put-away does
 ```sh
 go test -tags raceaudit -p 1 -run 'TestRace_OrderTransactionReturn|TestInterleave_OrderTransactionReturn' -v ./backend/services/inventory_service/inventory_v1/
 go test -tags raceaudit -p 1 -run 'TestRace_OrderReturnAccept' -v ./backend/cmd/app_development/
+```
+
+## Koreksi Harga (2026-11-12)
+
+[the-correct-price-prototype-is-accepted](../../../../docs/business/inventory/context_decision.md#the-correct-price-prototype-is-accepted):
+the owning team corrects ONE batch's unit price. It moves no unit and touches no rack.
+
+| Handler | Locks, in order |
+| --- | --- |
+| `BatchRevalue` | *(before the transaction: the policy, the reason and the floor — lock-free)* → **`batches` — the ONE row `FOR UPDATE`** (`LockBatch`; whose, units left, the form's price and the same price all judged under it) → `inventory_transactions` INSERT (`revaluation`) → `batch_logs` + `batch_price_logs` INSERT → `batches` UPDATE (the same row) → `inventory_transaction_items` INSERT |
+
+**No cycle.** It takes exactly one lock, and first — so it can wait, never hold one thing while asking for another. Every
+take (an order, a sample, a transfer's out-leg, a problem, a count's finalize) locks the product's batches by id; a
+correction queues ahead of or behind it on the one row they share
+([batches-lock-before-shelves-by-id](../../../../docs/business/inventory/context_decision.md#batches-lock-before-shelves-by-id)).
+No `product_placements` row is locked, so an open count's rack lock neither blocks a correction nor is broken by one.
+
+**The form's price is the guard, judged under the lock.** Two corrections from the same form price: the second waits on
+the row, re-reads it after the first commits (READ COMMITTED), and is refused as stale with the price now — never priced
+off the old one. A take that waited on a correction costs at the NEW price (it reads `price_unit` after its own lock).
+
+| Claim | Proof |
+| --- | --- |
+| Eight corrections of one batch from one form price: one lands, seven refused as stale | `TestRace_BatchRevalue_TwoCorrectionsAtOnceOneWins` — ×5 rounds, 0 deadlocks, exactly 5 corrections in all |
+| **The batch row lock holds**, and the waiter judges the form's price after it | `TestInterleave_BatchRevalue_TheSecondWaitsAndSeesTheFirst` — B blocked on A's `FOR UPDATE`, released on A's commit, refused as stale; the batch at A's price and value |
+| A take that waits on a correction costs at the corrected price | `TestInterleave_BatchRevalue_ATakeWaitsAndCostsAtTheNewPrice` — the take blocked, then moved −2 × the new price |
+| A correction racing three order takes: no deadlock, every batch row consistent with the price it stood at, both ledgers agree, every transaction verifies | `TestRace_BatchRevalue_RacingOrderTakesKeepsTheValueConsistent` — ×6 rounds, the correction delayed `round % 5` ms, all 6 corrections landed |
+| The same racing a transfer's out-leg (the receiver mints at the price copied from that row) | `TestRace_BatchRevalue_RacingTransfersOutKeepsTheValueConsistent` — ×6 rounds, all 6 landed, batches and racks agree |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_BatchRevalue|TestInterleave_BatchRevalue' -v ./backend/services/inventory_service/inventory_v1/
 ```

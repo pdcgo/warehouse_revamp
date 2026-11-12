@@ -1,5 +1,6 @@
 // inventory_service's BATCH READS as Storybook's stub — BatchList, BatchDetail, BatchPlacementList, StockHistory and
-// ProductPlaces, for the Batch list and a batch's page. Read-only: nothing on those screens writes a batch.
+// ProductPlaces, for the Batch list and a batch's page. The one write that reaches these rows is Koreksi Harga
+// (batchPriceStub.ts — a batch's price, kept in batchPriceScenario.ts and read back here).
 //
 // A batch is one product's good units from one delivery line, at one landed price (one-batch-per-line). Gudang Pusat's
 // (11), consistent with the restock fixtures where they meet:
@@ -26,6 +27,7 @@ import {
   MovementKind,
 } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { racks } from "./fixtures";
+import { isEmptied, priceLogsOf, priceNow, resetBatchPriceScenario } from "./batchPriceScenario";
 
 const DAY = 86_400n;
 const now = () => BigInt(Math.floor(Date.now() / 1000));
@@ -88,8 +90,33 @@ const BATCHES: BatchFixture[] = [
 let rows: BatchFixture[] = [];
 export function resetBatchStub() {
   rows = structuredClone(BATCHES);
+  // Koreksi Harga's corrections price these rows too — reset with them.
+  resetBatchPriceScenario();
 }
 resetBatchStub();
+
+// ── KOREKSI HARGA (batchPriceStub.ts) ────────────────────────────────────────────────────────────────────────────────────
+// A batch's price and units as the rows read them once a story corrected or emptied it; untouched otherwise, so every
+// other story reads exactly the fixtures above.
+
+/** A batch a Koreksi Harga story adds — Toko Anggrek's Minyak 7001 at Gudang Pusat, as productStub has it. */
+export function addBatchForStory(f: Parameters<typeof batch>[0]) {
+  rows = [...rows.filter((b) => b.id !== f.id), batch(f)];
+}
+
+/** The units left as the reads answer them — 0 once a story emptied the batch. */
+function readyNow(b: BatchFixture): bigint {
+  return isEmptied(b.id) ? 0n : b.ready;
+}
+
+/** One batch's facts for BatchRevalue's stub (batchPriceStub.ts) — `undefined` for one this stub does not hold. */
+export function batchForPrice(batchId: bigint) {
+  const b = rows.find((x) => x.id === batchId);
+  if (!b) return undefined;
+  const price = priceNow(b.id, b.unitCost);
+  const units = readyNow(b);
+  return { warehouseId: b.warehouseId, productId: b.productId, units, price, value: Number(units) * price, minted: b.unitCost };
+}
 
 /** A warehouse with no batches — for an empty list's story. Lasts the story. */
 export function noBatchesAt(warehouseId: bigint) {
@@ -104,6 +131,11 @@ const expiringSoon = (b: BatchFixture) => b.expiresIn !== 0 && b.expiresIn <= 30
 
 function toWire(b: BatchFixture) {
   const at = createdAt(b);
+  // A corrected batch reads its new price, and its units left their new value; an emptied one reads 0 left. Tiba keeps
+  // the price it was accepted at — what arrived cost that (a-late-cost-is-an-expense-not-a-revaluation).
+  const price = priceNow(b.id, b.unitCost);
+  const ready = readyNow(b);
+  const used = b.used + (b.ready - ready);
 
   return {
     id: b.id,
@@ -113,15 +145,15 @@ function toWire(b: BatchFixture) {
     productCode: b.productCode,
     name: b.name,
     supplierId: b.supplierId,
-    unitCost: b.unitCost,
+    unitCost: price,
     costKnown: b.costKnown,
     arrived: b.arrived,
     broken: b.broken,
     lost: b.lost,
-    used: b.used,
-    ready: b.ready,
+    used,
+    ready,
     lineCost: Number(b.arrived) * b.unitCost,
-    readyValue: Number(b.ready) * b.unitCost,
+    readyValue: Number(ready) * price,
     expiresOnUnix: expiresOn(b),
     createdAtUnix: at,
     acceptedAtUnix: at,
@@ -147,7 +179,9 @@ function pageOf<R>(all: R[], page: PageReq) {
   };
 }
 
-// The batch's ledger, newest first: the put-away at the accept (one receive per rack), then what orders took.
+// The batch's ledger, newest first: the put-away at the accept (one receive per rack), then what orders took, and each
+// price correction — a batch_logs row that moved no unit, read as REVALUATION with its price before and after and the
+// value change (ledger_history.go). Every row carries the batch's price and the value it moved, as the server's does.
 function movementsOf(b: BatchFixture) {
   const at = createdAt(b);
   const iso = (unix: bigint) => new Date(Number(unix) * 1000).toISOString();
@@ -158,23 +192,44 @@ function movementsOf(b: BatchFixture) {
   if (b.used > 0n) {
     out.push({ delta: -b.used, kind: MovementKind.PICK, rackId: b.shelves[0]?.[0] ?? 0n, at: at + 2n * DAY, ref: `ORD-${b.id}` });
   }
+  // A batch a story emptied had its last units taken by an order a minute ago; each correction is a row that moved no unit.
+  type Row = { id: bigint; delta: bigint; kind: MovementKind; rackId: bigint; at: bigint; ref: string; reason: string; actor: bigint; correction?: (typeof corrections)[number] };
+  const corrections = priceLogsOf(b.id);
+  const extra: Row[] = [];
+  if (isEmptied(b.id) && b.ready > 0n) {
+    extra.push({ id: b.id * 100n + 99n, delta: -b.ready, kind: MovementKind.PICK, rackId: b.shelves[0]?.[0] ?? 0n, at: now() - 60n, ref: `ORD-${b.id}-2`, reason: "", actor: b.acceptedBy });
+  }
+  for (const l of corrections) {
+    extra.push({ id: l.id, delta: 0n, kind: MovementKind.REVALUATION, rackId: 0n, at: l.atUnix, ref: "", reason: l.reason, actor: l.actorUserId, correction: l });
+  }
+  const all: Row[] = [
+    ...out.map((m, i) => ({ ...m, id: b.id * 100n + BigInt(i + 1), reason: "", actor: b.acceptedBy })),
+    ...extra,
+  ].sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
 
   let balance = 0n;
-  const rowsOut = out.map((m, i) => {
+  let price = b.unitCost;
+  const rowsOut = all.map((m) => {
     balance += m.delta;
+    const before = price;
+    if (m.correction) price = m.correction.to;
     return {
-      id: b.id * 100n + BigInt(i + 1),
+      id: m.id,
       productId: b.productId,
       warehouseId: b.warehouseId,
       delta: m.delta,
       balance,
       kind: m.kind,
-      reason: "",
+      reason: m.reason,
       ref: m.ref,
-      actorUserId: b.acceptedBy,
+      actorUserId: m.actor,
       createdAt: iso(m.at),
       rackId: m.rackId,
       batchId: b.id,
+      isOverride: m.correction?.isOverride ?? false,
+      priceUnitBefore: before,
+      priceUnitAfter: price,
+      valueChange: m.correction ? m.correction.valueDelta : Number(m.delta) * price,
     };
   });
 
@@ -221,14 +276,27 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
       items: [{ d: { case: "batch" as const, value: { mapData } } }],
       ids: page.map((b) => b.id),
       pageInfo,
-      readyValueTotal: matched.reduce((s, b) => s + (b.costKnown ? Number(b.ready) * b.unitCost : 0), 0),
+      readyValueTotal: matched.reduce((s, b) => s + (b.costKnown ? Number(readyNow(b)) * priceNow(b.id, b.unitCost) : 0), 0),
       expiringSoonCount: BigInt(matched.filter(expiringSoon).length),
     };
   },
 
   batchDetail(req) {
     const b = visible(req.teamId, req.batchId);
-    return { batch: toWire(b), returnedQty: 0n, lastReturnUnix: 0n };
+    // Each figure at the price it left at, as the server reads its own rows: the door's problems and the units used at
+    // the accepted price, the last units an order took meanwhile at the price then; the newest correction's price before.
+    const corrections = priceLogsOf(b.id);
+    const taken = b.ready - readyNow(b);
+    return {
+      batch: toWire(b),
+      returnedQty: 0n,
+      lastReturnUnix: 0n,
+      brokenValue: Number(b.broken) * b.unitCost,
+      lostValue: Number(b.lost) * b.unitCost,
+      usedValue: Number(b.used) * b.unitCost + Number(taken) * priceNow(b.id, b.unitCost),
+      priceCorrected: corrections.length > 0,
+      priceCorrectedFrom: corrections[corrections.length - 1]?.from ?? 0,
+    };
   },
 
   batchPlacementList(req) {

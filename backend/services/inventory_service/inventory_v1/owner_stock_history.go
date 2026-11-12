@@ -39,7 +39,8 @@ func (s *Service) OwnerStockHistory(
 		SELECT l.id, l.transaction_id AS movement_id, b.product_id, l.warehouse_id, l.batch_id,
 		       l.change_type, l.change_count AS delta,
 		       SUM(l.change_count) OVER (PARTITION BY l.warehouse_id ORDER BY l.id) AS balance,
-		       l.description AS reason, ` + refExpr("l") + ` AS ref, l.actor_id AS actor_user_id, l.created_at
+		       l.description AS reason, ` + refExpr("l") + ` AS ref, l.actor_id AS actor_user_id, l.created_at,
+		       ` + priceExprs("l") + `
 		FROM batch_logs l
 		JOIN batches b ON b.id = l.batch_id
 		WHERE b.team_id = ? AND b.product_id = ?`
@@ -94,6 +95,10 @@ func (s *Service) OwnerStockHistory(
 		ActorUserID uint64
 		CreatedAt   time.Time
 		IsOverride  bool
+
+		PriceUnitBefore float64
+		PriceUnitAfter  float64
+		ValueChange     float64
 	}
 
 	var rows []row
@@ -128,6 +133,10 @@ func (s *Service) OwnerStockHistory(
 			ActorUserId:   r.ActorUserID,
 			CreatedAtUnix: r.CreatedAt.Unix(),
 			IsOverride:    r.IsOverride,
+
+			PriceUnitBefore: r.PriceUnitBefore,
+			PriceUnitAfter:  r.PriceUnitAfter,
+			ValueChange:     r.ValueChange,
 		})
 	}
 

@@ -5405,7 +5405,11 @@
       "warehouseFee": "Biaya gudang",
       "financialAccounts": "Perubahan akun",
       "financialAccountTypes": "Jenis perubahan",
-      "inventoryLost": "Stok hilang"
+      "inventoryLost": "Stok hilang",
+      "inventoryRestock": "Restok",
+      "inventoryTransfer": "Transfer",
+      "inventoryReturn": "Stok retur",
+      "inventoryReady": "Stok siap"
     },
     "field": {
       "created_count": "Pesanan dibuat",
@@ -5480,6 +5484,30 @@
         "operational": "Operasional",
         "other": "Lainnya",
         "total": "Total biaya"
+      },
+      "inventoryRestock": {
+        "accepted_count": "Unit diterima",
+        "accepted_value": "Nilai diterima",
+        "broken_count": "Rusak saat diterima",
+        "missing_count": "Kurang saat diterima"
+      },
+      "inventoryTransfer": {
+        "sent_count": "Unit dikirim",
+        "sent_value": "Nilai dikirim",
+        "received_count": "Unit diterima",
+        "received_value": "Nilai diterima",
+        "in_transit_count": "Unit di perjalanan",
+        "in_transit_value": "Nilai di perjalanan"
+      },
+      "inventoryReturn": {
+        "back_count": "Unit kembali ke rak",
+        "back_value": "Nilai kembali",
+        "broken_count": "Rusak, dibuang",
+        "missing_count": "Kurang"
+      },
+      "inventoryReady": {
+        "on_hand_count": "Unit siap",
+        "on_hand_value": "Nilai stok"
       }
     },
     "cannotGroup": "Tidak bisa dikelompokkan per {{group}}",
@@ -5732,5 +5760,45 @@
   "override": {
     "byRootTeam": "oleh tim Root",
     "byRootTeamHint": "Root atau System Administrator melakukannya di dalam tim ini — mereka bukan anggota tim ini."
+  },
+  "correctPrice": {
+    "action": "Koreksi Harga",
+    "actionsColumn": "Aksi",
+    "title": "Koreksi Harga",
+    "batchLine": "Batch #{{id}} · {{warehouse}}",
+    "current": "Harga satuan sekarang",
+    "newPrice": "Harga satuan baru",
+    "newPriceHelper": "Untuk salah ketik atau penurunan harga. Ongkos yang datang setelah diterima dicatat sebagai pengeluaran, bukan koreksi harga.",
+    "reason": "Alasan",
+    "reasonPlaceholder": "Contoh: di nota Rp 44.500 — salah ketik Rp 45.700 saat diterima",
+    "reasonHelper": "Tampil di riwayat batch — gudang yang menyimpannya ikut membacanya.",
+    "save": "Simpan Harga",
+    "saved": "Batch #{{id}}: {{from}} → {{to}}",
+    "effect": {
+      "title": "Yang berubah",
+      "units": "Unit tersisa",
+      "unitsValue": "{{n}} pcs · tetap",
+      "value": "Nilai stoknya",
+      "delta": "Selisih",
+      "sold": "Unit yang sudah terpakai, terjual, atau hilang tetap dengan harga saat keluar. Tidak ada unit yang berpindah dan tidak ada rak yang berubah."
+    },
+    "confirm": {
+      "title": "Koreksi harga batch #{{id}}?",
+      "message": "{{from}} → {{to}} untuk {{units}} pcs yang tersisa — nilai stoknya berubah {{delta}}. Tidak bisa dibatalkan: harga yang salah diperbaiki dengan koreksi lagi.",
+      "action": "Koreksi Harga",
+      "dismiss": "Kembali"
+    },
+    "error": {
+      "samePrice": "Itu harga sekarang — tidak ada yang dikoreksi.",
+      "notPositive": "Harga harus di atas Rp 0.",
+      "reasonRequired": "Tulis alasannya — tampil di riwayat batch.",
+      "noUnits": "Batch ini tidak punya unit tersisa. Koreksi harga hanya mengubah harga unit yang tersisa, jadi tidak ada yang dikoreksi."
+    },
+    "history": {
+      "kind": "Harga dikoreksi"
+    },
+    "info": {
+      "correctedFrom": "dikoreksi dari {{from}}"
+    }
   }
 }

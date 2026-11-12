@@ -1095,7 +1095,7 @@ erDiagram
         text        receipt_file       "a photo of the label; '' = none"
         bigint      shipment_id        "the courier, opaque shipment_service id, no FK; 0 = not named"
         bigint      finance_account_id "the account that paid, opaque financial_account_service id; 0 = raised before it was required"
-        bigint      transaction_id     "the accept's inventory transaction; 0 until accepted"
+        bigint      transaction_id     "the accept's inventory transaction; 0 until accepted. Indexed (00041)"
         float8      shipment_cost      "the freight the selling team paid, CHECK >= 0 (shipping_cost until 00030)"
         float8      subtotal           "00030: sum of line totals, written by every create and edit"
         float8      total              "00030: subtotal + shipment_cost, never the courier's charge"
@@ -1336,7 +1336,7 @@ erDiagram
     idempotency_order_check {
         bigserial   id              PK
         text        idempotency_key "UNIQUE - the order form's K"
-        bigint      transaction_id  FK "NULL = released before anything was taken"
+        bigint      transaction_id  FK "NULL = released before anything was taken. Indexed (00041)"
         timestamptz created_at
     }
     product_placement_logs {
@@ -1377,6 +1377,11 @@ erDiagram
 - **A supplier's goods are read by supplier** — `00039` `batches_supplier_idx ON batches (supplier_id, supplier_channel_id,
   warehouse_id)`: `SupplierGoods` (the supplier pages' Terjual / Siap / Gudang terkait) sums the batches minted with a
   supplier's id, grouped by store or warehouse; without it every read scanned every batch.
+- **What a history row came from is found by transaction** — `00041` `idempotency_order_check_transaction_idx ON
+  idempotency_order_check (transaction_id)` and `restocks_transaction_idx ON restocks (transaction_id)`: every stock
+  history row names its order key or restock receipt (`ledger_history.go`'s `refExpr`), and the owner's history works
+  that out for every row of the product; without them each row scanned both tables — 12.5 s for a product with 3 000
+  takes, ~19 ms with them ([OwnerStockHistory.md](../audits/services/inventory_service/performances/OwnerStockHistory.md)).
 - **Written set-based** — a write locks each ledger's rows in one statement, works the rows out in memory, and stores
   each table with one `UPDATE … FROM unnest(…)` or one multi-row `INSERT`, however many lines
   ([ledger-writes-are-set-based](technical/stock/design_decision.md#ledger-writes-are-set-based)).

@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
@@ -202,4 +203,113 @@ func TestBatchDetail_ReturnAggregate(t *testing.T) {
 	if d := detail(); d.GetReturnedQty() != 5 || d.GetLastReturnUnix() < before.Unix() {
 		t.Fatalf("after two released takes: qty=%d last=%d, want 5 and the latest release", d.GetReturnedQty(), d.GetLastReturnUnix())
 	}
+}
+
+// A CORRECTED BATCH'S FIGURES KEEP THE PRICE EACH LEFT AT (the-correct-price-prototype-is-accepted,
+// a-late-cost-is-an-expense-not-a-revaluation: a correction reprices only the units left). 15 arrived at Rp 100.000 — 2
+// broken and 3 missing at the door, 10 minted — and 4 handed out as a sample; then the owner corrects the 6 left to
+// Rp 120.000, and again to Rp 110.000. Tiba stays the accepted Rp 1.500.000, Rusak and Hilang their door rows, Terpakai
+// the Rp 400.000 its rows took out; only Siap and the unit price move, and the page says what the price was corrected
+// from.
+func TestBatchDetail_FiguresKeepThePriceTheyLeftAt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const warehouse, owner, product uint64 = 5, 2, 100
+
+	rack, err := svc.RackCreate(ctx, connect.NewRequest(&inventoryv1.RackCreateRequest{TeamId: warehouse, Code: "A-01-3"}))
+	if err != nil {
+		t.Fatalf("rack: %v", err)
+	}
+
+	rackID := rack.Msg.GetRack().GetId()
+	batchID := acceptLine(t, svc, warehouse, rackID, product, 10, 1500000, 2, 3)
+
+	_, err = svc.RackSample(ctx, connect.NewRequest(&inventoryv1.RackSampleRequest{
+		TeamId: warehouse, RackId: rackID, Recipient: "Budi",
+		Lines: []*inventoryv1.RackSampleLine{{ProductId: product, Quantity: 4}},
+	}))
+	if err != nil {
+		t.Fatalf("sample: %v", err)
+	}
+
+	detail := func() *inventoryv1.BatchDetailResponse {
+		res, dErr := svc.BatchDetail(context.Background(), connect.NewRequest(&inventoryv1.BatchDetailRequest{TeamId: warehouse, BatchId: batchID}))
+		if dErr != nil {
+			t.Fatalf("BatchDetail: %v", dErr)
+		}
+
+		return res.Msg
+	}
+
+	type want struct {
+		unit, line, broken, lost, used, ready float64
+		corrected                             bool
+		from                                  float64
+	}
+
+	check := func(what string, w want) {
+		t.Helper()
+
+		d := detail()
+		b := d.GetBatch()
+
+		got := want{
+			b.GetUnitCost(), b.GetLineCost(), d.GetBrokenValue(), d.GetLostValue(), d.GetUsedValue(), b.GetReadyValue(),
+			d.GetPriceCorrected(), d.GetPriceCorrectedFrom(),
+		}
+
+		for _, pair := range [][2]float64{
+			{got.unit, w.unit}, {got.line, w.line}, {got.broken, w.broken}, {got.lost, w.lost}, {got.used, w.used},
+			{got.ready, w.ready}, {got.from, w.from},
+		} {
+			if !san_money.Equal(pair[0], pair[1]) {
+				t.Fatalf("%s: figures = %+v, want %+v", what, got, w)
+			}
+		}
+
+		if got.corrected != w.corrected {
+			t.Fatalf("%s: corrected = %v, want %v", what, got.corrected, w.corrected)
+		}
+	}
+
+	check("before any correction", want{
+		unit: 100000, line: 1500000, broken: 200000, lost: 300000, used: 400000, ready: 600000,
+	})
+
+	_, err = svc.BatchRevalue(ctxUser(8), connect.NewRequest(&inventoryv1.BatchRevalueRequest{
+		TeamId: owner, BatchId: batchID, ExpectedPriceUnit: 100000, NewPriceUnit: 120000, Reason: "salah ketik",
+	}))
+	if err != nil {
+		t.Fatalf("revalue: %v", err)
+	}
+
+	check("after the first correction", want{
+		unit: 120000, line: 1500000, broken: 200000, lost: 300000, used: 400000, ready: 720000, corrected: true, from: 100000,
+	})
+
+	_, err = svc.BatchRevalue(ctxUser(8), connect.NewRequest(&inventoryv1.BatchRevalueRequest{
+		TeamId: owner, BatchId: batchID, ExpectedPriceUnit: 120000, NewPriceUnit: 110000, Reason: "harga promo",
+	}))
+	if err != nil {
+		t.Fatalf("second revalue: %v", err)
+	}
+
+	check("after the second", want{
+		unit: 110000, line: 1500000, broken: 200000, lost: 300000, used: 400000, ready: 660000, corrected: true, from: 120000,
+	})
+
+	// The 6 left go — Terpakai now holds them at the price they left at, 110.000 each.
+	_, err = svc.RackSample(ctx, connect.NewRequest(&inventoryv1.RackSampleRequest{
+		TeamId: warehouse, RackId: rackID, Recipient: "Sari",
+		Lines: []*inventoryv1.RackSampleLine{{ProductId: product, Quantity: 6}},
+	}))
+	if err != nil {
+		t.Fatalf("second sample: %v", err)
+	}
+
+	check("emptied", want{
+		unit: 110000, line: 1500000, broken: 200000, lost: 300000, used: 1060000, ready: 0, corrected: true, from: 120000,
+	})
 }

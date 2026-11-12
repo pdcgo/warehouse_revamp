@@ -3,10 +3,11 @@ import { HStack, Stack, Table, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { EmptyHint } from "../../components/feedback/EmptyHint";
-import { ActorName } from "../../components/entity/ActorName";
+import { ActorName, RootTeamBadge } from "../../components/entity/ActorName";
 import { useIsMobile } from "../../layouts/shell";
 import type { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRfc3339DateTimeShort } from "../../lib/datetime";
+import { formatRupiah, formatSignedRupiah } from "../../lib/money";
 import { kindLabel, transactionLabel } from "./movementKind";
 
 // THE stock ledger. One movement reads identically wherever it is shown — a warehouse product's
@@ -35,6 +36,22 @@ import { kindLabel, transactionLabel } from "./movementKind";
 export type MovementContextColumn = "by" | "batch" | "place" | "product" | "warehouse";
 
 /**
+ * A PRICE CORRECTION a row stands for (a revaluation — the-owning-team-revalues-with-a-reason, BatchRevalue): no unit
+ * moved, the batch's price went from → to, the units left were worth `valueDelta` more or less, and somebody said why.
+ * The history reads fill it from the row's MOVEMENT_KIND_REVALUATION fields (features/inventory/priceChange.ts).
+ */
+export interface PriceChange {
+  from: number;
+  to: number;
+  /** units left × (to − from): the stock value's change. */
+  valueDelta: number;
+  reason: string;
+  actorName: string;
+  /** Root or the System Administrator, outside the owning team (an-override-shows-a-platform-badge). */
+  isOverride: boolean;
+}
+
+/**
  * What this table needs from a ledger row (#232).
  *
  * Widened from `StockMovement` when the catalogue owner's ledger arrived: it is a different message
@@ -44,6 +61,8 @@ export type MovementContextColumn = "by" | "batch" | "place" | "product" | "ware
  */
 export interface MovementRow {
   id: bigint;
+  /** A price correction, not a unit movement — see PriceChange. Absent on every other row. */
+  priceChange?: PriceChange;
   /** RFC3339. The owner's ledger carries a unix instant and converts on the way in. */
   createdAt: string;
   kind: MovementKind;
@@ -124,7 +143,10 @@ export function MovementTable({
   wording = "warehouse",
 }: MovementTableProps) {
   const { t } = useTranslation();
-  const kindOf = (kind: MovementKind) => (wording === "transaction" ? transactionLabel(t, kind) : kindLabel(t, kind));
+  const kindWord = (kind: MovementKind) => (wording === "transaction" ? transactionLabel(t, kind) : kindLabel(t, kind));
+  // A price correction is said as one, whatever the screen's wording — it moved no unit, so neither a shelf's word nor a
+  // stock transaction's fits.
+  const kindOf = (m: MovementRow) => (m.priceChange ? t("correctPrice.history.kind") : kindWord(m.kind));
   const isMobile = useIsMobile();
   // A reworked screen's ledger — the hint, the lit rows and the phone's lines come together (see `emptyIcon`).
   const reworked = emptyIcon !== undefined;
@@ -154,7 +176,8 @@ export function MovementTable({
         // A batch-less shelf recount lands on the oldest batch by FIFO but names none (#211).
         return m.batchId > 0n ? `#${m.batchId}` : "—";
       case "place":
-        if (m.rackId === undefined) return "—";
+        // A price correction touched no rack (revaluation-and-opname-are-transaction-types: no rack row).
+        if (m.rackId === undefined || m.priceChange) return "—";
         return rackLabel ? rackLabel(m.rackId) : `#${m.rackId}`;
       case "product":
         return productLabel ? productLabel(m.productId) : `#${m.productId}`;
@@ -163,6 +186,26 @@ export function MovementTable({
         return warehouseLabel ? warehouseLabel(m.warehouseId) : `#${m.warehouseId}`;
     }
   }
+
+  // A PRICE CORRECTION'S OWN LINES (the-correct-price-prototype-is-accepted): the price it went from and to, and why and
+  // by whom — the reason cut to the room there is, the name and its badge never (ActorName's own inline box would vanish whole in a cut
+  // line, so the name is text and the badge beside it).
+  const priceLine = (c: PriceChange, testId: string) => (
+    <Text as="span" fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums" data-testid={`${testId}-price`}>
+      {formatRupiah(c.from)} → {formatRupiah(c.to)}
+    </Text>
+  );
+  const whyLine = (c: PriceChange, testId: string) => (
+    <HStack gap="1" fontSize="xs" color="fg.muted" minW="0" maxW={isMobile ? undefined : "16rem"} data-testid={`${testId}-why`}>
+      <Text truncate minW="0" title={c.reason} data-testid={`${testId}-reason`}>
+        “{c.reason}”
+      </Text>
+      <Text flexShrink={0} whiteSpace="nowrap" data-testid={`${testId}-actor`}>
+        — {c.actorName}
+      </Text>
+      {c.isOverride && <RootTeamBadge size="xs" ms="0.5" flexShrink={0} />}
+    </HStack>
+  );
 
   if (reworked && movements.length === 0) {
     return (
@@ -174,6 +217,8 @@ export function MovementTable({
   // them scannable. Zero gets neither — a movement that moved nothing is not an increase.
   const deltaColor = (m: MovementRow) => (m.delta > 0n ? "success.fg" : m.delta < 0n ? "error.fg" : undefined);
   const deltaText = (m: MovementRow) => (m.delta > 0n ? `+${m.delta}` : m.delta.toString());
+  // A price correction's value change: up green, down red, as a unit change reads.
+  const valueColor = (c: PriceChange) => (c.valueDelta > 0 ? "success.fg" : c.valueDelta < 0 ? "error.fg" : undefined);
 
   if (reworked && isMobile) {
     // A PHONE READS EACH MOVEMENT AS TWO LINES (a-phone-reads-each-line-as-a-block) — seven columns do not fit 400px,
@@ -195,19 +240,35 @@ export function MovementTable({
             <HStack justify="space-between" gap="2" fontSize="sm">
               <Text truncate minW="0">
                 <Text as="span" fontWeight="bold">
-                  {kindOf(m.kind)}
+                  {kindOf(m)}
                 </Text>
-                {columns.map((c) => (
-                  <Text as="span" key={c} color="fg.muted">
-                    {" · "}
-                    {cell(c, m)}
-                  </Text>
-                ))}
+                {/* A price correction touched no rack — its block leaves the place out rather than say "—". */}
+                {columns
+                  .filter((c) => !(m.priceChange && c === "place"))
+                  .map((c) => (
+                    <Text as="span" key={c} color="fg.muted">
+                      {" · "}
+                      {cell(c, m)}
+                    </Text>
+                  ))}
               </Text>
-              <Text fontWeight="bold" color={deltaColor(m)} flexShrink={0}>
-                {deltaText(m)}
-              </Text>
+              {/* A price correction moved no unit: its change is the stock value's, signed and coloured. */}
+              {m.priceChange ? (
+                <Text fontWeight="bold" color={valueColor(m.priceChange)} flexShrink={0} data-testid={`${testId}-row-${m.id}-value`}>
+                  {formatSignedRupiah(m.priceChange.valueDelta)}
+                </Text>
+              ) : (
+                <Text fontWeight="bold" color={deltaColor(m)} flexShrink={0}>
+                  {deltaText(m)}
+                </Text>
+              )}
             </HStack>
+            {m.priceChange && (
+              <Stack gap="0.5">
+                {priceLine(m.priceChange, `${testId}-row-${m.id}`)}
+                {whyLine(m.priceChange, `${testId}-row-${m.id}`)}
+              </Stack>
+            )}
             <HStack justify="space-between" gap="2" fontSize="xs" color="fg.muted">
               <Text truncate minW="0">
                 {formatRfc3339DateTimeShort(m.createdAt)}
@@ -249,12 +310,35 @@ export function MovementTable({
               css={reworked ? { _hover: { "& > td": { bg: "bg.muted" } } } : undefined}
             >
               <Table.Cell>{formatRfc3339DateTimeShort(m.createdAt)}</Table.Cell>
-              <Table.Cell>{kindOf(m.kind)}</Table.Cell>
+              {/* A price correction reads two lines (one-context-per-column-and-never-three-lines): what it did — the
+                  price from and to — and why, by whom. */}
+              <Table.Cell>
+                {m.priceChange ? (
+                  <Stack gap="0">
+                    <Text as="span">
+                      {kindOf(m)} · {priceLine(m.priceChange, `${testId}-row-${m.id}`)}
+                    </Text>
+                    {whyLine(m.priceChange, `${testId}-row-${m.id}`)}
+                  </Stack>
+                ) : (
+                  kindOf(m)
+                )}
+              </Table.Cell>
               {columns.map((c) => (
                 <Table.Cell key={c}>{cell(c, m)}</Table.Cell>
               ))}
+              {/* No unit moved — 0, uncoloured — and under it what the units left are worth more or less. */}
               <Table.Cell textAlign="end" color={deltaColor(m)}>
-                {deltaText(m)}
+                {m.priceChange ? (
+                  <Stack gap="0" align="end">
+                    <Text as="span">{deltaText(m)}</Text>
+                    <Text as="span" fontSize="xs" whiteSpace="nowrap" color={valueColor(m.priceChange)} data-testid={`${testId}-row-${m.id}-value`}>
+                      {formatSignedRupiah(m.priceChange.valueDelta)}
+                    </Text>
+                  </Stack>
+                ) : (
+                  deltaText(m)
+                )}
               </Table.Cell>
               <Table.Cell textAlign="end">{m.balance.toString()}</Table.Cell>
             </Table.Row>

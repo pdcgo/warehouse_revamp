@@ -114,6 +114,7 @@ import {
 } from "./productStub";
 import { restockRequestService } from "./restockStub";
 import { batchStubService } from "./batchStub";
+import { batchRevalue } from "./batchPriceStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
 import { opnameService } from "./opnameStub";
@@ -1283,6 +1284,8 @@ export const transport = createRouterTransport(({ service }) => {
     ownerStockHistory: (req) => ownerStockHistory(req),
     // The warehouse's batches — the Batch list and a batch's page (batchStub.ts).
     ...batchStubService,
+    // Koreksi Harga — the owning team corrects a batch's price; the batch stubs read it back (batchPriceStub.ts).
+    batchRevalue: (req) => batchRevalue(req),
     // What the warehouse HOLDS, paged — the catalogue the order form's picker browses. Note the
     // shape: a flat `items` array of {product_id, available}, NOT the columnar envelope the governed
     // List RPCs use. Inventory answers with the figure the list was built from, so there is no second

@@ -33,6 +33,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [superseded-stock-opens-a-warehouses-inventories](#superseded-stock-opens-a-warehouses-inventories) | ⛔ WITHDRAWN the same night — **Stock** was to be the first item of a warehouse's Inventories group, before Restock, for its Owner, Admin and Staff |
 | [a-warehouses-products-is-what-it-holds](#a-warehouses-products-is-what-it-holds) | a warehouse's **Products** menu IS the list of what it holds — the Stock screen's list, a row opening the warehouse product page; no separate Stock item, the old address forwards there |
 | [warehouse-product-list-is-deleted](#warehouse-product-list-is-deleted) | the unused WarehouseProductList RPC is deleted | owner, as recommended | — |
+| [the-correct-price-prototype-is-accepted](#the-correct-price-prototype-is-accepted) | Koreksi Harga sits on the product page's Batch rows; the warehouse sees it in the batch history | owner, as recommended | — |
+| [a-corrected-price-is-above-zero](#a-corrected-price-is-above-zero) | a batch's price may be corrected only to more than Rp 0 | owner | — |
+| ~~[superseded-a-price-may-be-corrected-to-zero](#superseded-a-price-may-be-corrected-to-zero)~~ ⛔ withdrawn | a batch's price may be corrected down to Rp 0, never below | owner, as recommended | — |
 
 ---
 
@@ -314,6 +317,8 @@ flowchart LR
 
 🔄 *(2026-10-16)* **Its open point is settled** — a revaluation is for a typo or a markdown; a late cost is an expense, never
 a revaluation: [a-late-cost-is-an-expense-not-a-revaluation](#a-late-cost-is-an-expense-not-a-revaluation).
+
+✅ Built 2026-11-12 — `InventoryService.BatchRevalue` (`inventory_v1/batch_revalue.go` → `inventory_mutations.PostRevaluation` → `inventory_ledgers.Revalue`): the scoped team's selling Owner or Admin, plus Root and the Administrator stamped `is_override`; another team's batch is NotFound; the reason is required (trimmed, ≤ 200) and written to the transaction, `batch_logs` and `batch_price_logs`; the warehouse reads it as **Harga dikoreksi** (`MOVEMENT_KIND_REVALUATION`) in the batch's Riwayat.
 
 ---
 
@@ -897,3 +902,46 @@ owner and 12 on hand, a row opens its page, and the old address forwards.
 **The verdict.** `InventoryService.WarehouseProductList` (the warehouse's *asked-to-hold* arrangement list, #142), its request, response and `WarehouseProductListDataType`, its handler (`inventory_v1/warehouse_product.go`'s list) and its test are **deleted**; the RPC's name and its messages' field numbers are **reserved** in the proto, so they are never reused. The arrangement rows themselves, and every reader that still uses them, are unchanged. ⚠ Not done yet.
 
 ✅ **Built 2026-11-11.** The rpc is gone from `InventoryService`; `WarehouseProductListRequest` and `WarehouseProductListResponse` stay in `inventory.proto` only as empty tombstones — protobuf cannot reserve a method or message name, so the names stay taken and every field number and name they had is `reserved` (1–3); `WarehouseProductListDataType` and `WarehouseProductListResponseItem` are deleted. The handler and its slice builder are gone (`inventory_v1/warehouse_product.go` keeps only the link writers); its test file now pins the `warehouse_products` arrangement a restock writes (`TestWarehouseProductLink_*`), which `ProductHistory` still reads. No perf audit existed for it. Docs: [rpc.md](../../services/inventory_service/rpc.md).
+
+---
+
+## the-correct-price-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to the Storybook prototype of [the-owning-team-revalues-with-a-reason](#the-owning-team-revalues-with-a-reason) and [revaluation-and-opname-are-transaction-types](./transaction_decision.md#revaluation-and-opname-are-transaction-types) (`features/inventory/CorrectPrice.stories.tsx`, eight screenshots, desktop and phone), built from [batch.md](./batch.md)'s *Change Price Flow Example*.
+
+**The verdict.** Accepted as shown.
+
+| | |
+| --- | --- |
+| where | the owning team's **product page, Batch section**: a **Koreksi Harga** button on each batch row (a column on desktop, the foot of each block on phones) — the batch detail page is the warehouse's, so the owning team never reaches it |
+| who | the owning team's Owner and Admin, and Root / the System Administrator (stamped *oleh tim Root*); never the warehouse, CS or a monitor |
+| the warehouse | no button; sees **Harga dikoreksi** in the batch's Riwayat and *dikoreksi dari Rp …* under its unit price |
+| the form | current price, new price, a **required reason** (≤ 200), the hint that a late cost is an expense ([a-late-cost-is-an-expense-not-a-revaluation](#a-late-cost-is-an-expense-not-a-revaluation)), a **Yang berubah** panel — units unchanged, value before → after, the difference = units left × price change |
+| saving | a confirm step first (a correction is never rolled back); a bottom sheet on phones |
+| refused | the same price; an empty reason; a batch with **no units left** |
+| the history | *Harga dikoreksi · old → new*, the reason, who, the badge when Root did it |
+| not changed | anything already gone from the batch — sold, lost, moved, transferred — keeps the price it left at |
+
+The floor (whether **Rp 0** is allowed) is asked separately. ⚠ Not built.
+
+✅ Built 2026-11-12 — live on the product page's Batch section (a column on desktop, the block's foot on phones) and, for Root and the Administrator only, the warehouse's batch page; the form, the confirm and the phone sheet as accepted; refused with the reason in the form: the same price, an empty reason, no units left, and a form whose price changed since it opened (`expected_price_unit`, judged under the batch's lock); the history row in Stock history and Riwayat; *dikoreksi dari Rp …* under the batch page's unit price; Tiba / Rusak / Hilang / Terpakai read at the price they left at (`BatchDetail`). e2e: `the_owner_corrects_a_batch_price.spec.ts`.
+
+---
+
+## superseded-a-price-may-be-corrected-to-zero
+
+> ⛔ **WITHDRAWN** *(2026-11-12, moments later, before it was built)*: the owner — *"sorry i change my mind, B"* — chose above Rp 0 only: [a-corrected-price-is-above-zero](#a-corrected-price-is-above-zero).
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to: can a batch's price be corrected to **Rp 0**? A restock line may already be Rp 0 (a free sample), so a free item typed with a price may need fixing.
+
+**The verdict.** The new unit price of a [Koreksi Harga](#the-correct-price-prototype-is-accepted) may be **Rp 0 or more**; a price below zero is refused. A unit later lost from a Rp 0 batch is owed at Rp 0 — the owning team's own choice when it corrected the price. ⚠ Not built.
+
+---
+
+## a-corrected-price-is-above-zero
+
+> Owner (Heri), in chat (2026-11-12): *"A"*, then *"sorry i change my mind, B"* — to: can a batch's price be corrected to **Rp 0**? (A: allow Rp 0, refuse below; B: above Rp 0 only, as the prototype does.) Withdraws [superseded-a-price-may-be-corrected-to-zero](#superseded-a-price-may-be-corrected-to-zero).
+
+**The verdict.** The new unit price of a [Koreksi Harga](#the-correct-price-prototype-is-accepted) must be **more than Rp 0**; Rp 0 and below are refused, as the accepted prototype already does. A free item typed with a price is not zeroed by a correction. ⚠ Not built.
+
+✅ Built 2026-11-12 — the form refuses Rp 0 and below; the server too (`BatchRevalueRequest.new_price_unit` `gt: 0`, and `BatchRevalue` before any lock: InvalidArgument).

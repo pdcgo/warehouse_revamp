@@ -1049,6 +1049,67 @@ a running `SUM(change_count) OVER (PARTITION BY warehouse_id ORDER BY id)` over 
 
 ---
 
+## Koreksi Harga — `BatchRevalue` (built 2026-11-12)
+
+The owning team corrects ONE batch's unit price, with a reason
+([the-owning-team-revalues-with-a-reason](../../business/inventory/context_decision.md#the-owning-team-revalues-with-a-reason),
+accepted as [the-correct-price-prototype-is-accepted](../../business/inventory/context_decision.md#the-correct-price-prototype-is-accepted),
+floor [a-corrected-price-is-above-zero](../../business/inventory/context_decision.md#a-corrected-price-is-above-zero)) —
+a typo or a markdown, never a late cost
+([a-late-cost-is-an-expense-not-a-revaluation](../../business/inventory/context_decision.md#a-late-cost-is-an-expense-not-a-revaluation)).
+It reprices the units LEFT: no unit moves, no rack row is written, units already gone keep the price they left at; its
+own `revaluation` transaction, never rolled back
+([revaluation-and-opname-are-transaction-types](../../business/inventory/transaction_decision.md#revaluation-and-opname-are-transaction-types)).
+The flow is [batch.md](../../business/inventory/batch.md)'s *Change Price Flow Example*.
+
+| | |
+| --- | --- |
+| who | the scoped team's selling Owner or Admin, plus Root and the System Administrator (policy); `is_override` from `san_auth.IsOverride` |
+| whose | the batch's `team_id` must be the scoped team — another team's batch, or none, is NotFound (one answer) |
+| refused before the transaction | a reason empty or only spaces (trimmed), over 200 — InvalidArgument; a new price ≤ Rp 0 (also the proto's `gt: 0`) — InvalidArgument |
+| refused under the batch's lock | no units left; `expected_price_unit` ≠ the price now (the form is stale — the text names the price now); the same price — FailedPrecondition, nothing written |
+| writes | `inventory_transactions` (`revaluation`, the owner's, the batch's warehouse, the reason) → `batch_logs` (0 units, `change_valuation` = Δ × units left, `price_unit_after` = the new price) → `batch_price_logs` (new price, Δ) → `UPDATE batches` (price, value, `updated_at`) → one `inventory_transaction_items` row (quantity 0, total = \|value change\| — the batch row carries the sign) |
+| code | `inventory_v1/batch_revalue.go` → `inventory_mutations.PostRevaluation` → `inventory_ledgers.LockBatch` + `Revalue` (its own ledger function: `BatchWrites.Flush` never changes a price) |
+| no event | no money and no unit moved; nothing listens |
+
+```mermaid
+sequenceDiagram
+  participant UI as Product page - Koreksi Harga
+  participant H as BatchRevalue
+  participant M as PostRevaluation
+  participant DB as Postgres
+  UI->>H: team_id, batch_id, expected_price_unit, new_price_unit, reason
+  H->>H: trim the reason, refuse empty or over 200, refuse a price at or below 0
+  H->>M: one DB transaction
+  M->>DB: SELECT batches WHERE id FOR UPDATE - the only lock
+  M->>M: refuse another team's batch, no units left, a stale form, the same price
+  M->>DB: INSERT inventory_transactions - revaluation, is_override
+  M->>DB: INSERT batch_logs - 0 units, delta x units left, price_unit_after
+  M->>DB: INSERT batch_price_logs - new price, delta
+  M->>DB: UPDATE batches - price_unit, stock_valuation
+  M->>DB: INSERT inventory_transaction_items - quantity 0, total abs of the change
+  H-->>UI: price before and after, value change, units
+```
+
+**Concurrency** — it locks exactly ONE batch row and nothing before it, so it joins no cycle: a take (order, sample,
+transfer-out, problem) or a count's finalize locks the product's batches in id order and simply queues behind or ahead
+of it; it touches no rack, so an open count's rack lock neither blocks it nor is broken by it. Two corrections of one
+batch: the second waits on the row, re-reads it, and is refused by `expected_price_unit`. Proved in
+`batch_revalue_race_test.go` — see [lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md#koreksi-harga-2026-11-12).
+
+**Performance** — 6 statements whatever the batch's history (7 in the probe, with the test transaction's SAVEPOINT),
+2.64 ms median against the background volume (`TestPerf_BatchRevalue`, 50 000 batches): over the 5-statement line by the
+decided flow itself — [BatchRevalue.md](../../../audits/services/inventory_service/performances/BatchRevalue.md).
+
+### What the reads say about a correction
+
+| read | change | performance |
+| --- | --- | --- |
+| `StockHistory` (a batch's — `filter.batch_id`) · `OwnerStockHistory` | a correction reads as `MOVEMENT_KIND_REVALUATION` (out of ADJUST; the kind filter takes it); every batch row carries `price_unit_before` / `price_unit_after` / `value_change` (14–16) — before = after − value ÷ units on a correction, = after elsewhere (`priceExprs`, no join: `batch_price_logs` has no transaction id). A rack's history never shows a correction (no rack row) | per-row arithmetic, nil. The probe on a batch with 3 000 takes found each row's two by-transaction lookups (`refExpr`) SCANNING `idempotency_order_check` and `restocks` — pre-existing — fixed by inventory `00041`'s two pure indexes: the owner's history 12.5 s → ~19 ms, a batch's 203 → ~2 ms ([OwnerStockHistory.md](../../../audits/services/inventory_service/performances/OwnerStockHistory.md)) |
+| `BatchDetail` | each figure from its own rows, never re-priced at today's price: `batch.line_cost` (Tiba) = arrived × the ACCEPTED price (`init_stock_valuation ÷ init_stock_count`, every batch read), `broken_value` / `lost_value` = the door's `restock_problem_items.total`, `used_value` = accepted value + Σ corrections − value left; `price_corrected` / `price_corrected_from` = the newest correction's price before it (*dikoreksi dari Rp …*) | the returns query became ONE pass over the batch's rows with FILTERs (returns, Σ corrections, the newest's price before), the transaction looked up only for a row that added units (a join over every row hashed all of `inventory_transactions` — caught on the probe, 10 ms and growing); the door's sum only for a restocked batch: 2 queries, 3.4 ms median on the 3 000-take batch (`TestPerf_BatchDetail_ALongCorrectedBatch`) — no audit file |
+
+---
+
 ## A stock opname — counting a whole shelf (`StockOpname`) — RETIRED
 
 ⛔ **Retired 2026-11-02** with the stock count below
