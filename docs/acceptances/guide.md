@@ -8,7 +8,7 @@ An acceptance file is the owner's checklist for one small feature. It has a few 
 ```
 docs/acceptances/<big>/<small>.md   the same coordinates as docs/business/ and docs/technical/
 docs/acceptances/<big>/context.md   the big feature's index: its small features and their statuses
-docs/acceptances/thens.md           a then shared by more than one given + when (see the copy rule below)
+docs/acceptances/progress.md        every given + when by the day it was discussed, with its status counts
 ```
 
 Start from one big feature. Its other small features can stay an empty template until they are discussed.
@@ -39,41 +39,54 @@ stateDiagram-v2
 
 | rule | |
 | --- | --- |
-| [one-row-per-then](#one-row-per-then) | `given \| when \| then \| status`, and each then gets its own row |
-| [given-is-who-can](#given-is-who-can) | one actor, `team:role` or `team:all`, and only a role that CAN |
-| [when-carries-the-state](#when-carries-the-state) | one action and the state it starts from, in lowercase |
+| [one-row-per-then](#one-row-per-then) | `given \| when \| then \| status`: a given has one when, a when has many thens, each then its own row |
+| [given-is-who-wants-what-in-which-case](#given-is-who-wants-what-in-which-case) | one actor that CAN, what they want, and the case: `selling:all` wants to restock<br>(2 products) |
+| [when-is-one-action](#when-is-one-action) | the action alone, in lowercase: `create restock`, `accept restock` |
 | [every-candidate-is-listed](#every-candidate-is-listed) | the agent lists every candidate then, including the ones it would leave out |
 | [a-then-is-one-visible-effect](#a-then-is-one-visible-effect) | one effect a person can see, with no measure in the wording |
-| [a-then-is-copied-word-for-word](#a-then-is-copied-word-for-word) | the same effect is written the same way everywhere |
 | [status-is-per-then](#status-is-per-then) | `✅ ok` / `❌ error` / `🚧 unimplemented` / `⬜ untested`, changed only on the owner's instruction |
 | [acceptances-are-markdown](#acceptances-are-markdown) | no Gherkin runner and no test file of its own: the agent's checks live in the feature's regression spec |
 | [only-the-discussion-changes-a-row](#only-the-discussion-changes-a-row) | nothing outside this loop edits a row |
+| [progress-is-by-day](#progress-is-by-day) | `progress.md` lists each action under its day, with the status counts of all its givens' thens |
 
 ## one-row-per-then
 
-The columns are `given | when | then | status`. Each then is its own row, so each status sits beside its own then. A blank
-given and when continue the row above.
+The columns are `given | when | then | status`. A given has one when, and a when has many thens. Each then is its own row,
+so each status sits beside its own then. A blank given and when continue the row above.
 
 ```markdown
 | given | when | then | status |
 | --- | --- | --- | --- |
-| `selling:all` | create restock | restock is listed as ongoing | ⬜ untested |
+| `selling:all` wants to restock<br>(1 product) | create restock | restock created | ⬜ untested |
 | | | ongoing stock increases | ⬜ untested |
+| `selling:all` wants to restock<br>(2 products) | create restock | restock created | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(ongoing) | edit | restock shows changes | ⬜ untested |
 ```
 
-## given-is-who-can
+## given-is-who-wants-what-in-which-case
 
-- One actor, named the way the system names it: `<team type>:<role>`, e.g. `selling:owner`, or `<team type>:all` when every
-  role of that team type can. The roles are in [role.proto](../../proto/warehouse/role_base/v1/role.proto).
+- One actor, what they want to get done, and the case, in lowercase: `` `selling:all` wants to restock<br>(2 products) ``,
+  `` `warehouse:all` wants to accept a restock<br>(multi suppliers) ``.
+- **The case goes in brackets on its own line**, after a `<br>`. It holds the state the action starts from and the
+  condition it is tested under, so a then carries no brackets of its own.
+- **A state and a part read `state: part`**: `` `selling:all` wants to edit a restock<br>(ongoing: shipping cost) `` — the
+  state the restock is in, then the part of it that changes.
+- **One given, one when.** A different case is a different given, and so is a different goal, even on the same restock:
+  editing a restock is not wanting to restock, and accepting it is not receiving it.
+- **Each given is tested in its own run**, set up to meet its case.
+- **Each given lists all its thens**, even the ones another case of the action shares. A then its case changes says how
+  ([a-then-is-one-visible-effect](#a-then-is-one-visible-effect)).
+- **A given whose flow is not known yet is one row of `-`**: `-` as its then and `-` as its status. It is a case the owner
+  knows exists and has not designed, and it counts in no total until its thens are written.
+- The actor is named the way the system names it: `<team type>:<role>`, e.g. `selling:owner`, or `<team type>:all` when
+  every role of that team type can. The roles are in [role.proto](../../proto/warehouse/role_base/v1/role.proto).
 - **Only a role that CAN do it.** A refused role gets no row, and that includes a read-only role.
 - **Root is never written.** It passes every check, so writing it would repeat one global rule in every file.
-- The given names WHO only. The state an action starts from goes in the when.
 
-## when-carries-the-state
+## when-is-one-action
 
-One action, and the state it starts from, written simply and in lowercase: `create restock`, `cancel an ongoing restock`,
-`accept an arrived restock`. A read (a list, a detail) is never a when: what a person can read shows up as a then of the
-action that caused it.
+- The action alone, in lowercase: `create restock`, `mark arrived restock`, `accept restock`, `edit restock`. Its case lives in the given.
+- A read (a list, a detail) is never a when: what a person can read shows up as a then of the action that caused it.
 
 ## every-candidate-is-listed
 
@@ -89,16 +102,14 @@ a recommendation. The owner and the agent then decide together. The agent bases 
 ## a-then-is-one-visible-effect
 
 - One effect per row.
-- A condition goes in brackets: `product is listed in the target warehouse (if new)`. Each such then is tested in its own run,
-  set up to meet its condition.
+- **Short, like a note.** No `the`, no `a`, and no `is` where the line reads without it: `restock created`,
+  `recorded at warehouse`, `recorded in account history`.
+- **A case's then says what its case changes**: `ongoing stock of product 1 and product 2 increases`,
+  `paying account balance decreases, shipping cost included`. A then the case does not change keeps the plain words.
+- **No condition in the wording.** A condition is the case of the given
+  ([given-is-who-wants-what-in-which-case](#given-is-who-wants-what-in-which-case)).
 - **No measure in the wording.** The expected number is set when the then is tested, by hand or by the agent on the owner's
   instruction.
-
-## a-then-is-copied-word-for-word
-
-The same effect is written with exactly the same words everywhere, so it is recognised as the same then and checked the same
-way. When a second given + when uses a then, that then gets a row in `thens.md`: the then, and where a person sees it.
-Until then, the shared list is not needed.
 
 ## status-is-per-then
 
@@ -110,9 +121,11 @@ Until then, the shared list is not needed.
   says what goes wrong, and the entry gives the then, what was expected, what actually happens, the cause, where it was
   seen, and the check that pins it. When the error is fixed and the status changes, the entry is deleted.
 - `team:all` is tested with **every** role of that team type. If one role fails, the then is `error`.
-- A then observed by another team (*the target warehouse has it incoming*) is checked as any **one** role there that can read it.
+- A then observed by another team (*recorded at warehouse*) is checked as any **one** role there that can read it.
 - **The agent changes a status only on the owner's instruction, one then at a time.** If the agent's own test later fails, the
   agent reports it in chat and leaves the status alone.
+- **The agent's own passing test does not make a then `✅ ok`.** It is reported in chat, and the then stays `⬜ untested`
+  until the owner says it has been checked. Only the thens the owner names are written `ok`.
 
 ## acceptances-are-markdown
 
@@ -139,3 +152,18 @@ Acceptances are made semi-automatically: a row exists because one given + when w
 outside that loop changes one**. A code change, a refactor, an updated business or technical doc, or another agent's pass
 never rewrites a given, a when, a then or a status. When the code disagrees with a then, that is a failure to report in chat
 for the owner to decide on, not a reason to edit the row.
+
+## progress-is-by-day
+
+[progress.md](progress.md) lists every action under the day it was discussed, newest day last. One line holds all the
+givens of that action, whatever their case:
+
+```markdown
+## 2026-11-11
+
+- `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md) (5 thens: ✅ 4, 🚧 1)
+```
+
+- The counts are the thens' statuses **today**, in the order ✅ ❌ 🚧 ⬜, and a zero is left out.
+- It is derived from the small-feature files. When a row is written or a status changes, its line changes in the same edit,
+  as the counts in the big feature's `context.md` do.
