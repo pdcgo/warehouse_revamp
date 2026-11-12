@@ -143,6 +143,36 @@ func AcceptedRestocks(db *gorm.DB) *gorm.DB {
 		Order("id")
 }
 
+// RestockAcceptedEventsOn is the RestockAccepted event of every restock accepted on the Jakarta day that names a
+// supplier, oldest first — built by RestockAcceptedEvent, the accept's own builder, so it is the very event the accept
+// sent. For `san report refold --report supplier-restock-daily` (a-wrong-day-is-refolded-from-the-log): what
+// "accepted on a day" is stored as stays inventory's to know. The day is the accept's instant in WIB, the event's
+// `accepted_on`.
+func RestockAcceptedEventsOn(db *gorm.DB, day string) ([]*eventsv1.Event, error) {
+	start, err := time.ParseInLocation("2006-01-02", day, jakarta)
+	if err != nil {
+		return nil, err
+	}
+
+	restocks := []inventory_service_models.Restock{}
+
+	err = AcceptedRestocks(db).
+		Where("COALESCE(restocks.accepted_at, restocks.updated_at) >= ?", start).
+		Where("COALESCE(restocks.accepted_at, restocks.updated_at) < ?", start.AddDate(0, 0, 1)).
+		Find(&restocks).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	events := make([]*eventsv1.Event, 0, len(restocks))
+	for i := range restocks {
+		events = append(events, RestockAcceptedEvent(&restocks[i]))
+	}
+
+	return events, nil
+}
+
 // commonLineSupplier is the one supplier every line names, or 0 when they disagree or one names none.
 //
 // ⚠ supplier_service's figures still fold a whole restock under the event's restock-level supplier_id. Lines name their

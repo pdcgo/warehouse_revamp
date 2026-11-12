@@ -922,6 +922,18 @@ sequenceDiagram
 | an id of 0 | left out of an id group: `IDList` takes ids above 0 ([a-no-user-row-cannot-be-a-key](../../business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key)) |
 | ⚠ not built | a refold of Warehouse Fee for orders folded before 00038 (none in production, [revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet), [the-order-metrics-count-from-the-fold-onward](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward) — a dev order placed before it and cancelled after nets its seller below zero); a backfill of the orders before the fold ([are-past-orders-folded](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)), a replay and a dedup prune — supplier's fold has all three |
 
+### The day re-fold — `Analytic.DayRefold` (not an RPC)
+
+The operator's repair for a day the fold left short — a lost event — `san report refold --report order-daily --team <id>
+--date <day>` ([docs/tools/san.md](../../tools/san.md#order-metrics--order-daily), [a-wrong-day-is-refolded-from-the-log](../../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)). An in-process method
+(`selling_v1/order_analytic_refold.go`), no wire contract: it re-reads the team's orders and timeline rows of the Jakarta
+day, claims each move whose event was never claimed and is over an hour old (`order_event_logs`, the event's own id, so a
+redelivery folds nothing), takes `order_daily_reports` in SHARE ROW EXCLUSIVE — the lock the fold's upsert waits on — and
+replaces the day's rows with the fold's own sums. No order or timeline row is written. Its sequence is the shared one in
+san.md; the lock row is in [lock-order.md](../../../audits/services/selling_service/concurrency/lock-order.md).
+`selling_v1.OrderSaleEventsOn` is the read the SUPPLIER re-fold asks of selling: the day's OrderPlaced and OrderCancelled as
+the orders announced them.
+
 ## Draft orders — `OrderDraftPush` and the blanks-only merge (#190, #191)
 
 A **draft** is an incomplete order pushed in by a **third-party app**, which a person here finishes

@@ -21,7 +21,7 @@ The two sides share no table.
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED |
-| Last swept | 2026-10-07: the figures (fold, backfill, replay). The CRUD side was swept earlier the same day, in the service's first audit (the-supplier-gets-its-own-service) |
+| Last swept | 2026-11-12: the day re-folds (`DayRefold`, `san report refold --report supplier-restock-daily|supplier-sale-daily`, [a-wrong-day-is-refolded-from-the-log](../../../../docs/business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)) — claims, then the report in SHARE ROW EXCLUSIVE (see their rows) · 2026-10-07: the figures (fold, backfill, replay). The CRUD side was swept earlier the same day, in the service's first audit (the-supplier-gets-its-own-service) |
 
 ## The hierarchy
 
@@ -56,6 +56,8 @@ dropped by its 00023). So no other service's insert takes a `KEY SHARE` on a sup
 | `AnalyticMaintenanceRun` | `DELETE supplier_event_logs WHERE created_at < now − 45 d` (one statement) | takes no `process_event_lock`. Not raced, see [Not proved](#not-proved) |
 | `SalesFoldHandler` → `foldSalePlaced` | inventory's take read **before** the transaction (another service's rows, no lock) → `INSERT supplier_sale_orders … ON CONFLICT DO NOTHING` → that row **`FOR UPDATE`** → `UPDATE` it → `INSERT supplier_sale_order_parts` → `supplier_sale_daily_reports` one upsert **in (supplier, product, team) order** — twice when the cancel came first | one transaction. The order's row is the one lock a placement and its cancel meet on. Takes no `process_event_lock`: the replay never touches these tables. Proved: [SalesFold.md](SalesFold.md) |
 | `SalesFoldHandler` → `foldSaleCancelled` | `INSERT supplier_sale_orders … ON CONFLICT DO NOTHING` → that row **`FOR UPDATE`** → `UPDATE` it → read its parts → one upsert in the same key order | one transaction; with no placement yet it stops after the `UPDATE` |
+| `DayRefold` — `supplier-restock-daily` | inventory's accepts read **before** the transaction → `process_event_lock` **`FOR SHARE`** → `INSERT supplier_event_logs … ON CONFLICT DO NOTHING` for each LOST accept of the supplier's day → **`LOCK TABLE supplier_product_daily_reports IN SHARE ROW EXCLUSIVE MODE`** → the supplier's day rows: upsert (replace) or delete, in (product, team) order | the fold's order (lock check, claim, report). A replay's flip waits for it as for a fold; while a replay holds the lock it refuses (`ErrRefoldLocked`). The fold has no advisory lock: its upsert's ROW EXCLUSIVE is what the table lock waits for, and waits on. Reads are not blocked |
+| `DayRefold` — `supplier-sale-daily` | selling's orders and, for each unclaimed placement, inventory's take read **before** the transaction → per LOST move, in (order, placement-then-cancel) order: `INSERT supplier_sale_orders … ON CONFLICT DO NOTHING` → that row **`FOR UPDATE`** → `UPDATE` placed_day / cancelled_day (+ `INSERT supplier_sale_order_parts`) → **`LOCK TABLE supplier_sale_daily_reports IN SHARE ROW EXCLUSIVE MODE`** → the supplier's day rows: upsert or delete | the sales fold's order (the order's row, then the report); a fold locks ONE order row, so the re-fold's order-id order never meets another in a cycle. Takes no `process_event_lock` — nor does the sales fold |
 
 `FOR SHARE` vs `NO KEY UPDATE` is what makes a supplier delete wait for an in-flight store create. The FK's own
 `KEY SHARE` would **not** block it, because a soft delete changes no key column. The same pair is what makes the
@@ -95,6 +97,8 @@ Each safe claim was run ×5, against a private database.
 | A replay **waits** for a fold in flight, and its delete then sees it | `TestInterleave_Replay_WaitsForAFoldInFlight` | the replay's `UPDATE … process_event_lock` blocked on A's `FOR SHARE`. It deleted A's row **and** A's claim (2 / 2). The redelivery folds it once |
 | A fold arriving while the lock is held is **refused**, writes nothing, waits on nothing | `TestInterleave_Replay_AFoldWhileTheLockIsHeldIsRefused`, parked before the figure delete, **between the two deletes**, and inside the seek | `errFoldLocked` in 1–2 ms at all 3 points, in the range and outside it. No row, no claim |
 | A replay racing live deliveries counts every accept **once** | `TestRace_Replay_BesideLiveFoldsCountsEveryAcceptOnce`: 1 replay + 8 staggered deliveries × 10, then Pub/Sub's retry and the seek | every row exact. 15 deliveries landed and 65 were refused by the lock, out of 80 |
+| A day re-fold racing the folds counts every event **once**, both reports | `TestRace_DayRefold_Restock_AFoldRacingItCountsEveryAcceptOnce`, `TestRace_DayRefold_Sale_AFoldRacingItCountsEveryOrderOnce`: 2 re-folds + 2 in-flight folds + 2 lost redeliveries × 10 | every round exact, one claim (or placed_day) per event, 0 deadlocks |
+| …because a fold in the re-fold's gap **waits** for its replace | `TestInterleave_DayRefold_AFoldInTheGapWaitsForTheReplace` (restock, sale): the re-fold parked after counting the claims, before reading the stored rows; an in-flight fold runs | the fold blocks on the table lock and adds its unit after the replace (2 of 2). With the `LOCK TABLE` line removed it commits inside the gap — the test fails |
 
 ## The replay and the fold: why the lock is load-bearing
 

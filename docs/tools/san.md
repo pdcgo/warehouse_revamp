@@ -91,7 +91,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
 | [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
 | [`document sweep-generated`](#document-sweep-generated) | Delete the generated downloads older than 7 days — merged label PDFs, table exports, order exports — now, as the server's daily sweep does. Uploads never. `--dry-run` counts first. Safe to re-run — a second run finds nothing |
-| [`report refold`](#report-refold) | Rebuild ONE shop's or ONE person's day of a settlement report from the log — the repair for a day that is wrong while the log is right; every later day's carry follows. `--dry-run` prints it first. Safe to re-run — a second run changes nothing |
+| [`report refold`](#report-refold) | Rebuild ONE scope's day of an EVENT-FED report from its log — a shop's or a person's settlement day (every later day's carry follows), a seller team's order metrics, a supplier's restock figures or Penjualan — the repair for a day that is wrong while the log is right. `--dry-run` prints it first. Safe to re-run — a second run changes nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`pubsub releases`](#pubsub-releases) | List and replay the dead-lettered stock releases (`InventoryTxCancel`, `OrderCancelled`) through inventory's own listener |
@@ -1003,29 +1003,62 @@ A run that stops at its limit adds `[…] stopped at --limit 1000: older generat
 [a-wrong-day-is-refolded-from-the-log](../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log):
 *"one report, one shop, one date — re-read that day's log rows and rewrite that day's report row."* The repair for a
 report day that is wrong while the log is right — a lost event, a fold that did not run. It **adds no log row**; the broker
-replay stays for range rebuilds. **Run it when a person notices a wrong day** — nothing detects one. Dry first, then for
-real. **Safe to re-run**: a row that already matches the log is left as it is, and a second run shifts nothing.
+replay stays for range rebuilds. **Run it when a person notices a wrong day** — nothing detects one
+([a-report-is-fed-by-events-only-for-now](../business/analytic/context_decision.md#a-report-is-fed-by-events-only-for-now)).
+Dry first, then for real. **Safe to re-run**: a row that already matches the log is left as it is, and a second run
+changes nothing.
 
-Two reports ([the-person-report-refolds-too](../business/settlement/context_decision.md#the-person-report-refolds-too)):
+### Which reports it rebuilds — the fed-by table
+
+Only an **event-fed** report can lose an event: one folded by a Pub/Sub subscriber. A report folded **inside its writer's
+own transaction** is equal to its rows by construction and needs no re-fold. Every report and figure table in every
+service's `db_migrations`:
+
+| Report table (service) | Fed by | Topic → handler | Its log | Key — scope × Jakarta day | Claim (dedup) | `--report` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `shop_settlement_daily_reports` + state `shop_settlement_reports` (settlement) | **event** | `settlement-log-posted` → `settlement_v1` `FoldHandler` (sub `settlement-fold`) | `settlement_logs` | (shop, team, day) + carried balance | `settlement_event_logs` (`settlement-log:<id>`) | **`settlement-shop-daily --shop`** |
+| `user_settlement_daily_reports` + state `user_settlement_reports` (settlement) | **event** | the same fold | `settlement_logs` | (person, team, day) + carried balance | `settlement_event_logs` — shared with the shop report | **`settlement-user-daily --user`** |
+| `order_daily_reports` (selling) | **event** | `order-placed` · `order-cancelled` · `order-status-changed` · `order-return-accepted` → `selling_v1` `Analytic.FoldHandler` (subs `selling-order-fold-*`) | `orders.created_at` + `order_timeline_logs` (the rows INTO cancel, return, lost, return_completed) | (day, metric, **seller team**, shop, warehouse, creator) | `order_event_logs` (`order-placed:<o>`, `order-cancelled:<o>`, `order-status-changed:<row>`, `order-return-accepted:<o>`) | **`order-daily --team`** |
+| `supplier_product_daily_reports` (supplier) | **event** | `restock-accepted` → `supplier_v1` `FoldHandler` (sub `supplier-fold`) | inventory's accepted restocks (`inventory_v1.RestockAcceptedEventsOn` — the accept's own event builder) | (day, **supplier**, product, restocking team) | `supplier_event_logs` (`restock-accepted:<r>`) | **`supplier-restock-daily --supplier`** |
+| `supplier_sale_daily_reports` (supplier) | **event** | `order-placed` · `order-cancelled` → `supplier_v1` `SalesFoldHandler` (subs `supplier-order-placed`, `-cancelled`) | selling's orders (`selling_v1.OrderSaleEventsOn`) and inventory's take (`OrderTakeSuppliers`) | (day, **supplier**, product, owning team) | `supplier_sale_orders` (`placed_day`, `cancelled_day` per order) + `supplier_sale_order_parts` | **`supplier-sale-daily --supplier`** |
+| `expense_metric_daily_reports` (expense) | in the expense row's transaction (`metric_fold.go`) | — | `expense_records` | (day, kind, team, shop, person) | — | not needed |
+| `financial_account_daily_reports` (financial_account) | in the log row's transaction (`ledger.go` `post` → `foldDay`, under the account lock) | its listeners write the LOG row; the report rides that transaction | `financial_account_logs` | (account, day) + carried balance | `financial_account_event_logs` dedups the log write | not needed |
+| `inventory_lost_daily_reports` (inventory) | in the loss's transaction (`fold_lost.go`) | — | `warehouse_stock_problems` (lost) | (day, warehouse, team, product, …) | — | not needed |
+| `inventory_stock_daily_changes` · `inventory_door_daily_reports` (inventory) | in the stock transaction (`inventory_ledgers/stock_report.go`, [ready-stock-is-folded-in-the-stock-changes-own-step](../business/analytic/rpc_provide_decision.md#ready-stock-is-folded-in-the-stock-changes-own-step)) | — | `batch_logs`, the door rows | (day, warehouse, owner, product, supplier, type) | — | not needed |
+| `liability_balances` (liability) | in the entry's transaction (`post_entry.go`) — a running position, not a daily report | its listeners write ENTRIES (a log) | `liability_entries` | (team, counterparty) | per entry | not a report |
 
 ```sh
 go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date 2026-10-10 --dry-run   # prompts Local/Production
 go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date 2026-10-10             # the real run
 go run ./tools/san report refold --report settlement-user-daily --user 7 --date 2026-10-10 --dry-run    # one person's day
-go run ./tools/san report refold --report settlement-user-daily --user 7 --date 2026-10-10
+go run ./tools/san report refold --report order-daily --team 89 --date 2026-10-30 --dry-run             # a seller team's order metrics
+go run ./tools/san report refold --report supplier-restock-daily --supplier 2 --date 2026-07-21 --dry-run
+go run ./tools/san report refold --report supplier-sale-daily --supplier 2 --date 2026-10-30 --dry-run
 ```
 
 | Flag | |
 | --- | --- |
-| `--report` | **`settlement-shop-daily`** — `shop_settlement_daily_reports`, by shop · **`settlement-user-daily`** — `user_settlement_daily_reports`, by person |
-| `--shop` | The shop id — the shop report's scope, and only its |
-| `--user` | The person's user id — the person report's scope, and only its. `--user 0` is the person report's row of "not recorded" |
-| `--date` | The **Jakarta** day, `yyyy-mm-dd` — the log rows' `posted_on` |
+| `--report` | **`settlement-shop-daily`** · **`settlement-user-daily`** · **`order-daily`** · **`supplier-restock-daily`** · **`supplier-sale-daily`** — the table above |
+| `--shop` | The shop id — `settlement-shop-daily`'s scope, and only its |
+| `--user` | The person's user id — `settlement-user-daily`'s scope, and only its. `--user 0` is the person report's row of "not recorded" |
+| `--team` | The seller team id — `order-daily`'s scope, and only its: every metric, shop, warehouse and creator row of the team's day |
+| `--supplier` | The supplier id — the two supplier reports' scope: every product and team row of the supplier's day |
+| `--date` | The **Jakarta** day, `yyyy-mm-dd` — the day the report files a fact on (settlement: the rows' `posted_on`; the others: the event's instant in WIB) |
 | `--dry-run` | Compute and write everything inside the transaction, print it, **roll it back** |
 | `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
 
-It calls settlement_service's own `DayRefold` (`settlement_v1/day_refold.go`) — the fold's lock, its claim table, its
-advisory keys, its later-day shift and its state-row statement — never a hand-written UPDATE.
+A flag that is not the report's own scope is refused before any database is asked for.
+
+Each report is rebuilt by its OWN service's method, reached through that service's package — the fold's lock, its claim
+table, its statements — never a hand-written UPDATE: settlement_service's `DayRefold` (`settlement_v1/day_refold.go`),
+selling_service's `Analytic.DayRefold` (`selling_v1/order_analytic_refold.go`), supplier_service's `DayRefold`
+(`supplier_v1/day_refold.go`, `day_refold_sales.go`). A log another service owns is read through that service's own
+function (`inventory_v1.RestockAcceptedEventsOn`, `selling_v1.OrderSaleEventsOn`, inventory's `OrderTakeSuppliers`),
+handed in by san's composition root.
+
+### Settlement — `settlement-shop-daily` · `settlement-user-daily`
+
+[the-person-report-refolds-too](../business/settlement/context_decision.md#the-person-report-refolds-too).
 
 | a log row of the day | counted? |
 | --- | --- |
@@ -1140,11 +1173,127 @@ A repair — a lost row on a shop's day (`tools/san/report_test.go`, the test da
 | `⚠ the next day, D, opens +X off this day's close — its carry was off before this re-fold; re-fold D to close it` | the next row's carry was already broken (a shift keeps a break). Re-folding D re-opens it from this day's close |
 | `⚠ N row(s) were never folded: <other report> is still short by them … Run:` | the lost rows are claimed now; run each printed command so the other report counts them too |
 
+### Order metrics — `order-daily`
+
+selling_service's `Analytic.DayRefold`. The log is the team's orders and their timeline — the very rows each event was
+built from, one event per move — and every figure is the order's own frozen one, as the fold reads it:
+
+| Move on the day | Its event (the claim's id) | Row |
+| --- | --- | --- |
+| an order placed (`orders.created_at`) | `order-placed:<order>` | `created` +1, `total_cost`, `platform_total` — and `warehouse_fee` +1, the fee, for an order with one |
+| the timeline row INTO `cancel` | `order-cancelled:<order>` | `cancelled` +1 … — and `warehouse_fee` −1, −the fee |
+| a timeline row INTO `return` / `lost` | `order-status-changed:<timeline row>` | `return_created` / `lost_created` |
+| the timeline row INTO `return_completed` | `order-return-accepted:<order>` | `return_arrived` |
+
+### A supplier's figures — `supplier-restock-daily` · `supplier-sale-daily`
+
+supplier_service's `DayRefold`. Supplier owns no source rows — only its claims — so a day is rebuilt from **what its
+claims hold** (exactly what the fold folded: the claimed event's `raw`, or the order's parts), and the other services' log
+is asked only for the events nobody claimed:
+
+| Report | Counted from the claims | A lost event, claimed the fold's way |
+| --- | --- | --- |
+| `supplier-restock-daily` | every `supplier_event_logs` row of the day whose `RestockAccepted` names the supplier — its lines, by the fold's arithmetic | the accept's event, rebuilt by inventory's own builder, inserted as its claim |
+| `supplier-sale-daily` | the supplier's parts of every order with `placed_day` = the day, added, and of every order with `cancelled_day` = the day whose placement was folded, taken back | a placement: its `placed_day` and its parts, priced by the fold's `saleParts` from inventory's take · a cancel: its `cancelled_day` |
+
+⚠ **One order feeds several suppliers, and its cancel another day.** A lost placement the Penjualan re-fold claims counts
+for this supplier's day only; every other supplier its parts name — and the cancel's day, when the late placement had been
+cancelled already — is then short by it. The output names each and prints its command; run them.
+
+A claimed restock event is counted **as it was folded**: a restock edited after its accept leaves the folded day alone.
+Claims older than 45 days are pruned (`AnalyticMaintenanceRun`), so an older day's accepts read as never claimed — they are
+rebuilt from inventory and claimed again, which is the same figure. A replay holding `process_event_lock` refuses the
+restock re-fold, as it refuses the fold.
+
+### The lock — the three reports with no advisory key
+
+The order and supplier folds take no advisory lock: each claims, then upserts — and the upsert holds ROW EXCLUSIVE on the
+report until it commits. So the re-fold claims the lost events first (the fold's order), then takes the report in
+**SHARE ROW EXCLUSIVE**: it waits for every fold that already wrote, and every fold that has not yet written waits for it.
+Reads are not blocked. Under the lock the claims are re-read, so a fold still waiting — its claim invisible — is not
+counted and adds its event after the replace. None of the three carries a balance, so no later day moves.
+
+```mermaid
+sequenceDiagram
+  participant SAN as san report refold
+  participant SVC as the report's service — DayRefold, one transaction
+  participant LOG as the log's service — its own function, read before
+  participant DB as Postgres
+  SAN->>SVC: report, a team or a supplier, day, dry-run
+  SVC->>LOG: the day's moves — orders and timeline, accepts, or orders and their takes
+  SVC->>DB: process_event_lock FOR SHARE — supplier-restock-daily only
+  SVC->>DB: claim every lost event — older than an hour, never claimed — the fold's own claim
+  SVC->>DB: LOCK TABLE the report IN SHARE ROW EXCLUSIVE — waits for every fold that already wrote
+  SVC->>DB: re-read the claims — what is claimed now counts, the rest is in flight
+  SVC->>DB: replace each row that differs, remove the rows the log does not hold
+  SVC-->>SAN: before and after per row, counted, claimed, in flight, the other scopes left short
+  SAN-->>SAN: print it — a dry run rolls the transaction back
+```
+
+The dev database (2026-11-12), dry runs only:
+
+```
+$ san report refold --report order-daily --team 89 --date 2026-10-30 --dry-run
+[explicit --dsn] order-daily · team 89 · 2026-10-30 · DRY RUN — nothing written
+  moves counted 1 · lost and now claimed 0 · in flight, left to the fold 0
+  created · shop 3 · warehouse 13 · user 1: unchanged
+    column                             before          after
+    order_count                             1              1
+    total                              25.836         25.836
+    mp_total                          123.333        123.333
+  warehouse_fee · shop 3 · warehouse 13 · user 1: row added
+    column                             before          after
+    order_count                             0              1  ←
+    total                                   0         15.000  ←
+$ san report refold --report order-daily --team 89 --date 2026-08-14 --dry-run
+[explicit --dsn] order-daily · team 89 · 2026-08-14 · DRY RUN — nothing written
+  moves counted 2 · lost and now claimed 2 · in flight, left to the fold 0
+  created · shop 1 · warehouse 2 · user 0: row added
+    column                             before          after
+    order_count                             0              2  ←
+    total                                   0        100.036  ←
+    mp_total                                0         12.333  ←
+$ san report refold --report supplier-restock-daily --supplier 2 --date 2026-07-21 --dry-run
+[explicit --dsn] supplier-restock-daily · supplier 2 · 2026-07-21 · DRY RUN — nothing written
+  events counted 1 · lost and now claimed 0 · in flight, left to the fold 0
+  product 1 · team 89: unchanged
+    column                             before          after
+    restock_count                          50             50
+    restock_valuation               2.500.000      2.500.000
+  product 2 · team 89: unchanged
+    column                             before          after
+    restock_count                          23             23
+    restock_valuation                 200.000        200.000
+```
+
+The first two are real gaps on the dev data, left as they are: order 6's placement is claimed but its Warehouse Fee row is
+missing (the fee row joined the fold on 2026-11-05, after the order), and orders 3–4 were never folded (no claim). A real
+run repairs each.
+
+A Penjualan repair (`tools/san/report_test.go`, the test database) — a lost placement priced from inventory's take:
+
+```
+[test] supplier-sale-daily · supplier 77 · 2026-02-03 · re-folded
+  events counted 1 · lost and now claimed 1 · in flight, left to the fold 0
+  product 901 · team 12: row added
+    column                             before          after
+    sales_count                             0              3  ←
+    sales_value                             0         45.000  ←
+```
+
+| line | means |
+| --- | --- |
+| `⚠ the lost sales claimed here also count for N other supplier day(s) … Run:` | the lost placements or cancels are claimed now; run each printed command so the other suppliers' days — and a cancel's own day — count them too |
+
 ### Errors you should expect
 
 | Error | Cause |
 | --- | --- |
-| `the re-fold rebuilds settlement-shop-daily (by shop) or settlement-user-daily (by user)` | another `--report` |
+| `the re-fold rebuilds settlement-shop-daily, settlement-user-daily, order-daily, supplier-restock-daily, supplier-sale-daily` | another `--report` |
+| `--report order-daily re-folds one seller team: give --team, not --shop` (and every report's mirror) | another report's scope flag |
+| `order-daily re-folds one seller team: a team id is required` | `order-daily` with no `--team` |
+| `a supplier re-fold names one supplier: a supplier id is required` | a supplier report with no `--supplier` |
+| `a replay holds the fold's lock (process_event_lock) — run the re-fold after it` (supplier) | supplier's `AnalyticReplayCompute` is running — `supplier-restock-daily` only |
 | `settlement-shop-daily re-folds one shop: a shop id is required` | the shop report with no `--shop` (or `--shop 0`) |
 | `settlement-user-daily re-folds one person: a user id is required` | the person report with no `--user` |
 | `--report settlement-shop-daily re-folds one shop: give --shop, not --user` (and the person report's mirror) | both scopes, or the other report's flag |

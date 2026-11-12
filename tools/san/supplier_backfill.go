@@ -21,10 +21,11 @@ import (
 // backfillBatch is how many accepted restocks are read at a time — the backfill never holds them all.
 const backfillBatch = 500
 
-// NewSupplierFigures is supplier_service as the operations tool needs it: the fold and nothing else. No team service —
-// nothing here creates a supplier — and no broker — nothing here replays.
-func NewSupplierFigures(db *gorm.DB) *supplier_v1.Service {
-	return supplier_v1.NewService(db, nil, nil, nil, nil)
+// NewSupplierFigures is supplier_service as the operations tool needs it: the fold, and the day re-fold with inventory to
+// price a lost sale's take (refoldGoods). No team service — nothing here creates a supplier — and no broker — nothing
+// here replays.
+func NewSupplierFigures(db *gorm.DB, inventory *inventory_v1.Service) *supplier_v1.Service {
+	return supplier_v1.NewService(db, nil, nil, refoldGoods{inventory: inventory}, nil)
 }
 
 // supplierBackfillCommand is `san supplier backfill-figures` (past-accepts-are-backfilled-once).
@@ -94,7 +95,7 @@ func backfillFiguresOn(ctx context.Context, db *sql.DB, target string) error {
 		return err
 	}
 
-	san := &San{db: gdb, suppliers: NewSupplierFigures(gdb), target: target}
+	san := &San{db: gdb, suppliers: NewSupplierFigures(gdb, NewReleaseInventory(gdb)), target: target}
 
 	result, err := san.BackfillSupplierFigures(ctx)
 	if errors.Is(err, supplier_v1.ErrAlreadyBackfilled) {

@@ -42,6 +42,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **Analytic reads the stock** | four new Inventory metrics — *Restock*, *Transfer* (sent, received, in transit), *Returned stock*, *Ready stock* (on hand at each day's end) — with Lost stock's filters; a warehouse sees units only on the first three; switching a grouping no longer crashes the page |
 | **A shelf shows the warehouse units only** | on a rack page a warehouse's staff see what sits there and how many — no price per piece, no value; root still sees both |
 | **Small fixes** | the rack page no longer flashes back to loading after a sample or move; the daily statement says *Order fees* instead of *Handling fees*, and *Ongkir COD* for the courier's money |
+| **A wrong report day can be rebuilt** | when a day on Analytic's order figures or a supplier's restock / sales figures is short because an event was lost, an operator rebuilds that one day from the history with `san report refold` — dry run first, safe to run twice |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

@@ -36,12 +36,13 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 	documentServiceClient := NewDocumentClient(config, mainInternalHTTPClient)
 	eventSender := NewEventSender()
 	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, documentServiceClient, cacheManager, eventSender)
-	supplier_v1Service := NewSupplierFigures(db)
+	inventory_v1Service := NewReleaseInventory(db)
+	supplier_v1Service := NewSupplierFigures(db, inventory_v1Service)
 	team_v1Service := NewTeamCodes(db)
 	selling_v1Service := NewShopGrants(db, roleResolver)
-	inventory_v1Service := NewReleaseInventory(db)
 	settlement_v1Service := NewSettlementReports(db)
+	analytic := NewOrderReports(db)
 	document_v1Service := NewDocuments(db, config)
-	san := NewSan(db, service, supplier_v1Service, team_v1Service, selling_v1Service, inventory_v1Service, settlement_v1Service, document_v1Service)
+	san := NewSan(db, service, supplier_v1Service, team_v1Service, selling_v1Service, inventory_v1Service, settlement_v1Service, analytic, document_v1Service)
 	return san, nil
 }

@@ -57,7 +57,7 @@ type backfilledRow struct {
 // supplier are not. Run again, it folds nothing (past-accepts-are-backfilled-once).
 func TestBackfillSupplierFigures_FoldsTheAcceptedOnce(t *testing.T) {
 	db := san_testdb.DB(t)
-	san := &San{db: db, suppliers: NewSupplierFigures(db), target: "test"}
+	san := &San{db: db, suppliers: NewSupplierFigures(db, NewReleaseInventory(db)), target: "test"}
 
 	supplier := uint64(31)
 	// 23:30 on the 2nd in UTC is the 3rd in Jakarta — the day the figures must land on.

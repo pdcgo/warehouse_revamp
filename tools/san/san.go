@@ -25,7 +25,8 @@ type San struct {
 	db    *gorm.DB
 	users *user_v1.Service
 
-	// supplier_service's fold, for `supplier backfill-figures` (past-accepts-are-backfilled-once).
+	// supplier_service's fold, for `supplier backfill-figures` (past-accepts-are-backfilled-once), and its day re-fold,
+	// for `report refold --report supplier-restock-daily|supplier-sale-daily`.
 	suppliers *supplier_v1.Service
 
 	// team_service, for the team codes `product recompose-codes` composes from (the-field-is-product-code-composed-on-write).
@@ -39,6 +40,9 @@ type San struct {
 
 	// settlement_service's day re-fold, for `report refold` (a-wrong-day-is-refolded-from-the-log).
 	settlement *settlement_v1.Service
+
+	// selling_service's order metrics, for `report refold --report order-daily` (a-wrong-day-is-refolded-from-the-log).
+	orderReports *selling_v1.Analytic
 
 	// document_service's generated-file sweep, for `document sweep-generated` (generated-files-are-kept-seven-days).
 	documents *document_v1.Service
@@ -56,11 +60,12 @@ func NewSan(
 	shops *selling_v1.Service,
 	inventory *inventory_v1.Service,
 	settlement *settlement_v1.Service,
+	orderReports *selling_v1.Analytic,
 	documents *document_v1.Service,
 ) *San {
 	return &San{
 		db: db, users: users, suppliers: suppliers, teams: teams, shops: shops, inventory: inventory,
-		settlement: settlement, documents: documents,
+		settlement: settlement, orderReports: orderReports, documents: documents,
 	}
 }
 

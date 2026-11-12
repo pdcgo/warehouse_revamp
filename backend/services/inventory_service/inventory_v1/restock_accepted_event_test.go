@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
@@ -193,5 +194,79 @@ func TestRestockRequestAccept_APublishFailureDoesNotFailTheAccept(t *testing.T) 
 
 	if ful.Msg.GetRequest().GetStatus() != accepted {
 		t.Fatalf("status = %v, want accepted", ful.Msg.GetRequest().GetStatus())
+	}
+}
+
+// THE DAY's ACCEPTS, AS THE ACCEPT SENT THEM (RestockAcceptedEventsOn — the supplier re-fold's log): the restock accepted
+// today reads back as the very event its accept published, and no other day holds it.
+func TestRestockAcceptedEventsOn_IsTheEventTheAcceptSent(t *testing.T) {
+	db := san_testdb.DB(t)
+	sender := &recordingSender{}
+	svc := newAcceptService(db, sender)
+
+	req := createTwoLines(t, svc)
+	staging := stagingPlacement(t, db, acceptWarehouse)
+	sender.sent = nil
+
+	_, err := svc.RestockRequestAccept(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: acceptWarehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{ItemId: req.GetItems()[0].GetId(), ReceivedCount: 10, Placements: placedOn(staging, 10)},
+			{ItemId: req.GetItems()[1].GetId(), ReceivedCount: 4, MissingNote: "short", Placements: placedOn(staging, 4)},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+
+	if len(sender.sent) != 1 {
+		t.Fatalf("published %d events, want 1", len(sender.sent))
+	}
+
+	today := time.Now().In(time.FixedZone("WIB", 7*60*60))
+
+	events, err := inventory_v1.RestockAcceptedEventsOn(db, today.Format("2006-01-02"))
+	if err != nil {
+		t.Fatalf("RestockAcceptedEventsOn: %v", err)
+	}
+
+	var found *eventsv1.Event
+
+	for _, event := range events {
+		if event.GetEventId() == sender.sent[0].GetEventId() {
+			found = event
+		}
+	}
+
+	if found == nil {
+		t.Fatalf("the day's events %v miss the accept's %s", events, sender.sent[0].GetEventId())
+	}
+
+	// The stored instant is Postgres's microsecond; the sent one Go's nanosecond — the same moment.
+	got, want := proto.Clone(found).(*eventsv1.Event), proto.Clone(sender.sent[0]).(*eventsv1.Event)
+	if gap := got.GetOccurredAt().AsTime().Sub(want.GetOccurredAt().AsTime()).Abs(); gap > time.Microsecond {
+		t.Fatalf("occurred_at %v, want %v", got.GetOccurredAt().AsTime(), want.GetOccurredAt().AsTime())
+	}
+
+	got.OccurredAt, want.OccurredAt = nil, nil
+
+	if !proto.Equal(got, want) {
+		t.Fatalf("the day's event = %v\nwant what the accept sent = %v", got, want)
+	}
+
+	other, err := inventory_v1.RestockAcceptedEventsOn(db, today.AddDate(0, 0, -1).Format("2006-01-02"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, event := range other {
+		if event.GetEventId() == found.GetEventId() {
+			t.Fatal("yesterday holds today's accept")
+		}
+	}
+
+	_, err = inventory_v1.RestockAcceptedEventsOn(db, "today")
+	if err == nil {
+		t.Fatal("a day that is not one was read")
 	}
 }

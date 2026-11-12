@@ -378,3 +378,16 @@ retention, so a redeliverable message always finds its claim. It takes no lock.
 `san supplier backfill-figures` folds the restocks accepted before the event existed, once
 ([past-accepts-are-backfilled-once](../../business/supplier/context_decision.md#past-accepts-are-backfilled-once)).
 See [san.md](../../tools/san.md#supplier-backfill-figures).
+
+## The day re-folds — `DayRefold`, not an RPC
+
+`san report refold --report supplier-restock-daily|supplier-sale-daily --supplier <id> --date <day>`
+([docs/tools/san.md](../../tools/san.md#a-suppliers-figures--supplier-restock-daily--supplier-sale-daily), [a-wrong-day-is-refolded-from-the-log](../../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)) — one
+supplier's day of either report rebuilt from the fold's claims, plus the events nobody claimed, read through
+`RefoldSource` from the services that own them: inventory's accepts (`inventory_v1.RestockAcceptedEventsOn`), selling's
+orders (`selling_v1.OrderSaleEventsOn`) and, for a lost sale, inventory's take (`GoodsReader.OrderTakeSuppliers`). A lost
+event over an hour old is claimed the fold's way, so its redelivery folds nothing; the report is then taken in SHARE ROW
+EXCLUSIVE — the lock the fold's upsert waits on. The restock re-fold reads `process_event_lock` as the fold does. A Penjualan
+claim names the other suppliers' days (and a cancel's day) it leaves short. In-process (`supplier_v1/day_refold.go`,
+`day_refold_sales.go`), no wire contract; sequence in san.md, locks in
+[lock-order.md](../../../audits/services/supplier_service/concurrency/lock-order.md).
