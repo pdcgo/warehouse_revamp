@@ -4,33 +4,60 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 
 | given | when | then | status |
 | --- | --- | --- | --- |
-| `selling:all` | create restock | restock is listed as ongoing (1 product) | ✅ ok |
-| | | restock is listed as ongoing (2 products) | ✅ ok |
-| | | restock is listed as ongoing (with shipping cost) | ✅ ok |
-| | | the target warehouse has it incoming | ✅ ok |
+| `selling:all` wants to restock<br>(1 product) | create restock | restock created | ✅ ok |
+| | | recorded at warehouse | ✅ ok |
 | | | ongoing stock increases | ✅ ok |
 | | | paying account balance decreases | ✅ ok |
-| | | the restock is recorded in the account history | ✅ ok |
-| `warehouse:all` | mark arrived | restock is listed as arrived (from ongoing) | ✅ ok |
-| | | restock is listed as arrived (from lost) | ✅ ok |
-| | | the seller sees it arrived | ✅ ok |
-| | | who received it and when is recorded | ✅ ok |
-| | | the courier's charge is recorded on the restock (if noted) | 🚧 unimplemented |
-| `warehouse:all` | accept | restock is listed as accepted (from arrived) | ✅ ok |
-| | | restock is listed as accepted (from ongoing) | ✅ ok |
-| | | the seller sees it accepted | ✅ ok |
+| | | recorded in account history | ✅ ok |
+| `selling:all` wants to restock<br>(2 products) | create restock | restock created with 2 products | ✅ ok |
+| | | recorded at warehouse, both products | ✅ ok |
+| | | ongoing stock of product 1 and product 2 increases | ✅ ok |
+| | | paying account balance decreases by both products | ✅ ok |
+| | | recorded in account history | ✅ ok |
+| `selling:all` wants to restock<br>(with shipping cost) | create restock | restock created with shipping cost | ✅ ok |
+| | | recorded at warehouse | ✅ ok |
+| | | ongoing stock increases | ✅ ok |
+| | | paying account balance decreases, shipping cost included | ✅ ok |
+| | | recorded in account history | ✅ ok |
+| `warehouse:all` wants to receive a restock<br>(from ongoing) | mark arrived restock | status changed from ongoing to arrived | ✅ ok |
+| | | receiver and time recorded | ✅ ok |
+| `warehouse:all` wants to receive a restock<br>(from lost) | mark arrived restock | status changed from lost to arrived | ✅ ok |
+| | | receiver and time recorded | ✅ ok |
+| `warehouse:all` wants to receive a restock<br>(set courier charge) | mark arrived restock | courier's charge recorded on restock | 🚧 unimplemented |
+| `warehouse:all` wants to accept a restock<br>(from arrived) | accept restock | status changed from arrived to accepted | ✅ ok |
 | | | ready stock increases | ✅ ok |
 | | | ongoing stock decreases | ✅ ok |
-| | | the units are on the rack | ✅ ok |
-| | | the price is set on the batch | ✅ ok |
-| | | product is listed in the target warehouse (if new) | ✅ ok |
-| | | product is listed once (if already there) | ✅ ok |
-| | | broken goods are recorded (if any broken) | ✅ ok |
-| | | missing goods are recorded (if fewer arrived) | ✅ ok |
-| | | the courier's charge is recorded on the restock (if noted) | ✅ ok |
-| | | the courier's charge is recorded in liability (if noted) | ✅ ok |
-| | | the restock is recorded at the supplier (if has supplier) | ✅ ok |
-| | | the restock is recorded at the supplier (mixed suppliers) | [❌ error](#a-mixed-supplier-restock-is-recorded-at-no-supplier) |
+| | | units on rack | ✅ ok |
+| | | price set on batch | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(from ongoing) | accept restock | status changed from ongoing to accepted | ✅ ok |
+| | | ready stock increases | ✅ ok |
+| | | ongoing stock decreases | ✅ ok |
+| | | units on rack | ✅ ok |
+| | | price set on batch | ✅ ok |
+| | | receiver and time recorded | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(has brokens, thrown away) | accept restock | status changed from ongoing to accepted | ✅ ok |
+| | | ready stock increases, broken excluded | ✅ ok |
+| | | broken items recorded | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(has brokens, put on rack) | accept restock | broken items on rack | 🚧 unimplemented |
+| `warehouse:all` wants to accept a restock<br>(has missing items) | accept restock | status changed from ongoing to accepted | ✅ ok |
+| | | ready stock increases, missing excluded | ✅ ok |
+| | | missing items recorded | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(product new to warehouse) | accept restock | product listed in target warehouse | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(product already listed) | accept restock | product not listed again | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(set courier charge) | accept restock | courier's charge recorded on restock | ✅ ok |
+| | | courier's charge recorded in liability | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(1 supplier) | accept restock | recorded at supplier | ✅ ok |
+| `warehouse:all` wants to accept a restock<br>(multi suppliers) | accept restock | recorded at supplier | [❌ error](#a-multi-supplier-restock-is-recorded-at-no-supplier) |
+| `selling:all` wants to edit a restock<br>(ongoing) | edit | restock shows changes | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(arrived) | edit | restock shows changed lines | ⬜ untested |
+| | | restock shows added product | ⬜ untested |
+| | | ongoing stock follows new count | ⬜ untested |
+| | | target warehouse sees new lines | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(amount changed) | edit | paying account balance follows difference | ⬜ untested |
+| | | edit recorded in account history | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(account changed) | edit | payment moves to new account | ⬜ untested |
+| `selling:all` wants to edit a restock<br>(warehouse changed) | edit | recorded at new warehouse | ⬜ untested |
+| | | removed from old warehouse | ⬜ untested |
 
 ## Not discussed yet
 
@@ -40,19 +67,18 @@ only when it is discussed, so the states below are a starting point, not a decis
 
 | given | when |
 | --- | --- |
-| `selling:all` | edit a restock ← next |
-| `selling:all` | cancel an ongoing restock |
-| `selling:all` | set an ongoing restock lost |
+| `selling:all` wants to cancel a restock<br>(ongoing) | cancel ← next |
+| `selling:all` wants to report a lost restock<br>(ongoing) | set lost |
 
 ## Errors
 
-### a-mixed-supplier-restock-is-recorded-at-no-supplier
+### a-multi-supplier-restock-is-recorded-at-no-supplier
 
 | | |
 | --- | --- |
-| then | `warehouse:all` · accept · the restock is recorded at the supplier (mixed suppliers) |
+| then | `warehouse:all` wants to accept a restock (multi suppliers) · accept restock · recorded at supplier |
 | expected | each line is recorded at its own supplier |
 | actual | the restock is recorded at **no** supplier: neither supplier's Statistics shows its products. The goods still enter ready stock, and the accept itself succeeds |
 | cause | supplier_service records a restock under ONE supplier for the whole restock. When the lines name different suppliers, that supplier is 0, and the restock is skipped ([restock_accepted_event.go](../../../backend/services/inventory_service/inventory_v1/restock_accepted_event.go#L146), [analytic_fold.go](../../../backend/services/supplier_service/supplier_v1/analytic_fold.go#L140)) |
 | seen | the owner's check on the dev data (2026-11-11), and the e2e run for every warehouse role |
-| check | `warehouse:all accept (mixed suppliers)` in [restock.spec.ts](../../../frontend/e2e/restock.spec.ts), marked `test.fail` until this is fixed |
+| check | `warehouse:all accept restock (multi suppliers)` in [restock.spec.ts](../../../frontend/e2e/restock.spec.ts), marked `test.fail` until this is fixed |
