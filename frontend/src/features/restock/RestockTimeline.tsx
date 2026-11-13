@@ -1,16 +1,20 @@
 import { useTranslation } from "react-i18next";
+import { create } from "@bufbuild/protobuf";
 import { Box, Card, Flex, HStack, Icon, Separator, Stack, Text, Timeline } from "@chakra-ui/react";
-import { ArrowRight, Ban, Clock, FilePlus2, PackageCheck, PackageOpen, PackageX, Pencil } from "lucide-react";
+import { ArrowRight, Ban, ClipboardPen, Clock, FilePlus2, PackageCheck, PackageOpen, PackageX, Pencil } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { RestockLog, RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockLogSchema, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import type { ReceivedCountCorrection } from "../../gen/warehouse/inventory/v1/received_count_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { useRestockActors } from "./queries";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { UserItem } from "../../components/entity/UserItem";
 import { RootTeamBadge } from "../../components/entity/ActorName";
 import { formatUnixDateTime } from "../../lib/datetime";
+import { formatRupiahNumber } from "../../lib/money";
+import { trailOf } from "../receivedCount/corrections";
 
 // THE TRAIL — `request.logs`, oldest first (every-status-change-is-logged). One row per status change AND per edit: an
 // edit is a row whose status did not change, and its description says what did — "Kopi 10 → 12, extra stock"
@@ -19,6 +23,10 @@ import { formatUnixDateTime } from "../../lib/datetime";
 //
 // Who did it is resolved by id at read time — never a snapshot — through the shared user lookup; an id that does not
 // resolve names its number rather than claiming nobody did it.
+//
+// KOREKSI JUMLAH TERIMA's rows sit in the same trail, by time (`request.count_corrections`, one per corrected line): their
+// own kind, never a status row, so a correction is never read as the selling team's edit
+// (the-received-count-prototype-is-accepted).
 
 type Kind = "created" | "edit" | "status";
 
@@ -86,7 +94,12 @@ function StepLines({ first, last }: { first: boolean; last: boolean }) {
 
 export function RestockTimeline({ request, bare = false }: { request: RestockRequest; bare?: boolean }) {
   const { t } = useTranslation();
-  const actors = useRestockActors(request.logs.map((log) => log.actorUserId));
+  const actors = useRestockActors([
+    ...request.logs.map((log) => log.actorUserId),
+    ...request.countCorrections.map((c) => c.actorUserId),
+  ]);
+  const trail = trailOf(request.logs, request.countCorrections);
+  const nameOf = (c: ReceivedCountCorrection) => request.items.find((item) => item.id === c.itemId)?.name ?? "";
 
   // The step that has NOT happened yet, while it still can — the honest end of the sequence rather than a dead stop.
   const awaitingKey =
@@ -99,20 +112,32 @@ export function RestockTimeline({ request, bare = false }: { request: RestockReq
   const steps = (
         // `lg` so a 16px glyph fits its disc; `subtle` so each step is a quiet marker, not a heavy dot.
         <Timeline.Root size="lg" variant="subtle" css={LAST_GAP} data-testid={bare ? "restock-detail-timeline" : undefined}>
-          {request.logs.map((log, i) => (
-            <LogStep
-              key={log.id > 0n ? log.id.toString() : `i${i}`}
-              log={log}
-              actor={actors.data?.get(log.actorUserId.toString())}
-              first={i === 0}
-              last={i === request.logs.length - 1 && !awaitingKey}
-            />
-          ))}
+          {trail.map((step, i) =>
+            step.kind === "log" ? (
+              <LogStep
+                key={step.log.id > 0n ? step.log.id.toString() : `i${i}`}
+                log={step.log}
+                actor={actors.data?.get(step.log.actorUserId.toString())}
+                first={i === 0}
+                last={i === trail.length - 1 && !awaitingKey}
+              />
+            ) : (
+              <LogStep
+                key={`c${step.correction.id}`}
+                log={correctionLog(step.correction)}
+                actor={actors.data?.get(step.correction.actorUserId.toString())}
+                first={i === 0}
+                last={i === trail.length - 1 && !awaitingKey}
+                correction={step.correction}
+                productName={nameOf(step.correction)}
+              />
+            ),
+          )}
 
           {awaitingKey && (
             <Timeline.Item data-testid="restock-timeline-awaiting">
               <Timeline.Connector {...CENTRED}>
-                <StepLines first={request.logs.length === 0} last />
+                <StepLines first={trail.length === 0} last />
                 <Timeline.Indicator color="fg.muted" opacity={0.6}>
                   <Icon as={Clock} boxSize="4" />
                 </Timeline.Indicator>
@@ -134,15 +159,44 @@ export function RestockTimeline({ request, bare = false }: { request: RestockReq
   );
 }
 
+// A correction's row drawn by the trail's own step: its person, Root stamp and time — on an accepted restock.
+function correctionLog(c: ReceivedCountCorrection): RestockLog {
+  return create(RestockLogSchema, {
+    id: c.id,
+    fromStatus: RestockRequestStatus.ACCEPTED,
+    toStatus: RestockRequestStatus.ACCEPTED,
+    actorUserId: c.actorUserId,
+    atUnix: c.atUnix,
+    isOverride: c.isOverride,
+  });
+}
+
 // ONE ROW: the person, a rule, then what happened — the status move as two badges, what changed or why, and when.
-function LogStep({ log, actor, first, last }: { log: RestockLog; actor?: PublicUser; first: boolean; last: boolean }) {
+function LogStep({
+  log,
+  actor,
+  first,
+  last,
+  correction,
+  productName = "",
+}: {
+  log: RestockLog;
+  actor?: PublicUser;
+  first: boolean;
+  last: boolean;
+  /** The received-count correction this row stands for — its own kind, never a status row. */
+  correction?: ReceivedCountCorrection;
+  productName?: string;
+}) {
   const { t } = useTranslation();
-  const kind = kindOf(log);
-  const look = lookOf(log);
+  const kind = correction ? "correction" : kindOf(log);
+  const look = correction ? { icon: ClipboardPen, titleKey: "", palette: "orange" } : lookOf(log);
   const fallback = log.actorUserId > 0n ? t("restock.table.userRef", { id: log.actorUserId.toString() }) : "";
+  // A correction's row id is its own table's — kept apart from the trail's ids.
+  const testId = correction ? `restock-timeline-c${correction.id}` : `restock-timeline-${log.id}`;
 
   return (
-    <Timeline.Item data-testid={`restock-timeline-${log.id}`} data-kind={kind}>
+    <Timeline.Item data-testid={testId} data-kind={kind}>
       <Timeline.Connector {...CENTRED}>
         <StepLines first={first} last={last} />
         <Timeline.Indicator colorPalette={look.palette} color={look.palette ? "colorPalette.fg" : "fg.muted"}>
@@ -156,7 +210,7 @@ function LogStep({ log, actor, first, last }: { log: RestockLog; actor?: PublicU
           {actor ? (
             // ONE WIDTH FOR EVERY STEP (owner: *"ukuran usernya lebih bagus kalau sama rata"*) — the rule beside it lines up
             // down the timeline. A phone gives the person the whole line, the step under it.
-            <Box w={{ base: "full", sm: "40" }} flexShrink={0} minW="0" data-testid={`restock-timeline-${log.id}-by`}>
+            <Box w={{ base: "full", sm: "40" }} flexShrink={0} minW="0" data-testid={`${testId}-by`}>
               <UserItem user={actor} size="xs" />
             </Box>
           ) : (
@@ -172,11 +226,14 @@ function LogStep({ log, actor, first, last }: { log: RestockLog; actor?: PublicU
           {(actor || fallback) && <Separator orientation="vertical" height="auto" alignSelf="stretch" hideBelow="sm" />}
 
           <Stack gap="1" minW="0" flex="1">
+            {correction ? (
+              <CorrectionStep correction={correction} productName={productName} testId={testId} />
+            ) : (
             <HStack gap="2" wrap="wrap">
               <Timeline.Title>{t(look.titleKey)}</Timeline.Title>
               {/* The move itself — FROM → TO for a status change; an edit keeps its status, so it shows that once. */}
               {kind === "status" ? (
-                <HStack gap="1" wrap="wrap" data-testid={`restock-timeline-${log.id}-move`}>
+                <HStack gap="1" wrap="wrap" data-testid={`${testId}-move`}>
                   <RestockStatusBadge status={log.fromStatus} />
                   <Icon as={ArrowRight} boxSize="3" color="fg.muted" />
                   <RestockStatusBadge status={log.toStatus} />
@@ -185,15 +242,16 @@ function LogStep({ log, actor, first, last }: { log: RestockLog; actor?: PublicU
                 <RestockStatusBadge status={log.toStatus} />
               )}
             </HStack>
+            )}
             {/* What changed (an edit) or why (a status change). A raise has no "why" — the row says it was raised. */}
             {/* The server's bare "edited" says nothing the row's title does not — it is not shown (an edit's row should
                 name what changed; the-notes-are-one-per-writer). */}
-            {kind !== "created" && log.description && log.description !== "edited" && (
+            {!correction && kind !== "created" && log.description && log.description !== "edited" && (
               <Text
                 fontSize="sm"
                 whiteSpace="pre-wrap"
                 wordBreak="break-word"
-                data-testid={`restock-timeline-${log.id}-description`}
+                data-testid={`${testId}-description`}
               >
                 {log.description}
               </Text>
@@ -205,5 +263,50 @@ function LogStep({ log, actor, first, last }: { log: RestockLog; actor?: PublicU
         </Flex>
       </Timeline.Content>
     </Timeline.Item>
+  );
+}
+
+// A RECEIVED-COUNT CORRECTION'S ROW (a-wrong-stock-in-is-a-received-count-correction): *Jumlah terima dikoreksi · 20 →
+// 18*, the product and what it moved — *2 Kurang (koreksi)* out of the batch, or units into it — and, when the read
+// carries it (the OWNING team only — a-warehouse-sees-no-seller-money), what that is worth at the batch price
+// (a-stock-in-correction-keeps-the-batch-price); then the reason. Who did it is the row's person, with the Root badge
+// when it was Root.
+export function CorrectionStep({
+  correction,
+  productName,
+  testId,
+}: {
+  correction: ReceivedCountCorrection;
+  productName: string;
+  testId: string;
+}) {
+  const { t } = useTranslation();
+  const out = correction.unitsOut;
+  const value = correction.total;
+
+  return (
+    <Stack gap="0.5" minW="0" data-testid={`${testId}-correction`}>
+      <Timeline.Title data-testid={`${testId}-correction-title`}>
+        {t("receivedCount.history.title", { from: correction.fromCount.toString(), to: correction.toCount.toString() })}
+      </Timeline.Title>
+      <Text fontSize="sm" data-testid={`${testId}-correction-what`}>
+        {productName}
+        {" · "}
+        {out > 0n
+          ? t("receivedCount.history.out", { count: Number(out) })
+          : t("receivedCount.history.in", { count: Number(-out) })}
+        {value !== undefined && (
+          <Text as="span" color="fg.muted" data-testid={`${testId}-correction-value`}>
+            {" · "}
+            {out > 0n
+              ? t("receivedCount.borne", { amount: formatRupiahNumber(value) })
+              : t("receivedCount.lifted", { amount: formatRupiahNumber(-value) })}
+          </Text>
+        )}
+      </Text>
+      <Text fontSize="sm" color="fg.muted" whiteSpace="pre-wrap" wordBreak="break-word" data-testid={`${testId}-correction-reason`}>
+        “{correction.reason}”
+      </Text>
+    </Stack>
   );
 }

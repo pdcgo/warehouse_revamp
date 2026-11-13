@@ -33,7 +33,7 @@ func (s *Service) WarehouseTransferDetail(
 		return nil, transferErr(errTransferMissing)
 	}
 
-	wire, err := transferForWire(db, req.Msg.GetTransferId())
+	wire, err := s.transferDetail(db, req.Msg.GetTransferId(), teamID)
 	if err != nil {
 		return nil, transferErr(err)
 	}

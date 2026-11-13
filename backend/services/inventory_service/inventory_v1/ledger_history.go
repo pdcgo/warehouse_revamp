@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 )
 
@@ -45,9 +47,10 @@ func kindOf(changeType string, change int64) inventoryv1.MovementKind {
 	}
 }
 
-// correctionTypes are the change types that read as an adjust — units found broken, lost or found. A price correction is
-// not one: it reads as REVALUATION.
-var correctionTypes = []string{"adjustment", "broken", "lost", "found"}
+// correctionTypes are the change types that read as an adjust — units found broken, lost or found, and a received-count
+// correction's (KOREKSI JUMLAH TERIMA — a-wrong-stock-in-is-a-received-count-correction: "in the ledger it stays an
+// adjustment"). A price correction is not one: it reads as REVALUATION.
+var correctionTypes = []string{"adjustment", "broken", "lost", "found", "restock_correction", "transfer_correction"}
 
 // kindsWhere is the SQL condition for log rows of any of `kinds`, over a log aliased `alias` whose signed change column
 // is `change`. Empty (and no args) when no kind is asked for. The kinds are a closed switch, so nothing a caller sends
@@ -134,6 +137,8 @@ type historyRow struct {
 	PriceUnitBefore float64
 	PriceUnitAfter  float64
 	ValueChange     float64
+	// The row's inventory transaction — a received-count correction's label is found by it (countCorrectionLabels).
+	TransactionID uint64
 }
 
 func (r *historyRow) proto() *inventoryv1.StockMovement {
@@ -171,11 +176,43 @@ func priceExprs(alias string) string {
 }
 
 // placementHistorySelect reads `product_placement_logs AS l` as history rows: the rack, never a batch.
-var placementHistorySelect = `l.id, l.product_id, l.warehouse_id, l.placement_id, 0 AS batch_id, l.change_type,
+var placementHistorySelect = `l.id, l.product_id, l.warehouse_id, l.placement_id, 0 AS batch_id, l.change_type, l.transaction_id,
 	l.stock_change AS change, l.stock_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
 	` + overrideExpr("l.transaction_id") + ` AS is_override`
 
 // batchHistorySelect reads `batch_logs AS l JOIN batches AS b` as history rows: the batch, never a rack.
-var batchHistorySelect = `l.id, b.product_id, l.warehouse_id, 0 AS placement_id, l.batch_id, l.change_type,
+var batchHistorySelect = `l.id, b.product_id, l.warehouse_id, 0 AS placement_id, l.batch_id, l.change_type, l.transaction_id,
 	l.change_count AS change, l.stock_count_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
 	` + overrideExpr("l.transaction_id") + ` AS is_override, ` + priceExprs("l")
+
+// labelCountCorrections sets the KOREKSI JUMLAH TERIMA label on every history row a received-count correction wrote —
+// *Jumlah terima dikoreksi · from → to*, why, and the restock or transfer (a-wrong-stock-in-is-a-received-count-
+// correction). One statement for the page, none when it holds no correction row.
+func labelCountCorrections(db *gorm.DB, rows []historyRow, out []*inventoryv1.StockMovement) error {
+	var keys []labelKey
+
+	for i := range rows {
+		if countCorrectionTypes[rows[i].ChangeType] {
+			keys = append(keys, labelKey{TransactionID: rows[i].TransactionID, ProductID: rows[i].ProductID})
+		}
+	}
+
+	if len(keys) == 0 {
+		return nil
+	}
+
+	labels, err := countCorrectionLabels(db, keys)
+	if err != nil {
+		return err
+	}
+
+	for i := range rows {
+		if !countCorrectionTypes[rows[i].ChangeType] {
+			continue
+		}
+
+		out[i].ReceivedCountCorrection = labels[labelKey{TransactionID: rows[i].TransactionID, ProductID: rows[i].ProductID}]
+	}
+
+	return nil
+}

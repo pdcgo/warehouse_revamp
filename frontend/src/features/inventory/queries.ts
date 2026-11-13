@@ -45,7 +45,7 @@ import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/prod
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import type { Costs } from "../orders/lines";
 import { useDebounced } from "../../lib/useDebounced";
-import { withPriceChanges } from "./priceChange";
+import { withCorrections } from "./priceChange";
 
 // The inventory screens' reads (#176).
 
@@ -843,8 +843,9 @@ export function useBatchHistory(args: {
         page: { page, limit: pageSize },
       });
       // A price correction reads as one — from → to, the value change, why and who (the-correct-price-prototype-is-
-      // accepted: the warehouse reads every correction of a batch it holds in its Riwayat).
-      return { movements: await withPriceChanges(movementsFromList(res)), pageInfo: res.pageInfo };
+      // accepted: the warehouse reads every correction of a batch it holds in its Riwayat) — and so does a received-count
+      // correction: *Jumlah terima dikoreksi · 20 → 18*, why and who (the-received-count-prototype-is-accepted).
+      return { movements: await withCorrections(movementsFromList(res)), pageInfo: res.pageInfo };
     },
   });
 }

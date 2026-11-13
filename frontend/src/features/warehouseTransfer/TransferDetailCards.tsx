@@ -18,6 +18,8 @@ import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { toaster } from "../../components/feedback/Toaster";
 import { brokenOf, missingOf, problemValue, unitsSent } from "./summary";
+import { type LineCorrectionView, lineCorrection } from "../receivedCount/corrections";
+import { missingMark } from "../receivedCount/marks";
 
 // The three cards both transfer detail pages show — the route, the parcel and the lines — in one place, so the selling
 // team and the two warehouses read the same transfer the same way. What differs by reader is passed in: a warehouse
@@ -229,6 +231,8 @@ export function TransferLinesCard({
   const accepted = transfer.status === S.ACCEPTED;
   const toRacks = useRackCodes({ warehouseId: transfer.toWarehouseId, enabled: accepted });
   const lost = problemValue(transfer);
+  // A line Koreksi Jumlah Terima corrected: *dikoreksi dari 10* under its count, its Kurang "2 (koreksi)".
+  const correctionOf = (item: WarehouseTransferItem) => lineCorrection(item, transfer.countCorrections);
 
   const racksOf = (codes: Record<string, string> | undefined, places: { placementId: bigint; quantity: bigint }[]) =>
     places
@@ -274,6 +278,7 @@ export function TransferLinesCard({
                 showPrices={showPrices}
                 picks={showPicks ? racksOf(fromRacks.data, item.picks) : undefined}
                 putAway={accepted ? racksOf(toRacks.data, item.placements) : undefined}
+                correction={correctionOf(item)}
               />
             ))}
           </Table.Body>
@@ -301,11 +306,14 @@ function LineRow({
   showPrices,
   picks,
   putAway,
+  correction,
 }: {
   item: WarehouseTransferItem;
   showPrices: boolean;
   picks?: string;
   putAway?: string;
+  /** The line's received-count correction: *dikoreksi dari 10*, Kurang "2 (koreksi)". */
+  correction?: LineCorrectionView;
 }) {
   const { t } = useTranslation();
   const broken = brokenOf(item);
@@ -333,12 +341,28 @@ function LineRow({
       )}
       {putAway !== undefined && (
         <>
-          <Table.Cell textAlign="end">{item.arrivedCount.toString()}</Table.Cell>
+          <Table.Cell textAlign="end" data-testid={`transfer-line-${item.id}-arrived`}>
+            {correction ? (
+              <Stack gap="0" align="end">
+                <Span fontWeight="semibold">{item.arrivedCount.toString()}</Span>
+                <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap" data-testid={`transfer-line-${item.id}-arrived-was`}>
+                  {t("receivedCount.was", { count: correction.was.toString() })}
+                </Span>
+              </Stack>
+            ) : (
+              item.arrivedCount.toString()
+            )}
+          </Table.Cell>
           <Table.Cell textAlign="end" color={broken > 0n ? "warning.fg" : undefined}>
             {broken.toString()}
           </Table.Cell>
-          <Table.Cell textAlign="end" color={missing > 0n ? "warning.fg" : undefined}>
-            {missing.toString()}
+          <Table.Cell
+            textAlign="end"
+            color={missing > 0n || correction ? "warning.fg" : undefined}
+            whiteSpace={correction ? "nowrap" : undefined}
+            data-testid={`transfer-line-${item.id}-missing`}
+          >
+            {correction ? missingMark(t, missing, correction.netOut) : missing.toString()}
           </Table.Cell>
           <Table.Cell data-testid={`transfer-line-${item.id}-put-away`}>{putAway || "—"}</Table.Cell>
         </>

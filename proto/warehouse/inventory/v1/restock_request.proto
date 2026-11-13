@@ -4,6 +4,7 @@ package warehouse.inventory.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/inventory/v1/received_count.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -72,6 +73,9 @@ service RestockRequestService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // KOREKSI JUMLAH TERIMA — the receiving warehouse corrects an ACCEPTED restock's received count
+  // (the-warehouse-corrects-a-wrong-stock-in-alone), under the restock row's lock; see received_count.proto.
+  rpc RestockReceivedCountCorrect(RestockReceivedCountCorrectRequest) returns (RestockReceivedCountCorrectResponse);
 }
 
 // Where a restock is. APPEND ONLY, like every enum here — the values were renamed in place
@@ -176,6 +180,18 @@ message RestockRequestItem {
   // Renamed in place from `damaged`. Broken rows are typed at accept; missing rows are worked out.
   repeated RestockProblemItem problems = 10;
 
+  // KOREKSI JUMLAH TERIMA (received_count.proto). DETAIL ONLY. `received_count` above is the corrected count; this is
+  // the accept's, set once the line was corrected (*18 · dikoreksi dari 20*).
+  optional int64 corrected_from = 16;
+  // Units the corrections took out of the line's batch, net — the *Kurang (koreksi)* part of missing; negative when
+  // more went back in. 0 = never corrected.
+  int64 missing_by_correction = 17;
+  // What those units are worth at the batch price — the selling team's *senilai … ditanggung tim penjual*. Set for the
+  // OWNING team only (a-warehouse-sees-no-seller-money).
+  optional double missing_by_correction_total = 18;
+  // The correction form's facts for this line — set for the RECEIVING warehouse on an accepted restock only.
+  ReceivedCountLineFacts correction_facts = 19;
+
   // Who sold it, and from which store — both optional; a stall has a supplier and no store
   // (a-line-may-name-a-supplier-without-a-channel). Any team's supplier, picked from the Connect Supplier Channel
   // popup (a-line-connects-to-any-teams-supplier-from-a-popup). A store, when given, must be that supplier's.
@@ -277,6 +293,10 @@ message RestockRequest {
 
   // The trail, oldest first. DETAIL ONLY — List leaves it empty.
   repeated RestockLog logs = 37;
+
+  // KOREKSI JUMLAH TERIMA — every line's correction, oldest first, beside the trail: its own kind, never a status row
+  // (a correction must not read as the selling team's edit). DETAIL ONLY.
+  repeated ReceivedCountCorrection count_corrections = 43;
 
   // Removed in the rewrite.
   reserved 4, 5, 6, 7, 8, 12, 14, 19, 25, 26;
@@ -817,4 +837,48 @@ message RestockReceiptPhotoRequest {
 message RestockReceiptPhotoResponse {
   string url = 1;
   int64 expires_at_unix = 2;
+}
+
+// RestockReceivedCountCorrectRequest — KOREKSI JUMLAH TERIMA on a restock. WHO (the-received-count-prototype-is-accepted):
+// the RECEIVING warehouse's Owner or Admin — `team_id`, scoped, the restock's warehouse — plus Root and the System
+// Administrator, stamped an override from outside (an-override-is-stamped-in-every-service). Never Staff, never the
+// selling team, never a monitor; another warehouse's restock is NotFound.
+//
+// Refused, nothing written: an empty or space-only reason (InvalidArgument); a line named twice or not on the restock, a
+// line with no change, a count below the line's broken units, or above what was ordered — a unit over the line is found
+// stock, Adjust › Found (accept-refuses-more-than-the-line-says) (InvalidArgument); a rack of another warehouse
+// (NotFound); and under the restock's row lock: a restock not accepted, a stale line (`expected_received_count` is no
+// longer its count), more units out than the batch or the named rack still holds (a-shelf-never-goes-below-zero), or a
+// product a running stock count holds on that rack (a-lock-stops-sales-and-cancels-too) (FailedPrecondition each).
+message RestockReceivedCountCorrectRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The RECEIVING warehouse — the restock's `warehouse_id`.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // WHY — required, at most 200 (trimmed on the server); on the correction rows, the transaction and its log rows.
+  string reason = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  // The lines that CHANGE — at least one; a line left as it was is not sent.
+  repeated ReceivedCountLine lines = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 500
+  }];
+}
+
+message RestockReceivedCountCorrectResponse {
+  // The restock as Detail reads it for the warehouse — the corrected counts and the new history rows.
+  RestockRequest request = 1;
 }

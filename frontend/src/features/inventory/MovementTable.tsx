@@ -52,6 +52,19 @@ export interface PriceChange {
 }
 
 /**
+ * A RECEIVED-COUNT CORRECTION a row stands for (a-wrong-stock-in-is-a-received-count-correction) — an `adjustment` that
+ * moved units, said as *Jumlah terima dikoreksi · from → to* with why and who. Read from the row's
+ * `received_count_correction` at the query boundary (features/receivedCount/corrections.ts `countCorrectionOf`).
+ */
+export interface CountCorrection {
+  from: bigint;
+  to: bigint;
+  reason: string;
+  actorName: string;
+  isOverride: boolean;
+}
+
+/**
  * What this table needs from a ledger row (#232).
  *
  * Widened from `StockMovement` when the catalogue owner's ledger arrived: it is a different message
@@ -63,6 +76,8 @@ export interface MovementRow {
   id: bigint;
   /** A price correction, not a unit movement — see PriceChange. Absent on every other row. */
   priceChange?: PriceChange;
+  /** A received-count correction (see CountCorrection). Absent on every other row. */
+  countCorrection?: CountCorrection;
   /** RFC3339. The owner's ledger carries a unix instant and converts on the way in. */
   createdAt: string;
   kind: MovementKind;
@@ -146,7 +161,12 @@ export function MovementTable({
   const kindWord = (kind: MovementKind) => (wording === "transaction" ? transactionLabel(t, kind) : kindLabel(t, kind));
   // A price correction is said as one, whatever the screen's wording — it moved no unit, so neither a shelf's word nor a
   // stock transaction's fits.
-  const kindOf = (m: MovementRow) => (m.priceChange ? t("correctPrice.history.kind") : kindWord(m.kind));
+  const kindOf = (m: MovementRow) =>
+    m.priceChange
+      ? t("correctPrice.history.kind")
+      : m.countCorrection
+        ? t("receivedCount.history.kind")
+        : kindWord(m.kind);
   const isMobile = useIsMobile();
   // A reworked screen's ledger — the hint, the lit rows and the phone's lines come together (see `emptyIcon`).
   const reworked = emptyIcon !== undefined;
@@ -195,7 +215,7 @@ export function MovementTable({
       {formatRupiah(c.from)} → {formatRupiah(c.to)}
     </Text>
   );
-  const whyLine = (c: PriceChange, testId: string) => (
+  const whyLine = (c: { reason: string; actorName: string; isOverride: boolean }, testId: string) => (
     <HStack gap="1" fontSize="xs" color="fg.muted" minW="0" maxW={isMobile ? undefined : "16rem"} data-testid={`${testId}-why`}>
       <Text truncate minW="0" title={c.reason} data-testid={`${testId}-reason`}>
         “{c.reason}”
@@ -217,6 +237,12 @@ export function MovementTable({
   // them scannable. Zero gets neither — a movement that moved nothing is not an increase.
   const deltaColor = (m: MovementRow) => (m.delta > 0n ? "success.fg" : m.delta < 0n ? "error.fg" : undefined);
   const deltaText = (m: MovementRow) => (m.delta > 0n ? `+${m.delta}` : m.delta.toString());
+  // A received-count correction's own line: the count it went from and to.
+  const countLine = (c: CountCorrection, testId: string) => (
+    <Text as="span" fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums" data-testid={`${testId}-count`}>
+      {c.from.toString()} → {c.to.toString()}
+    </Text>
+  );
   // A price correction's value change: up green, down red, as a unit change reads.
   const valueColor = (c: PriceChange) => (c.valueDelta > 0 ? "success.fg" : c.valueDelta < 0 ? "error.fg" : undefined);
 
@@ -269,6 +295,12 @@ export function MovementTable({
                 {whyLine(m.priceChange, `${testId}-row-${m.id}`)}
               </Stack>
             )}
+            {m.countCorrection && (
+              <Stack gap="0.5">
+                {countLine(m.countCorrection, `${testId}-row-${m.id}`)}
+                {whyLine(m.countCorrection, `${testId}-row-${m.id}`)}
+              </Stack>
+            )}
             <HStack justify="space-between" gap="2" fontSize="xs" color="fg.muted">
               <Text truncate minW="0">
                 {formatRfc3339DateTimeShort(m.createdAt)}
@@ -319,6 +351,13 @@ export function MovementTable({
                       {kindOf(m)} · {priceLine(m.priceChange, `${testId}-row-${m.id}`)}
                     </Text>
                     {whyLine(m.priceChange, `${testId}-row-${m.id}`)}
+                  </Stack>
+                ) : m.countCorrection ? (
+                  <Stack gap="0">
+                    <Text as="span">
+                      {kindOf(m)} · {countLine(m.countCorrection, `${testId}-row-${m.id}`)}
+                    </Text>
+                    {whyLine(m.countCorrection, `${testId}-row-${m.id}`)}
                   </Stack>
                 ) : (
                   kindOf(m)

@@ -17,7 +17,10 @@ function problemCount(item: WarehouseTransferItem, type: WarehouseTransferProble
 }
 
 export const brokenOf = (item: WarehouseTransferItem) => problemCount(item, WarehouseTransferProblemType.BROKEN);
-export const missingOf = (item: WarehouseTransferItem) => problemCount(item, WarehouseTransferProblemType.MISSING);
+// Missing is the door's rows AND what a Koreksi Jumlah Terima took out since, net — `missing_by_correction` on the detail
+// (a-wrong-stock-in-is-a-received-count-correction); a list row leaves it 0.
+export const missingOf = (item: WarehouseTransferItem) =>
+  problemCount(item, WarehouseTransferProblemType.MISSING) + item.missingByCorrection;
 
 /** The units that became B's stock — arrived minus broken. 0 until accepted. */
 export function goodOf(item: WarehouseTransferItem): bigint {
@@ -33,7 +36,11 @@ export function problemUnits(transfer: WarehouseTransfer): bigint {
 
 /** What the broken and missing units were worth — the selling team's loss (the-selling-team-bears-broken-missing-and-lost). */
 export function problemValue(transfer: WarehouseTransfer): number {
-  return transfer.items.reduce((sum, item) => sum + item.problems.reduce((s, p) => s + p.total, 0), 0);
+  // A correction's units at the batches' prices — served for the owning team only (a-warehouse-sees-no-seller-money).
+  return transfer.items.reduce(
+    (sum, item) => sum + item.problems.reduce((s, p) => s + p.total, 0) + (item.missingByCorrectionTotal ?? 0),
+    0,
+  );
 }
 
 /** Which way the transfer runs, seen from a warehouse team. */

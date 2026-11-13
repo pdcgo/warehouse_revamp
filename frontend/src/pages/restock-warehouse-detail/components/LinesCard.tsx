@@ -22,6 +22,8 @@ import { PhotoView } from "../../../features/restock/PhotoView";
 import { brokenPhotoSample, brokenRackSample } from "../../../features/restock/photoSamples";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatRupiahNumber } from "../../../lib/money";
+import { type LineCorrectionView, lineCorrection } from "../../../features/receivedCount/corrections";
+import { missingMark } from "../../../features/receivedCount/marks";
 
 // A ROW LIGHTS UP UNDER THE POINTER, every cell of it (a-table-row-lights-up).
 const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
@@ -69,6 +71,9 @@ export function LinesCard({
 
   const counted = request.status === RestockRequestStatus.ACCEPTED;
   const items = request.items;
+  // A line Koreksi Jumlah Terima corrected (the-received-count-prototype-is-accepted): *dikoreksi dari 20* under its
+  // count, its Kurang "2 (koreksi)" — units only here (a-warehouse-sees-no-seller-money).
+  const correctionOf = (item: RestockRequestItem) => lineCorrection(item, request.countCorrections);
 
   const rackCodes = useRackCodes({ warehouseId: request.warehouseId, enabled: counted });
   const codes = rackCodes.data ?? {};
@@ -139,6 +144,7 @@ export function LinesCard({
               places={counted ? placementLabel(t, item, codes) : ""}
               photo={photoOf(item)}
               rack={rackOf(item)}
+              correction={correctionOf(item)}
             />
           ))}
         </Stack>
@@ -169,6 +175,7 @@ export function LinesCard({
                     counted={counted}
                     value={item.receivedCount}
                     bold={counted && item.receivedCount !== item.count}
+                    was={correctionOf(item)?.was}
                     testId={`restock-detail-received-${item.productId}`}
                   />
                   <CountCell counted={counted} value={goodQuantity(item)} testId={`restock-detail-good-${item.productId}`} />
@@ -178,7 +185,12 @@ export function LinesCard({
                     photo={photoOf(item)}
                     testId={`restock-detail-broken-${item.productId}`}
                   />
-                  <ProblemCell item={item} type={RestockProblemType.MISSING} testId={`restock-detail-missing-${item.productId}`} />
+                  <ProblemCell
+                    item={item}
+                    type={RestockProblemType.MISSING}
+                    correction={correctionOf(item)}
+                    testId={`restock-detail-missing-${item.productId}`}
+                  />
                   {counted && (
                     // Two lines at most: where the good units went, then — when they were put on a rack — the broken ones.
                     <Table.Cell data-testid={`restock-detail-placement-${item.productId}`}>
@@ -199,10 +211,34 @@ export function LinesCard({
   );
 }
 
-function CountCell({ counted, value, bold, testId }: { counted: boolean; value: bigint; bold?: boolean; testId: string }) {
+function CountCell({
+  counted,
+  value,
+  bold,
+  was,
+  testId,
+}: {
+  counted: boolean;
+  value: bigint;
+  bold?: boolean;
+  /** The count the accept wrote, when Koreksi Jumlah Terima changed it: *dikoreksi dari 20* under it. */
+  was?: bigint;
+  testId: string;
+}) {
+  const { t } = useTranslation();
+
   return (
     <Table.Cell textAlign="end" color={counted ? undefined : "fg.muted"} data-testid={testId}>
-      {counted ? (
+      {counted && was !== undefined ? (
+        <Stack gap="0" align="end">
+          <Text as="span" fontWeight={bold ? "semibold" : "normal"}>
+            {value.toString()}
+          </Text>
+          <Text as="span" fontSize="xs" color="fg.muted" whiteSpace="nowrap" data-testid={`${testId}-was`}>
+            {t("receivedCount.was", { count: was.toString() })}
+          </Text>
+        </Stack>
+      ) : counted ? (
         <Text as="span" fontWeight={bold ? "semibold" : "normal"}>
           {value.toString()}
         </Text>
@@ -215,21 +251,31 @@ function CountCell({ counted, value, bold, testId }: { counted: boolean; value: 
 
 // How many, then — on ONE second line — what they were worth (system-filled) and this warehouse's note, cut when long. A
 // zero is an em dash. A broken row's photo sits beside its count, so the cell grows no line.
+//
+// THE WORTH IS NEVER CUT (backlog #46): it stays whole on its line and the column fits it — only the note gives way, cut
+// with its words in the tooltip. A one-line clamp over both used to wrap the worth away (*worth Rp…*).
+//
+// A received-count correction's units carry no money here: their worth is the selling team's
+// (a-warehouse-sees-no-seller-money — `missing_by_correction_total` is unset for a warehouse), so the worth line is the
+// door's alone, and absent when the door counted none.
 function ProblemCell({
   item,
   type,
   photo,
+  correction,
   testId,
 }: {
   item: RestockRequestItem;
   type: RestockProblemType;
   photo?: ReactNode;
+  /** The line's received-count correction: its Kurang reads "1 + 2 (koreksi)". */
+  correction?: LineCorrectionView;
   testId: string;
 }) {
   const { t } = useTranslation();
   const count = type === RestockProblemType.BROKEN ? brokenQuantity(item) : missingQuantity(item);
 
-  if (count === 0n) {
+  if (count === 0n && !correction) {
     return (
       <Table.Cell textAlign="end" color="fg.muted" data-testid={testId}>
         —
@@ -238,6 +284,7 @@ function ProblemCell({
   }
 
   const note = problemNotes(item, type);
+  const worth = hasWorth(item, type);
 
   return (
     <Table.Cell textAlign="end" data-testid={testId}>
@@ -245,23 +292,34 @@ function ProblemCell({
         <HStack gap="2" justify="end">
           {photo}
           <Text as="span" fontWeight="semibold" color="error.fg" data-testid={`${testId}-count`}>
-            {count.toString()}
+            {correction ? missingMark(t, count, correction.netOut) : count.toString()}
           </Text>
         </HStack>
-        <Text fontSize="xs" color="fg.muted" lineClamp={1} maxW="14rem" title={note || undefined}>
-          <Span data-testid={`${testId}-value`}>
-            {t("restock.detail.problemWorth", { amount: formatRupiahNumber(problemValue(item, type)) })}
-          </Span>
-          {note && (
-            <Span data-testid={`${testId}-note`}>
-              {" · "}
-              {note}
-            </Span>
-          )}
-        </Text>
+        {(worth || note) && (
+          <HStack gap="1" justify="end" minW="0" maxW="14rem" fontSize="xs" color="fg.muted" title={note || undefined}>
+            {worth && (
+              <Span whiteSpace="nowrap" flexShrink={0} data-testid={`${testId}-value`}>
+                {t("restock.detail.problemWorth", { amount: formatRupiahNumber(problemValue(item, type)) })}
+              </Span>
+            )}
+            {note && (
+              <Span truncate minW="0" data-testid={`${testId}-note`}>
+                {worth && "· "}
+                {note}
+              </Span>
+            )}
+          </HStack>
+        )}
       </Stack>
     </Table.Cell>
   );
+}
+
+// Whether a problem cell has a worth to say: the door counted some of it, or the read carried the correction's money.
+function hasWorth(item: RestockRequestItem, type: RestockProblemType): boolean {
+  if (item.problems.some((p) => p.type === type)) return true;
+
+  return type === RestockProblemType.MISSING && item.missingByCorrectionTotal !== undefined;
 }
 
 // ONE LINE ON A PHONE (a-phone-reads-each-line-as-a-block) — the product with its picture at full width, how many were
@@ -273,6 +331,7 @@ function LineBlock({
   places,
   photo,
   rack,
+  correction,
 }: {
   item: RestockRequestItem;
   product: ReactNode;
@@ -280,24 +339,29 @@ function LineBlock({
   places: string;
   photo: ReactNode;
   rack: ReactNode;
+  /** The line's received-count correction — see ProblemCell. */
+  correction?: LineCorrectionView;
 }) {
   const { t } = useTranslation();
   const pid = item.productId;
 
   const problem = (type: RestockProblemType, label: string, testId: string) => {
     const count = type === RestockProblemType.BROKEN ? brokenQuantity(item) : missingQuantity(item);
-    if (count === 0n) return null;
+    const corrected = type === RestockProblemType.MISSING ? correction : undefined;
+    if (count === 0n && !corrected) return null;
     const note = problemNotes(item, type);
 
     return (
       <Text fontSize="sm" color="error.fg" data-testid={testId}>
         <Span fontWeight="semibold" data-testid={`${testId}-count`}>
-          {label} {count.toString()}
+          {label} {corrected ? missingMark(t, count, corrected.netOut) : count.toString()}
         </Span>
-        <Span color="fg.muted" data-testid={`${testId}-value`}>
-          {" · "}
-          {formatRupiahNumber(problemValue(item, type))}
-        </Span>
+        {hasWorth(item, type) && (
+          <Span color="fg.muted" data-testid={`${testId}-value`}>
+            {" · "}
+            {formatRupiahNumber(problemValue(item, type))}
+          </Span>
+        )}
         {note && (
           <Span color="fg.muted" data-testid={`${testId}-note`}>
             {" · "}
@@ -322,6 +386,11 @@ function LineBlock({
           <Span color="fg" fontWeight={item.receivedCount !== item.count ? "semibold" : undefined} data-testid={`restock-detail-received-${pid}`}>
             {item.receivedCount.toString()}
           </Span>
+          {correction && (
+            <Span color="fg.muted" data-testid={`restock-detail-received-${pid}-was`}>
+              {" "}({t("receivedCount.was", { count: correction.was.toString() })})
+            </Span>
+          )}
           {" · "}
           {t("restock.detail.good")}{" "}
           <Span color="fg" data-testid={`restock-detail-good-${pid}`}>

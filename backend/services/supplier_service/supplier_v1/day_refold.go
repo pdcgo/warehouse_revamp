@@ -54,8 +54,9 @@ const refoldInFlight = time.Hour
 // RefoldSource is what the re-fold reads of the other services' logs — answered IN-PROCESS by the composition root, from
 // their own tables, so this service holds no copy of them.
 type RefoldSource interface {
-	// RestockAcceptsOn is the RestockAccepted event of every restock accepted on the Jakarta day, as inventory builds
-	// it for the accept itself (one builder, so the two cannot disagree).
+	// RestockAcceptsOn is the RestockAccepted event of every restock accepted on the Jakarta day, and the
+	// RestockReceivedCountCorrected event of every received-count correction made on it — as inventory builds each for
+	// the act itself (one builder each, so the two cannot disagree).
 	RestockAcceptsOn(ctx context.Context, day string) ([]*eventsv1.Event, error)
 	// OrderSalesOn is the OrderPlaced of every order placed on the Jakarta day, and the OrderCancelled of every order
 	// cancelled on it — the ids and moments the order announced, and what the sales fold reads: the lines (product,
@@ -226,8 +227,8 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 	}
 
 	for _, event := range accepts {
-		accepted := event.GetRestockAccepted()
-		if accepted == nil || accepted.GetSupplierId() != in.SupplierID || accepted.GetAcceptedOn() != in.Day || held[event.GetEventId()] {
+		figures, ok := restockFiguresOf(event)
+		if !ok || figures.supplierID != in.SupplierID || figures.day != in.Day || held[event.GetEventId()] {
 			continue
 		}
 
@@ -278,22 +279,22 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 			return result, fmt.Errorf("supplier re-fold: claim %s does not read: %w", claim.ID, err)
 		}
 
-		accepted := event.GetRestockAccepted()
-		if accepted == nil || accepted.GetSupplierId() != in.SupplierID {
+		figures, ok := restockFiguresOf(event)
+		if !ok || figures.supplierID != in.SupplierID {
 			continue
 		}
 
 		result.Counted++
 
 		// The fold's own arithmetic, line by line (foldLines): a line that counted nothing writes nothing.
-		for _, line := range accepted.GetLines() {
+		for _, line := range figures.lines {
 			good, lost, broken := line.GetAcceptedCount(), line.GetMissingCount(), line.GetBrokenCount()
 			if good == 0 && lost == 0 && broken == 0 {
 				continue
 			}
 
 			value := lineValue(line)
-			key := refoldKey{ProductID: line.GetProductId(), TeamID: accepted.GetTeamId()}
+			key := refoldKey{ProductID: line.GetProductId(), TeamID: figures.teamID}
 
 			row := after[key]
 			if row == nil {
@@ -311,8 +312,8 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 	}
 
 	for _, event := range accepts {
-		accepted := event.GetRestockAccepted()
-		if accepted != nil && accepted.GetSupplierId() == in.SupplierID && accepted.GetAcceptedOn() == in.Day && !held[event.GetEventId()] {
+		figures, ok := restockFiguresOf(event)
+		if ok && figures.supplierID == in.SupplierID && figures.day == in.Day && !held[event.GetEventId()] {
 			result.InFlight++
 		}
 	}

@@ -112,6 +112,7 @@ message Event {
     WarehouseTransferUpdated warehouse_transfer_updated = 405;
     WarehouseTransferCancelled warehouse_transfer_cancelled = 406;
     WarehouseTransferAccepted warehouse_transfer_accepted = 407;
+    RestockReceivedCountCorrected restock_received_count_corrected = 408;
 
     LiabilityPaymentAccepted liability_payment_accepted = 500;
 
@@ -533,6 +534,38 @@ message RestockAcceptedLine {
   // store them, the restock-level supplier_id above is what a fold reads.
   uint64 supplier_id = 8;
   uint64 supplier_channel_id = 9;
+}
+
+// RestockReceivedCountCorrected announces that the receiving warehouse CORRECTED an accepted restock's received count
+// (KOREKSI JUMLAH TERIMA), and the correction COMMITTED. supplier_service folds it into the supplier's restock figures ON
+// THE CORRECTION'S DAY, signed (a-received-count-correction-counts-on-its-own-day): too many typed → restock −N and lost
+// on the way +N; too few → the reverse. The accept's day never changes.
+//
+// It carries the line's ordered count and total — a figure's value is units × total ÷ ordered, as for the accept — and
+// SIGNED counts: `accepted_count` is the change in good units (−N out), `missing_count` the change in missing (+N),
+// `broken_count` 0. Team Balance does not listen: nothing is owed between the teams for a door unit.
+//
+// ⚠ `event_id` is `restock-count-corrected:<transaction_id>` — one per correction act (its `adjustment` transaction), so
+// a republish and a re-fold's claim collide in the fold's dedup.
+message RestockReceivedCountCorrected {
+  option (event_config).topic = "restock-received-count-corrected";
+
+  uint64 restock_id = 1;
+  // The SELLING team that bought — the figures' team.
+  uint64 team_id = 2;
+  // The warehouse that corrected it.
+  uint64 warehouse_id = 3;
+  // The RESTOCK's supplier, as RestockAccepted.supplier_id (0 = none, nothing to fold).
+  uint64 supplier_id = 4;
+  // YYYY-MM-DD — the correction's JAKARTA day, the day the figures move on.
+  string corrected_on = 5;
+  // The corrected lines only, counts signed as above.
+  repeated RestockAcceptedLine lines = 6;
+  int64 corrected_at_unix = 7;
+  // The correction's `adjustment` transaction.
+  uint64 transaction_id = 8;
+  uint64 actor_id = 9;
+  bool actor_is_override = 10;
 }
 
 // RestockCreated announces a restock was RAISED — the money left the paying account then

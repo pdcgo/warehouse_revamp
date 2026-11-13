@@ -601,6 +601,50 @@ func DrawInTurn(batches *LockedBatches, teamID, productID uint64, counts ...int6
 	return out, nil
 }
 
+// TakeFromLocked takes `count` units out of ONE named LOCKED batch — a received-count correction's units out
+// (a-stock-in-correction-keeps-the-batch-price): n of its units remove value × n ÷ units, and the take that empties it
+// removes all its value (an-emptying-take-takes-all-the-value). More than it holds is refused before anything is
+// recorded. Returns the value taken.
+func TakeFromLocked(
+	locked *LockedBatches,
+	w *BatchWrites,
+	t inventory_service_models.InventoryTransaction,
+	batchID uint64,
+	count int64,
+	changeType string,
+	actorID uint64,
+	description string,
+) (BatchTaken, error) {
+	if locked.readOnly {
+		return BatchTaken{}, fmt.Errorf("take from batch %d: it was read for a preview, not locked", batchID)
+	}
+
+	if count <= 0 {
+		return BatchTaken{}, fmt.Errorf("take from batch %d: count %d is not positive", batchID, count)
+	}
+
+	b := locked.byID[batchID]
+	if b == nil {
+		return BatchTaken{}, fmt.Errorf("take from batch %d: it was not locked", batchID)
+	}
+
+	if b.StockCount < count {
+		return BatchTaken{}, &NotEnoughStockError{ProductID: b.ProductID, Wanted: count, Available: b.StockCount, Ledger: "batches"}
+	}
+
+	value := takenValue(b, count)
+
+	b.StockCount -= count
+	b.StockValuation -= value
+	if b.StockCount == 0 {
+		b.StockValuation = 0
+	}
+
+	w.change(b, t.ID, changeType, -count, -value, actorID, description)
+
+	return BatchTaken{BatchID: b.ID, Count: count, Valuation: value}, nil
+}
+
 // AddAtPrice returns units to one LOCKED batch at a price the caller names — a found unit claiming a loss back goes
 // into the loss's batch at the loss's price (a-surplus-claims-the-oldest-loss-first), which a revaluation since may have
 // moved away from the batch's own. The batch's price_unit is not changed, so its log row repeats it. A batch at 0

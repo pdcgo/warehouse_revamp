@@ -19,8 +19,20 @@ func (s *Service) RestockRequestDetail(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestDetailRequest],
 ) (*connect.Response[inventoryv1.RestockRequestDetailResponse], error) {
-	teamID := req.Msg.GetTeamId()
+	wire, err := s.restockDetail(ctx, req.Msg.GetRequestId(), req.Msg.GetTeamId())
+	if err != nil {
+		return nil, restockErr(err)
+	}
 
+	return connect.NewResponse(&inventoryv1.RestockRequestDetailResponse{
+		Request: wire,
+	}), nil
+}
+
+// restockDetail is ONE restock as `teamID` reads it — Detail's answer, and the correction's (restock_received_count_
+// correct.go): its lines, problems, trail, where each line went, and its received-count corrections
+// (restockCountCorrections: money for the owning team only, the form's facts for the receiving warehouse only).
+func (s *Service) restockDetail(ctx context.Context, requestID, teamID uint64) (*inventoryv1.RestockRequest, error) {
 	var rr inventory_service_models.Restock
 
 	err := s.db.
@@ -37,21 +49,26 @@ func (s *Service) RestockRequestDetail(
 		// months ago), and the id breaks the tie when two rows share a second — an edit made in the same second as the
 		// create must still read second.
 		Preload("Logs", func(db *gorm.DB) *gorm.DB { return db.Order("created_at ASC, id ASC") }).
-		Where("id = ? AND (team_id = ? OR warehouse_id = ?)", req.Msg.GetRequestId(), teamID, teamID).
+		Where("id = ? AND (team_id = ? OR warehouse_id = ?)", requestID, teamID, teamID).
 		First(&rr).
 		Error
 	if err != nil {
-		return nil, restockErr(err)
+		return nil, err
 	}
 
 	err = loadPutAway(s.db.WithContext(ctx), &rr)
 	if err != nil {
-		return nil, restockErr(err)
+		return nil, err
 	}
 
-	return connect.NewResponse(&inventoryv1.RestockRequestDetailResponse{
-		Request: restockRequestToProto(&rr),
-	}), nil
+	wire := restockRequestToProto(&rr)
+
+	err = restockCountCorrections(s.db.WithContext(ctx), &rr, wire, teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	return wire, nil
 }
 
 // loadPutAway fills each line's placements from the accept's own rack rows — the placement ledger's record of where the

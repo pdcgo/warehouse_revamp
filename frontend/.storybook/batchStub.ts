@@ -12,6 +12,10 @@
 //   3982  Kopi 71 (Pusat)     restock 398   arrived 24 = 6 used + 18 ready                   expires in 9 days
 //   9101  Kopi 71 (Pusat)     a RETURN      arrived 2  = 2 ready                             no expiry
 //
+// KOREKSI JUMLAH TERIMA (receivedCountScenario.ts) reaches these rows too: a correction's units out are Hilang at the batch
+// price — never Terpakai — and leave Siap; units in come back (batch_detail.go countOutExpr); its history row is an ADJUST
+// carrying `received_count_correction` (ledger_history.go).
+//
 // The rules the server plays (batch_list.go, batch_detail.go): scoped to the warehouse (another's batch is NotFound);
 // the list newest first; *expiring soon* is within 30 days; the header totals are over the WHOLE filtered set, not
 // the page. A batch's places are where the accept put it (a-batch-shows-the-racks-it-was-put-on) — history, not where
@@ -28,6 +32,7 @@ import {
 } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { racks } from "./fixtures";
 import { isEmptied, priceLogsOf, priceNow, resetBatchPriceScenario } from "./batchPriceScenario";
+import { correctionsOfBatch } from "./receivedCountScenario";
 
 const DAY = 86_400n;
 const now = () => BigInt(Math.floor(Date.now() / 1000));
@@ -104,9 +109,14 @@ export function addBatchForStory(f: Parameters<typeof batch>[0]) {
   rows = [...rows.filter((b) => b.id !== f.id), batch(f)];
 }
 
-/** The units left as the reads answer them — 0 once a story emptied the batch. */
+/** Units Koreksi Jumlah Terima took out of the batch, net (negative when more went back in). */
+function countOut(b: BatchFixture): bigint {
+  return correctionsOfBatch(b.id).reduce((s, c) => s + c.unitsOut, 0n);
+}
+
+/** The units left as the reads answer them — 0 once a story emptied the batch; less what a correction took out. */
 function readyNow(b: BatchFixture): bigint {
-  return isEmptied(b.id) ? 0n : b.ready;
+  return isEmptied(b.id) ? 0n : b.ready - countOut(b);
 }
 
 /** One batch's facts for BatchRevalue's stub (batchPriceStub.ts) — `undefined` for one this stub does not hold. */
@@ -135,7 +145,7 @@ function toWire(b: BatchFixture) {
   // the price it was accepted at — what arrived cost that (a-late-cost-is-an-expense-not-a-revaluation).
   const price = priceNow(b.id, b.unitCost);
   const ready = readyNow(b);
-  const used = b.used + (b.ready - ready);
+  const used = b.used + (b.ready - countOut(b) - ready);
 
   return {
     id: b.id,
@@ -149,7 +159,7 @@ function toWire(b: BatchFixture) {
     costKnown: b.costKnown,
     arrived: b.arrived,
     broken: b.broken,
-    lost: b.lost,
+    lost: b.lost + countOut(b),
     used,
     ready,
     lineCost: Number(b.arrived) * b.unitCost,
@@ -193,7 +203,18 @@ function movementsOf(b: BatchFixture) {
     out.push({ delta: -b.used, kind: MovementKind.PICK, rackId: b.shelves[0]?.[0] ?? 0n, at: at + 2n * DAY, ref: `ORD-${b.id}` });
   }
   // A batch a story emptied had its last units taken by an order a minute ago; each correction is a row that moved no unit.
-  type Row = { id: bigint; delta: bigint; kind: MovementKind; rackId: bigint; at: bigint; ref: string; reason: string; actor: bigint; correction?: (typeof corrections)[number] };
+  type Row = {
+    id: bigint;
+    delta: bigint;
+    kind: MovementKind;
+    rackId: bigint;
+    at: bigint;
+    ref: string;
+    reason: string;
+    actor: bigint;
+    correction?: (typeof corrections)[number];
+    count?: ReturnType<typeof correctionsOfBatch>[number];
+  };
   const corrections = priceLogsOf(b.id);
   const extra: Row[] = [];
   if (isEmptied(b.id) && b.ready > 0n) {
@@ -201,6 +222,10 @@ function movementsOf(b: BatchFixture) {
   }
   for (const l of corrections) {
     extra.push({ id: l.id, delta: 0n, kind: MovementKind.REVALUATION, rackId: 0n, at: l.atUnix, ref: "", reason: l.reason, actor: l.actorUserId, correction: l });
+  }
+  // Each received-count correction: the `adjustment` it posted, on the rack named (Koreksi Jumlah Terima).
+  for (const c of correctionsOfBatch(b.id)) {
+    extra.push({ id: c.id, delta: -c.unitsOut, kind: MovementKind.ADJUST, rackId: c.placementId, at: c.atUnix, ref: "", reason: c.reason, actor: c.actorUserId, count: c });
   }
   const all: Row[] = [
     ...out.map((m, i) => ({ ...m, id: b.id * 100n + BigInt(i + 1), reason: "", actor: b.acceptedBy })),
@@ -226,7 +251,16 @@ function movementsOf(b: BatchFixture) {
       createdAt: iso(m.at),
       rackId: m.rackId,
       batchId: b.id,
-      isOverride: m.correction?.isOverride ?? false,
+      isOverride: m.correction?.isOverride ?? m.count?.isOverride ?? false,
+      receivedCountCorrection: m.count
+        ? {
+            fromCount: m.count.fromCount,
+            toCount: m.count.toCount,
+            reason: m.count.reason,
+            restockId: m.count.subject === "restock" ? m.count.targetId : 0n,
+            transferId: m.count.subject === "transfer" ? m.count.targetId : 0n,
+          }
+        : undefined,
       priceUnitBefore: before,
       priceUnitAfter: price,
       valueChange: m.correction ? m.correction.valueDelta : Number(m.delta) * price,
@@ -286,13 +320,14 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
     // Each figure at the price it left at, as the server reads its own rows: the door's problems and the units used at
     // the accepted price, the last units an order took meanwhile at the price then; the newest correction's price before.
     const corrections = priceLogsOf(b.id);
-    const taken = b.ready - readyNow(b);
+    const taken = b.ready - countOut(b) - readyNow(b);
     return {
       batch: toWire(b),
       returnedQty: 0n,
       lastReturnUnix: 0n,
       brokenValue: Number(b.broken) * b.unitCost,
-      lostValue: Number(b.lost) * b.unitCost,
+      // Hilang carries a correction's units at the batch price (a-stock-in-correction-keeps-the-batch-price).
+      lostValue: Number(b.lost + countOut(b)) * b.unitCost,
       usedValue: Number(b.used) * b.unitCost + Number(taken) * priceNow(b.id, b.unitCost),
       priceCorrected: corrections.length > 0,
       priceCorrectedFrom: corrections[corrections.length - 1]?.from ?? 0,

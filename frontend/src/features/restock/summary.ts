@@ -30,8 +30,11 @@ export function brokenQuantity(item: RestockRequestItem): bigint {
   return problemCount(item, RestockProblemType.BROKEN);
 }
 
+// A line's Kurang is the door's missing rows AND what a Koreksi Jumlah Terima took out since, net
+// (a-wrong-stock-in-is-a-received-count-correction: *"the restock's existing Kurang word, marked (koreksi)"*) — the detail
+// serves the second as `missing_by_correction` (negative when units went back in); a list row leaves it 0.
 export function missingQuantity(item: RestockRequestItem): bigint {
-  return problemCount(item, RestockProblemType.MISSING);
+  return problemCount(item, RestockProblemType.MISSING) + item.missingByCorrection;
 }
 
 function problemCount(item: RestockRequestItem, type: RestockProblemType): bigint {
@@ -56,8 +59,12 @@ export function problemNotes(item: RestockRequestItem, type: RestockProblemType)
 
 // What a line's broken / missing units were worth — FILLED BY THE SYSTEM from the line, never typed
 // (the-problem-price-is-filled-by-the-system).
+// A correction's units are worth the batch price (a-stock-in-correction-keeps-the-batch-price) — served for the owning
+// team only, so a warehouse reads the door's worth alone (a-warehouse-sees-no-seller-money).
 export function problemValue(item: RestockRequestItem, type: RestockProblemType): number {
-  return item.problems.filter((p) => p.type === type).reduce((sum, p) => sum + p.total, 0);
+  const door = item.problems.filter((p) => p.type === type).reduce((sum, p) => sum + p.total, 0);
+
+  return type === RestockProblemType.MISSING ? door + (item.missingByCorrectionTotal ?? 0) : door;
 }
 
 // What the GOODS cost — the line totals as typed off the invoice (a-line-is-typed-as-its-total), no freight.

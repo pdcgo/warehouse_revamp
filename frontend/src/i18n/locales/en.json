@@ -5833,5 +5833,68 @@
     "info": {
       "correctedFrom": "corrected from {{from}}"
     }
+  },
+  "receivedCount": {
+    "action": "Correct Received Count",
+    "title": "Correct Received Count",
+    "subtitleRestock": "Restock {{ref}}",
+    "subtitleTransfer": "Transfer #{{id}}",
+    "intro": "Type how many the box really held, line by line. Units that were never there leave the batch as Missing (correction); units that were missed go into the same batch.",
+    "ordered": "Ordered {{count}}",
+    "sent": "Sent {{count}}",
+    "accepted": "Received {{count}}",
+    "broken": "broken {{count}}",
+    "real": "Real count",
+    "realOf": "Real count of {{name}}",
+    "batchHolds": "Batch #{{id}} · {{count}} still in this warehouse",
+    "noBatch": "No batch here yet — units in start one at the line's price",
+    "effect": {
+      "out": "{{count}} Missing (correction) — out of batch #{{id}}",
+      "in": "{{count}} into batch #{{id}}",
+      "inNew": "{{count}} into a new batch"
+    },
+    "fromRack": "Take off rack",
+    "toRack": "Put on rack",
+    "rackOption": "{{code}} · holds {{count}}",
+    "rackPlaceholder": "Pick a rack",
+    "error": {
+      "belowBroken": "Not below the broken units ({{count}})",
+      "overOrdered": "More than ordered ({{count}}) — a correction adds no units over the line",
+      "overSent": "More than sent ({{count}})",
+      "overBatch": "Batch #{{id}} still holds {{count}} here — only the units still there can be taken out",
+      "overRack": "{{code}} holds only {{count}}",
+      "noRack": "Pick the rack",
+      "reasonRequired": "A reason is required",
+      "unchanged": "No count has changed yet."
+    },
+    "reason": "Reason",
+    "reasonPlaceholder": "e.g. Recounted the rack — the box held 18, 20 was typed",
+    "reasonHelper": "The selling team reads it in the history, with who corrected it.",
+    "sold": "Units already gone (sold, moved, lost) keep the price they left at; the batch's price never changes.",
+    "save": "Save Correction",
+    "saved": "Received count corrected",
+    "failed": "The correction was not saved",
+    "confirm": {
+      "title": "Correct the received count?",
+      "message": "{{lines}}. It applies at once and is never undone — a wrong correction is put right by another one.",
+      "line": "{{name}} {{from}} → {{to}}",
+      "dismiss": "Back"
+    },
+    "was": "corrected from {{count}}",
+    "mark": {
+      "only": "{{count}} (correction)",
+      "plus": "{{door}} + {{count}} (correction)",
+      "minus": "{{door}} − {{count}} (correction)"
+    },
+    "badge": "Missing (correction) {{count}}",
+    "missingCorrection": "Missing (correction)",
+    "borne": "worth {{amount}} · borne by the selling team",
+    "lifted": "{{amount}} less borne by the selling team",
+    "history": {
+      "title": "Received count corrected · {{from}} → {{to}}",
+      "out": "{{count}} Missing (correction)",
+      "in": "{{count}} into the batch",
+      "kind": "Received count corrected"
+    }
   }
 }

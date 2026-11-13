@@ -437,8 +437,20 @@ type refoldLogs struct {
 	db *gorm.DB
 }
 
+// RestockAcceptsOn is the day's accepts AND its received-count corrections — both move a supplier's restock figures on
+// their own day (a-received-count-correction-counts-on-its-own-day).
 func (l refoldLogs) RestockAcceptsOn(ctx context.Context, day string) ([]*eventsv1.Event, error) {
-	return inventory_v1.RestockAcceptedEventsOn(l.db.WithContext(ctx), day)
+	accepts, err := inventory_v1.RestockAcceptedEventsOn(l.db.WithContext(ctx), day)
+	if err != nil {
+		return nil, err
+	}
+
+	corrections, err := inventory_v1.RestockCountCorrectionEventsOn(l.db.WithContext(ctx), day)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(accepts, corrections...), nil
 }
 
 func (l refoldLogs) OrderSalesOn(ctx context.Context, day string) ([]*eventsv1.Event, error) {

@@ -52,6 +52,39 @@ func TestRegister_TheOrderEventsReachTheSalesFold(t *testing.T) {
 	}
 }
 
+// A CORRECTION'S ROUTE IS MOUNTED: `san pubsub ensure` declares supplier-count-corrected, so the service serves its push
+// route — through the REAL mux, the correction lands on its own day beside the accept's.
+func TestRegister_ACorrectionReachesTheFold(t *testing.T) {
+	db := san_testdb.DB(t)
+	mux := http.NewServeMux()
+	supplier_service.NewRegister(mux, supplier_v1.NewService(db, nil, nil, takes{}, nil), connect.WithInterceptors())()
+
+	at := time.Date(2026, 10, 7, 3, 0, 0, 0, time.UTC)
+	line := func(accepted, missing int64) []*eventsv1.RestockAcceptedLine {
+		return []*eventsv1.RestockAcceptedLine{{ProductId: 100, OrderedCount: 10, TotalPrice: 10000, AcceptedCount: accepted, MissingCount: missing}}
+	}
+
+	deliver(t, mux, supplier_service.FoldSubscription, &eventsv1.Event{
+		EventId: "restock-accepted:77", OccurredAt: timestamppb.New(at),
+		Message: &eventsv1.Event_RestockAccepted{RestockAccepted: &eventsv1.RestockAccepted{
+			RestockId: 77, TeamId: 12, SupplierId: 31, AcceptedOn: "2026-10-07", Lines: line(10, 0),
+		}},
+	})
+	deliver(t, mux, supplier_service.CountCorrectedSubscription, &eventsv1.Event{
+		EventId: "restock-count-corrected:5001", OccurredAt: timestamppb.New(at.Add(48 * time.Hour)),
+		Message: &eventsv1.Event_RestockReceivedCountCorrected{RestockReceivedCountCorrected: &eventsv1.RestockReceivedCountCorrected{
+			RestockId: 77, TeamId: 12, SupplierId: 31, CorrectedOn: "2026-10-09", Lines: line(-2, 2), TransactionId: 5001,
+		}},
+	})
+
+	var rows []supplier_service_models.SupplierProductDailyReport
+
+	err := db.Where("supplier_id = ? AND product_id = ?", 31, 100).Order("day").Find(&rows).Error
+	if err != nil || len(rows) != 2 || rows[0].RestockCount != 10 || rows[1].RestockCount != -2 || rows[1].ShippingLostCount != 2 {
+		t.Fatalf("the figures = %+v (%v) — want 10 on the accept's day, −2 restock / +2 lost on the correction's", rows, err)
+	}
+}
+
 // takes is a GoodsReader whose every take drew nothing from a supplier.
 type takes struct{}
 

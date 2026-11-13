@@ -42,6 +42,12 @@ type batchRow struct {
 	CreatedBy          uint64
 	AcceptedBy         uint64
 	TxType             string
+	// The transaction that minted it.
+	TransactionID uint64
+	// KOREKSI JUMLAH TERIMA — units received-count corrections took OUT of the batch, net (negative when more went back
+	// in), its own mint excluded: phantom units that never arrived, so Hilang, never Terpakai
+	// (a-stock-in-correction-keeps-the-batch-price).
+	CountOut int64
 }
 
 // The restock line's problem rows, by kind (#227): missing is LOST on this screen, broken is BROKEN. A problem row is
@@ -59,7 +65,15 @@ const batchSelect = `
 	` + brokenExpr + ` AS broken,
 	` + lostExpr + ` AS lost,
 	b.expired_at, b.created_at,
-	COALESCE(r.created_by_user_id, t.create_by_user_id) AS created_by, t.create_by_user_id AS accepted_by, t.tx_type`
+	COALESCE(r.created_by_user_id, t.create_by_user_id) AS created_by, t.create_by_user_id AS accepted_by, t.tx_type,
+	b.transaction_id,
+	` + countOutExpr + ` AS count_out`
+
+// countOutExpr is a batch's units out by received-count corrections — by the corrections' batch index, tiny tables.
+const countOutExpr = `COALESCE((SELECT SUM(c.units_out) FROM restock_count_corrections c
+		WHERE c.batch_id = b.id AND c.transaction_id <> b.transaction_id), 0)
+	+ COALESCE((SELECT SUM(c.units_out) FROM warehouse_transfer_count_corrections c
+		WHERE c.batch_id = b.id AND c.transaction_id <> b.transaction_id), 0)`
 
 // batchQuery is a batch joined to the transaction that minted it and, through it, to its restock line or transfer line.
 func batchQuery(db *gorm.DB) *gorm.DB {
@@ -87,6 +101,8 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 		acceptedPrice = r.InitStockValuation / float64(r.InitStockCount)
 	}
 
+	// Arrived is what the line said; a received-count correction moves units between Hilang and the batch, never
+	// Arrived.
 	out := &inventoryv1.StockBatch{
 		Id:             r.ID,
 		DeliveryId:     r.DeliveryID,
@@ -100,9 +116,9 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 		CostKnown:      true,
 		Arrived:        arrived,
 		Broken:         r.Broken,
-		Lost:           r.Lost,
+		Lost:           r.Lost + r.CountOut,
 		Ready:          r.Ready,
-		Used:           r.InitStockCount - r.Ready,
+		Used:           r.InitStockCount - r.Ready - r.CountOut,
 		LineCost:       float64(arrived) * acceptedPrice,
 		ReadyValue:     r.StockValuation,
 		CreatedAtUnix:  r.CreatedAt.Unix(),
@@ -167,6 +183,9 @@ func (s *Service) BatchDetail(
 		Revalued      float64
 		Corrections   int64
 		CorrectedFrom *float64
+		// KOREKSI JUMLAH TERIMA — what received-count corrections moved in or out of the batch's value (signed), its
+		// own mint excluded: a correction is a wrong count put right, never units used.
+		CountCorrected float64
 	}
 
 	err = s.db.
@@ -178,10 +197,12 @@ func (s *Service) BatchDetail(
 				COALESCE(SUM(l.change_valuation) FILTER (WHERE l.change_type = @revaluation), 0) AS revalued,
 				COUNT(*) FILTER (WHERE l.change_type = @revaluation) AS corrections,
 				(ARRAY_AGG(l.price_unit_after - l.change_valuation / NULLIF(l.stock_count_after, 0) ORDER BY l.id DESC)
-					FILTER (WHERE l.change_type = @revaluation))[1] AS corrected_from
+					FILTER (WHERE l.change_type = @revaluation))[1] AS corrected_from,
+				COALESCE(SUM(l.change_valuation) FILTER (WHERE l.change_type IN @count_corrections
+					AND l.transaction_id <> @minted_by), 0) AS count_corrected
 			FROM (
 				SELECT l.id, l.created_at, l.change_count, l.change_type, l.change_valuation, l.price_unit_after,
-				       l.stock_count_after,
+				       l.stock_count_after, l.transaction_id,
 				       l.change_count > 0 AND EXISTS (
 				           SELECT 1 FROM inventory_transactions t WHERE t.id = l.transaction_id AND t.tx_type = @order
 				       ) AS came_back
@@ -192,6 +213,10 @@ func (s *Service) BatchDetail(
 				"batch":       req.Msg.GetBatchId(),
 				"order":       string(inventory_service_models.TxOrder),
 				"revaluation": string(inventory_service_models.TxRevaluation),
+				"count_corrections": []string{
+					inventory_service_models.ChangeRestockCorrection, inventory_service_models.ChangeTransferCorrection,
+				},
+				"minted_by": r.TransactionID,
 			}).
 		Scan(&logs).
 		Error
@@ -219,14 +244,19 @@ func (s *Service) BatchDetail(
 		}
 	}
 
+	// Hilang carries the units a received-count correction took out — Kurang (koreksi), missing at the door at the batch
+	// price (a-stock-in-correction-keeps-the-batch-price) — net of units put back.
+	door.Lost -= logs.CountCorrected
+
 	resp := &inventoryv1.BatchDetailResponse{
 		Batch:       batchRowToProto(&r),
 		ReturnedQty: logs.Qty,
 		BrokenValue: door.Broken,
 		LostValue:   door.Lost,
 		// What left, at the price each unit left at: the accepted value, moved by every correction, less what is left —
-		// the sum of the batch's own unit-moving rows, never units × today's price.
-		UsedValue:      r.InitStockValuation + logs.Revalued - r.StockValuation,
+		// the sum of the batch's own unit-moving rows, never units × today's price. A received-count correction is a
+		// count put right, never units used.
+		UsedValue:      r.InitStockValuation + logs.Revalued + logs.CountCorrected - r.StockValuation,
 		PriceCorrected: logs.Corrections > 0,
 	}
 

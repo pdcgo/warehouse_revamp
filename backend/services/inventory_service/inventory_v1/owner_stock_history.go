@@ -140,6 +140,28 @@ func (s *Service) OwnerStockHistory(
 		})
 	}
 
+	// KOREKSI JUMLAH TERIMA — the label on a correction's rows (a-wrong-stock-in-is-a-received-count-correction).
+	var keys []labelKey
+
+	for i := range rows {
+		if countCorrectionTypes[rows[i].ChangeType] {
+			keys = append(keys, labelKey{TransactionID: rows[i].MovementID, ProductID: rows[i].ProductID})
+		}
+	}
+
+	if len(keys) > 0 {
+		labels, labelErr := countCorrectionLabels(db, keys)
+		if labelErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, labelErr)
+		}
+
+		for i := range rows {
+			if countCorrectionTypes[rows[i].ChangeType] {
+				movements[i].ReceivedCountCorrection = labels[labelKey{TransactionID: rows[i].MovementID, ProductID: rows[i].ProductID}]
+			}
+		}
+	}
+
 	items, ids := ownerHistoryItems(movements, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.OwnerStockHistoryResponse{

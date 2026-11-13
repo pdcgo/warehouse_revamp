@@ -28,20 +28,52 @@ var ErrAlreadyBackfilled = errors.New("the supplier figures were already backfil
 const liveSinceLayout = "2006-01-02T15:04:05.000000Z"
 
 // FoldHandler is supplier_service's push handler — the fold that builds `supplier_product_daily_reports` from
-// `RestockAccepted` (the-report-is-processed-like-settlement).
+// `RestockAccepted` (the-report-is-processed-like-settlement) and from `RestockReceivedCountCorrected` — a received-count
+// correction moves the same figures ON ITS OWN DAY, signed (a-received-count-correction-counts-on-its-own-day). Two
+// subscriptions, one per topic, the one handler.
 //
 // Any other variant is ACKED: redelivering a message nothing here will ever handle is a loop, not a retry.
 func (s *Service) FoldHandler() event_source.PushHandler {
 	return func(ctx context.Context, event *eventsv1.Event) error {
-		accepted := event.GetRestockAccepted()
-		if accepted == nil {
+		figures, ok := restockFiguresOf(event)
+		if !ok {
 			return nil
 		}
 
-		_, err := s.fold(ctx, event, accepted, true)
+		_, err := s.fold(ctx, event, figures, true)
 
 		return err
 	}
+}
+
+// restockFigures is what ONE restock event moves on a supplier's day: an accept's counts on the accept's day, or a
+// received-count correction's SIGNED counts (accepted −N, missing +N for units taken out) on the correction's day.
+type restockFigures struct {
+	supplierID uint64
+	teamID     uint64
+	day        string
+	lines      []*eventsv1.RestockAcceptedLine
+	// An accept — only a live accept lowers the backfill's cutoff.
+	accept bool
+}
+
+// restockFiguresOf reads an event the fold folds; false for every other variant.
+func restockFiguresOf(event *eventsv1.Event) (restockFigures, bool) {
+	if accepted := event.GetRestockAccepted(); accepted != nil {
+		return restockFigures{
+			supplierID: accepted.GetSupplierId(), teamID: accepted.GetTeamId(), day: accepted.GetAcceptedOn(),
+			lines: accepted.GetLines(), accept: true,
+		}, true
+	}
+
+	if corrected := event.GetRestockReceivedCountCorrected(); corrected != nil {
+		return restockFigures{
+			supplierID: corrected.GetSupplierId(), teamID: corrected.GetTeamId(), day: corrected.GetCorrectedOn(),
+			lines: corrected.GetLines(),
+		}, true
+	}
+
+	return restockFigures{}, false
 }
 
 // BackfillResult is what one backfill did.
@@ -96,7 +128,10 @@ func (s *Service) FoldBackfill(ctx context.Context, source BackfillSource) (Back
 			return nil
 		}
 
-		folded, err := s.fold(ctx, event, accepted, false)
+		folded, err := s.fold(ctx, event, restockFigures{
+			supplierID: accepted.GetSupplierId(), teamID: accepted.GetTeamId(), day: accepted.GetAcceptedOn(),
+			lines: accepted.GetLines(), accept: true,
+		}, false)
 		if err != nil {
 			return err
 		}
@@ -124,29 +159,30 @@ func (s *Service) FoldBackfill(ctx context.Context, source BackfillSource) (Back
 	return result, nil
 }
 
-// fold applies ONE accept to the figures, and reports whether it did — false when the event was already claimed, or
-// names no supplier.
+// fold applies ONE accept — or one received-count correction — to the figures, and reports whether it did — false when
+// the event was already claimed, or names no supplier.
 //
 // ⚠ ONE TRANSACTION for the lock check, the dedup claim and every statement. A failure rolls the claim back with the
 // figures, so the redelivery genuinely reprocesses rather than being recognised as "already done" with nothing folded.
 func (s *Service) fold(
 	ctx context.Context,
 	event *eventsv1.Event,
-	accepted *eventsv1.RestockAccepted,
+	figures restockFigures,
 	live bool,
 ) (bool, error) {
 	// No supplier, no figures (the-supplier-comes-from-the-restock-until-lines-name-a-store). ACKED: it will never be
 	// anything else.
-	if accepted.GetSupplierId() == 0 {
+	if figures.supplierID == 0 {
 		return false, nil
 	}
 
-	// The day is the accept's Jakarta day as inventory stated it — read, never re-derived from an instant.
-	day := accepted.GetAcceptedOn()
+	// The day is the accept's (or the correction's) Jakarta day as inventory stated it — read, never re-derived from an
+	// instant.
+	day := figures.day
 
 	_, err := parseDate(day)
 	if err != nil {
-		return false, fmt.Errorf("supplier fold: %s has accepted_on %q: %w", event.GetEventId(), day, err)
+		return false, fmt.Errorf("supplier fold: %s has its day %q: %w", event.GetEventId(), day, err)
 	}
 
 	raw, err := san_event.Marshal(event)
@@ -184,13 +220,14 @@ func (s *Service) fold(
 
 		// 3 · EVERY LINE — ONE upsert for the whole accept. The six figures are movements, so two accepts on one day
 		// simply ADD, and no later day changes: there is no balance to carry.
-		err = foldLines(tx, day, accepted.GetSupplierId(), accepted.GetTeamId(), accepted.GetLines())
+		err = foldLines(tx, day, figures.supplierID, figures.teamID, figures.lines)
 		if err != nil {
 			return err
 		}
 
-		// 4 · THE LIVE FOLD'S START — the backfill's cutoff. Lowered, never raised, by every live fold.
-		if live {
+		// 4 · THE LIVE FOLD'S START — the backfill's cutoff. Lowered, never raised, by every live ACCEPT (a correction is
+		// never backfilled).
+		if live && figures.accept {
 			err = tx.Exec(`
 INSERT INTO supplier_service_metadata (key, value) VALUES (?, ?)
 ON CONFLICT (key) DO UPDATE
@@ -212,7 +249,8 @@ WHERE EXCLUDED.value < supplier_service_metadata.value`,
 	return folded, err
 }
 
-// foldLines adds every counted line of an accept to its day's rows — ONE statement, whatever the parcel's size
+// foldLines adds every counted line of an accept (or a correction's signed lines) to its day's rows — ONE statement,
+// whatever the parcel's size
 // (audits/services/supplier_service/performances/FoldHandler.md: it was one round trip per line). A line that counted
 // nothing writes nothing.
 //

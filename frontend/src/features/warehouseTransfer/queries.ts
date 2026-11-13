@@ -179,3 +179,16 @@ export function useAcceptWarehouseTransfer() {
     onSuccess: () => invalidate(),
   });
 }
+
+// KOREKSI JUMLAH TERIMA — warehouse B corrects an accepted transfer's arrived count
+// (the-warehouse-corrects-a-wrong-stock-in-alone): units leave or enter B's batches and a rack, so it fans out as the
+// accept does. A refused one re-reads too, so the page behind a stale form shows the line as it is now.
+export function useCorrectTransferReceivedCount() {
+  const invalidate = useInvalidateTransferAndStock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof warehouseTransferClient.warehouseTransferReceivedCountCorrect>[0]) =>
+      warehouseTransferClient.warehouseTransferReceivedCountCorrect(vars),
+    onSettled: () => invalidate(),
+  });
+}

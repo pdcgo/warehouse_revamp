@@ -1084,6 +1084,7 @@ erDiagram
     restocks ||--o{ restock_items : "restock_id"
     restocks ||--o{ restock_logs : "restock_id"
     restock_items ||--o{ restock_problem_items : "restock_id, product_id"
+    restock_items ||--o{ restock_count_corrections : "corrected after accept (00043)"
 
     restocks {
         bigserial   id                 PK
@@ -1157,6 +1158,27 @@ erDiagram
         timestamptz created_at
     }
 
+    restock_count_corrections {
+        bigserial   id              PK
+        bigint      restock_id      FK "indexed with id - the detail's read"
+        bigint      restock_item_id FK "the line"
+        bigint      product_id
+        bigint      warehouse_id    "the receiving warehouse"
+        bigint      team_id         "the selling team - the goods' owner"
+        bigint      transaction_id  FK "the adjustment - indexed, the history's label"
+        bigint      batch_id        FK "the line's batch the units moved in - indexed"
+        bigint      placement_id    FK "the named rack"
+        bigint      from_count      "the line's received count before"
+        bigint      to_count        "and after"
+        bigint      units_out       "from minus to - CHECKed, never 0; below 0 = units in"
+        double      price_unit      "the batch's price, exact"
+        double      total           "signed like units_out"
+        text        reason          "required, not blank"
+        bigint      actor_user_id
+        boolean     is_override     "Root or the Administrator from outside"
+        timestamptz created_at
+    }
+
     warehouse_products {
         bigserial   id           PK
         bigint      warehouse_id "opaque team_service id (a WAREHOUSE team), no FK"
@@ -1225,6 +1247,12 @@ erDiagram
   product appears once per restock, so the product finds its line, and the composite FK to
   `restock_items (restock_id, product_id)` says so. One row per kind (`UNIQUE (restock_id, product_id, problem_type)`);
   `00030` merged the older rows of one kind on one line.
+- **`restock_count_corrections`** (`00043`) — KOREKSI JUMLAH TERIMA: the receiving warehouse corrects an ACCEPTED line's
+  `received_count` (the-received-count-prototype-is-accepted). One append-only row per line per correction, never a
+  problem row (those hold one missing row per product and are the accept's) and never a trail row (it must not read as
+  the selling team's edit). The stock record is its `adjustment` transaction's `restock_correction` batch and rack rows;
+  a line's *Kurang* = its accept's missing row + Σ `units_out`; `from_count` of its first row is the accept's count
+  (*dikoreksi dari*). Money at the batch's price (a-stock-in-correction-keeps-the-batch-price).
 - **Where the good units went** is the accept's own rack rows in `product_placement_logs` — there is no unplaced pile
   (there-is-no-unplaced-pile). `restock_received_placements` held this until `00029` dropped it.
 - **`restock_logs`** — the trail, one append-only row per status change and per edit, from and to status
@@ -1290,7 +1318,7 @@ erDiagram
         bigint      warehouse_id
         bigint      team_id              "the owner, never changed"
         bigint      product_id
-        bigint      transaction_id       FK "the transaction that minted it"
+        bigint      transaction_id       FK "the transaction that minted it - indexed (00044)"
         float8      price_unit
         bigint      stock_count          "CHECK >= 0"
         float8      stock_valuation      "the truth; exactly 0 at 0 units"
@@ -1449,6 +1477,27 @@ erDiagram
         float8      total        "priced from the layers it came off, newest first"
         timestamptz created_at
     }
+    warehouse_transfer_count_corrections {
+        bigserial   id               PK
+        bigint      transfer_id      FK "indexed with id"
+        bigint      transfer_item_id FK
+        bigint      product_id
+        bigint      warehouse_id     "B, the receiver"
+        bigint      team_id          "the owning team"
+        bigint      transaction_id   FK "the adjustment - indexed"
+        bigint      batch_id         FK "B's batch this piece moved in - indexed"
+        bigint      layer_batch_id   FK "the source batch at A it stands for"
+        bigint      placement_id     FK
+        bigint      from_count       "the LINE's count before"
+        bigint      to_count         "and after"
+        bigint      units_out        "THIS piece's - one row per batch moved"
+        double      price_unit
+        double      total
+        text        reason
+        bigint      actor_user_id
+        boolean     is_override
+        timestamptz created_at
+    }
     warehouse_transfer_logs {
         bigserial   id            PK
         bigint      transfer_id   FK
@@ -1461,6 +1510,7 @@ erDiagram
     }
     warehouse_transfers ||--|{ warehouse_transfer_items : "sends"
     warehouse_transfers ||--o{ warehouse_transfer_problem_items : "found wrong at B"
+    warehouse_transfer_items ||--o{ warehouse_transfer_count_corrections : "corrected at B (00043)"
     warehouse_transfers ||--|{ warehouse_transfer_logs : "trail"
     warehouse_transfers }o--|| inventory_transactions : "out-leg"
     warehouse_transfers }o--o| inventory_transactions : "in-leg"
@@ -1468,6 +1518,11 @@ erDiagram
 
 - **Money is `double precision`** like the ledgers', and the contract carries it as `double`, unrounded
   (money-is-double-in-the-api-too).
+- **`warehouse_transfer_count_corrections`** (`00043`) — the transfer's KOREKSI JUMLAH TERIMA at B, as
+  `restock_count_corrections`, but a line may move SEVERAL of B's batches (one per source layer), so one correction of
+  a line is one row per batch it moved: `from_count` / `to_count` are the line's, `units_out` the piece's, and
+  `layer_batch_id` the source batch the piece's batch stands for — so a batch a correction minted for a layer that had
+  none at the accept is found again by the next. `transfer_correction` batch and rack rows.
 - **Indexed for each side's list**, newest first: `(team_id, id DESC)`, `(from_warehouse_id, id DESC)`,
   `(to_warehouse_id, id DESC)`.
 - **`warehouse_transfer_logs.is_override`** (`00034`) — that act's actor was Root or the Administrator with no role in
@@ -1762,7 +1817,7 @@ erDiagram
         bigint      supplier_id   PK "the restock line's, or the return layer's batch's"
         text        source        PK "restock return - CHECK"
         bigint      broken_count  "CHECK 0 or more"
-        bigint      missing_count "CHECK 0 or more"
+        bigint      missing_count "signed since 00043 - a received-count correction's own day"
         timestamptz last_updated
     }
     batch_logs }o--|| inventory_stock_daily_changes : "every row sums into"
@@ -1771,8 +1826,9 @@ erDiagram
 ```
 
 - **`inventory_stock_daily_changes`** — Σ `change_count` / `change_value` = Σ `batch_logs` per key, day and type, by
-  construction (asserted after every writer: `ledgerMatchesReport`). Restock reads `restock`, Transfer `transfer_out`
-  (negated — a cancel's reversal nets on its own day) and `transfer_in`, Returned stock `return`, Ready stock every type:
+  construction (asserted after every writer: `ledgerMatchesReport`). Restock reads `restock` and `restock_correction`,
+  Transfer `transfer_out` (negated — a cancel's reversal nets on its own day), `transfer_in` and `transfer_correction`
+  (a received-count correction on ITS day, signed — `00043`), Returned stock `return`, Ready stock every type:
   a past day's position is **today's batches − the changes after it**. The migration replays the ledger's changes so far
   into it (exact — the same sums), so a past day reads right; door rows count from the build, as Lost stock's.
 - **Primary keys**, no surrogate id: the fold's `ON CONFLICT DO UPDATE` target, one index fewer on every stock write. Two

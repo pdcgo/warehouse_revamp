@@ -21,6 +21,12 @@
 //   a-restock-names-its-paying-account                      Create, and an ongoing Update that CHANGES the account,
 //                                                           refuse one that is not the team's active operational
 //                                                           account (payingAccountRefusal, the server's words).
+//   the-received-count-prototype-is-accepted                Koreksi Jumlah Terima: the receiving warehouse's Owner or
+//                                                           Admin (or Root, stamped) corrects an accepted restock —
+//                                                           receivedCountScenario.ts plays the server's rules; the
+//                                                           detail serves corrected_from, missing_by_correction, the
+//                                                           money for the selling team only, the form's facts for the
+//                                                           receiving warehouse only, and count_corrections.
 //
 // WRITEABLE: a restock raised in one step is on the list in the next. preview.tsx resets it in its `beforeEach`.
 
@@ -39,11 +45,20 @@ import { payingAccountRefusal } from "./financialAccountStub";
 import { racks } from "./fixtures";
 import { type LineFixture, type RestockFixture, restockFixtures } from "./restockFixtures";
 import { SELF_ID } from "./userStub";
+import {
+  correctionFieldsOf,
+  correctionRowsOf,
+  postCorrection,
+  resetReceivedCountScenario,
+} from "./receivedCountScenario";
+import { sessionScenario } from "./sessionScenario";
+import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 
 let rows: RestockFixture[] = [];
 
 export function resetRestockStub() {
   rows = structuredClone(restockFixtures);
+  resetReceivedCountScenario();
 }
 
 resetRestockStub();
@@ -154,8 +169,12 @@ function landedOf(r: RestockFixture, l: LineFixture): number {
 const stepLog = (r: RestockFixture, to: S) => r.logs.find((l) => l.toStatus === to && l.fromStatus !== l.toStatus);
 
 // The restock as the wire carries it — prices worked out, totals summed, the trail only when asked. Money is a
-// double, unrounded, as the server stores it (money-is-double-in-the-api-too).
-function toWire(r: RestockFixture, withLogs: boolean) {
+// double, unrounded, as the server stores it (money-is-double-in-the-api-too). The detail (`withLogs`) carries Koreksi
+// Jumlah Terima as `reader` reads it: the money for the selling team only, the form's facts for the receiving warehouse
+// on an accepted restock only (restock_count_corrections_read.go).
+function toWire(r: RestockFixture, withLogs: boolean, reader?: bigint) {
+  const withMoney = reader === r.requestingTeamId;
+  const withFacts = reader === r.warehouseId && r.status === S.ACCEPTED;
   const items = r.items.map((l) => {
     const landed = landedOf(r, l);
 
@@ -163,6 +182,7 @@ function toWire(r: RestockFixture, withLogs: boolean) {
       ...l,
       priceUnit: l.count > 0n ? l.total / Number(l.count) : 0,
       problems: l.problems.map((p) => ({ ...p, priceUnit: landed, total: landed * Number(p.count) })),
+      ...(withLogs ? correctionFieldsOf("restock", r.id, l.id, withMoney, withFacts) : {}),
     };
   });
   const subtotal = r.items.reduce((s, l) => s + l.total, 0);
@@ -173,6 +193,7 @@ function toWire(r: RestockFixture, withLogs: boolean) {
     subtotal,
     total: subtotal + r.shipmentCost,
     logs: withLogs ? r.logs : [],
+    countCorrections: withLogs ? correctionRowsOf("restock", r.id, withMoney) : [],
     // Each by-line's flag, as the server reads it for the list (an-override-shows-a-platform-badge): the create's is the
     // trail's FIRST row; the arrive's is the row that moved it to arrived — or, counted straight from ongoing, the
     // accept's; the accept's is the row that moved it to accepted. An edit keeps the status and is no step.
@@ -252,6 +273,81 @@ export function patchRestock(id: bigint, fields: Partial<Pick<RestockFixture, "i
   Object.assign(found, fields);
 }
 
+// One correction of restock `r` by its receiving warehouse — judged, posted, the lines' counts moved.
+function correctRestock(
+  r: RestockFixture,
+  req: { reason: string; lines: { itemId: bigint; expectedReceivedCount: bigint; receivedCount: bigint; placementId: bigint }[] },
+) {
+  if (r.status !== S.ACCEPTED) {
+    throw precondition(`only an accepted stock-in's received count is corrected: this restock is ${S[r.status].toLowerCase()}`);
+  }
+
+  const made = postCorrection(
+    "restock",
+    r.id,
+    r.warehouseId,
+    req,
+    (itemId) => {
+      const l = r.items.find((x) => x.id === itemId);
+      if (!l) return undefined;
+      const broken = l.problems.filter((p) => p.type === RestockProblemType.BROKEN).reduce((s, p) => s + p.count, 0n);
+
+      return {
+        itemId,
+        productId: l.productId,
+        productCode: l.productCode,
+        received: l.receivedCount,
+        broken,
+        ceiling: l.count,
+        priceUnit: landedOf(r, l),
+      };
+    },
+    "ordered",
+  );
+
+  for (const c of made) {
+    const l = r.items.find((x) => x.id === c.itemId)!;
+    l.receivedCount = c.toCount;
+  }
+
+  return made;
+}
+
+/**
+ * For a story: a Koreksi Jumlah Terima ALREADY MADE on restock `id` — as Gudang Pusat's Owner would post it, by `userId`
+ * (Dewi, 64, unless said), so a result story opens on it (the selling team's view, the batch's history), or a form that
+ * was opened before it goes stale. Each line: its item, the real count and the rack.
+ */
+export function restockCorrectedForStory(
+  id: bigint,
+  lines: { itemId: bigint; to: bigint; rackId: bigint }[],
+  reason: string,
+  userId = 64n,
+  isOverride = false,
+) {
+  const r = rows.find((x) => x.id === id);
+  if (!r) throw new Error(`no restock ${id} in the stub`);
+  const role = sessionScenario.role;
+  sessionScenario.role = Role.WAREHOUSE_OWNER;
+  try {
+    const made = correctRestock(r, {
+      reason,
+      lines: lines.map((l) => ({
+        itemId: l.itemId,
+        expectedReceivedCount: r.items.find((x) => x.id === l.itemId)?.receivedCount ?? 0n,
+        receivedCount: l.to,
+        placementId: l.rackId,
+      })),
+    });
+    for (const c of made) {
+      c.actorUserId = userId;
+      c.isOverride = isOverride;
+    }
+  } finally {
+    sessionScenario.role = role;
+  }
+}
+
 // The words the server writes (san_money.Text): the exact figure, up to 3 decimals — never rounded to the rupiah.
 const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID", { maximumFractionDigits: 3 })}`;
 
@@ -295,7 +391,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     appendLog(r, S.UNSPECIFIED, S.ONGOING, "created");
     rows.push(r);
 
-    return { request: toWire(r, true) };
+    return { request: toWire(r, true, req.teamId) };
   },
 
   restockRequestList(req) {
@@ -364,7 +460,17 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
   },
 
   restockRequestDetail(req) {
-    return { request: toWire(visible(req.teamId, req.requestId), true) };
+    return { request: toWire(visible(req.teamId, req.requestId), true, req.teamId) };
+  },
+
+  // KOREKSI JUMLAH TERIMA (restock_received_count_correct.go): the RECEIVING warehouse only (another's reads NotFound),
+  // an accepted restock only, then the shared rules (receivedCountScenario.ts). The line's count becomes the real one;
+  // the door's own problem rows never change — the correction's units are `missing_by_correction`.
+  restockReceivedCountCorrect(req) {
+    const r = comingTo(req.teamId, req.requestId);
+    correctRestock(r, req);
+
+    return { request: toWire(r, true, req.teamId) };
   },
 
   restockRequestUpdate(req) {
@@ -385,7 +491,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       r.items = newLines(r, req.items, r.items.length + 10);
       appendLog(r, S.ONGOING, S.ONGOING, "edited");
 
-      return { request: toWire(r, true) };
+      return { request: toWire(r, true, req.teamId) };
     }
 
     if (r.status !== S.ARRIVED) throw precondition("restock request is not ongoing");
@@ -426,7 +532,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     r.items = [...next, ...newLines(r, added, r.items.length + 20)];
     appendLog(r, S.ARRIVED, S.ARRIVED, changes.length > 0 ? changes.join("; ") : "edited");
 
-    return { request: toWire(r, true) };
+    return { request: toWire(r, true, req.teamId) };
   },
 
   restockRequestArrive(req) {
@@ -439,7 +545,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     r.arrivedAtUnix = now();
     appendLog(r, from, S.ARRIVED, from === S.LOST ? "signed for the box — it turned up after all" : "signed for the box");
 
-    return { request: toWire(r, true) };
+    return { request: toWire(r, true, req.teamId) };
   },
 
   restockRequestAccept(req) {
@@ -508,7 +614,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     if (req.warehouseAdditionalCost > 0) parts.push(`courier's charge ${rupiah(req.warehouseAdditionalCost)}`);
     appendLog(r, from, S.ACCEPTED, `accepted — ${parts.join("; ")}`);
 
-    return { request: toWire(r, true) };
+    return { request: toWire(r, true, req.teamId) };
   },
 
   restockRequestMarkLost(req) {
@@ -520,7 +626,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     r.lostAtUnix = now();
     appendLog(r, S.ONGOING, S.LOST, req.description || "marked lost");
 
-    return { request: toWire(r, true) };
+    return { request: toWire(r, true, req.teamId) };
   },
 
   restockRequestCancel(req) {
@@ -532,7 +638,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     r.cancelledAtUnix = now();
     appendLog(r, S.ONGOING, S.CANCELLED, req.moneyReturned ? "cancelled — money returned" : "cancelled — money not returned");
 
-    return { request: toWire(r, true) };
+    return { request: toWire(r, true, req.teamId) };
   },
 
   restockRequestLabels(req) {

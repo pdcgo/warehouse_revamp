@@ -12,7 +12,9 @@ import (
 //
 //	sent        the out-leg's `transfer_out` change rows, negated — under the SENDING warehouse on the create day; a
 //	            cancel's reversal (the same type, sign flipped) takes it back on the cancel day
-//	received    the in-leg's `transfer_in` change rows — the good units, under the RECEIVING warehouse on the accept day
+//	received    the in-leg's `transfer_in` change rows — the good units, under the RECEIVING warehouse on the accept day —
+//	            and a received-count correction's `transfer_correction` rows on ITS day, signed
+//	            (a-received-count-correction-counts-on-its-own-day)
 //	in transit  a POSITION under the RECEIVING warehouse: the out-leg's units and value of every transfer created on or
 //	            before the edge and neither accepted nor cancelled by it (the-transfer-is-where-goods-in-transit-are) —
 //	            every day from the create to the day before the accept. Read live from `warehouse_transfers` and the
@@ -35,10 +37,10 @@ func readTransfer(db *gorm.DB, q stockQuery) (map[string]figures, error) {
 SELECT c.day, c.warehouse_id, c.team_id, c.product_id, c.supplier_id,
        CASE WHEN c.change_type = 'transfer_out' THEN -c.change_count ELSE 0 END AS sent_count,
        CASE WHEN c.change_type = 'transfer_out' THEN -c.change_value ELSE 0 END AS sent_value,
-       CASE WHEN c.change_type = 'transfer_in' THEN c.change_count ELSE 0 END AS received_count,
-       CASE WHEN c.change_type = 'transfer_in' THEN c.change_value ELSE 0 END AS received_value
+       CASE WHEN c.change_type IN ('transfer_in', 'transfer_correction') THEN c.change_count ELSE 0 END AS received_count,
+       CASE WHEN c.change_type IN ('transfer_in', 'transfer_correction') THEN c.change_value ELSE 0 END AS received_value
 FROM inventory_stock_daily_changes c
-WHERE c.change_type IN ('transfer_out', 'transfer_in') AND ` + windowSQL("c.day", q.filters) + ` AND ` + scope
+WHERE c.change_type IN ('transfer_out', 'transfer_in', 'transfer_correction') AND ` + windowSQL("c.day", q.filters) + ` AND ` + scope
 
 	out, err := readMovement(db, q, src, args, transferMoveFields)
 	if err != nil {

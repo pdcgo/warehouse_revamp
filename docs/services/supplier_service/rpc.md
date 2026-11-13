@@ -21,6 +21,7 @@ The suppliers a selling team buys stock from, and the online stores each one sel
 | | `SupplierReportExport` | the Supplier Report as a file — the whole ranking as narrowed, every page, each supplier with its figures ([§ The report as a file](#the-report-as-a-file--supplierreportexport)) |
 | `SupplierAnalyticMaintenanceService` | `AnalyticReplayCompute` · `AnalyticMaintenanceRun` | Root and the Administrator — rebuild the figures from a day; prune the dedup table |
 | *(webhook)* | `/event/supplier-fold/push` | the fold — *Restock Accepted* into `supplier_product_daily_reports` |
+| *(webhook)* | `/event/supplier-count-corrected/push` | the same fold — *Restock Received Count Corrected* (KOREKSI JUMLAH TERIMA) on its own day, signed ([§ The figures](#the-figures--a-fold-of-restock-accepted)) |
 | *(webhook)* | `/event/supplier-order-placed/push` · `/event/supplier-order-cancelled/push` | the sales fold — *Order Placed* / *Order Cancelled* into `supplier_sale_daily_reports` ([§ Penjualan](#penjualan--a-fold-of-order-placed-and-order-cancelled)) |
 
 **Reads cross teams, writes do not**
@@ -132,6 +133,7 @@ sequenceDiagram
 | the supplier | the RESTOCK's — every line counts for it until lines name a store ([the-supplier-comes-from-the-restock-until-lines-name-a-store](../../business/supplier/context_decision.md#the-supplier-comes-from-the-restock-until-lines-name-a-store)). A restock with none folds nothing and is acked |
 | a figure's value | units × the line's total ÷ ordered — never a rounded unit price, so a line adds back to what it cost. Exact — never rounded (the-backend-never-rounds-money, 2026-11-06; it rounded to whole rupiah before); the three valuations are `double precision` since `00003` (2026-11-06, [every-ledger-moves-to-double-rounded-when-frozen](../../business/order/context_decision.md#every-ledger-moves-to-double-rounded-when-frozen)) and `double` on `SupplierMetric` |
 | the day | the event's `accepted_on`, the accept's Jakarta day — read, never re-derived |
+| a received-count correction | `RestockReceivedCountCorrected` (topic `restock-received-count-corrected`, subscription `supplier-count-corrected`, the SAME handler — `restockFiguresOf` reads either variant) moves the figures on its `corrected_on`, signed: too many typed → restock −N, lost on the way +N; too few → the reverse; the accept's day never changes ([a-received-count-correction-counts-on-its-own-day](../../business/inventory/adjustment_decision.md#a-received-count-correction-counts-on-its-own-day)). Claimed by `restock-count-corrected:<transaction>`; it never lowers `figures_live_since` (only a live accept does). The replay seeks both subscriptions; the day re-fold reads inventory's `RestockCountCorrectionEventsOn` beside the accepts. Built 2026-11-13 |
 | ⚠ lag | a figure lags the accept by the broker's delivery. In dev and e2e the subscriptions are PULL and nothing pulls, so the live fold does not run there unless `pubsub ensure` is given a `--push-base-url` — the backfill and the tests call the fold directly |
 
 ## Penjualan — a fold of Order Placed and Order Cancelled
@@ -384,7 +386,8 @@ See [san.md](../../tools/san.md#supplier-backfill-figures).
 `san report refold --report supplier-restock-daily|supplier-sale-daily --supplier <id> --date <day>`
 ([docs/tools/san.md](../../tools/san.md#a-suppliers-figures--supplier-restock-daily--supplier-sale-daily), [a-wrong-day-is-refolded-from-the-log](../../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)) — one
 supplier's day of either report rebuilt from the fold's claims, plus the events nobody claimed, read through
-`RefoldSource` from the services that own them: inventory's accepts (`inventory_v1.RestockAcceptedEventsOn`), selling's
+`RefoldSource` from the services that own them: inventory's accepts (`inventory_v1.RestockAcceptedEventsOn`) and
+received-count corrections (`inventory_v1.RestockCountCorrectionEventsOn`), selling's
 orders (`selling_v1.OrderSaleEventsOn`) and, for a lost sale, inventory's take (`GoodsReader.OrderTakeSuppliers`). A lost
 event over an hour old is claimed the fold's way, so its redelivery folds nothing; the report is then taken in SHARE ROW
 EXCLUSIVE — the lock the fold's upsert waits on. The restock re-fold reads `process_event_lock` as the fold does. A Penjualan

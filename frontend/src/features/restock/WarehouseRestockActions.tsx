@@ -4,13 +4,13 @@ import { useTranslation } from "react-i18next";
 import { useCanWrite } from "../team/TeamContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, HStack, Icon, IconButton, Menu, Portal, Separator } from "@chakra-ui/react";
-import { MoreHorizontal, PackageCheck, PackageOpen, Printer } from "lucide-react";
+import { ClipboardPen, MoreHorizontal, PackageCheck, PackageOpen, Printer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { useArriveRestockRequest } from "./queries";
+import { useArriveRestockRequest, useCorrectRestockReceivedCount } from "./queries";
 import { labelsPath } from "./labelsPath";
 import { toRupiah } from "./counting";
 import { CourierCharge } from "./CourierCharge";
@@ -18,6 +18,10 @@ import { CompactActions } from "../../components/chrome/CompactActions";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { fromHere } from "../../lib/cameFrom";
+import { useTeam } from "../team/TeamContext";
+import { canCorrectReceivedCount } from "../receivedCount/rules";
+import { CorrectReceivedCountDialog, type CorrectedLineInput } from "../receivedCount/CorrectReceivedCountDialog";
+import { brokenQuantity } from "./summary";
 
 // WHAT THE WAREHOUSE MAY DO TO A RESTOCK COMING TO IT, BY STATUS — the one matrix both the inbound list's rows and the
 // warehouse detail's header read. The warehouse owns the two acts that happen at its door
@@ -30,6 +34,9 @@ import { fromHere } from "../../lib/cameFrom";
 //   lost     → Sign for Box            the parcel turned up after all — the same restock, signed for as arrived
 //                                      (a-late-lost-box-is-signed-for-as-arrived)
 //   accepted → Print                   what the crew does right after counting it in — not a status change
+//              · Correct Received Count  on the restock's OWN page only (never a list row), for the receiving
+//                                      warehouse's Owner or Admin and Root / the System Administrator
+//                                      (the-received-count-prototype-is-accepted) — Koreksi Jumlah Terima
 //   cancelled → nothing
 //
 // *Print* is the labels — the action says the verb alone (owner: *"cetak label di action, cetak saja"*,
@@ -37,7 +44,7 @@ import { fromHere } from "../../lib/cameFrom";
 // decision, and is not needed (owner: *"struk tidak dibutuhkan ternyata"*, there-is-no-struk).
 //
 // Editing, cancelling and marking lost are the SELLING team's, and never appear here.
-export type WarehouseAction = "signForBox" | "accept" | "labels";
+export type WarehouseAction = "signForBox" | "accept" | "labels" | "correctCount";
 
 export function warehouseActions(status: RestockRequestStatus): WarehouseAction[] {
   switch (status) {
@@ -58,6 +65,8 @@ const LOOK: Record<WarehouseAction, { icon: LucideIcon; labelKey: string; slug: 
   signForBox: { icon: PackageOpen, labelKey: "restock.actions.signForBox", slug: "sign" },
   accept: { icon: PackageCheck, labelKey: "restock.actions.accept", slug: "accept", primary: true },
   labels: { icon: Printer, labelKey: "restock.labels.action", slug: "labels" },
+  // Koreksi Jumlah Terima (a-wrong-stock-in-is-a-received-count-correction).
+  correctCount: { icon: ClipboardPen, labelKey: "receivedCount.action", slug: "correct-count" },
 };
 
 export interface WarehouseRestockActionsProps {
@@ -83,11 +92,27 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
   const navigate = useNavigate();
   const location = useLocation();
   const [signing, setSigning] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
+  const { current } = useTeam();
+  const correct = useCorrectRestockReceivedCount();
+  // KOREKSI JUMLAH TERIMA on the restock's own page (never a list row) once accepted, for the receiving warehouse's Owner
+  // or Admin and Root (the-warehouse-corrects-a-wrong-stock-in-alone, the-received-count-prototype-is-accepted). The
+  // form's facts — each line's batch, what it still holds, the racks — come with the detail for the receiving warehouse
+  // only; without them there is no form to open. ⚠ UX only — the server's policy is the boundary.
+  const correctable =
+    (variant === "buttons" || variant === "compact") &&
+    request.status === RestockRequestStatus.ACCEPTED &&
+    request.items.length > 0 &&
+    request.items.every((item) => item.correctionFacts !== undefined) &&
+    canCorrectReceivedCount(current, request.warehouseId);
   // Nothing to change here while the admin team monitors the team (the-admin-team-monitors-read-only) — printing the
   // labels changes nothing, so it stays.
   const writable = useCanWrite();
 
-  const actions = warehouseActions(request.status).filter((action) => writable || action === "labels");
+  const actions = [
+    ...warehouseActions(request.status).filter((action) => writable || action === "labels"),
+    ...(correctable ? (["correctCount"] as const) : []),
+  ];
   if (actions.length === 0) return null;
 
   const id = request.id.toString();
@@ -102,6 +127,9 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
         // where it was opened, so Back and Terima return there — the list with its filters, or this restock's page
         // (a-form-returns-where-it-was-opened).
         navigate(`/inventories/restock/${id}/accept`, { state: fromHere(location) });
+        return;
+      case "correctCount":
+        setCorrecting(true);
         return;
       case "labels":
         // The labels' one address, with this restock on it (the-labels-have-one-address); Back returns where the labels
@@ -176,6 +204,31 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
 
       {signing && (
         <SignForBoxDialog request={request} teamId={teamId} codMark={codMark} onClose={() => setSigning(false)} />
+      )}
+
+      {correctable && (
+        <CorrectReceivedCountDialog
+          subject="restock"
+          warehouseId={request.warehouseId}
+          subtitle={t("receivedCount.subtitleRestock", { ref: request.receipt || `#${id}` })}
+          lines={request.items.map((item) => ({
+            lineId: item.id,
+            productId: item.productId,
+            name: item.name,
+            productCode: item.productCode,
+            ceiling: item.count,
+            received: item.receivedCount,
+            broken: brokenQuantity(item),
+            batchId: item.correctionFacts?.batchId ?? 0n,
+            batchHolds: item.correctionFacts?.batchHolds ?? 0n,
+            shelves: (item.correctionFacts?.shelves ?? []).map((s) => ({ rackId: s.placementId, units: s.units })),
+          }))}
+          open={correcting}
+          onOpenChange={setCorrecting}
+          onSubmit={(lines: CorrectedLineInput[], reason: string) =>
+            correct.mutateAsync({ teamId: request.warehouseId, requestId: request.id, reason, lines })
+          }
+        />
       )}
     </>
   );

@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCanWrite } from "../team/TeamContext";
+import { useCanWrite, useTeam } from "../team/TeamContext";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Field, HStack, Icon, IconButton, Input, Menu, Portal, Stack } from "@chakra-ui/react";
-import { ClipboardCheck, MoreHorizontal, PackageCheck, PackageOpen, Truck } from "lucide-react";
+import { ClipboardCheck, ClipboardPen, MoreHorizontal, PackageCheck, PackageOpen, Truck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import type { WarehouseTransfer } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
-import { useArriveWarehouseTransfer, useProcessWarehouseTransfer, useShipWarehouseTransfer } from "./queries";
-import { directionFor } from "./summary";
+import {
+  useArriveWarehouseTransfer,
+  useCorrectTransferReceivedCount,
+  useProcessWarehouseTransfer,
+  useShipWarehouseTransfer,
+} from "./queries";
+import { brokenOf, directionFor } from "./summary";
+import { canCorrectReceivedCount } from "../receivedCount/rules";
+import { CorrectReceivedCountDialog, type CorrectedLineInput } from "../receivedCount/CorrectReceivedCountDialog";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { ShipmentChannelSelect } from "../../components/pickers/ShipmentChannelSelect";
@@ -25,9 +32,11 @@ import { ReceiptUpload, type ReceiptValue, emptyReceipt } from "../../components
 //   B (incoming)  shipped  → Sign · Accept  a box opened and counted on arrival is signed and accepted as one act
 //                 arrived  → Accept         signed for, waiting to be counted
 //                 lost     → Sign           the box turned up after all — signed for as arrived
+//                 accepted → Correct Received Count   on the transfer's OWN page only, for B's Owner or Admin and Root /
+//                                                     the System Administrator (the-received-count-prototype-is-accepted)
 //
 // Cancelling, marking lost and editing the cost are the SELLING team's, and never appear here.
-export type WarehouseTransferAction = "process" | "ship" | "arrive" | "accept";
+export type WarehouseTransferAction = "process" | "ship" | "arrive" | "accept" | "correctCount";
 
 export function warehouseTransferActions(
   status: S,
@@ -53,6 +62,8 @@ const LOOK: Record<WarehouseTransferAction, { icon: LucideIcon; labelKey: string
   ship: { icon: Truck, labelKey: "warehouseTransfer.actions.ship", slug: "ship", primary: true },
   arrive: { icon: PackageOpen, labelKey: "warehouseTransfer.actions.arrive", slug: "arrive" },
   accept: { icon: PackageCheck, labelKey: "warehouseTransfer.actions.accept", slug: "accept", primary: true },
+  // Koreksi Jumlah Terima (a-wrong-stock-in-is-a-received-count-correction).
+  correctCount: { icon: ClipboardPen, labelKey: "receivedCount.action", slug: "correct-count" },
 };
 
 export interface WarehouseTransferActionsProps {
@@ -66,11 +77,26 @@ export interface WarehouseTransferActionsProps {
 export function WarehouseTransferActions({ transfer, teamId, variant }: WarehouseTransferActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [dialog, setDialog] = useState<"" | "process" | "ship" | "arrive">("");
+  const [dialog, setDialog] = useState<"" | "process" | "ship" | "arrive" | "correctCount">("");
   // Nothing to do here while the admin team monitors the team (the-admin-team-monitors-read-only).
   const writable = useCanWrite();
+  const { current } = useTeam();
+  const correct = useCorrectTransferReceivedCount();
+  // KOREKSI JUMLAH TERIMA on the transfer's own page (never a list row), for B — the warehouse that counted the box —
+  // once accepted, its Owner or Admin and Root (the-warehouse-corrects-a-wrong-stock-in-alone,
+  // the-received-count-prototype-is-accepted). The form's facts come with the detail for B only; without them there is no
+  // form to open. ⚠ UX only — the server's policy is the boundary.
+  const correctable =
+    variant !== "row" &&
+    transfer.status === S.ACCEPTED &&
+    transfer.items.length > 0 &&
+    transfer.items.every((item) => item.correctionFacts !== undefined) &&
+    canCorrectReceivedCount(current, transfer.toWarehouseId);
 
-  const actions = warehouseTransferActions(transfer.status, directionFor(transfer, teamId));
+  const actions = [
+    ...warehouseTransferActions(transfer.status, directionFor(transfer, teamId)),
+    ...(correctable ? (["correctCount"] as const) : []),
+  ];
   if (actions.length === 0 || !writable) return null;
 
   const id = transfer.id.toString();
@@ -139,6 +165,30 @@ export function WarehouseTransferActions({ transfer, teamId, variant }: Warehous
         <ShipDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />
       )}
       {dialog === "arrive" && <ArriveDialog transfer={transfer} teamId={teamId} onClose={() => setDialog("")} />}
+      {correctable && (
+        <CorrectReceivedCountDialog
+          subject="transfer"
+          warehouseId={transfer.toWarehouseId}
+          subtitle={t("receivedCount.subtitleTransfer", { id })}
+          lines={transfer.items.map((item) => ({
+            lineId: item.id,
+            productId: item.productId,
+            name: item.name,
+            productCode: item.productCode,
+            ceiling: item.count,
+            received: item.arrivedCount,
+            broken: brokenOf(item),
+            batchId: item.correctionFacts?.batchId ?? 0n,
+            batchHolds: item.correctionFacts?.batchHolds ?? 0n,
+            shelves: (item.correctionFacts?.shelves ?? []).map((s) => ({ rackId: s.placementId, units: s.units })),
+          }))}
+          open={dialog === "correctCount"}
+          onOpenChange={(open) => setDialog(open ? "correctCount" : "")}
+          onSubmit={(lines: CorrectedLineInput[], reason: string) =>
+            correct.mutateAsync({ teamId: transfer.toWarehouseId, transferId: transfer.id, reason, lines })
+          }
+        />
+      )}
     </>
   );
 }

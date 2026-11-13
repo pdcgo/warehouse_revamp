@@ -294,6 +294,20 @@ message StockMovement {
   double price_unit_before = 14;
   double price_unit_after = 15;
   double value_change = 16;
+
+  // KOREKSI JUMLAH TERIMA — set on an ADJUST row a received-count correction wrote: *Jumlah terima dikoreksi · from →
+  // to* and why (a-wrong-stock-in-is-a-received-count-correction). Unset on every other row.
+  MovementCountCorrection received_count_correction = 17;
+}
+
+// MovementCountCorrection — the restock or transfer line a history row's correction fixed, its count before and after,
+// and the reason. One of restock_id / transfer_id is set.
+message MovementCountCorrection {
+  int64 from_count = 1;
+  int64 to_count = 2;
+  string reason = 3;
+  uint64 restock_id = 4;
+  uint64 transfer_id = 5;
 }
 
 // -------------------------------------------------------------------------- reads
@@ -1763,6 +1777,9 @@ message OwnerMovement {
   double price_unit_before = 14;
   double price_unit_after = 15;
   double value_change = 16;
+
+  // KOREKSI JUMLAH TERIMA — as StockMovement.received_count_correction.
+  MovementCountCorrection received_count_correction = 17;
 }
 
 message OwnerStockHistoryFilter {

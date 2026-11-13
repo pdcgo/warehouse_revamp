@@ -99,3 +99,32 @@ export const TheBrokenRackIsUnderThePlaces: Story = {
     await waitFor(() => expect(conflict).toBeVisible());
   },
 };
+
+// WHAT A BROKEN OR MISSING ROW WAS WORTH IS NEVER CUT (backlog #46, the-problem-price-is-filled-by-the-system): the two
+// columns are narrow, and their second line used to wrap inside a one-line clamp, so *worth Rp 132.333,333* read as
+// *worth Rp…*. The worth stays whole on its line — the column fits it; only a long note is cut, its words in the tooltip.
+export const TheWorthIsNeverCut: Story = {
+  name: "Broken and missing · the worth is never cut",
+  render: () => <At503 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    for (const [id, amount] of [
+      ["restock-detail-broken-74-value", "worth Rp 132.333,333"],
+      ["restock-detail-missing-74-value", "worth Rp 66.166,667"],
+    ] as const) {
+      const value = canvas.getByTestId(id);
+      await expect(value).toHaveTextContent(amount);
+      // ONE line box, inside the visible part of its line and of its cell — nothing wrapped away, nothing clipped.
+      await expect(value.getClientRects()).toHaveLength(1);
+      const box = value.getBoundingClientRect();
+      const line = value.parentElement!.getBoundingClientRect();
+      const cell = value.closest("td")!.getBoundingClientRect();
+      await expect(box.bottom).toBeLessThanOrEqual(line.bottom + 0.5);
+      await expect(box.right).toBeLessThanOrEqual(Math.min(line.right, cell.right) + 0.5);
+      await expect(box.left).toBeGreaterThanOrEqual(cell.left - 0.5);
+    }
+    // The note keeps its own words — whole, or cut with its tooltip.
+    await expect(canvas.getByTestId("restock-detail-broken-74-note")).toHaveTextContent("Karung sobek");
+  },
+};

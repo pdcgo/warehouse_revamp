@@ -5,6 +5,7 @@ package warehouse.inventory.v1;
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/inventory/v1/received_count.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
@@ -64,6 +65,9 @@ service WarehouseTransferService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // KOREKSI JUMLAH TERIMA — warehouse B corrects an ACCEPTED transfer's arrived count
+  // (the-warehouse-corrects-a-wrong-stock-in-alone), under the transfer row's lock; see received_count.proto.
+  rpc WarehouseTransferReceivedCountCorrect(WarehouseTransferReceivedCountCorrectRequest) returns (WarehouseTransferReceivedCountCorrectResponse);
 }
 
 // Where a transfer is (a-transfer-has-seven-statuses). APPEND ONLY.
@@ -149,6 +153,17 @@ message WarehouseTransferItem {
   repeated WarehouseTransferPlacement placements = 10;
   // Broken and missing rows, written by the accept.
   repeated WarehouseTransferProblem problems = 11;
+
+  // KOREKSI JUMLAH TERIMA (received_count.proto). DETAIL ONLY. `arrived_count` above is the corrected count; this is
+  // the accept's, set once the line was corrected.
+  optional int64 corrected_from = 12;
+  // Units the corrections took out of B's batches, net — the *Kurang (koreksi)* part of missing; negative when more went
+  // back in. 0 = never corrected.
+  int64 missing_by_correction = 13;
+  // What those units are worth at the batches' prices. Set for the OWNING team only (a-warehouse-sees-no-seller-money).
+  optional double missing_by_correction_total = 14;
+  // The correction form's facts — set for the RECEIVING warehouse (B) on an accepted transfer only.
+  ReceivedCountLineFacts correction_facts = 15;
 }
 
 // One row of the trail (every-transfer-status-change-is-logged).
@@ -228,6 +243,10 @@ message WarehouseTransfer {
 
   // The trail, oldest first. DETAIL ONLY — List leaves it empty.
   repeated WarehouseTransferLog logs = 32;
+
+  // KOREKSI JUMLAH TERIMA — every line's correction, oldest first, beside the trail: its own kind, never a status row.
+  // DETAIL ONLY.
+  repeated ReceivedCountCorrection count_corrections = 34;
 }
 
 // ── Create ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -602,5 +621,41 @@ message WarehouseTransferCountedLine {
 }
 
 message WarehouseTransferAcceptResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+// WarehouseTransferReceivedCountCorrectRequest — KOREKSI JUMLAH TERIMA on a transfer: warehouse B (the RECEIVING
+// warehouse, `team_id`, scoped) corrects its accepted count, the same rules as RestockReceivedCountCorrectRequest with
+// "above what was SENT" as the line's ceiling. Units move in B's batches of the line as if the count had been typed right
+// at the accept: the good units fill the oldest layers, so units out leave the newest good ones and units in fill the
+// next (the-system-fills-a-transfers-prices); a layer with no batch at B yet is minted at its price. Never A, never the
+// selling team; another warehouse's transfer is NotFound.
+message WarehouseTransferReceivedCountCorrectRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The RECEIVING warehouse — the transfer's `to_warehouse_id`.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+  string reason = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  repeated ReceivedCountLine lines = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 500
+  }];
+}
+
+message WarehouseTransferReceivedCountCorrectResponse {
   WarehouseTransfer transfer = 1;
 }

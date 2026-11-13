@@ -419,6 +419,20 @@ export function useArriveRestockRequest() {
   });
 }
 
+// KOREKSI JUMLAH TERIMA — the receiving warehouse corrects an accepted restock's received count
+// (the-warehouse-corrects-a-wrong-stock-in-alone): units leave or enter the line's batch and a rack, so it fans out as the
+// accept does (stock, racks, the batch's history). A refused one re-reads too — a stale form's line was changed by
+// someone else, and the page behind the form should show what it is now.
+export function useCorrectRestockReceivedCount() {
+  const invalidateStock = useInvalidateStock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof restockClient.restockReceivedCountCorrect>[0]) =>
+      restockClient.restockReceivedCountCorrect(vars),
+    onSettled: () => invalidateStock(),
+  });
+}
+
 // The selling team giving the parcel up: ongoing → lost (lost-is-set-only-before-the-box-arrives).
 export function useMarkLostRestockRequest() {
   const invalidate = useInvalidateRestock();

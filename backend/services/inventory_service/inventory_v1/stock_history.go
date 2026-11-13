@@ -81,6 +81,11 @@ func (s *Service) StockHistory(
 		out = append(out, rows[i].proto())
 	}
 
+	err = labelCountCorrections(s.db.WithContext(ctx), rows, out)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
 	items, ids := stockHistoryItems(out, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.StockHistoryResponse{

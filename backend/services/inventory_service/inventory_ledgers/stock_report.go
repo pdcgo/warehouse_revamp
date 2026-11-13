@@ -262,6 +262,37 @@ func NoteDoor(tx *gorm.DB, rows ...DoorRow) error {
 	return nil
 }
 
+// NoteDoorCorrection adds a received-count correction's door rows (KOREKSI JUMLAH TERIMA): Missing SIGNED — units taken
+// out of the batch are missing +N, units put back −N — on the correction's own day
+// (a-received-count-correction-counts-on-its-own-day: "signed … past days never re-folded"). Broken never moves; a row
+// with no missing change is skipped.
+func NoteDoorCorrection(tx *gorm.DB, rows ...DoorRow) error {
+	report := reportOf(tx)
+	if report == nil {
+		return ErrNoStockReport
+	}
+
+	for _, r := range rows {
+		if r.Missing == 0 {
+			continue
+		}
+
+		key := DoorKey{
+			WarehouseID: r.WarehouseID, TeamID: r.TeamID, ProductID: r.ProductID, SupplierID: r.SupplierID, Source: r.Source,
+		}
+
+		sum := report.door[key]
+		if sum == nil {
+			sum = &DoorSum{}
+			report.door[key] = sum
+		}
+
+		sum.Missing += r.Missing
+	}
+
+	return nil
+}
+
 // write is the transaction's last statements: the door rows, then the change rows — each sorted, each one upsert per
 // thousand keys.
 func (r *StockReport) write(tx *gorm.DB) error {

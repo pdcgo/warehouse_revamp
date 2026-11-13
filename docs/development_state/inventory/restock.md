@@ -1,5 +1,29 @@
 # Development state — inventory / restock
 
+🔨 **2026-11-13: Koreksi Jumlah Terima — the screens** — uncommitted. The accepted prototype is live:
+*Correct Received Count* in the restock page's header (the receiving warehouse's Owner / Admin, Root and the
+Administrator; accepted only; its icon on a phone) opens `features/receivedCount/CorrectReceivedCountDialog.tsx` (a
+bottom sheet on a phone) on the detail's `correction_facts`, sends only the changed lines with the count the form showed
+(`useCorrectRestockReceivedCount`, `features/restock/queries.ts`), and shows the server's refusal inside the form. The
+lines read *corrected from N* and Kurang *N (correction)* (`features/receivedCount/corrections.ts`; the warehouse's
+cell carries no Rp for it), the selling team's line detail and history row say *worth Rp … · borne by the selling
+team*, the trail merges `count_corrections`, and stock / rack / batch histories read `received_count_correction`
+(`MovementTable`). The prototype provider and fixtures are deleted; the stubs answer the write with the server's rules
+(`.storybook/receivedCountScenario.ts`). Stories `ReceivedCount.stories.tsx` (24), e2e
+`the_received_count_is_corrected.spec.ts`. Also fixed: the Broken / Missing column's *worth Rp …* is never cut (backlog
+#46, story *Broken and missing · the worth is never cut*).
+
+🔨 **2026-11-13: Koreksi Jumlah Terima — the backend** — uncommitted. `RestockRequestService.RestockReceivedCountCorrect`
+(`inventory_v1/restock_received_count_correct.go`, `received_count_shared.go`) — the receiving warehouse's Owner / Admin,
+Root and the Administrator stamped `is_override`; per line `expected_received_count` (a stale form refused), the real
+count and a rack; refused as the prototype's rules (`features/receivedCount/rules.ts`) plus a counted rack and not
+accepted; one `adjustment` at the batch's price (`restock_correction` rows), the line's `received_count`, a
+`restock_count_corrections` row (00043), the door's missing signed and the Restock metric on the CORRECTION's day; then
+`RestockReceivedCountCorrected` → supplier figures on that day. No Team Balance. The detail carries `corrected_from`,
+`missing_by_correction` (+ `_total` for the selling team), `correction_facts` (the receiving warehouse) and
+`count_corrections`. Tests `restock_received_count_correct_test.go` (10), race / perf files, supplier
+`analytic_fold_correction_test.go` — [rpc.md](../../services/inventory_service/rpc.md#koreksi-jumlah-terima--restockreceivedcountcorrect--warehousetransferreceivedcountcorrect-backend-built-2026-11-13).
+
 🔀 **2026-11-09: after the `backup/inventory` merge, monitoring keeps what only reads**
 ([monitoring-keeps-what-only-reads](../../technical/frontend/context_decision.md#monitoring-keeps-what-only-reads)) —
 uncommitted. The admin team reading a team keeps Catatan (read, `NoteEditor` hides its Ubah through `useCanWrite`) and

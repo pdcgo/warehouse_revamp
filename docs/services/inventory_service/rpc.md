@@ -1127,6 +1127,86 @@ decided flow itself — [BatchRevalue.md](../../../audits/services/inventory_ser
 | `StockHistory` (a batch's — `filter.batch_id`) · `OwnerStockHistory` | a correction reads as `MOVEMENT_KIND_REVALUATION` (out of ADJUST; the kind filter takes it); every batch row carries `price_unit_before` / `price_unit_after` / `value_change` (14–16) — before = after − value ÷ units on a correction, = after elsewhere (`priceExprs`, no join: `batch_price_logs` has no transaction id). A rack's history never shows a correction (no rack row) | per-row arithmetic, nil. The probe on a batch with 3 000 takes found each row's two by-transaction lookups (`refExpr`) SCANNING `idempotency_order_check` and `restocks` — pre-existing — fixed by inventory `00041`'s two pure indexes: the owner's history 12.5 s → ~19 ms, a batch's 203 → ~2 ms ([OwnerStockHistory.md](../../../audits/services/inventory_service/performances/OwnerStockHistory.md)) |
 | `BatchDetail` | each figure from its own rows, never re-priced at today's price: `batch.line_cost` (Tiba) = arrived × the ACCEPTED price (`init_stock_valuation ÷ init_stock_count`, every batch read), `broken_value` / `lost_value` = the door's `restock_problem_items.total`, `used_value` = accepted value + Σ corrections − value left; `price_corrected` / `price_corrected_from` = the newest correction's price before it (*dikoreksi dari Rp …*) | the returns query became ONE pass over the batch's rows with FILTERs (returns, Σ corrections, the newest's price before), the transaction looked up only for a row that added units (a join over every row hashed all of `inventory_transactions` — caught on the probe, 10 ms and growing); the door's sum only for a restocked batch: 2 queries, 3.4 ms median on the 3 000-take batch (`TestPerf_BatchDetail_ALongCorrectedBatch`) — no audit file |
 
+## Koreksi Jumlah Terima — `RestockReceivedCountCorrect` / `WarehouseTransferReceivedCountCorrect` (backend built 2026-11-13)
+
+The receiving warehouse corrects an ACCEPTED restock's or incoming transfer's received count, line by line, with a
+reason; it posts at once, no approval
+([the-warehouse-corrects-a-wrong-stock-in-alone](../../business/inventory/adjustment_decision.md#the-warehouse-corrects-a-wrong-stock-in-alone),
+accepted as [the-received-count-prototype-is-accepted](../../business/inventory/adjustment_decision.md#the-received-count-prototype-is-accepted)).
+Never a rollback: an `adjustment` for the units still there
+([a-rollback-only-undoes-a-take](../../business/inventory/transaction_decision.md#a-rollback-only-undoes-a-take)), at the
+batch's price ([a-stock-in-correction-keeps-the-batch-price](../../business/inventory/adjustment_decision.md#a-stock-in-correction-keeps-the-batch-price)),
+named *Jumlah terima dikoreksi*
+([a-wrong-stock-in-is-a-received-count-correction](../../business/inventory/adjustment_decision.md#a-wrong-stock-in-is-a-received-count-correction)),
+counted on its own day ([a-received-count-correction-counts-on-its-own-day](../../business/inventory/adjustment_decision.md#a-received-count-correction-counts-on-its-own-day)).
+The proto: [received_count.proto](../../../proto/warehouse/inventory/v1/received_count.proto) (the shared line, history
+row and form facts) and the two requests in `restock_request.proto` / `warehouse_transfer.proto`.
+
+| | |
+| --- | --- |
+| who | policy `ROLE_ROOT`, `ROLE_ADMINISTRATOR`, `ROLE_WAREHOUSE_OWNER`, `ROLE_WAREHOUSE_ADMIN`; `team_id` scoped = the restock's `warehouse_id` / the transfer's `to_warehouse_id` (`lockTransfer` as B) — another warehouse, the selling team or the sending warehouse is NotFound; `is_override` from `san_auth.IsOverride` on the transaction, its rows and the correction rows |
+| request | `team_id`, `request_id` / `transfer_id`, `reason` (1–200, trimmed), `lines[]` (1–500) of `ReceivedCountLine{item_id, expected_received_count, received_count, placement_id}` — only the lines that change; `placement_id` is the rack the units come off (out) or go onto (in) |
+| refused before any lock (InvalidArgument) | an empty / space-only reason, over 200; a line twice |
+| refused under the parent row's lock | not a line of it (InvalidArgument); a rack not this warehouse's (NotFound); not ACCEPTED (FailedPrecondition); `expected_received_count` ≠ the count now — *someone corrected it first; reload* (FailedPrecondition); no change, below the broken units, above ordered / sent — *a unit over the line is found stock: Adjust › Found* (InvalidArgument) |
+| refused under the batch and rack locks (FailedPrecondition) | more out than the batch still holds (a restock line with no batch holds 0); more out than the named rack holds ([a-shelf-never-goes-below-zero](../../business/inventory/placement_decision.md#a-shelf-never-goes-below-zero)); a product a running count holds on that rack ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)) |
+| the batch | restock: the line's ONE batch (the accept's mint; when the line had no good unit, the first units in MINT it at the line's landed price, the next corrections find it). Transfer: the line's layers as if the count had been typed right at the accept — the good units fill the oldest layers, so units OUT leave the newest good layers' batches first and units IN fill the next layers' (a layer with no batch at B is minted at its own price, supplier and expiry, the owner's); one correction row per batch moved |
+| writes, ONE `StockTransaction` | `inventory_transactions` (`adjustment`, the owning team, B / the restock's warehouse, the reason) → `batch_logs` + `product_placement_logs` (`restock_correction` / `transfer_correction`, at the batch's price) → `batches` / `product_placements` → `inventory_transaction_items` → the line's `received_count` / `arrived_count` → `restock_count_corrections` / `warehouse_transfer_count_corrections` → (restock) the door row, missing **signed** → the day's change rows |
+| no Team Balance | nothing posts: a unit missing at the door is the selling team's own loss |
+| event | restock only, after the commit: `RestockReceivedCountCorrected` (oneof 408, topic `restock-received-count-corrected`, id `restock-count-corrected:<transaction>`) — the restock, its two teams, supplier, `corrected_on` (the Jakarta day), the actor and per line the SIGNED `accepted_count` / `missing_count` with the line's `ordered_count` / `total_price`; supplier_service folds it (`supplier-count-corrected`). A transfer publishes nothing (no supplier figure, no balance reads a transfer door) |
+| answer | the restock / transfer as Detail reads it for the caller |
+| code | `inventory_v1/restock_received_count_correct.go`, `warehouse_transfer_received_count_correct.go`, `received_count_shared.go` (the refusals), `restock_count_corrected_event.go`, `restock_count_corrections_read.go`, `warehouse_transfer_count_corrections_read.go` → `inventory_mutations/post_received_count.go` (`PostCountCorrection`, `TransferLayers`, `TransferCorrectionPieces`, `TransferMaxOut`) → `inventory_ledgers` `LockBatchesWith`, `TakeFromLocked`, `AddAtPrice`, `EnsureAndLockRacks`, `NoteDoorCorrection` |
+
+```mermaid
+sequenceDiagram
+  participant UI as Restock or transfer page - Koreksi Jumlah Terima
+  participant H as ReceivedCountCorrect
+  participant M as PostCountCorrection
+  participant DB as Postgres
+  participant PS as Pub/Sub
+  UI->>H: team_id, id, reason, lines - item, expected, real, rack
+  H->>H: trim the reason, refuse empty or over 200, a line twice
+  H->>DB: SELECT the restock or transfer FOR UPDATE - the first lock
+  H->>H: refuse not accepted, a stale line, no change, below broken, above ordered or sent
+  H->>H: pick the batch or the layers' batches per line
+  M->>DB: SELECT batches FOR UPDATE in id order, then the rack rows, then the count locks
+  M->>M: refuse more out than the batch or the rack holds, a counted rack
+  M->>DB: INSERT adjustment, batch_logs and rack logs at the batch price, UPDATE batches and racks, items
+  H->>DB: UPDATE the line's count, INSERT the correction rows
+  H->>DB: last - the door row missing signed, the day's change rows
+  H-->>PS: restock only - RestockReceivedCountCorrected
+  H-->>UI: the detail as the caller reads it
+```
+
+### What the reads say about a correction
+
+| read | field | the warehouse | the owning team |
+| --- | --- | --- | --- |
+| `RestockRequestDetail` · `WarehouseTransferDetail` (and the correct's answer) — each item | `corrected_from` (*dikoreksi dari*, the accept's count — unset when never corrected) · `missing_by_correction` (net units out, *Kurang (koreksi)*; negative when more came in) · `missing_by_correction_total` | units; total **unset** | the value it bears |
+| the same — each item, `correction_facts` | `batch_id` (the batch a correction takes from first), `batch_holds` (the most units out: the batch's units; a transfer: its newest good layers' batches in turn), `shelves[]` (`placement_id`, `units` of the product at this warehouse) | the RECEIVING warehouse, an accepted stock-in only | unset |
+| the same — the parent, `count_corrections[]` | `ReceivedCountCorrection`: id, item, product, from → to, `units_out`, batch, rack, reason, actor, `is_override`, `at_unix`, transaction; `price_unit` / `total` | money unset | money set |
+| `StockHistory` · `RackHistory` · `OwnerStockHistory` | a correction's rows are `MOVEMENT_KIND_ADJUST` (the ADJUST filter takes them) with `received_count_correction` (17): `from_count`, `to_count`, `reason`, `restock_id` or `transfer_id` | ✓ | ✓ |
+| `BatchDetail` | units a correction took out count as **Hilang** (`lost`, `lost_value` at the batch's price), never Terpakai; units it put in come off Hilang; Tiba (`arrived`) stays what the line said | ✓ | ✓ |
+| the trail | no `restock_logs` / `warehouse_transfer_logs` row — a correction must not read as the selling team's edit | | |
+
+**What moves on which day** — the CORRECTION's Jakarta day, signed; the accept's day never re-folded: Restock
+`accepted_count` / `accepted_value` (the `restock_correction` change rows) and `missing_count` (the door row);
+Transfer `received_count` / `received_value` (`transfer_correction`; in transit unchanged — it is read from the transfer's
+status); Ready stock through the same change rows; the supplier's restock figures via the event.
+
+**Concurrency** — parent row → batches (id order) → rack rows → count locks → writes → report rows: no cycle; two
+corrections from one form, one lands and the other is refused as stale; a count and a correction queue on the shelf rows
+— [lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md#koreksi-jumlah-terima-2026-11-13),
+`received_count_correct_race_test.go`.
+
+**Performance** — fixed in size, whatever the lines: 31 statements (restock) / 33 (transfer), one line ≈ 11 ms, twenty
+≈ 19 ms against 50 000 batches; the in-leg's batch read got `batches_transaction_idx` (00044 — a seq scan, 4.2 → 0.38 ms) —
+[RestockReceivedCountCorrect.md](../../../audits/services/inventory_service/performances/RestockReceivedCountCorrect.md),
+[WarehouseTransferReceivedCountCorrect.md](../../../audits/services/inventory_service/performances/WarehouseTransferReceivedCountCorrect.md).
+The reads it adds: Detail +1 statement (the corrections), and for the receiving warehouse's form facts on an accepted
+stock-in +4 (restock) / +6 (transfer: the broken rows and the layers), each by an index; `BatchDetail` two sub-selects on
+the corrections' batch indexes; the history label one statement per page, only when a correction row is on it — nil-cost,
+no file.
+
 ---
 
 ## A stock opname — counting a whole shelf (`StockOpname`) — RETIRED
@@ -1381,7 +1461,7 @@ asked order). The screens are not wired yet.
 | movements | the window's sum (headline = the sum of its rows) |
 | **positions** (Ready's two fields, in transit) | read at an EDGE, never summed over time: the headline and an id row at the window's last day; a time row at its period's last day — both cut by the window's end and by today; keys add up. Ready is read **backwards from today**: Σ batches now (key) − Σ changes after the edge (key) — a window ending today reads the batches alone. In transit is read live from `warehouse_transfers` × the out-leg's `batch_logs` (⚠ a box set lost stays in transit until it turns up and is accepted) |
 | search | MetricSearch ranks every key of the scope with any figure, in Go, the key DESC breaking ties, `has_next` past the page; key 0 (a batch naming no supplier) counts everywhere but is never a Supplier row. A position's time search ranks every period of the window up to today |
-| source | `inventory_stock_daily_changes` (00042: day × warehouse × owner × product × supplier × `change_type`, the signed units and value of every `batch_logs` row) — Restock = `restock`, Transfer = `transfer_out` negated / `transfer_in`, Returned stock = `return`, Ready = all; `inventory_door_daily_reports` (00042: a restock's or a return's broken / missing). Both folded by `inventory_ledgers.StockTransaction` ([database-schema.md](../../database-schema.md#the-four-inventory-metrics-reports-00042)) |
+| source | `inventory_stock_daily_changes` (00042: day × warehouse × owner × product × supplier × `change_type`, the signed units and value of every `batch_logs` row) — Restock = `restock` + `restock_correction`, Transfer = `transfer_out` negated / `transfer_in` + `transfer_correction` (a received-count correction on its own day, signed), Returned stock = `return`, Ready = all; `inventory_door_daily_reports` (00042: a restock's or a return's broken / missing). Both folded by `inventory_ledgers.StockTransaction` ([database-schema.md](../../database-schema.md#the-four-inventory-metrics-reports-00042)) |
 
 ```mermaid
 sequenceDiagram
@@ -1396,8 +1476,8 @@ sequenceDiagram
 
 **Every stock writer folds** — `OrderTransactionCreate`, `releaseByKey` (the release RPC and the two cancel listeners),
 `RestockRequestAccept`, `WarehouseTransferCreate` / `Accept` / `Cancel`, `OrderTransactionReturn`, `StockAdjust`,
-`OpnameSessionFinalize`, `FoundRequestApprove`, `RackSample`, `RackMove`, `BatchRevalue` run in `StockTransaction`; the
-ledger's three `batch_logs` writers (`MintBatches`, `BatchWrites.Flush`, `Revalue`) note each row and refuse to write
+`OpnameSessionFinalize`, `FoundRequestApprove`, `RackSample`, `RackMove`, `BatchRevalue`, `RestockReceivedCountCorrect`,
+`WarehouseTransferReceivedCountCorrect` run in `StockTransaction`; the ledger's three `batch_logs` writers (`MintBatches`, `BatchWrites.Flush`, `Revalue`) note each row and refuse to write
 outside one (`ErrNoStockReport`), so Σ report = Σ `batch_logs` per key and day by construction. The transaction's clock
 stamps its log rows, its report day, and a transfer's `accepted_at` / `cancelled_at` (`TxNow`), so a status and its stock
 land on one Jakarta day. The migration replayed `batch_logs` into the change table (Ready reads backwards, so a past day
@@ -1684,6 +1764,8 @@ supplier, the accept's Jakarta day and instant, and per line the ordered count, 
 the missing and the line's supplier
 ([restock-accepted-carries-every-line](../../business/inventory/restock_decision.md#restock-accepted-carries-every-line)).
 supplier_service folds it into a supplier's figures ([its doc](../supplier_service/rpc.md#the-figures--a-fold-of-restock-accepted)).
+A received-count correction publishes `RestockReceivedCountCorrected` the same way, its lines signed, on its own day
+([Koreksi Jumlah Terima](#koreksi-jumlah-terima--restockreceivedcountcorrect--warehousetransferreceivedcountcorrect-backend-built-2026-11-13)).
 The restock's money events — *Restock Created*, *Updated* and *Cancelled* — are below.
 
 ## The restock's money events — for the account that paid

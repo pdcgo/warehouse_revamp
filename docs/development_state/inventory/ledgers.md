@@ -308,7 +308,7 @@ So `batch_logs.change_type` = {order, revaluation, return, restock, adjustment, 
 | `sample` | `PostSample` | take, FIFO | the page's rack (staff) | owner, 1 tx per team | ❌ |
 | `transfer_out` | `PostTransferOut` | take, FIFO, at A | system picks, fewest first | transfer's team | ✅ cancel while `created` |
 | `transfer_in` | `PostTransferIn` | mint 1 per source batch with good units | staff name racks at B | transfer's team | ❌ |
-| `adjustment` | `PostAdjustment` | ⚠ the recount and the wrong-stock-in correction are undesigned ([adjustment-md-is-retired](../../business/inventory/adjustment_decision.md#adjustment-md-is-retired)) | staff | owner | ❌ |
+| `adjustment` | `PostAdjustment` · `PostCountCorrection` ✅ *(2026-11-13, Koreksi Jumlah Terima)* | ⚠ the recount is undesigned ([adjustment-md-is-retired](../../business/inventory/adjustment_decision.md#adjustment-md-is-retired)); a received-count correction takes out of / adds into the line's batch(es) at the batch's price, rows typed `restock_correction` / `transfer_correction` ([a-stock-in-correction-keeps-the-batch-price](../../business/inventory/adjustment_decision.md#a-stock-in-correction-keeps-the-batch-price)) | staff · the named rack | owner | ❌ |
 | `revaluation` | `PostRevaluation` ✅ *(2026-11-12, Koreksi Harga)* | 1 row, `change_count` 0, value = units left × Δ, + price log; the batch row locked alone (`LockBatch`), priced by `Revalue` | none | owner | ❌ |
 | `problem` | `PostCountFinalize` · `PostShelfProblem` | take FIFO, broken before lost, + problem rows (a shelf report: its named batch) | reported rack / per-rack correction | owner | ❌ |
 | `found` | `PostCountFinalize` | claim oldest lost into its batch, rest mint at last price | rack rows `found` | owner | ❌ |
@@ -521,8 +521,19 @@ on one Jakarta day; `WithNow(ctx, t)` sets it in tests.
 
 | | |
 | --- | --- |
-| wrapped (13) | `OrderTransactionCreate`, `releaseByKey` (`OrderTransactionRelease`, `InventoryTxCancel`, `OrderCancelled`), `RestockRequestAccept`, `WarehouseTransferCreate` / `Accept` / `Cancel`, `OrderTransactionReturn`, `StockAdjust`, `OpnameSessionFinalize`, `FoundRequestApprove`, `RackSample`, `RackMove`, `BatchRevalue` |
+| wrapped (15) | `OrderTransactionCreate`, `releaseByKey` (`OrderTransactionRelease`, `InventoryTxCancel`, `OrderCancelled`), `RestockRequestAccept`, `WarehouseTransferCreate` / `Accept` / `Cancel`, `OrderTransactionReturn`, `StockAdjust`, `OpnameSessionFinalize`, `FoundRequestApprove`, `RackSample`, `RackMove`, `BatchRevalue`, `RestockReceivedCountCorrect`, `WarehouseTransferReceivedCountCorrect` |
 | migration | `00042_inventory_metric_reports.sql` — both tables, reader indexes `(team_id, day, change_type)` / `(warehouse_id, day, change_type)`, and the change table replayed from `batch_logs` (Ready reads a past day backwards). ⚠ Applied to the dev database too (`san dev setup`, 2026-11-12) |
 | invariant | Σ `inventory_stock_daily_changes` = Σ `batch_logs` per key, Jakarta day and change type — `ledgerMatchesReport` in every metric book and `TestStockReport_EveryWriterFoldsItsChanges` |
 | cost | the order take 12 → 13 statements, committed median +0.5 ms (1 line) / +0.9 ms (20 lines) ([OrderTransactionCreate.md](../../../audits/services/inventory_service/performances/OrderTransactionCreate.md#after-the-ready-fold-2026-11-12)) |
 | race suites | `ledgerTables` and selling's `orderRaceTables` wipe both report tables; `stock_report_race_test.go` (raceaudit) |
+
+## 2026-11-13 — Koreksi Jumlah Terima: a received-count correction is an `adjustment` ([the-received-count-prototype-is-accepted](../../business/inventory/adjustment_decision.md#the-received-count-prototype-is-accepted))
+
+`RestockReceivedCountCorrect` / `WarehouseTransferReceivedCountCorrect` → `inventory_mutations.PostCountCorrection`
+(`post_received_count.go`) → `LockBatchesWith` (the pieces' batches, id order), `EnsureAndLockRacks`, the count locks,
+`TakeFromLocked` (a named batch, new in `batch_ledger.go`) / `AddAtPrice`, `NoteDoorCorrection` (new in
+`stock_report.go`: the door's missing SIGNED). `00043` adds the change types `restock_correction` and
+`transfer_correction` to `batch_logs`, `product_placement_logs` and `inventory_stock_daily_changes` — the history reads
+them as ADJUST with a `received_count_correction` label, the metrics as accepted / received on the correction's day — drops the
+door's `missing_count >= 0`, and adds the two correction tables; `00044` indexes `batches (transaction_id)`.
+`ledgerMatchesReport` holds after every correction test.

@@ -114,8 +114,10 @@ export function HistorySection({
         batchId: m.batchId,
         productId: m.productId,
         warehouseId: m.warehouseId,
-        // A price correction reads as one: from → to, why, who (the-correct-price-prototype-is-accepted).
+        // A price correction reads as one: from → to, why, who (the-correct-price-prototype-is-accepted) — and a
+        // received-count correction too (the-received-count-prototype-is-accepted).
         priceChange: m.priceChange,
+        countCorrection: m.countCorrection,
       })),
     [history.data],
   );

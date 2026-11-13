@@ -28,6 +28,8 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
+| 47 | **The batch history's Rak column reads *Unplaced* on every row** — `batchHistorySelect` returns `0 AS placement_id`; the rack each movement touched is never carried (found 2026-11-13) | bug · API | inventory | S | `inventory_v1/ledger_history.go` |
+| 48 | **The restock warehouse page's products table scrolls sideways even at 1600 px** (with the sidebar) — the Placement column is cut off (found 2026-11-13) | bug · frontend | restock | S | `pages/restock-warehouse-detail/components/LinesCard.tsx` |
 | 27 | **Old dev orders have no Team Balance fees** — the dead-lettered `order-placed` events are GONE (the Pub/Sub emulator keeps them in memory; restarted 2026-11-12), so `san pubsub redrive` replays nothing. Only dev orders 5 and 6 miss fees (15.000 warehouse fee each, order 6 also a product fee). Recovery (a one-off backfill / re-publish) or leave dev as is — the owner's call | data | liability | S | `docs/tools/san.md` |
 
 ### Later — decided, bigger
@@ -36,13 +38,13 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 
 - **Statistics:** server-side month grouping for the expense and balance daily views; the supplier pages' leftovers — the Produk tab's figures (needs the store–product link), the Gudang filter + warehouse narrowing (a supplier_service seam); running sold totals per supplier on the order-take write path (`SupplierGoods.md`: ~5 s cold for a 100k-order supplier; `SupplierIDsByFigure.md`: a Terjual band 0.6–0.9 s at 1M order rows); a rebuild path for Penjualan (`AnalyticReplayCompute` replays restock only); product page suppliers and daily in/out; category product count.
 - **Order model** — left: OrderList search for root ~77 ms — a union-of-ids rewrite is recommended in `OrderList.md`.
-- **Inventory:** correcting a wrong stock-in — a restock or transfer accepted with the wrong count (direction decided: an `adjustment` for the units still there, `a-rollback-only-undoes-a-take`; who, money and naming undesigned — `adjustment-md-is-retired`); goods-in-transit figure; `warehouse_products` team column; legacy supplier tables to drop; expiry report.
+- **Inventory:** goods-in-transit figure; `warehouse_products` team column; legacy supplier tables to drop; expiry report.
 - **OwnerStockHistory leftovers** (`audits/services/inventory_service/performances/OwnerStockHistory.md`): the product's batches are still found by a sequential scan (a full `(team_id, product_id)` index, ≤ 3 ms gain) and the order-key / receipt lookup still runs for every row before paging (a query rewrite — the owner's call); 12.5 s → 19 ms already fixed by inventory 00041.
 - **Inventory metrics at volume** (`audits/services/inventory_service/performances/MetricData.md`): Ready by month over a year ≈ 0.6 s cold and root's one-year headline ≈ 0.3 s — page reads past 128 MB shared buffers (9 ms warm). Options when real volume arrives, the owner's call: a monthly rollup folded on every stock write; a third reader index (costs every stock write).
 - **Generated-file sweep leftovers:** `ShareDocument` answers Internal (not NotFound) when it loses the race to the sweep — nothing shares a generated file today; a scale-to-zero deploy runs no ticker (the `san` command or a scheduler covers it until a deploy decision).
 - **Overrides shown on records — leftovers** (`an-override-shows-a-platform-badge`): `liability_payment_requests` (the notice names the team), `team_agent_policies` (a toggle), `documents` / `document_shares` (no list screen) — nothing to show today; the restock lists' phone blocks name no accepter / arriver, so no badge there.
 - **Transfer list (selling side) has no phone layout** — at 390 px its tabs overlap (found 2026-11-12, predates the badge).
-- **Products / Discover:** lock and stock-age filters; Discover's warehouse, stock, cross-price filters.
+- **Products / Discover:** lock and stock-age filters; Discover's warehouse, stock, cross-price filters. Discover's division chips (Prioritas · Riset · Umum) stay marked as samples — undefined, built only if the owner defines it.
 - **Exports:** the supplier Produk tab (its figures are samples); the Supplier Report export at 2.000 suppliers takes 1.1–1.7 s a year — read the figures from the ranking query's own totals (~5×, `SupplierReportExport.md`).
 
 ## Waiting on the owner
@@ -51,14 +53,14 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 | --- | --- | --- |
 | **Product barcode** | scanning by barcode (several per product) | ⏸ parked by the owner (2026-10-19, kept parked 2026-11-09) |
 | **Real Shopee/TikTok export files** | testing the importers on real data | files from the owner |
-| **Index proposals the audits measured** | speed at volume | the owner's OK (HARD RULE 2/3) |
-| **Discover division** (Prioritas · Riset · Umum per product) | Discover's division chips (marked) | **Toni** — the product context is his (`products-follow-the-unit-price`); the owner: *"bukan kewenanganku"* |
 
 ## Done
 
 | Date | Item | Commit |
 | --- | --- | --- |
-| 2026-11-12 | **`san report refold` covers every event-fed report** (`a-wrong-day-is-refolded-from-the-log`) — added `order-daily --team`, `supplier-restock-daily` / `supplier-sale-daily --supplier` (claim lost events, lock the report table, dry run, safe to re-run); the fed-by table in `docs/tools/san.md` (in-transaction reports need none); race + interleave tests | uncommitted |
+| 2026-11-13 | **Koreksi Jumlah Terima live** (`the-received-count-prototype-is-accepted` + 4 answers) — inventory 00043 correction tables + 00044 index; `RestockReceivedCountCorrect` / `WarehouseTransferReceivedCountCorrect` (receiving Owner/Admin + Root; stale form, broken, ordered/sent, batch/rack holds, running count refused); an `adjustment` at the batch price; Restock/Transfer/supplier figures on the correction day; no Team Balance; screens live, prototype deleted; e2e `the_received_count_is_corrected.spec.ts`; full e2e 311 passed | uncommitted |
+| 2026-11-13 | **#46 *worth Rp …* is never cut** on the restock Broken / Missing cells | uncommitted |
+| 2026-11-12 | **`san report refold` covers every event-fed report** (`a-wrong-day-is-refolded-from-the-log`) — added `order-daily --team`, `supplier-restock-daily` / `supplier-sale-daily --supplier` (claim lost events, lock the report table, dry run, safe to re-run); the fed-by table in `docs/tools/san.md` (in-transaction reports need none); race + interleave tests | `546b0553` |
 | 2026-11-12 | **#45 The rack page no longer flashes its skeleton** — skeletons only until first drawn, a re-read dims under `RefreshOverlay`; one layout tree at every width; story *A refresh keeps the page drawn* | `ac396de3` |
 | 2026-11-12 | **#35 The daily statement's words** — *Order fees* / *Biaya pesanan* (`the-ledger-speaks-the-business-words`) and *Courier COD* / *Ongkir COD* (`the-warehouse-statement-says-ongkir-cod`); `StatementWords.stories.tsx`; full e2e 300 passed | `ac396de3` |
 | 2026-11-12 | **#44 A shelf shows a warehouse units only** (`a-warehouse-sees-ready-value-but-a-shelf-only-units`) — `RackDetail` / `RackStock` leave price + value unset for a warehouse-role caller (5 `optional` fields); the rack page draws money only when sent; root / the monitor keep it; e2e `the_warehouse_reads_a_shelf_in_units.spec.ts`; full e2e 302 passed | `078971d5` |

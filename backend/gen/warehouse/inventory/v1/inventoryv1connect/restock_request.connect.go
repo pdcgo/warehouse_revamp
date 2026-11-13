@@ -69,6 +69,9 @@ const (
 	// RestockRequestServiceRestockReceiptPhotoProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockReceiptPhoto RPC.
 	RestockRequestServiceRestockReceiptPhotoProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockReceiptPhoto"
+	// RestockRequestServiceRestockReceivedCountCorrectProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockReceivedCountCorrect RPC.
+	RestockRequestServiceRestockReceivedCountCorrectProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockReceivedCountCorrect"
 )
 
 // RestockRequestServiceClient is a client for the warehouse.inventory.v1.RestockRequestService
@@ -102,6 +105,9 @@ type RestockRequestServiceClient interface {
 	// The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
 	// (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
 	RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error)
+	// KOREKSI JUMLAH TERIMA — the receiving warehouse corrects an ACCEPTED restock's received count
+	// (the-warehouse-corrects-a-wrong-stock-in-alone), under the restock row's lock; see received_count.proto.
+	RestockReceivedCountCorrect(context.Context, *connect.Request[v1.RestockReceivedCountCorrectRequest]) (*connect.Response[v1.RestockReceivedCountCorrectResponse], error)
 }
 
 // NewRestockRequestServiceClient constructs a client for the
@@ -194,23 +200,30 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		restockReceivedCountCorrect: connect.NewClient[v1.RestockReceivedCountCorrectRequest, v1.RestockReceivedCountCorrectResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockReceivedCountCorrectProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockReceivedCountCorrect")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // restockRequestServiceClient implements RestockRequestServiceClient.
 type restockRequestServiceClient struct {
-	restockRequestCreate   *connect.Client[v1.RestockRequestCreateRequest, v1.RestockRequestCreateResponse]
-	restockRequestList     *connect.Client[v1.RestockRequestListRequest, v1.RestockRequestListResponse]
-	restockActorList       *connect.Client[v1.RestockActorListRequest, v1.RestockActorListResponse]
-	restockRequestDetail   *connect.Client[v1.RestockRequestDetailRequest, v1.RestockRequestDetailResponse]
-	restockRequestUpdate   *connect.Client[v1.RestockRequestUpdateRequest, v1.RestockRequestUpdateResponse]
-	restockRequestArrive   *connect.Client[v1.RestockRequestArriveRequest, v1.RestockRequestArriveResponse]
-	restockRequestAccept   *connect.Client[v1.RestockRequestAcceptRequest, v1.RestockRequestAcceptResponse]
-	restockRequestMarkLost *connect.Client[v1.RestockRequestMarkLostRequest, v1.RestockRequestMarkLostResponse]
-	restockRequestCancel   *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
-	restockRequestLabels   *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
-	restockInboundStat     *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
-	restockReceiptPhoto    *connect.Client[v1.RestockReceiptPhotoRequest, v1.RestockReceiptPhotoResponse]
+	restockRequestCreate        *connect.Client[v1.RestockRequestCreateRequest, v1.RestockRequestCreateResponse]
+	restockRequestList          *connect.Client[v1.RestockRequestListRequest, v1.RestockRequestListResponse]
+	restockActorList            *connect.Client[v1.RestockActorListRequest, v1.RestockActorListResponse]
+	restockRequestDetail        *connect.Client[v1.RestockRequestDetailRequest, v1.RestockRequestDetailResponse]
+	restockRequestUpdate        *connect.Client[v1.RestockRequestUpdateRequest, v1.RestockRequestUpdateResponse]
+	restockRequestArrive        *connect.Client[v1.RestockRequestArriveRequest, v1.RestockRequestArriveResponse]
+	restockRequestAccept        *connect.Client[v1.RestockRequestAcceptRequest, v1.RestockRequestAcceptResponse]
+	restockRequestMarkLost      *connect.Client[v1.RestockRequestMarkLostRequest, v1.RestockRequestMarkLostResponse]
+	restockRequestCancel        *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
+	restockRequestLabels        *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
+	restockInboundStat          *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
+	restockReceiptPhoto         *connect.Client[v1.RestockReceiptPhotoRequest, v1.RestockReceiptPhotoResponse]
+	restockReceivedCountCorrect *connect.Client[v1.RestockReceivedCountCorrectRequest, v1.RestockReceivedCountCorrectResponse]
 }
 
 // RestockRequestCreate calls warehouse.inventory.v1.RestockRequestService.RestockRequestCreate.
@@ -273,6 +286,12 @@ func (c *restockRequestServiceClient) RestockReceiptPhoto(ctx context.Context, r
 	return c.restockReceiptPhoto.CallUnary(ctx, req)
 }
 
+// RestockReceivedCountCorrect calls
+// warehouse.inventory.v1.RestockRequestService.RestockReceivedCountCorrect.
+func (c *restockRequestServiceClient) RestockReceivedCountCorrect(ctx context.Context, req *connect.Request[v1.RestockReceivedCountCorrectRequest]) (*connect.Response[v1.RestockReceivedCountCorrectResponse], error) {
+	return c.restockReceivedCountCorrect.CallUnary(ctx, req)
+}
+
 // RestockRequestServiceHandler is an implementation of the
 // warehouse.inventory.v1.RestockRequestService service.
 type RestockRequestServiceHandler interface {
@@ -304,6 +323,9 @@ type RestockRequestServiceHandler interface {
 	// The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
 	// (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
 	RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error)
+	// KOREKSI JUMLAH TERIMA — the receiving warehouse corrects an ACCEPTED restock's received count
+	// (the-warehouse-corrects-a-wrong-stock-in-alone), under the restock row's lock; see received_count.proto.
+	RestockReceivedCountCorrect(context.Context, *connect.Request[v1.RestockReceivedCountCorrectRequest]) (*connect.Response[v1.RestockReceivedCountCorrectResponse], error)
 }
 
 // NewRestockRequestServiceHandler builds an HTTP handler from the service implementation. It
@@ -391,6 +413,12 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	restockRequestServiceRestockReceivedCountCorrectHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockReceivedCountCorrectProcedure,
+		svc.RestockReceivedCountCorrect,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockReceivedCountCorrect")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.RestockRequestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RestockRequestServiceRestockRequestCreateProcedure:
@@ -417,6 +445,8 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 			restockRequestServiceRestockInboundStatHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockReceiptPhotoProcedure:
 			restockRequestServiceRestockReceiptPhotoHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockReceivedCountCorrectProcedure:
+			restockRequestServiceRestockReceivedCountCorrectHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -472,4 +502,8 @@ func (UnimplementedRestockRequestServiceHandler) RestockInboundStat(context.Cont
 
 func (UnimplementedRestockRequestServiceHandler) RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockReceiptPhoto is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockReceivedCountCorrect(context.Context, *connect.Request[v1.RestockReceivedCountCorrectRequest]) (*connect.Response[v1.RestockReceivedCountCorrectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockReceivedCountCorrect is not implemented"))
 }

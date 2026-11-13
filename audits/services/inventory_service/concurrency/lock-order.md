@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-11-12: every stock writer's report rows (the four inventory metrics) — see [The stock reports are every stock transaction's last locks](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12) · 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
+| Last swept | 2026-11-13: `RestockReceivedCountCorrect` and `WarehouseTransferReceivedCountCorrect` (Koreksi Jumlah Terima) — see [Koreksi Jumlah Terima](#koreksi-jumlah-terima-2026-11-13) · 2026-11-12: every stock writer's report rows (the four inventory metrics) — see [The stock reports are every stock transaction's last locks](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12) · 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
 
 ---
 
@@ -260,6 +260,43 @@ off the old one. A take that waited on a correction costs at the NEW price (it r
 
 ```sh
 go test -tags raceaudit -p 1 -count=1 -run 'TestRace_BatchRevalue|TestInterleave_BatchRevalue' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## Koreksi Jumlah Terima (2026-11-13)
+
+[the-received-count-prototype-is-accepted](../../../../docs/business/inventory/adjustment_decision.md#the-received-count-prototype-is-accepted):
+the receiving warehouse corrects an ACCEPTED restock's or transfer's received count, line by line; units out leave the
+line's batch(es) and the named rack, units in go back into them onto the named rack, as ONE `adjustment` transaction.
+
+| Handler | Locks, in order |
+| --- | --- |
+| `RestockReceivedCountCorrect` | *(before the transaction: the policy, the reason, the lines' shape — lock-free)* → **`restocks` — the ONE row `FOR UPDATE`** (the lock accept and cancel take; the status, the lines' counts and the form's expected count judged under it) → *(reads: items, broken rows, racks, the line's batch)* → **`batches` — the lines' batches `FOR UPDATE`, in id order** (`LockBatchesWith`) → **`product_placements` — the lines' (product, rack) rows**, created at 0 for units in, then `FOR UPDATE` in id order (`EnsureAndLockRacks`) → the count locks over them, read under the rack lock (`count_lock.go`) → `inventory_transactions` / `batch_logs` / `batches` / `product_placement_logs` / `product_placements` / `inventory_transaction_items` writes → `restock_items` UPDATE (the rows under the restock's lock) → `restock_count_corrections` INSERT → door report → change report |
+| `WarehouseTransferReceivedCountCorrect` | the same, with **`warehouse_transfers` — the ONE row `FOR UPDATE`** (`lockTransfer`, as B; the lock every status change takes) first, and `warehouse_transfer_items` / `warehouse_transfer_count_corrections` in place of the restock's; the batches are the line's layers' batches at B, still one statement in id order — a layer with no batch yet is MINTED (no lock to take) |
+
+**No cycle.** Parent before child: the parent row first, then — exactly as every stock writer —
+batches before shelves, by id ([batches-lock-before-shelves-by-id](../../../../docs/business/inventory/context_decision.md#batches-lock-before-shelves-by-id)),
+then the report rows last. Nothing that holds a batch or a shelf asks for a `restocks` or `warehouse_transfers` row:
+accept and cancel lock the parent first too, and no take touches either. A take (order, sample, transfer out-leg,
+problem, finalize) locks the product's batches in id order and queues with a correction on the rows they share; a count
+start takes the shelf rows `FOR SHARE` and nothing after — so a correction and a count meet on the shelf rows only, one
+waiting for the other.
+
+**The expected count is the guard, judged under the parent lock.** Two corrections from one form: the second waits on
+the parent row, re-reads the line after the first commits (READ COMMITTED) and is refused as stale — never two
+corrections off the same count. **A count holds the rack**: a correction that waited on a count's `FOR SHARE` reads the
+count's lock after its own rack lock and is refused, naming the count; a count that waited on a correction snapshots
+the corrected units.
+
+| Claim | Proof |
+| --- | --- |
+| Eight corrections of one restock line from one form: one lands, seven refused as stale | `TestRace_RestockReceivedCountCorrect_TwoCorrectionsAtOnceOneWins` — ×4 rounds, 0 deadlocks, exactly 4 `adjustment` transactions; the line = the accept's − Σ units out, ledgers agree, every transaction verifies |
+| A correction racing three order takes of the same batch: no deadlock, nothing fails, all 6 land | `TestRace_RestockReceivedCountCorrect_RacingOrderTakesKeepsTheLedgersConsistent` — ×6 rounds, the correction delayed `round % 5` ms; 30 − 6 − 18 = 6 left, batches = racks, ledger = report |
+| A count started during a correction waits on the rack row and snapshots the corrected units | `TestInterleave_RestockReceivedCountCorrect_ACountWaitsAndSnapshotsTheCorrection` — blocked, released on commit, snapshot 8 not 10 |
+| A correction during a started count waits on the shelf rows and is refused by the count | `TestInterleave_RestockReceivedCountCorrect_ACorrectionWaitsAndIsRefusedByTheCount` — blocked, released, FailedPrecondition; the line still 10 |
+| Eight corrections of one transfer line at B: one lands, seven stale | `TestRace_WarehouseTransferReceivedCountCorrect_TwoCorrectionsAtOnceOneWins` — ×3 rounds, 0 deadlocks; B's batches = racks = the line |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_.*ReceivedCountCorrect|TestInterleave_.*ReceivedCountCorrect' -v ./backend/services/inventory_service/inventory_v1/
 ```
 
 ## The stock reports are every stock transaction's last locks (2026-11-12)

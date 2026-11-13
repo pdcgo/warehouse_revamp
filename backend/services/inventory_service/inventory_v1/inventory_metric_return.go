@@ -16,7 +16,7 @@ import (
 var returnFields = []protoreflect.Name{"back_count", "back_value", "broken_count", "missing_count"}
 
 func readReturn(db *gorm.DB, q stockQuery) (map[string]figures, error) {
-	src, args := doorMovementSource("return", "back_count", "back_value", q)
+	src, args := doorMovementSource("return", "'return'", "back_count", "back_value", q)
 
 	return readMovement(db, q, src, args, returnFields)
 }

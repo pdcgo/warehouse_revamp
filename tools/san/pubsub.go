@@ -248,6 +248,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "restock-accepted",
 			Filter: `attributes.event_type = "warehouse.events.v1.RestockAccepted"`,
 		},
+		// supplier_service's fold, from a received-count correction — mirrors supplier_service.CountCorrectedSubscription
+		// (a-received-count-correction-counts-on-its-own-day). The same handler as supplier-fold; the replay seeks both.
+		{
+			ID:     "supplier-count-corrected",
+			Topic:  "restock-received-count-corrected",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockReceivedCountCorrected"`,
+		},
 		// liability_service's courier charge — mirrors liability_service.RestockAcceptedSubscription. The SAME topic as
 		// supplier's fold, its OWN subscription (balance-posts-the-couriers-debt-from-the-event).
 		{

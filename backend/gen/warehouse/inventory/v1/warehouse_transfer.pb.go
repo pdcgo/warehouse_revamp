@@ -407,9 +407,19 @@ type WarehouseTransferItem struct {
 	// Where B put the GOOD units — arrived − broken, exactly. Empty until accepted.
 	Placements []*WarehouseTransferPlacement `protobuf:"bytes,10,rep,name=placements,proto3" json:"placements,omitempty"`
 	// Broken and missing rows, written by the accept.
-	Problems      []*WarehouseTransferProblem `protobuf:"bytes,11,rep,name=problems,proto3" json:"problems,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Problems []*WarehouseTransferProblem `protobuf:"bytes,11,rep,name=problems,proto3" json:"problems,omitempty"`
+	// KOREKSI JUMLAH TERIMA (received_count.proto). DETAIL ONLY. `arrived_count` above is the corrected count; this is
+	// the accept's, set once the line was corrected.
+	CorrectedFrom *int64 `protobuf:"varint,12,opt,name=corrected_from,json=correctedFrom,proto3,oneof" json:"corrected_from,omitempty"`
+	// Units the corrections took out of B's batches, net — the *Kurang (koreksi)* part of missing; negative when more went
+	// back in. 0 = never corrected.
+	MissingByCorrection int64 `protobuf:"varint,13,opt,name=missing_by_correction,json=missingByCorrection,proto3" json:"missing_by_correction,omitempty"`
+	// What those units are worth at the batches' prices. Set for the OWNING team only (a-warehouse-sees-no-seller-money).
+	MissingByCorrectionTotal *float64 `protobuf:"fixed64,14,opt,name=missing_by_correction_total,json=missingByCorrectionTotal,proto3,oneof" json:"missing_by_correction_total,omitempty"`
+	// The correction form's facts — set for the RECEIVING warehouse (B) on an accepted transfer only.
+	CorrectionFacts *ReceivedCountLineFacts `protobuf:"bytes,15,opt,name=correction_facts,json=correctionFacts,proto3" json:"correction_facts,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *WarehouseTransferItem) Reset() {
@@ -515,6 +525,34 @@ func (x *WarehouseTransferItem) GetPlacements() []*WarehouseTransferPlacement {
 func (x *WarehouseTransferItem) GetProblems() []*WarehouseTransferProblem {
 	if x != nil {
 		return x.Problems
+	}
+	return nil
+}
+
+func (x *WarehouseTransferItem) GetCorrectedFrom() int64 {
+	if x != nil && x.CorrectedFrom != nil {
+		return *x.CorrectedFrom
+	}
+	return 0
+}
+
+func (x *WarehouseTransferItem) GetMissingByCorrection() int64 {
+	if x != nil {
+		return x.MissingByCorrection
+	}
+	return 0
+}
+
+func (x *WarehouseTransferItem) GetMissingByCorrectionTotal() float64 {
+	if x != nil && x.MissingByCorrectionTotal != nil {
+		return *x.MissingByCorrectionTotal
+	}
+	return 0
+}
+
+func (x *WarehouseTransferItem) GetCorrectionFacts() *ReceivedCountLineFacts {
+	if x != nil {
+		return x.CorrectionFacts
 	}
 	return nil
 }
@@ -671,9 +709,12 @@ type WarehouseTransfer struct {
 	// `warehouse_transfer_logs.is_override`, the create's. LIST ONLY — Detail carries the trail, whose first row says it.
 	CreatedByIsOverride bool `protobuf:"varint,33,opt,name=created_by_is_override,json=createdByIsOverride,proto3" json:"created_by_is_override,omitempty"`
 	// The trail, oldest first. DETAIL ONLY — List leaves it empty.
-	Logs          []*WarehouseTransferLog `protobuf:"bytes,32,rep,name=logs,proto3" json:"logs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Logs []*WarehouseTransferLog `protobuf:"bytes,32,rep,name=logs,proto3" json:"logs,omitempty"`
+	// KOREKSI JUMLAH TERIMA — every line's correction, oldest first, beside the trail: its own kind, never a status row.
+	// DETAIL ONLY.
+	CountCorrections []*ReceivedCountCorrection `protobuf:"bytes,34,rep,name=count_corrections,json=countCorrections,proto3" json:"count_corrections,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *WarehouseTransfer) Reset() {
@@ -933,6 +974,13 @@ func (x *WarehouseTransfer) GetCreatedByIsOverride() bool {
 func (x *WarehouseTransfer) GetLogs() []*WarehouseTransferLog {
 	if x != nil {
 		return x.Logs
+	}
+	return nil
+}
+
+func (x *WarehouseTransfer) GetCountCorrections() []*ReceivedCountCorrection {
+	if x != nil {
+		return x.CountCorrections
 	}
 	return nil
 }
@@ -2547,11 +2595,130 @@ func (x *WarehouseTransferAcceptResponse) GetTransfer() *WarehouseTransfer {
 	return nil
 }
 
+// WarehouseTransferReceivedCountCorrectRequest — KOREKSI JUMLAH TERIMA on a transfer: warehouse B (the RECEIVING
+// warehouse, `team_id`, scoped) corrects its accepted count, the same rules as RestockReceivedCountCorrectRequest with
+// "above what was SENT" as the line's ceiling. Units move in B's batches of the line as if the count had been typed right
+// at the accept: the good units fill the oldest layers, so units out leave the newest good ones and units in fill the
+// next (the-system-fills-a-transfers-prices); a layer with no batch at B yet is minted at its price. Never A, never the
+// selling team; another warehouse's transfer is NotFound.
+type WarehouseTransferReceivedCountCorrectRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The RECEIVING warehouse — the transfer's `to_warehouse_id`.
+	TeamId        uint64               `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	TransferId    uint64               `protobuf:"varint,2,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
+	Reason        string               `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Lines         []*ReceivedCountLine `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseTransferReceivedCountCorrectRequest) Reset() {
+	*x = WarehouseTransferReceivedCountCorrectRequest{}
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseTransferReceivedCountCorrectRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseTransferReceivedCountCorrectRequest) ProtoMessage() {}
+
+func (x *WarehouseTransferReceivedCountCorrectRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseTransferReceivedCountCorrectRequest.ProtoReflect.Descriptor instead.
+func (*WarehouseTransferReceivedCountCorrectRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *WarehouseTransferReceivedCountCorrectRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *WarehouseTransferReceivedCountCorrectRequest) GetTransferId() uint64 {
+	if x != nil {
+		return x.TransferId
+	}
+	return 0
+}
+
+func (x *WarehouseTransferReceivedCountCorrectRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *WarehouseTransferReceivedCountCorrectRequest) GetLines() []*ReceivedCountLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+type WarehouseTransferReceivedCountCorrectResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Transfer      *WarehouseTransfer     `protobuf:"bytes,1,opt,name=transfer,proto3" json:"transfer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseTransferReceivedCountCorrectResponse) Reset() {
+	*x = WarehouseTransferReceivedCountCorrectResponse{}
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseTransferReceivedCountCorrectResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseTransferReceivedCountCorrectResponse) ProtoMessage() {}
+
+func (x *WarehouseTransferReceivedCountCorrectResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseTransferReceivedCountCorrectResponse.ProtoReflect.Descriptor instead.
+func (*WarehouseTransferReceivedCountCorrectResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *WarehouseTransferReceivedCountCorrectResponse) GetTransfer() *WarehouseTransfer {
+	if x != nil {
+		return x.Transfer
+	}
+	return nil
+}
+
 var File_warehouse_inventory_v1_warehouse_transfer_proto protoreflect.FileDescriptor
 
 const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\n" +
-	"/warehouse/inventory/v1/warehouse_transfer.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"m\n" +
+	"/warehouse/inventory/v1/warehouse_transfer.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a+warehouse/inventory/v1/received_count.proto\x1a!warehouse/role_base/v1/role.proto\"m\n" +
 	"\x1aWarehouseTransferPlacement\x12*\n" +
 	"\fplacement_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\vplacementId\x12#\n" +
 	"\bquantity\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\"\xe2\x01\n" +
@@ -2562,7 +2729,7 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\n" +
 	"price_unit\x18\x03 \x01(\x01R\tpriceUnit\x12\x14\n" +
 	"\x05total\x18\x04 \x01(\x01R\x05total\x12\x1c\n" +
-	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"\xeb\x03\n" +
+	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"\x9d\x06\n" +
 	"\x15WarehouseTransferItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
@@ -2579,7 +2746,13 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"placements\x18\n" +
 	" \x03(\v22.warehouse.inventory.v1.WarehouseTransferPlacementR\n" +
 	"placements\x12L\n" +
-	"\bproblems\x18\v \x03(\v20.warehouse.inventory.v1.WarehouseTransferProblemR\bproblems\"\xc6\x02\n" +
+	"\bproblems\x18\v \x03(\v20.warehouse.inventory.v1.WarehouseTransferProblemR\bproblems\x12*\n" +
+	"\x0ecorrected_from\x18\f \x01(\x03H\x00R\rcorrectedFrom\x88\x01\x01\x122\n" +
+	"\x15missing_by_correction\x18\r \x01(\x03R\x13missingByCorrection\x12B\n" +
+	"\x1bmissing_by_correction_total\x18\x0e \x01(\x01H\x01R\x18missingByCorrectionTotal\x88\x01\x01\x12Y\n" +
+	"\x10correction_facts\x18\x0f \x01(\v2..warehouse.inventory.v1.ReceivedCountLineFactsR\x0fcorrectionFactsB\x11\n" +
+	"\x0f_corrected_fromB\x1e\n" +
+	"\x1c_missing_by_correction_total\"\xc6\x02\n" +
 	"\x14WarehouseTransferLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12P\n" +
 	"\vfrom_status\x18\x02 \x01(\x0e2/.warehouse.inventory.v1.WarehouseTransferStatusR\n" +
@@ -2589,7 +2762,7 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x17\n" +
 	"\aat_unix\x18\x06 \x01(\x03R\x06atUnix\x12\x1f\n" +
 	"\vis_override\x18\a \x01(\bR\n" +
-	"isOverride\"\xba\v\n" +
+	"isOverride\"\x98\f\n" +
 	"\x11WarehouseTransfer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12*\n" +
@@ -2626,7 +2799,8 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\flost_at_unix\x18\x1f \x01(\x03R\n" +
 	"lostAtUnix\x123\n" +
 	"\x16created_by_is_override\x18! \x01(\bR\x13createdByIsOverride\x12@\n" +
-	"\x04logs\x18  \x03(\v2,.warehouse.inventory.v1.WarehouseTransferLogR\x04logs\"^\n" +
+	"\x04logs\x18  \x03(\v2,.warehouse.inventory.v1.WarehouseTransferLogR\x04logs\x12\\\n" +
+	"\x11count_corrections\x18\" \x03(\v2/.warehouse.inventory.v1.ReceivedCountCorrectionR\x10countCorrections\"^\n" +
 	"\x15WarehouseTransferLine\x12&\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12\x1d\n" +
@@ -2757,6 +2931,17 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"placements\x18\x06 \x03(\v22.warehouse.inventory.v1.WarehouseTransferPlacementR\n" +
 	"placements\"h\n" +
 	"\x1fWarehouseTransferAcceptResponse\x12E\n" +
+	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer\"\xfc\x01\n" +
+	",WarehouseTransferReceivedCountCorrectRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
+	"\vtransfer_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
+	"transferId\x12\"\n" +
+	"\x06reason\x18\x03 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x06reason\x12L\n" +
+	"\x05lines\x18\x04 \x03(\v2).warehouse.inventory.v1.ReceivedCountLineB\v\xbaH\b\x92\x01\x05\b\x01\x10\xf4\x03R\x05lines:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x06\t\"v\n" +
+	"-WarehouseTransferReceivedCountCorrectResponse\x12E\n" +
 	"\btransfer\x18\x01 \x01(\v2).warehouse.inventory.v1.WarehouseTransferR\btransfer*\xd5\x02\n" +
 	"\x17WarehouseTransferStatus\x12)\n" +
 	"%WAREHOUSE_TRANSFER_STATUS_UNSPECIFIED\x10\x00\x12%\n" +
@@ -2778,7 +2963,7 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x1dWarehouseTransferListDataType\x121\n" +
 	"-WAREHOUSE_TRANSFER_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")WAREHOUSE_TRANSFER_LIST_DATA_TYPE_GENERAL\x10\x01\x128\n" +
-	"4WAREHOUSE_TRANSFER_LIST_DATA_TYPE_WAREHOUSE_TRANSFER\x10\x022\xc1\f\n" +
+	"4WAREHOUSE_TRANSFER_LIST_DATA_TYPE_WAREHOUSE_TRANSFER\x10\x022\xf8\r\n" +
 	"\x18WarehouseTransferService\x12\x8a\x01\n" +
 	"\x17WarehouseTransferCreate\x126.warehouse.inventory.v1.WarehouseTransferCreateRequest\x1a7.warehouse.inventory.v1.WarehouseTransferCreateResponse\x12\x89\x01\n" +
 	"\x15WarehouseTransferList\x124.warehouse.inventory.v1.WarehouseTransferListRequest\x1a5.warehouse.inventory.v1.WarehouseTransferListResponse\"\x03\x90\x02\x01\x12\x8f\x01\n" +
@@ -2790,7 +2975,8 @@ const file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc = "" +
 	"\x15WarehouseTransferShip\x124.warehouse.inventory.v1.WarehouseTransferShipRequest\x1a5.warehouse.inventory.v1.WarehouseTransferShipResponse\x12\x8a\x01\n" +
 	"\x17WarehouseTransferArrive\x126.warehouse.inventory.v1.WarehouseTransferArriveRequest\x1a7.warehouse.inventory.v1.WarehouseTransferArriveResponse\x12\x8a\x01\n" +
 	"\x17WarehouseTransferAccept\x126.warehouse.inventory.v1.WarehouseTransferAcceptRequest\x1a7.warehouse.inventory.v1.WarehouseTransferAcceptResponse\x12\x9b\x01\n" +
-	"\x1bWarehouseTransferLabelPhoto\x12:.warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest\x1a;.warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse\"\x03\x90\x02\x01BRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
+	"\x1bWarehouseTransferLabelPhoto\x12:.warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest\x1a;.warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse\"\x03\x90\x02\x01\x12\xb4\x01\n" +
+	"%WarehouseTransferReceivedCountCorrect\x12D.warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectRequest\x1aE.warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescOnce sync.Once
@@ -2805,109 +2991,120 @@ func file_warehouse_inventory_v1_warehouse_transfer_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_inventory_v1_warehouse_transfer_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_warehouse_inventory_v1_warehouse_transfer_proto_goTypes = []any{
-	(WarehouseTransferStatus)(0),                // 0: warehouse.inventory.v1.WarehouseTransferStatus
-	(WarehouseTransferDirection)(0),             // 1: warehouse.inventory.v1.WarehouseTransferDirection
-	(WarehouseTransferProblemType)(0),           // 2: warehouse.inventory.v1.WarehouseTransferProblemType
-	(WarehouseTransferListDataType)(0),          // 3: warehouse.inventory.v1.WarehouseTransferListDataType
-	(*WarehouseTransferPlacement)(nil),          // 4: warehouse.inventory.v1.WarehouseTransferPlacement
-	(*WarehouseTransferProblem)(nil),            // 5: warehouse.inventory.v1.WarehouseTransferProblem
-	(*WarehouseTransferItem)(nil),               // 6: warehouse.inventory.v1.WarehouseTransferItem
-	(*WarehouseTransferLog)(nil),                // 7: warehouse.inventory.v1.WarehouseTransferLog
-	(*WarehouseTransfer)(nil),                   // 8: warehouse.inventory.v1.WarehouseTransfer
-	(*WarehouseTransferLine)(nil),               // 9: warehouse.inventory.v1.WarehouseTransferLine
-	(*WarehouseTransferCreateRequest)(nil),      // 10: warehouse.inventory.v1.WarehouseTransferCreateRequest
-	(*WarehouseTransferCreateResponse)(nil),     // 11: warehouse.inventory.v1.WarehouseTransferCreateResponse
-	(*WarehouseTransferListRequest)(nil),        // 12: warehouse.inventory.v1.WarehouseTransferListRequest
-	(*WarehouseTransferListFilter)(nil),         // 13: warehouse.inventory.v1.WarehouseTransferListFilter
-	(*WarehouseTransferMapItem)(nil),            // 14: warehouse.inventory.v1.WarehouseTransferMapItem
-	(*WarehouseTransferListResponseItem)(nil),   // 15: warehouse.inventory.v1.WarehouseTransferListResponseItem
-	(*WarehouseTransferListResponse)(nil),       // 16: warehouse.inventory.v1.WarehouseTransferListResponse
-	(*WarehouseTransferDetailRequest)(nil),      // 17: warehouse.inventory.v1.WarehouseTransferDetailRequest
-	(*WarehouseTransferDetailResponse)(nil),     // 18: warehouse.inventory.v1.WarehouseTransferDetailResponse
-	(*WarehouseTransferLabelPhotoRequest)(nil),  // 19: warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest
-	(*WarehouseTransferLabelPhotoResponse)(nil), // 20: warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse
-	(*WarehouseTransferUpdateRequest)(nil),      // 21: warehouse.inventory.v1.WarehouseTransferUpdateRequest
-	(*WarehouseTransferUpdateResponse)(nil),     // 22: warehouse.inventory.v1.WarehouseTransferUpdateResponse
-	(*WarehouseTransferCancelRequest)(nil),      // 23: warehouse.inventory.v1.WarehouseTransferCancelRequest
-	(*WarehouseTransferCancelResponse)(nil),     // 24: warehouse.inventory.v1.WarehouseTransferCancelResponse
-	(*WarehouseTransferMarkLostRequest)(nil),    // 25: warehouse.inventory.v1.WarehouseTransferMarkLostRequest
-	(*WarehouseTransferMarkLostResponse)(nil),   // 26: warehouse.inventory.v1.WarehouseTransferMarkLostResponse
-	(*WarehouseTransferProcessRequest)(nil),     // 27: warehouse.inventory.v1.WarehouseTransferProcessRequest
-	(*WarehouseTransferProcessResponse)(nil),    // 28: warehouse.inventory.v1.WarehouseTransferProcessResponse
-	(*WarehouseTransferShipRequest)(nil),        // 29: warehouse.inventory.v1.WarehouseTransferShipRequest
-	(*WarehouseTransferShipResponse)(nil),       // 30: warehouse.inventory.v1.WarehouseTransferShipResponse
-	(*WarehouseTransferArriveRequest)(nil),      // 31: warehouse.inventory.v1.WarehouseTransferArriveRequest
-	(*WarehouseTransferArriveResponse)(nil),     // 32: warehouse.inventory.v1.WarehouseTransferArriveResponse
-	(*WarehouseTransferAcceptRequest)(nil),      // 33: warehouse.inventory.v1.WarehouseTransferAcceptRequest
-	(*WarehouseTransferCountedLine)(nil),        // 34: warehouse.inventory.v1.WarehouseTransferCountedLine
-	(*WarehouseTransferAcceptResponse)(nil),     // 35: warehouse.inventory.v1.WarehouseTransferAcceptResponse
-	nil,                                         // 36: warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
-	(*v1.CommonPagination)(nil),                 // 37: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),                   // 38: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                         // 39: warehouse.common.v1.PageInfo
+	(WarehouseTransferStatus)(0),                          // 0: warehouse.inventory.v1.WarehouseTransferStatus
+	(WarehouseTransferDirection)(0),                       // 1: warehouse.inventory.v1.WarehouseTransferDirection
+	(WarehouseTransferProblemType)(0),                     // 2: warehouse.inventory.v1.WarehouseTransferProblemType
+	(WarehouseTransferListDataType)(0),                    // 3: warehouse.inventory.v1.WarehouseTransferListDataType
+	(*WarehouseTransferPlacement)(nil),                    // 4: warehouse.inventory.v1.WarehouseTransferPlacement
+	(*WarehouseTransferProblem)(nil),                      // 5: warehouse.inventory.v1.WarehouseTransferProblem
+	(*WarehouseTransferItem)(nil),                         // 6: warehouse.inventory.v1.WarehouseTransferItem
+	(*WarehouseTransferLog)(nil),                          // 7: warehouse.inventory.v1.WarehouseTransferLog
+	(*WarehouseTransfer)(nil),                             // 8: warehouse.inventory.v1.WarehouseTransfer
+	(*WarehouseTransferLine)(nil),                         // 9: warehouse.inventory.v1.WarehouseTransferLine
+	(*WarehouseTransferCreateRequest)(nil),                // 10: warehouse.inventory.v1.WarehouseTransferCreateRequest
+	(*WarehouseTransferCreateResponse)(nil),               // 11: warehouse.inventory.v1.WarehouseTransferCreateResponse
+	(*WarehouseTransferListRequest)(nil),                  // 12: warehouse.inventory.v1.WarehouseTransferListRequest
+	(*WarehouseTransferListFilter)(nil),                   // 13: warehouse.inventory.v1.WarehouseTransferListFilter
+	(*WarehouseTransferMapItem)(nil),                      // 14: warehouse.inventory.v1.WarehouseTransferMapItem
+	(*WarehouseTransferListResponseItem)(nil),             // 15: warehouse.inventory.v1.WarehouseTransferListResponseItem
+	(*WarehouseTransferListResponse)(nil),                 // 16: warehouse.inventory.v1.WarehouseTransferListResponse
+	(*WarehouseTransferDetailRequest)(nil),                // 17: warehouse.inventory.v1.WarehouseTransferDetailRequest
+	(*WarehouseTransferDetailResponse)(nil),               // 18: warehouse.inventory.v1.WarehouseTransferDetailResponse
+	(*WarehouseTransferLabelPhotoRequest)(nil),            // 19: warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest
+	(*WarehouseTransferLabelPhotoResponse)(nil),           // 20: warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse
+	(*WarehouseTransferUpdateRequest)(nil),                // 21: warehouse.inventory.v1.WarehouseTransferUpdateRequest
+	(*WarehouseTransferUpdateResponse)(nil),               // 22: warehouse.inventory.v1.WarehouseTransferUpdateResponse
+	(*WarehouseTransferCancelRequest)(nil),                // 23: warehouse.inventory.v1.WarehouseTransferCancelRequest
+	(*WarehouseTransferCancelResponse)(nil),               // 24: warehouse.inventory.v1.WarehouseTransferCancelResponse
+	(*WarehouseTransferMarkLostRequest)(nil),              // 25: warehouse.inventory.v1.WarehouseTransferMarkLostRequest
+	(*WarehouseTransferMarkLostResponse)(nil),             // 26: warehouse.inventory.v1.WarehouseTransferMarkLostResponse
+	(*WarehouseTransferProcessRequest)(nil),               // 27: warehouse.inventory.v1.WarehouseTransferProcessRequest
+	(*WarehouseTransferProcessResponse)(nil),              // 28: warehouse.inventory.v1.WarehouseTransferProcessResponse
+	(*WarehouseTransferShipRequest)(nil),                  // 29: warehouse.inventory.v1.WarehouseTransferShipRequest
+	(*WarehouseTransferShipResponse)(nil),                 // 30: warehouse.inventory.v1.WarehouseTransferShipResponse
+	(*WarehouseTransferArriveRequest)(nil),                // 31: warehouse.inventory.v1.WarehouseTransferArriveRequest
+	(*WarehouseTransferArriveResponse)(nil),               // 32: warehouse.inventory.v1.WarehouseTransferArriveResponse
+	(*WarehouseTransferAcceptRequest)(nil),                // 33: warehouse.inventory.v1.WarehouseTransferAcceptRequest
+	(*WarehouseTransferCountedLine)(nil),                  // 34: warehouse.inventory.v1.WarehouseTransferCountedLine
+	(*WarehouseTransferAcceptResponse)(nil),               // 35: warehouse.inventory.v1.WarehouseTransferAcceptResponse
+	(*WarehouseTransferReceivedCountCorrectRequest)(nil),  // 36: warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectRequest
+	(*WarehouseTransferReceivedCountCorrectResponse)(nil), // 37: warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectResponse
+	nil,                             // 38: warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
+	(*ReceivedCountLineFacts)(nil),  // 39: warehouse.inventory.v1.ReceivedCountLineFacts
+	(*ReceivedCountCorrection)(nil), // 40: warehouse.inventory.v1.ReceivedCountCorrection
+	(*v1.CommonPagination)(nil),     // 41: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),       // 42: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 43: warehouse.common.v1.PageInfo
+	(*ReceivedCountLine)(nil),       // 44: warehouse.inventory.v1.ReceivedCountLine
 }
 var file_warehouse_inventory_v1_warehouse_transfer_proto_depIdxs = []int32{
 	2,  // 0: warehouse.inventory.v1.WarehouseTransferProblem.type:type_name -> warehouse.inventory.v1.WarehouseTransferProblemType
 	4,  // 1: warehouse.inventory.v1.WarehouseTransferItem.picks:type_name -> warehouse.inventory.v1.WarehouseTransferPlacement
 	4,  // 2: warehouse.inventory.v1.WarehouseTransferItem.placements:type_name -> warehouse.inventory.v1.WarehouseTransferPlacement
 	5,  // 3: warehouse.inventory.v1.WarehouseTransferItem.problems:type_name -> warehouse.inventory.v1.WarehouseTransferProblem
-	0,  // 4: warehouse.inventory.v1.WarehouseTransferLog.from_status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
-	0,  // 5: warehouse.inventory.v1.WarehouseTransferLog.to_status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
-	0,  // 6: warehouse.inventory.v1.WarehouseTransfer.status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
-	6,  // 7: warehouse.inventory.v1.WarehouseTransfer.items:type_name -> warehouse.inventory.v1.WarehouseTransferItem
-	7,  // 8: warehouse.inventory.v1.WarehouseTransfer.logs:type_name -> warehouse.inventory.v1.WarehouseTransferLog
-	9,  // 9: warehouse.inventory.v1.WarehouseTransferCreateRequest.lines:type_name -> warehouse.inventory.v1.WarehouseTransferLine
-	8,  // 10: warehouse.inventory.v1.WarehouseTransferCreateResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	13, // 11: warehouse.inventory.v1.WarehouseTransferListRequest.filter:type_name -> warehouse.inventory.v1.WarehouseTransferListFilter
-	3,  // 12: warehouse.inventory.v1.WarehouseTransferListRequest.data_request:type_name -> warehouse.inventory.v1.WarehouseTransferListDataType
-	37, // 13: warehouse.inventory.v1.WarehouseTransferListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	0,  // 14: warehouse.inventory.v1.WarehouseTransferListFilter.status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
-	1,  // 15: warehouse.inventory.v1.WarehouseTransferListFilter.direction:type_name -> warehouse.inventory.v1.WarehouseTransferDirection
-	36, // 16: warehouse.inventory.v1.WarehouseTransferMapItem.map_data:type_name -> warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
-	38, // 17: warehouse.inventory.v1.WarehouseTransferListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	14, // 18: warehouse.inventory.v1.WarehouseTransferListResponseItem.warehouse_transfer:type_name -> warehouse.inventory.v1.WarehouseTransferMapItem
-	15, // 19: warehouse.inventory.v1.WarehouseTransferListResponse.items:type_name -> warehouse.inventory.v1.WarehouseTransferListResponseItem
-	39, // 20: warehouse.inventory.v1.WarehouseTransferListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	8,  // 21: warehouse.inventory.v1.WarehouseTransferDetailResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	8,  // 22: warehouse.inventory.v1.WarehouseTransferUpdateResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	8,  // 23: warehouse.inventory.v1.WarehouseTransferCancelResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	8,  // 24: warehouse.inventory.v1.WarehouseTransferMarkLostResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	8,  // 25: warehouse.inventory.v1.WarehouseTransferProcessResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	8,  // 26: warehouse.inventory.v1.WarehouseTransferShipResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	8,  // 27: warehouse.inventory.v1.WarehouseTransferArriveResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	34, // 28: warehouse.inventory.v1.WarehouseTransferAcceptRequest.lines:type_name -> warehouse.inventory.v1.WarehouseTransferCountedLine
-	4,  // 29: warehouse.inventory.v1.WarehouseTransferCountedLine.placements:type_name -> warehouse.inventory.v1.WarehouseTransferPlacement
-	8,  // 30: warehouse.inventory.v1.WarehouseTransferAcceptResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	8,  // 31: warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.WarehouseTransfer
-	10, // 32: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCreate:input_type -> warehouse.inventory.v1.WarehouseTransferCreateRequest
-	12, // 33: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferList:input_type -> warehouse.inventory.v1.WarehouseTransferListRequest
-	17, // 34: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferDetail:input_type -> warehouse.inventory.v1.WarehouseTransferDetailRequest
-	21, // 35: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:input_type -> warehouse.inventory.v1.WarehouseTransferUpdateRequest
-	23, // 36: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:input_type -> warehouse.inventory.v1.WarehouseTransferCancelRequest
-	25, // 37: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:input_type -> warehouse.inventory.v1.WarehouseTransferMarkLostRequest
-	27, // 38: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:input_type -> warehouse.inventory.v1.WarehouseTransferProcessRequest
-	29, // 39: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:input_type -> warehouse.inventory.v1.WarehouseTransferShipRequest
-	31, // 40: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:input_type -> warehouse.inventory.v1.WarehouseTransferArriveRequest
-	33, // 41: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:input_type -> warehouse.inventory.v1.WarehouseTransferAcceptRequest
-	19, // 42: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto:input_type -> warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest
-	11, // 43: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCreate:output_type -> warehouse.inventory.v1.WarehouseTransferCreateResponse
-	16, // 44: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferList:output_type -> warehouse.inventory.v1.WarehouseTransferListResponse
-	18, // 45: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferDetail:output_type -> warehouse.inventory.v1.WarehouseTransferDetailResponse
-	22, // 46: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:output_type -> warehouse.inventory.v1.WarehouseTransferUpdateResponse
-	24, // 47: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:output_type -> warehouse.inventory.v1.WarehouseTransferCancelResponse
-	26, // 48: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:output_type -> warehouse.inventory.v1.WarehouseTransferMarkLostResponse
-	28, // 49: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:output_type -> warehouse.inventory.v1.WarehouseTransferProcessResponse
-	30, // 50: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:output_type -> warehouse.inventory.v1.WarehouseTransferShipResponse
-	32, // 51: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:output_type -> warehouse.inventory.v1.WarehouseTransferArriveResponse
-	35, // 52: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:output_type -> warehouse.inventory.v1.WarehouseTransferAcceptResponse
-	20, // 53: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto:output_type -> warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse
-	43, // [43:54] is the sub-list for method output_type
-	32, // [32:43] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	39, // 4: warehouse.inventory.v1.WarehouseTransferItem.correction_facts:type_name -> warehouse.inventory.v1.ReceivedCountLineFacts
+	0,  // 5: warehouse.inventory.v1.WarehouseTransferLog.from_status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
+	0,  // 6: warehouse.inventory.v1.WarehouseTransferLog.to_status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
+	0,  // 7: warehouse.inventory.v1.WarehouseTransfer.status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
+	6,  // 8: warehouse.inventory.v1.WarehouseTransfer.items:type_name -> warehouse.inventory.v1.WarehouseTransferItem
+	7,  // 9: warehouse.inventory.v1.WarehouseTransfer.logs:type_name -> warehouse.inventory.v1.WarehouseTransferLog
+	40, // 10: warehouse.inventory.v1.WarehouseTransfer.count_corrections:type_name -> warehouse.inventory.v1.ReceivedCountCorrection
+	9,  // 11: warehouse.inventory.v1.WarehouseTransferCreateRequest.lines:type_name -> warehouse.inventory.v1.WarehouseTransferLine
+	8,  // 12: warehouse.inventory.v1.WarehouseTransferCreateResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	13, // 13: warehouse.inventory.v1.WarehouseTransferListRequest.filter:type_name -> warehouse.inventory.v1.WarehouseTransferListFilter
+	3,  // 14: warehouse.inventory.v1.WarehouseTransferListRequest.data_request:type_name -> warehouse.inventory.v1.WarehouseTransferListDataType
+	41, // 15: warehouse.inventory.v1.WarehouseTransferListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	0,  // 16: warehouse.inventory.v1.WarehouseTransferListFilter.status:type_name -> warehouse.inventory.v1.WarehouseTransferStatus
+	1,  // 17: warehouse.inventory.v1.WarehouseTransferListFilter.direction:type_name -> warehouse.inventory.v1.WarehouseTransferDirection
+	38, // 18: warehouse.inventory.v1.WarehouseTransferMapItem.map_data:type_name -> warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry
+	42, // 19: warehouse.inventory.v1.WarehouseTransferListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	14, // 20: warehouse.inventory.v1.WarehouseTransferListResponseItem.warehouse_transfer:type_name -> warehouse.inventory.v1.WarehouseTransferMapItem
+	15, // 21: warehouse.inventory.v1.WarehouseTransferListResponse.items:type_name -> warehouse.inventory.v1.WarehouseTransferListResponseItem
+	43, // 22: warehouse.inventory.v1.WarehouseTransferListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	8,  // 23: warehouse.inventory.v1.WarehouseTransferDetailResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	8,  // 24: warehouse.inventory.v1.WarehouseTransferUpdateResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	8,  // 25: warehouse.inventory.v1.WarehouseTransferCancelResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	8,  // 26: warehouse.inventory.v1.WarehouseTransferMarkLostResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	8,  // 27: warehouse.inventory.v1.WarehouseTransferProcessResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	8,  // 28: warehouse.inventory.v1.WarehouseTransferShipResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	8,  // 29: warehouse.inventory.v1.WarehouseTransferArriveResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	34, // 30: warehouse.inventory.v1.WarehouseTransferAcceptRequest.lines:type_name -> warehouse.inventory.v1.WarehouseTransferCountedLine
+	4,  // 31: warehouse.inventory.v1.WarehouseTransferCountedLine.placements:type_name -> warehouse.inventory.v1.WarehouseTransferPlacement
+	8,  // 32: warehouse.inventory.v1.WarehouseTransferAcceptResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	44, // 33: warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectRequest.lines:type_name -> warehouse.inventory.v1.ReceivedCountLine
+	8,  // 34: warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectResponse.transfer:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	8,  // 35: warehouse.inventory.v1.WarehouseTransferMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.WarehouseTransfer
+	10, // 36: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCreate:input_type -> warehouse.inventory.v1.WarehouseTransferCreateRequest
+	12, // 37: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferList:input_type -> warehouse.inventory.v1.WarehouseTransferListRequest
+	17, // 38: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferDetail:input_type -> warehouse.inventory.v1.WarehouseTransferDetailRequest
+	21, // 39: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:input_type -> warehouse.inventory.v1.WarehouseTransferUpdateRequest
+	23, // 40: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:input_type -> warehouse.inventory.v1.WarehouseTransferCancelRequest
+	25, // 41: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:input_type -> warehouse.inventory.v1.WarehouseTransferMarkLostRequest
+	27, // 42: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:input_type -> warehouse.inventory.v1.WarehouseTransferProcessRequest
+	29, // 43: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:input_type -> warehouse.inventory.v1.WarehouseTransferShipRequest
+	31, // 44: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:input_type -> warehouse.inventory.v1.WarehouseTransferArriveRequest
+	33, // 45: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:input_type -> warehouse.inventory.v1.WarehouseTransferAcceptRequest
+	19, // 46: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto:input_type -> warehouse.inventory.v1.WarehouseTransferLabelPhotoRequest
+	36, // 47: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferReceivedCountCorrect:input_type -> warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectRequest
+	11, // 48: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCreate:output_type -> warehouse.inventory.v1.WarehouseTransferCreateResponse
+	16, // 49: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferList:output_type -> warehouse.inventory.v1.WarehouseTransferListResponse
+	18, // 50: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferDetail:output_type -> warehouse.inventory.v1.WarehouseTransferDetailResponse
+	22, // 51: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferUpdate:output_type -> warehouse.inventory.v1.WarehouseTransferUpdateResponse
+	24, // 52: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferCancel:output_type -> warehouse.inventory.v1.WarehouseTransferCancelResponse
+	26, // 53: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferMarkLost:output_type -> warehouse.inventory.v1.WarehouseTransferMarkLostResponse
+	28, // 54: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferProcess:output_type -> warehouse.inventory.v1.WarehouseTransferProcessResponse
+	30, // 55: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferShip:output_type -> warehouse.inventory.v1.WarehouseTransferShipResponse
+	32, // 56: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferArrive:output_type -> warehouse.inventory.v1.WarehouseTransferArriveResponse
+	35, // 57: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept:output_type -> warehouse.inventory.v1.WarehouseTransferAcceptResponse
+	20, // 58: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto:output_type -> warehouse.inventory.v1.WarehouseTransferLabelPhotoResponse
+	37, // 59: warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferReceivedCountCorrect:output_type -> warehouse.inventory.v1.WarehouseTransferReceivedCountCorrectResponse
+	48, // [48:60] is the sub-list for method output_type
+	36, // [36:48] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_warehouse_transfer_proto_init() }
@@ -2915,6 +3112,8 @@ func file_warehouse_inventory_v1_warehouse_transfer_proto_init() {
 	if File_warehouse_inventory_v1_warehouse_transfer_proto != nil {
 		return
 	}
+	file_warehouse_inventory_v1_received_count_proto_init()
+	file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[2].OneofWrappers = []any{}
 	file_warehouse_inventory_v1_warehouse_transfer_proto_msgTypes[11].OneofWrappers = []any{
 		(*WarehouseTransferListResponseItem_General)(nil),
 		(*WarehouseTransferListResponseItem_WarehouseTransfer)(nil),
@@ -2925,7 +3124,7 @@ func file_warehouse_inventory_v1_warehouse_transfer_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc), len(file_warehouse_inventory_v1_warehouse_transfer_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   33,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

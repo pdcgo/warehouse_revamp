@@ -66,6 +66,9 @@ const (
 	// WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure is the fully-qualified name of the
 	// WarehouseTransferService's WarehouseTransferLabelPhoto RPC.
 	WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure = "/warehouse.inventory.v1.WarehouseTransferService/WarehouseTransferLabelPhoto"
+	// WarehouseTransferServiceWarehouseTransferReceivedCountCorrectProcedure is the fully-qualified
+	// name of the WarehouseTransferService's WarehouseTransferReceivedCountCorrect RPC.
+	WarehouseTransferServiceWarehouseTransferReceivedCountCorrectProcedure = "/warehouse.inventory.v1.WarehouseTransferService/WarehouseTransferReceivedCountCorrect"
 )
 
 // WarehouseTransferServiceClient is a client for the
@@ -102,6 +105,9 @@ type WarehouseTransferServiceClient interface {
 	// team must be the sender, the receiver or the owning selling team — checked here, then document_service signs A's
 	// file in-process, no share.
 	WarehouseTransferLabelPhoto(context.Context, *connect.Request[v1.WarehouseTransferLabelPhotoRequest]) (*connect.Response[v1.WarehouseTransferLabelPhotoResponse], error)
+	// KOREKSI JUMLAH TERIMA — warehouse B corrects an ACCEPTED transfer's arrived count
+	// (the-warehouse-corrects-a-wrong-stock-in-alone), under the transfer row's lock; see received_count.proto.
+	WarehouseTransferReceivedCountCorrect(context.Context, *connect.Request[v1.WarehouseTransferReceivedCountCorrectRequest]) (*connect.Response[v1.WarehouseTransferReceivedCountCorrectResponse], error)
 }
 
 // NewWarehouseTransferServiceClient constructs a client for the
@@ -185,22 +191,29 @@ func NewWarehouseTransferServiceClient(httpClient connect.HTTPClient, baseURL st
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		warehouseTransferReceivedCountCorrect: connect.NewClient[v1.WarehouseTransferReceivedCountCorrectRequest, v1.WarehouseTransferReceivedCountCorrectResponse](
+			httpClient,
+			baseURL+WarehouseTransferServiceWarehouseTransferReceivedCountCorrectProcedure,
+			connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferReceivedCountCorrect")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // warehouseTransferServiceClient implements WarehouseTransferServiceClient.
 type warehouseTransferServiceClient struct {
-	warehouseTransferCreate     *connect.Client[v1.WarehouseTransferCreateRequest, v1.WarehouseTransferCreateResponse]
-	warehouseTransferList       *connect.Client[v1.WarehouseTransferListRequest, v1.WarehouseTransferListResponse]
-	warehouseTransferDetail     *connect.Client[v1.WarehouseTransferDetailRequest, v1.WarehouseTransferDetailResponse]
-	warehouseTransferUpdate     *connect.Client[v1.WarehouseTransferUpdateRequest, v1.WarehouseTransferUpdateResponse]
-	warehouseTransferCancel     *connect.Client[v1.WarehouseTransferCancelRequest, v1.WarehouseTransferCancelResponse]
-	warehouseTransferMarkLost   *connect.Client[v1.WarehouseTransferMarkLostRequest, v1.WarehouseTransferMarkLostResponse]
-	warehouseTransferProcess    *connect.Client[v1.WarehouseTransferProcessRequest, v1.WarehouseTransferProcessResponse]
-	warehouseTransferShip       *connect.Client[v1.WarehouseTransferShipRequest, v1.WarehouseTransferShipResponse]
-	warehouseTransferArrive     *connect.Client[v1.WarehouseTransferArriveRequest, v1.WarehouseTransferArriveResponse]
-	warehouseTransferAccept     *connect.Client[v1.WarehouseTransferAcceptRequest, v1.WarehouseTransferAcceptResponse]
-	warehouseTransferLabelPhoto *connect.Client[v1.WarehouseTransferLabelPhotoRequest, v1.WarehouseTransferLabelPhotoResponse]
+	warehouseTransferCreate               *connect.Client[v1.WarehouseTransferCreateRequest, v1.WarehouseTransferCreateResponse]
+	warehouseTransferList                 *connect.Client[v1.WarehouseTransferListRequest, v1.WarehouseTransferListResponse]
+	warehouseTransferDetail               *connect.Client[v1.WarehouseTransferDetailRequest, v1.WarehouseTransferDetailResponse]
+	warehouseTransferUpdate               *connect.Client[v1.WarehouseTransferUpdateRequest, v1.WarehouseTransferUpdateResponse]
+	warehouseTransferCancel               *connect.Client[v1.WarehouseTransferCancelRequest, v1.WarehouseTransferCancelResponse]
+	warehouseTransferMarkLost             *connect.Client[v1.WarehouseTransferMarkLostRequest, v1.WarehouseTransferMarkLostResponse]
+	warehouseTransferProcess              *connect.Client[v1.WarehouseTransferProcessRequest, v1.WarehouseTransferProcessResponse]
+	warehouseTransferShip                 *connect.Client[v1.WarehouseTransferShipRequest, v1.WarehouseTransferShipResponse]
+	warehouseTransferArrive               *connect.Client[v1.WarehouseTransferArriveRequest, v1.WarehouseTransferArriveResponse]
+	warehouseTransferAccept               *connect.Client[v1.WarehouseTransferAcceptRequest, v1.WarehouseTransferAcceptResponse]
+	warehouseTransferLabelPhoto           *connect.Client[v1.WarehouseTransferLabelPhotoRequest, v1.WarehouseTransferLabelPhotoResponse]
+	warehouseTransferReceivedCountCorrect *connect.Client[v1.WarehouseTransferReceivedCountCorrectRequest, v1.WarehouseTransferReceivedCountCorrectResponse]
 }
 
 // WarehouseTransferCreate calls
@@ -269,6 +282,12 @@ func (c *warehouseTransferServiceClient) WarehouseTransferLabelPhoto(ctx context
 	return c.warehouseTransferLabelPhoto.CallUnary(ctx, req)
 }
 
+// WarehouseTransferReceivedCountCorrect calls
+// warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferReceivedCountCorrect.
+func (c *warehouseTransferServiceClient) WarehouseTransferReceivedCountCorrect(ctx context.Context, req *connect.Request[v1.WarehouseTransferReceivedCountCorrectRequest]) (*connect.Response[v1.WarehouseTransferReceivedCountCorrectResponse], error) {
+	return c.warehouseTransferReceivedCountCorrect.CallUnary(ctx, req)
+}
+
 // WarehouseTransferServiceHandler is an implementation of the
 // warehouse.inventory.v1.WarehouseTransferService service.
 type WarehouseTransferServiceHandler interface {
@@ -303,6 +322,9 @@ type WarehouseTransferServiceHandler interface {
 	// team must be the sender, the receiver or the owning selling team — checked here, then document_service signs A's
 	// file in-process, no share.
 	WarehouseTransferLabelPhoto(context.Context, *connect.Request[v1.WarehouseTransferLabelPhotoRequest]) (*connect.Response[v1.WarehouseTransferLabelPhotoResponse], error)
+	// KOREKSI JUMLAH TERIMA — warehouse B corrects an ACCEPTED transfer's arrived count
+	// (the-warehouse-corrects-a-wrong-stock-in-alone), under the transfer row's lock; see received_count.proto.
+	WarehouseTransferReceivedCountCorrect(context.Context, *connect.Request[v1.WarehouseTransferReceivedCountCorrectRequest]) (*connect.Response[v1.WarehouseTransferReceivedCountCorrectResponse], error)
 }
 
 // NewWarehouseTransferServiceHandler builds an HTTP handler from the service implementation. It
@@ -381,6 +403,12 @@ func NewWarehouseTransferServiceHandler(svc WarehouseTransferServiceHandler, opt
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	warehouseTransferServiceWarehouseTransferReceivedCountCorrectHandler := connect.NewUnaryHandler(
+		WarehouseTransferServiceWarehouseTransferReceivedCountCorrectProcedure,
+		svc.WarehouseTransferReceivedCountCorrect,
+		connect.WithSchema(warehouseTransferServiceMethods.ByName("WarehouseTransferReceivedCountCorrect")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.WarehouseTransferService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WarehouseTransferServiceWarehouseTransferCreateProcedure:
@@ -405,6 +433,8 @@ func NewWarehouseTransferServiceHandler(svc WarehouseTransferServiceHandler, opt
 			warehouseTransferServiceWarehouseTransferAcceptHandler.ServeHTTP(w, r)
 		case WarehouseTransferServiceWarehouseTransferLabelPhotoProcedure:
 			warehouseTransferServiceWarehouseTransferLabelPhotoHandler.ServeHTTP(w, r)
+		case WarehouseTransferServiceWarehouseTransferReceivedCountCorrectProcedure:
+			warehouseTransferServiceWarehouseTransferReceivedCountCorrectHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -456,4 +486,8 @@ func (UnimplementedWarehouseTransferServiceHandler) WarehouseTransferAccept(cont
 
 func (UnimplementedWarehouseTransferServiceHandler) WarehouseTransferLabelPhoto(context.Context, *connect.Request[v1.WarehouseTransferLabelPhotoRequest]) (*connect.Response[v1.WarehouseTransferLabelPhotoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferLabelPhoto is not implemented"))
+}
+
+func (UnimplementedWarehouseTransferServiceHandler) WarehouseTransferReceivedCountCorrect(context.Context, *connect.Request[v1.WarehouseTransferReceivedCountCorrectRequest]) (*connect.Response[v1.WarehouseTransferReceivedCountCorrectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferReceivedCountCorrect is not implemented"))
 }

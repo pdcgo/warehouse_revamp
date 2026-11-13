@@ -23,6 +23,8 @@ import (
 type replayBroker struct {
 	client       *pubsub.Client
 	subscription string
+	// More subscriptions feeding the SAME fold — each is seeked too, and the window is the shortest of all.
+	also []string
 
 	mu     sync.Mutex
 	window time.Duration
@@ -33,9 +35,15 @@ func NewReplayBroker(client *pubsub.Client) settlement_v1.ReplayBroker {
 	return &replayBroker{client: client, subscription: settlement_service.FoldSubscription}
 }
 
-// NewSupplierReplayBroker is supplier_service's — the subscription that feeds a supplier's figures.
+// NewSupplierReplayBroker is supplier_service's — the subscriptions that feed a supplier's figures: the accepts and the
+// received-count corrections (a-received-count-correction-counts-on-its-own-day). A replay deletes the days' rows, so it
+// must seek BOTH, or the corrections' moves would be lost.
 func NewSupplierReplayBroker(client *pubsub.Client) supplier_v1.ReplayBroker {
-	return &replayBroker{client: client, subscription: supplier_service.FoldSubscription}
+	return &replayBroker{
+		client:       client,
+		subscription: supplier_service.FoldSubscription,
+		also:         []string{supplier_service.CountCorrectedSubscription},
+	}
 }
 
 func (b *replayBroker) ReplayWindow(ctx context.Context) (time.Duration, error) {
@@ -51,6 +59,15 @@ func (b *replayBroker) ReplayWindow(ctx context.Context) (time.Duration, error) 
 		return 0, err
 	}
 
+	for _, sub := range b.also {
+		other, otherErr := event_source.SubscriptionReplayWindow(ctx, b.client, b.client.Project(), sub)
+		if otherErr != nil {
+			return 0, otherErr
+		}
+
+		window = min(window, other)
+	}
+
 	b.window = window
 	b.known = true
 
@@ -58,5 +75,17 @@ func (b *replayBroker) ReplayWindow(ctx context.Context) (time.Duration, error) 
 }
 
 func (b *replayBroker) Seek(ctx context.Context, to time.Time) error {
-	return event_source.SeekSubscription(ctx, b.client, b.client.Project(), b.subscription, to)
+	err := event_source.SeekSubscription(ctx, b.client, b.client.Project(), b.subscription, to)
+	if err != nil {
+		return err
+	}
+
+	for _, sub := range b.also {
+		err = event_source.SeekSubscription(ctx, b.client, b.client.Project(), sub, to)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

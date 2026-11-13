@@ -18,6 +18,11 @@ import (
 // event_type — a subscription's filter is IMMUTABLE, so it has to be right at creation.
 const FoldSubscription = "supplier-fold"
 
+// CountCorrectedSubscription feeds the same figures from `RestockReceivedCountCorrected` — a received-count correction
+// (KOREKSI JUMLAH TERIMA) moves a supplier's restock figures on its own day (a-received-count-correction-counts-on-its-
+// own-day). Its own topic, so its own subscription — the same handler. The fold's replay seeks both.
+const CountCorrectedSubscription = "supplier-count-corrected"
+
 // SalesPlacedSubscription and SalesCancelledSubscription feed PENJUALAN — `OrderPlaced` and `OrderCancelled`, folded by
 // the sales fold (sales_fold.go, penjualan-is-the-selling-value-on-the-order-day). Two, because a subscription reads one
 // topic; one handler, dispatching on the variant. Declared beside the routes, mirrored in tools/san's `pubsub ensure`.
@@ -45,6 +50,7 @@ func NewRegister(
 		// it. ⚠ It authenticates nobody, as settlement's does not (the-event-webhook-is-open): a forged event can only
 		// corrupt a projection AnalyticReplayCompute rebuilds. Restrict the path at the ingress.
 		mux.Handle("/event/"+FoldSubscription+"/push", event_source.NewMuxPushHandler(supplier.FoldHandler()))
+		mux.Handle("/event/"+CountCorrectedSubscription+"/push", event_source.NewMuxPushHandler(supplier.FoldHandler()))
 		// Penjualan — an order's sale added on its day, a cancel taken back on its own.
 		mux.Handle("/event/"+SalesPlacedSubscription+"/push", event_source.NewMuxPushHandler(supplier.SalesFoldHandler()))
 		mux.Handle("/event/"+SalesCancelledSubscription+"/push", event_source.NewMuxPushHandler(supplier.SalesFoldHandler()))

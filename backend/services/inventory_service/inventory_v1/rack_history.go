@@ -78,6 +78,11 @@ func (s *Service) RackHistory(
 		out = append(out, rows[i].proto())
 	}
 
+	err = labelCountCorrections(s.db.WithContext(ctx), rows, out)
+	if err != nil {
+		return nil, rackDBError(err)
+	}
+
 	items, ids := rackHistoryListItems(out, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.RackHistoryResponse{

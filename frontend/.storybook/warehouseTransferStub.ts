@@ -19,6 +19,10 @@
 //   the-on-site-charge-is-paid-by-b-at-accept               a charge above 0 needs its note.
 //   the-system-fills-a-transfers-prices                     line totals and problem prices are worked out here.
 //   every-transfer-status-change-is-logged                  every status change appends a trail row.
+//   the-received-count-prototype-is-accepted                Koreksi Jumlah Terima: B's Owner or Admin (or Root, stamped)
+//                                                           corrects an accepted transfer (receivedCountScenario.ts);
+//                                                           the detail serves corrected_from, missing_by_correction,
+//                                                           the money for the owning team only, the form's facts for B.
 //
 // WRITEABLE: a transfer opened in one step is on the list in the next. preview.tsx resets it in its `beforeEach`.
 
@@ -35,6 +39,9 @@ import { products, racks, warehouseStock } from "./fixtures";
 import { type TransferFixture, type TransferLineFixture, transferFixtures } from "./warehouseTransferFixtures";
 import { activeAccountRefusal } from "./financialAccountStub";
 import { SELF_ID } from "./userStub";
+import { correctionFieldsOf, correctionRowsOf, postCorrection } from "./receivedCountScenario";
+import { sessionScenario } from "./sessionScenario";
+import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 
 let rows: TransferFixture[] = [];
 
@@ -127,12 +134,17 @@ function move(r: TransferFixture, to: S, description = "") {
   r.status = to;
 }
 
-// The transfer as the wire carries it — display prices worked out, the total summed, the trail only when asked.
-function toWire(r: TransferFixture, withLogs: boolean) {
+// The transfer as the wire carries it — display prices worked out, the total summed, the trail only when asked. The
+// detail (`withLogs`) carries Koreksi Jumlah Terima as `reader` reads it: the money for the owning team only, the form's
+// facts for B on an accepted transfer only (warehouse_transfer_count_corrections_read.go).
+function toWire(r: TransferFixture, withLogs: boolean, reader?: bigint) {
+  const withMoney = reader === r.teamId;
+  const withFacts = reader === r.toWarehouseId && r.status === S.ACCEPTED;
   const items = r.items.map((l) => ({
     ...l,
     priceUnit: l.count > 0n ? l.total / Number(l.count) : 0,
     problems: l.problems.map((p) => ({ ...p, priceUnit: p.count > 0n ? p.total / Number(p.count) : 0 })),
+    ...(withLogs ? correctionFieldsOf("transfer", r.id, l.id, withMoney, withFacts) : {}),
   }));
 
   return {
@@ -140,6 +152,7 @@ function toWire(r: TransferFixture, withLogs: boolean) {
     items,
     total: r.items.reduce((sum, l) => sum + l.total, 0),
     logs: withLogs ? r.logs : [],
+    countCorrections: withLogs ? correctionRowsOf("transfer", r.id, withMoney) : [],
     // The create's flag, as the server reads it for the list: the trail's FIRST row (an-override-shows-a-platform-badge).
     createdByIsOverride: r.logs[0]?.isOverride === true,
   };
@@ -164,6 +177,78 @@ function refuseAccount(teamId: bigint, accountId: bigint) {
   if (accountId === 0n) return;
   const refused = activeAccountRefusal(teamId, accountId);
   if (refused) throw precondition(refused);
+}
+
+// One correction of transfer `r` by B — judged, posted, the lines' arrived counts moved.
+function correctTransfer(
+  r: TransferFixture,
+  req: { reason: string; lines: { itemId: bigint; expectedReceivedCount: bigint; receivedCount: bigint; placementId: bigint }[] },
+) {
+  if (r.status !== S.ACCEPTED) {
+    throw precondition(`only an accepted stock-in's received count is corrected: this transfer is ${S[r.status].toLowerCase()}`);
+  }
+
+  const made = postCorrection(
+    "transfer",
+    r.id,
+    r.toWarehouseId,
+    req,
+    (itemId) => {
+      const l = r.items.find((x) => x.id === itemId);
+      if (!l) return undefined;
+      const broken = l.problems
+        .filter((p) => p.type === WarehouseTransferProblemType.BROKEN)
+        .reduce((s, p) => s + p.count, 0n);
+
+      return {
+        itemId,
+        productId: l.productId,
+        productCode: l.productCode,
+        received: l.arrivedCount,
+        broken,
+        ceiling: l.count,
+        priceUnit: l.count > 0n ? l.total / Number(l.count) : 0,
+      };
+    },
+    "sent",
+  );
+
+  for (const c of made) {
+    const l = r.items.find((x) => x.id === c.itemId)!;
+    l.arrivedCount = c.toCount;
+  }
+
+  return made;
+}
+
+/**
+ * For a story: a Koreksi Jumlah Terima ALREADY MADE on transfer `id` — as Gudang Cabang's Owner would post it, by
+ * `userId` (Eko, 65, unless said), so the owning team's result story opens on it.
+ */
+export function transferCorrectedForStory(
+  id: bigint,
+  lines: { itemId: bigint; to: bigint; rackId: bigint }[],
+  reason: string,
+  userId = 65n,
+) {
+  const r = rows.find((x) => x.id === id);
+  if (!r) throw new Error(`no transfer ${id} in the stub`);
+  const role = sessionScenario.role;
+  sessionScenario.role = Role.WAREHOUSE_OWNER;
+  try {
+    const made = correctTransfer(r, {
+      reason,
+      lines: lines.map((l) => ({
+        itemId: l.itemId,
+        expectedReceivedCount: r.items.find((x) => x.id === l.itemId)?.arrivedCount ?? 0n,
+        receivedCount: l.to,
+        placementId: l.rackId,
+      })),
+    });
+    for (const c of made) c.actorUserId = userId;
+  } finally {
+    sessionScenario.role = role;
+  }
 }
 
 export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTransferService>> = {
@@ -243,7 +328,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     move(r, S.CREATED);
     rows.push(r);
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   warehouseTransferList(req) {
@@ -283,7 +368,16 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
   },
 
   warehouseTransferDetail(req) {
-    return { transfer: toWire(visible(req.teamId, req.transferId), true) };
+    return { transfer: toWire(visible(req.teamId, req.transferId), true, req.teamId) };
+  },
+
+  // KOREKSI JUMLAH TERIMA (warehouse_transfer_received_count_correct.go): B only (A and the owning team read NotFound),
+  // an accepted transfer only, then the shared rules with "above what was SENT" as the ceiling.
+  warehouseTransferReceivedCountCorrect(req) {
+    const r = comingTo(req.teamId, req.transferId);
+    correctTransfer(r, req);
+
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   // every-side-of-a-transfer-opens-its-label-photo — the server's rules: the caller must be a side of the transfer (a
@@ -313,7 +407,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     r.financeAccountId = account;
     r.note = req.note;
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   warehouseTransferCancel(req) {
@@ -324,7 +418,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     r.cancelledAtUnix = now();
     move(r, S.CANCELLED, req.description);
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   warehouseTransferMarkLost(req) {
@@ -335,7 +429,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     r.lostAtUnix = now();
     move(r, S.LOST, req.description);
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   warehouseTransferProcess(req) {
@@ -346,7 +440,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     r.processedAtUnix = now();
     move(r, S.PROCESS);
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   warehouseTransferShip(req) {
@@ -360,7 +454,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     r.shippedAtUnix = now();
     move(r, S.SHIPPED, req.receipt);
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   warehouseTransferArrive(req) {
@@ -373,7 +467,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     r.arrivedAtUnix = now();
     move(r, S.ARRIVED);
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 
   warehouseTransferAccept(req) {
@@ -437,6 +531,6 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     r.acceptedAtUnix = now();
     move(r, S.ACCEPTED);
 
-    return { transfer: toWire(r, true) };
+    return { transfer: toWire(r, true, req.teamId) };
   },
 };

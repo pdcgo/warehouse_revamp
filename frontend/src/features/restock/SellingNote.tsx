@@ -16,6 +16,7 @@ import { useRestockActors, useSaveRestockRequest } from "./queries";
 export function SellingNoteHead({ request, mark, action }: { request: RestockRequest; mark?: ReactNode; action?: ReactNode }) {
   // WHO WROTE IT, AND WHEN — the last raise or edit of the restock. Nothing stores the note's own author or time, so
   // this is the nearest real figure, and it is marked (`derived`): an edit that changed only a line counts too.
+  // A Koreksi Jumlah Terima is never in `logs` (its rows are `count_corrections`), so it is never read as this edit.
   const last = [...request.logs]
     .reverse()
     .find((log) => log.fromStatus === RestockRequestStatus.UNSPECIFIED || log.fromStatus === log.toStatus);

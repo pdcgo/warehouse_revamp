@@ -1,5 +1,21 @@
 # Development state — inventory / warehouse_transfer
 
+🔨 **2026-11-13: Koreksi Jumlah Terima — the screens** — uncommitted. *Correct Received Count* on warehouse B's
+transfer page (B's Owner / Admin, Root; accepted only; in the ⋯ menu on a phone) opens the same form
+(`useCorrectTransferReceivedCount`); the lines read *corrected from N* and *N (correction)*, the selling team's history
+row its money, B's batch history the correction — see [restock.md](restock.md). Stories in
+`features/receivedCount/ReceivedCount.stories.tsx`, e2e `the_received_count_is_corrected.spec.ts`.
+
+🔨 **2026-11-13: Koreksi Jumlah Terima — the backend** — uncommitted.
+`WarehouseTransferService.WarehouseTransferReceivedCountCorrect` (`inventory_v1/warehouse_transfer_received_count_correct.go`)
+— warehouse B's Owner / Admin (Root, the Administrator stamped), the restock's rules with what was SENT as the ceiling;
+the units move in the line's layers' batches at B as if typed right at the accept (out: the newest good layers first; in:
+the next layers, a layer with no batch at B minted at its price), one `warehouse_transfer_count_corrections` row per
+batch moved (00043), `transfer_correction` rows, the line's `arrived_count`, and the Transfer metric's received on the
+correction's day, signed. No event, no Team Balance. The detail carries the same correction fields as the restock's.
+Tests `warehouse_transfer_received_count_correct_test.go` (7) and the race / perf files —
+[rpc.md](../../services/inventory_service/rpc.md#koreksi-jumlah-terima--restockreceivedcountcorrect--warehousetransferreceivedcountcorrect-backend-built-2026-11-13).
+
 ✅ **2026-11-05: the shipping's account is server-checked** — uncommitted. `WarehouseTransferCreate` and
 `WarehouseTransferUpdate` refuse an account that is not one of the paying team's ACTIVE accounts — operational or not
 ([a-transfers-shipping-is-paid-from-any-active-account](../../business/inventory/warehouse_transfer_decision.md#a-transfers-shipping-is-paid-from-any-active-account),

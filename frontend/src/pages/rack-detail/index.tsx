@@ -28,7 +28,8 @@ import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { cameFrom } from "../../lib/cameFrom";
 import { formatUnixDate } from "../../lib/datetime";
 import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
-import { MovementTable } from "../../features/inventory/MovementTable";
+import { MovementTable, type MovementRow } from "../../features/inventory/MovementTable";
+import { countCorrectionOf } from "../../features/receivedCount/corrections";
 import { formatRupiah } from "../../lib/money";
 import { useIsMobile } from "../../layouts/shell";
 import { useScrollSpy } from "../../lib/useScrollSpy";
@@ -727,7 +728,7 @@ function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
   const [lens, setLens] = useState<HistoryLens>("all");
   const kinds = lens === "placement" ? PLACEMENT_KINDS : undefined;
 
-  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [movements, setMovements] = useState<(StockMovement & Pick<MovementRow, "countCorrection">)[]>([]);
   // userId → name, and productId → name, for the page of rows: WHO did it (any-warehouse-member-may-move-goods — every
   // row names its person) and to WHAT. One batch each, committed with the rows; a failed lookup falls back to "#id".
   const [actorNames, setActorNames] = useState<Map<string, string>>(new Map());
@@ -781,7 +782,14 @@ function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
           people.set(id, personName(user));
         }
 
-        setMovements(rows);
+        // A received-count correction reads as one — *Jumlah terima dikoreksi · 20 → 18*, why and who
+        // (the-received-count-prototype-is-accepted).
+        setMovements(
+          rows.map((m) => {
+            const countCorrection = countCorrectionOf(m, actors);
+            return countCorrection ? { ...m, countCorrection } : m;
+          }),
+        );
         setActorNames(people);
         setProductNames(names);
         setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));

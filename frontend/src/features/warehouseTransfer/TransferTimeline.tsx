@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
+import { create } from "@bufbuild/protobuf";
 import { Box, Card, Flex, HStack, Icon, Separator, Stack, Text, Timeline } from "@chakra-ui/react";
 import {
   ArrowRight,
   Ban,
   ClipboardCheck,
+  ClipboardPen,
   Clock,
   FilePlus2,
   PackageCheck,
@@ -18,17 +20,24 @@ import type {
   WarehouseTransfer,
   WarehouseTransferLog,
 } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
-import { WarehouseTransferStatus as S } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
+import {
+  WarehouseTransferLogSchema,
+  WarehouseTransferStatus as S,
+} from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
+import type { ReceivedCountCorrection } from "../../gen/warehouse/inventory/v1/received_count_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { useTransferActors } from "./queries";
 import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseTransferStatusBadge";
 import { UserItem } from "../../components/entity/UserItem";
 import { RootTeamBadge } from "../../components/entity/ActorName";
 import { formatUnixDateTime } from "../../lib/datetime";
+import { trailOf } from "../receivedCount/corrections";
+import { CorrectionStep } from "../restock/RestockTimeline";
 
 // THE TRAIL — `transfer.logs`, oldest first (every-transfer-status-change-is-logged). People from three teams move one
 // transfer — the selling team, Warehouse A, Warehouse B — and this is where "who declared it lost" and "when did A ship"
-// are read. Who did it is resolved by id at read time, never a snapshot.
+// are read. Who did it is resolved by id at read time, never a snapshot. KOREKSI JUMLAH TERIMA's rows sit in the same
+// trail, by time (`transfer.count_corrections`) — their own kind, never a status row.
 
 type Kind = "created" | "edit" | "status";
 
@@ -69,20 +78,35 @@ const AWAITING: Partial<Record<S, string>> = {
 
 export function TransferTimeline({ transfer }: { transfer: WarehouseTransfer }) {
   const { t } = useTranslation();
-  const actors = useTransferActors(transfer.logs.map((log) => log.actorUserId));
+  const actors = useTransferActors([
+    ...transfer.logs.map((log) => log.actorUserId),
+    ...transfer.countCorrections.map((c) => c.actorUserId),
+  ]);
   const awaitingKey = AWAITING[transfer.status] ?? "";
+  const trail = trailOf(transfer.logs, transfer.countCorrections);
+  const nameOf = (c: ReceivedCountCorrection) => transfer.items.find((item) => item.id === c.itemId)?.name ?? "";
 
   return (
     <Card.Root maxW="full" overflow="hidden" data-testid="transfer-detail-timeline">
       <Card.Body>
         <Timeline.Root size="lg" variant="subtle">
-          {transfer.logs.map((log, i) => (
-            <LogStep
-              key={log.id > 0n ? log.id.toString() : `i${i}`}
-              log={log}
-              actor={actors.data?.get(log.actorUserId.toString())}
-            />
-          ))}
+          {trail.map((step, i) =>
+            step.kind === "log" ? (
+              <LogStep
+                key={step.log.id > 0n ? step.log.id.toString() : `i${i}`}
+                log={step.log}
+                actor={actors.data?.get(step.log.actorUserId.toString())}
+              />
+            ) : (
+              <LogStep
+                key={`c${step.correction.id}`}
+                log={correctionLog(step.correction)}
+                actor={actors.data?.get(step.correction.actorUserId.toString())}
+                correction={step.correction}
+                productName={nameOf(step.correction)}
+              />
+            ),
+          )}
 
           {awaitingKey && (
             <Timeline.Item data-testid="transfer-timeline-awaiting">
@@ -103,14 +127,39 @@ export function TransferTimeline({ transfer }: { transfer: WarehouseTransfer }) 
   );
 }
 
-function LogStep({ log, actor }: { log: WarehouseTransferLog; actor?: PublicUser }) {
+// A correction's row drawn by the trail's own step: its person, Root stamp and time — on an accepted transfer.
+function correctionLog(c: ReceivedCountCorrection): WarehouseTransferLog {
+  return create(WarehouseTransferLogSchema, {
+    id: c.id,
+    fromStatus: S.ACCEPTED,
+    toStatus: S.ACCEPTED,
+    actorUserId: c.actorUserId,
+    atUnix: c.atUnix,
+    isOverride: c.isOverride,
+  });
+}
+
+function LogStep({
+  log,
+  actor,
+  correction,
+  productName = "",
+}: {
+  log: WarehouseTransferLog;
+  actor?: PublicUser;
+  /** The received-count correction this row stands for — its own kind, never a status row. */
+  correction?: ReceivedCountCorrection;
+  productName?: string;
+}) {
   const { t } = useTranslation();
-  const kind = kindOf(log);
-  const look = lookOf(log);
+  const kind = correction ? "correction" : kindOf(log);
+  const look = correction ? { icon: ClipboardPen, titleKey: "", palette: "orange" } : lookOf(log);
   const fallback = log.actorUserId > 0n ? t("warehouseTransfer.table.userRef", { id: log.actorUserId.toString() }) : "";
+  // A correction's row id is its own table's — kept apart from the trail's ids.
+  const testId = correction ? `transfer-timeline-c${correction.id}` : `transfer-timeline-${log.id}`;
 
   return (
-    <Timeline.Item data-testid={`transfer-timeline-${log.id}`} data-kind={kind}>
+    <Timeline.Item data-testid={testId} data-kind={kind}>
       <Timeline.Connector>
         <Timeline.Separator />
         <Timeline.Indicator colorPalette={look.palette} color={look.palette ? "colorPalette.fg" : "fg.muted"}>
@@ -120,7 +169,7 @@ function LogStep({ log, actor }: { log: WarehouseTransferLog; actor?: PublicUser
       <Timeline.Content>
         <Flex align="center" gap="card" wrap="wrap">
           {actor ? (
-            <Box w="auto" maxW="72" flexShrink="0" data-testid={`transfer-timeline-${log.id}-by`}>
+            <Box w="auto" maxW="72" flexShrink="0" data-testid={`${testId}-by`}>
               <UserItem user={actor} />
             </Box>
           ) : (
@@ -136,10 +185,13 @@ function LogStep({ log, actor }: { log: WarehouseTransferLog; actor?: PublicUser
           {(actor || fallback) && <Separator orientation="vertical" height="auto" alignSelf="stretch" />}
 
           <Stack gap="1" minW="0" flex="1">
+            {correction ? (
+              <CorrectionStep correction={correction} productName={productName} testId={testId} />
+            ) : (
             <HStack gap="2" wrap="wrap">
               <Timeline.Title>{t(look.titleKey)}</Timeline.Title>
               {kind === "status" ? (
-                <HStack gap="1" data-testid={`transfer-timeline-${log.id}-move`}>
+                <HStack gap="1" data-testid={`${testId}-move`}>
                   <WarehouseTransferStatusBadge status={log.fromStatus} />
                   <Icon as={ArrowRight} boxSize="3" color="fg.muted" />
                   <WarehouseTransferStatusBadge status={log.toStatus} />
@@ -148,12 +200,13 @@ function LogStep({ log, actor }: { log: WarehouseTransferLog; actor?: PublicUser
                 <WarehouseTransferStatusBadge status={log.toStatus} />
               )}
             </HStack>
-            {kind !== "created" && log.description && (
+            )}
+            {!correction && kind !== "created" && log.description && (
               <Text
                 fontSize="sm"
                 whiteSpace="pre-wrap"
                 wordBreak="break-word"
-                data-testid={`transfer-timeline-${log.id}-description`}
+                data-testid={`${testId}-description`}
               >
                 {log.description}
               </Text>

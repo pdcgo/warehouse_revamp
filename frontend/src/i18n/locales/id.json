@@ -5801,5 +5801,68 @@
     "info": {
       "correctedFrom": "dikoreksi dari {{from}}"
     }
+  },
+  "receivedCount": {
+    "action": "Koreksi Jumlah Terima",
+    "title": "Koreksi Jumlah Terima",
+    "subtitleRestock": "Restok {{ref}}",
+    "subtitleTransfer": "Transfer #{{id}}",
+    "intro": "Ketik berapa yang benar-benar ada di kotak, per baris. Unit yang tidak pernah ada keluar dari batch sebagai Kurang (koreksi); unit yang terlewat masuk ke batch yang sama.",
+    "ordered": "Dipesan {{count}}",
+    "sent": "Dikirim {{count}}",
+    "accepted": "Diterima {{count}}",
+    "broken": "rusak {{count}}",
+    "real": "Jumlah sebenarnya",
+    "realOf": "Jumlah sebenarnya {{name}}",
+    "batchHolds": "Batch #{{id}} · masih {{count}} di gudang ini",
+    "noBatch": "Belum ada batch di sini — unit yang masuk membuat batch baru di harga baris",
+    "effect": {
+      "out": "{{count}} Kurang (koreksi) — keluar dari batch #{{id}}",
+      "in": "{{count}} masuk ke batch #{{id}}",
+      "inNew": "{{count}} masuk ke batch baru"
+    },
+    "fromRack": "Diambil dari rak",
+    "toRack": "Ditaruh di rak",
+    "rackOption": "{{code}} · berisi {{count}}",
+    "rackPlaceholder": "Pilih rak",
+    "error": {
+      "belowBroken": "Tidak boleh kurang dari yang rusak ({{count}})",
+      "overOrdered": "Lebih dari yang dipesan ({{count}}) — koreksi tidak menambah unit di atas baris",
+      "overSent": "Lebih dari yang dikirim ({{count}})",
+      "overBatch": "Batch #{{id}} tinggal {{count}} di sini — hanya unit yang masih ada yang bisa dikeluarkan",
+      "overRack": "{{code}} hanya berisi {{count}}",
+      "noRack": "Pilih raknya",
+      "reasonRequired": "Alasan wajib diisi",
+      "unchanged": "Belum ada jumlah yang berubah."
+    },
+    "reason": "Alasan",
+    "reasonPlaceholder": "Contoh: dihitung ulang di rak — isi kotak 18, terketik 20",
+    "reasonHelper": "Tim penjual membacanya di riwayat, beserta siapa yang mengoreksi.",
+    "sold": "Unit yang sudah keluar (terjual, dipindah, hilang) tetap di harga saat keluar; harga batch tidak berubah.",
+    "save": "Simpan Koreksi",
+    "saved": "Jumlah terima dikoreksi",
+    "failed": "Koreksi tidak tersimpan",
+    "confirm": {
+      "title": "Koreksi jumlah terima?",
+      "message": "{{lines}}. Langsung berlaku dan tidak bisa dibatalkan — koreksi yang salah diperbaiki dengan koreksi berikutnya.",
+      "line": "{{name}} {{from}} → {{to}}",
+      "dismiss": "Kembali"
+    },
+    "was": "dikoreksi dari {{count}}",
+    "mark": {
+      "only": "{{count}} (koreksi)",
+      "plus": "{{door}} + {{count}} (koreksi)",
+      "minus": "{{door}} − {{count}} (koreksi)"
+    },
+    "badge": "Kurang (koreksi) {{count}}",
+    "missingCorrection": "Kurang (koreksi)",
+    "borne": "senilai {{amount}} · ditanggung tim penjual",
+    "lifted": "beban tim penjual berkurang {{amount}}",
+    "history": {
+      "title": "Jumlah terima dikoreksi · {{from}} → {{to}}",
+      "out": "{{count}} Kurang (koreksi)",
+      "in": "{{count}} masuk ke batch",
+      "kind": "Jumlah terima dikoreksi"
+    }
   }
 }

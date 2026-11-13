@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// KOREKSI JUMLAH TERIMA — correcting a wrong stock-in (docs/business/inventory/adjustment_decision.md:
+// the-warehouse-corrects-a-wrong-stock-in-alone, a-stock-in-correction-keeps-the-batch-price,
+// a-wrong-stock-in-is-a-received-count-correction, the-received-count-prototype-is-accepted,
+// a-received-count-correction-counts-on-its-own-day). The receiving warehouse's Owner or Admin — or Root / the System
+// Administrator, stamped an override — corrects an ACCEPTED restock's or transfer's received count, line by line, with a
+// reason; it posts at once. Too many typed: the units leave the line's batch at its price, off a rack the batch sits on,
+// and become MISSING at the door (koreksi), borne by the selling team. Too few typed: the real units go into the same
+// batch at its price, onto a chosen rack. Never above what the line says, never below its broken units, never more out
+// than the batch or the rack still holds. In the ledger it is an `adjustment` (a-rollback-only-undoes-a-take). Shared by
+// RestockRequestService.RestockReceivedCountCorrect and WarehouseTransferService.WarehouseTransferReceivedCountCorrect.
+
+// ReceivedCountLine is ONE line of a correction, as the form sends it — units only (a-warehouse-sees-no-seller-money).
+message ReceivedCountLine {
+  // restock_items.id / warehouse_transfer_items.id — a line of THIS restock or transfer, each at most once.
+  uint64 item_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The received count the form SHOWED — an optimistic check: a line whose count is no longer this (someone corrected it
+  // first) is refused as stale, so two people correcting at once cannot overwrite each other unseen.
+  int64 expected_received_count = 2 [(buf.validate.field).int64.gte = 0];
+  // The REAL count — what the box held, broken units included. Never the expected count (nothing to correct), never
+  // below the line's broken units, never above what was ordered (a restock) or sent (a transfer).
+  int64 received_count = 3 [(buf.validate.field).int64.gte = 0];
+  // The rack the units come off (too many typed — a rack holding the product here) or go onto (too few typed) — a
+  // placement of the receiving warehouse (there-is-no-unplaced-pile, a-shelf-never-goes-below-zero).
+  uint64 placement_id = 4 [(buf.validate.field).uint64.gt = 0];
+}
+
+// ReceivedCountCorrection is ONE line's correction as the history shows it: *Jumlah terima dikoreksi · from → to*, the
+// reason and who (a-wrong-stock-in-is-a-received-count-correction). Oldest first on the restock or transfer.
+message ReceivedCountCorrection {
+  uint64 id = 1;
+  uint64 item_id = 2;
+  uint64 product_id = 3;
+  // The line's received count before and after this correction.
+  int64 from_count = 4;
+  int64 to_count = 5;
+  // from − to: units that LEFT the batch (> 0 — too many were typed, now *Kurang (koreksi)*) or went INTO it (< 0).
+  int64 units_out = 6;
+  // The batch the units moved in — on a transfer line that drew several of B's batches, the first one moved.
+  uint64 batch_id = 7;
+  // The rack they came off or went onto.
+  uint64 placement_id = 8;
+  string reason = 9;
+  // user_service id — resolved to a name at read time.
+  uint64 actor_user_id = 10;
+  // Root or the System Administrator corrected from outside the warehouse (an-override-is-stamped-in-every-service);
+  // the screen draws the shared "by Root team" badge.
+  bool is_override = 11;
+  int64 at_unix = 12;
+  // The `adjustment` transaction the correction wrote.
+  uint64 transaction_id = 13;
+  // At the batch's price (a-stock-in-correction-keeps-the-batch-price): price_unit, and total = what the units out are
+  // worth — what the selling team bears (less, when negative). SET FOR THE OWNING TEAM ONLY; a warehouse reading it
+  // gets them unset (a-warehouse-sees-no-seller-money, the accepted prototype's result).
+  optional double price_unit = 14;
+  optional double total = 15;
+}
+
+// ReceivedCountShelf is one rack holding the line's product in the receiving warehouse, and how many units.
+message ReceivedCountShelf {
+  uint64 placement_id = 1;
+  int64 units = 2;
+}
+
+// ReceivedCountLineFacts is what the correction form shows of a line's batch — set for the RECEIVING warehouse on an
+// ACCEPTED restock or transfer only, never for the selling team.
+message ReceivedCountLineFacts {
+  // The batch a correction moves first — the line's own; 0 when the line has none yet (nothing arrived good: units in
+  // mint it at the line's price).
+  uint64 batch_id = 1;
+  // The most units a correction may take OUT (a-stock-in-correction-keeps-the-batch-price: only the units still there).
+  int64 batch_holds = 2;
+  // The racks holding the product here, with units — where units out may come off. A rack counts the product, never a
+  // batch (a-batch-shows-the-racks-it-was-put-on), so these are the product's units on each rack.
+  repeated ReceivedCountShelf shelves = 3;
+}

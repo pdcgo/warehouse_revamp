@@ -4,7 +4,8 @@ import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { personName } from "../../lib/users";
 import { canWrite, type CurrentTeam } from "../team/TeamContext";
 import { fetchActors } from "../users/queries";
-import type { PriceChange } from "./MovementTable";
+import type { CountCorrection, PriceChange } from "./MovementTable";
+import { type CountedRow, countCorrectionOf } from "../receivedCount/corrections";
 
 // KOREKSI HARGA's shared rules on the screen side (the-owning-team-revalues-with-a-reason,
 // the-correct-price-prototype-is-accepted): who gets the button, and how a history row that is a price correction reads.
@@ -62,17 +63,22 @@ export function priceChangeOf(row: PricedRow, actors: Map<string, PublicUser>): 
 }
 
 /**
- * A page of history rows with each price correction's `priceChange` — its actors named with ONE UserByIDs, only when the
- * page holds a correction (a page without one makes no extra call). Never throws: an unnamed actor reads `#id`.
+ * A page of history rows with each correction said as one — a price correction's `priceChange` (Koreksi Harga) and a
+ * received-count correction's `countCorrection` (Koreksi Jumlah Terima) — their actors named with ONE UserByIDs, only when
+ * the page holds a correction (a page without one makes no extra call). Never throws: an unnamed actor reads `#id`.
  */
-export async function withPriceChanges<R extends PricedRow>(rows: R[]): Promise<(R & { priceChange?: PriceChange })[]> {
-  const corrections = rows.filter((r) => r.kind === MovementKind.REVALUATION);
+export async function withCorrections<R extends PricedRow & CountedRow>(
+  rows: R[],
+): Promise<(R & { priceChange?: PriceChange; countCorrection?: CountCorrection })[]> {
+  const corrections = rows.filter((r) => r.kind === MovementKind.REVALUATION || r.receivedCountCorrection !== undefined);
   if (corrections.length === 0) return rows;
 
   const actors = await fetchActors(corrections.map((r) => r.actorUserId));
 
   return rows.map((r) => {
     const priceChange = priceChangeOf(r, actors);
-    return priceChange ? { ...r, priceChange } : r;
+    if (priceChange) return { ...r, priceChange };
+    const countCorrection = countCorrectionOf(r, actors);
+    return countCorrection ? { ...r, countCorrection } : r;
   });
 }
