@@ -815,6 +815,9 @@ async function inboundRow(page: Page, restockId: string, q = "") {
 // does not hide the next. The warehouse's side is read as one warehouse role (status-is-per-then). Every role and case
 // pays from its OWN account, so a balance read in one test is never moved by another test's event. The ground is seeded
 // in beforeAll, so a worker restarted after a failure seeds its own instead of reading a moved SUFFIX.
+//
+// `restock recorded in analytic metric` is 🚧 unimplemented — no analytic metric counts a restock when it is raised — so it has no check
+// here yet.
 test.describe("selling:all wants to restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -824,38 +827,38 @@ test.describe("selling:all wants to restock", () => {
     { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
     { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
   ] as const;
-  // The givens' cases, each with its thens as its rows say them (given-is-who-wants-what-in-which-case). A then the case
-  // does not change keeps the plain words.
+  // The givens' cases, each with its thens as its rows say them — a then names the given's fact it checks
+  // (given-is-who-wants-what-in-which-case).
   const CASES = [
     {
-      cond: "1 product",
+      cond: "1 product · 1 warehouse · operational account · no shipping cost",
       key: "p1",
       products: 1,
       shipping: 0,
-      created: "restock created",
-      warehouse: "recorded at warehouse",
-      ongoing: "ongoing stock increases",
-      balance: "paying account balance decreases",
+      created: "restock created with 1 product",
+      warehouse: "1 product recorded at warehouse",
+      ongoing: "ongoing stock of 1 product increases",
+      balance: "operational account balance decreases by product total",
     },
     {
-      cond: "2 products",
+      cond: "2 products · 1 warehouse · operational account · no shipping cost",
       key: "p2",
       products: 2,
       shipping: 0,
       created: "restock created with 2 products",
-      warehouse: "recorded at warehouse, both products",
-      ongoing: "ongoing stock of product 1 and product 2 increases",
-      balance: "paying account balance decreases by both products",
+      warehouse: "2 products recorded at warehouse",
+      ongoing: "ongoing stock of 2 products increases",
+      balance: "operational account balance decreases by product total",
     },
     {
-      cond: "with shipping cost",
+      cond: "1 product · 1 warehouse · operational account · shipping cost",
       key: "sc",
       products: 1,
       shipping: 15_000,
-      created: "restock created with shipping cost",
-      warehouse: "recorded at warehouse",
-      ongoing: "ongoing stock increases",
-      balance: "paying account balance decreases, shipping cost included",
+      created: "restock created with 1 product and shipping cost",
+      warehouse: "1 product recorded at warehouse",
+      ongoing: "ongoing stock of 1 product increases",
+      balance: "operational account balance decreases by product total + shipping cost",
     },
   ] as const;
   // Every line of every case: 10 pcs for Rp 100.000.
@@ -1033,7 +1036,7 @@ test.describe("selling:all wants to restock", () => {
         });
 
         // The line financial_account_service writes for it: "Restock #<id>".
-        await test.step(`then: recorded in account history (Restock #${restockId})`, async () => {
+        await test.step(`then: recorded in operational account history (Restock #${restockId})`, async () => {
           await expect
             .soft(async () => {
               await page.goto(`/financial-accounts/${account}`);
@@ -1059,7 +1062,7 @@ test.describe("selling:all wants to restock", () => {
 // Same shape as the create block above: one test per GIVEN, run as EVERY warehouse role, marking the box arrived on its
 // own inbound list. The restock is the given's state — ongoing, or given up as lost by the seller
 // (a-late-lost-box-is-signed-for-as-arrived) — so it is seeded through the API; the mark is the WHEN, through the
-// screen. (set courier charge) is 🚧 unimplemented — the server drops the charge — so it has no check here yet.
+// screen. (status: ongoing · COD) is 🚧 unimplemented — the server drops the charge — so it has no check here yet.
 test.describe("warehouse:all wants to receive a restock", () => {
   const PASSWORD = "e2e-acceptance-pass-1";
   const ROLES = [
@@ -1069,8 +1072,8 @@ test.describe("warehouse:all wants to receive a restock", () => {
   ] as const;
   // The givens' cases: the status the restock is in when the box is marked arrived.
   const CASES = [
-    { cond: "from ongoing", key: "on", from: "ongoing", status: 1 },
-    { cond: "from lost", key: "lo", from: "lost", status: 5 },
+    { cond: "status: ongoing · no COD", key: "on", from: "ongoing", status: 1 },
+    { cond: "status: lost · no COD", key: "lo", from: "lost", status: 5 },
   ] as const;
 
   const username = (role: string) => `e2earr${role}${SUFFIX}`;
@@ -1202,20 +1205,25 @@ async function readyAt(page: Page, warehouseCode: string, productCode: string) {
 // the form does not change. Every then is read on a screen — the warehouse's inbound list, rack, and batch, and the
 // selling team's product picker for its Ready and Ongoing.
 //
-// (from arrived) and (from ongoing) count a restock of 10 pcs for Rp 100.000 whole onto the shelf. Each product also has
-// a second restock of 5 pcs that stays ongoing, so `ongoing stock decreases` reads 15 → 5 rather than "something → none".
+// Every given names five facts — status · what the box held · whether the product is new to the warehouse · COD ·
+// suppliers — and differs from the plain one, (status: ongoing · all received · new product · no COD · 1 supplier), by one.
 //
-// (product new to warehouse) and (product already listed) read the warehouse's own Products — every product it holds or
-// has held — for the product's ONE row. (has brokens, thrown away) counts 10 in with 2 broken: 8 reach the shelf, and the
-// 2 are a broken row the selling team reads on its restock page. (has brokens, put on rack) is 🚧 unimplemented — the
-// accept keeps no rack for broken units — so it has no check here yet. (has missing items) counts
-// 7 in of 10, and the 3 are a missing row, read the same way. (1 supplier) and (multi suppliers) check
-// `recorded at supplier`. (set courier charge) is not tested here yet. (multi suppliers) is ❌ error: supplier_service folds a restock under ONE restock-level supplier, so a restock
-// whose lines name different suppliers is recorded at none (commonLineSupplier). Its check is `test.fail` — green while
-// the bug stands, red the day it is fixed, which is the sign to ask the owner to change the status
-// (acceptances-are-markdown). A one-supplier restock accepted AFTER the mixed one is its CONTROL: once that shows, the
-// fold has run, so the mixed one's absence is the bug and not a slow fold. A broken fold fails the (1 supplier) test
-// beside it, so `test.fail` hides nothing.
+// (status: arrived …) and (status: ongoing …) count a restock of 10 pcs for Rp 100.000 whole onto the shelf. Each product
+// also has a second restock of 5 pcs that stays ongoing, so `ongoing stock decreases` reads 15 → 5 rather than
+// "something → none". The plain given's thens are read by three tests: that one, `…: new product listed in warehouse`
+// and `…: recorded at 1 supplier`, each on its own ground.
+//
+// The new-product and listed-product checks read the warehouse's own Products — every product it holds or has held — for
+// the product's ONE row. (brokens thrown away) counts 10 in with 2 broken: 8 reach the shelf, and the 2 are a broken row
+// the selling team reads on its restock page. (brokens on rack) is 🚧 unimplemented — the accept keeps no rack for broken
+// units — so it has no check here yet. (missing items) counts 7 in of 10, and the 3 are a missing row, read the same way.
+// (COD) and the analytic-metric and product-history thens are not tested here yet — `COD recorded in analytic metric`
+// is 🚧, liability keeps no metric. (multi suppliers) is ❌ error:
+// supplier_service folds a restock under ONE restock-level supplier, so a restock whose lines name different suppliers is
+// recorded at none (commonLineSupplier). Its check is `test.fail` — green while the bug stands, red the day it is fixed,
+// which is the sign to ask the owner to change the status (acceptances-are-markdown). A one-supplier restock accepted
+// AFTER the multi-supplier one is its CONTROL: once that shows, the fold has run, so the multi one's absence is the bug and
+// not a slow fold. A broken fold fails the `…: recorded at 1 supplier` test beside it, so `test.fail` hides nothing.
 test.describe("warehouse:all wants to accept a restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -1227,8 +1235,8 @@ test.describe("warehouse:all wants to accept a restock", () => {
   ] as const;
   // The givens whose restock is counted whole onto the shelf, by the status it is in when it is counted.
   const CASES = [
-    { cond: "from arrived", key: "ar", from: "arrived", status: 4 },
-    { cond: "from ongoing", key: "on", from: "ongoing", status: 1 },
+    { cond: "status: arrived · all received · new product · no COD · 1 supplier", key: "ar", from: "arrived", status: 4 },
+    { cond: "status: ongoing · all received · new product · no COD · 1 supplier", key: "on", from: "ongoing", status: 1 },
   ] as const;
   // A counted restock: 10 pcs for Rp 100.000, so Rp 10.000 a unit. Its product's other restock: 5 pcs, left ongoing.
   const COUNTED = 10;
@@ -1530,7 +1538,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
           });
         }
 
-        await test.step("then: units on rack", async () => {
+        await test.step("then: all received on rack", async () => {
           await page.goto(`/inventories/racks/${ground.rack}`);
           await expect.soft(page.getByTestId(`rack-stock-onhand-${productId}`)).toHaveText(String(COUNTED));
         });
@@ -1552,11 +1560,11 @@ test.describe("warehouse:all wants to accept a restock", () => {
 
         // THEN — as the selling team, whose Ready and Ongoing these are.
         await signIn(page, SELLER, ground.team);
-        await test.step("then: ready stock increases", async () => {
+        await test.step("then: ready stock increases by all received", async () => {
           await expect.soft(await readyAt(page, WH_CODE, code)).toHaveText(String(COUNTED));
         });
 
-        await test.step(`then: ongoing stock decreases (from ${COUNTED + LEFT_ONGOING} to ${LEFT_ONGOING})`, async () => {
+        await test.step(`then: ongoing stock decreases by all received (from ${COUNTED + LEFT_ONGOING} to ${LEFT_ONGOING})`, async () => {
           await expect.soft(await ongoingOf(page, code)).toHaveText(String(LEFT_ONGOING));
         });
       });
@@ -1564,7 +1572,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
   }
 
   for (const r of ROLES) {
-    test(`${r.given} accept restock (has brokens, thrown away)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · brokens thrown away · new product · no COD · 1 supplier)`, async ({ page }) => {
       const restock = ground.restocks[`${r.key}-br`];
       const id = restock.request.id;
       const code = caseSku(r.key, "br");
@@ -1596,11 +1604,11 @@ test.describe("warehouse:all wants to accept a restock", () => {
 
       // THEN — as the selling team: its Ready, and its restock page's count.
       await signIn(page, SELLER, ground.team);
-      await test.step(`then: ready stock increases, broken excluded (${COUNTED} − ${BROKEN})`, async () => {
+      await test.step(`then: ready stock increases, brokens excluded (${COUNTED} − ${BROKEN})`, async () => {
         await expect.soft(await readyAt(page, WH_CODE, code)).toHaveText(String(COUNTED - BROKEN));
       });
 
-      await test.step("then: broken items recorded", async () => {
+      await test.step("then: brokens thrown away recorded", async () => {
         await page.goto(`/inventories/restock/${id}`);
         await page.getByTestId("section-nav-products").click();
         await page.getByTestId(`restock-detail-adjustment-${productId}`).click();
@@ -1609,7 +1617,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
       });
     });
 
-    test(`${r.given} accept restock (has missing items)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · missing items · new product · no COD · 1 supplier)`, async ({ page }) => {
       const restock = ground.restocks[`${r.key}-ms`];
       const id = restock.request.id;
       const code = caseSku(r.key, "ms");
@@ -1641,7 +1649,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
 
       // THEN — as the selling team: its Ready, and its restock page's count.
       await signIn(page, SELLER, ground.team);
-      await test.step(`then: ready stock increases, missing excluded (${COUNTED} − ${MISSING})`, async () => {
+      await test.step(`then: ready stock increases, missing items excluded (${COUNTED} − ${MISSING})`, async () => {
         await expect.soft(await readyAt(page, WH_CODE, code)).toHaveText(String(arrived));
       });
 
@@ -1654,20 +1662,20 @@ test.describe("warehouse:all wants to accept a restock", () => {
       });
     });
 
-    test(`${r.given} accept restock (product new to warehouse)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · 1 supplier): new product listed in warehouse`, async ({ page }) => {
       const code = caseSku(r.key, "nw");
 
       await signIn(page, username(r.key), ground.warehouse);
       await acceptWhole(page, [ground.restocks[`${r.key}-nw`]], COUNTED);
 
-      await test.step("then: product listed in target warehouse", async () => {
+      await test.step("then: new product listed in warehouse", async () => {
         const rows = await warehouseRows(page, code);
         await expect.soft(rows).toHaveCount(1);
         await expect.soft(rows.locator('[data-testid^="stock-onhand-"]')).toHaveText(String(COUNTED));
       });
     });
 
-    test(`${r.given} accept restock (product already listed)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · listed product · no COD · 1 supplier)`, async ({ page }) => {
       const code = caseSku(r.key, "al");
 
       await signIn(page, username(r.key), ground.warehouse);
@@ -1677,24 +1685,24 @@ test.describe("warehouse:all wants to accept a restock", () => {
       await acceptWhole(page, [ground.restocks[`${r.key}-al`]], COUNTED);
 
       // Still ONE row, now holding both counts.
-      await test.step("then: product not listed again", async () => {
+      await test.step("then: listed product not listed again", async () => {
         const rows = await warehouseRows(page, code);
         await expect.soft(rows.locator('[data-testid^="stock-onhand-"]')).toHaveText(String(COUNTED * 2));
         await expect.soft(rows).toHaveCount(1);
       });
     });
 
-    test(`${r.given} accept restock (1 supplier)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · 1 supplier): recorded at 1 supplier`, async ({ page }) => {
       await login(page, username(r.key), PASSWORD);
       await acceptWhole(page, [ground.restocks[`${r.key}-single`]]);
 
       await asSeller(page);
-      await test.step("then: recorded at supplier", async () => {
+      await test.step("then: recorded at 1 supplier", async () => {
         await untilRecorded(page, ground.supplierA, sku(r.key, "C"));
       });
     });
 
-    test(`${r.given} accept restock (multi suppliers)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · multi suppliers)`, async ({ page }) => {
       test.fail(true, "❌ error — docs/acceptances/inventory/restock.md#a-multi-supplier-restock-is-recorded-at-no-supplier");
 
       // The mixed one first, its control after.
@@ -1705,7 +1713,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
       // The control has landed, so the fold has run past the mixed restock.
       await untilRecorded(page, ground.supplierA, sku(r.key, "D"));
 
-      await test.step("then: recorded at supplier", async () => {
+      await test.step("then: recorded at each supplier", async () => {
         const atA = await byProduct(page, ground.supplierA);
         await expect.soft(atA.getByTestId("statistics-products")).toContainText(`E2E ${sku(r.key, "A")}`);
         const atB = await byProduct(page, ground.supplierB);
@@ -1720,11 +1728,14 @@ test.describe("warehouse:all wants to accept a restock", () => {
 // Every selling role edits through its own restock page and form. The restocks are the GIVEN, seeded through the API;
 // each has its OWN paying account, so a balance read in one test is never moved by another test's events.
 //
-// (ongoing: edit product, change), (ongoing: edit product, add) and (ongoing: edit product, removed) are one test each per
+// (change product), (add product) and (remove product) — each `status: ongoing` — are one test each per
 // role, each THEN a step named as its row. The other two tests — an
 // ongoing restock moved to another warehouse and account, and an arrived restock's count with a product added — predate
 // the edit givens' rediscussion: they keep their old step names until their givens are tested by hand
-// (ongoing: target warehouse, ongoing: paying account, arrived).
+// (change warehouse, change account, arrived).
+//
+// The finance-analytic-metric thens are not tested here yet; `restock analytic metric adjusted` is 🚧 — no analytic metric
+// counts a restock — so it has no check.
 test.describe("selling:all wants to edit a restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -1734,12 +1745,12 @@ test.describe("selling:all wants to edit a restock", () => {
     { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
     { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
   ] as const;
-  // The restocks seeded per role: "on" for (ongoing: edit product, change), "ad" for (ongoing: edit product, add), "rm"
-  // for (ongoing: edit product, removed), and the two that predate the rediscussion.
+  // The restocks seeded per role: "on" for (change product), "ad" for (add product), "rm"
+  // for (remove product), and the two that predate the rediscussion.
   const CASES = [
     { cond: "ongoing", key: "on" },
-    { cond: "ongoing: edit product, add", key: "ad" },
-    { cond: "ongoing: edit product, removed", key: "rm" },
+    { cond: "status: ongoing · 1 product · add product", key: "ad" },
+    { cond: "status: ongoing · 2 products · remove product", key: "rm" },
     { cond: "ongoing, moved to another warehouse and account", key: "mv" },
     { cond: "arrived", key: "ar" },
   ] as const;
@@ -1886,10 +1897,10 @@ test.describe("selling:all wants to edit a restock", () => {
     }).toPass({ timeout: 30_000 });
   }
 
-  // (ongoing: edit product, change) — line 0 goes from 10 for Rp 100.000 to 12 for Rp 120.000, and gains a note.
+  // (change product) — line 0 goes from 10 for Rp 100.000 to 12 for Rp 120.000, and gains a note.
   const LINE_NOTE = "two more at the same price";
   for (const r of ROLES) {
-    test(`${r.given} edit restock (ongoing: edit product, change)`, async ({ page }) => {
+    test(`${r.given} edit restock (status: ongoing · 1 product · change product · 1 warehouse · operational account)`, async ({ page }) => {
       const id = ground.restocks[at(r.key, "on")];
       const account = ground.accounts[at(r.key, "on")];
       const p = code(r.key, "on", "P");
@@ -1942,9 +1953,9 @@ test.describe("selling:all wants to edit a restock", () => {
       });
     });
 
-    // (ongoing: edit product, add) — the restock of 10 × P for Rp 100.000 gains 5 × Q for Rp 50.000. Q follows the
+    // (add product) — the restock of 10 × P for Rp 100.000 gains 5 × Q for Rp 50.000. Q follows the
     // restock's one supplier, which an edit opens as the supplier for every product.
-    test(`${r.given} edit restock (ongoing: edit product, add)`, async ({ page }) => {
+    test(`${r.given} edit restock (status: ongoing · 1 product · add product · 1 warehouse · operational account)`, async ({ page }) => {
       const id = ground.restocks[at(r.key, "ad")];
       const account = ground.accounts[at(r.key, "ad")];
       const p = code(r.key, "ad", "P");
@@ -1998,8 +2009,8 @@ test.describe("selling:all wants to edit a restock", () => {
       });
     });
 
-    // (ongoing: edit product, removed) — the restock of 10 × P and 4 × Q (Rp 100.000 + Rp 40.000) loses Q.
-    test(`${r.given} edit restock (ongoing: edit product, removed)`, async ({ page }) => {
+    // (remove product) — the restock of 10 × P and 4 × Q (Rp 100.000 + Rp 40.000) loses Q.
+    test(`${r.given} edit restock (status: ongoing · 2 products · remove product · 1 warehouse · operational account)`, async ({ page }) => {
       const id = ground.restocks[at(r.key, "rm")];
       const account = ground.accounts[at(r.key, "rm")];
       const p = code(r.key, "rm", "P");
