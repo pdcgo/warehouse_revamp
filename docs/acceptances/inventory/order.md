@@ -40,4 +40,25 @@ Business: [order.md](../../business/inventory/order.md) · rules: [guide.md](../
 <tr><td>sale recorded in order settlement</td><td>⬜ untested</td></tr>
 <tr><td>order recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · 1 order)</td><td rowspan="4" valign="top">confirm order</td><td>status changed from pending to processed</td><td>⬜ untested</td></tr>
+<tr><td>confirm recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees order processed</td><td>⬜ untested</td></tr>
+<tr><td>order can be changed to picked</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · multi orders)</td><td rowspan="3" valign="top">confirm order</td><td>status of every order changed from pending to processed</td><td>⬜ untested</td></tr>
+<tr><td>confirm recorded in each order timeline</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees every order processed</td><td>⬜ untested</td></tr>
+<tr><td rowspan="7" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · 1 product · 1 rack · opened by receipt scan · all items scanned)</td><td rowspan="7" valign="top">pick order</td><td>pick page opens from receipt scan</td><td>⬜ untested</td></tr>
+<tr><td>pick page shows 1 rack for 1 product</td><td>⬜ untested</td></tr>
+<tr><td>every scanned item correct</td><td>⬜ untested</td></tr>
+<tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
+<tr><td>pick recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees order picked</td><td>⬜ untested</td></tr>
+<tr><td>order can be changed to shipping</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · 1 product · 2 racks · all items scanned)</td><td rowspan="2" valign="top">pick order</td><td>pick page shows 2 racks with quantity of each</td><td>⬜ untested</td></tr>
+<tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · item not on order scanned)</td><td rowspan="2" valign="top">pick order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td>cannot set picked</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · more items than ordered scanned)</td><td rowspan="2" valign="top">pick order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td>item count stays at ordered quantity</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · not every item scanned)</td><td rowspan="1" valign="top">pick order</td><td>cannot set picked</td><td>⬜ untested</td></tr>
 </table>
