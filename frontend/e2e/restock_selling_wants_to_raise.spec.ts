@@ -17,6 +17,9 @@ import { SUFFIX, login, api, tick, ongoingOf, inboundRow } from "./restock_helpe
 // does not hide the next. The warehouse's side is read as one warehouse role (status-is-per-then). Every role and case
 // pays from its OWN account, so a balance read in one test is never moved by another test's event. The ground is seeded
 // in beforeAll, so a worker restarted after a failure seeds its own instead of reading a moved SUFFIX.
+//
+// `restock recorded in analytic metric` is 🚧 unimplemented — no analytic metric counts a restock when it is raised — so it has no check
+// here yet.
 test.describe("selling:all wants to restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -26,38 +29,38 @@ test.describe("selling:all wants to restock", () => {
     { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
     { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
   ] as const;
-  // The givens' cases, each with its thens as its rows say them (given-is-who-wants-what-in-which-case). A then the case
-  // does not change keeps the plain words.
+  // The givens' cases, each with its thens as its rows say them — a then names the given's fact it checks
+  // (given-is-who-wants-what-in-which-case).
   const CASES = [
     {
-      cond: "1 product",
+      cond: "1 product · 1 warehouse · operational account · no shipping cost",
       key: "p1",
       products: 1,
       shipping: 0,
-      created: "restock created",
-      warehouse: "recorded at warehouse",
-      ongoing: "ongoing stock increases",
-      balance: "paying account balance decreases",
+      created: "restock created with 1 product",
+      warehouse: "1 product recorded at warehouse",
+      ongoing: "ongoing stock of 1 product increases",
+      balance: "operational account balance decreases by product total",
     },
     {
-      cond: "2 products",
+      cond: "2 products · 1 warehouse · operational account · no shipping cost",
       key: "p2",
       products: 2,
       shipping: 0,
       created: "restock created with 2 products",
-      warehouse: "recorded at warehouse, both products",
-      ongoing: "ongoing stock of product 1 and product 2 increases",
-      balance: "paying account balance decreases by both products",
+      warehouse: "2 products recorded at warehouse",
+      ongoing: "ongoing stock of 2 products increases",
+      balance: "operational account balance decreases by product total",
     },
     {
-      cond: "with shipping cost",
+      cond: "1 product · 1 warehouse · operational account · shipping cost",
       key: "sc",
       products: 1,
       shipping: 15_000,
-      created: "restock created with shipping cost",
-      warehouse: "recorded at warehouse",
-      ongoing: "ongoing stock increases",
-      balance: "paying account balance decreases, shipping cost included",
+      created: "restock created with 1 product and shipping cost",
+      warehouse: "1 product recorded at warehouse",
+      ongoing: "ongoing stock of 1 product increases",
+      balance: "operational account balance decreases by product total + shipping cost",
     },
   ] as const;
   // Every line of every case: 10 pcs for Rp 100.000.
@@ -235,7 +238,7 @@ test.describe("selling:all wants to restock", () => {
         });
 
         // The line financial_account_service writes for it: "Restock #<id>".
-        await test.step(`then: recorded in account history (Restock #${restockId})`, async () => {
+        await test.step(`then: recorded in operational account history (Restock #${restockId})`, async () => {
           await expect
             .soft(async () => {
               await page.goto(`/financial-accounts/${account}`);

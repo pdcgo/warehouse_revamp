@@ -15,7 +15,7 @@ the_order_keeps_exact_figures.spec.ts › Exact: the form previews the exact fig
 the_order_keeps_exact_figures.spec.ts › Exact: Team Balance posts the exact fee the order froze
 
 ## accept a restock
-restock_warehouse_wants_to_accept.spec.ts › warehouse:all wants to accept a restock › warehouse:owner accept restock (from arrived)
+restock_warehouse_wants_to_accept.spec.ts › warehouse:all wants to accept a restock › warehouse:owner accept restock (status: arrived · all received · new product · no COD · 1 supplier)
 
 ## a transfer
 transfers.spec.ts › Transfer: two warehouses, stock at A, and an operational account to pay the trip

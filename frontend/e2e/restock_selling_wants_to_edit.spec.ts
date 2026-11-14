@@ -11,11 +11,14 @@ import { SUFFIX, login, api, tick, ongoingOf, inboundRow } from "./restock_helpe
 // Every selling role edits through its own restock page and form. The restocks are the GIVEN, seeded through the API;
 // each has its OWN paying account, so a balance read in one test is never moved by another test's events.
 //
-// (ongoing: edit product, change), (ongoing: edit product, add) and (ongoing: edit product, removed) are one test each per
+// (change product), (add product) and (remove product) — each `status: ongoing` — are one test each per
 // role, each THEN a step named as its row. The other two tests — an
 // ongoing restock moved to another warehouse and account, and an arrived restock's count with a product added — predate
 // the edit givens' rediscussion: they keep their old step names until their givens are tested by hand
-// (ongoing: target warehouse, ongoing: paying account, arrived).
+// (change warehouse, change account, arrived).
+//
+// The finance-analytic-metric thens are not tested here yet; `restock analytic metric adjusted` is 🚧 — no analytic metric
+// counts a restock — so it has no check.
 test.describe("selling:all wants to edit a restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -25,12 +28,12 @@ test.describe("selling:all wants to edit a restock", () => {
     { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
     { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
   ] as const;
-  // The restocks seeded per role: "on" for (ongoing: edit product, change), "ad" for (ongoing: edit product, add), "rm"
-  // for (ongoing: edit product, removed), and the two that predate the rediscussion.
+  // The restocks seeded per role: "on" for (change product), "ad" for (add product), "rm"
+  // for (remove product), and the two that predate the rediscussion.
   const CASES = [
     { cond: "ongoing", key: "on" },
-    { cond: "ongoing: edit product, add", key: "ad" },
-    { cond: "ongoing: edit product, removed", key: "rm" },
+    { cond: "status: ongoing · 1 product · add product", key: "ad" },
+    { cond: "status: ongoing · 2 products · remove product", key: "rm" },
     { cond: "ongoing, moved to another warehouse and account", key: "mv" },
     { cond: "arrived", key: "ar" },
   ] as const;
@@ -177,10 +180,10 @@ test.describe("selling:all wants to edit a restock", () => {
     }).toPass({ timeout: 30_000 });
   }
 
-  // (ongoing: edit product, change) — line 0 goes from 10 for Rp 100.000 to 12 for Rp 120.000, and gains a note.
+  // (change product) — line 0 goes from 10 for Rp 100.000 to 12 for Rp 120.000, and gains a note.
   const LINE_NOTE = "two more at the same price";
   for (const r of ROLES) {
-    test(`${r.given} edit restock (ongoing: edit product, change)`, async ({ page }) => {
+    test(`${r.given} edit restock (status: ongoing · 1 product · change product · 1 warehouse · operational account)`, async ({ page }) => {
       const id = ground.restocks[at(r.key, "on")];
       const account = ground.accounts[at(r.key, "on")];
       const p = code(r.key, "on", "P");
@@ -233,9 +236,9 @@ test.describe("selling:all wants to edit a restock", () => {
       });
     });
 
-    // (ongoing: edit product, add) — the restock of 10 × P for Rp 100.000 gains 5 × Q for Rp 50.000. Q follows the
+    // (add product) — the restock of 10 × P for Rp 100.000 gains 5 × Q for Rp 50.000. Q follows the
     // restock's one supplier, which an edit opens as the supplier for every product.
-    test(`${r.given} edit restock (ongoing: edit product, add)`, async ({ page }) => {
+    test(`${r.given} edit restock (status: ongoing · 1 product · add product · 1 warehouse · operational account)`, async ({ page }) => {
       const id = ground.restocks[at(r.key, "ad")];
       const account = ground.accounts[at(r.key, "ad")];
       const p = code(r.key, "ad", "P");
@@ -289,8 +292,8 @@ test.describe("selling:all wants to edit a restock", () => {
       });
     });
 
-    // (ongoing: edit product, removed) — the restock of 10 × P and 4 × Q (Rp 100.000 + Rp 40.000) loses Q.
-    test(`${r.given} edit restock (ongoing: edit product, removed)`, async ({ page }) => {
+    // (remove product) — the restock of 10 × P and 4 × Q (Rp 100.000 + Rp 40.000) loses Q.
+    test(`${r.given} edit restock (status: ongoing · 2 products · remove product · 1 warehouse · operational account)`, async ({ page }) => {
       const id = ground.restocks[at(r.key, "rm")];
       const account = ground.accounts[at(r.key, "rm")];
       const p = code(r.key, "rm", "P");

@@ -666,7 +666,7 @@ return — and the tests are a checked-in list of real test titles, `frontend/e2
 | --- | --- |
 | sign in | `auth.spec.ts` › root logs in, lands in the app, and sees the root team |
 | place an order (and the Team Balance it posts) | `the_order_keeps_exact_figures.spec.ts` — its 3 tests: the setup, the form places the order, Team Balance posts the fee |
-| accept a restock | `restock_warehouse_wants_to_accept.spec.ts` › warehouse:all wants to accept a restock › warehouse:owner accept restock (from arrived) |
+| accept a restock | `restock_warehouse_wants_to_accept.spec.ts` › warehouse:all wants to accept a restock › warehouse:owner accept restock (status: arrived · all received · new product · no COD · 1 supplier) |
 | a transfer | `transfers.spec.ts` — the first 4: setup, the team opens it, A ships, B counts it in |
 | accept a return | `the_return_goes_back_on_the_shelf.spec.ts` — the setup and the Accept |
 

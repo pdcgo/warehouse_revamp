@@ -14,20 +14,25 @@ import { SUFFIX, login, api, ongoingOf, inboundRow, readyAt } from "./restock_he
 // the form does not change. Every then is read on a screen — the warehouse's inbound list, rack, and batch, and the
 // selling team's product picker for its Ready and Ongoing.
 //
-// (from arrived) and (from ongoing) count a restock of 10 pcs for Rp 100.000 whole onto the shelf. Each product also has
-// a second restock of 5 pcs that stays ongoing, so `ongoing stock decreases` reads 15 → 5 rather than "something → none".
+// Every given names five facts — status · what the box held · whether the product is new to the warehouse · COD ·
+// suppliers — and differs from the plain one, (status: ongoing · all received · new product · no COD · 1 supplier), by one.
 //
-// (product new to warehouse) and (product already listed) read the warehouse's own Products — every product it holds or
-// has held — for the product's ONE row. (has brokens, thrown away) counts 10 in with 2 broken: 8 reach the shelf, and the
-// 2 are a broken row the selling team reads on its restock page. (has brokens, put on rack) is 🚧 unimplemented — the
-// accept keeps no rack for broken units — so it has no check here yet. (has missing items) counts
-// 7 in of 10, and the 3 are a missing row, read the same way. (1 supplier) and (multi suppliers) check
-// `recorded at supplier`. (set courier charge) is not tested here yet. (multi suppliers) is ❌ error: supplier_service folds a restock under ONE restock-level supplier, so a restock
-// whose lines name different suppliers is recorded at none (commonLineSupplier). Its check is `test.fail` — green while
-// the bug stands, red the day it is fixed, which is the sign to ask the owner to change the status
-// (acceptances-are-markdown). A one-supplier restock accepted AFTER the mixed one is its CONTROL: once that shows, the
-// fold has run, so the mixed one's absence is the bug and not a slow fold. A broken fold fails the (1 supplier) test
-// beside it, so `test.fail` hides nothing.
+// (status: arrived …) and (status: ongoing …) count a restock of 10 pcs for Rp 100.000 whole onto the shelf. Each product
+// also has a second restock of 5 pcs that stays ongoing, so `ongoing stock decreases` reads 15 → 5 rather than
+// "something → none". The plain given's thens are read by three tests: that one, `…: new product listed in warehouse`
+// and `…: recorded at 1 supplier`, each on its own ground.
+//
+// The new-product and listed-product checks read the warehouse's own Products — every product it holds or has held — for
+// the product's ONE row. (brokens thrown away) counts 10 in with 2 broken: 8 reach the shelf, and the 2 are a broken row
+// the selling team reads on its restock page. (brokens on rack) is 🚧 unimplemented — the accept keeps no rack for broken
+// units — so it has no check here yet. (missing items) counts 7 in of 10, and the 3 are a missing row, read the same way.
+// (COD) and the analytic-metric and product-history thens are not tested here yet — `COD recorded in analytic metric`
+// is 🚧, liability keeps no metric. (multi suppliers) is ❌ error:
+// supplier_service folds a restock under ONE restock-level supplier, so a restock whose lines name different suppliers is
+// recorded at none (commonLineSupplier). Its check is `test.fail` — green while the bug stands, red the day it is fixed,
+// which is the sign to ask the owner to change the status (acceptances-are-markdown). A one-supplier restock accepted
+// AFTER the multi-supplier one is its CONTROL: once that shows, the fold has run, so the multi one's absence is the bug and
+// not a slow fold. A broken fold fails the `…: recorded at 1 supplier` test beside it, so `test.fail` hides nothing.
 test.describe("warehouse:all wants to accept a restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -39,8 +44,8 @@ test.describe("warehouse:all wants to accept a restock", () => {
   ] as const;
   // The givens whose restock is counted whole onto the shelf, by the status it is in when it is counted.
   const CASES = [
-    { cond: "from arrived", key: "ar", from: "arrived", status: 4 },
-    { cond: "from ongoing", key: "on", from: "ongoing", status: 1 },
+    { cond: "status: arrived · all received · new product · no COD · 1 supplier", key: "ar", from: "arrived", status: 4 },
+    { cond: "status: ongoing · all received · new product · no COD · 1 supplier", key: "on", from: "ongoing", status: 1 },
   ] as const;
   // A counted restock: 10 pcs for Rp 100.000, so Rp 10.000 a unit. Its product's other restock: 5 pcs, left ongoing.
   const COUNTED = 10;
@@ -341,7 +346,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
           });
         }
 
-        await test.step("then: units on rack", async () => {
+        await test.step("then: all received on rack", async () => {
           await page.goto(`/inventories/racks/${ground.rack}`);
           await expect.soft(page.getByTestId(`rack-stock-onhand-${productId}`)).toHaveText(String(COUNTED));
         });
@@ -363,11 +368,11 @@ test.describe("warehouse:all wants to accept a restock", () => {
 
         // THEN — as the selling team, whose Ready and Ongoing these are.
         await signIn(page, SELLER, ground.team);
-        await test.step("then: ready stock increases", async () => {
+        await test.step("then: ready stock increases by all received", async () => {
           await expect.soft(await readyAt(page, WH_CODE, code)).toHaveText(String(COUNTED));
         });
 
-        await test.step(`then: ongoing stock decreases (from ${COUNTED + LEFT_ONGOING} to ${LEFT_ONGOING})`, async () => {
+        await test.step(`then: ongoing stock decreases by all received (from ${COUNTED + LEFT_ONGOING} to ${LEFT_ONGOING})`, async () => {
           await expect.soft(await ongoingOf(page, code)).toHaveText(String(LEFT_ONGOING));
         });
       });
@@ -375,7 +380,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
   }
 
   for (const r of ROLES) {
-    test(`${r.given} accept restock (has brokens, thrown away)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · brokens thrown away · new product · no COD · 1 supplier)`, async ({ page }) => {
       const restock = ground.restocks[`${r.key}-br`];
       const id = restock.request.id;
       const code = caseSku(r.key, "br");
@@ -407,11 +412,11 @@ test.describe("warehouse:all wants to accept a restock", () => {
 
       // THEN — as the selling team: its Ready, and its restock page's count.
       await signIn(page, SELLER, ground.team);
-      await test.step(`then: ready stock increases, broken excluded (${COUNTED} − ${BROKEN})`, async () => {
+      await test.step(`then: ready stock increases, brokens excluded (${COUNTED} − ${BROKEN})`, async () => {
         await expect.soft(await readyAt(page, WH_CODE, code)).toHaveText(String(COUNTED - BROKEN));
       });
 
-      await test.step("then: broken items recorded", async () => {
+      await test.step("then: brokens thrown away recorded", async () => {
         await page.goto(`/inventories/restock/${id}`);
         await page.getByTestId("section-nav-products").click();
         await page.getByTestId(`restock-detail-adjustment-${productId}`).click();
@@ -420,7 +425,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
       });
     });
 
-    test(`${r.given} accept restock (has missing items)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · missing items · new product · no COD · 1 supplier)`, async ({ page }) => {
       const restock = ground.restocks[`${r.key}-ms`];
       const id = restock.request.id;
       const code = caseSku(r.key, "ms");
@@ -452,7 +457,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
 
       // THEN — as the selling team: its Ready, and its restock page's count.
       await signIn(page, SELLER, ground.team);
-      await test.step(`then: ready stock increases, missing excluded (${COUNTED} − ${MISSING})`, async () => {
+      await test.step(`then: ready stock increases, missing items excluded (${COUNTED} − ${MISSING})`, async () => {
         await expect.soft(await readyAt(page, WH_CODE, code)).toHaveText(String(arrived));
       });
 
@@ -465,20 +470,20 @@ test.describe("warehouse:all wants to accept a restock", () => {
       });
     });
 
-    test(`${r.given} accept restock (product new to warehouse)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · 1 supplier): new product listed in warehouse`, async ({ page }) => {
       const code = caseSku(r.key, "nw");
 
       await signIn(page, username(r.key), ground.warehouse);
       await acceptWhole(page, [ground.restocks[`${r.key}-nw`]], COUNTED);
 
-      await test.step("then: product listed in target warehouse", async () => {
+      await test.step("then: new product listed in warehouse", async () => {
         const rows = await warehouseRows(page, code);
         await expect.soft(rows).toHaveCount(1);
         await expect.soft(rows.locator('[data-testid^="stock-onhand-"]')).toHaveText(String(COUNTED));
       });
     });
 
-    test(`${r.given} accept restock (product already listed)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · listed product · no COD · 1 supplier)`, async ({ page }) => {
       const code = caseSku(r.key, "al");
 
       await signIn(page, username(r.key), ground.warehouse);
@@ -488,24 +493,24 @@ test.describe("warehouse:all wants to accept a restock", () => {
       await acceptWhole(page, [ground.restocks[`${r.key}-al`]], COUNTED);
 
       // Still ONE row, now holding both counts.
-      await test.step("then: product not listed again", async () => {
+      await test.step("then: listed product not listed again", async () => {
         const rows = await warehouseRows(page, code);
         await expect.soft(rows.locator('[data-testid^="stock-onhand-"]')).toHaveText(String(COUNTED * 2));
         await expect.soft(rows).toHaveCount(1);
       });
     });
 
-    test(`${r.given} accept restock (1 supplier)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · 1 supplier): recorded at 1 supplier`, async ({ page }) => {
       await login(page, username(r.key), PASSWORD);
       await acceptWhole(page, [ground.restocks[`${r.key}-single`]]);
 
       await asSeller(page);
-      await test.step("then: recorded at supplier", async () => {
+      await test.step("then: recorded at 1 supplier", async () => {
         await untilRecorded(page, ground.supplierA, sku(r.key, "C"));
       });
     });
 
-    test(`${r.given} accept restock (multi suppliers)`, async ({ page }) => {
+    test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · multi suppliers)`, async ({ page }) => {
       test.fail(true, "❌ error — docs/acceptances/inventory/restock.md#a-multi-supplier-restock-is-recorded-at-no-supplier");
 
       // The mixed one first, its control after.
@@ -516,7 +521,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
       // The control has landed, so the fold has run past the mixed restock.
       await untilRecorded(page, ground.supplierA, sku(r.key, "D"));
 
-      await test.step("then: recorded at supplier", async () => {
+      await test.step("then: recorded at each supplier", async () => {
         const atA = await byProduct(page, ground.supplierA);
         await expect.soft(atA.getByTestId("statistics-products")).toContainText(`E2E ${sku(r.key, "A")}`);
         const atB = await byProduct(page, ground.supplierB);

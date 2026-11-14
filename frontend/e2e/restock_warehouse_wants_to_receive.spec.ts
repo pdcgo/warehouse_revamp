@@ -10,7 +10,7 @@ import { SUFFIX, login, api } from "./restock_helpers";
 // Same shape as the create block above: one test per GIVEN, run as EVERY warehouse role, marking the box arrived on its
 // own inbound list. The restock is the given's state — ongoing, or given up as lost by the seller
 // (a-late-lost-box-is-signed-for-as-arrived) — so it is seeded through the API; the mark is the WHEN, through the
-// screen. (set courier charge) is 🚧 unimplemented — the server drops the charge — so it has no check here yet.
+// screen. (status: ongoing · COD) is 🚧 unimplemented — the server drops the charge — so it has no check here yet.
 test.describe("warehouse:all wants to receive a restock", () => {
   const PASSWORD = "e2e-acceptance-pass-1";
   const ROLES = [
@@ -20,8 +20,8 @@ test.describe("warehouse:all wants to receive a restock", () => {
   ] as const;
   // The givens' cases: the status the restock is in when the box is marked arrived.
   const CASES = [
-    { cond: "from ongoing", key: "on", from: "ongoing", status: 1 },
-    { cond: "from lost", key: "lo", from: "lost", status: 5 },
+    { cond: "status: ongoing · no COD", key: "on", from: "ongoing", status: 1 },
+    { cond: "status: lost · no COD", key: "lo", from: "lost", status: 5 },
   ] as const;
 
   const username = (role: string) => `e2earr${role}${SUFFIX}`;

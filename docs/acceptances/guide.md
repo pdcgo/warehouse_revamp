@@ -39,8 +39,8 @@ stateDiagram-v2
 
 | rule | |
 | --- | --- |
-| [one-row-per-then](#one-row-per-then) | `given \| when \| then \| status`: a given has one when, a when has many thens, each then its own row |
-| [given-is-who-wants-what-in-which-case](#given-is-who-wants-what-in-which-case) | one actor that CAN, what they want, and the case: `selling:all` wants to restock<br>(2 products) |
+| [one-row-per-then](#one-row-per-then) | an HTML table `given`, `when`, `then`, `status`: a given has one when, a when has many thens, each then its own row, given and when spanning them |
+| [given-is-who-wants-what-in-which-case](#given-is-who-wants-what-in-which-case) | one actor that CAN, what they want, and the case — every fact its thens rest on: `selling:all` wants to restock<br>(2 products · 1 warehouse · operational account · no shipping cost) |
 | [when-is-one-action](#when-is-one-action) | the action alone, in lowercase: `create restock`, `accept restock` |
 | [every-candidate-is-listed](#every-candidate-is-listed) | the agent lists every candidate then, including the ones it would leave out |
 | [a-then-is-one-visible-effect](#a-then-is-one-visible-effect) | one effect a person can see, with no measure in the wording |
@@ -51,26 +51,45 @@ stateDiagram-v2
 
 ## one-row-per-then
 
-The columns are `given | when | then | status`. A given has one when, and a when has many thens. Each then is its own row,
-so each status sits beside its own then. A blank given and when continue the row above.
+The columns are `given`, `when`, `then`, `status`. A given has one when, and a when has many thens. Each then is its own
+row, so each status sits beside its own then, and the given and the when **span** their thens.
 
-```markdown
-| given | when | then | status |
-| --- | --- | --- | --- |
-| `selling:all` wants to restock<br>(1 product) | create restock | restock created | ⬜ untested |
-| | | ongoing stock increases | ⬜ untested |
-| `selling:all` wants to restock<br>(2 products) | create restock | restock created | ⬜ untested |
-| `selling:all` wants to edit a restock<br>(ongoing) | edit | restock shows changes | ⬜ untested |
+**The table is HTML**, because a markdown table cannot span a cell: `rowspan` on the given's and the when's `<td>`, one
+`<tr>` per line so a then stays one line of the file.
+
+```html
+<table>
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to restock<br>(1 product · 1 warehouse · operational account · no shipping cost)</td><td rowspan="2" valign="top">create restock</td><td>restock created with 1 product</td><td>⬜ untested</td></tr>
+<tr><td>ongoing stock of 1 product increases</td><td>⬜ untested</td></tr>
+<tr><td><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · change shipping cost · 1 warehouse · operational account)</td><td>edit restock</td><td>restock shows new shipping cost</td><td>⬜ untested</td></tr>
+</table>
 ```
+
+- ⚠ **`rowspan` is the number of its thens.** A then added or removed changes it, or every row below shifts a column.
+  A given with one then has no `rowspan`. A spanning cell is `valign="top"`, so the given reads beside its first then.
+- Inside the table markdown is not read: a backtick is `<code>`, a link is `<a href="…">`.
 
 ## given-is-who-wants-what-in-which-case
 
-- One actor, what they want to get done, and the case, in lowercase: `` `selling:all` wants to restock<br>(2 products) ``,
-  `` `warehouse:all` wants to accept a restock<br>(multi suppliers) ``.
+- One actor, what they want to get done, and the case, in lowercase:
+  `` `selling:all` wants to restock<br>(2 products · 1 warehouse · operational account · no shipping cost) ``,
+  `` `warehouse:all` wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers) ``.
 - **The case goes in brackets on its own line**, after a `<br>`. It holds the state the action starts from and the
   condition it is tested under, so a then carries no brackets of its own.
-- **A state and a part read `state: part`**: `` `selling:all` wants to edit a restock<br>(ongoing: shipping cost) `` — the
-  state the restock is in, then the part of it that changes.
+- **The case names every fact its thens rest on**, short, separated by ` · `: a then about the warehouse needs
+  `1 warehouse` in its given, one about the paying account needs `operational account`. Every case of an action names
+  all of them, the same ones it shares as well — `no shipping cost` beside `shipping cost` — so the cases read side by
+  side. No numbers: the given says WHAT is set up, as a then says what is seen.
+- **A then names the given's fact it checks, in the same words**: given `(1 product · 1 warehouse · operational account ·
+  no shipping cost)`, thens `1 product recorded at warehouse`, `operational account balance decreases by product total`.
+  A fact is the word for what exists before the action — `operational account`, what the form offers — and the then
+  keeps it rather than renaming it for its role.
+- **What an action changes is a fact of its own**: `` `selling:all` wants to edit a restock<br>(status: ongoing · 1 product ·
+  change shipping cost · 1 warehouse · operational account) `` — the status, what the restock holds, the part that changes,
+  then the facts its thens rest on.
+- **A status as a fact reads `status: <status>`**: `` `warehouse:all` wants to receive a restock<br>(status: ongoing · no
+  COD) `` — the status the restock is in before the action, beside the case's other facts.
 - **One given, one when.** A different case is a different given, and so is a different goal, even on the same restock:
   editing a restock is not wanting to restock, and accepting it is not receiving it.
 - **Each given is tested in its own run**, set up to meet its case.
