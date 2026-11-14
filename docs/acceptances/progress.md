@@ -18,3 +18,4 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to create an order · [create order](inventory/order.md) (36 thens: ⬜ 36)
 - `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md) (7 thens: ⬜ 7)
 - `warehouse:all` wants to pick an order · [pick order](inventory/order.md) (14 thens: ⬜ 14)
+- `warehouse:all` wants to hand an order to the courier · [hand over order](inventory/order.md) (18 thens: ⬜ 18)
