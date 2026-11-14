@@ -93,8 +93,18 @@ const BATCHES: BatchFixture[] = [
 
 /** The batches a story may change — reset in preview's `beforeEach`, as the other stubs are. */
 let rows: BatchFixture[] = [];
+// Products a story took off every shelf (sold, or moved away): ProductPlaces lists none of their racks, as the server's
+// does — it reads only racks holding the product now (`stock_count > 0`).
+let leftEveryRack = new Set<string>();
+
+/** The product sits on no rack now — its batch page must still name the racks its history and put-away read. */
+export function productLeftItsRacksForStory(productId: bigint) {
+  leftEveryRack.add(productId.toString());
+}
+
 export function resetBatchStub() {
   rows = structuredClone(BATCHES);
+  leftEveryRack = new Set();
   // Koreksi Harga's corrections price these rows too — reset with them.
   resetBatchPriceScenario();
 }
@@ -365,7 +375,8 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
     const items: Record<string, { items: { d: { case: "place"; value: { mapData: Record<string, Place> } } }[] }> = {};
     for (const productId of req.filter?.ids ?? []) {
       const mapData: Record<string, Place> = {};
-      for (const r of racks.filter((x) => x.warehouseId === req.warehouseId)) {
+      const held = !leftEveryRack.has(productId.toString());
+      for (const r of racks.filter((x) => held && x.warehouseId === req.warehouseId)) {
         mapData[r.id.toString()] = { productId, rackId: r.id, rackCode: r.code, onHand: 0n };
       }
       items[productId.toString()] = { items: [{ d: { case: "place" as const, value: { mapData } } }] };

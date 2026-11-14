@@ -6,21 +6,25 @@
 // order form, with a Create button stuck in its loading state that reads as an invalid form. That cost a whole
 // investigation once (2026-10-06). Checking up front turns it into one line that names the fix.
 
+import { API_PORT, PUBSUB_PROJECT as PROJECT } from "./env";
+
 /** Where the emulator is — the same default the server uses (event_source.NewPubsubEmulator). */
 export const PUBSUB_HOST = process.env.PUBSUB_EMULATOR_HOST || "localhost:8085";
 
 /**
- * The project the E2E server publishes to — its OWN, not the dev server's `warehouse-dev`. The emulator PUSHES
+ * The project the E2E server publishes to — its OWN, not the dev server's `warehouse-dev` (and, with `san test full
+ * --workers N`, each worker's own: warehouse-e2e-w1, …). The emulator PUSHES
  * to each server, so sharing a project would hand the dev server the e2e's orders (posted into the dev database)
  * and let each run overwrite the other's push URLs. playwright.config.ts gives the server the same id.
  */
-export const PUBSUB_PROJECT = "warehouse-e2e";
+export const PUBSUB_PROJECT = PROJECT;
 
 /**
- * Where the emulator pushes the e2e server's events: its API on :8081, reached from inside the emulator's
- * container. CI binds that API on every interface (E2E_API_ADDR) so a container can reach it.
+ * Where the emulator pushes the e2e server's events: its API (:8081, or this worker's E2E_API_PORT), reached from
+ * inside the emulator's container. CI binds that API on every interface (E2E_API_ADDR) so a container can reach it.
+ * Each worker has its own project, so each project's push subscriptions point at that worker's own port.
  */
-export const PUBSUB_PUSH_BASE_URL = process.env.E2E_PUSH_BASE_URL || "http://host.docker.internal:8081";
+export const PUBSUB_PUSH_BASE_URL = process.env.E2E_PUSH_BASE_URL || `http://host.docker.internal:${API_PORT}`;
 
 /** Throws, with the command that fixes it, when the emulator does not answer. */
 export async function requirePubsubEmulator(): Promise<void> {

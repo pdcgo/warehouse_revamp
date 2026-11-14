@@ -66,3 +66,4 @@ owner; not needed at revamp's volumes.
 | Date | Result |
 | --- | --- |
 | 2026-11-12 | First audit (Koreksi Harga's read half: `priceExprs` added to both reads — per-row arithmetic, nil): the `refExpr` scans found and fixed by `00041`; Finding 2 and the per-row `ref` left open |
+| 2026-11-13 | A batch's `StockHistory` names each row's rack (backlog #47, `batchRackJoin`: one indexed lateral on `product_placement_logs_transaction_idx` per batch row, count and page; a row over several racks splits one per rack). `TestPerf_StockHistory_ABatchsRacks` — 3 000 takes → 5 001 rows, 305 000 rack rows: page 1 1.9 → 13.9 ms median (count 14 ms), page 100 12 → 58 ms (two ≈ 30 ms statements). Under every threshold — no new finding; `OwnerStockHistory` unchanged |

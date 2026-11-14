@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
-import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // The team's financial accounts, end to end — docs/business/financial_account/context_decision.md.
 //
-// Root in the root team, as the other money specs are: root holds ROLE_ROOT, so every scoped RPC is
-// authorised there, and the pages are reached by their routes. One serial journey through the decisions,
-// against the real server and Postgres:
+// Root in A SELLING TEAM OF THIS SPEC'S OWN, created by the setup with root as its owner. The totals and the report
+// below are the WHOLE team's, so they must be a team only this spec writes to: in root's own team they also counted
+// every account an earlier spec (in name order, on the one shared database) had left money in. One serial journey
+// through the decisions, against the real server and Postgres:
 //
 //   a new account opens with its balance · a recorded number is refused · a transfer moves both ·
 //   a reconcile posts the difference · a shop is pointed at an account · archived only at zero ·
@@ -25,26 +28,27 @@ const SHOP_CODE = `FA${SUFFIX}`;
 const SHOP_NAME = `E2E Account Shop ${SUFFIX}`;
 // A shop id no shop has — the listener does not need the shop to exist to hold its money.
 const ORPHAN_SHOP = 900_000 + Number(SUFFIX.slice(-5));
-const ROOT_TEAM = 1;
+const TEAM_NAME = `E2E Account Seller ${SUFFIX}`;
+const TEAM_CODE = `FAS${SUFFIX}`;
+// The spec's own selling team — set by the setup, read by every test after it (the file is serial).
+let team = "";
 
 const rp = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 
 async function login(page: Page) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(ROOT_USERNAME);
-  await page.getByLabel("Password", { exact: true }).fill(ROOT_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(ROOT_USERNAME);
+  await signIn(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Work in the spec's own team: the active team is per tab, in sessionStorage (TeamContext) — the next page load
+  // opens in it.
+  if (team !== "") {
+    await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+  }
 }
 
 async function gotoAccounts(page: Page) {
   await page.goto("/financial-accounts");
   await expect(page.getByTestId("financial-accounts-page")).toBeVisible();
+  await expect(page.getByTestId("team-switcher")).toContainText(TEAM_NAME);
 }
 
 const accountRow = (page: Page, name: string) =>
@@ -98,7 +102,7 @@ function pushWithdrawal(eventId: string, shopId: number, change: number) {
     occurredAt: new Date().toISOString(),
     aggregateId: `settlement-log:${eventId}`,
     settlementLogPosted: {
-      teamId: String(ROOT_TEAM),
+      teamId: team,
       shopId: String(shopId),
       settlementType: "SETTLEMENT_TYPE_WITHDRAWAL",
       sourceType: "SOURCE_TYPE_IMPORTER",
@@ -120,9 +124,30 @@ function pushWithdrawal(eventId: string, shopId: number, change: number) {
 
 test.describe.configure({ mode: "serial" });
 
-test("Setup: a shop of its own", async ({ page }) => {
+test("Setup: a selling team of its own, and a shop of its own", async ({ page }) => {
   await login(page);
+
+  team = await page.evaluate(
+    async ([name, code, owner, apiUrl]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const res = await fetch(`${apiUrl}/warehouse.team.v1.TeamService/TeamCreate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ type: "TEAM_TYPE_SELLING", name, teamCode: code, ownerUserId: owner }),
+      });
+      if (!res.ok) throw new Error(`TeamCreate: ${res.status} ${await res.text()}`);
+
+      return ((await res.json()) as { team: { id: string } }).team.id;
+    },
+    [TEAM_NAME, TEAM_CODE, ROOT_USER_ID, API_URL] as const,
+  );
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+
   await page.goto("/shops");
+  await expect(page.getByTestId("team-switcher")).toContainText(TEAM_NAME);
   await page.getByTestId("open-create-shop").click();
   await page.getByTestId("shop-name").fill(SHOP_NAME);
   await page.getByTestId("shop-code").fill(SHOP_CODE);
@@ -274,7 +299,7 @@ test("A Lainnya account opens without a number", async ({ page }) => {
 // a-shop-with-no-account-gets-an-unknown-one — and one-contract-for-both-handler-types: the same event twice
 // posts once.
 test("A withdrawal from a shop with no account makes an unknown one, once", async ({ page, request }) => {
-  const route = "http://localhost:8081/event/financial-account-withdrawal/push";
+  const route = `${API_URL}/event/financial-account-withdrawal/push`;
   const eventId = `e2e-withdrawal-${SUFFIX}`;
 
   for (let i = 0; i < 2; i++) {

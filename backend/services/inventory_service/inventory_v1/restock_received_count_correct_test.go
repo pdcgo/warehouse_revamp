@@ -631,8 +631,8 @@ func TestRestockReceivedCountCorrect_TheBatchHistoryShowsTheCorrection(t *testin
 	label := newest.GetReceivedCountCorrection()
 	if newest.GetKind() != inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST || newest.GetDelta() != -2 || label == nil ||
 		label.GetFromCount() != 10 || label.GetToCount() != 8 || label.GetReason() != rcReason ||
-		label.GetRestockId() != f.restock.GetId() || label.GetTransferId() != 0 {
-		t.Fatalf("the batch's newest row = %+v — want ADJUST −2 labelled 10 → 8 with the reason and the restock", newest)
+		label.GetRestockId() != f.restock.GetId() || label.GetTransferId() != 0 || newest.GetRackId() != f.rakA {
+		t.Fatalf("the batch's newest row = %+v — want ADJUST −2 off Rak A labelled 10 → 8 with the reason and the restock", newest)
 	}
 
 	// The ADJUST filter finds it.

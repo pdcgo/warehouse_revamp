@@ -1,5 +1,28 @@
 # Development state — inventory / restock
 
+🔨 **2026-11-13: Kiriman goes below the products when the page is narrow** (decision
+`the-delivery-card-stacks-when-the-page-is-narrow`, technical/frontend/restock_decision.md) — uncommitted. Both restock
+detail pages choose products | 20rem side column by the PAGE AREA's measured width (`features/restock/sideBySide.ts`
+`useSideBySide`, on `lib/useElementWidth` — emotion drops `@container`), no longer the viewport's `xl`: side by side only
+when the area holds the products card at its narrowest + the gap + 20rem — warehouse 710 (table 660 + card 50), selling
+830 (table 779 + 50; it had the same fault, scrolling at 1440 and 1600 with the sidebar open). Below that, the stacked
+layout: the info under the products in the nav's order. One tree for both layouts (only the info cards move; the note
+and trail are not re-mounted when the sidebar toggles). Phones unchanged. Warehouse: stacked at 1440 with the sidebar
+open, side by side at 1600/1920 with it and at 1440 without; selling: stacked at 1440/1600 with the sidebar, side by side
+at 1920. Stories `RestockWarehouseDetail/Layout` (5) and `RestockSellingDetail/Layout` (5), `.storybook/pageStory.tsx`
+`besideTheOpenSidebar`, viewport `desktop1920`.
+
+🔨 **2026-11-13: the warehouse page's products table fits beside the open sidebar** (backlog #48) — uncommitted. At 1600px
+the sidebar (258px), the nav and Kiriman's 20rem leave the Produk column 681px and the table needed 947: it scrolled
+sideways and cut Placement. `pages/restock-warehouse-detail/components/LinesCard.tsx` (desktop table only; the phone's
+blocks unchanged): the product cell lost its fixed 16rem (its name is cut on its one line), a problem's note is a one-line
+clamp that may break anywhere (it was `truncate`, which held the column to the note's whole width; its words stay in the
+tooltip, and it shows whole where there is room), the places wrap between racks. No column dropped, the counts and the
+worth whole. The table's narrowest is now 660px (en and id), so it fits from ≈1580px with the sidebar open, and at 1440
+with it collapsed. At 1280–1579px with the sidebar open the column was narrower than seven columns can be (521px at
+1440) — the owner chose to put Kiriman below the products there (the entry above). Story `Products / Fits beside the open sidebar` (`desktop1600` viewport in `.storybook/preview.tsx`, a
+sidebar-wide spacer).
+
 🔨 **2026-11-13: Koreksi Jumlah Terima — the screens** — uncommitted. The accepted prototype is live:
 *Correct Received Count* in the restock page's header (the receiving warehouse's Owner / Admin, Root and the
 Administrator; accepted only; its icon on a phone) opens `features/receivedCount/CorrectReceivedCountDialog.tsx` (a

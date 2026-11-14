@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { signIn } from "./session";
 
 // Unique per run — the e2e hits a real, persistent database.
 const SUFFIX = Date.now().toString().slice(-6);
@@ -14,16 +15,7 @@ const OWNER_USERNAME = `own${SUFFIX}`;
 const OWNER_PASSWORD = "ownerpass123";
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
 }
 
 async function gotoTeams(page: Page) {

@@ -460,6 +460,10 @@ const preview: Preview = {
       options: {
         ...MINIMAL_VIEWPORTS,
         desktop1440: { name: "Desktop 1440", styles: { width: "1440px", height: "900px" }, type: "desktop" },
+        // The restock warehouse page's table beside the open sidebar (`FitsBesideTheOpenSidebar`, backlog #48).
+        desktop1600: { name: "Desktop 1600", styles: { width: "1600px", height: "900px" }, type: "desktop" },
+        // The restock detail pages beside the open sidebar on a wide screen (the-delivery-card-stacks-when-the-page-is-narrow).
+        desktop1920: { name: "Desktop 1920", styles: { width: "1920px", height: "1080px" }, type: "desktop" },
       },
     },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },

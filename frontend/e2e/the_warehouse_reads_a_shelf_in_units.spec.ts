@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // A WAREHOUSE READS A SHELF IN UNITS ONLY, end to end on the real server (docs/business/analytic/rpc_provide_decision.md
 // — a-warehouse-sees-ready-value-but-a-shelf-only-units): at the placement level — a rack and what sits on it — a caller
@@ -21,26 +23,17 @@ const SARI = `e2eraksari${SUFFIX}`;
 const state = { warehouse: "", rack: "", product: "" };
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
 }
 
 // The real contract under the signed-in token; a refusal fails here, by name.
 async function ok<T = Record<string, any>>(page: Page, method: string, body: unknown): Promise<T> {
   const res = await page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const bearer =
         window.sessionStorage.getItem("warehouse_revamp.token") ?? window.localStorage.getItem("warehouse_revamp.token");
 
-      const r = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+      const r = await fetch(`${apiUrl}/warehouse.${m as string}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${bearer}` },
         body: JSON.stringify(b),
@@ -48,7 +41,7 @@ async function ok<T = Record<string, any>>(page: Page, method: string, body: unk
 
       return { status: r.status, body: await r.json() };
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   );
   expect(res.status, `${method}: ${JSON.stringify(res.body)}`).toBe(200);
 

@@ -15,7 +15,8 @@ import (
 // so a product's history, a rack's history and the owner's history name the same row the same way.
 //
 // A rack's history reads `product_placement_logs` — it knows the rack, not the batch. A batch's and the owner's read
-// `batch_logs` — they know the batch, not the rack. No log row carries both (a-batch-shows-the-racks-it-was-put-on).
+// `batch_logs` — they know the batch, not the rack. No log row carries both (a-batch-shows-the-racks-it-was-put-on), so
+// a batch's history reads its rack from the rack rows of the same transaction (batchRackJoin).
 
 // kindOf names a log row the way the screens do. An order only ever takes, so its positive rows are its rollback — the
 // units coming back. A price correction is its own kind — it moved no unit (the-owning-team-revalues-with-a-reason).
@@ -139,6 +140,9 @@ type historyRow struct {
 	ValueChange     float64
 	// The row's inventory transaction — a received-count correction's label is found by it (countCorrectionLabels).
 	TransactionID uint64
+	// A batch row's value change as its part carries it (batchHistorySelect) — the whole row's unless it is split over
+	// racks. Nil on a rack row.
+	PartValue *float64
 }
 
 func (r *historyRow) proto() *inventoryv1.StockMovement {
@@ -159,8 +163,17 @@ func (r *historyRow) proto() *inventoryv1.StockMovement {
 
 		PriceUnitBefore: r.PriceUnitBefore,
 		PriceUnitAfter:  r.PriceUnitAfter,
-		ValueChange:     r.ValueChange,
+		ValueChange:     r.valueChange(),
 	}
+}
+
+// valueChange is what the row changed the value by — a batch row's part's share when it is split over racks.
+func (r *historyRow) valueChange() float64 {
+	if r.PartValue != nil {
+		return *r.PartValue
+	}
+
+	return r.ValueChange
 }
 
 // priceExprs reads a `batch_logs` row's price and value columns as the history screens show them: the value it changed
@@ -180,10 +193,52 @@ var placementHistorySelect = `l.id, l.product_id, l.warehouse_id, l.placement_id
 	l.stock_change AS change, l.stock_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
 	` + overrideExpr("l.transaction_id") + ` AS is_override`
 
-// batchHistorySelect reads `batch_logs AS l JOIN batches AS b` as history rows: the batch, never a rack.
-var batchHistorySelect = `l.id, b.product_id, l.warehouse_id, 0 AS placement_id, l.batch_id, l.change_type, l.transaction_id,
-	l.change_count AS change, l.stock_count_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
-	` + overrideExpr("l.transaction_id") + ` AS is_override, ` + priceExprs("l")
+// batchRackJoin gives each `batch_logs AS l` row of `batches AS b` THE RACK IT MOVED ON (backlog #47). A batch row
+// carries no rack, so the rack is read from the rack rows (`product_placement_logs`) its transaction wrote for the
+// batch's product in the same warehouse, on the same side — units in for units in, out for out. A row under no
+// transaction, or one that moved no unit (a price correction), finds none: rack 0.
+//
+// A movement over several racks reads as the rack and product histories show it — ONE ROW PER RACK — when those rack
+// rows are this batch row's alone: they add up to it (`exact`), so each rack's units are this batch's. Each
+// part then carries its rack's units, the batch's count after it, and its share of the value. When they do not add up,
+// other batches drew on the same racks in that transaction (a take over two batches, a transfer's layers) and which
+// rack fed which batch is not recorded: the row stays whole, on the transaction's FIRST rack row (`part` 1) — as the
+// accepted prototype's batch history shows a take on its first shelf.
+//
+// One indexed lookup per batch row (product_placement_logs_transaction_idx), for the count and the page alike.
+const batchRackJoin = `LEFT JOIN LATERAL (
+	SELECT x.placement_id, x.part, x.exact, x.part_change, x.later_change
+	FROM (
+		SELECT p.placement_id,
+		       p.stock_change AS part_change,
+		       ROW_NUMBER() OVER (ORDER BY p.id) AS part,
+		       SUM(p.stock_change) OVER () = l.change_count AS exact,
+		       COALESCE(SUM(p.stock_change) OVER (ORDER BY p.id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING), 0)::bigint
+		           AS later_change
+		FROM product_placement_logs p
+		WHERE p.transaction_id = l.transaction_id
+		  AND p.product_id = b.product_id
+		  AND p.warehouse_id = l.warehouse_id
+		  AND l.transaction_id <> 0
+		  AND l.change_count <> 0
+		  AND SIGN(p.stock_change) = SIGN(l.change_count)
+	) x
+	WHERE x.part = 1 OR x.exact
+) rk ON TRUE`
+
+// batchRowOrder is a batch's history newest first — a row split over racks by its rack rows, newest first too.
+const batchRowOrder = "l.id DESC, rk.part DESC"
+
+// batchHistorySelect reads `batch_logs AS l JOIN batches AS b` + batchRackJoin as history rows: the batch, and the rack
+// each row (or each part of it) moved on. A part past the first is keyed by the batch row's id with its part number above
+// bit 48 — unique on the page and never another batch row's id (ids stay far below 2^48).
+var batchHistorySelect = `CASE WHEN COALESCE(rk.part, 1) = 1 THEN l.id ELSE ((rk.part - 1) << 48) | l.id END AS id,
+	b.product_id, l.warehouse_id, COALESCE(rk.placement_id, 0) AS placement_id, l.batch_id, l.change_type, l.transaction_id,
+	CASE WHEN rk.exact THEN rk.part_change ELSE l.change_count END AS change,
+	CASE WHEN rk.exact THEN l.stock_count_after - rk.later_change ELSE l.stock_count_after END AS after,
+	l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
+	` + overrideExpr("l.transaction_id") + ` AS is_override, ` + priceExprs("l") + `,
+	CASE WHEN rk.exact THEN l.change_valuation * rk.part_change / l.change_count ELSE l.change_valuation END AS part_value`
 
 // labelCountCorrections sets the KOREKSI JUMLAH TERIMA label on every history row a received-count correction wrote —
 // *Jumlah terima dikoreksi · from → to*, why, and the restock or transfer (a-wrong-stock-in-is-a-received-count-

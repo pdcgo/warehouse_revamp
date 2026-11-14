@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // KOREKSI JUMLAH TERIMA, END TO END (docs/business/inventory/adjustment_decision.md —
 // the-warehouse-corrects-a-wrong-stock-in-alone, a-stock-in-correction-keeps-the-batch-price,
@@ -52,26 +54,17 @@ const state = {
 };
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
 }
 
 // An RPC as the signed-in person — the status and the JSON body.
 async function call(page: Page, method: string, body: unknown) {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const bearer =
         window.sessionStorage.getItem("warehouse_revamp.token") ?? window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m as string}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${bearer}` },
         body: JSON.stringify(b),
@@ -79,7 +72,7 @@ async function call(page: Page, method: string, body: unknown) {
 
       return { status: res.status, body: await res.json() };
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   );
 }
 
@@ -296,6 +289,10 @@ test("The batch holds 2 fewer — 10 ready, 2 lost — and its history says the 
   await expect(history).toContainText("Received count corrected · 12 → 10");
   await expect(history.locator('[data-testid^="batch-detail-history-row-"][data-testid$="-count"]')).toHaveText("12 → 10");
   await expect(history.locator('[data-testid^="batch-detail-history-row-"][data-testid$="-reason"]')).toContainText(REASON);
+  // Each row names the rack it moved on — the put-away and the correction, both on trm-a; never "Unplaced" (backlog #47).
+  const rows = history.getByTestId("batch-detail-history-table").locator('[data-testid^="batch-detail-history-row-"]');
+  await expect(rows.filter({ hasText: `trm-a-${SUFFIX}` })).toHaveCount(2);
+  await expect(history).not.toContainText("Unplaced");
 });
 
 test("Dewi's Analytic Restock today, after: 10 accepted, 2 missing — the correction's own day", async ({ page }) => {
@@ -375,6 +372,9 @@ test("A transfer typed one short at B: Wati corrects 3 → 4 — the unit goes i
   const history = page.getByTestId("batch-history-panel");
   await expect(history).toContainText("Received count corrected · 3 → 4");
   await expect(history).toContainText("+1");
+  // The correction's row names B2, where the unit went (backlog #47).
+  await expect(history.locator('[data-testid^="batch-detail-history-row-"]', { hasText: "+1" })).toContainText(state.codeB2);
+  await expect(history).not.toContainText("Unplaced");
 
   await page.goto(`/inventories/racks/${state.rackB2}`);
   await expect(page.getByTestId("rack-detail-stock").getByTestId(`rack-stock-onhand-${state.product}`)).toHaveText("1");

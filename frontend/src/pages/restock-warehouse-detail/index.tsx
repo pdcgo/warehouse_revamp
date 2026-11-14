@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Box, Button, Grid, Heading, Icon, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
+import { Badge, Box, Button, Grid, Heading, Icon, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
@@ -16,6 +16,7 @@ import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { RestockTitleRow } from "../../features/restock/RestockTitleRow";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
 import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
+import { SIDE_COLUMN, useSideBySide } from "../../features/restock/sideBySide";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
@@ -33,6 +34,13 @@ import { RESTOCK_WAREHOUSE_DETAIL_PENDING } from "./pending";
 // No Pembayaran (the-warehouse-reads-the-box-not-the-purchase).
 // The Ongkir COD it paid is a fact in Kiriman, not a section (the-warehouse-sees-the-ongkir-it-paid).
 const WAREHOUSE_ORDER: RestockSectionKey[] = ["products", "delivery", "note", "timeline"];
+
+// THE PRODUCTS CARD AT ITS NARROWEST (the-delivery-card-stacks-when-the-page-is-narrow) — the lines table's min-content,
+// 660px on 503 counted in (its places, a broken row's worth and note — LinesCard holds no cell wider than its words must,
+// backlog #48), plus the card's padding and border (50). Where the page area holds less than this + the gap + Kiriman's
+// 20rem, Kiriman goes below the products. A column added to LinesCard widens it: measure again in the live story
+// (`table.style.width = "min-content"` on `restock-detail-items`) and pin it in stories/Layout.stories.tsx.
+const PRODUCTS_FLOOR_PX = 710;
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -98,8 +106,10 @@ export function RestockWarehouseDetailPage() {
   // THE BOX FIRST (owner: *"karena ini gudang, produk taruh atas, lalu info ada di kanan"*,
   // the-restock-page-leads-with-the-box) — what is in it leads, then where it came from; the nav follows that order.
   const keys = WAREHOUSE_ORDER;
-  // The info on the right where there is room beside the nav — Chakra's `xl`, as the selling page's money.
-  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
+  // The info on the right only where the PAGE AREA holds it beside the products (owner: *"A"*,
+  // the-delivery-card-stacks-when-the-page-is-narrow) — measured on the main column, never the viewport's `xl`, which
+  // ignores the sidebar: at 1440 with the sidebar open the products would get 521px for a table of ≈660.
+  const [areaRef, wide] = useSideBySide<HTMLDivElement>(PRODUCTS_FLOOR_PX);
   const stick = useStickyTitle(request !== null, isMobile);
   const { active, scrollTo } = useScrollSpy(
     request !== null,
@@ -294,31 +304,27 @@ export function RestockWarehouseDetailPage() {
         )}
 
         {/* THE BOX ON THE LEFT, THE INFO ON THE RIGHT (the-restock-page-leads-with-the-box) — Produk, Catatan, Riwayat
-            in the main column; Kiriman, the Ongkir COD it paid among its facts, a 20rem column beside it where there is room; in
-            the nav's order in one column otherwise. A JS branch, so no card exists twice. */}
-        {wide ? (
-          <Stack gap="section" minW="0" w="full">
-            {title}
-            <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
-              <Stack gap="section" minW="0">
-                {products}
-                {note}
-                {timeline}
-              </Stack>
+            in the main column; Kiriman, the Ongkir COD it paid among its facts, a 20rem column beside it where the page area
+            has room for both (the-delivery-card-stacks-when-the-page-is-narrow); below the products, in the nav's order,
+            otherwise. A JS branch, so no card exists twice. ⚠ ONE TREE FOR BOTH: the sidebar opening or closing flips the
+            layout, and only Kiriman moves — the products, the note being typed and the trail keep their slots. This Stack
+            is what is measured: its width is the room for both columns (`minmax(0, 1fr)`, never its content's). */}
+        <Stack ref={areaRef} gap="section" minW="0" w="full">
+          {title}
+          <Grid templateColumns={wide ? `minmax(0, 1fr) ${SIDE_COLUMN}` : "minmax(0, 1fr)"} gap="section" alignItems="start" minW="0">
+            <Stack gap="section" minW="0">
+              {products}
+              {!wide && delivery}
+              {note}
+              {timeline}
+            </Stack>
+            {wide && (
               <Stack gap="section" minW="0">
                 {delivery}
               </Stack>
-            </Grid>
-          </Stack>
-        ) : (
-          <Stack gap="section" minW="0" w="full">
-            {title}
-            {products}
-            {delivery}
-            {note}
-            {timeline}
-          </Stack>
-        )}
+            )}
+          </Grid>
+        </Stack>
       </Grid>
     </Stack>
   );

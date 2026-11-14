@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { API_URL } from "./env";
 
 // A unique suffix per run: the e2e talks to a real, persistent database, so a fixed username
 // would collide with itself on the second run.
@@ -355,13 +356,13 @@ test("SearchUser: an Owner finds only the whole handle, sees the phone ending, a
 
   // Two warehouses: the Owner's, with a Staff member in it, and another holding the person to find.
   await page.evaluate(
-    async ([owner, staff, target, targetPhone, suffix, password]) => {
+    async ([owner, staff, target, targetPhone, suffix, password, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
       const call = async (method: string, body: unknown) => {
-        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+        const res = await fetch(`${apiUrl}/warehouse.${method}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),
@@ -384,7 +385,7 @@ test("SearchUser: an Owner finds only the whole handle, sees the phone ending, a
         role: "ROLE_WAREHOUSE_STAFF",
       });
     },
-    [owner, staff, target, targetPhone, SUFFIX, NEW_PASSWORD] as const,
+    [owner, staff, target, targetPhone, SUFFIX, NEW_PASSWORD, API_URL] as const,
   );
 
   await login(page, owner, NEW_PASSWORD);

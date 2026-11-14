@@ -94,6 +94,13 @@ export function resetUserStub() {
 
 resetUserStub();
 
+/** For a story: give user `id` another name — a long one, to see how a by-line takes it. The reset puts it back. */
+export function userNamedForStory(id: bigint, name: string) {
+  const user = people.find((p) => p.id === id);
+  if (!user) throw new Error(`no user ${id} in the stub`);
+  user.name = name;
+}
+
 // ── The rules, in their own terms ───────────────────────────────────────────────────────────────
 
 const RANK: Partial<Record<Role, number>> = {

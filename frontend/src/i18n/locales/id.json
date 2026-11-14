@@ -4884,6 +4884,11 @@
     "emptyFiltered": "Tidak ada transfer {{status}}.",
     "emptyOutgoing": "Tidak ada yang keluar dari gudang ini.",
     "emptyIncoming": "Tidak ada yang menuju gudang ini.",
+    "none": "Tidak ada transfer yang cocok.",
+    "emptyHint": "Buat transfer untuk memindahkan stok dari satu gudang ke gudang lain.",
+    "emptyOutgoingHint": "Transfer yang keluar dari gudang ini muncul di sini begitu tim penjualnya membuatnya — proses, lalu kirim.",
+    "emptyIncomingHint": "Transfer yang menuju gudang ini muncul sejak dibuat, jadi tempatnya bisa disiapkan.",
+    "shippingCost": "Ongkir {{amount}}",
     "direction": {
       "label": "Arah",
       "outgoing": "Keluar",

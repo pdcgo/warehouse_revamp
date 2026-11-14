@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { productLeftItsRacksForStory } from "../../../.storybook/batchStub";
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -182,6 +183,36 @@ export const History: Story = {
     );
     await expect(table).toHaveTextContent("A-01-1");
     await expect(table).toHaveTextContent("B-02-1");
+  },
+};
+
+// THE RACK EACH MOVEMENT TOUCHED (backlog #47) — Riwayat's Rak names it on every row: 5031's put-away, one row per rack,
+// A-01-1 and B-02-1; "Unplaced" never, as each of its rows touched a rack. Named from the warehouse's racks, so a
+// rack the product has LEFT since (it sits on none now — ProductPlaces lists only racks holding it) still reads by its
+// code, never "#41"; the put-away (Ditaruh) too.
+export const HistoryNamesEachRack: Story = {
+  name: "History names each rack",
+  beforeEach: () => productLeftItsRacksForStory(74n),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const table = await within(canvas.getByTestId("batch-history-panel")).findByTestId(
+      "batch-detail-history-table",
+      {},
+      { timeout: 4000 },
+    );
+    await waitFor(() => expect(table).toHaveTextContent("B-02-1"));
+    const rows = within(table).getAllByTestId(/^batch-detail-history-row-\d+$/);
+    await expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      await expect(row).toHaveTextContent(/A-01-1|B-02-1/);
+      await expect(row).not.toHaveTextContent(/#\d|Unplaced/);
+    }
+
+    const placed = canvas.getByTestId("batch-placements-panel");
+    await expect(placed).toHaveTextContent("A-01-1");
+    await expect(placed).toHaveTextContent("B-02-1");
+    await expect(placed).not.toHaveTextContent(/#\d/);
   },
 };
 

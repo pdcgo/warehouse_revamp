@@ -1,0 +1,20 @@
+# The affected-spec finder's mapping — ONLY what reading the code cannot tell
+# (docs/tools/san.md#test-affected). `go run ./tools/san test affected` traces most files by itself:
+#   a Go file → the RPC handlers reaching it → the specs naming the RPC and the pages calling it;
+#   a frontend file → the pages importing what it exports → their routes → the specs visiting them,
+#   and its test ids → the specs using them.
+# A line here ADDS specs for the files its glob matches; it never removes what the finder found.
+#
+# Format: <glob> -> <spec>, <spec>   # why
+#   the glob is a repo-relative path; * stays inside a folder, ** crosses folders.
+#
+# Add a line when a full run catches a break that the affected specs of its slice did not run, and the
+# finder could not have seen it.
+
+# The event contract: no RPC and no page leads to it. These specs wait on what a listener writes after an
+# event (they poll with expect.toPass) — a changed event reaches them only through the listeners.
+proto/warehouse/events/** -> orders.spec.ts, restock_selling_wants_to_raise.spec.ts, restock_warehouse_wants_to_accept.spec.ts, restock_selling_wants_to_edit.spec.ts, transfers.spec.ts, expenses.spec.ts, stock_count_cancel.spec.ts, the_order_keeps_exact_figures.spec.ts, the_settlement_report.spec.ts, the_shop_entries.spec.ts, the_supplier_exports.spec.ts, the_supplier_goods.spec.ts   # specs that wait on a listener
+backend/pkgs/event_source/** -> orders.spec.ts, restock_selling_wants_to_raise.spec.ts, restock_warehouse_wants_to_accept.spec.ts, restock_selling_wants_to_edit.spec.ts, transfers.spec.ts, expenses.spec.ts, stock_count_cancel.spec.ts, the_order_keeps_exact_figures.spec.ts, the_settlement_report.spec.ts, the_shop_entries.spec.ts, the_supplier_exports.spec.ts, the_supplier_goods.spec.ts   # publishing and pushing events
+
+# Labels: a spec finds buttons and headings by their words, and the finder cannot tell which key changed.
+frontend/src/i18n/** -> auth.spec.ts, language.spec.ts   # sign-in words, and the language switch

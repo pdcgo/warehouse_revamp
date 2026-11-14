@@ -13,6 +13,7 @@
 //	san remote     serve this checkout to a coding agent (Connect RPC + MCP)
 //	san dev        set up and run the local stack — docker, the API and the UI, in one terminal
 //	san deploy     ship one service to Cloud Run — Cloud Build compiles it, nothing is migrated
+//	san test       measured testing — the change measured, the affected specs, the smoke set, the full run
 //
 // # Why one binary and not two
 //
@@ -93,6 +94,9 @@ func main() {
 
 			// The local stack.
 			devCommand(),
+
+			// Measured testing — the full suites wait for a measured yes. Machine commands: no database.
+			testCommand(),
 		},
 	}
 

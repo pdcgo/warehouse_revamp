@@ -7,6 +7,72 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-14 · a faster full test run, transfers on a phone
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **The long test run is about twice as fast** | the full browser test run now uses three workers, each with its own copy of the test database — about 16 minutes instead of 35 |
+| **Transfers read well on a phone** | both transfer lists show one card per transfer on a phone, the tabs slide instead of piling up, and the warehouse can Process / Ship / Accept from the card; the warehouse table now says who opened each transfer |
+
+## 2026-11-13 · wrong stock-in correction, batch history racks
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A miscounted box can be corrected** | the receiving warehouse's Owner or Admin uses *Koreksi Jumlah Terima* on an accepted restock or transfer: the real count and a reason; units out become missing at the door (the seller bears them, at the batch price), units in go into the same batch; Analytic and the supplier figures move on that day |
+| **Batch history names the rack** | a batch's history says which rack each movement used instead of *Unplaced*; the restock page's products table no longer scrolls sideways on a wide screen |
+| **The restock pages fit any desktop** | with the sidebar open or closed, the products table never scrolls sideways — the delivery card moves below it when there is no room beside |
+| **Testing is measured** | `san test measure` says what changed since the last green full run and whether the long tests are due; small changes run only the affected tests and a 1½-minute smoke set; the 35-minute full run waits for your yes and runs on a copy so work goes on |
+| **Tests no longer trip over each other** | four test files that counted every team's orders, accounts, expenses and debts now count only their own, so a new test can no longer break them by running first |
+| **The draft tests keep to their own team** | the order-draft test no longer counts or deletes other tests' drafts |
+
+## 2026-11-12 · Root badge in lists, Recorded by, Koreksi Harga, inventory metrics, shelves in units, refold
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Root's restocks and transfers are marked in the lists too** | a restock or transfer Root opened inside a team shows *by Root team* beside its creator on the lists, not only on its timeline |
+| **Team Balance names who recorded each line** | the ledger and payments show *Recorded by* (a line on phones), with *by Root team* when Root paid or accepted from outside the team |
+| **A wrong batch price can be corrected** | the owning team's Owner or Admin uses *Koreksi Harga* on a product's batch: new price above Rp 0, a reason, what changes shown first; the warehouse sees *Harga dikoreksi* in the batch history; units already sold, lost or moved keep their price; a big product's stock history went from 12.5 s to 19 ms |
+| **Analytic reads the stock** | four new Inventory metrics — *Restock*, *Transfer* (sent, received, in transit), *Returned stock*, *Ready stock* (on hand at each day's end) — with Lost stock's filters; a warehouse sees units only on the first three; switching a grouping no longer crashes the page |
+| **A shelf shows the warehouse units only** | on a rack page a warehouse's staff see what sits there and how many — no price per piece, no value; root still sees both |
+| **Small fixes** | the rack page no longer flashes back to loading after a sample or move; the daily statement says *Order fees* instead of *Handling fees*, and *Ongkir COD* for the courier's money |
+| **A wrong report day can be rebuilt** | when a day on Analytic's order figures or a supplier's restock / sales figures is short because an event was lost, an operator rebuilds that one day from the history with `san report refold` — dry run first, safe to run twice |
+
+## 2026-11-11 · the return warehouse rule, download cleanup, the Root team badge
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **No order without a return warehouse** | a team must set its return warehouse before it can create an order (form or draft); the form says which team and where to set it; dev teams 14 and 91 return to Dev Warehouse, 89 to Jakarta Warehouse |
+| **Old downloads clean themselves up** | merged label PDFs and exports are deleted after 7 days by a daily sweep (uploads never); a phone photo of a label prints the right way up; the order page reads *Platform total* instead of a raw key; an unused warehouse product list is gone |
+| **A team sees what Root did inside it** | wherever a screen says who did something — orders, timelines, stock history, expenses, settlement entries, imports, the member and limit logs — Root or the System Administrator acting inside a team shows by name with a green *by Root team* badge; Expenses gained a *Recorded by* column |
+
+## 2026-11-09 · Jakarta days, the warehouse order list, returns
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Every date range is the Jakarta day** | lists, reports, Analytic and the date picker cut days at Jakarta's midnight, wherever the reader is |
+| **The new warehouse order list is live** | the old system's columns and a *Returns* tab; *Scan Label* opens the order's pick page, and *Set Picked* only comes after every item is scanned; labels print together as one PDF from the bulk bar |
+| **Returns go back on the shelf** | the team's return warehouse accepts a returned parcel on a page: racks for the sound units, broken and missing counted with a note — those are the seller's, named for customer service to claim; stock comes back at its original price and expiry |
+
+## 2026-11-07 · Team Balance accepted, supplier figures, shop entries, exports
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Team Balance passed your review** | desktop and phone accepted; the pair page opens on **All** — the whole running ledger; only the team that owes can record a payment |
+| **Team Balance filters search everything** | the list's search finds a team by name or code past the first page; the pair's date range and tabs read the whole history, not only what was loaded |
+| **Supplier figures are real** | *Terjual* and *Siap* with their last order and restock dates, per store and per warehouse, on the supplier pages and Discover — every selling team's goods; a cancel takes its sale back. *Penjualan* is the real selling value on the order's day, and the Terjual / Siap pills filter the list |
+| **A shop's own settlement rows have a page** | *Entri Toko* lists withdrawals, adjustments, shop fees and lines that found no order, each with the statement it came from; a wrong one is reversed in place. The report's shop rows open it |
+| **Ekspor gives a real file** | the supplier Toko and Statistik tabs, the Supplier Report and the Account Report download an .xlsx of everything the screen shows as filtered — every page, exact money |
+
+## 2026-11-06 · closed shops, the courier and addresses, drafts, expense figures
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A shop is closed, never deleted** | **Close** and **Reopen** replace Delete; a closed shop takes no new orders, keeps importing statements, settlement, accounts and expenses, and its access stays editable; its code is freed, and reopening is refused while another open shop holds it. Report filters still offer it, badged *Closed* |
+| **Every order names its courier** | the courier is a real link to the catalogue; the form marks it required and holds **Create** until one is picked |
+| **Addresses are names, and drafts open ready to check** | an order's and a draft's address are kept as names; a draft opens with the marketplace's address shown, the regions pre-filled when they match exactly one place, everything editable |
+| **Drafts are Ready without mapping** | a draft keeps no product mapping (lines are mapped at Create); *Ready* means shop, warehouse, customer, address and courier are filled |
+| **Expense figures name their people** | Analytic's *Created by* lists who typed or corrected an expense; a stock loss lands on the Jakarta day |
+
 ## 2026-11-05 · stock never stuck, accounts checked, Analytic figures, shop access
 
 | What shipped | What it means for a person |
@@ -20,30 +86,6 @@ Users & Role System, Documents, region, shipping, expense.
 | **Sorting by Total works** | *Total* is what the order cost the seller; *Platform total* sorts what the buyer paid |
 | **A transfer's label photo opens for every side** | the sending warehouse, the receiving one and the seller |
 | **A stuck stock release is replayed** | `san pubsub releases list / replay` finds a dead-lettered release and gives the stock back, safely twice |
-| **A shop is closed, never deleted** | **Close** and **Reopen** replace Delete; a closed shop takes no new orders, keeps importing statements, settlement, accounts and expenses, and its access stays editable; its code is freed, and reopening is refused while another open shop holds it. Report filters still offer it, badged *Closed* |
-| **Every order names its courier** | the courier is a real link to the catalogue; the form marks it required and holds **Create** until one is picked |
-| **Addresses are names, and drafts open ready to check** | an order's and a draft's address are kept as names; a draft opens with the marketplace's address shown, the regions pre-filled when they match exactly one place, everything editable |
-| **Drafts are Ready without mapping** | a draft keeps no product mapping (lines are mapped at Create); *Ready* means shop, warehouse, customer, address and courier are filled |
-| **Expense figures name their people** | Analytic's *Created by* lists who typed or corrected an expense; a stock loss lands on the Jakarta day |
-| **Team Balance passed your review** | desktop and phone accepted; the pair page opens on **All** — the whole running ledger; only the team that owes can record a payment |
-| **Team Balance filters search everything** | the list's search finds a team by name or code past the first page; the pair's date range and tabs read the whole history, not only what was loaded |
-| **Supplier figures are real** | *Terjual* and *Siap* with their last order and restock dates, per store and per warehouse, on the supplier pages and Discover — every selling team's goods; a cancel takes its sale back. *Penjualan* is the real selling value on the order's day, and the Terjual / Siap pills filter the list |
-| **A shop's own settlement rows have a page** | *Entri Toko* lists withdrawals, adjustments, shop fees and lines that found no order, each with the statement it came from; a wrong one is reversed in place. The report's shop rows open it |
-| **Ekspor gives a real file** | the supplier Toko and Statistik tabs, the Supplier Report and the Account Report download an .xlsx of everything the screen shows as filtered — every page, exact money |
-| **Every date range is the Jakarta day** | lists, reports, Analytic and the date picker cut days at Jakarta's midnight, wherever the reader is |
-| **The new warehouse order list is live** | the old system's columns and a *Returns* tab; *Scan Label* opens the order's pick page, and *Set Picked* only comes after every item is scanned; labels print together as one PDF from the bulk bar |
-| **Returns go back on the shelf** | the team's return warehouse accepts a returned parcel on a page: racks for the sound units, broken and missing counted with a note — those are the seller's, named for customer service to claim; stock comes back at its original price and expiry |
-| **No order without a return warehouse** | a team must set its return warehouse before it can create an order (form or draft); the form says which team and where to set it; dev teams 14 and 91 return to Dev Warehouse, 89 to Jakarta Warehouse |
-| **Old downloads clean themselves up** | merged label PDFs and exports are deleted after 7 days by a daily sweep (uploads never); a phone photo of a label prints the right way up; the order page reads *Platform total* instead of a raw key; an unused warehouse product list is gone |
-| **A team sees what Root did inside it** | wherever a screen says who did something — orders, timelines, stock history, expenses, settlement entries, imports, the member and limit logs — Root or the System Administrator acting inside a team shows by name with a green *by Root team* badge; Expenses gained a *Recorded by* column |
-| **Root's restocks and transfers are marked in the lists too** | a restock or transfer Root opened inside a team shows *by Root team* beside its creator on the lists, not only on its timeline |
-| **Team Balance names who recorded each line** | the ledger and payments show *Recorded by* (a line on phones), with *by Root team* when Root paid or accepted from outside the team |
-| **A wrong batch price can be corrected** | the owning team's Owner or Admin uses *Koreksi Harga* on a product's batch: new price above Rp 0, a reason, what changes shown first; the warehouse sees *Harga dikoreksi* in the batch history; units already sold, lost or moved keep their price; a big product's stock history went from 12.5 s to 19 ms |
-| **Analytic reads the stock** | four new Inventory metrics — *Restock*, *Transfer* (sent, received, in transit), *Returned stock*, *Ready stock* (on hand at each day's end) — with Lost stock's filters; a warehouse sees units only on the first three; switching a grouping no longer crashes the page |
-| **A shelf shows the warehouse units only** | on a rack page a warehouse's staff see what sits there and how many — no price per piece, no value; root still sees both |
-| **Small fixes** | the rack page no longer flashes back to loading after a sample or move; the daily statement says *Order fees* instead of *Handling fees*, and *Ongkir COD* for the courier's money |
-| **A wrong report day can be rebuilt** | when a day on Analytic's order figures or a supplier's restock / sales figures is short because an event was lost, an operator rebuilds that one day from the history with `san report refold` — dry run first, safe to run twice |
-| **A miscounted box can be corrected** | the receiving warehouse's Owner or Admin uses *Koreksi Jumlah Terima* on an accepted restock or transfer: the real count and a reason; units out become missing at the door (the seller bears them, at the batch price), units in go into the same batch; Analytic and the supplier figures move on that day |
 | **Orders missing a settlement account can be found** | each order records when its account opened; the order list shows a *No settlement account* badge and a *Settlement not opened* filter |
 | **Dialogs fit the desktop** | seven dialogs stop filling the screen |
 | **Two imports racing one key get a clear answer** | the loser reads *this key belongs to another account*, never a server error |

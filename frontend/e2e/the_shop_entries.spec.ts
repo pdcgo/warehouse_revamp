@@ -2,6 +2,8 @@ import { deflateRawSync } from "node:zlib";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // SHOP ENTRIES, END TO END (the-shop-entries-page-is-accepted, a-shop-entry-reverses-inline) — named to sort AFTER
 // orders.spec.ts, statement.spec.ts and the_settlement_report.spec.ts, as a spec posting money must; it runs on one
@@ -129,27 +131,18 @@ const STATEMENT = shopeeStatement({
 // ── the session ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 async function login(page: Page) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(ROOT_USERNAME);
-  await page.getByLabel("Password", { exact: true }).fill(ROOT_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(ROOT_USERNAME);
+  await signIn(page, ROOT_USERNAME, ROOT_PASSWORD);
 }
 
 // The real contract under the signed-in token; a refusal fails here, by name.
 async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m as string}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(b),
@@ -158,7 +151,7 @@ async function rpc<T = Record<string, unknown>>(page: Page, method: string, body
 
       return res.json();
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   ) as Promise<T>;
 }
 
@@ -259,10 +252,10 @@ test("Reverse posts the opposite row, the entry reads Reversed, and the totals a
 
   // A second reverse is refused by the server — a row is reversed once.
   const again = await page.evaluate(
-    async ([team, shop, entry]) => {
+    async ([team, shop, entry, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ?? window.localStorage.getItem("warehouse_revamp.token");
-      const res = await fetch("http://localhost:8081/warehouse.settlement.v1.SettlementWriteService/SettlementPost", {
+      const res = await fetch(`${apiUrl}/warehouse.settlement.v1.SettlementWriteService/SettlementPost`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -279,7 +272,7 @@ test("Reverse posts the opposite row, the entry reads Reversed, and the totals a
       });
       return { status: res.status, body: await res.text() };
     },
-    [state.team, state.shop, state.entry] as const,
+    [state.team, state.shop, state.entry, API_URL] as const,
   );
   expect(again.status).toBe(400);
   expect(again.body).toContain("already reversed");

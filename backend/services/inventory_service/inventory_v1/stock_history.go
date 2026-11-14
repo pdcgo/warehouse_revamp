@@ -14,8 +14,9 @@ import (
 // on-hand number is explainable.
 //
 // Without a batch it reads the RACK rows: every change to where the product sits, each with its rack and the rack's
-// count after. Narrowed to a batch it reads that batch's rows instead, each with the batch's count after. No log row
-// carries both a rack and a batch (see ledger_history.go).
+// count after. Narrowed to a batch it reads that batch's rows instead, each with the batch's count after and the rack
+// its transaction moved the product on — one row per rack when the rows are the batch's alone (batchRackJoin). No log
+// row carries both a rack and a batch (see ledger_history.go).
 func (s *Service) StockHistory(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockHistoryRequest],
@@ -27,20 +28,23 @@ func (s *Service) StockHistory(
 		query     *gorm.DB
 		selection string
 		change    string
+		order     string
 	)
 
 	if batchID := filter.GetBatchId(); batchID != 0 {
+		// Each batch row with the rack it moved on — one row per rack when the movement split over racks (batchRackJoin).
 		query = s.db.WithContext(ctx).
 			Table("batch_logs AS l").
 			Joins("JOIN batches b ON b.id = l.batch_id").
+			Joins(batchRackJoin).
 			Where("l.warehouse_id = ? AND b.product_id = ? AND l.batch_id = ?",
 				req.Msg.GetWarehouseId(), filter.GetProductId(), batchID)
-		selection, change = batchHistorySelect, "change_count"
+		selection, change, order = batchHistorySelect, "change_count", batchRowOrder
 	} else {
 		query = s.db.WithContext(ctx).
 			Table("product_placement_logs AS l").
 			Where("l.warehouse_id = ? AND l.product_id = ?", req.Msg.GetWarehouseId(), filter.GetProductId())
-		selection, change = placementHistorySelect, "stock_change"
+		selection, change, order = placementHistorySelect, "stock_change", "l.id DESC"
 	}
 
 	if kind := filter.GetKind(); kind != inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED {
@@ -67,7 +71,7 @@ func (s *Service) StockHistory(
 
 	err = query.
 		Select(selection).
-		Order("l.id DESC").
+		Order(order).
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
 		Scan(&rows).

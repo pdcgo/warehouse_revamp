@@ -1,0 +1,28 @@
+# The smoke set — about five key flows, kept under 5 minutes, run with the affected specs after every slice
+# (docs/development_lifecycle_decision.md#the-full-e2e-waits-for-a-measured-yes). `go run ./tools/san test smoke`
+# runs it; `--dry-run` checks every line below still names exactly one test.
+#
+# One flow per "## " heading. Each line under it is one test: "<spec file> › [<describe> › …] <test title>",
+# the title exactly as Playwright shows it. A serial spec's later test needs the earlier tests it builds on,
+# so those are listed too. Renaming or moving one of these tests means updating this file.
+
+## sign in
+auth.spec.ts › root logs in, lands in the app, and sees the root team
+
+## place an order (and the Team Balance it posts)
+the_order_keeps_exact_figures.spec.ts › Exact: a warehouse holding one unit at Rp 12.666,99, a 2,5% fee, and a shop
+the_order_keeps_exact_figures.spec.ts › Exact: the form previews the exact figures, and the order stores exactly those
+the_order_keeps_exact_figures.spec.ts › Exact: Team Balance posts the exact fee the order froze
+
+## accept a restock
+restock_warehouse_wants_to_accept.spec.ts › warehouse:all wants to accept a restock › warehouse:owner accept restock (from arrived)
+
+## a transfer
+transfers.spec.ts › Transfer: two warehouses, stock at A, and an operational account to pay the trip
+transfers.spec.ts › Transfer: the team opens it on the form, paying the trip from the operational account
+transfers.spec.ts › Transfer: A processes and ships it
+transfers.spec.ts › Transfer: B counts it in with the courier's charge — the stock is at B
+
+## accept a return
+the_return_goes_back_on_the_shelf.spec.ts › setup: a seller returning to its own return warehouse, an order of 4 shipped and claimed back
+the_return_goes_back_on_the_shelf.spec.ts › Accept: 1 broken with a note, 1 missing, the 2 sound back on the return warehouse's rack

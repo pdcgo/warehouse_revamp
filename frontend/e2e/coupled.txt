@@ -1,0 +1,23 @@
+# Specs that must share ONE test database — `san test full --workers N` (docs/tools/san.md#test-full, backlog #51).
+#
+# Each worker of a parallel full run has its own database, and every batch inside it starts from a fresh clone. A
+# spec that READS what an earlier spec wrote would find nothing there. Such specs are listed here, one group per line,
+# and travel as one unit: one worker, one batch, one database, in name order. Nothing else is needed for the other
+# kind of coupling — a spec that must sort AFTER another (it pollutes what the other counts: "named to sort after
+# orders.spec.ts and statement.spec.ts"): inside a batch the specs still run in name order, and on another worker or
+# in another batch they never meet at all.
+#
+# Format: <spec> <spec> …   # why
+#
+# NO GROUP TODAY. Read for #51 (2026-11-14), every spec seeds its own ground — no spec reads a team, product, order or
+# id that another spec made (no hard-coded ids, no fixture created elsewhere), and the single-run batches already
+# reset the database every six specs at boundaries that moved as specs were added. The couplings found are all of
+# the sort-after kind, kept by name order:
+#   orders.spec.ts, statement.spec.ts           read before the specs that place orders or post money (≈ 20 specs say
+#                                               "named to sort after" them) — since #50 they count only their own rows
+#   settlement_imports.spec.ts                  imports e2e/fixtures/shopee_statement.xlsx first: its row keys are global,
+#     → the_closed_shop.spec.ts                 so the second import of the same file reads "already there" (the closed
+#                                               shop's test asserts only the rows read, so it passes either way)
+#   restock.spec.ts → restock_*.spec.ts         split from one file (#51); each block seeds its own ground in beforeAll
+#                                               and was run alone to prove it
+# Add a line when a parallel run shows a spec failing only because its partner ran on another worker.

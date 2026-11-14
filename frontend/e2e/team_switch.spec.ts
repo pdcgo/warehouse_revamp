@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { signIn } from "./session";
 
 // Switching team, and the membership list the switcher reads.
 //
@@ -15,16 +16,7 @@ const WH_NAME = `Switch WH ${SUFFIX}`;
 const WH_CODE = `SW${SUFFIX}`;
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
 }
 
 test("a team you just created is switchable WITHOUT a reload", async ({ page }) => {

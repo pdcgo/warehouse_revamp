@@ -682,12 +682,40 @@ and nothing reads the dropped `stock_*` tables. One idea explains most of the su
 - **What it is worth** is `batches` (price, units, value — `stock_valuation` is the truth). `StockAvailability`,
   `StockCost`, the batch and cost-layer reads and every owner read use these; the owner is `batches.team_id`.
 - **No row carries both**, so a product's history without a batch reads the rack rows and with one reads the batch's
-  rows; a batch's "racks" are where it was put away when it was minted
+  rows — each naming the rack its transaction moved the product on ([below](#a-batchs-history-names-the-rack-each-row-moved-on-backlog-47));
+  a batch's "racks" are where it was put away when it was minted
   ([a-batch-shows-the-racks-it-was-put-on](../../business/inventory/batch_decision.md#a-batch-shows-the-racks-it-was-put-on)).
 - **There is no unplaced pile** ([there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile)):
   every unit is on a rack, and a request naming "unplaced" is refused.
 - **"Last counted"** is the later of the newest `adjustment` rack row (a recount writes one even when it finds the rack
   exact) and the last FINISHED stock count that held a row there — a count writes nothing on a rack it found exact.
+
+### A batch's history names the rack each row moved on (backlog #47)
+
+`StockHistory` narrowed to a batch (`filter.batch_id` — the batch page's Riwayat) read `0` as every row's `rack_id`, so the
+screen's Rak said *Unplaced* on every row. Built 2026-11-13: `ledger_history.go` `batchRackJoin` reads each batch row's
+rack from the rack rows (`product_placement_logs`) of the SAME transaction, for the batch's product, in the same
+warehouse, on the same side (units in ↔ units in).
+
+| case | what the row reads |
+| --- | --- |
+| one rack (a recount, a sample, a correction, a take off one shelf) | that rack |
+| several racks, and their rows add up to this batch row (a put-away over two racks, a one-batch take off two) | **one row per rack**, as `RackHistory` and the product's history show it — the rack's units, the batch's count after that part, the value shared by units; a part past the first is keyed `(part − 1) << 48 \| batch_logs.id` (unique on the page, never another row's id) |
+| several racks drawn by several batches in one transaction (a take over two batches, a transfer's layers) | the row whole, on the transaction's **first** rack row — which rack fed which batch is not recorded (the accepted prototype draws a take on its first shelf) |
+| no rack row — a price correction, a row under no transaction | `0`; the screen says *Unplaced* only then |
+| a move | writes no batch row ([a-move-writes-two-rack-rows-and-no-batch-row](../../business/inventory/placement_decision.md#a-move-writes-two-rack-rows-and-no-batch-row)), so it is never in a batch's history |
+
+The count pages over the parts too. The batch page names each rack from the warehouse's rack list (`useRackCodes`), so a
+rack the product has left since still reads by its code. Tests: `stock_history_batch_racks_test.go`, the received-count
+correction's history row (`TestRestockReceivedCountCorrect_TheBatchHistoryShowsTheCorrection`), story
+`Pages/Inventory/Batches/BatchDetail › History names each rack`.
+
+**Performance** — still 2 statements; one indexed lateral per batch row (`product_placement_logs_transaction_idx`) for
+the count and the page. `TestPerf_StockHistory_ABatchsRacks` (`-tags perfaudit`): one batch with 3 000 takes (2 000 off two
+racks) → 5 001 rows, 305 000 rack rows: page 1 **1.9 → 13.9 ms** median (the count 14 ms, the page 3 ms), page 100
+**12 → 58 ms** (two ≈ 30 ms statements — the page walks every row before it, as `refExpr` already did). Under every audit
+threshold; no index helps (the lookup is already an index probe) — History row in
+[OwnerStockHistory.md](../../../audits/services/inventory_service/performances/OwnerStockHistory.md).
 
 ### A stock-take counts a RACK (#139) — provisionally, as an `adjustment`
 

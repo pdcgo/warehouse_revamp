@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { API_URL } from "./env";
 
 // MY PROFILE, end to end on the real server. The form starts from ProfileDetail — the caller's OWN row, email and phone
 // included — and a save sends only what changed, so a name-only save keeps the email and the phone a forgotten
@@ -33,12 +34,12 @@ async function login(page: Page, username: string, password: string) {
 // rpc calls the API with the page's own token, so a seed runs as the person the UI is signed in as.
 async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(b),
@@ -48,7 +49,7 @@ async function rpc<T = Record<string, unknown>>(page: Page, method: string, body
 
       return res.json();
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   ) as Promise<T>;
 }
 

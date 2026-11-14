@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // THE SETTLEMENT REPORT, END TO END — named to sort AFTER orders.spec.ts and statement.spec.ts (Playwright puts
 // `statement_x` before `statement.spec`), as a spec posting money must; it runs on one shared database.
@@ -27,27 +29,18 @@ const rp = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
 
 async function login(page: Page) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(ROOT_USERNAME);
-  await page.getByLabel("Password", { exact: true }).fill(ROOT_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(ROOT_USERNAME);
+  await signIn(page, ROOT_USERNAME, ROOT_PASSWORD);
 }
 
 // The real contract under the signed-in token; a refusal fails here, by name.
 async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m as string}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(b),
@@ -56,7 +49,7 @@ async function rpc<T = Record<string, unknown>>(page: Page, method: string, body
 
       return res.json();
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   ) as Promise<T>;
 }
 

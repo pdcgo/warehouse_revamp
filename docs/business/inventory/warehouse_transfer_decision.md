@@ -40,6 +40,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [balance-posts-the-transfers-on-site-debt-from-the-event](#balance-posts-the-transfers-on-site-debt-from-the-event) | B's accept saves the courier's charge on the transfer and never writes balance; balance posts the team's debt to B from *Warehouse Transfer Accepted*, once per transfer | chat, 2026-10-15 — answers [Q10](./warehouse_transfer_clarify.md#question), as recommended (option B) |
 | [a-transfers-shipping-is-paid-from-any-active-account](#a-transfers-shipping-is-paid-from-any-active-account) | a transfer's shipping is paid from any active account of the team, operational or not | owner | — |
 | [every-side-of-a-transfer-opens-its-label-photo](#every-side-of-a-transfer-opens-its-label-photo) | the sender, the receiver and the owning seller open a transfer's label photo, through a server check | owner, as recommended | — |
+| [the-transfer-lists-read-as-blocks-on-a-phone](#the-transfer-lists-read-as-blocks-on-a-phone) | both transfer lists read as one block per transfer on a phone, and the warehouse block names who opened it | owner, as recommended | — |
 
 ---
 
@@ -1034,3 +1035,25 @@ warehouse — reads as a duplicate and is **dropped**. Asked where it is answere
 **The verdict.** **All three sides** of the transfer open its label photo: the sending warehouse (A), the receiving warehouse (B) — to match the parcel when it arrives — and the selling team that owns the transfer, which paid for the shipping. Through a server check, exactly as a restock's ([the-restocks-warehouse-opens-its-label-photo](./restock_decision.md#the-restocks-warehouse-opens-its-label-photo)): the caller's team must be one of the three; any other team is refused. ⚠ Not built.
 
 ✅ Built 2026-11-05 — `WarehouseTransferService.WarehouseTransferLabelPhoto` (`inventory_v1/warehouse_transfer_label_photo.go`) through the restock's `ReceiptPhotoLinker` seam, owner = the sending warehouse; the button on all three detail screens (`TransferDetailCards.tsx` `LabelPhoto`); tests `warehouse_transfer_label_photo_test.go` (three sides + a refused fourth team), stories, e2e `transfers.spec.ts` *every side opens the label photo, a fourth team is refused*.
+
+---
+
+## the-transfer-lists-read-as-blocks-on-a-phone
+
+> Owner (Heri), in chat (2026-11-14): *"I accept it, A"* — to the Storybook prototype of both transfer lists at 390 px (`pages/warehouse-transfer-selling/stories/PhonePrototype.stories.tsx`, `pages/warehouse-transfer-warehouse/stories/PhonePrototype.stories.tsx`; screenshots of the list today, both blocks, the empty state with the filter sheet, and Indonesian). A: accept as shown, the warehouse block keeps *· by <name>* + the Root badge, and the warehouse desktop table gains the same by-line; B: drop the name; C: change something. (He first asked about a tab strategy, then: *"Oh sorry, i look false preview"* — he had read the before picture.)
+
+**The verdict.** On a phone (below `md`, down to 320 px) both transfer lists stop drawing their table:
+
+| | the phone list |
+| --- | --- |
+| header | the page title, *New Transfer* as a ＋ icon on its row ([a-phone-header-action-is-an-icon](../../technical/frontend/context_decision.md#a-phone-header-action-is-an-icon)) |
+| tabs | the eight status tabs on one row that slides sideways, no bar drawn, a tab never shrinks ([nothing-runs-past-a-phones-edge](../../technical/frontend/context_decision.md#nothing-runs-past-a-phones-edge)) |
+| filters | search in the row; the pickers in the bottom sheet, as today |
+| selling block | number · status · broken/missing · ⋯; the route (wraps); products and pieces, the value on the right; courier with *Shipping Rp …* or *No cost yet*; the date · by the person + the Root badge |
+| warehouse block | number · status; the date / the owning shop · by the person + the Root badge; to or from the other warehouse; courier and tracking number; products; the next action named at the bottom — no money |
+| empty | nothing yet, an empty tab, nothing matches with *Clear Filters* |
+| pager | the growing pager, centred, no page size |
+
+The **warehouse desktop table** names who opened each transfer too — the same *· by <name>* + badge under the owning team, as the restock inbound row does ([the-inbound-row-says-who-and-when](../../technical/frontend/restock_decision.md#the-inbound-row-says-who-and-when)). The desktop lists take the growing pager and the empty-list hint when built (rules already standing). ⚠ Not built — the prototype is still gated.
+
+✅ Built 2026-11-14 — both lists read `useIsMobile()` (the prototype gate `features/warehouseTransfer/phonePrototype.tsx` is deleted): on a phone the title with its ＋, the tabs on one sliding row, a block per transfer (`pages/warehouse-transfer-*/components/*TransferBlock.tsx`; the warehouse block's next act is the desktop row's own `WarehouseTransferActions`); on both shells the empty-list hint (nothing matches with *Clear Filters*, on All too) and the growing pager; the warehouse desktop table names who opened each transfer under the owning team, with the Root badge. No backend — the list already carried the creator and `created_by_is_override`. Stories `pages/warehouse-transfer-*/index.stories.tsx` (Mobile at 390) and `stories/Phone.stories.tsx` (390 and 320, long names, empty states, Indonesian, the block's Process / Ship / Sign run), `stories/Rows.stories.tsx` (*The row says who opened it*); e2e `transfers.spec.ts` *on a phone the lists read as blocks, and A processes one from its block*.

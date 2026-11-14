@@ -4915,6 +4915,11 @@
     "emptyFiltered": "No {{status}} transfers.",
     "emptyOutgoing": "Nothing is leaving this warehouse.",
     "emptyIncoming": "Nothing is coming to this warehouse.",
+    "none": "No transfers match.",
+    "emptyHint": "Open a transfer to move stock from one warehouse to another.",
+    "emptyOutgoingHint": "A transfer leaving this warehouse shows here once its selling team opens it — process it, then ship it.",
+    "emptyIncomingHint": "A transfer coming here shows from the moment it is opened, so the space for it can be planned.",
+    "shippingCost": "Shipping {{amount}}",
     "direction": {
       "label": "Direction",
       "outgoing": "Outgoing",

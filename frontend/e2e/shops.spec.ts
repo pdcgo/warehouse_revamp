@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // #66 — Shop management (a selling team's marketplace storefronts): create / edit / delete.
 //
@@ -13,27 +15,18 @@ const CODE = `SH${SUFFIX}`;
 const NAME = `E2E Shop ${SUFFIX}`;
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
 }
 
 // rpc calls the API with the page's own token, so a seed runs as the person the UI is signed in as.
 async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(b),
@@ -43,7 +36,7 @@ async function rpc<T = Record<string, unknown>>(page: Page, method: string, body
 
       return res.json();
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   ) as Promise<T>;
 }
 

@@ -1,38 +1,41 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // #170 — the expenses screen: money the business spent that NO ORDER caused.
 //
-// Root is a ROOT team, so the Costs menu item is not offered (it is a selling-team surface), but root
-// holds ROLE_ROOT and the RPCs are authorised in team 1 — so the route is reached directly, the same
-// way orders.spec.ts reaches the selling screens. The menu gate is UX only.
+// Root in A SELLING TEAM OF THIS SPEC'S OWN, created by the first test with root as its owner. The screen starts empty
+// and its totals are the WHOLE month's of the team, so they must be a team only this spec writes to: in root's own
+// team they also counted every expense an earlier spec (in name order, on the one shared database) had recorded there.
 
 const SUFFIX = Date.now().toString().slice(-6);
 const NOTE = `E2E electricity ${SUFFIX}`;
+const TEAM_NAME = `E2E Expense Team ${SUFFIX}`;
+const TEAM_CODE = `EXT${SUFFIX}`;
+// The spec's own selling team — set by the first test, read by every test after it (the file is serial).
+let team = "";
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
+
+  // Work in the spec's own team: the active team is per tab, in sessionStorage (TeamContext) — the next page load
+  // opens in it.
+  if (team !== "") {
+    await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+  }
 }
 
 // rpc calls the API with the page's own token, so a seed runs as the person the UI is signed in as.
 async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(b),
@@ -42,7 +45,7 @@ async function rpc<T = Record<string, unknown>>(page: Page, method: string, body
 
       return res.json();
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   ) as Promise<T>;
 }
 
@@ -50,7 +53,19 @@ test.describe.configure({ mode: "serial" });
 
 test("Expenses: the screen opens on this month and starts empty", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  team = (
+    await rpc<{ team: { id: string } }>(page, "team.v1.TeamService/TeamCreate", {
+      type: "TEAM_TYPE_SELLING",
+      name: TEAM_NAME,
+      teamCode: TEAM_CODE,
+      ownerUserId: ROOT_USER_ID,
+    })
+  ).team.id;
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+
   await page.goto("/expenses");
+  await expect(page.getByTestId("team-switcher")).toContainText(TEAM_NAME);
 
   await expect(page.getByTestId("expenses-table")).toBeVisible();
   await expect(page.getByTestId("expenses-empty")).toBeVisible();
@@ -79,7 +94,7 @@ test("Expenses: record, adjust, and cancel — the totals follow each step, ever
   // Every expense names the account that paid it (an-expense-must-name-the-account-that-paid) — one operational
   // account for the team, so the form has something to pick.
   const account = await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
-    teamId: "1",
+    teamId: team,
     type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
     provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
     name: `E2E expense ${SUFFIX}`,
@@ -90,7 +105,7 @@ test("Expenses: record, adjust, and cancel — the totals follow each step, ever
   });
   // Paid from offers only accounts marked operational (operational-accounts-pay-for-operations).
   await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
-    teamId: "1",
+    teamId: team,
     accountId: account.account.id,
     operational: true,
   });
@@ -159,20 +174,19 @@ test("Expenses: the account that paid goes down on record and comes back on canc
   const name = `E2E paid ${SUFFIX}`;
   const note = `E2E internet ${SUFFIX}`;
   const account = await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
-    teamId: "1",
+    teamId: team,
     type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
     provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
     name,
     holderName: "E2E",
     accountNumber: `E2E-PAID-${SUFFIX}`,
-    // Opens at 0, so the root team's total — which financial_accounts.spec asserts later in the same run — ends where it
-    // started once the expense is cancelled.
+    // Opens at 0, so the balance below reads only what this test's expense moved.
     openingBalance: 0,
     openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
   });
   const accountId = account.account.id;
   await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
-    teamId: "1",
+    teamId: team,
     accountId,
     operational: true,
   });

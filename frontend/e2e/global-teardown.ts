@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { ADMIN_DSN } from "./db";
+import { DB_NAME } from "./env";
 import { holdsRunLock, releaseRunLock } from "./lock";
 
 // Clean up after testing: drop the test database so a run leaves nothing behind. The drop uses
@@ -16,7 +17,8 @@ export default function globalTeardown(): void {
   // A run that never began owns nothing and must remove nothing.
   if (!holdsRunLock()) return;
 
-  execSync(`go run ../tools/san db drop-test --admin-dsn "${ADMIN_DSN}"`, {
+  // This run's own database only — a worker of `san test full --workers N` drops its own, never another's.
+  execSync(`go run ../tools/san db drop-test --name ${DB_NAME} --admin-dsn "${ADMIN_DSN}"`, {
     cwd: "../backend",
     stdio: "inherit",
     env: { ...process.env },

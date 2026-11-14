@@ -111,6 +111,7 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [a-label-count-follows-its-label](#a-label-count-follows-its-label) | on Cetak Label a typed count belongs to the label it was typed for — the restock, product, batch and placement — never to the place it sat in the list |
 | [at-most-fifty-restocks-a-print](#at-most-fifty-restocks-a-print) | at most 50 restocks a print — Cetak Label's address holds the first 50 and Tambah Restok stops there; the list's ticks stop there too, each saying why |
 | [the-labels-address-probe-is-hidden](#the-labels-address-probe-is-hidden) | the address a Cetak Label story reads (`?ids=…`) is kept off the screen under review — in the DOM for the test, not shown |
+| [the-delivery-card-stacks-when-the-page-is-narrow](#the-delivery-card-stacks-when-the-page-is-narrow) | the restock warehouse page puts Kiriman below the products whenever the page area is too narrow for both | owner, as recommended | — |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -2534,3 +2535,13 @@ What it replaces: no limit — the list could hand Cetak Label every restock it 
 | pinned by | every Cetak Label story that reads the address (`Several restocks`, `Add a restock`, `Old address redirects`) |
 
 What it replaces: `?ids=503,502` printed under the page in those stories, reading as the page's own text.
+
+---
+
+## the-delivery-card-stacks-when-the-page-is-narrow
+
+> Owner (Heri), in chat (2026-11-13): *"A"*, as recommended — to: the restock warehouse page's products table (backlog #48) fits from ~1580 px with the sidebar open, but between ~1280 and ~1580 px it still scrolls inside its card, because the page sets *Kiriman* (20rem) beside the products from the `xl` **viewport** breakpoint, which ignores the sidebar. A: *Kiriman* moves below the products when the page area is too narrow — the stacked layout the page already uses on smaller screens, chosen by the space actually there; B: leave it; C: drop or merge a column.
+
+**The verdict.** The side-by-side layout (products | *Kiriman*) is chosen by the **page area's own width**, not the viewport's: when the area cannot hold the products table's narrowest width (≈ 660 px) **plus** the 20rem *Kiriman* column, *Kiriman* goes **below** the products, exactly as the stacked layout already draws it. No column is dropped; the table never scrolls sideways at a desktop width, sidebar open or closed. Phones unchanged. ⚠ Not built.
+
+✅ Built 2026-11-13 — `features/restock/sideBySide.ts` `useSideBySide(floor)` measures the page's main column (`lib/useElementWidth`, before the first paint; a CSS container query is not passed through by the app's emotion) and stands *Kiriman* beside the products only when it holds the products card's narrowest (the table's 660 px + the card's padding and border = 710) + the gap + 20rem; otherwise the stacked layout, in the nav's order. One tree for both, so the sidebar toggling moves only *Kiriman*. Applied to the **selling** detail page too, which had the same fault (its table's narrowest is 779 px → floor 830; it scrolled at 1440 and 1600 with the sidebar open). Pinned by `RestockWarehouseDetail/Layout` (1440 + sidebar below, 1920 + sidebar beside, 1440 alone, the sidebar closing, phone), `Products / Fits beside the open sidebar` (1600: still beside), and `RestockSellingDetail/Layout`.

@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // THE TEAM BALANCE NAMES WHO RECORDED EACH ROW, END TO END (docs/technical/balance/team_balance_design_decision.md —
 // the-team-balance-recorded-by-is-accepted, every-entry-names-who-posted-it; docs/business/user/context_decision.md —
@@ -23,27 +25,18 @@ const SKU = `REC${SUFFIX}`;
 const COURIER = 15_000;
 
 async function login(page: Page, username = ROOT_USERNAME, password = ROOT_PASSWORD) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
 }
 
 // The real contract under the signed-in token; a refusal fails here, by name.
 async function rpc<T = any>(page: Page, method: string, body: unknown): Promise<T> {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m as string}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(b),
@@ -52,7 +45,7 @@ async function rpc<T = any>(page: Page, method: string, body: unknown): Promise<
 
       return res.json();
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   ) as Promise<T>;
 }
 
@@ -251,7 +244,7 @@ test("Dewi counts the box in and pays the courier at the door — the selling te
 
   // Balance posts the courier's charge from *Restock Accepted* (balance-posts-the-couriers-debt-from-the-event) — once,
   // however often it arrives.
-  const route = "http://localhost:8081/event/liability-restock-accepted/push";
+  const route = `${API_URL}/event/liability-restock-accepted/push`;
   for (let i = 0; i < 2; i++) {
     const res = await request.post(route, { data: pushRestockAccepted(accepted.request) });
     expect(res.status()).toBe(200);

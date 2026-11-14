@@ -1,111 +1,54 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
-import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { asRole } from "../../../.storybook/sessionScenario";
-import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
-import { WarehouseTransferWarehousePage } from "./index";
+import { fitsTheScreen, tabsDoNotOverlap } from "../../features/warehouseTransfer/storyPhone";
+import { WAREHOUSE_META, loaded } from "./stories/kit";
 
-// ⚠ PROTOTYPE for implementation_analysis — the warehouse transfer decisions
-// (docs/business/inventory/warehouse_transfer_decision.md).
+// A WAREHOUSE'S TRANSFER QUEUE — the screen as it is, on a desktop and on a phone: Default and Mobile sit FIRST, straight
+// under TransferWarehouse. The same title also holds the folders below, so Storybook draws TransferWarehouse as a folder
+// with these two stories leading it. Its rules are grouped by the part of the screen they are about, one file each in
+// ./stories (stories-are-grouped-by-the-part-of-the-screen):
 //
-// Gudang Pusat (11) is A for 601–607 and 609 (two owners: Toko Melati and Toko Kenanga), and B for 608, which runs the
-// other way. Its crew reads the two directions as two jobs, and sees no values.
-
-const Routed = routedPage(
-  [
-    { path: "/inventories/transfer", element: <WarehouseTransferWarehousePage /> },
-    marker("/inventories/transfer/:transferId", "at-transfer-detail"),
-    marker("/inventories/transfer/:transferId/accept", "at-transfer-accept"),
-  ],
-  "/inventories/transfer",
-);
+//   Rows        what a desktop row shows — whose goods and who opened them — and the acts it runs
+//   Filters     the direction, the status tabs, the filters in the URL, the empty hint, the growing pager
+//   Phone       a block per transfer at 390 and 320px, its next act run from the block
+//               (the-transfer-lists-read-as-blocks-on-a-phone)
 
 const meta = {
   title: "Pages/Inventory/WarehouseTransfer/TransferWarehouse",
-  component: Routed,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
-  beforeEach: () => {
-    asTeam(11n)();
-    asRole(Role.WAREHOUSE_STAFF)();
-  },
+  ...WAREHOUSE_META,
 } satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function loaded(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement);
-  await canvas.findByTestId("transfer-row-601", {}, { timeout: 4000 });
-  return canvas;
-}
+export const Default: Story = {};
 
-export const Outgoing: Story = {
+// A PHONE READS EACH TRANSFER AS A BLOCK (the-transfer-lists-read-as-blocks-on-a-phone, every-page-has-a-mobile-story),
+// at the 390px it was accepted at: the page names itself; the eight tabs on one row that slides; a block per transfer —
+// whose goods and who opened them, where it goes, the next act named at its foot — no values; the growing pager,
+// centred, no page size; and nothing runs past the screen's edge.
+export const Mobile: Story = {
+  name: "Mobile",
+  globals: { viewport: { value: "phone390" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
+    const block = canvas.getByTestId("transfer-row-601");
 
-    // Two owners' goods leave this building…
-    await expect(canvas.getByTestId("transfer-row-609")).toBeInTheDocument();
-    // …and the one coming IN is not on the outgoing list.
-    await expect(canvas.queryByTestId("transfer-row-608")).toBeNull();
-    // The next act is on the row: process a created one, ship a processed one.
-    await expect(canvas.getByTestId("transfer-action-process-601")).toBeInTheDocument();
-    await expect(canvas.getByTestId("transfer-action-ship-602")).toBeInTheDocument();
-  },
-};
+    await expect(window.innerWidth).toBe(390);
+    await expect(canvas.getByTestId("transfers-table")).toHaveAttribute("data-layout", "phone");
+    await expect(canvasElement.querySelector("table")).toBeNull();
+    await expect(canvas.getByRole("heading", { name: "Transfers" })).toBeVisible();
+    await tabsDoNotOverlap(canvasElement);
 
-export const Incoming: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await userEvent.click(canvas.getByTestId("transfer-direction-incoming"));
-    await waitFor(() => expect(canvas.queryByTestId("transfer-row-601")).toBeNull());
-    await expect(canvas.getByTestId("transfer-row-608")).toBeInTheDocument();
-    await expect(canvas.getByTestId("transfer-action-accept-608")).toBeInTheDocument();
-  },
-};
-
-// Accepting is counting, line by line — a page, not a dialog.
-export const AcceptOpensTheCount: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await userEvent.click(canvas.getByTestId("transfer-direction-incoming"));
-    await userEvent.click(await canvas.findByTestId("transfer-action-accept-608"));
-    await canvas.findByTestId("at-transfer-accept");
-  },
-};
-
-// The crew counts boxes; another team's values are not its business.
-export const NoValues: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
+    await waitFor(() => expect(within(block).getByTestId("transfer-owner-601")).toHaveTextContent("Toko Melati"));
+    await waitFor(() => expect(within(block).getByTestId("transfer-created-by-601")).toHaveTextContent("by Ani Rahayu"));
+    await waitFor(() => expect(within(block).getByTestId("transfer-other-601")).toHaveTextContent(/^To Gudang Cabang$/));
+    await expect(within(block).getByTestId("transfer-action-process-601")).toBeVisible();
     await expect(canvas.queryByText(/Rp\s/)).toBeNull();
-  },
-};
+    await fitsTheScreen(canvasElement);
 
-// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the direction and the tab are its; a
-// change is written back.
-const AtFilteredUrl = routedPage(
-  [{ path: "/inventories/transfer", element: <><WarehouseTransferWarehousePage /><LocationProbe /></> }],
-  "/inventories/transfer?direction=incoming&status=shipped",
-);
-
-export const FiltersLiveInTheUrl: Story = {
-  render: () => <AtFilteredUrl />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByTestId("transfer-row-608", {}, { timeout: 4000 });
-    const location = canvas.getByTestId("location-search");
-
-    await expect(canvas.getByTestId("transfer-direction-incoming")).toHaveAttribute("data-state", "checked");
-    await expect(canvas.getByTestId("transfer-tab-shipped")).toHaveAttribute("aria-selected", "true");
-    await expect(canvas.queryByTestId("transfer-row-601")).toBeNull();
-
-    await userEvent.type(canvas.getByTestId("transfer-search"), "SCP", { delay: 40 });
-    await waitFor(() => expect(location).toHaveTextContent("q=SCP"));
-    await expect(location).toHaveTextContent("direction=incoming");
-    await expect(canvas.getByTestId("transfer-row-608")).toBeInTheDocument();
+    await expect(canvas.getByTestId("transfer-pager")).toBeVisible();
+    await expect(canvas.queryByTestId("transfer-pager-size")).toBeNull();
   },
 };

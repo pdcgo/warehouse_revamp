@@ -114,7 +114,9 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
             </Stack>
           ) : (
           /* The table scrolls, not the page — see the three layers in index.tsx (minW="0" on the panel, maxW on the
-             card, this scroll area). */
+             card, this scroll area). It does not at a desktop width: its narrowest (≈779px) is the page's
+             PRODUCTS_FLOOR_PX, and where the area cannot hold it beside the info column, the info goes below
+             (the-delivery-card-stacks-when-the-page-is-narrow). A new column means measuring that again. */
           <Table.ScrollArea>
             <Table.Root size="sm" data-testid="restock-detail-items">
               <Table.Header>

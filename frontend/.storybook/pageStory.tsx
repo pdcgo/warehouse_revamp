@@ -2,7 +2,8 @@ import { useMemo } from "react";
 
 import type { RouteObject } from "react-router-dom";
 import { RouterProvider, createMemoryRouter, useLocation } from "react-router-dom";
-import { Text } from "@chakra-ui/react";
+import type { Decorator } from "@storybook/react-vite";
+import { Box, Flex, Text } from "@chakra-ui/react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { CURRENT_TEAM_KEY } from "../src/features/team/TeamContext";
@@ -86,6 +87,26 @@ export function LocationProbe({ hidden = false }: { hidden?: boolean }) {
     </Text>
   );
 }
+
+// ── The app's sidebar, which a page story does not draw ─────────────────────────────────────────
+
+/** The open sidebar's width — 258px and its 1px border (DesktopLayout; open by default, the-sidebar-collapses-to-its-icons). */
+export const SIDEBAR_OPEN = "259px";
+
+/**
+ * A page story draws no app sidebar, so a page measured at a desktop width would have 259px more room than the app gives
+ * it. This decorator stands a sidebar-wide spacer (`story-sidebar-width`) beside the page; pair it with
+ * `globals: { viewport: { value: "desktop1440" } }` (or 1600/1920 — preview.tsx) to see the page as the app draws it.
+ * A play() may set the spacer's width to play the sidebar opening or closing.
+ */
+export const besideTheOpenSidebar: Decorator = (Story) => (
+  <Flex>
+    <Box w={SIDEBAR_OPEN} flexShrink={0} data-testid="story-sidebar-width" />
+    <Box flex="1" minW="0">
+      <Story />
+    </Box>
+  </Flex>
+);
 
 export function marker(path: string, testId: string): RouteObject {
   return { path, element: <Text data-testid={testId}>{testId}</Text> };

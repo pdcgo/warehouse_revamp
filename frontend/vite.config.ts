@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // The dependency cache — node_modules/.vite unless VITE_CACHE_DIR names another: each parallel e2e worker
+  // (playwright.config.ts, `san test full --workers N`) gives its dev server its own, so they never rewrite one cache.
+  cacheDir: process.env.VITE_CACHE_DIR || "node_modules/.vite",
   // PRE-BUNDLE THE CHARTS AT STARTUP. Only the analytic screen draws one, behind a lazy route, so the dev server first
   // met recharts mid-session, re-optimised its dependencies and served the page a stale chunk — the screen never
   // loaded until a restart (the e2e saw it). Named here, they are bundled before the first page is served.

@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { besideTheOpenSidebar } from "../../../../.storybook/pageStory";
+import { kirimanPlacement } from "../../../features/restock/storyLayout";
 import { At503, WAREHOUSE_DETAIL_META, loaded } from "./kit";
 
 // RESTOCK WAREHOUSE DETAIL — the lines as counted — missing, broken with its photo, where the good units went.
@@ -97,6 +99,39 @@ export const TheBrokenRackIsUnderThePlaces: Story = {
     await userEvent.click(canvas.getByTestId("not-implemented-toggle"));
     const conflict = await canvas.findByTestId("pending-row-brokenRack-conflict");
     await waitFor(() => expect(conflict).toBeVisible());
+  },
+};
+
+// IT FITS BESIDE THE OPEN SIDEBAR (backlog #48) — at 1600px the app's sidebar (258px and its border; open by default,
+// the-sidebar-collapses-to-its-icons) leaves the products column 681px beside the nav and Kiriman's 20rem, and the table
+// needed 947: it scrolled sideways and cut Placement. Now no column holds it wider than its words must — the product's name
+// and the problem's note give way, the places wrap — so nothing scrolls and Placement is on screen. A page story has no
+// sidebar of its own, so the story stands one of its width beside the page. At 1600 the area still holds both, so Kiriman
+// stays beside the products (the-delivery-card-stacks-when-the-page-is-narrow — narrower, it goes below: ./Layout.stories).
+
+export const FitsBesideTheOpenSidebar: Story = {
+  name: "Fits beside the open sidebar",
+  render: () => <At503 />,
+  globals: { viewport: { value: "desktop1600" } },
+  decorators: [besideTheOpenSidebar],
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(window.innerWidth).toBe(1600);
+    await expect(kirimanPlacement(canvasElement)).toBe("beside");
+
+    const table = canvas.getByTestId("restock-detail-items");
+    const scroller = table.parentElement!;
+    await waitFor(() => expect(canvas.getByTestId("restock-detail-placement-74")).toHaveTextContent("A-01-1 (5), B-02-1 (2)"));
+
+    // No sideways scroll…
+    await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth);
+    // …and Placement whole inside the table's box, beside the counts.
+    const placement = within(table).getByRole("columnheader", { name: "Placement" });
+    await expect(placement).toBeVisible();
+    await expect(placement.getBoundingClientRect().right).toBeLessThanOrEqual(scroller.getBoundingClientRect().right + 0.5);
+    // The worth still whole (backlog #46), the note's words still in its tooltip.
+    await expect(canvas.getByTestId("restock-detail-broken-74-value")).toHaveTextContent("worth Rp 132.333,333");
+    await expect(canvas.getByTestId("restock-detail-broken-74-note").parentElement).toHaveAttribute("title", "Karung sobek");
   },
 };
 

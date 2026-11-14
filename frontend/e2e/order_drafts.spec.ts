@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // #195 — the /order-drafts list: incomplete orders pushed in by a third-party app.
 //
-// Root is a ROOT team, so the Order Drafts menu item is not offered (it is a selling-team surface),
-// but root holds ROLE_ROOT and the RPCs are authorised in team 1 — so the route is reached directly,
-// exactly as orders.spec.ts reaches the selling screens. The menu gate is UX only.
+// Root works in A SELLING TEAM OF THIS SPEC'S OWN, created by the first test with root as its owner — the team type
+// the screen is for. The list starts empty there, and its Ready card, select-all and empty state read the team's WHOLE
+// draft set, so they must be a team only this spec pushes to: in root's own team they also read (and select-all
+// deleted) every draft an earlier spec — in name order, on the one shared database — had left there. A ready one broke
+// "0 of N", and more than a page of them kept select-all → delete from ever reaching the empty list (backlog #52).
 //
 // ⚠ THERE IS NO "NEW DRAFT" BUTTON, and there never will be: every draft traces to a real scrape
 // pushed by an external app. So the fixture below pushes one over the API, which is also the honest
@@ -14,31 +18,57 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 
 const SUFFIX = Date.now().toString().slice(-6);
 const EXTERNAL_ID = `SHP-${SUFFIX}`;
+const TEAM_NAME = `E2E Draft Team ${SUFFIX}`;
+const TEAM_CODE = `EDT${SUFFIX}`;
+// The spec's own selling team — set by the first test, read by every test after it (the file is serial).
+let team = "";
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
+
+  // Work in the spec's own team: the active team is per tab, in sessionStorage (TeamContext) — the next page load
+  // opens in it.
+  if (team !== "") {
+    await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+  }
+}
+
+// rpc calls the API with the page's own token, so a seed runs as the person the UI is signed in as.
+async function rpc<T = Record<string, unknown>>(page: Page, method: string, body: unknown): Promise<T> {
+  return page.evaluate(
+    async ([m, b, apiUrl]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const res = await fetch(`${apiUrl}/warehouse.${m}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(b),
+      });
+
+      if (!res.ok) throw new Error(`${m}: ${res.status} ${await res.text()}`);
+
+      return res.json();
+    },
+    [method, body, API_URL] as const,
+  ) as Promise<T>;
 }
 
 // pushDraft calls OrderDraftPush the way the external app does — over Connect's JSON protocol, with
 // the logged-in person's own token, because the app authenticates as a user (there is no machine
-// identity in this system).
+// identity in this system). Always into the spec's own team.
 async function pushDraft(page: Page, externalId: string, address?: Record<string, string>) {
-  const status = await page.evaluate(async ({ id, address }: { id: string; address?: Record<string, string> }) => {
+  expect(team, "the spec's own team is created by the first test").not.toBe("");
+
+  type Push = { id: string; teamId: string; address?: Record<string, string> };
+  const status = await page.evaluate(async ({ id, teamId, address, apiUrl }: Push & { apiUrl: string }) => {
     const token =
       window.sessionStorage.getItem("warehouse_revamp.token") ??
       window.localStorage.getItem("warehouse_revamp.token");
 
     const res = await fetch(
-      "http://localhost:8081/warehouse.selling.v1.OrderDraftService/OrderDraftPush",
+      `${apiUrl}/warehouse.selling.v1.OrderDraftService/OrderDraftPush`,
       {
         method: "POST",
         headers: {
@@ -46,7 +76,7 @@ async function pushDraft(page: Page, externalId: string, address?: Record<string
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          teamId: "1",
+          teamId,
           source: "e2e-scraper",
           externalId: id,
           customerName: "Budi",
@@ -62,7 +92,7 @@ async function pushDraft(page: Page, externalId: string, address?: Record<string
     );
 
     return res.status;
-  }, { id: externalId, address });
+  }, { id: externalId, teamId: team, address, apiUrl: API_URL });
 
   expect(status).toBe(200);
 }
@@ -73,9 +103,23 @@ test("Order drafts: a pushed draft appears, saying exactly what it still needs (
   page,
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  team = (
+    await rpc<{ team: { id: string } }>(page, "team.v1.TeamService/TeamCreate", {
+      type: "TEAM_TYPE_SELLING",
+      name: TEAM_NAME,
+      teamCode: TEAM_CODE,
+      ownerUserId: ROOT_USER_ID,
+    })
+  ).team.id;
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+
   await page.goto("/order-drafts");
+  await expect(page.getByTestId("team-switcher")).toContainText(TEAM_NAME);
 
   await expect(page.getByTestId("order-drafts-table")).toBeVisible();
+  // The team's list starts empty — nothing another spec pushed is in it.
+  await expect(page.getByTestId("order-drafts-empty")).toBeVisible();
 
   await pushDraft(page, EXTERNAL_ID);
   await page.reload();
@@ -96,9 +140,9 @@ test("Order drafts: a pushed draft appears, saying exactly what it still needs (
   await expect(draftRow).not.toContainText(/unmapped/i);
 
   // #16 — the Ready card is the server's set-wide ready_count, out of the same total as the Drafts card: no ⚠ and no
-  // "on this page". This draft is not ready, so it does not count.
-  const total = (await page.getByTestId("draft-summary-total-value").textContent())?.trim();
-  await expect(page.getByTestId("draft-summary-ready-value")).toHaveText(`0 of ${total}`);
+  // "on this page". The team holds this one draft, and it is not ready, so it does not count.
+  await expect(page.getByTestId("draft-summary-total-value")).toHaveText("1");
+  await expect(page.getByTestId("draft-summary-ready-value")).toHaveText("0 of 1");
   await expect(page.getByTestId("draft-summary-ready")).not.toContainText("on this page");
   await expect(page.locator('[data-testid^="not-implemented-"]')).toHaveCount(0);
 });
@@ -116,7 +160,7 @@ test("Order drafts: several are selected and deleted in one action (#195)", asyn
   await expect(page.getByText(`${EXTERNAL_ID}-A`)).toBeVisible();
   await expect(page.getByText(`${EXTERNAL_ID}-B`)).toBeVisible();
 
-  // Select every draft on the page, then delete them together.
+  // Select every draft on the page — the team's three: the first test's and these two — then delete them together.
   await page.getByTestId("select-all-drafts").click();
   await page.getByTestId("delete-selected-drafts").click();
 
@@ -220,7 +264,7 @@ test("Order drafts: a draft's address pre-fills the form when its names match on
     await expect(level(name)).toHaveValue("");
   }
 
-  // Root's drafts are left as this spec found them — none.
+  // Select-all clears the team's list — the two drafts above are all it holds (the tests before left it empty).
   await page.goto("/order-drafts");
   await page.getByTestId("select-all-drafts").click();
   await page.getByTestId("delete-selected-drafts").click();

@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // The shop write gate, end to end (docs/business/shop/context_decision.md):
 //
@@ -29,29 +31,20 @@ let shopB = "";
 let shopClosed = "";
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
 }
 
 // An RPC as the signed-in person, or — given a token — as somebody else. Answers the status and the JSON body, so a
 // refusal can be asserted as well as a success.
 async function call(page: Page, method: string, body: unknown, token?: string) {
   return page.evaluate(
-    async ([m, b, tk]) => {
+    async ([m, b, tk, apiUrl]) => {
       const bearer =
         (tk as string | undefined) ??
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m as string}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${bearer}` },
         body: JSON.stringify(b),
@@ -59,7 +52,7 @@ async function call(page: Page, method: string, body: unknown, token?: string) {
 
       return { status: res.status, body: await res.json() };
     },
-    [method, body, token] as const,
+    [method, body, token, API_URL] as const,
   );
 }
 

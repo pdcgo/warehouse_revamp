@@ -1,5 +1,21 @@
 # Development state — inventory / warehouse_transfer
 
+✅ **2026-11-14: the transfer lists read as blocks on a phone** — uncommitted
+([the-transfer-lists-read-as-blocks-on-a-phone](../../business/inventory/warehouse_transfer_decision.md#the-transfer-lists-read-as-blocks-on-a-phone)).
+Both lists (`pages/warehouse-transfer-selling`, `-warehouse`) read `useIsMobile()` — the prototype gate
+`features/warehouseTransfer/phonePrototype.tsx` is deleted. Below `md`: the page title (the selling list's New Transfer as
+its ＋), the eight tabs on one sliding row that never shrink, one block per transfer (`components/SellingTransferBlock`,
+`components/WarehouseTransferBlock` — the warehouse block's next act is the desktop row's own `WarehouseTransferActions`,
+so it runs the same dialog and write; its parcel line shows a tracking number with no courier too). Both shells: the
+empty-list hint where the rows would be (nothing matches — on All too — says so with *Clear Filters*; an empty tab names
+its status; nothing yet says where transfers come from) and the growing pager (per-page on a desktop, centred without it
+on a phone). The warehouse DESKTOP owner cell names who opened it, small under the team (TeamItem `xs` + *by <name>* +
+the Root badge), as the restock inbound row does. No backend: the list already carried `created_by_user_id` and
+`created_by_is_override` (2026-11-12). An override by-line wraps instead of clamping, so the badge stays whole with long
+names at 320 px. Stories: each page's `index.stories.tsx` (Default, Mobile at 390) + `stories/{Rows,Filters,Phone}.stories.tsx`
+(kit in `stories/kit.tsx`; phone checks shared in `features/warehouseTransfer/storyPhone.ts`) — 52 tests, no
+`layout: "padded"`; e2e `transfers.spec.ts` *on a phone the lists read as blocks, and A processes one from its block*.
+
 🔨 **2026-11-13: Koreksi Jumlah Terima — the screens** — uncommitted. *Correct Received Count* on warehouse B's
 transfer page (B's Owner / Admin, Root; accepted only; in the ⋯ menu on a phone) opens the same form
 (`useCorrectTransferReceivedCount`); the lines read *corrected from N* and *N (correction)*, the selling team's history
@@ -89,7 +105,7 @@ stateDiagram-v2
 | product facts | `ProductFact` gained `SKU`, `Name` (the line's snapshot); the composition root's reader fills them |
 | frontend: features | `features/warehouseTransfer/`: `queries.ts` (list, detail, 8 mutations — Create/Cancel/Accept also invalidate stock), `adapt.ts`, `statusTabs.ts`, `summary.ts` (units, broken/missing, direction, `parseTransferId`), `SellingTransferActions` (Edit Cost · Cancel · Mark Lost + dialogs), `WarehouseTransferActions` (Process · Ship · Sign · Accept by side + dialogs), `TransferTimeline`, `TransferItemsCell`, `TransferDetailCards` (route, parcel, lines) — each with a story; `storyTransfer.ts` (stories only) |
 | frontend: components | `badges/WarehouseTransferStatusBadge` (+ story) |
-| frontend: pages | `warehouse-transfer-selling`, `-form`, `-selling-detail`, `-warehouse` (Outgoing/Incoming segment), `-warehouse-detail` (A's pick list), `-accept` (+ `count.ts`, `components/CountLineCard`) — each with `pending.ts` and `index.stories.tsx` |
+| frontend: pages | `warehouse-transfer-selling`, `-form`, `-selling-detail`, `-warehouse` (Outgoing/Incoming segment), `-warehouse-detail` (A's pick list), `-accept` (+ `count.ts`, `components/CountLineCard`) — each with `pending.ts` and `index.stories.tsx`; the two lists draw a block per transfer on a phone (`components/*TransferBlock.tsx`) and split their stories by part (`stories/`) |
 | routing | `/inventories/transfer` (+ `/new`, `/:transferId`, `/:transferId/accept`) — list and detail pick the selling or warehouse page by team type, like restock; nav entry *Transfers* in `inventoriesFor` for both team types |
 | Storybook | `.storybook/warehouseTransferFixtures.ts` (601–609) · `.storybook/warehouseTransferStub.ts` plays the rules · registered in `stubTransport.ts` |
 | docs | `docs/services/inventory_service/rpc.md` § Warehouse transfers — built, the create and accept flows as written, the build's choices |
@@ -132,7 +148,7 @@ stateDiagram-v2
 
 ## Elsewhere
 
-- The list pages have no phone arrangement yet (one block per row, FilterBar sheet) — the same gap as restock's lists.
+- ✅ The list pages read as blocks on a phone since 2026-11-14 (see the top of this file).
 - The stub picks every line from A's FIRST rack (it knows no rack counts) and prices new lines from a fixed table; the
   fixtures show the real split (601's Beras over two racks).
 - `pickTeamIn` in the form story exists because `TeamSelect` remounts when its list lands: a story with two TeamSelects

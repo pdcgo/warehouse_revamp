@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // #185 — the Liability screens: the position list and one counterparty's history.
 //
@@ -9,37 +11,35 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 // is the only way a debt exists in this system today. If the screen is wrong, it is wrong while
 // there are two tables and one writer.
 //
-// Root is a ROOT team, so the Liability menu item is not offered (it is a selling/warehouse surface),
-// but root holds ROLE_ROOT and the RPCs are authorised in team 1 — the route is reached directly, as
-// orders.spec.ts and expenses.spec.ts do. The menu gate is UX only.
+// The debtor is A SELLING TEAM OF THIS SPEC'S OWN, owned by root (it used to be root's team 1): the list's header tile
+// totals the debtor's WHOLE payable side, so the debtor must be a team only this spec writes to — in root's team it also
+// counted whatever an earlier spec (in name order, on the one shared database) had left root's team owing. Root owns
+// both teams, so it acts in each as a member, and the pages are reached by their routes.
 
 const SUFFIX = Date.now().toString().slice(-6);
 const SKU = `SET${SUFFIX}`;
 const COD_FEE = 25000;
 
 async function login(page: Page, username: string, password: string) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(username);
+  await signIn(page, username, password);
+
+  // Work in the debtor, the spec's own team: the active team is per tab, in sessionStorage (TeamContext) — the next
+  // page load opens in it.
+  if (debtor !== "") {
+    await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), debtor);
+  }
 }
 
 // call makes a Connect JSON call with the logged-in token, and fails loudly on a non-200 — a fixture
 // that half-worked would produce an empty screen and a confusing assertion.
 async function call(page: Page, method: string, body: unknown) {
   return page.evaluate(
-    async ([m, b]) => {
+    async ([m, b, apiUrl]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
 
-      const res = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+      const res = await fetch(`${apiUrl}/warehouse.${m as string}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(b),
@@ -47,7 +47,7 @@ async function call(page: Page, method: string, body: unknown) {
 
       return { status: res.status, body: await res.json() };
     },
-    [method, body] as const,
+    [method, body, API_URL] as const,
   );
 }
 
@@ -139,9 +139,10 @@ function pushRestockAccepted(restock: Record<string, string | number>) {
   };
 }
 
-// A COD restock, accepted — the one obligation this system creates today. Team 1 (root) plays the
-// requesting team; team 1 cannot owe itself, so the warehouse is a separate id.
-const WAREHOUSE_TEAM = 1;
+// A COD restock, accepted — the one obligation this system creates today. The spec's own selling team (root its owner)
+// plays the requesting team — the debtor; a team cannot owe itself, so the warehouse is a separate id. Set by the first
+// test, read by every test after it (the file is serial).
+let debtor = "";
 
 // Shared across the two SERIAL tests below: the second reads the same debt from the other side, so
 // it needs the id the first one created.
@@ -154,6 +155,16 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
   request,
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // The debtor: a selling team of the spec's own, so the totals read below are this spec's alone.
+  const seller = await call(page, "team.v1.TeamService/TeamCreate", {
+    name: `E2E Debtor ${SUFFIX}`,
+    teamCode: `DB${SUFFIX}`,
+    type: "TEAM_TYPE_SELLING",
+    ownerUserId: ROOT_USER_ID,
+  });
+  expect(seller.status).toBe(200);
+  debtor = String(seller.body.team.id);
 
   // A warehouse team for the goods to arrive at — the debt is between two DIFFERENT teams, since a
   // team cannot owe itself.
@@ -168,7 +179,7 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
   warehouseId = String(wh.body.team.id);
 
   // What a restock needs before it can be raised and counted in: a shelf for the good units
-  // (there-is-no-unplaced-pile), one of team 1's own products (a-restock-carries-only-the-teams-own-products), and
+  // (there-is-no-unplaced-pile), one of the debtor's own products (a-restock-carries-only-the-teams-own-products), and
   // the account that paid (a-restock-must-name-the-account-that-paid).
   const rack = await call(page, "inventory.v1.RackService/RackCreate", {
     teamId: warehouseId,
@@ -181,25 +192,25 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
   expect(category.status).toBe(200);
 
   const product = await call(page, "product.v1.ProductService/ProductCreate", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     productCodePart: SKU,
     name: "Widget",
     categoryId: category.body.category.id,
   });
   expect(product.status).toBe(200);
 
-  // Opened at 0, so team 1's accounts still add up to what the financial accounts spec expects.
-  const paidFrom = await openAccount(page, String(WAREHOUSE_TEAM), `E2E COD ${SUFFIX}`, `E2E-COD-${SUFFIX}`, 0);
+  // Opened at 0 — nothing but the restock below moves it.
+  const paidFrom = await openAccount(page, debtor, `E2E COD ${SUFFIX}`, `E2E-COD-${SUFFIX}`, 0);
   // The restock is paid from an OPERATIONAL account (a-restock-names-its-paying-account) — the server refuses any other.
   const marked = await call(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     accountId: paidFrom,
     operational: true,
   });
   expect(marked.status).toBe(200);
 
   const created = await call(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     warehouseId,
     financeAccountId: paidFrom,
     items: [{ productId: product.body.product.id, productCode: SKU, name: "Widget", count: 10, total: 500000 }],
@@ -225,7 +236,7 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
 
   // THIS is what creates the obligation: liability posts the courier's charge from *Restock Accepted*, after the
   // accept committed (balance-posts-the-couriers-debt-from-the-event) — once, however often the event arrives.
-  const route = "http://localhost:8081/event/liability-restock-accepted/push";
+  const route = `${API_URL}/event/liability-restock-accepted/push`;
   for (let i = 0; i < 2; i++) {
     const res = await request.post(route, { data: pushRestockAccepted(accepted.body.request) });
     expect(res.status()).toBe(200);
@@ -261,14 +272,14 @@ test("Liability: the warehouse sees the same debt as money owed TO it (#185)", a
   await page.goto("/liability");
   await expect(page.getByTestId("liability-table")).toBeVisible();
 
-  // Team 1 owes THIS team, so from here the money is RECEIVABLE — the second of the two money cells.
-  const cells = page.getByTestId(`liability-row-${WAREHOUSE_TEAM}`).locator("td");
+  // The debtor owes THIS team, so from here the money is RECEIVABLE — the second of the two money cells.
+  const cells = page.getByTestId(`liability-row-${debtor}`).locator("td");
   await expect(cells.nth(1)).toHaveText("—");
   await expect(cells.nth(2)).toHaveText("Rp 25.000");
 
-  // ⛔ THE CREDITOR IS NOT OFFERED MAKE PAYMENT (the-debtor-claims-the-creditor-decides): on its pair with team 1 it is
+  // ⛔ THE CREDITOR IS NOT OFFERED MAKE PAYMENT (the-debtor-claims-the-creditor-decides): on its pair with the debtor it is
   // owed, so the page offers no payment of its own — the server would refuse one (see the payment test below).
-  await page.getByTestId(`liability-row-${WAREHOUSE_TEAM}`).click();
+  await page.getByTestId(`liability-row-${debtor}`).click();
   await expect(page.getByTestId("liability-detail-balance")).toHaveText("Rp 25.000");
   await expect(page.getByTestId("liability-detail-direction")).toHaveText("They owe you");
   await expect(page.getByTestId("liability-detail-all")).toContainText("Courier at a restock");
@@ -446,21 +457,20 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  // The payer's account opens at the 5.000 it is about to pay, so team 1's accounts end where they began — the
-  // financial accounts spec totals them.
-  const paidFrom = await openAccount(page, String(WAREHOUSE_TEAM), `E2E Payer ${SUFFIX}`, `66${SUFFIX}01`, 5000);
+  // The payer's account opens at the 5.000 it is about to pay, so the debtor's accounts end where they began.
+  const paidFrom = await openAccount(page, debtor, `E2E Payer ${SUFFIX}`, `66${SUFFIX}01`, 5000);
   const receivedInto = await openAccount(page, warehouseId, `E2E Creditor ${SUFFIX}`, `66${SUFFIX}02`, 0);
 
-  // The debt the earlier tests created runs the other way: the warehouse is owed by team 1. So team 1
+  // The debt the earlier tests created runs the other way: the warehouse is owed by the debtor. So the debtor
   // is the PAYER here and the warehouse is the CREDITOR — which is also why every act below is scoped
   // to whichever of the two is entitled to it.
-  const proofId = await uploadProof(page, String(WAREHOUSE_TEAM), warehouseId, "transfer.png");
+  const proofId = await uploadProof(page, debtor, warehouseId, "transfer.png");
 
   // ⚠ A PAYMENT WITHOUT PROOF IS REFUSED BY THE CONTRACT (a-payment-must-carry-proof), so the
   // negative case is worth asserting before the happy one: the creditor's check is a MANUAL look at a
   // document, and a claim with nothing attached asks them to accept on the payer's word.
   const noProof = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     creditorTeamId: warehouseId,
     amount: "5000",
     note: "no slip attached",
@@ -470,9 +480,9 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   expect(noProof.status).toBe(400);
 
   // ⚠ THE PAYER CANNOT NAME THE CREDITOR'S ACCOUNT as the one the money left — liability asks the accounts, and
-  // the creditor's is not one of team 1's.
+  // the creditor's is not one of the debtor's.
   const notMine = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     creditorTeamId: warehouseId,
     amount: "5000",
     note: "from somebody else's bank",
@@ -485,7 +495,7 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   // pair, so its claim — its own live account, a slip — is refused as FailedPrecondition, before anything is written.
   const creditorPays = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
     teamId: warehouseId,
-    creditorTeamId: String(WAREHOUSE_TEAM),
+    creditorTeamId: debtor,
     amount: "5000",
     note: "the creditor paying the debtor",
     documentIds: [proofId],
@@ -497,7 +507,7 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
 
   // A claim the creditor will refuse.
   const claimed = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     creditorTeamId: warehouseId,
     amount: "5000",
     note: "transfer BCA",
@@ -508,7 +518,7 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   expect(claimed.body.payment.status).toBe("LIABILITY_PAYMENT_STATUS_RECORDED");
 
   const before = await call(page, "liability.v1.LiabilityService/LiabilityPositionList", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     page: { page: 1, limit: 50 },
   });
   expect(before.status).toBe(200);
@@ -527,7 +537,7 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   expect(rejected.body.payment.reason).toContain("reached our account");
 
   const afterReject = await call(page, "liability.v1.LiabilityService/LiabilityPositionList", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     page: { page: 1, limit: 50 },
   });
   // ⛔ THE WHOLE POINT: a rejection posts NOTHING, so the debt is exactly what it was.
@@ -542,10 +552,10 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   expect(reconfirm.status).toBe(400);
 
   // The money really does arrive the second time.
-  const proofId2 = await uploadProof(page, String(WAREHOUSE_TEAM), warehouseId, "transfer-2.png");
+  const proofId2 = await uploadProof(page, debtor, warehouseId, "transfer-2.png");
 
   const second = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     creditorTeamId: warehouseId,
     amount: "5000",
     note: "transfer BCA, again",
@@ -574,23 +584,23 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
 
   // ✅ THIS one posted. The debt fell by exactly the amount paid.
   const afterConfirm = await call(page, "liability.v1.LiabilityService/LiabilityPositionList", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     page: { page: 1, limit: 50 },
   });
   expect(Number(afterConfirm.body.totalPayable)).toBe(Number(owedBefore) - 5000);
 
   // ✅ AND THE ACCOUNTS HEAR IT: out of the payer's, into the creditor's — ONCE, however often it arrives.
-  const route = "http://localhost:8081/event/financial-account-team-payment/push";
+  const route = `${API_URL}/event/financial-account-team-payment/push`;
   for (let i = 0; i < 2; i++) {
     const res = await request.post(route, { data: pushAccepted(confirmed.body.payment) });
     expect(res.status()).toBe(200);
   }
 
-  expect(await accountBalance(page, String(WAREHOUSE_TEAM), paidFrom)).toBe(0);
+  expect(await accountBalance(page, debtor, paidFrom)).toBe(0);
   expect(await accountBalance(page, warehouseId, receivedInto)).toBe(5000);
 
   // ✅ THE ALL TAB SHOWS THE PAYMENT IN THE RUNNING LEDGER (the-team-balance-screens-are-accepted) — the accepted 5.000,
-  // in its place after the 25.000 courier charge, with the balance it left: team 1 now owes 20.000. The Receivable cut,
+  // in its place after the 25.000 courier charge, with the balance it left: the debtor now owes 20.000. The Receivable cut,
   // which splits by sign, would carry it alone with no debt beside it.
   await page.goto(`/liability/${warehouseId}`);
   await expect(page.getByTestId("liability-detail-tab-all")).toHaveAttribute("aria-selected", "true");
@@ -606,7 +616,7 @@ test("Liability: a payment is claimed with proof, refused, then paid again and a
   // the payment's ledger row names the person whose accept moved the money, its payment row the person who claimed it —
   // both root here, who owns both teams, so neither carries the "by Root team" badge (root is a member, not outside).
   const ledger = await call(page, "liability.v1.LiabilityService/LiabilityLogList", {
-    teamId: String(WAREHOUSE_TEAM),
+    teamId: debtor,
     filter: { counterpartyId: warehouseId },
     page: { page: 1, limit: 50 },
   });

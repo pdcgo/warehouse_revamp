@@ -2,8 +2,8 @@ import { useState } from "react";
 import { personName } from "../../lib/users";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Box, Button, Flex, HStack, Icon, Spacer, Spinner, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
-import { ArrowRight } from "lucide-react";
+import { Box, Button, Flex, HStack, Heading, Icon, Spacer, Spinner, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
+import { ArrowLeftRight, ArrowRight, Plus, SearchX } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { WarehouseTransferStatus } from "../../gen/warehouse/inventory/v1/warehouse_transfer_pb";
@@ -16,8 +16,12 @@ import { TRANSFER_STATUS_TABS, transferTab } from "../../features/warehouseTrans
 import { problemUnits } from "../../features/warehouseTransfer/summary";
 import { TransferItemsCell } from "../../features/warehouseTransfer/TransferItemsCell";
 import { SellingTransferActions } from "../../features/warehouseTransfer/SellingTransferActions";
+import { useIsMobile } from "../../layouts/shell";
+import { SellingTransferBlock } from "./components/SellingTransferBlock";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
-import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { WarehouseTransferStatusBadge } from "../../components/badges/WarehouseTransferStatusBadge";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
@@ -48,6 +52,9 @@ export function WarehouseTransferSellingPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  // A PHONE GETS ITS OWN ARRANGEMENT (the-transfer-lists-read-as-blocks-on-a-phone) — below `md`, a JS breakpoint, never
+  // CSS hiding: the title row with its ＋, the tabs on one sliding row, a block per transfer.
+  const phone = useIsMobile();
 
   // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
   // transfer, opens the same narrowed list. The page number stays on screen only.
@@ -96,6 +103,60 @@ export function WarehouseTransferSellingPage() {
     return personName(user, t("warehouseTransfer.table.userRef", { id: id.toString() }));
   }
 
+  // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint), on both shells, where the rows would be; the title keeps
+  // the sentence the list said before, and its test id. Nothing matches — on any tab, All too: clear the filters (the
+  // strip's Clear and the hint's are one function); an empty tab: which status has none; nothing yet: open one.
+  function emptyHint() {
+    const clear = () =>
+      refilter(() => {
+        setSearch("");
+        setWarehouseFilter(0n);
+      });
+
+    if (filtered) {
+      return (
+        <EmptyHint
+          icon={SearchX}
+          title={t("warehouseTransfer.none")}
+          description={t("emptyHint.noMatch")}
+          action={
+            <Button variant="outline" colorPalette="gray" data-testid="transfers-empty-clear" onClick={clear}>
+              {t("common.clearFilters")}
+            </Button>
+          }
+          testId="transfers-empty"
+        />
+      );
+    }
+
+    const wholeList = activeTab.status === WarehouseTransferStatus.UNSPECIFIED;
+
+    return (
+      <EmptyHint
+        icon={ArrowLeftRight}
+        title={
+          wholeList
+            ? t("warehouseTransfer.empty")
+            : t("warehouseTransfer.emptyFiltered", { status: t(activeTab.labelKey).toLowerCase() })
+        }
+        description={wholeList ? t("warehouseTransfer.emptyHint") : undefined}
+        action={
+          wholeList && current && canWrite(current) ? (
+            <Button
+              colorPalette="brand"
+              data-testid="open-create-transfer-empty"
+              onClick={() => navigate("/inventories/transfer/new")}
+            >
+              <Icon as={Plus} boxSize="4" />
+              {t("warehouseTransfer.newTransfer")}
+            </Button>
+          ) : undefined
+        }
+        testId="transfers-empty"
+      />
+    );
+  }
+
   if (!current) {
     return (
       <Text color="fg.muted" data-testid="transfer-no-team">
@@ -107,7 +168,30 @@ export function WarehouseTransferSellingPage() {
   return (
     <Stack gap="section">
 
-      {canWrite(current) && (
+      {phone ? (
+        // ON A PHONE THE PAGE NAMES ITSELF (the-phone-shell-has-no-top-bar), and New Transfer is its ＋ on the title's
+        // row (a-phone-header-action-is-an-icon; every-phone-title-is-20px — 8px gaps).
+        <Flex align="center" gap="2" data-layout="phone">
+          <Heading size="md" flex="1" minW="0">
+            {t("nav.warehouseTransfer")}
+          </Heading>
+          {canWrite(current) && (
+            <CompactActions
+              menuLabel={t("warehouseTransfer.actions.menu")}
+              actions={[
+                {
+                  id: "create",
+                  label: t("warehouseTransfer.newTransfer"),
+                  icon: Plus,
+                  primary: true,
+                  testId: "open-create-transfer",
+                  onClick: () => navigate("/inventories/transfer/new"),
+                },
+              ]}
+            />
+          )}
+        </Flex>
+      ) : canWrite(current) && (
         <Flex align="center" gap="card">
           <Spacer />
           <Button
@@ -150,9 +234,22 @@ export function WarehouseTransferSellingPage() {
       </FilterBar>
 
       <Tabs.Root value={tab} onValueChange={(e) => refilter(() => setTab(e.value))}>
-        <Tabs.List overflowX="auto">
+        {/* On a phone the row slides sideways, a tab never shrinks and no bar is drawn under it
+            (the-transfer-lists-read-as-blocks-on-a-phone, nothing-runs-past-a-phones-edge) — Team Balance's row. */}
+        {/* overflowY hidden on both: an `auto` x makes y `auto` too, and the selected tab's line then draws a stray
+            vertical scrollbar at the row's end on a desktop. */}
+        <Tabs.List
+          overflowX="auto"
+          overflowY="hidden"
+          {...(phone ? { flexWrap: "nowrap", css: { scrollbarWidth: "none" } } : {})}
+        >
           {TRANSFER_STATUS_TABS.map((item) => (
-            <Tabs.Trigger key={item.value} value={item.value} data-testid={`transfer-tab-${item.value}`}>
+            <Tabs.Trigger
+              key={item.value}
+              value={item.value}
+              flexShrink={phone ? 0 : undefined}
+              data-testid={`transfer-tab-${item.value}`}
+            >
               {t(item.labelKey)}
             </Tabs.Trigger>
           ))}
@@ -169,6 +266,23 @@ export function WarehouseTransferSellingPage() {
 
               {loading ? (
                 <Spinner colorPalette="brand" />
+              ) : transfers.length === 0 ? (
+                !error && emptyHint()
+              ) : phone ? (
+                // A PHONE READS EACH TRANSFER AS A BLOCK (a-phone-reads-each-line-as-a-block).
+                <Stack gap="3" data-testid="transfers-table" data-layout="phone">
+                  {transfers.map((transfer) => (
+                    <SellingTransferBlock
+                      key={transfer.id.toString()}
+                      transfer={transfer}
+                      teamId={current.teamId}
+                      warehouseName={warehouseName}
+                      createdBy={actorLabel(transfer.createdByUserId)}
+                      courier={couriers.data?.get(transfer.shipmentId.toString())}
+                      onOpen={() => navigate(`/inventories/transfer/${transfer.id}`)}
+                    />
+                  ))}
+                </Stack>
               ) : (
                 <Box overflowX="auto">
                   <Table.Root size="sm" data-testid="transfers-table">
@@ -270,25 +384,22 @@ export function WarehouseTransferSellingPage() {
                 </Box>
               )}
 
-              {!loading && transfers.length === 0 && !error && (
-                <Text color="fg.muted" data-testid="transfers-empty">
-                  {activeTab.status === WarehouseTransferStatus.UNSPECIFIED
-                    ? t("warehouseTransfer.empty")
-                    : t("warehouseTransfer.emptyFiltered", { status: t(activeTab.labelKey).toLowerCase() })}
-                </Text>
-              )}
-
+              {/* THE PAGES GROW AS THEY ARE OPENED, and the pager is always on screen — on a phone centred with no page
+                  size, which GrowingPager does itself (every-list-pages-with-the-growing-pager,
+                  a-phone-pager-is-centred-without-a-page-size, the-pager-is-always-on-screen). */}
               {!loading && (
-                <Pagination
-                  count={totalItems}
-                  pageSize={pageSize}
+                <GrowingPager
                   page={page}
                   onPageChange={setPage}
+                  hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
+                  resetKey={[tab, search, warehouseFilter, pageSize].join("|")}
+                  pageSize={pageSize}
                   pageSizeOptions={PAGE_SIZE_OPTIONS}
                   onPageSizeChange={(n) => {
                     setPageSize(n);
                     setPage(1);
                   }}
+                  testId="transfer-pager"
                 />
               )}
             </Stack>

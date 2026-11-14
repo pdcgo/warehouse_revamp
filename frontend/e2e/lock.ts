@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { WORKER_SUFFIX } from "./env";
 
 // A run lock, because two e2e runs at once DESTROY EACH OTHER SILENTLY.
 //
@@ -23,7 +24,10 @@ import { join } from "node:path";
 // The lock turns that into a refusal with a reason, which is the same bargain `strictPort` makes in
 // vite.config.ts and `ValidateDescriptors` makes at server boot: fail loudly at the start rather than
 // mysteriously in the middle.
-const LOCK_PATH = join(process.cwd(), ".e2e-lock");
+//
+// A WORKER of `san test full --workers N` has its own database and ports, so it locks only its own: .e2e-lock.w1 —
+// the workers never collide, and a second run of the same worker still refuses (e2e/env.ts).
+const LOCK_PATH = join(process.cwd(), `.e2e-lock${WORKER_SUFFIX}`);
 
 interface LockFile {
   pid: number;

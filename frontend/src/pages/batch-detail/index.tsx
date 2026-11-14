@@ -18,6 +18,7 @@ import { ExpiryCell } from "../../features/inventory/ExpiryCell";
 import { BATCH_PENDING } from "../../features/inventory/pending";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useBatchDetail, useBatchHistory, useBatchPlacements } from "../../features/inventory/queries";
+import { useRackCodes } from "../../features/racks/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { CorrectPriceDialog } from "../../features/inventory/CorrectPriceDialog";
 import { canCorrectPrice } from "../../features/inventory/priceChange";
@@ -147,6 +148,11 @@ export function BatchDetailPage() {
     toUnix: historyToUnix,
   });
   const historyMovements = historyQuery.data?.movements ?? [];
+
+  // EVERY RACK BY ITS CODE — the warehouse's shelf list, as every screen naming a stored placement reads it
+  // (useRackCodes). Riwayat names the rack each movement touched and Ditaruh the racks the accept put it on, and the
+  // product may have LEFT those racks since: ProductPlaces (the aggregate's codes) lists only where it sits now.
+  const warehouseRackCodes = useRackCodes({ warehouseId: warehouseId ?? 0n, enabled: warehouseId !== undefined });
   const historyTotal = Number(historyQuery.data?.pageInfo?.totalItems ?? 0n);
 
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────────
@@ -165,11 +171,12 @@ export function BatchDetailPage() {
     [t],
   );
 
-  // The place a shelf sits: its painted code, the named unplaced pile (#135), or a bare id if the code
-  // could not be resolved.
+  // The place a shelf sits: its painted code, the named unplaced pile (#135) — a row that touched no rack — or a bare id
+  // if the code could not be resolved.
   const placeLabel = (rackId: bigint): string => {
     if (rackId === 0n) return t("racks.select.unplaced");
-    return data?.rackCodes.get(rackId.toString()) ?? `#${rackId.toString()}`;
+    const key = rackId.toString();
+    return warehouseRackCodes.data?.[key] ?? data?.rackCodes.get(key) ?? `#${key}`;
   };
 
   // Placements filtered by the rack-name search — matched on the resolved place label, so a search hits

@@ -52,6 +52,13 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // an icon beside the product, a problem's note shares the line of what it was worth (one-context-per-column-and-never-three-
 // lines); a row lights up; on a phone each line is a block (a-phone-reads-each-line-as-a-block).
 //
+// IT FITS BESIDE THE OPEN SIDEBAR (backlog #48): the products column is what is left of the screen after the sidebar, the
+// nav and Kiriman's 20rem — 681px at 1600. So no cell holds the table wider than its words must: the product takes no
+// fixed width (its name is cut on its one line), a problem's note gives way to a sliver with its words in the tooltip,
+// and the places wrap between racks. The counts and the worth stay whole.
+// Its narrowest (≈660px) is the page's PRODUCTS_FLOOR_PX (../index.tsx): where the page area cannot hold it beside Kiriman,
+// Kiriman goes below (the-delivery-card-stacks-when-the-page-is-narrow). A new column means measuring that again.
+//
 // THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — a thumbnail beside the broken count, opening it whole.
 // WHERE THE BROKEN UNITS WENT (the-detail-pages-show-the-slip-and-the-broken-rack) — a line under the good units' places
 // when they were put on a rack. ⚠ Both SAMPLES (photoSamples.ts); the rack goes against a business decision.
@@ -119,7 +126,7 @@ export function LinesCard({
     const rack = brokenRackSample(item, codes);
 
     return rack ? (
-      <HStack gap="1.5" data-testid={`restock-detail-broken-rack-${item.productId}`}>
+      <HStack gap="1.5" wrap="wrap" data-testid={`restock-detail-broken-rack-${item.productId}`}>
         <Text fontSize="xs" color="error.fg">
           {t("restock.detail.brokenRack", { count: Number(brokenQuantity(item)), rack })}
         </Text>
@@ -169,7 +176,7 @@ export function LinesCard({
             <Table.Body>
               {items.map((item) => (
                 <Table.Row key={item.id.toString()} css={LIGHTS_UP} data-testid={`restock-detail-item-${item.productId}`}>
-                  <Table.Cell minW="64">{productOf(item)}</Table.Cell>
+                  <Table.Cell>{productOf(item)}</Table.Cell>
                   <Table.Cell textAlign="end">{item.count.toString()}</Table.Cell>
                   <CountCell
                     counted={counted}
@@ -193,7 +200,7 @@ export function LinesCard({
                   />
                   {counted && (
                     // Two lines at most: where the good units went, then — when they were put on a rack — the broken ones.
-                    <Table.Cell data-testid={`restock-detail-placement-${item.productId}`}>
+                    <Table.Cell whiteSpace="normal" data-testid={`restock-detail-placement-${item.productId}`}>
                       <Stack gap="0.5">
                         <Text>{placementLabel(t, item, codes) || "—"}</Text>
                         {rackOf(item)}
@@ -302,8 +309,10 @@ function ProblemCell({
                 {t("restock.detail.problemWorth", { amount: formatRupiahNumber(problemValue(item, type)) })}
               </Span>
             )}
+            {/* Cut on its one line, but by a clamp that may break anywhere rather than `truncate`: the note then holds
+                the column no wider than the worth, and still shows whole where the table has room (backlog #48). */}
             {note && (
-              <Span truncate minW="0" data-testid={`${testId}-note`}>
+              <Span lineClamp={1} wordBreak="break-all" minW="0" data-testid={`${testId}-note`}>
                 {worth && "· "}
                 {note}
               </Span>

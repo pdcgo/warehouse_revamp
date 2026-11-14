@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { signIn } from "./session";
+import { API_URL } from "./env";
 
 // The courier catalogue — shipment_service, docs/business/shipment/context_decision.md.
 //
@@ -13,16 +15,7 @@ const CODE = `e2e_${SUFFIX}`;
 const NAME = `E2E Courier ${SUFFIX}`;
 
 async function login(page: Page) {
-  await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-  await page.goto("/login");
-  await page.getByLabel("Username").fill(ROOT_USERNAME);
-  await page.getByLabel("Password", { exact: true }).fill(ROOT_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByTestId("current-user")).toHaveText(ROOT_USERNAME);
+  await signIn(page, ROOT_USERNAME, ROOT_PASSWORD);
 }
 
 async function gotoChannels(page: Page) {
@@ -37,7 +30,7 @@ test.describe.configure({ mode: "serial" });
 // the-channel-list-needs-no-login + by-ids-is-public-too + only-root-manages-channels, at the real
 // interceptor: reads answer with NO token, a write without one is refused.
 test("reads need no login, writes do", async ({ request }) => {
-  const API = "http://localhost:8081/warehouse.shipment.v1.ShipmentChannelService";
+  const API = `${API_URL}/warehouse.shipment.v1.ShipmentChannelService`;
   const json = { "Content-Type": "application/json" };
 
   const list = await request.post(`${API}/ShipmentChannelList`, {
