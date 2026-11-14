@@ -8,15 +8,18 @@ import (
 )
 
 // OrderTakeSupplier is one slice of an order's stock take: the units drawn from batches carrying one supplier, of one
-// product, owned by one team (the batch's team, the team that restocked them).
+// product, owned by one team (the batch's team, the team that restocked them), held in one warehouse — the warehouse the
+// units were TAKEN from (the-supplier-reports-carry-the-warehouse). A take draws in one warehouse, so an order's slices
+// share it; it is read off the batches all the same, never assumed.
 type OrderTakeSupplier struct {
-	ProductID  uint64
-	SupplierID uint64
-	TeamID     uint64
-	Units      int64
+	ProductID   uint64
+	SupplierID  uint64
+	TeamID      uint64
+	WarehouseID uint64
+	Units       int64
 }
 
-// OrderTakeSuppliers reads what an order's take drew, by supplier, product and owning team. It is an IN-PROCESS seam,
+// OrderTakeSuppliers reads what an order's take drew, by supplier, product, owning team and warehouse. It is an IN-PROCESS seam,
 // not an RPC: supplier_service's sales fold asks it when an order is placed or cancelled, so Penjualan counts the same
 // goods Terjual does — the batches minted with the supplier's id
 // (penjualan-is-the-selling-value-on-the-order-day, a-batch-keeps-its-supplier).
@@ -37,14 +40,14 @@ func (s *Service) OrderTakeSuppliers(ctx context.Context, transactionID uint64) 
 	err := s.db.
 		WithContext(ctx).
 		Table(inventory_service_models.BatchLog{}.TableName()+" AS l").
-		Select("b.product_id, b.supplier_id, b.team_id, -SUM(l.change_count) AS units").
+		Select("b.product_id, b.supplier_id, b.team_id, b.warehouse_id, -SUM(l.change_count) AS units").
 		Joins("JOIN batches b ON b.id = l.batch_id").
 		Where("l.transaction_id = ?", transactionID).
 		Where("l.change_type = ?", string(inventory_service_models.TxOrder)).
 		Where("l.change_count < 0").
 		Where("b.supplier_id <> 0").
-		Group("b.product_id, b.supplier_id, b.team_id").
-		Order("b.product_id, b.supplier_id, b.team_id").
+		Group("b.product_id, b.supplier_id, b.team_id, b.warehouse_id").
+		Order("b.product_id, b.supplier_id, b.team_id, b.warehouse_id").
 		Scan(&rows).
 		Error
 	if err != nil {

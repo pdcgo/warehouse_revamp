@@ -10,6 +10,8 @@ export interface StoreExportCall {
   supplierId: bigint;
   q: string;
   channelType: Marketplace;
+  /** The page's Gudang terkait chip; 0n = every warehouse. */
+  warehouseId: bigint;
   /** The stores the file holds. */
   rows: number;
 }
@@ -18,6 +20,19 @@ export interface FigureExportCall {
   teamId: bigint;
   groupBy: GroupType;
   filters: FilterItem[];
+}
+
+/** The Produk tab's Export — the list's own filter, and the rows the file holds. */
+export interface ProductExportCall {
+  teamId: bigint;
+  supplierId: bigint;
+  q: string;
+  productTeamId: bigint;
+  storeId: bigint;
+  noStore: boolean;
+  /** The page's Gudang terkait chip; 0n = every warehouse. */
+  warehouseId: bigint;
+  rows: number;
 }
 
 /** The Supplier Report's Export (a-report-export-is-the-whole-view-as-a-file) — its filters and its order. */
@@ -31,12 +46,14 @@ export interface ReportExportCall {
 
 export const supplierExportScenario = {
   stores: [] as StoreExportCall[],
+  products: [] as ProductExportCall[],
   figures: [] as FigureExportCall[],
   reports: [] as ReportExportCall[],
 };
 
 export function resetSupplierExportScenario() {
   supplierExportScenario.stores = [];
+  supplierExportScenario.products = [];
   supplierExportScenario.figures = [];
   supplierExportScenario.reports = [];
 }

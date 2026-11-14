@@ -2502,28 +2502,6 @@
         "contact": "Kontak",
         "description": "Deskripsi"
       },
-      "pending": {
-        "products": {
-          "label": "Produk",
-          "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun"
-        },
-        "sold": {
-          "label": "Terjual",
-          "reason": "angka contoh — baris tab Produk masih karangan, begitu pula unit terjual dan pesanan terakhir tiap produk; angka per toko di tab Toko sudah nyata"
-        },
-        "ready": {
-          "label": "Siap",
-          "reason": "angka contoh — baris tab Produk masih karangan, begitu pula stok siap tiap produk; angka per toko di tab Toko sudah nyata"
-        },
-        "warehouseFilter": {
-          "label": "Filter gudang",
-          "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
-        },
-        "export": {
-          "label": "Ekspor",
-          "reason": "baris tab Produk masih karangan, jadi filenya menunggu baris nyata — tab Toko dan Statistik sudah bisa diekspor"
-        }
-      },
       "teamAll": "Semua tim",
       "view": {
         "label": "Tampilan",
@@ -2566,7 +2544,8 @@
         "orders": "dari {{n}} transaksi",
         "restocks": "{{n}} restok",
         "last": "terakhir {{date}}"
-      }
+      },
+      "showAll": "Semua Gudang"
     },
     "emptyHint": "Tambahkan pemasok tempat tim ini membeli stok.",
     "rangeClear": "Hapus {{figure}}"
@@ -2617,28 +2596,6 @@
       "descriptionPlaceholder": "Contoh: gratis ongkir di atas 5 rol"
     },
     "editAction": "Ubah",
-    "pending": {
-      "products": {
-        "label": "Produk",
-        "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
-      },
-      "sold": {
-        "label": "Terjual",
-        "reason": "angka contoh — baris tab Produk masih karangan, begitu pula unit terjual dan pesanan terakhir tiap produk; angka per toko di tab Toko sudah nyata"
-      },
-      "ready": {
-        "label": "Siap",
-        "reason": "angka contoh — baris tab Produk masih karangan, begitu pula stok siap tiap produk; angka per toko di tab Toko sudah nyata"
-      },
-      "warehouseFilter": {
-        "label": "Filter gudang",
-        "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
-      },
-      "export": {
-        "label": "Ekspor",
-        "reason": "baris tab Produk masih karangan, jadi filenya menunggu baris nyata — tab Toko dan Statistik sudah bisa diekspor"
-      }
-    },
     "tab": {
       "channels": "Toko",
       "products": "Produk",
@@ -2653,13 +2610,18 @@
       "empty": "Belum ada produk.",
       "search": "Cari produk, kode produk, atau toko",
       "storeAll": "Semua toko",
+      "noStore": "Tanpa toko",
       "none": "Tidak ada produk yang cocok.",
-      "emptyHint": "Produk muncul di sini setelah restok yang dibeli di toko pemasok ini diterima."
+      "emptyHint": "Produk muncul di sini setelah restok yang dibeli dari pemasok ini diterima.",
+      "noneAtWarehouse": "Tidak ada produk di gudang ini.",
+      "noneAtWarehouseHint": "Belum ada barang dari pemasok ini yang diterima di gudang yang dipilih."
     },
     "filter": {
       "search": "Cari nama, tautan, atau deskripsi",
       "typeAll": "Semua jenis toko",
-      "none": "Tidak ada toko pemasok yang cocok."
+      "none": "Tidak ada toko pemasok yang cocok.",
+      "noneAtWarehouse": "Tidak ada toko pemasok di gudang ini.",
+      "noneAtWarehouseHint": "Belum ada barang dari toko pemasok ini yang diterima di gudang yang dipilih."
     }
   },
   "supplierFigures": {

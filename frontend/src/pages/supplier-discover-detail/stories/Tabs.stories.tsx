@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { SUPPLIER_DISCOVER_DETAIL_META, loaded } from "./kit";
+import { LocationProbe, marker, routedPage } from "../../../../.storybook/pageStory";
+import { supplierExportScenario } from "../../../../.storybook/supplierExportScenario";
+import { DiscoverSupplierDetailPage } from "../index";
+import { NUSANTARA, SUPPLIER_DISCOVER_DETAIL_META, loaded } from "./kit";
 
 // DISCOVER SUPPLIER DETAIL — the tabs — Products, Statistics counting every team
 // (every-selling-team-sees-every-teams-figures), what is marked, and each tab's Export. The page's stories are
@@ -53,23 +56,27 @@ export const StatisticsCountEveryTeam: Story = {
   },
 };
 
-// The Products tab and the stores' and products' figures are marked — the supplier itself is a real read now.
-export const TheProductsAndTheFiguresAreSample: Story = {
-  name: "Sample marked",
+// NOTHING IS LEFT UNBUILT here either: the chip narrows every tab, Statistik included
+// (the-supplier-reports-carry-the-warehouse, the story below) — no summary strip, no ⚠ by the chips; the Products tab
+// is real rows, unmarked, as is the supplier.
+export const NothingIsMarkedAnyMore: Story = {
+  name: "Nothing unbuilt",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await canvas.findByTestId("supplier-warehouses");
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-warehouseFilter")).toBeNull();
     await expect(
-      within(canvas.getByTestId("supplier-tab-products")).getByTestId("not-implemented-products"),
-    ).toBeVisible();
+      within(canvas.getByTestId("supplier-tab-products")).queryByTestId("not-implemented-products"),
+    ).toBeNull();
     await expect(canvas.queryByTestId("not-implemented-supplier")).toBeNull();
   },
 };
 
 // EACH TAB EXPORTS ITS OWN TABLE, as on the manage detail (each-supplier-tab-exports-its-own-table) — read-only, so the
-// Export is the Toko strip's only action. It exports (no mark); the Produk tab's, over invented rows, keeps THIS page's
-// mark (5).
+// Export is the Toko strip's only action. Both export real rows, unmarked — the Produk tab's with the reader's filter
+// over every team's products (another-team-sees-everything-of-a-supplier).
 export const EachTabExportsItsOwnTable: Story = {
   name: "Export per tab",
   play: async ({ canvasElement }) => {
@@ -80,6 +87,79 @@ export const EachTabExportsItsOwnTable: Story = {
 
     await userEvent.click(canvas.getByTestId("supplier-tab-products"));
     const products = await canvas.findByTestId("products-export");
-    await expect(within(products).getByTestId("not-implemented-export")).toHaveTextContent("5");
+    await expect(within(products).queryByTestId("not-implemented-export")).toBeNull();
+  },
+};
+
+// THE CHIP NARROWS THE TABS HERE TOO (a-supplier-page-is-scoped-by-its-warehouses), in the URL: Toko Anggrek's supplier,
+// read from Discover — under Gudang Cabang its Toko tab keeps the one store whose goods were received there (not
+// "Nusantara Official"), its Produk tab that store's row; Semua puts both back.
+const AtNusantaraProbed = routedPage(
+  [
+    {
+      path: "/inventories/suppliers/discover/:supplierId",
+      element: (
+        <>
+          <DiscoverSupplierDetailPage />
+          <LocationProbe hidden />
+        </>
+      ),
+    },
+    marker("/inventories/suppliers/discover", "at-discover"),
+  ],
+  `/inventories/suppliers/discover/${NUSANTARA.id}`,
+);
+
+export const TheChipNarrowsTheTabs: Story = {
+  name: "A chip narrows Toko and Produk",
+  render: () => <AtNusantaraProbed />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await canvas.findByTestId("channel-row-372", {}, { timeout: 4000 });
+
+    const chips = canvas.getByTestId("supplier-warehouses-chips");
+    await waitFor(() => expect(within(chips).getByRole("button", { name: "Gudang Cabang" })).toBeVisible());
+    await userEvent.click(within(chips).getByRole("button", { name: "Gudang Cabang" }));
+    await waitFor(() => expect(location).toHaveTextContent("warehouse=14"));
+
+    await waitFor(() => expect(canvas.queryByTestId("channel-row-372")).toBeNull());
+    await expect(canvas.getByTestId("channel-row-371")).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("supplier-tab-products"));
+    await waitFor(() => expect(canvas.getByTestId("product-row-3601")).toBeVisible());
+    await expect(canvas.queryByTestId("product-row-3602")).toBeNull();
+
+    await userEvent.click(within(chips).getByRole("button", { name: "All" }));
+    await waitFor(() => expect(location).not.toHaveTextContent("warehouse="));
+    await waitFor(() => expect(canvas.getByTestId("product-row-3602")).toBeVisible());
+  },
+};
+
+// …AND STATISTIK (the-supplier-reports-carry-the-warehouse): under Gudang Cabang the tab reads that warehouse's rows —
+// all of Nusantara's figures were received there, so its headline stays Rp 1.250.000 — and its Export carries the chip.
+export const TheChipNarrowsStatistik: Story = {
+  name: "A chip narrows Statistik",
+  render: () => <AtNusantaraProbed />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    const chips = await canvas.findByTestId("supplier-warehouses-chips");
+    await waitFor(() => expect(within(chips).getByRole("button", { name: "Gudang Cabang" })).toBeVisible());
+    await userEvent.click(within(chips).getByRole("button", { name: "Gudang Cabang" }));
+    await waitFor(() => expect(location).toHaveTextContent("warehouse=14"));
+
+    await userEvent.click(canvas.getByTestId("supplier-tab-statistics"));
+    await waitFor(() =>
+      expect(canvas.getByTestId("statistics-summary-restocked-value")).toHaveTextContent(/1\.250\.000/),
+    );
+
+    await userEvent.click(canvas.getByTestId("statistics-export"));
+    await waitFor(() => expect(supplierExportScenario.figures).toHaveLength(1));
+    await expect(supplierExportScenario.figures[0]!.filters.find((f) => f.f.case === "warehouseFilter")?.f.value).toMatchObject(
+      { warehouseId: 14n },
+    );
   },
 };

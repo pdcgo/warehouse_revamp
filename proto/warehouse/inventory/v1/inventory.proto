@@ -1947,6 +1947,10 @@ message SupplierGoodsRequest {
     defined_only: true
     not_in: [0]
   }];
+
+  // One warehouse's goods only — a supplier page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses):
+  // every figure counts only the batches in that warehouse. 0 = every warehouse.
+  uint64 warehouse_id = 4;
 }
 
 // SupplierGoods — what one supplier's goods did, over all time, in one group. Bounded: a supplier has few stores and

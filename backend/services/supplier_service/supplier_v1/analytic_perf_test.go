@@ -9,7 +9,9 @@
 // Volumes: `suppliers` 2 000 (8 selling teams, every 20th soft-deleted), `supplier_channels` 3 a supplier (6 000,
 // every 20th soft-deleted), 10 000 products over the same 8 teams. Each product is bought from ONE supplier, drawn
 // with a square skew (supplier #1 sells ~220 products, the median ~4), and restocked on ~1 day in 7 —
-// `supplier_product_daily_reports` ≈ 520 000 rows over 365 days, inserted in day order as the fold writes them.
+// `supplier_product_daily_reports` ≈ 520 000 rows over 365 days, inserted in day order as the fold writes them. Each
+// row is received at one of figWarehouses warehouses (00006, the-supplier-reports-carry-the-warehouse), drawn off the
+// same hash, so a supplier page's warehouse chip reads about a third of the supplier's rows.
 //
 // Knobs: PERF_FIG_YEARS=n seeds n years at the same density (the growth check). PERF_PLAN_CACHE=custom|generic pins
 // the server's plan cache. PERF_CASE=<substring> runs one case alone. PERF_REPORT=1 prints the per-statement table.
@@ -50,6 +52,9 @@ const (
 	figEvery = 7
 	// The last seeded day — every window ends here.
 	figLastDay = "2026-10-06"
+	// The warehouses the restocks are received at; the chip cases read the first.
+	figWarehouses           = 3
+	figWarehouseBase uint64 = 70_000
 )
 
 type figBook struct {
@@ -155,10 +160,10 @@ func figSetup(t *testing.T) figBook {
 
 	err := quiet.Exec(`
 INSERT INTO supplier_product_daily_reports (
-    day, supplier_id, product_id, team_id,
+    day, supplier_id, product_id, team_id, warehouse_id,
     restock_count, restock_valuation, shipping_lost_count, shipping_lost_valuation,
     shipping_broken_count, shipping_broken_valuation, last_updated)
-SELECT d.day::date, s.id, p.product_id, p.team_id,
+SELECT d.day::date, s.id, p.product_id, p.team_id, @warehouseBase + (x.h / 7919) % @warehouses,
        x.rc, x.rc * p.price, x.lc, x.lc * p.price, x.bc, x.bc * p.price, NOW()
 FROM (
     SELECT g,
@@ -190,6 +195,8 @@ ORDER BY d.day, x.h`,
 			"firstDay":      firstDay,
 			"lastDay":       figLastDay,
 			"every":         figEvery,
+			"warehouseBase": figWarehouseBase,
+			"warehouses":    figWarehouses,
 		},
 	).Error
 	if err != nil {
@@ -200,8 +207,8 @@ ORDER BY d.day, x.h`,
 	// UNION ALL sums twice the rows. PERF_FIG_SALES=0 leaves the sales table empty — the before/after check.
 	if os.Getenv("PERF_FIG_SALES") != "0" {
 		err = quiet.Exec(`
-INSERT INTO supplier_sale_daily_reports (day, supplier_id, product_id, team_id, sales_count, sales_value, last_updated)
-SELECT day, supplier_id, product_id, team_id, restock_count, restock_valuation * 1.3, NOW()
+INSERT INTO supplier_sale_daily_reports (day, supplier_id, product_id, team_id, warehouse_id, sales_count, sales_value, last_updated)
+SELECT day, supplier_id, product_id, team_id, warehouse_id, restock_count, restock_valuation * 1.3, NOW()
 FROM supplier_product_daily_reports
 ORDER BY day, id`).Error
 		if err != nil {
@@ -265,7 +272,7 @@ ORDER BY day, id`).Error
 		t.Logf("PLAN_CACHE force_%s_plan", mode)
 	}
 
-	b.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil, nil, nil)
+	b.svc = supplier_v1.NewService(db, perfSellingTeams{}, nil, nil, nil, nil)
 
 	return b
 }
@@ -324,6 +331,10 @@ func TestPerf_MetricSearch(t *testing.T) {
 		{"products/top/30d/limit=20", product, "restock_valuation", figWindow(30, oneSupplier(b.top)), 0, 20},
 		{"products/top/366d/team/limit=20", product, "restock_valuation", figWindow(366, oneSupplier(b.top), restockTeam(figTeamBase)), 0, 20},
 		{"products/median/366d/limit=20", product, "restock_valuation", figWindow(366, oneSupplier(b.median)), 0, 20},
+		// A supplier page's warehouse chip on Per Produk (the-supplier-reports-carry-the-warehouse).
+		{"products/top/366d/chip/limit=20", product, "restock_valuation", figWindow(366, oneSupplier(b.top), oneWarehouse(figWarehouseBase)), 0, 20},
+		{"products/top/30d/chip/limit=20", product, "restock_valuation", figWindow(30, oneSupplier(b.top), oneWarehouse(figWarehouseBase)), 0, 20},
+		{"products/median/366d/chip/limit=20", product, "restock_valuation", figWindow(366, oneSupplier(b.median), oneWarehouse(figWarehouseBase)), 0, 20},
 	}
 
 	for _, c := range cases {
@@ -418,6 +429,13 @@ func TestPerf_MetricData(t *testing.T) {
 		{"summary/366d", summary, figWindow(366), nil},
 		{fmt.Sprintf("summary/all-%dd", 365*b.years), summary, figWindow(365 * b.years), nil},
 		{"summary/top/366d", summary, figWindow(366, oneSupplier(b.top)), nil},
+		// A supplier page's warehouse chip (the-supplier-reports-carry-the-warehouse): the headline, Per Periode, Per Produk.
+		{"summary/top/366d/chip", summary, figWindow(366, oneSupplier(b.top), oneWarehouse(figWarehouseBase)), nil},
+		{"summary/top/30d/chip", summary, figWindow(30, oneSupplier(b.top), oneWarehouse(figWarehouseBase)), nil},
+		{"days/top/30d/chip/keys=10", daily, figWindow(30, oneSupplier(b.top), oneWarehouse(figWarehouseBase)), days(10)},
+		{"days/top/366d/chip/keys=200", daily, figWindow(366, oneSupplier(b.top), oneWarehouse(figWarehouseBase)), days(200)},
+		{"products/top/366d/chip/ids=20", product, figWindow(366, oneSupplier(b.top), oneWarehouse(figWarehouseBase)),
+			ranked(product, figWindow(366, oneSupplier(b.top), oneWarehouse(figWarehouseBase)), 20)},
 	}
 
 	for _, c := range cases {
@@ -488,18 +506,18 @@ func TestPerf_AnalyticFold(t *testing.T) {
 
 	san_perf.Explain(t, b.db, fmt.Sprintf(`
 INSERT INTO supplier_product_daily_reports AS d (
-    day, supplier_id, product_id, team_id,
+    day, supplier_id, product_id, team_id, warehouse_id,
     restock_count, restock_valuation, shipping_lost_count, shipping_lost_valuation,
     shipping_broken_count, shipping_broken_valuation, last_updated)
-SELECT CAST('%s' AS date), %d, v.product_id, %d, v.rc, v.rv, v.lc, v.lv, v.bc, v.bv, NOW()
+SELECT CAST('%s' AS date), %d, v.product_id, %d, %d, v.rc, v.rv, v.lc, v.lv, v.bc, v.bv, NOW()
 FROM (VALUES %s) AS v(product_id, rc, rv, lc, lv, bc, bv)
 ORDER BY v.product_id
-ON CONFLICT (day, supplier_id, product_id, team_id) DO UPDATE
+ON CONFLICT (day, supplier_id, product_id, team_id, warehouse_id) DO UPDATE
 SET restock_count             = d.restock_count + EXCLUDED.restock_count,
     restock_valuation         = d.restock_valuation + EXCLUDED.restock_valuation,
     shipping_lost_count       = d.shipping_lost_count + EXCLUDED.shipping_lost_count,
     shipping_lost_valuation   = d.shipping_lost_valuation + EXCLUDED.shipping_lost_valuation,
     shipping_broken_count     = d.shipping_broken_count + EXCLUDED.shipping_broken_count,
     shipping_broken_valuation = d.shipping_broken_valuation + EXCLUDED.shipping_broken_valuation,
-    last_updated              = NOW()`, figLastDay, b.top, figTeamBase, values))
+    last_updated              = NOW()`, figLastDay, b.top, figTeamBase, figWarehouseBase, values))
 }

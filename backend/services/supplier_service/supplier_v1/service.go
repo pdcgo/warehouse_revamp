@@ -47,6 +47,9 @@ type Service struct {
 
 	// Where a tab's export goes, and the names its rows need (export_store.go). nil = every export is Unimplemented.
 	exports ExportStore
+
+	// What product_service knows of the Produk tab's products — names, SKUs, pictures, a search (product_catalog.go).
+	products ProductCatalog
 }
 
 // compile-time proof Service serves every proto service. One implementation behind four — the split is about who may
@@ -58,7 +61,14 @@ var (
 	_ supplierv1connect.SupplierAnalyticMaintenanceServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, teams SellingTeams, broker ReplayBroker, goods GoodsReader, exports ExportStore) *Service {
+func NewService(
+	db *gorm.DB,
+	teams SellingTeams,
+	broker ReplayBroker,
+	goods GoodsReader,
+	exports ExportStore,
+	products ProductCatalog,
+) *Service {
 	// With no team service to ask, every SupplierCreate is REFUSED rather than trusted.
 	if teams == nil {
 		teams = noSellingTeams{}
@@ -73,7 +83,11 @@ func NewService(db *gorm.DB, teams SellingTeams, broker ReplayBroker, goods Good
 		goods = noGoods{}
 	}
 
-	return &Service{db: db, teams: teams, broker: broker, goods: goods, exports: exports}
+	if products == nil {
+		products = noProducts{}
+	}
+
+	return &Service{db: db, teams: teams, broker: broker, goods: goods, exports: exports, products: products}
 }
 
 type noSellingTeams struct{}

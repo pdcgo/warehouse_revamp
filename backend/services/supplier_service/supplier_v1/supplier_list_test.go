@@ -213,7 +213,7 @@ func TestSupplierList_Pages(t *testing.T) {
 func TestSupplierList_ABandFindsASupplierBeyondTheFirstPage(t *testing.T) {
 	db := san_testdb.DB(t)
 	goods := &fakeGoods{sold: map[uint64]int64{}, ready: map[uint64]int64{}}
-	svc := supplier_v1.NewService(db, nil, nil, goods, nil)
+	svc := supplier_v1.NewService(db, nil, nil, goods, nil, nil)
 
 	var last supplier_service_models.Supplier
 	for i := range 30 {
@@ -264,7 +264,7 @@ func TestSupplierList_BandsAreLowerInclusiveUpperExclusive(t *testing.T) {
 		sold:  map[uint64]int64{at500.ID: 500, at499.ID: 499, big.ID: 5_000},
 		ready: map[uint64]int64{at500.ID: 50, at499.ID: 10, big.ID: 49},
 	}
-	svc := supplier_v1.NewService(db, nil, nil, goods, nil)
+	svc := supplier_v1.NewService(db, nil, nil, goods, nil, nil)
 
 	band := func(lo, hi int64) *supplierv1.SupplierFigureBand {
 		return &supplierv1.SupplierFigureBand{Min: lo, Max: hi}
@@ -367,7 +367,7 @@ func atWarehouseFixture(t *testing.T) atWarehouse {
 			gudang2: {f.atBoth.ID},
 		},
 	}
-	f.svc = supplier_v1.NewService(db, nil, nil, f.goods, nil)
+	f.svc = supplier_v1.NewService(db, nil, nil, f.goods, nil, nil)
 
 	return f
 }
@@ -473,7 +473,7 @@ func TestSupplierList_TheWarehouseAndABandAreCutTogether(t *testing.T) {
 func TestSupplierList_TheWarehouseNarrowsBeforeThePage(t *testing.T) {
 	db := san_testdb.DB(t)
 	goods := &fakeGoods{at: map[uint64][]uint64{}}
-	svc := supplier_v1.NewService(db, nil, nil, goods, nil)
+	svc := supplier_v1.NewService(db, nil, nil, goods, nil, nil)
 
 	var received []string
 
@@ -531,7 +531,7 @@ func TestSupplierList_TheWarehouseUnansweredIsAnError(t *testing.T) {
 		t.Fatalf("a warehouse with inventory down = %v, want Internal", err)
 	}
 
-	svc := supplier_v1.NewService(san_testdb.DB(t), nil, nil, onlyGoods{f.goods}, nil)
+	svc := supplier_v1.NewService(san_testdb.DB(t), nil, nil, onlyGoods{f.goods}, nil, nil)
 
 	_, err = svc.SupplierList(context.Background(), connect.NewRequest(&supplierv1.SupplierListRequest{
 		TeamId: sellingA, Filter: &supplierv1.SupplierListFilter{WarehouseId: gudang1}, Page: page(1, 50),

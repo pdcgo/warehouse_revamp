@@ -53,6 +53,9 @@ var errReplayLockHeld = connect.NewError(
 // therefore start AFTER the live fold's first day (`figures_live_since`) — every row from then on came off the broker.
 //
 // ⚠ IT REPORTS "started", NEVER "done". The seek is asynchronous.
+//
+// The links (supplier_channel_products) are NOT deleted: a redelivered accept re-upserts its links, and the upsert keeps
+// the earliest and latest accept, so the replay leaves them exactly as they were.
 func (s *Service) AnalyticReplayCompute(
 	ctx context.Context,
 	req *connect.Request[supplierv1.AnalyticReplayComputeRequest],

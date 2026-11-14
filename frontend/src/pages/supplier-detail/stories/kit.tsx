@@ -14,9 +14,9 @@ import { SupplierDetailPage } from "../index";
 // (docs/business/supplier/context_clarify.md#proposed-design).
 //
 // One supplier: its own fields on top, then two horizontal tabs (supplier-detail-has-channels-and-products-tabs)
-// — CHANNELS, one list with a marketplace badge per row, and PRODUCTS, sample rows until an accepted restock links
-// a product to its store. The stub plays supplier_service (supplierStub.ts): reads cross teams, writes do not, and
-// deletes are soft.
+// — CHANNELS, one list with a marketplace badge per row, and PRODUCTS, the products accepted restocks linked to the
+// supplier (supplierProductFixtures.ts). The stub plays supplier_service (supplierStub.ts): reads cross teams, writes do
+// not, and deletes are soft.
 
 export const SUMBER = supplierFixture("PT Sumber Makmur");
 const CAHAYA = supplierFixture("CV Cahaya Abadi");

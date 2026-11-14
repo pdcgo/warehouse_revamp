@@ -43,8 +43,8 @@ export const ChannelsAndProductsTabs: Story = {
     await expect(tablist).toHaveAttribute("aria-orientation", "horizontal");
     await expect(within(tablist).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "Stores",
-      // Products carries its own sample mark; Statistics is real (the-figures-screens-are-accepted).
-      "Products1",
+      // All three real — Products since 2026-11-14 (SupplierProductList), Statistics before it.
+      "Products",
       "Statistics",
     ]);
     await expect(canvas.getByTestId("supplier-tab-channels")).toHaveAttribute("aria-selected", "true");
@@ -74,18 +74,21 @@ export const OneUnderlineThatSlides: Story = {
   },
 };
 
-// The one thing that is not real yet, said on the page: the Products tab is invented rows (sample). A channel's
-// description is real now, so it carries no mark — not in the table, not in the form.
-export const WhatIsNotRealYetIsMarked: Story = {
-  name: "Sample marked",
+// NOTHING IS LEFT UNBUILT on the page: Gudang terkait's pick narrows every tab since the supplier reports carry the
+// warehouse (the-supplier-reports-carry-the-warehouse) — no summary strip, no ⚠ by the chips. The Products tab is real
+// rows, so its tab carries no mark; a channel's description is real, so it carries none either — table or form.
+export const NothingIsMarkedAnyMore: Story = {
+  name: "Nothing unbuilt",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await canvas.findByTestId("supplier-warehouses");
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-warehouseFilter")).toBeNull();
     await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
     await expect(
-      within(canvas.getByTestId("supplier-tab-products")).getByTestId("not-implemented-products"),
-    ).toBeVisible();
+      within(canvas.getByTestId("supplier-tab-products")).queryByTestId("not-implemented-products"),
+    ).toBeNull();
     await expect(canvas.queryAllByTestId("not-implemented-channelDescription")).toHaveLength(0);
 
     await userEvent.click(canvas.getByTestId("add-channel"));
@@ -98,8 +101,7 @@ export const WhatIsNotRealYetIsMarked: Story = {
 };
 
 // EACH TAB EXPORTS ITS OWN TABLE — a grey Export at the right end of the tab's filter strip, left of the tab's primary
-// action (Tambah Toko). The Toko and Statistik tabs export (no mark); the Produk tab's rows are invented, so its Export
-// still carries THIS page's mark (5) and builds nothing.
+// action (Tambah Toko). All three export real rows — none carries a mark.
 export const EachTabExportsItsOwnTable: Story = {
   name: "Export per tab",
   play: async ({ canvasElement }) => {
@@ -118,8 +120,8 @@ export const EachTabExportsItsOwnTable: Story = {
 
     await openProducts(canvas);
     const products = await canvas.findByTestId("products-export");
-    await expect(products).toHaveTextContent(/^Export/);
-    await expect(within(products).getByTestId("not-implemented-export")).toHaveTextContent("5");
+    await expect(products).toHaveTextContent(/^Export$/);
+    await expect(within(products).queryByTestId("not-implemented-export")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("supplier-tab-statistics"));
     const statistics = await canvas.findByTestId("statistics-export", {}, { timeout: 3000 });

@@ -27,7 +27,7 @@ import (
 func TestRegister_TheOrderEventsReachTheSalesFold(t *testing.T) {
 	db := san_testdb.DB(t)
 	mux := http.NewServeMux()
-	supplier_service.NewRegister(mux, supplier_v1.NewService(db, nil, nil, takes{}, nil), connect.WithInterceptors())()
+	supplier_service.NewRegister(mux, supplier_v1.NewService(db, nil, nil, takes{}, nil, nil), connect.WithInterceptors())()
 
 	at := time.Date(2026, 10, 7, 3, 0, 0, 0, time.UTC)
 
@@ -57,7 +57,7 @@ func TestRegister_TheOrderEventsReachTheSalesFold(t *testing.T) {
 func TestRegister_ACorrectionReachesTheFold(t *testing.T) {
 	db := san_testdb.DB(t)
 	mux := http.NewServeMux()
-	supplier_service.NewRegister(mux, supplier_v1.NewService(db, nil, nil, takes{}, nil), connect.WithInterceptors())()
+	supplier_service.NewRegister(mux, supplier_v1.NewService(db, nil, nil, takes{}, nil, nil), connect.WithInterceptors())()
 
 	at := time.Date(2026, 10, 7, 3, 0, 0, 0, time.UTC)
 	line := func(accepted, missing int64) []*eventsv1.RestockAcceptedLine {
@@ -96,7 +96,7 @@ func (takes) SupplierIDsByFigure(context.Context, supplier_v1.GoodsFigure, int64
 	return nil, nil
 }
 
-func (takes) StoreGoods(context.Context, uint64) (map[uint64]supplier_v1.StoreGoods, error) {
+func (takes) StoreGoods(context.Context, uint64, uint64) (map[uint64]supplier_v1.StoreGoods, error) {
 	return nil, nil
 }
 

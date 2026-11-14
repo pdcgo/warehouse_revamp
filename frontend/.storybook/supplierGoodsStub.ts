@@ -62,8 +62,11 @@ export const GOODS_LOTS: GoodsLot[] = [
 const DAY = 86_400;
 const at = (daysAgo: number | null) => (daysAgo === null ? 0n : BigInt(Math.floor(Date.now() / 1000) - daysAgo * DAY));
 
-/** What each SupplierGoods call asked — a story asserts the page asked once, for the suppliers on screen. */
-export const supplierGoodsCalls: { teamId: bigint; supplierIds: bigint[]; group: SupplierGoodsGroup }[] = [];
+/**
+ * What each SupplierGoods call asked — a story asserts the page asked once, for the suppliers on screen, and under a
+ * supplier page's warehouse chip, for that warehouse.
+ */
+export const supplierGoodsCalls: { teamId: bigint; supplierIds: bigint[]; group: SupplierGoodsGroup; warehouseId: bigint }[] = [];
 
 /** The bands and the warehouse each SupplierList call carried — a story asserts the pick reached the server's question. */
 export const supplierListBandCalls: {
@@ -95,6 +98,14 @@ export function receivedAt(supplierId: bigint, warehouseId: bigint): boolean {
   return warehouseId === 0n || GOODS_LOTS.some((l) => l.supplierId === supplierId && l.warehouseId === warehouseId);
 }
 
+/**
+ * A supplier page's Gudang terkait chip over its Toko tab (a-supplier-page-is-scoped-by-its-warehouses): a store with a
+ * lot at the warehouse — exactly the stores SupplierGoods by STORE answers for that warehouse.
+ */
+export function storeReceivedAt(supplierId: bigint, storeId: bigint, warehouseId: bigint): boolean {
+  return GOODS_LOTS.some((l) => l.supplierId === supplierId && l.storeId === storeId && l.warehouseId === warehouseId);
+}
+
 /** A supplier's all-time Terjual and Siap — its lots summed, every team's; 0 for a supplier with no goods. */
 export function goodsTotalsOf(supplierId: bigint): { sold: number; ready: number } {
   let sold = 0;
@@ -116,7 +127,7 @@ export function inBand(value: number, band: SupplierFigureBand | undefined): boo
 }
 
 export function supplierGoods(req: SupplierGoodsRequest) {
-  supplierGoodsCalls.push({ teamId: req.teamId, supplierIds: [...req.supplierIds], group: req.group });
+  supplierGoodsCalls.push({ teamId: req.teamId, supplierIds: [...req.supplierIds], group: req.group, warehouseId: req.warehouseId });
 
   const wanted = new Set(req.supplierIds.map((id) => id.toString()));
   const keyOf = (l: GoodsLot) =>
@@ -125,6 +136,8 @@ export function supplierGoods(req: SupplierGoodsRequest) {
   const rows = new Map<string, ReturnType<typeof create<typeof SupplierGoodsSchema>>>();
   for (const l of GOODS_LOTS) {
     if (!wanted.has(l.supplierId.toString())) continue;
+    // A supplier page's warehouse chip: that warehouse's lots only.
+    if (req.warehouseId > 0n && l.warehouseId !== req.warehouseId) continue;
 
     const k = keyOf(l);
     const id = `${l.supplierId}:${k}`;

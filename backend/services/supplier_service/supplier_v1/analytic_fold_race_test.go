@@ -29,8 +29,9 @@ import (
 
 // figTables are the fold's own tables, deleted before and after each test. supplier_service_metadata is NOT one of
 // them: it holds the migration-seeded `process_event_lock`, without which every fold errors — figResetMetadata puts
-// it back to `{"lock":false}` and drops every other key instead.
-var figTables = []string{"supplier_product_daily_reports", "supplier_event_logs"}
+// it back to `{"lock":false}` and drops every other key instead. supplier_channel_products is the accept's links,
+// written by the same fold (00005).
+var figTables = []string{"supplier_product_daily_reports", "supplier_event_logs", "supplier_channel_products"}
 
 const (
 	figSupplier uint64 = 31
@@ -84,7 +85,7 @@ func figReset(t *testing.T, db *gorm.DB) {
 // figService is the real service over db — the pool, or one Interleave transaction (where the fold's own Transaction
 // becomes a SAVEPOINT, and its locks are held until that transaction ends). A nil broker refuses every replay.
 func figService(db *gorm.DB, broker supplier_v1.ReplayBroker) *supplier_v1.Service {
-	return supplier_v1.NewService(db, nil, broker, nil, nil)
+	return supplier_v1.NewService(db, nil, broker, nil, nil, nil)
 }
 
 // figAdd is what folding these lines adds to a row: the units, and their value at the line's price.
@@ -671,15 +672,17 @@ func TestInterleave_Fold_LiveSinceSecondWaitsThenJudgesTheCommittedValue(t *test
 			h := figHarness(t)
 			ctx := context.Background()
 
-			// Each accept on its own day, so A and B share no figure row: the only thing between them is the key.
+			// Each accept on its own day and of its own product, so A and B share no figure row and no link
+			// (supplier_channel_products): the only thing between them is the key.
 			l := line{product: figProductA, ordered: 1, total: 1_000, accepted: 1}
+			lb := line{product: figProductB, ordered: 1, total: 1_000, accepted: 1}
 
 			if c.recorded {
 				fold(t, figService(h.DB(), nil), accept(1, sellingA, figSupplier, jakartaDay(1), l))
 			}
 
 			a := accept(40, sellingA, figSupplier, jakartaDay(c.aDay), l)
-			b := accept(41, sellingA, figSupplier, jakartaDay(c.bDay), l)
+			b := accept(41, sellingA, figSupplier, jakartaDay(c.bDay), lb)
 
 			var waits []raceWait
 

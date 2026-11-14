@@ -267,7 +267,7 @@ func TestSupplierReportExport_Refusals(t *testing.T) {
 	assertExportPolicy(t, "warehouse.supplier.v1.SupplierReportExportRequest",
 		"warehouse.supplier.v1.SupplierAnalyticService.SupplierReportExport")
 
-	_, err := runReportExport(t, supplier_v1.NewService(db, nil, nil, nil, nil), store, &supplierv1.SupplierReportExportRequest{
+	_, err := runReportExport(t, supplier_v1.NewService(db, nil, nil, nil, nil, nil), store, &supplierv1.SupplierReportExportRequest{
 		TeamId: sellingA, Filters: october(), Sort: sortBy("restock_valuation", desc),
 	})
 	if connect.CodeOf(err) != connect.CodeUnimplemented {

@@ -191,7 +191,7 @@ func TestPerf_SupplierListWarehouse(t *testing.T) {
 	db, probe := san_perf.Wrap(raw)
 	ctx := context.Background()
 	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
-	svc := supplier_v1.NewService(db, nil, nil, reader, nil)
+	svc := supplier_v1.NewService(db, nil, nil, reader, nil, nil)
 
 	at := func(warehouse uint64) func() (string, error) {
 		return func() (string, error) {

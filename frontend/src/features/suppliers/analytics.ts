@@ -112,6 +112,11 @@ interface Window {
   restockTeamId: bigint;
   /** The Supplier Report's search — the suppliers it finds, as the supplier list finds them; "" is every supplier. */
   q?: string;
+  /**
+   * A supplier page's warehouse chip — the restocks received there and the sales taken from there
+   * (the-supplier-reports-carry-the-warehouse); 0n (or none) is every warehouse, their sum.
+   */
+  warehouseId?: bigint;
 }
 
 interface Paged {
@@ -121,12 +126,17 @@ interface Paged {
 
 type Filter = MessageInitShape<typeof FilterItemSchema>;
 
-/** The window and, when one is picked, the restocking team and the search — the filters every supplier read carries. */
-function windowFilters({ from, to, restockTeamId, q = "" }: Window): Filter[] {
+/**
+ * The window and, when one is picked, the restocking team, the search and the warehouse chip — the filters every
+ * supplier read carries.
+ */
+function windowFilters({ from, to, restockTeamId, q = "", warehouseId = 0n }: Window): Filter[] {
   const out: Filter[] = [{ f: { case: "dateRangeFilter", value: { dateMin: from, dateMax: to } } }];
   if (restockTeamId !== 0n) out.push({ f: { case: "teamFilter", value: { teamId: restockTeamId } } });
   // The keyword filter (the-supplier-report-keeps-its-search) — only when something was typed.
   if (q !== "") out.push({ f: { case: "supplierKeywordFilter", value: { q } } });
+  // The page's warehouse chip (the-supplier-reports-carry-the-warehouse) — only when one is picked: none is the sum.
+  if (warehouseId !== 0n) out.push({ f: { case: "warehouseFilter", value: { warehouseId } } });
 
   return out;
 }
@@ -134,12 +144,25 @@ function windowFilters({ from, to, restockTeamId, q = "" }: Window): Filter[] {
 const supplierFilter = (supplierId: bigint): Filter => ({ f: { case: "supplierFilter", value: { supplierId } } });
 
 /**
- * The Statistik tab's filters — the window, whose restocks, the supplier — exactly what its reads send, so its export
- * sends the same (each-supplier-tab-exports-its-own-table).
+ * The Statistik tab's filters — the window, whose restocks, the warehouse chip, the supplier — exactly what its reads
+ * send, so its export sends the same (each-supplier-tab-exports-its-own-table).
  */
-export function statisticsFilters(args: { from: string; to: string; restockTeamId: bigint; supplierId: bigint }): Filter[] {
+export function statisticsFilters(args: {
+  from: string;
+  to: string;
+  restockTeamId: bigint;
+  supplierId: bigint;
+  warehouseId?: bigint;
+}): Filter[] {
   return [
-    ...windowFilters({ teamId: undefined, valid: true, from: args.from, to: args.to, restockTeamId: args.restockTeamId }),
+    ...windowFilters({
+      teamId: undefined,
+      valid: true,
+      from: args.from,
+      to: args.to,
+      restockTeamId: args.restockTeamId,
+      warehouseId: args.warehouseId,
+    }),
     supplierFilter(args.supplierId),
   ];
 }
@@ -225,7 +248,7 @@ async function teamNames(client: QueryClient, ids: bigint[]): Promise<Map<string
  * window (audits/services/supplier_service/performances/MetricData.md, finding 1).
  */
 export function useSupplierHeadline(args: Window & { supplierId?: bigint }) {
-  const { teamId, from, to, valid, restockTeamId, supplierId = 0n, q = "" } = args;
+  const { teamId, from, to, valid, restockTeamId, supplierId = 0n, q = "", warehouseId = 0n } = args;
 
   return useQuery({
     ...listQuery,
@@ -236,6 +259,7 @@ export function useSupplierHeadline(args: Window & { supplierId?: bigint }) {
       to,
       restockTeamId: restockTeamId.toString(),
       q,
+      warehouseId: warehouseId.toString(),
     }),
     enabled: teamId !== undefined && valid,
     queryFn: () => {
@@ -255,7 +279,7 @@ export function useSupplierHeadline(args: Window & { supplierId?: bigint }) {
  * that list (the-two-steps).
  */
 export function useSupplierFigureSeries(args: Window & Paged & { supplierId: bigint; grain: PeriodGrain }) {
-  const { teamId, supplierId, from, to, valid, restockTeamId, grain, page, pageSize } = args;
+  const { teamId, supplierId, from, to, valid, restockTeamId, grain, page, pageSize, warehouseId = 0n } = args;
 
   return useQuery({
     ...listQuery,
@@ -265,6 +289,7 @@ export function useSupplierFigureSeries(args: Window & Paged & { supplierId: big
       from,
       to,
       restockTeamId: restockTeamId.toString(),
+      warehouseId: warehouseId.toString(),
       grain,
       page,
       pageSize,
@@ -298,7 +323,7 @@ export function useSupplierFigureSeries(args: Window & Paged & { supplierId: big
 
 /** One supplier's six figures per product over the window, the largest restocked value first — Product Grouped. */
 export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId: bigint }) {
-  const { teamId, supplierId, from, to, valid, restockTeamId, page, pageSize } = args;
+  const { teamId, supplierId, from, to, valid, restockTeamId, page, pageSize, warehouseId = 0n } = args;
   const client = useQueryClient();
 
   return useQuery({
@@ -309,6 +334,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
       from,
       to,
       restockTeamId: restockTeamId.toString(),
+      warehouseId: warehouseId.toString(),
       page,
       pageSize,
     }),

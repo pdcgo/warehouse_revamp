@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Badge } from "@chakra-ui/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 import { SupplierTabExport, description } from "./SupplierTabExport";
@@ -37,15 +36,6 @@ export const Exporting: Story = {
     await expect(button).toHaveTextContent("Exporting 200 / 456");
     await expect(button).toBeDisabled();
     await expect(args.onExport).not.toHaveBeenCalled();
-  },
-};
-
-/** A tab whose rows are still invented (Produk) holds the place with its page's mark, and builds nothing. */
-export const MarkedHoldsThePlace: Story = {
-  args: { onExport: undefined, mark: <Badge data-testid="tab-export-mark">5</Badge> },
-  play: async ({ canvasElement }) => {
-    const button = within(canvasElement).getByTestId("tab-export");
-    await expect(within(button).getByTestId("tab-export-mark")).toHaveTextContent("5");
   },
 };
 

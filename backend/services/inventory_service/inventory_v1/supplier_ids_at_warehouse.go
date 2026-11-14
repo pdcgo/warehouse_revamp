@@ -44,11 +44,7 @@ func SupplierIDsAtWarehouse(ctx context.Context, db *gorm.DB, warehouseID uint64
 			FROM batches b
 			WHERE b.warehouse_id = ?
 			  AND b.supplier_id > 0
-			  AND (
-			        b.stock_count > 0
-			     OR (SELECT t.tx_type FROM inventory_transactions t WHERE t.id = b.transaction_id) = ?
-			     OR EXISTS (SELECT 1 FROM batch_logs l WHERE l.batch_id = b.id AND l.change_type = ?)
-			  )
+			  AND `+receivedHere+`
 			ORDER BY b.supplier_id`,
 			warehouseID,
 			string(inventory_service_models.TxRestock),
@@ -62,3 +58,13 @@ func SupplierIDsAtWarehouse(ctx context.Context, db *gorm.DB, warehouseID uint64
 
 	return ids, nil
 }
+
+// receivedHere is the test above, for ONE batch `b` — the Gudang terkait set's definition, shared by every read that asks
+// "received at this warehouse": this list's Gudang filter, and a supplier page's Toko and Produk tabs under a chip
+// (supplier_stores_at_warehouse.go), so the chips, the filter and the tabs can never disagree. Two placeholders, in
+// order: the restock transaction type, then the order change type.
+const receivedHere = `(
+	b.stock_count > 0
+	OR (SELECT t.tx_type FROM inventory_transactions t WHERE t.id = b.transaction_id) = ?
+	OR EXISTS (SELECT 1 FROM batch_logs l WHERE l.batch_id = b.id AND l.change_type = ?)
+)`

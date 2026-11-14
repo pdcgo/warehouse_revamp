@@ -101,7 +101,10 @@ test("Update: edit is a dedicated page; name and weekly hours persist", async ({
 
   await page.getByTestId("warehouse-edit-save").click();
 
-  // Saving returns to the detail page, and the rename shows in the list.
+  // Saving returns to the detail page, and the rename shows in the list. Wait for that return first: the save navigates
+  // to /teams/<id> only once its write answers, so a sidebar click made before then is overtaken by it (seen in the
+  // full run of 2026-11-14 21:27 — the page stayed on the warehouse's detail and the Warehouses tab never appeared).
+  await expect(page.getByTestId("team-detail-page")).toBeVisible();
   await gotoWarehouses(page);
   await expect(page.getByTestId(`team-row-${CODE}`)).toContainText(`${NAME} renamed`);
   await expect(page.getByTestId(`team-row-${CODE}`)).toContainText(CODE);

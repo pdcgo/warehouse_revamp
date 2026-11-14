@@ -232,6 +232,53 @@ func TestSupplierGoods_SplitsByStoreAndByWarehouse(t *testing.T) {
 	}
 }
 
+// ONE WAREHOUSE (a supplier page's Gudang terkait chip, a-supplier-page-is-scoped-by-its-warehouses): every figure counts
+// only the batches in that warehouse — store A splits into its Gudang 5 and Gudang 6 goods, store B (received only at
+// Gudang 5) has no row under Gudang 6, and the per-warehouse rows add up to the store's whole.
+func TestSupplierGoods_OneWarehouseOnly(t *testing.T) {
+	f := sgStocked(t)
+
+	sgSell(t, f, sgMelati, sgGudang6, sgKaos, 1, "sg-1")
+	sgSell(t, f, sgSinar, sgGudang5, sgCelana, 2, "sg-2")
+
+	at := func(warehouse uint64) map[[2]uint64]*inventoryv1.SupplierGoods {
+		t.Helper()
+
+		res, err := f.svc.SupplierGoods(context.Background(), connect.NewRequest(&inventoryv1.SupplierGoodsRequest{
+			TeamId: sgMelati, SupplierIds: []uint64{sgSumber}, Group: inventoryv1.SupplierGoodsGroup_SUPPLIER_GOODS_GROUP_STORE,
+			WarehouseId: warehouse,
+		}))
+		if err != nil {
+			t.Fatalf("SupplierGoods at %d: %v", warehouse, err)
+		}
+
+		out := map[[2]uint64]*inventoryv1.SupplierGoods{}
+		for _, row := range res.Msg.GetRows() {
+			out[[2]uint64{row.GetSupplierId(), row.GetStoreId()}] = row
+		}
+
+		return out
+	}
+
+	at5, at6 := at(sgGudang5), at(sgGudang6)
+
+	sgCheck(t, "store A at Gudang 5", at5[[2]uint64{sgSumber, sgStoreA}], sgWant{ready: 10, restocks: 1})
+	sgCheck(t, "store B at Gudang 5", at5[[2]uint64{sgSumber, sgStoreB}], sgWant{sold: 2, orders: 1, ready: 6, restocks: 1})
+	sgCheck(t, "store A at Gudang 6", at6[[2]uint64{sgSumber, sgStoreA}], sgWant{sold: 1, orders: 1, ready: 3, restocks: 1})
+
+	if row := at6[[2]uint64{sgSumber, sgStoreB}]; row != nil || len(at6) != 1 {
+		t.Fatalf("Gudang 6 = %v — store B's goods were never received there", at6)
+	}
+
+	// The same as the all-warehouse split, warehouse by warehouse.
+	whole := sgGoods(t, f, sgMelati, inventoryv1.SupplierGoodsGroup_SUPPLIER_GOODS_GROUP_STORE, sgSumber)[[2]uint64{sgSumber, sgStoreA}]
+	a5, a6 := at5[[2]uint64{sgSumber, sgStoreA}], at6[[2]uint64{sgSumber, sgStoreA}]
+
+	if a5.GetReadyUnits()+a6.GetReadyUnits() != whole.GetReadyUnits() || a5.GetSoldUnits()+a6.GetSoldUnits() != whole.GetSoldUnits() {
+		t.Fatalf("store A: Gudang 5 %+v + Gudang 6 %+v must add up to %+v", a5, a6, whole)
+	}
+}
+
 // The last order is the newest order that was NOT cancelled; the last restock the newest restock batch.
 func TestSupplierGoods_TheLastOrderSkipsACancelledOne(t *testing.T) {
 	f := sgStocked(t)

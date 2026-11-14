@@ -21,9 +21,9 @@ import (
 //
 //   - placed: the units the order's stock take drew from batches carrying a supplier (asked of inventory,
 //     GoodsReader.OrderTakeSuppliers), at their share of what the order sold them for, ADDED on the Jakarta day the order
-//     was placed;
-//   - cancelled: exactly what the placement added, SUBTRACTED on the cancel's own Jakarta day. An earlier day never
-//     changes.
+//     was placed, in the warehouse they were taken from (the-supplier-reports-carry-the-warehouse);
+//   - cancelled: exactly what the placement added, SUBTRACTED on the cancel's own Jakarta day, from the warehouse it was
+//     added to. An earlier day never changes.
 //
 // ONE ROW PER ORDER (`supplier_sale_orders`) is the claim, locked FOR UPDATE, so a redelivery folds nothing twice and the
 // two events may arrive in either order: a cancel first leaves the cancel's day on the row, and the late placement then
@@ -43,13 +43,14 @@ func (s *Service) SalesFoldHandler() event_source.PushHandler {
 	}
 }
 
-// salePart is what one order adds for one supplier, product and owning team.
+// salePart is what one order adds for one supplier, product, owning team and warehouse.
 type salePart struct {
-	SupplierID uint64
-	ProductID  uint64
-	TeamID     uint64
-	Units      int64
-	Value      float64
+	SupplierID  uint64
+	ProductID   uint64
+	TeamID      uint64
+	WarehouseID uint64
+	Units       int64
+	Value       float64
 }
 
 var errSaleNoOrder = errors.New("supplier sales fold: the event names no order")
@@ -113,7 +114,7 @@ func (s *Service) foldSalePlaced(ctx context.Context, event *eventsv1.Event, pla
 		for _, p := range parts {
 			rows = append(rows, supplier_service_models.SupplierSaleOrderPart{
 				OrderID: placed.GetOrderId(), SupplierID: p.SupplierID, ProductID: p.ProductID, TeamID: p.TeamID,
-				Units: p.Units, Value: p.Value,
+				WarehouseID: p.WarehouseID, Units: p.Units, Value: p.Value,
 			})
 		}
 
@@ -174,7 +175,7 @@ func (s *Service) foldSaleCancelled(ctx context.Context, event *eventsv1.Event, 
 
 		err = tx.
 			Where("order_id = ?", cancelled.GetOrderId()).
-			Order("supplier_id, product_id, team_id").
+			Order("supplier_id, product_id, team_id, warehouse_id").
 			Find(&rows).
 			Error
 		if err != nil {
@@ -184,7 +185,8 @@ func (s *Service) foldSaleCancelled(ctx context.Context, event *eventsv1.Event, 
 		parts := make([]salePart, 0, len(rows))
 		for _, r := range rows {
 			parts = append(parts, salePart{
-				SupplierID: r.SupplierID, ProductID: r.ProductID, TeamID: r.TeamID, Units: r.Units, Value: r.Value,
+				SupplierID: r.SupplierID, ProductID: r.ProductID, TeamID: r.TeamID, WarehouseID: r.WarehouseID,
+				Units: r.Units, Value: r.Value,
 			})
 		}
 
@@ -214,14 +216,15 @@ func claimSaleOrder(tx *gorm.DB, orderID uint64) (supplier_service_models.Suppli
 	return order, nil
 }
 
-// addSales adds `sign` × the parts to their day's rows — ONE statement. ⚠ ORDER BY the row key: the fold's one lock
-// order over a day's rows, so two orders of one day touching the same suppliers wait rather than deadlock.
+// addSales adds `sign` × the parts to their day's rows — ONE statement. ⚠ ORDER BY the row key, the warehouse last:
+// the fold's one lock order over a day's rows, so two orders of one day touching the same suppliers wait rather than
+// deadlock.
 func addSales(tx *gorm.DB, day time.Time, parts []salePart, sign int64) error {
 	if len(parts) == 0 {
 		return nil
 	}
 
-	var suppliers, products, teams, units []int64
+	var suppliers, products, teams, warehouses, units []int64
 
 	var values []float64
 
@@ -229,30 +232,34 @@ func addSales(tx *gorm.DB, day time.Time, parts []salePart, sign int64) error {
 		suppliers = append(suppliers, int64(p.SupplierID))
 		products = append(products, int64(p.ProductID))
 		teams = append(teams, int64(p.TeamID))
+		warehouses = append(warehouses, int64(p.WarehouseID))
 		units = append(units, sign*p.Units)
 		values = append(values, float64(sign)*p.Value)
 	}
 
 	err := tx.Exec(`
-INSERT INTO supplier_sale_daily_reports AS d (day, supplier_id, product_id, team_id, sales_count, sales_value, last_updated)
-SELECT CAST(@day AS date), l.supplier_id, l.product_id, l.team_id, SUM(l.units), SUM(l.value), NOW()
+INSERT INTO supplier_sale_daily_reports AS d (
+    day, supplier_id, product_id, team_id, warehouse_id, sales_count, sales_value, last_updated
+)
+SELECT CAST(@day AS date), l.supplier_id, l.product_id, l.team_id, l.warehouse_id, SUM(l.units), SUM(l.value), NOW()
 FROM unnest(
-    CAST(@suppliers AS bigint[]), CAST(@products AS bigint[]), CAST(@teams AS bigint[]),
+    CAST(@suppliers AS bigint[]), CAST(@products AS bigint[]), CAST(@teams AS bigint[]), CAST(@warehouses AS bigint[]),
     CAST(@units AS bigint[]), CAST(@values AS double precision[])
-) AS l(supplier_id, product_id, team_id, units, value)
-GROUP BY l.supplier_id, l.product_id, l.team_id
-ORDER BY l.supplier_id, l.product_id, l.team_id
-ON CONFLICT (day, supplier_id, product_id, team_id) DO UPDATE
+) AS l(supplier_id, product_id, team_id, warehouse_id, units, value)
+GROUP BY l.supplier_id, l.product_id, l.team_id, l.warehouse_id
+ORDER BY l.supplier_id, l.product_id, l.team_id, l.warehouse_id
+ON CONFLICT (day, supplier_id, product_id, team_id, warehouse_id) DO UPDATE
 SET sales_count  = d.sales_count + EXCLUDED.sales_count,
     sales_value  = d.sales_value + EXCLUDED.sales_value,
     last_updated = NOW()`,
 		map[string]any{
-			"day":       day.Format(dateLayout),
-			"suppliers": int64Array(suppliers),
-			"products":  int64Array(products),
-			"teams":     int64Array(teams),
-			"units":     int64Array(units),
-			"values":    float64Array(values),
+			"day":        day.Format(dateLayout),
+			"suppliers":  int64Array(suppliers),
+			"products":   int64Array(products),
+			"teams":      int64Array(teams),
+			"warehouses": int64Array(warehouses),
+			"units":      int64Array(units),
+			"values":     float64Array(values),
 		},
 	).Error
 	if err != nil {
@@ -271,7 +278,9 @@ SET sales_count  = d.sales_count + EXCLUDED.sales_count,
 //     8 ninths of it.
 //
 // Exact, never rounded (the-backend-never-rounds-money). A platform total of 0 (not recorded) values the units at 0 and
-// still counts them. Sorted by the row key, the fold's lock order.
+// still counts them. Each part keeps the warehouse its units were TAKEN from — the batches'
+// (the-supplier-reports-carry-the-warehouse); a take part reading none (a reader that cannot say) falls back to the
+// warehouse the order shipped from, the one its take drew in. Sorted by the row key, the fold's lock order.
 func saleParts(placed *eventsv1.OrderPlaced, take []SaleTakePart) []salePart {
 	lines := placed.GetLines()
 
@@ -326,8 +335,14 @@ func saleParts(placed *eventsv1.OrderPlaced, take []SaleTakePart) []salePart {
 			value = p.value * float64(t.Units) / float64(p.qty)
 		}
 
+		warehouse := t.WarehouseID
+		if warehouse == 0 {
+			warehouse = placed.GetWarehouseId()
+		}
+
 		parts = append(parts, salePart{
-			SupplierID: t.SupplierID, ProductID: t.ProductID, TeamID: t.TeamID, Units: t.Units, Value: value,
+			SupplierID: t.SupplierID, ProductID: t.ProductID, TeamID: t.TeamID, WarehouseID: warehouse, Units: t.Units,
+			Value: value,
 		})
 	}
 
@@ -341,7 +356,11 @@ func saleParts(placed *eventsv1.OrderPlaced, take []SaleTakePart) []salePart {
 			return a.ProductID < b.ProductID
 		}
 
-		return a.TeamID < b.TeamID
+		if a.TeamID != b.TeamID {
+			return a.TeamID < b.TeamID
+		}
+
+		return a.WarehouseID < b.WarehouseID
 	})
 
 	return parts

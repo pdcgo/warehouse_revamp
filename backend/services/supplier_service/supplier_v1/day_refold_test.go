@@ -161,8 +161,8 @@ func TestDayRefold_Restock_ALostAcceptIsRebuiltAndClaimed(t *testing.T) {
 	fold(t, svc, folded)
 	fold(t, svc, other)
 
-	err := db.Exec(`INSERT INTO supplier_product_daily_reports (day, supplier_id, product_id, team_id, restock_count)
-VALUES (CAST(? AS date), ?, 999, ?, 7)`, rfDay, rfSupplier, sellingA).Error
+	err := db.Exec(`INSERT INTO supplier_product_daily_reports (day, supplier_id, product_id, team_id, warehouse_id, restock_count)
+VALUES (CAST(? AS date), ?, 999, ?, 5, 7)`, rfDay, rfSupplier, sellingA).Error
 	if err != nil {
 		t.Fatal(err)
 	}

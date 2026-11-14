@@ -289,6 +289,8 @@ Terakhir dibeli 8 Okt 2026 · pertama 8 Sep 2026
 | still sample | every row — product, team, picture and dates are invented from the supplier's real stores until the link is built; the tab keeps its `sample` mark. The pictures are flat swatches drawn for the sample |
 | no API change | the read behind it does not exist yet; this is the screen it will fill |
 
+✅ Built 2026-11-14 — real rows (`SupplierProductList` over the links): the product named by product_service with its picture and SKU, the restocking team, the store with its type (— for none), the last restock with the first under it. `sampleProducts.ts` deleted, the `sample` mark gone. [rpc.md § The Produk tab](../../services/supplier_service/rpc.md#the-produk-tab--supplierproductlist)
+
 ## the-products-tab-filters-by-team-and-store
 
 > Owner, in chat (2026-10-10), asked which filters the tabs have — I recommended waiting for the Produk tab's read —
@@ -320,6 +322,8 @@ on a phone — the search, and the two in the Filter sheet
 | Clear, the pager | Clear puts all three back; any change starts the pager over ([every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager)) |
 | placeholders | *Semua tim*, *Semua toko* — a placeholder is on the action side of [toko-in-an-action-toko-pemasok-in-a-table](#toko-in-an-action-toko-pemasok-in-a-table) |
 | still sample | the filters run over the sample rows in the browser; the real read will take a store and a team. The sample's two teams are Storybook's selling teams (*Toko Melati*, *Toko Kenanga*), so the team filter finds them there — in the dev app the real teams have other ids, so picking one finds none until the read exists |
+
+✅ Built 2026-11-14 — on the server: `product_team_id` and `store_id`, plus `no_store` — the store filter's first option, "No store", for the rows bought with none (`product.store=none` in the URL).
 
 ## the-statistics-tab-is-two-views
 
@@ -1117,6 +1121,8 @@ Produk       Produk         Tim          Toko pemasok   Terakhir dibeli      Ter
 
 ✅ Built 2026-11-07 — per STORE only: the Toko tab's Terjual and Siap are real (`SupplierGoods` by store), unmarked. The Produk tab's product figures stay `sample` with its invented rows.
 
+✅ Built 2026-11-14 — per PRODUCT too: the Produk tab's Terjual (with the orders and the last order) and Siap are real, per store × product (inventory `SupplierStoreProductGoods`, one read per page), unmarked; `sampleSupplierFigures.ts` deleted.
+
 ## a-supplier-page-is-scoped-by-its-warehouses
 
 > Owner, in chat (2026-10-13): *"di detail ini harusnya ada daftar gudang terkait yang sudah digunakan untuk restok, jadi
@@ -1147,6 +1153,10 @@ Toko · Produk ⚠1 · Statistik
 | shared | `SupplierWarehouseChips` in `features/suppliers/` with its story; `FilterChips` gained a hover title per chip and a `trailing` slot (the *+N Lagi*) |
 
 ✅ Built 2026-11-07 — the warehouses are real (`SupplierGoods` by warehouse, named by `TeamByIds`, the most restocked first); the pick still only switches the summary (`dropped`).
+
+✅ Built 2026-11-14 — a chip narrows the Toko and Produk tabs on the server, on both pages: only the stores, and the products at a store (or with none), whose goods were received at that warehouse — the chips' own test — each with that warehouse's Terjual and Siap, before the count and the page; their Export follows. The pick lives in the URL (`?warehouse=`); Semua clears it. Statistik does not narrow yet — the one ⚠ left, reworded to say so.
+
+✅ Built 2026-11-14 — Statistik narrows too ([the-supplier-reports-carry-the-warehouse](#the-supplier-reports-carry-the-warehouse)): under a chip, that warehouse's restocks and sales; Semua the sum over every warehouse. No ⚠ is left on either page.
 
 ## the-warehouse-number-is-explained
 
@@ -1279,6 +1289,12 @@ a phone    [Cari nama…] [⚙ Filter] [+ Tambah Toko]
 
 ✅ Built 2026-11-07 — the Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport — the tab's own filter, every page, its columns in Indonesian, .xlsx streamed with progress then downloaded, as the order list's export); both pages, the phone's in the Filter sheet. The Produk tab's Export keeps its mark: its rows are still invented, and a file cannot carry the ⚠.
 
+✅ Built 2026-11-14 — the Produk tab exports too (`SupplierProductExport` — the list's own filter, every page; sheet *Produk*: Produk · SKU · Tim · Toko pemasok · Jenis toko · Terakhir dibeli · Pertama dibeli · Terjual · Pesanan terakhir · Siap; Tim goes with a team picked); its `export` mark gone on both details, `SupplierTabExport` lost its `mark`.
+
+✅ Built 2026-11-14 — the Toko and Produk files take the Gudang terkait chip too: under a chip, the file holds the tab's rows under it, with that warehouse's figures. Statistik's file does not narrow yet, as its tab does not.
+
+✅ Built 2026-11-14 — Statistik's file takes the chip as its tab does (`SupplierFigureExport` with a warehouse filter).
+
 ## the-report-export-folds-on-a-phone
 
 > Owner, in chat (2026-10-14): *"export di report mobile kurang bagus"*.
@@ -1367,3 +1383,5 @@ A band is lower-inclusive, upper-exclusive. The filter narrows on the server, be
 > Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: [a-supplier-page-is-scoped-by-its-warehouses](#a-supplier-page-is-scoped-by-its-warehouses) says every tab narrows under a warehouse chip, but both supplier daily reports behind **Statistik** are keyed (day, supplier, product, team) with no warehouse. A: add the warehouse to both report keys and refold, so Statistik narrows like every tab (an existing-table change — the full run is due after); B: Statistik stays all-warehouse with a muted line saying so; C: read narrowed figures from inventory's warehouse-keyed daily reports (they value at the landed batch price, not the line price, and carry no Penjualan).
 
 **The verdict.** Both supplier daily reports gain the **warehouse** in their key — the warehouse a restock line was received at, the warehouse an order line was taken from — and are **refolded from history** (a repeatable `san` backfill). Under a warehouse chip, **Statistik** reads that warehouse's rows; with no chip, the sum over every warehouse — the same figures as today. Values stay at the line price, Penjualan included. Nothing else on the page changes. ⚠ Not built — the full run is due once it lands.
+
+✅ Built 2026-11-14 — supplier_service `00006` adds `warehouse_id` to both daily reports and the sale parts, last in each key (added at 0, never truncated — the claims are pruned after 45 days, so SQL cannot rebuild them); the restock fold files a line under its receiving warehouse (`RestockAccepted.warehouse_id`, a correction its own), the sales fold under the warehouse inventory's take drew in (else `OrderPlaced.warehouse_id`), a cancel under its parts'. `san supplier backfill-warehouses [--dry-run]` re-folds the history and prints every supplier's totals BEFORE == AFTER (dev: equal for both suppliers, 7 rows under no warehouse → 0). `metrics/suppliers` takes `FILTER_TYPE_WAREHOUSE`; both detail pages pass the chip to Statistik and its Export — the last ⚠ is gone. Full run still due. [rpc.md § The warehouse](../../services/supplier_service/rpc.md#the-warehouse--both-reports-under-a-chip)

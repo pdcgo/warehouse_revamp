@@ -60,7 +60,7 @@ func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 		t.Fatalf("OrderTakeSuppliers: %v", err)
 	}
 
-	want := []supplier_v1.SaleTakePart{{ProductID: 901, SupplierID: 77, TeamID: 12, Units: 3}}
+	want := []supplier_v1.SaleTakePart{{ProductID: 901, SupplierID: 77, TeamID: 12, WarehouseID: 5, Units: 3}}
 	if !reflect.DeepEqual(parts, want) {
 		t.Fatalf("take = %+v, want %+v", parts, want)
 	}
@@ -82,7 +82,7 @@ func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 
 	// The Toko tab's export reads the same goods per STORE: 3 sold, 7 ready at store 701, with the order's and the
 	// restock's moments.
-	stores, err := reader.StoreGoods(ctx, 77)
+	stores, err := reader.StoreGoods(ctx, 77, 0)
 	if err != nil {
 		t.Fatalf("StoreGoods: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestSupplierGoodsReader_TheWarehouseFilterReadsTheBatches(t *testing.T) {
 	restock(gudang5, sinar, lain)
 
 	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
-	svc := supplier_v1.NewService(db, nil, nil, reader, nil)
+	svc := supplier_v1.NewService(db, nil, nil, reader, nil, nil)
 
 	list := func(scope supplierv1.SupplierListScope, warehouse uint64) []uint64 {
 		t.Helper()

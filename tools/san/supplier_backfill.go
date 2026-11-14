@@ -12,8 +12,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 )
@@ -25,7 +23,7 @@ const backfillBatch = 500
 // price a lost sale's take (refoldGoods). No team service — nothing here creates a supplier — and no broker — nothing
 // here replays.
 func NewSupplierFigures(db *gorm.DB, inventory *inventory_v1.Service) *supplier_v1.Service {
-	return supplier_v1.NewService(db, nil, nil, refoldGoods{inventory: inventory}, nil)
+	return supplier_v1.NewService(db, nil, nil, refoldGoods{inventory: inventory}, nil, nil)
 }
 
 // supplierBackfillCommand is `san supplier backfill-figures` (past-accepts-are-backfilled-once).
@@ -62,26 +60,11 @@ func runSupplierBackfill(ctx context.Context, cmd *cli.Command) error {
 	})
 }
 
-// BackfillSupplierFigures folds every accepted restock through supplier_service's fold, in batches, oldest first.
+// BackfillSupplierFigures folds every accepted restock through supplier_service's fold, in batches, oldest first — the
+// very event each accept builds (acceptedRestockEvents), so the backfill cannot fold a restock differently from how it
+// was accepted.
 func (s *San) BackfillSupplierFigures(ctx context.Context) (supplier_v1.BackfillResult, error) {
-	return s.suppliers.FoldBackfill(ctx, func(each func(*eventsv1.Event) error) error {
-		var batch []inventory_service_models.Restock
-
-		return inventory_v1.AcceptedRestocks(s.db.WithContext(ctx)).
-			FindInBatches(&batch, backfillBatch, func(_ *gorm.DB, _ int) error {
-				for i := range batch {
-					// The very event the accept builds — one function, so the backfill cannot fold a restock
-					// differently from how it was accepted.
-					err := each(inventory_v1.RestockAcceptedEvent(&batch[i]))
-					if err != nil {
-						return err
-					}
-				}
-
-				return nil
-			}).
-			Error
-	})
+	return s.suppliers.FoldBackfill(ctx, acceptedRestockEvents(s.db.WithContext(ctx)))
 }
 
 // backfillFiguresOn is the `dev setup` step — the same method the command runs, on setup's connection. A second run

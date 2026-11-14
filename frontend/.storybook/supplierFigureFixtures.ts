@@ -11,6 +11,10 @@
 //   PT Tekstil Nusantara (36, Anggrek's)   — another team's supplier Toko Melati buys from
 //   Linen House      (37, Anggrek's)       — 5 units: under the 50-unit minimum, 40% broken
 //   CV Lama Tutup    (38, DELETED)         — its figures are kept (a-deleted-supplier-is-kept-for-its-figures)
+//
+// Each row is filed under a WAREHOUSE (the-supplier-reports-carry-the-warehouse) — the one its restock was received at
+// and its sales were taken from — as supplierGoodsStub's lots place the supplier's goods: PT Sumber Makmur's Beras at
+// Gudang Pusat (11), its Gula at Gudang Cabang (14), so a chip on its page splits its Statistik in two.
 
 import { addDays, jakartaToday } from "../src/lib/jakartaDay";
 
@@ -20,6 +24,8 @@ export interface FigureFixture {
   productId: bigint;
   /** The RESTOCKING team. */
   teamId: bigint;
+  /** The warehouse the restock was received at and the sales taken from. */
+  warehouseId: bigint;
   restockCount: bigint;
   restockValuation: number;
   shippingLostCount: bigint;
@@ -39,6 +45,7 @@ const row = (
   supplierId: bigint,
   productId: bigint,
   teamId: bigint,
+  warehouseId: bigint,
   [rc, rv]: [number, number],
   [lc, lv]: [number, number],
   [bc, bv]: [number, number],
@@ -48,6 +55,7 @@ const row = (
   supplierId,
   productId,
   teamId,
+  warehouseId,
   restockCount: BigInt(rc),
   restockValuation: rv,
   shippingLostCount: BigInt(lc),
@@ -61,24 +69,26 @@ const row = (
 export const figureFixtures: FigureFixture[] = [
   // PT Sumber Makmur — in the window: 70 good Beras (Rp 3.500.000) + 60 good Gula (Rp 900.000); 1 short, 6 broken.
   // Sold in the window: 30 + 20 Beras at Rp 65.000 and 50 Gula at Rp 19.500 — 100 units, Rp 4.225.000.
-  row(2, 31n, 74n, 12n, [40, 2_000_000], [1, 50_000], [2, 100_000], [30, 1_950_000]),
-  row(5, 31n, 73n, 13n, [60, 900_000], [0, 0], [3, 45_000], [50, 975_000]),
-  row(12, 31n, 74n, 12n, [30, 1_500_000], [0, 0], [1, 50_000], [20, 1_300_000]),
+  // By warehouse: Gudang Pusat (11) the Beras — 70 · Rp 3.500.000, 1 short, 3 broken, 50 sold for Rp 3.250.000;
+  // Gudang Cabang (14) the Gula — 60 · Rp 900.000, 3 broken, 50 sold for Rp 975.000.
+  row(2, 31n, 74n, 12n, 11n, [40, 2_000_000], [1, 50_000], [2, 100_000], [30, 1_950_000]),
+  row(5, 31n, 73n, 13n, 14n, [60, 900_000], [0, 0], [3, 45_000], [50, 975_000]),
+  row(12, 31n, 74n, 12n, 11n, [30, 1_500_000], [0, 0], [1, 50_000], [20, 1_300_000]),
   // …and one OUTSIDE the last month, which no default window may count.
-  row(40, 31n, 74n, 12n, [10, 500_000], [0, 0], [0, 0], [5, 325_000]),
+  row(40, 31n, 74n, 12n, 11n, [10, 500_000], [0, 0], [0, 0], [5, 325_000]),
 
   // UD Makmur Jaya — 212 units, 10 broken: 4,7%. 150 sold for Rp 2.925.000.
-  row(3, 34n, 73n, 13n, [200, 3_000_000], [2, 30_000], [10, 150_000], [150, 2_925_000]),
+  row(3, 34n, 73n, 13n, 14n, [200, 3_000_000], [2, 30_000], [10, 150_000], [150, 2_925_000]),
 
   // PT Tekstil Nusantara — Toko Melati buys from Anggrek's supplier. 25 units, none broken — under the minimum.
-  row(7, 36n, 74n, 12n, [25, 1_250_000], [0, 0], [0, 0], [10, 650_000]),
+  row(7, 36n, 74n, 12n, 14n, [25, 1_250_000], [0, 0], [0, 0], [10, 650_000]),
 
   // Linen House — 5 units, 2 broken: 40%, and under the 50-unit minimum. Product 999 is in no catalogue the stub
   // knows, so it reads "Product #999".
-  row(8, 37n, 999n, 15n, [3, 30_000], [0, 0], [2, 20_000], [1, 13_000]),
+  row(8, 37n, 999n, 15n, 11n, [3, 30_000], [0, 0], [2, 20_000], [1, 13_000]),
 
   // CV Lama Tutup — deleted; ranked with its figures kept, and opens nothing.
-  row(10, 38n, 74n, 12n, [20, 1_000_000], [0, 0], [0, 0]),
+  row(10, 38n, 74n, 12n, 11n, [20, 1_000_000], [0, 0], [0, 0]),
 ];
 
 /** `yyyy-mm-dd`, `n` JAKARTA days ago — the calendar the screens' window is built on (lib/jakartaDay.ts). */

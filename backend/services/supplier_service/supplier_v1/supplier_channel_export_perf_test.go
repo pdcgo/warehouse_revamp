@@ -16,7 +16,7 @@ import (
 func TestPerf_SupplierChannelExport(t *testing.T) {
 	b := perfSetup(t)
 	store := &fakeExports{}
-	svc := supplier_v1.NewService(b.db, perfSellingTeams{}, nil, &fakeGoods{}, store)
+	svc := supplier_v1.NewService(b.db, perfSellingTeams{}, nil, &fakeGoods{}, store, nil)
 
 	for _, c := range []struct {
 		name     string

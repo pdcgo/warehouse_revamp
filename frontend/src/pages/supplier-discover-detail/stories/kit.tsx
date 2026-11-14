@@ -13,7 +13,7 @@ import { DiscoverSupplierDetailPage } from "../index";
 // Another team's supplier, read in full (another-team-sees-everything-of-a-supplier), from Discover Suppliers.
 // Read-only, with the same Channels and Products tabs as the manage detail
 // (supplier-detail-has-channels-and-products-tabs). The supplier and its stores are real reads of the stub's
-// supplier_service (supplierStub.ts); the Products tab is still sample rows.
+// supplier_service (supplierStub.ts), the Products tab too — every team's products bought from it, with their figures.
 
 export function routedAt(supplierId: bigint) {
   return routedPage(

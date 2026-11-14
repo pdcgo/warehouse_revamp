@@ -30,6 +30,23 @@ service SupplierChannelService {
   // Siap with their dates beside each store — as .xlsx. A server stream: progress, then an expiring link. Not a read:
   // it stores a file, so a monitor and an agent are refused (the-admin-team-monitors-read-only).
   rpc SupplierChannelExport(SupplierChannelExportRequest) returns (stream SupplierChannelExportResponse);
+  // THE PRODUK TAB (supplier-detail-has-channels-and-products-tabs, a-supplier-product-row-says-whose-where-and-when) —
+  // ANY team's live supplier's products, one row per link (`supplier_channel_products`): the product, whose it is, the
+  // store it was bought at (none — "—" — for a line naming the supplier alone, a-line-with-no-store-links-under-the-
+  // supplier), the first and the last restock, and its Terjual and Siap (the-detail-tabs-show-sold-and-ready). Searched,
+  // narrowed by team and store, paged, newest restock first (the-products-tab-searches-and-pages,
+  // the-products-tab-filters-by-team-and-store). Every selling team reads the same rows and figures — nothing of a
+  // supplier is private (another-team-sees-everything-of-a-supplier, every-selling-team-sees-every-teams-figures), and no
+  // price or cost is ever in a row.
+  rpc SupplierProductList(SupplierProductListRequest) returns (SupplierProductListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // THE PRODUK TAB AS A FILE (each-supplier-tab-exports-its-own-table, a-report-export-is-the-whole-view-as-a-file):
+  // exactly the rows SupplierProductList holds with this filter, every page, in the tab's columns, as .xlsx. A server
+  // stream: progress, then an expiring link. Not a read: it stores a file, so a monitor and an agent are refused.
+  rpc SupplierProductExport(SupplierProductExportRequest) returns (stream SupplierProductExportResponse);
   // Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
   // (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
   rpc SupplierChannelByIds(SupplierChannelByIdsRequest) returns (SupplierChannelByIdsResponse) {
@@ -88,6 +105,11 @@ message SupplierChannelListFilter {
   string q = 2 [(buf.validate.field).string.max_len = 100];
   // UNSPECIFIED = every type.
   warehouse.marketplace.v1.Marketplace channel_type = 3 [(buf.validate.field).enum.defined_only = true];
+  // The page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses): only the stores whose goods were
+  // received at that warehouse — the batches inventory counts for the chip itself (on a shelf there now, minted by a
+  // restock there, or ever sold from there), so a chip and its tab never disagree. 0 = every warehouse. A warehouse role
+  // may name only its own building.
+  uint64 warehouse_id = 4;
 }
 
 // THE TOKO TAB AS A FILE — the tab's own filter and order (each-supplier-tab-exports-its-own-table).
@@ -118,6 +140,137 @@ message SupplierChannelExportRequest {
 // the file.
 message SupplierChannelExportResponse {
   // A sentence about the step.
+  string message = 1;
+  // Rows written so far, of the total the filter holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
+}
+
+// ── The Produk tab — a supplier's products (supplier_channel_products) ───────────────────────────────
+
+message SupplierProductListRequest {
+  // Whoever reads the tab WITH its figures: Root, the Administrator and the selling roles — inventory's SupplierGoods'
+  // readers (only-a-selling-team-has-suppliers). A warehouse has no supplier pages.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The CALLER's scope — it authorizes and never narrows: every selling team reads every supplier's products.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  SupplierProductListFilter filter = 2 [(buf.validate.field).required = true];
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+message SupplierProductListFilter {
+  option (buf.validate.message).cel = {
+    id: "supplier_product_list_filter.one_store_pick"
+    message: "pick one store, or no store — not both"
+    expression: "!(this.store_id > 0u && this.no_store)"
+  };
+
+  // Any team's live supplier; a deleted or unknown one answers NotFound.
+  uint64 supplier_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The product's name or SKU, or the store's name (the-products-tab-searches-and-pages).
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  // Whose product — one selling team; 0 = every team (the-products-tab-filters-by-team-and-store).
+  uint64 product_team_id = 3;
+  // One of the supplier's stores; 0 = every store, and the store-less rows with them.
+  uint64 store_id = 4;
+  // Only the rows bought with NO store — the line named the supplier alone (a-line-with-no-store-links-under-the-supplier).
+  bool no_store = 5;
+  // The page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses): only the rows whose product has goods
+  // of this supplier, bought at the row's store (or none), received at that warehouse — the batches inventory counts for
+  // the chip itself — and each row's Terjual and Siap are that warehouse's. 0 = every warehouse.
+  uint64 warehouse_id = 6;
+}
+
+// One link — a product bought from the supplier, at one store or at none.
+message SupplierProduct {
+  // The link's id (`supplier_channel_products.id`) — the row's key; one product bought at two stores is two rows.
+  uint64 id = 1;
+  uint64 product_id = 2;
+  // Whose product it is — the restocking team (every-accepted-line-links-its-own-product).
+  uint64 team_id = 3;
+  // The product as product_service names it: its name, its SKU and its list-sized picture ("" = none). Empty when the
+  // product no longer resolves.
+  string product_name = 4;
+  string product_code = 5;
+  string product_thumbnail_url = 6;
+  // The store it was bought at; 0 = none, its cell reads "—".
+  uint64 channel_id = 7;
+  string channel_name = 8;
+  warehouse.marketplace.v1.Marketplace channel_type = 9;
+  // The earliest and the latest accept that named the link, unix seconds (a-link-remembers-its-last-restock).
+  int64 first_restocked_unix = 10;
+  int64 last_restocked_unix = 11;
+  // Its goods bought there, all time — inventory's figures for this store and product, every team's batches. Unset =
+  // none of its goods ever arrived (every unit broke on the way): the screen draws a dash.
+  SupplierProductFigures figures = 12;
+}
+
+// Terjual and Siap of one product at one store (the-detail-tabs-show-sold-and-ready) — counts and dates, never money.
+message SupplierProductFigures {
+  // Units sold, all time; a cancelled order counted back.
+  int64 sold_units = 1;
+  // The orders they went out on, and the last of them (unix seconds, 0 = never sold).
+  int64 orders = 2;
+  int64 last_order_unix = 3;
+  // Units on a shelf now.
+  int64 ready_units = 4;
+}
+
+message SupplierProductMapItem {
+  map<uint64, SupplierProduct> map_data = 1;
+}
+
+message SupplierProductListResponseItem {
+  oneof d {
+    SupplierProductMapItem product = 1;
+  }
+}
+
+message SupplierProductListResponse {
+  repeated SupplierProductListResponseItem items = 1;
+  // The link ids in order — the newest restock first, then the newest link — the authoritative ordering of the page.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// THE PRODUK TAB AS A FILE — the tab's own filter, every page (each-supplier-tab-exports-its-own-table).
+message SupplierProductExportRequest {
+  // SupplierProductList's readers. Not a read — it stores a file — so it carries no NO_SIDE_EFFECTS.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The list's own filter — the search, the team and the store.
+  SupplierProductListFilter filter = 2 [(buf.validate.field).required = true];
+}
+
+// One message of the stream: a log line, the progress, and — on the last message — the file.
+message SupplierProductExportResponse {
   string message = 1;
   // Rows written so far, of the total the filter holds.
   int64 done = 2;

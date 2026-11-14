@@ -1,40 +1,46 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Button, HStack, Stack, Table, Text } from "@chakra-ui/react";
-import { Package, SearchX } from "lucide-react";
+import { Package, SearchX, Warehouse } from "lucide-react";
+import { rpcError } from "../../api/clients";
 import type { SupplierChannelRecord } from "./adapt";
 import { ChannelName, LIGHTS_UP } from "./ChannelBrowser";
-import { sampleProductsFor, type SampleProduct } from "./sampleProducts";
+import { NO_STORE, type SupplierProductRow, useSupplierProductPage } from "./products";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatUnixDate } from "../../lib/datetime";
-import { idCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { useDebounced } from "../../lib/useDebounced";
+import { idCodec, textCodec, type UrlCodec, useUrlState } from "../../lib/urlState";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { TeamItem } from "../../components/entity/TeamItem";
+import { useTeamsByIds } from "../teams/queries";
+import { useCanWrite } from "../team/TeamContext";
 import { RestockTeamFilter } from "./FigureParts";
 import { SupplierStoreSelect } from "./SupplierStoreSelect";
-import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
-import { sampleProductFigures } from "./sampleSupplierFigures";
+import { NO_FIGURE_MARKS, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
 import { SupplierTabExport } from "./SupplierTabExport";
+import { useProductExport } from "./exports";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-// The product as the app draws a product everywhere — its picture, its name, its SKU under it.
-function productOf(p: SampleProduct) {
-  return { id: p.id, name: p.name, productCode: p.productCode, defaultImageThumbnailUrl: p.thumbnailUrl };
-}
+// The store filter in the URL: a store's id, or `none` for the rows bought with no store.
+const storeCodec: UrlCodec<bigint> = {
+  encode: (v) => (v === NO_STORE ? "none" : v.toString()),
+  decode: (raw) => (raw === "none" ? NO_STORE : /^\d+$/.test(raw) ? BigInt(raw) : undefined),
+};
 
 // WHEN IT WAS BOUGHT — the last restock, and the first under it when they differ: one fact read twice, so one cell
 // (one-context-per-column-and-never-three-lines). Bought once, it is one date.
-function Bought({ product }: { product: SampleProduct }) {
+function Bought({ row }: { row: SupplierProductRow }) {
   const { t } = useTranslation();
-  const last = formatUnixDate(product.lastBoughtAt);
-  const first = formatUnixDate(product.firstBoughtAt);
+  const last = formatUnixDate(row.lastBoughtAt);
+  const first = formatUnixDate(row.firstBoughtAt);
 
   return (
     <Stack gap="0.5">
@@ -48,45 +54,70 @@ function Bought({ product }: { product: SampleProduct }) {
   );
 }
 
+// THE STORE IT WAS BOUGHT AT — the Toko tab's cell, not bold: here the product is the row's subject; a dash for a line
+// that named the supplier alone (a-line-with-no-store-links-under-the-supplier).
+function StoreCell({ row }: { row: SupplierProductRow }) {
+  if (!row.store) {
+    return <Text color="fg.muted">—</Text>;
+  }
+
+  return <ChannelName channel={row.store} bold={false} />;
+}
+
+export interface ProductBrowserProps {
+  /** The CALLER's team — the scope the read is authorised in, not the team that keeps the supplier. */
+  teamId: bigint;
+  /** Any team's live supplier — reads cross teams. */
+  supplierId: bigint;
+  /** The supplier's whole store list — the store filter's options (the page's own read). */
+  channels: SupplierChannelRecord[];
+  /**
+   * The page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses) — only the rows whose goods were received
+   * at that warehouse, each with that warehouse's Terjual and Siap. 0n (the default) = every warehouse.
+   */
+  warehouseId?: bigint;
+  /** Back to every warehouse — offered when the chip alone leaves no row. The page owns the chip. */
+  onClearWarehouse?: () => void;
+}
+
 // ProductBrowser is a supplier's PRODUCTS tab — on the manage detail and on the discover detail alike
-// (supplier-detail-has-channels-and-products-tabs): every product bought at one of its stores, by any team
+// (supplier-detail-has-channels-and-products-tabs): every product bought from it, by any team
 // (every-accepted-line-links-its-own-product) — the product with its picture and SKU, the team whose product it is,
-// the store it was bought at, and when: the last restock and the first (a-link-remembers-its-last-restock), newest
-// first. Searched, narrowed to one store or one team (owner: *"di produk tambah toko pemasok"*, *"tim juga"*), and paged.
+// the store it was bought at (a dash for none), and when: the last restock and the first
+// (a-link-remembers-its-last-restock), newest first. Searched, narrowed to one team, one store or the rows bought with
+// no store, and paged (the-products-tab-searches-and-pages, the-products-tab-filters-by-team-and-store).
 //
-//   Produk                        Tim               Toko pemasok              Terakhir dibeli      Terjual ⚠2          Siap ⚠3
+//   Produk                        Tim               Toko pemasok              Terakhir dibeli      Terjual             Siap
 //   [▦] Kain Katun Jepang 1 rol   [TM] Toko Melati  Sumber Makmur Official    8 Okt 2026              412               37
 //       KTN-JP-01                      Penjual      [Shopee]                  pertama 9 Sep 2026  pesanan 6 Okt 2026
 //
-// ITS TERJUAL AND SIAP (owner: *"di channel dan produk ada ready dan sold tadi"*, `the-detail-tabs-show-sold-and-ready`)
-// — the supplier list's figures, for this product: the last two columns, the last order under Terjual. No restock date
-// under Siap — *Terakhir dibeli*, just left of it, is that date.
+// ITS TERJUAL AND SIAP (the-detail-tabs-show-sold-and-ready) — the store × product's: the last two columns, the last
+// order under Terjual. No restock date under Siap — *Terakhir dibeli*, just left of it, is that date. A product none of
+// whose goods arrived (every unit broke on the way) reads a dash.
 //
-// ⚠ SAMPLE ROWS. The link a restock writes is not built yet, so the rows are invented from the supplier's channels —
-// and their figures with them; each page that mounts this carries the `sample` marks. The search and the pager run over
-// those rows here; the real read will do both on the server.
-export function ProductBrowser({
-  channels,
-  figureMarks,
-  exportMark,
-}: {
-  channels: SupplierChannelRecord[];
-  /** The page's marks for Terjual and Siap — numbered in the page's own pending list. */
-  figureMarks: FigureMarks;
-  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
-  exportMark: ReactNode;
-}) {
+// REAL since 2026-11-14: it reads for itself — the search, the team, the store and the page go to
+// SupplierChannelService.SupplierProductList, which searches, narrows and pages ON THE SERVER, and names each row and
+// fills its figures for that page only. The search is debounced; the previous rows stay up behind the RefreshOverlay
+// while the answer loads (HARD RULE 10). Every selling team reads the same rows and figures
+// (another-team-sees-everything-of-a-supplier, every-selling-team-sees-every-teams-figures).
+//
+// UNDER THE PAGE'S WAREHOUSE CHIP (a-supplier-page-is-scoped-by-its-warehouses, since 2026-11-14): only the rows whose
+// product has goods of this supplier, bought at the row's store (or none), received at that warehouse — narrowed on the
+// server before the count and the page — with that warehouse's Terjual and Siap; *Terakhir dibeli* stays the row's own.
+// Its Export writes the same.
+export function ProductBrowser({ teamId, supplierId, channels, warehouseId = 0n, onClearWarehouse }: ProductBrowserProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
   // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `product.`-prefixed, since the Toko and Statistik
   // tabs share the detail page's route and keep their own.
   const [q, setQ] = useUrlState("product.q", "", textCodec);
-  // One of the supplier's stores, and one selling team — 0n is every one.
-  const [storeId, setStoreId] = useUrlState("product.store", 0n, idCodec);
-  const [teamId, setTeamId] = useUrlState("product.team", 0n, idCodec);
+  // One of the supplier's stores (NO_STORE = bought with none), and one selling team — 0n is every one.
+  const [storeId, setStoreId] = useUrlState("product.store", 0n, storeCodec);
+  const [productTeamId, setProductTeamId] = useUrlState("product.team", 0n, idCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const term = useDebounced(q.trim());
 
   // A filter change is a new question, so it starts again at page one.
   function refilter(change: () => void) {
@@ -97,27 +128,68 @@ export function ProductBrowser({
     refilter(() => {
       setQ("");
       setStoreId(0n);
-      setTeamId(0n);
+      setProductTeamId(0n);
     });
 
-  const all = sampleProductsFor(channels);
-  const term = q.trim().toLowerCase();
-  const filtering = term !== "" || storeId !== 0n || teamId !== 0n;
-  // The product, its SKU, or the channel it is bought from — what somebody looking for a source would type.
-  const matching = all.filter(
-    (p) =>
-      (term === "" || [p.name, p.productCode, p.channel.name].some((field) => field.toLowerCase().includes(term))) &&
-      (storeId === 0n || p.channel.id === storeId) &&
-      (teamId === 0n || p.teamId === teamId),
-  );
+  // So is another warehouse chip — the page holds it, so the page turns back to one when it changes.
+  const [pagedFor, setPagedFor] = useState(warehouseId);
+  if (pagedFor !== warehouseId) {
+    setPagedFor(warehouseId);
+    setPage(1);
+  }
+
+  const query = useSupplierProductPage({ teamId, supplierId, q: term, productTeamId, storeId, warehouseId, page, pageSize });
+  const rows = query.data?.rows ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const error = query.isError ? rpcError(query.error) : "";
+
+  // Whose products — named in one batch for the page (a team the reader is not in).
+  const teams = useTeamsByIds({ ids: rows.map((row) => row.teamId) });
+  const teamName = (id: bigint) => teams.data?.[id.toString()]?.name ?? `#${id}`;
+
+  const filtering = q.trim() !== "" || storeId !== 0n || productTeamId !== 0n;
+  // What the rows on screen were asked with — the settled search, not the one still being typed.
+  const narrowed = term !== "" || storeId !== 0n || productTeamId !== 0n;
   // One team picked, the Team column would say the same name on every row — it goes, as on the Statistik tab.
-  const showTeam = teamId === 0n;
-  const products = matching.slice((page - 1) * pageSize, page * pageSize);
+  const showTeam = productTeamId === 0n;
+
+  // THE TAB AS A FILE (each-supplier-tab-exports-its-own-table): the rows the list holds with the settled search, the team
+  // and the store, every page. It stores a file, so a monitored team's reader has no Export
+  // (the-admin-team-monitors-read-only).
+  const writable = useCanWrite();
+  const exporter = useProductExport(teamId);
+  const exportButton = writable ? (
+    <SupplierTabExport
+      testId="products-export"
+      progress={exporter.progress}
+      onExport={() => void exporter.start({ supplierId, q: term, teamId: productTeamId, storeId, warehouseId })}
+    />
+  ) : null;
 
   function list() {
-    if (products.length === 0) {
-      // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint).
-      return filtering ? (
+    if (rows.length === 0 && !error) {
+      // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint). The warehouse chip alone leaving nothing: none of the
+      // products' goods were received there — back to every warehouse.
+      if (!narrowed && warehouseId !== 0n) {
+        return (
+          <EmptyHint
+            icon={Warehouse}
+            size="sm"
+            title={t("supplierChannel.products.noneAtWarehouse")}
+            description={t("supplierChannel.products.noneAtWarehouseHint")}
+            action={
+              onClearWarehouse && (
+                <Button variant="outline" colorPalette="gray" onClick={onClearWarehouse}>
+                  {t("suppliers.relatedWarehouses.showAll")}
+                </Button>
+              )
+            }
+            testId="products-none-at-warehouse"
+          />
+        );
+      }
+
+      return narrowed ? (
         <EmptyHint
           icon={SearchX}
           size="sm"
@@ -144,30 +216,32 @@ export function ProductBrowser({
       // the SKU, then the store it was bought at, then when.
       return (
         <Stack gap="2" data-testid="products-table">
-          {products.map((p) => (
-            <Stack key={p.key} data-testid={`product-row-${p.key}`} borderWidth="1px" borderRadius="md" p="3" gap="2">
-              <ProductListItem product={productOf(p)} teamName={showTeam ? p.teamName : undefined} />
-              <HStack gap="2" fontSize="sm" minW="0">
-                <Text lineClamp={1}>{p.channel.name}</Text>
-                <MarketplaceBadge marketplace={p.channel.channelType} />
+          {rows.map((row) => (
+            <Stack key={row.id.toString()} data-testid={`product-row-${row.id}`} borderWidth="1px" borderRadius="md" p="3" gap="2">
+              <ProductListItem product={row.product} teamName={showTeam ? teamName(row.teamId) : undefined} />
+              <HStack gap="2" fontSize="sm" minW="0" data-testid={`product-row-${row.id}-store`}>
+                {row.store ? (
+                  <>
+                    <Text lineClamp={1}>{row.store.name}</Text>
+                    <MarketplaceBadge marketplace={row.store.channelType} />
+                  </>
+                ) : (
+                  <Text color="fg.muted">—</Text>
+                )}
               </HStack>
               {/* The first restock on its OWN line, as on a desktop (owner: *"oke"*, `the-first-restock-has-its-own-line`)
                   — after a dot it wrapped mid-date, the year alone on the next line. */}
               <Stack gap="0" fontSize="sm" color="fg.muted">
-                <Text data-testid={`product-row-${p.key}-last`}>
-                  {t("supplierChannel.products.lastBought")} {formatUnixDate(p.lastBoughtAt)}
+                <Text data-testid={`product-row-${row.id}-last`}>
+                  {t("supplierChannel.products.lastBought")} {formatUnixDate(row.lastBoughtAt)}
                 </Text>
-                {p.firstBoughtAt !== p.lastBoughtAt && (
-                  <Text data-testid={`product-row-${p.key}-first`}>
-                    {t("supplierChannel.products.firstBought", { date: formatUnixDate(p.firstBoughtAt) })}
+                {formatUnixDate(row.firstBoughtAt) !== formatUnixDate(row.lastBoughtAt) && (
+                  <Text data-testid={`product-row-${row.id}-first`}>
+                    {t("supplierChannel.products.firstBought", { date: formatUnixDate(row.firstBoughtAt) })}
                   </Text>
                 )}
               </Stack>
-              <SupplierFigureLines
-                figures={sampleProductFigures(p.channel.id, p.id)}
-                marks={figureMarks}
-                testId={`product-row-${p.key}-figures`}
-              />
+              <SupplierFigureLines figures={row.figures} marks={NO_FIGURE_MARKS} testId={`product-row-${row.id}-figures`} />
             </Stack>
           ))}
         </Stack>
@@ -182,32 +256,32 @@ export function ProductBrowser({
             {showTeam && <Table.ColumnHeader>{t("supplierChannel.products.team")}</Table.ColumnHeader>}
             <Table.ColumnHeader>{t("supplierChannel.products.channel")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("supplierChannel.products.lastBought")}</Table.ColumnHeader>
-            <SupplierFigureHeaders marks={figureMarks} />
+            <SupplierFigureHeaders marks={NO_FIGURE_MARKS} />
           </Table.Row>
         </Table.Header>
 
         <Table.Body>
-          {products.map((p) => (
-            <Table.Row key={p.key} data-testid={`product-row-${p.key}`} css={LIGHTS_UP}>
+          {rows.map((row) => (
+            <Table.Row key={row.id.toString()} data-testid={`product-row-${row.id}`} css={LIGHTS_UP}>
               <Table.Cell>
                 <Box minW="15rem">
-                  <ProductListItem product={productOf(p)} />
+                  <ProductListItem product={row.product} />
                 </Box>
               </Table.Cell>
               {showTeam && (
                 <Table.Cell>
                   <Box maxW="15rem">
-                    <TeamItem team={{ teamName: p.teamName, teamType: TeamType.SELLING }} />
+                    <TeamItem team={{ teamName: teamName(row.teamId), teamType: TeamType.SELLING }} />
                   </Box>
                 </Table.Cell>
               )}
-              <Table.Cell>
-                <ChannelName channel={p.channel} bold={false} />
+              <Table.Cell data-testid={`product-row-${row.id}-store`}>
+                <StoreCell row={row} />
               </Table.Cell>
               <Table.Cell>
-                <Bought product={p} />
+                <Bought row={row} />
               </Table.Cell>
-              <SupplierFigureCells figures={sampleProductFigures(p.channel.id, p.id)} id={p.key} testIdPrefix="product" />
+              <SupplierFigureCells figures={row.figures} id={row.id} testIdPrefix="product" />
             </Table.Row>
           ))}
         </Table.Body>
@@ -219,9 +293,9 @@ export function ProductBrowser({
     <Stack gap="card" data-testid="products-section">
       <FilterBar
         testId="products-filter"
-        actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="products-export" />}
+        actions={isMobile ? undefined : exportButton}
         active={filtering}
-        count={(term !== "" ? 1 : 0) + (storeId !== 0n ? 1 : 0) + (teamId !== 0n ? 1 : 0)}
+        count={(q.trim() !== "" ? 1 : 0) + (storeId !== 0n ? 1 : 0) + (productTeamId !== 0n ? 1 : 0)}
         onClear={clearFilters}
       >
         <FilterSearch
@@ -234,30 +308,46 @@ export function ProductBrowser({
         {/* Tim, then Toko — the order of the table's columns (owner: *"tim dulu, lalu toko"*). */}
         {/* Whose product — the Statistik tab's team picker: every selling team (the-team-filter-picks-any-selling-team). */}
         <FilterField w="15rem" testId="products-team-filter">
-          <RestockTeamFilter value={teamId} onChange={(id) => refilter(() => setTeamId(id))} />
+          <RestockTeamFilter value={productTeamId} onChange={(id) => refilter(() => setProductTeamId(id))} />
         </FilterField>
 
+        {/* One of the supplier's stores — or "no store", the rows bought at none, whose cell reads "—". */}
         <FilterField w="15rem" testId="products-store-filter">
           <SupplierStoreSelect
             stores={channels}
             value={storeId}
             onChange={(id) => refilter(() => setStoreId(id))}
             placeholder={t("supplierChannel.products.storeAll")}
+            noStoreLabel={t("supplierChannel.products.noStore")}
             testId="products-store"
           />
         </FilterField>
         {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
-        {isMobile && <SupplierTabExport mark={exportMark} testId="products-export" />}
+        {isMobile && exportButton}
       </FilterBar>
 
-      {list()}
+      {error && (
+        <Text color="error.fg" data-testid="products-error">
+          {error}
+        </Text>
+      )}
+
+      {/* The first load shows the list's shape, and the rows fade in over it — once; a refresh keeps them mounted
+          (`motion-is-small-quick-and-shared`). */}
+      {query.isPending ? (
+        <ListSkeleton rows={3} testId="products-loading" />
+      ) : (
+        <Box animationStyle="swap">
+          <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+        </Box>
+      )}
 
       {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
       <GrowingPager
         page={page}
         onPageChange={setPage}
-        hasNext={page * pageSize < matching.length}
-        resetKey={[term, storeId, teamId, pageSize].join("|")}
+        hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
+        resetKey={[term, storeId, productTeamId, warehouseId, pageSize].join("|")}
         pageSize={pageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         onPageSizeChange={(n) => {

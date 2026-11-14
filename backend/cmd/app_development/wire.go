@@ -150,6 +150,9 @@ func InitializeApp() (*App, error) {
 		// supplier_goods_reader.go.
 		NewSupplierGoodsReader,
 		NewSupplierExportStore,
+		// What product_service knows of a supplier's products — the Produk tab's names, SKUs, pictures and its search.
+		// In-process, see supplier_products.go.
+		NewSupplierProductCatalog,
 		// What a warehouse charges per order (warehouse-prices-balance-records); its one outside question, a warehouse's
 		// name for a refusal, is asked of team_service — see warehouse_deps.go.
 		warehouse_v1.NewService,

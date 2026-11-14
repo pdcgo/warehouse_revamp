@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"gorm.io/gorm"
@@ -46,34 +47,104 @@ func (s *Service) FoldHandler() event_source.PushHandler {
 	}
 }
 
-// restockFigures is what ONE restock event moves on a supplier's day: an accept's counts on the accept's day, or a
+// restockFigures is what ONE restock event moves on its suppliers' days: an accept's counts on the accept's day, or a
 // received-count correction's SIGNED counts (accepted −N, missing +N for units taken out) on the correction's day.
 type restockFigures struct {
-	supplierID uint64
-	teamID     uint64
-	day        string
-	lines      []*eventsv1.RestockAcceptedLine
-	// An accept — only a live accept lowers the backfill's cutoff.
+	teamID uint64
+	// The warehouse the figures are filed under (the-supplier-reports-carry-the-warehouse): the one the restock was
+	// RECEIVED at — an accept's, or the correcting warehouse's for a received-count correction, which is the same one.
+	warehouseID uint64
+	day         string
+	// The lines that credit a supplier, each with the supplier it credits — a line naming none is not here.
+	lines []creditedLine
+	// An accept — only a live accept lowers the backfill's cutoff, and only an accept links its products.
 	accept bool
+	// The restock and the accept's instant — what a link remembers (a-link-remembers-its-last-restock).
+	restockID uint64
+	at        time.Time
+}
+
+// creditedLine is one restock line and the supplier its figures credit and its product links under.
+type creditedLine struct {
+	supplierID uint64
+	// The store the line was bought from; 0 = none (a-line-may-name-a-supplier-without-a-channel).
+	channelID uint64
+	*eventsv1.RestockAcceptedLine
+}
+
+// names says whether any of the event's lines credits the supplier.
+func (f restockFigures) names(supplierID uint64) bool {
+	for _, line := range f.lines {
+		if line.supplierID == supplierID {
+			return true
+		}
+	}
+
+	return false
+}
+
+// suppliers is every supplier the event's lines credit, ascending.
+func (f restockFigures) suppliers() []uint64 {
+	seen := map[uint64]bool{}
+	out := []uint64{}
+
+	for _, line := range f.lines {
+		if !seen[line.supplierID] {
+			seen[line.supplierID] = true
+			out = append(out, line.supplierID)
+		}
+	}
+
+	slices.Sort(out)
+
+	return out
 }
 
 // restockFiguresOf reads an event the fold folds; false for every other variant.
 func restockFiguresOf(event *eventsv1.Event) (restockFigures, bool) {
 	if accepted := event.GetRestockAccepted(); accepted != nil {
 		return restockFigures{
-			supplierID: accepted.GetSupplierId(), teamID: accepted.GetTeamId(), day: accepted.GetAcceptedOn(),
-			lines: accepted.GetLines(), accept: true,
+			teamID: accepted.GetTeamId(), warehouseID: accepted.GetWarehouseId(), day: accepted.GetAcceptedOn(),
+			lines: creditedLines(accepted.GetSupplierId(), accepted.GetLines()), accept: true,
+			restockID: accepted.GetRestockId(), at: event.GetOccurredAt().AsTime(),
 		}, true
 	}
 
 	if corrected := event.GetRestockReceivedCountCorrected(); corrected != nil {
 		return restockFigures{
-			supplierID: corrected.GetSupplierId(), teamID: corrected.GetTeamId(), day: corrected.GetCorrectedOn(),
-			lines: corrected.GetLines(),
+			teamID: corrected.GetTeamId(), warehouseID: corrected.GetWarehouseId(), day: corrected.GetCorrectedOn(),
+			lines: creditedLines(corrected.GetSupplierId(), corrected.GetLines()),
 		}, true
 	}
 
 	return restockFigures{}, false
+}
+
+// creditedLines reads the supplier each line credits: THE LINE'S OWN. Lines name their supplier and store
+// (a-line-names-the-channel-it-was-bought-from), so the fold no longer credits the restock as a whole
+// (the-supplier-comes-from-the-restock-until-lines-name-a-store — its switch): a restock mixing suppliers credits each
+// line's, and a line naming no supplier credits none.
+//
+// A line reading 0 falls back to the restock's supplier — an event from before lines carried theirs. It cannot turn a
+// line naming none today into a credit: inventory sends the restock's supplier as 0 whenever any line names none
+// (commonLineSupplier).
+func creditedLines(restockSupplier uint64, lines []*eventsv1.RestockAcceptedLine) []creditedLine {
+	out := make([]creditedLine, 0, len(lines))
+
+	for _, line := range lines {
+		supplier := line.GetSupplierId()
+		if supplier == 0 {
+			supplier = restockSupplier
+		}
+
+		if supplier == 0 {
+			continue
+		}
+
+		out = append(out, creditedLine{supplierID: supplier, channelID: line.GetSupplierChannelId(), RestockAcceptedLine: line})
+	}
+
+	return out
 }
 
 // BackfillResult is what one backfill did.
@@ -128,10 +199,9 @@ func (s *Service) FoldBackfill(ctx context.Context, source BackfillSource) (Back
 			return nil
 		}
 
-		folded, err := s.fold(ctx, event, restockFigures{
-			supplierID: accepted.GetSupplierId(), teamID: accepted.GetTeamId(), day: accepted.GetAcceptedOn(),
-			lines: accepted.GetLines(), accept: true,
-		}, false)
+		figures, _ := restockFiguresOf(event)
+
+		folded, err := s.fold(ctx, event, figures, false)
 		if err != nil {
 			return err
 		}
@@ -160,19 +230,21 @@ func (s *Service) FoldBackfill(ctx context.Context, source BackfillSource) (Back
 }
 
 // fold applies ONE accept — or one received-count correction — to the figures, and reports whether it did — false when
-// the event was already claimed, or names no supplier.
+// the event was already claimed, or none of its lines names a supplier. An accept also LINKS every line's product to
+// its supplier and store (restock-accepted-links-the-product-to-its-channel), in the same transaction.
 //
 // ⚠ ONE TRANSACTION for the lock check, the dedup claim and every statement. A failure rolls the claim back with the
-// figures, so the redelivery genuinely reprocesses rather than being recognised as "already done" with nothing folded.
+// figures and the links, so the redelivery genuinely reprocesses rather than being recognised as "already done" with
+// nothing folded.
 func (s *Service) fold(
 	ctx context.Context,
 	event *eventsv1.Event,
 	figures restockFigures,
 	live bool,
 ) (bool, error) {
-	// No supplier, no figures (the-supplier-comes-from-the-restock-until-lines-name-a-store). ACKED: it will never be
-	// anything else.
-	if figures.supplierID == 0 {
+	// No line names a supplier: no figures and no link (a-line-with-no-store-links-under-the-supplier — a line naming no
+	// supplier links nothing). ACKED: it will never be anything else.
+	if len(figures.lines) == 0 {
 		return false, nil
 	}
 
@@ -205,7 +277,7 @@ func (s *Service) fold(
 		}
 
 		// 2 · THE CLAIM. Dedup is the write, never a predicate before it: rows affected 0 means this accept was already
-		// folded, and the transaction commits having written nothing.
+		// folded — and linked — and the transaction commits having written nothing.
 		claim := tx.Exec(
 			`INSERT INTO supplier_event_logs (id, raw, day) VALUES (?, ?, CAST(? AS date)) ON CONFLICT (id) DO NOTHING`,
 			event.GetEventId(), raw, day,
@@ -218,14 +290,25 @@ func (s *Service) fold(
 			return nil
 		}
 
-		// 3 · EVERY LINE — ONE upsert for the whole accept. The six figures are movements, so two accepts on one day
-		// simply ADD, and no later day changes: there is no balance to carry.
-		err = foldLines(tx, day, figures.supplierID, figures.teamID, figures.lines)
+		// 3 · EVERY LINE — ONE upsert for the whole accept, each line under its OWN supplier, in the warehouse the restock
+		// was received at. The six figures are movements, so two accepts on one day simply ADD, and no later day changes:
+		// there is no balance to carry.
+		err = foldLines(tx, day, figures.teamID, figures.warehouseID, figures.lines)
 		if err != nil {
 			return err
 		}
 
-		// 4 · THE LIVE FOLD'S START — the backfill's cutoff. Lowered, never raised, by every live ACCEPT (a correction is
+		// 4 · THE LINKS — an accept's every line naming a supplier links its own product, under its store or under the
+		// supplier with no store; ONE upsert, remembering the latest accept (a-link-remembers-its-last-restock). Behind the
+		// claim, so a redelivery writes no link either.
+		if figures.accept {
+			_, err = upsertLinks(tx, linksOf(figures))
+			if err != nil {
+				return err
+			}
+		}
+
+		// 5 · THE LIVE FOLD'S START — the backfill's cutoff. Lowered, never raised, by every live ACCEPT (a correction is
 		// never backfilled).
 		if live && figures.accept {
 			err = tx.Exec(`
@@ -249,19 +332,22 @@ WHERE EXCLUDED.value < supplier_service_metadata.value`,
 	return folded, err
 }
 
-// foldLines adds every counted line of an accept (or a correction's signed lines) to its day's rows — ONE statement,
-// whatever the parcel's size
+// foldLines adds every counted line of an accept (or a correction's signed lines) to its day's rows, each under the
+// supplier IT credits, all in the warehouse the restock was received at (the-supplier-reports-carry-the-warehouse) — ONE
+// statement, whatever the parcel's size
 // (audits/services/supplier_service/performances/FoldHandler.md: it was one round trip per line). A line that counted
 // nothing writes nothing.
 //
 //   - Each line is VALUED here, before the sum, so a line still rounds once (lineValue).
-//   - GROUP BY product: one accept naming a product on two lines adds both, as the per-line loop did — and a single
-//     INSERT may not touch one row twice.
-//   - ⚠ ORDER BY product — the fold's ONE lock order over the day's rows. Two accepts for one day, supplier and team
+//   - GROUP BY supplier and product: one accept naming a product on two lines adds both, as the per-line loop did — and
+//     a single INSERT may not touch one row twice.
+//   - ⚠ ORDER BY supplier, product — the fold's ONE lock order over the day's rows. Two accepts for one day and team
 //     share those rows; locked in each restock's typed order they DEADLOCK — proved, then fixed
-//     (audits/services/supplier_service/concurrency/FoldHandler.md). In product order the second waits behind the first.
-func foldLines(tx *gorm.DB, day string, supplierID, teamID uint64, lines []*eventsv1.RestockAcceptedLine) error {
-	var products, rc, lc, bc []int64
+//     (audits/services/supplier_service/concurrency/FoldHandler.md). In key order the second waits behind the first.
+//     The warehouse, the last key column, is ONE per event, so it adds no second order: two accepts at two warehouses
+//     touch disjoint rows; at one, the same rows in the same order.
+func foldLines(tx *gorm.DB, day string, teamID, warehouseID uint64, lines []creditedLine) error {
+	var suppliers, products, rc, lc, bc []int64
 
 	var rv, lv, bv []float64
 
@@ -271,8 +357,9 @@ func foldLines(tx *gorm.DB, day string, supplierID, teamID uint64, lines []*even
 			continue
 		}
 
-		value := lineValue(line)
+		value := lineValue(line.RestockAcceptedLine)
 
+		suppliers = append(suppliers, int64(line.supplierID))
 		products = append(products, int64(line.GetProductId()))
 		rc = append(rc, accepted)
 		rv = append(rv, value(accepted))
@@ -288,21 +375,22 @@ func foldLines(tx *gorm.DB, day string, supplierID, teamID uint64, lines []*even
 
 	err := tx.Exec(`
 INSERT INTO supplier_product_daily_reports AS d (
-    day, supplier_id, product_id, team_id,
+    day, supplier_id, product_id, team_id, warehouse_id,
     restock_count, restock_valuation,
     shipping_lost_count, shipping_lost_valuation,
     shipping_broken_count, shipping_broken_valuation,
     last_updated
 )
-SELECT CAST(@day AS date), @supplier, l.product_id, @team,
+SELECT CAST(@day AS date), l.supplier_id, l.product_id, @team, @warehouse,
        SUM(l.rc), SUM(l.rv), SUM(l.lc), SUM(l.lv), SUM(l.bc), SUM(l.bv), NOW()
 FROM unnest(
-    CAST(@products AS bigint[]), CAST(@rc AS bigint[]), CAST(@rv AS double precision[]),
+    CAST(@suppliers AS bigint[]), CAST(@products AS bigint[]),
+    CAST(@rc AS bigint[]), CAST(@rv AS double precision[]),
     CAST(@lc AS bigint[]), CAST(@lv AS double precision[]), CAST(@bc AS bigint[]), CAST(@bv AS double precision[])
-) AS l(product_id, rc, rv, lc, lv, bc, bv)
-GROUP BY l.product_id
-ORDER BY l.product_id
-ON CONFLICT (day, supplier_id, product_id, team_id) DO UPDATE
+) AS l(supplier_id, product_id, rc, rv, lc, lv, bc, bv)
+GROUP BY l.supplier_id, l.product_id
+ORDER BY l.supplier_id, l.product_id
+ON CONFLICT (day, supplier_id, product_id, team_id, warehouse_id) DO UPDATE
 SET restock_count             = d.restock_count + EXCLUDED.restock_count,
     restock_valuation         = d.restock_valuation + EXCLUDED.restock_valuation,
     shipping_lost_count       = d.shipping_lost_count + EXCLUDED.shipping_lost_count,
@@ -311,16 +399,17 @@ SET restock_count             = d.restock_count + EXCLUDED.restock_count,
     shipping_broken_valuation = d.shipping_broken_valuation + EXCLUDED.shipping_broken_valuation,
     last_updated              = NOW()`,
 		map[string]any{
-			"day":      day,
-			"supplier": supplierID,
-			"team":     teamID,
-			"products": int64Array(products),
-			"rc":       int64Array(rc),
-			"rv":       float64Array(rv),
-			"lc":       int64Array(lc),
-			"lv":       float64Array(lv),
-			"bc":       int64Array(bc),
-			"bv":       float64Array(bv),
+			"day":       day,
+			"team":      teamID,
+			"warehouse": warehouseID,
+			"suppliers": int64Array(suppliers),
+			"products":  int64Array(products),
+			"rc":        int64Array(rc),
+			"rv":        float64Array(rv),
+			"lc":        int64Array(lc),
+			"lv":        float64Array(lv),
+			"bc":        int64Array(bc),
+			"bv":        float64Array(bv),
 		},
 	).Error
 	if err != nil {

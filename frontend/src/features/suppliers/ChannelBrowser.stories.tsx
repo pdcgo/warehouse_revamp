@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "@chakra-ui/react";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { asAdminTeam } from "../../../.storybook/sessionScenario";
 import { supplierExportScenario } from "../../../.storybook/supplierExportScenario";
+import { supplierGoodsCalls } from "../../../.storybook/supplierGoodsStub";
 import { channelFixture, supplierFixture } from "../../../.storybook/supplierFixtures";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { ChannelBrowser } from "./ChannelBrowser";
@@ -242,5 +243,55 @@ export const AMonitorHasNoExport: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await expect(canvas.queryByTestId("channels-export")).toBeNull();
+  },
+};
+
+// ── Under the page's warehouse chip (`a-supplier-page-is-scoped-by-its-warehouses`) ──────────────────────────
+
+const GUDANG_PUSAT = 11n;
+const GUDANG_CABANG = 14n;
+
+// A chip picked on the page narrows the tab ON THE SERVER: only the stores whose goods were received at that warehouse —
+// Gudang Cabang holds only the Tokopedia store's — and each reads what its goods did THERE (SupplierGoods asked with the
+// warehouse).
+export const AWarehouseNarrowsTheStores: Story = {
+  args: { warehouseId: GUDANG_CABANG },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 1));
+    await expect(canvas.getByTestId(`channel-row-${TOKOPEDIA_STORE.id}`)).toBeVisible();
+    await expect(canvas.queryByTestId(`channel-row-${SHOPEE_STORE.id}`)).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId(`channel-sold-${TOKOPEDIA_STORE.id}`)).toHaveTextContent(/^303ordered /));
+    await expect(supplierGoodsCalls.at(-1)).toMatchObject({ supplierIds: [SUMBER.id], warehouseId: GUDANG_CABANG });
+  },
+};
+
+// …and its Export writes the tab as narrowed — the chip goes with the search and the type.
+export const ExportsUnderTheChip: Story = {
+  args: { warehouseId: GUDANG_PUSAT },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 2));
+    await userEvent.click(canvas.getByTestId("channels-export"));
+
+    await waitFor(() => expect(supplierExportScenario.stores).toHaveLength(1));
+    await expect(supplierExportScenario.stores[0]).toMatchObject({ supplierId: SUMBER.id, warehouseId: GUDANG_PUSAT, rows: 2 });
+  },
+};
+
+// A chip none of whose stores had goods received there says so — not "no stores yet" — and offers every warehouse back.
+export const NothingAtTheWarehouseOffersAll: Story = {
+  args: { warehouseId: 99n, onClearWarehouse: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+
+    const hint = await canvas.findByTestId("channels-none-at-warehouse", {}, { timeout: 4000 });
+    await expect(hint).toHaveTextContent("No supplier stores at this warehouse.");
+    await expect(canvas.queryByTestId("channels-empty")).toBeNull();
+
+    await userEvent.click(within(hint).getByRole("button", { name: "All Warehouses" }));
+    await expect(args.onClearWarehouse).toHaveBeenCalledOnce();
   },
 };

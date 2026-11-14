@@ -27,7 +27,7 @@ export const VISIBLE_WAREHOUSES = 8;
 // TWO CARDS, EACH WITH ITS COUNT AND ITS LAST DATE UNDER IT (owner: *"terjual bawahnya dari ... transaksi . terakhir
 // order ... ready bawahnya restok last restock"*, `the-summary-is-sold-and-ready-with-their-counts`):
 //
-//   Gudang terkait ⚠4 ⚠5
+//   Gudang terkait
 //   (Semua) (Gudang Cabang) (Gudang Bandung)
 //   ┌ Terjual                                  ┐ ┌ Siap                            ┐
 //   │ 1.507 unit                               │ │ 11 unit                         │
@@ -48,8 +48,11 @@ export function RelatedWarehouses({
   /** The chosen warehouse — 0n is every one. */
   value: bigint;
   onChange: (id: bigint) => void;
-  /** The page's ⚠ marks for the warehouses and the pick — numbered in the page's own pending list. */
-  marks: ReactNode;
+  /**
+   * The page's ⚠ marks for the warehouses and the pick, numbered in the page's own pending list — none since every tab
+   * follows the pick (the-supplier-reports-carry-the-warehouse, 2026-11-14).
+   */
+  marks?: ReactNode;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();

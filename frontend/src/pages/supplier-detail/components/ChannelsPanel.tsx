@@ -20,6 +20,8 @@ export function ChannelsPanel({
   supplierId,
   canManage,
   figureMarks,
+  warehouseId,
+  onClearWarehouse,
 }: {
   teamId: bigint;
   supplierId: bigint;
@@ -27,6 +29,10 @@ export function ChannelsPanel({
   canManage: boolean;
   /** Marks for each store's Terjual and Siap — none: they are real (InventoryService.SupplierGoods). */
   figureMarks?: FigureMarks;
+  /** The page's Gudang terkait chip — the stores received there (a-supplier-page-is-scoped-by-its-warehouses); 0n = all. */
+  warehouseId?: bigint;
+  /** Back to every warehouse, from the empty hint the chip alone can leave. */
+  onClearWarehouse?: () => void;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<SupplierChannelRecord | null>(null);
@@ -82,6 +88,8 @@ export function ChannelsPanel({
         }
         rowActions={canManage ? rowActions : undefined}
         figureMarks={figureMarks}
+        warehouseId={warehouseId}
+        onClearWarehouse={onClearWarehouse}
       />
 
       {/* One edit dialog, driven by the row's Edit action. Keyed so it re-initialises per channel. */}

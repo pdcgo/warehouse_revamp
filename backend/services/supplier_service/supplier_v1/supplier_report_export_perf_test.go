@@ -17,7 +17,7 @@ import (
 func TestPerf_SupplierReportExport(t *testing.T) {
 	b := figSetup(t)
 	store := &fakeExports{}
-	svc := supplier_v1.NewService(b.db, perfSellingTeams{}, nil, &fakeGoods{}, store)
+	svc := supplier_v1.NewService(b.db, perfSellingTeams{}, nil, &fakeGoods{}, store, nil)
 
 	keyword := &analytic_basev1.FilterItem{F: &analytic_basev1.FilterItem_SupplierKeywordFilter{
 		SupplierKeywordFilter: &analytic_basev1.SupplierKeywordFilter{Q: "1"},

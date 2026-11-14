@@ -164,8 +164,8 @@ func readDevSeeds() (devSeeds, error) {
 // setupDatabase is every data step of `dev setup`: the schema first, then the rows that need it.
 //
 // Each step is the SAME function its own command runs — `migrate up-all`, `supplier move`, `supplier backfill-figures`,
-// `product recompose-codes`, `seed dev`, `seed categories`, `region load-seed` — so setup cannot drift from doing them
-// one at a time.
+// `supplier backfill-links`, `supplier backfill-warehouses`, `product recompose-codes`, `seed dev`, `seed categories`,
+// `region load-seed` — so setup cannot drift from doing them one at a time.
 func setupDatabase(ctx context.Context, db *sql.DB, target, password string, seeds devSeeds) error {
 	fmt.Println("→ migrate up-all")
 
@@ -188,6 +188,26 @@ func setupDatabase(ctx context.Context, db *sql.DB, target, password string, see
 	fmt.Println("→ supplier backfill-figures")
 
 	err = backfillFiguresOn(ctx, db, target)
+	if err != nil {
+		return err
+	}
+
+	// Every accepted line's product linked to its supplier and store (restock-accepted-links-the-product-to-its-channel)
+	// — the accepts before the link table, and the figures a restock mixing suppliers never got. After the figures
+	// backfill; repeatable, so a second setup writes nothing.
+	fmt.Println("→ supplier backfill-links")
+
+	err = backfillLinksOn(ctx, db, target)
+	if err != nil {
+		return err
+	}
+
+	// Both supplier daily reports keyed by the warehouse each figure came from (the-supplier-reports-carry-the-warehouse):
+	// the rows supplier_service's 00006 filed under no warehouse, re-folded from history. After the links (whose re-fold
+	// already writes warehouses); repeatable, so a second setup finds nothing to re-fold.
+	fmt.Println("→ supplier backfill-warehouses")
+
+	err = backfillWarehousesOn(ctx, db, target)
 	if err != nil {
 		return err
 	}

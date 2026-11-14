@@ -216,24 +216,25 @@ func refoldSaleDay(tx *gorm.DB, in DayRefoldInput, entries []saleEntry) (DayRefo
 	// 3 · UNDER THE LOCK, the day as the claims hold it: the supplier's parts of every order placed on it, added, and of
 	// every order cancelled on it whose placement was folded, taken back — the fold's sum.
 	parts := []struct {
-		OrderID   uint64
-		Sign      int64
-		ProductID uint64
-		TeamID    uint64
-		Units     int64
-		Value     float64
+		OrderID     uint64
+		Sign        int64
+		ProductID   uint64
+		TeamID      uint64
+		WarehouseID uint64
+		Units       int64
+		Value       float64
 	}{}
 
 	err = tx.
 		Raw(`
-SELECT x.order_id, x.sign, p.product_id, p.team_id, p.units, p.value
+SELECT x.order_id, x.sign, p.product_id, p.team_id, p.warehouse_id, p.units, p.value
 FROM (
     SELECT order_id, 1 AS sign FROM supplier_sale_orders WHERE placed_day = CAST(@day AS date)
   UNION ALL
     SELECT order_id, -1 FROM supplier_sale_orders WHERE cancelled_day = CAST(@day AS date) AND placed_day IS NOT NULL
 ) x
 JOIN supplier_sale_order_parts p ON p.order_id = x.order_id AND p.supplier_id = @supplier
-ORDER BY x.order_id, x.sign DESC, p.product_id, p.team_id`,
+ORDER BY x.order_id, x.sign DESC, p.product_id, p.team_id, p.warehouse_id`,
 			map[string]any{"day": in.Day, "supplier": in.SupplierID}).
 		Scan(&parts).
 		Error
@@ -247,7 +248,7 @@ ORDER BY x.order_id, x.sign DESC, p.product_id, p.team_id`,
 	for _, part := range parts {
 		moves[[2]int64{int64(part.OrderID), part.Sign}] = true
 
-		key := refoldKey{ProductID: part.ProductID, TeamID: part.TeamID}
+		key := refoldKey{ProductID: part.ProductID, TeamID: part.TeamID, WarehouseID: part.WarehouseID}
 
 		row := after[key]
 		if row == nil {
@@ -271,14 +272,15 @@ ORDER BY x.order_id, x.sign DESC, p.product_id, p.team_id`,
 
 	// 4 · THE STORED ROWS, then replace what differs and remove what the claims do not hold.
 	stored := []struct {
-		ProductID  uint64
-		TeamID     uint64
-		SalesCount int64
-		SalesValue float64
+		ProductID   uint64
+		TeamID      uint64
+		WarehouseID uint64
+		SalesCount  int64
+		SalesValue  float64
 	}{}
 
 	err = tx.
-		Raw(`SELECT product_id, team_id, sales_count, sales_value FROM supplier_sale_daily_reports
+		Raw(`SELECT product_id, team_id, warehouse_id, sales_count, sales_value FROM supplier_sale_daily_reports
 WHERE day = CAST(? AS date) AND supplier_id = ?`, in.Day, in.SupplierID).
 		Scan(&stored).
 		Error
@@ -288,7 +290,9 @@ WHERE day = CAST(? AS date) AND supplier_id = ?`, in.Day, in.SupplierID).
 
 	before := map[refoldKey][]float64{}
 	for _, r := range stored {
-		before[refoldKey{ProductID: r.ProductID, TeamID: r.TeamID}] = []float64{float64(r.SalesCount), r.SalesValue}
+		before[refoldKey{ProductID: r.ProductID, TeamID: r.TeamID, WarehouseID: r.WarehouseID}] = []float64{
+			float64(r.SalesCount), r.SalesValue,
+		}
 	}
 
 	result.Rows, err = replaceDayRows(tx, "supplier_sale_daily_reports", salesColumns, in, before, after)
@@ -323,7 +327,7 @@ func claimLostPlacement(tx *gorm.DB, order supplier_service_models.SupplierSaleO
 	for _, p := range entry.parts {
 		rows = append(rows, supplier_service_models.SupplierSaleOrderPart{
 			OrderID: entry.orderID, SupplierID: p.SupplierID, ProductID: p.ProductID, TeamID: p.TeamID,
-			Units: p.Units, Value: p.Value,
+			WarehouseID: p.WarehouseID, Units: p.Units, Value: p.Value,
 		})
 	}
 

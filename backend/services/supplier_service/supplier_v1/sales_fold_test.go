@@ -39,13 +39,40 @@ type fakeGoods struct {
 	takes map[uint64][]supplier_v1.SaleTakePart
 	sold  map[uint64]int64
 	ready map[uint64]int64
-	// Per store, for the Toko tab's export.
-	stores map[uint64]supplier_v1.StoreGoods
+	// Per store, for the Toko tab's export; under a warehouse chip, per warehouse.
+	stores   map[uint64]supplier_v1.StoreGoods
+	storesIn map[uint64]map[uint64]supplier_v1.StoreGoods
 	// Per warehouse, the suppliers received there — the Gudang filter's set.
-	at      map[uint64][]uint64
-	err     error
-	asked   int
-	atAsked int
+	at map[uint64][]uint64
+	// Per warehouse, the stores and the (store, product) pairs received there — a supplier page's chip.
+	storesAt map[uint64][]uint64
+	pairsAt  map[uint64][]supplier_v1.StoreProduct
+	err      error
+	asked    int
+	atAsked  int
+	// The warehouses each chip question and each StoreGoods read named, in order.
+	chipAsked  []uint64
+	goodsAsked []uint64
+}
+
+func (f *fakeGoods) StoresAtWarehouse(_ context.Context, _, warehouseID uint64) ([]uint64, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	f.chipAsked = append(f.chipAsked, warehouseID)
+
+	return f.storesAt[warehouseID], nil
+}
+
+func (f *fakeGoods) StoreProductsAtWarehouse(_ context.Context, _, warehouseID uint64) ([]supplier_v1.StoreProduct, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	f.chipAsked = append(f.chipAsked, warehouseID)
+
+	return f.pairsAt[warehouseID], nil
 }
 
 func (f *fakeGoods) SupplierIDsAtWarehouse(_ context.Context, warehouseID uint64) ([]uint64, error) {
@@ -58,9 +85,15 @@ func (f *fakeGoods) SupplierIDsAtWarehouse(_ context.Context, warehouseID uint64
 	return f.at[warehouseID], nil
 }
 
-func (f *fakeGoods) StoreGoods(context.Context, uint64) (map[uint64]supplier_v1.StoreGoods, error) {
+func (f *fakeGoods) StoreGoods(_ context.Context, _, warehouseID uint64) (map[uint64]supplier_v1.StoreGoods, error) {
 	if f.err != nil {
 		return nil, f.err
+	}
+
+	f.goodsAsked = append(f.goodsAsked, warehouseID)
+
+	if warehouseID > 0 {
+		return f.storesIn[warehouseID], nil
 	}
 
 	return f.stores, nil
@@ -98,7 +131,7 @@ func (f *fakeGoods) SupplierIDsByFigure(_ context.Context, figure supplier_v1.Go
 }
 
 func salesService(db *gorm.DB, goods *fakeGoods) *supplier_v1.Service {
-	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, goods, nil)
+	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, goods, nil, nil)
 }
 
 // salePlaced is the OrderPlaced the order service sends, at an instant.

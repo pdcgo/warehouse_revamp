@@ -25,11 +25,13 @@ function figuresOf(row: SupplierGoods): SupplierFigureValues {
   };
 }
 
-function goodsQuery(teamId: bigint | undefined, supplierIds: bigint[], group: SupplierGoodsGroup) {
+// `warehouseId` is a supplier page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses): every figure then
+// counts only that warehouse's goods; 0n = every warehouse.
+function goodsQuery(teamId: bigint | undefined, supplierIds: bigint[], group: SupplierGoodsGroup, warehouseId = 0n) {
   const ids = Array.from(new Set(supplierIds.map((id) => id.toString()))).sort();
 
   return {
-    queryKey: key.inventory(teamId, { supplierGoods: ids.join(","), group }),
+    queryKey: key.inventory(teamId, { supplierGoods: ids.join(","), group, warehouseId: warehouseId.toString() }),
     ...listQuery,
     enabled: teamId !== undefined && teamId > 0n && ids.length > 0,
     queryFn: async () =>
@@ -38,6 +40,7 @@ function goodsQuery(teamId: bigint | undefined, supplierIds: bigint[], group: Su
           teamId: teamId!,
           supplierIds: ids.map((id) => BigInt(id)),
           group,
+          warehouseId,
         })
       ).rows,
   };
@@ -52,9 +55,9 @@ export function useSupplierGoods(teamId: bigint | undefined, supplierIds: bigint
   return { ...query, figures };
 }
 
-/** One supplier's stores, keyed by the store id as a string. */
-export function useSupplierStoreGoods(teamId: bigint | undefined, supplierId: bigint) {
-  const query = useQuery(goodsQuery(teamId, supplierId > 0n ? [supplierId] : [], SupplierGoodsGroup.STORE));
+/** One supplier's stores, keyed by the store id as a string — under a warehouse chip, that warehouse's goods only. */
+export function useSupplierStoreGoods(teamId: bigint | undefined, supplierId: bigint, warehouseId = 0n) {
+  const query = useQuery(goodsQuery(teamId, supplierId > 0n ? [supplierId] : [], SupplierGoodsGroup.STORE, warehouseId));
   const figures = new Map<string, SupplierFigureValues>();
   for (const row of query.data ?? []) figures.set(row.storeId.toString(), figuresOf(row));
 

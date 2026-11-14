@@ -62,7 +62,7 @@ func (f *fakeExports) TeamNames(_ context.Context, ids []uint64) (map[uint64]str
 
 // exportService is the service an export test runs: the selling teams, the goods fake and the export fake.
 func exportService(db *gorm.DB, goods *fakeGoods, store *fakeExports) *supplier_v1.Service {
-	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, goods, store)
+	return supplier_v1.NewService(db, sellingTeams{selling: map[uint64]bool{sellingA: true, sellingB: true}}, nil, goods, store, nil)
 }
 
 // exportFile is what one export produced: its stream's messages and the file's rows, read raw — a number as it was

@@ -9,8 +9,9 @@ import { readXlsx } from "./xlsx";
 // pattern (`one-export-is-the-list-as-a-file`): the stream, the file stored in document_service as the person exporting
 // (a private `table_export`), and the expiring link the browser downloads under the file's own name
 // (`a-download-keeps-its-files-name`). The downloaded .xlsx is opened and read: the Toko tab's file holds exactly its two
-// stores, in the tab's columns, the restocked store's Siap 5 beside today's Jakarta day; the Statistik tab's Per Produk
-// holds the one product restocked, 5 units for exactly Rp 50.000.
+// stores, in the tab's columns, the restocked store's Siap 5 beside today's Jakarta day; the Produk tab's file holds the
+// one product restocked, at its store, bought today, 0 sold and 5 ready — no price, no cost; the Statistik tab's Per
+// Produk holds the one product restocked, 5 units for exactly Rp 50.000.
 //
 // THE TWO REPORTS AS FILES (`a-report-export-is-the-whole-view-as-a-file`), on the same seller: the Supplier Report's
 // file is the whole ranking as narrowed (one team picked — its one supplier, its figures); the account report's
@@ -189,6 +190,39 @@ test("Supplier exports: the Toko tab's file is its two stores in the tab's colum
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   expect(rows[2]).toEqual([state.official, "Shopee", "https://shopee.example/sumber-ekspor", "", "0", "", "5", today]);
   expect(rows[1]).toEqual([state.chat, "Other", "", "0812 pesan lewat WA"]);
+});
+
+test("Supplier exports: the Produk tab's file is its one product at its store, in the tab's columns", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.seller);
+
+  // The link is supplier_service's fold of Restock Accepted — poll until the accept has been delivered.
+  await expect(async () => {
+    await page.goto(`/inventories/suppliers/${state.supplier}`);
+    await page.getByTestId("supplier-tab-products").click();
+    await expect(page.getByTestId("products-table").locator("tbody tr")).toHaveCount(1, { timeout: 3000 });
+  }).toPass({ timeout: 45_000 });
+
+  const file = await exportFile(page, "products-export", /^produk-pemasok-.*\.xlsx$/);
+  const rows = file.get("Produk")!;
+
+  // Every team's products (no team picked), so Tim is a column; no price, no cost — the tab shows none.
+  expect(rows[0]).toEqual([
+    "Produk",
+    "SKU",
+    "Tim",
+    "Toko pemasok",
+    "Jenis toko",
+    "Terakhir dibeli",
+    "Pertama dibeli",
+    "Terjual",
+    "Pesanan terakhir",
+    "Siap",
+  ]);
+  // Exactly the tab's one row: bought once today (a Jakarta day) at the official store, nothing sold, 5 ready.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+  expect(rows).toHaveLength(2);
+  expect(rows[1]).toEqual(["Kain Katun", state.productCode, state.sellerName, state.official, "Shopee", today, today, "0", "", "5"]);
 });
 
 test("Supplier exports: the Statistik tab's Per Produk file is its one product, exact to the rupiah", async ({ page }) => {

@@ -1534,8 +1534,10 @@ type RestockAccepted struct {
 	TeamId uint64 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// The warehouse team that counted it.
 	WarehouseId uint64 `protobuf:"varint,3,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	// The RESTOCK's supplier, 0 = none — every line counts for it until restock lines name a store
-	// (the-supplier-comes-from-the-restock-until-lines-name-a-store). With 0 there is nothing to fold.
+	// The one supplier EVERY line names, 0 when they disagree or one names none. supplier_service no longer folds by it:
+	// each line counts for its OWN supplier (the-supplier-comes-from-the-restock-until-lines-name-a-store — switched
+	// 2026-11-14), and a line naming none counts for nobody. Kept for a consumer reading the restock as a whole; a line
+	// reading 0 beside a non-zero value here is an event from before lines carried their supplier.
 	SupplierId uint64 `protobuf:"varint,4,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	// YYYY-MM-DD — the accept's JAKARTA day, the day the figures bucket on. A string, so no consumer re-derives a day
 	// from an instant in some other timezone.
@@ -1685,8 +1687,9 @@ type RestockAcceptedLine struct {
 	// Units short in the box — the MISSING problem row (a-short-unit-at-the-door-is-missing). Renamed in place from
 	// lost_count.
 	MissingCount int64 `protobuf:"varint,7,opt,name=missing_count,json=missingCount,proto3" json:"missing_count,omitempty"`
-	// The line's own supplier and store (a-line-names-the-channel-it-was-bought-from); 0 = not named. Until restock lines
-	// store them, the restock-level supplier_id above is what a fold reads.
+	// The line's own supplier and store (a-line-names-the-channel-it-was-bought-from); 0 = not named. supplier_service
+	// credits the line's figures to this supplier, and links its product to this store — or to the supplier with no store
+	// (restock-accepted-links-the-product-to-its-channel, a-line-with-no-store-links-under-the-supplier).
 	SupplierId        uint64 `protobuf:"varint,8,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	SupplierChannelId uint64 `protobuf:"varint,9,opt,name=supplier_channel_id,json=supplierChannelId,proto3" json:"supplier_channel_id,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -1804,7 +1807,7 @@ type RestockReceivedCountCorrected struct {
 	TeamId uint64 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// The warehouse that corrected it.
 	WarehouseId uint64 `protobuf:"varint,3,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	// The RESTOCK's supplier, as RestockAccepted.supplier_id (0 = none, nothing to fold).
+	// The one supplier every line of the restock names, as RestockAccepted.supplier_id — the fold reads each line's own.
 	SupplierId uint64 `protobuf:"varint,4,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	// YYYY-MM-DD — the correction's JAKARTA day, the day the figures move on.
 	CorrectedOn string `protobuf:"bytes,5,opt,name=corrected_on,json=correctedOn,proto3" json:"corrected_on,omitempty"`

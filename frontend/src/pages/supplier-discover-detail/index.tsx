@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Button, Flex, HStack, Heading, Icon, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Icon, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { rpcError } from "../../api/clients";
@@ -13,24 +12,10 @@ import { ChannelBrowser } from "../../features/suppliers/ChannelBrowser";
 import { ProductBrowser } from "../../features/suppliers/ProductBrowser";
 import { SupplierStatistics } from "../../features/suppliers/SupplierStatistics";
 import { SupplierMeta } from "../../features/suppliers/SupplierMeta";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { TeamItem } from "../../components/entity/TeamItem";
-import { DISCOVER_SUPPLIER_DETAIL_PENDING } from "./pending";
-import type { FigureMarks } from "../../features/suppliers/SupplierFigures";
 import { RelatedWarehouses } from "../../features/suppliers/RelatedWarehouses";
 import { useSupplierWarehouses } from "../../features/suppliers/goods";
-
-// Each PRODUCT's Terjual and Siap on the Produk tab carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`) —
-// invented with the tab's rows. A store's on the Toko tab are real and unmarked.
-const FIGURE_MARKS: FigureMarks = {
-  sold: <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="sold" />,
-  ready: <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="ready" />,
-};
-
-// The Produk tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`): its rows are invented, so
-// its file waits for real ones. The Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport).
-const EXPORT_MARK = <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="export" />;
+import { idCodec, useUrlState } from "../../lib/urlState";
 
 function parseSupplierId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -48,8 +33,8 @@ function parseSupplierId(raw: string | undefined): bigint {
 // the-figures-are-a-statistics-tab-and-a-supplier-report) — Channels, searched, filtered by type and paged, Products,
 // and Statistics, every team's restocks from it included (every-selling-team-sees-every-teams-figures).
 //
-// The supplier, its stores and its figures are real — supplier_service reads any team's live supplier. ⚠ The Products
-// tab is still SAMPLE rows (./pending.ts).
+// The supplier, its stores, its products and its figures are real — supplier_service reads any team's live supplier,
+// and the Products tab every team's products bought from it, each with its Terjual and Siap (since 2026-11-14).
 //
 // IT READS AS THE SUPPLIER'S OWN PAGE (owner: *"discover detailnya sesuaikan dengan detail biasa"* — *"masih ada teamnya
 // ya untuk di discover"*, `the-discover-detail-reads-as-the-supplier-page`): the name, then — Discover's own line — the
@@ -67,12 +52,14 @@ export function DiscoverSupplierDetailPage() {
   const { t } = useTranslation();
 
   const id = parseSupplierId(supplierId);
-  // The warehouse the page is scoped to — 0n is every one (a-supplier-page-is-scoped-by-its-warehouses).
-  const [warehouseId, setWarehouseId] = useState(0n);
+  // The warehouse the page is scoped to — 0n is every one (a-supplier-page-is-scoped-by-its-warehouses). In the URL
+  // (a-lists-filters-live-in-the-url), as on the manage detail.
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
+  const showEveryWarehouse = () => setWarehouseId(0n);
   const query = useDiscoverSupplier({ teamId: current?.teamId, supplierId: id });
   const supplier = query.data ?? null;
-  // The WHOLE store list — the Products tab's sample rows are made from every store. The Channels tab reads its
-  // own searched, filtered page from the server (ChannelBrowser).
+  // The WHOLE store list — the Products tab's store filter offers it. The Channels tab reads its own searched, filtered
+  // page from the server (ChannelBrowser).
   const channelsQuery = useSupplierChannels({ teamId: current?.teamId, supplierId: id });
   // Gudang terkait — where this supplier's goods were received, and what they did there (every team's).
   const warehouses = useSupplierWarehouses(current?.teamType === TeamType.WAREHOUSE ? undefined : current?.teamId, id);
@@ -145,18 +132,17 @@ export function DiscoverSupplierDetailPage() {
         </Flex>
       </Stack>
 
-      <NotImplementedSummary list={DISCOVER_SUPPLIER_DETAIL_PENDING} />
-
       {/* GUDANG TERKAIT — the warehouses its restocks were received at, and the page's scope: a chip picked narrows every
           tab (`a-supplier-page-is-scoped-by-its-warehouses`). Over the tabs, since a tab cannot narrow the tabs beside it.
           Each chip is a warehouse's name; under them, what this supplier's goods did in the chosen one or in all
           (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Real warehouses and figures
-          (InventoryService.SupplierGoods by warehouse); a pick only switches that summary — marked. */}
+          (InventoryService.SupplierGoods by warehouse). A pick switches that summary and narrows every tab and its
+          Export, on the server (since 2026-11-14): Toko and Produk to the goods received there, Statistik to the
+          restocks received there and the sales taken from there (`the-supplier-reports-carry-the-warehouse`). */}
       <RelatedWarehouses
         warehouses={warehouses.warehouses}
         value={warehouseId}
         onChange={setWarehouseId}
-        marks={<NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />}
       />
 
       {/* The underline SLIDES to the picked tab, and the tab's content fades in where the last one was
@@ -167,10 +153,7 @@ export function DiscoverSupplierDetailPage() {
             {t("supplierChannel.tab.channels")}
           </Tabs.Trigger>
           <Tabs.Trigger value="products" data-testid="supplier-tab-products">
-            <HStack gap="1">
-              {t("supplierChannel.tab.products")}
-              <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="products" />
-            </HStack>
+            {t("supplierChannel.tab.products")}
           </Tabs.Trigger>
           <Tabs.Trigger value="statistics" data-testid="supplier-tab-statistics">
             {t("supplierChannel.tab.statistics")}
@@ -180,15 +163,26 @@ export function DiscoverSupplierDetailPage() {
 
         {/* Read-only: no Add Store, no row actions — this is another team's supplier. */}
         <Tabs.Content value="channels" animationStyle="swap">
-          <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} />
+          <ChannelBrowser
+            teamId={current.teamId}
+            supplierId={supplier.id}
+            warehouseId={warehouseId}
+            onClearWarehouse={showEveryWarehouse}
+          />
         </Tabs.Content>
 
         <Tabs.Content value="products" animationStyle="swap">
-          <ProductBrowser channels={channelsQuery.data ?? []} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
+          <ProductBrowser
+            teamId={current.teamId}
+            supplierId={supplier.id}
+            channels={channelsQuery.data ?? []}
+            warehouseId={warehouseId}
+            onClearWarehouse={showEveryWarehouse}
+          />
         </Tabs.Content>
 
         <Tabs.Content value="statistics" animationStyle="swap">
-          <SupplierStatistics supplierId={supplier.id} />
+          <SupplierStatistics supplierId={supplier.id} warehouseId={warehouseId} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

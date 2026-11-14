@@ -83,13 +83,17 @@ type DayRefoldInput struct {
 	DryRun bool
 }
 
-// DayRefoldRow is one of the day's rows — the supplier's product for one team: its figures as stored before and as the
-// log says, in DayRefoldResult.Columns' order. Before is nil when the day had no such row; After nil when it is removed.
+// DayRefoldRow is one of the day's rows — the supplier's product for one team in one warehouse
+// (the-supplier-reports-carry-the-warehouse): its figures as stored before and as the log says, in
+// DayRefoldResult.Columns' order. Before is nil when the day had no such row; After nil when it is removed. A row stored
+// under warehouse 0 (folded before the warehouse was recorded) is removed, and its figures come back under the warehouse
+// each line came from.
 type DayRefoldRow struct {
-	ProductID uint64
-	TeamID    uint64
-	Before    []float64
-	After     []float64
+	ProductID   uint64
+	TeamID      uint64
+	WarehouseID uint64
+	Before      []float64
+	After       []float64
 }
 
 // ShortScope is a supplier's day another report scope's claim left short: the lost event is claimed now, so no
@@ -111,8 +115,8 @@ type DayRefoldResult struct {
 	Claimed  int
 	InFlight int
 
-	// Short is every other (supplier, day) the claims made here leave short until its own re-fold — Penjualan only: one
-	// order feeds several suppliers, and its cancel another day.
+	// Short is every other (supplier, day) the claims made here leave short until its own re-fold: one order feeds
+	// several suppliers, and its cancel another day; one restock's lines may name several suppliers.
 	Short []ShortScope
 
 	DryRun bool
@@ -199,10 +203,11 @@ func (s *Service) DayRefold(ctx context.Context, in DayRefoldInput, source Refol
 	return result, nil
 }
 
-// refoldKey is one row of a supplier's day: the product and the team.
+// refoldKey is one row of a supplier's day: the product, the team and the warehouse.
 type refoldKey struct {
-	ProductID uint64
-	TeamID    uint64
+	ProductID   uint64
+	TeamID      uint64
+	WarehouseID uint64
 }
 
 func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event) (DayRefoldResult, error) {
@@ -218,17 +223,23 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 		return result, ErrRefoldLocked
 	}
 
-	// 2 · CLAIM THE LOST ACCEPTS — the supplier's, of the day, never claimed and over an hour old — before the report's
-	// lock, as the fold claims before it writes. A redelivery folding one right now holds its claim uncommitted; this
-	// insert waits for it, and DO NOTHING keeps whichever came first.
+	// 2 · CLAIM THE LOST ACCEPTS — the events of the day with a line crediting the supplier, never claimed and over an
+	// hour old — before the report's lock, as the fold claims before it writes. A redelivery folding one right now holds
+	// its claim uncommitted; this insert waits for it, and DO NOTHING keeps whichever came first.
 	held, err := dayClaims(tx, in.Day)
 	if err != nil {
 		return result, err
 	}
 
+	// The lost accepts claimed here: their links are written below, under the report's lock — the claim gates the
+	// fold's link write too, so whoever claims an accept links it.
+	var claimedAccepts []restockFigures
+
+	short := map[ShortScope]bool{}
+
 	for _, event := range accepts {
 		figures, ok := restockFiguresOf(event)
-		if !ok || figures.supplierID != in.SupplierID || figures.day != in.Day || held[event.GetEventId()] {
+		if !ok || !figures.names(in.SupplierID) || figures.day != in.Day || held[event.GetEventId()] {
 			continue
 		}
 
@@ -243,8 +254,26 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 
 		if claimed {
 			result.Claimed++
+
+			if figures.accept {
+				claimedAccepts = append(claimedAccepts, figures)
+			}
+
+			// A restock mixing suppliers: the claim is ONE for the event, so the other suppliers' days no longer get it
+			// from a redelivery — their own re-folds count it from this claim.
+			for _, supplier := range figures.suppliers() {
+				if supplier != in.SupplierID {
+					short[ShortScope{SupplierID: supplier, Day: in.Day}] = true
+				}
+			}
 		}
 	}
+
+	for scope := range short {
+		result.Short = append(result.Short, scope)
+	}
+
+	slices.SortFunc(result.Short, func(a, b ShortScope) int { return cmp.Compare(a.SupplierID, b.SupplierID) })
 
 	// 3 · THE FOLD's OWN LOCK — every upsert's ROW EXCLUSIVE on the report waits on this, and this on every upsert.
 	err = tx.Exec(`LOCK TABLE supplier_product_daily_reports IN SHARE ROW EXCLUSIVE MODE`).Error
@@ -252,7 +281,17 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 		return result, fmt.Errorf("supplier re-fold: lock the report: %w", err)
 	}
 
-	// 4 · UNDER THE LOCK, what counts is every claim of the day that names the supplier — the event as it was folded.
+	// 3b · THE CLAIMED ACCEPTS' LINKS — AFTER the report's lock, in the fold's order (report, then links): a fold holding
+	// the report's row lock and waiting on a link this re-fold had locked first would deadlock.
+	for _, figures := range claimedAccepts {
+		_, err = upsertLinks(tx, linksOf(figures))
+		if err != nil {
+			return result, err
+		}
+	}
+
+	// 4 · UNDER THE LOCK, what counts is every claim of the day with a line crediting the supplier — the event as it was
+	// folded, those lines only.
 	held, err = dayClaims(tx, in.Day)
 	if err != nil {
 		return result, err
@@ -271,6 +310,17 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 		return result, fmt.Errorf("supplier re-fold: the day's claims: %w", err)
 	}
 
+	// The warehouse each of the day's events names as the log builds it — for a claim of an event that carried none, so
+	// its figures still land in the warehouse the restock was received at (the-supplier-reports-carry-the-warehouse).
+	received := map[string]uint64{}
+
+	for _, event := range accepts {
+		figures, ok := restockFiguresOf(event)
+		if ok && figures.warehouseID != 0 {
+			received[event.GetEventId()] = figures.warehouseID
+		}
+	}
+
 	after := map[refoldKey][]float64{}
 
 	for _, claim := range claims {
@@ -280,21 +330,31 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 		}
 
 		figures, ok := restockFiguresOf(event)
-		if !ok || figures.supplierID != in.SupplierID {
+		if !ok || !figures.names(in.SupplierID) {
 			continue
 		}
 
 		result.Counted++
 
-		// The fold's own arithmetic, line by line (foldLines): a line that counted nothing writes nothing.
+		warehouse := figures.warehouseID
+		if warehouse == 0 {
+			warehouse = received[claim.ID]
+		}
+
+		// The fold's own arithmetic, line by line (foldLines): a line that counted nothing writes nothing, and only the
+		// lines crediting this supplier count here.
 		for _, line := range figures.lines {
+			if line.supplierID != in.SupplierID {
+				continue
+			}
+
 			good, lost, broken := line.GetAcceptedCount(), line.GetMissingCount(), line.GetBrokenCount()
 			if good == 0 && lost == 0 && broken == 0 {
 				continue
 			}
 
-			value := lineValue(line)
-			key := refoldKey{ProductID: line.GetProductId(), TeamID: figures.teamID}
+			value := lineValue(line.RestockAcceptedLine)
+			key := refoldKey{ProductID: line.GetProductId(), TeamID: figures.teamID, WarehouseID: warehouse}
 
 			row := after[key]
 			if row == nil {
@@ -313,7 +373,7 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 
 	for _, event := range accepts {
 		figures, ok := restockFiguresOf(event)
-		if ok && figures.supplierID == in.SupplierID && figures.day == in.Day && !held[event.GetEventId()] {
+		if ok && figures.names(in.SupplierID) && figures.day == in.Day && !held[event.GetEventId()] {
 			result.InFlight++
 		}
 	}
@@ -322,6 +382,7 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 	stored := []struct {
 		ProductID               uint64
 		TeamID                  uint64
+		WarehouseID             uint64
 		RestockCount            int64
 		RestockValuation        float64
 		ShippingLostCount       int64
@@ -331,8 +392,8 @@ func refoldRestockDay(tx *gorm.DB, in DayRefoldInput, accepts []*eventsv1.Event)
 	}{}
 
 	err = tx.
-		Raw(`SELECT product_id, team_id, restock_count, restock_valuation, shipping_lost_count, shipping_lost_valuation,
-       shipping_broken_count, shipping_broken_valuation
+		Raw(`SELECT product_id, team_id, warehouse_id, restock_count, restock_valuation, shipping_lost_count,
+       shipping_lost_valuation, shipping_broken_count, shipping_broken_valuation
 FROM supplier_product_daily_reports WHERE day = CAST(? AS date) AND supplier_id = ?`, in.Day, in.SupplierID).
 		Scan(&stored).
 		Error
@@ -342,7 +403,7 @@ FROM supplier_product_daily_reports WHERE day = CAST(? AS date) AND supplier_id 
 
 	before := map[refoldKey][]float64{}
 	for _, r := range stored {
-		before[refoldKey{ProductID: r.ProductID, TeamID: r.TeamID}] = []float64{
+		before[refoldKey{ProductID: r.ProductID, TeamID: r.TeamID, WarehouseID: r.WarehouseID}] = []float64{
 			float64(r.RestockCount), r.RestockValuation, float64(r.ShippingLostCount), r.ShippingLostValuation,
 			float64(r.ShippingBrokenCount), r.ShippingBrokenValuation,
 		}
@@ -417,13 +478,17 @@ func replaceDayRows(
 	}
 
 	slices.SortFunc(keys, func(a, b refoldKey) int {
-		return cmp.Or(cmp.Compare(a.ProductID, b.ProductID), cmp.Compare(a.TeamID, b.TeamID))
+		return cmp.Or(
+			cmp.Compare(a.ProductID, b.ProductID), cmp.Compare(a.TeamID, b.TeamID), cmp.Compare(a.WarehouseID, b.WarehouseID),
+		)
 	})
 
 	rows := make([]DayRefoldRow, 0, len(keys))
 
 	for _, key := range keys {
-		row := DayRefoldRow{ProductID: key.ProductID, TeamID: key.TeamID, Before: before[key], After: after[key]}
+		row := DayRefoldRow{
+			ProductID: key.ProductID, TeamID: key.TeamID, WarehouseID: key.WarehouseID, Before: before[key], After: after[key],
+		}
 		rows = append(rows, row)
 
 		if sameRefoldFigures(row.Before, row.After) {
@@ -432,8 +497,9 @@ func replaceDayRows(
 
 		if row.After == nil {
 			err := tx.
-				Exec(fmt.Sprintf(`DELETE FROM %s WHERE day = CAST(? AS date) AND supplier_id = ? AND product_id = ? AND team_id = ?`, table),
-					in.Day, in.SupplierID, key.ProductID, key.TeamID).
+				Exec(fmt.Sprintf(`DELETE FROM %s
+WHERE day = CAST(? AS date) AND supplier_id = ? AND product_id = ? AND team_id = ? AND warehouse_id = ?`, table),
+					in.Day, in.SupplierID, key.ProductID, key.TeamID, key.WarehouseID).
 				Error
 			if err != nil {
 				return rows, fmt.Errorf("supplier re-fold: remove a row: %w", err)
@@ -442,7 +508,9 @@ func replaceDayRows(
 			continue
 		}
 
-		values := map[string]any{"day": in.Day, "supplier": in.SupplierID, "product": key.ProductID, "team": key.TeamID}
+		values := map[string]any{
+			"day": in.Day, "supplier": in.SupplierID, "product": key.ProductID, "team": key.TeamID, "warehouse": key.WarehouseID,
+		}
 		params := make([]string, len(columns))
 		sets := make([]string, len(columns))
 
@@ -460,9 +528,9 @@ func replaceDayRows(
 
 		err := tx.
 			Exec(fmt.Sprintf(`
-INSERT INTO %[1]s (day, supplier_id, product_id, team_id, %[2]s, last_updated)
-VALUES (CAST(@day AS date), @supplier, @product, @team, %[3]s, NOW())
-ON CONFLICT (day, supplier_id, product_id, team_id) DO UPDATE
+INSERT INTO %[1]s (day, supplier_id, product_id, team_id, warehouse_id, %[2]s, last_updated)
+VALUES (CAST(@day AS date), @supplier, @product, @team, @warehouse, %[3]s, NOW())
+ON CONFLICT (day, supplier_id, product_id, team_id, warehouse_id) DO UPDATE
 SET %[4]s,
     last_updated = NOW()`, table, strings.Join(columns, ", "), strings.Join(params, ", "), strings.Join(sets, ",\n    ")), values).
 			Error

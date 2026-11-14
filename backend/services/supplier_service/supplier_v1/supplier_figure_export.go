@@ -277,8 +277,8 @@ func (s *Service) rankedProducts(ctx context.Context, teamID uint64, scope metri
 	}
 }
 
-// scopeFilters writes a scope back as the filters it was read from — the window, the supplier, and the team when one
-// is picked — so the ranking reads exactly what the tab's search reads.
+// scopeFilters writes a scope back as the filters it was read from — the window, the supplier, and the team and the
+// warehouse chip when one is picked — so the ranking reads exactly what the tab's search reads.
 func scopeFilters(scope metricScope) []*analytic_basev1.FilterItem {
 	filters := []*analytic_basev1.FilterItem{
 		{F: &analytic_basev1.FilterItem_DateRangeFilter{DateRangeFilter: &analytic_basev1.DateRangeFilter{
@@ -293,6 +293,12 @@ func scopeFilters(scope metricScope) []*analytic_basev1.FilterItem {
 	if scope.restockTeamID != 0 {
 		filters = append(filters, &analytic_basev1.FilterItem{F: &analytic_basev1.FilterItem_TeamFilter{
 			TeamFilter: &analytic_basev1.TeamFilter{TeamId: scope.restockTeamID},
+		}})
+	}
+
+	if scope.warehouseID != 0 {
+		filters = append(filters, &analytic_basev1.FilterItem{F: &analytic_basev1.FilterItem_WarehouseFilter{
+			WarehouseFilter: &analytic_basev1.WarehouseFilter{WarehouseId: scope.warehouseID},
 		}})
 	}
 

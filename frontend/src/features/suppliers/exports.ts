@@ -4,19 +4,39 @@ import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace
 import type { PeriodGrain } from "../../lib/period";
 import { useFileExport } from "../../lib/useFileExport";
 import { type SupplierRankBy, reportQuery, statisticsFilters } from "./analytics";
+import { productFilter } from "./products";
 
 // EACH SUPPLIER TAB EXPORTS ITS OWN TABLE (each-supplier-tab-exports-its-own-table) — the tab's rows as a file, on the
 // order list's pattern (one-export-is-the-list-as-a-file): the tab's own filter, every page, its columns, .xlsx,
 // streamed with progress, then downloaded. One hook per tab; each sends what its table was asked with.
 
-/** The Toko tab: SupplierChannelExport with the list's own filter — the settled search and the type. */
+/**
+ * The Toko tab: SupplierChannelExport with the list's own filter — the settled search, the type and the page's Gudang
+ * terkait chip (the stores received there, with that warehouse's figures).
+ */
 export function useStoreExport(teamId: bigint | undefined) {
   const exporter = useFileExport();
 
-  const start = (filter: { supplierId: bigint; q: string; channelType: Marketplace }) =>
+  const start = (filter: { supplierId: bigint; q: string; channelType: Marketplace; warehouseId?: bigint }) =>
     teamId === undefined
       ? Promise.resolve()
       : exporter.start(supplierChannelClient.supplierChannelExport({ teamId, filter }));
+
+  return { ...exporter, start };
+}
+
+/**
+ * The Produk tab: SupplierProductExport with the list's own filter — the settled search, the team, the store (one
+ * store, or NO_STORE for the rows bought with none) and the page's Gudang terkait chip, every page
+ * (a-report-export-is-the-whole-view-as-a-file).
+ */
+export function useProductExport(teamId: bigint | undefined) {
+  const exporter = useFileExport();
+
+  const start = (args: { supplierId: bigint; q: string; teamId: bigint; storeId: bigint; warehouseId?: bigint }) =>
+    teamId === undefined
+      ? Promise.resolve()
+      : exporter.start(supplierChannelClient.supplierProductExport({ teamId, filter: productFilter(args) }));
 
   return { ...exporter, start };
 }
@@ -39,6 +59,8 @@ export function useStatisticsExport(teamId: bigint | undefined) {
     from: string;
     to: string;
     restockTeamId: bigint;
+    /** The page's warehouse chip — 0n is every warehouse (the-supplier-reports-carry-the-warehouse). */
+    warehouseId: bigint;
     view: "time" | "product";
     grain: PeriodGrain;
   }) =>

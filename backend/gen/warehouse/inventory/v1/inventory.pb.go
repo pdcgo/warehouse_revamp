@@ -8847,8 +8847,11 @@ type SupplierGoodsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// The suppliers on screen — a list page, or the one supplier of a detail page.
-	SupplierIds   []uint64           `protobuf:"varint,2,rep,packed,name=supplier_ids,json=supplierIds,proto3" json:"supplier_ids,omitempty"`
-	Group         SupplierGoodsGroup `protobuf:"varint,3,opt,name=group,proto3,enum=warehouse.inventory.v1.SupplierGoodsGroup" json:"group,omitempty"`
+	SupplierIds []uint64           `protobuf:"varint,2,rep,packed,name=supplier_ids,json=supplierIds,proto3" json:"supplier_ids,omitempty"`
+	Group       SupplierGoodsGroup `protobuf:"varint,3,opt,name=group,proto3,enum=warehouse.inventory.v1.SupplierGoodsGroup" json:"group,omitempty"`
+	// One warehouse's goods only — a supplier page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses):
+	// every figure counts only the batches in that warehouse. 0 = every warehouse.
+	WarehouseId   uint64 `protobuf:"varint,4,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8902,6 +8905,13 @@ func (x *SupplierGoodsRequest) GetGroup() SupplierGoodsGroup {
 		return x.Group
 	}
 	return SupplierGoodsGroup_SUPPLIER_GOODS_GROUP_UNSPECIFIED
+}
+
+func (x *SupplierGoodsRequest) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return 0
 }
 
 // SupplierGoods — what one supplier's goods did, over all time, in one group. Bounded: a supplier has few stores and
@@ -9931,12 +9941,13 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x11price_unit_before\x18\x02 \x01(\x01R\x0fpriceUnitBefore\x12(\n" +
 	"\x10price_unit_after\x18\x03 \x01(\x01R\x0epriceUnitAfter\x12!\n" +
 	"\fvalue_change\x18\x04 \x01(\x01R\vvalueChange\x12\x14\n" +
-	"\x05units\x18\x05 \x01(\x03R\x05units\"\xce\x01\n" +
+	"\x05units\x18\x05 \x01(\x03R\x05units\"\xf1\x01\n" +
 	"\x14SupplierGoodsRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x125\n" +
 	"\fsupplier_ids\x18\x02 \x03(\x04B\x12\xbaH\x0f\x92\x01\f\b\x01\x10d\x18\x01\"\x042\x02 \x00R\vsupplierIds\x12L\n" +
 	"\x05group\x18\x03 \x01(\x0e2*.warehouse.inventory.v1.SupplierGoodsGroupB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x05group:\v\x92\xb5\x18\a\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x05group\x12!\n" +
+	"\fwarehouse_id\x18\x04 \x01(\x04R\vwarehouseId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"\xb6\x02\n" +
 	"\rSupplierGoods\x12\x1f\n" +
 	"\vsupplier_id\x18\x01 \x01(\x04R\n" +

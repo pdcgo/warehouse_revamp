@@ -45,6 +45,12 @@ export const description =
 export interface SupplierStatisticsProps {
   /** Any team's supplier — its figures count every team's restocks from it. */
   supplierId: bigint;
+  /**
+   * The page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses): every figure — the headline, both views
+   * and the Export — reads only that warehouse's restocks and sales (the-supplier-reports-carry-the-warehouse). 0n, or
+   * none, is every warehouse — their sum, the figures the tab read before.
+   */
+  warehouseId?: bigint;
 }
 
 type StatisticsView = "time" | "product";
@@ -67,7 +73,10 @@ type StatisticsView = "time" | "product";
 //
 // ⚠ FOLDED, NOT LIVE: the figures are supplier_service's fold of *Restock Accepted* (the-report-is-processed-like-settlement),
 // so an accept a moment ago can take a moment to appear.
-export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
+//
+// UNDER A WAREHOUSE CHIP the page hands in (the-supplier-reports-carry-the-warehouse) every read carries it: a restock
+// counts at the warehouse it was received at, a sale at the warehouse it was taken from, at the same line prices.
+export function SupplierStatistics({ supplierId, warehouseId = 0n }: SupplierStatisticsProps) {
   const isMobile = useIsMobile();
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -82,6 +91,15 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   const [restockTeamId, setRestockTeamId] = useUrlState("stat.team", 0n, idCodec);
   const [seriesPage, setSeriesPage] = useState(1);
   const [productPage, setProductPage] = useState(1);
+
+  // Another warehouse chip is a new question too — back to the first page of both views. The chip is the page's, so the
+  // reset happens here, while rendering, the moment a new one arrives.
+  const [pagesOf, setPagesOf] = useState(warehouseId);
+  if (pagesOf !== warehouseId) {
+    setPagesOf(warehouseId);
+    setSeriesPage(1);
+    setProductPage(1);
+  }
 
   // A new window, grain or team filter is a new question — back to the first page of whatever it changes.
   const pickGrain = (next: PeriodGrain) => {
@@ -107,7 +125,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   const teamId = current?.teamId;
 
   // The headline is read on BOTH views — the whole window, whichever way it is cut — and keyed without either page.
-  const headline = useSupplierHeadline({ teamId, supplierId, from, to, valid, restockTeamId });
+  const headline = useSupplierHeadline({ teamId, supplierId, from, to, valid, restockTeamId, warehouseId });
   // Each view's table only once that view is open — nobody waits on a table they are not looking at.
   const series = useSupplierFigureSeries({
     teamId,
@@ -116,6 +134,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
     to,
     valid: valid && view === "time",
     restockTeamId,
+    warehouseId,
     grain,
     page: seriesPage,
     pageSize: PAGE_SIZE,
@@ -127,6 +146,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
     to,
     valid: valid && view === "product",
     restockTeamId,
+    warehouseId,
     page: productPage,
     pageSize: PAGE_SIZE,
   });
@@ -140,7 +160,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
       testId="statistics-export"
       disabled={!valid}
       progress={exporter.progress}
-      onExport={() => void exporter.start({ supplierId, from, to, restockTeamId, view, grain })}
+      onExport={() => void exporter.start({ supplierId, from, to, restockTeamId, warehouseId, view, grain })}
     />
   ) : null;
 
@@ -236,7 +256,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
                   page={seriesPage}
                   onPageChange={setSeriesPage}
                   hasNext={series.isPlaceholderData ? undefined : series.data?.hasNext}
-                  resetKey={[grain, from, to, restockTeamId].join("|")}
+                  resetKey={[grain, from, to, restockTeamId, warehouseId].join("|")}
                   pageSize={PAGE_SIZE}
                   testId="statistics-series-pager"
                 />
@@ -259,7 +279,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
                   page={productPage}
                   onPageChange={setProductPage}
                   hasNext={products.isPlaceholderData ? undefined : products.data?.hasNext}
-                  resetKey={[from, to, restockTeamId].join("|")}
+                  resetKey={[from, to, restockTeamId, warehouseId].join("|")}
                   pageSize={PAGE_SIZE}
                   testId="statistics-products-pager"
                 />

@@ -2518,28 +2518,6 @@
         "contact": "Contact",
         "description": "Description"
       },
-      "pending": {
-        "products": {
-          "label": "Products",
-          "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet"
-        },
-        "sold": {
-          "label": "Sold",
-          "reason": "sample figures — the Products tab's rows are invented, and so is each product's units sold and last order; a store's figures on the Stores tab are real"
-        },
-        "ready": {
-          "label": "Ready",
-          "reason": "sample figures — the Products tab's rows are invented, and so is each product's ready stock; a store's figures on the Stores tab are real"
-        },
-        "warehouseFilter": {
-          "label": "Warehouse filter",
-          "reason": "picking a warehouse only switches the summary under it — no tab can be narrowed by a warehouse yet"
-        },
-        "export": {
-          "label": "Export",
-          "reason": "the Products tab's rows are invented, so its file waits for real rows — the Stores and Statistics tabs export"
-        }
-      },
       "teamAll": "Any team",
       "view": {
         "label": "View",
@@ -2582,7 +2560,8 @@
         "orders": "from {{n}} orders",
         "restocks": "{{n}} restocks",
         "last": "last {{date}}"
-      }
+      },
+      "showAll": "All Warehouses"
     },
     "emptyHint": "Add the suppliers this team buys its stock from.",
     "rangeClear": "Clear {{figure}}"
@@ -2633,28 +2612,6 @@
       "descriptionPlaceholder": "e.g. free shipping over 5 rolls"
     },
     "editAction": "Edit",
-    "pending": {
-      "products": {
-        "label": "Products",
-        "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet, so these are invented"
-      },
-      "sold": {
-        "label": "Sold",
-        "reason": "sample figures — the Products tab's rows are invented, and so is each product's units sold and last order; a store's figures on the Stores tab are real"
-      },
-      "ready": {
-        "label": "Ready",
-        "reason": "sample figures — the Products tab's rows are invented, and so is each product's ready stock; a store's figures on the Stores tab are real"
-      },
-      "warehouseFilter": {
-        "label": "Warehouse filter",
-        "reason": "picking a warehouse only switches the summary under it — no tab can be narrowed by a warehouse yet"
-      },
-      "export": {
-        "label": "Export",
-        "reason": "the Products tab's rows are invented, so its file waits for real rows — the Stores and Statistics tabs export"
-      }
-    },
     "tab": {
       "channels": "Stores",
       "products": "Products",
@@ -2669,13 +2626,18 @@
       "empty": "No products yet.",
       "search": "Search product, product code or store",
       "storeAll": "Every store",
+      "noStore": "No store",
       "none": "No products match.",
-      "emptyHint": "Products appear here once a restock bought at this supplier's stores is accepted."
+      "emptyHint": "Products appear here once a restock bought from this supplier is accepted.",
+      "noneAtWarehouse": "No products at this warehouse.",
+      "noneAtWarehouseHint": "None of this supplier's products had goods received at the chosen warehouse."
     },
     "filter": {
       "search": "Search name, link or description",
       "typeAll": "All store types",
-      "none": "No supplier stores match."
+      "none": "No supplier stores match.",
+      "noneAtWarehouse": "No supplier stores at this warehouse.",
+      "noneAtWarehouseHint": "None of this supplier's stores had goods received at the chosen warehouse."
     }
   },
   "supplierFigures": {

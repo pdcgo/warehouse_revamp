@@ -8,11 +8,12 @@ import (
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
-// THE SALES FOLD'S SEAM (OrderTakeSuppliers): what an order's take drew, per supplier, product and owning team — read by
+// THE SALES FOLD'S SEAM (OrderTakeSuppliers): what an order's take drew, per supplier, product, owning team and the
+// warehouse it was taken from (the-supplier-reports-carry-the-warehouse) — read by
 // supplier_service when the order is placed or cancelled (penjualan-is-the-selling-value-on-the-order-day).
 
 // A take spanning two suppliers' batches of one product splits by batch; a batch bought from nobody is left out; the
-// owning team is the batch's, not the caller's.
+// owning team is the batch's, not the caller's; the warehouse is the batches' — the one the take drew in.
 func TestOrderTakeSuppliers_SplitsByTheBatchesTheTakeDrew(t *testing.T) {
 	f := sgStocked(t)
 
@@ -25,8 +26,8 @@ func TestOrderTakeSuppliers_SplitsByTheBatchesTheTakeDrew(t *testing.T) {
 	}
 
 	want := []inventory_v1.OrderTakeSupplier{
-		{ProductID: sgCelana, SupplierID: sgSumber, TeamID: sgSinar, Units: 8},
-		{ProductID: sgCelana, SupplierID: sgSinarJaya, TeamID: sgSinar, Units: 1},
+		{ProductID: sgCelana, SupplierID: sgSumber, TeamID: sgSinar, WarehouseID: sgGudang5, Units: 8},
+		{ProductID: sgCelana, SupplierID: sgSinarJaya, TeamID: sgSinar, WarehouseID: sgGudang5, Units: 1},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Celana's take = %+v, want %+v", got, want)
@@ -55,7 +56,7 @@ func TestOrderTakeSuppliers_ReadsTheTakeGrossAfterItsRelease(t *testing.T) {
 		t.Fatalf("OrderTakeSuppliers: %v", err)
 	}
 
-	want := []inventory_v1.OrderTakeSupplier{{ProductID: sgKaos, SupplierID: sgSumber, TeamID: sgMelati, Units: 3}}
+	want := []inventory_v1.OrderTakeSupplier{{ProductID: sgKaos, SupplierID: sgSumber, TeamID: sgMelati, WarehouseID: sgGudang5, Units: 3}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("released take = %+v, want %+v", got, want)
 	}

@@ -121,3 +121,4 @@ statements, not the access path.
 | --- | --- | --- | --- |
 | 2026-10-07 | 7.1 ms @ 20 lines · 34.3 ms @ 100 | 3 + lines | first audit |
 | 2026-10-07 | **2.1 ms** @ 20 lines · **5.6 ms** @ 100 | **4** | ✅ one grouped, product-ordered upsert for the whole accept |
+| 2026-11-14 | 4.3–5.0 ms @ 20 lines · 12–16 ms @ 100 (`TestPerf_LinkFold`, 40 000 stored links, empty figures table) | **5** | an accept also upserts its links (`supplier_channel_products`, 00005) — ONE statement, `supplier_channel_products_key` arbiter: 0.4 ms @ 20 lines, 1.6 ms @ 100 in Postgres; the day-row upsert still dominates. The figures upsert groups by (line supplier, product). Nil cost — no new finding |

@@ -66,7 +66,7 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 <tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · COD · 1 supplier)</td><td rowspan="3" valign="top">accept restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>COD recorded in liability</td><td>✅ ok</td></tr>
 <tr><td>COD recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
-<tr><td><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers)</td><td>accept restock</td><td>recorded at each supplier</td><td><a href="#a-multi-supplier-restock-is-recorded-at-no-supplier">❌ error</a></td></tr>
+<tr><td><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers)</td><td>accept restock</td><td>recorded at each supplier</td><td>✅ ok</td></tr>
 <tr><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · all received · received count too high · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>⬜ untested</td></tr>
 <tr><td>correction recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>ready stock decreases</td><td>⬜ untested</td></tr>
@@ -184,16 +184,3 @@ back into the operational account; no posts nothing. But money can come back in 
 dialog warns *"Pembatalan restok akan diperiksa"* while nothing checks a cancel yet. Neither is decided here, so neither
 has a given: cancel is expected to be reviewed, and perhaps changed, later. Until then the two cancel givens above check
 the system as it is.
-
-## Errors
-
-### a-multi-supplier-restock-is-recorded-at-no-supplier
-
-| | |
-| --- | --- |
-| then | `warehouse:all` wants to accept a restock (status: ongoing · all received · new product · no COD · multi suppliers) · accept restock · recorded at each supplier |
-| expected | each line is recorded at its own supplier |
-| actual | the restock is recorded at **no** supplier: neither supplier's Statistics shows its products. The goods still enter ready stock, and the accept itself succeeds |
-| cause | supplier_service records a restock under ONE supplier for the whole restock. When the lines name different suppliers, that supplier is 0, and the restock is skipped ([restock_accepted_event.go](../../../backend/services/inventory_service/inventory_v1/restock_accepted_event.go#L146), [analytic_fold.go](../../../backend/services/supplier_service/supplier_v1/analytic_fold.go#L140)) |
-| seen | the owner's check on the dev data (2026-11-11), and the e2e run for every warehouse role |
-| check | `warehouse:all accept restock (status: ongoing · all received · new product · no COD · multi suppliers)` in [restock.spec.ts](../../../frontend/e2e/restock.spec.ts), marked `test.fail` until this is fixed |

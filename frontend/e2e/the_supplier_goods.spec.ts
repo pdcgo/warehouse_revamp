@@ -18,6 +18,17 @@ import { openShops, pickTeam } from "./pickers";
 // keeps the supplier under the warehouse its restock was received at, and not under a second, empty warehouse — on the
 // supplier list and on Discover — with its figures whole (`the-warehouse-filter-narrows-only-the-rows`).
 //
+// THE PRODUK TAB (`a-supplier-product-row-says-whose-where-and-when`, `the-detail-tabs-show-sold-and-ready`): the accepted
+// restock linked the product to the store it was bought at (`restock-accepted-links-the-product-to-its-channel`), so the
+// supplier's Produk tab lists it — its team, that store, 2 sold with the order's day and 3 ready after the order; 5 ready
+// again after the cancel.
+//
+// THE GUDANG TERKAIT CHIP (`a-supplier-page-is-scoped-by-its-warehouses`), last: a second product, bought at a second
+// store, is restocked into warehouse B — the supplier page under B's chip (`?warehouse=`) lists only that store and that
+// product, hiding what was received at A; A's chip the reverse; All both. STATISTIK follows the chip too
+// (`the-supplier-reports-carry-the-warehouse`): under B's chip it reads B's restock alone — 4 Benang for Rp 40.000 — and
+// leaves out the 5 Kain received at A; A's chip the reverse; All the sum, Rp 90.000.
+//
 // ⚠ NAMED TO SORT AFTER orders.spec.ts AND statement.spec.ts: the suite shares one database, orders.spec counts the
 // orders root can read, and this places one. Its money moves in its OWN team, so root's team totals are untouched.
 
@@ -58,7 +69,7 @@ const state = {
   warehouse: "",
   whCode: `SGW${SUFFIX}`.slice(0, 10),
   whName: `E2E Goods Warehouse ${SUFFIX}`,
-  // A second warehouse, never restocked into — the Gudang filter's "not here".
+  // A second warehouse, not restocked into until the last test — the Gudang filter's "not here", then the chip's B.
   warehouseB: "",
   whBCode: `SGB${SUFFIX}`.slice(0, 10),
   whBName: `E2E Goods Other Warehouse ${SUFFIX}`,
@@ -245,6 +256,33 @@ test("Supplier goods: an order takes 2 — the list, the store and Gudang terkai
   await expect(warehouses.getByTestId("supplier-warehouse-summary-ready")).toContainText(/1 restock/);
 });
 
+// The supplier's Produk tab: its one product — the link the accepted restock's fold wrote, so polled.
+async function expectProductFigures(page: Page, sold: RegExp, ready: RegExp) {
+  const row = page.getByTestId("products-table").locator("tbody tr");
+
+  await expect(async () => {
+    await page.goto(`/inventories/suppliers/${state.supplier}`);
+    await page.getByTestId("supplier-tab-products").click();
+    await expect(row).toHaveCount(1, { timeout: 3000 });
+  }).toPass({ timeout: 45_000 });
+
+  const id = (await row.getAttribute("data-testid"))!.replace("product-row-", "");
+  await expect(row).toContainText("Kain Katun");
+  await expect(row).toContainText(state.productCode);
+  await expect(row).toContainText(`E2E Goods Seller ${SUFFIX}`);
+  await expect(page.getByTestId(`product-row-${id}-store`)).toContainText(`Sumber Goods Official ${SUFFIX}`);
+  await expect(page.getByTestId(`product-row-${id}-store`)).toContainText("Shopee");
+  await expect(page.getByTestId(`product-sold-${id}`)).toHaveText(sold);
+  await expect(page.getByTestId(`product-ready-${id}`)).toHaveText(ready);
+}
+
+test("Supplier goods: the Produk tab lists the restocked product at its store — 2 sold, 3 ready", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.seller);
+
+  await expectProductFigures(page, /^2ordered \w+ \d+, \d{4}$/, /^3$/);
+});
+
 // The supplier page's Statistik tab: the window's Penjualan card.
 async function expectStatisticsSales(page: Page, value: RegExp, units: RegExp) {
   await page.goto(`/inventories/suppliers/${state.supplier}`);
@@ -331,8 +369,157 @@ test("Supplier goods: the order cancelled, its 2 units are counted back", async 
     await expect(page.getByTestId(`supplier-ready-${state.supplier}`)).toHaveText(/^5restocked /, { timeout: 3000 });
   }).toPass({ timeout: 45_000 });
 
+  // The product's row nets the order out with it: 0 sold, no order day, 5 ready.
+  await expectProductFigures(page, /^0$/, /^5$/);
+
   // Penjualan takes it back on the cancel's own day — today, the same day it was placed — so the window nets to 0.
   await expect(async () => {
     await expectStatisticsSales(page, /^Rp\s?0$/, /^0 units$/);
   }).toPass({ timeout: 45_000 });
+});
+
+// The supplier page under a warehouse chip: the Toko tab's store rows and the Produk tab's product names.
+async function expectUnderChip(page: Page, warehouse: string, stores: { shown: string; hidden: string }, product: { shown: string; hidden: string }) {
+  await expect(page).toHaveURL(new RegExp(`[?&]warehouse=${warehouse}(&|$)`));
+  await expect(page.getByTestId(`channel-row-${stores.shown}`)).toBeVisible();
+  await expect(page.getByTestId(`channel-row-${stores.hidden}`)).toHaveCount(0);
+
+  await page.getByTestId("supplier-tab-products").click();
+  const rows = page.getByTestId("products-table").locator("tbody tr");
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText(product.shown);
+  await expect(rows).not.toContainText(product.hidden);
+  await page.getByTestId("supplier-tab-channels").click();
+}
+
+test("Supplier goods: the warehouse chip narrows the Toko and Produk tabs — B's chip hides what was received at A", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // A second store and a second product of the seller's, restocked into warehouse B onto its own rack.
+  const rack = await rpc<{ rack: { id: string } }>(page, "inventory.v1.RackService/RackCreate", {
+    teamId: state.warehouseB,
+    code: "e2e-goods-b",
+    name: "e2e-goods-b",
+  });
+  const category = await rpc<{ category: { id: string } }>(page, "category.v1.CategoryService/CategoryCreate", {
+    name: `E2E Goods B ${SUFFIX}`,
+  });
+  const product = await rpc<{ product: { id: string; productCode: string } }>(page, "product.v1.ProductService/ProductCreate", {
+    teamId: state.seller,
+    productCodePart: `SGQ${SUFFIX}`,
+    name: "Benang Katun",
+    categoryId: category.category.id,
+  });
+  const storeB = await rpc<{ channel: { id: string } }>(page, "supplier.v1.SupplierChannelService/SupplierChannelCreate", {
+    teamId: state.seller,
+    supplierId: state.supplier,
+    channelType: "MARKETPLACE_TOKOPEDIA",
+    name: `Sumber Goods Tokopedia ${SUFFIX}`,
+  });
+  const account = await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+    teamId: state.seller,
+    type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+    provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+    name: `E2E goods B ${SUFFIX}`,
+    holderName: "E2E",
+    accountNumber: `E2E-SGB-${SUFFIX}`,
+    openingBalance: 4 * UNIT_COST,
+    openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+  });
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: state.seller,
+    accountId: account.account.id,
+    operational: true,
+  });
+
+  const restock = await rpc<{ request: { id: string; items: { id: string; count: string }[] } }>(
+    page,
+    "inventory.v1.RestockRequestService/RestockRequestCreate",
+    {
+      teamId: state.seller,
+      warehouseId: state.warehouseB,
+      financeAccountId: account.account.id,
+      items: [
+        {
+          productId: product.product.id,
+          productCode: product.product.productCode,
+          name: "Benang Katun",
+          count: 4,
+          total: 4 * UNIT_COST,
+          supplierId: state.supplier,
+          supplierChannelId: storeB.channel.id,
+        },
+      ],
+    },
+  );
+  await rpc(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+    teamId: state.warehouseB,
+    requestId: restock.request.id,
+    lines: restock.request.items.map((item) => ({
+      itemId: item.id,
+      receivedCount: item.count,
+      placements: [{ placementId: rack.rack.id, quantity: item.count }],
+    })),
+  });
+
+  await useTeam(page, state.seller);
+
+  // Opened under B's chip: B pressed, the Tokopedia store alone on the Toko tab with B's figures, and on the Produk tab
+  // Benang alone — the link is the accept's fold, so polled.
+  const chips = page.getByTestId("supplier-warehouses-chips");
+  await expect(async () => {
+    await page.goto(`/inventories/suppliers/${state.supplier}?warehouse=${state.warehouseB}`);
+    await expect(chips.getByRole("button", { name: state.whBName })).toHaveAttribute("aria-pressed", "true", { timeout: 3000 });
+    await page.getByTestId("supplier-tab-products").click();
+    await expect(page.getByTestId("products-table").locator("tbody tr")).toHaveCount(1, { timeout: 3000 });
+  }).toPass({ timeout: 45_000 });
+
+  await page.getByTestId("supplier-tab-channels").click();
+  await expect(page.getByTestId(`channel-ready-${storeB.channel.id}`)).toHaveText(/^4restocked /);
+  await expectUnderChip(page, state.warehouseB, { shown: storeB.channel.id, hidden: state.store }, { shown: "Benang Katun", hidden: "Kain Katun" });
+
+  // A's chip: the Shopee store and Kain Katun — what was received at A — and the URL follows the pick.
+  await chips.getByRole("button", { name: state.whName }).click();
+  await expectUnderChip(page, state.warehouse, { shown: state.store, hidden: storeB.channel.id }, { shown: "Kain Katun", hidden: "Benang Katun" });
+
+  // All: both stores and both products, and no warehouse in the URL.
+  await chips.getByRole("button", { name: "All" }).click();
+  await expect(page).not.toHaveURL(/[?&]warehouse=/);
+  await expect(page.getByTestId(`channel-row-${state.store}`)).toBeVisible();
+  await expect(page.getByTestId(`channel-row-${storeB.channel.id}`)).toBeVisible();
+  await page.getByTestId("supplier-tab-products").click();
+  await expect(page.getByTestId("products-table").locator("tbody tr")).toHaveCount(2);
+});
+
+// Statistik's headline under a chip — restocked value and units — and its Per Produk rows' product names.
+async function expectStatisticsUnderChip(page: Page, warehouse: string, value: RegExp, units: RegExp, products: string[]) {
+  await page.goto(`/inventories/suppliers/${state.supplier}${warehouse === "" ? "" : `?warehouse=${warehouse}`}`);
+  await page.getByTestId("supplier-tab-statistics").click();
+  await expect(page.getByTestId("statistics-summary-restocked-value")).toHaveText(value, { timeout: 3000 });
+  await expect(page.getByTestId("statistics-summary-restocked-units")).toHaveText(units, { timeout: 3000 });
+
+  await page.getByTestId("statistics-view-product").click();
+  const rows = page.getByTestId("statistics-products").locator("tbody tr");
+  await expect(rows).toHaveCount(products.length, { timeout: 3000 });
+  for (const name of products) await expect(rows.filter({ hasText: name })).toHaveCount(1);
+}
+
+test("Supplier goods: Statistik under B's chip reads B's restock and leaves out what was received at A", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.seller);
+
+  // B's accept is folded by supplier_service from RestockAccepted — so polled. B: 4 Benang Katun for Rp 40.000; A's 5 Kain
+  // Katun (Rp 50.000) is not B's.
+  await expect(async () => {
+    await expectStatisticsUnderChip(page, state.warehouseB, /^Rp\s?40\.000$/, /^4 units$/, ["Benang Katun"]);
+  }).toPass({ timeout: 45_000 });
+  await expect(page.getByTestId("statistics-products")).not.toContainText("Kain Katun");
+
+  // A's chip the reverse — and the URL keeps it.
+  await expectStatisticsUnderChip(page, state.warehouse, /^Rp\s?50\.000$/, /^5 units$/, ["Kain Katun"]);
+  await expect(page).toHaveURL(new RegExp(`[?&]warehouse=${state.warehouse}(&|$)`));
+  await expect(page.getByTestId("statistics-products")).not.toContainText("Benang Katun");
+
+  // No chip: the sum over every warehouse — what the tab read before the reports carried the warehouse.
+  await expectStatisticsUnderChip(page, "", /^Rp\s?90\.000$/, /^9 units$/, ["Kain Katun", "Benang Katun"]);
 });

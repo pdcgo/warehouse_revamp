@@ -475,7 +475,8 @@ func (g refoldGoods) OrderTakeSuppliers(ctx context.Context, transactionID uint6
 	out := make([]supplier_v1.SaleTakePart, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, supplier_v1.SaleTakePart{
-			ProductID: row.ProductID, SupplierID: row.SupplierID, TeamID: row.TeamID, Units: row.Units,
+			ProductID: row.ProductID, SupplierID: row.SupplierID, TeamID: row.TeamID, WarehouseID: row.WarehouseID,
+			Units: row.Units,
 		})
 	}
 
@@ -486,7 +487,7 @@ func (refoldGoods) SupplierIDsByFigure(context.Context, supplier_v1.GoodsFigure,
 	return nil, errNotAnOperatorRead
 }
 
-func (refoldGoods) StoreGoods(context.Context, uint64) (map[uint64]supplier_v1.StoreGoods, error) {
+func (refoldGoods) StoreGoods(context.Context, uint64, uint64) (map[uint64]supplier_v1.StoreGoods, error) {
 	return nil, errNotAnOperatorRead
 }
 
@@ -502,7 +503,7 @@ func printSupplierRefold(w io.Writer, target string, in supplier_v1.DayRefoldInp
 	}
 
 	for _, row := range result.Rows {
-		label := fmt.Sprintf("product %d · team %d", row.ProductID, row.TeamID)
+		label := fmt.Sprintf("product %d · team %d · warehouse %d", row.ProductID, row.TeamID, row.WarehouseID)
 		printRefoldRow(w, label, result.Columns, row.Before, row.After, "the log holds nothing there")
 	}
 

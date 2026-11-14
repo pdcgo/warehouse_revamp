@@ -22,6 +22,10 @@ import { SupplierStatistics, description } from "./SupplierStatistics";
 //
 // …and sold, on the same days (Penjualan, penjualan-is-the-selling-value-on-the-order-day): 30 Beras Rp 1.950.000, 50 Gula
 // Rp 975.000, 20 Beras Rp 1.300.000 — 100 units, Rp 4.225.000 in the window.
+//
+// By warehouse (the-supplier-reports-carry-the-warehouse): the Beras was received at, and sold from, Gudang Pusat (11) —
+// 70 · Rp 3.500.000, 1 short, 3 broken, 50 sold for Rp 3.250.000; the Gula at Gudang Cabang (14) — 60 · Rp 900.000,
+// 3 broken, 50 sold for Rp 975.000.
 
 const MELATI = teams.find((t) => t.id === 12n)!;
 
@@ -74,6 +78,9 @@ export const Monthly: Story = {
 
 // Another team keeps it — Toko Kenanga's UD Makmur Jaya, as read from Discover.
 export const AnotherTeamsSupplier: Story = { args: { supplierId: 34n } };
+
+// The page's Gudang terkait chip on Gudang Pusat — the tab reads that warehouse's rows only.
+export const UnderAWarehouseChip: Story = { args: { warehouseId: 11n } };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
@@ -478,6 +485,59 @@ export const ByProductReadsItsSales: Story = {
     await expect(within(beras).getByTestId("figure-sales")).toHaveTextContent(`50${rp(3_250_000n)}`);
     const gula = canvas.getByTestId("statistics-product-row-13|73");
     await expect(within(gula).getByTestId("figure-sales")).toHaveTextContent(`50${rp(975_000n)}`);
+  },
+};
+
+// ── Under a warehouse chip (the-supplier-reports-carry-the-warehouse) ─────────────────────────────────────────────
+
+// A CHIP NARROWS EVERY FIGURE: under Gudang Pusat the headline is its Beras alone — received there, sold from there, at
+// the same line prices — and Per Produk lists the Beras only; Toko Kenanga's Gula went to Gudang Cabang.
+export const AWarehouseChipNarrowsEveryFigure: Story = {
+  args: { warehouseId: 11n },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("statistics-summary-restocked-value")).toHaveTextContent(rp(3_500_000n));
+    await expect(canvas.getByTestId("statistics-summary-restocked-units")).toHaveTextContent("70 units");
+    await expect(canvas.getByTestId("statistics-summary-sales-value")).toHaveTextContent(rp(3_250_000n));
+    await expect(canvas.getByTestId("statistics-summary-sales-units")).toHaveTextContent("50 units");
+    await expect(canvas.getByTestId("statistics-summary-broken-value")).toHaveTextContent(rp(150_000n));
+    // Five days ago was the Gula's day — at Gudang Cabang, so a quiet day here.
+    await expect(within(canvas.getByTestId(`statistics-series-row-${dayAgo(5)}`)).queryByText(rp(900_000n))).toBeNull();
+
+    const table = await openByProduct(canvas);
+    await waitFor(() => {
+      const rows = within(table).getAllByRole("row").slice(1);
+      expect(rows.map((r) => r.getAttribute("data-testid"))).toEqual(["statistics-product-row-12|74"]);
+    });
+  },
+};
+
+// …WITH NO CHIP, THE SUM OVER EVERY WAREHOUSE — Gudang Pusat's and Gudang Cabang's together are the tab's figures as
+// they read before the reports carried the warehouse (TheHeadlineIsTheWholeWindow).
+export const NoChipIsTheSumOfTheWarehouses: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("statistics-summary-restocked-value")).toHaveTextContent(rp(3_500_000n + 900_000n));
+    await expect(canvas.getByTestId("statistics-summary-sales-value")).toHaveTextContent(rp(3_250_000n + 975_000n));
+  },
+};
+
+// THE CHIP REACHES THE SERVER — every read and the Export carry it as a warehouse filter, after the window.
+export const TheExportCarriesTheChip: Story = {
+  args: { warehouseId: 14n },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("statistics-summary-restocked-value")).toHaveTextContent(rp(900_000n));
+
+    await userEvent.click(canvas.getByTestId("statistics-export"));
+    await waitFor(() => expect(supplierExportScenario.figures).toHaveLength(1));
+
+    const asked = supplierExportScenario.figures[0]!;
+    await expect(asked.filters.map((f) => f.f.case)).toEqual(["dateRangeFilter", "warehouseFilter", "supplierFilter"]);
+    await expect(asked.filters[1]!.f.value).toMatchObject({ warehouseId: 14n });
   },
 };
 

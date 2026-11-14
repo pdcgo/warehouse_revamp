@@ -27,12 +27,10 @@ import { SUFFIX, login, api, ongoingOf, inboundRow, readyAt } from "./restock_he
 // the selling team reads on its restock page. (brokens on rack) is 🚧 unimplemented — the accept keeps no rack for broken
 // units — so it has no check here yet. (missing items) counts 7 in of 10, and the 3 are a missing row, read the same way.
 // (COD) and the analytic-metric and product-history thens are not tested here yet — `COD recorded in analytic metric`
-// is 🚧, liability keeps no metric. (multi suppliers) is ❌ error:
-// supplier_service folds a restock under ONE restock-level supplier, so a restock whose lines name different suppliers is
-// recorded at none (commonLineSupplier). Its check is `test.fail` — green while the bug stands, red the day it is fixed,
-// which is the sign to ask the owner to change the status (acceptances-are-markdown). A one-supplier restock accepted
-// AFTER the multi-supplier one is its CONTROL: once that shows, the fold has run, so the multi one's absence is the bug and
-// not a slow fold. A broken fold fails the `…: recorded at 1 supplier` test beside it, so `test.fail` hides nothing.
+// is 🚧, liability keeps no metric. (multi suppliers) is ✅ ok since 2026-11-14 (the owner's word, after supplier_service
+// began crediting each LINE's own supplier — the-supplier-comes-from-the-restock-until-lines-name-a-store); until then the
+// restock was recorded at none and this check was `test.fail`. A one-supplier restock accepted AFTER the multi-supplier one
+// is its CONTROL: once that shows, the fold has run, so a missing multi-supplier row is a real failure, not a slow fold.
 test.describe("warehouse:all wants to accept a restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -511,7 +509,6 @@ test.describe("warehouse:all wants to accept a restock", () => {
     });
 
     test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · multi suppliers)`, async ({ page }) => {
-      test.fail(true, "❌ error — docs/acceptances/inventory/restock.md#a-multi-supplier-restock-is-recorded-at-no-supplier");
 
       // The mixed one first, its control after.
       await login(page, username(r.key), PASSWORD);

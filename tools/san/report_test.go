@@ -275,7 +275,7 @@ func TestReportRefold_SupplierRestockReadsInventorysAccepts(t *testing.T) {
 	t.Logf("the run:\n%s", out)
 
 	for _, want := range []string{"supplier-restock-daily · supplier 31 · 2026-09-03 · re-folded", "lost and now claimed 1",
-		"product 100 · team 12: row added", "restock_count", "21.000", "shipping_broken_count"} {
+		"product 100 · team 12 · warehouse 5: row added", "restock_count", "21.000", "shipping_broken_count"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output lacks %q:\n%s", want, out)
 		}
@@ -335,7 +335,7 @@ func TestReportRefold_SupplierSaleReadsSellingsOrdersAndInventorysTake(t *testin
 	out := supplierRefoldLine(san.target, in, result)
 	t.Logf("the run:\n%s", out)
 
-	for _, want := range []string{"supplier-sale-daily · supplier 77", "lost and now claimed 1", "product 901 · team 12: row added",
+	for _, want := range []string{"supplier-sale-daily · supplier 77", "lost and now claimed 1", "product 901 · team 12 · warehouse 5: row added",
 		"sales_count", "45.000"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output lacks %q:\n%s", want, out)

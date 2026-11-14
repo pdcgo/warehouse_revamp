@@ -129,8 +129,8 @@ func acceptIsOverride(rr *inventory_service_models.Restock) bool {
 
 // AcceptedRestocks is every ACCEPTED restock that names a supplier, oldest first, loaded the way RestockAcceptedEvent
 // needs it — its items in order, its problem rows, and the accept's trail row (its override stamp). For
-// `san supplier backfill-figures` (past-accepts-are-backfilled-once): what "accepted" is stored as stays inventory's to
-// know.
+// `san supplier backfill-figures` (past-accepts-are-backfilled-once) and `san supplier backfill-links`
+// (restock-accepted-links-the-product-to-its-channel): what "accepted" is stored as stays inventory's to know.
 func AcceptedRestocks(db *gorm.DB) *gorm.DB {
 	return db.
 		Model(&inventory_service_models.Restock{}).
@@ -175,10 +175,10 @@ func RestockAcceptedEventsOn(db *gorm.DB, day string) ([]*eventsv1.Event, error)
 
 // commonLineSupplier is the one supplier every line names, or 0 when they disagree or one names none.
 //
-// ⚠ supplier_service's figures still fold a whole restock under the event's restock-level supplier_id. Lines name their
-// own supplier now (a-line-names-the-channel-it-was-bought-from) and the event carries each, but until the fold reads a
-// line's own, a restock whose lines name one supplier keeps feeding it, and one that mixes suppliers credits none of
-// them rather than all of it to the first.
+// supplier_service's figures fold each LINE under its own supplier (the-supplier-comes-from-the-restock-until-lines-
+// name-a-store — switched 2026-11-14); this restock-level id stays on the event for a consumer reading the restock as
+// a whole. Being 0 whenever a line names none is load-bearing: supplier_service reads a line naming no supplier as the
+// restock's (an event from before lines carried theirs), so a restock-level id beside such a line would credit it.
 func commonLineSupplier(items []inventory_service_models.RestockItem) uint64 {
 	var supplier uint64
 

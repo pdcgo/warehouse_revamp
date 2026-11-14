@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Button, HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
-import { ExternalLink, SearchX, Store } from "lucide-react";
+import { ExternalLink, SearchX, Store, Warehouse } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { SupplierChannelRecord } from "./adapt";
 import { useSupplierChannelPage } from "./queries";
@@ -80,6 +80,13 @@ export interface ChannelBrowserProps {
   descriptionMark?: ReactNode;
   /** Marks for Terjual and Siap — none by default: a store's figures are real (InventoryService.SupplierGoods). */
   figureMarks?: FigureMarks;
+  /**
+   * The page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses) — only the stores whose goods were
+   * received at that warehouse, each with that warehouse's Terjual and Siap. 0n (the default) = every warehouse.
+   */
+  warehouseId?: bigint;
+  /** Back to every warehouse — offered when the chip alone leaves no store. The page owns the chip. */
+  onClearWarehouse?: () => void;
 }
 
 // ChannelBrowser is a supplier's CHANNELS tab — on the manage detail and on the discover detail alike
@@ -102,6 +109,10 @@ export interface ChannelBrowserProps {
 // REAL since 2026-11-07: every team's goods bought at the store — the batches minted with its id
 // (InventoryService.SupplierGoods by store, a-batch-keeps-its-supplier). A store none of whose goods ever arrived reads a
 // dash.
+//
+// UNDER THE PAGE'S WAREHOUSE CHIP (a-supplier-page-is-scoped-by-its-warehouses, since 2026-11-14): only the stores whose
+// goods were received at that warehouse — narrowed on the server before the count and the page — each with what its goods
+// did THERE; its Export writes the same.
 export function ChannelBrowser({
   teamId,
   supplierId,
@@ -110,10 +121,12 @@ export function ChannelBrowser({
   rowActions,
   descriptionMark,
   figureMarks = NO_FIGURE_MARKS,
+  warehouseId = 0n,
+  onClearWarehouse,
 }: ChannelBrowserProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const goods = useSupplierStoreGoods(teamId, supplierId);
+  const goods = useSupplierStoreGoods(teamId, supplierId, warehouseId);
   const figuresOf = (ch: SupplierChannelRecord) => goods.figures.get(ch.id.toString()) ?? null;
 
   // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `store.`-prefixed, since the Produk and Statistik
@@ -135,8 +148,14 @@ export function ChannelBrowser({
       setQ("");
       setChannelType(Marketplace.UNSPECIFIED);
     });
+  // So is another warehouse chip — the page holds it, so the page turns back to one when it changes.
+  const [pagedFor, setPagedFor] = useState(warehouseId);
+  if (pagedFor !== warehouseId) {
+    setPagedFor(warehouseId);
+    setPage(1);
+  }
 
-  const query = useSupplierChannelPage({ teamId, supplierId, q: term, channelType, page, pageSize });
+  const query = useSupplierChannelPage({ teamId, supplierId, q: term, channelType, warehouseId, page, pageSize });
   const channels = query.data?.channels ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const error = query.isError ? rpcError(query.error) : "";
@@ -151,14 +170,34 @@ export function ChannelBrowser({
     <SupplierTabExport
       testId="channels-export"
       progress={exporter.progress}
-      onExport={() => void exporter.start({ supplierId, q: term, channelType })}
+      onExport={() => void exporter.start({ supplierId, q: term, channelType, warehouseId })}
     />
   ) : null;
 
   function list() {
     if (channels.length === 0 && !error) {
       // Nothing at all, or nothing that matches — two different things to tell somebody, each with what to do
-      // (an-empty-list-shows-a-hint): clear the filters, or add a store with the page's own action.
+      // (an-empty-list-shows-a-hint): clear the filters, or add a store with the page's own action. The warehouse chip
+      // alone leaving nothing is a third: none of the stores' goods were received there — back to every warehouse.
+      if (!narrowed && warehouseId !== 0n) {
+        return (
+          <EmptyHint
+            icon={Warehouse}
+            size="sm"
+            title={t("supplierChannel.filter.noneAtWarehouse")}
+            description={t("supplierChannel.filter.noneAtWarehouseHint")}
+            action={
+              onClearWarehouse && (
+                <Button variant="outline" colorPalette="gray" onClick={onClearWarehouse}>
+                  {t("suppliers.relatedWarehouses.showAll")}
+                </Button>
+              )
+            }
+            testId="channels-none-at-warehouse"
+          />
+        );
+      }
+
       return narrowed ? (
         <EmptyHint
           icon={SearchX}
@@ -323,7 +362,7 @@ export function ChannelBrowser({
         page={page}
         onPageChange={setPage}
         hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
-        resetKey={[term, channelType, pageSize].join("|")}
+        resetKey={[term, channelType, warehouseId, pageSize].join("|")}
         pageSize={pageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         onPageSizeChange={(n) => {

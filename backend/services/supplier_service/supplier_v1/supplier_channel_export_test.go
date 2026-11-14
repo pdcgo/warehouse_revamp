@@ -188,7 +188,7 @@ func TestSupplierChannelExport_Scope(t *testing.T) {
 // With no store configured the RPC says so, never a fake file.
 func TestSupplierChannelExport_NoStoreIsUnimplemented(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := supplier_v1.NewService(db, nil, nil, &fakeGoods{}, nil)
+	svc := supplier_v1.NewService(db, nil, nil, &fakeGoods{}, nil, nil)
 
 	melati := insertSupplier(t, db, sellingA, "Melati")
 
@@ -197,5 +197,46 @@ func TestSupplierChannelExport_NoStoreIsUnimplemented(t *testing.T) {
 	})
 	if connect.CodeOf(err) != connect.CodeUnimplemented {
 		t.Fatalf("err = %v, want Unimplemented", err)
+	}
+}
+
+// THE FILE FOLLOWS THE CHIP (each-supplier-tab-exports-its-own-table): under warehouse 1 the file holds exactly the
+// stores the tab holds under it — store A, at both warehouses, and B — each with that warehouse's figures, read once for
+// the chip's warehouse.
+func TestSupplierChannelExport_TheFileFollowsTheWarehouseChip(t *testing.T) {
+	db := san_testdb.DB(t)
+	store := &fakeExports{}
+	goods := &fakeGoods{}
+	svc := exportService(db, goods, store)
+
+	sumber := insertSupplier(t, db, sellingB, "PT Sumber Makmur")
+	a := insertChannel(t, db, sumber.ID, "shopee", "Toko A")
+	b := insertChannel(t, db, sumber.ID, "tokopedia", "Toko B")
+	c := insertChannel(t, db, sumber.ID, "tiktok", "Toko C")
+
+	goods.storesAt = map[uint64][]uint64{chipWarehouse1: {a.ID, b.ID}, chipWarehouse2: {a.ID, c.ID}}
+	goods.stores = map[uint64]supplier_v1.StoreGoods{a.ID: {Sold: 30, Ready: 9}, b.ID: {Sold: 5}, c.ID: {Ready: 4}}
+	goods.storesIn = map[uint64]map[uint64]supplier_v1.StoreGoods{
+		chipWarehouse1: {a.ID: {Sold: 20, Ready: 2}, b.ID: {Sold: 5}},
+	}
+
+	filter := &supplierv1.SupplierChannelListFilter{SupplierId: sumber.ID, WarehouseId: chipWarehouse1}
+
+	file, err := runChannelExport(t, svc, store, &supplierv1.SupplierChannelExportRequest{TeamId: sellingA, Filter: filter})
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+
+	got, want := file.column(t, "Toko", "Toko pemasok"), listedStores(t, svc, filter)
+	if !slices.Equal(got, want) || !slices.Equal(got, []string{"Toko B", "Toko A"}) {
+		t.Fatalf("the file holds %v, the tab under the chip %v — want [Toko B, Toko A]", got, want)
+	}
+
+	if !slices.Equal(goods.goodsAsked, []uint64{chipWarehouse1}) {
+		t.Fatalf("the figures were read under %v — want the chip's warehouse", goods.goodsAsked)
+	}
+
+	if sold := file.column(t, "Toko", "Terjual"); !slices.Equal(sold, []string{"5", "20"}) {
+		t.Fatalf("Terjual = %v, want warehouse 1's [5 20]", sold)
 	}
 }

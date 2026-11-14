@@ -13,7 +13,9 @@
 // And the lists' shapes: SupplierList's OWN / EVERY_TEAM scope, its `q` over the supplier's name, address and
 // contact and its live stores' names, its channel-type filter and its CHANNELS slice; SupplierChannelList's `q`
 // over a store's name, link and description, its type filter and its paging — all on the "server", here. Both
-// order newest first (id DESC), as the server does when no sort is sent.
+// order newest first (id DESC), as the server does when no sort is sent. SupplierProductList (the Produk tab) reads
+// supplierProductFixtures.ts: any team's products bought from the supplier, newest restock first, searched by product,
+// SKU or store, narrowed by team and by store or "no store", each named and with its Terjual and Siap.
 //
 // WRITEABLE: a supplier added in one step is on the list in the next. Module state survives between stories
 // in one tab — preview.tsx calls `resetSupplierStub()` in its `beforeEach`.
@@ -21,9 +23,9 @@
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
-import { goodsTotalsOf, inBand, receivedAt, recordSupplierListBands } from "./supplierGoodsStub";
+import { goodsTotalsOf, inBand, receivedAt, recordSupplierListBands, storeReceivedAt } from "./supplierGoodsStub";
 import { SupplierListDataType, SupplierListScope, SupplierRowSort, SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
-import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
+import { type SupplierProduct, SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import { getOption } from "@bufbuild/protobuf";
 import { SupplierAnalyticService, SupplierMetricSchema } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
 import { type FilterItem, GroupType, SortType, metric_sort } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
@@ -33,15 +35,18 @@ import { teams, FOLDED_AS_OF } from "./fixtures";
 import { type ChannelFixture, type SupplierFixture, channelFixtures, supplierFixtures } from "./supplierFixtures";
 import { type FigureFixture, dayAgo, figureFixtures } from "./supplierFigureFixtures";
 import { resetSupplierExportScenario, supplierExportScenario } from "./supplierExportScenario";
+import { type SupplierProductFixture, productCatalogue, supplierProductFixtures } from "./supplierProductFixtures";
 
 // ── The tables ──────────────────────────────────────────────────────────────────────────────────
 
 let suppliers: SupplierFixture[] = [];
 let channels: ChannelFixture[] = [];
+let supplierProducts: SupplierProductFixture[] = [];
 
 export function resetSupplierStub() {
   suppliers = supplierFixtures.map((s) => ({ ...s }));
   channels = channelFixtures.map((c) => ({ ...c }));
+  supplierProducts = supplierProductFixtures.map((l) => ({ ...l }));
   resetSupplierExportScenario();
 }
 
@@ -254,17 +259,89 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
 
 // ── SupplierChannelService ──────────────────────────────────────────────────────────────────────
 
-/** The Toko tab's set — one live supplier's live stores, searched and typed, newest first; the list and its export. */
-function storeRows(filter: { supplierId: bigint; q: string; channelType: Marketplace } | undefined): ChannelFixture[] {
+/**
+ * The Toko tab's set — one live supplier's live stores, searched and typed, newest first; under the page's warehouse chip
+ * only the stores whose goods were received there (the goods stub's lots, a-supplier-page-is-scoped-by-its-warehouses).
+ * The list and its export.
+ */
+function storeRows(
+  filter: { supplierId: bigint; q: string; channelType: Marketplace; warehouseId: bigint } | undefined,
+): ChannelFixture[] {
   const supplier = live(filter?.supplierId ?? 0n);
   const q = (filter?.q ?? "").trim().toLowerCase();
   const channelType = filter?.channelType ?? Marketplace.UNSPECIFIED;
+  const warehouseId = filter?.warehouseId ?? 0n;
 
   return newestFirst(
     liveStoresOf(supplier.id)
       .filter((c) => channelType === Marketplace.UNSPECIFIED || c.channelType === channelType)
-      .filter((c) => matches(q, c.name, c.uri, c.description)),
+      .filter((c) => matches(q, c.name, c.uri, c.description))
+      .filter((c) => warehouseId === 0n || storeReceivedAt(supplier.id, c.id, warehouseId)),
   );
+}
+
+type ProductFilter =
+  | { supplierId: bigint; q: string; productTeamId: bigint; storeId: bigint; noStore: boolean; warehouseId: bigint }
+  | undefined;
+
+/** A link under the page's warehouse chip: its own warehouses, or where the goods stub holds a lot for its store. */
+const productAt = (l: SupplierProductFixture, warehouseId: bigint) =>
+  l.warehouses ? l.warehouses.includes(warehouseId) : storeReceivedAt(l.supplierId, l.channelId, warehouseId);
+
+const DAY_SECONDS = 86_400n;
+const daysAgoUnix = (days: number) => BigInt(Math.floor(Date.now() / 1000)) - BigInt(days) * DAY_SECONDS;
+
+/**
+ * The Produk tab's set — one live supplier's links, a link hiding with its deleted store, narrowed by team, by one
+ * store or "no store" and by the page's warehouse chip, searched by the product's name or SKU or the store's name; newest
+ * restock first, the newest link breaking a tie. The list and its export.
+ */
+function productRows(filter: ProductFilter): SupplierProductFixture[] {
+  const supplier = live(filter?.supplierId ?? 0n);
+  const q = (filter?.q ?? "").trim().toLowerCase();
+  const storeName = (l: SupplierProductFixture) => channels.find((c) => c.id === l.channelId)?.name ?? "";
+
+  return supplierProducts
+    .filter((l) => l.supplierId === supplier.id)
+    .filter((l) => l.channelId === 0n || channels.some((c) => c.id === l.channelId && !c.deleted))
+    .filter((l) => !filter?.productTeamId || l.teamId === filter.productTeamId)
+    .filter((l) => (filter?.noStore ? l.channelId === 0n : !filter?.storeId || l.channelId === filter.storeId))
+    .filter((l) => !filter?.warehouseId || productAt(l, filter.warehouseId))
+    .filter((l) => {
+      const product = productCatalogue[l.productId.toString()];
+      return matches(q, product?.name ?? "", product?.productCode ?? "", storeName(l));
+    })
+    .sort((a, b) => a.lastDaysAgo - b.lastDaysAgo || (a.id > b.id ? -1 : 1));
+}
+
+/** One link as the wire carries it — the product named, the store named and typed, the figures or none. */
+function wireProduct(l: SupplierProductFixture): Omit<SupplierProduct, "$typeName" | "figures"> & {
+  figures?: { soldUnits: bigint; orders: bigint; lastOrderUnix: bigint; readyUnits: bigint };
+} {
+  const product = productCatalogue[l.productId.toString()];
+  const store = channels.find((c) => c.id === l.channelId);
+
+  return {
+    id: l.id,
+    productId: l.productId,
+    teamId: l.teamId,
+    productName: product?.name ?? "",
+    productCode: product?.productCode ?? "",
+    productThumbnailUrl: product?.thumbnailUrl ?? "",
+    channelId: l.channelId,
+    channelName: store?.name ?? "",
+    channelType: store?.channelType ?? Marketplace.UNSPECIFIED,
+    firstRestockedUnix: daysAgoUnix(l.firstDaysAgo),
+    lastRestockedUnix: daysAgoUnix(l.lastDaysAgo),
+    figures: l.figures
+      ? {
+          soldUnits: BigInt(l.figures.sold),
+          orders: BigInt(l.figures.orders),
+          lastOrderUnix: l.figures.lastOrderDaysAgo === null ? 0n : daysAgoUnix(l.figures.lastOrderDaysAgo),
+          readyUnits: BigInt(l.figures.ready),
+        }
+      : undefined,
+  };
 }
 
 /** An export's link in Storybook: an empty data: URL, so the download a story triggers goes nowhere. */
@@ -310,11 +387,49 @@ export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelS
       supplierId: req.filter?.supplierId ?? 0n,
       q: req.filter?.q ?? "",
       channelType: req.filter?.channelType ?? Marketplace.UNSPECIFIED,
+      warehouseId: req.filter?.warehouseId ?? 0n,
       rows: rows.length,
     });
 
     yield { message: "exporting supplier stores", done: 0n, total };
     yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "toko-pemasok.xlsx" };
+  },
+
+  // THE PRODUK TAB — any team's live supplier's products, searched, narrowed and paged here, as the server does.
+  supplierProductList: (req) => {
+    const rows = productRows(req.filter);
+    const { rows: page, pageInfo } = pageOf(rows, req.page as PageReq);
+
+    const mapData: Record<string, ReturnType<typeof wireProduct>> = {};
+    for (const l of page) {
+      mapData[l.id.toString()] = wireProduct(l);
+    }
+
+    return {
+      items: [{ d: { case: "product", value: { mapData } } }],
+      ids: page.map((l) => l.id),
+      pageInfo,
+    };
+  },
+
+  // THE PRODUK TAB AS A FILE: the list's own set, every page — progress, then the link; what was asked is kept.
+  supplierProductExport: async function* (req) {
+    const rows = productRows(req.filter);
+    const total = BigInt(rows.length);
+
+    supplierExportScenario.products.push({
+      teamId: req.teamId,
+      supplierId: req.filter?.supplierId ?? 0n,
+      q: req.filter?.q ?? "",
+      productTeamId: req.filter?.productTeamId ?? 0n,
+      storeId: req.filter?.storeId ?? 0n,
+      noStore: req.filter?.noStore ?? false,
+      warehouseId: req.filter?.warehouseId ?? 0n,
+      rows: rows.length,
+    });
+
+    yield { message: "exporting supplier products", done: 0n, total };
+    yield { message: "the file is ready", done: total, total, downloadUrl: EMPTY_XLSX, filename: "produk-pemasok.xlsx" };
   },
 
   supplierChannelCreate: (req) => {
@@ -375,7 +490,7 @@ export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelS
 // and MetricData fills every asked key, zero when quiet, or reads the SUMMARY headline. Every team's restocks unless one
 // is picked; a deleted supplier keeps its figures.
 
-type Metric = Omit<FigureFixture, "daysAgo" | "supplierId" | "productId" | "teamId"> & { brokenRate: number };
+type Metric = Omit<FigureFixture, "daysAgo" | "supplierId" | "productId" | "teamId" | "warehouseId"> & { brokenRate: number };
 
 const zeroMetric = (): Metric => ({
   restockCount: 0n,
@@ -409,13 +524,17 @@ function addRow(m: Metric, r: FigureFixture): Metric {
   return { ...next, brokenRate: units > 0n ? Number(next.shippingBrokenCount) / Number(units) : 0 };
 }
 
-/** The rows the filters keep — the window (inclusive), whose restocks, one supplier, the suppliers the search finds. */
+/**
+ * The rows the filters keep — the window (inclusive), whose restocks, one supplier, the suppliers the search finds, and
+ * a supplier page's warehouse chip (the-supplier-reports-carry-the-warehouse): the rows filed under that warehouse.
+ */
 function figureRowsFor(filters: FilterItem[] | undefined): FigureFixture[] {
   let start = "";
   let end = "";
   let restockTeamId = 0n;
   let supplierId = 0n;
   let keyword = "";
+  let warehouseId = 0n;
 
   for (const item of filters ?? []) {
     if (item.f.case === "dateRangeFilter") {
@@ -425,6 +544,7 @@ function figureRowsFor(filters: FilterItem[] | undefined): FigureFixture[] {
     if (item.f.case === "teamFilter") restockTeamId = item.f.value.teamId;
     if (item.f.case === "supplierFilter") supplierId = item.f.value.supplierId;
     if (item.f.case === "supplierKeywordFilter") keyword = item.f.value.q.trim().toLowerCase();
+    if (item.f.case === "warehouseFilter") warehouseId = item.f.value.warehouseId;
   }
 
   // The search, as the server runs it (the-supplier-report-keeps-its-search): what SupplierList's `q` finds, deleted
@@ -446,6 +566,7 @@ function figureRowsFor(filters: FilterItem[] | undefined): FigureFixture[] {
       day <= end &&
       (restockTeamId === 0n || r.teamId === restockTeamId) &&
       (supplierId === 0n || r.supplierId === supplierId) &&
+      (warehouseId === 0n || r.warehouseId === warehouseId) &&
       (found === undefined || found.has(r.supplierId))
     );
   });

@@ -161,7 +161,8 @@ func parseDate(raw string) (time.Time, error) {
 }
 
 // window narrows ONE report table — the restock rows, or Penjualan's (00004), which share their key: day, supplier,
-// product, team — to a window, and to one restocking team when one is picked (the-team-filter-picks-any-selling-team).
+// product, team, warehouse (00006) — to a window, and to one restocking team when one is picked
+// (the-team-filter-picks-any-selling-team).
 // The team of a sale is the team that owns the goods, the restocking team.
 //
 // ⚠ EACH TABLE IS READ ON ITS OWN and the two summed after — in Go for a fill, in one UNION ALL of the two GROUPED reads
@@ -178,7 +179,7 @@ func parseDate(raw string) (time.Time, error) {
 // a Go time.Time, which would compare as a timestamptz and move the boundary by the session's offset.
 func window(tx *gorm.DB, table string, start, end time.Time, restockTeamID uint64) *gorm.DB {
 	query := tx.
-		Table(table+" AS r").
+		Table(table + " AS r").
 		Where(fmt.Sprintf("r.day BETWEEN DATE '%s' AND DATE '%s'", start.Format(dateLayout), end.Format(dateLayout)))
 
 	if restockTeamID != 0 {

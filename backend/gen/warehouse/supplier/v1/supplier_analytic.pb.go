@@ -31,7 +31,9 @@ const (
 // Groups: SUPPLIER and PRODUCT — the RESTOCKING team's product, so two teams buying one item are two keys
 // (every-accepted-line-links-its-own-product) — and every period. Filters: the window (required); TEAM, whose
 // restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier; SUPPLIER_KEYWORD, the Supplier
-// Report's search (the-supplier-report-keeps-its-search).
+// Report's search (the-supplier-report-keeps-its-search); WAREHOUSE, a supplier page's warehouse chip
+// (the-supplier-reports-carry-the-warehouse) — the restocks RECEIVED at that warehouse and the sales TAKEN from it, at
+// the same line prices; without it, the sum over every warehouse.
 type SupplierMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Units accepted as good stock.
@@ -616,7 +618,8 @@ type SupplierFigureExportRequest struct {
 	// THE VIEW: DAILY, MONTHLY or YEARLY is Per Periode at that grain; PRODUCT is Per Produk. The Supplier Report's
 	// ranking (SUPPLIER) is not offered here — its file is SupplierReportExport.
 	GroupBy v1.GroupType `protobuf:"varint,2,opt,name=group_by,json=groupBy,proto3,enum=warehouse.analytic_base.v1.GroupType" json:"group_by,omitempty"`
-	// The tab's own filters — the window (required), the supplier (required), and whose restocks when one team is picked.
+	// The tab's own filters — the window (required), the supplier (required), whose restocks when one team is picked, and
+	// the page's warehouse chip when one is picked (the-supplier-reports-carry-the-warehouse).
 	Filters       []*v1.FilterItem `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1110,7 +1113,7 @@ var File_warehouse_supplier_v1_supplier_analytic_proto protoreflect.FileDescript
 
 const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"\n" +
-	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xb6\x04\n" +
+	"-warehouse/supplier/v1/supplier_analytic.proto\x12\x15warehouse.supplier.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xb7\x04\n" +
 	"\x0eSupplierMetric\x12/\n" +
 	"\rrestock_count\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\frestockCount\x127\n" +
@@ -1131,8 +1134,8 @@ const file_warehouse_supplier_v1_supplier_analytic_proto_rawDesc = "" +
 	"salesCount\x12+\n" +
 	"\vsales_value\x18\t \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\n" +
-	"salesValue:)\x9a\xb5\x18%\n" +
-	"\x04\x01\x04\x06\t\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
+	"salesValue:*\x9a\xb5\x18&\n" +
+	"\x05\x01\x04\x06\t\a\x12\x01\x01\x1a\a\x01\x02\x03\x04\x05\b\x06\"\x11metrics/suppliers\"\xc1\x01\n" +
 	"\x12SupplierMetricByID\x12J\n" +
 	"\x05items\x18\x01 \x03(\v24.warehouse.supplier.v1.SupplierMetricByID.ItemsEntryR\x05items\x1a_\n" +
 	"\n" +

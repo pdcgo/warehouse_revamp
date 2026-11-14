@@ -17,6 +17,10 @@ Users & Role System, Documents, region, shipping, expense.
 | **Discover shows real stock and prices** | another team's cards on Discover now show their real ready stock, stock on its way and cross price (no more samples), the lock badge says Terkunci when stock is under the minimum, and the Kunci filter (Terbuka / Terkunci) really narrows |
 | **Every Discover filter works** | Discover's warehouse, ready-stock, cross-price and category filters now really narrow the products (picking a warehouse also shows that warehouse's stock and price on the cards), and a product's Discover page shows the same real figures as its card |
 | **The supplier list filters by warehouse** | picking a warehouse on Suppliers (and Discover › Suppliers) now keeps only the suppliers whose goods were received there; their sold and ready figures stay their whole totals |
+| **A restock from several suppliers counts for each** | a restock whose lines come from different suppliers now counts each line for its own supplier — before, it counted for none — and every supplier now remembers which products it delivered (shown on its Produk tab next) |
+| **A supplier's Products tab is real** | a supplier's Products tab (on My Supplier and Discover) now lists the products it really delivered — with the store, last bought, sold and ready — and Export gives that list as a file |
+| **A supplier's warehouse chip narrows its tabs** | on a supplier's page, picking a warehouse chip now narrows the Stores and Products tabs (and their exports) to what was received at that warehouse, with that warehouse's sold and ready; only the Statistics tab doesn't narrow yet |
+| **A supplier's Statistics narrow by warehouse too** | the Statistics tab on a supplier's page now follows the warehouse chip like the other tabs — every supplier page control is now real, with no ⚠ left |
 
 ## 2026-11-13 · wrong stock-in correction, batch history racks
 

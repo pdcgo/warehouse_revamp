@@ -6,7 +6,8 @@ import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { SupplierChannelRecord } from "./adapt";
 import { SupplierStoreSelect, description } from "./SupplierStoreSelect";
 
-// The Produk tab's store filter — one of a supplier's stores, searched by name or type.
+// The Produk tab's store filter — one of a supplier's stores, searched by name or type; or "no store", the products
+// bought with none (a-line-with-no-store-links-under-the-supplier).
 
 const store = (id: number, channelType: Marketplace, name: string): SupplierChannelRecord => ({
   id: BigInt(id),
@@ -24,12 +25,12 @@ const STORES = [
 ];
 
 // Real state, so a pick shows in the field and a clear empties it.
-function Controlled({ stores }: { stores: SupplierChannelRecord[] }) {
+function Controlled({ stores, noStoreLabel }: { stores: SupplierChannelRecord[]; noStoreLabel?: string }) {
   const [value, setValue] = useState(0n);
 
   return (
     <>
-      <SupplierStoreSelect stores={stores} value={value} onChange={setValue} placeholder="Every store" />
+      <SupplierStoreSelect stores={stores} value={value} onChange={setValue} placeholder="Every store" noStoreLabel={noStoreLabel} />
       <output data-testid="picked">{value.toString()}</output>
     </>
   );
@@ -86,5 +87,25 @@ export const ClearingEmitsNone: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /clear/i }));
     await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent("0"));
+  },
+};
+
+// "NO STORE" — the Produk tab offers it FIRST, a dash under its label where a store's badge would be; picked, it emits
+// NO_STORE (-1n), and it reads back in the field.
+export const NoStoreIsTheFirstOption: Story = {
+  args: { noStoreLabel: "No store" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByTestId("supplier-store-select"));
+
+    const option = await canvas.findByTestId("supplier-store-select-option-none");
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(canvas.getAllByRole("option")[0]).toBe(option);
+    await expect(option).toHaveTextContent("No store—");
+    await expect(within(option).queryByTestId(/^marketplace-badge-/)).toBeNull();
+
+    await userEvent.click(option);
+    await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent("-1"));
+    await expect(canvas.getByTestId("supplier-store-select")).toHaveValue("No store");
   },
 };

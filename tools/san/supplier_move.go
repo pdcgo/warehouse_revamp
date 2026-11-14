@@ -17,8 +17,10 @@ import (
 )
 
 // supplierCommand is the supplier's operator actions: moving the suppliers that exist out of inventory_service
-// (existing-suppliers-move-with-their-ids), and folding the restocks accepted before the figures existed
-// (past-accepts-are-backfilled-once).
+// (existing-suppliers-move-with-their-ids), folding the restocks accepted before the figures existed
+// (past-accepts-are-backfilled-once), and linking every accepted line's product to its supplier and store
+// (restock-accepted-links-the-product-to-its-channel), and re-folding both daily reports into the warehouse each figure
+// came from (the-supplier-reports-carry-the-warehouse).
 func supplierCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "supplier",
@@ -37,6 +39,8 @@ func supplierCommand() *cli.Command {
 				Action: runSupplierMove,
 			},
 			supplierBackfillCommand(),
+			supplierBackfillLinksCommand(),
+			supplierBackfillWarehousesCommand(),
 		},
 	}
 }

@@ -177,8 +177,8 @@ export function useSupplier(args: { teamId: bigint | undefined; supplierId: bigi
   });
 }
 
-// A supplier's WHOLE store list, in one large page — the 200 the contract allows. Kept for the Products tab:
-// its sample rows (sampleProducts.ts) are made from every store, not from the window the Channels tab shows.
+// A supplier's WHOLE store list, in one large page — the 200 the contract allows. Kept for the Products tab: its store
+// filter offers every store (SupplierStoreSelect), not the window the Channels tab shows.
 // A supplier has a handful of stores, so the cap is not reached in practice.
 //
 // Kept as its OWN query rather than folded into useSupplier: the two fail independently (a store-list error
@@ -210,10 +210,13 @@ export function useSupplierChannelPage(args: {
   supplierId: bigint;
   q: string;
   channelType: Marketplace;
+  /** The page's Gudang terkait chip — only the stores whose goods were received there; 0n = every warehouse. */
+  warehouseId?: bigint;
   page: number;
   pageSize: number;
 }) {
   const { teamId, supplierId, q, channelType, page, pageSize } = args;
+  const warehouseId = args.warehouseId ?? 0n;
 
   return useQuery({
     // A search, a type and a page refine the same question (HARD RULE 10) — the browser keeps the rows up
@@ -224,6 +227,7 @@ export function useSupplierChannelPage(args: {
       channelsPaged: true,
       q,
       channelType,
+      warehouseId: warehouseId.toString(),
       page,
       pageSize,
     }),
@@ -231,7 +235,7 @@ export function useSupplierChannelPage(args: {
     queryFn: async () => {
       const res = await supplierChannelClient.supplierChannelList({
         teamId: teamId!,
-        filter: { supplierId, q, channelType },
+        filter: { supplierId, q, channelType, warehouseId },
         dataRequest: supplierChannelRowData(),
         page: { page, limit: pageSize },
       });

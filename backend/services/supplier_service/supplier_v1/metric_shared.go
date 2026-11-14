@@ -40,6 +40,9 @@ type metricScope struct {
 	restockTeamID uint64 // TEAM — whose restocks; 0 = every team's
 	supplierID    uint64 // SUPPLIER — one supplier; 0 = every supplier
 	keyword       string // SUPPLIER_KEYWORD — the suppliers the search finds; "" = every supplier
+	// WAREHOUSE — a supplier page's warehouse chip (the-supplier-reports-carry-the-warehouse): the restocks received there
+	// and the sales taken from there; 0 = every warehouse, the sum over all of them.
+	warehouseID uint64
 }
 
 // parseFilters reads a request's filters. Each case's field number IS its FilterType
@@ -101,6 +104,8 @@ func parseFilters(items []*analytic_basev1.FilterItem) (metricScope, error) {
 			scope.supplierID = item.GetSupplierFilter().GetSupplierId()
 		case analytic_basev1.FilterType_FILTER_TYPE_SUPPLIER_KEYWORD:
 			scope.keyword = item.GetSupplierKeywordFilter().GetQ()
+		case analytic_basev1.FilterType_FILTER_TYPE_WAREHOUSE:
+			scope.warehouseID = item.GetWarehouseFilter().GetWarehouseId()
 		}
 	}
 
@@ -113,8 +118,10 @@ func parseFilters(items []*analytic_basev1.FilterItem) (metricScope, error) {
 	return scope, nil
 }
 
-// rows is the restock table narrowed by every filter — the window, the team, the supplier and the search; salesRows is
-// Penjualan's table narrowed by the same (penjualan-is-the-selling-value-on-the-order-day).
+// rows is the restock table narrowed by every filter — the window, the team, the supplier, the warehouse and the search;
+// salesRows is Penjualan's table narrowed by the same (penjualan-is-the-selling-value-on-the-order-day). With no
+// warehouse every warehouse's rows sum — a row folded before the warehouse was recorded (0) included — so the figures are
+// the ones read before the reports carried it (the-supplier-reports-carry-the-warehouse).
 //
 // The search finds suppliers as SupplierList does — name, address, contact, a live store's name
 // (the-supplier-report-keeps-its-search). supplier_service holds both tables, so it is a subquery over its own rows, never
@@ -128,9 +135,12 @@ func (m metricScope) salesRows(db *gorm.DB) *gorm.DB {
 }
 
 func (m metricScope) narrow(query *gorm.DB) *gorm.DB {
-
 	if m.supplierID != 0 {
 		query = query.Where("r.supplier_id = ?", m.supplierID)
+	}
+
+	if m.warehouseID != 0 {
+		query = query.Where("r.warehouse_id = ?", m.warehouseID)
 	}
 
 	if pattern := likePattern(m.keyword); pattern != "" {

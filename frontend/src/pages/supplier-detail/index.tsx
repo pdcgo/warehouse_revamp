@@ -1,36 +1,21 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Flex, HStack, Heading, Icon, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Button, Flex, Heading, Icon, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useSupplier, useSupplierChannels } from "../../features/suppliers/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ChannelsPanel } from "./components/ChannelsPanel";
 import { ProductBrowser } from "../../features/suppliers/ProductBrowser";
 import { SupplierStatistics } from "../../features/suppliers/SupplierStatistics";
 import { useIsMobile } from "../../layouts/shell";
-import { SUPPLIER_DETAIL_PENDING } from "./pending";
 import { SupplierMeta } from "../../features/suppliers/SupplierMeta";
 import { SupplierHeaderActions } from "./components/SupplierHeaderActions";
-import type { FigureMarks } from "../../features/suppliers/SupplierFigures";
 import { RelatedWarehouses } from "../../features/suppliers/RelatedWarehouses";
 import { useSupplierWarehouses } from "../../features/suppliers/goods";
-
-// Each PRODUCT's Terjual and Siap on the Produk tab carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`) —
-// invented with the tab's rows. A store's on the Toko tab are real and unmarked.
-const FIGURE_MARKS: FigureMarks = {
-  sold: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sold" />,
-  ready: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="ready" />,
-};
-
-// The Produk tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`): its rows are invented, so
-// its file waits for real ones. The Toko and Statistik tabs export (SupplierChannelExport, SupplierFigureExport).
-const EXPORT_MARK = <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="export" />;
+import { idCodec, useUrlState } from "../../lib/urlState";
 
 function parseSupplierId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -54,10 +39,15 @@ function parseSupplierId(raw: string | undefined): bigint {
 //   Channels   — every store the supplier sells through, one list, each with its marketplace badge. Its word is
 //                Toko in an action, Toko pemasok in a table or a description (toko-in-an-action-toko-pemasok-in-a-table).
 //   Products   — what was bought from the supplier: the product, whose it is, the store and when, first and last
-//                (a-supplier-product-row-says-whose-where-and-when). ⚠ SAMPLE rows until an
-//                accepted restock links a product to its store (restock-accepted-links-the-product-to-its-channel).
+//                (a-supplier-product-row-says-whose-where-and-when), with its Terjual and Siap — real since 2026-11-14
+//                (SupplierChannelService.SupplierProductList over the links an accepted restock writes).
+//
 //   Statistics — what was restocked from it, lost and broken on the way, over time and by product — folded from the
 //                restock's accept (the-figures-screens-are-accepted).
+//
+// Gudang terkait's chip (`?warehouse=`) scopes every tab to one warehouse — Toko and Produk to the goods received there,
+// rows and figures; Statistik to the restocks received there and the sales taken from there
+// (the-supplier-reports-carry-the-warehouse) — as it does the summary under it (a-supplier-page-is-scoped-by-its-warehouses).
 //
 // Reached by clicking a supplier row. ⚠ SupplierDetail answers for ANY team's live supplier (reads cross
 // teams), so this page does not assume the supplier is ours: the store actions are offered only when the
@@ -71,8 +61,10 @@ export function SupplierDetailPage() {
 
   const id = parseSupplierId(supplierId);
   const teamId = current?.teamId;
-  // The warehouse the page is scoped to — 0n is every one (a-supplier-page-is-scoped-by-its-warehouses).
-  const [warehouseId, setWarehouseId] = useState(0n);
+  // The warehouse the page is scoped to — 0n is every one (a-supplier-page-is-scoped-by-its-warehouses). In the URL
+  // (a-lists-filters-live-in-the-url): a link to the page under a chip opens under it.
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
+  const showEveryWarehouse = () => setWarehouseId(0n);
 
   // Two queries, not one. They failed independently before — a channel-list error did not blank the
   // supplier — and folding them together would let one request's failure hide the other's result.
@@ -93,8 +85,8 @@ export function SupplierDetailPage() {
         ? rpcError(supplierQuery.error)
         : "";
 
-  // The whole list — the Products tab's sample rows are made from it. The Channels tab reads its own searched,
-  // filtered page from the server (ChannelBrowser).
+  // The whole list — the Products tab's store filter offers it. The Channels tab reads its own searched, filtered page
+  // from the server (ChannelBrowser), and the Products tab its own rows (ProductBrowser).
   const channels = channelsQuery.data ?? [];
 
   // Only the team that KEEPS the supplier writes to it — supplier_service answers NotFound to anyone else — and
@@ -163,18 +155,17 @@ export function SupplierDetailPage() {
         <SupplierMeta supplier={supplier} />
       </Stack>
 
-      <NotImplementedSummary list={SUPPLIER_DETAIL_PENDING} />
-
       {/* GUDANG TERKAIT — the warehouses its restocks were received at, and the page's scope: a chip picked narrows every
           tab (`a-supplier-page-is-scoped-by-its-warehouses`). Over the tabs, since a tab cannot narrow the tabs beside it.
           Each chip is a warehouse's name; under them, what this supplier's goods did in the chosen one or in all
           (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Real warehouses and figures
-          (InventoryService.SupplierGoods by warehouse); a pick only switches that summary — marked. */}
+          (InventoryService.SupplierGoods by warehouse). A pick switches that summary and narrows every tab and its
+          Export, on the server (since 2026-11-14): Toko and Produk to the goods received there, Statistik to the
+          restocks received there and the sales taken from there (`the-supplier-reports-carry-the-warehouse`). */}
       <RelatedWarehouses
         warehouses={warehouses.warehouses}
         value={warehouseId}
         onChange={setWarehouseId}
-        marks={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />}
       />
 
       {/* The underline SLIDES to the picked tab, and the tab's content fades in where the last one was
@@ -185,10 +176,7 @@ export function SupplierDetailPage() {
             {t("supplierChannel.tab.channels")}
           </Tabs.Trigger>
           <Tabs.Trigger value="products" data-testid="supplier-tab-products">
-            <HStack gap="1">
-              {t("supplierChannel.tab.products")}
-              <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="products" />
-            </HStack>
+            {t("supplierChannel.tab.products")}
           </Tabs.Trigger>
           <Tabs.Trigger value="statistics" data-testid="supplier-tab-statistics">
             {t("supplierChannel.tab.statistics")}
@@ -197,15 +185,27 @@ export function SupplierDetailPage() {
         </Tabs.List>
 
         <Tabs.Content value="channels" animationStyle="swap">
-          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} />
+          <ChannelsPanel
+            teamId={teamId}
+            supplierId={supplier.id}
+            canManage={canManage}
+            warehouseId={warehouseId}
+            onClearWarehouse={showEveryWarehouse}
+          />
         </Tabs.Content>
 
         <Tabs.Content value="products" animationStyle="swap">
-          <ProductBrowser channels={channels} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
+          <ProductBrowser
+            teamId={teamId}
+            supplierId={supplier.id}
+            channels={channels}
+            warehouseId={warehouseId}
+            onClearWarehouse={showEveryWarehouse}
+          />
         </Tabs.Content>
 
         <Tabs.Content value="statistics" animationStyle="swap">
-          <SupplierStatistics supplierId={supplier.id} />
+          <SupplierStatistics supplierId={supplier.id} warehouseId={warehouseId} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

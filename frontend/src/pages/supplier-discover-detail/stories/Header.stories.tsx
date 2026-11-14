@@ -69,7 +69,7 @@ export const AnEmptySupplierShowsItsNameAndTeam: Story = {
 };
 
 // GUDANG TERKAIT, as on the manage detail (a-supplier-page-is-scoped-by-its-warehouses) — over the tabs, real; the pick
-// marked 4.
+// unmarked since it narrows every tab (the-supplier-reports-carry-the-warehouse).
 export const TheWarehousesScopeThePage: Story = {
   name: "Warehouses over the tabs",
   play: async ({ canvasElement }) => {
@@ -77,7 +77,7 @@ export const TheWarehousesScopeThePage: Story = {
 
     const row = await canvas.findByTestId("supplier-warehouses");
     await expect(within(row).queryByTestId("not-implemented-warehouses")).toBeNull();
-    await expect(within(row).getByTestId("not-implemented-warehouseFilter")).toHaveTextContent("4");
+    await expect(within(row).queryByTestId("not-implemented-warehouseFilter")).toBeNull();
     await waitFor(() =>
       expect(within(row).getByTestId("supplier-warehouses-chips")).toHaveTextContent(/^AllGudang Cabang$/),
     );

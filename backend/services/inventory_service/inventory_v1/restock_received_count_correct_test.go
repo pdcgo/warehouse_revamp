@@ -329,6 +329,12 @@ func TestRestockReceivedCountCorrect_TooManyTakesUnitsOutOnTheCorrectionDay(t *t
 	if err != nil || len(events) != 1 || events[0].GetEventId() != f.sender.sent[0].GetEventId() {
 		t.Fatalf("the day's correction events = %v (%v) — want the one sent", events, err)
 	}
+
+	// And `san supplier backfill-links` finds the restock's correction days (RestockCountCorrectionDays): today, once.
+	days, err := inventory_v1.RestockCountCorrectionDays(f.db, []uint64{f.restock.GetId(), f.restock.GetId() + 999})
+	if err != nil || len(days) != 1 || len(days[f.restock.GetId()]) != 1 || days[f.restock.GetId()][0] != dayOf(0) {
+		t.Fatalf("correction days = %v (%v) — want the restock's, today only", days, err)
+	}
 }
 
 // TOO FEW TYPED — Kaos Polos 4 → 5: the real unit goes into the same batch at 12.200, onto Rak C; missing −1 today and

@@ -28,8 +28,8 @@ var channelExportColumns = []string{
 //
 // The figures are inventory's, per store (GoodsReader.StoreGoods — EVERY team's goods, every-selling-team-sees-every-
 // teams-figures), read once: a supplier has few stores. A store none of whose goods arrived reads empty cells, as the
-// tab's dash. The Gudang terkait chip narrows no tab yet (a-supplier-page-is-scoped-by-its-warehouses, ⚠ dropped), so
-// the file — the tab — is not narrowed by it either.
+// tab's dash. Under the page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses) the file is the tab under
+// it: only the stores whose goods were received at that warehouse (channelSet), each with that warehouse's figures.
 func (s *Service) SupplierChannelExport(
 	ctx context.Context,
 	req *connect.Request[supplierv1.SupplierChannelExportRequest],
@@ -49,18 +49,23 @@ func (s *Service) SupplierChannelExport(
 		return err
 	}
 
+	set, err := s.channelSetOf(ctx, filter)
+	if err != nil {
+		return err
+	}
+
 	progress := san_export.NewProgress(func(message string, done, total int64) error {
 		return stream.Send(&supplierv1.SupplierChannelExportResponse{Message: message, Done: done, Total: total})
 	})
 
-	err = channelListQuery(db, filter).Count(&progress.Total).Error
+	err = set.query(db).Count(&progress.Total).Error
 	if err != nil {
 		return internal(err)
 	}
 
 	progress.Info("exporting supplier stores", "rows", progress.Total)
 
-	goods, err := s.goods.StoreGoods(ctx, filter.GetSupplierId())
+	goods, err := s.goods.StoreGoods(ctx, filter.GetSupplierId(), filter.GetWarehouseId())
 	if err != nil {
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("reading the stores' figures: %w", err))
 	}
@@ -82,7 +87,7 @@ func (s *Service) SupplierChannelExport(
 	for offset := 0; ; offset += san_export.Batch {
 		var channels []supplier_service_models.SupplierChannel
 
-		err = channelListQuery(db, filter).
+		err = set.query(db).
 			Order(order).
 			Offset(offset).
 			Limit(san_export.Batch).

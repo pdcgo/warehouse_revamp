@@ -224,7 +224,7 @@ func TestInterleave_DayRefold_AFoldInTheGapWaitsForTheReplace(t *testing.T) {
 		tables []string
 	}{
 		{"restock", supplier_v1.ReportRestockDaily, "shipping_broken_count, shipping_broken_valuation\nFROM supplier_product_daily_reports", figTables},
-		{"sale", supplier_v1.ReportSaleDaily, "SELECT product_id, team_id, sales_count, sales_value FROM supplier_sale_daily_reports", salesRaceTables},
+		{"sale", supplier_v1.ReportSaleDaily, "SELECT product_id, team_id, warehouse_id, sales_count, sales_value FROM supplier_sale_daily_reports", salesRaceTables},
 	}
 
 	for _, c := range cases {

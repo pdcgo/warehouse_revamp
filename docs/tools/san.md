@@ -98,6 +98,8 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
 | [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
+| [`supplier backfill-links`](#supplier-backfill-links) | Link every accepted restock line's product to its supplier and store, and re-fold the figures a restock mixing suppliers never got. `--dry-run` first. Repeatable — a second run writes nothing |
+| [`supplier backfill-warehouses`](#supplier-backfill-warehouses) | Re-fold both supplier daily reports into the warehouse each figure came from, and print every supplier's totals BEFORE == AFTER. `--dry-run` first. Repeatable — a second run finds nothing |
 | [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
 | [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
 | [`document sweep-generated`](#document-sweep-generated) | Delete the generated downloads older than 7 days — merged label PDFs, table exports, order exports — now, as the server's daily sweep does. Uploads never. `--dry-run` counts first. Safe to re-run — a second run finds nothing |
@@ -331,6 +333,8 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
 | 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
 | 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
+| 6a | every accepted line's product linked to its supplier and store, and a mixed restock's figures re-folded — repeatable | [`supplier backfill-links`](#supplier-backfill-links) |
+| 6a′ | the supplier figures folded before the reports carried the warehouse, re-folded into it — repeatable | [`supplier backfill-warehouses`](#supplier-backfill-warehouses) |
 | 6b | the product codes written before a code was composed — each team's code put in front, once | [`product recompose-codes`](#product-recompose-codes) |
 | 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller`, and Dev Warehouse's fee while it has none | [`seed dev`](#seed) |
 | 8 | the product-category tree | [`seed categories`](#seed) |
@@ -356,7 +360,9 @@ flowchart TD
     E --> M["migrate up-all"]
     M --> SM["supplier move"]
     SM --> SB["supplier backfill-figures"]
-    SB --> SD["seed dev"]
+    SB --> SL["supplier backfill-links"]
+    SL --> SW["supplier backfill-warehouses"]
+    SW --> SD["seed dev"]
     SD --> SC["seed categories"]
     SC --> RG["region load-seed"]
     RG --> N["npm install"]
@@ -1253,6 +1259,174 @@ therefore refuses any start on or before the live fold's first day.
 
 ---
 
+## `supplier backfill-links`
+
+Rebuilds a supplier's products — `supplier_channel_products`, one link per product per store it was bought from, or
+under the supplier with no store ([restock-accepted-links-the-product-to-its-channel](../business/supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel),
+[a-line-with-no-store-links-under-the-supplier](../business/supplier/context_decision.md#a-line-with-no-store-links-under-the-supplier))
+— from every accepted restock, and re-folds the restock figures the fold's switch to each LINE's supplier changes
+([the-supplier-comes-from-the-restock-until-lines-name-a-store](../business/supplier/context_decision.md#the-supplier-comes-from-the-restock-until-lines-name-a-store)).
+**Repeatable**: every write is the fold's own, so a second run writes nothing. [`dev setup`](#dev-setup) runs it after the
+figures backfill.
+
+```sh
+go run ./tools/san supplier backfill-links --dry-run --dsn "$DATABASE_URL"   # print it all, write nothing
+go run ./tools/san supplier backfill-links                                   # prompts: Local or Production
+```
+
+| Flag | |
+| --- | --- |
+| `--dry-run` | Compute and print everything — the links each batch would write and every re-fold — inside transactions that are rolled back |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+It calls supplier_service, never a hand-written INSERT ([HARD RULE 3b](../../CLAUDE.md)): the links through the fold's
+link write (`LinkBackfill` → `upsertLinks`), the figures through the day re-fold (`DayRefold`, the method of
+[`report refold --report supplier-restock-daily`](#a-suppliers-figures--supplier-restock-daily--supplier-sale-daily)), each
+accept as the event it builds (`inventory_v1.RestockAcceptedEvent`).
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san supplier backfill-links
+  participant INV as inventory - accepted restocks, their lines, corrections
+  participant SUP as supplier_service
+  loop 500 accepted restocks naming a supplier on a line at a time, oldest first
+    SAN->>INV: the restocks and their lines
+    SAN->>SUP: each line naming a supplier - its link, merged - earliest and latest accept
+  end
+  SAN->>SUP: write the links, 500 per transaction, in key order - first LEAST, last GREATEST
+  SAN->>INV: the days each MIXED restock's received count was corrected
+  loop each supplier day a mixed restock touched - its accept day and correction days
+    SAN->>SUP: DayRefold supplier-restock-daily - claims the accept nobody folded, counts that supplier's lines
+  end
+```
+
+| | |
+| --- | --- |
+| which lines link | every accepted line naming a supplier — broken and short ones included — under its store, or the supplier with no store; a line naming none links nothing |
+| a link's dates | `first_restocked_at` the earliest accept naming it, `last_restocked_at` + `last_restock_id` the latest — never lowered, so a run beside the live fold writes what the fold would |
+| a mixed restock | lines naming a supplier while the restock as a whole named none (lines disagree, or one names none): the fold before the switch credited NOBODY. Each of its suppliers' days is re-folded — the accept is claimed there, so its late redelivery folds nothing |
+| never | claims an event or writes a figure itself — the links only; the figures go through the re-fold |
+
+### Output
+
+```
+[Database Local] supplier backfill-links · DRY RUN — nothing written
+  accepted restocks 7 · lines naming a supplier 12 · links 5
+  links: 5 new · 0 dates moved · 0 already right
+  restocks mixing suppliers: none — the line-supplier switch changes no figure
+```
+
+With a mixed restock, one line per supplier day re-folded:
+
+```
+  restocks mixing suppliers: 1 — their suppliers' restock figures, 2 supplier day(s) re-folded:
+    supplier 31 · 2026-11-11: events counted 1 · lost and now claimed 1 · in flight 0 · rows changed 1
+    supplier 32 · 2026-11-11: events counted 1 · lost and now claimed 0 · in flight 0 · rows changed 1
+```
+
+`in flight` is an accept under an hour old, left to the live fold.
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `re-fold supplier N on D: a replay holds the fold's lock` | A replay is running. The links are written; run it again after the replay — the second run re-folds only |
+| `relation "supplier_channel_products" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first |
+
+---
+
+## `supplier backfill-warehouses`
+
+Since supplier_service `00006` both supplier daily reports — restock figures and Penjualan — are keyed by the WAREHOUSE
+([the-supplier-reports-carry-the-warehouse](../technical/frontend/suppliers_decision.md#the-supplier-reports-carry-the-warehouse)):
+a restock line's receiving warehouse, an order line's taking warehouse. The migration adds the column at **0** and
+never truncates — the claims a refold reads are pruned after 45 days and the sale parts need inventory's take — so every
+row folded before it sits under warehouse 0: still counted with no chip, under no warehouse's chip. This command files
+that history under its warehouses. **Repeatable**: a second run finds no row under 0 and writes nothing.
+[`dev setup`](#dev-setup) runs it after `supplier backfill-links`.
+
+```sh
+go run ./tools/san supplier backfill-warehouses --dry-run --dsn "$DATABASE_URL"   # print it all, write nothing
+go run ./tools/san supplier backfill-warehouses                                   # prompts: Local or Production
+```
+
+| Flag | |
+| --- | --- |
+| `--dry-run` | Run it all in ONE transaction and roll it back — the AFTER it prints is what a real run writes. The transaction holds both reports' fold lock until it ends, so live folds wait for it |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+It calls supplier_service, never a hand-written INSERT ([HARD RULE 3b](../../CLAUDE.md)): the parts through
+`SalePartWarehouses`, the rows through the day re-fold (`DayRefold`, the method of
+[`report refold`](#a-suppliers-figures--supplier-restock-daily--supplier-sale-daily)), the totals through `ReportTotals`.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san supplier backfill-warehouses
+  participant SUP as supplier_service
+  participant INV as inventory and selling - the takes, the placements, the accepts
+  SAN->>SUP: ReportTotals - every supplier, every day and warehouse - BEFORE
+  SAN->>SUP: SalePartWarehouses - each order with a part under 0
+  SUP->>INV: the order's take - its batches and the warehouse it drew in
+  SUP->>SUP: the part re-filed under that warehouse, else under the warehouse the order shipped from
+  SAN->>SUP: UnplacedReportDays - every supplier day of either report still holding a 0 row
+  loop each such day, and every other supplier day a re-fold leaves short
+    SAN->>SUP: DayRefold - the fold's claims and lock, rows keyed by warehouse
+  end
+  SAN->>SUP: ReportTotals - AFTER, compared supplier by supplier
+```
+
+| | |
+| --- | --- |
+| a restock row | re-folded from its claim: the accept's `warehouse_id`; a received-count correction its own `warehouse_id` (the receiving warehouse) |
+| a Penjualan part | the warehouse inventory's take drew in (one per order); a take that no longer adds up to the part keeps the part's figures under `OrderPlaced.warehouse_id`; neither — the part stays at 0 |
+| the totals | every supplier's restock, lost, broken and sales units and values over every day and warehouse, BEFORE and AFTER — equal, unless a re-fold claimed an event the fold never received (named in the output) |
+| never | changes a value — the line prices stay; only the warehouse a figure is filed under |
+
+### Output
+
+The dev database (2026-11-14), right after `migrate up` applied `00006`:
+
+```
+[explicit --dsn] supplier backfill-warehouses · DRY RUN — one transaction, rolled back
+  Penjualan parts under no warehouse: none
+  supplier days re-folded: 5
+    supplier-restock-daily · supplier 1 · 2026-10-15: events 2 · lost and now claimed 0 · rows 1 → 2 (1 under no warehouse before)
+    supplier-restock-daily · supplier 1 · 2026-10-21: events 1 · lost and now claimed 0 · rows 1 → 1 (1 under no warehouse before)
+    supplier-restock-daily · supplier 2 · 2026-07-21: events 1 · lost and now claimed 0 · rows 2 → 2 (2 under no warehouse before)
+    supplier-restock-daily · supplier 2 · 2026-07-24: events 1 · lost and now claimed 0 · rows 1 → 1 (1 under no warehouse before)
+    supplier-restock-daily · supplier 2 · 2026-07-30: events 2 · lost and now claimed 0 · rows 2 → 2 (2 under no warehouse before)
+  every supplier's totals, every day and warehouse — BEFORE → AFTER:
+    supplier 1  = unchanged
+      before  restock 374 · Rp 11650000  lost 110 · Rp 3850000  broken 17 · Rp 500000  sales 0 · Rp 0 · rows under no warehouse 2
+      after   restock 374 · Rp 11650000  lost 110 · Rp 3850000  broken 17 · Rp 500000  sales 0 · Rp 0 · rows under no warehouse 0
+    supplier 2  = unchanged
+      before  restock 114 · Rp 3960000  lost 0 · Rp 0  broken 0 · Rp 0  sales 0 · Rp 0 · rows under no warehouse 5
+      after   restock 114 · Rp 3960000  lost 0 · Rp 0  broken 0 · Rp 0  sales 0 · Rp 0 · rows under no warehouse 0
+  ✓ every supplier's totals are unchanged — with no warehouse chip, Statistik reads what it read before
+```
+
+The real run printed the same with `· written`; a second run: `supplier days with a row under no warehouse: none —
+nothing to re-fold`. The supplier-1 day 2026-10-15 split in two — 288 units received at warehouse 13, 1 at warehouse 90.
+
+| line | means |
+| --- | --- |
+| `supplier N  ≠ MOVED` + `⚠ … the re-folds claimed K event(s) the fold never received` | a repair, not the backfill: the re-folds counted events the fold had lost; the re-fold lines above say which |
+| `✗ … moved with no event claimed` | the report did not match its claims — read the rows above before trusting the figures |
+| `(K under no warehouse before)` | the day's rows under 0 the re-fold replaced |
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `re-fold supplier N on D: a replay holds the fold's lock` | A replay is running. Run it again after the replay |
+| `column "warehouse_id" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first |
+
+---
+
 ## `product recompose-codes`
 
 Puts each team's code in front of the product codes written before a code was **composed on write**
@@ -1875,11 +2049,11 @@ $ san report refold --report order-daily --team 89 --date 2026-08-14 --dry-run
 $ san report refold --report supplier-restock-daily --supplier 2 --date 2026-07-21 --dry-run
 [explicit --dsn] supplier-restock-daily · supplier 2 · 2026-07-21 · DRY RUN — nothing written
   events counted 1 · lost and now claimed 0 · in flight, left to the fold 0
-  product 1 · team 89: unchanged
+  product 1 · team 89 · warehouse 2: unchanged
     column                             before          after
     restock_count                          50             50
     restock_valuation               2.500.000      2.500.000
-  product 2 · team 89: unchanged
+  product 2 · team 89 · warehouse 2: unchanged
     column                             before          after
     restock_count                          23             23
     restock_valuation                 200.000        200.000
@@ -1894,7 +2068,7 @@ A Penjualan repair (`tools/san/report_test.go`, the test database) — a lost pl
 ```
 [test] supplier-sale-daily · supplier 77 · 2026-02-03 · re-folded
   events counted 1 · lost and now claimed 1 · in flight, left to the fold 0
-  product 901 · team 12: row added
+  product 901 · team 12 · warehouse 5: row added
     column                             before          after
     sales_count                             0              3  ←
     sales_value                             0         45.000  ←

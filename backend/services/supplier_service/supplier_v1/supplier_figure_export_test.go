@@ -269,7 +269,7 @@ func TestSupplierFigureExport_Refusals(t *testing.T) {
 	assertExportPolicy(t, "warehouse.supplier.v1.SupplierFigureExportRequest",
 		"warehouse.supplier.v1.SupplierAnalyticService.SupplierFigureExport")
 
-	_, err := runFigureExport(t, supplier_v1.NewService(db, nil, nil, nil, nil), store, &supplierv1.SupplierFigureExportRequest{
+	_, err := runFigureExport(t, supplier_v1.NewService(db, nil, nil, nil, nil, nil), store, &supplierv1.SupplierFigureExportRequest{
 		TeamId: sellingA, GroupBy: byProduct, Filters: october(oneSupplier(melati.ID)),
 	})
 	if connect.CodeOf(err) != connect.CodeUnimplemented {

@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Badge, Stack, Table } from "@chakra-ui/react";
+import { Stack, Table } from "@chakra-ui/react";
 import { expect, within } from "storybook/test";
 
 import {
-  type FigureMarks,
   NO_FIGURE_MARKS,
   SupplierFigureCells,
   SupplierFigureHeaders,
@@ -12,12 +11,11 @@ import {
   description,
 } from "./SupplierFigures";
 import type { SupplierFigureValues } from "./figureValues";
-import { sampleProductFigures } from "./sampleSupplierFigures";
 
 // THE FIGURES — every unit sold with the last order, every unit ready with the last restock — as table columns, as a
 // block's lines and as a card's badges: on the supplier list and Discover for a supplier, on the supplier's page for a
-// store and a product (discover-shows-the-same-figures-and-filters, the-detail-tabs-show-sold-and-ready). A supplier's
-// and a store's are real and unmarked; a product's are still invented and carry the page's marks.
+// store and a product (discover-shows-the-same-figures-and-filters, the-detail-tabs-show-sold-and-ready) — all real,
+// none marked.
 
 const DAY = 86_400n;
 const NOW = BigInt(Math.floor(Date.now() / 1000));
@@ -27,12 +25,7 @@ const UNSOLD: SupplierFigureValues = { sold: 0, orders: 0, lastOrderAt: 0n, read
 // None of its goods ever arrived — nothing to count.
 const NEVER = null;
 // A product's row already says when it was bought, so its figures carry no restock date.
-const PRODUCT = sampleProductFigures(7n, 1n);
-// The page's marks — a product's figures are invented.
-const MARKS: FigureMarks = {
-  sold: <Badge data-testid="mark-sold">1</Badge>,
-  ready: <Badge data-testid="mark-ready">2</Badge>,
-};
+const PRODUCT: SupplierFigureValues = { sold: 412, orders: 31, lastOrderAt: NOW - 1n * DAY, ready: 37 };
 
 function Both() {
   return (
@@ -61,7 +54,7 @@ function Both() {
       <SupplierFigureLines figures={STOCKED} marks={NO_FIGURE_MARKS} testId="figures-lines" />
       <SupplierFigureLines figures={UNSOLD} marks={NO_FIGURE_MARKS} testId="figures-lines-unsold" />
       <SupplierFigureLines figures={NEVER} marks={NO_FIGURE_MARKS} testId="figures-lines-none" />
-      <SupplierFigureLines figures={PRODUCT} marks={MARKS} testId="figures-lines-product" />
+      <SupplierFigureLines figures={PRODUCT} marks={NO_FIGURE_MARKS} testId="figures-lines-product" />
       <SupplierFigureIcons figures={STOCKED} marks={NO_FIGURE_MARKS} testId="figures-icons" />
       <SupplierFigureIcons figures={NEVER} marks={NO_FIGURE_MARKS} testId="figures-icons-none" />
     </Stack>
@@ -79,7 +72,7 @@ type Story = StoryObj<typeof meta>;
 
 /**
  * Each figure with its last date under it; goods that never sold read 0 with no order date; a supplier none of whose
- * goods arrived is a dash in the table and no lines. Only a product's invented figures carry marks.
+ * goods arrived is a dash in the table and no lines. A product's carry no restock date — its row says it.
  */
 export const ColumnsAndLines: Story = {
   play: async ({ canvasElement }) => {
@@ -95,11 +88,10 @@ export const ColumnsAndLines: Story = {
     // A card's row: the units by their icons, no dates; a dash for each, unmarked, when nothing arrived.
     await expect(canvas.getByTestId("figures-icons")).not.toHaveTextContent(/ordered|restocked/);
     await expect(canvas.getByTestId("figures-icons-none-ready")).toHaveTextContent("—");
-    // A product: the last order, but no restock date — its row's Terakhir dibeli says it — and the page's marks.
-    await expect(canvas.getByTestId("figures-sold-product")).toHaveTextContent(/ordered /);
-    await expect(canvas.getByTestId("figures-ready-product")).toHaveTextContent(/^\d+$/);
+    // A product: the last order, but no restock date — its row's Terakhir dibeli says it.
+    await expect(canvas.getByTestId("figures-sold-product")).toHaveTextContent(/^412ordered /);
+    await expect(canvas.getByTestId("figures-ready-product")).toHaveTextContent(/^37$/);
     await expect(canvas.getByTestId("figures-lines-product")).not.toHaveTextContent("restocked");
-    await expect(canvas.getAllByTestId("mark-sold")).toHaveLength(1);
     await expect(canvas.queryByTestId("not-implemented-sold")).toBeNull();
   },
 };

@@ -232,6 +232,8 @@ flowchart LR
 - **Still open:** which restocks count, whether the price shows, and whether the discover search reaches product
   names — [Q9](./context_clarify.md#question).
 
+✅ Built 2026-11-14 — the Produk tab too: any selling team reads a supplier's products and their Terjual and Siap, the same rows the owning team reads, on Discover's detail; no price, no cost.
+
 ## the-supplier-has-no-code
 
 > Owner, in [context.md](./context.md) §Table Must Have 1 *(2026-10-06, the fourth edit)*: `suppliers` — `id`, `team_id`,
@@ -291,6 +293,10 @@ erDiagram
 
 **The spec.** The table as written. How a row gets written is
 [linking-products-is-deferred](#linking-products-is-deferred).
+
+✅ Built 2026-11-14 — `supplier_channel_products` (supplier 00005): one row per product per store, plus a store-less row per product for a line naming the supplier alone; no RPC reads it yet (the Produk tab, next). [rpc.md § The links](../../services/supplier_service/rpc.md#the-links--every-accepted-line-links-its-product).
+
+✅ Built 2026-11-14 — the Produk tab reads the links: `SupplierProductList` pages a supplier's products, one row per product per store it was bought at (or none), each named by product_service and carrying its store × product Terjual and Siap. [rpc.md § The Produk tab](../../services/supplier_service/rpc.md#the-produk-tab--supplierproductlist)
 
 ## linking-products-is-deferred
 
@@ -485,6 +491,8 @@ flowchart TD
 | Products | `components/ProductsPanel.tsx` — Product · SKU · Channel (badge + name). ⚠ **sample**: two invented products per real channel (`sampleProducts.ts`), and a `sample` mark on the tab and in the page's summary. Real rows wait on the linking ([linking-products-is-deferred](#linking-products-is-deferred)) |
 | stories | `Pages/Suppliers/SupplierDetail` — *ChannelsAndProductsTabs*, *ChannelsAreOneListWithBadges*, *ProductsNameTheirChannel*, *ProductsTab* |
 
+✅ Built 2026-11-14 — the Products tab is real on both details, My Supplier's and Discover's (it was sample rows): its rows from `SupplierProductList`, its file from `SupplierProductExport`. [rpc.md § The Produk tab](../../services/supplier_service/rpc.md#the-produk-tab--supplierproductlist)
+
 ## the-channels-tab-searches-filters-and-pages
 
 > Owner, in chat *(2026-10-06)*: *"channel tab can search and filter by channel type, dont forget pagination too"*.
@@ -521,6 +529,8 @@ flowchart LR
 **The spec.** `features/suppliers/ProductBrowser.tsx`. ⚠ Over SAMPLE rows until the channel-product linking is
 designed ([linking-products-is-deferred](#linking-products-is-deferred)); the real read searches and pages on the
 server.
+
+✅ Built 2026-11-14 — searched by the product's name or SKU (product_service, among the supplier's own products) or the store's name, and paged, on the server (`SupplierProductList`); the growing pager.
 
 ## discover-searches-every-teams-suppliers
 
@@ -594,6 +604,8 @@ flowchart LR
 
 **What it does NOT settle:** what the discover page shows beside a product, and whether its search reaches products —
 both still [parked](./context_clarify.md#parked--talk-later).
+
+✅ Built 2026-11-14 — the RestockAccepted fold upserts every line's link in the same transaction as the figures, behind the same claim (a redelivery writes nothing); `san supplier backfill-links` linked the past accepts (dev: 5 links from 12 lines of 7 restocks).
 
 ## a-supplier-is-measured-per-product-per-day
 
@@ -814,6 +826,8 @@ flowchart LR
 | the Products tab | Product · SKU · **Team** · Store |
 | never | a restock set `lost` or `cancel` — it is never accepted |
 
+✅ Built 2026-11-14 — every accepted line naming a supplier links its own product, keyed by the restocking team; a line whose units all broke links too.
+
 ## a-store-delete-is-soft-too
 
 > Owner, in chat *(2026-10-07)*: *"all of Q11 yes"* — [Q11c](./context_clarify.md#question), as recommended.
@@ -859,6 +873,10 @@ flowchart LR
 | the write | `ON CONFLICT (channel_id, product_id) DO UPDATE SET last_restocked_at = GREATEST(old, new)` — a late or repeated event never lowers it |
 | the Products tab | newest first, showing *last bought* |
 | removal | none — a second writer, worth adding the day a wrong link is actually seen |
+
+✅ Built 2026-11-14 — `last_restocked_at` (with `last_restock_id`) takes the latest accept and `first_restocked_at` the earliest; a late or repeated event never lowers either.
+
+✅ Built 2026-11-14 — the Produk tab orders by it, newest restock first, and shows the last restock with the first under it.
 
 ## each-figure-is-read-at-the-accept
 
@@ -1114,6 +1132,8 @@ flowchart LR
 | the link (`supplier_channel_products`) | **not built** — it is a store-to-product row, and no line names a store. The Products tab stays sample |
 | the day lines gain a store | restock [Q3](../inventory/restock_clarify.md#question) / [Q12](../inventory/restock_clarify.md#question) — the event gains the line's store, the fold reads the supplier from it, and the link is built then. Rows already folded do not move |
 
+✅ Built 2026-11-14 — the switch: lines name their store and supplier, so the fold credits each LINE's own supplier — a restock mixing suppliers credits each line's (it credited nobody before), a line naming none credits none; `san supplier backfill-links` re-folds the days of such past restocks (dev: none).
+
 ## past-accepts-are-backfilled-once
 
 > Owner, in chat *(2026-10-07)*: **"Backfill once"** — asked because restocks accepted before the event existed were never
@@ -1194,3 +1214,7 @@ flowchart LR
 > Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: [restock-accepted-links-the-product-to-its-channel](#restock-accepted-links-the-product-to-its-channel) says a line with no channel links nothing; two days later [a-line-may-name-a-supplier-without-a-channel](../inventory/restock_decision.md#a-line-may-name-a-supplier-without-a-channel) let a line name a supplier without one of its stores (the dev data: 9 such accepted lines against 3 naming a store). A: extend — those lines link too, shown with *—* as the store, so the Produk and Statistik tabs list the same products; B: keep — only lines naming a store link.
 
 **The verdict.** An accepted restock line that names a **supplier** links its product to that supplier **whether or not it names a store**: with a store, under that store ([products-hang-off-a-channel](#products-hang-off-a-channel)); with none, under the supplier with **no store** — its Toko cell reads **—**. Everything else of the link is unchanged (the last restock it remembers, the line's own product). A line naming no supplier at all links nothing. It extends the *no channel → nothing* row of [restock-accepted-links-the-product-to-its-channel](#restock-accepted-links-the-product-to-its-channel). ⚠ Not built.
+
+✅ Built 2026-11-14 — a line naming a supplier and no store links under the supplier with no store (`channel_id` NULL); a line naming no supplier links nothing. Toko reads — when the Produk tab shows the rows (next).
+
+✅ Built 2026-11-14 — the Produk tab shows those rows: Toko reads —, and its store filter offers "No store" (`no_store`); the file leaves the store cells empty.

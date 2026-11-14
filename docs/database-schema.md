@@ -2747,6 +2747,8 @@ each sells through (docs/business/supplier/context_decision.md, the-supplier-get
 ```mermaid
 erDiagram
     suppliers ||--o{ supplier_channels : "supplier_id"
+    suppliers ||--o{ supplier_channel_products : "supplier_id, no FK"
+    supplier_channels |o--o{ supplier_channel_products : "channel_id, NULL = no store, no FK"
     supplier_sale_orders ||--o{ supplier_sale_order_parts : "order_id, no FK - written together"
 
     suppliers {
@@ -2773,12 +2775,26 @@ erDiagram
         timestamptz updated_at
     }
 
+    supplier_channel_products {
+        bigserial   id                 PK
+        bigint      team_id            "the RESTOCKING team - the product owner, opaque"
+        bigint      supplier_id        "the LINE supplier, no FK"
+        bigint      channel_id         "the line store, NULL = the supplier with no store, no FK"
+        bigint      product_id         "the restocking team product, opaque"
+        timestamptz first_restocked_at "the EARLIEST accept naming it - LEAST"
+        timestamptz last_restocked_at  "the LATEST accept naming it - GREATEST, never lowered"
+        bigint      last_restock_id    "that latest accept restock, opaque"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     supplier_product_daily_reports {
         bigserial   id                        PK
         date        day                       "the accept, Jakarta day"
-        bigint      supplier_id               "the restock supplier, no FK, a deleted one kept"
+        bigint      supplier_id               "the LINE supplier, no FK, a deleted one kept"
         bigint      product_id                "the RESTOCKING team product, opaque"
         bigint      team_id                   "the RESTOCKING team, not the supplier owner"
+        bigint      warehouse_id              "received at, 00006 - 0 = folded before it was recorded"
         bigint      restock_count             "units accepted as good stock"
         double      restock_valuation         "at the line price, exact as the fold values it - a double since 00003"
         bigint      shipping_lost_count       "short in an accepted parcel"
@@ -2794,6 +2810,7 @@ erDiagram
         bigint      supplier_id  "the batch supplier, no FK"
         bigint      product_id   "the batch product, opaque"
         bigint      team_id      "the batch team - the RESTOCKING team"
+        bigint      warehouse_id "taken from, the take's - 00006"
         bigint      sales_count  "units sold, SIGNED - a cancel subtracts on its day"
         double      sales_value  "their share of the platform total, exact"
         timestamptz last_updated
@@ -2812,6 +2829,7 @@ erDiagram
         bigint      supplier_id PK
         bigint      product_id  PK
         bigint      team_id     PK
+        bigint      warehouse_id PK "taken from - the cancel subtracts there"
         bigint      units       "what the placement added"
         double      value       "taken back exactly by the cancel"
     }
@@ -2854,11 +2872,13 @@ A supplier's figures are a FOLD of inventory_service's *Restock Accepted* event 
 the-figures-screens-are-accepted) — every table here is DERIVED and rebuilt by `AnalyticReplayCompute`; nothing on a
 write path reads them.
 
-- **The key is the owner's** — unique (`day`, `supplier_id`, `product_id`, `team_id`), the fold's upsert target
-  (the-report-is-keyed-by-team-not-by-store). All six figures are movements, so the upsert ADDS and no later day
+- **The key is the owner's** — unique (`day`, `supplier_id`, `product_id`, `team_id`, `warehouse_id`), the fold's upsert
+  target (the-report-is-keyed-by-team-not-by-store); the warehouse since 00006, below. All six figures are movements, so the upsert ADDS and no later day
   changes — there is no balance to carry, unlike settlement's.
-- **`supplier_id` is the RESTOCK's** while restock lines name no store
-  (the-supplier-comes-from-the-restock-until-lines-name-a-store); no FK, because a deleted supplier's figures stay.
+- **`supplier_id` is each LINE's own** since 2026-11-14 — restock lines record their supplier and store (inventory
+  00023/00024) and the event carries both per line, so the fold credits a line's own supplier and a restock mixing
+  suppliers credits each (the-supplier-comes-from-the-restock-until-lines-name-a-store, its switch); a line naming no
+  supplier credits none. No FK, because a deleted supplier's figures stay.
 - **The dedup row is the event's id**, never the broker's message id — a republish, a replay and the backfill all
   collide on `restock-accepted:<id>`. It is pruned 45 days after receipt (`AnalyticMaintenanceRun`).
 - **`supplier_service_metadata`** holds three keys: `process_event_lock` (`{"lock":true|false}`, seeded false — the
@@ -2868,8 +2888,8 @@ write path reads them.
 
 | index | serves |
 | --- | --- |
-| `supplier_product_daily_reports_key_idx` UNIQUE (day, supplier_id, product_id, team_id) | the fold's upsert · the replay's delete · every window scan — the ranking |
-| `supplier_product_daily_reports_supplier_day_idx` (supplier_id, day) | one supplier over a window — the Statistics tab's series and by-product table |
+| `supplier_product_daily_reports_key_idx` UNIQUE (day, supplier_id, product_id, team_id, warehouse_id) | the fold's upsert · the replay's delete · every window scan — the ranking |
+| `supplier_product_daily_reports_supplier_day_idx` (supplier_id, day) | one supplier over a window — the Statistics tab's series and by-product table; under a warehouse chip, a filter on its rows |
 | `supplier_event_logs_day_idx` (day) · `_created_idx` (created_at) | the replay's delete · the prune |
 
 ### Penjualan — `00004_supplier_sales`
@@ -2878,8 +2898,8 @@ What a supplier's goods SOLD for (penjualan-is-the-selling-value-on-the-order-da
 and `OrderCancelled` by the sales fold — DERIVED, like the restock figures, and in tables of its own because
 `AnalyticReplayCompute` deletes and re-seeks only the restock subscription.
 
-- **`supplier_sale_daily_reports`** is keyed as the restock rows are (`day`, `supplier_id`, `product_id`, `team_id`) and
-  read with them as one UNION ALL by `metrics/suppliers`. SIGNED: the order's day adds, the cancel's day subtracts.
+- **`supplier_sale_daily_reports`** is keyed as the restock rows are (`day`, `supplier_id`, `product_id`, `team_id`,
+  `warehouse_id`) and read with them as one UNION ALL by `metrics/suppliers`. SIGNED: the order's day adds, the cancel's day subtracts.
 - **`supplier_sale_orders`** is the claim — one row per order, locked FOR UPDATE by both events, so either may arrive
   first; **`supplier_sale_order_parts`** keeps what the placement added, so the cancel takes back exactly that.
 - The supplier, product and team are the BATCH's that the order's take drew (inventory's ledger, read in-process at the
@@ -2887,13 +2907,51 @@ and `OrderCancelled` by the sales fold — DERIVED, like the restock figures, an
 
 | index | serves |
 | --- | --- |
-| `supplier_sale_daily_reports_key_idx` UNIQUE (day, supplier_id, product_id, team_id) | the sales fold's upsert · every window scan |
+| `supplier_sale_daily_reports_key_idx` UNIQUE (day, supplier_id, product_id, team_id, warehouse_id) | the sales fold's upsert · every window scan |
 | `supplier_sale_daily_reports_supplier_day_idx` (supplier_id, day) | one supplier over a window — the Statistics tab |
-| `supplier_sale_orders_pkey` (order_id) · `supplier_sale_order_parts_pkey` (order_id, supplier_id, product_id, team_id) | the claim · the cancel's read of its parts |
+| `supplier_sale_orders_pkey` (order_id) · `supplier_sale_order_parts_pkey` (order_id, supplier_id, product_id, team_id, warehouse_id) | the claim · the cancel's read of its parts |
 
-**Not here yet:** `supplier_channel_products` — the store-to-product link
-(restock-accepted-links-the-product-to-its-channel) needs a store on each restock line, which the restock does not
-record yet.
+### The warehouse — `00006_supplier_reports_carry_the_warehouse`
+
+Both reports and the sale parts carry the WAREHOUSE (the-supplier-reports-carry-the-warehouse), last in every key, so a
+supplier page's Gudang terkait chip narrows its Statistik (a-supplier-page-is-scoped-by-its-warehouses) and no chip is
+the sum over every warehouse — the figures as they read before.
+
+- **Restock rows: the warehouse the restock was received at** — `RestockAccepted.warehouse_id`; a received-count
+  correction files under its own `warehouse_id` (the receiving warehouse). **Sale rows and parts: the warehouse the take
+  drew from** — inventory's take (one warehouse per order, read in-process with the batches), else `OrderPlaced`'s
+  `warehouse_id`; the cancel subtracts from its parts' warehouse. Values stay at the line price, Penjualan included.
+- **Added at 0, never truncated**: the claims a refold reads are pruned after 45 days and the parts need inventory's
+  take, so the migration cannot rebuild them — it adds the column with DEFAULT 0, drops the default (every write must
+  name a warehouse) and leaves the history to `san supplier backfill-warehouses`, which re-folds every day still holding
+  a 0 row from its claims, re-files each sale part from its take, and prints every supplier's totals BEFORE == AFTER.
+  A row it cannot place stays at 0 — counted with no chip, under no warehouse's chip.
+- **The supplier-day index serves the chip**: one supplier's rows over a window, the warehouse a filter on them — no
+  index of its own (perf at volume in `rpc.md`, `metrics/suppliers`).
+
+### The links — `00005_supplier_channel_products`
+
+A supplier's products (products-hang-off-a-channel): one row per product per store it was bought from, and per supplier
+with NO store for a line naming the supplier alone (a-line-with-no-store-links-under-the-supplier) — what the Produk tab
+lists. Restock lines record their store since inventory 00024 and their supplier since 00023, and `RestockAccepted`
+carries both per line.
+
+- **Written only by the accepted restock** (restock-accepted-links-the-product-to-its-channel): the `RestockAccepted`
+  fold upserts every line naming a supplier — broken and short lines included (every-accepted-line-links-its-own-product)
+  — in the SAME transaction as the figures, behind the same claim, so a redelivery writes nothing; the day re-fold links
+  the lost accepts it claims; `san supplier backfill-links` rebuilds the past (repeatable). No RPC writes or removes one.
+- **It remembers its accepts** (a-link-remembers-its-last-restock): `first_restocked_at` takes the LEAST and
+  `last_restocked_at` (with `last_restock_id`) the GREATEST of every accept naming it, so a late or repeated event never
+  lowers it and a backfill after the live fold still dates it right; an upsert that moves no date leaves the row untouched.
+- **`team_id` and `supplier_id` are immutable facts of the link** (a product never changes team, a store never changes
+  supplier) — the Tim filter and the supplier's page need no other service.
+- **No foreign key**, on purpose: the fold must never refuse an accept's figures over a reference check, and suppliers
+  and stores are never removed (soft delete) — a link of a deleted store or supplier stays, hidden with it.
+
+| index | serves |
+| --- | --- |
+| `supplier_channel_products_key` UNIQUE (supplier_id, channel_id, product_id, team_id) NULLS NOT DISTINCT | the fold's upsert (a store-less link conflicts like any other) · the Produk tab's store filter |
+| `supplier_channel_products_newest_idx` (supplier_id, last_restocked_at DESC, id DESC) | the Produk tab's page — one supplier's links, newest restock first |
 
 ---
 

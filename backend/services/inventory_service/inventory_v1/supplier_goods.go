@@ -37,6 +37,11 @@ import (
 //
 // Three aggregates keyed by (supplier, group key), merged here — each a plain GROUP BY over the supplier's batches
 // (`batches_supplier_idx`).
+//
+// ── One warehouse ───────────────────────────────────────────────────────────────────────────────
+//
+// `warehouse_id` is a supplier page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses): every aggregate
+// then counts only the batches IN that warehouse — the Toko tab's figures per store under the chip. 0 = every warehouse.
 func (s *Service) SupplierGoods(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.SupplierGoodsRequest],
@@ -48,7 +53,7 @@ func (s *Service) SupplierGoods(
 
 	ids := req.Msg.GetSupplierIds()
 	db := s.db.WithContext(ctx)
-	rows := supplierGoodsRows{group: req.Msg.GetGroup()}
+	rows := supplierGoodsRows{group: req.Msg.GetGroup(), warehouseID: req.Msg.GetWarehouseId()}
 
 	err = rows.ready(db, key, ids)
 	if err != nil {
@@ -91,8 +96,19 @@ type supplierGoodsKeyOf struct {
 // supplierGoodsRows collects the rows in first-touch order; a key seen by any of the three aggregates gets one row.
 type supplierGoodsRows struct {
 	group inventoryv1.SupplierGoodsGroup
-	byKey map[supplierGoodsKeyOf]*inventoryv1.SupplierGoods
-	list  []*inventoryv1.SupplierGoods
+	// The chip's warehouse; 0 = every warehouse.
+	warehouseID uint64
+	byKey       map[supplierGoodsKeyOf]*inventoryv1.SupplierGoods
+	list        []*inventoryv1.SupplierGoods
+}
+
+// inWarehouse narrows a query over `batches AS b` to the chip's warehouse, when one is picked.
+func (r *supplierGoodsRows) inWarehouse(query *gorm.DB) *gorm.DB {
+	if r.warehouseID == 0 {
+		return query
+	}
+
+	return query.Where("b.warehouse_id = ?", r.warehouseID)
 }
 
 func (r *supplierGoodsRows) at(supplierID, key uint64) *inventoryv1.SupplierGoods {
@@ -136,8 +152,8 @@ func (r *supplierGoodsRows) ready(db *gorm.DB, key string, ids []uint64) error {
 		Ready      int64
 	}
 
-	err := db.
-		Table(inventory_service_models.Batch{}.TableName()+" AS b").
+	err := r.inWarehouse(db.
+		Table(inventory_service_models.Batch{}.TableName()+" AS b")).
 		Select("b.supplier_id, "+key+" AS k, SUM(b.stock_count) AS ready").
 		Where("b.supplier_id IN ?", ids).
 		Where("b.stock_count > 0").
@@ -165,8 +181,8 @@ func (r *supplierGoodsRows) restocks(db *gorm.DB, key string, ids []uint64) erro
 		LastRestock *time.Time
 	}
 
-	err := db.
-		Table(inventory_service_models.Batch{}.TableName()+" AS b").
+	err := r.inWarehouse(db.
+		Table(inventory_service_models.Batch{}.TableName()+" AS b")).
 		Select("b.supplier_id, "+key+" AS k, COUNT(DISTINCT b.transaction_id) AS restocks, MAX(b.created_at) AS last_restock").
 		Joins("JOIN inventory_transactions t ON t.id = b.transaction_id").
 		Where("b.supplier_id IN ?", ids).
@@ -202,6 +218,14 @@ func (r *supplierGoodsRows) sold(db *gorm.DB, key string, ids []uint64) error {
 		LastOrder  *time.Time
 	}
 
+	inWarehouse := ""
+	args := []any{string(inventory_service_models.TxOrder), ids}
+
+	if r.warehouseID > 0 {
+		inWarehouse = " AND b.warehouse_id = ?"
+		args = append(args, r.warehouseID)
+	}
+
 	err := db.
 		Raw(`
 			SELECT supplier_id, k,
@@ -219,11 +243,11 @@ func (r *supplierGoodsRows) sold(db *gorm.DB, key string, ids []uint64) error {
 					WHERE batch_id = b.id AND change_type = ?
 					OFFSET 0
 				) l
-				WHERE b.supplier_id IN ?
+				WHERE b.supplier_id IN ?`+inWarehouse+`
 				GROUP BY b.supplier_id, k, l.transaction_id
 			) per_order
 			GROUP BY supplier_id, k
-			ORDER BY supplier_id, k`, string(inventory_service_models.TxOrder), ids).
+			ORDER BY supplier_id, k`, args...).
 		Scan(&scans).
 		Error
 	if err != nil {

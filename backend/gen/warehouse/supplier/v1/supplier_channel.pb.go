@@ -349,7 +349,12 @@ type SupplierChannelListFilter struct {
 	// Matched against the store's name, link and description.
 	Q string `protobuf:"bytes,2,opt,name=q,proto3" json:"q,omitempty"`
 	// UNSPECIFIED = every type.
-	ChannelType   v1.Marketplace `protobuf:"varint,3,opt,name=channel_type,json=channelType,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"channel_type,omitempty"`
+	ChannelType v1.Marketplace `protobuf:"varint,3,opt,name=channel_type,json=channelType,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"channel_type,omitempty"`
+	// The page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses): only the stores whose goods were
+	// received at that warehouse — the batches inventory counts for the chip itself (on a shelf there now, minted by a
+	// restock there, or ever sold from there), so a chip and its tab never disagree. 0 = every warehouse. A warehouse role
+	// may name only its own building.
+	WarehouseId   uint64 `protobuf:"varint,4,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -403,6 +408,13 @@ func (x *SupplierChannelListFilter) GetChannelType() v1.Marketplace {
 		return x.ChannelType
 	}
 	return v1.Marketplace(0)
+}
+
+func (x *SupplierChannelListFilter) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return 0
 }
 
 // THE TOKO TAB AS A FILE — the tab's own filter and order (each-supplier-tab-exports-its-own-table).
@@ -549,6 +561,676 @@ func (x *SupplierChannelExportResponse) GetFilename() string {
 	return ""
 }
 
+type SupplierProductListRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The CALLER's scope — it authorizes and never narrows: every selling team reads every supplier's products.
+	TeamId        uint64                     `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *SupplierProductListFilter `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	Page          *v11.CommonPagination      `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductListRequest) Reset() {
+	*x = SupplierProductListRequest{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductListRequest) ProtoMessage() {}
+
+func (x *SupplierProductListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductListRequest.ProtoReflect.Descriptor instead.
+func (*SupplierProductListRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *SupplierProductListRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SupplierProductListRequest) GetFilter() *SupplierProductListFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *SupplierProductListRequest) GetPage() *v11.CommonPagination {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
+type SupplierProductListFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Any team's live supplier; a deleted or unknown one answers NotFound.
+	SupplierId uint64 `protobuf:"varint,1,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
+	// The product's name or SKU, or the store's name (the-products-tab-searches-and-pages).
+	Q string `protobuf:"bytes,2,opt,name=q,proto3" json:"q,omitempty"`
+	// Whose product — one selling team; 0 = every team (the-products-tab-filters-by-team-and-store).
+	ProductTeamId uint64 `protobuf:"varint,3,opt,name=product_team_id,json=productTeamId,proto3" json:"product_team_id,omitempty"`
+	// One of the supplier's stores; 0 = every store, and the store-less rows with them.
+	StoreId uint64 `protobuf:"varint,4,opt,name=store_id,json=storeId,proto3" json:"store_id,omitempty"`
+	// Only the rows bought with NO store — the line named the supplier alone (a-line-with-no-store-links-under-the-supplier).
+	NoStore bool `protobuf:"varint,5,opt,name=no_store,json=noStore,proto3" json:"no_store,omitempty"`
+	// The page's Gudang terkait chip (a-supplier-page-is-scoped-by-its-warehouses): only the rows whose product has goods
+	// of this supplier, bought at the row's store (or none), received at that warehouse — the batches inventory counts for
+	// the chip itself — and each row's Terjual and Siap are that warehouse's. 0 = every warehouse.
+	WarehouseId   uint64 `protobuf:"varint,6,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductListFilter) Reset() {
+	*x = SupplierProductListFilter{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductListFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductListFilter) ProtoMessage() {}
+
+func (x *SupplierProductListFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductListFilter.ProtoReflect.Descriptor instead.
+func (*SupplierProductListFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SupplierProductListFilter) GetSupplierId() uint64 {
+	if x != nil {
+		return x.SupplierId
+	}
+	return 0
+}
+
+func (x *SupplierProductListFilter) GetQ() string {
+	if x != nil {
+		return x.Q
+	}
+	return ""
+}
+
+func (x *SupplierProductListFilter) GetProductTeamId() uint64 {
+	if x != nil {
+		return x.ProductTeamId
+	}
+	return 0
+}
+
+func (x *SupplierProductListFilter) GetStoreId() uint64 {
+	if x != nil {
+		return x.StoreId
+	}
+	return 0
+}
+
+func (x *SupplierProductListFilter) GetNoStore() bool {
+	if x != nil {
+		return x.NoStore
+	}
+	return false
+}
+
+func (x *SupplierProductListFilter) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return 0
+}
+
+// One link — a product bought from the supplier, at one store or at none.
+type SupplierProduct struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The link's id (`supplier_channel_products.id`) — the row's key; one product bought at two stores is two rows.
+	Id        uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProductId uint64 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	// Whose product it is — the restocking team (every-accepted-line-links-its-own-product).
+	TeamId uint64 `protobuf:"varint,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The product as product_service names it: its name, its SKU and its list-sized picture ("" = none). Empty when the
+	// product no longer resolves.
+	ProductName         string `protobuf:"bytes,4,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
+	ProductCode         string `protobuf:"bytes,5,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
+	ProductThumbnailUrl string `protobuf:"bytes,6,opt,name=product_thumbnail_url,json=productThumbnailUrl,proto3" json:"product_thumbnail_url,omitempty"`
+	// The store it was bought at; 0 = none, its cell reads "—".
+	ChannelId   uint64         `protobuf:"varint,7,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ChannelName string         `protobuf:"bytes,8,opt,name=channel_name,json=channelName,proto3" json:"channel_name,omitempty"`
+	ChannelType v1.Marketplace `protobuf:"varint,9,opt,name=channel_type,json=channelType,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"channel_type,omitempty"`
+	// The earliest and the latest accept that named the link, unix seconds (a-link-remembers-its-last-restock).
+	FirstRestockedUnix int64 `protobuf:"varint,10,opt,name=first_restocked_unix,json=firstRestockedUnix,proto3" json:"first_restocked_unix,omitempty"`
+	LastRestockedUnix  int64 `protobuf:"varint,11,opt,name=last_restocked_unix,json=lastRestockedUnix,proto3" json:"last_restocked_unix,omitempty"`
+	// Its goods bought there, all time — inventory's figures for this store and product, every team's batches. Unset =
+	// none of its goods ever arrived (every unit broke on the way): the screen draws a dash.
+	Figures       *SupplierProductFigures `protobuf:"bytes,12,opt,name=figures,proto3" json:"figures,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProduct) Reset() {
+	*x = SupplierProduct{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProduct) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProduct) ProtoMessage() {}
+
+func (x *SupplierProduct) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProduct.ProtoReflect.Descriptor instead.
+func (*SupplierProduct) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SupplierProduct) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *SupplierProduct) GetProductId() uint64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+func (x *SupplierProduct) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SupplierProduct) GetProductName() string {
+	if x != nil {
+		return x.ProductName
+	}
+	return ""
+}
+
+func (x *SupplierProduct) GetProductCode() string {
+	if x != nil {
+		return x.ProductCode
+	}
+	return ""
+}
+
+func (x *SupplierProduct) GetProductThumbnailUrl() string {
+	if x != nil {
+		return x.ProductThumbnailUrl
+	}
+	return ""
+}
+
+func (x *SupplierProduct) GetChannelId() uint64 {
+	if x != nil {
+		return x.ChannelId
+	}
+	return 0
+}
+
+func (x *SupplierProduct) GetChannelName() string {
+	if x != nil {
+		return x.ChannelName
+	}
+	return ""
+}
+
+func (x *SupplierProduct) GetChannelType() v1.Marketplace {
+	if x != nil {
+		return x.ChannelType
+	}
+	return v1.Marketplace(0)
+}
+
+func (x *SupplierProduct) GetFirstRestockedUnix() int64 {
+	if x != nil {
+		return x.FirstRestockedUnix
+	}
+	return 0
+}
+
+func (x *SupplierProduct) GetLastRestockedUnix() int64 {
+	if x != nil {
+		return x.LastRestockedUnix
+	}
+	return 0
+}
+
+func (x *SupplierProduct) GetFigures() *SupplierProductFigures {
+	if x != nil {
+		return x.Figures
+	}
+	return nil
+}
+
+// Terjual and Siap of one product at one store (the-detail-tabs-show-sold-and-ready) — counts and dates, never money.
+type SupplierProductFigures struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Units sold, all time; a cancelled order counted back.
+	SoldUnits int64 `protobuf:"varint,1,opt,name=sold_units,json=soldUnits,proto3" json:"sold_units,omitempty"`
+	// The orders they went out on, and the last of them (unix seconds, 0 = never sold).
+	Orders        int64 `protobuf:"varint,2,opt,name=orders,proto3" json:"orders,omitempty"`
+	LastOrderUnix int64 `protobuf:"varint,3,opt,name=last_order_unix,json=lastOrderUnix,proto3" json:"last_order_unix,omitempty"`
+	// Units on a shelf now.
+	ReadyUnits    int64 `protobuf:"varint,4,opt,name=ready_units,json=readyUnits,proto3" json:"ready_units,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductFigures) Reset() {
+	*x = SupplierProductFigures{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductFigures) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductFigures) ProtoMessage() {}
+
+func (x *SupplierProductFigures) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductFigures.ProtoReflect.Descriptor instead.
+func (*SupplierProductFigures) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SupplierProductFigures) GetSoldUnits() int64 {
+	if x != nil {
+		return x.SoldUnits
+	}
+	return 0
+}
+
+func (x *SupplierProductFigures) GetOrders() int64 {
+	if x != nil {
+		return x.Orders
+	}
+	return 0
+}
+
+func (x *SupplierProductFigures) GetLastOrderUnix() int64 {
+	if x != nil {
+		return x.LastOrderUnix
+	}
+	return 0
+}
+
+func (x *SupplierProductFigures) GetReadyUnits() int64 {
+	if x != nil {
+		return x.ReadyUnits
+	}
+	return 0
+}
+
+type SupplierProductMapItem struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	MapData       map[uint64]*SupplierProduct `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductMapItem) Reset() {
+	*x = SupplierProductMapItem{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductMapItem) ProtoMessage() {}
+
+func (x *SupplierProductMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductMapItem.ProtoReflect.Descriptor instead.
+func (*SupplierProductMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SupplierProductMapItem) GetMapData() map[uint64]*SupplierProduct {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type SupplierProductListResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*SupplierProductListResponseItem_Product
+	D             isSupplierProductListResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductListResponseItem) Reset() {
+	*x = SupplierProductListResponseItem{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductListResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductListResponseItem) ProtoMessage() {}
+
+func (x *SupplierProductListResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductListResponseItem.ProtoReflect.Descriptor instead.
+func (*SupplierProductListResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SupplierProductListResponseItem) GetD() isSupplierProductListResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *SupplierProductListResponseItem) GetProduct() *SupplierProductMapItem {
+	if x != nil {
+		if x, ok := x.D.(*SupplierProductListResponseItem_Product); ok {
+			return x.Product
+		}
+	}
+	return nil
+}
+
+type isSupplierProductListResponseItem_D interface {
+	isSupplierProductListResponseItem_D()
+}
+
+type SupplierProductListResponseItem_Product struct {
+	Product *SupplierProductMapItem `protobuf:"bytes,1,opt,name=product,proto3,oneof"`
+}
+
+func (*SupplierProductListResponseItem_Product) isSupplierProductListResponseItem_D() {}
+
+type SupplierProductListResponse struct {
+	state protoimpl.MessageState             `protogen:"open.v1"`
+	Items []*SupplierProductListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// The link ids in order — the newest restock first, then the newest link — the authoritative ordering of the page.
+	Ids           []uint64      `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo      *v11.PageInfo `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductListResponse) Reset() {
+	*x = SupplierProductListResponse{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductListResponse) ProtoMessage() {}
+
+func (x *SupplierProductListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductListResponse.ProtoReflect.Descriptor instead.
+func (*SupplierProductListResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SupplierProductListResponse) GetItems() []*SupplierProductListResponseItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *SupplierProductListResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+func (x *SupplierProductListResponse) GetPageInfo() *v11.PageInfo {
+	if x != nil {
+		return x.PageInfo
+	}
+	return nil
+}
+
+// THE PRODUK TAB AS A FILE — the tab's own filter, every page (each-supplier-tab-exports-its-own-table).
+type SupplierProductExportRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The list's own filter — the search, the team and the store.
+	Filter        *SupplierProductListFilter `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductExportRequest) Reset() {
+	*x = SupplierProductExportRequest{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductExportRequest) ProtoMessage() {}
+
+func (x *SupplierProductExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductExportRequest.ProtoReflect.Descriptor instead.
+func (*SupplierProductExportRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SupplierProductExportRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SupplierProductExportRequest) GetFilter() *SupplierProductListFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+// One message of the stream: a log line, the progress, and — on the last message — the file.
+type SupplierProductExportResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Message string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// Rows written so far, of the total the filter holds.
+	Done  int64 `protobuf:"varint,2,opt,name=done,proto3" json:"done,omitempty"`
+	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	// Set on the LAST message only: the file's expiring link, and its name.
+	DownloadUrl   string `protobuf:"bytes,4,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
+	Filename      string `protobuf:"bytes,5,opt,name=filename,proto3" json:"filename,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierProductExportResponse) Reset() {
+	*x = SupplierProductExportResponse{}
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierProductExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierProductExportResponse) ProtoMessage() {}
+
+func (x *SupplierProductExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierProductExportResponse.ProtoReflect.Descriptor instead.
+func (*SupplierProductExportResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SupplierProductExportResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SupplierProductExportResponse) GetDone() int64 {
+	if x != nil {
+		return x.Done
+	}
+	return 0
+}
+
+func (x *SupplierProductExportResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *SupplierProductExportResponse) GetDownloadUrl() string {
+	if x != nil {
+		return x.DownloadUrl
+	}
+	return ""
+}
+
+func (x *SupplierProductExportResponse) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
 type SupplierChannelListFilterSort struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	SortType v11.CommonSortType     `protobuf:"varint,1,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
@@ -563,7 +1245,7 @@ type SupplierChannelListFilterSort struct {
 
 func (x *SupplierChannelListFilterSort) Reset() {
 	*x = SupplierChannelListFilterSort{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[6]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -575,7 +1257,7 @@ func (x *SupplierChannelListFilterSort) String() string {
 func (*SupplierChannelListFilterSort) ProtoMessage() {}
 
 func (x *SupplierChannelListFilterSort) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[6]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -588,7 +1270,7 @@ func (x *SupplierChannelListFilterSort) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelListFilterSort.ProtoReflect.Descriptor instead.
 func (*SupplierChannelListFilterSort) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SupplierChannelListFilterSort) GetSortType() v11.CommonSortType {
@@ -648,7 +1330,7 @@ type SupplierChannelMapItem struct {
 
 func (x *SupplierChannelMapItem) Reset() {
 	*x = SupplierChannelMapItem{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[7]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -660,7 +1342,7 @@ func (x *SupplierChannelMapItem) String() string {
 func (*SupplierChannelMapItem) ProtoMessage() {}
 
 func (x *SupplierChannelMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[7]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +1355,7 @@ func (x *SupplierChannelMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelMapItem.ProtoReflect.Descriptor instead.
 func (*SupplierChannelMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SupplierChannelMapItem) GetMapData() map[uint64]*SupplierChannel {
@@ -696,7 +1378,7 @@ type SupplierChannelListResponseItem struct {
 
 func (x *SupplierChannelListResponseItem) Reset() {
 	*x = SupplierChannelListResponseItem{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[8]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -708,7 +1390,7 @@ func (x *SupplierChannelListResponseItem) String() string {
 func (*SupplierChannelListResponseItem) ProtoMessage() {}
 
 func (x *SupplierChannelListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[8]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -721,7 +1403,7 @@ func (x *SupplierChannelListResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelListResponseItem.ProtoReflect.Descriptor instead.
 func (*SupplierChannelListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SupplierChannelListResponseItem) GetD() isSupplierChannelListResponseItem_D {
@@ -776,7 +1458,7 @@ type SupplierChannelListResponse struct {
 
 func (x *SupplierChannelListResponse) Reset() {
 	*x = SupplierChannelListResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[9]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -788,7 +1470,7 @@ func (x *SupplierChannelListResponse) String() string {
 func (*SupplierChannelListResponse) ProtoMessage() {}
 
 func (x *SupplierChannelListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[9]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -801,7 +1483,7 @@ func (x *SupplierChannelListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelListResponse.ProtoReflect.Descriptor instead.
 func (*SupplierChannelListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SupplierChannelListResponse) GetItems() []*SupplierChannelListResponseItem {
@@ -840,7 +1522,7 @@ type SupplierChannelCreateRequest struct {
 
 func (x *SupplierChannelCreateRequest) Reset() {
 	*x = SupplierChannelCreateRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[10]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -852,7 +1534,7 @@ func (x *SupplierChannelCreateRequest) String() string {
 func (*SupplierChannelCreateRequest) ProtoMessage() {}
 
 func (x *SupplierChannelCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[10]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -865,7 +1547,7 @@ func (x *SupplierChannelCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelCreateRequest.ProtoReflect.Descriptor instead.
 func (*SupplierChannelCreateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SupplierChannelCreateRequest) GetTeamId() uint64 {
@@ -919,7 +1601,7 @@ type SupplierChannelCreateResponse struct {
 
 func (x *SupplierChannelCreateResponse) Reset() {
 	*x = SupplierChannelCreateResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[11]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -931,7 +1613,7 @@ func (x *SupplierChannelCreateResponse) String() string {
 func (*SupplierChannelCreateResponse) ProtoMessage() {}
 
 func (x *SupplierChannelCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[11]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -944,7 +1626,7 @@ func (x *SupplierChannelCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelCreateResponse.ProtoReflect.Descriptor instead.
 func (*SupplierChannelCreateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SupplierChannelCreateResponse) GetChannel() *SupplierChannel {
@@ -970,7 +1652,7 @@ type SupplierChannelUpdateRequest struct {
 
 func (x *SupplierChannelUpdateRequest) Reset() {
 	*x = SupplierChannelUpdateRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[12]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -982,7 +1664,7 @@ func (x *SupplierChannelUpdateRequest) String() string {
 func (*SupplierChannelUpdateRequest) ProtoMessage() {}
 
 func (x *SupplierChannelUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[12]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -995,7 +1677,7 @@ func (x *SupplierChannelUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelUpdateRequest.ProtoReflect.Descriptor instead.
 func (*SupplierChannelUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SupplierChannelUpdateRequest) GetTeamId() uint64 {
@@ -1049,7 +1731,7 @@ type SupplierChannelUpdateResponse struct {
 
 func (x *SupplierChannelUpdateResponse) Reset() {
 	*x = SupplierChannelUpdateResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[13]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1061,7 +1743,7 @@ func (x *SupplierChannelUpdateResponse) String() string {
 func (*SupplierChannelUpdateResponse) ProtoMessage() {}
 
 func (x *SupplierChannelUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[13]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1074,7 +1756,7 @@ func (x *SupplierChannelUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelUpdateResponse.ProtoReflect.Descriptor instead.
 func (*SupplierChannelUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SupplierChannelUpdateResponse) GetChannel() *SupplierChannel {
@@ -1094,7 +1776,7 @@ type SupplierChannelDeleteRequest struct {
 
 func (x *SupplierChannelDeleteRequest) Reset() {
 	*x = SupplierChannelDeleteRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[14]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1106,7 +1788,7 @@ func (x *SupplierChannelDeleteRequest) String() string {
 func (*SupplierChannelDeleteRequest) ProtoMessage() {}
 
 func (x *SupplierChannelDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[14]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1119,7 +1801,7 @@ func (x *SupplierChannelDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelDeleteRequest.ProtoReflect.Descriptor instead.
 func (*SupplierChannelDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SupplierChannelDeleteRequest) GetTeamId() uint64 {
@@ -1144,7 +1826,7 @@ type SupplierChannelDeleteResponse struct {
 
 func (x *SupplierChannelDeleteResponse) Reset() {
 	*x = SupplierChannelDeleteResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[15]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1156,7 +1838,7 @@ func (x *SupplierChannelDeleteResponse) String() string {
 func (*SupplierChannelDeleteResponse) ProtoMessage() {}
 
 func (x *SupplierChannelDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[15]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1169,7 +1851,7 @@ func (x *SupplierChannelDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelDeleteResponse.ProtoReflect.Descriptor instead.
 func (*SupplierChannelDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{24}
 }
 
 type SupplierChannelByIdsRequest struct {
@@ -1183,7 +1865,7 @@ type SupplierChannelByIdsRequest struct {
 
 func (x *SupplierChannelByIdsRequest) Reset() {
 	*x = SupplierChannelByIdsRequest{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[16]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1195,7 +1877,7 @@ func (x *SupplierChannelByIdsRequest) String() string {
 func (*SupplierChannelByIdsRequest) ProtoMessage() {}
 
 func (x *SupplierChannelByIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[16]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1208,7 +1890,7 @@ func (x *SupplierChannelByIdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelByIdsRequest.ProtoReflect.Descriptor instead.
 func (*SupplierChannelByIdsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SupplierChannelByIdsRequest) GetTeamId() uint64 {
@@ -1235,7 +1917,7 @@ type SupplierChannelByIdsResponse struct {
 
 func (x *SupplierChannelByIdsResponse) Reset() {
 	*x = SupplierChannelByIdsResponse{}
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[17]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1247,7 +1929,7 @@ func (x *SupplierChannelByIdsResponse) String() string {
 func (*SupplierChannelByIdsResponse) ProtoMessage() {}
 
 func (x *SupplierChannelByIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[17]
+	mi := &file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1260,7 +1942,7 @@ func (x *SupplierChannelByIdsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierChannelByIdsResponse.ProtoReflect.Descriptor instead.
 func (*SupplierChannelByIdsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SupplierChannelByIdsResponse) GetChannels() map[uint64]*SupplierChannel {
@@ -1293,18 +1975,78 @@ const file_warehouse_supplier_v1_supplier_channel_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e22.warehouse.supplier.v1.SupplierChannelListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xb0\x01\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xd3\x01\n" +
 	"\x19SupplierChannelListFilter\x12(\n" +
 	"\vsupplier_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
 	"supplierId\x12\x15\n" +
 	"\x01q\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12R\n" +
-	"\fchannel_type\x18\x03 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vchannelType\"\xed\x01\n" +
+	"\fchannel_type\x18\x03 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vchannelType\x12!\n" +
+	"\fwarehouse_id\x18\x04 \x01(\x04R\vwarehouseId\"\xed\x01\n" +
 	"\x1cSupplierChannelExportRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12P\n" +
 	"\x06filter\x18\x02 \x01(\v20.warehouse.supplier.v1.SupplierChannelListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12H\n" +
 	"\x04sort\x18\x03 \x01(\v24.warehouse.supplier.v1.SupplierChannelListFilterSortR\x04sort:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"\xa2\x01\n" +
 	"\x1dSupplierChannelExportResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
+	"\x04done\x18\x02 \x01(\x03R\x04done\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\x12!\n" +
+	"\fdownload_url\x18\x04 \x01(\tR\vdownloadUrl\x12\x1a\n" +
+	"\bfilename\x18\x05 \x01(\tR\bfilename\"\xe4\x01\n" +
+	"\x1aSupplierProductListRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12P\n" +
+	"\x06filter\x18\x02 \x01(\v20.warehouse.supplier.v1.SupplierProductListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12A\n" +
+	"\x04page\x18\x03 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xe5\x02\n" +
+	"\x19SupplierProductListFilter\x12(\n" +
+	"\vsupplier_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
+	"supplierId\x12\x15\n" +
+	"\x01q\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12&\n" +
+	"\x0fproduct_team_id\x18\x03 \x01(\x04R\rproductTeamId\x12\x19\n" +
+	"\bstore_id\x18\x04 \x01(\x04R\astoreId\x12\x19\n" +
+	"\bno_store\x18\x05 \x01(\bR\anoStore\x12!\n" +
+	"\fwarehouse_id\x18\x06 \x01(\x04R\vwarehouseId:\x85\x01\xbaH\x81\x01\x1a\x7f\n" +
+	"+supplier_product_list_filter.one_store_pick\x12(pick one store, or no store — not both\x1a&!(this.store_id > 0u && this.no_store)\"\x8a\x04\n" +
+	"\x0fSupplierProduct\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x02 \x01(\x04R\tproductId\x12\x17\n" +
+	"\ateam_id\x18\x03 \x01(\x04R\x06teamId\x12!\n" +
+	"\fproduct_name\x18\x04 \x01(\tR\vproductName\x12!\n" +
+	"\fproduct_code\x18\x05 \x01(\tR\vproductCode\x122\n" +
+	"\x15product_thumbnail_url\x18\x06 \x01(\tR\x13productThumbnailUrl\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\a \x01(\x04R\tchannelId\x12!\n" +
+	"\fchannel_name\x18\b \x01(\tR\vchannelName\x12H\n" +
+	"\fchannel_type\x18\t \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceR\vchannelType\x120\n" +
+	"\x14first_restocked_unix\x18\n" +
+	" \x01(\x03R\x12firstRestockedUnix\x12.\n" +
+	"\x13last_restocked_unix\x18\v \x01(\x03R\x11lastRestockedUnix\x12G\n" +
+	"\afigures\x18\f \x01(\v2-.warehouse.supplier.v1.SupplierProductFiguresR\afigures\"\x98\x01\n" +
+	"\x16SupplierProductFigures\x12\x1d\n" +
+	"\n" +
+	"sold_units\x18\x01 \x01(\x03R\tsoldUnits\x12\x16\n" +
+	"\x06orders\x18\x02 \x01(\x03R\x06orders\x12&\n" +
+	"\x0flast_order_unix\x18\x03 \x01(\x03R\rlastOrderUnix\x12\x1f\n" +
+	"\vready_units\x18\x04 \x01(\x03R\n" +
+	"readyUnits\"\xd3\x01\n" +
+	"\x16SupplierProductMapItem\x12U\n" +
+	"\bmap_data\x18\x01 \x03(\v2:.warehouse.supplier.v1.SupplierProductMapItem.MapDataEntryR\amapData\x1ab\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12<\n" +
+	"\x05value\x18\x02 \x01(\v2&.warehouse.supplier.v1.SupplierProductR\x05value:\x028\x01\"q\n" +
+	"\x1fSupplierProductListResponseItem\x12I\n" +
+	"\aproduct\x18\x01 \x01(\v2-.warehouse.supplier.v1.SupplierProductMapItemH\x00R\aproductB\x03\n" +
+	"\x01d\"\xb9\x01\n" +
+	"\x1bSupplierProductListResponse\x12L\n" +
+	"\x05items\x18\x01 \x03(\v26.warehouse.supplier.v1.SupplierProductListResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xa3\x01\n" +
+	"\x1cSupplierProductExportRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12P\n" +
+	"\x06filter\x18\x02 \x01(\v20.warehouse.supplier.v1.SupplierProductListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\xa2\x01\n" +
+	"\x1dSupplierProductExportResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
 	"\x04done\x18\x02 \x01(\x03R\x04done\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x03R\x05total\x12!\n" +
@@ -1385,13 +2127,15 @@ const file_warehouse_supplier_v1_supplier_channel_proto_rawDesc = "" +
 	"%SUPPLIER_CHANNEL_ROW_SORT_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cSUPPLIER_CHANNEL_ROW_SORT_ID\x10\x01\x12\"\n" +
 	"\x1eSUPPLIER_CHANNEL_ROW_SORT_NAME\x10\x02\x12*\n" +
-	"&SUPPLIER_CHANNEL_ROW_SORT_CHANNEL_TYPE\x10\x032\xb9\x06\n" +
+	"&SUPPLIER_CHANNEL_ROW_SORT_CHANNEL_TYPE\x10\x032\xc4\b\n" +
 	"\x16SupplierChannelService\x12\x81\x01\n" +
 	"\x13SupplierChannelList\x121.warehouse.supplier.v1.SupplierChannelListRequest\x1a2.warehouse.supplier.v1.SupplierChannelListResponse\"\x03\x90\x02\x01\x12\x82\x01\n" +
 	"\x15SupplierChannelCreate\x123.warehouse.supplier.v1.SupplierChannelCreateRequest\x1a4.warehouse.supplier.v1.SupplierChannelCreateResponse\x12\x82\x01\n" +
 	"\x15SupplierChannelUpdate\x123.warehouse.supplier.v1.SupplierChannelUpdateRequest\x1a4.warehouse.supplier.v1.SupplierChannelUpdateResponse\x12\x82\x01\n" +
 	"\x15SupplierChannelDelete\x123.warehouse.supplier.v1.SupplierChannelDeleteRequest\x1a4.warehouse.supplier.v1.SupplierChannelDeleteResponse\x12\x84\x01\n" +
-	"\x15SupplierChannelExport\x123.warehouse.supplier.v1.SupplierChannelExportRequest\x1a4.warehouse.supplier.v1.SupplierChannelExportResponse0\x01\x12\x84\x01\n" +
+	"\x15SupplierChannelExport\x123.warehouse.supplier.v1.SupplierChannelExportRequest\x1a4.warehouse.supplier.v1.SupplierChannelExportResponse0\x01\x12\x81\x01\n" +
+	"\x13SupplierProductList\x121.warehouse.supplier.v1.SupplierProductListRequest\x1a2.warehouse.supplier.v1.SupplierProductListResponse\"\x03\x90\x02\x01\x12\x84\x01\n" +
+	"\x15SupplierProductExport\x123.warehouse.supplier.v1.SupplierProductExportRequest\x1a4.warehouse.supplier.v1.SupplierProductExportResponse0\x01\x12\x84\x01\n" +
 	"\x14SupplierChannelByIds\x122.warehouse.supplier.v1.SupplierChannelByIdsRequest\x1a3.warehouse.supplier.v1.SupplierChannelByIdsResponse\"\x03\x90\x02\x01BPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1b\x06proto3"
 
 var (
@@ -1407,7 +2151,7 @@ func file_warehouse_supplier_v1_supplier_channel_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_supplier_v1_supplier_channel_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_warehouse_supplier_v1_supplier_channel_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_warehouse_supplier_v1_supplier_channel_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_warehouse_supplier_v1_supplier_channel_proto_goTypes = []any{
 	(SupplierChannelListDataType)(0),        // 0: warehouse.supplier.v1.SupplierChannelListDataType
 	(SupplierChannelRowSort)(0),             // 1: warehouse.supplier.v1.SupplierChannelRowSort
@@ -1417,69 +2161,93 @@ var file_warehouse_supplier_v1_supplier_channel_proto_goTypes = []any{
 	(*SupplierChannelListFilter)(nil),       // 5: warehouse.supplier.v1.SupplierChannelListFilter
 	(*SupplierChannelExportRequest)(nil),    // 6: warehouse.supplier.v1.SupplierChannelExportRequest
 	(*SupplierChannelExportResponse)(nil),   // 7: warehouse.supplier.v1.SupplierChannelExportResponse
-	(*SupplierChannelListFilterSort)(nil),   // 8: warehouse.supplier.v1.SupplierChannelListFilterSort
-	(*SupplierChannelMapItem)(nil),          // 9: warehouse.supplier.v1.SupplierChannelMapItem
-	(*SupplierChannelListResponseItem)(nil), // 10: warehouse.supplier.v1.SupplierChannelListResponseItem
-	(*SupplierChannelListResponse)(nil),     // 11: warehouse.supplier.v1.SupplierChannelListResponse
-	(*SupplierChannelCreateRequest)(nil),    // 12: warehouse.supplier.v1.SupplierChannelCreateRequest
-	(*SupplierChannelCreateResponse)(nil),   // 13: warehouse.supplier.v1.SupplierChannelCreateResponse
-	(*SupplierChannelUpdateRequest)(nil),    // 14: warehouse.supplier.v1.SupplierChannelUpdateRequest
-	(*SupplierChannelUpdateResponse)(nil),   // 15: warehouse.supplier.v1.SupplierChannelUpdateResponse
-	(*SupplierChannelDeleteRequest)(nil),    // 16: warehouse.supplier.v1.SupplierChannelDeleteRequest
-	(*SupplierChannelDeleteResponse)(nil),   // 17: warehouse.supplier.v1.SupplierChannelDeleteResponse
-	(*SupplierChannelByIdsRequest)(nil),     // 18: warehouse.supplier.v1.SupplierChannelByIdsRequest
-	(*SupplierChannelByIdsResponse)(nil),    // 19: warehouse.supplier.v1.SupplierChannelByIdsResponse
-	nil,                                     // 20: warehouse.supplier.v1.SupplierChannelMapItem.MapDataEntry
-	nil,                                     // 21: warehouse.supplier.v1.SupplierChannelByIdsResponse.ChannelsEntry
-	(v1.Marketplace)(0),                     // 22: warehouse.marketplace.v1.Marketplace
-	(*v11.CommonPagination)(nil),            // 23: warehouse.common.v1.CommonPagination
-	(v11.CommonSortType)(0),                 // 24: warehouse.common.v1.CommonSortType
-	(v11.GeneralSort)(0),                    // 25: warehouse.common.v1.GeneralSort
-	(*v11.GeneralMapItem)(nil),              // 26: warehouse.common.v1.GeneralMapItem
-	(*v11.PageInfo)(nil),                    // 27: warehouse.common.v1.PageInfo
+	(*SupplierProductListRequest)(nil),      // 8: warehouse.supplier.v1.SupplierProductListRequest
+	(*SupplierProductListFilter)(nil),       // 9: warehouse.supplier.v1.SupplierProductListFilter
+	(*SupplierProduct)(nil),                 // 10: warehouse.supplier.v1.SupplierProduct
+	(*SupplierProductFigures)(nil),          // 11: warehouse.supplier.v1.SupplierProductFigures
+	(*SupplierProductMapItem)(nil),          // 12: warehouse.supplier.v1.SupplierProductMapItem
+	(*SupplierProductListResponseItem)(nil), // 13: warehouse.supplier.v1.SupplierProductListResponseItem
+	(*SupplierProductListResponse)(nil),     // 14: warehouse.supplier.v1.SupplierProductListResponse
+	(*SupplierProductExportRequest)(nil),    // 15: warehouse.supplier.v1.SupplierProductExportRequest
+	(*SupplierProductExportResponse)(nil),   // 16: warehouse.supplier.v1.SupplierProductExportResponse
+	(*SupplierChannelListFilterSort)(nil),   // 17: warehouse.supplier.v1.SupplierChannelListFilterSort
+	(*SupplierChannelMapItem)(nil),          // 18: warehouse.supplier.v1.SupplierChannelMapItem
+	(*SupplierChannelListResponseItem)(nil), // 19: warehouse.supplier.v1.SupplierChannelListResponseItem
+	(*SupplierChannelListResponse)(nil),     // 20: warehouse.supplier.v1.SupplierChannelListResponse
+	(*SupplierChannelCreateRequest)(nil),    // 21: warehouse.supplier.v1.SupplierChannelCreateRequest
+	(*SupplierChannelCreateResponse)(nil),   // 22: warehouse.supplier.v1.SupplierChannelCreateResponse
+	(*SupplierChannelUpdateRequest)(nil),    // 23: warehouse.supplier.v1.SupplierChannelUpdateRequest
+	(*SupplierChannelUpdateResponse)(nil),   // 24: warehouse.supplier.v1.SupplierChannelUpdateResponse
+	(*SupplierChannelDeleteRequest)(nil),    // 25: warehouse.supplier.v1.SupplierChannelDeleteRequest
+	(*SupplierChannelDeleteResponse)(nil),   // 26: warehouse.supplier.v1.SupplierChannelDeleteResponse
+	(*SupplierChannelByIdsRequest)(nil),     // 27: warehouse.supplier.v1.SupplierChannelByIdsRequest
+	(*SupplierChannelByIdsResponse)(nil),    // 28: warehouse.supplier.v1.SupplierChannelByIdsResponse
+	nil,                                     // 29: warehouse.supplier.v1.SupplierProductMapItem.MapDataEntry
+	nil,                                     // 30: warehouse.supplier.v1.SupplierChannelMapItem.MapDataEntry
+	nil,                                     // 31: warehouse.supplier.v1.SupplierChannelByIdsResponse.ChannelsEntry
+	(v1.Marketplace)(0),                     // 32: warehouse.marketplace.v1.Marketplace
+	(*v11.CommonPagination)(nil),            // 33: warehouse.common.v1.CommonPagination
+	(*v11.PageInfo)(nil),                    // 34: warehouse.common.v1.PageInfo
+	(v11.CommonSortType)(0),                 // 35: warehouse.common.v1.CommonSortType
+	(v11.GeneralSort)(0),                    // 36: warehouse.common.v1.GeneralSort
+	(*v11.GeneralMapItem)(nil),              // 37: warehouse.common.v1.GeneralMapItem
 }
 var file_warehouse_supplier_v1_supplier_channel_proto_depIdxs = []int32{
-	22, // 0: warehouse.supplier.v1.SupplierChannel.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
+	32, // 0: warehouse.supplier.v1.SupplierChannel.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
 	2,  // 1: warehouse.supplier.v1.SupplierChannelSet.channels:type_name -> warehouse.supplier.v1.SupplierChannel
 	5,  // 2: warehouse.supplier.v1.SupplierChannelListRequest.filter:type_name -> warehouse.supplier.v1.SupplierChannelListFilter
-	8,  // 3: warehouse.supplier.v1.SupplierChannelListRequest.sort:type_name -> warehouse.supplier.v1.SupplierChannelListFilterSort
+	17, // 3: warehouse.supplier.v1.SupplierChannelListRequest.sort:type_name -> warehouse.supplier.v1.SupplierChannelListFilterSort
 	0,  // 4: warehouse.supplier.v1.SupplierChannelListRequest.data_request:type_name -> warehouse.supplier.v1.SupplierChannelListDataType
-	23, // 5: warehouse.supplier.v1.SupplierChannelListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	22, // 6: warehouse.supplier.v1.SupplierChannelListFilter.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
+	33, // 5: warehouse.supplier.v1.SupplierChannelListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	32, // 6: warehouse.supplier.v1.SupplierChannelListFilter.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
 	5,  // 7: warehouse.supplier.v1.SupplierChannelExportRequest.filter:type_name -> warehouse.supplier.v1.SupplierChannelListFilter
-	8,  // 8: warehouse.supplier.v1.SupplierChannelExportRequest.sort:type_name -> warehouse.supplier.v1.SupplierChannelListFilterSort
-	24, // 9: warehouse.supplier.v1.SupplierChannelListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	25, // 10: warehouse.supplier.v1.SupplierChannelListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	1,  // 11: warehouse.supplier.v1.SupplierChannelListFilterSort.channel:type_name -> warehouse.supplier.v1.SupplierChannelRowSort
-	20, // 12: warehouse.supplier.v1.SupplierChannelMapItem.map_data:type_name -> warehouse.supplier.v1.SupplierChannelMapItem.MapDataEntry
-	26, // 13: warehouse.supplier.v1.SupplierChannelListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	9,  // 14: warehouse.supplier.v1.SupplierChannelListResponseItem.supplier_channel:type_name -> warehouse.supplier.v1.SupplierChannelMapItem
-	10, // 15: warehouse.supplier.v1.SupplierChannelListResponse.items:type_name -> warehouse.supplier.v1.SupplierChannelListResponseItem
-	27, // 16: warehouse.supplier.v1.SupplierChannelListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	22, // 17: warehouse.supplier.v1.SupplierChannelCreateRequest.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
-	2,  // 18: warehouse.supplier.v1.SupplierChannelCreateResponse.channel:type_name -> warehouse.supplier.v1.SupplierChannel
-	22, // 19: warehouse.supplier.v1.SupplierChannelUpdateRequest.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
-	2,  // 20: warehouse.supplier.v1.SupplierChannelUpdateResponse.channel:type_name -> warehouse.supplier.v1.SupplierChannel
-	21, // 21: warehouse.supplier.v1.SupplierChannelByIdsResponse.channels:type_name -> warehouse.supplier.v1.SupplierChannelByIdsResponse.ChannelsEntry
-	2,  // 22: warehouse.supplier.v1.SupplierChannelMapItem.MapDataEntry.value:type_name -> warehouse.supplier.v1.SupplierChannel
-	2,  // 23: warehouse.supplier.v1.SupplierChannelByIdsResponse.ChannelsEntry.value:type_name -> warehouse.supplier.v1.SupplierChannel
-	4,  // 24: warehouse.supplier.v1.SupplierChannelService.SupplierChannelList:input_type -> warehouse.supplier.v1.SupplierChannelListRequest
-	12, // 25: warehouse.supplier.v1.SupplierChannelService.SupplierChannelCreate:input_type -> warehouse.supplier.v1.SupplierChannelCreateRequest
-	14, // 26: warehouse.supplier.v1.SupplierChannelService.SupplierChannelUpdate:input_type -> warehouse.supplier.v1.SupplierChannelUpdateRequest
-	16, // 27: warehouse.supplier.v1.SupplierChannelService.SupplierChannelDelete:input_type -> warehouse.supplier.v1.SupplierChannelDeleteRequest
-	6,  // 28: warehouse.supplier.v1.SupplierChannelService.SupplierChannelExport:input_type -> warehouse.supplier.v1.SupplierChannelExportRequest
-	18, // 29: warehouse.supplier.v1.SupplierChannelService.SupplierChannelByIds:input_type -> warehouse.supplier.v1.SupplierChannelByIdsRequest
-	11, // 30: warehouse.supplier.v1.SupplierChannelService.SupplierChannelList:output_type -> warehouse.supplier.v1.SupplierChannelListResponse
-	13, // 31: warehouse.supplier.v1.SupplierChannelService.SupplierChannelCreate:output_type -> warehouse.supplier.v1.SupplierChannelCreateResponse
-	15, // 32: warehouse.supplier.v1.SupplierChannelService.SupplierChannelUpdate:output_type -> warehouse.supplier.v1.SupplierChannelUpdateResponse
-	17, // 33: warehouse.supplier.v1.SupplierChannelService.SupplierChannelDelete:output_type -> warehouse.supplier.v1.SupplierChannelDeleteResponse
-	7,  // 34: warehouse.supplier.v1.SupplierChannelService.SupplierChannelExport:output_type -> warehouse.supplier.v1.SupplierChannelExportResponse
-	19, // 35: warehouse.supplier.v1.SupplierChannelService.SupplierChannelByIds:output_type -> warehouse.supplier.v1.SupplierChannelByIdsResponse
-	30, // [30:36] is the sub-list for method output_type
-	24, // [24:30] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	17, // 8: warehouse.supplier.v1.SupplierChannelExportRequest.sort:type_name -> warehouse.supplier.v1.SupplierChannelListFilterSort
+	9,  // 9: warehouse.supplier.v1.SupplierProductListRequest.filter:type_name -> warehouse.supplier.v1.SupplierProductListFilter
+	33, // 10: warehouse.supplier.v1.SupplierProductListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	32, // 11: warehouse.supplier.v1.SupplierProduct.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
+	11, // 12: warehouse.supplier.v1.SupplierProduct.figures:type_name -> warehouse.supplier.v1.SupplierProductFigures
+	29, // 13: warehouse.supplier.v1.SupplierProductMapItem.map_data:type_name -> warehouse.supplier.v1.SupplierProductMapItem.MapDataEntry
+	12, // 14: warehouse.supplier.v1.SupplierProductListResponseItem.product:type_name -> warehouse.supplier.v1.SupplierProductMapItem
+	13, // 15: warehouse.supplier.v1.SupplierProductListResponse.items:type_name -> warehouse.supplier.v1.SupplierProductListResponseItem
+	34, // 16: warehouse.supplier.v1.SupplierProductListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	9,  // 17: warehouse.supplier.v1.SupplierProductExportRequest.filter:type_name -> warehouse.supplier.v1.SupplierProductListFilter
+	35, // 18: warehouse.supplier.v1.SupplierChannelListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	36, // 19: warehouse.supplier.v1.SupplierChannelListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	1,  // 20: warehouse.supplier.v1.SupplierChannelListFilterSort.channel:type_name -> warehouse.supplier.v1.SupplierChannelRowSort
+	30, // 21: warehouse.supplier.v1.SupplierChannelMapItem.map_data:type_name -> warehouse.supplier.v1.SupplierChannelMapItem.MapDataEntry
+	37, // 22: warehouse.supplier.v1.SupplierChannelListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	18, // 23: warehouse.supplier.v1.SupplierChannelListResponseItem.supplier_channel:type_name -> warehouse.supplier.v1.SupplierChannelMapItem
+	19, // 24: warehouse.supplier.v1.SupplierChannelListResponse.items:type_name -> warehouse.supplier.v1.SupplierChannelListResponseItem
+	34, // 25: warehouse.supplier.v1.SupplierChannelListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	32, // 26: warehouse.supplier.v1.SupplierChannelCreateRequest.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
+	2,  // 27: warehouse.supplier.v1.SupplierChannelCreateResponse.channel:type_name -> warehouse.supplier.v1.SupplierChannel
+	32, // 28: warehouse.supplier.v1.SupplierChannelUpdateRequest.channel_type:type_name -> warehouse.marketplace.v1.Marketplace
+	2,  // 29: warehouse.supplier.v1.SupplierChannelUpdateResponse.channel:type_name -> warehouse.supplier.v1.SupplierChannel
+	31, // 30: warehouse.supplier.v1.SupplierChannelByIdsResponse.channels:type_name -> warehouse.supplier.v1.SupplierChannelByIdsResponse.ChannelsEntry
+	10, // 31: warehouse.supplier.v1.SupplierProductMapItem.MapDataEntry.value:type_name -> warehouse.supplier.v1.SupplierProduct
+	2,  // 32: warehouse.supplier.v1.SupplierChannelMapItem.MapDataEntry.value:type_name -> warehouse.supplier.v1.SupplierChannel
+	2,  // 33: warehouse.supplier.v1.SupplierChannelByIdsResponse.ChannelsEntry.value:type_name -> warehouse.supplier.v1.SupplierChannel
+	4,  // 34: warehouse.supplier.v1.SupplierChannelService.SupplierChannelList:input_type -> warehouse.supplier.v1.SupplierChannelListRequest
+	21, // 35: warehouse.supplier.v1.SupplierChannelService.SupplierChannelCreate:input_type -> warehouse.supplier.v1.SupplierChannelCreateRequest
+	23, // 36: warehouse.supplier.v1.SupplierChannelService.SupplierChannelUpdate:input_type -> warehouse.supplier.v1.SupplierChannelUpdateRequest
+	25, // 37: warehouse.supplier.v1.SupplierChannelService.SupplierChannelDelete:input_type -> warehouse.supplier.v1.SupplierChannelDeleteRequest
+	6,  // 38: warehouse.supplier.v1.SupplierChannelService.SupplierChannelExport:input_type -> warehouse.supplier.v1.SupplierChannelExportRequest
+	8,  // 39: warehouse.supplier.v1.SupplierChannelService.SupplierProductList:input_type -> warehouse.supplier.v1.SupplierProductListRequest
+	15, // 40: warehouse.supplier.v1.SupplierChannelService.SupplierProductExport:input_type -> warehouse.supplier.v1.SupplierProductExportRequest
+	27, // 41: warehouse.supplier.v1.SupplierChannelService.SupplierChannelByIds:input_type -> warehouse.supplier.v1.SupplierChannelByIdsRequest
+	20, // 42: warehouse.supplier.v1.SupplierChannelService.SupplierChannelList:output_type -> warehouse.supplier.v1.SupplierChannelListResponse
+	22, // 43: warehouse.supplier.v1.SupplierChannelService.SupplierChannelCreate:output_type -> warehouse.supplier.v1.SupplierChannelCreateResponse
+	24, // 44: warehouse.supplier.v1.SupplierChannelService.SupplierChannelUpdate:output_type -> warehouse.supplier.v1.SupplierChannelUpdateResponse
+	26, // 45: warehouse.supplier.v1.SupplierChannelService.SupplierChannelDelete:output_type -> warehouse.supplier.v1.SupplierChannelDeleteResponse
+	7,  // 46: warehouse.supplier.v1.SupplierChannelService.SupplierChannelExport:output_type -> warehouse.supplier.v1.SupplierChannelExportResponse
+	14, // 47: warehouse.supplier.v1.SupplierChannelService.SupplierProductList:output_type -> warehouse.supplier.v1.SupplierProductListResponse
+	16, // 48: warehouse.supplier.v1.SupplierChannelService.SupplierProductExport:output_type -> warehouse.supplier.v1.SupplierProductExportResponse
+	28, // 49: warehouse.supplier.v1.SupplierChannelService.SupplierChannelByIds:output_type -> warehouse.supplier.v1.SupplierChannelByIdsResponse
+	42, // [42:50] is the sub-list for method output_type
+	34, // [34:42] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_supplier_v1_supplier_channel_proto_init() }
@@ -1487,22 +2255,25 @@ func file_warehouse_supplier_v1_supplier_channel_proto_init() {
 	if File_warehouse_supplier_v1_supplier_channel_proto != nil {
 		return
 	}
-	file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[6].OneofWrappers = []any{
+	file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[11].OneofWrappers = []any{
+		(*SupplierProductListResponseItem_Product)(nil),
+	}
+	file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[15].OneofWrappers = []any{
 		(*SupplierChannelListFilterSort_General)(nil),
 		(*SupplierChannelListFilterSort_Channel)(nil),
 	}
-	file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[8].OneofWrappers = []any{
+	file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[17].OneofWrappers = []any{
 		(*SupplierChannelListResponseItem_General)(nil),
 		(*SupplierChannelListResponseItem_SupplierChannel)(nil),
 	}
-	file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[12].OneofWrappers = []any{}
+	file_warehouse_supplier_v1_supplier_channel_proto_msgTypes[21].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_supplier_v1_supplier_channel_proto_rawDesc), len(file_warehouse_supplier_v1_supplier_channel_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   20,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

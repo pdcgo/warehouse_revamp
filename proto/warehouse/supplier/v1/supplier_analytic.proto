@@ -69,7 +69,9 @@ service SupplierAnalyticMaintenanceService {
 // Groups: SUPPLIER and PRODUCT — the RESTOCKING team's product, so two teams buying one item are two keys
 // (every-accepted-line-links-its-own-product) — and every period. Filters: the window (required); TEAM, whose
 // restocks are counted (the-team-filter-picks-any-selling-team); SUPPLIER, one supplier; SUPPLIER_KEYWORD, the Supplier
-// Report's search (the-supplier-report-keeps-its-search).
+// Report's search (the-supplier-report-keeps-its-search); WAREHOUSE, a supplier page's warehouse chip
+// (the-supplier-reports-carry-the-warehouse) — the restocks RECEIVED at that warehouse and the sales TAKEN from it, at
+// the same line prices; without it, the sum over every warehouse.
 message SupplierMetric {
   option (warehouse.analytic_base.v1.metric) = {
     metric_id: "metrics/suppliers"
@@ -78,7 +80,10 @@ message SupplierMetric {
       FILTER_TYPE_TEAM,
       FILTER_TYPE_SUPPLIER,
       // The Supplier Report's search (the-supplier-report-keeps-its-search).
-      FILTER_TYPE_SUPPLIER_KEYWORD
+      FILTER_TYPE_SUPPLIER_KEYWORD,
+      // A supplier page's warehouse chip (the-supplier-reports-carry-the-warehouse): both daily reports are keyed by the
+      // warehouse a restock line was received at and an order line was taken from.
+      FILTER_TYPE_WAREHOUSE
     ]
     required_filters: [FILTER_TYPE_DATE_RANGE]
     supported_group_by: [
@@ -273,7 +278,8 @@ message SupplierFigureExportRequest {
     in: [2, 4, 5, 6]
   }];
 
-  // The tab's own filters — the window (required), the supplier (required), and whose restocks when one team is picked.
+  // The tab's own filters — the window (required), the supplier (required), whose restocks when one team is picked, and
+  // the page's warehouse chip when one is picked (the-supplier-reports-carry-the-warehouse).
   repeated warehouse.analytic_base.v1.FilterItem filters = 3 [(buf.validate.field).repeated = {
     min_items: 2
     max_items: 6

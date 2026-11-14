@@ -1,7 +1,7 @@
 // THE TWO FIGURES' VALUES — Terjual with the last order, Siap with the last restock — for a supplier, one of its stores
-// or one of its products (`sales-are-all-time-with-their-last-dates`, `the-detail-tabs-show-sold-and-ready`). Real for a
-// supplier and a store (goods.ts, InventoryService.SupplierGoods); still invented for a product on the Produk tab
-// (sampleSupplierFigures.ts), whose rows are themselves sample.
+// or one of its products (`sales-are-all-time-with-their-last-dates`, `the-detail-tabs-show-sold-and-ready`). All real:
+// a supplier's and a store's from InventoryService.SupplierGoods (goods.ts), a product's at a store from the Produk tab's
+// own read (products.ts, SupplierChannelService.SupplierProductList).
 
 export interface SupplierFigureValues {
   /** Every unit sold — all time. */

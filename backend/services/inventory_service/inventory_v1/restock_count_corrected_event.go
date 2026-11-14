@@ -161,3 +161,39 @@ func RestockCountCorrectionEventsOn(db *gorm.DB, day string) ([]*eventsv1.Event,
 
 	return events, nil
 }
+
+// RestockCountCorrectionDays is the Jakarta days each restock's received count was corrected on, ascending — for
+// `san supplier backfill-links`, which re-folds the supplier figures a restock mixing suppliers never got before the fold
+// read each line's own supplier (the-supplier-comes-from-the-restock-until-lines-name-a-store): its corrections moved
+// those figures on their own days (a-received-count-correction-counts-on-its-own-day). A restock never corrected is
+// absent.
+func RestockCountCorrectionDays(db *gorm.DB, restockIDs []uint64) (map[uint64][]string, error) {
+	out := map[uint64][]string{}
+
+	if len(restockIDs) == 0 {
+		return out, nil
+	}
+
+	var rows []models.RestockCountCorrection
+
+	err := db.
+		Select("restock_id", "created_at").
+		Where("restock_id IN ?", restockIDs).
+		Order("restock_id, created_at").
+		Find(&rows).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, row := range rows {
+		day := row.CreatedAt.In(jakarta).Format("2006-01-02")
+
+		days := out[row.RestockID]
+		if len(days) == 0 || days[len(days)-1] != day {
+			out[row.RestockID] = append(days, day)
+		}
+	}
+
+	return out, nil
+}
