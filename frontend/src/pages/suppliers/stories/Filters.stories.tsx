@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { LocationProbe, routedPage } from "../../../../.storybook/pageStory";
+import { LocationProbe, pickTeam, routedPage } from "../../../../.storybook/pageStory";
+import { teams } from "../../../../.storybook/fixtures";
 import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { SupplierGoodsGroup } from "../../../gen/warehouse/inventory/v1/inventory_pb";
 import { supplierFixture } from "../../../../.storybook/supplierFixtures";
+import { supplierGoodsCalls, supplierListBandCalls } from "../../../../.storybook/supplierGoodsStub";
 import { SuppliersPage } from "../index";
-import { SUPPLIERS_META, BANYAK, SUMBER, loaded } from "./kit";
+import { SUPPLIERS_META, BANYAK, SUMBER, loaded, rowIds } from "./kit";
 
 // SUPPLIERS — the search, the store type and the warehouse in the filter strip, and the filters in the URL
 // (a-lists-filters-live-in-the-url). The page's stories are grouped by the part of the screen they are about
@@ -85,20 +88,86 @@ export const TheStoreTypeFilters: Story = {
 };
 
 // THE WAREHOUSE IS THE FIRST PICKER (the-warehouse-filters-before-the-team) — right after the search, before the store
-// type, where Discover's sits left of its team; its mark (1) beside it, not wired yet. A warehouse team has no list, so
-// no warehouse filter either.
+// type, where Discover's sits left of its team; real since 2026-11-14, so no mark beside it and no "not built yet" strip
+// over the list. A warehouse team has no list, so no warehouse filter either.
 export const TheWarehouseIsTheFirstPicker: Story = {
   name: "Warehouse first",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const warehouse = canvas.getByTestId("supplier-warehouse-filter");
-    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("1");
+    await expect(within(warehouse).queryByTestId("not-implemented-warehouse")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
     await expect(warehouse.getBoundingClientRect().right).toBeLessThanOrEqual(
       canvas.getByTestId("suppliers-type-filter").getBoundingClientRect().left,
     );
     await expect(warehouse.getBoundingClientRect().left).toBeGreaterThanOrEqual(
       canvas.getByTestId("supplier-search").getBoundingClientRect().right,
     );
+  },
+};
+
+// THE GUDANG FILTER NARROWS ON THE SERVER (the-warehouse-filters-before-the-team) — Gudang Cabang keeps PT Sumber
+// Makmur, whose goods were received there (and at Gudang Pusat); PT Banyak Toko, received only at Gudang Pusat, and the
+// suppliers with no goods go. ONLY THE ROWS NARROW (the-warehouse-filter-narrows-only-the-rows): Sumber's Terjual and
+// Siap read the same whole figures, every warehouse's, still asked per SUPPLIER. The pick lives in the URL; Clear Filters
+// takes it away and the list is whole again.
+const AtTheList = routedPage(
+  [{ path: "/inventories/suppliers", element: <><SuppliersPage /><LocationProbe /></> }],
+  "/inventories/suppliers",
+);
+
+export const TheWarehouseNarrowsTheRows: Story = {
+  name: "Warehouse narrows the rows",
+  parameters: { dataRouter: true },
+  render: () => <AtTheList />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+    await expect(canvas.getByTestId(`supplier-row-${BANYAK.id}`)).toBeVisible();
+    // The figures land after the rows — read them once they have (a dash until then).
+    await waitFor(() => expect(canvas.getByTestId(`supplier-sold-${SUMBER.id}`).textContent).toMatch(/\d/));
+    await waitFor(() => expect(canvas.getByTestId(`supplier-ready-${SUMBER.id}`).textContent).toMatch(/\d/));
+    const sold = canvas.getByTestId(`supplier-sold-${SUMBER.id}`).textContent ?? "";
+    const ready = canvas.getByTestId(`supplier-ready-${SUMBER.id}`).textContent ?? "";
+    const cabang = teams.find((t) => t.id === 14n)!;
+
+    await pickTeam(canvas.getByTestId("supplier-warehouse-filter"), cabang.teamCode);
+
+    await waitFor(() => expect(rowIds(canvas)).toEqual([SUMBER.id.toString()]));
+    await expect(supplierListBandCalls.at(-1)?.warehouseId).toBe(14n);
+    await waitFor(() => expect(location).toHaveTextContent("?warehouse=14"));
+
+    // The figures are the supplier's whole — the same cells, asked per supplier, never per warehouse.
+    await expect(canvas.getByTestId(`supplier-sold-${SUMBER.id}`)).toHaveTextContent(sold);
+    await expect(canvas.getByTestId(`supplier-ready-${SUMBER.id}`)).toHaveTextContent(ready);
+    await expect(supplierGoodsCalls.at(-1)?.group).toBe(SupplierGoodsGroup.SUPPLIER);
+
+    await userEvent.click(canvas.getByTestId("suppliers-filter-clear"));
+    await waitFor(() => expect(canvas.getByTestId(`supplier-row-${BANYAK.id}`)).toBeVisible());
+    await expect(supplierListBandCalls.at(-1)?.warehouseId).toBe(0n);
+    await waitFor(() => expect(location).toBeEmptyDOMElement());
+  },
+};
+
+// OPENED AT A URL CARRYING THE WAREHOUSE (a-lists-filters-live-in-the-url) — a refresh, or Back from a supplier, opens the
+// same narrowed list: Gudang Pusat keeps PT Sumber Makmur and PT Banyak Toko, its name alone in the picker.
+const AtGudangPusat = routedPage(
+  [{ path: "/inventories/suppliers", element: <><SuppliersPage /><LocationProbe /></> }],
+  "/inventories/suppliers?warehouse=11",
+);
+
+export const TheWarehouseStaysInTheUrl: Story = {
+  name: "Warehouse in the URL",
+  parameters: { dataRouter: true },
+  render: () => <AtGudangPusat />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(rowIds(canvas)).toEqual([SUMBER.id.toString(), BANYAK.id.toString()].sort()));
+    await expect(supplierListBandCalls.at(-1)?.warehouseId).toBe(11n);
+    const warehouse = canvas.getByTestId("supplier-warehouse-filter");
+    await expect(await within(warehouse).findByTestId("team-select-selected")).toHaveTextContent(/^Gudang Pusat$/);
+    await expect(canvas.getByTestId("suppliers-filter-clear")).toBeVisible();
   },
 };

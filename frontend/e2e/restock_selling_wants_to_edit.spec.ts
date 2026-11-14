@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { SUFFIX, login, api, tick, ongoingOf, inboundRow } from "./restock_helpers";
+import { pickTeam } from "./pickers";
 
 // selling:all wants to edit a restock — split out of restock.spec.ts by its describe block (backlog #51), every test and title
 // unchanged. Self-contained: the block seeds its own ground in beforeAll; the helpers live in restock_helpers.ts.
@@ -373,8 +374,7 @@ test.describe("selling:all wants to edit a restock", () => {
         }
 
         if (c.key === "mv") {
-          await page.getByTestId("restock-warehouse").locator("input").fill(W2_CODE);
-          await page.getByTestId(`team-select-option-${W2_CODE}`).click();
+          await pickTeam(page, page.getByTestId("restock-warehouse"), W2_CODE);
           await page.getByTestId("restock-finance-account").click();
           await page.getByTestId(`restock-finance-account-option-${ground.newAccounts[r.key]}`).click();
         }

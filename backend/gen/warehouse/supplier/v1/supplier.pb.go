@@ -754,8 +754,14 @@ type SupplierListFilter struct {
 	// THE RANGE PILLS (the-range-pills-are-a-fixed-set): Terjual — every unit sold of the supplier's goods, all time, a
 	// cancel counted back — and Siap — units on a shelf — as InventoryService.SupplierGoods reads them, every team's goods
 	// (every-selling-team-sees-every-teams-figures). Narrowed on the server BEFORE the page; unset = Semua.
-	Sold          *SupplierFigureBand `protobuf:"bytes,5,opt,name=sold,proto3" json:"sold,omitempty"`
-	Ready         *SupplierFigureBand `protobuf:"bytes,6,opt,name=ready,proto3" json:"ready,omitempty"`
+	Sold  *SupplierFigureBand `protobuf:"bytes,5,opt,name=sold,proto3" json:"sold,omitempty"`
+	Ready *SupplierFigureBand `protobuf:"bytes,6,opt,name=ready,proto3" json:"ready,omitempty"`
+	// THE WAREHOUSE (the-warehouse-filters-before-the-team): only the suppliers whose goods were received at this
+	// warehouse — the set the supplier page's Gudang terkait chips list (InventoryService.SupplierGoods by WAREHOUSE),
+	// every team's goods. Narrowed on the server BEFORE the page; only the ROWS narrow — Terjual, Siap and their bands
+	// stay the supplier's whole, over every warehouse (the-warehouse-filter-narrows-only-the-rows). 0 = any warehouse.
+	// A warehouse role may name only its own building.
+	WarehouseId   uint64 `protobuf:"varint,7,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -830,6 +836,13 @@ func (x *SupplierListFilter) GetReady() *SupplierFigureBand {
 		return x.Ready
 	}
 	return nil
+}
+
+func (x *SupplierListFilter) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return 0
 }
 
 // One band: `min` inclusive, `max` exclusive, `max` 0 = no upper edge. A supplier with no goods reads 0, so it is in
@@ -1658,14 +1671,15 @@ const file_warehouse_supplier_v1_supplier_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2+.warehouse.supplier.v1.SupplierListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xed\x02\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x90\x03\n" +
 	"\x12SupplierListFilter\x12\x15\n" +
 	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12H\n" +
 	"\x05scope\x18\x02 \x01(\x0e2(.warehouse.supplier.v1.SupplierListScopeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x05scope\x12R\n" +
 	"\fchannel_type\x18\x03 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\b\xbaH\x05\x82\x01\x02\x10\x01R\vchannelType\x12\"\n" +
 	"\rowner_team_id\x18\x04 \x01(\x04R\vownerTeamId\x12=\n" +
 	"\x04sold\x18\x05 \x01(\v2).warehouse.supplier.v1.SupplierFigureBandR\x04sold\x12?\n" +
-	"\x05ready\x18\x06 \x01(\v2).warehouse.supplier.v1.SupplierFigureBandR\x05ready\"\xc4\x01\n" +
+	"\x05ready\x18\x06 \x01(\v2).warehouse.supplier.v1.SupplierFigureBandR\x05ready\x12!\n" +
+	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\"\xc4\x01\n" +
 	"\x12SupplierFigureBand\x12\x19\n" +
 	"\x03min\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x03min\x12\x19\n" +
 	"\x03max\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x03max:x\xbaHu\x1as\n" +

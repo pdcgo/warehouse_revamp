@@ -42,8 +42,6 @@ import {
   SupplierFigureLines,
 } from "../../features/suppliers/SupplierFigures";
 import { useSupplierGoods } from "../../features/suppliers/goods";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
 import { SupplierWarehouseFilter } from "../../features/suppliers/SupplierWarehouseFilter";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -63,7 +61,7 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 //   Pemasok  [Toko Melati]                                   [+ Tambah Pemasok]
 //   Pemasok yang dikelola tim ini — …
-//   [⌕ Cari pemasok, alamat, atau toko] [Semua gudang ⌄]⚠ [Semua jenis toko ⌄] [Terjual ⌄]⚠ [Siap ⌄]⚠   Hapus filter
+//   [⌕ Cari pemasok, alamat, atau toko] [Semua gudang ⌄] [Semua jenis toko ⌄] [Terjual ⌄] [Siap ⌄]   Hapus filter
 //                                ← the shared FilterBar; each figure opens its own panel of range pills
 //   Pemasok ⇅   · Kontak   · Toko pemasok   · Terjual ⚠        · Siap ⚠          · [✎ Ubah] [🗑 Hapus]   ← A to Z first
 //   PT Sumber Makmur   0812-…   [Shopee ×2]     1.240              155
@@ -90,8 +88,10 @@ export function SuppliersPage() {
   // opens the same narrowed list.
   const [q, setQ] = useUrlState("q", "", textCodec);
   const [channelType, setChannelType] = useUrlState("type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
-  // The warehouse the supplier's restocks are received at — held on screen and thrown away (`dropped`): nothing narrows
-  // the list by it yet. 0n is any warehouse. The range pills narrow on the server (the-range-pills-are-a-fixed-set).
+  // The warehouse the supplier's goods were received at — the suppliers its page lists it for, narrowed on the server
+  // before the page (the-warehouse-filters-before-the-team); only the rows narrow, Terjual and Siap stay whole
+  // (the-warehouse-filter-narrows-only-the-rows). 0n is any warehouse. The range pills narrow on the server too
+  // (the-range-pills-are-a-fixed-set).
   const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
   const [ranges, setRanges] = useUrlFigureRanges();
   // `null` = the list's own order, newest first — no heading stands for it.
@@ -102,19 +102,27 @@ export function SuppliersPage() {
 
   // Typed, then settled — a word is one request to the server, not one per key.
   const term = useDebounced(q.trim());
-  // The dropped warehouse pick counts too, so Clear is there to take it back — though the rows do not move for it.
   const filtering =
     (q.trim() !== "" ? 1 : 0) +
     (warehouseId !== 0n ? 1 : 0) +
     (channelType !== Marketplace.UNSPECIFIED ? 1 : 0) +
     rangesOn(ranges);
   // What the rows on screen were asked with, which is what "nothing matches" is about.
-  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED || rangesOn(ranges) > 0;
+  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED || warehouseId !== 0n || rangesOn(ranges) > 0;
 
   const teamId = current?.teamId;
 
-  // The range pills only for a selling team, which is the only one shown them.
-  const query = useSuppliers({ teamId, q: term, channelType, sort, ranges: canManage ? ranges : undefined, page, pageSize });
+  // The range pills and the warehouse only for a selling team, which is the only one shown them.
+  const query = useSuppliers({
+    teamId,
+    q: term,
+    channelType,
+    sort,
+    ranges: canManage ? ranges : undefined,
+    warehouseId: canManage ? warehouseId : undefined,
+    page,
+    pageSize,
+  });
   const deleteSupplier = useDeleteSupplier();
 
   const suppliers = query.data?.suppliers ?? [];
@@ -356,9 +364,6 @@ export function SuppliersPage() {
         {mayWrite && <SupplierFormDialog compact={isMobile} />}
       </Flex>
 
-      {/* What is not real yet — only where the list is: a warehouse team has no suppliers to show figures for. */}
-      {canManage && <NotImplementedSummary list={SUPPLIER_LIST_PENDING} />}
-
       {!canManage && (
         <Text color="fg.muted" data-testid="suppliers-selling-only">
           {t("suppliers.sellingOnly")}
@@ -382,8 +387,8 @@ export function SuppliersPage() {
 
         {/* THE WAREHOUSE, FIRST AFTER THE SEARCH — where Discover's sits, left of its team (owner: *"di suppliers juga
             sama"*, `the-warehouse-filters-before-the-team`); this list has no team picker, since it is one team's. A
-            selling team's only; marked, not wired. */}
-        {canManage && <SupplierWarehouseFilter value={warehouseId} onChange={setWarehouseId} />}
+            selling team's only. A pick is a new question, so it starts again at page one. */}
+        {canManage && <SupplierWarehouseFilter value={warehouseId} onChange={(id) => refilter(() => setWarehouseId(id))} />}
 
         {/* "Which of ours sell on Shopee?" — seven types, static, a plain list. Empty = any type; its × clears it
             (every-filter-clears-from-its-own-x). */}

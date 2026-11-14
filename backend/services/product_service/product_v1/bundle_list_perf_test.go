@@ -102,7 +102,7 @@ func perfService(t *testing.T) (*product_v1.Service, *gorm.DB, *san_perf.Probe, 
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	seed := seedBundles(t, db)
 
-	return product_v1.NewService(db, nil, nil), db, probe, seed
+	return product_v1.NewService(db, nil, nil, nil, nil), db, probe, seed
 }
 
 func perfCtx() context.Context {

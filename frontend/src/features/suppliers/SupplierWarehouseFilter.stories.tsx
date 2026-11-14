@@ -20,12 +20,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The warehouse search select, "All warehouses" when none is picked, its ⚠ mark beside it inside the slot. */
-export const MarkedNotWired: Story = {
+/** The warehouse search select, "All warehouses" when none is picked — real since 2026-11-14, so no ⚠ mark beside it:
+ * the list narrows on the server (the-warehouse-filters-before-the-team). */
+export const AllWarehousesWhenNonePicked: Story = {
   play: async ({ canvasElement }) => {
     const slot = within(canvasElement).getByTestId("supplier-warehouse-filter");
     await expect(within(slot).getByRole("combobox")).toHaveAttribute("placeholder", "All warehouses");
-    await expect(within(slot).getByTestId("not-implemented-warehouse")).toHaveTextContent("1");
+    await expect(within(slot).queryByTestId("not-implemented-warehouse")).toBeNull();
   },
 };
 

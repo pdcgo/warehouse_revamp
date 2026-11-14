@@ -25,7 +25,7 @@ import { DiscoverCard } from "./components/DiscoverCard";
 import { DISCOVER_SORTS, DiscoverSortSelect } from "./components/DiscoverSortSelect";
 import { DIVISION } from "../../features/products/division";
 import { DISCOVER_PENDING } from "./pending";
-import { CUSTOM, NO_RANGE, PRICE_BANDS, type RangePick, STOCK_BANDS, bandCodec, rangeOn } from "./ranges";
+import { CUSTOM, NO_RANGE, PRICE_BANDS, PRICE_MAX, type RangePick, STOCK_BANDS, STOCK_MAX, bandCodec, rangeAsk, rangeOn } from "./ranges";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -48,13 +48,18 @@ const DEFAULT_DIVISION: Division = "priority";
 //
 //   Temukan Produk
 //   ┌ ⚲ Filter ────────┐  [⌕ Cari SKU atau nama   ]            128 produk   [Terbaru ⌄]
-//   │ Gudang ⚠         │  (Semua) (Prioritas) (Riset) (Umum) ⚠
+//   │ Gudang           │  (Semua) (Prioritas) (Riset) (Umum) ⚠
 //   │ Tim pemilik      │  ┌─────┐ ┌─────┐ ┌─────┐
 //   │ ☐ Sembunyikan …  │  │cover│ │cover│ │cover│
-//   │ Kategori ⚠       │  │name │ │name │ │name │
-//   │ Stok ⚠           │  │Cross│ │Cross│ │Cross│
-//   │ Harga cross ⚠    │  └─────┘ └─────┘ └─────┘
+//   │ Kategori         │  │name │ │name │ │name │
+//   │ Stok siap        │  │Cross│ │Cross│ │Cross│
+//   │ Harga cross      │  └─────┘ └─────┘ └─────┘
+//   │ Kunci            │
 //   └──────────────────┘
+//
+// Every filter but the division chips narrows ON THE SERVER, before its count and page (ProductDiscover): the Gudang
+// keeps what holds ready units there now and is the warehouse every card reads; Stok siap and Harga cross read that
+// warehouse (or every one); Kategori keeps a branch with everything below it.
 //
 // Below `lg` there is no room for the column: the search stays in the row and the same groups open from a Filter button
 // into the bottom sheet, the sort with them (FilterBar `sheetBelow="lg"`). The division is CHIPS over the grid on both,
@@ -99,7 +104,27 @@ export function DiscoverProductsPage() {
   const term = useDebounced(q.trim());
   const teamId = current?.teamId;
 
-  const query = useDiscoverProducts({ teamId, q: term, page, pageSize, ownerTeamId, excludeOwnTeam: hideMine, sort });
+  // What the two ranges ask the server — both ends included, the top band open-ended (ranges.ts `rangeAsk`).
+  const readyAsk = rangeAsk(stock, STOCK_BANDS, STOCK_MAX);
+  const crossAsk = rangeAsk(cross, PRICE_BANDS, PRICE_MAX);
+
+  // EVERY FILTER NARROWS ON THE SERVER (discover-filters-by-lock, discovers-warehouse-keeps-ready-stock-there,
+  // discover-ranges-are-picked, a-cross-band-keeps-a-range-that-touches-it, a-picked-branch-keeps-its-whole-subtree) —
+  // and the Gudang is the warehouse the cards read, so a card never contradicts the filter that kept it.
+  const query = useDiscoverProducts({
+    teamId,
+    q: term,
+    page,
+    pageSize,
+    ownerTeamId,
+    excludeOwnTeam: hideMine,
+    sort,
+    lock: lock === "" ? undefined : lock,
+    warehouseId,
+    categoryId,
+    ready: readyAsk,
+    cross: crossAsk,
+  });
   const products = query.data?.products ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const error = query.isError ? rpcError(query.error) : "";
@@ -111,7 +136,7 @@ export function DiscoverProductsPage() {
 
   const filters: DiscoverFilters = { warehouseId, ownerTeamId, hideMine, categoryId, stock, cross, lock };
 
-  // The dropped picks count too, so Hapus Filter is there to take them back — though the cards do not move for them.
+  // The division counts too, so Hapus Filter is there to take it back — though the cards do not move for it.
   const filtering =
     q.trim() !== "" ||
     warehouseId !== 0n ||
@@ -132,7 +157,15 @@ export function DiscoverProductsPage() {
     (rangeOn(cross) ? 1 : 0) +
     (lock !== "" ? 1 : 0);
   // What the cards on screen were asked with — what "nothing matches" is about.
-  const narrowed = term !== "" || ownerTeamId !== 0n || hideMine;
+  const narrowed =
+    term !== "" ||
+    ownerTeamId !== 0n ||
+    hideMine ||
+    lock !== "" ||
+    warehouseId !== 0n ||
+    categoryId !== 0n ||
+    readyAsk !== undefined ||
+    crossAsk !== undefined;
 
   // A range into the URL — its band, and its typed ends only while it is a custom one.
   function setRange(
@@ -240,8 +273,10 @@ export function DiscoverProductsPage() {
       >
         {products.map((product) => {
           const own = product.teamId === teamId;
-          // The owner's own figures — cost, ready, on its way — only for a product the team standing here owns.
+          // The owner's own cost — only for a product the team standing here owns. Every card's figures come from the
+          // page's one DiscoverStockByIds.
           const ownStock = own ? query.data?.ownStock.get(product.id.toString()) : undefined;
+          const stock = query.data?.stock.get(product.id.toString());
 
           return (
             // The card carries its own testid keyed by id; this cell keys the SAME card by SKU, which is what a test
@@ -258,7 +293,13 @@ export function DiscoverProductsPage() {
                 _hover={{ textDecoration: "none", "& > *": { borderColor: "border.emphasized" } }}
               >
                 <RouterLink to={`/products/discover/${product.id}`} data-testid={`discover-open-${product.productCode}`}>
-                  <DiscoverCard product={product} teamName={teamName(product.teamId)} own={own} ownStock={ownStock} />
+                  <DiscoverCard
+                    product={product}
+                    teamName={teamName(product.teamId)}
+                    own={own}
+                    ownStock={ownStock}
+                    stock={stock}
+                  />
                 </RouterLink>
               </Link>
             </Box>
@@ -326,7 +367,18 @@ export function DiscoverProductsPage() {
         page={page}
         onPageChange={setPage}
         hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
-        resetKey={[term, ownerTeamId, hideMine, sort, pageSize].join("|")}
+        resetKey={[
+          term,
+          ownerTeamId,
+          hideMine,
+          sort,
+          lock,
+          warehouseId,
+          categoryId,
+          JSON.stringify(readyAsk ?? null),
+          JSON.stringify(crossAsk ?? null),
+          pageSize,
+        ].join("|")}
         pageSize={pageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         onPageSizeChange={(n) => {
@@ -348,7 +400,7 @@ export function DiscoverProductsPage() {
         </Text>
       </Stack>
 
-      {/* What is not real yet — the filters nothing can answer, the division, another team's cross price. */}
+      {/* What is not real yet — the division chips and their badge. */}
       <NotImplementedSummary list={DISCOVER_PENDING} />
 
       {panel ? (

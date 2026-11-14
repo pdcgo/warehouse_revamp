@@ -21,7 +21,7 @@
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
-import { goodsTotalsOf, inBand, recordSupplierListBands } from "./supplierGoodsStub";
+import { goodsTotalsOf, inBand, receivedAt, recordSupplierListBands } from "./supplierGoodsStub";
 import { SupplierListDataType, SupplierListScope, SupplierRowSort, SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import { getOption } from "@bufbuild/protobuf";
@@ -141,7 +141,10 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
     // the page, lower-inclusive and upper-exclusive; a supplier with no goods reads 0.
     const sold = req.filter?.sold;
     const ready = req.filter?.ready;
-    recordSupplierListBands(sold, ready);
+    // The Gudang filter (the-warehouse-filters-before-the-team) — the suppliers whose goods were received there, every
+    // team's; only the rows narrow, the bands above still test the whole figures (the-warehouse-filter-narrows-only-the-rows).
+    const warehouseId = req.filter?.warehouseId ?? 0n;
+    recordSupplierListBands(sold, ready, warehouseId);
 
     const found = newestFirst(
       suppliers
@@ -149,7 +152,8 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
         .filter((s) => ownerTeamId === 0n || s.teamId === ownerTeamId)
         .filter((s) => channelType === Marketplace.UNSPECIFIED || liveStoresOf(s.id).some((c) => c.channelType === channelType))
         .filter((s) => matches(q, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name)))
-        .filter((s) => inBand(goodsTotalsOf(s.id).sold, sold) && inBand(goodsTotalsOf(s.id).ready, ready)),
+        .filter((s) => inBand(goodsTotalsOf(s.id).sold, sold) && inBand(goodsTotalsOf(s.id).ready, ready))
+        .filter((s) => receivedAt(s.id, warehouseId)),
     );
     // By name when asked — the server's order (supplierOrderClause): the name, then the id to break a tie.
     const byName =

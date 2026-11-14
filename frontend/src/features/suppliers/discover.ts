@@ -48,6 +48,9 @@ export interface DiscoverQuery {
   ownerTeamId: bigint;
   /** Terjual and Siap's range pills, the supplier list's (discover-shows-the-same-figures-and-filters); absent = Semua. */
   ranges?: FigureRangePicks;
+  /** The Gudang filter — the suppliers whose goods were received there (`the-warehouse-filters-before-the-team`); `0n` /
+   * absent = any warehouse. Only the rows narrow, never the figures (`the-warehouse-filter-narrows-only-the-rows`). */
+  warehouseId?: bigint;
   page: number;
   pageSize: number;
 }
@@ -81,6 +84,7 @@ export async function fetchDiscoverPage(
 ): Promise<{ suppliers: DiscoverSupplier[]; totalItems: number }> {
   const { q, channelType, ownerTeamId, page, pageSize } = query;
   const ranges = query.ranges ?? NO_FIGURE_RANGES;
+  const warehouseId = query.warehouseId ?? 0n;
 
   const res = await supplierClient.supplierList({
     teamId,
@@ -89,9 +93,10 @@ export async function fetchDiscoverPage(
       scope: SupplierListScope.EVERY_TEAM,
       channelType,
       ownerTeamId,
-      // Narrowed on the server, before the page (the-range-pills-are-a-fixed-set).
+      // Narrowed on the server, before the page (the-range-pills-are-a-fixed-set, the-warehouse-filters-before-the-team).
       sold: figureBand("sold", ranges.sold),
       ready: figureBand("ready", ranges.ready),
+      warehouseId,
     },
     dataRequest: supplierListWithChannelsData(),
     page: { page, limit: pageSize },
@@ -113,6 +118,7 @@ export async function fetchDiscoverPage(
 export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & DiscoverQuery) {
   const { teamId, q, channelType, ownerTeamId, page, pageSize } = args;
   const ranges = args.ranges ?? NO_FIGURE_RANGES;
+  const warehouseId = args.warehouseId ?? 0n;
   const client = useQueryClient();
 
   return useQuery({
@@ -127,11 +133,12 @@ export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & Disc
       ownerTeamId: ownerTeamId.toString(),
       sold: ranges.sold,
       ready: ranges.ready,
+      warehouse: warehouseId.toString(),
       page,
       pageSize,
     }),
     enabled: teamId !== undefined,
-    queryFn: () => fetchDiscoverPage(client, teamId!, { q, channelType, ownerTeamId, ranges, page, pageSize }),
+    queryFn: () => fetchDiscoverPage(client, teamId!, { q, channelType, ownerTeamId, ranges, warehouseId, page, pageSize }),
   });
 }
 

@@ -87,12 +87,17 @@ test("Expenses: the screen opens on this month and starts empty", async ({ page 
 // never changes — every correction is a row of its own (every-correction-is-a-signed-adjustment).
 test("Expenses: record, adjust, and cancel — the totals follow each step, every row stays (#170)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
-  await page.goto("/expenses");
 
   const today = new Date().toISOString().slice(0, 10);
 
   // Every expense names the account that paid it (an-expense-must-name-the-account-that-paid) — one operational
   // account for the team, so the form has something to pick.
+  //
+  // ⚠ Seeded BEFORE the screen opens. The form's Paid from reads the team's operational accounts when the page mounts
+  // and keeps that answer as reference data (api/queryClient.ts referenceQuery, 5 min), so an account marked operational
+  // after that read is offered only after a reload. Seeded after the goto, the read could land between
+  // FinancialAccountCreate and FinancialAccountOperationalSet (the 3-worker run of 2026-11-14: Create took 435 ms) —
+  // it answered "none", and the picker stayed disabled for the rest of the test.
   const account = await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
     teamId: team,
     type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
@@ -109,6 +114,8 @@ test("Expenses: record, adjust, and cancel — the totals follow each step, ever
     accountId: account.account.id,
     operational: true,
   });
+
+  await page.goto("/expenses");
 
   // RECORD.
   await page.getByTestId("open-record-cost").click();

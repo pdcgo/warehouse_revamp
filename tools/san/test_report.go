@@ -58,6 +58,22 @@ type RunRecord struct {
 	CopyDir            string       `json:"copy_dir,omitempty"`
 	Workers            []*e2eWorker `json:"workers,omitempty"` // a parallel e2e's workers: database, ports, project
 	Stopped            string       `json:"stopped,omitempty"` // why the run stopped early
+	// Reruns are the files re-run once inside this run because they failed to LOAD
+	// (a-file-that-fails-to-load-is-re-run-once): which, why, and how each went.
+	Reruns []*Rerun `json:"reruns,omitempty"`
+	// Acceptances are `san test accept-run` attempts on this run after it ended; a green one made it the baseline.
+	Acceptances []*Acceptance `json:"acceptances,omitempty"`
+}
+
+// accepted is the green acceptance that made this run the baseline, if any.
+func (r *RunRecord) accepted() *Acceptance {
+	for _, a := range r.Acceptances {
+		if a.Green {
+			return a
+		}
+	}
+
+	return nil
 }
 
 // PartResult is the go test or the Storybook run.
@@ -69,6 +85,10 @@ type PartResult struct {
 	Failed   int      `json:"failed"`
 	Failures []string `json:"failures,omitempty"`
 	Log      string   `json:"log"`
+	// Where it ran: the go test's own database, the Storybook run's vitest browser port.
+	Where string `json:"where,omitempty"`
+	// Classes sorts a failed Storybook run's failures per file into load and check failures.
+	Classes *FailureClass `json:"failure_classes,omitempty"`
 }
 
 func (p *PartResult) green() bool {
@@ -93,8 +113,31 @@ type BatchResult struct {
 	Counts   Counts        `json:"counts"`
 	Failures []string      `json:"failures,omitempty"`
 	Log      string        `json:"log"`
+	// RerunOf names the batch whose load failure this fresh batch re-runs (w1-b2); empty for a planned batch.
+	RerunOf string `json:"rerun_of,omitempty"`
+	// LoadFailed are the specs that failed to LOAD, stopping the batch before any test; set when it was re-run.
+	LoadFailed []FileFailure `json:"load_failed,omitempty"`
 
 	specs map[string]*SpecResult // this batch's per-spec totals, merged into E2EResult.Specs
+}
+
+// name is how the batch is called in the logs and the summary: b2, w1-b2, a re-run's w1-rerun1.
+func (b *BatchResult) name() string {
+	n := fmt.Sprintf("b%d", b.N)
+	if b.RerunOf != "" {
+		n = fmt.Sprintf("rerun%d", b.N)
+	}
+
+	if b.Worker != "" {
+		n = b.Worker + "-" + n
+	}
+
+	return n
+}
+
+// passed says whether every test of the batch ran and passed.
+func (b *BatchResult) passed() bool {
+	return b.Exit == 0 && !b.CapHit && b.Counts.Failed == 0 && b.Counts.DidNotRun == 0
 }
 
 // Counts are a run's test outcomes.
@@ -152,13 +195,43 @@ func (e *E2EResult) total() Counts {
 	return c
 }
 
+// green says whether every batch passed — a batch that failed only to LOAD counting by its fresh re-run batches.
 func (e *E2EResult) green() bool {
 	if e == nil || len(e.Batches) == 0 {
 		return false
 	}
 
 	for _, b := range e.Batches {
-		if b.Exit != 0 || b.CapHit || b.Counts.Failed > 0 || b.Counts.DidNotRun > 0 {
+		if b.RerunOf == "" && len(b.LoadFailed) > 0 {
+			if !e.rerunCovers(b) {
+				return false
+			}
+
+			continue
+		}
+
+		if !b.passed() {
+			return false
+		}
+	}
+
+	return true
+}
+
+// rerunCovers says whether every spec of a load-failed batch ran again in a fresh batch (each judged on its own).
+func (e *E2EResult) rerunCovers(b *BatchResult) bool {
+	covered := map[string]bool{}
+
+	for _, r := range e.Batches {
+		if r.RerunOf == b.name() {
+			for _, s := range r.Specs {
+				covered[s] = true
+			}
+		}
+	}
+
+	for _, s := range b.Specs {
+		if !covered[s] {
 			return false
 		}
 	}
@@ -302,6 +375,18 @@ func writeLatest(m *Measurement) error {
 	} else {
 		fmt.Fprintf(&b, "%s (run %s), %d files.\n\n", m.Baseline.TakenAt.Format("2006-01-02 15:04"), m.Baseline.Run,
 			len(m.Baseline.Files))
+
+		rec, err := readRun(filepath.Join(rep, "runs", m.Baseline.Run, "run.json"))
+		if err == nil {
+			if a := rec.accepted(); a != nil {
+				fmt.Fprintf(&b, "%s\n\n", acceptanceLine(a, rec))
+			}
+
+			if len(rec.Reruns) > 0 {
+				fmt.Fprintf(&b, "Re-run inside the run after a load failure: %d files (a-file-that-fails-to-load-is-re-run-once) "+
+					"— `runs/%s/summary.md`.\n\n", len(rec.Reruns), rec.ID)
+			}
+		}
 	}
 
 	b.WriteString("## Are today's files covered?\n\n")
@@ -363,6 +448,11 @@ func runLine(r *RunRecord) string {
 		verdict = "STOPPED (" + r.Stopped + ")"
 	}
 
+	if a := r.accepted(); a != nil {
+		verdict = fmt.Sprintf("GREEN (accepted %s by san test accept-run — %d files re-run in %s)",
+			a.At.Format("2006-01-02 15:04"), len(a.Reruns), a.Where)
+	}
+
 	partial := ""
 	if r.Partial {
 		partial = " · partial (" + r.PartialWhy + ") — never moves last_green"
@@ -380,6 +470,18 @@ func runLine(r *RunRecord) string {
 
 	if r.E2E != nil {
 		parts = append(parts, fmt.Sprintf("e2e %s", r.E2E.total()))
+	}
+
+	if len(r.Reruns) > 0 {
+		green := 0
+
+		for _, x := range r.Reruns {
+			if x.Green {
+				green++
+			}
+		}
+
+		parts = append(parts, fmt.Sprintf("re-run after a load failure %d/%d green", green, len(r.Reruns)))
 	}
 
 	dir := "runs"

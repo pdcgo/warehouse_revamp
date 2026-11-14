@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 import { signIn } from "./session";
+import { openShops } from "./pickers";
 
 // The settlement importer, end to end (docs/business/settlement/settlement_importer.md): a Shopee statement
 // uploaded through the Import File dialog, streamed through the REAL importer — the shop check, the
@@ -36,7 +37,7 @@ async function importStatement(page: Page) {
   const dialog = page.getByTestId("import-dialog");
   await expect(dialog).toBeVisible();
 
-  await dialog.getByTestId("shop-select").click();
+  await openShops(dialog);
   await dialog.getByRole("option").filter({ hasText: SHOP_NAME }).click();
 
   await dialog.getByTestId("import-file-input").setInputFiles({

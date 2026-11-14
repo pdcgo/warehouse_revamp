@@ -5,7 +5,24 @@ import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
+import { cacheModulesForTheRun } from "./.storybook/runCachePlugin";
 import { stubTransportPlugin } from "./.storybook/stubTransportPlugin";
+
+// The browser server's port: 6106, or STORIES_BROWSER_PORT — `san test full` gives its frozen copy's Storybook run a
+// port of its own (6116+, docs/tools/san.md#test-full) so a Storybook run in the live tree, on 6106, never meets it:
+// two runs on one port have had one's test browser load the other's files. (vitest's --browser.api.port flag does not
+// reach this server — it reads this file.)
+function browserPort(): number {
+  const raw = process.env.STORIES_BROWSER_PORT;
+  if (raw === undefined || raw === "") return 6106;
+
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port <= 0 || port >= 49152) {
+    throw new Error(`STORIES_BROWSER_PORT=${raw}: want a port below 49152 (see the note on api.port)`);
+  }
+
+  return port;
+}
 
 // The story test run.
 //
@@ -26,6 +43,9 @@ export default defineConfig({
   plugins: [
     react(),
     stubTransportPlugin(),
+    // One run's modules are cached by the test browser — without it a full run's tab hits Chromium's request cap
+    // (net::ERR_INSUFFICIENT_RESOURCES) and the run stops early. Why, and when it stays off: the plugin's file.
+    cacheModulesForTheRun(),
     storybookTest({ configDir: ".storybook", storybookScript: "npm run storybook" }),
   ],
   test: {
@@ -48,9 +68,11 @@ export default defineConfig({
       // startup with "listen EACCES ::1:63315" before any story executes. Those reservations are carved out
       // of the DYNAMIC range (49152+) and MOVE every time Docker or Hyper-V starts — the earlier pin, 51234,
       // was outside them one day and inside 51170–51269 the next. A port under 49152 can never be reserved
-      // that way. 6106 sits beside Storybook's 6006.
-      api: { port: 6106 },
+      // that way. 6106 sits beside Storybook's 6006; a full run's frozen copy uses its own (browserPort above).
+      api: { port: browserPort() },
     },
   },
+  // ⚠ Not where the deps go: @storybook/addon-vitest sets its own cacheDir over this one —
+  // node_modules/.cache/storybook/<version>/<hash of the config dir>/sb-vitest (deps/, and vitest/results.json).
   cacheDir: fileURLToPath(new URL("./node_modules/.vite-vitest", import.meta.url)),
 });

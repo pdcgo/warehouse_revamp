@@ -7,9 +7,7 @@ import { FilterChips } from "../../../components/chrome/FilterChips";
 import { FilterGroup } from "../../../components/chrome/FilterPanel";
 import { CategorySelect } from "../../../components/pickers/CategorySelect";
 import { TeamSelect } from "../../../components/teams/TeamSelect";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { lockIconOf } from "../../../features/products/ProductLock";
-import { DISCOVER_PENDING } from "../pending";
 import { PRICE_BANDS, PRICE_MAX, type RangePick, STOCK_BANDS, STOCK_MAX, priceBandLabel, stockBandLabel } from "../ranges";
 import { DiscoverRangeFilter } from "./DiscoverRangeFilter";
 
@@ -35,16 +33,18 @@ export const LOCK_FILTERS: readonly LockFilter[] = ["", "open", "locked"];
 // kau sebutkan"*, `discover-filters-in-a-side-panel`) — one set of groups, which the page puts in the FilterPanel beside
 // the grid on a desktop and in FilterBar's sheet below `lg`:
 //
-//   Gudang ⚠        where the stock is — the first question a seller shipping from one city asks
+//   Gudang          where the stock is — the first question a seller shipping from one city asks
 //   Tim pemilik     whose product · ☐ Sembunyikan produk saya
-//   Kategori ⚠
-//   Stok siap ⚠     (Semua) (1–10) (11–50) … (✎ Atur sendiri)          — discover-ranges-are-picked
-//   Harga cross ⚠   (Semua) (≤ 10rb) (10–25rb) … (500rb–1jt) (✎ Atur sendiri)
-//   Kunci ⚠         (Semua) (Terbuka) (Terkunci)                       — discover-filters-by-lock
+//   Kategori        a branch keeps everything below it                — a-picked-branch-keeps-its-whole-subtree
+//   Stok siap       (Semua) (Kosong) (1–10) (11–50) … (✎ Atur sendiri)  — discover-ranges-are-picked
+//   Harga cross     (Semua) (≤ 10rb) (10–25rb) … (500rb–1jt) (✎ Atur sendiri)
+//   Kunci           (Semua) (Terbuka) (Terkunci)                       — discover-filters-by-lock
 //   (Urutkan)       the sheet only — beside the search on a desktop
 //
-// ⚠ Only Tim pemilik and Sembunyikan produk saya narrow the cards today; the rest hold their pick and throw it away, each
-// marked (pending.ts), because nothing on the server can answer them yet.
+// Every group narrows ON THE SERVER, before its count and page (ProductDiscover). The Gudang keeps the products with
+// ready units there now and is the warehouse Stok siap, Harga cross and every card read
+// (discovers-warehouse-keeps-ready-stock-there); a cross band keeps a price range that touches it
+// (a-cross-band-keeps-a-range-that-touches-it); the top bands are open-ended.
 export function DiscoverFilterGroups({
   value,
   onChange,
@@ -60,11 +60,7 @@ export function DiscoverFilterGroups({
 
   return (
     <>
-      <FilterGroup
-        label={t("discover.filter.warehouse")}
-        mark={<NotImplemented list={DISCOVER_PENDING} id="warehouse" />}
-        testId="discover-filter-warehouse"
-      >
+      <FilterGroup label={t("discover.filter.warehouse")} testId="discover-filter-warehouse">
         {/* Every option is a warehouse, so the pick is its name alone (a-one-type-picker-shows-the-name-alone). */}
         <TeamSelect
           teamType={TeamType.WAREHOUSE}
@@ -100,11 +96,7 @@ export function DiscoverFilterGroups({
         </Stack>
       </FilterGroup>
 
-      <FilterGroup
-        label={t("discover.filter.category")}
-        mark={<NotImplemented list={DISCOVER_PENDING} id="category" />}
-        testId="discover-filter-category"
-      >
+      <FilterGroup label={t("discover.filter.category")} testId="discover-filter-category">
         {/* Fixed: the panel scrolls its own groups, and this picker's panel is not portalled. */}
         <CategorySelect
           value={value.categoryId}
@@ -114,11 +106,7 @@ export function DiscoverFilterGroups({
         />
       </FilterGroup>
 
-      <FilterGroup
-        label={t("discover.filter.stock")}
-        mark={<NotImplemented list={DISCOVER_PENDING} id="stock" />}
-        testId="discover-filter-stock"
-      >
+      <FilterGroup label={t("discover.filter.stock")} testId="discover-filter-stock">
         {/* READY stock (owner: *"yg difilter adalah yang ready"*), up to 100.000. */}
         <DiscoverRangeFilter
           kind="stock"
@@ -131,11 +119,7 @@ export function DiscoverFilterGroups({
         />
       </FilterGroup>
 
-      <FilterGroup
-        label={t("discover.filter.crossRange")}
-        mark={<NotImplemented list={DISCOVER_PENDING} id="crossRange" />}
-        testId="discover-filter-cross-range"
-      >
+      <FilterGroup label={t("discover.filter.crossRange")} testId="discover-filter-cross-range">
         {/* The cross price, up to Rp 1.000.000. */}
         <DiscoverRangeFilter
           kind="price"
@@ -150,13 +134,10 @@ export function DiscoverFilterGroups({
 
       {/* TERBUKA · TERKUNCI (owner: *"filter terkunci dan terbuka, terkunci itu yang kena dikunci dan stoknya <= min"*,
           the boundary since settled as `a-minimum-closes-only-under-it`) — Terkunci is a product its owner locked, or
-          one whose minimum has closed it: ready stock UNDER the minimum. Terbuka is every other — another team may take
-          it now. */}
-      <FilterGroup
-        label={t("discover.filter.lock")}
-        mark={<NotImplemented list={DISCOVER_PENDING} id="lockFilter" />}
-        testId="discover-filter-lock"
-      >
+          one whose minimum has closed it: ready stock across every warehouse UNDER the minimum. Terbuka is every other —
+          another team may take it now. Narrowed on the server before the count and the page (ProductDiscover's
+          filter.lock CLOSED / ORDERABLE). */}
+      <FilterGroup label={t("discover.filter.lock")} testId="discover-filter-lock">
         <FilterChips
           value={value.lock}
           onChange={(lock) => onChange({ lock })}

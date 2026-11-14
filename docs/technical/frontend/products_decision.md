@@ -75,6 +75,9 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [an-empty-product-cannot-start-an-order](#an-empty-product-cannot-start-an-order) | with no stock ready in any warehouse, **Buat Pesanan** is held back with *Stok siap habis di semua gudang* — on both pages; Restok stays |
 | [a-picture-comes-from-the-web-by-drag-or-paste](#a-picture-comes-from-the-web-by-drag-or-paste) | a picture dragged from a web page is fetched and uploaded like a file; an image copied anywhere pastes with Ctrl+V; a site that refuses is answered with how to copy it |
 | [the-screen-says-product-code](#the-screen-says-product-code) | every screen calls the code "Product code" (Kode produk), never "SKU" — the field itself is still `sku` on the wire |
+| [discovers-warehouse-keeps-ready-stock-there](#discovers-warehouse-keeps-ready-stock-there) | Discover's **Gudang** keeps products with ready stock in that warehouse now; the cards and both range filters then read that warehouse | owner, as recommended | — |
+| [a-cross-band-keeps-a-range-that-touches-it](#a-cross-band-keeps-a-range-that-touches-it) | a Harga cross band keeps every product whose cross price range touches it | owner, as recommended | — |
+| [a-discover-card-says-locked-as-the-title-does](#a-discover-card-says-locked-as-the-title-does) | once a Discover card shows real stock, its lock badge says *Terkunci · Min N pcs* as the product page's title does | owner, as recommended | — |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -465,6 +468,8 @@ point.
 | ahead of the contract | each held in the URL (`?lock=`, `?age=`) and marked ⚠ (`dropped`), its pick **thrown away**: `ProductListFilter` has only `q` and `status`, and a paged list cannot be narrowed on screen without missing the products on the other pages; the age lives in inventory_service, further off still |
 | the control | a plain list with its own × (a static, small set — no search), in the filter strip and the phone's Filter sheet; Hapus Filter clears them with the rest |
 | the strip | the screen's `NotImplementedSummary` names both at the top |
+
+✅ **Built 2026-11-14** — both picks are sent and narrowed on the server, before its count and page: `ProductListFilter.lock` (Terbuka · Stok minimum · Selalu dikunci · Terkunci sekarang) and `stock_age_min_days` (30 · 60 · 90), the age read in the warehouse lens (`stock_warehouse_id`), the lock in every warehouse; *Terkunci sekarang* and the age ask inventory through the composition root's seam ([rpc.md](../../services/product_service/rpc.md#the-lists-kunci-and-umur-stok--narrowed-through-inventory-built-2026-11-14)). The ⚠ marks, `pages/products/pending.ts` and the strip's `NotImplementedSummary` are gone. Stories `Pages/Products/Products/Filters` (*Lock, each way*, *Stock age*, *Locked now, none*, *Lock and age, cleared*, *Lock and age from the URL*); e2e `the_product_list_filters.spec.ts`.
 
 ## the-archive-is-a-page-of-its-own
 
@@ -970,6 +975,8 @@ Temukan Produk
 ([every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager)) and an empty
 browse shows a hint ([an-empty-list-shows-a-hint](context_decision.md#an-empty-list-shows-a-hint)).
 
+✅ **Built 2026-11-14** — Gudang and Kategori narrow too (`ProductDiscoverRequest.warehouse_id`, `category_id` — a branch keeps its whole subtree); every group in the panel is real, only the division chips stay marked.
+
 ## discover-opens-on-priority
 
 > Owner, in chat (2026-10-26): *"aturan di context yang belum ada adalah pembagian produk, yaitu ada produk
@@ -1023,6 +1030,10 @@ Rp 79.000 – Rp 81.000            Rp 45.700 – Rp 47.200
 It answers, for this screen, who may see the owner's unit price — open in
 [product context_clarify](../../business/product/context_clarify.md) as *Awaiting*: on Discover, the owner alone.
 
+✅ **Built 2026-11-14** — another team's cross price on the CARD is real: the server prices each ready batch with the product's markup (`DiscoverStockByIds` `cross_min`/`cross_max`) and never sends the cost; the `crossPrice` sample and its mark are gone from the card. The discover DETAIL still shows its sample (its own `crossPrice` mark).
+
+✅ **Built 2026-11-14** — the discover DETAIL reads another team's cross price from the same read (`DiscoverStockByIds`, every warehouse for Info, each warehouse for Harga per Gudang and the Overview's lens); its `crossPrice` sample and mark are gone, so a card and its detail never disagree. Stories `DiscoverProductDetail/Info/TheCrossPriceIsTheCards`, `Price/AnotherTeamsPriceIsEachWarehouses`, e2e `the_discover_cards.spec.ts` (Detail).
+
 ## a-discover-price-is-red-and-unlabelled
 
 > Owner, in chat (2026-10-26): *"kurasa keterangan harga kasih warna merah, harga apa tidak perlu diberi label tooltips
@@ -1057,6 +1068,8 @@ over the amount"*, and its sketch's order, which put the cost above the cross pr
 | ⚠ another team's | a sample (`cardStock`) — OwnerStockByIds answers only for the caller's own goods |
 | the Stok filter | *Hanya yang ada stok siap* — it narrows by **ready** stock; still `dropped` |
 | ✅ built *(2026-10-26)* | [DiscoverStock.tsx](../../../frontend/src/pages/product-discover/components/DiscoverStock.tsx); the story `Pages/Products/DiscoverCard` |
+
+✅ **Built 2026-11-14** — another team's card reads its REAL ready and on-its-way stock too: `InventoryService.DiscoverStockByIds`, one call for the page's ids (every warehouse until Gudang is built); the `cardStock` sample and its mark are gone. Story `Cards/AnotherTeamsFiguresAreReal`, e2e `the_discover_cards.spec.ts`.
 
 ## a-discover-card-highlights-low-stock
 
@@ -1156,6 +1169,8 @@ Harga cross ⚠
 (Hanya yang ada stoknya)* and *Harga cross ⚠ (from–to)*, and [a-discover-card-shows-its-stock](#a-discover-card-shows-its-stock)'s
 checkbox — the filter still narrows by ready stock.
 
+✅ **Built 2026-11-14** — both ranges narrow on the server (`ProductDiscoverRequest.ready` / `cross_price`, both ends included, the top band open-ended); Stok siap reads the Gudang's ready stock or every warehouse's, and a band from 0 (Kosong, a custom 0–N) keeps products with no stock at all. `pending.ts` `stock`, `crossRange` gone. Stories `Filters/StokSiapNarrowsToItsBand`, `TheUrlKeepsThemAndClearTakesThemBack`.
+
 ## discover-filters-by-lock
 
 > Owner, in chat (2026-10-26): *"oke, 1 filter lagi, filter terkunci dan terbuka, terkunci itu yang kena dikunci dan
@@ -1188,6 +1203,8 @@ filter says **≤**. They disagree only for a product holding exactly its minimu
 badge. Nothing is changed until it is settled: the filter is pending, and the badge keeps `<`.
 **→ Recommend:** settle one comparison in the business context and use it in both places, so a product cannot be listed
 under Terkunci while its own card says it is open.
+
+✅ **Built 2026-11-14** — Kunci narrows on the server: `ProductListFilter.lock` `CLOSED` (Terkunci: locked by its owner, or ready stock over every warehouse UNDER its minimum — `<`, per [a-minimum-closes-only-under-it](#a-minimum-closes-only-under-it)) / `ORDERABLE` (Terbuka: every other), before ProductDiscover's count and page; the `lockFilter` mark is gone. Stories `Filters/KunciNarrowsTheGrid`, e2e `the_discover_cards.spec.ts`.
 
 ## the-filter-panel-ends-above-the-windows-foot
 
@@ -1450,6 +1467,8 @@ shelf, and what another team may take (⚠ derived)"*) and its *⚠ Still open* 
 warehouse — both stale. The business question behind that note (point 5 and Q13 of
 [product clarify](../../business/product/context_clarify.md)) is still open; this page simply no longer computes it.
 
+✅ **Built 2026-11-14** — another team's price per warehouse is real: `DiscoverStockByIds` in that warehouse (its batches' costs with the markup on top, the cost never sent); `sampleWarehouseCross` is deleted.
+
 ## the-discover-detail-has-the-warehouse-zone
 
 > Owner, in chat (2026-10-30): *"di detail produk biasa kan ada per gudang itu masukkan ke detail discover ini dengan
@@ -1708,6 +1727,10 @@ minimum 20      ready 19 → Terkunci      ready 20 → Terbuka      ready 21 �
 (≤) and the stories `AtTheMinimumIsLocked` / `OneAboveTheMinimumIsOpen`. [discover-filters-by-lock](#discover-filters-by-lock)'s
 *Terkunci … at or under it* row is history, kept as written.
 
+✅ **Built 2026-11-14** — the product list's *Terkunci sekarang* filter draws the same line on the server (`inventory_v1.ClosedByMinimum`: ready stock over every warehouse `<` the minimum; a product exactly at it is not listed, one with nothing on a shelf is). Discover's **Kunci** filter is still pending (`lockFilter`).
+
+✅ **Built 2026-11-14** — Discover's **Kunci** draws the same line on the server (`PRODUCT_LOCK_FILTER_CLOSED` / `ORDERABLE`, the same `inventory_v1.ClosedByMinimum` for every team's minimum products at once): exactly at the minimum is Terbuka.
+
 ## the-screen-says-product-code
 
 > Owner, in chat (2026-10-31): *"the screen calls it "SKU", change to product code"* — while [product Q7](../../business/product/context_clarify.md#question)
@@ -1730,3 +1753,42 @@ Sentence case, as every field label and column header is.
 | not changed | the wire and the database still say `sku`; whether the FIELD becomes `product_code`, composed on write, is still [product Q7](../../business/product/context_clarify.md#question) |
 | not changed | the old screens under `frontend/src/legacy*/` |
 | ✅ built *(2026-10-31)* | the locales; the stories `ProductEdit/EveryFieldShowsAnExample` and `ATakenSkuIsSaidUnderTheSku` assert the new words |
+
+---
+
+## discovers-warehouse-keeps-ready-stock-there
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: on Discover, what does picking a warehouse (Gudang ⚠, [discover-filters-in-a-side-panel](#discover-filters-in-a-side-panel)) keep? A: products with ready stock in that warehouse now, and the cards and the Stok siap / Harga cross filters read that warehouse's figures; B: products that ever had a batch there; C: ready there now, but the cards and ranges stay all-warehouse.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| Gudang picked | Discover keeps the products with **ready** units (`batches` still holding stock, the ready state) **in that warehouse now**; a product only listed there, or emptied, drops out |
+| the cards | a card's *Stok siap* and cross price read **that warehouse** alone |
+| Stok siap / Harga cross | the bands ([discover-ranges-are-picked](#discover-ranges-are-picked)) test that warehouse's ready stock and that warehouse's cross price range |
+| no warehouse | every warehouse, summed / the whole range — as the cards read today |
+
+⚠ Not built — waits on the real card figures (scoping B4) and the Harga cross band rule.
+
+✅ **Built 2026-11-14** — `ProductDiscoverRequest.warehouse_id` keeps the products with ready units (`stock_count > 0`) in that warehouse now, asked of inventory's batches through the `StockNarrower` seam (`ShelvedProducts`) before the count and the page; the page passes the same warehouse to `DiscoverStockByIds`, so every card, Stok siap and Harga cross read it; no warehouse = every warehouse. The lock badge keeps reading every warehouse. Tests `product_discover_filters_test.go`, stories `Filters/GudangNarrowsAndTheCardsReadIt`, e2e `the_discover_cards.spec.ts` (Gudang).
+
+---
+
+## a-cross-band-keeps-a-range-that-touches-it
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: a product's cross price is often a range (batches bought at different costs, e.g. Rp 22.000–28.000); when a Harga cross band ([discover-ranges-are-picked](#discover-ranges-are-picked)) such as *Rp 25rb–50rb* is picked, which products does it keep? A: any whose range touches the band; B: only if the cheapest price is in the band; C: only if the whole range is inside.
+
+**The verdict.** A band keeps a product when its cross price range **overlaps** the band — `range.min ≤ band.max` and `range.max ≥ band.min`, both ends included; *Rp 22–28rb* is kept by *Rp 25rb–50rb* (some units sell inside it) and by *Rp 10rb–25rb*. A custom range (*Atur sendiri*) is a band like any other. *(Not asked — the build's default: the top band is open-ended, so nothing past Rp 1.000.000 falls out of every band.)* The range is the warehouse's when a Gudang is picked ([discovers-warehouse-keeps-ready-stock-there](#discovers-warehouse-keeps-ready-stock-there)), every warehouse's otherwise. ⚠ Not built.
+
+✅ **Built 2026-11-14** — `ProductDiscoverRequest.cross_price`: kept when cross_min ≤ max AND cross_max ≥ min, both ends included, over the batches holding units in the Gudang (or every warehouse); a custom range is a band like any other; the top band (and a typed max held at Rp 1.000.000) is sent open. Inventory hands back cost spreads pre-cut by the band (in-process only); product_service applies its markup in its own statement — no cost in any answer. A product with nothing ready has no cross price and is kept only when no band is picked. Tests `product_discover_test.go` (exact ends, straddling), `product_discover_filters_test.go`, story `Filters/HargaCrossKeepsWhatTouchesTheBand`, e2e `the_discover_cards.spec.ts` (Harga cross).
+
+---
+
+## a-discover-card-says-locked-as-the-title-does
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: [the-lock-is-the-title-badge](#the-lock-is-the-title-badge) left the Discover **card** saying the setting alone (*Min N pcs* / *Dikunci*) because another team's stock on the card was a sample; once the cards read real stock (the Discover filters' prerequisite) that reason is gone. A: the card says it as the product page does — **🔒 Terkunci · Min N pcs** when ready stock is under the minimum, *Min N pcs* when not; B: keep the setting alone on the card.
+
+**The verdict.** The Discover card's lock badge is the title badge's: **🔒 Dikunci** when its owner locked it; **🔒 Terkunci · Min N pcs** when its ready stock is **under** the minimum ([a-minimum-closes-only-under-it](#a-minimum-closes-only-under-it)); *Min N pcs* when a minimum is set and not reached. The stock it reads is the title badge's — the ready stock summed over every warehouse (`totalReady`), whatever Gudang is picked, so the card and the product page never disagree. An accepted badge in an existing cell — no prototype. It replaces the *the card* row of [the-lock-is-the-title-badge](#the-lock-is-the-title-badge). ⚠ Not built — needs the real card figures first.
+
+✅ **Built 2026-11-14** — the card's `DiscoverBadges` gets `totalReady` = DiscoverStockByIds' `total_ready_qty` (every warehouse, whatever Gudang says): **Dikunci** / **Terkunci · Min N pcs** / **Min N pcs**. Story `Cards/TheThreeLockBadges`, e2e `the_discover_cards.spec.ts`.

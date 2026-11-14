@@ -4,6 +4,7 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
 import { formatRupiah } from "../src/lib/money";
+import { openShops, pickTeam } from "./pickers";
 
 // THE BACKEND NEVER ROUNDS MONEY (docs/business/order/context_decision.md#the-backend-never-rounds-money), END TO END.
 //
@@ -156,10 +157,9 @@ test("Exact: the form previews the exact figures, and the order stores exactly t
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await page.getByTestId("order-create-customer-name").fill(`E2E Exact ${SUFFIX}`);
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   await page.getByRole("option").filter({ hasText: state.shopName }).click();
-  await page.getByTestId("order-warehouse").locator("input").fill(state.whCode);
-  await page.getByTestId(`team-select-option-${state.whCode}`).click();
+  await pickTeam(page, page.getByTestId("order-warehouse"), state.whCode);
 
   await page.getByTestId("order-create-add-line").click();
   await page.getByTestId("product-picker-search").fill(state.productCode);

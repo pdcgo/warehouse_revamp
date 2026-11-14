@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { pickTeam } from "../../../../.storybook/pageStory";
+import { LocationProbe, pickTeam, routedPage } from "../../../../.storybook/pageStory";
 import { teams } from "../../../../.storybook/fixtures";
 import { supplierFixture, supplierFixtures } from "../../../../.storybook/supplierFixtures";
-import { supplierListBandCalls } from "../../../../.storybook/supplierGoodsStub";
+import { supplierGoodsCalls, supplierListBandCalls } from "../../../../.storybook/supplierGoodsStub";
+import { SupplierGoodsGroup } from "../../../gen/warehouse/inventory/v1/inventory_pb";
+import { DiscoverSuppliersPage } from "../index";
 import { SUPPLIER_DISCOVER_META, LIVE, NUSANTARA, SUMBER, loaded, rows } from "./kit";
 
 // DISCOVER SUPPLIERS — the warehouse, the team (discover-filters-team-before-store), the Sold and Ready ranges and
@@ -93,14 +95,15 @@ export const TheStoreTypeIsChips: Story = {
 };
 
 // THE WAREHOUSE FILTERS BEFORE THE TEAM (the-warehouse-filters-before-the-team) — right after the search, left of the
-// team, its mark (1) beside it: not wired yet.
+// team; real since 2026-11-14, so no mark beside it and no "not built yet" strip over the cards.
 export const TheWarehouseFiltersBeforeTheTeam: Story = {
   name: "Warehouse before team",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     const warehouse = canvas.getByTestId("supplier-warehouse-filter");
-    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("1");
+    await expect(within(warehouse).queryByTestId("not-implemented-warehouse")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
     await expect(within(warehouse).getByRole("combobox")).toHaveAttribute("placeholder", "All warehouses");
     const team = canvas.getByTestId("discover-suppliers-team-filter").getBoundingClientRect();
     const search = canvas.getByTestId("discover-suppliers-search").getBoundingClientRect();
@@ -155,5 +158,52 @@ export const APhoneFiltersByRangeInTheSheet: Story = {
     );
     await expect(within(sheet).getByTestId("supplier-range-sold")).toBeVisible();
     await expect(within(sheet).getByTestId("supplier-range-ready")).toBeVisible();
+  },
+};
+
+// THE GUDANG FILTER NARROWS THE CARDS ON THE SERVER (the-warehouse-filters-before-the-team) — every team's suppliers whose
+// goods were received at Gudang Cabang: PT Sumber Makmur (Toko Melati's), UD Makmur Jaya (Toko Kenanga's) and PT Tekstil
+// Nusantara (Toko Anggrek's). With Toko Kenanga picked too, only UD Makmur Jaya. ONLY THE ROWS NARROW
+// (the-warehouse-filter-narrows-only-the-rows): Sumber's card reads the same whole Terjual and Siap. The pick lives in the
+// URL; Clear Filters takes both away.
+const AtDiscover = routedPage(
+  [{ path: "/inventories/suppliers/discover", element: <><DiscoverSuppliersPage /><LocationProbe /></> }],
+  "/inventories/suppliers/discover",
+);
+
+export const TheWarehouseNarrowsTheCards: Story = {
+  name: "Warehouse narrows the cards",
+  render: () => <AtDiscover />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+    // The figures land after the cards — read them once they have.
+    await waitFor(() => expect(canvas.getByTestId(`discover-card-figures-${SUMBER.id}`).textContent).toMatch(/\d/));
+    const figures = canvas.getByTestId(`discover-card-figures-${SUMBER.id}`).textContent ?? "";
+    const before = rows(canvas).length;
+    const cabang = teams.find((t) => t.id === 14n)!;
+    const kenanga = teams.find((t) => t.id === 13n)!;
+    const atCabang = ["PT Sumber Makmur", "UD Makmur Jaya", "PT Tekstil Nusantara"].map((name) => supplierFixture(name).id);
+
+    await pickTeam(canvas.getByTestId("supplier-warehouse-filter"), cabang.teamCode);
+
+    await waitFor(() => expect(rows(canvas)).toHaveLength(atCabang.length));
+    for (const id of atCabang) {
+      await expect(canvas.getByTestId(`discover-supplier-row-${id}`)).toBeVisible();
+    }
+    await expect(supplierListBandCalls.at(-1)?.warehouseId).toBe(14n);
+    await waitFor(() => expect(location).toHaveTextContent("warehouse=14"));
+    // The figures are the supplier's whole — asked per supplier, never per warehouse.
+    await expect(canvas.getByTestId(`discover-card-figures-${SUMBER.id}`)).toHaveTextContent(figures);
+    await expect(supplierGoodsCalls.at(-1)?.group).toBe(SupplierGoodsGroup.SUPPLIER);
+
+    await pickTeam(canvas.getByTestId("discover-suppliers-team-filter"), kenanga.teamCode);
+    await waitFor(() => expect(rows(canvas)).toHaveLength(1));
+    await expect(canvas.getByTestId(`discover-supplier-row-${supplierFixture("UD Makmur Jaya").id}`)).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("discover-suppliers-filter-clear"));
+    await waitFor(() => expect(rows(canvas)).toHaveLength(before));
+    await expect(supplierListBandCalls.at(-1)?.warehouseId).toBe(0n);
+    await waitFor(() => expect(location).toBeEmptyDOMElement());
   },
 };

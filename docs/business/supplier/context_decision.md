@@ -47,6 +47,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [past-accepts-are-backfilled-once](#past-accepts-are-backfilled-once) | restocks accepted before the event existed are folded once, by a `san` command, through the same fold | in chat, 2026-10-07 — as recommended |
 | [rate-ranking-needs-50-units](#rate-ranking-needs-50-units) | ranked by broken rate, a supplier needs 50 units in the window; those under it follow, their rate muted | in chat, 2026-10-07 — answers Q18 as recommended |
 | [suppliers-is-a-menu-group-like-products](#suppliers-is-a-menu-group-like-products) | the menu's **Suppliers** is a group of its own — My Supplier, Discover Supplier, Supplier Report — not three children of Inventories | in chat, 2026-10-07 |
+| [a-line-with-no-store-links-under-the-supplier](#a-line-with-no-store-links-under-the-supplier) | an accepted restock line that names a supplier but no store links its product too, under the supplier with no store | owner, as recommended | — |
 
 ## reversed-the-supplier-keeps-its-code
 
@@ -1185,3 +1186,11 @@ flowchart LR
 | --- | --- |
 | the group | `nav.suppliers`, the factory icon, a selling team's alone — a warehouse does not own the suppliers it receives from (#212) |
 | the routes | unchanged, `/inventories/suppliers/…` — only the menu moved; "where am I" matches the longest prefix, so the three still win over Inventories' own children |
+
+---
+
+## a-line-with-no-store-links-under-the-supplier
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: [restock-accepted-links-the-product-to-its-channel](#restock-accepted-links-the-product-to-its-channel) says a line with no channel links nothing; two days later [a-line-may-name-a-supplier-without-a-channel](../inventory/restock_decision.md#a-line-may-name-a-supplier-without-a-channel) let a line name a supplier without one of its stores (the dev data: 9 such accepted lines against 3 naming a store). A: extend — those lines link too, shown with *—* as the store, so the Produk and Statistik tabs list the same products; B: keep — only lines naming a store link.
+
+**The verdict.** An accepted restock line that names a **supplier** links its product to that supplier **whether or not it names a store**: with a store, under that store ([products-hang-off-a-channel](#products-hang-off-a-channel)); with none, under the supplier with **no store** — its Toko cell reads **—**. Everything else of the link is unchanged (the last restock it remembers, the line's own product). A line naming no supplier at all links nothing. It extends the *no channel → nothing* row of [restock-accepted-links-the-product-to-its-channel](#restock-accepted-links-the-product-to-its-channel). ⚠ Not built.

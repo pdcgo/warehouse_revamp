@@ -41,8 +41,21 @@ type fakeGoods struct {
 	ready map[uint64]int64
 	// Per store, for the Toko tab's export.
 	stores map[uint64]supplier_v1.StoreGoods
-	err    error
-	asked  int
+	// Per warehouse, the suppliers received there — the Gudang filter's set.
+	at      map[uint64][]uint64
+	err     error
+	asked   int
+	atAsked int
+}
+
+func (f *fakeGoods) SupplierIDsAtWarehouse(_ context.Context, warehouseID uint64) ([]uint64, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	f.atAsked++
+
+	return f.at[warehouseID], nil
 }
 
 func (f *fakeGoods) StoreGoods(context.Context, uint64) (map[uint64]supplier_v1.StoreGoods, error) {

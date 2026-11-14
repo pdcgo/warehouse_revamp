@@ -1,0 +1,69 @@
+[90m│[39m
+[34m●[39m  Storybook collects completely anonymous usage telemetry. We use it to
+[90m│[39m  shape Storybook's roadmap and prioritize features. You can learn more,
+[90m│[39m  including how to opt out, at ]8;;https://storybook.js.org/telemetryhttps://storybook.js.org/telemetry]8;;
+
+ RUN  v4.1.10 D:/hermes/cache/scratch/san_frozen_1114d/frontend
+
+ ❯ |storybook (chromium)| src/components/badges/SettlementSourceBadge.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/pages/restock-form/index.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/features/restock/SellingRestockActions.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/components/chrome/DetailSection.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/components/chrome/StatsToggle.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/pages/shop-detail/stories/States.stories.tsx (3 tests | 3 failed) 46ms
+   × Nobody Granted 27ms
+   × Another team's, not found 5ms
+   × Monitoring, read-only 13ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |storybook (chromium)| src/components/badges/SettlementSourceBadge.stories.tsx [ src/components/badges/SettlementSourceBadge.stories.tsx ]
+ FAIL  |storybook (chromium)| src/components/chrome/DetailSection.stories.tsx [ src/components/chrome/DetailSection.stories.tsx ]
+ FAIL  |storybook (chromium)| src/components/chrome/StatsToggle.stories.tsx [ src/components/chrome/StatsToggle.stories.tsx ]
+ FAIL  |storybook (chromium)| src/features/restock/SellingRestockActions.stories.tsx [ src/features/restock/SellingRestockActions.stories.tsx ]
+Error: Failed to import test file D:/hermes/cache/scratch/san_frozen_1114d/frontend/node_modules/@storybook/addon-vitest/dist/vitest-plugin/setup-file-with-project-annotations.js
+Caused by: TypeError: Failed to fetch dynamically imported module: http://localhost:6106/@fs/D:/hermes/cache/scratch/san_frozen_1114d/frontend/node_modules/@storybook/addon-vitest/dist/vitest-plugin/setup-file-with-project-annotations.js?import&browserv=1794637295163
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  |storybook (chromium)| src/pages/restock-form/index.stories.tsx [ src/pages/restock-form/index.stories.tsx ]
+Error: Failed to import test file D:/hermes/cache/scratch/san_frozen_1114d/frontend/src/pages/restock-form/index.stories.tsx
+Caused by: TypeError: Failed to fetch dynamically imported module: http://localhost:6106/@fs/D:/hermes/cache/scratch/san_frozen_1114d/frontend/src/pages/restock-form/index.stories.tsx?import&browserv=1794637294913
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |storybook (chromium)| src/pages/shop-detail/stories/States.stories.tsx > Nobody Granted
+ FAIL  |storybook (chromium)| src/pages/shop-detail/stories/States.stories.tsx > Another team's, not found
+ FAIL  |storybook (chromium)| src/pages/shop-detail/stories/States.stories.tsx > Monitoring, read-only
+TypeError: 
+[34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/pages-shops-shopdetail-states--nobody-granted&addonPanel=storybook/interactions/panel[39m
+
+Failed to fetch dynamically imported module: http://localhost:6106/node_modules/.cache/storybook/10.5.8/a5f47e91fbb62b31a156c805c0da31b8a7cdec74a0deb0ce21afba69a6bd6c30/sb-vitest/deps/@storybook_react-dom-shim.js?v=0f617a4b
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: Failed to run the test D:/hermes/cache/scratch/san_frozen_1114d/frontend/src/components/chrome/Logo.stories.tsx.
+ ❯ node_modules/vitest/dist/chunks/cli-api.BK8pd4xc.js:2638:17
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+Caused by: Error: Cannot connect to the iframe. Did you change the location or submitted a form? If so, don't forget to call `event.preventDefault()` to avoid reloading the page.
+
+Received URL: unknown due to CORS
+Expected: http://localhost:6106/?sessionId=37acc92b-a2c6-473a-80b5-6aa24c6c8fbc&iframeId=D:/hermes/cache/scratch/san_frozen_1114d/frontend/src/components/chrome/Logo.stories.tsx
+ ❯ iframe.onload ../../../../../..//__vitest_browser__/orchestrator-KVYrTcFi.js:174:43
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  6 failed | 348 passed | 1 skipped (387)
+      Tests  3 failed | 2555 passed (2559)
+     Errors  1 error
+   Start at  13:17:28
+   Duration  247.44s (transform 0ms, setup 381.31s, import 136.33s, tests 2221.57s, environment 0ms)
+

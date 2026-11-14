@@ -31,12 +31,7 @@ import { sampleDaily } from "../../features/products/dailySample";
 import { DerivedSection } from "../../features/products/DerivedSection";
 import { sampleDerived } from "../../features/products/derivedSample";
 import { DiscoverBadges } from "../../features/products/DiscoverBadges";
-import {
-  discoverPriceOf,
-  sampleOngoingAt,
-  sampleStock,
-  sampleWarehouseCross,
-} from "../../features/products/discoverSample";
+import { ownPriceOf } from "../../features/products/discoverSample";
 import { FigureRows, type FigureRow } from "../../features/products/FigureRows";
 import { HistorySection, SampleHistorySection } from "../../features/products/HistorySection";
 import { sampleHistory } from "../../features/products/historySample";
@@ -47,7 +42,12 @@ import { StartFormDialog } from "../../features/products/StartFormDialog";
 import { fromHere } from "../../lib/cameFrom";
 
 import { ProductStickyStrip, ProductTitleRow } from "../../features/products/ProductTitleRow";
-import { useDiscoverProduct, useOwnerStockByWarehouse, useProductActivity } from "../../features/products/queries";
+import {
+  useDiscoverProduct,
+  useDiscoverStockByWarehouse,
+  useOwnerStockByWarehouse,
+  useProductActivity,
+} from "../../features/products/queries";
 import { StockHighlight } from "../../features/products/StockHighlight";
 import { SuppliersSection } from "../../features/products/SuppliersSection";
 import { WarehouseFilter, WarehouseNote } from "../../features/products/WarehouseLens";
@@ -161,6 +161,13 @@ export function DiscoverProductDetailPage() {
     productId: own && offered ? id : 0n,
     warehouseIds: warehouseList.map((w) => w.id),
   });
+  // ANOTHER TEAM'S PRODUCT reads its card's figures — DiscoverStockByIds, every warehouse and each one: on its way and the
+  // cross price, never the cost. The same read as the card that opened this page, so the two never disagree.
+  const theirs = useDiscoverStockByWarehouse({
+    teamId,
+    productId: product !== null && !own ? id : 0n,
+    warehouseIds: warehouseList.map((w) => w.id),
+  });
 
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
   // The side column only where there is room for it beside the nav — Chakra's `xl`, as on the owner's page; `ssr: false`
@@ -225,7 +232,10 @@ export function DiscoverProductDetailPage() {
   const owner = owners.data?.[product.teamId.toString()];
   const cover = product.defaultImageUrl || product.defaultImageThumbnailUrl;
   const ownStock = ownActivity.data?.stock;
-  const price = discoverPriceOf(product.id, product.crossMarkupBps, own, ownStock);
+  // Another team's figures in a warehouse — "0" is every warehouse (DiscoverStockByIds, the card's read).
+  const theirsAt = (w: bigint) => theirs.data?.get(w.toString());
+  // What a reader pays — the team's own product priced from its own cost, another team's as its card prices it.
+  const price = own ? ownPriceOf(product.crossMarkupBps, ownStock) : { cross: theirsAt(0n)?.cross, cost: undefined };
 
   // EVERY SHELF, and READY as their sum — the large figure is the Per Gudang table added up, so the two can never
   // disagree. Unknown while any warehouse has not answered: a part of the shelves is not the total (#74).
@@ -236,22 +246,18 @@ export function DiscoverProductDetailPage() {
       : undefined;
 
   // EACH WAREHOUSE'S PRICE (each-warehouse-says-ready-and-its-price) — its units came in at their own costs. The team's
-  // own product reads them, in each warehouse's lens; another team's is the card's invented range, shared out among the
-  // warehouses holding it (⚠). Nothing on a shelf, nothing priced.
-  const sampleCross = sampleWarehouseCross(
-    product.id,
-    product.crossMarkupBps,
-    warehouseList.filter((w) => (readyAt(w.id) ?? 0n) > 0n).map((w) => w.id),
-  );
+  // own product reads them from its own cost, in each warehouse's lens; another team's from DiscoverStockByIds in that
+  // warehouse — the cost of the batches there with the markup on top, the cost itself never sent. Nothing on a shelf,
+  // nothing priced.
   const shelves: WarehouseShelf[] = warehouseList.map((w) => {
     const held = (readyAt(w.id) ?? 0n) > 0n;
-    const ownPrice = own ? discoverPriceOf(product.id, product.crossMarkupBps, true, ownByWarehouse.data?.get(w.id.toString())) : undefined;
+    const ownPrice = own ? ownPriceOf(product.crossMarkupBps, ownByWarehouse.data?.get(w.id.toString())) : undefined;
 
     return {
       id: w.id,
       name: w.name,
       ready: readyAt(w.id),
-      cross: !held ? undefined : own ? ownPrice?.cross : sampleCross.get(w.id.toString()),
+      cross: !held ? undefined : own ? ownPrice?.cross : theirsAt(w.id)?.cross,
       cost: held ? ownPrice?.cost : undefined,
     };
   });
@@ -259,8 +265,8 @@ export function DiscoverProductDetailPage() {
   // THE LENS — what is ready in the warehouse picked over the Per Gudang card (all of them while none is).
   const lensReady = warehouseId === 0n ? ready : readyAt(warehouseId);
 
-  // What is on its way — the owner's real figure on its own product, the card's invented one on anybody else's (⚠).
-  const ongoing = own ? ownStock?.ongoingQty : sampleStock(product.id).ongoing;
+  // What is on its way — the owner's own figure on its own product, the card's (DiscoverStockByIds) on anybody else's.
+  const ongoing = own ? ownStock?.ongoingQty : theirsAt(0n)?.ongoingQty;
   const mark = (part: DiscoverDetailPendingId) => <NotImplemented list={DISCOVER_DETAIL_PENDING} id={part} />;
 
   /** A section card, keyed by its entry in `sections.ts` — its id, icon and title come from there. */
@@ -430,7 +436,6 @@ export function DiscoverProductDetailPage() {
       ) : (
         "—"
       ),
-      mark: price.sample ? mark("crossPrice") : undefined,
       testId: "discover-detail-cross",
     },
     // …and what it cost, under it — the team's own products only, as on the card.
@@ -475,10 +480,7 @@ export function DiscoverProductDetailPage() {
               ongoing === undefined ? (
                 t("products.stat.pending")
               ) : (
-                <HStack gap="1">
-                  <Text as="span">{t("products.detail.highlight.ongoing", { n: ongoing.toString() })}</Text>
-                  {!own && mark("ongoing")}
-                </HStack>
+                <Text as="span">{t("products.detail.highlight.ongoing", { n: ongoing.toString() })}</Text>
               )
             }
           />
@@ -515,13 +517,16 @@ export function DiscoverProductDetailPage() {
     offered ? (
       <WarehouseStock
         shelves={shelves}
-        loading={warehouses.isPending || availability.isPending || (own && ownByWarehouse.isPending)}
-        error={warehouses.isError || availability.isError ? rpcError(warehouses.error ?? availability.error) : undefined}
+        loading={warehouses.isPending || availability.isPending || (own ? ownByWarehouse.isPending : theirs.isPending)}
+        error={
+          warehouses.isError || availability.isError || theirs.isError
+            ? rpcError(warehouses.error ?? availability.error ?? theirs.error)
+            : undefined
+        }
       />
     ) : (
       notOfferedLine
     ),
-    own ? undefined : mark("crossPrice"),
   );
 
   // ── PER GUDANG — the owner's page's warehouse card WITHOUT Harga Modal (owner: *"per gudang itu masukkan ke detail
@@ -543,16 +548,16 @@ export function DiscoverProductDetailPage() {
   // THE OVERVIEW'S FIGURES, in the lens — the owner's page's Overview (the-overview-is-small-details) with the CROSS PRICE
   // RANGE where Rentang HPP stood, and no stock age (owner: *"di overview tidak perlu umur [stok], malah butuh rentang
   // harga cross"*, the-overview-says-the-cross-range): Siap, Dikirim, Harga cross. The team's own product reads them all
-  // (OwnerStockByIds in the lens); another team's has its ready stock real (the shelves) and the rest invented, marked —
-  // the same samples Info and Harga per Gudang say, so the three never disagree.
+  // (OwnerStockByIds in the lens); another team's reads its card's read in the lens (DiscoverStockByIds) — the same
+  // figures Info and Harga per Gudang say, so the three never disagree.
   const lensStock = ownLens.data?.stock;
-  const lensOngoing = own ? lensStock?.ongoingQty : sampleOngoingAt(product.id, warehouseId, warehouseList.map((w) => w.id));
+  const lensOngoing = own ? lensStock?.ongoingQty : theirsAt(warehouseId)?.ongoingQty;
   const lensCross =
     warehouseId === 0n
       ? price.cross
       : own
-        ? discoverPriceOf(product.id, product.crossMarkupBps, true, lensStock).cross
-        : sampleCross.get(warehouseId.toString());
+        ? ownPriceOf(product.crossMarkupBps, lensStock).cross
+        : theirsAt(warehouseId)?.cross;
   const pcs = (n: bigint | undefined) => (n === undefined ? "—" : t("products.stat.pcs", { n: n.toString() }));
   const overviewRows: FigureRow[] = [
     { key: "ready", label: t("products.stat.ready"), value: pcs(lensReady), testId: "dd-overview-ready" },
@@ -560,7 +565,6 @@ export function DiscoverProductDetailPage() {
       key: "ongoing",
       label: t("products.stat.ongoing"),
       value: pcs(lensOngoing),
-      mark: own ? undefined : mark("ongoing"),
       testId: "dd-overview-ongoing",
     },
     // THE CROSS PRICE RANGE — red, as everywhere a borrower reads what it pays (a-discover-price-is-red-and-unlabelled).
@@ -575,7 +579,6 @@ export function DiscoverProductDetailPage() {
       ) : (
         "—"
       ),
-      mark: own ? undefined : mark("crossPrice"),
       testId: "dd-overview-cross",
     },
   ];

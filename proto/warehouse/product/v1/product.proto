@@ -241,6 +241,41 @@ message ProductListFilter {
   // Which half of the catalogue to list. An enum rather than a bool: "discontinued" or "draft" is a
   // plausible third tab, and a boolean cannot grow into one.
   ProductStatus status = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // The LOCK — one of its three ways, or the minimums closing a product right now (one-lock-three-ways,
+  // lock-and-stock-age-filter-ahead-of-the-contract). UNSPECIFIED = no narrowing. ProductList takes the MODE_* values and
+  // LOCKED_NOW; ProductDiscover takes its own two, CLOSED and ORDERABLE (discover-filters-by-lock). Each refuses the
+  // other's.
+  ProductLockFilter lock = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // THE STOCK'S AGE — only products whose oldest batch still holding READY units arrived at least this many whole days
+  // ago (the-dates-read-as-ages). 0 = no narrowing. A product with nothing on a shelf has no age and never matches. Read
+  // in ProductListRequest.stock_warehouse_id when it is set, else across every warehouse. ProductList only.
+  uint32 stock_age_min_days = 4 [(buf.validate.field).uint32.lte = 3650];
+}
+
+// ProductLockFilter narrows a product list by its LOCK — the two fields a product already has, cross_locked and
+// reserved_stock, read as one setting with three ways (one-lock-three-ways) — or by the minimums in force NOW.
+enum ProductLockFilter {
+  // No narrowing.
+  PRODUCT_LOCK_FILTER_UNSPECIFIED = 0;
+  // Terbuka — any team may order it: not locked, no minimum.
+  PRODUCT_LOCK_FILTER_MODE_OPEN = 1;
+  // Stok minimum — not locked, a minimum set (in force or not).
+  PRODUCT_LOCK_FILTER_MODE_MINIMUM = 2;
+  // Selalu dikunci — locked, whatever minimum it keeps (Always wins: a locked product with a minimum is locked).
+  PRODUCT_LOCK_FILTER_MODE_ALWAYS = 3;
+  // Terkunci sekarang — a minimum in force: the way is the minimum AND the owner's ready stock across EVERY warehouse is
+  // UNDER it (a-minimum-closes-only-under-it — at exactly the minimum it is open). A product with no stock at all is
+  // under any minimum. The warehouse lens never narrows this: the rule reads every warehouse, as the order take does.
+  PRODUCT_LOCK_FILTER_LOCKED_NOW = 4;
+  // Discover's TERKUNCI — closed to another team now: its owner locked it, OR its minimum is in force (the way is the
+  // minimum and the owner's ready stock across EVERY warehouse is UNDER it, as LOCKED_NOW reads it) (discover-filters-by-lock,
+  // a-minimum-closes-only-under-it). ProductDiscover only.
+  PRODUCT_LOCK_FILTER_CLOSED = 5;
+  // Discover's TERBUKA — every other product: another team may take it now. Not the list's Terbuka (MODE_OPEN, the
+  // setting): a minimum with enough ready stock is orderable. ProductDiscover only.
+  PRODUCT_LOCK_FILTER_ORDERABLE = 6;
 }
 
 message ProductListFilterSort {
@@ -313,6 +348,11 @@ message ProductListRequest {
   ProductListFilterSort sort = 3;
   repeated ProductListDataType data_request = 4;
   warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+
+  // The list's WAREHOUSE LENS. Not a row filter — the catalogue is the team's wherever the goods sit — so on its own it
+  // narrows nothing. It is the building filter.stock_age_min_days reads the age in (the-dates-read-as-ages: "scoped by
+  // the warehouse lens"). 0 = every warehouse. The lock never reads it: a minimum reads every warehouse.
+  uint64 stock_warehouse_id = 6;
 }
 
 message ProductListResponse {
@@ -421,6 +461,64 @@ message ProductDiscoverRequest {
   //
   // ⚠ It shows the product; it does not open it. Nothing about ordering one changes.
   bool include_locked = 10;
+
+  // ── Discover's stock, price and category filters (discover-filters-in-a-side-panel) ─────────────────────────
+  //
+  // All four narrow BEFORE the count and the page, so `total_items`, the sort and the paging describe the narrowed
+  // list. Unset = no narrowing, so every picker that never sends them reads exactly what it read before.
+
+  // GUDANG — only products with READY units (batches still holding stock) in this warehouse NOW
+  // (discovers-warehouse-keeps-ready-stock-there); a product only listed there, or emptied there, drops out. It is also
+  // the warehouse `ready` and `cross_price` read. 0 = every warehouse. Ready and cost are inventory_service's, asked
+  // in-process through the composition root (HARD RULE 3).
+  uint64 warehouse_id = 11;
+
+  // STOK SIAP — the product's ready units, in warehouse_id or summed over every warehouse, within the range, both ends
+  // included (discover-ranges-are-picked). A range from 0 also keeps a product that never had stock: it has 0 ready.
+  DiscoverReadyRange ready = 12;
+
+  // HARGA CROSS — keeps a product whose cross price RANGE overlaps this one, both ends included
+  // (a-cross-band-keeps-a-range-that-touches-it): cross_min <= max AND cross_max >= min, where the cross price is each
+  // ready batch's unit cost with the product's markup on top (cost + cost x cross_markup_bps / 10 000), over its
+  // batches holding units in warehouse_id (or every warehouse). A product with nothing ready there has no cross price,
+  // so any range leaves it out. The cost itself never leaves the server.
+  DiscoverPriceRange cross_price = 13;
+
+  // KATEGORI — products filed under this category OR any category below it (a-picked-branch-keeps-its-whole-subtree);
+  // any node may be picked, a branch or an end category. 0 = every category. The tree is category_service's, read
+  // in-process through the composition root.
+  uint64 category_id = 14;
+}
+
+// A ready-stock range in units, both ends included. No max = no upper edge (the top band is open-ended, so a product
+// above the screen's ceiling is not lost to every band).
+message DiscoverReadyRange {
+  option (buf.validate.message).cel = {
+    id: "discover_ready_range.max_not_below_min"
+    message: "max must not be below min"
+    expression: "!has(this.max) || this.max >= this.min"
+  };
+
+  int64 min = 1 [(buf.validate.field).int64.gte = 0];
+  optional int64 max = 2 [(buf.validate.field).int64.gte = 0];
+}
+
+// A cross price range in rupiah, both ends included, exact (rupiah-is-floating-point). No max = no upper edge.
+message DiscoverPriceRange {
+  option (buf.validate.message).cel = {
+    id: "discover_price_range.max_not_below_min"
+    message: "max must not be below min"
+    expression: "!has(this.max) || this.max >= this.min"
+  };
+
+  double min = 1 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  optional double max = 2 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
 }
 
 message ProductDiscoverResponse {

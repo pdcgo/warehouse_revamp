@@ -1,5 +1,40 @@
 # Development state — product discover
 
+> 🔀 **2026-11-14, later — Discover phase 2: Gudang, Stok siap, Harga cross and Kategori are real; the detail's figures too**
+> (scoping B5 + F2; decisions
+> [discovers-warehouse-keeps-ready-stock-there](../../technical/frontend/products_decision.md#discovers-warehouse-keeps-ready-stock-there),
+> [discover-ranges-are-picked](../../technical/frontend/products_decision.md#discover-ranges-are-picked),
+> [a-cross-band-keeps-a-range-that-touches-it](../../technical/frontend/products_decision.md#a-cross-band-keeps-a-range-that-touches-it),
+> [a-picked-branch-keeps-its-whole-subtree](../../technical/frontend/categories_decision.md#a-picked-branch-keeps-its-whole-subtree)).
+>
+> | | |
+> | --- | --- |
+> | Gudang | `ProductDiscoverRequest.warehouse_id` (11) keeps the products with READY units (`stock_count > 0`) in that warehouse now — any team's, matched on owner AND id; the page passes the same warehouse to `DiscoverStockByIds`, so every card reads that warehouse. The lock badge still reads every warehouse |
+> | Stok siap | `ready` (12, `DiscoverReadyRange`): ready units — the Gudang's, else every warehouse summed — in [min, max], both ends included, no max = open (the top band, and a typed max held at the ceiling, are sent open — the build's default). A range from 0 with no Gudang and no cross band asks the OPPOSITE set (ready above max) and drops it, so never-stocked products stay (Kosong, 0–10) |
+> | Harga cross | `cross_price` (13, `DiscoverPriceRange`): kept when cross_min ≤ max AND cross_max ≥ min, both ends included, where cross = cost + cost × bps ÷ 10 000 over the batches holding units in the Gudang (or every warehouse) — DiscoverStockByIds' own figure. Inventory hands back each product's cost spread pre-cut by the band (in-process only); product_service applies its own markup in its page statement. Nothing ready = no cross price = never kept by any band |
+> | Kategori | `category_id` (14): the picked node and everything below it, read once per request from category_service's tree (`category_v1.SubtreeIDs`, recursive CTE) through the new `CategoryTree` seam (5th `product_v1.NewService` dep) and bound on `products.category_id`; any node may be picked. It narrows Kunci's candidates too |
+> | seams | `StockNarrower.ShelvedProducts` / `ProductsReadyAbove` → `inventory_v1.ShelvedProducts` / `ProductsReadyAbove` (plain functions, `cmd/app_development/product_stock_narrower.go`); `CategoryTree.SubtreeIDs` → `cmd/app_development/product_categories.go`. ONE ask of the shelves per request, one count + page statement ([product rpc.md](../../services/product_service/rpc.md#discovers-gudang-stok-siap-harga-cross-and-kategori--narrowed-through-the-seams-built-2026-11-14)) |
+> | the detail | another team's **cross price** (Info, Harga per Gudang, the Overview's lens) and **on its way** (Info, Overview) come from `DiscoverStockByIds` — once for every warehouse, once per warehouse (`useDiscoverStockByWarehouse`) — the card's own read, so a card and its detail never disagree; the team's own product keeps its owner figures. `discoverSample.ts` lost `sampleStock`, `sampleOngoingAt`, `sampleCostRange`, `sampleWarehouseCross`; `discoverPriceOf` became `ownPriceOf` |
+> | pending.ts | Discover: `warehouse`, `category`, `stock`, `crossRange` GONE — left `division` (dropped) and `divisionBadge` (sample). Detail: `ongoing`, `crossPrice` GONE |
+> | tests | Go: `product_discover_test.go` (+9, seams faked: pair match, complement, exact markup test and cut, subtree, readers), `inventory_v1/discover_shelf_narrowing_test.go` (3), `category_v1/subtree_test.go` (1), `cmd/app_development/product_discover_filters_test.go` (7 over real batches: band ends, open top, Kosong keeps the never-stocked, a straddling range, the warehouse changes figures and filters, subtree, two teams, no cost in any answer); perf `discover_filters_perf_test.go`. Stories: Filters (+5, `EveryGapIsMarked` now the division only); detail Info (+1), Price (+1). Unit: `ranges.test.ts`. e2e: `the_discover_cards.spec.ts` (+5) |
+
+> 🔀 **2026-11-14 — Discover phase 1: real card figures, the card's lock, Kunci** (scoping B4 + Kunci; decisions
+> [a-discover-card-shows-its-stock](../../technical/frontend/products_decision.md#a-discover-card-shows-its-stock),
+> [discover-shows-the-cross-price](../../technical/frontend/products_decision.md#discover-shows-the-cross-price),
+> [a-discover-card-says-locked-as-the-title-does](../../technical/frontend/products_decision.md#a-discover-card-says-locked-as-the-title-does),
+> [discover-filters-by-lock](../../technical/frontend/products_decision.md#discover-filters-by-lock),
+> [a-minimum-closes-only-under-it](../../technical/frontend/products_decision.md#a-minimum-closes-only-under-it)).
+>
+> | | |
+> | --- | --- |
+> | cards | every card's ready / on its way / cross price are REAL — `InventoryService.DiscoverStockByIds`, ONE call per page inside `useDiscoverProducts` (beside OwnerStockByIds, which still gives the team's own cost). The cross price is the server's (cost × markup per ready batch, MIN–MAX); the cost is never sent ([inventory rpc.md](../../services/inventory_service/rpc.md#discovers-card-figures--discoverstockbyids-built-2026-11-14)) |
+> | lock badge | `DiscoverBadges totalReady` = the read's `total_ready_qty` (every warehouse): **Dikunci** / **Terkunci · Min N pcs** (total `<` minimum) / **Min N pcs** — the title badge's |
+> | Kunci | `ProductListFilter.lock` `CLOSED` (Terkunci) / `ORDERABLE` (Terbuka), narrowed before ProductDiscover's count and page through the `StockNarrower` seam (`ClosedByMinimum`, every team's candidates in one ask) ([product rpc.md](../../services/product_service/rpc.md#discovers-kunci--narrowed-through-inventory-built-2026-11-14)) |
+> | pending.ts | `cardStock`, `crossPrice`, `lockFilter` GONE; left: `warehouse`, `division`, `category`, `stock`, `crossRange` (dropped), `divisionBadge` (sample) |
+> | Gudang | the read takes `warehouse_id` and the hook a `warehouseId`, but the page sends 0 until the Gudang filter is built (phase 2, `discovers-warehouse-keeps-ready-stock-there`) — ✅ built in phase 2 (above) |
+> | ⚠ the detail | `/products/discover/:id` still shows another team's cross price and on-its-way as samples (its `crossPrice`, `ongoing` marks) — a card and its detail can now differ for another team's product until the detail reads DiscoverStockByIds too — ✅ real in phase 2 (above) |
+> | tests | Go: `discover_stock_by_ids_test.go` (4), `product_discover_test.go` (Kunci ×5), `product_list_test.go` (refuses Discover's values), `cmd/app_development/product_discover_lock_test.go` (real wiring: exactly at the minimum, two teams); perf `discover_cards_perf_test.go`. Stories: Cards `AnotherTeamsFiguresAreReal`, `TheThreeLockBadges`; Filters `KunciNarrowsTheGrid` (+ `EveryGapIsMarked`, `TheLockFilterIsOpenOrLocked` updated). e2e `the_discover_cards.spec.ts` (own teams) |
+
 > 🔀 **2026-10-31, last** — [the-order-and-restock-start-on-the-page](../../technical/frontend/products_decision.md#the-order-and-restock-start-on-the-page):
 > Buat Pesanan / Restok open `features/products/StartFormDialog` (warehouse with ready stock, quantity) before the form;
 > the link carries `&qty=`, and both forms seed the line at it.
@@ -116,8 +151,8 @@ carries only the cover).
 | --- | --- | --- |
 | `division` | sample | the division is stored nowhere — the card's `sampleDivision` |
 | `gallery` | missing | the image list comes only from the owner-scoped `ProductDetail` |
-| `ongoing` | sample | another team's on-its-way stock is not readable across teams — the card's `sampleStock` |
-| `crossPrice` | sample | another team's cost is not readable, and who may see it is "Awaiting" in product clarify — the card's `discoverPriceOf`. It REPLACED `unitCost` (missing) |
+| ~~`ongoing`~~ | ✅ real 2026-11-14 | DiscoverStockByIds (every warehouse and each), the card's read — mark gone |
+| ~~`crossPrice`~~ | ✅ real 2026-11-14 | DiscoverStockByIds' cross range, per warehouse too; the cost never sent — mark gone |
 | `derived` | sample | the link a return to another team makes is recorded nowhere — the product page's `sampleDerived` |
 | `suppliers` | sample | `supplier_channel_products` read backwards — waits on [linking-products-is-deferred](../../business/supplier/context_decision.md#linking-products-is-deferred), and no cross-team supplier read exists; rows are picked from the supplier discover sample |
 

@@ -35,12 +35,20 @@ import (
 // "named to sort after orders.spec.ts" rule still holds there. Specs that must share ONE database (one reads what an
 // earlier one wrote) are listed in frontend/e2e/coupled.txt and travel as one unit: same worker, same batch, in order.
 //
-// N=3 by default — measured on this machine 2026-11-14 (docs/tools/san.md#test-full): 31.8 GB RAM, ~18.7 GB free
-// idle; 8 cores / 16 threads; one worker (Go API + Vite + Chromium + Playwright) peaks at about 1.5 GB.
+// N=1 by default — the owner's call (the-full-e2e-runs-on-one-worker, 2026-11-14): three workers made the machine's CPU
+// heavy while he works. 3 still fits it (measured 2026-11-14, docs/tools/san.md#test-full: 31.8 GB RAM, ~18.7 GB free
+// idle; 8 cores / 16 threads; one worker — Go API + Vite + Chromium + Playwright — peaks at about 1.5 GB): pass
+// --workers 3 for a run he asks to be fast.
+//
+// ONE worker is still a worker: warehouse_test_w1 cloned per batch, :8181/:5181, warehouse-e2e-w1, .e2e-lock.w1 — so a
+// full run shares nothing with the live tree's own runs (warehouse_test, :8081/:5175) and development goes on beside
+// it. Its batches are the single-database ones it always had (planBatches: name order, six a batch, orders.spec.ts
+// alone, the restock family together) under the same caps (capFor); only where each batch runs changed.
 
 const (
-	defaultWorkers = 3
-	maxWorkers     = 6
+	defaultWorkers  = 1
+	maxWorkers      = 6
+	maxTimedWorkers = 3 // a run on more workers than this shares the CPU too thinly for its spec times to plan with
 
 	templateDB       = "warehouse_test_tpl"
 	workerAPIPortMin = 8181
@@ -161,7 +169,7 @@ func recordedTimes(rep string) map[string]recordedTime {
 
 	for _, e := range entries {
 		rec, err := readRun(filepath.Join(rep, "runs", e.Name(), "run.json"))
-		if err != nil || rec.E2E == nil || len(rec.Workers) > defaultWorkers {
+		if err != nil || rec.E2E == nil || len(rec.Workers) > maxTimedWorkers {
 			// More workers than the default share the CPU so thinly that their times say little about a spec
 			// (five workers ran the restock specs about twice as slow, 2026-11-14).
 			continue
@@ -584,7 +592,7 @@ func (p *workerPlan) wall() time.Duration {
 	return templateCost + longest
 }
 
-// singleWall is the same specs' estimated wall time as today's single-database batches (--workers 1).
+// singleWall is the same specs' estimated wall time on one worker — the single-database batches (--workers 1).
 func (p *workerPlan) singleWall(specs []string) time.Duration {
 	var secs float64
 
@@ -592,10 +600,10 @@ func (p *workerPlan) singleWall(specs []string) time.Duration {
 		secs += p.Times[s].Secs
 	}
 
-	// Each of today's batches pays its own start: servers, and the migrations a worker's clone replaces.
+	// The template once, then each batch pays its own start: the clone, the servers, the sign-in, the teardown.
 	batches := planBatches(specs, batchSize)
 
-	return time.Duration(secs*float64(time.Second)) + time.Duration(len(batches))*singleBatchOverhead
+	return templateCost + time.Duration(secs*float64(time.Second)) + time.Duration(len(batches))*batchOverhead
 }
 
 // portBusy says whether a program that is not this checkout's e2e holds a port (nil: anything listening).
@@ -635,11 +643,111 @@ func planWorkers(root string, specs []string, n int, timesFile string, busy port
 			Project: fmt.Sprintf("warehouse-e2e-w%d", i+1),
 			Units:   units,
 		}
-		w.Batches, w.BatchSecs = workerBatches(units, batchSize)
+
+		if n == 1 {
+			// The one worker runs the single-database batches it always ran — restock family together, its cap.
+			w.Batches = keepCoupled(planBatches(specs, batchSize), coupled)
+			w.BatchSecs = batchSecsOf(w.Batches, times)
+		} else {
+			w.Batches, w.BatchSecs = workerBatches(units, batchSize)
+		}
+
 		p.Workers = append(p.Workers, w)
 	}
 
 	return p, nil
+}
+
+// batchSecsOf is each batch's estimated test time.
+func batchSecsOf(batches [][]string, times map[string]specTime) []float64 {
+	secs := make([]float64, len(batches))
+
+	for i, b := range batches {
+		for _, s := range b {
+			secs[i] += times[s].Secs
+		}
+	}
+
+	return secs
+}
+
+// keepCoupled moves each coupled group's later specs into the batch of its first (by name), so specs that must share
+// one database still do on the one worker (frontend/e2e/coupled.txt — none today, so nothing moves). Each batch stays
+// name-ordered; a batch left empty goes.
+func keepCoupled(batches [][]string, coupled [][]string) [][]string {
+	at := map[string]int{}
+
+	for i, b := range batches {
+		for _, s := range b {
+			at[s] = i
+		}
+	}
+
+	out := make([][]string, len(batches))
+	for i, b := range batches {
+		out[i] = append([]string(nil), b...)
+	}
+
+	for _, g := range coupled {
+		group := append([]string(nil), g...)
+		sort.Strings(group)
+
+		first := -1
+
+		for _, s := range group {
+			i, ok := at[s]
+			if !ok {
+				continue
+			}
+
+			if first < 0 {
+				first = i
+
+				continue
+			}
+
+			if i == first {
+				continue
+			}
+
+			out[i] = dropSpec(out[i], s)
+			out[first] = append(out[first], s)
+			sort.Strings(out[first])
+			at[s] = first
+		}
+	}
+
+	var kept [][]string
+
+	for _, b := range out {
+		if len(b) > 0 {
+			kept = append(kept, b)
+		}
+	}
+
+	return kept
+}
+
+func dropSpec(list []string, drop string) []string {
+	var out []string
+
+	for _, s := range list {
+		if s != drop {
+			out = append(out, s)
+		}
+	}
+
+	return out
+}
+
+// batchCap is a batch's time cap: on ONE worker today's single-database caps (capFor: 590 s, the restock family's batch
+// 1500 s); beside other workers three times its estimate, at least the batch cap (the CPU is shared).
+func (p *workerPlan) batchCap(w *e2eWorker, i int) time.Duration {
+	if len(p.Workers) == 1 {
+		return capFor(w.Batches[i])
+	}
+
+	return time.Duration(math.Max(workerBatchCapMin.Seconds(), 3*w.BatchSecs[i])) * time.Second
 }
 
 // pickWorkerPorts gives worker i the API port 8181+k and the UI port 5181+k for the next k at which neither is held
@@ -669,7 +777,7 @@ func pickWorkerPorts(n int, busy portBusy) (apis, uis []int, skipped []string, e
 // foreignPortBusy is the live portBusy: a listener that is not one of this checkout's e2e servers.
 func foreignPortBusy(frontends []string) portBusy {
 	return func(port int) bool {
-		for _, pid := range listeners(port) {
+		for _, pid := range portListeners(port) {
 			if !ownServer(cmdlineOf(pid), frontends) {
 				return true
 			}
@@ -680,9 +788,16 @@ func foreignPortBusy(frontends []string) portBusy {
 }
 
 func (p *workerPlan) print(out io.Writer, specs []string) {
-	fmt.Fprintf(out, "               %d workers at once, each its OWN database (a clone of %s), API and UI ports and "+
-		"events project;\n               inside a worker: name order, batches of up to %d specs, each on a fresh clone\n",
-		len(p.Workers), templateDB, batchSize)
+	if len(p.Workers) == 1 {
+		fmt.Fprintf(out, "               ONE worker with its OWN database (a clone of %s), API and UI ports and events "+
+			"project — nothing the live tree's runs use (%s, :%d/:%d);\n               name order, batches of up to %d "+
+			"specs, orders.spec.ts alone, the restock family (restock*.spec.ts) together; each on a fresh clone, cap %s "+
+			"(restock %s)\n", templateDB, testDBName, e2eAPIPort, e2eUIPort, batchSize, batchCap, longSpecCap)
+	} else {
+		fmt.Fprintf(out, "               %d workers at once, each its OWN database (a clone of %s), API and UI ports and "+
+			"events project;\n               inside a worker: name order, batches of up to %d specs, each on a fresh clone\n",
+			len(p.Workers), templateDB, batchSize)
+	}
 	fmt.Fprintf(out, "       tpl  %s — migrated + seeded once (db reset-test, migrate up-all, region load-seed, seed root), "+
 		"about %s\n", templateDB, templateCost)
 
@@ -716,9 +831,14 @@ func (p *workerPlan) print(out io.Writer, specs []string) {
 		fmt.Fprintln(out, "       coupled      none listed (frontend/e2e/coupled.txt) — every spec is placed on its own")
 	}
 
-	fmt.Fprintf(out, "       e2e wall     about %s with %d workers (the template, then the slowest worker; ×%.1f for the "+
-		"shared CPU) — vs about %s as --workers 1 batches (~35 min measured before the split)\n",
-		roundMin(p.wall()), len(p.Workers), parallelSlowdown, roundMin(p.singleWall(specs)))
+	if len(p.Workers) == 1 {
+		fmt.Fprintf(out, "       e2e wall     about %s on one worker (the template, then its batches one after another)\n",
+			roundMin(p.wall()))
+	} else {
+		fmt.Fprintf(out, "       e2e wall     about %s with %d workers (the template, then the slowest worker; ×%.1f for the "+
+			"shared CPU) — vs about %s on one worker\n", roundMin(p.wall()), len(p.Workers), parallelSlowdown,
+			roundMin(p.singleWall(specs)))
+	}
 
 	srcs := map[string]int{}
 
@@ -887,7 +1007,7 @@ func runWorkers(ctx context.Context, frontend string, frontends []string, plan *
 				}
 
 				b := &BatchResult{N: i + 1, Worker: w.Name, Specs: specs}
-				b.Cap = time.Duration(math.Max(workerBatchCapMin.Seconds(), 3*w.BatchSecs[i])) * time.Second
+				b.Cap = plan.batchCap(w, i)
 
 				say("→ %s b%d %s\n", w.Name, b.N, strings.Join(specs, " "))
 

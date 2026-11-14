@@ -28,11 +28,28 @@ import (
 // server.fs.allow refuses to serve to the Storybook test browser (the addon's setup file) — the copy
 // must hold its packages inside itself. Hard links need one volume, so the copy goes beside the
 // checkout by default (<parent>/.san_frozen/), not into the system temp folder.
+//
+// The run shares NOTHING with the live tree's own tests, so development goes on beside it: its go test runs on
+// warehouse_test_go (TEST_DATABASE_URL), its Storybook on its own vitest port (STORIES_BROWSER_PORT, 6116+; the live
+// tree's is 6106), its e2e on its worker(s) — even ONE: warehouse_test_w1, :8181/:5181, warehouse-e2e-w1
+// (test_workers.go). The live tree's Go DB tests, smoke / affected --run and Storybook keep warehouse_test,
+// :8081/:5175 and :6106. --shared-db brings back the old single-database e2e on those (it then blocks them).
 
 const (
 	goTestCap    = 30 * time.Minute
 	storybookCap = 20 * time.Minute
 	copyMarker   = ".san_frozen_copy"
+
+	// goTestDB is the copy's go test database — never warehouse_test, which the live tree's Go DB tests and its smoke /
+	// affected e2e use meanwhile. Dropped before (a fresh one, as CI's) and after.
+	goTestDB = "warehouse_test_go"
+	// storiesPortMin is where the copy's Storybook (vitest browser) port is looked for — away from the live tree's
+	// pinned 6106 (frontend/vitest.config.ts), below 49152 for the same reason (Windows reserves ranges above it).
+	storiesPortMin  = 6116
+	storiesPortSpan = 40
+	// storiesPortEnv names that port to frontend/vitest.config.ts (vitest's --browser.api.port flag does not reach the
+	// browser server, which reads the config file).
+	storiesPortEnv = "STORIES_BROWSER_PORT"
 )
 
 // copySkipDirs are never copied, wherever they sit.
@@ -68,8 +85,9 @@ type fullOptions struct {
 	Stories  []string // only these story files
 	GoPkgs   []string // only these go packages
 	Skip     []string // go, stories, e2e
-	Workers  int      // parallel e2e workers; 1 = today's name-ordered single-database batches
+	Workers  int      // e2e workers, each on its own database, ports and events project; 1 (the default) = one
 	Times    string   // an old e2e_batches.sh summary.txt to read per-spec times from
+	SharedDB bool     // the old single-database e2e on warehouse_test, :8081/:5175 — it blocks the live tree's runs
 }
 
 func (o fullOptions) skips(part string) bool {
@@ -101,20 +119,49 @@ func (o fullOptions) partial() (bool, string) {
 
 // fullPlan is what a full run will do.
 type fullPlan struct {
-	Root     string
-	CopyDir  string
-	GoArgv   []string
-	Stories  []string    // vitest argv
-	Batches  [][]string  // --workers 1: the single-database batches
-	Workers  *workerPlan // --workers N > 1: the parallel plan
-	Specs    []string
-	Partial  bool
-	Why      string
-	Estimate time.Duration
+	Root        string
+	CopyDir     string
+	GoArgv      []string
+	GoDB        string      // the go test's own database (goTestDB)
+	Stories     []string    // vitest argv
+	StoriesPort int         // the copy's vitest browser port
+	Batches     [][]string  // --shared-db: the single-database batches on warehouse_test
+	Workers     *workerPlan // the e2e's worker(s) — one by default
+	Shared      bool        // --shared-db
+	Specs       []string
+	Partial     bool
+	Why         string
+	Estimate    time.Duration
+}
+
+// workerNames are the plan's e2e workers (w1 …), none without an e2e.
+func (p *fullPlan) workerNames() []string {
+	if p.Workers == nil {
+		return nil
+	}
+
+	var names []string
+	for _, w := range p.Workers.Workers {
+		names = append(names, w.Name)
+	}
+
+	return names
+}
+
+// pickFreePort is the first of span ports from first that nothing listens on, IPv4 or IPv6.
+func pickFreePort(first, span int) (int, error) {
+	for port := first; port < first+span; port++ {
+		if len(portListeners(port)) == 0 {
+			return port, nil
+		}
+	}
+
+	return 0, fmt.Errorf("no free port for the copy's Storybook run in %d–%d — stop a program holding them", first,
+		first+span-1)
 }
 
 func planFull(root string, opts fullOptions, now time.Time) (*fullPlan, error) {
-	p := &fullPlan{Root: root}
+	p := &fullPlan{Root: root, Shared: opts.SharedDB}
 	p.Partial, p.Why = opts.partial()
 
 	p.CopyDir = opts.CopyDir
@@ -129,11 +176,20 @@ func planFull(root string, opts fullOptions, now time.Time) (*fullPlan, error) {
 		} else {
 			p.GoArgv = append(p.GoArgv, "./...")
 		}
+
+		p.GoDB = goTestDB
 	}
 
 	if !opts.skips("stories") {
 		p.Stories = append([]string{"node", filepath.Join("node_modules", "vitest", "vitest.mjs"), "run",
 			"--project=storybook"}, opts.Stories...)
+
+		port, err := pickFreePort(storiesPortMin, storiesPortSpan)
+		if err != nil {
+			return nil, err
+		}
+
+		p.StoriesPort = port
 	}
 
 	if !opts.skips("e2e") {
@@ -149,17 +205,22 @@ func planFull(root string, opts fullOptions, now time.Time) (*fullPlan, error) {
 
 		p.Specs = specs
 
-		if opts.Workers > 1 {
+		if opts.SharedDB {
+			p.Batches = planBatches(specs, batchSize)
+		} else {
+			n := opts.Workers
+			if n < 1 {
+				n = defaultWorkers
+			}
+
 			frontends := []string{filepath.Join(root, "frontend"), filepath.Join(filepath.Dir(p.CopyDir))}
 
-			wp, err := planWorkers(root, specs, opts.Workers, opts.Times, foreignPortBusy(frontends))
+			wp, err := planWorkers(root, specs, n, opts.Times, foreignPortBusy(frontends))
 			if err != nil {
 				return nil, err
 			}
 
 			p.Workers = wp
-		} else {
-			p.Batches = planBatches(specs, batchSize)
 		}
 	}
 
@@ -205,30 +266,56 @@ func (p *fullPlan) print(out io.Writer, fp *Fingerprint, m *Measurement) {
 	fmt.Fprintf(out, "  copy         %s → %s\n", p.Root, p.CopyDir)
 	fmt.Fprintf(out, "               without .git, build output, e2e_report; generated code kept;\n")
 	fmt.Fprintf(out, "               frontend/node_modules hard-linked file by file (its .vite/.vitest/.cache the copy's own, empty)\n")
-	fmt.Fprintf(out, "  locks        e2e_report/.full_run.lock, and the live frontend/.e2e-lock (a Playwright run here refuses meanwhile)\n")
+	if p.Shared {
+		fmt.Fprintf(out, "  locks        e2e_report/.full_run.lock, and the live frontend/.e2e-lock (--shared-db: smoke, "+
+			"affected --run and a Playwright run here refuse meanwhile; no Go DB tests either)\n")
+	} else {
+		var locks []string
+		for _, w := range p.workerNames() {
+			locks = append(locks, "frontend/.e2e-lock."+w)
+		}
+
+		held := ""
+		if len(locks) > 0 {
+			held = ", and the live " + strings.Join(locks, ", ") + " (a live-tree run as that worker refuses)"
+		}
+
+		fmt.Fprintf(out, "  locks        e2e_report/.full_run.lock (a second full run refuses)%s\n", held)
+		fmt.Fprintf(out, "  meanwhile    the live tree's Go DB tests and smoke / affected --run (%s, :%d/:%d — still one of "+
+			"those at a time) and its Storybook (:6106) share nothing with this run and may go on\n", testDBName,
+			e2eAPIPort, e2eUIPort)
+	}
 
 	step := 1
 
 	if p.GoArgv != nil {
-		fmt.Fprintf(out, "  %d go         %s   (in the copy, cap %s)\n", step, strings.Join(p.GoArgv, " "), goTestCap)
+		fmt.Fprintf(out, "  %d go         %s   (in the copy, on its own database %s — not %s; cap %s)\n", step,
+			strings.Join(p.GoArgv, " "), p.GoDB, testDBName, goTestCap)
 		step++
 	}
 
 	if p.Stories != nil {
-		fmt.Fprintf(out, "  %d stories    %s   (in the copy's frontend, cap %s)\n", step, strings.Join(p.Stories, " "), storybookCap)
+		fmt.Fprintf(out, "  %d stories    %s   (in the copy's frontend, vitest browser port :%d — not the live tree's :6106; "+
+			"cap %s)\n", step, strings.Join(p.Stories, " "), p.StoriesPort, storybookCap)
 		step++
 	}
 
 	if p.Workers != nil {
-		fmt.Fprintf(out, "  %d e2e        %d specs on %d parallel workers\n", step, len(p.Specs), len(p.Workers.Workers))
+		if len(p.Workers.Workers) == 1 {
+			fmt.Fprintf(out, "  %d e2e        %d specs on ONE worker\n", step, len(p.Specs))
+		} else {
+			fmt.Fprintf(out, "  %d e2e        %d specs on %d parallel workers\n", step, len(p.Specs), len(p.Workers.Workers))
+		}
+
 		p.Workers.print(out, p.Specs)
 		fmt.Fprintf(out, "               before each batch: stop that worker's own leftover servers on its two ports (never another "+
 			"program's), check Docker and Postgres; afterwards the template is dropped\n")
 	}
 
 	if p.Batches != nil {
-		fmt.Fprintf(out, "  %d e2e        %d batches, name-ordered, %d specs each; orders.spec.ts alone, the restock family "+
-			"(restock*.spec.ts) together; cap %s (restock %s)\n", step, len(p.Batches), batchSize, batchCap, longSpecCap)
+		fmt.Fprintf(out, "  %d e2e        --shared-db: %d batches on %s, :%d/:%d, name-ordered, %d specs each; orders.spec.ts "+
+			"alone, the restock family (restock*.spec.ts) together; cap %s (restock %s)\n", step, len(p.Batches), testDBName,
+			e2eAPIPort, e2eUIPort, batchSize, batchCap, longSpecCap)
 
 		for i, b := range p.Batches {
 			fmt.Fprintf(out, "       b%-2d %s\n", i+1, strings.Join(b, " "))
@@ -238,6 +325,8 @@ func (p *fullPlan) print(out io.Writer, fp *Fingerprint, m *Measurement) {
 			"program's), check Docker and Postgres\n")
 	}
 
+	fmt.Fprintf(out, "  load retry   a story or spec file that only failed to LOAD is re-run once, by itself, in the copy; "+
+		"a failed check never is (a-file-that-fails-to-load-is-re-run-once)\n")
 	fmt.Fprintf(out, "  record       e2e_report/runs/<stamp>/ (run.json, summary.md, fingerprint.json, logs, failures/), latest.md\n")
 
 	if p.Partial {
@@ -344,6 +433,10 @@ func linkNodeModules(src, dst string) (int, error) {
 
 		n++
 
+		if loadedBinary(d.Name()) {
+			return copyFile(p, target)
+		}
+
 		err = os.Link(p, target)
 		if err != nil {
 			return copyFile(p, target)
@@ -353,6 +446,16 @@ func linkNodeModules(src, dst string) (int, error) {
 	})
 
 	return n, err
+}
+
+// loadedBinary says whether a node_modules file is a program or native module a process LOADS (esbuild.exe, rollup's
+// .node — five files, ~18 MB). Those are copied, not linked: Windows refuses to delete any link of a file a process
+// has loaded, so a Vite running in the live tree meanwhile (its smoke, a dev server) pinned the copy's links and the
+// copy could not be removed (seen 2026-11-14, the first run beside a live smoke).
+func loadedBinary(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+
+	return ext == ".exe" || ext == ".node" || ext == ".dll"
 }
 
 // isLink says whether an entry is a junction or symlink — Go reports a junction as irregular.
@@ -413,7 +516,7 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 		return nil, err
 	}
 
-	err = refuseIfBusy(root)
+	err = refuseFullIfBusy(root, plan.Shared, plan.workerNames())
 	if err != nil {
 		return nil, err
 	}
@@ -428,17 +531,32 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 		return nil, err
 	}
 
-	err = writeJSON(fullLockPath(root), fullRunLock{PID: os.Getpid(), Started: now, Copy: plan.CopyDir})
+	err = writeJSON(fullLockPath(root), fullRunLock{PID: os.Getpid(), Started: now, Copy: plan.CopyDir,
+		Shared: plan.Shared, Workers: plan.workerNames()})
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() { _ = os.Remove(fullLockPath(root)) }()
 
+	// The live tree's lock of what this run uses: worker wN's (a live-tree run as wN would clone the same
+	// warehouse_test_wN), or for --shared-db the live tree's own (warehouse_test, :8081/:5175).
 	liveFrontend := filepath.Join(root, "frontend")
-	releaseLive := holdLiveE2ELock(liveFrontend, now)
+	liveLocks := []string{}
 
-	defer releaseLive()
+	if plan.Shared {
+		liveLocks = append(liveLocks, ".e2e-lock")
+	}
+
+	for _, w := range plan.workerNames() {
+		liveLocks = append(liveLocks, ".e2e-lock."+w)
+	}
+
+	for _, name := range liveLocks {
+		release := holdLiveE2ELock(liveFrontend, name, now)
+
+		defer release()
+	}
 
 	fp, err := takeFingerprint(root)
 	if err != nil {
@@ -478,11 +596,33 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 	copyFrontend := filepath.Join(plan.CopyDir, "frontend")
 
 	if plan.GoArgv != nil {
-		rec.Go = runPart(ctx, plan.CopyDir, plan.GoArgv, filepath.Join(dir, "go.log"), goTestCap, "go", out)
+		// Its own database, fresh — the live tree's Go DB tests and e2e keep warehouse_test meanwhile.
+		err = dropTestDB(ctx, "", plan.GoDB)
+		if err != nil {
+			fmt.Fprintf(out, "  ⚠ %s was not dropped first: %v\n", plan.GoDB, err)
+		}
+
+		fmt.Fprintf(out, "→ go test on %s\n", plan.GoDB)
+
+		goEnv := []string{"TEST_DATABASE_URL=" + dsnWithDB(localDSN(), plan.GoDB)}
+		rec.Go = runPart(ctx, plan.CopyDir, plan.GoArgv, goEnv, filepath.Join(dir, "go.log"), goTestCap, "go", out)
+		rec.Go.Where = "database " + plan.GoDB
+
+		_ = dropTestDB(context.WithoutCancel(ctx), "", plan.GoDB)
 	}
 
 	if plan.Stories != nil && ctx.Err() == nil {
-		rec.Stories = runPart(ctx, copyFrontend, plan.Stories, filepath.Join(dir, "stories.log"), storybookCap, "stories", out)
+		// Its own vitest browser port — a Storybook run in the live tree keeps :6106 (frontend/vitest.config.ts).
+		storiesEnv := []string{fmt.Sprintf("%s=%d", storiesPortEnv, plan.StoriesPort)}
+		fmt.Fprintf(out, "→ stories on the vitest browser port :%d\n", plan.StoriesPort)
+
+		rec.Stories = runPart(ctx, copyFrontend, plan.Stories, storiesEnv, filepath.Join(dir, "stories.log"), storybookCap,
+			"stories", out)
+		rec.Stories.Where = fmt.Sprintf("vitest browser port :%d", plan.StoriesPort)
+
+		// A story file that only failed to LOAD (the cold copy's Vite re-bundling mid-run) is re-run once, by itself.
+		rec.Reruns = append(rec.Reruns, rerunStoryLoads(ctx, rec.Stories, dir, "the frozen copy",
+			vitestFileRunner(copyFrontend, storiesEnv...), out)...)
 	}
 
 	if plan.Workers != nil && ctx.Err() == nil {
@@ -490,7 +630,11 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 		rec.Workers = plan.Workers.Workers
 		frontends := []string{copyFrontend, liveFrontend}
 
-		fmt.Fprintf(out, "→ e2e on %d workers — the template %s first\n", len(plan.Workers.Workers), templateDB)
+		for _, w := range plan.Workers.Workers {
+			fmt.Fprintf(out, "  %s: database %s · API :%d · UI :%d · events %s\n", w.Name, w.DB, w.APIPort, w.UIPort, w.Project)
+		}
+
+		fmt.Fprintf(out, "→ e2e on %d worker(s) — the template %s first\n", len(plan.Workers.Workers), templateDB)
 
 		err = prepareTemplate(ctx, plan.CopyDir, dir, out)
 		if err != nil {
@@ -505,6 +649,11 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 
 			if len(stopped) > 0 {
 				rec.Stopped = strings.Join(stopped, "; ")
+			} else if ctx.Err() == nil {
+				// A spec that only failed to LOAD: once more, alone, on its worker's database (the template still stands).
+				seat := func(w string) e2eSeat { return workerSeat(plan.Workers, w) }
+				rec.Reruns = append(rec.Reruns, rerunE2ELoads(ctx, rec.E2E, seat, "the frozen copy",
+					playwrightBatchRunner(copyFrontend, frontends, dir), out)...)
 			}
 		}
 
@@ -561,6 +710,12 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 			}
 		}
 
+		if rec.Stopped == "" && ctx.Err() == nil {
+			seat := func(string) e2eSeat { return singleSeat() }
+			rec.Reruns = append(rec.Reruns, rerunE2ELoads(ctx, rec.E2E, seat, "the frozen copy",
+				playwrightBatchRunner(copyFrontend, frontends, dir), out)...)
+		}
+
 		cleanupE2E(copyFrontend, frontends, true, io.Discard)
 	}
 
@@ -582,11 +737,11 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 }
 
 // runPart runs go test or the Storybook run and reads its result.
-func runPart(ctx context.Context, dir string, argv []string, logPath string, limit time.Duration, kind string,
-	out io.Writer) *PartResult {
+func runPart(ctx context.Context, dir string, argv []string, env []string, logPath string, limit time.Duration,
+	kind string, out io.Writer) *PartResult {
 	fmt.Fprintf(out, "→ %s (cap %s)\n", strings.Join(argv, " "), limit)
 
-	res, err := runCapped(ctx, dir, argv, nil, logPath, limit, nil)
+	res, err := runCapped(ctx, dir, argv, env, logPath, limit, nil)
 	p := &PartResult{Exit: res.Exit, Secs: res.Secs, CapHit: res.CapHit, Log: logPath}
 
 	if err != nil {
@@ -625,7 +780,7 @@ func finishFull(root string, rec *RunRecord, dir string, fp *Fingerprint, plan *
 	}
 
 	if plan.Stories != nil {
-		green = green && rec.Stories.green()
+		green = green && rec.storiesGreen()
 	}
 
 	if plan.Batches != nil || plan.Workers != nil {
@@ -682,16 +837,16 @@ func finishFull(root string, rec *RunRecord, dir string, fp *Fingerprint, plan *
 	return rec, err
 }
 
-// holdLiveE2ELock writes the live tree's frontend/.e2e-lock with this process's pid, so a Playwright
-// run started in the real folder while the copy's run holds the ports and the database refuses
-// (e2e/lock.ts) instead of attaching to the copy's servers. The returned func removes it if still ours.
-func holdLiveE2ELock(frontend string, now time.Time) func() {
-	lock, err := readE2ELock(frontend)
+// holdLiveE2ELock writes one of the live tree's run locks (frontend/.e2e-lock.w1, or .e2e-lock for --shared-db) with
+// this process's pid, so a Playwright run started in the real folder on the same database refuses (e2e/lock.ts)
+// instead of resetting it under the copy's run. The returned func removes it if still ours.
+func holdLiveE2ELock(frontend, name string, now time.Time) func() {
+	path := filepath.Join(frontend, name)
+
+	lock, err := readLockFile(path)
 	if err == nil && lock.PID > 0 && pidAlive(lock.PID) {
 		return func() {}
 	}
-
-	path := filepath.Join(frontend, ".e2e-lock")
 
 	err = os.WriteFile(path, fmt.Appendf(nil, `{"pid":%d,"startedAt":%q}`, os.Getpid(), now.UTC().Format(time.RFC3339)), 0o644)
 	if err != nil {
@@ -699,7 +854,7 @@ func holdLiveE2ELock(frontend string, now time.Time) func() {
 	}
 
 	return func() {
-		l, err := readE2ELock(frontend)
+		l, err := readLockFile(path)
 		if err == nil && l.PID == os.Getpid() {
 			_ = os.Remove(path)
 		}

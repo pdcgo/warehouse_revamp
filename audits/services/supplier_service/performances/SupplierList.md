@@ -224,3 +224,4 @@ the shared database.
 | Date | Median (headline case, 1× · 3×) | Queries | Change |
 | --- | --- | --- | --- |
 | 2026-10-07 | 56.5 ms · 156 ms | 3 | first audit |
+| 2026-11-14 | unchanged without a warehouse · with one: Discover 35 ms, own 22–43 ms (2 000 suppliers, 100 000 batches) | 3 + 1 | the Gudang filter (`warehouse_id`): one inventory id read before the count and the page, bound as one `= ANY` — `cmd/app_development/supplier_list_warehouse_perf_test.go`, [rpc.md § The Gudang filter](../../../../docs/services/supplier_service/rpc.md#the-gudang-filter--supplierlists-warehouse_id) |

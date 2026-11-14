@@ -16,6 +16,7 @@ is the one decision that touches them — 🔄 superseded 2026-10-31 by [a-produ
 | [the-product-count-is-a-marked-sample](#the-product-count-is-a-marked-sample) | a **Produk** column, its figures invented and marked ⚠ until something counts a category's products; the row's add action reads **＋ Sub-kategori**; a disabled ⋯ item does nothing |
 | [a-branch-slides-open-and-shut](#a-branch-slides-open-and-shut) | a branch's children slide open and shut — height and fade in 180ms — and the chevron turns with them |
 | [a-branch-shows-the-hand](#a-branch-shows-the-hand) | a branch, which opens on a click, shows the hand cursor; a leaf keeps the arrow |
+| [a-picked-branch-keeps-its-whole-subtree](#a-picked-branch-keeps-its-whole-subtree) | picking a category branch keeps the branch and every category under it | owner, as recommended | — |
 
 ## the-category-page-is-a-tree
 
@@ -162,3 +163,13 @@ Nama                              Sub-kategori   Produk ⚠1                  Ak
 | the rest of the app | checked: every list row, phone block and card that opens a page already shows the hand (\`cursor="pointer"\`, or \`PRESSABLE\` / \`LIFTS\`); the scan found no other row that opens something without it |
 
 - Story: \`TheTreeReadsLikeATable\` reads a branch's cursor (\`pointer\`) and a leaf's (\`auto\`).
+
+---
+
+## a-picked-branch-keeps-its-whole-subtree
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: categories are a tree (*Makanan › Snack › Keripik*); when a branch such as *Makanan* is picked on Discover's **Kategori** filter ([discover-filters-in-a-side-panel](products_decision.md#discover-filters-in-a-side-panel)), what does it show? ([a-product-has-one-category](#a-product-has-one-category) left it *"the screen's question"*.) A: the whole branch, Makanan and everything under it; B: only products filed directly under Makanan; C: the picker offers end categories only.
+
+**The verdict.** A picked category keeps the products filed **under it or under any category below it** — *Makanan* keeps Makanan, Snack and Keripik products; *Keripik* keeps Keripik's alone. Any node may be picked, a branch or an end category. ⚠ Not built.
+
+✅ **Built 2026-11-14** — Discover's Kategori sends `ProductDiscoverRequest.category_id`; product_service reads the node and every node below it once (`category_v1.SubtreeIDs`, a recursive CTE over category_service's own table, through the composition root's `CategoryTree` seam) and keeps products filed on any of them; any node may be picked. Tests `subtree_test.go`, `product_discover_filters_test.go`, story `Filters/KategoriKeepsTheBranch`, e2e `the_discover_cards.spec.ts` (Kategori).

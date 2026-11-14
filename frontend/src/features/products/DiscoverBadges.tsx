@@ -43,8 +43,9 @@ const LOCK_PALETTE: Record<Exclude<LockMode, "open">, string> = {
 //
 // A MINIMUM IN FORCE SAYS SO (owner, on dropping the discover detail's Penjualan Tim Lain card: *"tapi kalau min
 // gimana?"*, the-lock-is-the-title-badge) — given the total ready stock, a minimum it has reached reads **🔒 Terkunci ·
-// Min N pcs**, its reason in a tooltip; one not reached keeps **↘ Min N pcs**. Without the total (the card, where another
-// team's stock is invented) the badge says the setting alone, as before.
+// Min N pcs**, its reason in a tooltip; one not reached keeps **↘ Min N pcs**. The Discover CARD says it the same way, from
+// the same every-warehouse total (a-discover-card-says-locked-as-the-title-does) — DiscoverStockByIds' total_ready_qty.
+// Without the total (the page's read not answered yet) the badge says the setting alone.
 export function DiscoverBadges({
   product,
   divisionMark,

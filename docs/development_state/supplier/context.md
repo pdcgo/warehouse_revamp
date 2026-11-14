@@ -209,3 +209,22 @@ left open: the file is **the whole ranking as narrowed, each row with its figure
 | perf | `TestPerf_SupplierReportExport` (2 000 suppliers): 30 d 187 ms, a year 1.1 s / 31 queries, a search 1.7 s — 🔴 heavy: [SupplierReportExport.md](../../../audits/services/supplier_service/performances/SupplierReportExport.md) (open: fill from the ranking statement's own sums, ≈ 5× faster). Reading the ranking a MetricSearch page at a time was 2.6 s / 6.3 s before `ranking()` |
 
 **Still not built:** the Produk tab's export (waits for the store–product link).
+
+## 2026-11-14 — the Gudang filter narrows the supplier list and Discover
+
+[the-warehouse-filters-before-the-team](../../technical/frontend/suppliers_decision.md#the-warehouse-filters-before-the-team)
+and [the-warehouse-filter-narrows-only-the-rows](../../technical/frontend/suppliers_decision.md#the-warehouse-filter-narrows-only-the-rows)
+(flow: [rpc.md § The Gudang filter](../../services/supplier_service/rpc.md#the-gudang-filter--supplierlists-warehouse_id)).
+
+| | |
+| --- | --- |
+| contract | `SupplierListFilter.warehouse_id = 7` (0 = any warehouse) — buf drift: `supplier.pb.go` + `supplier_pb.ts` only |
+| definition | received at W = a batch carrying the supplier, in W, that holds units, was minted by a `restock`, or has an `order` row — exactly the `SupplierGoods` WAREHOUSE rows (Gudang terkait). The batch's own supplier (the restock LINE's, a transfer's copy), every team's goods; transfer-ins count while they hold units or were sold from, as the chips show them |
+| backend | inventory `supplier_ids_at_warehouse.go` (plain function over `*gorm.DB`) + test · supplier `goods_reader.go` `WarehouseGoods` (asked of the GoodsReader by type assertion — `tools/san`'s `refoldGoods` needs no new method) · `supplier_list.go` `narrowByGoods` (the warehouse's set cut by the bands in Go → one `= ANY`; a band not asked once empty), a warehouse role only its own building · `cmd/app_development/supplier_goods_reader.go` gains the `db` (wire_gen: one line) |
+| frontend | `queries.ts` / `discover.ts` send `warehouseId` (in the query key); both pages reset to page 1 on a pick and count it in "nothing matches"; `SupplierWarehouseFilter` lost its mark; `features/suppliers/listPending.ts` deleted with `suppliers.pending` (en/id) and both pages' `NotImplementedSummary` |
+| tests | Go `supplier_list_test.go` +5, inventory `supplier_ids_at_warehouse_test.go`, `cmd/app_development/supplier_goods_reader_test.go` +1 (real batches through the seam) — mutation-checked · stories: suppliers `TheWarehouseNarrowsTheRows`, `TheWarehouseStaysInTheUrl`, Discover `TheWarehouseNarrowsTheCards` (request, rows, whole figures, URL, Clear), the mark-less first-picker stories, `SupplierWarehouseFilter` `AllWarehousesWhenNonePicked` · e2e `the_supplier_goods.spec.ts` +1 (a second, empty warehouse: the supplier under A on the list and Discover, not under B) |
+| perf | `cmd/app_development/supplier_list_warehouse_perf_test.go` (2 000 suppliers, 100 000 batches): the seam 32 ms on a 30 000-batch warehouse, 19 ms on 10 000; the list with a warehouse 22–43 ms (unchanged without); a pure index probed and NOT added (no gain for this shape) |
+| marks | list / Discover: none left |
+
+**Still not real:** the Produk tab (rows and figures — the store–product link, P2/P3), its export, and the detail page's
+warehouse chip narrowing the tabs.

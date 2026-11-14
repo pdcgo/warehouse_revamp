@@ -18,7 +18,7 @@ import (
 func newService(t *testing.T, db *gorm.DB) *product_v1.Service {
 	t.Helper()
 
-	return product_v1.NewService(db, history, teamCodes)
+	return product_v1.NewService(db, history, teamCodes, nil, nil)
 }
 
 // teamCodes is the team code every product code is composed from (the-field-is-product-code-composed-on-write): team N's

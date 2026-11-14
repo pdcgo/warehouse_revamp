@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { openShops, pickTeam } from "./pickers";
 
 // ORDER CREATE REFUSES A TEAM WITH NO RETURN WAREHOUSE
 // (docs/business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse), END TO END, on the order form.
@@ -159,10 +160,9 @@ test("Return warehouse: the order form is refused naming the team, then places t
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await page.getByTestId("order-create-customer-name").fill(`E2E Return ${SUFFIX}`);
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   await page.getByRole("option").filter({ hasText: state.shopName }).click();
-  await page.getByTestId("order-warehouse").locator("input").fill(state.whCode);
-  await page.getByTestId(`team-select-option-${state.whCode}`).click();
+  await pickTeam(page, page.getByTestId("order-warehouse"), state.whCode);
 
   await page.getByTestId("order-create-add-line").click();
   await page.getByTestId("product-picker-search").fill(state.productCode);

@@ -24,12 +24,12 @@ export const SearchesProductCodeAndName: Story = {
     const canvas = await loaded(canvasElement);
     const search = canvas.getByTestId("discover-search");
 
-    await userEvent.type(search, "gula", { delay: 40 });
+    await userEvent.type(search, "gula");
     await waitFor(() => expect(canvas.queryByTestId(`discover-card-${KOPI.productCode}`)).toBeNull());
     await expect(canvas.getByTestId(`discover-card-${GULA.productCode}`)).toBeVisible();
 
     await userEvent.clear(search);
-    await userEvent.type(search, TEH.productCode, { delay: 40 });
+    await userEvent.type(search, TEH.productCode);
     await waitFor(() => expect(canvas.queryByTestId(`discover-card-${GULA.productCode}`)).toBeNull());
     await expect(canvas.getByTestId(`discover-card-${TEH.productCode}`)).toBeVisible();
   },

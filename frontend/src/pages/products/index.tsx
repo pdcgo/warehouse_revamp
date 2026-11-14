@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fromHere } from "../../lib/cameFrom";
-import { Badge, Box, Button, Flex, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
+import { Badge, Button, Flex, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
 import { Archive, ArrowLeft, Plus } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
@@ -10,22 +10,19 @@ import { TeamSelect } from "../../components/teams/TeamSelect";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import type { SortState } from "../../components/chrome/SortableHeader";
-import { type ProductSortKey, useProductStats } from "../../features/products/queries";
+import { type ProductLockPick, type ProductSortKey, useProductStats } from "../../features/products/queries";
 import { WarehouseStockList } from "../../features/inventory/WarehouseStockList";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { idCodec, nullableCodec, oneOfCodec, optionalCodec, sortCodec, textCodec, useUrlState } from "../../lib/urlState";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ChoiceFilter } from "../../components/pickers/ChoiceFilter";
 import { ProductStats } from "./components/ProductStats";
 import { ProductsTable } from "./components/ProductsTable";
-import { PRODUCTS_LIST_PENDING } from "./pending";
 
 // The column the contract orders the catalogue by that the row shows first.
 const SORT_CODEC = nullableCodec(sortCodec(["name"] as const));
 // The lock's three ways (one-lock-three-ways), and "a minimum in force right now".
-const LOCK_FILTERS = ["open", "min", "always", "lockedNow"] as const;
+const LOCK_FILTERS = ["open", "min", "always", "lockedNow"] as const satisfies readonly ProductLockPick[];
 type LockFilter = (typeof LOCK_FILTERS)[number];
 const LOCK_CODEC = optionalCodec(oneOfCodec(LOCK_FILTERS));
 // The stock's age, at least this many days — the warning tone starts at 60 (STALE_STOCK_DAYS).
@@ -94,7 +91,7 @@ function WarehouseProductsPage() {
 //   Produk [Toko Anggrek]                                        [🗃 Arsip] [＋ Produk Baru]
 //   Katalog tim ini — yang dijual, yang ada di rak, dan yang sedang dikirim.
 //   [Total produk 44] [Siap 79 pcs] [Dikirim 12 pcs] [Pesanan terakhir …] [Restock terakhir …]
-//   [⌕ Cari SKU atau nama ×] [Semua gudang ▾] [Semua kunci ▾ ⚠] [Semua umur stok ▾ ⚠]
+//   [⌕ Cari SKU atau nama ×] [Semua gudang ▾] [Semua kunci ▾] [Semua umur stok ▾]
 //   Produk ↕ │ Cross │ Rentang HPP │ Kunci │ Siap │ Dikirim │ Umur stok │ [✎ Ubah] [🗃 Arsipkan]
 //
 // THE ARCHIVE IS A PAGE OF ITS OWN (owner: *"[arsip] dibuat beda halaman, lalu masuk ke halamannya lewat button di
@@ -130,9 +127,11 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
       ? undefined
       : warehouses.data?.teams.find((w) => w.id === warehouseId)?.name;
 
-  // THE LOCK AND THE STOCK'S AGE, AHEAD OF THE CONTRACT (owner: *"kasih filter lock dan umur stok unimplemented"*) — each
-  // held in the URL and marked ⚠, its pick THROWN AWAY: ProductListFilter has only `q` and `status` (PRODUCTS_LIST_PENDING).
-  // Not on the archive: an archived product is out of every other team's reach, so its lock says nothing.
+  // THE LOCK AND THE STOCK'S AGE (owner: *"kasih filter lock dan umur stok unimplemented"*, then built —
+  // lock-and-stock-age-filter-ahead-of-the-contract) — each held in the URL and SENT: the server narrows its own count
+  // and page, asking inventory for the minimums in force now and the stock's age. The age is read in the lens's
+  // warehouse; the lock reads every warehouse. Not on the archive: an archived product is out of every other team's
+  // reach, so its lock says nothing.
   const [lock, setLock] = useUrlState<LockFilter | undefined>("lock", undefined, LOCK_CODEC);
   const [age, setAge] = useUrlState<AgeFilter | undefined>("age", undefined, AGE_CODEC);
 
@@ -236,9 +235,6 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
           ))}
       </Flex>
 
-      {/* What this list cannot do yet — the two filters it holds and throws away. */}
-      {!archived && <NotImplementedSummary list={PRODUCTS_LIST_PENDING} />}
-
       {/* The archive holds what left the catalogue — a product count is not its headline. */}
       {!archived && (
         <ProductStats
@@ -275,45 +271,35 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
 
         {!archived && (
           <>
-            {/* THE LOCK — the three ways, and the minimums in force right now (one-lock-three-ways). Held, marked, not
-                sent. */}
+            {/* THE LOCK — the three ways, and the minimums in force right now (one-lock-three-ways,
+                a-minimum-closes-only-under-it). */}
             <FilterField w="13rem" testId="product-lock-filter">
-              <Flex align="center" gap="1">
-                <Box flex="1" minW="0">
-                  <ChoiceFilter
-                    value={lock}
-                    onChange={setLock}
-                    placeholder={t("products.filter.lockAll")}
-                    testId="product-lock-select"
-                    options={[
-                      { value: "open", label: t("products.lock.mode.open") },
-                      { value: "min", label: t("products.lock.mode.min") },
-                      { value: "always", label: t("products.lock.mode.always") },
-                      { value: "lockedNow", label: t("products.filter.lockedNow") },
-                    ]}
-                  />
-                </Box>
-                <NotImplemented list={PRODUCTS_LIST_PENDING} id="lockFilter" />
-              </Flex>
+              <ChoiceFilter
+                value={lock}
+                onChange={setLock}
+                placeholder={t("products.filter.lockAll")}
+                testId="product-lock-select"
+                options={[
+                  { value: "open", label: t("products.lock.mode.open") },
+                  { value: "min", label: t("products.lock.mode.min") },
+                  { value: "always", label: t("products.lock.mode.always") },
+                  { value: "lockedNow", label: t("products.filter.lockedNow") },
+                ]}
+              />
             </FilterField>
 
-            {/* THE STOCK'S AGE — at least this many days on a shelf (the-dates-read-as-ages). Held, marked, not sent. */}
+            {/* THE STOCK'S AGE — at least this many days on a shelf (the-dates-read-as-ages), in the lens's warehouse. */}
             <FilterField w="13rem" testId="product-age-filter">
-              <Flex align="center" gap="1">
-                <Box flex="1" minW="0">
-                  <ChoiceFilter
-                    value={age}
-                    onChange={setAge}
-                    placeholder={t("products.filter.stockAgeAll")}
-                    testId="product-age-select"
-                    options={AGE_FILTERS.map((days) => ({
-                      value: days,
-                      label: t("products.filter.stockAgeAtLeast", { days }),
-                    }))}
-                  />
-                </Box>
-                <NotImplemented list={PRODUCTS_LIST_PENDING} id="stockAgeFilter" />
-              </Flex>
+              <ChoiceFilter
+                value={age}
+                onChange={setAge}
+                placeholder={t("products.filter.stockAgeAll")}
+                testId="product-age-select"
+                options={AGE_FILTERS.map((days) => ({
+                  value: days,
+                  label: t("products.filter.stockAgeAtLeast", { days }),
+                }))}
+              />
             </FilterField>
           </>
         )}
@@ -326,6 +312,8 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
         warehouseId={warehouseId}
         warehouseName={warehouseName}
         sort={sort}
+        lock={archived ? undefined : lock}
+        minStockAgeDays={archived || age === undefined ? 0 : Number(age)}
         onSortChange={setSort}
         filtered={filterCount > 0}
         onClearFilters={clearFilters}

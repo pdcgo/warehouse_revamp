@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { SUFFIX, login, api, restockGround, seed, tick } from "./restock_helpers";
+import { pickTeam } from "./pickers";
 
 // #105 — Restock requests (a selling team asks a warehouse to restock a product; the warehouse
 // fulfils). The list-page render check came first; the CREATE FORM had no coverage at all until #165
@@ -116,8 +117,7 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   await expect(page.getByTestId("restock-summary-products")).toContainText("70.000");
 
   // The warehouse that receives the goods.
-  await page.getByTestId("restock-warehouse").locator("input").fill(whCode);
-  await page.getByTestId(`team-select-option-${whCode}`).click();
+  await pickTeam(page, page.getByTestId("restock-warehouse"), whCode);
 
   // The account that paid (a-restock-must-name-the-account-that-paid) — picked by its id, since other tests open
   // operational accounts on the same team and the form only pre-fills when there is exactly one.

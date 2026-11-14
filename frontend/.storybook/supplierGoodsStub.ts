@@ -65,8 +65,12 @@ const at = (daysAgo: number | null) => (daysAgo === null ? 0n : BigInt(Math.floo
 /** What each SupplierGoods call asked — a story asserts the page asked once, for the suppliers on screen. */
 export const supplierGoodsCalls: { teamId: bigint; supplierIds: bigint[]; group: SupplierGoodsGroup }[] = [];
 
-/** The bands each SupplierList call carried — a story asserts the pill reached the server's question. */
-export const supplierListBandCalls: { sold?: { min: bigint; max: bigint }; ready?: { min: bigint; max: bigint } }[] = [];
+/** The bands and the warehouse each SupplierList call carried — a story asserts the pick reached the server's question. */
+export const supplierListBandCalls: {
+  sold?: { min: bigint; max: bigint };
+  ready?: { min: bigint; max: bigint };
+  warehouseId: bigint;
+}[] = [];
 
 export function resetSupplierGoodsStub() {
   supplierGoodsCalls.length = 0;
@@ -75,8 +79,20 @@ export function resetSupplierGoodsStub() {
 
 const bandOf = (band: SupplierFigureBand | undefined) => (band ? { min: band.min, max: band.max } : undefined);
 
-export function recordSupplierListBands(sold: SupplierFigureBand | undefined, ready: SupplierFigureBand | undefined) {
-  supplierListBandCalls.push({ sold: bandOf(sold), ready: bandOf(ready) });
+export function recordSupplierListBands(
+  sold: SupplierFigureBand | undefined,
+  ready: SupplierFigureBand | undefined,
+  warehouseId: bigint = 0n,
+) {
+  supplierListBandCalls.push({ sold: bandOf(sold), ready: bandOf(ready), warehouseId });
+}
+
+/**
+ * SupplierList's Gudang filter (the-warehouse-filters-before-the-team): a supplier with a lot at the warehouse — exactly
+ * the warehouses SupplierGoods by WAREHOUSE answers for it, its Gudang terkait chips. 0n = any warehouse.
+ */
+export function receivedAt(supplierId: bigint, warehouseId: bigint): boolean {
+  return warehouseId === 0n || GOODS_LOTS.some((l) => l.supplierId === supplierId && l.warehouseId === warehouseId);
 }
 
 /** A supplier's all-time Terjual and Siap — its lots summed, every team's; 0 for a supplier with no goods. */

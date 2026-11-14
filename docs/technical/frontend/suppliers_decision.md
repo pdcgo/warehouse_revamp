@@ -70,6 +70,8 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [the-warehouse-filter-shows-its-name-alone](#the-warehouse-filter-shows-its-name-alone) | a picked warehouse in the supplier screens' warehouse filter reads as its name, without the [Gudang] badge |
 | [penjualan-is-the-selling-value-on-the-order-day](#penjualan-is-the-selling-value-on-the-order-day) | Penjualan is the selling value of the supplier's goods, on the day the order was placed | owner, as recommended | — |
 | [the-range-pills-are-a-fixed-set](#the-range-pills-are-a-fixed-set) | the Terjual and Siap filter pills are a fixed set of bands | owner, as recommended | — |
+| [the-warehouse-filter-narrows-only-the-rows](#the-warehouse-filter-narrows-only-the-rows) | on the supplier list and Discover, a picked warehouse narrows the rows only — Terjual, Siap and their bands stay the supplier's whole | owner, as recommended | — |
+| [the-supplier-reports-carry-the-warehouse](#the-supplier-reports-carry-the-warehouse) | the supplier daily reports carry the warehouse, so Statistik narrows under a warehouse chip like every tab | owner, as recommended | — |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -1084,6 +1086,8 @@ on a phone      the Filter sheet: Semua gudang · (Semua tim) · … — the war
 | a warehouse team | no warehouse filter on the supplier list — it has no list ([only-a-selling-team-has-suppliers](../../business/supplier/context_decision.md#only-a-selling-team-has-suppliers)) |
 | shared | `SupplierWarehouseFilter` in `features/suppliers/`, with its story under *Features/Suppliers* |
 
+✅ Built 2026-11-14 — the Gudang filter narrows the supplier list and Discover › Suppliers on the server, before the count and the page: `SupplierList` takes `warehouse_id` and keeps the suppliers whose page lists that warehouse among Gudang terkait (a batch of theirs there holding units, minted by a restock, or sold from — every team's goods, the batch's own line supplier), asked of inventory in-process. Both pages send the URL's pick; the ⚠ mark and its pending entry are gone (`listPending.ts` deleted). A warehouse role may name only its own building.
+
 ## the-detail-tabs-show-sold-and-ready
 
 > Owner, in chat (2026-10-13), on the supplier's page: *"sekarang untuk detailnya, di channel dan produk ada ready dan sold
@@ -1336,3 +1340,30 @@ before                                   now
 A band is lower-inclusive, upper-exclusive. The filter narrows on the server, before paging. Closes the open point; the placeholder set in `pages/suppliers/figureRanges.ts` becomes the real one. ⚠ Not built.
 
 ✅ Built 2026-11-07 — `SupplierList` takes `sold` / `ready` bands (lower-inclusive, upper-exclusive) and narrows on the server before the page, asking inventory for the suppliers in the band; the supplier list and Discover send the URL's pick; the `dropped` marks removed.
+
+---
+
+## the-warehouse-filter-narrows-only-the-rows
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: on the supplier list and Discover › Suppliers, a picked warehouse ([the-warehouse-filters-before-the-team](#the-warehouse-filters-before-the-team)) keeps the suppliers whose restocks are received there; should the Terjual / Siap figures and their bands follow that warehouse too? A: only the rows narrow, the figures and bands stay the supplier's total over every warehouse; B: figures and bands follow the warehouse (a Terjual band already takes 0.6–0.9 s at 1M order lines); C: figures follow, bands stay whole.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| Gudang picked | the list keeps the suppliers with restocks **received at that warehouse** — the same set the detail page's warehouse chips show |
+| the figures | **Terjual** and **Siap** on each row stay the supplier's **whole**, over every warehouse |
+| the bands | the Terjual / Siap pills ([the-range-pills-are-a-fixed-set](#the-range-pills-are-a-fixed-set)) test the whole figures too |
+| per warehouse | read on the supplier's page, under its warehouse chips |
+
+⚠ Not built.
+
+✅ Built 2026-11-14 — only the rows narrow: Terjual and Siap on each row are still read per supplier over every warehouse, and the range pills test those whole figures — with a warehouse picked, its suppliers are cut by the bands on the server, so total, sort and paging count only what is left.
+
+---
+
+## the-supplier-reports-carry-the-warehouse
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: [a-supplier-page-is-scoped-by-its-warehouses](#a-supplier-page-is-scoped-by-its-warehouses) says every tab narrows under a warehouse chip, but both supplier daily reports behind **Statistik** are keyed (day, supplier, product, team) with no warehouse. A: add the warehouse to both report keys and refold, so Statistik narrows like every tab (an existing-table change — the full run is due after); B: Statistik stays all-warehouse with a muted line saying so; C: read narrowed figures from inventory's warehouse-keyed daily reports (they value at the landed batch price, not the line price, and carry no Penjualan).
+
+**The verdict.** Both supplier daily reports gain the **warehouse** in their key — the warehouse a restock line was received at, the warehouse an order line was taken from — and are **refolded from history** (a repeatable `san` backfill). Under a warehouse chip, **Statistik** reads that warehouse's rows; with no chip, the sum over every warehouse — the same figures as today. Values stay at the line price, Penjualan included. Nothing else on the page changes. ⚠ Not built — the full run is due once it lands.

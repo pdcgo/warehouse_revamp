@@ -1,0 +1,105 @@
+[90m│[39m
+[34m●[39m  Storybook collects completely anonymous usage telemetry. We use it to
+[90m│[39m  shape Storybook's roadmap and prioritize features. You can learn more,
+[90m│[39m  including how to opt out, at ]8;;https://storybook.js.org/telemetryhttps://storybook.js.org/telemetry]8;;
+
+ RUN  v4.1.10 D:/hermes/cache/scratch/san_frozen_1114/frontend
+
+ ❯ |storybook (chromium)| src/pages/product-discover/stories/Search.stories.tsx (4 tests | 1 failed) 24919ms
+   × Product code and name 15103ms
+ ❯ |storybook (chromium)| src/features/orders/form/WarehouseBand.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/pages/restock-form/index.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/components/feedback/EmptyHint.stories.tsx (3 tests | 3 failed) 37ms
+   × Nothing Yet 13ms
+   × Nothing Matches 9ms
+   × Small 14ms
+ ❯ |storybook (chromium)| src/components/chrome/ColorModeToggle.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/components/chrome/StatsToggle.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/pages/products/index.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/components/chrome/Logo.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/pages/supplier-discover-detail/index.stories.tsx (0 test)
+ ❯ |storybook (chromium)| src/components/badges/SettlementSourceBadge.stories.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |storybook (chromium)| src/components/badges/SettlementSourceBadge.stories.tsx [ src/components/badges/SettlementSourceBadge.stories.tsx ]
+Error: Failed to import test file D:/hermes/cache/scratch/san_frozen_1114/frontend/src/components/badges/SettlementSourceBadge.stories.tsx
+Caused by: TypeError: Failed to fetch dynamically imported module: http://localhost:6106/@fs/D:/hermes/cache/scratch/san_frozen_1114/frontend/src/components/badges/SettlementSourceBadge.stories.tsx?import&browserv=1794625795767
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  |storybook (chromium)| src/components/chrome/ColorModeToggle.stories.tsx [ src/components/chrome/ColorModeToggle.stories.tsx ]
+ FAIL  |storybook (chromium)| src/components/chrome/Logo.stories.tsx [ src/components/chrome/Logo.stories.tsx ]
+ FAIL  |storybook (chromium)| src/pages/restock-form/index.stories.tsx [ src/pages/restock-form/index.stories.tsx ]
+ FAIL  |storybook (chromium)| src/pages/supplier-discover-detail/index.stories.tsx [ src/pages/supplier-discover-detail/index.stories.tsx ]
+Error: Failed to import test file D:/hermes/cache/scratch/san_frozen_1114/frontend/node_modules/@storybook/addon-vitest/dist/vitest-plugin/setup-file-with-project-annotations.js
+Caused by: TypeError: Failed to fetch dynamically imported module: http://localhost:6106/@fs/D:/hermes/cache/scratch/san_frozen_1114/frontend/node_modules/@storybook/addon-vitest/dist/vitest-plugin/setup-file-with-project-annotations.js?import&browserv=1794625795495
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  |storybook (chromium)| src/components/chrome/StatsToggle.stories.tsx [ src/components/chrome/StatsToggle.stories.tsx ]
+Error: Failed to import test file D:/hermes/cache/scratch/san_frozen_1114/frontend/src/components/chrome/StatsToggle.stories.tsx
+Caused by: TypeError: Failed to fetch dynamically imported module: http://localhost:6106/@fs/D:/hermes/cache/scratch/san_frozen_1114/frontend/src/components/chrome/StatsToggle.stories.tsx?import&browserv=1794625795765
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  |storybook (chromium)| src/pages/products/index.stories.tsx [ src/pages/products/index.stories.tsx ]
+Error: Failed to import test file D:/hermes/cache/scratch/san_frozen_1114/frontend/node_modules/@storybook/addon-vitest/dist/vitest-plugin/setup-file.js
+Caused by: TypeError: Failed to fetch dynamically imported module: http://localhost:6106/@fs/D:/hermes/cache/scratch/san_frozen_1114/frontend/node_modules/@storybook/addon-vitest/dist/vitest-plugin/setup-file.js?import&browserv=1794625795709
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  |storybook (chromium)| src/features/orders/form/WarehouseBand.stories.tsx [ src/features/orders/form/WarehouseBand.stories.tsx ]
+Error: Failed to import test file D:/hermes/cache/scratch/san_frozen_1114/frontend/src/features/orders/form/WarehouseBand.stories.tsx
+Caused by: TypeError: Failed to fetch dynamically imported module: http://localhost:6106/@fs/D:/hermes/cache/scratch/san_frozen_1114/frontend/src/features/orders/form/WarehouseBand.stories.tsx?import&browserv=1794625794451
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |storybook (chromium)| src/components/feedback/EmptyHint.stories.tsx > Nothing Yet
+ FAIL  |storybook (chromium)| src/components/feedback/EmptyHint.stories.tsx > Nothing Matches
+ FAIL  |storybook (chromium)| src/components/feedback/EmptyHint.stories.tsx > Small
+TypeError: 
+[34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/components-feedback-emptyhint--nothing-yet&addonPanel=storybook/interactions/panel[39m
+
+Failed to fetch dynamically imported module: http://localhost:6106/node_modules/.cache/storybook/10.5.8/ed42603c8ba5f6ffed0c6e9f4bc9bdc18cb614f33e9739d3203ab46e8d79cd15/sb-vitest/deps/@storybook_react-dom-shim.js?v=a3ef1d76
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  |storybook (chromium)| src/pages/product-discover/stories/Search.stories.tsx > Product code and name
+Error: 
+[34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/pages-products-discoverproducts-search--searches-product-code-and-name&addonPanel=storybook/interactions/panel[39m
+
+Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ _test src/pages/product-discover/stories/Search.stories.tsx:21:7
+     19| type Story = StoryObj<typeof meta>;
+     20|
+     21| export const SearchesProductCodeAndName: Story = {
+       |       ^
+     22|   name: "Product code and name",
+     23|   play: async ({ canvasElement }) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: Failed to run the test D:/hermes/cache/scratch/san_frozen_1114/frontend/src/pages/supplier-discover/index.stories.tsx.
+ ❯ node_modules/vitest/dist/chunks/cli-api.BK8pd4xc.js:2638:17
+ ❯ processTicksAndRejections node:internal/process/task_queues:105:5
+
+Caused by: Error: Cannot connect to the iframe. Did you change the location or submitted a form? If so, don't forget to call `event.preventDefault()` to avoid reloading the page.
+
+Received URL: unknown due to CORS
+Expected: http://localhost:6106/?sessionId=53b7eb0c-6b1e-4241-8096-82dedf4b79b0&iframeId=D:/hermes/cache/scratch/san_frozen_1114/frontend/src/pages/supplier-discover/index.stories.tsx
+ ❯ iframe.onload ../../../../../..//__vitest_browser__/orchestrator-KVYrTcFi.js:174:43
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  10 failed | 347 passed | 1 skipped (387)
+      Tests  4 failed | 2547 passed (2551)
+     Errors  1 error
+   Start at  10:05:54
+   Duration  241.82s (transform 0ms, setup 373.06s, import 131.30s, tests 2107.77s, environment 0ms)
+

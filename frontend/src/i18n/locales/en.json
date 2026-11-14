@@ -460,41 +460,13 @@
       "general": "General"
     },
     "pending": {
-      "warehouse": {
-        "label": "Warehouse filter",
-        "reason": "Stock is recorded by the inventory service, while this list comes from the product catalogue. Narrowing a paged list by warehouse needs one read that joins the two. The pick is kept, but narrows nothing yet."
-      },
       "division": {
         "label": "Product division",
         "reason": "Priority, Research and General are set per product, but the rule is not in the business context yet and nothing stores it. The pick is kept, but narrows nothing yet."
       },
-      "category": {
-        "label": "Category filter",
-        "reason": "The cross-team product search takes no category filter yet. The pick is kept, but narrows nothing yet."
-      },
-      "stock": {
-        "label": "Stock filter",
-        "reason": "As with the warehouse: ready stock lives in the inventory service, and this list cannot be narrowed by it yet. The pick is kept, but narrows nothing yet."
-      },
-      "crossRange": {
-        "label": "Cross price filter",
-        "reason": "Another team's unit cost cannot be read across teams yet, so its cross price cannot be filtered. What is typed is kept, but narrows nothing yet."
-      },
-      "crossPrice": {
-        "label": "Other teams' cross price",
-        "reason": "Another team's unit cost cannot be read across teams yet. The cross price shown is a sample, worked out with the product's real markup. Your own team's products use real figures."
-      },
-      "cardStock": {
-        "label": "Other teams' stock",
-        "reason": "Ready and ongoing stock can only be read for your own team's products. The figures on another team's card are a sample."
-      },
       "divisionBadge": {
         "label": "Product division badge",
         "reason": "The Priority, Research and General division is stored nowhere yet. The badge on a card is a sample."
-      },
-      "lockFilter": {
-        "label": "Lock filter",
-        "reason": "A locked product is sent to Discover by the server now, but it has no lock filter, and whether a minimum has closed a product depends on its ready stock, which lives in the inventory service. The pick is kept, but narrows nothing yet."
       }
     },
     "stock": {
@@ -520,7 +492,7 @@
       "open": "Open",
       "locked": "Locked",
       "openHint": "Another team may take it now",
-      "lockedHint": "Locked by its owner, or its ready stock is at its minimum or under it"
+      "lockedHint": "Locked by its owner, or its ready stock across every warehouse is under its minimum"
     }
   },
   "discoverDetail": {
@@ -550,14 +522,6 @@
       "gallery": {
         "label": "Images",
         "reason": "only the cover — the full gallery comes from ProductDetail, which answers only the owning team"
-      },
-      "ongoing": {
-        "label": "On its way",
-        "reason": "sample — another team's stock on its way cannot be read across teams yet; the ready figure above it is real, every shelf summed"
-      },
-      "crossPrice": {
-        "label": "Cross price",
-        "reason": "sample — an invented cost with the product's real markup over it, in Info and shared out among the warehouses holding it; another team's cost cannot be read yet, and who may see it is not decided"
       },
       "derived": {
         "label": "Derived products",
@@ -609,16 +573,6 @@
       "lockedNow": "Locked now",
       "stockAgeAll": "Any stock age",
       "stockAgeAtLeast": "{{days}} days or more"
-    },
-    "pending": {
-      "lockFilter": {
-        "label": "Lock filter",
-        "reason": "The product list cannot filter by lock yet — the pick is kept, but every product still shows."
-      },
-      "stockAgeFilter": {
-        "label": "Stock age filter",
-        "reason": "The product list cannot filter by stock age yet — the age lives with the stock, so the pick is kept, but every product still shows."
-      }
     },
     "lock": {
       "title": "Lock",
@@ -2611,12 +2565,6 @@
     },
     "editAction": "Edit",
     "actions": "Supplier actions",
-    "pending": {
-      "warehouse": {
-        "label": "Warehouse filter",
-        "reason": "the picked warehouse is held on screen only — the supplier list cannot be narrowed by where its goods were received yet"
-      }
-    },
     "lastOrder": "ordered {{date}}",
     "lastRestock": "restocked {{date}}",
     "rangeAll": "All",

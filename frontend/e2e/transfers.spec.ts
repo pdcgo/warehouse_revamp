@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { pickTeam } from "./pickers";
 
 // THE WAREHOUSE TRANSFER, END TO END (docs/business/inventory/warehouse_transfer.md) — the selling team moves its own
 // stock from warehouse A to warehouse B: it opens the transfer on the form with a shipping cost paid from an operational
@@ -167,12 +168,9 @@ test("Transfer: the team opens it on the form, paying the trip from the operatio
   await page.goto("/inventories/transfer/new");
   await expect(page.getByTestId("transfer-form")).toBeVisible();
 
-  // Both pickers list warehouses, so an option's testid is on the page twice — the open list's is the visible one.
-  const option = (code: string) => page.locator(`[data-testid="team-select-option-${code}"]:visible`);
-  await page.getByTestId("transfer-form-from").locator("input").fill(state.codeA);
-  await option(state.codeA).click();
-  await page.getByTestId("transfer-form-to").locator("input").fill(state.codeB);
-  await option(state.codeB).click();
+  // Both pickers list warehouses, so an option's testid is on the page twice — pickTeam clicks the open list's.
+  await pickTeam(page, page.getByTestId("transfer-form-from"), state.codeA);
+  await pickTeam(page, page.getByTestId("transfer-form-to"), state.codeB);
 
   await page.getByTestId("transfer-form-pick").click();
   await page.getByTestId(`product-picker-option-${state.product}`).click();

@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { openShops } from "./pickers";
 
 // SHOP ENTRIES, END TO END (the-shop-entries-page-is-accepted, a-shop-entry-reverses-inline) — named to sort AFTER
 // orders.spec.ts, statement.spec.ts and the_settlement_report.spec.ts, as a spec posting money must; it runs on one
@@ -197,7 +198,7 @@ test("A statement line that matches no order posts to the shop", async ({ page }
   await page.getByTestId("open-import-file").click();
   const dialog = page.getByTestId("import-dialog");
   await expect(dialog).toBeVisible();
-  await dialog.getByTestId("shop-select").click();
+  await openShops(dialog);
   await dialog.getByRole("option").filter({ hasText: SHOP_NAME }).click();
   await dialog.getByTestId("import-file-input").setInputFiles({
     name: "statement.xlsx",

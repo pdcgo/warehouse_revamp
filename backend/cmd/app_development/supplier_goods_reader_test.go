@@ -3,11 +3,17 @@ package main
 import (
 	"context"
 	"reflect"
+	"slices"
 	"testing"
 
+	"connectrpc.com/connect"
+
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_service_models"
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 )
 
@@ -15,7 +21,7 @@ import (
 // across field by field, and each figure named to inventory's own (Terjual → sold, Siap → ready).
 func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 	db := san_testdb.DB(t)
-	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil))
+	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
 	ctx := context.Background()
 
 	restock := inventory_service_models.InventoryTransaction{WarehouseID: 5, TeamID: 12, TxType: inventory_service_models.TxRestock}
@@ -84,5 +90,109 @@ func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 	got, found := stores[701]
 	if len(stores) != 1 || !found || got.Sold != 3 || got.Ready != 7 || got.LastOrderUnix == 0 || got.LastRestockUnix == 0 {
 		t.Fatalf("stores = %+v — want store 701 with 3 sold, 7 ready and both dates", stores)
+	}
+}
+
+// THE GUDANG FILTER THROUGH THE REAL SEAM (the-warehouse-filters-before-the-team): SupplierList asks inventory's batches,
+// in-process, which suppliers were received at the picked warehouse. Two teams restock from team 12's supplier Sumber at
+// Gudang 5 (one of them also at Gudang 6); team 12's Sinar only at Gudang 6; its Kosong never — and team 13's own Lain
+// at Gudang 5 shows on Discover only.
+func TestSupplierGoodsReader_TheWarehouseFilterReadsTheBatches(t *testing.T) {
+	db := san_testdb.DB(t)
+	ctx := context.Background()
+
+	const (
+		melati  uint64 = 12
+		sinar   uint64 = 13
+		gudang5 uint64 = 9_520_005
+		gudang6 uint64 = 9_520_006
+	)
+
+	supplier := func(team uint64, name string) uint64 {
+		t.Helper()
+
+		row := supplier_service_models.Supplier{TeamID: team, Name: name}
+
+		err := db.Create(&row).Error
+		if err != nil {
+			t.Fatalf("supplier %s: %v", name, err)
+		}
+
+		return row.ID
+	}
+
+	sumber := supplier(melati, "Sumber Gudang Lima")
+	sinarJaya := supplier(melati, "Sinar Gudang Enam")
+	kosong := supplier(melati, "Kosong Belum Datang")
+	lain := supplier(sinar, "Lain Gudang Lima")
+
+	restock := func(warehouse, team, supplierID uint64) {
+		t.Helper()
+
+		tx := inventory_service_models.InventoryTransaction{WarehouseID: warehouse, TeamID: team, TxType: inventory_service_models.TxRestock}
+
+		err := db.Create(&tx).Error
+		if err != nil {
+			t.Fatalf("transaction: %v", err)
+		}
+
+		err = db.Create(&inventory_service_models.Batch{
+			WarehouseID: warehouse, TeamID: team, ProductID: 9_520_901, TransactionID: tx.ID, PriceUnit: 1000,
+			StockCount: 4, StockValuation: 4000, InitStockCount: 4, InitStockValuation: 4000, SupplierID: supplierID,
+		}).Error
+		if err != nil {
+			t.Fatalf("batch: %v", err)
+		}
+	}
+
+	restock(gudang5, melati, sumber)
+	restock(gudang5, sinar, sumber)
+	restock(gudang6, sinar, sumber)
+	restock(gudang6, melati, sinarJaya)
+	restock(gudang5, sinar, lain)
+
+	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
+	svc := supplier_v1.NewService(db, nil, nil, reader, nil)
+
+	list := func(scope supplierv1.SupplierListScope, warehouse uint64) []uint64 {
+		t.Helper()
+
+		resp, err := svc.SupplierList(ctx, connect.NewRequest(&supplierv1.SupplierListRequest{
+			TeamId: melati, Filter: &supplierv1.SupplierListFilter{Scope: scope, WarehouseId: warehouse},
+			Page: &commonv1.CommonPagination{Page: 1, Limit: 50},
+		}))
+		if err != nil {
+			t.Fatalf("SupplierList(%v, %d): %v", scope, warehouse, err)
+		}
+
+		// Only this test's suppliers: the shared database may hold others' rows.
+		var ours []uint64
+
+		for _, id := range resp.Msg.GetIds() {
+			if slices.Contains([]uint64{sumber, sinarJaya, kosong, lain}, id) {
+				ours = append(ours, id)
+			}
+		}
+
+		return ours
+	}
+
+	own := supplierv1.SupplierListScope_SUPPLIER_LIST_SCOPE_OWN
+	every := supplierv1.SupplierListScope_SUPPLIER_LIST_SCOPE_EVERY_TEAM
+
+	if got, want := list(own, gudang5), []uint64{sumber}; !slices.Equal(got, want) {
+		t.Fatalf("own at Gudang 5 = %v, want %v", got, want)
+	}
+
+	if got, want := list(own, gudang6), []uint64{sinarJaya, sumber}; !slices.Equal(got, want) {
+		t.Fatalf("own at Gudang 6 = %v, want %v", got, want)
+	}
+
+	if got, want := list(every, gudang5), []uint64{lain, sumber}; !slices.Equal(got, want) {
+		t.Fatalf("Discover at Gudang 5 = %v, want %v", got, want)
+	}
+
+	if got, want := list(own, 0), []uint64{kosong, sinarJaya, sumber}; !slices.Equal(got, want) {
+		t.Fatalf("own, any warehouse = %v, want %v", got, want)
 	}
 }

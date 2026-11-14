@@ -24,9 +24,11 @@ import (
 // Running Playwright, vitest and go test from san — the batching, caps, port cleanup and lock handling
 // that the agent's e2e_batches.sh did, ported so every developer gets the same runner.
 //
-// The e2e has ONE test database and ONE pair of ports (API :8081, UI :5175 — playwright.config.ts),
-// and its setup DROPS that database. Two runs at once destroy each other silently (e2e/lock.ts), so
-// every entry point here refuses while another run is live, and cleans only what is its own.
+// The live tree's e2e has ONE test database and ONE pair of ports (API :8081, UI :5175 — playwright.config.ts),
+// and its setup DROPS that database. Two runs on them at once destroy each other silently (e2e/lock.ts), so
+// every entry point here refuses while another run on the SAME database and ports is live, and cleans only what is
+// its own. A full run lives elsewhere — its worker's own database, ports and events project (test_workers.go), its go
+// test on warehouse_test_go, its Storybook on its own port — so it blocks only another full run (busyState below).
 
 const (
 	e2eAPIPort  = 8081
@@ -41,8 +43,8 @@ const (
 var aloneSpecs = map[string]bool{"orders.spec.ts": true}
 
 // restockFamily is the old restock.spec.ts (62 tests, ~12 min, a third of the suite), split by its describe blocks
-// into restock.spec.ts and restock_*.spec.ts (backlog #51) so parallel workers can share it out. In the
-// single-database batches (--workers 1, today's fallback) the family still runs as ONE batch of its own, under
+// into restock.spec.ts and restock_*.spec.ts (backlog #51) so parallel workers can share it out. On ONE worker (the
+// default, --workers 1) and in the --shared-db batches the family still runs as ONE batch of its own, under
 // longSpecCap — exactly what the one file did.
 func restockFamily(spec string) bool {
 	return spec == "restock.spec.ts" || strings.HasPrefix(spec, "restock_") && strings.HasSuffix(spec, ".spec.ts")
@@ -171,10 +173,16 @@ func parseNetstat(out string, port int) []int {
 	return pids
 }
 
-// listeners are the pids listening on a TCP port.
+// portListeners is what a PLAN asks to find a free port (listeners); tests replace it so a plan never depends on
+// what this host is running.
+var portListeners = listeners
+
+// listeners are the pids listening on a TCP port — IPv4 or IPv6. Vite and Vitest listen on [::1] only (Node resolves
+// localhost to it first), which `netstat -p TCP` never lists: it shows IPv4 alone, so a dev server held a port san
+// called free.
 func listeners(port int) []int {
 	if runtime.GOOS == "windows" {
-		out, err := exec.Command("netstat", "-ano", "-p", "TCP").Output()
+		out, err := exec.Command("netstat", "-ano").Output()
 		if err != nil {
 			return nil
 		}
@@ -260,10 +268,6 @@ func killTree(pid int) error {
 type e2eLock struct {
 	PID       int    `json:"pid"`
 	StartedAt string `json:"startedAt"`
-}
-
-func readE2ELock(frontend string) (*e2eLock, error) {
-	return readLockFile(filepath.Join(frontend, ".e2e-lock"))
 }
 
 // readLockFile reads one run lock — frontend/.e2e-lock, or a parallel worker's .e2e-lock.w1.
@@ -377,10 +381,15 @@ func preflightE2E(foreign []string) error {
 
 // ── the full-run lock ─────────────────────────────────────────────────────────────────────────────
 
+// fullRunLock is e2e_report/.full_run.lock: which full run is live, and what it holds.
 type fullRunLock struct {
 	PID     int       `json:"pid"`
 	Started time.Time `json:"started"`
 	Copy    string    `json:"copy"`
+	// Shared marks a --shared-db run: its e2e is on warehouse_test, :8081/:5175, like the live tree's own runs.
+	Shared bool `json:"shared,omitempty"`
+	// Workers are its e2e workers (w1 …), each on its own warehouse_test_wN, ports and events project.
+	Workers []string `json:"workers,omitempty"`
 }
 
 func fullLockPath(root string) string {
@@ -404,22 +413,105 @@ func liveFullRun(root string) *fullRunLock {
 	return &l
 }
 
-// refuseIfBusy stops a run while another e2e run is live — a full run on a frozen copy (its servers
-// hold the same ports and database) or a Playwright run in this tree.
-func refuseIfBusy(root string) error {
-	l := liveFullRun(root)
-	if l != nil {
-		return fmt.Errorf("a full run is live (pid %d, started %s, copy %s) — it holds the e2e ports and the test "+
-			"database; wait for it (go run ./tools/san test report)", l.PID, l.Started.Format("15:04"), l.Copy)
+// busyState is what is live when a run asks to start: the full run holding e2e_report/.full_run.lock (nil: none),
+// and the live tree's run locks held by a live process — frontend/.e2e-lock (a run on warehouse_test, :8081/:5175)
+// and frontend/.e2e-lock.wN (a run as worker wN, on warehouse_test_wN).
+type busyState struct {
+	Full  *fullRunLock
+	Locks map[string]*e2eLock // lock file name → the lock
+}
+
+// readBusy reads the busy state of the checkout at root (this process's own locks are not counted).
+func readBusy(root string) busyState {
+	s := busyState{Full: liveFullRun(root), Locks: map[string]*e2eLock{}}
+	frontend := filepath.Join(root, "frontend")
+
+	entries, err := os.ReadDir(frontend)
+	if err != nil {
+		return s
 	}
 
-	lock, err := readE2ELock(filepath.Join(root, "frontend"))
-	if err == nil && lock.PID > 0 && lock.PID != os.Getpid() && pidAlive(lock.PID) {
-		return fmt.Errorf("another e2e run is live (frontend/.e2e-lock, pid %d, started %s) — two runs reset one "+
-			"database under each other; wait for it", lock.PID, lock.StartedAt)
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || name != ".e2e-lock" && !strings.HasPrefix(name, ".e2e-lock.") {
+			continue
+		}
+
+		l, err := readLockFile(filepath.Join(frontend, name))
+		if err == nil && l.PID > 0 && l.PID != os.Getpid() && pidAlive(l.PID) {
+			s.Locks[name] = l
+		}
+	}
+
+	return s
+}
+
+// liveTreeRefusal says why a run on the live tree's warehouse_test and :8081/:5175 — `test smoke`, `affected --run`,
+// `accept-run`'s re-runs — may not start now: another run there (frontend/.e2e-lock), or a --shared-db full run,
+// which holds them too. A full run on its own worker shares nothing with it and never refuses it.
+func (s busyState) liveTreeRefusal() error {
+	if s.Full != nil && s.Full.Shared {
+		return fmt.Errorf("a --shared-db full run is live (pid %d, started %s, copy %s) — it holds the e2e ports "+
+			":%d/:%d and %s; wait for it (go run ./tools/san test report)", s.Full.PID, s.Full.Started.Format("15:04"),
+			s.Full.Copy, e2eAPIPort, e2eUIPort, testDBName)
+	}
+
+	if l := s.Locks[".e2e-lock"]; l != nil {
+		return fmt.Errorf("another e2e run is live (frontend/.e2e-lock, pid %d, started %s) — two runs reset %s "+
+			"under each other; wait for it", l.PID, l.StartedAt, testDBName)
 	}
 
 	return nil
+}
+
+// fullRefusal says why a full run (shared: --shared-db; workers: its workers' names) may not start now: another full
+// run — two at once share the template, the worker databases and their ports; a Playwright run in the live tree as
+// one of its workers (frontend/.e2e-lock.w1: the same warehouse_test_w1); and for --shared-db, any run on
+// warehouse_test. The live tree's own runs on warehouse_test (smoke, affected, Go DB tests) never stop a full run.
+func (s busyState) fullRefusal(shared bool, workers []string) error {
+	if s.Full != nil {
+		return fmt.Errorf("a full run is live (pid %d, started %s, copy %s) — two full runs at once share the "+
+			"template %s, the worker databases (%s_w1 …) and their ports; wait for it (go run ./tools/san test report)",
+			s.Full.PID, s.Full.Started.Format("15:04"), s.Full.Copy, templateDB, testDBName)
+	}
+
+	for _, w := range workers {
+		if l := s.Locks[".e2e-lock."+w]; l != nil {
+			return fmt.Errorf("a Playwright run in this folder runs as worker %s (frontend/.e2e-lock.%s, pid %d, "+
+				"started %s) — on %s_%s, the database the full run's %s would use; wait for it, or run that one as "+
+				"another worker (E2E_WORKER=w9 E2E_DB_NAME=%s_w9 E2E_API_PORT=8189 E2E_UI_PORT=5189 "+
+				"E2E_PUBSUB_PROJECT=warehouse-e2e-w9)", w, w, l.PID, l.StartedAt, testDBName, w, w, testDBName)
+		}
+	}
+
+	if shared {
+		return s.liveTreeRefusal()
+	}
+
+	return nil
+}
+
+// acceptRefusal is liveTreeRefusal for `accept-run`, which also writes e2e_report/last_green.json: while ANY full run
+// is live it refuses — that run moves last_green.json when it ends, and an older run accepted meanwhile could land
+// after it and take the baseline back.
+func (s busyState) acceptRefusal() error {
+	if s.Full != nil {
+		return fmt.Errorf("a full run is live (pid %d, started %s) — it moves last_green.json when it ends, and "+
+			"accepting another run now could undo that; wait for it (go run ./tools/san test report)", s.Full.PID,
+			s.Full.Started.Format("15:04"))
+	}
+
+	return s.liveTreeRefusal()
+}
+
+// refuseIfBusy stops a run on the live tree's warehouse_test and :8081/:5175 while another run there is live.
+func refuseIfBusy(root string) error {
+	return readBusy(root).liveTreeRefusal()
+}
+
+// refuseFullIfBusy stops a full run while another full run, or a live-tree run on one of its workers, is live.
+func refuseFullIfBusy(root string, shared bool, workers []string) error {
+	return readBusy(root).fullRefusal(shared, workers)
 }
 
 // ── running a step ────────────────────────────────────────────────────────────────────────────────
@@ -507,10 +599,7 @@ func playwrightArgv(frontend string, args ...string) []string {
 // file names (w1-b2.log); its cap is the batch's own (b.Cap) when set.
 func runPlaywrightBatch(ctx context.Context, frontend string, b *BatchResult, grep string, dir string,
 	echo io.Writer, extraEnv ...string) error {
-	name := fmt.Sprintf("b%d", b.N)
-	if b.Worker != "" {
-		name = b.Worker + "-" + name
-	}
+	name := b.name()
 
 	jsonPath := filepath.Join(dir, name+".json")
 	b.Log = filepath.Join(dir, name+".log")
@@ -594,6 +683,7 @@ func (f *progressFilter) Write(p []byte) (int, error) {
 
 type pwReport struct {
 	Suites []pwSuite `json:"suites"`
+	Errors []pwError `json:"errors"` // errors not part of any test: a spec that failed to load, the global setup
 }
 
 type pwSuite struct {
@@ -624,6 +714,8 @@ type playwrightSummary struct {
 	Counts   Counts
 	Specs    map[string]*SpecResult
 	Failures []string
+	Errors   []pwError // the report's top-level errors
+	Loaded   bool      // the report holds at least one suite: the spec files loaded
 }
 
 func parsePlaywrightJSON(path string) (*playwrightSummary, error) {
@@ -639,7 +731,7 @@ func parsePlaywrightJSON(path string) (*playwrightSummary, error) {
 		return nil, err
 	}
 
-	sum := &playwrightSummary{Specs: map[string]*SpecResult{}}
+	sum := &playwrightSummary{Specs: map[string]*SpecResult{}, Errors: rep.Errors, Loaded: len(rep.Suites) > 0}
 
 	var walk func(s pwSuite, file string, titles []string)
 

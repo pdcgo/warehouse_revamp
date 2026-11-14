@@ -81,7 +81,7 @@ func storedLines(t *testing.T, db *gorm.DB, bundleID uint64) []storedLine {
 // holds exactly one caller's pair — never a mix of two, never four lines, never a unique violation half-way.
 func TestRace_BundleUpdate_EightSavesNeverMix(t *testing.T) {
 	h := bundleRaceHarness(t)
-	svc := product_v1.NewService(h.DB(), nil, nil)
+	svc := product_v1.NewService(h.DB(), nil, nil, nil, nil)
 	p := raceProducts(t, h.DB(), melati, 17)
 	b := createBundle(t, svc, asPerson(ani, role_basev1.Role_ROLE_SELLING_OWNER), melati, "Race", lines(p[16], 1))
 
@@ -113,20 +113,20 @@ func TestInterleave_BundleUpdate_ASecondSaveWaitsAndReadsTheFirst(t *testing.T) 
 	h := bundleRaceHarness(t)
 	own := raceProducts(t, h.DB(), melati, 1)
 	borrowed := raceProducts(t, h.DB(), kenanga, 1)
-	b := createBundle(t, product_v1.NewService(h.DB(), nil, nil), asPerson(ani, role_basev1.Role_ROLE_SELLING_OWNER), melati, "Race", lines(own[0], 1))
+	b := createBundle(t, product_v1.NewService(h.DB(), nil, nil, nil, nil), asPerson(ani, role_basev1.Role_ROLE_SELLING_OWNER), melati, "Race", lines(own[0], 1))
 
 	const bSaves = "B saves the same bundle, keeping the borrowed line"
 
 	sched := h.Interleave(t,
 		san_race.Do("A", "A adds the borrowed product", func(tx *gorm.DB) error {
-			return saveLines(product_v1.NewService(tx, nil, nil), b.GetId(), lines(own[0], 1, borrowed[0], 1))
+			return saveLines(product_v1.NewService(tx, nil, nil, nil, nil), b.GetId(), lines(own[0], 1, borrowed[0], 1))
 		}),
 		san_race.Do("C", "its owner locks it", func(tx *gorm.DB) error {
 			return tx.Exec("UPDATE products SET cross_locked = TRUE WHERE id = ?", borrowed[0]).Error
 		}),
 		san_race.Commit("C"),
 		san_race.Block("B", bSaves, func(tx *gorm.DB) error {
-			return saveLines(product_v1.NewService(tx, nil, nil), b.GetId(), lines(own[0], 2, borrowed[0], 2))
+			return saveLines(product_v1.NewService(tx, nil, nil, nil, nil), b.GetId(), lines(own[0], 2, borrowed[0], 2))
 		}),
 		san_race.Commit("A"),
 		san_race.Commit("B"),
@@ -153,7 +153,7 @@ func TestInterleave_BundleUpdate_ASecondSaveWaitsAndReadsTheFirst(t *testing.T) 
 // is NotFound, never a set of orphaned lines written after the delete.
 func TestRace_BundleUpdateAndDelete_NoOrphanLines(t *testing.T) {
 	h := bundleRaceHarness(t)
-	svc := product_v1.NewService(h.DB(), nil, nil)
+	svc := product_v1.NewService(h.DB(), nil, nil, nil, nil)
 	p := raceProducts(t, h.DB(), melati, 8)
 	b := createBundle(t, svc, asPerson(ani, role_basev1.Role_ROLE_SELLING_OWNER), melati, "Race", lines(p[0], 1))
 
@@ -189,7 +189,7 @@ func TestRace_BundleUpdateAndDelete_NoOrphanLines(t *testing.T) {
 // shares no row with another, and a name may repeat (bundle-names-may-repeat) — so nothing here should wait or fail.
 func TestRace_BundleCreate_EightCreatesAreIndependent(t *testing.T) {
 	h := bundleRaceHarness(t)
-	svc := product_v1.NewService(h.DB(), nil, nil)
+	svc := product_v1.NewService(h.DB(), nil, nil, nil, nil)
 	p := raceProducts(t, h.DB(), melati, 2)
 
 	res := h.Race(t, 8, func(int) error {

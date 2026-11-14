@@ -10,7 +10,9 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	supplierv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_service_models"
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
@@ -326,5 +328,242 @@ func TestSupplierList_ABandIsValidated(t *testing.T) {
 		if (err == nil) != c.ok {
 			t.Fatalf("band [%d, %d): err %v, want ok=%v", c.band.GetMin(), c.band.GetMax(), err, c.ok)
 		}
+	}
+}
+
+// ── THE GUDANG FILTER (the-warehouse-filters-before-the-team, the-warehouse-filter-narrows-only-the-rows) ──────────────
+
+const (
+	gudang1 uint64 = 21
+	gudang2 uint64 = 22
+	gudang3 uint64 = 23 // received nobody's goods
+)
+
+// atWarehouse: Melati (sellingA) keeps one supplier received only at Gudang 1, one at both, one nowhere; Sinar
+// (sellingB) keeps one received at Gudang 1. Whole Terjual: 100, 600, 0, 700.
+type atWarehouse struct {
+	svc                      *supplier_v1.Service
+	goods                    *fakeGoods
+	onlyAt1, atBoth, nowhere supplier_service_models.Supplier
+	theirsAt1                supplier_service_models.Supplier
+}
+
+func atWarehouseFixture(t *testing.T) atWarehouse {
+	t.Helper()
+
+	db := san_testdb.DB(t)
+
+	f := atWarehouse{
+		onlyAt1:   insertSupplier(t, db, sellingA, "Kain Satu Gudang"),
+		atBoth:    insertSupplier(t, db, sellingA, "Benang Dua Gudang"),
+		nowhere:   insertSupplier(t, db, sellingA, "Kain Belum Datang"),
+		theirsAt1: insertSupplier(t, db, sellingB, "Kain Sinar"),
+	}
+
+	f.goods = &fakeGoods{
+		sold: map[uint64]int64{f.onlyAt1.ID: 100, f.atBoth.ID: 600, f.theirsAt1.ID: 700},
+		at: map[uint64][]uint64{
+			gudang1: {f.onlyAt1.ID, f.atBoth.ID, f.theirsAt1.ID},
+			gudang2: {f.atBoth.ID},
+		},
+	}
+	f.svc = supplier_v1.NewService(db, nil, nil, f.goods, nil)
+
+	return f
+}
+
+func (f atWarehouse) list(t *testing.T, ctx context.Context, team uint64, filter *supplierv1.SupplierListFilter) (*supplierv1.SupplierListResponse, error) {
+	t.Helper()
+
+	resp, err := f.svc.SupplierList(ctx, connect.NewRequest(&supplierv1.SupplierListRequest{
+		TeamId: team, Filter: filter, Page: page(1, 50),
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Msg, nil
+}
+
+// A picked warehouse keeps the suppliers received there — at it alone or at both, never one received nowhere — in the
+// list's own order, counted before the page; another team's supplier only on Discover, where the team filter narrows
+// it again; q and the team filter AND with it.
+func TestSupplierList_TheWarehouseKeepsTheSuppliersReceivedThere(t *testing.T) {
+	f := atWarehouseFixture(t)
+	every := supplierv1.SupplierListScope_SUPPLIER_LIST_SCOPE_EVERY_TEAM
+
+	cases := []struct {
+		name   string
+		filter *supplierv1.SupplierListFilter
+		want   []uint64
+	}{
+		{"own, Gudang 1", &supplierv1.SupplierListFilter{WarehouseId: gudang1}, []uint64{f.atBoth.ID, f.onlyAt1.ID}},
+		{"own, Gudang 2", &supplierv1.SupplierListFilter{WarehouseId: gudang2}, []uint64{f.atBoth.ID}},
+		{"own, Gudang 3 — nobody's goods", &supplierv1.SupplierListFilter{WarehouseId: gudang3}, nil},
+		{"own, any warehouse", &supplierv1.SupplierListFilter{}, []uint64{f.nowhere.ID, f.atBoth.ID, f.onlyAt1.ID}},
+		{"Discover, Gudang 1 — both teams", &supplierv1.SupplierListFilter{Scope: every, WarehouseId: gudang1},
+			[]uint64{f.theirsAt1.ID, f.atBoth.ID, f.onlyAt1.ID}},
+		{"Discover, Gudang 1 + Sinar's team", &supplierv1.SupplierListFilter{Scope: every, WarehouseId: gudang1, OwnerTeamId: sellingB},
+			[]uint64{f.theirsAt1.ID}},
+		{"Discover, Gudang 2 + Sinar's team", &supplierv1.SupplierListFilter{Scope: every, WarehouseId: gudang2, OwnerTeamId: sellingB}, nil},
+		{"own, Gudang 1 + q kain", &supplierv1.SupplierListFilter{WarehouseId: gudang1, Q: "kain"}, []uint64{f.onlyAt1.ID}},
+		{"Discover, Gudang 1 + q kain", &supplierv1.SupplierListFilter{Scope: every, WarehouseId: gudang1, Q: "kain"},
+			[]uint64{f.theirsAt1.ID, f.onlyAt1.ID}},
+	}
+
+	for _, c := range cases {
+		got, err := f.list(t, context.Background(), sellingA, c.filter)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+
+		if !slices.Equal(got.GetIds(), c.want) || got.GetPageInfo().GetTotalItems() != uint64(len(c.want)) {
+			t.Fatalf("%s = %v (total %d), want %v", c.name, got.GetIds(), got.GetPageInfo().GetTotalItems(), c.want)
+		}
+	}
+}
+
+// Only the rows narrow: a band tests the supplier's WHOLE figure, over every warehouse — Benang sold 600 in all, so under
+// Gudang 2 it is in 500–1.000 however little it sold there; a band from 0 (< 500, asked as its complement) keeps Kain
+// Satu Gudang's 100. The two sets are cut together in Go, and once the warehouse leaves nobody the band is never asked.
+func TestSupplierList_TheWarehouseAndABandAreCutTogether(t *testing.T) {
+	f := atWarehouseFixture(t)
+
+	band := func(lo, hi int64) *supplierv1.SupplierFigureBand {
+		return &supplierv1.SupplierFigureBand{Min: lo, Max: hi}
+	}
+
+	cases := []struct {
+		name   string
+		filter *supplierv1.SupplierListFilter
+		want   []uint64
+	}{
+		{"Gudang 2 + Terjual 500–1.000", &supplierv1.SupplierListFilter{WarehouseId: gudang2, Sold: band(500, 1_000)}, []uint64{f.atBoth.ID}},
+		{"Gudang 1 + Terjual < 500", &supplierv1.SupplierListFilter{WarehouseId: gudang1, Sold: band(0, 500)}, []uint64{f.onlyAt1.ID}},
+		{"Gudang 1 + Terjual ≥ 5.000", &supplierv1.SupplierListFilter{WarehouseId: gudang1, Sold: band(5_000, 0)}, nil},
+		{"Gudang 1 + Siap < 50 (nobody has a shelf)", &supplierv1.SupplierListFilter{WarehouseId: gudang1, Ready: band(0, 50)},
+			[]uint64{f.atBoth.ID, f.onlyAt1.ID}},
+	}
+
+	for _, c := range cases {
+		got, err := f.list(t, context.Background(), sellingA, c.filter)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+
+		if !slices.Equal(got.GetIds(), c.want) || got.GetPageInfo().GetTotalItems() != uint64(len(c.want)) {
+			t.Fatalf("%s = %v (total %d), want %v", c.name, got.GetIds(), got.GetPageInfo().GetTotalItems(), c.want)
+		}
+	}
+
+	asked := f.goods.asked
+
+	got, err := f.list(t, context.Background(), sellingA, &supplierv1.SupplierListFilter{WarehouseId: gudang3, Sold: band(500, 1_000)})
+	if err != nil || len(got.GetIds()) != 0 {
+		t.Fatalf("Gudang 3 + a band = %v, %v — want none", got.GetIds(), err)
+	}
+
+	if f.goods.asked != asked {
+		t.Fatalf("the band was asked %d more time(s) after the warehouse left nobody", f.goods.asked-asked)
+	}
+}
+
+// Narrowed BEFORE the count and the page, so the pager counts only the warehouse's suppliers and a sort by name reads
+// across all of them: 30 of 60 received at Gudang 1, page 2 of 25 holds the last 5, Z to A.
+func TestSupplierList_TheWarehouseNarrowsBeforeThePage(t *testing.T) {
+	db := san_testdb.DB(t)
+	goods := &fakeGoods{at: map[uint64][]uint64{}}
+	svc := supplier_v1.NewService(db, nil, nil, goods, nil)
+
+	var received []string
+
+	for i := range 60 {
+		name := "Pemasok " + string(rune('A'+i/26)) + string(rune('a'+i%26))
+		s := insertSupplier(t, db, sellingA, name)
+
+		if i%2 == 0 {
+			goods.at[gudang1] = append(goods.at[gudang1], s.ID)
+			received = append(received, name)
+		}
+	}
+
+	slices.Sort(received)
+	slices.Reverse(received)
+
+	resp, err := svc.SupplierList(context.Background(), connect.NewRequest(&supplierv1.SupplierListRequest{
+		TeamId: sellingA, Filter: &supplierv1.SupplierListFilter{WarehouseId: gudang1}, Page: page(2, 25),
+		Sort: &supplierv1.SupplierListFilterSort{SortType: commonv1.CommonSortType_COMMON_SORT_TYPE_DESC, S: &supplierv1.SupplierListFilterSort_Supplier{
+			Supplier: supplierv1.SupplierRowSort_SUPPLIER_ROW_SORT_NAME,
+		}},
+		DataRequest: []supplierv1.SupplierListDataType{supplierv1.SupplierListDataType_SUPPLIER_LIST_DATA_TYPE_SUPPLIER},
+	}))
+	if err != nil {
+		t.Fatalf("SupplierList: %v", err)
+	}
+
+	info := resp.Msg.GetPageInfo()
+	if info.GetTotalItems() != 30 || info.GetTotalPage() != 2 || len(resp.Msg.GetIds()) != 5 {
+		t.Fatalf("page 2 = %d ids, info %+v — want 5 of 30 over 2 pages", len(resp.Msg.GetIds()), info)
+	}
+
+	var names []string
+
+	for _, item := range resp.Msg.GetItems() {
+		for _, id := range resp.Msg.GetIds() {
+			if s, ok := item.GetSupplier().GetMapData()[id]; ok {
+				names = append(names, s.GetName())
+			}
+		}
+	}
+
+	if !slices.Equal(names, received[25:]) {
+		t.Fatalf("page 2 by name, Z to A = %v, want %v", names, received[25:])
+	}
+}
+
+// Inventory not answering is an error, never an empty list — nor is a reader that cannot answer the question at all.
+func TestSupplierList_TheWarehouseUnansweredIsAnError(t *testing.T) {
+	f := atWarehouseFixture(t)
+	f.goods.err = errTeamServiceDown
+
+	_, err := f.list(t, context.Background(), sellingA, &supplierv1.SupplierListFilter{WarehouseId: gudang1})
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("a warehouse with inventory down = %v, want Internal", err)
+	}
+
+	svc := supplier_v1.NewService(san_testdb.DB(t), nil, nil, onlyGoods{f.goods}, nil)
+
+	_, err = svc.SupplierList(context.Background(), connect.NewRequest(&supplierv1.SupplierListRequest{
+		TeamId: sellingA, Filter: &supplierv1.SupplierListFilter{WarehouseId: gudang1}, Page: page(1, 50),
+	}))
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("a warehouse asked of a reader without WarehouseGoods = %v, want Internal", err)
+	}
+}
+
+// onlyGoods hides the fake's WarehouseGoods — a GoodsReader that cannot say where goods were received.
+type onlyGoods struct{ supplier_v1.GoodsReader }
+
+// A warehouse role may name only its own building: the chips are the selling side's, and use_scope checks team_id alone.
+func TestSupplierList_AWarehouseFiltersOnlyByItself(t *testing.T) {
+	f := atWarehouseFixture(t)
+	every := supplierv1.SupplierListScope_SUPPLIER_LIST_SCOPE_EVERY_TEAM
+	staff := san_auth.WithCallerRole(context.Background(), role_basev1.Role_ROLE_WAREHOUSE_STAFF)
+
+	_, err := f.list(t, staff, gudang1, &supplierv1.SupplierListFilter{Scope: every, WarehouseId: gudang2})
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("Gudang 1's staff filtering by Gudang 2 = %v, want PermissionDenied", err)
+	}
+
+	got, err := f.list(t, staff, gudang1, &supplierv1.SupplierListFilter{Scope: every, WarehouseId: gudang1})
+	if err != nil || len(got.GetIds()) != 3 {
+		t.Fatalf("Gudang 1's staff filtering by itself = %v, %v — want its 3 suppliers", got.GetIds(), err)
+	}
+
+	owner := san_auth.WithCallerRole(context.Background(), role_basev1.Role_ROLE_SELLING_OWNER)
+
+	got, err = f.list(t, owner, sellingA, &supplierv1.SupplierListFilter{WarehouseId: gudang2})
+	if err != nil || !slices.Equal(got.GetIds(), []uint64{f.atBoth.ID}) {
+		t.Fatalf("a seller filtering by any warehouse = %v, %v — want Benang", got.GetIds(), err)
 	}
 }

@@ -7,12 +7,16 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
-## 2026-11-14 · a faster full test run, transfers on a phone
+## 2026-11-14 · a faster full test run, transfers on a phone, product filters
 
 | What shipped | What it means for a person |
 | --- | --- |
 | **The long test run is about twice as fast** | the full browser test run now uses three workers, each with its own copy of the test database — about 16 minutes instead of 35 |
 | **Transfers read well on a phone** | both transfer lists show one card per transfer on a phone, the tabs slide instead of piling up, and the warehouse can Process / Ship / Accept from the card; the warehouse table now says who opened each transfer |
+| **The product list filters by lock and stock age** | the Lock filter (open, minimum set, always locked, locked now) and the Stock age filter (30, 60, 90+ days) on Products now really narrow the list — they used to keep the pick and show everything |
+| **Discover shows real stock and prices** | another team's cards on Discover now show their real ready stock, stock on its way and cross price (no more samples), the lock badge says Terkunci when stock is under the minimum, and the Kunci filter (Terbuka / Terkunci) really narrows |
+| **Every Discover filter works** | Discover's warehouse, ready-stock, cross-price and category filters now really narrow the products (picking a warehouse also shows that warehouse's stock and price on the cards), and a product's Discover page shows the same real figures as its card |
+| **The supplier list filters by warehouse** | picking a warehouse on Suppliers (and Discover › Suppliers) now keeps only the suppliers whose goods were received there; their sold and ready figures stay their whole totals |
 
 ## 2026-11-13 · wrong stock-in correction, batch history racks
 

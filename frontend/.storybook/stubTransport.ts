@@ -102,6 +102,7 @@ import { settlementAnalyticService } from "./settlementAnalyticStub";
 import { shopService } from "./shopStub";
 import { categoryService } from "./categoryStub";
 import {
+  discoverStockByIds,
   orderActivityStat,
   orderProductActivityByIds,
   ownerBatchList,
@@ -1331,6 +1332,10 @@ export const transport = createRouterTransport(({ service }) => {
           (req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n),
       })),
     }),
+
+    // DISCOVER'S CARD FIGURES — every product on the page, whoever owns it: ready, on its way, the every-warehouse total
+    // and the cross price, never the cost (productStub.ts `discoverStockSample`).
+    discoverStockByIds: (req) => discoverStockByIds(req),
 
     // The SELLING side's own-stock read — what this team owns at a warehouse, plus what it has on
     // order elsewhere. Two lenses over one message, so `filter.warehouseId` decides which one the

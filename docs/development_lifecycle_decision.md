@@ -179,3 +179,54 @@ flowchart TD
 ✅ **Built 2026-11-13** — backlog #49, as `san test` ([docs/tools/san.md](tools/san.md#test-measure)): `test measure` (the file fingerprint against the gitignored `e2e_report/last_green.json`, areas and risk, the wide-change list, due / overdue, the one-line ask), `test affected` (the specs a change reaches through RPCs, pages, test ids, plus `frontend/e2e/affected.txt` for what reading cannot tell; `--run` runs them), `test smoke` (the five flows as 11 tests in `frontend/e2e/smoke.txt`, 1 min 23 s measured), `test full` (go test, Storybook and the e2e batches on a frozen copy beside the checkout; `last_green.json` moves only when all of it is green; `--dry-run` prints the plan), `test report` and `test slice` (latest.md, the slice log). The full run itself has not run yet — there is no green baseline, so it is due. #50 and #51 are not built.
 
 ✅ **Built 2026-11-14** — backlog #51, the *afterwards* row: `san test full --workers N` ([docs/tools/san.md](tools/san.md#test-full)) runs the e2e as N Playwright runs at once on the frozen copy, each with its own test database (`warehouse_test_wN`, every batch a clone of `warehouse_test_tpl`, which is migrated and seeded once per run), its own API and UI ports (8181+/5181+; a port another program holds is skipped, never killed) and its own events project (`warehouse-e2e-wN`, its push subscriptions on its own port). **How many workers — answered by measuring: 3**, the default (31.8 GB RAM, 8 cores: 19.1 GB free idle, 14.2 GB at three workers, about 1.6 GB each; five workers ran the restock specs about twice as slow — the CPU, not the memory, is the limit). Specs are placed longest first by their recorded times and run in name order inside a worker, so every *sorts after* rule still holds; `frontend/e2e/coupled.txt` lists specs that must share one database (none found — every coupling found is of the sort-after kind). Root signs in once per run (a saved storageState) instead of in nearly every test; `restock.spec.ts` is five files by its describe blocks (62 tests, titles unchanged, each passed alone); `--workers 1` keeps the name-ordered single-database batches. Proved on subsets only — three workers × 11 specs green (58 passed), the restock files on five and on two workers, the smoke set green — and `--dry-run` estimates the e2e at about 14 min against about 33 as one database. The full run itself has still not run: it waits for the owner's yes.
+
+---
+
+## a-file-that-fails-to-load-is-re-run-once
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: the first full run on a frozen copy (3 workers, `e2e_report/runs/20261114-100420`, 23 min) had go 47 ✓, e2e 312 passed / 2 skipped / 0 failed, Storybook 2547 passed — but 11 Storybook files failed to **load** in the fresh copy (*Failed to fetch dynamically imported module*, *Cannot connect to the iframe* — the cold dependency cache re-bundling mid-run), and all 11 passed alone (34/34). A: a file that fails to load is re-run once by itself, a failed check never is, and this run becomes the first baseline; B: strict — only a run with zero failures counts.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| a load failure | a story or spec **file** that never ran a check because it failed to load (*Failed to import test file*, *Failed to fetch dynamically imported module*, *Cannot connect to the iframe*) is re-run **once, by itself**, inside the same full run; green on the re-run counts as green, and the run record names every file re-run and why |
+| a failed check | a failed assertion, a timeout inside a test, or a crash after the file loaded is **never** re-run — the run is red ([the-full-e2e-waits-for-a-measured-yes](#the-full-e2e-waits-for-a-measured-yes)) |
+| a second load failure | the same file failing to load again is red |
+| today | the run `20261114-100420` (fingerprint `8dcc80678c5c`) is the first green baseline — every check in it passed and the 11 load-failed files passed alone; `last_green.json` moves to it |
+
+This also settles the open point *"does a re-run of a red batch with no file changed move last_green?"* for load failures only: a batch whose checks failed still needs a whole new run. ⚠ Not built.
+
+✅ **Built 2026-11-14** — in `san test full` and a new `san test accept-run` ([docs/tools/san.md](tools/san.md#a-file-that-fails-to-load-is-re-run-once)): a failed Storybook or e2e run is sorted per FILE by exact signatures (a story file that failed to import / to fetch a dynamic import / to reach its iframe; a story whose only error is the dynamic import; a Playwright batch stopped before any test by a load error naming its own spec) — anything else is a check failure; each load-failed file is re-run once, by itself, in the same run (a story file with vitest in the frozen copy; a spec alone, then its batch's other specs, in fresh batches on the same worker), and the run record lists every re-run, why and its result. `san test accept-run <stamp>` does the same for an ended run — now, in the live tree — and moves `last_green.json` to THAT run's fingerprint when all are green; it refuses while any check failure remains. Applied to `20261114-100420` on 2026-11-14 11:10: the 10 load-failed files and the Search story (its 15 s timeout is a CHECK failure by the rule — the log does not tie it to the re-bundle — so it was named with `--rerun` and the owner's *today* row as its recorded reason) all passed alone, 34 tests; `last_green.json` is now that run's fingerprint `8dcc80678c5c`.
+
+---
+
+## a-dependency-bump-is-one-area
+
+> Owner (Heri), in chat (2026-11-14): *"B"* — to: should a dependency bump (`go.mod`/`go.sum`, `package.json`/`package-lock.json`) count as a wide change? A (recommended): wide — a library upgrade can break any screen or service, so the full run is due at once; B: no, one ordinary area — only the affected specs and the smoke set run.
+
+**The verdict.** A dependency bump is **one ordinary area** in `san test measure`; it is not on the wide-change list ([the-full-e2e-waits-for-a-measured-yes](#the-full-e2e-waits-for-a-measured-yes)). It makes the full run due only the usual ways — with 2 other areas (3+), together with a wide change, or before reporting work ready. ✅ Built 2026-11-14 — nothing to change: `san test measure` already counts these files as one area.
+
+---
+
+## the-full-e2e-runs-on-one-worker
+
+> Owner (Heri), in chat (2026-11-14): *"in next, can we set 1 worker for e2e test ? so my cpu not be heavy"* — after the day's full runs on three parallel workers (backlog #51, built 2026-11-14 with N=3 measured as what the machine carries).
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| default | `san test full` runs the e2e on **one** worker — the name-ordered batches on one test database (`--workers 1`), ~35 min instead of ~16–18 |
+| still there | `--workers N` (up to 6) for a run the owner asks to be fast; the parallel machinery (template clone, per-worker ports and events) is kept |
+| the agent | uses one worker for every full or partial e2e run, and no parallel load loops, unless the owner asks |
+
+It sets the open point *"how many parallel workers this machine's memory carries"* of [the-full-e2e-waits-for-a-measured-yes](#the-full-e2e-waits-for-a-measured-yes) for the default: one. ✅ Built 2026-11-14 — `defaultWorkers = 1` in `tools/san/test_workers.go`; docs/tools/san.md.
+
+---
+
+## development-goes-on-during-a-full-run
+
+> Owner (Heri), in chat (2026-11-14): *"can we continue development while e2e running ?"* — after [the-full-e2e-runs-on-one-worker](#the-full-e2e-runs-on-one-worker) put the one-worker run back on the shared `warehouse_test` and :8081/:5175, the database and ports a developer's own Go DB tests and smoke use.
+
+**The verdict.** A full run is fully isolated from the live checkout, on one worker too: its Go tests on `warehouse_test_go`, its e2e as worker w1 (`warehouse_test_w1` cloned from `warehouse_test_tpl`, :8181/:5181, events `warehouse-e2e-w1`), its Storybook on its own port (6116+). While it runs the live tree may run its Go DB tests, `san test smoke` / `affected --run` and Storybook (those first two still one at a time, as they share `warehouse_test`); only a second full run is refused. ⚠ A full run copies the tree as it is — start it when the tree compiles (no half-finished edit). ✅ Built 2026-11-14 — `tools/san` (`test_full.go`, `test_workers.go`, `test_runner.go`), `frontend/vitest.config.ts` (`STORIES_BROWSER_PORT`); docs/tools/san.md *While it runs*.

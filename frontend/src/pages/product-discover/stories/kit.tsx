@@ -1,8 +1,8 @@
 import { within } from "storybook/test";
 
 import { products } from "../../../../.storybook/fixtures";
-import { asTeam } from "../../../../.storybook/pageStory";
-import { patchProduct } from "../../../../.storybook/productStub";
+import { LocationProbe, type StoryEntry, asTeam, routedPage } from "../../../../.storybook/pageStory";
+import { discoverStockSample, liveProducts, patchProduct } from "../../../../.storybook/productStub";
 import { asRole } from "../../../../.storybook/sessionScenario";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { DiscoverProductsPage } from "../index";
@@ -28,6 +28,31 @@ export const TEH = byName("Teh Melati 100g");
 export const GULA = byName("Gula Pasir 1kg"); // the priority team's (13)
 export const BERAS = byName("Beras Pandan Wangi 5kg"); // team 12's — the team standing here
 
+/** Gudang Cabang (WH-02) — the second warehouse; only team 15's sample batches are held there. */
+export const CABANG = 14n;
+
+/**
+ * The page under its own router, opened at `entry`, with the router's query string beside it (`location-search`) — for
+ * a story that reads the filters written to the URL or opens the page with them already in it. Pair with
+ * `parameters: { dataRouter: true }`.
+ */
+export const AtDiscoverWith = (entry: StoryEntry) =>
+  routedPage(
+    [
+      {
+        path: "/products/discover",
+        element: (
+          <>
+            <DiscoverProductsPage />
+            <LocationProbe hidden />
+          </>
+        ),
+      },
+    ],
+    entry,
+  );
+export const AtDiscover = AtDiscoverWith("/products/discover");
+
 /** Everything in a file's meta but its title. */
 export const DISCOVER_PRODUCTS_META = {
   component: DiscoverProductsPage,
@@ -51,4 +76,24 @@ export const cards = (canvas: ReturnType<typeof within>) => canvas.queryAllByTes
 // the server does not send one yet (pending.ts `locked`). Kopi carries a minimum.
 export const withALockedProduct = () => {
   patchProduct(TEH.id, { crossLocked: true });
+};
+
+// TWO MINIMUMS ON PAGE 1, each over stock in BOTH warehouses (team 15's sample batches, the figures DiscoverStockByIds
+// answers): UNDER keeps a minimum one above its every-warehouse total — in force, Terkunci; AT keeps exactly its total —
+// open (a-minimum-closes-only-under-it), though its Gudang Pusat units alone are under it, so a badge reading one
+// warehouse would say Terkunci.
+const inBoth = liveProducts()
+  .slice(0, 20)
+  .filter((p) => p.teamId === 15n)
+  .filter((p) => discoverStockSample(p.id, 11n).readyQty > 0n && discoverStockSample(p.id, 14n).readyQty > 0n);
+
+export const UNDER = inBoth[0]!;
+export const AT = inBoth[1]!;
+export const totalOf = (id: bigint) => discoverStockSample(id, 0n).totalReadyQty;
+
+/** Teh locked by its owner, UNDER's minimum in force, AT exactly at its minimum — the three lock badges, and Kunci's split. */
+export const withTheThreeLocks = () => {
+  withALockedProduct();
+  patchProduct(UNDER.id, { reservedStock: Number(totalOf(UNDER.id)) + 1 });
+  patchProduct(AT.id, { reservedStock: Number(totalOf(AT.id)) });
 };

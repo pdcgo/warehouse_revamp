@@ -245,25 +245,27 @@ func liveTree(t *testing.T) string {
 	t.Helper()
 
 	return fakeRepo(t, map[string]string{
-		"backend/services/a_service/a.go":          "package a\n",
-		"backend/gen/warehouse/a.pb.go":            "package gen\n",
-		"backend/bin/app.exe":                      "binary",
-		"backend/app_development.exe":              "binary",
-		"examples/receipt_file_samples/a.pdf":      "%PDF",
-		".git/HEAD":                                "ref: refs/heads/x\n",
-		"backend/sub/.git":                         "gitdir: ../.git/modules/sub\n",
-		".env":                                     "SECRET=1\n",
-		"e2e_report/last_green.json":               "{}",
-		"frontend/node_modules/react/index.js":     "module.exports = 1\n",
-		"frontend/node_modules/.bin/vite.cmd":      "@echo off\n",
-		"frontend/node_modules/.vite/deps/x.js":    "cache\n",
-		"frontend/node_modules/.package-lock.json": "{}",
-		"frontend/test-results/old/trace.zip":      "x",
-		"frontend/.e2e-lock":                       "{\"pid\":1}",
-		"frontend/tsconfig.tsbuildinfo":            "x",
-		"frontend/src/gen/warehouse/a_pb.ts":       "export {}\n",
-		"graphify-out/graph.json":                  "{}",
-		"development_data/pg/PG_VERSION":           "16",
+		"backend/services/a_service/a.go":            "package a\n",
+		"backend/gen/warehouse/a.pb.go":              "package gen\n",
+		"backend/bin/app.exe":                        "binary",
+		"backend/app_development.exe":                "binary",
+		"examples/receipt_file_samples/a.pdf":        "%PDF",
+		".git/HEAD":                                  "ref: refs/heads/x\n",
+		"backend/sub/.git":                           "gitdir: ../.git/modules/sub\n",
+		".env":                                       "SECRET=1\n",
+		"e2e_report/last_green.json":                 "{}",
+		"frontend/node_modules/react/index.js":       "module.exports = 1\n",
+		"frontend/node_modules/.bin/vite.cmd":        "@echo off\n",
+		"frontend/node_modules/@esbuild/esbuild.exe": "MZ\n",
+		"frontend/node_modules/@rollup/rollup.node":  "MZ\n",
+		"frontend/node_modules/.vite/deps/x.js":      "cache\n",
+		"frontend/node_modules/.package-lock.json":   "{}",
+		"frontend/test-results/old/trace.zip":        "x",
+		"frontend/.e2e-lock":                         "{\"pid\":1}",
+		"frontend/tsconfig.tsbuildinfo":              "x",
+		"frontend/src/gen/warehouse/a_pb.ts":         "export {}\n",
+		"graphify-out/graph.json":                    "{}",
+		"development_data/pg/PG_VERSION":             "16",
 	})
 }
 
@@ -312,6 +314,20 @@ func TestFreezeCopyAndRemove(t *testing.T) {
 		}
 	}
 
+	// A program or native module a process loads is the copy's own COPY: a live-tree Vite running it must not pin
+	// the copy's link (Windows refuses to delete a loaded file's links).
+	for _, f := range []string{"@esbuild/esbuild.exe", "@rollup/rollup.node"} {
+		info, err := os.Lstat(filepath.Join(dst, "frontend", "node_modules", filepath.FromSlash(f)))
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("node_modules/%s should be a regular file in the copy: %v", f, err)
+		}
+
+		liveInfo, err := os.Stat(filepath.Join(live, "frontend", "node_modules", filepath.FromSlash(f)))
+		if err != nil || os.SameFile(info, liveInfo) {
+			t.Errorf("node_modules/%s should be copied, not hard-linked: %v", f, err)
+		}
+	}
+
 	err = removeCopy(dst)
 	if err != nil {
 		t.Fatal(err)
@@ -341,13 +357,15 @@ func TestPlanFull(t *testing.T) {
 		"frontend/e2e/users.spec.ts":   "",
 	})
 	now := time.Date(2026, 11, 13, 18, 0, 0, 0, time.Local)
+	noListeners(t)
 
 	plan, err := planFull(root, fullOptions{}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if plan.Partial || strings.Join(plan.GoArgv, " ") != "go test -count=1 ./..." || len(plan.Batches) != 4 ||
+	if plan.Partial || strings.Join(plan.GoArgv, " ") != "go test -count=1 ./..." || plan.Batches != nil ||
+		plan.Workers == nil || len(plan.Workers.Workers) != 1 || len(plan.Workers.Workers[0].Batches) != 4 ||
 		plan.CopyDir != filepath.Join(filepath.Dir(root), ".san_frozen", filepath.Base(root)+"-20261113-180000") {
 		t.Fatalf("plan %+v", plan)
 	}
@@ -376,7 +394,8 @@ func TestPlanFull(t *testing.T) {
 	out.Reset()
 	plan.print(&out, fp, nil)
 
-	if !plan.Partial || plan.GoArgv != nil || len(plan.Batches) != 1 || !strings.Contains(out.String(), "NOT moved — a partial run") {
+	if !plan.Partial || plan.GoArgv != nil || plan.Workers == nil || len(plan.Workers.Workers[0].Batches) != 1 ||
+		!strings.Contains(out.String(), "NOT moved — a partial run") {
 		t.Fatalf("a partial plan:\n%s", out.String())
 	}
 }
@@ -400,7 +419,7 @@ func TestTestCommandWiring(t *testing.T) {
 		names = append(names, c.Name)
 	}
 
-	if strings.Join(names, " ") != "measure affected smoke full report slice" {
+	if strings.Join(names, " ") != "measure affected smoke full report slice accept-run" {
 		t.Fatalf("subcommands %v", names)
 	}
 

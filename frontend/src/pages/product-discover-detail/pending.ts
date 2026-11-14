@@ -3,21 +3,14 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // WHAT THE DISCOVER DETAIL CANNOT SHOW YET — another team's product, read by a selling team deciding
 // whether to sell it.
 //
-// The record and the shelf figures are real: ProductByIds names the product whoever owns it, and
-// StockAvailability counts what each warehouse holds. What is not real is what the Discover card already
-// shows invented — the division, the cross price, what is on its way — and how many of the shelf's units
-// are THEIRS to take. See `features/pending` for the four kinds. In the order they appear down the page.
+// The record and the shelf figures are real: ProductByIds names the product whoever owns it, StockAvailability counts
+// what each warehouse holds, and DiscoverStockByIds — the card's own read — says what is on its way and the cross price,
+// in every warehouse and in each (2026-11-14; the `ongoing` and `crossPrice` samples are gone). What is not real is the
+// division the card also invents, the gallery, and the sections below. See `features/pending` for the four kinds. In the
+// order they appear down the page.
 
 /** One unwired part of the page. The id is also its i18n key (`discoverDetail.pending.<id>`). */
-export type DiscoverDetailPendingId =
-  | "division"
-  | "gallery"
-  | "ongoing"
-  | "crossPrice"
-  | "derived"
-  | "suppliers"
-  | "daily"
-  | "history";
+export type DiscoverDetailPendingId = "division" | "gallery" | "derived" | "suppliers" | "daily" | "history";
 
 const PARTS: PendingPart<DiscoverDetailPendingId>[] = [
   // PRIORITAS · RISET, beside the name — the card's badge (discover-opens-on-priority): set per product, stored nowhere,
@@ -26,15 +19,6 @@ const PARTS: PendingPart<DiscoverDetailPendingId>[] = [
   // A by-ids row carries the cover and not the image list; the list comes from ProductDetail, which
   // answers only the owning team.
   { id: "gallery", kind: "missing" },
-  // ANOTHER TEAM'S STOCK ON ITS WAY — OwnerStockByIds answers only for the caller's own goods, so the card's invented
-  // figure (`sampleStock`). The ready figure above it is real: the shelves, summed.
-  { id: "ongoing", kind: "sample" },
-  // ANOTHER TEAM'S CROSS PRICE — the card's (`discoverPriceOf`): an invented cost with the product's REAL markup over it,
-  // until a cross-team read of what a product costs exists. Who may SEE that cost is still open in
-  // docs/business/product/context_clarify.md. The SAME mark on Per Gudang's price column: each warehouse's price is that
-  // invented range shared out among the warehouses holding it (`sampleWarehouseCross`). The caller's OWN products show
-  // real figures, in Info and per warehouse.
-  { id: "crossPrice", kind: "sample" },
   // PRODUK TURUNAN — the owner's page's section and its rows (`sampleDerived`): the link a return to another team makes
   // between two products is recorded nowhere yet.
   { id: "derived", kind: "sample" },

@@ -72,7 +72,7 @@ func TestPerf_WarehouseStockList(t *testing.T) {
 	perfStockShelves(t, raw)
 
 	db, probe := san_perf.Wrap(raw)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil)), nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil, nil, nil)), nil, nil)
 	ctx := context.Background()
 
 	list := func(warehouse uint64, q string, page, limit uint32) *inventoryv1.WarehouseStockListResponse {

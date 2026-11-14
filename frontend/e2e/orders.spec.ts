@@ -4,6 +4,7 @@ import { statSync } from "node:fs";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { openShops, pickTeam } from "./pickers";
 
 // #68 — Order list + read-only detail. #90 — the order CREATE form.
 //
@@ -136,14 +137,13 @@ async function fillOrderForm(page: Page, customer: string, ref: string): Promise
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await page.getByTestId("order-create-customer-name").fill(customer);
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   const shopOption = page.getByRole("option").filter({ hasText: SHOP_NAME });
   const shopId = ((await shopOption.getAttribute("data-testid")) ?? "").replace("shop-select-option-", "");
   await shopOption.click();
   // Which warehouse ships it (#72) — required, so the form cannot submit without it. Chosen BEFORE
   // the products so the picker can show what that warehouse holds on each row.
-  await page.getByTestId("order-warehouse").locator("input").fill(WH_CODE);
-  await page.getByTestId(`team-select-option-${WH_CODE}`).click();
+  await pickTeam(page, page.getByTestId("order-warehouse"), WH_CODE);
   await addProducts(page, [SKU]);
   await page.getByTestId("order-line-qty-0").fill("1");
   await pickOrderDate(page);
@@ -173,8 +173,7 @@ async function placeOrderViaForm(page: Page, customer: string) {
 // it a count here would also count whatever a spec sorting earlier placed.
 async function showOwnOrders(page: Page) {
   const filter = page.getByTestId("orders-warehouse-filter");
-  await filter.locator("input").fill(WH_CODE);
-  await page.getByTestId(`team-select-option-${WH_CODE}`).click();
+  await pickTeam(page, filter, WH_CODE);
   await expect(filter.getByTestId("team-select-selected")).toContainText(WH_NAME);
   await expect(page).toHaveURL(/[?&]warehouse=\d+/);
 }
@@ -415,8 +414,7 @@ test("Create: the form shows what the warehouse holds and refuses to over-draw (
   await expect(page.getByTestId("order-create-add-line")).toBeDisabled();
   await expect(page.getByTestId("order-create-need-warehouse")).toBeVisible();
 
-  await page.getByTestId("order-warehouse").locator("input").fill(WH_CODE);
-  await page.getByTestId(`team-select-option-${WH_CODE}`).click();
+  await pickTeam(page, page.getByTestId("order-warehouse"), WH_CODE);
 
   await addProducts(page, [SKU]);
 
@@ -512,15 +510,14 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("address-kodepos").locator("input")).toHaveValue(KODE_POS);
 
   // Shop is a Chakra Select whose options show the name + marketplace badge; open it and pick ours.
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   await page.getByRole("option").filter({ hasText: SHOP_NAME }).click();
 
   // WHICH WAREHOUSE ships it (#72) comes before the products now, and that ordering is the design
   // rather than the test's convenience: from #69 this is the building the stock leaves, and what a
   // product costs and whether it can be shipped are both facts about THAT building. Picking is refused
   // until it is named — the guard test above covers the refusal itself.
-  await page.getByTestId("order-warehouse").locator("input").fill(WH_CODE);
-  await page.getByTestId(`team-select-option-${WH_CODE}`).click();
+  await pickTeam(page, page.getByTestId("order-warehouse"), WH_CODE);
 
   // Lines come from the picker dialog (#165's pattern) — search the catalogue, tick, confirm.
   await addProducts(page, [SKU]);
@@ -970,7 +967,7 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   // And the shop filter, over this spec's own shop — picked by its name, since root's team holds other specs' shops
   // too: picking it keeps both orders (they were placed on it), which proves the id is being sent correctly — a wrong
   // id would empty the table.
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   await page.getByTestId(/^shop-select-option-/).filter({ hasText: SHOP_NAME }).click();
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(2);
   await expect(page.getByTestId("order-summary-total")).toContainText("2 tx");

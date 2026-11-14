@@ -70,7 +70,7 @@ func TestProductDelete_RemovesANeverUsedProductAndFreesItsCode(t *testing.T) {
 func TestProductDelete_RefusesAProductWithHistory(t *testing.T) {
 	db := san_testdb.DB(t)
 	used := insertProduct(t, db, 2, "SKU-1", "Sold once")
-	svc := product_v1.NewService(db, fakeHistory{used: true}, teamCodes)
+	svc := product_v1.NewService(db, fakeHistory{used: true}, teamCodes, nil, nil)
 
 	err := deleteProduct(svc, 2, used)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {

@@ -11,6 +11,7 @@ import {
 } from "../../gen/warehouse/product/v1/product_pb";
 import {
   type CostLayer,
+  type DiscoverStockByIdsResponse,
   OwnerBatchListDataType,
   type OwnerBatchListResponse,
   OwnerCostLayerListDataType,
@@ -136,6 +137,35 @@ export function ownerStockFromByIds(res: OwnerStockByIdsResponse): Map<string, O
   }
 
   return out;
+}
+
+// ── Discover's card figures (DiscoverStockByIds) ──────────────────────────────────────────────────────────────────────
+
+/**
+ * One product's figures on a Discover card, whoever owns it (a-discover-card-shows-its-stock,
+ * discover-shows-the-cross-price): ready and on its way in the page's warehouse (every warehouse when none is picked),
+ * the ready stock of EVERY warehouse that the lock badge reads (a-discover-card-says-locked-as-the-title-does), and the
+ * cross price range — never the cost, which the server does not send. `cross` is absent when nothing is on a shelf.
+ */
+export interface DiscoverStockRow {
+  readyQty: bigint;
+  ongoingQty: bigint;
+  totalReadyQty: bigint;
+  cross?: { min: number; max: number };
+}
+
+export function discoverStockFromResponse(res: DiscoverStockByIdsResponse): Map<string, DiscoverStockRow> {
+  return new Map(
+    res.items.map((it) => [
+      it.productId.toString(),
+      {
+        readyQty: it.readyQty,
+        ongoingQty: it.ongoingQty,
+        totalReadyQty: it.totalReadyQty,
+        cross: it.crossKnown ? { min: it.crossMin, max: it.crossMax } : undefined,
+      },
+    ]),
+  );
 }
 
 // One product's selling activity.

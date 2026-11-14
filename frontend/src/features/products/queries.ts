@@ -8,12 +8,13 @@ import {
   type WarehouseProductSearchItem,
   type WarehouseProductSearchResponse,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
-import { ProductListDataType, ProductRowSort, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
+import { ProductListDataType, ProductLockFilter, ProductRowSort, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
 import type { SortState } from "../../components/chrome/SortableHeader";
 import { teamsByIdsQuery } from "../teams/queries";
 import {
   activityFromByIds,
   batchesFromList,
+  discoverStockFromResponse,
   layersFromList,
   movementsFromList,
   ownerBatchData,
@@ -25,7 +26,7 @@ import {
   productsFromByIds,
   productsFromList,
 } from "./adapt";
-import type { OwnerStockRow, ProductActivityRow } from "./adapt";
+import type { DiscoverStockRow, OwnerStockRow, ProductActivityRow } from "./adapt";
 import { withCorrections } from "../inventory/priceChange";
 
 // The product screens' reads (#176). Hooks live beside their screens, per api/queryClient.ts.
@@ -38,15 +39,31 @@ interface ProductListArgs {
   /** Which half of the catalogue — the ACTIVE tab or the ARCHIVED one. Defaults to ACTIVE. */
   status?: ProductStatus;
   /**
-   * The warehouse LENS (0n = all). It is in the KEY and not yet in the request: it will decide which
-   * warehouse the stock figures describe once inventory_service exposes an owner-side read, and two
-   * lenses are two different answers that must never share a cache entry — wiring the key now means
-   * that day changes the queryFn only.
+   * The warehouse LENS (0n = all). It restates the stock figures (OwnerStockByIds reads it), and it is the building the
+   * stock's AGE is read in when an age is picked (`stockWarehouseId`, the-dates-read-as-ages) — never a row filter on
+   * its own. Two lenses are two different answers that must never share a cache entry.
    */
   warehouseId?: bigint;
   /** `null` = the list's own order, newest first; otherwise by name, A to Z or back (the server sorts). */
   sort?: SortState<ProductSortKey> | null;
+  /**
+   * THE LOCK — one of its three ways, or the minimums closing a product now (one-lock-three-ways,
+   * lock-and-stock-age-filter-ahead-of-the-contract). Narrowed on the server, before its count and page.
+   */
+  lock?: ProductLockPick;
+  /** THE STOCK'S AGE — at least this many whole days on a shelf (the-dates-read-as-ages). Narrowed on the server. */
+  minStockAgeDays?: number;
 }
+
+/** The list's Kunci picks: the three ways of the lock, and "a minimum in force right now". */
+export type ProductLockPick = "open" | "min" | "always" | "lockedNow";
+
+const LOCK_FILTER: Record<ProductLockPick, ProductLockFilter> = {
+  open: ProductLockFilter.MODE_OPEN,
+  min: ProductLockFilter.MODE_MINIMUM,
+  always: ProductLockFilter.MODE_ALWAYS,
+  lockedNow: ProductLockFilter.LOCKED_NOW,
+};
 
 /** The column the product list sorts from its heading — the one the contract orders the catalogue by that the row shows first. */
 export type ProductSortKey = "name";
@@ -65,6 +82,8 @@ export function useProducts({
   status = ProductStatus.ACTIVE,
   warehouseId = 0n,
   sort = null,
+  lock,
+  minStockAgeDays = 0,
 }: ProductListArgs) {
   return useQuery({
     // `status` is in the key because the two tabs are two different answers: caching the archived
@@ -76,13 +95,22 @@ export function useProducts({
       status,
       warehouseId: warehouseId.toString(),
       sort: sort ? `${sort.by}:${sort.dir}` : "",
+      lock: lock ?? "",
+      age: minStockAgeDays,
     }),
     ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await productClient.productList({
         teamId: teamId!,
-        filter: { q, status },
+        filter: {
+          q,
+          status,
+          lock: lock ? LOCK_FILTER[lock] : ProductLockFilter.UNSPECIFIED,
+          stockAgeMinDays: minStockAgeDays,
+        },
+        // The lens is the building the age is read in; the lock never reads it (a minimum reads every warehouse).
+        stockWarehouseId: warehouseId,
         sort: sort
           ? {
               sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
@@ -134,6 +162,7 @@ export function useProducts({
 // new Map on every render for React to treat as a change).
 const emptyStock: ReadonlyMap<string, OwnerStockRow> = new Map();
 const emptyActivity: ReadonlyMap<string, ProductActivityRow> = new Map();
+const emptyDiscoverStock: ReadonlyMap<string, DiscoverStockRow> = new Map();
 
 // The catalogue's headline numbers, for the stat row that sits ABOVE the tabs.
 //
@@ -186,12 +215,27 @@ export function useProductStats(args: { teamId: bigint | undefined; warehouseId?
 // Its own key rather than a flag on useProducts: it answers a different question against a different
 // RPC, and sharing an entry would let one team's catalogue render under the cross-team heading.
 //
-// THE CALLER'S OWN PRODUCTS CARRY THEIR COST (owner: *"khusus untuk team yang login … boleh menampilkan harga asli dan
-// harga cross"*, `discover-shows-the-cross-price`): OwnerStockByIds for the ids on this page that the caller owns — one
-// batch per page, as the product list's, and only those ids, because the read is owner-scoped and another team's
-// product would answer "none of yours" rather than its cost. Inside this entry, so a card never shows its price a beat
-// after its name.
+// EVERY CARD'S FIGURES (a-discover-card-shows-its-stock, discover-shows-the-cross-price,
+// a-discover-card-says-locked-as-the-title-does): DiscoverStockByIds for every id on the page, whoever owns it — ready,
+// on its way, the every-warehouse total the lock badge reads, and the cross price range. ONE call per page.
+//
+// THE CALLER'S OWN PRODUCTS CARRY THEIR COST too (owner: *"khusus untuk team yang login … boleh menampilkan harga asli
+// dan harga cross"*): OwnerStockByIds for the ids on this page that the caller owns — only those ids, because the read is
+// owner-scoped and another team's product would answer "none of yours" rather than its cost; the cross read never sends
+// a cost. Both inside this entry, side by side, so a card never shows its figures a beat after its name.
+//
+// THE FILTERS ARE THE SERVER'S (discover-filters-in-a-side-panel): Gudang, Stok siap, Harga cross and Kategori narrow
+// ProductDiscover before its count and page, and the Gudang is ALSO the warehouse every card reads
+// (discovers-warehouse-keeps-ready-stock-there) — so the cards and the filter that kept them never disagree.
 export type DiscoverSort = "newest" | "name" | "sku";
+
+/** Discover's Kunci (discover-filters-by-lock): what another team may take now, or what it cannot. */
+export type DiscoverLock = "open" | "locked";
+
+const DISCOVER_LOCK: Record<DiscoverLock, ProductLockFilter> = {
+  open: ProductLockFilter.ORDERABLE,
+  locked: ProductLockFilter.CLOSED,
+};
 
 // "sku" is the sort's KEY — its i18n label and the select's value — and keeps that name; it sorts by the product code.
 const DISCOVER_SORT: Record<Exclude<DiscoverSort, "newest">, ProductRowSort> = {
@@ -210,8 +254,34 @@ export function useDiscoverProducts(args: {
   excludeOwnTeam?: boolean;
   /** "newest" is the server's own order, newest first; name and SKU read A to Z. */
   sort?: DiscoverSort;
+  /** Terbuka or Terkunci — undefined for both. */
+  lock?: DiscoverLock;
+  /**
+   * GUDANG — only products with ready units there now, and the warehouse the cards' figures read; 0n, every warehouse
+   * (discovers-warehouse-keeps-ready-stock-there).
+   */
+  warehouseId?: bigint;
+  /** KATEGORI — the picked category and everything below it; 0n, every category (a-picked-branch-keeps-its-whole-subtree). */
+  categoryId?: bigint;
+  /** STOK SIAP — ready units (the Gudang's, else every warehouse's), both ends included; no max = no upper edge. */
+  ready?: { min: number; max?: number };
+  /** HARGA CROSS — the cross price range overlaps this one, both ends included (a-cross-band-keeps-a-range-that-touches-it). */
+  cross?: { min: number; max?: number };
 }) {
-  const { teamId, q, page, pageSize, ownerTeamId = 0n, excludeOwnTeam = false, sort = "newest" } = args;
+  const {
+    teamId,
+    q,
+    page,
+    pageSize,
+    ownerTeamId = 0n,
+    excludeOwnTeam = false,
+    sort = "newest",
+    lock,
+    warehouseId = 0n,
+    categoryId = 0n,
+    ready,
+    cross,
+  } = args;
 
   return useQuery({
     queryKey: key.products(teamId, {
@@ -222,6 +292,11 @@ export function useDiscoverProducts(args: {
       ownerTeamId: ownerTeamId.toString(),
       excludeOwnTeam,
       sort,
+      lock: lock ?? "",
+      warehouseId: warehouseId.toString(),
+      categoryId: categoryId.toString(),
+      ready: ready ? `${ready.min}-${ready.max ?? ""}` : "",
+      cross: cross ? `${cross.min}-${cross.max ?? ""}` : "",
     }),
     // A new team, page or sort refines the same browse — the cards stay up behind the overlay (HARD RULE 10).
     ...listQuery,
@@ -229,7 +304,7 @@ export function useDiscoverProducts(args: {
     queryFn: async () => {
       const res = await productClient.productDiscover({
         teamId: teamId!,
-        filter: { q },
+        filter: { q, lock: lock ? DISCOVER_LOCK[lock] : ProductLockFilter.UNSPECIFIED },
         sort:
           sort === "newest"
             ? undefined
@@ -239,6 +314,11 @@ export function useDiscoverProducts(args: {
         // The Discover PAGE sees a locked product too, with its lock (a-locked-product-shows-on-discover). Only here:
         // every picker leaves it out, since it cannot be ordered.
         includeLocked: true,
+        warehouseId,
+        categoryId,
+        // Whole pieces: a stock band is a count of units.
+        ready: ready ? { min: BigInt(Math.trunc(ready.min)), max: ready.max === undefined ? undefined : BigInt(Math.trunc(ready.max)) } : undefined,
+        crossPrice: cross ? { min: cross.min, max: cross.max } : undefined,
         dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
@@ -247,17 +327,27 @@ export function useDiscoverProducts(args: {
       const totalItems = Number(res.pageInfo?.totalItems ?? 0n);
       const own = products.filter((p) => p.teamId === teamId).map((p) => p.id);
 
-      if (own.length === 0) {
-        return { products, totalItems, ownStock: emptyStock };
+      if (products.length === 0) {
+        return { products, totalItems, ownStock: emptyStock, stock: emptyDiscoverStock };
       }
 
-      const stock = await inventoryClient.ownerStockByIds({
-        teamId: teamId!,
-        // 0n = every warehouse holding the caller's goods — the cost across all of them.
-        filter: { productIds: own, warehouseId: 0n },
-      });
+      const [ownStock, stock] = await Promise.all([
+        own.length === 0
+          ? undefined
+          : inventoryClient.ownerStockByIds({
+              teamId: teamId!,
+              // The cost in the cards' warehouse — 0n, across every one holding the caller's goods.
+              filter: { productIds: own, warehouseId },
+            }),
+        inventoryClient.discoverStockByIds({ teamId: teamId!, productIds: products.map((p) => p.id), warehouseId }),
+      ]);
 
-      return { products, totalItems, ownStock: ownerStockFromByIds(stock) };
+      return {
+        products,
+        totalItems,
+        ownStock: ownStock ? ownerStockFromByIds(ownStock) : emptyStock,
+        stock: discoverStockFromResponse(stock),
+      };
     },
   });
 }
@@ -427,6 +517,31 @@ export function useOwnerStockByWarehouse(args: { teamId: bigint | undefined; pro
 
       return new Map<string, OwnerStockRow | undefined>(
         warehouses.map((w, i) => [w, ownerStockFromByIds(answers[i]!).get(productId.toString())]),
+      );
+    },
+  });
+}
+
+// ANOTHER TEAM'S FIGURES ON THE DISCOVER DETAIL (/products/discover/:id) — the card's own read, DiscoverStockByIds,
+// asked once for every warehouse ("0") and once per warehouse: on its way and the cross price range for Info, Harga per
+// Gudang and the Overview's lens. The same read and the same rule as the card that opened the page, so a card and its
+// detail never disagree (a-discover-card-shows-its-stock, discover-shows-the-cross-price); the cost is never in it.
+export function useDiscoverStockByWarehouse(args: { teamId: bigint | undefined; productId: bigint; warehouseIds: bigint[] }) {
+  const { teamId, productId } = args;
+  const warehouses = ["0", ...Array.from(new Set(args.warehouseIds.map((id) => id.toString()))).sort()];
+
+  return useQuery({
+    queryKey: key.inventory(teamId, { discoverStockOf: productId.toString(), warehouses }),
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const answers = await Promise.all(
+        warehouses.map((w) =>
+          inventoryClient.discoverStockByIds({ teamId: teamId!, productIds: [productId], warehouseId: BigInt(w) }),
+        ),
+      );
+
+      return new Map<string, DiscoverStockRow | undefined>(
+        warehouses.map((w, i) => [w, discoverStockFromResponse(answers[i]!).get(productId.toString())]),
       );
     },
   });

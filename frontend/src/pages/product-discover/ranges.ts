@@ -95,6 +95,39 @@ export function rangeOn(pick: RangePick): boolean {
   return pick.band === CUSTOM ? pick.min !== "" || pick.max !== "" : pick.band !== "";
 }
 
+/** What a range ASKS the server — both ends included; no `max` = no upper edge. */
+export interface RangeAsk {
+  min: number;
+  max?: number;
+}
+
+/**
+ * The range a pick asks for, or undefined when it narrows nothing (Semua, or Atur sendiri with both boxes empty). A
+ * band asks its own two ends; a range of one's own its typed ones (an empty min is 0, an empty max no edge, two ends
+ * typed backwards are read the right way round). THE TOP IS OPEN-ENDED (the build's default, noted under
+ * `a-cross-band-keeps-a-range-that-touches-it`): an end AT the ceiling — the last band's, or a typed one held at it — is
+ * sent as no edge, so a product past 100.000 pcs or Rp 1.000.000 is never lost to every band.
+ */
+export function rangeAsk(pick: RangePick, bands: Band[], ceiling: number): RangeAsk | undefined {
+  if (!rangeOn(pick)) return undefined;
+
+  let min: number;
+  let max: number | undefined;
+  if (pick.band === CUSTOM) {
+    const typed = (raw: string) => (raw === "" || !Number.isFinite(Number(raw)) ? undefined : Number(raw));
+    min = typed(pick.min) ?? 0;
+    max = typed(pick.max);
+    if (max !== undefined && max < min) [min, max] = [max, min];
+  } else {
+    const band = bands.find((b) => b.key === pick.band);
+    if (!band) return undefined;
+    min = band.min;
+    max = band.max;
+  }
+
+  return max !== undefined && max >= ceiling ? { min } : { min, max };
+}
+
 /** The URL codec for a band — a band that no longer exists reads as none. */
 export function bandCodec(bands: Band[]) {
   return oneOfCodec(["", CUSTOM, ...bands.map((b) => b.key)]);

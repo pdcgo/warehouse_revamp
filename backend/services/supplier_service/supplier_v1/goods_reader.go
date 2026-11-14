@@ -23,6 +23,15 @@ type GoodsReader interface {
 	StoreGoods(ctx context.Context, supplierID uint64) (map[uint64]StoreGoods, error)
 }
 
+// WarehouseGoods is the Gudang filter's question, asked of the same GoodsReader: the suppliers whose goods were received at
+// a warehouse, in id order — exactly the suppliers whose page lists it among its Gudang terkait chips, every team's goods
+// (the-warehouse-filters-before-the-team). The composition root's reader answers it; a reader without it (the operations
+// tool's, which never lists suppliers) makes a list with a warehouse picked an error, never an empty page. Kept apart
+// from GoodsReader so that reader needs no new method.
+type WarehouseGoods interface {
+	SupplierIDsAtWarehouse(ctx context.Context, warehouseID uint64) ([]uint64, error)
+}
+
 // StoreGoods is one store's figures: units sold (a cancel counted back) and ready, the last order and the last restock
 // in unix seconds — 0 when there was none.
 type StoreGoods struct {
@@ -48,7 +57,10 @@ const (
 	GoodsReady
 )
 
-var errNoGoodsReader = errors.New("no inventory to ask about a supplier's goods")
+var (
+	errNoGoodsReader    = errors.New("no inventory to ask about a supplier's goods")
+	errNoWarehouseGoods = errors.New("no inventory to ask where a supplier's goods were received")
+)
 
 // noGoods is what a Service built without inventory uses: every question is an ERROR, never an empty answer — a sale
 // folded as "no goods" would be acknowledged and lost, and a band read as "nobody" would empty the list.

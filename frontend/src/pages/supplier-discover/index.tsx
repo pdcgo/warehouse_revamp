@@ -22,8 +22,6 @@ import { marketplaceLabel } from "../../components/badges/MarketplaceBadge";
 import { FilterChips } from "../../components/chrome/FilterChips";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
 import { NO_FIGURE_MARKS, SupplierFigureCells, SupplierFigureHeaders } from "../../features/suppliers/SupplierFigures";
 import { useSupplierGoods } from "../../features/suppliers/goods";
 import {
@@ -54,7 +52,7 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // TWO VIEWS, cards first (`discover-is-cards-or-a-table`):
 //
 //   Temukan Pemasok
-//   [Cari …] [Semua gudang ⌄]⚠ [Semua tim ⌄] [Terjual ⌄]⚠ [Siap ⌄]⚠   (▦ Kartu | ☰ Tabel)
+//   [Cari …] [Semua gudang ⌄] [Semua tim ⌄] [Terjual ⌄] [Siap ⌄]   (▦ Kartu | ☰ Tabel)
 //   (Semua) (Shopee) (Tokopedia) …                                  ← the store type, as chips
 //   ┌ PT Sumber Makmur ┐ ┌ CV Cahaya Abadi ┐ ┌ UD Makmur Jaya ┐ …    ← cards: 1 · 2 · 3 · 4 a row as the screen widens (4 on 2K)
 //   │ address · team · stores · figures · contact │ …
@@ -63,7 +61,8 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 // THE SUPPLIER LIST'S FIGURES AND FILTERS (owner: *"data dan filter yang sama ada di discovers"*,
 // `discover-shows-the-same-figures-and-filters`) — Terjual and Siap with their last dates, and a range filter each;
-// the figures real (InventoryService.SupplierGoods, every team's goods), the range picks dropped and marked, as there.
+// the figures real (InventoryService.SupplierGoods, every team's goods), the range pills and the warehouse narrowing on
+// the server, as there.
 export function DiscoverSuppliersPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -76,8 +75,10 @@ export function DiscoverSuppliersPage() {
   const [channelType, setChannelType] = useUrlState("type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   // The team that keeps the supplier — 0n is any team.
   const [ownerTeamId, setOwnerTeamId] = useUrlState("team", 0n, idCodec);
-  // The warehouse the supplier's restocks are received at — held on screen and thrown away (`dropped`): nothing narrows
-  // the list by it yet. 0n is any warehouse. The range pills narrow on the server (the-range-pills-are-a-fixed-set).
+  // The warehouse the supplier's goods were received at — the suppliers its page lists it for, every team's, narrowed on
+  // the server before the page (the-warehouse-filters-before-the-team); only the rows narrow, Terjual and Siap stay whole
+  // (the-warehouse-filter-narrows-only-the-rows). 0n is any warehouse. The range pills narrow on the server too
+  // (the-range-pills-are-a-fixed-set).
   const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
   const [ranges, setRanges] = useUrlFigureRanges();
   const [page, setPage] = useState(1);
@@ -85,7 +86,6 @@ export function DiscoverSuppliersPage() {
   // Cards first (owner: *"default card"*); a desktop may switch to the table. A phone always shows cards.
   const [view, setView] = useState<DiscoverView>("cards");
   const shownView: DiscoverView = isMobile ? "cards" : view;
-  // The dropped warehouse pick counts too, so Clear is there to take it back — though the rows do not move for it.
   const filtering =
     q.trim() !== "" ||
     channelType !== Marketplace.UNSPECIFIED ||
@@ -95,7 +95,12 @@ export function DiscoverSuppliersPage() {
   // Typed, then settled — a word is one request to the server, not one per key.
   const term = useDebounced(q.trim());
   // What the rows on screen were asked with, which is what "nothing matches" is about.
-  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED || ownerTeamId !== 0n || rangesOn(ranges) > 0;
+  const narrowed =
+    term !== "" ||
+    channelType !== Marketplace.UNSPECIFIED ||
+    ownerTeamId !== 0n ||
+    warehouseId !== 0n ||
+    rangesOn(ranges) > 0;
 
   // A filter change is a new question, so it starts again at page one.
   function refilter(change: () => void) {
@@ -103,7 +108,16 @@ export function DiscoverSuppliersPage() {
     setPage(1);
   }
 
-  const query = useDiscoverSuppliers({ teamId: current?.teamId, q: term, channelType, ownerTeamId, ranges, page, pageSize });
+  const query = useDiscoverSuppliers({
+    teamId: current?.teamId,
+    q: term,
+    channelType,
+    ownerTeamId,
+    ranges,
+    warehouseId,
+    page,
+    pageSize,
+  });
   const suppliers = query.data?.suppliers ?? [];
   // Terjual and Siap of every supplier on the page, in one read (every-selling-team-sees-every-teams-figures).
   const goods = useSupplierGoods(
@@ -242,9 +256,6 @@ export function DiscoverSuppliersPage() {
         </Text>
       </Stack>
 
-      {/* What is not real yet — the figures' filters and the warehouse filter, as on the supplier list. */}
-      <NotImplementedSummary list={SUPPLIER_LIST_PENDING} />
-
       {/* The filters, and the store-type chips right under them — one group, a step apart. */}
       <Stack gap="3">
         <FilterBar
@@ -266,8 +277,9 @@ export function DiscoverSuppliersPage() {
           />
 
           {/* THE WAREHOUSE, LEFT OF THE TEAM (owner: *"di sini ada filter gudang … di kiri filter tim"*,
-              `the-warehouse-filters-before-the-team`) — where the supplier's goods are received; marked, not wired. */}
-          <SupplierWarehouseFilter value={warehouseId} onChange={setWarehouseId} />
+              `the-warehouse-filters-before-the-team`) — where the supplier's goods were received. A pick is a new question,
+              so it starts again at page one. */}
+          <SupplierWarehouseFilter value={warehouseId} onChange={(id) => refilter(() => setWarehouseId(id))} />
 
           {/* TIM, THEN THE STORE TYPE (owner: *"tim sebelum toko untuk filter"*, `discover-filters-team-before-store`).
               "Whose suppliers?" — the team that keeps them. Selling teams only: only a selling team has suppliers

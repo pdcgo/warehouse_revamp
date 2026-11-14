@@ -390,11 +390,19 @@ func runSummary(r *RunRecord) string {
 
 		fmt.Fprintf(&b, "## %s — %s in %s\n\n", part.name, partVerdict(part.p), time.Duration(part.p.Secs)*time.Second)
 
+		if part.p.Where != "" {
+			fmt.Fprintf(&b, "Ran on %s.\n\n", part.p.Where)
+		}
+
 		for _, f := range part.p.Failures {
 			fmt.Fprintf(&b, "- %s\n", f)
 		}
 
 		fmt.Fprintf(&b, "\nLog: `%s`\n\n", filepath.Base(part.p.Log))
+
+		if c := part.p.Classes; c != nil {
+			b.WriteString(failureClassMarkdown(c))
+		}
 	}
 
 	if r.E2E != nil {
@@ -419,9 +427,11 @@ func runSummary(r *RunRecord) string {
 				exit = "CAP HIT"
 			}
 
-			name := fmt.Sprintf("b%d", bt.N)
-			if bt.Worker != "" {
-				name = bt.Worker + "-" + name
+			name := bt.name()
+			if bt.RerunOf != "" {
+				name += " (re-runs " + bt.RerunOf + ")"
+			} else if len(bt.LoadFailed) > 0 {
+				name += " (failed to load — re-run)"
 			}
 
 			fmt.Fprintf(&b, "| %s | %s | %ds | %s | %s |\n", name, exit, bt.Secs, bt.Counts, strings.Join(bt.Specs, " "))
@@ -455,6 +465,76 @@ func runSummary(r *RunRecord) string {
 
 			b.WriteString("\nTraces and screenshots: `failures/b<N>/` (a worker's: `failures/w<K>-b<N>/`) beside this file (full runs).\n")
 		}
+	}
+
+	if len(r.Reruns) > 0 {
+		b.WriteString("\n## Re-run once — a file that failed to load (a-file-that-fails-to-load-is-re-run-once)\n\n")
+		b.WriteString(rerunTable(r.Reruns, false))
+	}
+
+	for _, a := range r.Acceptances {
+		b.WriteString(acceptanceMarkdown(a, r))
+	}
+
+	return b.String()
+}
+
+// failureClassMarkdown lists a failed Storybook run's failures per file: load (re-run once) or check (never).
+func failureClassMarkdown(c *FailureClass) string {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "Per file: %d failed to load, %d failed a check", len(c.Load), len(c.Check))
+
+	if len(c.Unattributed) > 0 {
+		fmt.Fprintf(&b, ", %d not attributable to a file", len(c.Unattributed))
+	}
+
+	b.WriteString(" (a-file-that-fails-to-load-is-re-run-once):\n\n")
+
+	for _, f := range c.Load {
+		fmt.Fprintf(&b, "- load · `%s` — %s\n", f.File, f.Why)
+	}
+
+	for _, f := range c.Check {
+		fmt.Fprintf(&b, "- check · `%s` — %s\n", f.File, f.Why)
+	}
+
+	for _, u := range c.Unattributed {
+		fmt.Fprintf(&b, "- unattributed — %s\n", u)
+	}
+
+	b.WriteString("\n")
+
+	return b.String()
+}
+
+// rerunTable is the re-runs as a markdown table.
+func rerunTable(reruns []*Rerun, withSame bool) string {
+	var b strings.Builder
+
+	if withSame {
+		b.WriteString("| part | file | kind | why | same file as the run tested | result | log |\n| --- | --- | --- | --- | --- | --- | --- |\n")
+	} else {
+		b.WriteString("| part | file | kind | why | where | result | log |\n| --- | --- | --- | --- | --- | --- | --- |\n")
+	}
+
+	for _, x := range reruns {
+		col := x.Where
+		if x.Worker != "" {
+			col += " (" + x.Worker + ", " + x.Batch + ")"
+		}
+
+		if withSame {
+			col = "unknown"
+			if x.SameAsRun != nil && *x.SameAsRun {
+				col = "yes"
+			} else if x.SameAsRun != nil {
+				col = "**no** — the file changed since"
+			}
+		}
+
+		fmt.Fprintf(&b, "| %s | `%s` | %s | %s | %s | %s | `%s` |\n", x.Part, x.File, x.Kind,
+			strings.ReplaceAll(x.Why, "|", "\\|"), col, x.Result, filepath.Base(x.Log))
 	}
 
 	return b.String()

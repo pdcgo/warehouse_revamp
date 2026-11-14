@@ -454,41 +454,13 @@
       "general": "Umum"
     },
     "pending": {
-      "warehouse": {
-        "label": "Filter gudang",
-        "reason": "Stok dicatat di layanan inventaris, sedangkan daftar ini datang dari katalog produk. Menyaring daftar berhalaman menurut gudang butuh satu bacaan yang menggabungkan keduanya. Pilihannya disimpan, tapi belum menyaring."
-      },
       "division": {
         "label": "Pembagian produk",
         "reason": "Prioritas, Riset dan Umum ditetapkan per produk, tapi aturannya belum ada di context bisnis dan belum disimpan di mana pun. Pilihannya disimpan, tapi belum menyaring."
       },
-      "category": {
-        "label": "Filter kategori",
-        "reason": "Pencarian produk lintas tim belum menerima filter kategori. Pilihannya disimpan, tapi belum menyaring."
-      },
-      "stock": {
-        "label": "Filter stok",
-        "reason": "Sama seperti gudang: stok siap ada di layanan inventaris, dan daftar ini belum bisa disaring dengannya. Pilihannya disimpan, tapi belum menyaring."
-      },
-      "crossRange": {
-        "label": "Filter harga cross",
-        "reason": "Harga modal produk tim lain belum bisa dibaca lintas tim, jadi harga cross-nya belum bisa disaring. Isiannya disimpan, tapi belum menyaring."
-      },
-      "crossPrice": {
-        "label": "Harga cross produk tim lain",
-        "reason": "Harga modal produk tim lain belum bisa dibaca lintas tim. Harga cross yang tampil adalah contoh, dihitung dengan markup asli produknya. Produk tim Anda sendiri memakai angka asli."
-      },
-      "cardStock": {
-        "label": "Stok produk tim lain",
-        "reason": "Stok siap dan stok yang dikirim hanya bisa dibaca untuk produk tim Anda sendiri. Angka di kartu produk tim lain adalah contoh."
-      },
       "divisionBadge": {
         "label": "Badge pembagian produk",
         "reason": "Pembagian Prioritas, Riset dan Umum belum disimpan di mana pun. Badge di kartu adalah contoh."
-      },
-      "lockFilter": {
-        "label": "Filter kunci",
-        "reason": "Produk yang dikunci kini dikirim server ke Discover, tapi server belum punya filter kunci, dan apakah minimum sudah mengunci sebuah produk bergantung pada stok siapnya, yang ada di layanan inventaris. Pilihannya disimpan, tapi belum menyaring."
       }
     },
     "stock": {
@@ -514,7 +486,7 @@
       "open": "Terbuka",
       "locked": "Terkunci",
       "openHint": "Tim lain bisa mengambilnya sekarang",
-      "lockedHint": "Dikunci pemiliknya, atau stok siapnya sudah di batas minimum atau di bawahnya"
+      "lockedHint": "Dikunci pemiliknya, atau stok siapnya di semua gudang di bawah batas minimum"
     }
   },
   "discoverDetail": {
@@ -544,14 +516,6 @@
       "gallery": {
         "label": "Gambar",
         "reason": "hanya sampul — galeri lengkap datang dari ProductDetail, yang hanya menjawab tim pemilik"
-      },
-      "ongoing": {
-        "label": "Dalam pengiriman",
-        "reason": "data contoh — stok tim lain yang masih dikirim belum bisa dibaca lintas tim; stok siap di atasnya nyata, jumlah semua rak"
-      },
-      "crossPrice": {
-        "label": "Harga cross",
-        "reason": "data contoh — modal dikarang lalu ditambah markup asli produk, di Info dan dibagi per gudang yang menyimpannya; modal tim lain belum bisa dibaca, dan siapa yang boleh melihatnya belum diputuskan"
       },
       "derived": {
         "label": "Produk turunan",
@@ -603,16 +567,6 @@
       "lockedNow": "Terkunci sekarang",
       "stockAgeAll": "Semua umur stok",
       "stockAgeAtLeast": "{{days}} hari atau lebih"
-    },
-    "pending": {
-      "lockFilter": {
-        "label": "Filter kunci",
-        "reason": "Daftar produk belum bisa disaring menurut kunci — pilihannya disimpan, tapi semua produk tetap tampil."
-      },
-      "stockAgeFilter": {
-        "label": "Filter umur stok",
-        "reason": "Daftar produk belum bisa disaring menurut umur stok — umurnya ada di data stok, jadi pilihannya disimpan, tapi semua produk tetap tampil."
-      }
     },
     "lock": {
       "title": "Kunci",
@@ -2595,12 +2549,6 @@
     },
     "editAction": "Ubah",
     "actions": "Aksi pemasok",
-    "pending": {
-      "warehouse": {
-        "label": "Filter Gudang",
-        "reason": "pilihan gudang hanya tampil di layar — daftar pemasok belum bisa disaring dengan gudang tempat barangnya diterima"
-      }
-    },
     "lastOrder": "pesanan {{date}}",
     "lastRestock": "restok {{date}}",
     "rangeAll": "Semua",

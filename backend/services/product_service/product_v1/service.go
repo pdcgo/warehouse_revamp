@@ -17,9 +17,11 @@ import (
 )
 
 type Service struct {
-	db      *gorm.DB
-	history ProductHistory
-	teams   TeamCodes
+	db         *gorm.DB
+	history    ProductHistory
+	teams      TeamCodes
+	stock      StockNarrower
+	categories CategoryTree
 }
 
 // compile-time proof Service satisfies the generated handler interfaces — the catalogue and its bundles
@@ -31,10 +33,14 @@ var (
 
 // NewService takes the product's HISTORY reader — inventory and the order side, joined at the composition root — which
 // ProductDelete asks before it removes anything (a-used-product-is-archived-never-deleted), and the TEAM CODE reader
-// every product code is composed from (the-field-is-product-code-composed-on-write). A nil history refuses every delete
-// and every code correction; a nil team-code reader refuses every create.
-func NewService(db *gorm.DB, history ProductHistory, teams TeamCodes) *Service {
-	return &Service{db: db, history: history, teams: teams}
+// every product code is composed from (the-field-is-product-code-composed-on-write), and the STOCK reader the list's
+// lock-now and stock-age filters ask (lock-and-stock-age-filter-ahead-of-the-contract) — Discover's Kunci, Gudang, Stok
+// siap and Harga cross too — and the CATEGORY TREE Discover's Kategori reads a branch's subtree from
+// (a-picked-branch-keeps-its-whole-subtree). A nil history refuses every delete and every code correction; a nil
+// team-code reader refuses every create; a nil stock reader refuses the stock filters and a nil tree the category
+// filter (every other list still answers).
+func NewService(db *gorm.DB, history ProductHistory, teams TeamCodes, stock StockNarrower, categories CategoryTree) *Service {
+	return &Service{db: db, history: history, teams: teams, stock: stock, categories: categories}
 }
 
 var errProductMissing = errors.New("product not found")

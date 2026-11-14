@@ -77,7 +77,7 @@ func TestProductCreate_ATeamWithNoCodeIsRefused(t *testing.T) {
 // Without a team-code reader nothing can be composed, so nothing is created.
 func TestProductCreate_NoTeamCodeReaderRefuses(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := product_v1.NewService(db, history, nil)
+	svc := product_v1.NewService(db, history, nil, nil, nil)
 
 	_, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
 		TeamId: 2, ProductCodePart: "SHOE-42", Name: "Widget",

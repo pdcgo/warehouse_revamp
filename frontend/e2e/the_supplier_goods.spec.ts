@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { openShops, pickTeam } from "./pickers";
 
 // A SUPPLIER'S FIGURES ARE REAL (InventoryService.SupplierGoods), END TO END — the supplier list's Terjual and Siap
 // (`sales-are-all-time-with-their-last-dates`), a store's on the Toko tab (`the-detail-tabs-show-sold-and-ready`) and
@@ -13,7 +14,9 @@ import { API_URL } from "./env";
 // PENJUALAN (`penjualan-is-the-selling-value-on-the-order-day`) rides the same order: supplier_service's sales fold reads
 // OrderPlaced, so the Statistik tab and the Supplier Report read 2 units for the order's Rp 100.000 on today's row, and
 // after the cancel (same day) today nets back to 0. THE RANGE PILLS (`the-range-pills-are-a-fixed-set`) narrow the list
-// on the server: 2 sold is in Terjual < 500, out of 500–1.000.
+// on the server: 2 sold is in Terjual < 500, out of 500–1.000. THE GUDANG FILTER (`the-warehouse-filters-before-the-team`)
+// keeps the supplier under the warehouse its restock was received at, and not under a second, empty warehouse — on the
+// supplier list and on Discover — with its figures whole (`the-warehouse-filter-narrows-only-the-rows`).
 //
 // ⚠ NAMED TO SORT AFTER orders.spec.ts AND statement.spec.ts: the suite shares one database, orders.spec counts the
 // orders root can read, and this places one. Its money moves in its OWN team, so root's team totals are untouched.
@@ -55,6 +58,10 @@ const state = {
   warehouse: "",
   whCode: `SGW${SUFFIX}`.slice(0, 10),
   whName: `E2E Goods Warehouse ${SUFFIX}`,
+  // A second warehouse, never restocked into — the Gudang filter's "not here".
+  warehouseB: "",
+  whBCode: `SGB${SUFFIX}`.slice(0, 10),
+  whBName: `E2E Goods Other Warehouse ${SUFFIX}`,
   shopName: `E2E Goods Shop ${SUFFIX}`,
   supplier: "",
   store: "",
@@ -78,6 +85,7 @@ test("Supplier goods: a seller restocks 5 units from its supplier's store", asyn
     (await rpc<{ team: { id: string } }>(page, "team.v1.TeamService/TeamCreate", { name, teamCode: code, type, ownerUserId: ROOT_USER_ID }))
       .team.id;
   state.warehouse = await team(state.whCode, state.whName, "TEAM_TYPE_WAREHOUSE");
+  state.warehouseB = await team(state.whBCode, state.whBName, "TEAM_TYPE_WAREHOUSE");
   state.seller = await team(`SGS${SUFFIX}`.slice(0, 10), `E2E Goods Seller ${SUFFIX}`, "TEAM_TYPE_SELLING");
 
   const rack = await rpc<{ rack: { id: string } }>(page, "inventory.v1.RackService/RackCreate", {
@@ -186,10 +194,9 @@ test("Supplier goods: an order takes 2 — the list, the store and Gudang terkai
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await page.getByTestId("order-create-customer-name").fill(`E2E Goods ${SUFFIX}`);
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   await page.getByRole("option").filter({ hasText: state.shopName }).click();
-  await page.getByTestId("order-warehouse").locator("input").fill(state.whCode);
-  await page.getByTestId(`team-select-option-${state.whCode}`).click();
+  await pickTeam(page, page.getByTestId("order-warehouse"), state.whCode);
 
   await page.getByTestId("order-create-add-line").click();
   await page.getByTestId("product-picker-search").fill(state.productCode);
@@ -282,6 +289,33 @@ test("Supplier goods: the Terjual band narrows the list on the server", async ({
   // Siap 3 is in < 50.
   await page.goto("/inventories/suppliers?ready=0-50");
   await expect(page.getByTestId(`supplier-row-${state.supplier}`)).toBeVisible();
+});
+
+test("Supplier goods: the Gudang filter keeps the supplier under the warehouse it was received at, not another", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.seller);
+
+  // Picked on the list: the restock went into warehouse A, so the supplier stays — its figures whole, 2 sold · 3 ready.
+  await page.goto("/inventories/suppliers");
+  await expect(page.getByTestId(`supplier-row-${state.supplier}`)).toBeVisible();
+  await pickTeam(page, page.getByTestId("supplier-warehouse-filter"), state.whCode);
+  await expect(page).toHaveURL(new RegExp(`[?&]warehouse=${state.warehouse}(&|$)`));
+  await expect(page.getByTestId(`supplier-row-${state.supplier}`)).toBeVisible();
+  await expect(page.getByTestId(`supplier-sold-${state.supplier}`)).toHaveText(/^2ordered /);
+  await expect(page.getByTestId(`supplier-ready-${state.supplier}`)).toHaveText(/^3restocked /);
+
+  // Warehouse B never received its goods: nothing matches — and the URL keeps the pick.
+  await page.goto(`/inventories/suppliers?warehouse=${state.warehouseB}`);
+  await expect(page.getByTestId("suppliers-none-match")).toBeVisible();
+  await expect(page.getByTestId(`supplier-row-${state.supplier}`)).toHaveCount(0);
+
+  // Discover, every team's suppliers, searched to this one: under A, not under B.
+  const named = encodeURIComponent(`E2E Sumber Goods ${SUFFIX}`);
+  await page.goto(`/inventories/suppliers/discover?q=${named}&warehouse=${state.warehouse}`);
+  await expect(page.getByTestId(`discover-supplier-row-${state.supplier}`)).toBeVisible();
+  await page.goto(`/inventories/suppliers/discover?q=${named}&warehouse=${state.warehouseB}`);
+  await expect(page.getByTestId("discover-suppliers-none-match")).toBeVisible();
+  await expect(page.getByTestId(`discover-supplier-row-${state.supplier}`)).toHaveCount(0);
 });
 
 test("Supplier goods: the order cancelled, its 2 units are counted back", async ({ page }) => {

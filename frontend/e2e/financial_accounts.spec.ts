@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { openShops } from "./pickers";
 
 // The team's financial accounts, end to end — docs/business/financial_account/context_decision.md.
 //
@@ -230,7 +231,7 @@ test("A shop is pointed at an account", async ({ page }) => {
   await page.getByTestId("open-shop-set").click();
   const dialog = page.getByTestId("shop-set");
   await expect(dialog).toBeVisible();
-  await dialog.getByTestId("shop-select").click();
+  await openShops(dialog);
   await dialog.getByRole("option").filter({ hasText: SHOP_NAME }).click();
   await expect(dialog.getByTestId("shop-set-current")).toContainText("names no account yet");
   await dialog.getByTestId("shop-set-save").click();

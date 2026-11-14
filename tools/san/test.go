@@ -17,7 +17,9 @@ import (
 // `san test` — measured testing (the-full-e2e-waits-for-a-measured-yes, backlog #49).
 //
 // MACHINE commands (docs/tools/san.md, "Two shapes"): they never ask which database. The e2e they
-// run uses its own test database (warehouse_test) through Playwright's setup, as it always did.
+// run uses its own test database (warehouse_test) through Playwright's setup, as it always did — except the full run,
+// which tests a frozen copy on databases and ports of its own (warehouse_test_go, warehouse_test_w1, :8181/:5181, a
+// Storybook port of its own), so the live tree's tests go on beside it.
 //
 //	go run ./tools/san test measure     the files now vs the last green full run: areas, risk, due?
 //	go run ./tools/san test affected    the e2e specs the change reaches, and the smoke set
@@ -25,6 +27,7 @@ import (
 //	go run ./tools/san test full        the full go test, Storybook and e2e on a frozen copy
 //	go run ./tools/san test report      latest.md and the recent runs
 //	go run ./tools/san test slice       log the files this slice changed
+//	go run ./tools/san test accept-run  make an ended full run the baseline when it only failed to LOAD files
 func testCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "test",
@@ -36,6 +39,7 @@ func testCommand() *cli.Command {
 			testFullCommand(),
 			testReportCommand(),
 			testSliceCommand(),
+			testAcceptRunCommand(),
 		},
 	}
 }
@@ -299,9 +303,11 @@ func testFullCommand() *cli.Command {
 			&cli.StringSliceFlag{Name: "story", Usage: "only these story files (paths from frontend/) — partial"},
 			&cli.StringSliceFlag{Name: "go", Usage: "only these go packages (./backend/services/x/...) — partial"},
 			&cli.StringSliceFlag{Name: "skip", Usage: "skip a part: go, stories or e2e — partial"},
-			&cli.IntFlag{Name: "workers", Value: defaultWorkers, Usage: "parallel e2e workers, each with its own " +
-				"database (a clone of a template), API and UI ports and events project; 1 = the name-ordered " +
-				"single-database batches (the fallback)"},
+			&cli.IntFlag{Name: "workers", Value: defaultWorkers, Usage: "e2e workers, each with its own database (a " +
+				"clone of a template), API and UI ports and events project — 1 (the default) runs the name-ordered " +
+				"batches on warehouse_test_w1, :8181/:5181, so the live tree's tests go on beside it"},
+			&cli.BoolFlag{Name: "shared-db", Hidden: true, Usage: "the old single-database e2e on warehouse_test, " +
+				":8081/:5175 — it blocks smoke, affected --run and Go DB tests in the live tree while it runs"},
 			&cli.StringFlag{Name: "times", Usage: "an old e2e_batches.sh summary.txt (its b<N>.log beside it) to read " +
 				"per-spec times from, for specs no recorded run timed — the workers' balancing and the estimate"},
 		},
@@ -323,10 +329,15 @@ func testFullCommand() *cli.Command {
 				Skip:     cmd.StringSlice("skip"),
 				Workers:  int(cmd.Int("workers")),
 				Times:    cmd.String("times"),
+				SharedDB: cmd.Bool("shared-db"),
 			}
 
 			if opts.Workers < 1 || opts.Workers > maxWorkers {
 				return fmt.Errorf("--workers %d: want 1 to %d", opts.Workers, maxWorkers)
+			}
+
+			if opts.SharedDB && opts.Workers > 1 {
+				return fmt.Errorf("--shared-db runs the e2e on the one warehouse_test — it takes no --workers %d", opts.Workers)
 			}
 
 			for _, s := range opts.Skip {
@@ -361,7 +372,7 @@ func testFullCommand() *cli.Command {
 			fmt.Fprintln(out, "(dry run: nothing is copied or run)")
 			plan.print(out, m.Current, m)
 
-			if busy := refuseIfBusy(root); busy != nil {
+			if busy := refuseFullIfBusy(root, plan.Shared, plan.workerNames()); busy != nil {
 				fmt.Fprintf(out, "\n⚠ it would not start now: %v\n", busy)
 			}
 

@@ -25,7 +25,7 @@ go run ./tools/san user reset-password --username ani
 | **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) · [`shop grant-current-cs`](#shop-grant-current-cs) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
 | **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
-| **the tests** | [`test measure`](#test-measure) · [`test affected`](#test-affected) · [`test smoke`](#test-smoke) · [`test full`](#test-full) · [`test report` · `test slice`](#test-report--test-slice) | measured testing: measure the change against the last green full run, run what it reaches, run the full suites only when due |
+| **the tests** | [`test measure`](#test-measure) · [`test affected`](#test-affected) · [`test smoke`](#test-smoke) · [`test full`](#test-full) · [`test accept-run`](#test-accept-run) · [`test report` · `test slice`](#test-report--test-slice) | measured testing: measure the change against the last green full run, run what it reaches, run the full suites only when due |
 | **the deployment** | [`deploy`](#deploy) | ship one service to Cloud Run — built by Cloud Build, never migrated |
 
 ```mermaid
@@ -91,7 +91,8 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`test measure`](#test-measure) | Fingerprint the source files against the last green full run (`e2e_report/last_green.json`): the areas changed, their risk, whether the full run is **due** or **overdue**, and the one-line ask |
 | [`test affected`](#test-affected) | The e2e specs that call a changed RPC, open a changed page or use a changed component, and the smoke set. `--run` runs them |
 | [`test smoke`](#test-smoke) | Run the smoke set — five key flows from `frontend/e2e/smoke.txt`, under 5 minutes. `--dry-run` checks every entry still names one test |
-| [`test full`](#test-full) | The full go test, Storybook and e2e on a **frozen copy** of the folder; `last_green.json` moves only when all of it is green. The e2e runs on **3 parallel workers** (`--workers N`), each with its own database, ports and events project. Run it when measured due and the owner said yes. `--dry-run` prints the plan |
+| [`test full`](#test-full) | The full go test, Storybook and e2e on a **frozen copy** of the folder; `last_green.json` moves only when all of it is green. The e2e runs on **ONE worker** by default (`--workers N` for more, on request) — its own database, ports and events project, so the live tree's Go DB tests, smoke and Storybook go on beside it. Run it when measured due and the owner said yes. `--dry-run` prints the plan. A story or spec file that only failed to **load** is re-run once, by itself, in the same run |
+| [`test accept-run`](#test-accept-run) | Make an ENDED full run the green baseline when its only failures were load failures: re-run each such file once now, in this tree; `last_green.json` moves to **that run's** fingerprint. Refuses while any failed check remains |
 | [`test report` · `test slice`](#test-report--test-slice) | Print `e2e_report/latest.md` and the recent runs · log the files a slice changed |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
@@ -254,7 +255,7 @@ go run ./tools/san db ensure-test    # create it if absent — never drops
 go run ./tools/san db reset-test     # drop and recreate it empty
 go run ./tools/san db drop-test      # clean up after a run
 
-# a parallel e2e worker's own database, and the template it is cloned from (test full --workers N)
+# a full run's e2e worker's own database, and the template it is cloned from (test full)
 go run ./tools/san db reset-test --name warehouse_test_w1 --template warehouse_test_tpl
 go run ./tools/san db drop-test --name warehouse_test_w1
 ```
@@ -564,6 +565,10 @@ catches a break it rated low):
 | an event's contents | in `proto/warehouse/events/**`, an existing event message with a field added, removed, or of another type or number (a new event — a new message and a new arm of `Event` — is not) |
 | the e2e setup or helpers | `frontend/e2e/**` except the specs and the two lists, `frontend/playwright.config.ts`, and the `tools/san` files the e2e's global setup runs (`db.go`, `migrate.go`, `seed.go`, `region.go`, `pubsub.go`, `services.go`) |
 
+**Not wide: a dependency bump.** `go.mod` / `go.sum` and the frontend's `package.json` / lock file count as one ordinary
+area (normal risk), not a wide change — the owner's call
+([a-dependency-bump-is-one-area](../development_lifecycle_decision.md#a-dependency-bump-is-one-area)).
+
 ### Due and overdue
 
 | | When |
@@ -700,7 +705,7 @@ anything starts, `smoke` and `affected --run`:
 
 | | |
 | --- | --- |
-| refuse | while a full run is live (`e2e_report/.full_run.lock`) or another Playwright run holds `frontend/.e2e-lock` |
+| refuse | while another Playwright run holds `frontend/.e2e-lock`, or a `--shared-db` full run is live (it uses the same database and ports). A full run on its own worker — the default — shares nothing with them and never stops them ([While it runs](#test-full)) |
 | clean | a dead run's `.e2e-lock`, and THIS checkout's leftover servers on :8081/:5175 (`app_development`, or a vite started from this `frontend/`) — killed with their whole tree |
 | never touch | another program on those ports (another project's dev server): it stops with `STOP: :5175 is held by pid …` |
 | check | Docker is running and `warehouse_revamp_postgres` is healthy |
@@ -718,8 +723,8 @@ folder while it runs. Run it when [`test measure`](#test-measure) says due **and
 
 ```sh
 go run ./tools/san test full --dry-run     # the plan: the copy, every step, each worker's batches and the estimate
-go run ./tools/san test full               # ~27 min (go, Storybook, then the e2e on 3 workers); in the background
-go run ./tools/san test full --workers 1   # the fallback: the e2e as today's name-ordered single-database batches
+go run ./tools/san test full               # ~45 min (go, Storybook, then the e2e on ONE worker — the default); in the background — development goes on beside it
+go run ./tools/san test full --workers 3   # faster (~27 min) but heavy on the CPU — only when the owner asks
 go run ./tools/san test full --spec restock.spec.ts --skip go --skip stories   # a partial run — never moves last_green
 ```
 
@@ -730,7 +735,8 @@ go run ./tools/san test full --spec restock.spec.ts --skip go --skip stories   #
 | `--copy-dir` | Where the copy goes. Default `<the checkout's parent>/.san_frozen/<name>-<stamp>/` — beside the checkout, on its volume |
 | `--spec`, `--story`, `--go` | Only these e2e specs / story files (from `frontend/`) / go packages — a **partial** run |
 | `--skip` | `go`, `stories` or `e2e` — partial |
-| `--workers` | Parallel e2e workers, 1–6, default **3** (measured below). `1` = today's name-ordered batches on one `warehouse_test` |
+| `--workers` | e2e workers, 1–6, default **1** ([the-full-e2e-runs-on-one-worker](../development_lifecycle_decision.md#the-full-e2e-runs-on-one-worker)). Every worker — the one too — has its own database, ports and events project ([below](#parallel-workers---workers-n)); `3` (~27 min) only when the owner asks |
+| `--shared-db` | Hidden. The old e2e: the same batches on the live tree's `warehouse_test`, :8081/:5175 — it then blocks `smoke`, `affected --run` and Go DB tests in the live tree, as every full run did before 2026-11-14. Only to compare against a run on the worker |
 | `--times` | An old `e2e_batches.sh` `summary.txt` (its `b<N>.log` files beside it) to read per-spec times from, for specs no recorded full run has timed yet — used for the balancing and the estimate |
 
 A partial run is recorded like any other and **never moves `last_green.json`**.
@@ -745,25 +751,31 @@ sequenceDiagram
     participant V as vitest (Storybook)
     participant W as Playwright, per batch
     P->>S: go run ./tools/san test full
-    S->>S: refuse if a full run or an e2e run is live
-    S->>R: .full_run.lock, and the live frontend/.e2e-lock (a Playwright run here refuses meanwhile)
+    S->>S: refuse if another full run is live (or a live-tree run as its worker, frontend/.e2e-lock.w1)
+    S->>R: .full_run.lock, and the live frontend/.e2e-lock.w1 — never the live tree's own .e2e-lock
     S->>R: runs/<stamp>/fingerprint.json — the files tested
     S->>C: copy the checkout (no .git, no build output), node_modules hard-linked
-    S->>G: go test -count=1 ./... in the copy (cap 30 min)
-    S->>V: vitest run --project=storybook in the copy (cap 20 min)
-    S->>S: --workers 3 (default): the template warehouse_test_tpl — db reset-test, migrate up-all, region load-seed, seed root
-    par each worker w1…w3, at once — its own database, API/UI ports, events project
-        loop its batches, name-ordered, up to 6 specs (orders alone)
+    S->>G: go test -count=1 ./... in the copy, on its own warehouse_test_go (cap 30 min)
+    S->>V: vitest run --project=storybook in the copy, on its own browser port 6116+ (cap 20 min)
+    opt only LOAD failures (a-file-that-fails-to-load-is-re-run-once)
+        S->>V: each load-failed story file once more, by itself, in the copy
+    end
+    S->>S: the template warehouse_test_tpl — db reset-test, migrate up-all, region load-seed, seed root
+    par each worker (w1 alone by default, w1…w3 with --workers 3) — its own database, API and UI ports, events project
+        loop its batches, name-ordered, up to 6 specs (orders alone, on one worker the restock family together)
             S->>S: stop that worker's own leftover servers on its two ports, check Docker and Postgres
             S->>W: the batch, in the copy — global-setup clones warehouse_test_wN from the template
             W-->>S: pass/fail and time per spec (JSON reporter), a failure's traces → runs/<stamp>/failures/wN-bM/
         end
     end
+    opt a batch failed only because a spec failed to LOAD
+        S->>W: that spec alone, then the batch's other specs, once each, in fresh batches on the same worker
+    end
     S->>S: drop the template (each worker's teardown dropped its own database)
-    Note over S,W: --workers 1 instead: the batches below, one after another, on warehouse_test, :8081/:5175
+    Note over S,W: --shared-db instead: the same batches on the live tree's warehouse_test, :8081/:5175
     S->>R: the .proto files tested → runs/<stamp>/proto/
     S->>C: delete the copy
-    alt go, Storybook and every batch green, and not partial
+    alt go, Storybook and every batch green (a load failure counting by its re-run), and not partial
         S->>R: last_green.json ← this fingerprint, last_green_proto/ ← its .proto files
     end
     S->>R: run.json, summary.md, latest.md, then remove the locks
@@ -779,19 +791,96 @@ refuses to serve it to the Storybook test browser — tried on 2026-11-13, the S
 is deleted afterwards (`--keep-copy` keeps it); the delete refuses a folder without the copy's marker file or
 holding any junction or symlink.
 
-**While it runs** the e2e ports and `warehouse_test` (or the workers' ports and databases) are the copy's: `smoke` and `affected --run` refuse,
-and so does a plain `npx playwright test` in the real folder (its `.e2e-lock` names the running `san`).
-Do not run Go DB tests meanwhile either — they reset the same database.
+**While it runs, development goes on.** The run shares nothing with the live tree's own tests — even on ONE worker:
 
-**The batches** (`--workers 1`, the fallback) are the old `e2e_batches.sh` ported: name-ordered, 6 specs each,
-`orders.spec.ts` alone and the **restock family** — `restock.spec.ts` and the four `restock_*.spec.ts` split from it
-(backlog #51) — together in one batch of its own, as the one file was; each capped at 590 s (the restock batch at
-1500 s — a cap hit is a timeout, not a failure: re-run that spec alone). Before each batch it stops only this
-checkout's (or the copy's) leftover servers, never another program on :5175.
+| | the full run (the copy) | the live tree's own tests |
+| --- | --- | --- |
+| go test | `warehouse_test_go` (`TEST_DATABASE_URL`; dropped before and after) | `warehouse_test` (`san_testdb`'s default) |
+| Storybook (vitest browser) | port 6116, or the next free one up to 6155 (`STORIES_BROWSER_PORT`, read by `frontend/vitest.config.ts`) | 6106 |
+| e2e database | `warehouse_test_w1`, a fresh clone of `warehouse_test_tpl` per batch | `warehouse_test` |
+| e2e API / UI | :8181 / :5181 (the next free pair if another program holds one) | :8081 / :5175 |
+| events (Pub/Sub emulator project) | `warehouse-e2e-w1` | `warehouse-e2e` |
+| run lock, output, Vite cache, sign-ins | the copy's `frontend/.e2e-lock.w1`, `test-results/w1/`, `node_modules/.vite-e2e-w1`, `e2e/.auth/w1/` | `frontend/.e2e-lock`, `test-results/`, `node_modules/.vite`, `e2e/.auth/single/` |
+
+So, meanwhile, the live tree may run **Go DB tests**, **`test smoke` / `affected --run`** and **Storybook** (a vitest
+run, or `npm run storybook` on 6006) — the live tree's Go DB tests and its e2e still share `warehouse_test` with **each
+other**, so those two go one after the other, as always. Proved 2026-11-14 with three partial full runs on
+`warehouse_test_w1`, :8181/:5181 (all green): beside the first and second, the live tree's smoke passed on
+`warehouse_test`, :8081/:5175 (`netstat` showed all four ports listening and Postgres held connections to both databases
+at once); beside the third, the live tree's Go DB tests (product_service + expense_service, 164 passed, none skipped)
+passed on `warehouse_test` while the worker's servers were up; and a Storybook-only partial on :6116 passed while a
+live-tree vitest run held :6106.
+
+What still refuses — only what truly collides:
+
+| Started while a full run is live | |
+| --- | --- |
+| a second `test full` | refuses: two full runs share the template `warehouse_test_tpl`, the worker databases and their ports |
+| a Playwright run in the live tree **as worker w1** (`E2E_WORKER=w1 …`) | refuses: the full run holds the live `frontend/.e2e-lock.w1` (the same `warehouse_test_w1`). Run such a repro as `w9` (`E2E_WORKER=w9 E2E_DB_NAME=warehouse_test_w9 E2E_API_PORT=8189 E2E_UI_PORT=5189 E2E_PUBSUB_PROJECT=warehouse-e2e-w9`) |
+| `test accept-run` | refuses: the full run moves `last_green.json` when it ends; an older run accepted meanwhile could take it back |
+| `test smoke`, `affected --run`, a plain `npx playwright test`, Go DB tests, Storybook | run — unless the full run was started with `--shared-db` (then they refuse, as before) |
+
+The live tree's CPU is shared, of course: a Storybook or e2e run beside the full run slows both a little.
+
+**Its programs are copied, not linked.** `frontend/node_modules` is hard-linked into the copy, except the five files a
+process LOADS (`esbuild.exe`, rollup's and oxc's `.node` — ~18 MB): Windows refuses to delete any link of a loaded file,
+so a Vite running in the live tree (its smoke, a dev server) pinned the copy's links and the copy could not be removed
+(seen on the first run beside a live smoke).
+
+**The batches** (one worker, the default — and `--shared-db`) are the old `e2e_batches.sh` ported: name-ordered, 6
+specs each, `orders.spec.ts` alone and the **restock family** — `restock.spec.ts` and the four `restock_*.spec.ts` split
+from it (backlog #51) — together in one batch of its own, as the one file was; each capped at 590 s (the restock batch at
+1500 s — a cap hit is a timeout, not a failure: re-run that spec alone). On the worker each batch starts on a fresh clone
+of the template, so the sort-order rules hold inside the batch exactly as on the old single database. Before each batch
+it stops only its own leftover servers on its two ports, never another program's.
+
+### A file that fails to load is re-run once
+
+The rule is [a-file-that-fails-to-load-is-re-run-once](../development_lifecycle_decision.md#a-file-that-fails-to-load-is-re-run-once):
+a story or spec **file** that never ran a check because it failed to load is re-run **once, by itself**, inside the same
+full run, and green on the re-run counts as green; a failed check — an assertion, a timeout inside a test, a crash after
+the file loaded — is **never** re-run; the same file failing to load again is red. The first full run on a frozen copy
+(`runs/20261114-100420`) is why: 10 story files failed to load (all passed alone). It was first blamed on the copy's cold
+Vite dependency cache; measured 2026-11-14 (`DEBUG=vite:deps`), the cold copy pre-bundles once at startup and never
+re-bundles. The real cause was the test browser refusing requests — Chromium's `net::ERR_INSUFFICIENT_RESOURCES`, when
+every story file's new iframe re-requested its whole module graph (~86,000 requests a run, 78,000 of them 304s); since
+then `frontend/.storybook/runCachePlugin.ts` lets the browser cache modules for one `vitest run` (~8,000 requests).
+
+Failures are sorted **per file**, conservatively — only these exact signatures make a load failure; anything else,
+an unknown message, a failure no file can be named for, or a file with one load failure and one failed check, is red:
+
+| Part | A load failure is | Read from |
+| --- | --- | --- |
+| Storybook | a FAIL'd **suite** (`FAIL \|storybook (chromium)\| <file> [ <file> ]`) whose error says `Failed to import test file` or `Failed to fetch dynamically imported module` | `stories.log` |
+| Storybook | a FAIL'd **story** (`FAIL \|…\| <file> > <story>`) whose error is ONLY `Failed to fetch dynamically imported module: <url>` — beside the empty `TypeError:` header, the "Click to debug" link and stack frames. The import failed; no check ran | `stories.log` |
+| Storybook | an **unhandled error** `Failed to run the test <file>.` caused by `Cannot connect to the iframe` | `stories.log` |
+| e2e | Playwright (1.61) stops the WHOLE run when a spec fails to load: the batch's JSON report loaded no suite and counted no test, and every one of its top-level `errors` names a spec of the batch — by `location.file` (a SyntaxError, a throw while the file is evaluated) or by `Cannot find module '…' imported from <spec>`. An error in the global setup (its location is `global-setup.ts`), a web server that never started, a missing import in a helper — red | `w<K>-b<N>.json` |
+
+The vitest counts must agree too: more failed files (`Test Files N failed`) or errors (`Errors N`) than the log names is
+red — something went unread. And **every file it counted must have run**: `Test Files a failed | b passed | c skipped (T)`
+with a + b + c < T is red, nothing re-run. Vitest's browser pool stops the whole run at the first file that errors (an
+iframe that never loaded, a dropped browser), and the files still queued are in the total but in no count — re-running
+the load-failed ones would leave those untested and call the run green. `runs/20261114-100420` (accepted) and
+`-131538` (its Storybook part counted green) left 29 and 32 files unrun; `accept-run` now refuses such a run.
+
+| | Storybook | e2e |
+| --- | --- | --- |
+| re-run | each load-failed file by itself: `vitest run --project=storybook <file>` in the copy (cap 10 min), after the full Storybook run | each load-failed spec alone, then the batch's other specs (they never ran) together — fresh batches on the same worker's database, ports and events project, before the template is dropped (`--shared-db`: on `warehouse_test`) |
+| only when | every Storybook failure is a load failure — a failed check makes the part red, nothing is re-run | no e2e batch failed a test or hit its cap |
+| green | the re-run ran tests and none failed | the fresh batch passed with tests run |
+| logs | `stories-rerun-<n>.log` | `w<K>-rerun<n>.log` / `.json` |
+
+The run record names every file re-run, why (the signature matched) and its result: `reruns` in `run.json`, a
+*Re-run once* table in `summary.md`, the failures per file (load / check) under the Storybook section, and a *re-run
+after a load failure N/M green* note in the run's one-line verdict. A run that ended before this was built — or one
+whose load failures could not be re-run — is made the baseline with [`test accept-run`](#test-accept-run).
 
 ### Parallel workers (`--workers N`)
 
-The e2e used to run on ONE database, one spec after another: ~33–35 min. With `--workers N` (default 3) it runs as N
+**The default is ONE worker** — the name-ordered batches above, one after another, ~33–35 min — the owner's call, so the
+machine's CPU is not heavy ([the-full-e2e-runs-on-one-worker](../development_lifecycle_decision.md#the-full-e2e-runs-on-one-worker)).
+It is a worker like any other: `w1` below, its own database, ports and events project, so it never meets the live
+tree's runs. With `--workers N` (N > 1, on request) it runs as N
 whole Playwright runs **at once** from the frozen copy, and each worker has its own of everything a run touches — so
 no worker can see, reset or be pushed another's data ([frontend/playwright.config.ts](../../frontend/playwright.config.ts),
 [frontend/e2e/env.ts](../../frontend/e2e/env.ts)):
@@ -812,7 +901,7 @@ reset-test`, `migrate up-all` (the same service order), `region load-seed` of `e
 with the password read from `global-setup.ts` — about 15 s; then every batch of every worker clones it instead of
 migrating. It is dropped at the end.
 
-**Sharing out.** The specs are placed **longest first**, each on the worker with the least work so far (LPT), by the
+**Sharing out** (N > 1). The specs are placed **longest first**, each on the worker with the least work so far (LPT), by the
 per-spec times the newest recorded full runs hold (`e2e_report/runs/*/run.json`), else an old `summary.txt`
 (`--times`, each batch's time shared by the tests its `b<N>.log` ran), else the per-test rate of the spec a file was
 split from (`restock_x.spec.ts` ← `restock.spec.ts`), else 6.5 s a test (Playwright `--list` counts them). Inside a
@@ -843,64 +932,149 @@ contention for every spec.
 | `summary.md` | the verdict; go and Storybook with their failures; one row per batch (exit, time, counts); **pass/fail and time per spec**; the failures |
 | `fingerprint.json` | the fingerprint tested (its 12-character sum is in the summary) |
 | — | the areas changed since the previous run, and the slices logged since it ([`test slice`](#test-report--test-slice)) |
-| `go.log`, `stories.log`, `b<N>.log`, `b<N>.json` | the logs, and Playwright's JSON report per batch |
+| `go.log`, `stories.log`, `b<N>.log`, `b<N>.json` | the logs, and Playwright's JSON report per batch (`b<N>` only for `--shared-db`); the go and Storybook sections of `summary.md` say where each ran (*Ran on database warehouse_test_go* / *vitest browser port :6116*) |
 | `failures/b<N>/` | a failing batch's traces, screenshots and videos (Playwright clears them at its next run); a worker's are `failures/w<K>-b<N>/` |
-| `w<K>-b<N>.log`, `w<K>-b<N>.json`, `template-<n>.log` | a parallel run's batch logs per worker, and the template's four steps |
+| `w<K>-b<N>.log`, `w<K>-b<N>.json`, `template-<n>.log` | each worker's batch logs (`w1-b<N>` on one worker), and the template's four steps |
 | — | the workers (database, ports, events project, batches, time) — a table in `summary.md`, `workers` in `run.json` |
 | `proto/` | the `.proto` files tested — become `last_green_proto/` when green |
+| `stories-rerun-<n>.log`, `w<K>-rerun<n>.log` | a load-failed file's one re-run ([above](#a-file-that-fails-to-load-is-re-run-once)); `reruns` in `run.json` and a table in `summary.md` say which, why, and how each went |
+| `accept-<stamp>/` | the logs of a later [`test accept-run`](#test-accept-run); `acceptances` in `run.json` |
+
+The plan on one worker (`go run ./tools/san test full --dry-run`, 2026-11-14):
 
 ```
 (dry run: nothing is copied or run)
 full run — the plan
 
-  fingerprint  3228 source files (1e2a77255c1f) — no green baseline yet
-  copy         D:\pdcgo\warehouse_revamp → D:\pdcgo\.san_frozen\warehouse_revamp-20261114-021208
+  fingerprint  3274 source files (99d9d592a36b) — 107 changed since the last green run
+  copy         D:\pdcgo\warehouse_revamp → D:\pdcgo\.san_frozen\warehouse_revamp-20261114-152958
                without .git, build output, e2e_report; generated code kept;
                frontend/node_modules hard-linked file by file (its .vite/.vitest/.cache the copy's own, empty)
-  locks        e2e_report/.full_run.lock, and the live frontend/.e2e-lock (a Playwright run here refuses meanwhile)
-  1 go         go test -count=1 ./...   (in the copy, cap 30m0s)
-  2 stories    node node_modules\vitest\vitest.mjs run --project=storybook   (in the copy's frontend, cap 20m0s)
-  3 e2e        50 specs on 3 parallel workers
-               3 workers at once, each its OWN database (a clone of warehouse_test_tpl), API and UI ports and events project;
-               inside a worker: name order, batches of up to 6 specs, each on a fresh clone
+  locks        e2e_report/.full_run.lock (a second full run refuses), and the live frontend/.e2e-lock.w1 (a live-tree run as that worker refuses)
+  meanwhile    the live tree's Go DB tests and smoke / affected --run (warehouse_test, :8081/:5175 — still one of those at a time) and its Storybook (:6106) share nothing with this run and may go on
+  1 go         go test -count=1 ./...   (in the copy, on its own database warehouse_test_go — not warehouse_test; cap 30m0s)
+  2 stories    node node_modules\vitest\vitest.mjs run --project=storybook   (in the copy's frontend, vitest browser port :6116 — not the live tree's :6106; cap 20m0s)
+  3 e2e        52 specs on ONE worker
+               ONE worker with its OWN database (a clone of warehouse_test_tpl), API and UI ports and events project — nothing the live tree's runs use (warehouse_test, :8081/:5175);
+               name order, batches of up to 6 specs, orders.spec.ts alone, the restock family (restock*.spec.ts) together; each on a fresh clone, cap 9m50s (restock 25m0s)
        tpl  warehouse_test_tpl — migrated + seeded once (db reset-test, migrate up-all, region load-seed, seed root), about 20s
-       w1  db warehouse_test_w1 · API :8181 · UI :5181 · events warehouse-e2e-w1 · 16 specs in 3 batches · about 13 min
-           b1  auth.spec.ts (22s) bundles.spec.ts (23s) finance_metrics.spec.ts (19s) liability.spec.ts (26s) racks.spec.ts (16s) restock_warehouse_wants_to_accept.spec.ts (265s)
-           b2  settlement_imports.spec.ts (16s) shipment_channels.spec.ts (12s) shops.spec.ts (28s) stock_count_cancel.spec.ts (2s) supplier_channels.spec.ts (10s) the_received_count_is_corrected.spec.ts (37s)
-           b3  the_root_team_badge.spec.ts (14s) the_warehouse_list.spec.ts (21s) users.spec.ts (63s) warehouses.spec.ts (17s)
-       w2  db warehouse_test_w2 · API :8182 · UI :5182 · events warehouse-e2e-w2 · 17 specs in 4 batches · about 14 min
-           b1  financial_accounts.spec.ts (45s) found_requests.spec.ts (23s) inventory.spec.ts (4s) order_drafts.spec.ts (24s)
-           b2  orders.spec.ts (219s)
-           b3  products.spec.ts (31s) profile.spec.ts (8s) restock_warehouse_wants_to_receive.spec.ts (66s) teams.spec.ts (28s) the_inventory_metrics.spec.ts (16s) the_labels_print_together.spec.ts (12s)
-           b4  the_order_keeps_exact_figures.spec.ts (14s) the_owner_corrects_a_batch_price.spec.ts (20s) the_return_goes_back_on_the_shelf.spec.ts (16s) the_shop_entries.spec.ts (18s) the_supplier_goods.spec.ts (22s) the_warehouse_reads_a_shelf_in_units.spec.ts (17s)
-       w3  db warehouse_test_w3 · API :8183 · UI :5183 · events warehouse-e2e-w3 · 17 specs in 3 batches · about 13 min
-           b1  expenses.spec.ts (15s) language.spec.ts (5s) opname_sessions.spec.ts (22s) restock.spec.ts (40s) restock_selling_wants_to_edit.spec.ts (165s) restock_selling_wants_to_raise.spec.ts (137s)
-           b2  statement.spec.ts (20s) suppliers.spec.ts (16s) team_switch.spec.ts (4s) the_closed_shop.spec.ts (24s) the_expense_metrics.spec.ts (28s) the_order_needs_a_return_warehouse.spec.ts (13s)
-           b3  the_settlement_report.spec.ts (11s) the_supplier_exports.spec.ts (18s) the_team_balance_names_who_recorded.spec.ts (22s) transfers.spec.ts (29s) writes_need_a_shop_grant.spec.ts (17s)
+       w1  db warehouse_test_w1 · API :8181 · UI :5181 · events warehouse-e2e-w1 · 52 specs in 11 batches · about 43 min
+           b1  auth.spec.ts (20s) bundles.spec.ts (20s) expenses.spec.ts (26s) finance_metrics.spec.ts (15s) financial_accounts.spec.ts (58s) found_requests.spec.ts (41s)
+           b2  inventory.spec.ts (4s) language.spec.ts (5s) liability.spec.ts (28s) opname_sessions.spec.ts (31s) order_drafts.spec.ts (29s)
+           b3  orders.spec.ts (331s)
+           b4  products.spec.ts (34s) profile.spec.ts (8s) racks.spec.ts (15s)
+           b5  restock.spec.ts (51s) restock_selling_wants_to_edit.spec.ts (305s) restock_selling_wants_to_raise.spec.ts (190s) restock_warehouse_wants_to_accept.spec.ts (332s) restock_warehouse_wants_to_receive.spec.ts (33s)
+           …   (b6–b10: six specs each, name order)
+           b11  warehouses.spec.ts (17s) writes_need_a_shop_grant.spec.ts (10s)
        coupled      none listed (frontend/e2e/coupled.txt) — every spec is placed on its own
-       e2e wall     about 14 min with 3 workers (the template, then the slowest worker; ×1.2 for the shared CPU) — vs about 33 min as --workers 1 batches (~35 min measured before the split)
-       times        13 from a recorded full run, 3 from the rate of the spec it was split from, 34 from summary.txt
+       e2e wall     about 44 min on one worker (the template, then its batches one after another)
+       times        1 from its test count, 51 from a recorded full run
                before each batch: stop that worker's own leftover servers on its two ports (never another program's), check Docker and Postgres; afterwards the template is dropped
+  load retry   a story or spec file that only failed to LOAD is re-run once, by itself, in the copy; a failed check never is (a-file-that-fails-to-load-is-re-run-once)
   record       e2e_report/runs/<stamp>/ (run.json, summary.md, fingerprint.json, logs, failures/), latest.md
   last green   e2e_report/last_green.json moves only when go, Storybook and every e2e batch are green
-  estimate     about 25 min
+  estimate     about 50 min
 ```
 
 ### Errors you should expect
 
 | Message | Cause |
 | --- | --- |
-| `a full run is live (pid …)` | Another `test full` holds `e2e_report/.full_run.lock`. Wait — `test report` shows it |
-| `another e2e run is live (frontend/.e2e-lock, pid …)` | A Playwright run in this folder. Wait for it |
+| `a full run is live (pid …) — two full runs at once share the template …` | Another `test full` holds `e2e_report/.full_run.lock`. Wait — `test report` shows it. (`smoke`, `affected --run` and Go DB tests are NOT refused by it) |
+| `a Playwright run in this folder runs as worker w1 (frontend/.e2e-lock.w1, …)` | A live-tree repro running as worker `w1` — the full run's database. Wait for it, or run the repro as `w9` |
+| `another e2e run is live (frontend/.e2e-lock, pid …)` | Only with `--shared-db`: a Playwright run in this folder on `warehouse_test`. Wait for it |
+| `no free port for the copy's Storybook run in 6116–6155` | Other programs hold every candidate — stop some |
+| `--shared-db runs the e2e on the one warehouse_test — it takes no --workers N` | `--shared-db` is the single-database run; drop one of the two |
 | `STOP: :5175 is held by pid … (…)` | Another program holds an e2e port. It is never killed: stop it, or run Playwright with a temporary config on a free port |
 | `STOP: Docker is not running` / `warehouse_revamp_postgres is not healthy` | Start Docker Desktop, wait for Postgres, `go run ./tools/san dev setup --no-docker` |
 | `the copy folder … already exists` | A `--copy-dir` in use. Pick another, or remove it |
 | `frontend/node_modules is missing` | `go run ./tools/san dev setup` (or `npm install`) first |
 | `the full run is not green — e2e_report/runs/<stamp>/summary.md` | Exit 1. Read the summary; `last_green.json` did not move |
-| `--workers N: want 1 to 6` | Pick 1 (the single-database batches) to 6; 3 is the measured default |
+| `--workers N: want 1 to 6` | Pick 1 (the default, the owner's) to 6; 3 is the measured most |
 | `no free port pair for N workers in 8181–8220 / 5181–5220` | Other programs hold every candidate pair — stop some, or run fewer workers |
 | `the template step "migrate up-all" failed` / `cloning … from the template …` | The template could not be made or copied — `runs/<stamp>/template-<n>.log`; a clone fails while anything is connected to `warehouse_test_tpl` |
 | `smoke.txt names tests Playwright does not list exactly once` | A smoke test was renamed or moved — fix `frontend/e2e/smoke.txt` |
+
+---
+
+## `test accept-run`
+
+Makes an **ended** full run the green baseline when its only failures were **load** failures
+([a-file-that-fails-to-load-is-re-run-once](../development_lifecycle_decision.md#a-file-that-fails-to-load-is-re-run-once))
+— a run that ended before the in-run re-run was built (the first one, `20261114-100420`), or one whose load failures
+could not be re-run then.
+
+```sh
+go run ./tools/san test accept-run 20261114-100420 --dry-run    # check the run, list what would be re-run
+go run ./tools/san test accept-run 20261114-100420              # re-run them now; on all green, move last_green.json
+go run ./tools/san test accept-run 20261114-100420 --rerun src/pages/product-discover/stories/Search.stories.tsx \
+    --reason "<the owner's words making this run the baseline>"
+```
+
+| Flag | |
+| --- | --- |
+| `--rerun <file>` (alias `--rerun-passed`) | Also re-run this **Storybook** file (from `frontend/`) although its failure is a CHECK failure — **only on the owner's word** that this run is the baseline. Repeatable; only a file that failed in the run; needs `--reason`. An e2e test that failed is never accepted |
+| `--reason` | Why the `--rerun` files may be re-run — recorded in `run.json`, `summary.md` and `latest.md` |
+| `--dry-run` | Check the run and print what would be re-run; re-run nothing, move nothing |
+
+**What it checks — it refuses, changing nothing, when any fails:** the run is a whole `full` run (not partial, not
+stopped, not already green, not already accepted, no earlier red acceptance — a file is re-run once, a second failure is
+red); `go test` green; the e2e has **0 failed tests**, and a red batch is one that failed only to load (the e2e
+signature [above](#a-file-that-fails-to-load-is-re-run-once), read from its JSON report); every Storybook failure in
+`stories.log` is a load failure by the same classifier — or a file named with `--rerun` and `--reason`; none
+unattributed; no in-run re-run red.
+
+**What it does:** re-runs each of those files **once, by itself, now, in the live tree** — a story file with `vitest run
+--project=storybook <file>`, a load-failed e2e batch as its load-failed spec alone and then its other specs, on :8081/:5175
+like a level-2 run (it refuses while any full run is live — that run moves `last_green.json` when it ends — or
+another e2e run holds `frontend/.e2e-lock`). When every re-run is green, it moves
+`e2e_report/last_green.json` to **that run's** fingerprint (`runs/<stamp>/fingerprint.json` — never today's tree; the
+files changed since then stay *changed since the last green run*) and its `.proto` files to `last_green_proto/`. It
+records the acceptance — every file, why (`load`, `never-ran`, or `named` with the reason), its result, and whether the
+file still reads as the run tested it — as `acceptances` in `run.json`, an *Accepted* section in `summary.md` (the run's
+verdict then reads `GREEN (accepted …)`), and a line under *The last green full run* in `latest.md`. A red re-run is
+recorded too (*Not accepted*) and moves nothing; logs in `runs/<stamp>/accept-<stamp>/`.
+
+The first run, accepted for real on 2026-11-14 (`--rerun` for the Search story: a 15 s timeout is a CHECK failure by
+the rule — its log does not tie it to the re-bundle — re-run only because the owner made this run the first baseline;
+long lines cut here with …):
+
+```
+accept-run 20261114-100420 — full 2026-11-14 10:04 · RED · 23m24s · go ✓ 47 passed · stories ✗ 4 failed (exit 1) · e2e 312 passed, 2 skipped · `runs/…
+  fingerprint  8dcc80678c5c (3239 files) — what last_green.json would become
+  go           ✓ 47 passed
+  e2e          312 passed, 2 skipped
+  stories      ✗ 4 failed (exit 1) — per file: 10 failed to load, 1 failed a check
+    load   src/components/badges/SettlementSourceBadge.stories.tsx — Failed to import test file (SettlementSourceBadge.stories.tsx) — Failed to fetch…
+    load   src/components/chrome/ColorModeToggle.stories.tsx — Failed to import test file (setup-file-with-project-annotations.js) — Failed to fetch …
+    load   src/components/chrome/Logo.stories.tsx — Failed to import test file (setup-file-with-project-annotations.js) — Failed to fetch dynamically…
+    load   src/pages/restock-form/index.stories.tsx — Failed to import test file (setup-file-with-project-annotations.js) — Failed to fetch dynamical…
+    load   src/pages/supplier-discover-detail/index.stories.tsx — Failed to import test file (setup-file-with-project-annotations.js) — Failed to fet…
+    load   src/components/chrome/StatsToggle.stories.tsx — Failed to import test file (StatsToggle.stories.tsx) — Failed to fetch dynamically importe…
+    load   src/pages/products/index.stories.tsx — Failed to import test file (setup-file.js) — Failed to fetch dynamically imported module (setup-fil…
+    load   src/features/orders/form/WarehouseBand.stories.tsx — Failed to import test file (WarehouseBand.stories.tsx) — Failed to fetch dynamically …
+    load   src/components/feedback/EmptyHint.stories.tsx — Failed to fetch dynamically imported module (@storybook_react-dom-shim.js) — the story's o…
+    load   src/pages/supplier-discover/index.stories.tsx — unhandled: Failed to run the test — Cannot connect to the iframe
+    named  src/pages/product-discover/stories/Search.stories.tsx — named with --rerun: the owner made run 20261114-100420 the first green baseline (d…
+  re-run       11 files, each ONCE by itself, now, in the live tree (D:\pdcgo\warehouse_revamp\frontend)
+
+→ re-running in the live tree (fingerprint now 5f1d4786ce5b; the run tested 8dcc80678c5c)
+  ✓ 3 passed src/components/badges/SettlementSourceBadge.stories.tsx
+  ✓ 3 passed src/components/chrome/ColorModeToggle.stories.tsx
+  ✓ 5 passed src/components/chrome/Logo.stories.tsx
+  ✓ 2 passed src/pages/restock-form/index.stories.tsx
+  ✓ 2 passed src/pages/supplier-discover-detail/index.stories.tsx
+  ✓ 5 passed src/components/chrome/StatsToggle.stories.tsx
+  ✓ 2 passed src/pages/products/index.stories.tsx
+  ✓ 3 passed src/features/orders/form/WarehouseBand.stories.tsx
+  ✓ 3 passed src/components/feedback/EmptyHint.stories.tsx
+  ✓ 2 passed src/pages/supplier-discover/index.stories.tsx
+  ✓ 4 passed src/pages/product-discover/stories/Search.stories.tsx
+
+**Accepted** 2026-11-14 11:10 by `san test accept-run`: 11 files re-run once each in the live tree, all green — 10 load failures, 1 named with --reru…
+```
+
+Then `test measure` compares with that run: only the files changed since it (`8dcc80678c5c`) count.
 
 ---
 
@@ -927,9 +1101,9 @@ At the repo root, gitignored — nothing in it is committed:
 | | |
 | --- | --- |
 | `latest.md` | the last result, and whether today's files are covered (rewritten by every `test` command that measures) |
-| `last_green.json` | the fingerprint the last all-green, non-partial full run tested |
+| `last_green.json` | the fingerprint the last all-green, non-partial full run tested — or the run a [`test accept-run`](#test-accept-run) accepted |
 | `last_green_proto/` | that run's `.proto` files — what `measure` diffs a `.proto` against |
-| `runs/<stamp>/` | one full run (above) |
+| `runs/<stamp>/` | one full run (above); `accept-<stamp>/` inside it — a [`test accept-run`](#test-accept-run)'s logs |
 | `level2/<stamp>-smoke/`, `level2/<stamp>-affected/` | one smoke or affected run: `run.json`, `summary.md`, the logs |
 | `slice_log.md`, `slice_mark.json` | the slice log and its last mark |
 | `state.json` | since when the full run has been due (the overdue rule) |

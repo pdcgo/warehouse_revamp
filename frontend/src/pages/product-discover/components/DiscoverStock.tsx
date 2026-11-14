@@ -3,11 +3,8 @@ import { HStack, Icon, Portal, Stack, Text, Tooltip } from "@chakra-ui/react";
 import type { LucideIcon } from "lucide-react";
 import { PackageCheck, Truck } from "lucide-react";
 
-import type { OwnerStockRow } from "../../../features/products/adapt";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
+import type { DiscoverStockRow } from "../../../features/products/adapt";
 import { LOW_STOCK_PCS, STOCK_STATUS_TONE, readyStatus } from "../../../features/products/stockAge";
-import { DISCOVER_PENDING } from "../pending";
-import { sampleStock } from "../../../features/products/discoverSample";
 
 // THE STOCK ON A DISCOVER CARD (owner: *"di cardnya ada stok ready dan stok ongoing, teksnya tooltips saja, kasih icon
 // untuk stocknya"*, `a-discover-card-shows-its-stock`) — two figures, each an icon and a count, what they are in a tooltip:
@@ -19,22 +16,19 @@ import { sampleStock } from "../../../features/products/discoverSample";
 // page's rule, shared (`readyStatus`): under LOW_STOCK_PCS ready, a pill in the warning tone; none, in the error tone. Out
 // of stock is the card worth noticing, not one to hide. Its tooltip says which, and why.
 //
-// ⚠ Another team's figures are a SAMPLE (pending.ts `cardStock`): OwnerStockByIds answers only for the caller's own goods.
-// The caller's own products show real figures — and a dash where the read said nothing, never a zero it did not claim.
+// REAL FIGURES ON EVERY CARD, whoever owns the product — DiscoverStockByIds, one read for the page — in the page's
+// warehouse, or every warehouse when none is picked (discovers-warehouse-keeps-ready-stock-there). A dash where the read
+// said nothing, never a zero it did not claim.
 export function DiscoverStock({
   productId,
-  own,
   stock,
 }: {
   productId: bigint;
-  own: boolean;
-  /** The owner's figures — only ever for an own product. */
-  stock?: OwnerStockRow;
+  /** The card's figures — absent until the page's read has answered. */
+  stock?: DiscoverStockRow;
 }) {
   const { t } = useTranslation();
-  const figures = own
-    ? { ready: stock?.readyQty, ongoing: stock?.ongoingQty }
-    : sampleStock(productId);
+  const figures = { ready: stock?.readyQty, ongoing: stock?.ongoingQty };
   const status = readyStatus(figures.ready);
   // The highlight's words — "Hampir habis — Stok siap kurang dari 5 pcs …", under the figure's own name.
   const why =
@@ -61,7 +55,6 @@ export function DiscoverStock({
         label={t("discover.stock.ongoing")}
         testId={`discover-stock-ongoing-${productId}`}
       />
-      {!own && <NotImplemented list={DISCOVER_PENDING} id="cardStock" />}
     </HStack>
   );
 }

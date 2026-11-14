@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { openShops } from "./pickers";
 
 // The shop write gate, end to end (docs/business/shop/context_decision.md):
 //
@@ -145,7 +146,7 @@ test("Order form: a CS granted shop A sees A, and never B", async ({ page }) => 
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
 
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   await expect(page.getByTestId(`shop-select-option-${shopA}`)).toBeVisible();
   await expect(page.getByTestId(`shop-select-option-${shopA}`)).toContainText(SHOP_A);
   await expect(page.getByTestId(`shop-select-option-${shopB}`)).toHaveCount(0);

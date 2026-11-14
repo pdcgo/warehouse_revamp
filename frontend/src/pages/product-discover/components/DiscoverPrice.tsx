@@ -1,12 +1,8 @@
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { HStack, Portal, Stack, Text, Tooltip } from "@chakra-ui/react";
 
-import type { OwnerStockRow } from "../../../features/products/adapt";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { discoverPriceOf } from "../../../features/products/discoverSample";
+import type { DiscoverStockRow, OwnerStockRow } from "../../../features/products/adapt";
 import { formatRupiahRange } from "../../../lib/money";
-import { DISCOVER_PENDING } from "../pending";
 
 // THE PRICE ON A DISCOVER CARD (owner: *"secara default yang muncul di sini adalah harga cross, tapi khusus untuk team yang
 // login atau contextnya dipilih, boleh menampilkan harga asli dan harga cross"*, `discover-shows-the-cross-price`) — and
@@ -14,31 +10,32 @@ import { DISCOVER_PENDING } from "../pending";
 // kalau tampil di bawah harga cross dan lebih kecil warnanya hitam saja"*, `a-discover-price-is-red-and-unlabelled`):
 //
 //   another team's product         the team standing here's own
-//   Rp 79.000 – Rp 81.000 ⚠        Rp 51.412 – Rp 53.100      ← the cross price: red, bold
+//   Rp 79.000 – Rp 81.000          Rp 51.412 – Rp 53.100      ← the cross price: red, bold
 //                                  Rp 45.700 – Rp 47.200      ← the cost: under it, smaller, the body ink
 //
 // No labels — a hover says which price is which, and the spoken label says it too. What a borrower pays is the cross price,
 // so that is what every card says; what the owner paid is the owner's to see, only on the team's own products.
 //
-// ⚠ Another team's cost cannot be read across teams yet, so its cross price is a SAMPLE (pending.ts `crossPrice`); the
-// own products' figures are real, from OwnerStockByIds. A product none of whose units was ever costed reads a dash.
+// REAL ON EVERY CARD: the cross price comes from DiscoverStockByIds — the server prices each batch still holding units with
+// the product's markup and sends the range, never the cost (inventory-computes-the-markup). The cost under it is the
+// team's OWN products' alone, from OwnerStockByIds. A product with nothing on a shelf has no price: a dash.
 export function DiscoverPrice({
   productId,
-  markupBps,
   own,
   stock,
+  ownStock,
 }: {
   productId: bigint;
-  markupBps: number;
-  /** The team standing here owns it — then the cost shows too, and the figures are real. */
+  /** The team standing here owns it — then the cost shows too. */
   own: boolean;
-  /** The owner's figures — only ever for an own product. */
-  stock?: OwnerStockRow;
+  /** The card's figures — the cross price range. */
+  stock?: DiscoverStockRow;
+  /** The owner's figures — only ever for an own product: its cost. */
+  ownStock?: OwnerStockRow;
 }) {
   const { t } = useTranslation();
-  // The rule is shared with the discover detail (discoverPriceOf), so a card and its page never disagree.
-  const price = discoverPriceOf(productId, markupBps, own, stock);
   const range = (r?: { min: number; max: number }) => (r ? formatRupiahRange(r.min, r.max) : "—");
+  const cross = range(stock?.cross);
 
   if (own) {
     return (
@@ -46,14 +43,14 @@ export function DiscoverPrice({
         <Price
           hint={t("discover.price.crossHint")}
           label={t("discover.price.cross")}
-          value={range(price.cross)}
+          value={cross}
           cross
           testId={`discover-price-cross-${productId}`}
         />
         <Price
           hint={t("discover.price.costHint")}
           label={t("discover.price.cost")}
-          value={range(price.cost)}
+          value={range(ownStock?.costKnown ? { min: ownStock.costMin, max: ownStock.costMax } : undefined)}
           testId={`discover-price-cost-${productId}`}
         />
       </Stack>
@@ -65,9 +62,8 @@ export function DiscoverPrice({
       <Price
         hint={t("discover.price.crossHint")}
         label={t("discover.price.cross")}
-        value={range(price.cross)}
+        value={cross}
         cross
-        mark={<NotImplemented list={DISCOVER_PENDING} id="crossPrice" />}
         testId={`discover-price-cross-${productId}`}
       />
     </Stack>
@@ -81,7 +77,6 @@ function Price({
   label,
   value,
   cross = false,
-  mark,
   testId,
 }: {
   /** What the price is — the tooltip. */
@@ -90,7 +85,6 @@ function Price({
   label: string;
   value: string;
   cross?: boolean;
-  mark?: ReactNode;
   testId: string;
 }) {
   return (
@@ -113,7 +107,6 @@ function Price({
           </Tooltip.Positioner>
         </Portal>
       </Tooltip.Root>
-      {mark}
     </HStack>
   );
 }

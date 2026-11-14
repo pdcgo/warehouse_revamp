@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { openShops } from "./pickers";
 
 // A SHOP IS CLOSED, NEVER DELETED — end to end, on the real server (docs/business/shop/context_decision.md):
 //
@@ -81,7 +82,7 @@ async function useTeam(page: Page) {
 async function orderFormOffers(page: Page) {
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
-  await page.getByTestId("shop-select").click();
+  await openShops(page);
   await expect(page.getByTestId(`shop-select-option-${shopOpen}`)).toBeVisible();
 
   return {
@@ -258,7 +259,7 @@ test("Closed, the Orders filter still offers it after the open shop, badged — 
   await expect(page.getByTestId(`order-row-${orderOnClosing}`)).toBeVisible();
 
   const filter = page.getByTestId("orders-shop-filter");
-  await filter.getByTestId("shop-select").click();
+  await openShops(filter);
   const closed = filter.getByTestId(`shop-select-option-${shopClosing}`);
   await expect(closed).toBeVisible();
   await expect(closed).toContainText(SHOP_CLOSING);
@@ -286,7 +287,7 @@ test("Closed, its statement still imports — the dialog offers it after the ope
   const dialog = page.getByTestId("import-dialog");
   await expect(dialog).toBeVisible();
 
-  await dialog.getByTestId("shop-select").click();
+  await openShops(dialog);
   const closed = dialog.getByTestId(`shop-select-option-${shopClosing}`);
   await expect(closed).toBeVisible();
   await expect(closed.getByTestId(`shop-select-closed-${shopClosing}`)).toBeVisible();

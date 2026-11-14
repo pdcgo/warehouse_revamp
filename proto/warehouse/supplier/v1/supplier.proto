@@ -189,6 +189,12 @@ message SupplierListFilter {
   // (every-selling-team-sees-every-teams-figures). Narrowed on the server BEFORE the page; unset = Semua.
   SupplierFigureBand sold = 5;
   SupplierFigureBand ready = 6;
+  // THE WAREHOUSE (the-warehouse-filters-before-the-team): only the suppliers whose goods were received at this
+  // warehouse — the set the supplier page's Gudang terkait chips list (InventoryService.SupplierGoods by WAREHOUSE),
+  // every team's goods. Narrowed on the server BEFORE the page; only the ROWS narrow — Terjual, Siap and their bands
+  // stay the supplier's whole, over every warehouse (the-warehouse-filter-narrows-only-the-rows). 0 = any warehouse.
+  // A warehouse role may name only its own building.
+  uint64 warehouse_id = 7;
 }
 
 // One band: `min` inclusive, `max` exclusive, `max` 0 = no upper edge. A supplier with no goods reads 0, so it is in

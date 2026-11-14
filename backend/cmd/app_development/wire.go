@@ -58,6 +58,10 @@ func InitializeApp() (*App, error) {
 		NewProductHistory,
 		// The team code every product code is composed from, asked of team_service — see product_team_codes.go.
 		NewProductTeamCodes,
+		// What the list's lock-now and stock-age filters ask of inventory — see product_stock_narrower.go.
+		NewProductStockNarrower,
+		// The category subtree Discover's Kategori asks of category_service — see product_categories.go.
+		NewProductCategoryTree,
 		selling_v1.NewService,
 		// Whether a user runs a team, for ShopAccessCheck — see role_reader.go.
 		NewRoleReader,

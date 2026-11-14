@@ -26,10 +26,12 @@ import { Code, ConnectError } from "@connectrpc/connect";
 
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import { BatchOrigin, MovementKind } from "../src/gen/warehouse/inventory/v1/inventory_pb";
-import { ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
+import { ProductLockFilter, ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
 import { SAMPLE_LOST_WAREHOUSE, SAMPLE_PRODUCTS, SAMPLE_SELLER } from "../src/features/analytic/sample";
-import { products as productFixtures, teams as teamFixtures } from "./fixtures";
+import { productBatches, products as productFixtures, teams as teamFixtures, warehouseStock } from "./fixtures";
 import { isEmptied, priceLogsOf, priceNow } from "./batchPriceScenario";
+import { subtreeOf } from "./categoryStub";
+import { discoverStockCalls, productDiscoverCalls, productListCalls, resetProductListCalls } from "./productListScenario";
 
 type Image = { url: string; thumbnailUrl: string };
 type ProductRow = (typeof productFixtures)[number] & { images: Image[] };
@@ -111,6 +113,7 @@ let analyticSamplesListed = false;
 let neverUsed = new Set<bigint>();
 
 export function resetProductStub() {
+  resetProductListCalls();
   rows = [...productFixtures.map((p) => ({ ...p, images: [] as Image[] })), ...ARCHIVED.map((p) => ({ ...p }))];
   neverUsed = new Set([791n]);
   analyticSamplesListed = false;
@@ -212,17 +215,37 @@ export const productService = {
   // PAGED, because a caller genuinely walks it: OwnStockedProductPicker collects a team's whole catalogue 200 ids at a
   // time and stops on a short page. In the fixtures' own order (the server sorts newest first unless asked), so the
   // pickers' stories keep their first rows; a sort by name or SKU is honoured.
+  //
+  // THE LOCK AND THE STOCK'S AGE are narrowed here as the server does (stock_narrower.go, over inventory's batches through
+  // the composition root): a way of the lock reads the two fields; LOCKED_NOW is a minimum with the ready stock of EVERY
+  // warehouse under it (a-minimum-closes-only-under-it — at exactly it, open; nothing on a shelf is under any); an age
+  // keeps a product whose oldest READY batch in the lens (`stockWarehouseId`, 0 = every one) arrived at least N whole days
+  // before now — the clock the Umur stok column reads, so the filter and the column agree. Each request is recorded
+  // (productListScenario.ts).
   productList: (req: {
     teamId: bigint;
-    filter?: { q?: string; status?: ProductStatus };
+    filter?: { q?: string; status?: ProductStatus; lock?: ProductLockFilter; stockAgeMinDays?: number };
+    stockWarehouseId?: bigint;
     sort?: { sortType?: CommonSortType; s?: { case?: string; value?: unknown } };
     page?: PageReq;
   }) => {
     const archived = req.filter?.status === ProductStatus.ARCHIVED;
+    const lock = req.filter?.lock ?? ProductLockFilter.UNSPECIFIED;
+    const days = req.filter?.stockAgeMinDays ?? 0;
+    const lens = req.stockWarehouseId ?? 0n;
+    productListCalls.push({
+      teamId: req.teamId,
+      q: req.filter?.q ?? "",
+      lock,
+      stockAgeMinDays: days,
+      stockWarehouseId: lens,
+      limit: Number(req.page?.limit ?? 0),
+    });
     const by = req.sort?.s?.case === "product" ? (req.sort.s.value as ProductRowSort) : ProductRowSort.UNSPECIFIED;
     const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
     const list = rows
       .filter((p) => p.teamId === req.teamId && p.archived === archived && matches(req.filter?.q, p.name, p.productCode))
+      .filter((p) => inLockWay(p, lock) && agedAtLeast(p.id, days, lens))
       .sort((a, b) =>
         by === ProductRowSort.NAME
           ? a.name.localeCompare(b.name) * dir
@@ -236,6 +259,17 @@ export const productService = {
   // Discovery looks ACROSS teams — `team_id` is an authorization scope here and must NOT narrow the rows. Its two
   // real narrowings apply (the in-dialog team filter, "other teams only"), and an EMPTY id list is no narrowing.
   // A sort by name or SKU is honoured, as productList's is; without one, the fixtures' own order.
+  //
+  // KUNCI as the server narrows it (discover-filters-by-lock, stock_narrower.go): CLOSED = locked by its owner, or a
+  // minimum the ready stock of EVERY warehouse is UNDER (the same figures DiscoverStockByIds answers the cards with);
+  // ORDERABLE = every other. The list's own lock values are refused here, as the server refuses them. Each request is
+  // recorded (productListScenario.ts).
+  //
+  // GUDANG, STOK SIAP, HARGA CROSS AND KATEGORI as the server narrows them (discover_narrowing.go), over the very figures
+  // DiscoverStockByIds answers the cards with (`discoverStockSample`), so a card never contradicts the filter that kept
+  // it: a warehouse keeps what holds ready units there; the ready range and the cross range read that warehouse (or
+  // every one), both ends included, no max = open; a product with nothing ready has no cross price; a category keeps
+  // its whole subtree (categoryStub `subtreeOf`).
   productDiscover: (req: {
     teamId: bigint;
     ownerTeamId: bigint;
@@ -243,12 +277,35 @@ export const productService = {
     includeLocked: boolean;
     ownerTeamIds: bigint[];
     excludeOwnerTeamIds: bigint[];
-    filter?: { q?: string };
+    filter?: { q?: string; lock?: ProductLockFilter; stockAgeMinDays?: number };
     sort?: { sortType?: CommonSortType; s?: { case?: string; value?: unknown } };
     page?: PageReq;
+    warehouseId?: bigint;
+    categoryId?: bigint;
+    ready?: { min: bigint; max?: bigint };
+    crossPrice?: { min: number; max?: number };
   }) => {
     const by = req.sort?.s?.case === "product" ? (req.sort.s.value as ProductRowSort) : ProductRowSort.UNSPECIFIED;
     const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
+    const lock = req.filter?.lock ?? ProductLockFilter.UNSPECIFIED;
+    const warehouseId = req.warehouseId ?? 0n;
+    const categoryId = req.categoryId ?? 0n;
+    productDiscoverCalls.push({
+      lock,
+      includeLocked: req.includeLocked,
+      limit: Number(req.page?.limit ?? 0),
+      warehouseId,
+      categoryId,
+      ready: req.ready ? { min: req.ready.min, max: req.ready.max } : undefined,
+      crossPrice: req.crossPrice ? { min: req.crossPrice.min, max: req.crossPrice.max } : undefined,
+    });
+    const inCategory = categoryId === 0n ? undefined : subtreeOf(categoryId);
+    if (
+      (lock !== ProductLockFilter.UNSPECIFIED && lock !== ProductLockFilter.CLOSED && lock !== ProductLockFilter.ORDERABLE) ||
+      (req.filter?.stockAgeMinDays ?? 0) > 0
+    ) {
+      throw new ConnectError("the lock's ways, the lock-now and the stock-age filters narrow a team's own product list only", Code.InvalidArgument);
+    }
 
     return paged(
       "product",
@@ -262,7 +319,10 @@ export const productService = {
             (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
             (req.ownerTeamIds.length === 0 || req.ownerTeamIds.includes(p.teamId)) &&
             (req.excludeOwnerTeamIds.length === 0 || !req.excludeOwnerTeamIds.includes(p.teamId)) &&
-            matches(req.filter?.q, p.name, p.productCode),
+            matches(req.filter?.q, p.name, p.productCode) &&
+            inDiscoverLock(p, lock) &&
+            (inCategory === undefined || inCategory.includes(p.categoryId)) &&
+            onDiscoverShelf(p, warehouseId, req.ready, req.crossPrice),
         )
         .sort((a, b) =>
           by === ProductRowSort.NAME
@@ -486,6 +546,113 @@ export function ownerStockSample(productId: bigint, teamId: bigint, warehouseId:
     oldestBatchUnix: held.length ? held.reduce((a, b) => (b.acceptedAt < a ? b.acceptedAt : a), held[0]!.acceptedAt) : 0n,
     lastRestockUnix: batchesOf(productId).reduce((a, b) => (b.acceptedAt > a ? b.acceptedAt : a), 0n),
   };
+}
+
+// ── Discover's card figures (DiscoverStockByIds) ──────────────────────────────────────────────────────────────────────
+
+/**
+ * What DiscoverStockByIds answers for one product, whoever asks — its OWNER's batches, as the server reads them: team 15's
+ * catalogue from its sample batches (both warehouses), the fixture products from the fixture shelf (`warehouseStock`,
+ * `productBatches` — Gudang Pusat only). On its way: team 15's every fourth, and Teh's 6 — bound for Gudang Pusat. The
+ * cross price is the cost spread of the batches holding units in the lens with the product's markup on top; the cost
+ * itself is never returned. `warehouseId` 0n = every warehouse; the total is every warehouse's whatever it says.
+ */
+export function discoverStockSample(productId: bigint, warehouseId: bigint) {
+  const row = rows.find((r) => r.id === productId);
+  const bps = row?.crossMarkupBps ?? 0;
+  const lensed = (w: bigint) => warehouseId === 0n || w === warehouseId;
+
+  let held: { warehouseId: bigint; ready: bigint; unitCost: number }[] = [];
+  let ongoing = 0n;
+
+  if (figured(productId)) {
+    held = batchesOf(productId).filter((b) => b.ready > 0n);
+    const n = Number(productId % 997n);
+    ongoing = n % 4 === 0 ? BigInt(12 + (n % 20)) : 0n;
+  } else if (row) {
+    const key = productId.toString();
+    held = (productBatches[key] ?? [])
+      .filter((b) => b.quantity > 0n)
+      .map((b) => ({ warehouseId: GUDANG_PUSAT, ready: b.quantity, unitCost: b.unitCost }));
+    // The fixture shelf's own figure wins where the two disagree.
+    if (held.length === 0 && (warehouseStock[key] ?? 0n) > 0n) {
+      held = [{ warehouseId: GUDANG_PUSAT, ready: warehouseStock[key]!, unitCost: 0 }];
+    }
+    ongoing = key === "72" ? 6n : 0n;
+  }
+
+  const inLensHeld = held.filter((b) => lensed(b.warehouseId));
+  // A fixture shelf's 0 is UNKNOWN, never free (fixtures.ts `productCosts`), so it prices nothing — the own product's
+  // cost beside it reads a dash too.
+  const costs = inLensHeld.map((b) => b.unitCost).filter((c) => figured(productId) || c > 0);
+  const priced = (c: number) => c + (c * bps) / 10_000;
+
+  return {
+    productId,
+    readyQty: inLensHeld.reduce((s, b) => s + b.ready, 0n),
+    ongoingQty: lensed(GUDANG_PUSAT) ? ongoing : 0n,
+    totalReadyQty: held.reduce((s, b) => s + b.ready, 0n),
+    crossKnown: costs.length > 0,
+    crossMin: costs.length ? priced(Math.min(...costs)) : 0,
+    crossMax: costs.length ? priced(Math.max(...costs)) : 0,
+  };
+}
+
+/** DiscoverStockByIds — one row per id asked, in the order asked, zeros included. Each call is recorded. */
+export function discoverStockByIds(req: { teamId: bigint; productIds: bigint[]; warehouseId: bigint }) {
+  discoverStockCalls.push({ productIds: [...req.productIds], warehouseId: req.warehouseId });
+  return { items: req.productIds.map((id) => discoverStockSample(id, req.warehouseId)) };
+}
+
+/**
+ * Whether a product passes Discover's Gudang, Stok siap and Harga cross — over the figures DiscoverStockByIds answers in
+ * that warehouse (or every one). Never stocked reads 0 ready, so a range from 0 keeps it — but no warehouse and no cross
+ * band does: it holds nothing there and has no price.
+ */
+function onDiscoverShelf(
+  p: ProductRow,
+  warehouseId: bigint,
+  ready?: { min: bigint; max?: bigint },
+  cross?: { min: number; max?: number },
+): boolean {
+  if (warehouseId === 0n && !ready && !cross) return true;
+  const s = discoverStockSample(p.id, warehouseId);
+  if (warehouseId !== 0n && s.readyQty === 0n) return false;
+  if (ready && (s.readyQty < ready.min || (ready.max !== undefined && s.readyQty > ready.max))) return false;
+  if (cross && (!s.crossKnown || s.crossMax < cross.min || (cross.max !== undefined && s.crossMin > cross.max))) return false;
+  return true;
+}
+
+/** Whether a product is in Discover's Kunci pick — CLOSED: locked, or a minimum the every-warehouse total is under. */
+function inDiscoverLock(p: ProductRow, lock: ProductLockFilter): boolean {
+  if (lock !== ProductLockFilter.CLOSED && lock !== ProductLockFilter.ORDERABLE) return true;
+  const closed =
+    p.crossLocked || (p.reservedStock > 0 && discoverStockSample(p.id, 0n).totalReadyQty < BigInt(p.reservedStock));
+  return lock === ProductLockFilter.CLOSED ? closed : !closed;
+}
+
+/** Whether a product's lock is the asked way — or, LOCKED_NOW, a minimum its ready stock in every warehouse is under. */
+function inLockWay(p: ProductRow, lock: ProductLockFilter): boolean {
+  const minimum = !p.crossLocked && p.reservedStock > 0;
+  switch (lock) {
+    case ProductLockFilter.MODE_OPEN:
+      return !p.crossLocked && p.reservedStock === 0;
+    case ProductLockFilter.MODE_MINIMUM:
+      return minimum;
+    case ProductLockFilter.MODE_ALWAYS:
+      return p.crossLocked;
+    case ProductLockFilter.LOCKED_NOW:
+      return minimum && batchesOf(p.id).reduce((s, b) => s + b.ready, 0n) < BigInt(p.reservedStock);
+    default:
+      return true;
+  }
+}
+
+/** Whether a product's oldest READY batch in the lens arrived at least `days` whole days ago — none on a shelf, no age. */
+function agedAtLeast(productId: bigint, days: number, lens: bigint): boolean {
+  if (days <= 0) return true;
+  const cutoff = BigInt(Math.floor(Date.now() / 1000)) - BigInt(days) * DAY;
+  return batchesOf(productId).some((b) => inLens(lens)(b) && b.ready > 0n && b.acceptedAt <= cutoff);
 }
 
 /** OwnerStockStat — the whole figured catalogue added up, in a lens; nothing for any other team. */

@@ -1,0 +1,76 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\nvm\\node.exe",
+      "D:\\pdcgo\\warehouse_revamp\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "-c",
+      "pw.config.ts",
+      "--reporter=line,json"
+    ],
+    "configFile": "D:\\pdcgo\\warehouse_revamp\\frontend\\.loadprobe_tmp\\pw.config.ts",
+    "rootDir": "D:/pdcgo/warehouse_revamp/frontend/.loadprobe_tmp/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/pdcgo/warehouse_revamp/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "",
+        "name": "",
+        "testDir": "D:/pdcgo/warehouse_revamp/frontend/.loadprobe_tmp/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "Error: Cannot find module 'D:\\pdcgo\\warehouse_revamp\\frontend\\.loadprobe_tmp\\specs\\does_not_exist' imported from D:\\pdcgo\\warehouse_revamp\\frontend\\.loadprobe_tmp\\specs\\b_broken.spec.ts",
+      "stack": "Error: Cannot find module 'D:\\pdcgo\\warehouse_revamp\\frontend\\.loadprobe_tmp\\specs\\does_not_exist' imported from D:\\pdcgo\\warehouse_revamp\\frontend\\.loadprobe_tmp\\specs\\b_broken.spec.ts"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-11-14T03:54:32.963Z",
+    "duration": 78.39099999999996,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

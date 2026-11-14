@@ -139,7 +139,7 @@ func TestProductUpdate_CorrectsTheCodePartOfANeverUsedProduct(t *testing.T) {
 func TestProductUpdate_RefusesACodeCorrectionOnceUsed(t *testing.T) {
 	db := san_testdb.DB(t)
 	id := createProduct(t, newService(t, db), 2, "SHOE-42")
-	svc := product_v1.NewService(db, fakeHistory{id: true}, teamCodes)
+	svc := product_v1.NewService(db, fakeHistory{id: true}, teamCodes, nil, nil)
 
 	_, err := svc.ProductUpdate(context.Background(), connect.NewRequest(&productv1.ProductUpdateRequest{
 		TeamId: 2, ProductId: id, ProductCodePart: proto.String("SHOE-43"), Name: proto.String("Renamed"),
@@ -159,7 +159,7 @@ func TestProductUpdate_RefusesACodeCorrectionOnceUsed(t *testing.T) {
 func TestProductUpdate_TheSamePartIsNoCorrection(t *testing.T) {
 	db := san_testdb.DB(t)
 	id := createProduct(t, newService(t, db), 2, "SHOE-42")
-	svc := product_v1.NewService(db, fakeHistory{id: true}, teamCodes)
+	svc := product_v1.NewService(db, fakeHistory{id: true}, teamCodes, nil, nil)
 
 	resp, err := svc.ProductUpdate(context.Background(), connect.NewRequest(&productv1.ProductUpdateRequest{
 		TeamId: 2, ProductId: id, ProductCodePart: proto.String("SHOE-42"), Name: proto.String("Renamed"),

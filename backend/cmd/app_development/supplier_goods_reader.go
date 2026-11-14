@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
@@ -15,15 +16,25 @@ import (
 // take drew per supplier (Penjualan, penjualan-is-the-selling-value-on-the-order-day) and which suppliers' Terjual or Siap
 // lie in a band (the-range-pills-are-a-fixed-set). Plain methods, not RPCs: the sales fold runs under no caller, and the
 // list's band is supplier_service's own question about every team's goods (every-selling-team-sees-every-teams-figures).
+// It answers supplier_service's WarehouseGoods too — the list's Gudang filter (the-warehouse-filters-before-the-team) —
+// from inventory's PLAIN function over the shared database (productStockNarrower's shape).
 //
 // inventory reaches supplier_service over Connect (supplier_deps.go), never through *supplier_v1.Service, so this
 // direction adds no cycle to the Wire graph.
 type supplierGoodsReader struct {
 	inventory *inventory_v1.Service
+	db        *gorm.DB
 }
 
-func NewSupplierGoodsReader(inventory *inventory_v1.Service) supplier_v1.GoodsReader {
-	return &supplierGoodsReader{inventory: inventory}
+var _ supplier_v1.WarehouseGoods = (*supplierGoodsReader)(nil)
+
+func NewSupplierGoodsReader(inventory *inventory_v1.Service, db *gorm.DB) supplier_v1.GoodsReader {
+	return &supplierGoodsReader{inventory: inventory, db: db}
+}
+
+// SupplierIDsAtWarehouse is the Gudang filter's set: the suppliers whose page lists the warehouse among Gudang terkait.
+func (r *supplierGoodsReader) SupplierIDsAtWarehouse(ctx context.Context, warehouseID uint64) ([]uint64, error) {
+	return inventory_v1.SupplierIDsAtWarehouse(ctx, r.db, warehouseID)
 }
 
 func (r *supplierGoodsReader) OrderTakeSuppliers(ctx context.Context, transactionID uint64) ([]supplier_v1.SaleTakePart, error) {

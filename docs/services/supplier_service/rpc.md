@@ -9,7 +9,7 @@ The suppliers a selling team buys stock from, and the online stores each one sel
 | --- | --- | --- |
 | `SupplierService` | `SupplierCreate` | a supplier in the scoped team — **refused unless it is a SELLING team** (asks team_service) |
 | | `SupplierUpdate` · `SupplierDelete` | the owning team's own; delete is **soft** |
-| | `SupplierList` | `OWN` (My Supplier) or `EVERY_TEAM` (Discover Supplier), searched, filtered by store type, by the team that keeps it (`owner_team_id`, 0 = any) and by the **range pills** `sold` / `ready` (asked of inventory before the page — [§ The range pills](#the-range-pills--supplierlists-sold-and-ready)), paged · the `CHANNELS` slice brings each supplier's stores |
+| | `SupplierList` | `OWN` (My Supplier) or `EVERY_TEAM` (Discover Supplier), searched, filtered by store type, by the team that keeps it (`owner_team_id`, 0 = any), by the **range pills** `sold` / `ready` (asked of inventory before the page — [§ The range pills](#the-range-pills--supplierlists-sold-and-ready)) and by the **Gudang filter** `warehouse_id` (the same way — [§ The Gudang filter](#the-gudang-filter--supplierlists-warehouse_id)), paged · the `CHANNELS` slice brings each supplier's stores |
 | | `SupplierDetail` | **any** team's live supplier |
 | | `SupplierByIds` | ids a caller holds — any team's, **deleted ones included, marked** |
 | `SupplierChannelService` | `SupplierChannelList` | any team's live supplier's live stores, searched, filtered by type, paged |
@@ -200,6 +200,62 @@ sequenceDiagram
 Inventory can list only suppliers WITH goods, so a band from 0 is asked as its complement. An empty set from above 0 is no
 supplier. Inventory not answering is `Internal`, never an empty list. Tests: `supplier_list_test.go`
 (`ABandFindsASupplierBeyondTheFirstPage`, `BandsAreLowerInclusiveUpperExclusive`, `ABandIsValidated`).
+
+## The Gudang filter — SupplierList's `warehouse_id`
+
+[the-warehouse-filters-before-the-team](../../technical/frontend/suppliers_decision.md#the-warehouse-filters-before-the-team),
+[the-warehouse-filter-narrows-only-the-rows](../../technical/frontend/suppliers_decision.md#the-warehouse-filter-narrows-only-the-rows)
+(built 2026-11-14). The supplier list and Discover › Suppliers keep the suppliers whose goods were received at the picked
+warehouse — EXACTLY the suppliers whose page lists it among **Gudang terkait** (`InventoryService.SupplierGoods` by
+WAREHOUSE). Asked of inventory BEFORE the count and the page, in-process, as the range pills are; only the rows narrow —
+Terjual, Siap and the bands stay the supplier's whole, over every warehouse.
+
+```mermaid
+sequenceDiagram
+  participant UI as supplier list or Discover
+  participant S as supplier_service SupplierList
+  participant INV as inventory - in-process WarehouseGoods
+  UI->>S: SupplierList - filter warehouse 14, sold 0..500
+  S->>INV: SupplierIDsAtWarehouse(14) - the suppliers of its Gudang terkait chips
+  S->>INV: SupplierIDsByFigure(SOLD, 500, open) - the band, as its complement
+  S->>S: cut the warehouse's set by the band in Go - suppliers.id = ANY(what is left) - then count, order, page
+```
+
+| | |
+| --- | --- |
+| received at W | a batch carrying the supplier, in W, that **holds units now**, OR was **minted by a `restock`** transaction (emptied since or not), OR has an **`order` row** on `batch_logs` (even one a cancel netted to 0) — the three aggregates whose rows make a `SupplierGoods` WAREHOUSE row, so the filter and the chips never disagree (`inventory_v1/supplier_ids_at_warehouse.go`) |
+| whose supplier | the batch's own `supplier_id` — copied from the restock **line** at accept ([a-batch-keeps-its-supplier](../../business/inventory/context_decision.md#a-batch-keeps-its-supplier)), from the source batch by a transfer — never the restock-level supplier; batches from nobody (0) left out |
+| transfers | count when the transferred batch still holds units or was sold from — as the chips list it (*0 restocks*); one moved on unsold, or written down to 0 without a sale, made no chip and makes no match |
+| every team | every team's batches ([every-selling-team-sees-every-teams-figures](../../business/supplier/context_decision.md#every-selling-team-sees-every-teams-figures)); OWN keeps the caller's own suppliers by its own predicate, Discover every team's, `owner_team_id` and `q` AND with it |
+| with a band | the warehouse's set is cut by each band IN GO (a band from 0 as its complement) and bound as ONE `= ANY(bigint[])`; once nobody is left, the band is not asked. No warehouse = the range pills as before |
+| who | a warehouse role may name only its own building — `PermissionDenied` otherwise: `use_scope` checks `team_id` alone, and the chips are the selling side's (`SupplierGoods` refuses a warehouse) |
+| unanswered | `Internal`, never an empty list — inventory down, or a `GoodsReader` with no `WarehouseGoods` |
+| the seam | `supplier_v1.WarehouseGoods` (`SupplierIDsAtWarehouse`), asked of the SAME `GoodsReader` by type assertion and answered by `cmd/app_development/supplier_goods_reader.go` from `inventory_v1.SupplierIDsAtWarehouse(ctx, db, w)` — a plain function over inventory's tables. Kept off `GoodsReader` so the operations tool's reader (`tools/san` `refoldGoods`, which never lists suppliers) needs no new method |
+| tests | `supplier_list_test.go` (`TheWarehouseKeepsTheSuppliersReceivedThere` — at W1 only, at both, at none, two teams, OWN vs Discover, with `owner_team_id` and `q`; `TheWarehouseAndABandAreCutTogether` — the whole figure, a band from 0, no band asked once empty; `TheWarehouseNarrowsBeforeThePage` — 30 of 60, page 2 by name; `TheWarehouseUnansweredIsAnError`; `AWarehouseFiltersOnlyByItself`) · inventory `supplier_ids_at_warehouse_test.go` (each way a warehouse holds goods, equal to the chips) · `cmd/app_development/supplier_goods_reader_test.go` (`TheWarehouseFilterReadsTheBatches`, real batches through the real seam) |
+
+**Performance** (`cmd/app_development/supplier_list_warehouse_perf_test.go`, `-tags perfaudit`, the real wiring: 2 000
+suppliers over 10 teams, 100 000 batches over 8 warehouses — the big one ≈ 30 000 batches holding every supplier, a small
+one ≈ 10 000 from 600 —, 300 000 `order` rows; medians of 5 after a warm-up). No warehouse picked: unchanged (1–2 ms, 3
+statements). With one, ONE more statement before the count:
+
+| case | answer | wall |
+| --- | --- | --- |
+| the seam, big warehouse | 2 000 ids | 32 ms (≈ 8 ms of it JIT) |
+| the seam, small warehouse | 600 ids | 19 ms |
+| the seam, a warehouse with no goods | 0 ids | 9 ms |
+| Discover, big warehouse · page 50 by name | 20 of 2 000 | 35 · 36 ms |
+| own list, big · small warehouse + `q` | 20 of 200 · 20 of 60 | 43 · 22 ms |
+| Discover, big warehouse + Siap < 50 | 20 of 43 | 56 ms |
+| Discover, big warehouse + Terjual 500–1.000 | 0 | 137 ms — the band's own read (≈ 100 ms here, 0.6–0.9 s at 1 M order rows) |
+| Discover, a warehouse with no goods + Terjual band | 0 | 12 ms — the band is never asked |
+
+The 2 000-id array is ≈ 10 KB (control `SELECT length($1)` 0.6 ms — under this host's ≈ 25 KB loopback stall). The restock
+test is a scalar subquery (a primary-key lookup per batch the shelf test did not keep): written as `EXISTS`, the planner
+hashed every restock transaction of every warehouse first (39 / 23 ms vs 31 / 10 ms). **Index probe, not added:**
+`(warehouse_id, supplier_id) INCLUDE (stock_count, transaction_id) WHERE supplier_id > 0` gave nothing to this shape; only
+a per-supplier rewrite on top of it reached 14 ms at the big warehouse (51 ms without the index) — ≈ 18 ms for a
+migration on `batches`, below the bar of [a-pure-index-is-added-without-asking](../../technical/architecture/context_decision.md#a-pure-index-is-added-without-asking);
+the candidate if warehouses grow.
 
 ## The reads
 

@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { pickTeam } from "./pickers";
 
 // THE RESTOCK SPECS' SHARED HELPERS. restock.spec.ts (62 tests, about 12 of the full run's ~35 minutes) was split by its
 // describe blocks into five files (backlog #51) so `san test full --workers N` can run them on different workers at
@@ -262,18 +263,11 @@ export async function inboundRow(page: Page, restockId: string, q = "") {
 // A product's Ready figure at one warehouse, as the seller's product picker shows it once that warehouse is chosen on the
 // form (Ready needs a building to be about).
 //
-// ⚠ The warehouse is typed again until its option SHOWS: typed before the teams have loaded, the select remounts when
-// they land (a combobox whose collection fills late) and closes, leaving the option in the DOM but hidden.
+// ⚠ The warehouse is typed only once the teams have loaded (pickTeam): typed before, the select remounts when they land
+// (a combobox whose collection fills late), drops the code and closes, leaving the option in the DOM but hidden.
 export async function readyAt(page: Page, warehouseCode: string, productCode: string) {
   await page.goto("/inventories/restock/new");
-  const input = page.getByTestId("restock-warehouse").locator("input");
-  const option = page.getByTestId(`team-select-option-${warehouseCode}`);
-  await expect(async () => {
-    await input.fill("");
-    await input.fill(warehouseCode);
-    await expect(option).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
-  await option.click();
+  await pickTeam(page, page.getByTestId("restock-warehouse"), warehouseCode);
   await page.getByTestId("restock-pick-products").click();
   await page.getByTestId("product-picker-search").fill(productCode);
   const row = page

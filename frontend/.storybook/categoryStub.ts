@@ -41,6 +41,24 @@ export function clearCategoriesForStory() {
 }
 
 const live = () => rows.filter((r) => !r.deleted);
+
+/**
+ * A category and every category below it, at any depth — the server's `category_v1.SubtreeIDs`, which Discover's
+ * Kategori keeps (a-picked-branch-keeps-its-whole-subtree). A deleted node below is still walked, as there; an id that is
+ * no category answers nothing.
+ */
+export function subtreeOf(categoryId: bigint): bigint[] {
+  if (!rows.some((r) => r.id === categoryId)) return [];
+
+  const out = [categoryId];
+  for (let i = 0; i < out.length; i++) {
+    for (const r of rows) {
+      if (r.parentId === out[i] && !out.includes(r.id)) out.push(r.id);
+    }
+  }
+
+  return out;
+}
 const wire = (r: CategoryRow) => ({ id: r.id, name: r.name, parentId: r.parentId });
 
 function find(id: bigint): CategoryRow {

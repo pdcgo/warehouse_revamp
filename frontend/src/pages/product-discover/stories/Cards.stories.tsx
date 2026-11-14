@@ -3,13 +3,27 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { teams } from "../../../../.storybook/fixtures";
 import { asTeam, marker, routedPage } from "../../../../.storybook/pageStory";
-import { liveProducts, ownerStockSample } from "../../../../.storybook/productStub";
+import { discoverStockSample, liveProducts, ownerStockSample, patchProduct } from "../../../../.storybook/productStub";
+import { discoverStockCalls } from "../../../../.storybook/productListScenario";
 import { readyStatus } from "../../../features/products/stockAge";
 import { withMarkup } from "../../../lib/markup";
 import { formatRupiahRange } from "../../../lib/money";
 import { DiscoverProductsPage } from "../index";
-import { sampleDivision, sampleStock } from "../../../features/products/discoverSample";
-import { BERAS, DISCOVER_PRODUCTS_META, GULA, KOPI, SELLING_TEAM, TEH, loaded, withALockedProduct } from "./kit";
+import { sampleDivision } from "../../../features/products/discoverSample";
+import {
+  AT,
+  BERAS,
+  DISCOVER_PRODUCTS_META,
+  GULA,
+  KOPI,
+  SELLING_TEAM,
+  TEH,
+  UNDER,
+  loaded,
+  totalOf,
+  withALockedProduct,
+  withTheThreeLocks,
+} from "./kit";
 
 // DISCOVER PRODUCTS — a card: whose product it is, the cross price (and your own product's cost), the division and the
 // lock on its cover, its stock running low — and where it opens. The page's stories are grouped by the part of the screen
@@ -27,15 +41,85 @@ const FIGURED_TEAM = 15n; // the stub's catalogue WITH costs — the team whose 
 const teamName = (teamId: bigint) => teams.find((t) => t.id === teamId)!.name;
 const MINYAK = liveProducts().find((p) => p.id === 700n)!; // team 15's first, costed in the stub
 
-// The first page as the stub serves it — locked products left out, as the server does — and the card states the samples
-// make of other teams' products on it, so a story names a card by what it shows rather than by a fixture position.
+// The first page as the stub serves it, and the card states the stub's figures (DiscoverStockByIds, productStub.ts
+// `discoverStockSample`) make of other teams' products on it, so a story names a card by what it shows rather than by a
+// fixture position.
 const PAGE_1 = liveProducts().slice(0, 20);
 const othersOnPage1 = PAGE_1.filter((p) => p.teamId !== SELLING_TEAM);
-const LOW_STOCK = othersOnPage1.find((p) => readyStatus(sampleStock(p.id).ready) === "low")!;
-const OUT_OF_STOCK = othersOnPage1.find((p) => readyStatus(sampleStock(p.id).ready) === "out")!;
-const HEALTHY = othersOnPage1.find((p) => readyStatus(sampleStock(p.id).ready) === "ok")!;
+const readyOf = (id: bigint) => discoverStockSample(id, 0n).readyQty;
+const LOW_STOCK = othersOnPage1.find((p) => readyStatus(readyOf(p.id)) === "low")!;
+const OUT_OF_STOCK = othersOnPage1.find((p) => readyStatus(readyOf(p.id)) === "out")!;
+const HEALTHY = othersOnPage1.find((p) => readyStatus(readyOf(p.id)) === "ok")!;
 const UMUM = othersOnPage1.find((p) => sampleDivision(p.id) === "general")!;
 const PRIORITAS = othersOnPage1.find((p) => sampleDivision(p.id) === "priority")!;
+
+/** REAL FIGURES ON EVERY CARD (a-discover-card-shows-its-stock, discover-shows-the-cross-price) — another team's product
+ * reads its real ready and on-its-way stock and its real cross price: the cost team 15 paid with the product's markup on
+ * top, worked out by the server, never the cost itself. No ⚠ on them. ONE DiscoverStockByIds for the page, every card on
+ * it, every warehouse — never one read per card. */
+export const AnotherTeamsFiguresAreReal: Story = {
+  name: "Real figures on every card",
+  beforeEach: () => {
+    patchProduct(MINYAK.id, { crossMarkupBps: 1500 });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const figures = discoverStockSample(MINYAK.id, 0n);
+    const paid = ownerStockSample(MINYAK.id, FIGURED_TEAM, 0n)!;
+    const card = canvas.getByTestId(`discover-card-${MINYAK.productCode}`);
+    const cross = canvas.getByTestId(`discover-price-cross-${MINYAK.id}`);
+
+    await waitFor(() => expect(canvas.getByTestId(`discover-stock-ready-${MINYAK.id}`)).toHaveTextContent(`${figures.readyQty} pcs`));
+    await expect(figures.readyQty).toBe(paid.readyQty);
+    await expect(figures.ongoingQty).toBeGreaterThan(0n);
+    await expect(canvas.getByTestId(`discover-stock-ongoing-${MINYAK.id}`)).toHaveTextContent(`${figures.ongoingQty} pcs`);
+
+    // 15% over what team 15 paid — and not what it paid.
+    await expect(cross).toHaveTextContent(
+      formatRupiahRange(withMarkup(paid.costMin, 1500), withMarkup(paid.costMax, 1500)),
+    );
+    await expect(cross).not.toHaveTextContent(formatRupiahRange(paid.costMin, paid.costMax));
+    await expect(canvas.queryByTestId(`discover-price-cost-${MINYAK.id}`)).toBeNull();
+
+    await expect(within(card).queryByTestId("not-implemented-crossPrice")).toBeNull();
+    await expect(within(card).queryByTestId("not-implemented-cardStock")).toBeNull();
+
+    // One read for the whole page.
+    await waitFor(() => expect(discoverStockCalls.length).toBeGreaterThan(0));
+    await expect(discoverStockCalls[0]!.productIds).toEqual(PAGE_1.map((p) => p.id));
+    await expect(discoverStockCalls[0]!.warehouseId).toBe(0n);
+    await expect(discoverStockCalls.every((c) => c.productIds.length === PAGE_1.length)).toBe(true);
+  },
+};
+
+/** THE CARD'S LOCK IS THE TITLE'S (a-discover-card-says-locked-as-the-title-does) — read from the ready stock of EVERY
+ * warehouse: **Locked** for one its owner locked (Teh), **Locked · Min N pcs** for a minimum its total is under, and
+ * **Min N pcs** for one not reached — Kopi's 2 under 40 ready, and one holding EXACTLY its minimum across both warehouses
+ * (a-minimum-closes-only-under-it), though one warehouse alone is under it. */
+export const TheThreeLockBadges: Story = {
+  name: "Three lock badges",
+  beforeEach: withTheThreeLocks,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const badge = (id: bigint) => canvas.getByTestId(`discover-lock-${id}`);
+
+    await expect(badge(TEH.id)).toHaveAttribute("data-mode", "always");
+    await expect(badge(TEH.id)).toHaveTextContent(/^Locked$/);
+
+    const under = Number(totalOf(UNDER.id)) + 1;
+    await waitFor(() => expect(badge(UNDER.id)).toHaveAttribute("data-now", "true"));
+    await expect(badge(UNDER.id)).toHaveTextContent(`Locked · Min ${under} pcs`);
+    await expect(badge(UNDER.id)).toHaveAttribute("title", expect.stringContaining(`${totalOf(UNDER.id)}`));
+
+    const at = Number(totalOf(AT.id));
+    await expect(badge(AT.id)).toHaveTextContent(new RegExp(`^Min ${at} pcs$`));
+    await expect(badge(AT.id)).not.toHaveAttribute("data-now");
+    await expect(discoverStockSample(AT.id, 11n).readyQty).toBeLessThan(BigInt(at));
+
+    await expect(badge(KOPI.id)).toHaveTextContent(/^Min 2 pcs$/);
+    await expect(badge(KOPI.id)).not.toHaveAttribute("data-now");
+  },
+};
 
 /** BOTH LOCKS ARE ON THE GRID — Selalu dikunci on Teh Melati, Min 2 pcs on Kopi — in the design the owner asked for. */
 export const TheLocksAreOnTheGrid: Story = {
@@ -66,17 +150,17 @@ export const EveryTeamsProductsNamedByOwner: Story = {
   },
 };
 
-/** ANOTHER TEAM'S CARD SAYS THE CROSS PRICE, and only that (discover-shows-the-cross-price) — what a borrower pays. Its
- * cost cannot be read across teams yet, so the figure carries its ⚠. NO LABEL BESIDE IT (owner: *"harga apa tidak perlu
- * diberi label tooltips saja"*, a-discover-price-is-red-and-unlabelled): the figure alone, in red, and a hover says what it
- * is. */
+/** ANOTHER TEAM'S CARD SAYS THE CROSS PRICE, and only that (discover-shows-the-cross-price) — what a borrower pays: Kopi's
+ * Rp 18.500 with its 10% on top. NO LABEL BESIDE IT (owner: *"harga apa tidak perlu diberi label tooltips saja"*,
+ * a-discover-price-is-red-and-unlabelled): the figure alone, in red, and a hover says what it is. */
 export const AnotherTeamsCardSaysTheCrossPrice: Story = {
   name: "Another team's cross price",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const price = canvas.getByTestId(`discover-price-cross-${KOPI.id}`);
 
-    await expect(price).toHaveTextContent(/^Rp\s?[\d.]+/);
+    await waitFor(() => expect(price).toHaveTextContent(formatRupiahRange(withMarkup(18_500, 1000), withMarkup(18_500, 1000))));
+    await expect(canvas.queryByTestId("not-implemented-crossPrice")).toBeNull();
     await expect(canvas.queryByTestId(`discover-price-cost-${KOPI.id}`)).toBeNull();
     // The figure alone on the card; its name is spoken, and shown on hover.
     await expect(canvas.getByTestId(`discover-price-${KOPI.id}`)).not.toHaveTextContent(/Cross/);

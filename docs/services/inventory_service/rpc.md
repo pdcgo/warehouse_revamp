@@ -1672,20 +1672,78 @@ Measured ([performance audit](../../../audits/services/inventory_service/perform
 of 50 in 41 ms, one ordinary supplier by warehouse in 2 ms; a supplier with 100 000 sold rows ≈ 5 s cold — the audit
 recommends folding the sold figures on the take's write path (the owner's call).
 
-### The same goods for supplier_service — two in-process seams, not RPCs
+### The same goods for supplier_service — three in-process seams, not RPCs
 
-supplier_service asks inventory about a supplier's goods through its `GoodsReader`, answered by the composition root
-(`cmd/app_development/supplier_goods_reader.go`) from these plain methods — no caller token, no policy, nothing over
-Connect:
+supplier_service asks inventory about a supplier's goods through its `GoodsReader` (and `WarehouseGoods`), answered by the
+composition root (`cmd/app_development/supplier_goods_reader.go`) from these plain methods and functions — no caller token,
+no policy, nothing over Connect:
 
 | method | for | reads |
 | --- | --- | --- |
 | `OrderTakeSuppliers(transaction_id)` (`supplier_order_take.go`) | Penjualan's sales fold, on OrderPlaced ([penjualan-is-the-selling-value-on-the-order-day](../../technical/frontend/suppliers_decision.md#penjualan-is-the-selling-value-on-the-order-day)) | the take's own `order` rows (`change_count < 0`, `batch_logs_transaction_idx`) joined to `batches` — units per product, supplier and the batch's team; GROSS, a release's rollback never subtracted; a batch from nobody left out |
 | `SupplierIDsByFigure(figure, lo, hi)` (`supplier_ids_by_figure.go`) | SupplierList's range pills ([the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decision.md#the-range-pills-are-a-fixed-set)) | the suppliers whose Terjual (every `order` row netted) or Siap (`SUM(stock_count)` of batches holding stock) lies in `[lo, hi)`, `hi` 0 open — every team's goods, only suppliers WITH goods |
+| `SupplierIDsAtWarehouse(ctx, db, warehouse)` (`supplier_ids_at_warehouse.go`, a plain function over `*gorm.DB`, built 2026-11-14) | SupplierList's Gudang filter ([the-warehouse-filters-before-the-team](../../technical/frontend/suppliers_decision.md#the-warehouse-filters-before-the-team)) | the suppliers, in id order, with a batch in the warehouse that holds units, was minted by a `restock` (scalar primary-key lookup per batch), or has an `order` row — exactly the `SupplierGoods` WAREHOUSE rows, i.e. Gudang terkait; the batch's own (line) supplier, every team's goods, supplier 0 left out. Measured at 100 000 batches: 32 ms for a 30 000-batch warehouse, 19 ms for 10 000, 9 ms for an empty one ([supplier rpc.md § The Gudang filter](../supplier_service/rpc.md#the-gudang-filter--supplierlists-warehouse_id)) |
 
 Measured (`supplier_ids_by_figure_perf_test.go`, SupplierGoods' background — 200 000 batches, 1 000 000 `order` rows,
 3 001 suppliers): Terjual's set ≈ 0.6–0.9 s (one pass over every `order` row) 🔴, Siap's ≈ 60 ms —
 [SupplierIDsByFigure.md](../../../audits/services/inventory_service/performances/SupplierIDsByFigure.md).
+
+## Discover's card figures — `DiscoverStockByIds` (built 2026-11-14)
+
+Every Discover card's **ready** and **on its way** stock ([a-discover-card-shows-its-stock](../../technical/frontend/products_decision.md#a-discover-card-shows-its-stock)),
+the **cross price** range ([discover-shows-the-cross-price](../../technical/frontend/products_decision.md#discover-shows-the-cross-price))
+and the ready stock of EVERY warehouse its lock badge reads
+([a-discover-card-says-locked-as-the-title-does](../../technical/frontend/products_decision.md#a-discover-card-says-locked-as-the-title-does)),
+for products of ANY team — one call for the page's ids. `inventory_v1/discover_stock_by_ids.go`; the screen asks it inside
+`useDiscoverProducts` (`features/products/queries.ts`) beside the grid's `ProductDiscover`, so a card never draws its
+figures a beat after its name. The caller's own cost (Harga modal) still comes from `OwnerStockByIds`.
+
+| | |
+| --- | --- |
+| who | Root, Administrator, selling Owner, Admin, CS (ProductDiscover's policy); the admin team's monitor and an agent (`NO_SIDE_EFFECTS`). No warehouse role |
+| scope | `team_id` (`use_scope`) authorizes only — the figures are every team's |
+| ask | `product_ids` 1–200 (unique), `warehouse_id` — 0 = every warehouse ([discovers-warehouse-keeps-ready-stock-there](../../technical/frontend/products_decision.md#discovers-warehouse-keeps-ready-stock-there): the page sends its Gudang pick since 2026-11-14, so the cards read the warehouse the grid was narrowed to; the discover DETAIL asks once with 0 and once per warehouse — `useDiscoverStockByWarehouse` — for another team's on-its-way and cross price) |
+| ready · cross | the OWNER's batches still holding units (`stock_count > 0`) in the lens — an emptied batch is neither stock nor priced; owner and markup from product_service (`ProductReader.Facts`, one ProductByIds) |
+| total ready | the same batches in EVERY warehouse, whatever `warehouse_id` says — the lock badge's figure, so a card and the product page never disagree |
+| on its way | the owner's restock lines not accepted yet (`ongoing`, `arrived`), to the lens's warehouse — OwnerStockByIds' rule |
+| cross price | each batch's unit cost × (1 + `cross_markup_bps` ÷ 10 000) — the take's own formula ([inventory-computes-the-markup](../../business/order/context_decision.md#inventory-computes-the-markup)), exact; MIN–MAX of those |
+| **never the cost** | the response has no cost field — the cost spread is read only to price it, here; another team's unit cost is not readable across teams. Pinned by `TestDiscoverStockByIds_NeverSendsAnotherTeamsCost` (no double field but the cross pair, and no value equal to a cost paid) |
+| answer | one row per id asked, in the order asked, zeros (`cross_known` false) for a product with nothing — or one that exists nowhere |
+
+```mermaid
+sequenceDiagram
+    participant S as Discover page — a selling team
+    participant I as DiscoverStockByIds — inventory
+    participant P as product_service (in-process)
+    participant DB as Postgres
+    S->>I: team 12, the page's product ids, warehouse 0
+    I->>I: policy — selling roles, scope team 12 (authorizes only)
+    I->>P: Facts — owner and markup per id (one ProductByIds)
+    I->>DB: owners' live batches, grouped once — ready in the lens, ready everywhere, cost MIN and MAX
+    I->>DB: owners' restock lines not accepted — units on their way
+    I->>I: cost into cross price — cost plus cost times markup
+    I-->>S: per id — ready, on its way, total ready, cross range — never a cost
+```
+
+**Performance** (`cmd/app_development/discover_cards_perf_test.go`, `-tags perfaudit`, real wiring; 30 000 products over
+20 teams, 100 000 batches (≈ 60 000 live) over 5 warehouses, 20 000 restock lines (2 000 on their way); warm, median of 5):
+20 stocked cards 4.4 ms (facts 0.6 · shelves 0.8 · on its way 2.9), 50 cards 4.5 ms, 20 cards in one warehouse 3.7 ms —
+the shelves read is an index scan of `batches_owner_product_idx` per (owner, product) pair (0.1 ms executed). The on-its-way
+read seq-scans `restock_items` (no product index; 3.1 ms executed at 20 000 lines), so it grows with every restock line
+ever written — fine at this volume; a pure `restock_items (product_id)` index is the fix if it ever measures slow. Not
+heavy; no audit file (audits/README.md).
+
+### Discover's shelf filters — `ShelvedProducts` / `ProductsReadyAbove` (plain functions, built 2026-11-14)
+
+Not RPCs: the two reads product_service's `ProductDiscover` asks through the composition root's seam
+(`cmd/app_development/product_stock_narrower.go` → `product_v1.StockNarrower`) for Discover's **Gudang**, **Stok siap** and
+**Harga cross** ([product rpc.md](../product_service/rpc.md#discovers-gudang-stok-siap-harga-cross-and-kategori--narrowed-through-the-seams-built-2026-11-14)).
+`inventory_v1/discover_shelf_narrowing.go`, over this service's own `batches` (HARD RULE 3).
+
+| function | answers |
+| --- | --- |
+| `ShelvedProducts(ShelfAsk)` | every (owner, product) with READY units (`stock_count > 0`) in `WarehouseID` (0 = every warehouse), ONE grouped read, cut in the HAVING: ready units `>= ReadyMin` / `<= ReadyMax` (both included, nil = no edge), cost spread `MIN(price_unit) <= CostAtMost` / `MAX(price_unit) >= CostAtLeast`. Returns owner, id and the cost spread — DiscoverStockByIds' own figures (`discoverShelves`), so a card never contradicts the filter that kept it. The spread crosses the in-process seam only: product_service prices it with the markup and never sends it |
+| `ProductsReadyAbove(ceiling)` | every (owner, product) whose ready units over EVERY warehouse are above `ceiling` — the opposite set a Stok siap range from 0 drops (a range from 0 keeps products with no batch at all, which no read of the batches can list) |
 
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 

@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, waitFor } from "storybook/test";
 
 import { teams, warehouseStock } from "../../../../.storybook/fixtures";
-import { discoverPriceOf } from "../../../features/products/discoverSample";
+import { discoverStockSample } from "../../../../.storybook/productStub";
 import { formatRupiahRange } from "../../../lib/money";
-import { AtKopi, DISCOVER_PRODUCT_DETAIL_META, GULA, SUGAR_PICTURE, loaded, sectionOf, stockLoaded } from "./kit";
+import { AtKopi, AtTeh, DISCOVER_PRODUCT_DETAIL_META, GULA, KOPI, SUGAR_PICTURE, TEH, loaded, sectionOf, stockLoaded } from "./kit";
 
 // DISCOVER PRODUCT DETAIL — the Info section: whose product it is and no markup, the picture and the derived products,
 // the cross price as the card says it, and the ready figure. The page's stories are grouped by the part of the screen
@@ -73,18 +73,37 @@ export const NoPictureSaysSo: Story = {
   },
 };
 
-// THE CROSS PRICE is the card's: the same rule (discoverPriceOf), so the card and its page never disagree — red, and
-// marked, since another team's cost is invented.
+// THE CROSS PRICE is the card's: the same read (DiscoverStockByIds, every warehouse), so the card and its page never
+// disagree — Kopi's Rp 18.500 batch with its 10% on top, red, real, unmarked. The cost itself is never on the page.
 export const TheCrossPriceIsTheCards: Story = {
   name: "Cross price, as the card's",
+  render: () => <AtKopi />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const info = await sectionOf(canvas, "info");
-    const price = discoverPriceOf(GULA.id, GULA.crossMarkupBps, false);
+    const card = discoverStockSample(KOPI.id, 0n);
+    await expect(card.crossKnown).toBe(true);
 
-    await expect(info.getByTestId("discover-detail-cross")).toHaveTextContent(
-      formatRupiahRange(price.cross!.min, price.cross!.max),
+    await waitFor(() =>
+      expect(info.getByTestId("discover-detail-cross")).toHaveTextContent(formatRupiahRange(card.crossMin, card.crossMax)),
     );
+    await expect(info.queryByTestId("not-implemented-crossPrice")).toBeNull();
+    await expect(info.queryByTestId("discover-detail-cost")).toBeNull();
+  },
+};
+
+// WHAT IS ON ITS WAY is the card's too — Teh's 6 units bound for Gudang Pusat, from the same read; real, unmarked.
+export const OnItsWayIsTheCards: Story = {
+  name: "On its way, as the card's",
+  render: () => <AtTeh />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const info = await sectionOf(canvas, "info");
+    const card = discoverStockSample(TEH.id, 0n);
+    await expect(card.ongoingQty).toBe(6n);
+
+    await waitFor(() => expect(info.getByTestId("discover-detail-highlight-line")).toHaveTextContent(`+${card.ongoingQty} pcs on the way`));
+    await expect(info.queryByTestId("not-implemented-ongoing")).toBeNull();
   },
 };
 

@@ -201,13 +201,7 @@ func runDropTest(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	db, err := adminConn(ctx, cmd.String("admin-dsn"))
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.ExecContext(ctx, `DROP DATABASE IF EXISTS "`+name+`" WITH (FORCE)`)
+	err = dropTestDB(ctx, cmd.String("admin-dsn"), name)
 	if err != nil {
 		return err
 	}
@@ -215,4 +209,22 @@ func runDropTest(ctx context.Context, cmd *cli.Command) error {
 	log.Printf("test database dropped: %s", name)
 
 	return nil
+}
+
+// dropTestDB drops a test database if it is there, cutting its connections — only one of the test family (the
+// development database can never be named). adminDSN "" is the local Postgres.
+func dropTestDB(ctx context.Context, adminDSN, name string) error {
+	if !testDBNameRe.MatchString(name) {
+		return fmt.Errorf("%q is not a test database (warehouse_test, warehouse_test_<suffix>)", name)
+	}
+
+	db, err := adminConn(ctx, adminDSN)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.ExecContext(ctx, `DROP DATABASE IF EXISTS "`+name+`" WITH (FORCE)`)
+
+	return err
 }

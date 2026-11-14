@@ -56,6 +56,12 @@ export function useSuppliers(args: {
   sort?: SortState<SupplierSortKey> | null;
   /** Terjual and Siap's range pills — narrowed on the server, before the page (the-range-pills-are-a-fixed-set). */
   ranges?: FigureRangePicks;
+  /**
+   * The Gudang filter — only the suppliers whose goods were received at this warehouse, narrowed on the server before
+   * the page (`the-warehouse-filters-before-the-team`); the figures stay the supplier's whole
+   * (`the-warehouse-filter-narrows-only-the-rows`). `0n` / absent = any warehouse.
+   */
+  warehouseId?: bigint;
   page: number;
   pageSize: number;
 }) {
@@ -63,6 +69,7 @@ export function useSuppliers(args: {
   const channelType = args.channelType ?? Marketplace.UNSPECIFIED;
   const sort = args.sort ?? null;
   const ranges = args.ranges ?? NO_FIGURE_RANGES;
+  const warehouseId = args.warehouseId ?? 0n;
 
   return useQuery({
     // A search, a filter, a sort and a page refine the same question, so the previous rows stay up while it runs
@@ -74,6 +81,7 @@ export function useSuppliers(args: {
       sort: sort ? `${sort.by}:${sort.dir}` : "",
       sold: ranges.sold,
       ready: ranges.ready,
+      warehouse: warehouseId.toString(),
       page,
       pageSize,
     }),
@@ -87,6 +95,7 @@ export function useSuppliers(args: {
           channelType,
           sold: figureBand("sold", ranges.sold),
           ready: figureBand("ready", ranges.ready),
+          warehouseId,
         },
         sort: sort
           ? {

@@ -108,6 +108,9 @@ const (
 	// InventoryServiceSupplierGoodsProcedure is the fully-qualified name of the InventoryService's
 	// SupplierGoods RPC.
 	InventoryServiceSupplierGoodsProcedure = "/warehouse.inventory.v1.InventoryService/SupplierGoods"
+	// InventoryServiceDiscoverStockByIdsProcedure is the fully-qualified name of the InventoryService's
+	// DiscoverStockByIds RPC.
+	InventoryServiceDiscoverStockByIdsProcedure = "/warehouse.inventory.v1.InventoryService/DiscoverStockByIds"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -191,6 +194,12 @@ type InventoryServiceClient interface {
 	// batches minted with its id (a-batch-keeps-its-supplier), from EVERY team — a supplier's figures are not private
 	// to the team that bought (every-selling-team-sees-every-teams-figures).
 	SupplierGoods(context.Context, *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error)
+	// DISCOVER'S CARD FIGURES — for the products on one Discover page, whoever owns them: ready stock, stock on its way,
+	// the ready stock of EVERY warehouse (what the lock badge reads), and the CROSS price range — what another team pays
+	// (a-discover-card-shows-its-stock, discover-shows-the-cross-price, a-discover-card-says-locked-as-the-title-does). One
+	// call per page. The cost itself is never in the answer: another team's cost is not readable across teams; the cross
+	// price is the cost with the product's markup on top, computed here (inventory-computes-the-markup).
+	DiscoverStockByIds(context.Context, *connect.Request[v1.DiscoverStockByIdsRequest]) (*connect.Response[v1.DiscoverStockByIdsResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -377,6 +386,13 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		discoverStockByIds: connect.NewClient[v1.DiscoverStockByIdsRequest, v1.DiscoverStockByIdsResponse](
+			httpClient,
+			baseURL+InventoryServiceDiscoverStockByIdsProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("DiscoverStockByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -407,6 +423,7 @@ type inventoryServiceClient struct {
 	ownerStockHistory      *connect.Client[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse]
 	batchRevalue           *connect.Client[v1.BatchRevalueRequest, v1.BatchRevalueResponse]
 	supplierGoods          *connect.Client[v1.SupplierGoodsRequest, v1.SupplierGoodsResponse]
+	discoverStockByIds     *connect.Client[v1.DiscoverStockByIdsRequest, v1.DiscoverStockByIdsResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -534,6 +551,11 @@ func (c *inventoryServiceClient) SupplierGoods(ctx context.Context, req *connect
 	return c.supplierGoods.CallUnary(ctx, req)
 }
 
+// DiscoverStockByIds calls warehouse.inventory.v1.InventoryService.DiscoverStockByIds.
+func (c *inventoryServiceClient) DiscoverStockByIds(ctx context.Context, req *connect.Request[v1.DiscoverStockByIdsRequest]) (*connect.Response[v1.DiscoverStockByIdsResponse], error) {
+	return c.discoverStockByIds.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -616,6 +638,12 @@ type InventoryServiceHandler interface {
 	// batches minted with its id (a-batch-keeps-its-supplier), from EVERY team — a supplier's figures are not private
 	// to the team that bought (every-selling-team-sees-every-teams-figures).
 	SupplierGoods(context.Context, *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error)
+	// DISCOVER'S CARD FIGURES — for the products on one Discover page, whoever owns them: ready stock, stock on its way,
+	// the ready stock of EVERY warehouse (what the lock badge reads), and the CROSS price range — what another team pays
+	// (a-discover-card-shows-its-stock, discover-shows-the-cross-price, a-discover-card-says-locked-as-the-title-does). One
+	// call per page. The cost itself is never in the answer: another team's cost is not readable across teams; the cross
+	// price is the cost with the product's markup on top, computed here (inventory-computes-the-markup).
+	DiscoverStockByIds(context.Context, *connect.Request[v1.DiscoverStockByIdsRequest]) (*connect.Response[v1.DiscoverStockByIdsResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -798,6 +826,13 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceDiscoverStockByIdsHandler := connect.NewUnaryHandler(
+		InventoryServiceDiscoverStockByIdsProcedure,
+		svc.DiscoverStockByIds,
+		connect.WithSchema(inventoryServiceMethods.ByName("DiscoverStockByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -850,6 +885,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceBatchRevalueHandler.ServeHTTP(w, r)
 		case InventoryServiceSupplierGoodsProcedure:
 			inventoryServiceSupplierGoodsHandler.ServeHTTP(w, r)
+		case InventoryServiceDiscoverStockByIdsProcedure:
+			inventoryServiceDiscoverStockByIdsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -957,4 +994,8 @@ func (UnimplementedInventoryServiceHandler) BatchRevalue(context.Context, *conne
 
 func (UnimplementedInventoryServiceHandler) SupplierGoods(context.Context, *connect.Request[v1.SupplierGoodsRequest]) (*connect.Response[v1.SupplierGoodsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.SupplierGoods is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) DiscoverStockByIds(context.Context, *connect.Request[v1.DiscoverStockByIdsRequest]) (*connect.Response[v1.DiscoverStockByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.DiscoverStockByIds is not implemented"))
 }

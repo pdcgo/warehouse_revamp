@@ -17,6 +17,7 @@ import { SortableHeader, type SortState } from "../../../components/chrome/Sorta
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { toaster } from "../../../components/feedback/Toaster";
 import {
+  type ProductLockPick,
   type ProductSortKey,
   useArchiveProduct,
   useProducts,
@@ -56,6 +57,10 @@ interface ProductsTableProps {
   warehouseName?: string;
   /** The heading's sort (a-table-sorts-from-its-headings) — held in the page's URL. */
   sort?: SortState<ProductSortKey> | null;
+  /** The Kunci pick, narrowed on the server (lock-and-stock-age-filter-ahead-of-the-contract) — the live list only. */
+  lock?: ProductLockPick;
+  /** The Umur stok pick in days, narrowed on the server, read in the lens's warehouse — the live list only. */
+  minStockAgeDays?: number;
   onSortChange?: (next: SortState<ProductSortKey> | null) => void;
   /** Whether the page's filter strip narrows the list — an empty list then says "nothing matches", not "nothing yet". */
   filtered: boolean;
@@ -356,6 +361,8 @@ export function ProductsTable({
   warehouseId,
   warehouseName,
   sort = null,
+  lock,
+  minStockAgeDays = 0,
   onSortChange,
   filtered,
   onClearFilters,
@@ -374,7 +381,7 @@ export function ProductsTable({
 
   // A search, a lens or a sort is a new question, so it starts again at page one — the page is held WITH the question
   // it belongs to, and a different question reads page one without an effect to reset it.
-  const question = [mode, q, warehouseId.toString(), sort ? `${sort.by}:${sort.dir}` : ""].join("|");
+  const question = [mode, q, warehouseId.toString(), sort ? `${sort.by}:${sort.dir}` : "", lock ?? "", minStockAgeDays].join("|");
   const [paging, setPaging] = useState({ question, page: 1 });
   const page = paging.question === question ? paging.page : 1;
   const setPage = (next: number) => setPaging({ question, page: next });
@@ -392,6 +399,8 @@ export function ProductsTable({
     status: isArchived ? ProductStatus.ARCHIVED : ProductStatus.ACTIVE,
     warehouseId,
     sort,
+    lock,
+    minStockAgeDays,
   });
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useUnarchiveProduct();

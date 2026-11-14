@@ -208,6 +208,17 @@ service InventoryService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // DISCOVER'S CARD FIGURES — for the products on one Discover page, whoever owns them: ready stock, stock on its way,
+  // the ready stock of EVERY warehouse (what the lock badge reads), and the CROSS price range — what another team pays
+  // (a-discover-card-shows-its-stock, discover-shows-the-cross-price, a-discover-card-says-locked-as-the-title-does). One
+  // call per page. The cost itself is never in the answer: another team's cost is not readable across teams; the cross
+  // price is the cost with the product's markup on top, computed here (inventory-computes-the-markup).
+  rpc DiscoverStockByIds(DiscoverStockByIdsRequest) returns (DiscoverStockByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -1966,4 +1977,62 @@ message SupplierGoods {
 message SupplierGoodsResponse {
   // Only what has a figure: a supplier (store, warehouse) none of whose goods ever arrived is absent.
   repeated SupplierGoods rows = 1;
+}
+
+// Read: whoever may browse Discover (ProductDiscover's policy). The figures are every team's, so team_id only
+// authorizes — it never narrows them.
+message DiscoverStockByIdsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The products on the page — any team's.
+  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+
+  // One warehouse's figures (discovers-warehouse-keeps-ready-stock-there); 0 = every warehouse. total_ready_qty reads
+  // every warehouse whatever this says.
+  uint64 warehouse_id = 3;
+}
+
+// One product's Discover figures. Only the OWNER's batches count — a product has one owner, the same batches the order
+// take draws.
+message DiscoverStockItem {
+  uint64 product_id = 1;
+  // Units on a shelf now — in warehouse_id, or every warehouse when it is 0. An emptied batch adds nothing.
+  int64 ready_qty = 2;
+  // Units on their way: restock lines the warehouse has not accepted yet — to warehouse_id, or to any.
+  int64 ongoing_qty = 3;
+  // Units on a shelf now in EVERY warehouse, whatever warehouse_id says — what decides whether a minimum closes the
+  // product (a-minimum-closes-only-under-it), the figure the lock badge reads.
+  int64 total_ready_qty = 4;
+  // Whether there is a price at all: false when nothing is on a shelf in the lens — the screen draws a dash.
+  bool cross_known = 5;
+  // The cross price range over the batches still holding units in the lens: each batch's unit cost with the product's
+  // markup on top (cost + cost × cross_markup_bps ÷ 10 000), exact, never rounded (the-backend-never-rounds-money).
+  double cross_min = 6;
+  double cross_max = 7;
+}
+
+message DiscoverStockByIdsResponse {
+  // One entry per product ASKED ABOUT, in the order asked, including the ones with nothing (zeros, cross_known false):
+  // a gap would read the same as a partial answer. An id that exists nowhere answers zeros too.
+  repeated DiscoverStockItem items = 1;
 }
