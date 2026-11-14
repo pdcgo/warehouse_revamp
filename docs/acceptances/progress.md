@@ -9,3 +9,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md) (5 thens: ✅ 4, 🚧 1)
 - `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md) (35 thens: ✅ 22, ❌ 1, 🚧 2, ⬜ 10)
 - `selling:all` wants to edit a restock · [edit restock](inventory/restock.md) (66 thens: ✅ 15, 🚧 7, ⬜ 44)
+
+## 2026-11-14
+
+- `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md) (14 thens: ⬜ 14)

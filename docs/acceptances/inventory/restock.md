@@ -128,7 +128,31 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 <tr><td>edit recorded in account history</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="8" valign="top"><code>selling:all</code> wants to cancel a restock<br>(status: ongoing · money returned · 1 product · shipping cost · 1 warehouse · operational account)</td><td rowspan="8" valign="top">cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a></td><td>status changed from ongoing to cancelled</td><td>⬜ untested</td></tr>
+<tr><td>cancel recorded in restock timeline</td><td>⬜ untested</td></tr>
+<tr><td>ongoing stock of 1 product decreases</td><td>⬜ untested</td></tr>
+<tr><td>target warehouse sees restock cancelled</td><td>⬜ untested</td></tr>
+<tr><td>total warehouse receive decreases</td><td>⬜ untested</td></tr>
+<tr><td>operational account balance increases by product total + shipping cost</td><td>⬜ untested</td></tr>
+<tr><td>cancel recorded in operational account history</td><td>⬜ untested</td></tr>
+<tr><td>cancel recorded in finance analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="6" valign="top"><code>selling:all</code> wants to cancel a restock<br>(status: ongoing · money not returned · 1 product · shipping cost · 1 warehouse · operational account)</td><td rowspan="6" valign="top">cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a></td><td>status changed from ongoing to cancelled</td><td>⬜ untested</td></tr>
+<tr><td>cancel recorded in restock timeline</td><td>⬜ untested</td></tr>
+<tr><td>ongoing stock of 1 product decreases</td><td>⬜ untested</td></tr>
+<tr><td>target warehouse sees restock cancelled</td><td>⬜ untested</td></tr>
+<tr><td>total warehouse receive decreases</td><td>⬜ untested</td></tr>
+<tr><td>operational account balance unchanged</td><td>⬜ untested</td></tr>
 </table>
+
+## Warnings
+
+### cancel-restock-is-still-to-be-checked
+
+⚠ The cancel asks one question, *did the money come back?* Yes puts the whole amount, product total + shipping cost,
+back into the operational account; no posts nothing. But money can come back in part, or more than was paid, and the
+dialog warns *"Pembatalan restok akan diperiksa"* while nothing checks a cancel yet. Neither is decided here, so neither
+has a given: cancel is expected to be reviewed, and perhaps changed, later. Until then the two cancel givens above check
+the system as it is.
 
 ## Not discussed yet
 
@@ -138,8 +162,7 @@ only when it is discussed, so the states below are a starting point, not a decis
 
 | given | when |
 | --- | --- |
-| `selling:all` wants to cancel a restock<br>(ongoing) | cancel ← next |
-| `selling:all` wants to report a lost restock<br>(ongoing) | set lost |
+| `selling:all` wants to report a lost restock<br>(ongoing) | set lost ← next |
 
 ## Errors
 

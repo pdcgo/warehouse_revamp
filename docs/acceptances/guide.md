@@ -106,6 +106,10 @@ row, so each status sits beside its own then, and the given and the when **span*
 
 - The action alone, in lowercase: `create restock`, `mark arrived restock`, `accept restock`, `edit restock`. Its case lives in the given.
 - A read (a list, a detail) is never a when: what a person can read shows up as a then of the action that caused it.
+- **A when that is still to be checked says so under it**:
+  `cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a>`, linked to its entry
+  under `## Warnings`, right below the table. The entry says what is still open and why it has no given, because it is
+  not the owner's to decide.
 
 ## every-candidate-is-listed
 
