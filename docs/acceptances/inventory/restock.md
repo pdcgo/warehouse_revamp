@@ -142,6 +142,14 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 <tr><td>target warehouse sees restock cancelled</td><td>⬜ untested</td></tr>
 <tr><td>total warehouse receive decreases</td><td>⬜ untested</td></tr>
 <tr><td>operational account balance unchanged</td><td>⬜ untested</td></tr>
+<tr><td rowspan="8" valign="top"><code>selling:all</code> wants to report a lost restock<br>(status: ongoing · reason given · 1 product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">mark lost restock</td><td>status changed from ongoing to lost</td><td>⬜ untested</td></tr>
+<tr><td>lost recorded in restock timeline</td><td>⬜ untested</td></tr>
+<tr><td>reason shown in restock timeline</td><td>⬜ untested</td></tr>
+<tr><td>ongoing stock of 1 product decreases</td><td>⬜ untested</td></tr>
+<tr><td>target warehouse sees restock lost</td><td>⬜ untested</td></tr>
+<tr><td>total warehouse receive decreases</td><td>⬜ untested</td></tr>
+<tr><td>operational account balance unchanged</td><td>⬜ untested</td></tr>
+<tr><td>lost recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
 </table>
 
 ## Warnings
@@ -162,7 +170,8 @@ only when it is discussed, so the states below are a starting point, not a decis
 
 | given | when |
 | --- | --- |
-| `selling:all` wants to report a lost restock<br>(ongoing) | set lost ← next |
+| `warehouse:owner` wants to correct a received count<br>(accepted) | correct received count |
+| `warehouse:admin` wants to correct a received count<br>(accepted) | correct received count |
 
 ## Errors
 
