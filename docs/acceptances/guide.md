@@ -99,6 +99,8 @@ row, so each status sits beside its own then, and the given and the when **span*
   knows exists and has not designed, and it counts in no total until its thens are written.
 - The actor is named the way the system names it: `<team type>:<role>`, e.g. `selling:owner`, or `<team type>:all` when
   every role of that team type can. The roles are in [role.proto](../../proto/warehouse/role_base/v1/role.proto).
+- **When some roles can and others cannot, the given names each one that can**, in one given:
+  `` `warehouse:owner` · `warehouse:admin` wants to correct a received count ``. A given per role would repeat every then.
 - **Only a role that CAN do it.** A refused role gets no row, and that includes a read-only role.
 - **Root is never written.** It passes every check, so writing it would repeat one global rule in every file.
 
@@ -106,6 +108,10 @@ row, so each status sits beside its own then, and the given and the when **span*
 
 - The action alone, in lowercase: `create restock`, `mark arrived restock`, `accept restock`, `edit restock`. Its case lives in the given.
 - A read (a list, a detail) is never a when: what a person can read shows up as a then of the action that caused it.
+- **A when that is still to be checked says so under it**:
+  `cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a>`, linked to its entry
+  under `## Warnings`, right below the table. The entry says what is still open and why it has no given, because it is
+  not the owner's to decide.
 
 ## every-candidate-is-listed
 
@@ -139,7 +145,8 @@ a recommendation. The owner and the agent then decide together. The agent bases 
 - **An `❌ error` links to its entry under `## Errors`**, at the foot of the same file. The entry's heading is a name that
   says what goes wrong, and the entry gives the then, what was expected, what actually happens, the cause, where it was
   seen, and the check that pins it. When the error is fixed and the status changes, the entry is deleted.
-- `team:all` is tested with **every** role of that team type. If one role fails, the then is `error`.
+- `team:all` is tested with **every** role of that team type, and a given naming several roles with each of them. If one
+  role fails, the then is `error`.
 - A then observed by another team (*recorded at warehouse*) is checked as any **one** role there that can read it.
 - **The agent changes a status only on the owner's instruction, one then at a time.** If the agent's own test later fails, the
   agent reports it in chat and leaves the status alone.
