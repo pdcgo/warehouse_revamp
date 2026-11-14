@@ -47,7 +47,10 @@ cd frontend  && npm run typecheck
 cd frontend  && npm run lint:mermaid                # if you touched any mermaid diagram
 ```
 
-Plus the Playwright spec for the work in hand — not the whole suite, CI covers the rest.
+Plus the e2e specs the change touches. How much more runs, and when the full suite runs, is decided in
+[the-full-e2e-waits-for-a-measured-yes](../development_lifecycle_decision.md#the-full-e2e-waits-for-a-measured-yes) —
+measured from the files, then the owner is asked. ⚠ CI runs the e2e only on `main` and pull requests, never on a
+developer's own branch.
 
 ---
 
