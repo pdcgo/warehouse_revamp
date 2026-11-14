@@ -8,6 +8,10 @@ import { API_URL } from "./env";
 const SUFFIX = Date.now().toString().slice(-6);
 const NEW_USER = `e2e${SUFFIX}`;
 
+// NEW_USER's id, read off CreateUser's answer: an erase renames the account `erased<id>`, and the erased row is found by
+// that name (UserErase, below).
+let newUserId = "";
+
 // The password this user has at each stage. The tests run SERIALLY and deliberately carry state
 // forward — each one leaves the account in the state the next one expects.
 const NEW_PASSWORD = "e2epassword1"; // set by CreateUser
@@ -69,6 +73,16 @@ async function gotoUsers(page: Page) {
   await expect(page.getByTestId("users-table")).toBeVisible();
 }
 
+// The lists page 10 rows at a time in id order, and the specs before this one share its database (backlog #53): their
+// accounts fill the All User tab's first page — and anyone they add to the root team, this tab's — and push this spec's
+// user to page 2. So every read of a list first narrows it to this spec's own user with the list's search (the #50
+// rule: a spec asserts only on its own rows, never on a whole list). The search lives in the URL, so it stays across
+// the tabs and a Back from a person.
+async function narrowTo(page: Page, username: string) {
+  await page.getByTestId("user-search").fill(username);
+  await expect(page).toHaveURL(new RegExp(`[?&]q=${username}(&|$)`));
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("root can reach the Users screen", async ({ page }) => {
@@ -106,6 +120,8 @@ test("CreateUser rejects an invalid username — lowercase alphanumeric only (#8
 test("CreateUser: a new user appears, and can immediately sign in", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  // Narrowed BEFORE the account exists, so the row can only come from the write's own refresh of the list.
+  await narrowTo(page, NEW_USER);
 
   // What was searched for is offered as the username.
   await openCreate(page, NEW_USER);
@@ -113,7 +129,10 @@ test("CreateUser: a new user appears, and can immediately sign in", async ({ pag
   await page.getByTestId("add-member-new-password").fill(NEW_PASSWORD);
   await page.getByTestId("add-member-new-name").fill("E2E User");
   await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
+  const created = page.waitForResponse((r) => r.url().endsWith("/warehouse.user.v1.UserService/CreateUser"));
   await page.getByTestId("submit-add-member").click();
+  newUserId = ((await (await created).json()) as { user: { id: string } }).user.id;
+  expect(newUserId).toMatch(/^\d+$/);
 
   // CreateUser writes the account AND the membership in one transaction, so the new user shows
   // up in this team's list right away.
@@ -129,6 +148,7 @@ test("CreateUser: a new user appears, and can immediately sign in", async ({ pag
 test("Members: the row shows the role, and the history records the add", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   await expect(page.getByTestId(`role-${NEW_USER}`)).toContainText("Administrator");
 
@@ -139,6 +159,7 @@ test("Members: the row shows the role, and the history records the add", async (
 test("UpdateUser: an admin edits another user's name", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`edit-${NEW_USER}`).click();
@@ -151,6 +172,7 @@ test("UpdateUser: an admin edits another user's name", async ({ page }) => {
 test("UserDetail: clicking a user opens their detail page", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   // Clicking the user item navigates to the dedicated detail PAGE (not a dialog).
   await page.getByTestId(`open-user-${NEW_USER}`).click();
@@ -197,6 +219,7 @@ test("ResetPassword: a user changes their OWN password and stays signed in", asy
 test("AdminResetPassword: an admin sets a locked-out user's password", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`reset-password-${NEW_USER}`).click();
@@ -219,6 +242,7 @@ test("AdminResetPassword: an admin sets a locked-out user's password", async ({ 
 test("SuspendUser: suspending cuts the account off; restoring brings it back", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`suspend-${NEW_USER}`).click();
@@ -235,6 +259,7 @@ test("SuspendUser: suspending cuts the account off; restoring brings it back", a
   // Restore.
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`suspend-${NEW_USER}`).click();
   await page.getByTestId("confirm-action").click();
@@ -247,6 +272,7 @@ test("SuspendUser: suspending cuts the account off; restoring brings it back", a
 test("TeamUserUpdate + SearchUser: remove a member, find them again, add them back", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   // Remove from the team. The ACCOUNT survives — only the membership goes.
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
@@ -254,8 +280,10 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
 
-  // They still exist — visible on the All User tab (#58), which lists everyone across teams.
+  // They still exist — visible on the All User tab (#58), which lists everyone across teams: every account the specs
+  // before this one made, so it is read narrowed to this user (backlog #53).
   await page.getByTestId("users-tab-all").click();
+  await narrowTo(page, NEW_USER);
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
   await page.getByTestId("users-tab-team").click();
 
@@ -310,6 +338,7 @@ test("ForgotPassword: recover the account with an OTP, then sign in", async ({ p
 test("a user is never deleted: the row offers no Delete", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   // a-user-is-never-deleted — a person who leaves is suspended, and erased on request; the row stays.
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
@@ -322,6 +351,7 @@ test("a user is never deleted: the row offers no Delete", async ({ page }) => {
 test("UserErase: a suspended account is erased, and its row becomes a former user", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await narrowTo(page, NEW_USER);
 
   // Erase is offered only once the account is suspended.
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
@@ -335,7 +365,9 @@ test("UserErase: a suspended account is erased, and its row becomes a former use
   await page.getByTestId("confirm-action").click();
 
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
-  await expect(page.getByTestId("users-table")).toContainText("Former user #");
+  // The row stays in the team, as THIS account's former-user row — found by the name the erase gave it.
+  await narrowTo(page, `erased${newUserId}`);
+  await expect(page.getByTestId(`user-row-erased${newUserId}`)).toContainText(`Former user #${newUserId}`);
 
   await loginExpectingFailure(page, NEW_USER, "otp-recovered-1");
   await expect(page.getByTestId("login-error")).toBeVisible();

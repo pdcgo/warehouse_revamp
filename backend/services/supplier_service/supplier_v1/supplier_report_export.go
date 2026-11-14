@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -22,9 +23,11 @@ var reportColumns = []string{"Peringkat", "Pemasok", "Status", "Dikelola oleh"}
 // one-export-is-the-list-as-a-file): the WHOLE ranking as narrowed — the report's window, team and search, in its own
 // order — every page of it, each supplier with its figures, as .xlsx.
 //
-//   - The ranking is the report's own MetricSearch (grouped by SUPPLIER, its sort, the rate's minimum sample
-//     included), paged 200 at a time until no page follows; each step is filled by the report's MetricData and named
-//     from the suppliers table — a DELETED supplier too, marked, its figures kept (a-deleted-supplier-is-kept-for-its-figures).
+//   - The ranking is the report's own MetricSearch statement (grouped by SUPPLIER, its sort, the rate's minimum sample
+//     included), read whole in ONE statement together with the figures it summed for each supplier — the same sums
+//     MetricData fills the screen's rows with (each table grouped by supplier over the same scope), so the file's
+//     figures are the screen's without re-reading the window once per step. Each step of 200 is named from the
+//     suppliers table — a DELETED supplier too, marked, its figures kept (a-deleted-supplier-is-kept-for-its-figures).
 //   - The rank is the row's place in the whole ranking, 1-based, as the screen counts it across pages.
 //
 // Money is the metric's exact figure (the-backend-never-rounds-money); a rate is the exact share under a 0.0% format,
@@ -78,13 +81,11 @@ func (s *Service) SupplierReportExport(
 	}
 
 	for start := 0; start < len(ranked); start += san_export.Batch {
-		ids := ranked[start:min(start+san_export.Batch, len(ranked))]
+		step := ranked[start:min(start+san_export.Batch, len(ranked))]
 
-		data, err := s.supplierMetricData(ctx, scope, analytic_basev1.GroupType_GROUP_TYPE_SUPPLIER, &analytic_basev1.MetricKeys{
-			K: &analytic_basev1.MetricKeys_Ids{Ids: &analytic_basev1.IDList{Ids: ids}},
-		})
-		if err != nil {
-			return err
+		ids := make([]uint64, 0, len(step))
+		for _, r := range step {
+			ids = append(ids, r.Key)
 		}
 
 		suppliers, err := s.suppliersOf(ctx, ids)
@@ -105,14 +106,12 @@ func (s *Service) SupplierReportExport(
 			}
 		}
 
-		byID := data.GetSupplierById().GetItems()
-
-		for i, id := range ids {
-			supplier := suppliers[id]
+		for i, r := range step {
+			supplier := suppliers[r.Key]
 
 			name := supplier.Name
 			if name == "" {
-				name = "Pemasok #" + strconv.FormatUint(id, 10)
+				name = "Pemasok #" + strconv.FormatUint(r.Key, 10)
 			}
 
 			status := ""
@@ -122,13 +121,13 @@ func (s *Service) SupplierReportExport(
 
 			row := []any{int64(start + i + 1), name, status, teamLabel(teams, supplier.TeamID)}
 
-			err = sheet.Row(append(row, figureCells(byID[id])...)...)
+			err = sheet.Row(append(row, figureCells(metricToProto(r.SupplierFigureSums))...)...)
 			if err != nil {
 				return internal(fmt.Errorf("writing the file: %w", err))
 			}
 		}
 
-		progress.Done += int64(len(ids))
+		progress.Done += int64(len(step))
 		progress.Info("rows written", "done", progress.Done, "of", progress.Total)
 
 		err = progress.Err()
@@ -158,10 +157,19 @@ func (s *Service) SupplierReportExport(
 	})
 }
 
-// rankedSuppliers is every key the report's ranking pages through — MetricSearch's own statement grouped by SUPPLIER,
+// rankedSupplier is one row of the ranking: the supplier, and the figures the ranking summed for it.
+type rankedSupplier struct {
+	Key uint64
+	supplier_service_models.SupplierFigureSums
+}
+
+// rankedSuppliers is every row the report's ranking pages through — MetricSearch's own statement grouped by SUPPLIER,
 // with the report's filters and sort (the rate's minimum sample included), read WHOLE in one statement: a page at a
-// time it re-sums the window once per 200 suppliers.
-func (s *Service) rankedSuppliers(ctx context.Context, scope metricScope, sort *analytic_basev1.MetricSort) ([]uint64, error) {
+// time it re-sums the window once per 200 suppliers. Each row carries the sums the statement already holds in `g` —
+// every figure of both tables over the scope, summed per supplier, which is what MetricData's fill reads for that
+// supplier — so the export reads its figures here instead of filling each step again
+// (audits/services/supplier_service/performances/SupplierReportExport.md, finding 1).
+func (s *Service) rankedSuppliers(ctx context.Context, scope metricScope, sort *analytic_basev1.MetricSort) ([]rankedSupplier, error) {
 	group, err := groupOf(analytic_basev1.GroupType_GROUP_TYPE_SUPPLIER)
 	if err != nil {
 		return nil, err
@@ -172,16 +180,22 @@ func (s *Service) rankedSuppliers(ctx context.Context, scope metricScope, sort *
 		return nil, err
 	}
 
-	var ids []uint64
+	columns := []string{"g.key"}
+	for _, column := range append(append([]string{}, restockColumns...), salesColumns...) {
+		columns = append(columns, "g."+column)
+	}
+
+	var rows []rankedSupplier
 
 	err = s.ranking(ctx, scope, group, order).
-		Pluck("g.key", &ids).
+		Select(strings.Join(columns, ", ")).
+		Scan(&rows).
 		Error
 	if err != nil {
 		return nil, internal(err)
 	}
 
-	return ids, nil
+	return rows, nil
 }
 
 // suppliersOf reads a step's suppliers by id, DELETED ONES INCLUDED — SupplierByIds' read, since a ranked supplier may

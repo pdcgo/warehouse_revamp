@@ -613,10 +613,9 @@ sequenceDiagram
   participant N as team_service
   participant D as document_service
   C->>S: SupplierReportExport - team_id, the report's filters, its sort
-  S->>S: the ranking WHOLE - MetricSearch's own statement grouped by SUPPLIER, its order, one read
+  S->>S: the ranking WHOLE with each supplier's sums - MetricSearch's own statement grouped by SUPPLIER, its order, one read
   S-->>C: exporting the ranking - 0 of N
   loop 200 suppliers a step, the ranking's order
-    S->>S: MetricData of the step's ids - the report's fill
     S->>S: the suppliers by id, deleted ones included
     S->>N: TeamByIds as the caller - who keeps each
     S-->>C: rows written - done of N
@@ -627,16 +626,17 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| the rows | every supplier the report ranks with these filters, in its order — by restocked value, or by broken rate with the 50-unit minimum ranking as on screen — read in ONE statement: `ranking()` in metric_search.go, the statement `MetricSearch` cuts its pages from. Each step of 200 filled by `MetricData` |
+| the rows | every supplier the report ranks with these filters, in its order — by restocked value, or by broken rate with the 50-unit minimum ranking as on screen — read in ONE statement: `ranking()` in metric_search.go, the statement `MetricSearch` cuts its pages from |
 | the columns | sheet *Peringkat*: Peringkat (1-based across every page, as the screen counts) · Pemasok (`Pemasok #<id>` when unnamed) · Status (*Dihapus* for a deleted supplier, its figures kept — the badge) · Dikelola oleh (`Tim #<id>` when unnamed) · then the tabs' figure columns — Direstok, Penjualan, Hilang di pengiriman, Rusak di pengiriman, each units and Rp, each loss's rate after it |
-| the figures | the metric's exact doubles; a rate the exact share under `0.0%`, empty when nothing arrived; Jakarta days |
+| the figures | the sums that same statement holds for each supplier (`g`, read with the key — `rankedSuppliers`): every figure of both tables over the scope, summed per supplier, which is what `MetricData` fills the screen's rows with — so no second read (since 2026-11-14; until then each step of 200 was filled by `MetricData`). The metric's exact doubles; a rate the exact share under `0.0%`, empty when nothing arrived; Jakarta days |
 | refused | a supplier filter (one supplier's figures are its Statistik tab's file), a sort of another metric or an unsortable field, no window — InvalidArgument; no store — Unimplemented |
 | the scope | the ranking's readers — Root, the Administrator, the selling roles; every selling team reads every team's figures, as the report does. Not `NO_SIDE_EFFECTS`: a monitor and an agent are refused; the screen hides Export from a monitored team |
 | the store | the tabs' `ExportStore` — file `laporan-pemasok-<yyyy-mm-dd-hhmmss>.xlsx`, a private `table_export` |
-| measured (`-tags perfaudit`, 2 000 suppliers) | 30 days 187 ms / 31 queries; a year 1.1 s (by broken rate 1.3 s, one team 478 ms, a search 1.7 s) — 🔴 heavy: the fill re-reads the window per 200 suppliers ([SupplierReportExport.md](../../../audits/services/supplier_service/performances/SupplierReportExport.md), its open question: fill from the ranking statement's own sums) |
+| measured (`-tags perfaudit`, 2 000 suppliers) | a year 294–362 ms / 11 queries (by broken rate 305 ms, one team 181 ms / 6, a search 683–722 ms / 10; 30 days 301–319 ms) — was 1 139–1 171 ms / 31 with a `MetricData` fill per 200, same seed (2026-11-14). 🟡 the ranking statement alone is ≈ 210 ms ([SupplierReportExport.md](../../../audits/services/supplier_service/performances/SupplierReportExport.md), finding 1 applied; finding 3: a fractional Penjualan sum's last binary digit follows Postgres's parallel plan, in the old export too) |
 
 Tests: `supplier_report_export_test.go` — the file is the whole ranking across 214 suppliers (more than a step of 200,
-eleven screen pages), each row the report's own `MetricSearch` + `MetricData`, Penjualan included, the deleted supplier
+eleven screen pages), each row the report's own `MetricSearch` + `MetricData` (exact to the double — so the ranking's own
+sums are checked against the fill on every row), Penjualan included, the deleted supplier
 marked; narrowed by broken rate, a search and a team exactly as the report; refusals and the policy.
 
 ## AnalyticReplayCompute — never into the backfilled past

@@ -21,6 +21,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **A supplier's Products tab is real** | a supplier's Products tab (on My Supplier and Discover) now lists the products it really delivered — with the store, last bought, sold and ready — and Export gives that list as a file |
 | **A supplier's warehouse chip narrows its tabs** | on a supplier's page, picking a warehouse chip now narrows the Stores and Products tabs (and their exports) to what was received at that warehouse, with that warehouse's sold and ready; only the Statistics tab doesn't narrow yet |
 | **A supplier's Statistics narrow by warehouse too** | the Statistics tab on a supplier's page now follows the warehouse chip like the other tabs — every supplier page control is now real, with no ⚠ left |
+| **The Supplier Report downloads faster** | exporting a year's Supplier Report for 2,000 suppliers takes about 0.3 s instead of 1.2 s; the file is the same |
 
 ## 2026-11-13 · wrong stock-in correction, batch history racks
 

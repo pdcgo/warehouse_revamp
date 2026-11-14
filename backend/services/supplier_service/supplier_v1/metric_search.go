@@ -92,7 +92,8 @@ func (s *Service) MetricSearch(
 
 // ranking is the search's ONE statement before its page is cut: each table grouped by the key, the two grouped reads
 // summed per key, every key with figures in the scope in the sort's order (the key breaking a tie). The Supplier
-// Report's export reads it whole (SupplierReportExport) — the same order, in one statement rather than a page at a time.
+// Report's export reads it whole (SupplierReportExport) — the same order, in one statement rather than a page at a time,
+// and with the sums `g` carries for each key, so its figures need no second read.
 func (s *Service) ranking(ctx context.Context, scope metricScope, group metricGroup, order string) *gorm.DB {
 	db := s.db.WithContext(ctx)
 	restock := scope.rows(db).
