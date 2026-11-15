@@ -7,6 +7,11 @@
 
 An ordinary page is 3–8 ms, and `status_at` costs about 0.1 ms of a 20-row page.
 
+> ✅ **Both reads are fixed** — the deep page on 2026-10-22 (finding 2), the search on 2026-11-15 (finding 1, ids first,
+> [the-order-search-matches-ids-first](../../../../docs/business/order/context_decision.md#the-order-search-matches-ids-first)):
+> root's and a warehouse's search are **2–5 ms** under the custom and the generic plan (were 52–75 ms). What keeps the
+> file 🔴 is finding 5 (the status-date window, by the plan rule).
+
 **Measured:** 2026-10-22 · `selling_service/selling_v1/order_list.go` · seed 50 000 `orders` (11 statuses, 5 teams, 3 warehouses; every order has its own name, phone, marketplace ref and tracking number), 125 000 `order_items` (2–3 per order), 246 206 `order_timeline_logs` (~5 per order: pending at create, then every move; a send-back detour on every fourth order, a note on every third) · warm, median of 5 · `TestPerf_OrderList_Root` in [order_status_change_perf_test.go](../../../../backend/services/selling_service/selling_v1/order_status_change_perf_test.go)
 
 | Case | Median wall | Queries | |
@@ -17,9 +22,9 @@ An ordinary page is 3–8 ms, and `status_at` costs about 0.1 ms of a 20-row pag
 | root · `warehouse_id` 900 · 20 / 200 | 5.0 / 5.7 ms | 2 | ok |
 | seller team 2 · `warehouse_id` 900 · 20 | 3.8 ms | 2 | ok |
 | warehouse 900's own queue · 20 | 3.3 ms | 2 | ok |
-| **root · search a tracking number · 20** | **119 ms** | 2 | 🔴 [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
-| **root · search digits · 20** | **112 ms** | 2 | 🔴 [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
-| warehouse 900 · search a tracking number · 20 | 47 ms | 2 | 🟡 the same read over 16 667 orders |
+| root · search a tracking number · 20 | 119 ms → **3.8 ms** (2026-11-15) | 3 | ✅ [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
+| root · search digits · 20 | 112 ms → **2.1 ms** (2026-11-15) | 3 | ✅ [finding 1](#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-) |
+| warehouse 900 · search a tracking number · 20 | 47 ms → **4.1 ms** (2026-11-15) | 3 | ✅ the same read over 16 667 orders |
 | **root · all · 200 · last page (offset 49 800)** | **252 ms** | 2 | 🔴 [finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22) |
 | root · all · 20 · sort by total | 37 ms | 2 | 🟡 [finding 3](#3-sorting-by-total-sorts-every-order-in-scope-) |
 
@@ -162,9 +167,43 @@ OrderStat. That form needs one measurement before it is adopted.
 > Index Scan), and the count of a generic plan halved (80 → 42 ms). **Still 🔴 for root, 🟡 for a warehouse:** the
 > orders side cannot BitmapOr an `IN (subquery)` with the two `ILIKE`s, so the ref and receipt are still FILTERED over
 > every order in scope — the remaining cost. The ids-first page measured here (`page ids-first`, 48–56 ms generic) does
-> not beat the built shape any more. **→ Recommend (not applied):** the match as a `UNION` of three index-served id
-> sets (address rows, refs, receipts) fenced before the scope — a query change in `scopedOrders` that needs its own
-> measurement; the owner's call.
+> not beat the built shape any more. **→ Recommend (✅ applied 2026-11-15, below):** the match as a `UNION` of three
+> index-served id sets (address rows, refs, receipts) fenced before the scope — a query change in `scopedOrders` that
+> needs its own measurement; the owner's call.
+>
+> ✅ **Applied 2026-11-15 — the query half, as recommended**
+> ([the-order-search-matches-ids-first](../../../../docs/business/order/context_decision.md#the-order-search-matches-ids-first);
+> `selling_v1/order_search.go`). The match is `orders.id = ANY(ARRAY(SELECT order_id FROM order_addresses WHERE name ILIKE
+> … OR phone ILIKE … UNION SELECT id FROM orders WHERE order_external_ref_id ILIKE … UNION SELECT id FROM orders WHERE
+> receipt ILIKE … [UNION SELECT <the id>]))`. The array is an InitPlan computed once, without the scope: each arm is a
+> Bitmap Index Scan on its trigram index, and the scope, the filters and the page then read only those orders by
+> `orders_pkey` (`Index Cond: id = ANY ((InitPlan 2).col1)`). Three fences were probed on the same seed first (psql,
+> 50 000 orders, lists flushed): the built `= ANY(ARRAY(…))` 1.9–2.3 ms custom and generic; `IN (… UNION …)` 2 ms custom
+> but 7–12 ms generic (a hash join over every order in scope); the old clause 35–39 ms. Measured through the handler
+> (`TestPerf_OrderList_Root`, old and new in ONE process on ONE seed — the old clause swapped in through
+> `SetOrderSearchMatch` — each case scan, ids first, ids first, scan; two processes, tables vacuumed before each; median
+> of 5, wall):
+>
+> | Case | custom: scan → ids first | generic: scan → ids first | `auto` |
+> | --- | --- | --- | --- |
+> | root · a tracking number | 74.4–75.4 → **3.8–4.5 ms** | 73.5–75.2 → **3.0–3.2 ms** | 73.8–75.7 → 4.1–4.7 ms |
+> | root · digits (`31337`) | 70.6–72.3 → **1.9–2.6 ms** | 72.2–72.6 → **1.2–1.4 ms** | 73.6–75.1 → 1.9–2.4 ms |
+> | warehouse 900 · a tracking number | 53.4–54.4 → **3.9–4.4 ms** | 74.5–76.0 → **3.0–3.3 ms** | 53.8–54.4 → 4.0–4.5 ms |
+> | warehouse 900 · digits | 50.7–52.7 → **2.2–2.4 ms** | 72.1–74.9 → **1.3–1.6 ms** | 52.0–53.2 → 1.9–2.4 ms |
+> | seller team 2 · a name (second process only) | 48.5–49.1 → 3.7–4.3 ms | 75.4–77.2 → 2.7–3.1 ms | 49.1–49.7 → 3.6–3.8 ms |
+> | root · `Budi 1` (11 111 orders) | 64.8–66.6 → 21.1–22.0 ms | 80.1–81.8 → 21.5–22.4 ms | 64.9–66.5 → 21.2–21.8 ms |
+> | warehouse 900 · `Budi 1` (3 977) | 47.7–49.9 → 22.3–22.7 ms | 79.1–86.8 → 23.4–24.9 ms | 47.9–49.7 → 22.3–23.0 ms |
+> | root · `Budi` (**every** order) | 55.2–58.0 → **76.0–78.5 ms** ⚠ | 100.7–102.9 → 87.8–89.7 ms | 56.2–59.4 → 77.6–78.9 ms ⚠ |
+> | root · `08` (no trigram: the scan both ways) | 73.6–75.1 / 73.9–76.9 ms | 144–147 / 146–152 ms | 91–92 / 92 ms |
+>
+> The same rows, order and total in every case. **The one cost:** a term matching EVERY order builds a 50 000-id array,
+> ~1.35× the scan under a custom plan (still faster under the generic one); a broader-than-20 % term pays it in part.
+> A **1–2-character** term (no trigram to look up: the GIN index reads every entry) keeps the scan — ids first measured
+> 2.5–3× slower there (`08`: 167 vs 62 ms generic, 86 vs 32 ms custom, psql) — chosen by `trigramsServe` (a run of three
+> letters or digits). The same clause serves **OrderStat** (team 50k · a receipt 57.6–64.6 → 1.6–2.4 ms, a warehouse's
+> phone 43–66 → 2.5–3.1 ms, [OrderStat](OrderStat.md) finding 4) and **OrderExport** (a warehouse's tracking-number file
+> 82–115 → 8–12 ms; a broad term's file +1–10 %, the union recomputed per 200-row step — [OrderExport](OrderExport.md)).
+> Equality is proved on a fixture by `order_search_ids_first_test.go` (mutation-checked). **Finding 1 is closed.**
 
 ### 2. An OFFSET page runs both subqueries for every row it skips ✅ fixed 2026-10-22
 
@@ -329,8 +368,8 @@ lands in one large `''` bucket that no window reads.
 - production distribution. Real names repeat, so a common name matches many orders. Real timelines vary: `status_at`
   walks back past every note and move written after the current status was entered.
 - the trigram index's size and write cost
-- 1–2 character terms
-- the `OFFSET 0` form of ids-first inside `scopedOrders` (only the CTE form was measured)
+- ~~1–2 character terms~~ — measured 2026-11-15: they keep the scan (finding 1)
+- ~~the `OFFSET 0` form of ids-first inside `scopedOrders`~~ — superseded 2026-11-15: the built fence is `= ANY(ARRAY(…))`; `IN (… UNION …)` was probed beside it (finding 1)
 - a team's deep page and a team's sort by total (root only)
 - the production server's `jit` settings. This is a stock Postgres 17: `jit` on, thresholds 100 000 / 500 000 / 500 000.
 - why one sample in every batch of last-page runs lands near 150 ms (the others land at 235–295 ms)
@@ -339,10 +378,10 @@ lands in one large `''` bucket that no window reads.
 
 ## Open questions
 
-- [ ] **Adopt `pg_trgm` and the trigram index on `orders`?**
+- [x] ✅ *applied 2026-11-06 (selling 00048, split over the two tables)* — **Adopt `pg_trgm` and the trigram index on `orders`?**
   [SupplierList](../../supplier_service/performances/SupplierList.md#open-questions) asks the same question. I would
   adopt it: a label scan is the warehouse's most frequent search, and the index serves three RPCs.
-- [ ] **Ids-first in `scopedOrders`, or `force_custom_plan` in the DSN?** I would take ids-first, as AnalyticGroupSearch
+- [x] ✅ *ids first — [the-order-search-matches-ids-first](../../../../docs/business/order/context_decision.md#the-order-search-matches-ids-first), built 2026-11-15* — **Ids-first in `scopedOrders`, or `force_custom_plan` in the DSN?** I would take ids-first, as AnalyticGroupSearch
   took literals over the DSN option.
 - [ ] **Defer the subqueries past the LIMIT ([finding 2](#2-an-offset-page-runs-both-subqueries-for-every-row-it-skips--fixed-2026-10-22))?**
   It is a handler change with no contract change, and it is my pick.
@@ -363,3 +402,4 @@ lands in one large `''` bucket that no window reads.
 | 2026-10-30 | — | 2 | the status-date window (`ENTERED_*`) measured: 50.6 ms for the list and 25.3 ms for OrderStat at 150 000 timeline rows, by a seq scan of the timeline. 7.0 / 4.0 ms with the proposed `(status, created_at)` index — not applied (finding 5) |
 | 2026-11-05 | — | 2 | the two money sorts (Total = `total_cost`, Platform total = `platform_total`, id tie-break): root 37 ms, team 10.8 ms — finding 3 unchanged. `settlement_not_opened` with its partial index (00040): 1.6–1.8 ms; without it 4.5–17.4 ms (finding 6) |
 | 2026-11-11 | — | 2 | `Order.is_override` (the "by Root team" badge, an-override-shows-a-platform-badge) — `orders.is_override` is a column of the `orders.*` row already read: no query, no join, cost nil |
+| 2026-11-15 | 5.1 ms | 3 | finding 1 closed — the search matches ids first (the-order-search-matches-ids-first): root's tracking number 74 → 3.8 ms custom / 74 → 3.1 ms generic, a warehouse's 54 → 4.1 / 75 → 3.2 ms, `Budi 1` 65 → 21 ms; a term naming every order 56 → 77 ms custom (102 → 88 generic); 1–2-character terms keep the scan. OrderStat and OrderExport read the same clause. The third query is the page's address rows (`attachAddresses`, 2026-11-06). The probe's DEFERRED step now logs "applied" — the select list goes on past `status_at` since `return_warehouse_id` |

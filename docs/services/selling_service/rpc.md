@@ -567,7 +567,7 @@ sequenceDiagram
 | written | `placeOrder`, after the order row, in its transaction — an order without its row is never reachable; the response carries it |
 | read | `OrderDetail` preloads it; `OrderList`, `OrderExport` (per batch), `OrderCancel`, `OrderReceiptUpdate`, `OrderReturnAccept` and the re-read by key attach it (`attachAddresses`, one `order_id IN` read) |
 | the wire | unchanged: `Order.customer_name` / `customer_phone` / `address` are filled from the row; an order's `address` carries no `_code` (always empty now), `kode_pos` is the row's `postal_code` |
-| the search | the name and phone match `orders.id IN (SELECT order_id FROM order_addresses WHERE …)`, beside the ref and the receipt, served by the GIN trigram indexes of selling `00048` (`order_addresses_customer_trgm_idx`, `orders_ref_receipt_trgm_idx` — the [OrderList audit](../../../audits/services/selling_service/performances/OrderList.md)'s finding 1; its re-measure is there) |
+| the search | the name and phone are one arm of the ids-first match — the order ids whose address row matches, `UNION` those whose ref, then receipt, matches — each served by a GIN trigram index of selling `00048` (`order_addresses_customer_trgm_idx`, `orders_ref_receipt_trgm_idx`); see [The order search matches ids first](#the-order-search-matches-ids-first--scopedorders-2026-11-15) |
 | a draft | its own ONE `order_draft_addresses` row, names only (selling `00046`) — see *A draft's address* below |
 
 ## A draft's address — `order_draft_addresses` and the form's pre-fill (2026-11-06)
@@ -1481,6 +1481,28 @@ Tests: `order_list_sort_test.go`, `settlement_opened_test.go`, `settlement_opene
 through the composition root `cmd/app_development/settlement_opened_marker_test.go` (a real order, its Order Placed
 opening the account, and a refused open leaving NULL). Perf: [OrderList.md](../../../audits/services/selling_service/performances/OrderList.md)
 findings 3 and 6.
+
+## The order search matches ids first — `scopedOrders` (2026-11-15)
+
+[the-order-search-matches-ids-first](../../business/order/context_decision.md#the-order-search-matches-ids-first): the
+search finds its ORDER IDS first, through the trigram indexes, and only then applies the scope, the filters and the page.
+One builder (`selling_v1/order_search.go`, called by `scopedOrders`) serves `OrderList`, `OrderStat` and `OrderExport`.
+
+```mermaid
+flowchart LR
+    T["a trimmed term"] --> Q{"a run of three letters or digits?"}
+    Q -->|"yes"| U["ids = address rows UNION refs UNION receipts, plus the id when all digits - one InitPlan, each arm a trigram index scan"]
+    U --> S["orders.id = ANY(ids), then the scope, the filters, the page - by orders_pkey"]
+    Q -->|"no - no trigram to look up"| C["the scan: the four ILIKEs tested on every order in scope"]
+```
+
+| | |
+| --- | --- |
+| the match | unchanged — each column's `ILIKE '%term%'` (a typed `%`, `_`, `\` is text), the customer's name and phone on the address row, the marketplace ref, the tracking number, and the order id when the term is all digits |
+| the fence | `orders.id = ANY(ARRAY(<the union>))`: an InitPlan computed once, without the scope, so the orders side is an index condition on the primary key. `IN (<the union>)` was probed and planned a hash join over the scope under the generic plan (7–12 ms) |
+| the scan kept | a 1–2-character term (`trigramsServe`): no trigram to look up, the GIN index reads every entry and ids first measured 2–3× slower |
+| cost | root's tracking-number search 74 → 3–4 ms, a warehouse's 54–75 → 3–4 ms, custom and generic plans; the stat 58–65 → 2 ms; a warehouse's searched file 82–115 → 8–12 ms. A term naming every order is ~1.35× the scan (custom); a broad term's export +1–10 %. Figures: [OrderList.md finding 1](../../../audits/services/selling_service/performances/OrderList.md) |
+| tests | `order_search_ids_first_test.go` — the old clause kept verbatim, the real handlers run under both (`SetOrderSearchMatch`, `export_test.go`): identical ids, order and total across readers, statuses, dates, filters and terms, the stat and the export; mutation-checked. Probes: `TestPerf_OrderList_Root` (list + export), `TestPerf_OrderStat` (`-tags perfaudit`) |
 
 ## The list as a file — `OrderExport`
 

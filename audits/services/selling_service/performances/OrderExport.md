@@ -72,3 +72,4 @@ asked for — then a size cap or a background job, which is a design question, n
 | Date | Wall (16 667 rows) | Queries | Change |
 | --- | --- | --- | --- |
 | 2026-10-21 | 712 ms | 170 | first audit |
+| 2026-11-15 | — | — | a searched export reads `scopedOrders`' ids-first match (the-order-search-matches-ids-first, [OrderList finding 1](OrderList.md#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-)) for its count and each 200-row step. Old and new on `TestPerf_OrderList_Root`'s seed, two processes: warehouse 900 · a tracking number 82–115 → **8–12 ms**; a broad term (`Budi 1`) **+1–10 %** — 3 977 rows 407–451 → 442–462 ms, root's 11 111 rows 1.22–1.27 → 1.31–1.37 s (the union is recomputed per step, ≈2 ms each). The same file, every cell (`order_search_ids_first_test.go`) |

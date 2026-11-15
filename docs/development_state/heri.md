@@ -14,6 +14,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **Monthly and yearly figures come from the server** | the Expenses and Team Balance statistics now get their monthly and yearly rows straight from the server, always the exact sum of the days and a bit faster |
 | **The supplier Sold filter is faster** | filtering suppliers by Sold now reads the daily sold record instead of every order line — the same suppliers, about 40% faster at a million orders |
 | **The statement shows several years** | the daily statement's Monthly view can cover up to 5 years and Yearly up to 20; picking Yearly opens this year and the 4 before it, Monthly the last 12 months |
+| **Searching orders is instant** | searching the order list (by tracking number, receipt, customer or phone) now answers in a few milliseconds instead of ~75 ms — the same orders |
 
 ## 2026-11-14 · a faster full test run, transfers on a phone, product filters
 

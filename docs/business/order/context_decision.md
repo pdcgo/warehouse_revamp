@@ -137,6 +137,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-cs-edits-the-whole-address-before-create](#the-cs-edits-the-whole-address-before-create) | before Create, the CS can edit every part of a draft's address | owner, as recommended | — |
 | [only-the-return-warehouse-accepts-a-return](#only-the-return-warehouse-accepts-a-return) | a return is accepted only by the selling team's configured return warehouse | owner, against the recommendation | — |
 | [the-return-warehouse-warning-says-orders-are-refused](#the-return-warehouse-warning-says-orders-are-refused) | the Settings card warns that the team cannot create orders until a return warehouse is set | owner, as recommended | — |
+| [the-order-search-matches-ids-first](#the-order-search-matches-ids-first) | the order list's search matches order ids through its indexes first (a union of three id sets), then applies the scope — the same rows, faster for root |
 
 ---
 
@@ -4381,3 +4382,26 @@ flowchart LR
 > Owner (Heri), in chat (2026-11-11): *"A"*, as recommended — to: [create-refuses-a-team-with-no-return-warehouse](#create-refuses-a-team-with-no-return-warehouse) is now switched on, so the Settings › Return Warehouse card's warning *"Orders will require one soon"* is no longer true; keep the new wording *"…so this team cannot create orders until one is."* (en + id), or other words?
 
 **The verdict.** The new wording stays: the card's warning says the team **cannot create orders until a return warehouse is set** (en and id, as built 2026-11-11). It replaces the *"soon"* text this decision quoted. ✅ Built 2026-11-11.
+
+---
+
+## the-order-search-matches-ids-first
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to: root's order-list search is ~77 ms
+> ([OrderList.md finding 1](../../../audits/services/selling_service/performances/OrderList.md)): the trigram indexes of
+> selling 00048 serve the address side, but the orders side cannot combine an `IN (subquery)` with the two `ILIKE`s, so the
+> ref and receipt are still filtered over every order in scope. The audit recommends the match as a `UNION` of three
+> index-served id sets — a query change in `scopedOrders`, the owner's call. A: rewrite it; B: leave it.
+
+**The verdict.** The order list's search finds its matches as **ids first**: the union of three index-served id sets —
+orders whose address matches (customer name or phone), whose external ref matches, whose receipt matches — and only then
+applies the scope (team, warehouse, status, dates) and the page. Nothing a person sees changes:
+
+| | |
+| --- | --- |
+| the same rows | the same orders, the same order, the same total, for every scope and filter — an old-vs-new test on one fixture guards it |
+| the same match | the same text match as today (the trigram `ILIKE`, digits included) — only where it is evaluated moves |
+| measured | before and after at the audit's seed, root and a warehouse, in the audit's History; kept only if faster |
+| not part of it | the count of an unfiltered root view (finding 4) and sort by total (finding 3) |
+
+✅ **Built 2026-11-15** — `selling_v1/order_search.go` (`orderSearchIDsFirst`): `orders.id = ANY(ARRAY(<address rows> UNION <refs> UNION <receipts> [UNION the id]))`, an InitPlan computed once before the scope, for OrderList, OrderStat and OrderExport through `scopedOrders`. *(Not asked — the build's default: a term with no run of three letters or digits, which no trigram serves, keeps the old scan; ids first measured 2–3× slower there.)* The same rows: `order_search_ids_first_test.go` runs the real handlers with the old clause kept verbatim and with the built one — 525 list reads (root, two sellers, a warehouse, a return warehouse × text, digits, an order's id, a term matching the address and the ref, wildcards, 1–2 characters, no search × every status, the Returns tab, three date windows, the other filters), the stat beside each and 7 exports, identical; mutation-checked. Kept on the measure (`TestPerf_OrderList_Root`, twice, custom / generic plan): root's tracking-number search 74 → 4 / 74 → 3 ms, a warehouse's 54 → 4 / 75 → 3 ms, the stat 58–65 → 2 ms — [OrderList audit](../../../audits/services/selling_service/performances/OrderList.md), finding 1.

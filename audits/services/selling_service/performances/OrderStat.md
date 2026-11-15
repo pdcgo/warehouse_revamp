@@ -116,6 +116,20 @@ Which plan a small team gets depends on **who used the pooled connection before 
 
 **→ Recommend: accept for now, with a trigger.** 00018 decided "not indexed", and at 50k orders that still holds. When the search passes ~150 ms (roughly 150 000 orders in one team's history), propose `pg_trgm` GIN indexes over the four searched columns. Those are write-amplifying, and an owner's call.
 
+> ✅ **Served 2026-11-15** — by the trigram indexes (selling 00048) and the ids-first match that `scopedOrders` now
+> builds for every reader ([OrderList finding 1](OrderList.md#1-a-search-reads-every-order-in-scope-four-ilikes-a-row-),
+> [the-order-search-matches-ids-first](../../../../docs/business/order/context_decision.md#the-order-search-matches-ids-first)).
+> Old and new on this file's seed, in one process (`perfStatSearchIDsFirst`: trigram lists flushed and analysed, each
+> case scan, ids first, ids first, scan; two processes; median of 5):
+>
+> | Case | custom | generic | `auto` |
+> | --- | --- | --- | --- |
+> | team 50k · a receipt (75 orders) | 57.6–59.0 → **2.0–2.4 ms** | 61.6–64.6 → **1.6–2.2 ms** | 59.9–60.8 → 2.2–2.4 ms |
+> | root 60k · a receipt | 57.7–58.5 → **1.7–2.1 ms** | 60.8–61.3 → **1.6–2.0 ms** | 57.2–59.2 → 1.9–2.2 ms |
+> | warehouse 900 · a phone (46 orders) | 44.0–45.2 → **2.8–3.0 ms** | 64.8–66.1 → **2.5–2.8 ms** | 43.0–43.7 → 2.6–3.1 ms |
+>
+> The same figures per status (the rows come grouped with no `ORDER BY`, so their ORDER follows the plan — it always has).
+
 ### 5. The census floor is linear in the team's history 🟡
 
 Even with no units, the stat reads every order the team has ever had (B: 39 ms at 50k, ≈ 0.8 µs an order). That follows from the design, since `OrderStatusCount` is "a live census, not a window". The floor alone reaches 150 ms near ~190 000 orders.
@@ -175,3 +189,4 @@ Cost: 8 bytes a row, and a one-time back-fill that rewrites every order row (run
 | --- | --- | --- | --- |
 | 2026-10-22 | 190 ms (root 252 ms) | 1 | first written audit: the units (`item_count`, a per-order SubPlan), the measurable FILTERs, the `warehouse_id` filter and the `receipt` search leg. Measured over 60 000 orders / 150 000 lines |
 | 2026-10-30 | 25.3 ms (status-date window) | 1 | the status-date window shares `scopedOrders` — measured and proposed under [OrderList finding 5](OrderList.md#5-a-status-date-window-seq-scans-the-timeline-): 4.0 ms with the index |
+| 2026-11-15 | 2.1 ms (search a receipt) | 1 | finding 4 served — the search matches ids first (the-order-search-matches-ids-first, shared through `scopedOrders`): a receipt 58–65 → 1.6–2.4 ms, a warehouse's phone 43–66 → 2.5–3.1 ms, custom / generic / auto. The probe's old receipt-leg comparison is replaced by `perfStatSearchIDsFirst`, and shape E's proxy sum is cast to `bigint` (`goods_cost` is a double since the-backend-never-rounds-money; the scan into `item_count` had failed the probe since then) |

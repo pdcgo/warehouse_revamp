@@ -2,7 +2,6 @@ package selling_v1
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -113,44 +112,11 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		query = query.Where("shop_id = ?", shopID)
 	}
 
-	// Free text over the customer's name, their phone, and the order id when the term is all digits.
-	//
-	// The whole disjunction is wrapped in ONE parenthesised clause, written by hand rather than chained
-	// through GORM's Or(): this OR sits between the scope's OR above it and the status filter after it,
-	// and an unparenthesised `a OR b AND c` here would let a search leak orders from teams the caller
-	// cannot see. That is a data-exposure bug rather than a wrong-rows bug, so precedence is stated
-	// rather than inherited.
+	// Free text over the customer's name, their phone, the marketplace ref, the tracking number, and the order id when
+	// the term is all digits — orderSearchMatch.
 	term := strings.TrimSpace(filter.GetSearch())
 	if term != "" {
-		args := map[string]any{"like": "%" + likeEscaper.Replace(term) + "%"}
-
-		// An order id is what somebody quotes off a chat message or a label, so a numeric term searches
-		// it as well as the text columns — never INSTEAD of them, because a phone number is also digits
-		// and matching only the id would lose the more likely hit.
-		// The MARKETPLACE REFERENCE is searched beside the customer's name and phone, because it is the
-		// number a person is most often holding when they come looking: it is what the buyer quotes,
-		// what a payout report lists, and what the storefront's own support asks for. A field that can
-		// only be read once you have already found the order would not have been worth typing.
-		//
-		// The TRACKING NUMBER for the same reason, from the other end: a parcel in somebody's hand carries
-		// its slip, and the slip's number is what a scan or a buyer's "where is it" gives you
-		// (a-label-scan-reads-the-ref-or-the-receipt).
-		//
-		// The customer's name and phone live on the order's one address row (00045, one-address-per-order-and-per-draft):
-		// `id IN (the matching address rows)`, which Postgres runs ONCE as a hashed SubPlan — a correlated EXISTS probed
-		// the address index for every order in scope and doubled a warehouse's search (47 → 111 ms at 16 667 orders).
-		clause := `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE a.customer_name ILIKE @like ESCAPE '\'` +
-			` OR a.customer_phone ILIKE @like ESCAPE '\')` +
-			` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\')`
-
-		id, err := strconv.ParseUint(term, 10, 64)
-		if err == nil && id > 0 {
-			clause = `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE a.customer_name ILIKE @like ESCAPE '\'` +
-				` OR a.customer_phone ILIKE @like ESCAPE '\')` +
-				` OR order_external_ref_id ILIKE @like ESCAPE '\' OR receipt ILIKE @like ESCAPE '\' OR id = @id)`
-			args["id"] = id
-		}
-
+		clause, args := orderSearchMatch(term)
 		query = query.Where(clause, args)
 	}
 

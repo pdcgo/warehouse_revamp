@@ -310,18 +310,106 @@ func TestPerf_OrderStat(t *testing.T) {
 
 	perfStatPlanCache(t, db, svc, asBuilt["team 2.5k, no filter"])
 
-	// What the search's NEW leg (receipt ILIKE, 00018) adds: the same statement with and without it.
-	search := asBuilt["team 50k, search receipt"]
-	withoutReceipt := regexp.MustCompile(` OR receipt ILIKE '[^']*' ESCAPE '\\'`).ReplaceAllString(search, "")
+	perfStatSearchIDsFirst(t, db, probe, svc)
+}
 
-	if withoutReceipt == search {
-		t.Fatalf("search: the receipt leg was not found in\n%s", search)
+// perfStatSearchIDsFirst — the-order-search-matches-ids-first (OrderList audit finding 1), as the stat reads it through
+// scopedOrders: the scan (the clause before it, kept in order_search_ids_first_test.go) against ids first, on this seed,
+// the trigram lists flushed and analysed as a live database holds them (OrderList's probe explains why), each plan mode,
+// each case twice in both orders, the answers compared. Before it, this measured what the receipt leg added to the scan.
+func perfStatSearchIDsFirst(t *testing.T, db *gorm.DB, probe *san_perf.Probe, svc *selling_v1.Service) {
+	t.Helper()
+
+	ctx := t.Context()
+
+	for _, ddl := range []string{
+		"SELECT gin_clean_pending_list('orders_ref_receipt_trgm_idx'::regclass)",
+		"SELECT gin_clean_pending_list('order_addresses_customer_trgm_idx'::regclass)",
+		"ANALYZE orders",
+		"ANALYZE order_addresses",
+	} {
+		err := db.Exec(ddl).Error
+		if err != nil {
+			t.Fatalf("%s: %v", ddl, err)
+		}
 	}
 
-	withMedian, _ := perfTimeSQL(t, db, search)
-	withoutMedian, _ := perfTimeSQL(t, db, withoutReceipt)
+	cases := []struct {
+		name string
+		req  *sellingv1.OrderStatRequest
+	}{
+		{"team 50k, search receipt", &sellingv1.OrderStatRequest{
+			TeamId: perfStatTeam, Filter: &sellingv1.OrderStatFilter{Search: "JX00000123"},
+		}},
+		{"root 60k, search receipt", &sellingv1.OrderStatRequest{
+			TeamId: san_auth.RootTeamID, Filter: &sellingv1.OrderStatFilter{Search: "JX00000123"},
+		}},
+		{"warehouse 900, search a phone", &sellingv1.OrderStatRequest{
+			TeamId: 900, Filter: &sellingv1.OrderStatFilter{Search: "0800000312"},
+		}},
+	}
 
-	t.Logf("SEARCH 4 ILIKE legs (with receipt) median=%v · 3 legs (without receipt) median=%v", withMedian, withoutMedian)
+	run := func(req *sellingv1.OrderStatRequest, scan bool) (time.Duration, *sellingv1.OrderStatResponse) {
+		if scan {
+			selling_v1.SetOrderSearchMatch(t, oldOrderSearchClause)
+		} else {
+			selling_v1.SetOrderSearchMatch(t, nil)
+		}
+
+		res, err := svc.OrderStat(ctx, connect.NewRequest(req)) // warm-up
+		if err != nil {
+			t.Fatalf("OrderStat warm-up: %v", err)
+		}
+
+		walls := make([]time.Duration, 0, 5)
+
+		for range 5 {
+			probe.Reset()
+
+			wall, _ := probe.Measure(func() {
+				res, err = svc.OrderStat(ctx, connect.NewRequest(req))
+			})
+			if err != nil {
+				t.Fatalf("OrderStat: %v", err)
+			}
+
+			walls = append(walls, wall)
+		}
+
+		return san_perf.Median(walls), res.Msg
+	}
+
+	for _, mode := range []string{"force_custom_plan", "force_generic_plan", "auto"} {
+		err := db.Exec("SET LOCAL plan_cache_mode = " + mode).Error
+		if err != nil {
+			t.Fatalf("plan_cache_mode %s: %v", mode, err)
+		}
+
+		for _, c := range cases {
+			scan1, scanRes := run(c.req, true)
+			new1, newRes := run(c.req, false)
+			new2, _ := run(c.req, false)
+			scan2, _ := run(c.req, true)
+
+			if !sameStat(scanRes, newRes) {
+				t.Fatalf("%s: ids first answers %v, the scan %v", c.name, newRes, scanRes)
+			}
+
+			placed := int64(0)
+			for _, s := range newRes.GetByStatus() {
+				placed += s.GetCount()
+			}
+
+			t.Logf("IDSFIRST %s · %s: scan %v / %v · ids first %v / %v · orders=%d", mode, c.name, scan1, scan2, new1, new2, placed)
+		}
+	}
+
+	selling_v1.SetOrderSearchMatch(t, nil)
+
+	err := db.Exec("SET LOCAL plan_cache_mode = auto").Error
+	if err != nil {
+		t.Fatalf("plan_cache_mode auto: %v", err)
+	}
 }
 
 // perfStatPlanCache: pgx prepares the handler's statement once per connection and Postgres caches its plan, so every
@@ -445,8 +533,9 @@ LEFT JOIN (SELECT order_id, SUM(quantity) AS qty FROM order_items GROUP BY order
 WHERE ` + scope + `
 GROUP BY o.status`, true, nil},
 		// A denormalised orders.item_quantity cannot be added without a migration, so a column ALREADY on the row
-		// stands in for it: SUM over one more int column of the same row is the work that design would do.
-		{"E denormalised column (proxy: SUM of a column on the row)", `SELECT ` + head + `, COALESCE(SUM(o.goods_cost), 0) AS item_count FROM orders o WHERE ` + scope + ` GROUP BY o.status`, false, nil},
+		// stands in for it: SUM over one more column of the same row is the work that design would do (cast: goods_cost is
+		// a double since the-backend-never-rounds-money, and the shapes scan item_count as an integer).
+		{"E denormalised column (proxy: SUM of a column on the row)", `SELECT ` + head + `, COALESCE(SUM(o.goods_cost), 0)::bigint AS item_count FROM orders o WHERE ` + scope + ` GROUP BY o.status`, false, nil},
 	}
 
 	quiet := db.Session(&gorm.Session{Logger: logger.Discard})

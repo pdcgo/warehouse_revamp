@@ -24,6 +24,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_perf"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
+	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
 // seedOrders seeds perfOrderRows' 50 000 orders over ten shops and returns them.
@@ -344,7 +345,11 @@ func TestPerf_OrderList_Root(t *testing.T) {
 			if c.page > 1 {
 				_, tail, ok := strings.Cut(q.SQL, " AS status_at ")
 				if !ok {
-					t.Fatalf("page SQL has no status_at: %s", q.SQL)
+					// Finding 2 is applied: the handler pages the bare orders first, and the select list goes on past
+					// status_at (return_warehouse_id), so there is no single-pass shape left to compare it with.
+					t.Logf("DEFERRED %s: applied — the page is chosen first (%s)", c.name, perfExecTime(plan))
+
+					continue
 				}
 
 				deferred := "SELECT p.*, " +
@@ -403,6 +408,118 @@ func TestPerf_OrderList_Root(t *testing.T) {
 
 	setMode("auto")
 
+	// THE-ORDER-SEARCH-MATCHES-IDS-FIRST (OrderList audit finding 1): the scan — the clause before it, kept verbatim in
+	// order_search_ids_first_test.go — against the ids-first union, on THIS seed in this process, the indexes flushed and
+	// analysed as above. Each mode, each case twice in both orders (scan, ids first, ids first, scan), the rows compared.
+	// "Budi 1" names 11 111 orders, "Budi" every one of them; "08" has no three-character run, so both read the scan.
+	idsFirstCases := []listCase{
+		{"root · search tracking number, 20", san_auth.RootTeamID, &sellingv1.OrderListFilter{Search: "JP0000031337"}, nil, 1, 20},
+		{"root · search digits, 20", san_auth.RootTeamID, &sellingv1.OrderListFilter{Search: "31337"}, nil, 1, 20},
+		{"warehouse 900 · search tracking number, 20", 900, &sellingv1.OrderListFilter{Search: "JP0000031339"}, nil, 1, 20},
+		{"warehouse 900 · search digits, 20", 900, &sellingv1.OrderListFilter{Search: "31339"}, nil, 1, 20},
+		{"seller team 2 · search a name, 20", 2, &sellingv1.OrderListFilter{Search: "Budi 31336"}, nil, 1, 20},
+		{"root · search \"Budi 1\" (11 111 orders), 20", san_auth.RootTeamID, &sellingv1.OrderListFilter{Search: "Budi 1"}, nil, 1, 20},
+		{"warehouse 900 · search \"Budi 1\", 20", 900, &sellingv1.OrderListFilter{Search: "Budi 1"}, nil, 1, 20},
+		{"root · search \"Budi\" (every order), 20", san_auth.RootTeamID, &sellingv1.OrderListFilter{Search: "Budi"}, nil, 1, 20},
+		{"root · search \"08\" (no trigram — the scan both ways), 20", san_auth.RootTeamID, &sellingv1.OrderListFilter{Search: "08"}, nil, 1, 20},
+	}
+
+	idsFirstRun := func(c listCase, scan bool) (time.Duration, time.Duration, []uint64, uint64) {
+		if scan {
+			selling_v1.SetOrderSearchMatch(t, oldOrderSearchClause)
+		} else {
+			selling_v1.SetOrderSearchMatch(t, nil)
+		}
+
+		req := &sellingv1.OrderListRequest{
+			TeamId: c.team, Filter: c.filter, Sort: c.sort, Page: &commonv1.CommonPagination{Page: c.page, Limit: c.limit},
+		}
+
+		res, err := svc.OrderList(ctx, connect.NewRequest(req)) // warm-up
+		if err != nil {
+			t.Fatalf("OrderList warm-up: %v", err)
+		}
+
+		walls := make([]time.Duration, 0, 5)
+		dbs := make([]time.Duration, 0, 5)
+
+		for range 5 {
+			probe.Reset()
+
+			wall, dbTime := probe.Measure(func() {
+				res, err = svc.OrderList(ctx, connect.NewRequest(req))
+			})
+			if err != nil {
+				t.Fatalf("OrderList: %v", err)
+			}
+
+			walls = append(walls, wall)
+			dbs = append(dbs, dbTime)
+		}
+
+		return san_perf.Median(walls), san_perf.Median(dbs), res.Msg.GetIds(), res.Msg.GetPageInfo().GetTotalItems()
+	}
+
+	for _, mode := range []string{"force_custom_plan", "force_generic_plan", "auto"} {
+		setMode(mode)
+
+		for _, c := range idsFirstCases {
+			scan1, scanDB1, scanIDs, scanTotal := idsFirstRun(c, true)
+			new1, newDB1, newIDs, newTotal := idsFirstRun(c, false)
+			new2, newDB2, _, _ := idsFirstRun(c, false)
+			scan2, scanDB2, _, _ := idsFirstRun(c, true)
+
+			if fmt.Sprint(scanIDs) != fmt.Sprint(newIDs) || scanTotal != newTotal {
+				t.Fatalf("%s: ids first read %v (total %d), the scan %v (total %d)", c.name, newIDs, newTotal, scanIDs, scanTotal)
+			}
+
+			t.Logf("IDSFIRST %s · %s: scan %v / %v (db %v / %v) · ids first %v / %v (db %v / %v) · rows=%d total=%d",
+				mode, c.name, scan1, scan2, scanDB1, scanDB2, new1, new2, newDB1, newDB2, len(newIDs), newTotal)
+		}
+
+		// THE EXPORT reads the same clause once for its count and once per 200-row step (keyset): the file under each.
+		for _, c := range []struct {
+			name string
+			team uint64
+			term string
+			view sellingv1.OrderExportView
+		}{
+			{"warehouse 900 · export a tracking number", 900, "JP0000031339", sellingv1.OrderExportView_ORDER_EXPORT_VIEW_WAREHOUSE},
+			{"warehouse 900 · export \"Budi 1\" (3 977 rows)", 900, "Budi 1", sellingv1.OrderExportView_ORDER_EXPORT_VIEW_WAREHOUSE},
+			{"root · export \"Budi 1\" (11 111 rows)", san_auth.RootTeamID, "Budi 1", sellingv1.OrderExportView_ORDER_EXPORT_VIEW_SELLER},
+		} {
+			req := &sellingv1.OrderExportRequest{TeamId: c.team, Filter: &sellingv1.OrderListFilter{Search: c.term}, View: c.view}
+
+			var walls, dbs [4]time.Duration
+
+			var files [4]int
+
+			for k, scan := range []bool{true, false, false, true} {
+				if scan {
+					selling_v1.SetOrderSearchMatch(t, oldOrderSearchClause)
+				} else {
+					selling_v1.SetOrderSearchMatch(t, nil)
+				}
+
+				var run exportRun
+
+				probe.Reset()
+				walls[k], dbs[k] = probe.Measure(func() { run = export(t, db, &fakeExports{}, req) })
+				files[k] = len(run.rows) - 1
+			}
+
+			if files[0] != files[1] || files[1] != files[2] || files[2] != files[3] {
+				t.Fatalf("%s: the files hold %v rows", c.name, files)
+			}
+
+			t.Logf("IDSFIRST %s · %s: scan %v / %v (db %v / %v) · ids first %v / %v (db %v / %v) · rows=%d",
+				mode, c.name, walls[0], walls[3], dbs[0], dbs[3], walls[1], walls[2], dbs[1], dbs[2], files[0])
+		}
+	}
+
+	selling_v1.SetOrderSearchMatch(t, nil)
+	setMode("auto")
+
 	// The generic plans themselves, for root's count and page of a text term.
 	match := `(orders.id IN (SELECT a.order_id FROM order_addresses a WHERE ` +
 		`a.customer_name ILIKE $1 ESCAPE '\' OR a.customer_phone ILIKE $1 ESCAPE '\') ` +
@@ -434,7 +551,7 @@ func TestPerf_OrderList_Root(t *testing.T) {
 
 	// A narrow term (one tracking number) and a broad one ("Budi 1" names ~11 000 orders).
 	for _, term := range []string{"%JP0000031337%", "%Budi 1%"} {
-		t.Logf("GENERIC TRGM %s: count=%s page as built=%s page ids-first=%s", term,
+		t.Logf("GENERIC TRGM %s, the scan (the clause before ids first): count=%s page=%s page with a CTE fence=%s", term,
 			perfExecTime(san_perf.Explain(t, db, "EXECUTE perf_search('"+term+"')")),
 			perfExecTime(san_perf.Explain(t, db, "EXECUTE perf_page('"+term+"')")),
 			perfExecTime(san_perf.Explain(t, db, "EXECUTE perf_page_m('"+term+"')")))
