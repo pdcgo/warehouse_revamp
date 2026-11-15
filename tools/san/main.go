@@ -7,7 +7,7 @@
 //	san db         the test database
 //	san region     reference data
 //	san user       operations on real data, through the real services
-//	san supplier   supplier_service one-shots — the move, the figures backfill, the links backfill
+//	san supplier   supplier_service one-shots — the figures backfill, the links backfill, the warehouses backfill
 //	san product    product_service one-shots — the product-code recompose
 //	san shop       selling_service one-shots — the rollout grant of every current CS
 //	san remote     serve this checkout to a coding agent (Connect RPC + MCP)

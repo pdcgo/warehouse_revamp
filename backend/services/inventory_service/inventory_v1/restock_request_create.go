@@ -97,8 +97,9 @@ func (s *Service) RestockRequestCreate(
 		}
 
 		// Asking a warehouse to stock a product is what makes that product VISIBLE to it (#142). In the same
-		// transaction, because a restock whose products the warehouse cannot see is one nobody there can act on.
-		return linkWarehouseProducts(tx, rr.WarehouseID, rr.Items)
+		// transaction, because a restock whose products the warehouse cannot see is one nobody there can act on. Under
+		// the restock's team — its lines are that team's own products (the-warehouse-link-names-its-owner-team).
+		return linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
 	})
 	if err != nil {
 		return nil, restockErr(err)

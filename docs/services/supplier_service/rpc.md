@@ -98,11 +98,12 @@ The frontend's restock and batch screens read a supplier's name with `SupplierBy
 `SupplierChannelByIds` too, so a deleted supplier or store still names a past delivery, with its deleted badge
 ([a-deleted-supplier-still-shows-with-a-badge](../../business/inventory/restock_decision.md#a-deleted-supplier-still-shows-with-a-badge)).
 
-## The move — not an RPC
+## The move — not an RPC, retired
 
-`san supplier move` copies inventory_service's legacy rows in, ids kept
+`san supplier move` copied inventory_service's legacy rows in, ids kept
 ([existing-suppliers-move-with-their-ids](../../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)).
-See [san.md](../../tools/san.md#supplier-move).
+It had run on every database; inventory_service's `00046_drop_legacy_suppliers` dropped the legacy tables (refusing on
+a database whose rows were never moved) and the command was retired with them. See [san.md](../../tools/san.md#supplier-move).
 
 ## The figures — a fold of Restock Accepted
 

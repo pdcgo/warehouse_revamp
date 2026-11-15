@@ -33,3 +33,11 @@ rows (the team holds 200, 40 marked operational) · warm, 5 runs · probe
 ℹ️ Noted, not fixed (audits never apply fixes). An ongoing edit writes `restocks` twice — the fields, then `subtotal`
 and `total` — 1.4 ms at twenty lines. Folding the totals into the first `UPDATE` would save one statement; it is not a
 problem at this size.
+
+---
+
+## History
+
+| Date | Queries | Change |
+| --- | --- | --- |
+| 2026-11-15 | +1 only on a re-link (inside the transaction, after the upsert) | `warehouse_products.owner_team_id` ([the-warehouse-link-names-its-owner-team](../../../../docs/business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team)): the link upsert carries the owner; when it met links already stored, ONE read of them on `warehouse_products_unique` — 0.13–0.35 ms wall, 0.064 ms execution for 20 products over 100 000 links (scratch probe). A new link adds nothing. Not re-probed |

@@ -64,11 +64,14 @@ func TestWarehouseTransferCreate_TakesFromAAtCreate(t *testing.T) {
 		t.Fatalf("A holds %d / %d Kaos Hitam, want 4 in both ledgers", b, r)
 	}
 
-	// B's crew can find what is coming (a-transfer-links-its-products-to-the-receiver).
+	// B's crew can find what is coming (a-transfer-links-its-products-to-the-receiver), under the transfer's team — the
+	// products' owner (the-warehouse-link-names-its-owner-team).
 	var links int64
-	f.db.Model(&models.WarehouseProduct{}).Where("warehouse_id = ? AND product_id IN ?", wtB, []uint64{wtKaosHitam, wtKaosPolos}).Count(&links)
+	f.db.Model(&models.WarehouseProduct{}).
+		Where("warehouse_id = ? AND product_id IN ? AND owner_team_id = ?", wtB, []uint64{wtKaosHitam, wtKaosPolos}, otMelati).
+		Count(&links)
 	if links != 2 {
-		t.Fatalf("%d products linked to B, want 2", links)
+		t.Fatalf("%d products linked to B under Melati, want 2", links)
 	}
 
 	if logs := tr.GetLogs(); len(logs) != 1 || logs[0].GetToStatus() != inventoryv1.WarehouseTransferStatus_WAREHOUSE_TRANSFER_STATUS_CREATED {

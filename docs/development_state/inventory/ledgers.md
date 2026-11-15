@@ -262,7 +262,7 @@ No `batch_id` — a rack never knows its batch ([expiry-is-a-report](../../busin
 | column | type | rule | fixed by |
 | --- | --- | --- | --- |
 | `id` | id | | [context.md](../../business/inventory/context.md) §Table that must we have |
-| `team_id` | xid | the product's owner — ⚠ named `owner_team_id` in design.md (open) | context.md |
+| `owner_team_id` | xid | the product's owner, its selling team — ✅ built 2026-11-15 (inventory 00047), named as design.md has it | [the-warehouse-link-names-its-owner-team](../../business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team) |
 | `warehouse_id` | xid | | context.md |
 | `product_id` | xid | | context.md |
 | `created_at` | ts | | context.md |
@@ -427,7 +427,7 @@ Mutation names: [one-mutation-per-operation](../../business/inventory/context_de
 
 **Owner doc lags a decision**
 
-1. `warehouse_products`: `team_id` (context.md) vs `owner_team_id` (design.md); the UNIQUE key is only in design.md — open contradiction [the-link-names-its-team-two-ways](../../business/inventory/context_clarify.md#the-link-names-its-team-two-ways).
+1. ✅ `warehouse_products`: `team_id` (context.md) vs `owner_team_id` (design.md) — decided `owner_team_id`, `UNIQUE (warehouse_id, product_id)` kept ([the-warehouse-link-names-its-owner-team](../../business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team)); **built 2026-11-15**: inventory 00047 adds it filled and NOT NULL, all four writers name the owner.
 2. `inventory_transactions.recipient` is decided but missing from transaction.md.
 3. `batches.supplier_id` is decided but missing from batch.md.
 4. `batch_logs.price_unit_after` is decided but missing from batch.md; batch.md's *Restock Flow Example* draws a mint writing only `batch_price_logs`.
@@ -464,7 +464,7 @@ Mutation names: [one-mutation-per-operation](../../business/inventory/context_de
 29. Denormalised scopes with no CHECK: `product_placements.team_id`/`warehouse_id` (the placement fixes the warehouse, the product fixes the team); `batches.(warehouse_id, product_id)` repeats `warehouse_products`.
 30. Get-or-create races (ledger template Critique 4): the destination rack row *"created at 0 first"* and the `warehouse_products` upsert both need `INSERT … ON CONFLICT DO NOTHING` — ✅ built: `inventory_ledgers/rack_rows.go` and `inventory_v1/warehouse_product.go`.
 31. Money type drift: opname_clarify's proposed `warehouse_stock_problems.price_unit` is `numeric`; [stock-money-is-float64-compared-at-4-digits](../../technical/stock/design_decision.md#stock-money-is-float64-compared-at-4-digits) makes it `double`.
-32. The build: `racks` (00007) becomes `placements` — stored codes are case-sensitive as typed, so lowercase collisions must be merged before the migration ([rack-codes-are-saved-lowercase](../../business/inventory/placement_decision.md#rack-codes-are-saved-lowercase)); `warehouse_products` (00011) exists without a team column; `stock_levels`, `stock_movements`, `stock_batches`, `stock_shelf_batches`, `stock_owner_movements` are dropped.
+32. The build: `racks` (00007) becomes `placements` — stored codes are case-sensitive as typed, so lowercase collisions must be merged before the migration ([rack-codes-are-saved-lowercase](../../business/inventory/placement_decision.md#rack-codes-are-saved-lowercase)); `warehouse_products` (00011) gained its owner column in 00047 (`owner_team_id`, 2026-11-15); `stock_levels`, `stock_movements`, `stock_batches`, `stock_shelf_batches`, `stock_owner_movements` are dropped.
 
 ## 2026-11-06 — stock reads carry the unrounded double (money-type change, part 2)
 

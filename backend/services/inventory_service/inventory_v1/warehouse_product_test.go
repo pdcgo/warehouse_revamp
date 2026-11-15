@@ -1,6 +1,9 @@
 package inventory_v1_test
 
 import (
+	"bytes"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -137,5 +140,157 @@ func TestWarehouseProductLink_AnUnusedWarehouseIsEmpty(t *testing.T) {
 
 	if got := warehouseProducts(t, db, 951); len(got) != 0 {
 		t.Fatalf("an unused warehouse handles %v, want nothing", got)
+	}
+}
+
+// linkOwners is each product's link at this warehouse and the owner team it names (the-warehouse-link-names-its-owner-team).
+func linkOwners(t *testing.T, db *gorm.DB, warehouseID uint64) map[uint64]uint64 {
+	t.Helper()
+
+	var rows []inventory_service_models.WarehouseProduct
+
+	err := db.
+		Where("warehouse_id = ?", warehouseID).
+		Find(&rows).
+		Error
+	if err != nil {
+		t.Fatalf("reading warehouse_products: %v", err)
+	}
+
+	owners := make(map[uint64]uint64, len(rows))
+	for _, row := range rows {
+		owners[row.ProductID] = row.OwnerTeamID
+	}
+
+	return owners
+}
+
+// capturedWarnings sends the default logger into a buffer for this test, and gives it back after — the package's tests
+// never run in parallel, so no other test's lines land here.
+func capturedWarnings(t *testing.T) *bytes.Buffer {
+	t.Helper()
+
+	var logged bytes.Buffer
+
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	return &logged
+}
+
+// the-warehouse-link-names-its-owner-team — a restock links its products under the RESTOCK's team: its lines are that
+// team's own products (a-restock-carries-only-the-teams-own-products).
+func TestWarehouseProductLink_ARestockLinksUnderItsTeam(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	createRestock(t, svc, warehouseA, 100, 200)
+
+	owners := linkOwners(t, db, warehouseA)
+	if len(owners) != 2 || owners[100] != 2 || owners[200] != 2 {
+		t.Fatalf("links at warehouse A = %v (product → owner), want 100 and 200 both under team 2", owners)
+	}
+}
+
+// the-warehouse-link-names-its-owner-team — an edit that adds a product links it under the restock's team too, and an
+// edit that moves the restock to another warehouse links its products there under the same team.
+func TestWarehouseProductLink_AnEditLinksUnderTheRestocksTeam(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	const otherWarehouse uint64 = 952
+
+	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: 2, WarehouseId: warehouseA, FinanceAccountId: 7,
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: 100, ProductCode: "SKU100", Name: "P100", Count: 1, Total: 100}},
+	}))
+	if err != nil {
+		t.Fatalf("RestockRequestCreate: %v", err)
+	}
+
+	edit := func(warehouseID uint64, productIDs ...uint64) {
+		t.Helper()
+
+		items := make([]*inventoryv1.RestockRequestItem, 0, len(productIDs))
+		for _, id := range productIDs {
+			items = append(items, &inventoryv1.RestockRequestItem{ProductId: id, ProductCode: "SKU", Name: "Widget", Count: 1, Total: 100})
+		}
+
+		_, err := svc.RestockRequestUpdate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+			TeamId: 2, RequestId: created.Msg.GetRequest().GetId(), WarehouseId: warehouseID, FinanceAccountId: 7, Items: items,
+		}))
+		if err != nil {
+			t.Fatalf("RestockRequestUpdate: %v", err)
+		}
+	}
+
+	edit(warehouseA, 100, 200)
+
+	owners := linkOwners(t, db, warehouseA)
+	if len(owners) != 2 || owners[100] != 2 || owners[200] != 2 {
+		t.Fatalf("links at warehouse A after the edit = %v, want 100 and the added 200 both under team 2", owners)
+	}
+
+	edit(otherWarehouse, 200, 300)
+
+	moved := linkOwners(t, db, otherWarehouse)
+	if len(moved) != 2 || moved[200] != 2 || moved[300] != 2 {
+		t.Fatalf("links at the warehouse the edit moved to = %v, want 200 and 300 under team 2", moved)
+	}
+}
+
+// A product has ONE owner (the-warehouse-link-names-its-owner-team): a writer naming another team than the link
+// already stores never overwrites it — the stored owner is kept, the disagreement is reported naming both teams, and the
+// restock that hit it still lands. A link stored under the writer's own team is met in silence.
+func TestWarehouseProductLink_AnotherOwnerIsReportedAndNeverOverwritten(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	err := db.Exec(`INSERT INTO warehouse_products (warehouse_id, product_id, owner_team_id) VALUES (?, 100, 77), (?, 200, 2)`,
+		warehouseA, warehouseA).Error
+	if err != nil {
+		t.Fatalf("seed the links: %v", err)
+	}
+
+	var before string
+
+	db.Raw(`SELECT ctid::text FROM warehouse_products WHERE warehouse_id = ? AND product_id = 100`, warehouseA).Scan(&before)
+
+	logged := capturedWarnings(t)
+
+	createRestock(t, svc, warehouseA, 100, 200, 300)
+
+	owners := linkOwners(t, db, warehouseA)
+	if len(owners) != 3 || owners[100] != 77 || owners[200] != 2 || owners[300] != 2 {
+		t.Fatalf("links = %v, want 100 kept under team 77, 200 under 2, the new 300 under 2", owners)
+	}
+
+	var after string
+
+	db.Raw(`SELECT ctid::text FROM warehouse_products WHERE warehouse_id = ? AND product_id = 100`, warehouseA).Scan(&after)
+
+	if before == "" || before != after {
+		t.Fatalf("the stored link was rewritten (ctid %q → %q), want it untouched", before, after)
+	}
+
+	lines := strings.Split(strings.TrimSpace(logged.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("%d warnings, want exactly one (product 100):\n%s", len(lines), logged.String())
+	}
+
+	for _, want := range []string{"stored under another owner team", "product_id=100", "stored_owner_team_id=77", "writer_owner_team_id=2"} {
+		if !strings.Contains(lines[0], want) {
+			t.Fatalf("the warning %q does not say %q", lines[0], want)
+		}
+	}
+
+	// Again under the same team: every link now agrees or is someone else's already reported — the agreeing ones say nothing.
+	logged.Reset()
+
+	createRestock(t, svc, warehouseA, 200, 300)
+
+	if logged.Len() != 0 {
+		t.Fatalf("re-linking products already under team 2 warned:\n%s", logged.String())
 	}
 }

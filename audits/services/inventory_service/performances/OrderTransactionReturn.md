@@ -106,3 +106,4 @@ Execution Time: 0.476 ms
 | Date | Median @1 / @20 lines | Queries @1 / @20 | Change |
 | --- | --- | --- | --- |
 | 2026-11-09 | 7.7 / 15.3 ms (an earlier run 20.0 / 18.0 ms) | 20 / 20 | first audit |
+| 2026-11-15 | — | +1 only when the return warehouse already had a product linked | `warehouse_products.owner_team_id` ([the-warehouse-link-names-its-owner-team](../../../../docs/business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team)): the link upsert carries the owner; when it met links already stored, ONE read of them on `warehouse_products_unique` — 0.13–0.35 ms wall, 0.064 ms execution for 20 products over 100 000 links (scratch probe). A new link adds nothing. Not re-probed |

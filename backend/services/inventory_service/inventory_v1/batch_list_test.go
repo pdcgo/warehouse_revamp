@@ -271,3 +271,61 @@ func TestBatchList_ExpiringSoonCountsTheWholeThirtiethJakartaDay(t *testing.T) {
 		t.Fatalf("expiring_soon_count = %d over both batches, want 1", all.Msg.GetExpiringSoonCount())
 	}
 }
+
+// EXPIRING SOON IS ABOUT UNITS LEFT (expiry-is-a-report: "batches with units left whose expired_at falls within a
+// window"). Both batches expire in 10 days; the hats' batch is emptied. The filter and the strip's count name the shirts
+// alone, while the list itself still shows the emptied batch (the list keeps depleted rows, by design).
+func TestBatchList_ExpiringSoonCountsOnlyBatchesWithUnitsLeft(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	const warehouse uint64 = 5
+	seedTwoBatches(t, svc, warehouse)
+
+	today := time.Now().In(wibZone)
+	inTenDays := time.Date(today.Year(), today.Month(), today.Day()+10, 12, 0, 0, 0, wibZone)
+
+	err := db.Exec(`UPDATE batches SET expired_at = ? WHERE warehouse_id = ?`, inTenDays, warehouse).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.Exec(`UPDATE batches SET stock_count = 0, stock_valuation = 0 WHERE warehouse_id = ? AND product_id = 200`,
+		warehouse).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	soon, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
+		TeamId: warehouse,
+		Filter: &inventoryv1.BatchListFilter{Expiry: inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON},
+		Page:   page1(),
+	}))
+	if err != nil {
+		t.Fatalf("BatchList expiring soon: %v", err)
+	}
+
+	rows := batchRows(soon.Msg)
+	if len(rows) != 1 || rows[0].GetProductId() != 100 || soon.Msg.GetPageInfo().GetTotalItems() != 1 {
+		t.Fatalf("expiring soon lists %d rows (total %d), want the shirts alone — the emptied hats have nothing to expire",
+			len(rows), soon.Msg.GetPageInfo().GetTotalItems())
+	}
+
+	if soon.Msg.GetExpiringSoonCount() != 1 {
+		t.Fatalf("expiring_soon_count under the filter = %d, want 1", soon.Msg.GetExpiringSoonCount())
+	}
+
+	all, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1()}))
+	if err != nil {
+		t.Fatalf("BatchList: %v", err)
+	}
+
+	if len(batchRows(all.Msg)) != 2 {
+		t.Fatalf("the unfiltered list shows %d batches, want both — the emptied one stays on the list", len(batchRows(all.Msg)))
+	}
+
+	if all.Msg.GetExpiringSoonCount() != 1 {
+		t.Fatalf("the strip's expiring_soon_count = %d over both batches, want 1 (the emptied hats are not counted)",
+			all.Msg.GetExpiringSoonCount())
+	}
+}

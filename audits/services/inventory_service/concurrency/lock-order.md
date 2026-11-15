@@ -342,3 +342,30 @@ The race suites that commit (`ledgerTables`, selling's `orderRaceTables`) wipe b
 ```sh
 go test -tags raceaudit -p 1 -count=1 -run 'TestRace_StockReport' -v ./backend/services/inventory_service/inventory_v1/
 ```
+
+## The warehouse link names its owner (2026-11-15)
+
+[the-warehouse-link-names-its-owner-team](../../../../docs/business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team):
+`warehouse_products` carries `owner_team_id` (inventory 00047). The four writers' locking is **unchanged** — no new lock,
+no change of order, no new file:
+
+| Writer | The link step, as before | What is new |
+| --- | --- | --- |
+| `RestockRequestCreate` / `RestockRequestUpdate` | `INSERT … ON CONFLICT DO NOTHING`, last in the restock's transaction | the owner on the inserted rows; when a link was already there, one plain read of the stored owners (no `FOR UPDATE`) |
+| `WarehouseTransferCreate` | the same upsert BEFORE the transaction, on its own connection — logged, never fails the create | the same |
+| `OrderTransactionReturn` | the same upsert before `order_return_checks` | the same |
+
+The upsert still waits only on a twin's uncommitted insert of the same `(warehouse_id, product_id)` — as before. Two
+writers naming DIFFERENT owners for one new link: the second's insert waits for the first, then does nothing; its read
+is a fresh READ COMMITTED snapshot, sees the first's committed owner, keeps it and logs the disagreement. No cycle: the
+read takes no lock, and the upsert sits where it always sat in each writer.
+
+| Claim | Proof |
+| --- | --- |
+| A second owner waits on the first's uncommitted link, then keeps it and reports — never overwrites, never misses it | `TestInterleave_WarehouseProductLink_ASecondOwnerWaitsThenKeepsTheFirst` — B (a restock of team 2) blocked on A's uncommitted link under team 77, released on A's commit; one link, under 77; B's restock committed; one warning naming 77 and 2. Mutation-checked: without the read, or with the upsert overwriting, red |
+| The rule on one connection | `TestWarehouseProductLink_AnotherOwnerIsReportedAndNeverOverwritten` — the stored row's `ctid` unchanged, one warning |
+| The writers' own races are unchanged | `TestRace_RestockRequestCreate_*`, `TestRace_RestockRequestUpdate_*`, `TestRace_WarehouseTransferCreate_*`, `TestRace_OrderTransactionReturn_OnceForEightCallers`, `TestRace_OrderReturnAccept_OneReturnTransaction` — re-run 2026-11-15 |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestInterleave_WarehouseProductLink' -v ./backend/services/inventory_service/inventory_v1/
+```

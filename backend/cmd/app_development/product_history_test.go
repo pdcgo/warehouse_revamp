@@ -15,7 +15,7 @@ func TestProductHistory_AsksInventoryAndTheOrderSide(t *testing.T) {
 
 	const fresh, stocked, mapped uint64 = 910_001, 910_002, 910_003
 
-	err := db.Exec(`INSERT INTO warehouse_products (warehouse_id, product_id) VALUES (11, ?)`, stocked).Error
+	err := db.Exec(`INSERT INTO warehouse_products (warehouse_id, product_id, owner_team_id) VALUES (11, ?, 12)`, stocked).Error
 	if err != nil {
 		t.Fatalf("register at a warehouse: %v", err)
 	}

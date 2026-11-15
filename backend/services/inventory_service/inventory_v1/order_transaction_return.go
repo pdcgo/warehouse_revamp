@@ -30,8 +30,9 @@ var errReturnTakeMissing = errors.New("no order take with that id for this selli
 //  3. The broken and missing units are the return's door rows with the crew's note, the selling team's
 //     (a-short-return-is-missing-at-the-door, a-broken-returned-unit-is-thrown-away-at-the-door,
 //     a-return-door-row-carries-an-optional-note) — no payable, no claim, no Inventory Lost: nothing else reads them.
-//  4. The products the sound units come back as are linked to the return warehouse
-//     (a-transfer-links-its-products-to-the-receiver — every way a product reaches a warehouse links it there).
+//  4. The products the sound units come back as are linked to the return warehouse, under the selling team that owns
+//     them (a-transfer-links-its-products-to-the-receiver — every way a product reaches a warehouse links it there;
+//     the-warehouse-link-names-its-owner-team).
 func (s *Service) OrderTransactionReturn(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.OrderTransactionReturnRequest],
@@ -156,7 +157,9 @@ func (s *Service) OrderTransactionReturn(
 			}
 		}
 
-		linkErr := linkWarehouseProductIDs(tx, warehouseID, linked)
+		// Under the returned batches' owner — PostReturn mints every one for the selling team, the product each line
+		// comes back as being that team's own (the-warehouse-link-names-its-owner-team).
+		linkErr := linkWarehouseProductIDs(tx, warehouseID, r.TeamID, linked)
 		if linkErr != nil {
 			return linkErr
 		}

@@ -147,7 +147,8 @@ const notFound = () => new ConnectError("batch not found", Code.NotFound);
 const expiresOn = (b: BatchFixture) => (b.expiresIn === 0 ? 0n : daysFromNow(b.expiresIn));
 const createdAt = (b: BatchFixture) => now() - BigInt(b.age) * DAY;
 // Within 30 days, the past included — as the server's `expired_at <= cutoff`.
-const expiringSoon = (b: BatchFixture) => b.expiresIn !== 0 && b.expiresIn <= 30;
+// Units left only, as BatchList (expiry-is-a-report): an emptied batch has nothing left to expire.
+const expiringSoon = (b: BatchFixture) => b.expiresIn !== 0 && b.expiresIn <= 30 && readyNow(b) > 0n;
 
 function toWire(b: BatchFixture) {
   const at = createdAt(b);

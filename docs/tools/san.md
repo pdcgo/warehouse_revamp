@@ -96,7 +96,6 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`test report` · `test slice`](#test-report--test-slice) | Print `e2e_report/latest.md` and the recent runs · log the files a slice changed |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
-| [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`supplier backfill-links`](#supplier-backfill-links) | Link every accepted restock line's product to its supplier and store, and re-fold the figures a restock mixing suppliers never got. `--dry-run` first. Repeatable — a second run writes nothing |
 | [`supplier backfill-warehouses`](#supplier-backfill-warehouses) | Re-fold both supplier daily reports into the warehouse each figure came from, and print every supplier's totals BEFORE == AFTER. `--dry-run` first. Repeatable — a second run finds nothing |
@@ -212,6 +211,8 @@ is no cross-service foreign key to enforce it — a service owns its own tables 
 produces a role pointing at a team that does not exist yet. `inventory_service` comes third: its `00023`
 renames its old supplier tables to `legacy_*`, freeing the names `supplier_service`'s `00001` creates —
 every service shares one database ([the-supplier-gets-its-own-service](../business/supplier/context_decision.md#the-supplier-gets-its-own-service)).
+Its `00046` drops those legacy tables — and on a fresh database, where they are empty, it never looks at
+supplier_service's tables (not created yet at that point); see [`supplier move`](#supplier-move), retired.
 A test pins the order (`TestMigrationOrderPinsTheDependencies`).
 
 ### Errors you should expect
@@ -331,7 +332,7 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 2 | `docker compose --profile pubsub up -d --wait` — Postgres, Redis and the Pub/Sub emulator | |
 | 3 | the emulator's topics, and subscriptions that PUSH to the dev API ([the-emulator-pushes-locally](../technical/event_architecture/context_decision.md#the-emulator-pushes-locally)) | [`pubsub ensure --project warehouse-dev --emulator --push-base-url http://host.docker.internal:8080`](#pubsub-ensure) — `PUBSUB_PUSH_BASE_URL` overrides the URL |
 | 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
-| 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
+| 5 | *retired* — the supplier move; inventory_service `00046` dropped the tables it read | ~~[`supplier move`](#supplier-move)~~ |
 | 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
 | 6a | every accepted line's product linked to its supplier and store, and a mixed restock's figures re-folded — repeatable | [`supplier backfill-links`](#supplier-backfill-links) |
 | 6a′ | the supplier figures folded before the reports carried the warehouse, re-folded into it — repeatable | [`supplier backfill-warehouses`](#supplier-backfill-warehouses) |
@@ -358,8 +359,7 @@ flowchart TD
     S --> D["docker compose --profile pubsub up -d --wait"]
     D --> E["pubsub ensure — the emulator's topics"]
     E --> M["migrate up-all"]
-    M --> SM["supplier move"]
-    SM --> SB["supplier backfill-figures"]
+    M --> SB["supplier backfill-figures"]
     SB --> SL["supplier backfill-links"]
     SL --> SW["supplier backfill-warehouses"]
     SW --> SD["seed dev"]
@@ -1119,84 +1119,22 @@ At the repo root, gitignored — nothing in it is committed:
 
 ## `supplier move`
 
-Copies every supplier and store out of inventory_service and into supplier_service, **keeping each id** — restocks
-and batches hold those ids ([existing-suppliers-move-with-their-ids](../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)).
-One-shot, and safe to run again: a row already moved is skipped — also when it was edited in supplier_service
-since, which the run names and never overwrites. [`dev setup`](#dev-setup) runs it after migrating.
+**Retired** with inventory_service's `00046_drop_legacy_suppliers` ([existing-suppliers-move-with-their-ids](../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)).
+It copied every supplier and store out of inventory_service's `legacy_suppliers` / `legacy_supplier_channels` into
+supplier_service, **keeping each id** (restocks and batches hold those ids), folding an offline store into its supplier.
+It had run on every database, so `00046` drops the two legacy tables, and the command and its [`dev setup`](#dev-setup)
+step went with them — nothing is left for it to read.
 
-```sh
-go run ./tools/san supplier move                     # prompts: Local or Production
-go run ./tools/san supplier move --dsn "$DATABASE_URL"
-```
+**The migration's guard.** `00046` refuses — nothing dropped, the version not recorded — on a database holding a
+legacy row that is not in supplier_service as the move wrote it: a supplier under its id with the same team and
+`created_at`, an **online** store under its id with the same supplier and `created_at` (an offline store was folded,
+never a row). It looks only when a legacy row exists, so a fresh database — whose `up-all` runs inventory_service
+before supplier_service even has its tables — passes.
 
-| Flag | |
+| Error (from `migrate up` / `up-all` / `dev setup`) | What to do |
 | --- | --- |
-| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
-
-⚠ **Run it right after `migrate up-all`, before anyone creates a supplier.** A supplier created first takes its
-id from supplier_service's new sequence, and that id may be one a legacy row still needs. The move then refuses —
-see the errors below — rather than overwrite or skip.
-
-⚠ **A hand-written INSERT, against [HARD RULE 3b](../../CLAUDE.md)'s default.** A command normally calls the RPC
-handler; no handler can create a row under a chosen id, and keeping the ids is the whole point. It copies rows that
-already passed their own rules — it is not an operation on the domain.
-
-### What it does
-
-```mermaid
-sequenceDiagram
-  participant SAN as san supplier move
-  participant L as legacy_suppliers, legacy_supplier_channels
-  participant S as suppliers, supplier_channels
-  SAN->>L: read every row — deleted ones too
-  Note over SAN: fold — city and province into the address, an offline store into its supplier, code dropped
-  SAN->>S: read what already sits under the moving ids
-  alt an UNRELATED row under a moving id
-    SAN-->>SAN: refuse, the clash named — nothing written
-  else
-    Note over SAN: a row moved before is skipped — named when edited since
-    SAN->>S: INSERT each row not there yet, its id kept
-    SAN->>S: set both id sequences past the largest id
-  end
-  Note over SAN,S: one transaction
-```
-
-| legacy | becomes |
-| --- | --- |
-| `address`, `city`, `province` | one `address`, joined with ", " ([no-province-or-city](../business/supplier/context_decision.md#no-province-or-city)) |
-| `deleted = true` | `deleted_at` = the row's `updated_at` — the flag had no time ([a-deleted-supplier-is-kept-for-its-figures](../business/supplier/context_decision.md#a-deleted-supplier-is-kept-for-its-figures)) |
-| `code` | dropped ([the-supplier-has-no-code](../business/supplier/context_decision.md#the-supplier-has-no-code)) |
-| an **online** store | a store: marketplace → `channel_type` (`other` when it had none), `url` → `uri`, its contact and location kept in `description` |
-| an **offline** store | folded into its supplier: contact and location fill the supplier's when empty, else are appended to its description ([the-supplier-lists-only-its-online-stores](../business/supplier/context_decision.md#the-supplier-lists-only-its-online-stores)) |
-
-A row is "already there" — moved by an earlier run — when the same id holds a row of the same **origin**: the
-same team (a store: the same supplier) and the same `created_at`. The move copies `created_at` and no edit changes
-it or the team, so a supplier renamed or given a new contact since it moved is still the row it moved: skipped, kept
-as it is, and named in the output. Any other row under a moving id — even one with the same team and name — was
-created in supplier_service, not moved, and refuses the run.
-
-### Output
-
-```
-[Database Local] suppliers: 14 moved (2 of them deleted), 0 already there
-[Database Local] stores: 21 moved, 0 already there, 3 offline folded into their supplier
-```
-
-A re-run after edits in supplier_service:
-
-```
-[Database Local] suppliers: 0 moved (0 of them deleted), 14 already there
-[Database Local] stores: 0 moved, 21 already there, 0 offline folded into their supplier
-[Database Local] store 3 moved before and edited since (legacy "asdasd", now "Sumber Official") — kept as it is
-[Database Local] supplier 7 moved before and edited since (legacy "Sumber", now "PT Sumber Makmur") — kept as it is
-```
-
-### Errors you should expect
-
-| Error | Cause |
-| --- | --- |
-| `read legacy_suppliers (has inventory_service migrated to 00023?)` | The database is behind. Run [`migrate up-all`](#migrate) first |
-| `supplier_service already holds a different row under a moving id — nothing was written: supplier 7 (legacy "Sumber" of team 12 created 2026-07-16 13:59, now "…" of team 89 created 2026-10-12 18:03)` | A supplier (or store) was created in supplier_service before the move ran, under an id a legacy row needs — its team or creation time is not the legacy row's, so it is not an earlier move edited since. Nothing was moved. The clashing row has to be re-numbered or removed by hand — decide which with the owner |
+| `the legacy suppliers were never moved (legacy suppliers 7, legacy stores 4 are not in supplier_service) — run san supplier move first (retired with inventory_service 00046: run it from a checkout before this migration), then migrate again` | Check out a commit before `00046` (e.g. `28faecde`), run `go run ./tools/san supplier move` against that database, come back and migrate. A clash it reports (an unrelated row under a moving id) is re-numbered or removed by hand — decide which with the owner |
+| `the legacy suppliers were never moved: supplier_service has no suppliers table yet — migrate supplier_service, then run san supplier move first …` | A database stopped between the two services: `migrate up --service supplier_service` first, then the move as above |
 
 ---
 
@@ -1204,7 +1142,7 @@ A re-run after edits in supplier_service:
 
 Folds every restock accepted before *Restock Accepted* existed into the supplier figures, through supplier_service's
 own fold ([past-accepts-are-backfilled-once](../business/supplier/context_decision.md#past-accepts-are-backfilled-once)).
-**Once**: a second run folds nothing and says so. [`dev setup`](#dev-setup) runs it after the supplier move.
+**Once**: a second run folds nothing and says so. [`dev setup`](#dev-setup) runs it right after migrating.
 
 ```sh
 go run ./tools/san supplier backfill-figures                     # prompts: Local or Production

@@ -3,6 +3,8 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> ✅ **Answered in chat (2026-11-15):** the-link-names-its-team-two-ways — `warehouse_products` gets `owner_team_id`, written by every upsert ([the-warehouse-link-names-its-owner-team](./context_decision.md#the-warehouse-link-names-its-owner-team)).
+
 > ✅ **Answered in chat (2026-10-16):** Q8 — inventory owns the restock end to end; Q9 — five lines it does not own ([inventory-stops-at-five-lines](./context_decision.md#inventory-stops-at-five-lines))
 > ([inventory-owns-the-restock-end-to-end](./context_decision.md#inventory-owns-the-restock-end-to-end)). Q17 — a transfer links its products to B ([a-transfer-links-its-products-to-the-receiver](./context_decision.md#a-transfer-links-its-products-to-the-receiver)). Q7 — expiry is a report ([expiry-is-a-report](./context_decision.md#expiry-is-a-report)). Q16 — only inventory's half of a return is parked ([order-returns-calls-are-return-mds-brief](./context_decision.md#order-returns-calls-are-return-mds-brief)). **No question is open here.**
 
@@ -19,7 +21,7 @@ this file is always the current open set.
 > Consistent with your [technical stock design](../../technical/stock/design.md) — *"its okay upsert to `warehouse_products`
 > without transaction. its not critical ops"* — and with the build, which already has the table (inventory `00011`,
 > `UNIQUE (warehouse_id, product_id)`, no team column). 🆕 [Q17](#question): a transfer brings products into a warehouse
-> too. ⛔ [the-link-names-its-team-two-ways](#the-link-names-its-team-two-ways).
+> too. ✅ the link names its team `owner_team_id` ([the-warehouse-link-names-its-owner-team](./context_decision.md#the-warehouse-link-names-its-owner-team), 2026-11-15).
 
 > **Re-examined after your answers in chat (2026-10-15).** ✅ [14a](#question) [both-ledgers-count-the-same-units](./context_decision.md#both-ledgers-count-the-same-units)
 > and ✅ [14h](#question) [a-batch-keeps-its-supplier](./context_decision.md#a-batch-keeps-its-supplier), as recommended. Q14 stays open for c and d.
@@ -549,27 +551,6 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 flowchart LR
   L["a link in the doc"] -.->|"the file moved or went"| X["nothing there"]
   L -->|"repointed"| F["the file as it is now"]
-```
-
-## the-link-names-its-team-two-ways
-
-*(2026-10-16)* Your two docs, one table:
-
-| | [context.md](./context.md) §Table that must we have for linking products | [technical stock design.md](../../technical/stock/design.md) §Stock Entity Relationship |
-| --- | --- | --- |
-| the team | `team_id` | `owner_team_id` — *"this owner team of the product, (its selling team)"* |
-| the unique key | not stated | `UNIQUE (warehouse_id, product_id)` |
-
-**Which is wrong:** context.md's name, not its meaning. Both mean the product's owner. **→ Recommend `owner_team_id`.**
-On an order's transaction, `team_id` now means the **ordering** team
-([an-order-transaction-is-the-ordering-teams](./transaction_decision.md#an-order-transaction-is-the-ordering-teams)), so a
-bare `team_id` beside a product reads as the wrong team. And state the unique key in context.md too, since the upsert
-depends on it.
-
-```mermaid
-flowchart LR
-  C["context.md - team_id"] -.->|"same column"| T["stock design.md - owner_team_id"]
-  O["order transaction - team_id is the ordering team"] -.->|"why the bare name misleads"| C
 ```
 
 ## mutation-means-two-layers

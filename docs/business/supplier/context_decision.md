@@ -802,6 +802,8 @@ sequenceDiagram
 
 ✅ Built 2026-11-06 — a row an earlier run moved is recognised by its origin (same team, or a store's same supplier, and the same `created_at`), so one edited in supplier_service since is skipped and named, never overwritten and never a failure; only an unrelated row under a moving id still refuses (backlog #26, `tools/san/supplier_move.go`).
 
+✅ Built 2026-11-15 — the drop: inventory_service `00046_drop_legacy_suppliers` drops `legacy_suppliers` and `legacy_supplier_channels` after a guard that refuses (nothing dropped) while any legacy supplier or online store is not in supplier_service under its id — *"run san supplier move first"*; a fresh database passes. `san supplier move` and its `dev setup` step are retired (owner, 2026-11-15: *A*).
+
 ## every-accepted-line-links-its-own-product
 
 > Owner, in chat *(2026-10-07)*: *"for q11, we are linking at restock"*, confirmed as *"at accept — all of Q11 yes"* —

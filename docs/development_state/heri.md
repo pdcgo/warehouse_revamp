@@ -17,6 +17,8 @@ Users & Role System, Documents, region, shipping, expense.
 | **Searching orders is instant** | searching the order list (by tracking number, receipt, customer or phone) now answers in a few milliseconds instead of ~75 ms — the same orders |
 | **Goods in transit are counted per product** | the system now counts, per product, the units on their way between your warehouses (and their value) — ready for the product screens once you've picked where it shows |
 | **Products show goods in transit** | the product screens show the units on their way between your warehouses — a Dalam transfer tile, a line on the phone and on the product page, and a list column while anything is on its way |
+| **The expiring-batches count ignores empty batches** | the warehouse batch list's "expiring within 30 days" now counts only batches that still have units; and the old supplier tables are gone |
+| **A warehouse's product links name their owner** | each record of which products a warehouse handles now names the team that owns the product — nothing visible changes |
 
 ## 2026-11-14 · a faster full test run, transfers on a phone, product filters
 

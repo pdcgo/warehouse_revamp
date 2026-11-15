@@ -35,6 +35,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [warehouse-product-list-is-deleted](#warehouse-product-list-is-deleted) | the unused WarehouseProductList RPC is deleted | owner, as recommended | — |
 | [the-correct-price-prototype-is-accepted](#the-correct-price-prototype-is-accepted) | Koreksi Harga sits on the product page's Batch rows; the warehouse sees it in the batch history | owner, as recommended | — |
 | [a-corrected-price-is-above-zero](#a-corrected-price-is-above-zero) | a batch's price may be corrected only to more than Rp 0 | owner | — |
+| [the-warehouse-link-names-its-owner-team](#the-warehouse-link-names-its-owner-team) | `warehouse_products` gets `owner_team_id` — the product's owner, written by every upsert |
 | ~~[superseded-a-price-may-be-corrected-to-zero](#superseded-a-price-may-be-corrected-to-zero)~~ ⛔ withdrawn | a batch's price may be corrected down to Rp 0, never below | owner, as recommended | — |
 
 ---
@@ -747,6 +748,8 @@ flowchart LR
 
 **What it does NOT settle:** where the report lives and its window — no report is designed yet.
 
+✅ Built 2026-11-15 — *with units left*: the warehouse Batch list's *Kedaluwarsa ≤ 30 hari* filter and the strip's expiring count now count only batches with units left (`stock_count > 0`, read through the partial index `batches_expiry_idx`); the list still shows emptied batches otherwise (`inventory_v1/batch_list.go`).
+
 ## order-returns-calls-are-return-mds-brief
 
 > Owner, in chat (2026-10-16): *"yes"* — answering [context_clarify Q16](./context_clarify.md#question), *is
@@ -945,3 +948,26 @@ The floor (whether **Rp 0** is allowed) is asked separately. ⚠ Not built.
 **The verdict.** The new unit price of a [Koreksi Harga](#the-correct-price-prototype-is-accepted) must be **more than Rp 0**; Rp 0 and below are refused, as the accepted prototype already does. A free item typed with a price is not zeroed by a correction. ⚠ Not built.
 
 ✅ Built 2026-11-12 — the form refuses Rp 0 and below; the server too (`BatchRevalueRequest.new_price_unit` `gt: 0`, and `BatchRevalue` before any lock: InvalidArgument).
+
+---
+
+## the-warehouse-link-names-its-owner-team
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to the open contradiction *the-link-names-its-team-two-ways*
+> (since 2026-10-16): [context.md](./context.md) §Table that must we have for linking products names the team `team_id`;
+> the [technical stock design](../../technical/stock/design.md) names it `owner_team_id` — *"this owner team of the product,
+> (its selling team)"*. The table (inventory `00011`) has no team column; nothing reads one today. A: `owner_team_id`,
+> added now and written by all four upserts; B: no column until a screen needs one; C: `team_id`.
+
+**The verdict.** `warehouse_products` gains **`owner_team_id`** — the team that owns the product (its selling team) —
+and every write of the link names it.
+
+| | |
+| --- | --- |
+| the name | `owner_team_id`, as the stock design and the transaction line ([an-order-transaction-is-the-ordering-teams](./transaction_decision.md#an-order-transaction-is-the-ordering-teams)) — a bare `team_id` beside a product reads as the ordering team; context.md's `team_id` means the same column |
+| the key | `UNIQUE (warehouse_id, product_id)` stays — a product has one owner, so the column never splits a row |
+| the writers | restock create and update, transfer create (the receiver's link), an order return — each already holds the owner |
+| existing rows | filled from inventory's own tables in the migration ([revamp-has-no-real-orders-yet](../order/context_decision.md#revamp-has-no-real-orders-yet)), then `NOT NULL` |
+| readers | none yet — no screen changes |
+
+✅ Built 2026-11-15 — inventory `00047` adds `owner_team_id` filled from inventory's own rows naming the product (batches, restock and transfer lines, stock lines — they must name one team: the migration refuses a link with two or none; dev: 13 of 13 filled), then `NOT NULL`; restock create and update write the restock's team, transfer create the transfer's, an order return the selling team its batches are minted for; a link already stored under another team is kept and reported, never overwritten.

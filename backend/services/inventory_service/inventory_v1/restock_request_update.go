@@ -180,8 +180,9 @@ func (s *Service) RestockRequestUpdate(
 		editLogID = row.ID
 
 		// Asking a warehouse to stock a product is what makes it VISIBLE there (#142) — a product added by this edit
-		// included. ON CONFLICT DO NOTHING, so the products already linked cost nothing.
-		return linkWarehouseProducts(tx, rr.WarehouseID, rr.Items)
+		// included, under the restock's team (the-warehouse-link-names-its-owner-team). ON CONFLICT DO NOTHING, so the
+		// products already linked cost nothing.
+		return linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
 	})
 	if err != nil {
 		return nil, restockErr(err)

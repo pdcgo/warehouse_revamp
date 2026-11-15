@@ -220,10 +220,11 @@ func TestOrderTransactionReturn_MintsABatchPerBatchTheTakeDrew(t *testing.T) {
 
 	var linked int64
 
-	f.db.Raw(`SELECT count(*) FROM warehouse_products WHERE warehouse_id = ? AND product_id IN ?`, rtReturnWarehouse,
-		[]uint64{otKaosHitam, rtOwnPolos}).Scan(&linked)
+	// Under the returned batches' owner, the selling team (the-warehouse-link-names-its-owner-team).
+	f.db.Raw(`SELECT count(*) FROM warehouse_products WHERE warehouse_id = ? AND product_id IN ? AND owner_team_id = ?`,
+		rtReturnWarehouse, []uint64{otKaosHitam, rtOwnPolos}, otMelati).Scan(&linked)
 	if linked != 2 {
-		t.Fatalf("%d of the returned products linked to the return warehouse, want both", linked)
+		t.Fatalf("%d of the returned products linked to the return warehouse under Melati, want both", linked)
 	}
 }
 
@@ -256,6 +257,14 @@ func TestOrderTransactionReturn_ABorrowedLineComesBackAsTheOwnProductAtTheMarkup
 
 	if rackCount(t, f.db, rtOwnPolos, f.rakR2) != 3 || rackCount(t, f.db, otKaosPolos, f.rakR2) != 0 {
 		t.Fatal("Rak R2 should hold 3 of Melati's own product, none of Sinar's")
+	}
+
+	// The link is the product the units came back AS, under its owner Melati — never Sinar's borrowed product
+	// (the-warehouse-link-names-its-owner-team).
+	owners := linkOwners(t, f.db, rtReturnWarehouse)
+	if owner, linked := owners[otKaosPolos]; owners[rtOwnPolos] != otMelati || linked {
+		t.Fatalf("return warehouse links = %v, want the mapped own product under Melati and Sinar's not linked (got %d)",
+			owners, owner)
 	}
 
 	var sinarAfter float64

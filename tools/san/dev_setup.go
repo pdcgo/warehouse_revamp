@@ -163,9 +163,12 @@ func readDevSeeds() (devSeeds, error) {
 
 // setupDatabase is every data step of `dev setup`: the schema first, then the rows that need it.
 //
-// Each step is the SAME function its own command runs — `migrate up-all`, `supplier move`, `supplier backfill-figures`,
+// Each step is the SAME function its own command runs — `migrate up-all`, `supplier backfill-figures`,
 // `supplier backfill-links`, `supplier backfill-warehouses`, `product recompose-codes`, `seed dev`, `seed categories`,
 // `region load-seed` — so setup cannot drift from doing them one at a time.
+//
+// The `supplier move` step is retired with the command (existing-suppliers-move-with-their-ids): inventory_service's
+// 00046 drops the legacy supplier tables it read, and refuses on a database whose rows were never moved.
 func setupDatabase(ctx context.Context, db *sql.DB, target, password string, seeds devSeeds) error {
 	fmt.Println("→ migrate up-all")
 
@@ -174,17 +177,8 @@ func setupDatabase(ctx context.Context, db *sql.DB, target, password string, see
 		return err
 	}
 
-	// Right after the schema: inventory_service's 00023 moved its suppliers aside, and until they are copied
-	// into supplier_service the screens show none (existing-suppliers-move-with-their-ids). Safe to re-run.
-	fmt.Println("→ supplier move")
-
-	err = moveSuppliersOn(ctx, db, target)
-	if err != nil {
-		return err
-	}
-
 	// The supplier figures of every restock accepted before RestockAccepted existed (past-accepts-are-backfilled-once).
-	// After the move, so a restock naming a moved supplier finds it. Once only — a second setup says so.
+	// Once only — a second setup says so.
 	fmt.Println("→ supplier backfill-figures")
 
 	err = backfillFiguresOn(ctx, db, target)

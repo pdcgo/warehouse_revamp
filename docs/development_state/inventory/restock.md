@@ -306,8 +306,9 @@ supplier, and *Restock Created / Updated / Cancelled* published after commit. �
 financial_account_service's subscription is its own to add. Next: the accept on the ledgers, then stage 4 (pending
 marks, e2e, audits).
 🔄 **2026-10-16:** the owner's restock create now upserts `warehouse_products` before its transaction, and inventory
-context.md defines the table with a team column. The build links inside the transaction (create **and** update) and has no
-team column — a migration when built, its name pending [the-link-names-its-team-two-ways](../../business/inventory/context_clarify.md#the-link-names-its-team-two-ways).
+context.md defines the table with a team column. The build links inside the transaction (create **and** update); the team
+column is ✅ **built 2026-11-15** as `owner_team_id` (inventory 00047), written under the restock's team by both
+([the-warehouse-link-names-its-owner-team](../../business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team)).
 ✅ **The accept is unblocked (2026-10-15):** the five ledger rules it needed are decided —
 [the-caller-opens-the-transaction](../../technical/ledger/mutation_and_ledger_decision.md#the-caller-opens-the-transaction),
 [ledger-logs-are-append-only](../../technical/ledger/mutation_and_ledger_decision.md#ledger-logs-are-append-only),

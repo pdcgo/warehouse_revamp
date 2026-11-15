@@ -74,6 +74,7 @@ statements a line and gained the same fix. Same cause as
 | --- | --- | --- | --- |
 | 2026-10-17 | 56.0 ms | 20 / 153 | first audit |
 | 2026-10-17 | 12.5 ms | 19 / 19 | set-based ledger primitives; `00031` index on `(transaction_id)` |
+| 2026-11-15 | — | +1 only on a re-link (before the transaction) | `warehouse_products.owner_team_id` ([the-warehouse-link-names-its-owner-team](../../../../docs/business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team)): the link upsert carries the owner; when it met links already stored, ONE read of them on `warehouse_products_unique` — 0.13–0.35 ms wall, 0.064 ms execution for 20 products over 100 000 links (scratch probe). A new link adds nothing. Not re-probed |
 
 ---
 

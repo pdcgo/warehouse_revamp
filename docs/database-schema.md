@@ -1040,8 +1040,6 @@ erDiagram
 
 ```mermaid
 erDiagram
-    legacy_suppliers ||--o{ legacy_supplier_channels : "supplier_id"
-
     placements {
         bigserial   id           PK "the screen says Racks (00028 renamed racks)"
         bigint      warehouse_id "the WAREHOUSE team it stands in, opaque, no FK"
@@ -1049,34 +1047,6 @@ erDiagram
         text        name         "optional human name"
         text        description
         timestamptz deleted_at   "soft delete, only at zero stock; NULL = in use"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    legacy_suppliers {
-        bigserial   id          PK
-        bigint      team_id     "MOVED to supplier_service.suppliers by san supplier move, ids kept"
-        text        code
-        text        name
-        text        contact
-        text        province
-        text        city
-        text        address
-        text        description
-        boolean     deleted     "soft delete"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    legacy_supplier_channels {
-        bigserial   id          PK
-        bigint      supplier_id FK "-> legacy_suppliers(id), ON DELETE CASCADE"
-        text        type        "online/offline"
-        text        marketplace
-        text        name
-        text        url
-        text        contact
-        text        location
         timestamptz created_at
         timestamptz updated_at
     }
@@ -1180,9 +1150,10 @@ erDiagram
     }
 
     warehouse_products {
-        bigserial   id           PK
-        bigint      warehouse_id "opaque team_service id (a WAREHOUSE team), no FK"
-        bigint      product_id   "opaque product_service id, no FK"
+        bigserial   id            PK
+        bigint      warehouse_id  "opaque team_service id (a WAREHOUSE team), no FK"
+        bigint      product_id    "opaque product_service id, no FK"
+        bigint      owner_team_id "the product's owner, its selling team - NOT NULL, above 0, no FK"
         timestamptz created_at
     }
 ```
@@ -1200,6 +1171,13 @@ erDiagram
   - `UNIQUE (warehouse_id, product_id)` — the arrangement exists once. Writers upsert with
     `ON CONFLICT DO NOTHING`, because a second restock request for a product a warehouse already
     stocks is the normal case, not an error worth failing the request over.
+  - **`owner_team_id`** (inventory 00047, [the-warehouse-link-names-its-owner-team](business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team))
+    — the team that OWNS the product, its selling team. Every writer names it: a restock's create and update (the
+    restock's team), a transfer's create (the transfer's team, for the receiver's link), an order's return (the selling
+    team its batches are minted for). A product has one owner, so the key stays `(warehouse_id, product_id)` and an
+    upsert never overwrites a stored owner: a writer naming ANOTHER team is logged as a warning and the row kept. The
+    migration filled existing rows from inventory's own rows naming the product (batches, restock lines, transfer lines,
+    stock lines) and refuses while any link has two owners or none. No index: nothing reads the column yet.
   - It lives in **inventory_service** because this service already owns warehouse×product facts
     (`batches` and `product_placements` are keyed on that pair) and owns the restock flow that writes it — so no
     cross-service write is needed to maintain it (HARD RULE 3).
@@ -1209,14 +1187,18 @@ erDiagram
   batch), `stock_owner_movements` (→ the owner's `batch_logs`, the owner being `batches.team_id`) and
   `restock_received_placements` (→ the restock accept's own rack rows). Its down half is not reversible: nothing is in
   production and development data is reseeded (no-switch-over-the-ledgers-replace-todays-tables).
-- **`legacy_suppliers`** / **`legacy_supplier_channels`** — **MOVED OUT** (the-supplier-gets-its-own-service).
-  They were `suppliers` and `supplier_channels`; `00023_legacy_suppliers` renamed them — and their indexes and
-  sequences, whose names are schema-wide — so supplier_service's `00001` can create its own under the decided
-  names (every service shares one database). Nothing in inventory_service reads them any more: only
-  `san supplier move` does, copying their rows into supplier_service with the ids kept
-  (existing-suppliers-move-with-their-ids). ⚠ A **later** migration drops them, once the move has run on every
-  database — dropping them in 00023 would have lost the rows before the command could read them.
-  inventory_service is therefore pinned before supplier_service in every apply order.
+- **`legacy_suppliers`** / **`legacy_supplier_channels`** — **DROPPED** (`00046_drop_legacy_suppliers`). They were
+  `suppliers` and `supplier_channels`; `00023_legacy_suppliers` renamed them — and their indexes and sequences, whose
+  names are schema-wide — so supplier_service's `00001` could create its own under the decided names (every service
+  shares one database; the-supplier-gets-its-own-service), and `san supplier move` copied their rows into
+  supplier_service with the ids kept (existing-suppliers-move-with-their-ids). Once the move had run on every database,
+  `00046` dropped both, with their keys, indexes and sequences, and the command was retired. ⚠ Its guard REFUSES —
+  nothing dropped — on a database holding a legacy row that is not in supplier_service as the move writes it (a
+  supplier under its id, same team and `created_at`; an online store under its id, same supplier and `created_at`;
+  an offline store was folded into its supplier, never a row): *"run san supplier move first"*, from a checkout before
+  `00046`. A fresh database has no legacy row and passes. Its Down recreates the two tables EMPTY under 00023's names,
+  so 00023's own Down still works. inventory_service stays pinned before supplier_service in every apply order
+  (00023 still frees the names).
 - **`placements`** (`racks` until `00028`) — the physical places inside one warehouse (#129); the screen still says
   Racks (the-racks-page-is-the-placement-list). Scoped to the `warehouse_id`, which **is** a team, carrying
   `use_scope`; opaque, no FK. `code` is the label someone reads off the shelf, saved **trimmed and lowercase**
@@ -2870,8 +2852,9 @@ erDiagram
   rows. Deleting a supplier does **not** mark its stores: they hide with it.
 - `channel_type` is the shared `warehouse.marketplace.v1.Marketplace` code **as text**, mapped by
   `pkgs/san_marketplace` — the same encoding `selling_service.shops.marketplace` uses; no `CHECK` IN-list (#80).
-- Ids: the move inserts the legacy rows **with their ids**, then sets both sequences past the largest id, so a
-  supplier created afterwards never takes one a restock already holds.
+- Ids: the move (`san supplier move`, retired once inventory `00046` dropped the legacy tables) inserted the legacy rows
+  **with their ids**, then set both sequences past the largest id, so a supplier created afterwards never takes one a
+  restock already holds.
 
 | index | serves |
 | --- | --- |

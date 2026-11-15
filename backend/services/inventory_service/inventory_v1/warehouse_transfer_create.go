@@ -80,8 +80,9 @@ func (s *Service) WarehouseTransferCreate(
 	}
 
 	// B's crew can find what is coming. Not critical: an upsert BEFORE the transaction that never fails the create — a
-	// link says B handles the product, not that it holds any (a-transfer-links-its-products-to-the-receiver).
-	linkErr := linkWarehouseProductIDs(s.db.WithContext(ctx), msg.GetToWarehouseId(), ids)
+	// link says B handles the product, not that it holds any (a-transfer-links-its-products-to-the-receiver). Under the
+	// transfer's team: its products are that team's own, checked above (the-warehouse-link-names-its-owner-team).
+	linkErr := linkWarehouseProductIDs(s.db.WithContext(ctx), msg.GetToWarehouseId(), teamID, ids)
 	if linkErr != nil {
 		slog.WarnContext(ctx, "warehouse transfer: products not linked to the receiving warehouse",
 			"warehouse_id", msg.GetToWarehouseId(),

@@ -473,7 +473,7 @@ sequenceDiagram
     H->>DB: the sound units onto the racks named - refused whole under a count lock
     H->>DB: one item per product, equal to its batches
     H->>DB: order_return_problem_items - broken then missing off the newest layers, with the crew's note
-    H->>DB: warehouse_products - the products the units came back as, linked to the return warehouse
+    H->>DB: warehouse_products - the products the units came back as, linked to the return warehouse under the selling team
     H->>DB: order_return_checks INSERT - the take claimed with its return, last
     H->>DB: COMMIT
     H-->>S: transaction_id, posted true, the door rows
@@ -593,6 +593,7 @@ sequenceDiagram
     H->>H: from equals to, a product twice, or a cost without an account → InvalidArgument
     H->>H: ask product_service — a product not the team's own → InvalidArgument
     H->>F: with a cost, ask the account in-process — archived or not the team's → FailedPrecondition
+    H->>DB: before the transaction - warehouse_products for B under the team, never fails the create
     H->>DB: warehouse_transfers row, created — so the out-leg can name it
     H->>DB: lock A's batches of every line, in product order, and count them
     alt any line short
@@ -601,7 +602,7 @@ sequenceDiagram
         H->>DB: inventory_transactions row — transfer_out at A
         H->>DB: batch_logs oldest first, every line — then product_placement_logs fewest racks first
         H->>DB: items equal to the batch rows, the lines with their totals, the out-leg and total on the transfer
-        H->>DB: warehouse_products for B, the first trail row, COMMIT
+        H->>DB: the first trail row, COMMIT
         H--)F: Warehouse Transfer Created after commit — the account and the cost, 0 included
         H-->>S: the transfer, created, with its pick list read back from the rack rows
     end
@@ -891,6 +892,44 @@ courier's charge included, so the figure on screen is the one the batch freezes.
 
 ---
 
+## The warehouse link names its owner team — `warehouse_products.owner_team_id` (built 2026-11-15)
+
+[the-warehouse-link-names-its-owner-team](../../business/inventory/context_decision.md#the-warehouse-link-names-its-owner-team):
+the link *a warehouse handles this product* carries the team that OWNS the product, its selling team. Inventory 00047
+added the column, filled and `NOT NULL` (above 0); `UNIQUE (warehouse_id, product_id)` is unchanged. Nothing reads it yet
+(`ProductHasHistory` still asks only whether a link exists).
+
+| writer | where | owner written |
+| --- | --- | --- |
+| `RestockRequestCreate` | inside its transaction, last | the restock's team — its lines are that team's own products ([a-restock-carries-only-the-teams-own-products](../../business/inventory/restock_decision.md#a-restock-carries-only-the-teams-own-products)) |
+| `RestockRequestUpdate` | inside its transaction, last (a product the edit adds, a warehouse the edit moves to) | the restock's team |
+| `WarehouseTransferCreate` | BEFORE its transaction, the receiver's link — logged, never fails the create ([a-transfer-links-its-products-to-the-receiver](../../business/inventory/context_decision.md#a-transfer-links-its-products-to-the-receiver)) | the transfer's team — its products are checked as the team's own first |
+| `OrderTransactionReturn` | inside its transaction, before the take's claim | the selling team every returned batch is minted for — the product a line comes back as is that team's own |
+
+**A product has one owner — an upsert never overwrites it.** Every writer goes through `linkWarehouseProductIDs`
+(`inventory_v1/warehouse_product.go`): the same `INSERT … ON CONFLICT DO NOTHING` as before, now carrying the owner. When
+the insert met links already stored (fewer rows inserted than sent), ONE plain read of those links on the unique key
+finds any stored under ANOTHER team; each is logged as a warning naming the warehouse, the product and both teams
+(`stored_owner_team_id`, `writer_owner_team_id`), the stored row is kept as it is, and the write that hit it goes on — the
+link only says the warehouse handles the product. A different owner is a broken fact elsewhere, never a reason to refuse
+a restock.
+
+**The fill** (00047, [revamp-has-no-real-orders-yet](../../business/order/context_decision.md#revamp-has-no-real-orders-yet)):
+the owner is the PRODUCT's, so each link is filled from inventory's own rows naming its product in any warehouse — a
+batch's `team_id`, a restock line's restock team, a transfer line's transfer team, a stock line's `product_team_id` —
+which must name exactly one team. A link they name two teams for, or none, refuses the migration whole (the message
+lists them; nothing changes, the version is not recorded). Dev on 2026-11-15: 13 links, all filled (12 by a restock to
+that warehouse, 3 also by a batch there; 1 only by the product's restock to another warehouse — an edit moved it), 0
+with two owners, 0 with none; all 13 equal product_service's owner.
+
+| | |
+| --- | --- |
+| performance | unchanged for a new link (the insert's row count skips the read). A re-link — the common restock — adds one read on `warehouse_products_unique`: 0.13–0.35 ms wall, 0.064 ms execution for 20 products over 100 000 links (scratch probe, 2026-11-15) |
+| locks | unchanged: the same upsert at the same step, plus an unlocked read; a second owner waits on the first's uncommitted link, then keeps it and reports (`TestInterleave_WarehouseProductLink_ASecondOwnerWaitsThenKeepsTheFirst`, raceaudit) — [lock-order](../../../audits/services/inventory_service/concurrency/lock-order.md#the-warehouse-link-names-its-owner-2026-11-15) |
+| tests | `warehouse_product_test.go` (each restock write's owner, another owner reported and kept — the row's `ctid` unchanged, one warning), `warehouse_transfer_create_test.go` and `order_transaction_return_test.go` (the owner on B's and the return warehouse's links; a borrowed line links the own product, under its owner), `warehouse_products_owner_migration_test.go` (00047's Down, a fixture, its Up: every source fills, NOT NULL / above 0 / the key hold; two owners and none refuse) |
+
+---
+
 ## The paying account — one of the team's active operational accounts
 
 Built 2026-11-05 — [a-restock-names-its-paying-account](../../business/inventory/restock_decision.md#a-restock-names-its-paying-account),
@@ -1085,6 +1124,35 @@ is a pure one (`a-pure-index-is-added-without-asking`): no result changes. Not h
 4–19 ms and Stat 14–30 ms there, most of it the **pre-existing** last-restock read (`MAX(created_at)` over the team's
 restock batches: a hash join of the team's 50 000 batches with their transactions, ≈23 ms for the stat, 10–13 ms for a
 page) — under every audit threshold at that size, unchanged by this pass, linear in the team's batch count.
+
+## BatchList — the warehouse's batch list: *expiring soon* is units left (2026-11-15)
+
+`BatchList` (`inventory_v1/batch_list.go`) is the warehouse's Batch list and a product's Batches tab. Its *Kedaluwarsa
+≤ 30 hari* filter (`BATCH_EXPIRY_FILTER_EXPIRING_SOON`) and the strip's `expiring_soon_count` count only batches **with
+units left** — `stock_count > 0 AND expired_at IS NOT NULL AND expired_at < soonCutoff(now)`
+([expiry-is-a-report](../../business/inventory/context_decision.md#expiry-is-a-report): *"batches with units left whose
+`expired_at` falls within a window"*). Until then an emptied batch expiring soon was listed and counted. The list itself
+still shows depleted rows under every other filter (by design — `pages/batches/index.tsx`).
+
+The predicate is written as the partial index's own (`batches_expiry_idx (warehouse_id, expired_at) WHERE stock_count >
+0 AND expired_at IS NOT NULL`, inventory `00025`), so the soon filter's three statements read through it. The strip's
+count rides the ready value's aggregate over the filtered rows — still 3 statements, none added.
+
+**Performance** — `TestPerf_BatchList_ExpiringSoon` (`batch_list_expiry_perf_test.go`, `-tags perfaudit`): one warehouse
+with 60 000 batches over four years, every one with an expiry (−2 … +2 years) and nine in ten emptied, beside the ledger
+background's 50 000; each soon-filter statement timed against the same statement with the old predicate, old/new
+interleaved on one seed (median of 5):
+
+| statement (soon filter on) | before | after | plan after |
+| --- | --- | --- | --- |
+| the count | 33.4 ms | 12.1 ms | Bitmap Index Scan on `batches_expiry_idx` (was a seq scan of `batches`) |
+| the page (limit 50) | 168.9 ms | 26.5 ms | the same — 3 120 rows matched, not 31 204 |
+| the strip (ready value + expiring count) | 37.9 ms | 13.6 ms | the same |
+| the strip, no filter (every batch of the warehouse) | 52.0 ms | 54.2 ms | unchanged seq scan — the extra `stock_count > 0` is per-row arithmetic, nil |
+
+The handler under the soon filter: ≈ 54 ms median wall (3 statements). Test:
+`TestBatchList_ExpiringSoonCountsOnlyBatchesWithUnitsLeft` (an emptied batch expiring in 10 days is neither listed under
+the filter nor counted; one with units is; the unfiltered list still shows both) — mutation-checked on each half.
 
 ## OwnerCostLayerList / OwnerBatchList / OwnerStockHistory — the owner's product DETAIL (#232)
 

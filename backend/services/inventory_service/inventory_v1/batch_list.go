@@ -49,7 +49,10 @@ func (s *Service) BatchList(
 
 		switch filter.GetExpiry() {
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON:
-			q = q.Where("b.expired_at IS NOT NULL AND b.expired_at < ?", soonCutoff(time.Now()))
+			// Batches WITH UNITS LEFT only (expiry-is-a-report: "batches with units left whose expired_at falls within a
+			// window") — an emptied batch has nothing left to expire. Written as the partial index's own predicate
+			// (`batches_expiry_idx`, 00025: stock_count > 0 AND expired_at IS NOT NULL) so the planner can use it.
+			q = q.Where("b.stock_count > 0 AND b.expired_at IS NOT NULL AND b.expired_at < ?", soonCutoff(time.Now()))
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_NO_EXPIRY:
 			q = q.Where("b.expired_at IS NULL")
 		}
@@ -99,7 +102,8 @@ func (s *Service) BatchList(
 	}
 
 	// Over the WHOLE filtered set, not this page: the header's "ready value" and "expiring soon" count every batch the
-	// filter matched.
+	// filter matched. Expiring soon counts batches WITH UNITS LEFT only, as the filter does (expiry-is-a-report); it
+	// rides the ready value's own read of the filtered rows, so it costs no statement of its own.
 	var agg struct {
 		ReadyValue   float64
 		ExpiringSoon int64
@@ -108,7 +112,7 @@ func (s *Service) BatchList(
 	err = base().
 		Select(`
 			COALESCE(SUM(b.stock_valuation), 0) AS ready_value,
-			COALESCE(SUM(CASE WHEN b.expired_at IS NOT NULL AND b.expired_at < ? THEN 1 ELSE 0 END), 0) AS expiring_soon`,
+			COALESCE(SUM(CASE WHEN b.stock_count > 0 AND b.expired_at IS NOT NULL AND b.expired_at < ? THEN 1 ELSE 0 END), 0) AS expiring_soon`,
 			soonCutoff(time.Now())).
 		Scan(&agg).
 		Error
