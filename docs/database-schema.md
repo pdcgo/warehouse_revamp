@@ -1436,7 +1436,7 @@ erDiagram
         bigint      team_id                        "the selling team that owns the goods"
         bigint      from_warehouse_id              "A - CHECK not to_warehouse_id"
         bigint      to_warehouse_id                "B"
-        text        status                         "created process shipped arrived accepted cancel lost"
+        text        status                         "created process shipped arrived accepted cancel lost - in transit: created to arrived and lost, partial index (00045)"
         text        note
         float8      total                          "sum of the items' totals"
         bigint      shipment_id                    "0 = none"
@@ -1525,6 +1525,13 @@ erDiagram
   none at the accept is found again by the next. `transfer_correction` batch and rack rows.
 - **Indexed for each side's list**, newest first: `(team_id, id DESC)`, `(from_warehouse_id, id DESC)`,
   `(to_warehouse_id, id DESC)`.
+- **The team's transfers in transit have their own index** — `00045` `warehouse_transfers_in_transit_idx ON
+  warehouse_transfers (team_id, to_warehouse_id) WHERE outbound_transaction_id IS NOT NULL AND status IN ('created',
+  'process', 'shipped', 'arrived', 'lost')`, partial: the in-transit figure of `OwnerStockByIds` / `OwnerStockStat`
+  ([the-transfer-is-where-goods-in-transit-are](business/inventory/warehouse_transfer_decision.md#the-transfer-is-where-goods-in-transit-are))
+  reads a team's few open transfers, under the receiving warehouse with the lens; without it every read walked the
+  team's whole transfer history, and the stat's sum scanned the table (4–5 ms → 1–2 ms at 10 000 transfers a team,
+  [rpc.md](services/inventory_service/rpc.md#in-transit)).
 - **`warehouse_transfer_logs.is_override`** (`00034`) — that act's actor was Root or the Administrator with no role in
   the team the call was scoped to
   ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).

@@ -17,6 +17,12 @@ interface ProductStatsProps {
   ready?: StockFigure;
   /** Inbound: ordered on restocks that have not been accepted onto a rack yet. */
   ongoing?: StockFigure;
+  /**
+   * On warehouse transfers not yet accepted — under a lens, on their way TO it (in-transit-is-its-own-figure-beside-siap-
+   * and-dikirim). Always a tile, 0 pcs included (the-in-transit-column-shows-while-any-is-in-transit); its units are what
+   * the list's column follows.
+   */
+  inTransit?: StockFigure;
   /** When this team last SOLD anything (unix seconds). */
   lastOrderUnix?: bigint;
   /** When stock last ARRIVED (unix seconds). */
@@ -39,6 +45,7 @@ export function ProductStats({
   totalItems,
   ready,
   ongoing,
+  inTransit,
   lastOrderUnix,
   lastRestockUnix,
   warehouseName,
@@ -64,6 +71,21 @@ export function ProductStats({
         hint={t("products.stat.ongoingHint")}
         figure={ongoing}
         testId="products-ongoing-stock"
+      />
+
+      {/* DALAM TRANSFER, beside Dikirim (in-transit-is-its-own-figure-beside-siap-and-dikirim) — the team's units on a
+          transfer not yet accepted and what the out-leg took for them; never in Siap (on no shelf) nor in Dikirim (not a
+          restock). Under a lens, those on their way TO it, and the line says so. Always drawn, 0 pcs included
+          (the-in-transit-column-shows-while-any-is-in-transit). */}
+      <StockCard
+        label={scoped(t("products.stat.inTransit"))}
+        hint={
+          warehouseName
+            ? t("products.stat.inTransitToHint", { warehouse: warehouseName })
+            : t("products.stat.inTransitHint")
+        }
+        figure={inTransit}
+        testId="products-in-transit-stock"
       />
 
       <DateCard

@@ -389,6 +389,10 @@ flowchart LR
 | its value | the sum of those transfers' `total` |
 | a placement for it | none |
 
+✅ Built 2026-11-15 — the backend only: `InventoryService.OwnerStockByIds` and `OwnerStockStat` answer `in_transit_qty` / `in_transit_value` — per product and for the whole catalogue — from the items of the team's transfers with an out-leg in `created`, `process`, `shipped`, `arrived` or `lost` (a lost box stays in transit; `cancel` and `accepted` do not count), valued at the items' `total`; with the warehouse lens a transfer counts under its receiving warehouse; never added into ready; equal to the Analytic Transfer metric's in transit for the same day (`owner_stock_test.go` `TestOwnerStockInTransit_*`).
+
+✅ Built 2026-11-15 — the screens: the team's stock screens show it per product — the product list (a *Dalam transfer* column while any is in transit, a fact in each phone block), a tile above the list, and the product page (beside Dikirim, and per warehouse under the receiving warehouse's lens) ([in-transit-is-its-own-figure-beside-siap-and-dikirim](../../technical/frontend/products_decision.md#in-transit-is-its-own-figure-beside-siap-and-dikirim), [the-in-transit-column-shows-while-any-is-in-transit](../../technical/frontend/products_decision.md#the-in-transit-column-shows-while-any-is-in-transit)); e2e `the_goods_in_transit.spec.ts`.
+
 ## a-transfer-has-seven-statuses
 
 > Owner, in chat *(2026-10-10)*: *"for … q4 … yes follow your recomendation"*. It answers

@@ -89,5 +89,27 @@ func (s *Service) OwnerStockStat(
 		preview.LastRestockUnix = lastRestock.Time.Unix()
 	}
 
+	// In transit: OwnerStockByIds' rule over the whole catalogue (transferInTransitWhere) — the lines of the team's
+	// transfers between their two legs, under the RECEIVING warehouse when the lens is set.
+	const inTransitSQL = `
+		SELECT COALESCE(SUM(i.count), 0) AS qty,
+		       COALESCE(SUM(i.total), 0) AS value
+		FROM warehouse_transfers t
+		JOIN warehouse_transfer_items i ON i.transfer_id = t.id
+		WHERE t.team_id = ? AND ` + transferInTransitWhere + ` AND (? = 0 OR t.to_warehouse_id = ?)`
+
+	var inTransit struct {
+		Qty   int64
+		Value float64
+	}
+
+	err = db.Raw(inTransitSQL, teamID, warehouseID, warehouseID).Scan(&inTransit).Error
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	preview.InTransitQty = inTransit.Qty
+	preview.InTransitValue = inTransit.Value
+
 	return connect.NewResponse(&inventoryv1.OwnerStockStatResponse{Preview: preview}), nil
 }

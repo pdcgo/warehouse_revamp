@@ -632,6 +632,9 @@
       "product": "Product",
       "ready": "Ready",
       "ongoing": "Ongoing",
+      "inTransit": "In transit",
+      "inTransitTitle": "Units on a transfer between warehouses, not yet accepted",
+      "inTransitToTitle": "Units on their way to {{warehouse}}, not yet accepted",
       "reserved": "Reserved",
       "oldestBatch": "Oldest batch",
       "lastOrder": "Last order",
@@ -757,6 +760,7 @@
       "highlight": {
         "ready": "{{n}} pcs ready",
         "ongoing": "+{{n}} pcs on the way",
+        "inTransit": "+{{n}} pcs in transit",
         "value": "cost {{value}}",
         "status": {
           "out": "Out of stock",
@@ -819,6 +823,9 @@
       "readyHint": "at cost",
       "ongoing": "Ongoing",
       "ongoingHint": "estimated, at cost",
+      "inTransit": "In transit",
+      "inTransitHint": "between warehouses, at cost",
+      "inTransitToHint": "on its way to {{warehouse}}, at cost",
       "pcs": "{{n}} pcs",
       "pending": "Awaiting the stock service",
       "lastOrder": "Last order",

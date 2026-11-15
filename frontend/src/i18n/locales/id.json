@@ -626,6 +626,9 @@
       "product": "Produk",
       "ready": "Siap",
       "ongoing": "Dikirim",
+      "inTransit": "Dalam transfer",
+      "inTransitTitle": "Unit dalam transfer antar gudang, belum diterima",
+      "inTransitToTitle": "Unit menuju {{warehouse}}, belum diterima",
       "reserved": "Dipesan",
       "oldestBatch": "Batch terlama",
       "lastOrder": "Pesanan terakhir",
@@ -749,6 +752,7 @@
       "highlight": {
         "ready": "{{n}} pcs siap",
         "ongoing": "+{{n}} pcs dalam pengiriman",
+        "inTransit": "+{{n}} pcs dalam transfer",
         "value": "modal {{value}}",
         "status": {
           "out": "Habis",
@@ -811,6 +815,9 @@
       "readyHint": "harga modal",
       "ongoing": "Dikirim",
       "ongoingHint": "perkiraan, harga modal",
+      "inTransit": "Dalam transfer",
+      "inTransitHint": "antar gudang, harga modal",
+      "inTransitToHint": "menuju {{warehouse}}, harga modal",
       "pcs": "{{n}} pcs",
       "pending": "Menunggu layanan stok",
       "lastOrder": "Pesanan terakhir",

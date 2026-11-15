@@ -141,7 +141,17 @@ stateDiagram-v2
    rack's history (`transfer_in` / `transfer_out`); the contract's money is `double` with the frontend;
    `InventoryService.StockTransfer` is gone from the contract.
 3. **The in-transit figure** on the team's stock screen (`the-transfer-is-where-goods-in-transit-are`): Σ of its
-   transfers' lines in `created`…`lost`, not built anywhere yet.
+   transfers' lines in `created`…`lost`. ✅ **Backend built 2026-11-15** — `OwnerStockItem.in_transit_qty/value` and
+   `OwnerStockPreview.in_transit_qty/value` (`OwnerStockByIds` one statement per page, `OwnerStockStat`), lost included,
+   cancel/accepted not, under the RECEIVING warehouse with the lens, equal to the Transfer metric's in transit; inventory
+   `00045` partial index `warehouse_transfers_in_transit_idx` (tests `owner_stock_test.go` `TestOwnerStockInTransit_*`,
+   probe `TestPerf_OwnerStockInTransit`, [rpc.md](../../services/inventory_service/rpc.md#in-transit)). ✅ **Screens
+   built 2026-11-15** ([in-transit-is-its-own-figure-beside-siap-and-dikirim](../../technical/frontend/products_decision.md#in-transit-is-its-own-figure-beside-siap-and-dikirim),
+   [the-in-transit-column-shows-while-any-is-in-transit](../../technical/frontend/products_decision.md#the-in-transit-column-shows-while-any-is-in-transit)):
+   the product list's *Dalam transfer* column (only while the strip's figure for the team + lens is above zero), the
+   phone block's fact, the stat tile and the product page's highlight + Per Gudang Overview row (always, 0 pcs
+   included) — see [product/context.md](../product/context.md#2026-11-15--goods-in-transit-on-the-product-screens);
+   e2e `the_goods_in_transit.spec.ts`.
 4. ✅ **The count lock** *(built 2026-11-03)*: a rack being counted refuses B's put-away (`PutOnPlacements` → `RefuseCounted`)
    ([a-lock-stops-sales-and-cancels-too](../../business/inventory/opname_decision.md#a-lock-stops-sales-and-cancels-too)).
 5. ✅ `audit-rpc-performance` on create and accept — fixed 2026-10-17, 19 and 23 statements whatever the lines (stage 5).

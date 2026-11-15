@@ -112,11 +112,15 @@ let analyticSamplesListed = false;
 // be deleted, or have their code's part corrected, as the server's history reader decides (product_history.go).
 let neverUsed = new Set<bigint>();
 
+// Team 15's open transfers for THIS story (`transfersInTransitForStory`) — null = the sample, IN_TRANSIT_SAMPLE below.
+let inTransitLines: InTransitLine[] | null = null;
+
 export function resetProductStub() {
   resetProductListCalls();
   rows = [...productFixtures.map((p) => ({ ...p, images: [] as Image[] })), ...ARCHIVED.map((p) => ({ ...p }))];
   neverUsed = new Set([791n]);
   analyticSamplesListed = false;
+  inTransitLines = null;
 
   const minyak = rows.find((r) => r.id === 700n)!;
   Object.assign(minyak, MINYAK, { images: [...MINYAK.images!] });
@@ -528,6 +532,44 @@ export function shelfSample(productId: bigint, warehouseId: bigint): bigint | un
     .reduce((s, b) => s + b.ready, 0n);
 }
 
+/**
+ * GOODS IN TRANSIT — team 15's open warehouse transfers, as OwnerStockByIds / OwnerStockStat read them
+ * (in-transit-is-its-own-figure-beside-siap-and-dikirim): a line counts under its RECEIVING warehouse in a lens, its value
+ * what the out-leg took. Already off the sender's shelf, so no batch below holds them.
+ *
+ *   700  SL-03-ANG-001  3 pcs  Gudang Pusat → Gudang Cabang  @ Rp 45.700 (batch 7001's price)   → Rp 137.100
+ *   702  SL-03-ANG-003  8 pcs  Gudang Cabang → Gudang Pusat  @ Rp 9.500 — nothing on a shelf anywhere, only in transit
+ *   every other product: 0
+ *
+ * A story changes them from its `beforeEach` with `transfersInTransitForStory(...)` (none = nothing in transit, the list
+ * then has no Dalam transfer column — the-in-transit-column-shows-while-any-is-in-transit); the reset puts these back.
+ */
+export interface InTransitLine {
+  productId: bigint;
+  /** The RECEIVING warehouse — the lens it counts under. */
+  to: bigint;
+  qty: bigint;
+  value: number;
+}
+
+export const IN_TRANSIT_SAMPLE: readonly InTransitLine[] = [
+  { productId: 700n, to: GUDANG_CABANG, qty: 3n, value: 3 * 45_700 },
+  { productId: 702n, to: GUDANG_PUSAT, qty: 8n, value: 8 * 9_500 },
+];
+
+/** For ONE story (its `beforeEach`): team 15's open transfers are these lines — none at all with no argument. */
+export function transfersInTransitForStory(...lines: InTransitLine[]) {
+  inTransitLines = [...lines];
+}
+
+function inTransitSample(productId: bigint, warehouseId: bigint | undefined) {
+  const lines = (inTransitLines ?? IN_TRANSIT_SAMPLE).filter((l) => l.productId === productId && (!warehouseId || l.to === warehouseId));
+  return {
+    inTransitQty: lines.reduce((s, l) => s + l.qty, 0n),
+    inTransitValue: lines.reduce((s, l) => s + l.value, 0),
+  };
+}
+
 /** The OwnerStockItem a product's batches add up to, in a warehouse lens — `undefined` for a product not figured. */
 export function ownerStockSample(productId: bigint, teamId: bigint, warehouseId: bigint | undefined) {
   if (teamId !== FIGURED_TEAM || !figured(productId)) return undefined;
@@ -545,6 +587,7 @@ export function ownerStockSample(productId: bigint, teamId: bigint, warehouseId:
     costKnown: costs.length > 0,
     oldestBatchUnix: held.length ? held.reduce((a, b) => (b.acceptedAt < a ? b.acceptedAt : a), held[0]!.acceptedAt) : 0n,
     lastRestockUnix: batchesOf(productId).reduce((a, b) => (b.acceptedAt > a ? b.acceptedAt : a), 0n),
+    ...inTransitSample(productId, warehouseId),
   };
 }
 
@@ -667,6 +710,8 @@ export function ownerStockStat(req: { teamId: bigint; filter?: { warehouseId?: b
       readyValue: all.reduce((s, x) => s + x.readyValue, 0),
       ongoingQty: all.reduce((s, x) => s + x.ongoingQty, 0n),
       ongoingValueEst: all.reduce((s, x) => s + x.ongoingValueEst, 0),
+      inTransitQty: all.reduce((s, x) => s + x.inTransitQty, 0n),
+      inTransitValue: all.reduce((s, x) => s + x.inTransitValue, 0),
       lastRestockUnix: all.reduce((a, x) => (x.lastRestockUnix > a ? x.lastRestockUnix : a), 0n),
     },
   };

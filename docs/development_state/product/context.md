@@ -3,6 +3,15 @@
 Decisions: [context_decision.md](../../business/product/context_decision.md). Bundles and discovery have their own
 reports ([bundle.md](bundle.md), [discover.md](discover.md)).
 
+## 2026-11-15 — goods in transit on the product screens
+
+| | |
+| --- | --- |
+| [in-transit-is-its-own-figure-beside-siap-and-dikirim](../../technical/frontend/products_decision.md#in-transit-is-its-own-figure-beside-siap-and-dikirim) | **built** — the figure is live from `OwnerStockByIds` / `OwnerStockStat`'s `in_transit_qty` + `in_transit_value` ([rpc.md](../../services/inventory_service/rpc.md#in-transit)): the list's *Dalam transfer* column after Dikirim (`ProductsTable` `InTransitCell`, value on hover), the phone block's fact beside Dikirim (value inline), the stat tile after Dikirim (`ProductStats`, testid `products-in-transit-stock`), the product page's highlight *+N pcs dalam transfer* and the Per Gudang Overview row `pd-overview-row-inTransit` (*menuju <gudang>* under a lens). Under a lens: the RECEIVING warehouse's |
+| [the-in-transit-column-shows-while-any-is-in-transit](../../technical/frontend/products_decision.md#the-in-transit-column-shows-while-any-is-in-transit) | **built** — `ProductsTable inTransitColumn` = the strip's units for the same team + lens `> 0` (`pages/products/index.tsx`); at zero the list is today's eight columns. Tile, phone fact and product page always show (0 pcs). The archive has no strip and keeps today's columns (build default). The Storybook switch `features/products/inTransitPrototype.tsx` is deleted |
+| stub | `.storybook/productStub.ts` `IN_TRANSIT_SAMPLE` (team 15: 700 3 pcs Pusat → Cabang, 702 8 pcs Cabang → Pusat) and `transfersInTransitForStory(...lines)` — none = nothing in transit; reset per story |
+| tests | stories `pages/products/stories/InTransit.stories.tsx` (7: the column, no column, tile, phone, phone at 0, the receiver's lens, the sender's lens without a column), `pages/product-detail/stories/InTransit.stories.tsx` (3), `Header.stories.tsx` *Card strip* now six tiles; e2e `the_goods_in_transit.spec.ts` (own team, two warehouses: no transfer → no column, 0 pcs; shipped → column, tile, 390 px fact, product page; receiver's lens yes, sender's no; accepted → 0, column gone) |
+
 ## 2026-11-14 — the product list's Kunci and Umur stok filters
 
 | | |

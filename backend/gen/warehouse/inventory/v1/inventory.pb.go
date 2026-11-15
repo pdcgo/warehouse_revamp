@@ -7125,8 +7125,17 @@ type OwnerStockItem struct {
 	OldestBatchUnix int64 `protobuf:"varint,8,opt,name=oldest_batch_unix,json=oldestBatchUnix,proto3" json:"oldest_batch_unix,omitempty"`
 	// When stock last ARRIVED for this product. 0 = never.
 	LastRestockUnix int64 `protobuf:"varint,9,opt,name=last_restock_unix,json=lastRestockUnix,proto3" json:"last_restock_unix,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// IN TRANSIT — units on the team's warehouse transfers between the two legs: out of the sending warehouse's book
+	// since the create, not yet in the receiving one's (the-transfer-is-where-goods-in-transit-are). A transfer counts
+	// while it is created, process, shipped, arrived or LOST — a lost box stays in transit until it turns up and is
+	// accepted; a cancel takes the units back and an accept books them at the receiver. `in_transit_value` is the
+	// items' `total`, what the out-leg took (the-system-fills-a-transfers-prices). With the warehouse lens set, a
+	// transfer counts under its RECEIVING warehouse only, as the Transfer metric's in transit does. Never added into
+	// ready: the units are in neither warehouse's book.
+	InTransitQty   int64   `protobuf:"varint,10,opt,name=in_transit_qty,json=inTransitQty,proto3" json:"in_transit_qty,omitempty"`
+	InTransitValue float64 `protobuf:"fixed64,11,opt,name=in_transit_value,json=inTransitValue,proto3" json:"in_transit_value,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *OwnerStockItem) Reset() {
@@ -7218,6 +7227,20 @@ func (x *OwnerStockItem) GetOldestBatchUnix() int64 {
 func (x *OwnerStockItem) GetLastRestockUnix() int64 {
 	if x != nil {
 		return x.LastRestockUnix
+	}
+	return 0
+}
+
+func (x *OwnerStockItem) GetInTransitQty() int64 {
+	if x != nil {
+		return x.InTransitQty
+	}
+	return 0
+}
+
+func (x *OwnerStockItem) GetInTransitValue() float64 {
+	if x != nil {
+		return x.InTransitValue
 	}
 	return 0
 }
@@ -7558,8 +7581,12 @@ type OwnerStockPreview struct {
 	OngoingValueEst float64                `protobuf:"fixed64,4,opt,name=ongoing_value_est,json=ongoingValueEst,proto3" json:"ongoing_value_est,omitempty"`
 	// The last time ANY of this team's stock arrived. 0 = never.
 	LastRestockUnix int64 `protobuf:"varint,5,opt,name=last_restock_unix,json=lastRestockUnix,proto3" json:"last_restock_unix,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// IN TRANSIT over the whole catalogue — OwnerStockItem's rule: the team's transfers between the two legs, under the
+	// receiving warehouse when the lens is set.
+	InTransitQty   int64   `protobuf:"varint,6,opt,name=in_transit_qty,json=inTransitQty,proto3" json:"in_transit_qty,omitempty"`
+	InTransitValue float64 `protobuf:"fixed64,7,opt,name=in_transit_value,json=inTransitValue,proto3" json:"in_transit_value,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *OwnerStockPreview) Reset() {
@@ -7623,6 +7650,20 @@ func (x *OwnerStockPreview) GetOngoingValueEst() float64 {
 func (x *OwnerStockPreview) GetLastRestockUnix() int64 {
 	if x != nil {
 		return x.LastRestockUnix
+	}
+	return 0
+}
+
+func (x *OwnerStockPreview) GetInTransitQty() int64 {
+	if x != nil {
+		return x.InTransitQty
+	}
+	return 0
+}
+
+func (x *OwnerStockPreview) GetInTransitValue() float64 {
+	if x != nil {
+		return x.InTransitValue
 	}
 	return 0
 }
@@ -9793,7 +9834,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x0etotal_accepted\x18\t \x01(\x03R\rtotalAccepted\x12\x1f\n" +
 	"\vtotal_value\x18\n" +
 	" \x01(\x01R\n" +
-	"totalValue\"\xc8\x02\n" +
+	"totalValue\"\x98\x03\n" +
 	"\x0eOwnerStockItem\x12\x1b\n" +
 	"\tready_qty\x18\x01 \x01(\x03R\breadyQty\x12\x1f\n" +
 	"\vready_value\x18\x02 \x01(\x01R\n" +
@@ -9806,7 +9847,10 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"cost_known\x18\a \x01(\bR\tcostKnown\x12*\n" +
 	"\x11oldest_batch_unix\x18\b \x01(\x03R\x0foldestBatchUnix\x12*\n" +
-	"\x11last_restock_unix\x18\t \x01(\x03R\x0flastRestockUnix\"\xca\x01\n" +
+	"\x11last_restock_unix\x18\t \x01(\x03R\x0flastRestockUnix\x12$\n" +
+	"\x0ein_transit_qty\x18\n" +
+	" \x01(\x03R\finTransitQty\x12(\n" +
+	"\x10in_transit_value\x18\v \x01(\x01R\x0einTransitValue\"\xca\x01\n" +
 	"\x11OwnerStockMapItem\x12Q\n" +
 	"\bmap_data\x18\x01 \x03(\v26.warehouse.inventory.v1.OwnerStockMapItem.MapDataEntryR\amapData\x1ab\n" +
 	"\fMapDataEntry\x12\x10\n" +
@@ -9831,7 +9875,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12I\n" +
-	"\x05value\x18\x02 \x01(\v23.warehouse.inventory.v1.OwnerStockByIdsResponseListR\x05value:\x028\x01\"\xca\x01\n" +
+	"\x05value\x18\x02 \x01(\v23.warehouse.inventory.v1.OwnerStockByIdsResponseListR\x05value:\x028\x01\"\x9a\x02\n" +
 	"\x11OwnerStockPreview\x12\x1b\n" +
 	"\tready_qty\x18\x01 \x01(\x03R\breadyQty\x12\x1f\n" +
 	"\vready_value\x18\x02 \x01(\x01R\n" +
@@ -9839,7 +9883,9 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\vongoing_qty\x18\x03 \x01(\x03R\n" +
 	"ongoingQty\x12*\n" +
 	"\x11ongoing_value_est\x18\x04 \x01(\x01R\x0fongoingValueEst\x12*\n" +
-	"\x11last_restock_unix\x18\x05 \x01(\x03R\x0flastRestockUnix\"9\n" +
+	"\x11last_restock_unix\x18\x05 \x01(\x03R\x0flastRestockUnix\x12$\n" +
+	"\x0ein_transit_qty\x18\x06 \x01(\x03R\finTransitQty\x12(\n" +
+	"\x10in_transit_value\x18\a \x01(\x01R\x0einTransitValue\"9\n" +
 	"\x14OwnerStockStatFilter\x12!\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04R\vwarehouseId\"\x90\x01\n" +
 	"\x15OwnerStockStatRequest\x12$\n" +

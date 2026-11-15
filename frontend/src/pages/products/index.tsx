@@ -241,6 +241,7 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
           totalItems={stats.data?.activeProducts ?? 0}
           ready={stats.data?.ready}
           ongoing={stats.data?.ongoing}
+          inTransit={stats.data?.inTransit}
           lastOrderUnix={stats.data?.lastOrderUnix}
           lastRestockUnix={stats.data?.lastRestockUnix}
           warehouseName={warehouseName}
@@ -318,6 +319,9 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
         filtered={filterCount > 0}
         onClearFilters={clearFilters}
         onCreate={archived || !writable ? undefined : openCreate}
+        // THE DALAM TRANSFER COLUMN only while the strip's figure — this team, this lens — is above zero
+        // (the-in-transit-column-shows-while-any-is-in-transit). The archive has no strip, so it keeps today's columns.
+        inTransitColumn={!archived && (stats.data?.inTransit?.qty ?? 0n) > 0n}
       />
     </Stack>
   );

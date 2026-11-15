@@ -51,7 +51,9 @@ export const TheFiguresAreTheCardStrip: Story = {
     const canvas = await loaded(canvasElement);
     const strip = canvas.getByTestId("products-stats");
 
-    await expect(within(strip).getAllByTestId(/^products-[a-z-]+-value$/)).toHaveLength(5);
+    // Six: products, Siap, Dikirim, Dalam transfer (always — in-transit-is-its-own-figure-beside-siap-and-dikirim), the
+    // last order, the last restock.
+    await expect(within(strip).getAllByTestId(/^products-[a-z-]+-value$/)).toHaveLength(6);
     await waitFor(() => expect(canvas.getByTestId("products-ready-stock")).toHaveTextContent("at cost"));
   },
 };

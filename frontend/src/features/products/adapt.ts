@@ -110,6 +110,13 @@ export interface OwnerStockRow {
   costKnown: boolean;
   oldestBatchUnix: bigint;
   lastRestockUnix: bigint;
+  /**
+   * On a warehouse transfer not yet accepted — the units and what the out-leg took (in-transit-is-its-own-figure-beside-
+   * siap-and-dikirim); under a lens, those on their way TO that warehouse. Absent = the read did not say (a row built
+   * without it, as a story's); the server always answers it, 0 included.
+   */
+  inTransitQty?: bigint;
+  inTransitValue?: number;
 }
 
 export function ownerStockFromByIds(res: OwnerStockByIdsResponse): Map<string, OwnerStockRow> {
@@ -132,6 +139,8 @@ export function ownerStockFromByIds(res: OwnerStockByIdsResponse): Map<string, O
         costKnown: row.costKnown,
         oldestBatchUnix: row.oldestBatchUnix,
         lastRestockUnix: row.lastRestockUnix,
+        inTransitQty: row.inTransitQty,
+        inTransitValue: row.inTransitValue,
       });
     }
   }

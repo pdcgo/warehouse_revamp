@@ -78,6 +78,8 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [discovers-warehouse-keeps-ready-stock-there](#discovers-warehouse-keeps-ready-stock-there) | Discover's **Gudang** keeps products with ready stock in that warehouse now; the cards and both range filters then read that warehouse | owner, as recommended | — |
 | [a-cross-band-keeps-a-range-that-touches-it](#a-cross-band-keeps-a-range-that-touches-it) | a Harga cross band keeps every product whose cross price range touches it | owner, as recommended | — |
 | [a-discover-card-says-locked-as-the-title-does](#a-discover-card-says-locked-as-the-title-does) | once a Discover card shows real stock, its lock badge says *Terkunci · Min N pcs* as the product page's title does | owner, as recommended | — |
+| [in-transit-is-its-own-figure-beside-siap-and-dikirim](#in-transit-is-its-own-figure-beside-siap-and-dikirim) | goods in transit between warehouses is its own figure beside Siap and Dikirim on every product screen — the list column, the phone block, the stat strip, the product page |
+| [the-in-transit-column-shows-while-any-is-in-transit](#the-in-transit-column-shows-while-any-is-in-transit) | the in-transit prototype is accepted; the list's Dalam transfer column shows only while the view has units in transit — the tile, the phone fact and the product page always show |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -1792,3 +1794,57 @@ Sentence case, as every field label and column header is.
 **The verdict.** The Discover card's lock badge is the title badge's: **🔒 Dikunci** when its owner locked it; **🔒 Terkunci · Min N pcs** when its ready stock is **under** the minimum ([a-minimum-closes-only-under-it](#a-minimum-closes-only-under-it)); *Min N pcs* when a minimum is set and not reached. The stock it reads is the title badge's — the ready stock summed over every warehouse (`totalReady`), whatever Gudang is picked, so the card and the product page never disagree. An accepted badge in an existing cell — no prototype. It replaces the *the card* row of [the-lock-is-the-title-badge](#the-lock-is-the-title-badge). ⚠ Not built — needs the real card figures first.
 
 ✅ **Built 2026-11-14** — the card's `DiscoverBadges` gets `totalReady` = DiscoverStockByIds' `total_ready_qty` (every warehouse, whatever Gudang says): **Dikunci** / **Terkunci · Min N pcs** / **Min N pcs**. Story `Cards/TheThreeLockBadges`, e2e `the_discover_cards.spec.ts`.
+
+---
+
+## in-transit-is-its-own-figure-beside-siap-and-dikirim
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to: the decision
+> [the-transfer-is-where-goods-in-transit-are](../../business/inventory/warehouse_transfer_decision.md#the-transfer-is-where-goods-in-transit-are)
+> says it is *"shown on the team's stock screen, per product — '3 in transit'"*; the backend reads it
+> (`OwnerStockItem` / `OwnerStockPreview.in_transit_qty` + `in_transit_value`). Where does it sit? A: its own figure
+> beside Siap and Dikirim everywhere those two show; B: only the product page and the stat above the list; C: one
+> *on its way* figure folded into Dikirim (reversing [ongoing-reads-dikirim-on-the-product-screens](#ongoing-reads-dikirim-on-the-product-screens)).
+
+**The verdict.** Units on a warehouse transfer that has not been accepted are **their own figure**, wherever Siap and
+Dikirim are shown:
+
+| where | what |
+| --- | --- |
+| the product list | a column beside Siap and Dikirim |
+| the list on a phone | a fact in the product's block, beside Siap and Dikirim |
+| the stat strip above the list | a tile — the team's units in transit and their value |
+| the product page | in its figures — the total and per warehouse |
+
+| | |
+| --- | --- |
+| the lens | under a warehouse, the units on their way **to** it — the receiving warehouse, as the Transfer metric |
+| not in Siap | never added into Siap — a unit in transit is on no shelf |
+| not in Dikirim | Dikirim stays a restock's ordered-not-accepted stock, with its last-restock line — the two never share a cell |
+| the label | proposed in the prototype — en *In transit*, id *Dalam transfer* (*dalam perjalanan* is already Dikirim's hint) |
+| design | a new figure on accepted screens — a Storybook prototype and the owner's accept before it is wired |
+
+✅ Built 2026-11-15 — live on every product screen from `OwnerStockByIds` / `OwnerStockStat`'s `in_transit_qty` + `in_transit_value`: the list's *Dalam transfer* column after Dikirim (its value on the hover), the phone block's fact beside Dikirim (value inline), the stat strip's tile after Dikirim (*antar gudang, harga modal*), and the product page — the highlight's *+N pcs dalam transfer* beside Dikirim and the Per Gudang Overview's row after Dikirim (*menuju <gudang>* under a lens). Under a lens the receiving warehouse's; never added into Siap or Dikirim. The Storybook switch (`features/products/inTransitPrototype.tsx`) is deleted. Stories `pages/products/stories/InTransit.stories.tsx` (7), `pages/product-detail/stories/InTransit.stories.tsx` (3); e2e `the_goods_in_transit.spec.ts`.
+
+---
+
+## the-in-transit-column-shows-while-any-is-in-transit
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to the prototype of
+> [in-transit-is-its-own-figure-beside-siap-and-dikirim](#in-transit-is-its-own-figure-beside-siap-and-dikirim)
+> (screenshots: the list, the phone block, the product page, option B, the list BEFORE). The catch shown: in Indonesian at
+> 1440 px with the sidebar open the list is 56 px wider than its box (1197 vs 1141 px), and most rows read *0 pcs*.
+> A: accept, the list column only while the team has something in transit; B: accept as shown; C: option B instead.
+
+**The verdict.** The prototype is **accepted** as shown — labels *In transit* / *Dalam transfer*, zero as *0 pcs*,
+value on the column's hover, the tile *antar gudang, harga modal*, the product page's *+N pcs dalam transfer* and the
+warehouse Overview's *menuju <gudang>* — with one change: the list's column is **conditional**.
+
+| | |
+| --- | --- |
+| the list column | shown only while the view's in-transit units are above zero — the stat strip's tile for the same team and warehouse lens; at zero the list is exactly today's |
+| always shown | the stat strip's tile (0 pcs included), the phone block's fact, the product page's figures |
+| the width, accepted | while the column shows, the Indonesian list at 1440 px with the sidebar open scrolls inside its box (56 px) — as a picked warehouse already does |
+| the prototype switch | retired — the screens read the live fields |
+
+✅ Built 2026-11-15 — `ProductsTable`'s `inTransitColumn` is the stat strip's in-transit units (`OwnerStockStat`, the same team and warehouse lens) above zero (`pages/products/index.tsx`); at zero the list keeps its eight columns, cells and widths exactly. The tile, the phone fact and the product page's figures always show, 0 pcs included. *(Not asked — the build's default: the archive draws no strip, so it keeps today's columns.)* Stories *Units in transit → the column*, *No units in transit → no column*, *Warehouse lens — the sender's, no column*, *Phone, nothing in transit → 0 pcs*; e2e `the_goods_in_transit.spec.ts` — no transfer: no column, 0 pcs; a shipped transfer: the column, the tile, the 390 px fact and the product page; the receiver's lens shows it, the sender's does not; accepted: 0 and the column gone.

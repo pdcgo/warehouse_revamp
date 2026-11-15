@@ -68,6 +68,12 @@ interface ProductsTableProps {
   onClearFilters: () => void;
   /** New Product, for the empty catalogue's hint. */
   onCreate?: () => void;
+  /**
+   * Whether the desktop list draws its DALAM TRANSFER column — only while the view's units in transit are above zero,
+   * the stat strip's figure for the same team and warehouse lens (the-in-transit-column-shows-while-any-is-in-transit);
+   * at zero the list is exactly as it was before the figure. The phone block's fact does not ask: it always shows.
+   */
+  inTransitColumn?: boolean;
 }
 
 // ── The stock cells ──────────────────────────────────────────────────────────────────────────────
@@ -329,6 +335,45 @@ function OngoingCell({
   );
 }
 
+// DALAM TRANSFER — on a warehouse transfer not yet accepted (in-transit-is-its-own-figure-beside-siap-and-dikirim): on no
+// shelf, so never in Siap; not a restock, so never in Dikirim. Under a lens, the units on their way TO that warehouse. One
+// line — it has no date of its own. What the out-leg took for them is on the title on a row and inline on a phone, as
+// Siap's worth is; 0 reads "0 pcs" as Dikirim's does, and a product the read said nothing about "—". The phone block
+// always carries it; the desktop COLUMN only while the view has units in transit
+// (the-in-transit-column-shows-while-any-is-in-transit).
+function InTransitCell({
+  qty,
+  value,
+  productCode,
+  phone = false,
+}: {
+  qty?: bigint;
+  value?: number;
+  productCode: string;
+  phone?: boolean;
+}) {
+  const { t } = useTranslation();
+
+  if (qty === undefined) {
+    return <Unknown />;
+  }
+
+  const worth = value !== undefined && qty > 0n ? formatRupiah(value) : undefined;
+
+  return (
+    <Text
+      fontWeight="medium"
+      whiteSpace="nowrap"
+      title={phone ? undefined : worth}
+      data-testid={`in-transit-${productCode}`}
+      data-zero={qty === 0n || undefined}
+    >
+      {t("products.stat.pcs", { n: qty.toString() })}
+      {phone && worth !== undefined && ` · ${worth}`}
+    </Text>
+  );
+}
+
 function Unknown() {
   return (
     <Text color="fg.subtle" data-testid="stock-unknown">
@@ -367,6 +412,7 @@ export function ProductsTable({
   filtered,
   onClearFilters,
   onCreate,
+  inTransitColumn = false,
 }: ProductsTableProps) {
   const navigate = useNavigate();
   // The list as it stands — handed to the form, so its Back returns here with the filters kept (the-form-returns-where-it-was-opened).
@@ -686,6 +732,16 @@ export function ProductsTable({
                     align="start"
                   />
                 </Fact>
+                {/* DALAM TRANSFER beside Dikirim (in-transit-is-its-own-figure-beside-siap-and-dikirim) — always, 0 pcs
+                    included (the-in-transit-column-shows-while-any-is-in-transit). */}
+                <Fact label={scoped(t("products.table.inTransit"))}>
+                  <InTransitCell
+                    qty={stockOf(product)?.inTransitQty}
+                    value={stockOf(product)?.inTransitValue}
+                    productCode={product.productCode}
+                    phone
+                  />
+                </Fact>
                 {/* Cross, then the cost with what another team pays under it (the-cross-price-rides-under-the-cost). */}
                 <Fact label={t("products.table.cross")}>
                   <CrossCell markupBps={product.crossMarkupBps} />
@@ -742,6 +798,22 @@ export function ProductsTable({
                   under it (each-date-rides-under-its-stock): the last order under Siap, the last restock under Dikirim. */}
               <Table.ColumnHeader textAlign="end">{scoped(t("products.table.ready"))}</Table.ColumnHeader>
               <Table.ColumnHeader textAlign="end">{scoped(t("products.table.ongoing"))}</Table.ColumnHeader>
+              {/* DALAM TRANSFER beside Dikirim (in-transit-is-its-own-figure-beside-siap-and-dikirim) — only while the
+                  view has units in transit (the-in-transit-column-shows-while-any-is-in-transit). What it means under a
+                  lens — on its way TO the warehouse — is the heading's title. */}
+              {inTransitColumn && (
+                <Table.ColumnHeader
+                  textAlign="end"
+                  title={
+                    warehouseName
+                      ? t("products.table.inTransitToTitle", { warehouse: warehouseName })
+                      : t("products.table.inTransitTitle")
+                  }
+                  data-testid="products-in-transit-header"
+                >
+                  {scoped(t("products.table.inTransit"))}
+                </Table.ColumnHeader>
+              )}
               {/* THE STOCK'S AGE (the-dates-read-as-ages) — how long the oldest units have sat, the column that finds dead
                   stock before it is written off. */}
               <Table.ColumnHeader>{scoped(t("products.table.stockAge"))}</Table.ColumnHeader>
@@ -784,6 +856,15 @@ export function ProductsTable({
                     productCode={product.productCode}
                   />
                 </Table.Cell>
+                {inTransitColumn && (
+                  <Table.Cell textAlign="end">
+                    <InTransitCell
+                      qty={stockOf(product)?.inTransitQty}
+                      value={stockOf(product)?.inTransitValue}
+                      productCode={product.productCode}
+                    />
+                  </Table.Cell>
+                )}
                 <Table.Cell data-testid={`stock-age-${product.productCode}`}>
                   <StockAgeCell unix={stockOf(product)?.oldestBatchUnix} />
                 </Table.Cell>

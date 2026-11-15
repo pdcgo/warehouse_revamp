@@ -22,9 +22,11 @@ import (
 // ── Why four queries and not one ────────────────────────────────────────────────────────────────
 //
 // Ready, the cost spread and the oldest batch come off the BATCH grain; ongoing comes off restock
-// lines that have no shelves yet. Fusing them would need a FULL OUTER JOIN between "what is here" and
-// "what is coming", and every product that is only one of the two would land in the null half. Four
-// aggregates keyed by product, merged in Go, stay readable and each stays a plain GROUP BY.
+// lines that have no shelves yet; in transit off the lines of transfers between their two legs.
+// Fusing them would need a FULL OUTER JOIN between "what is here" and "what is coming", and every
+// product that is only one of them would land in the null half. Four aggregates keyed by product,
+// merged in Go, stay readable and each stays a plain GROUP BY — one statement each per PAGE, whatever
+// its size, never one per product.
 func (s *Service) OwnerStockByIds(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.OwnerStockByIdsRequest],
@@ -60,6 +62,11 @@ func (s *Service) OwnerStockByIds(
 	}
 
 	err = ownerLastRestockRows(db, teamID, warehouseID, productIDs, at)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	err = ownerInTransitRows(db, teamID, warehouseID, productIDs, at)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -219,6 +226,75 @@ func ownerLastRestockRows(
 
 	for _, row := range rows {
 		at(row.ProductID).LastRestockUnix = row.Unix
+	}
+
+	return nil
+}
+
+// transferInTransitWhere is the in-transit definition as SQL over `warehouse_transfers t`: a transfer whose out-leg is
+// written and whose units no warehouse has booked again (the-transfer-is-where-goods-in-transit-are) — created,
+// process, shipped, arrived, and LOST: no ledger moves at a loss, so a lost box stays in transit until it turns up and
+// is accepted (cancel-before-processed-lost-only-in-transit). The same set the Transfer metric's in transit reads for
+// today (`inventory_metric_transfer.go`: neither accepted nor cancelled), so the two screens agree.
+//
+// Read by STATUS, never by "no inbound transaction": a cancel rolls the out-leg back but keeps its id on the row, so
+// `inbound_transaction_id IS NULL` alone would count every cancelled transfer. The statuses are LITERALS, not bound
+// parameters, so a partial index over the same predicate stays matchable.
+const transferInTransitWhere = `t.outbound_transaction_id IS NOT NULL
+	AND t.status IN ('created', 'process', 'shipped', 'arrived', 'lost')`
+
+type ownerInTransitScan struct {
+	ProductID uint64
+	Qty       int64
+	Value     float64
+}
+
+// ownerInTransitRows fills in_transit_qty / in_transit_value from the lines of the team's transfers between their two
+// legs — the units out of the sender's book and not yet in the receiver's. The value is the lines' `total`, what the
+// out-leg took (the-system-fills-a-transfers-prices), exact. Under the lens a transfer counts for its RECEIVING
+// warehouse only — the Transfer metric's rule (the-inventory-metrics-prototype-is-accepted); the sender's book already
+// shows the units gone. One statement for the whole page.
+//
+// The open transfers are fenced first — `transfer_id = ANY(ARRAY(…))`, an InitPlan (a team has a few hundred open
+// at most, by `warehouse_transfers_in_transit_idx`) — and the page's lines are then read by the line key
+// `(transfer_id, product_id)`. A plain join let the planner hash it and SCAN every transfer line ever written for the
+// page's product filter: a cost that grows with every team's whole transfer history (rpc.md, In transit).
+func ownerInTransitRows(
+	db *gorm.DB,
+	teamID, warehouseID uint64,
+	productIDs []uint64,
+	at func(uint64) *inventoryv1.OwnerStockItem,
+) error {
+	var rows []ownerInTransitScan
+
+	open := db.
+		Table("warehouse_transfers AS t").
+		Select("t.id").
+		Where("t.team_id = ?", teamID).
+		Where(transferInTransitWhere)
+
+	if warehouseID > 0 {
+		open = open.Where("t.to_warehouse_id = ?", warehouseID)
+	}
+
+	query := db.
+		Table("warehouse_transfer_items AS i").
+		Select(`i.product_id AS product_id,
+		        COALESCE(SUM(i.count), 0) AS qty,
+		        COALESCE(SUM(i.total), 0) AS value`).
+		Where("i.transfer_id = ANY(ARRAY(?))", open).
+		Where("i.product_id IN ?", productIDs).
+		Group("i.product_id")
+
+	err := query.Scan(&rows).Error
+	if err != nil {
+		return err
+	}
+
+	for _, row := range rows {
+		it := at(row.ProductID)
+		it.InTransitQty = row.Qty
+		it.InTransitValue = row.Value
 	}
 
 	return nil

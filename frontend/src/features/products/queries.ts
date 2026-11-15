@@ -203,6 +203,9 @@ export function useProductStats(args: { teamId: bigint | undefined; warehouseId?
         activeProducts: Number(count.pageInfo?.totalItems ?? 0n),
         ready: preview ? { qty: preview.readyQty, value: preview.readyValue } : undefined,
         ongoing: preview ? { qty: preview.ongoingQty, value: preview.ongoingValueEst } : undefined,
+        // On warehouse transfers not yet accepted (in-transit-is-its-own-figure-beside-siap-and-dikirim) — the tile, and
+        // what the list's column follows (the-in-transit-column-shows-while-any-is-in-transit).
+        inTransit: preview ? { qty: preview.inTransitQty, value: preview.inTransitValue } : undefined,
         lastRestockUnix: preview?.lastRestockUnix,
         lastOrderUnix: activity.preview?.lastOrderUnix,
       };

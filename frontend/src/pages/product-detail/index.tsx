@@ -82,17 +82,33 @@ import type { ProductSectionKey, WarehouseTab } from "./sections";
 // (the-warehouse-picker-splits-the-page): in Info as the product's TOTAL across every warehouse, and under the warehouse
 // picker as that warehouse's. Unknown is a dash with the reason, never a 0 (#74).
 interface StockFigure {
-  key: "ready" | "ongoing" | "cost" | "age";
+  key: "ready" | "ongoing" | "inTransit" | "cost" | "age";
   label: string;
   value: ReactNode;
   line: string;
 }
 
-function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number): StockFigure[] {
+function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number, warehouseName?: string): StockFigure[] {
   const { t } = useTranslation();
   const pending = t("products.stat.pending");
   const days = stock && stock.oldestBatchUnix > 0n ? daysAgo(stock.oldestBatchUnix) : undefined;
   const stale = days !== undefined && days >= STALE_STOCK_DAYS;
+  // DALAM TRANSFER, after Dikirim (in-transit-is-its-own-figure-beside-siap-and-dikirim) — always, 0 pcs included
+  // (the-in-transit-column-shows-while-any-is-in-transit). Under a warehouse, the units on their way TO it.
+  const inTransitKnown = stock?.inTransitQty !== undefined;
+  const inTransit: StockFigure = {
+    key: "inTransit",
+    label: t("products.stat.inTransit"),
+    value: inTransitKnown ? t("products.stat.pcs", { n: stock!.inTransitQty!.toString() }) : "—",
+    // Under a warehouse, the units on their way TO it — the line says so.
+    line: inTransitKnown
+      ? `${formatRupiah(stock!.inTransitValue ?? 0)} · ${
+          warehouseName
+            ? t("products.stat.inTransitToHint", { warehouse: warehouseName })
+            : t("products.stat.inTransitHint")
+        }`
+      : pending,
+  };
 
   return [
     {
@@ -107,6 +123,7 @@ function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number): S
       value: stock ? t("products.stat.pcs", { n: stock.ongoingQty.toString() }) : "—",
       line: stock ? `${formatRupiah(stock.ongoingValueEst)} · ${t("products.stat.ongoingHint")}` : pending,
     },
+    inTransit,
     {
       key: "cost",
       label: t("products.table.priceRange"),
@@ -137,13 +154,13 @@ function useStockFigures(stock: OwnerStockRow | undefined, markupBps: number): S
 }
 
 /**
- * THE OVERVIEW — the chosen warehouse's four figures as SMALL DETAILS, the list Info draws (owner: *"di overview tidak
+ * THE OVERVIEW — the chosen warehouse's figures as SMALL DETAILS, the list Info draws (owner: *"di overview tidak
  * perlu ada aman, dan pcs siap yang besar, cuma detail kecil aja di sana"*, `the-overview-is-small-details`): Siap,
- * Dikirim, Rentang HPP, Umur stok. The one large figure and its chip are Info's alone — the page has one thing that stands
+ * Dikirim, Dalam transfer (in-transit-is-its-own-figure-beside-siap-and-dikirim), Rentang HPP, Umur stok. The one large figure and its chip are Info's alone — the page has one thing that stands
  * out, not two. Inside the warehouse card's first tab, so no box of its own (never a card inside a card).
  */
-function OverviewFigures({ stock, markupBps }: { stock?: OwnerStockRow; markupBps: number }) {
-  const figures = useStockFigures(stock, markupBps);
+function OverviewFigures({ stock, markupBps, warehouseName }: { stock?: OwnerStockRow; markupBps: number; warehouseName?: string }) {
+  const figures = useStockFigures(stock, markupBps, warehouseName);
 
   return (
     <Box data-testid="pd-overview">
@@ -174,8 +191,9 @@ function TotalFigures({
   const figures = useStockFigures(stock, markupBps);
   const rows: FigureRow[] = [
     { key: "category", label: t("products.field.category"), value: category, testId: "product-detail-category" },
-    // Siap and Dikirim are the HIGHLIGHT above this list (the-stock-headline-stands-out), so the list carries the rest.
-    ...figures.filter((f) => f.key !== "ready" && f.key !== "ongoing"),
+    // Siap and Dikirim are the HIGHLIGHT above this list (the-stock-headline-stands-out), so the list carries the rest —
+    // and the in-transit figure rides in the highlight beside Dikirim, so it is not listed here either.
+    ...figures.filter((f) => f.key !== "ready" && f.key !== "ongoing" && f.key !== "inTransit"),
     // WHEN IT LAST MOVED, at the foot of the same list (owner: *"aktivitas masukkan ke info produk"*) — is it still
     // selling, and has stock come in behind the sales. Across every warehouse, as the rest of Info.
     {
@@ -420,6 +438,8 @@ export function ProductDetailPage() {
   const archived = product.archived;
   const totalStock = totalsQuery.data?.stock;
   const lensStock = activityQuery.data?.stock;
+  // The product's total in transit, beside Dikirim in the highlight — always, as useStockFigures' row.
+  const totalInTransit = totalStock?.inTransitQty;
   const openEdit = () => navigate(`/products/${product.id}/edit`, { state: fromHere(location) });
 
   /** A section card, keyed by its entry in `sections.ts` — its id, icon and title come from there. */
@@ -463,7 +483,13 @@ export function ProductDetailPage() {
           ready={totalStock?.readyQty}
           line={
             totalStock
-              ? `${t("products.detail.highlight.ongoing", { n: totalStock.ongoingQty.toString() })} · ${t("products.detail.highlight.value", { value: formatRupiah(totalStock.readyValue) })}`
+              ? [
+                  t("products.detail.highlight.ongoing", { n: totalStock.ongoingQty.toString() }),
+                  ...(totalInTransit !== undefined
+                    ? [t("products.detail.highlight.inTransit", { n: totalInTransit.toString() })]
+                    : []),
+                  t("products.detail.highlight.value", { value: formatRupiah(totalStock.readyValue) }),
+                ].join(" · ")
               : t("products.stat.pending")
           }
         />
@@ -667,9 +693,9 @@ export function ProductDetailPage() {
           <Tabs.Indicator />
         </Tabs.List>
 
-        {/* OVERVIEW — the warehouse's four figures, alone. */}
+        {/* OVERVIEW — the warehouse's five figures, alone. */}
         <Tabs.Content value="overview" data-testid="pd-panel-overview">
-          <OverviewFigures stock={lensStock} markupBps={product.crossMarkupBps} />
+          <OverviewFigures stock={lensStock} markupBps={product.crossMarkupBps} warehouseName={warehouseName} />
         </Tabs.Content>
 
         {/* PEMASOK — who supplies it, a tab of its own (owner: *"pemasok beda tab sama overview"*); the tab names it, so

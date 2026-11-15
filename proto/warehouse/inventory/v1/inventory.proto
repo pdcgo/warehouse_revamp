@@ -1542,6 +1542,16 @@ message OwnerStockItem {
 
   // When stock last ARRIVED for this product. 0 = never.
   int64 last_restock_unix = 9;
+
+  // IN TRANSIT — units on the team's warehouse transfers between the two legs: out of the sending warehouse's book
+  // since the create, not yet in the receiving one's (the-transfer-is-where-goods-in-transit-are). A transfer counts
+  // while it is created, process, shipped, arrived or LOST — a lost box stays in transit until it turns up and is
+  // accepted; a cancel takes the units back and an accept books them at the receiver. `in_transit_value` is the
+  // items' `total`, what the out-leg took (the-system-fills-a-transfers-prices). With the warehouse lens set, a
+  // transfer counts under its RECEIVING warehouse only, as the Transfer metric's in transit does. Never added into
+  // ready: the units are in neither warehouse's book.
+  int64 in_transit_qty = 10;
+  double in_transit_value = 11;
 }
 
 message OwnerStockMapItem {
@@ -1628,6 +1638,10 @@ message OwnerStockPreview {
   double ongoing_value_est = 4;
   // The last time ANY of this team's stock arrived. 0 = never.
   int64 last_restock_unix = 5;
+  // IN TRANSIT over the whole catalogue — OwnerStockItem's rule: the team's transfers between the two legs, under the
+  // receiving warehouse when the lens is set.
+  int64 in_transit_qty = 6;
+  double in_transit_value = 7;
 }
 
 message OwnerStockStatFilter {

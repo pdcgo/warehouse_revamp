@@ -15,6 +15,8 @@ Users & Role System, Documents, region, shipping, expense.
 | **The supplier Sold filter is faster** | filtering suppliers by Sold now reads the daily sold record instead of every order line — the same suppliers, about 40% faster at a million orders |
 | **The statement shows several years** | the daily statement's Monthly view can cover up to 5 years and Yearly up to 20; picking Yearly opens this year and the 4 before it, Monthly the last 12 months |
 | **Searching orders is instant** | searching the order list (by tracking number, receipt, customer or phone) now answers in a few milliseconds instead of ~75 ms — the same orders |
+| **Goods in transit are counted per product** | the system now counts, per product, the units on their way between your warehouses (and their value) — ready for the product screens once you've picked where it shows |
+| **Products show goods in transit** | the product screens show the units on their way between your warehouses — a Dalam transfer tile, a line on the phone and on the product page, and a list column while anything is on its way |
 
 ## 2026-11-14 · a faster full test run, transfers on a phone, product filters
 

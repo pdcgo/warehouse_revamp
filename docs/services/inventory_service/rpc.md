@@ -1020,7 +1020,7 @@ sequenceDiagram
 
     par one round trip, two services
         UI->>I: OwnerStockByIds (team, ids, warehouse lens)
-        I-->>UI: ready, ongoing, HPP spread, oldest batch, last restock
+        I-->>UI: ready, ongoing, in transit, HPP spread, oldest batch, last restock
     and
         UI->>S: OrderProductActivityByIds (team, ids)
         S-->>UI: last order, units sold in 30d
@@ -1040,6 +1040,7 @@ describing the search rather than the business.
 | The cost **spread**, not an average | The same product genuinely arrives at different prices. The average is exactly what hides that. |
 | Oldest batch = oldest with **ready units** | A delivery that has sold out is not old stock; it is gone. Dating the column from it would flag healthy products as stale. |
 | Ongoing is an **estimate** and never summed into ready | Its cost settles on what actually lands (#74). |
+| In transit is **never** summed into ready | The units of a transfer between its two legs are in neither warehouse's book ([the-transfer-is-where-goods-in-transit-are](../../business/inventory/warehouse_transfer_decision.md#the-transfer-is-where-goods-in-transit-are)). |
 | A **cancelled** order is not a sale | On the selling side, both `last_order_unix` and the 30-day units exclude cancelled orders — otherwise a dead product reads as alive on the strength of a mistake somebody corrected. |
 | A product with nothing behind it is **absent**, not zeroed | The caller knows which ids it asked about. "Nothing to say" travels lighter, and the UI renders it as *unknown* rather than a confident `0` beside a full shelf. |
 
@@ -1049,6 +1050,41 @@ describing the search rather than the business.
 restates as that one building's** — which is the honest reading, because stock is held per warehouse
 and a total can never tell you whether *one* of them can fill an order. The UI says so out loud by
 appending the warehouse's name to each stock column header.
+
+### In transit
+
+Built 2026-11-15 — the backend, then the screens the same day: the product list's *Dalam transfer* column (while the strip's figure is above zero), the phone fact, the stat tile and the product page ([the-in-transit-column-shows-while-any-is-in-transit](../../technical/frontend/products_decision.md#the-in-transit-column-shows-while-any-is-in-transit)).
+`OwnerStockItem.in_transit_qty` / `in_transit_value` (10–11) and `OwnerStockPreview.in_transit_qty` /
+`in_transit_value` (6–7): the units of the team's warehouse transfers **between the two legs**, and what the out-leg took
+for them ([the-transfer-is-where-goods-in-transit-are](../../business/inventory/warehouse_transfer_decision.md#the-transfer-is-where-goods-in-transit-are)).
+
+| | |
+| --- | --- |
+| counts | a transfer with its out-leg written, in `created`, `process`, `shipped`, `arrived` or **`lost`** — no ledger moves at a loss, so a lost box stays in transit until it turns up and is accepted ([cancel-before-processed-lost-only-in-transit](../../business/inventory/warehouse_transfer_decision.md#cancel-before-processed-lost-only-in-transit)) |
+| does not count | `cancel` (the out-leg rolled back) and `accepted` (booked at B — whatever arrived good, broken or missing). Read by **status**: a cancel keeps `outbound_transaction_id` on the row, so "an outbound and no inbound" in SQL would count every cancelled transfer |
+| value | the lines' `total` — what the out-leg took ([the-system-fills-a-transfers-prices](../../business/inventory/warehouse_transfer_decision.md#the-system-fills-a-transfers-prices)), exact |
+| the lens | under the **receiving** warehouse only — B sees what is on the road to it, A (whose book already shows the units gone) sees none; the Transfer metric's rule ([the-inventory-metrics-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-inventory-metrics-prototype-is-accepted)) |
+| equals | the Transfer metric's in transit for today — in total, per product, per warehouse (`TestOwnerStockInTransit_AgreesWithTheTransferMetric`) |
+| a product only on the road | is a row (nothing ready, N in transit), not absent |
+| the query | one per call: the page's lines by `(transfer_id, product_id)` inside `transfer_id = ANY(ARRAY(<the team's open transfers>))` — an InitPlan over inventory `00045`'s partial index `warehouse_transfers_in_transit_idx (team_id, to_warehouse_id) WHERE <the predicate above>`; the stat joins the same transfers to their lines |
+
+**Performance** — `TestPerf_OwnerStockInTransit` (`-tags perfaudit`): the ledger background (one team's 50 000 batches,
+10 000 restocks) plus 50 000 transfers (five teams × 10 000, 200 open each) and ~100 000 lines; the page asks for products
+that ALL have something on the road. The in-transit statement, median, custom plan (generic plan the same):
+
+| case | a plain join | the fenced read, no index | with `00045` |
+| --- | --- | --- | --- |
+| `OwnerStockByIds` 20 ids | 11.2 ms (generic 36.9) — hashed, it **scanned every transfer line** | 3.9 ms | **1.2 ms** |
+| `OwnerStockByIds` 200 ids | 12.2 ms (generic 26.3) | 4.8 ms | **1.8 ms** |
+| `OwnerStockByIds` 200, lens | — | 2.5 ms | **1.0 ms** |
+| `OwnerStockStat` | — | 4.6 ms (a parallel **seq scan** of `warehouse_transfers`) | **1.7 ms** (EXPLAIN 0.8 ms) |
+| `OwnerStockStat`, lens | — | 4.0 ms | **1.2 ms** |
+
+Four statements per call at 1, 2 and 200 ids (`TestOwnerStockByIds_InTransitIsOneStatementPerPage`), no N+1. The index
+is a pure one (`a-pure-index-is-added-without-asking`): no result changes. Not heavy, no audit file. Whole calls: ByIds
+4–19 ms and Stat 14–30 ms there, most of it the **pre-existing** last-restock read (`MAX(created_at)` over the team's
+restock batches: a hash join of the team's 50 000 batches with their transactions, ≈23 ms for the stat, 10–13 ms for a
+page) — under every audit threshold at that size, unchanged by this pass, linear in the team's batch count.
 
 ## OwnerCostLayerList / OwnerBatchList / OwnerStockHistory — the owner's product DETAIL (#232)
 
