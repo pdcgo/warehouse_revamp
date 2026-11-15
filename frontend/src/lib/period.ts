@@ -34,13 +34,15 @@ export function monthRange(month: string): { from: string; to: string } {
   };
 }
 
-// The longest period a DAILY series may cover, and it must equal `maxPeriodDays` on the server
-// (backend/services/*/[revenue|expense]_daily.go).
+// The longest period a DAILY series may cover, and it must equal the server's daily cap
+// (backend/pkgs/san_period — `Day.MaxBuckets()`, which ExpenseDaily and LiabilityDaily enforce). Also a metric's
+// range at every grain (a-metric-reads-at-most-a-year — Analytic, the Settlement and Finance reports); the daily
+// statement's coarser grains reach further, `MAX_PERIOD_BUCKETS` below.
 //
-// The cap is what lets RevenueDaily and ExpenseDaily have no page cursor at all: their response length
-// is `to − from`, which the caller states, so bounding the span bounds the response forever. The client
-// knows the number too so it can say WHY a range was refused before spending a round trip on an error
-// it could have predicted.
+// The cap is what lets the Daily RPCs have no page cursor at all: their response length is the number of
+// buckets in `to − from`, which the caller states, so bounding the span bounds the response forever. The
+// client knows the number too so it can say WHY a range was refused before spending a round trip on an
+// error it could have predicted.
 //
 // 366 rather than 365 so a leap year is a whole year, not a whole year minus a day.
 export const MAX_PERIOD_DAYS = 366;
@@ -86,13 +88,14 @@ export function daySpine(from: string, to: string): string[] {
 //   month   "is this quarter better"          — the shape of a season
 //   year    "are we bigger than last year"    — the shape of the business
 //
-// ⚠ THE SERIES UNDERNEATH IS ALWAYS DAILY. The three Daily RPCs return one row per day and nothing
-// else, so a coarser grain is a ROLLUP the client does — which is also why the 366-day cap still
-// applies at every grain, and why a yearly view can currently only reach one year at a time. That is
-// a real limitation of the contract, not of this function.
+// THE SERVER GROUPS (periods-are-grouped-on-the-server): every period read takes the grain and returns
+// one row per bucket, keyed by the bucket's FIRST day (`bucketFirstDay`). The browser never buckets days
+// into months — it only lays the server's rows on its spine, so two screens read side by side cannot
+// compute "August" two ways.
 export type PeriodGrain = "day" | "month" | "year";
 
-// The bucket a `yyyy-mm-dd` belongs to — `2026-08-18`, `2026-08` or `2026`.
+// The bucket a `yyyy-mm-dd` belongs to — `2026-08-18`, `2026-08` or `2026`. A spine LABEL: used to lay out the
+// calendar, never to sum rows into months (the server does that).
 //
 // A PREFIX, not a parse. These are calendar labels the RPCs produced and the RPCs will read back, so
 // slicing keeps them exactly as they came; going through a Date would add a timezone this string has
@@ -104,12 +107,46 @@ export function bucketOf(date: string, grain: PeriodGrain): string {
   return date;
 }
 
+// The key the server gives a bucket's row — its FIRST calendar day: `2026-08-18`, `2026-08-01`, `2026-01-01`. A spine
+// label turned into the row it is filled by; the day itself at the daily grain.
+export function bucketFirstDay(label: string, grain: PeriodGrain): string {
+  if (grain === "year") return `${label}-01-01`;
+  if (grain === "month") return `${label}-01`;
+
+  return label;
+}
+
+// THE SPAN EACH GRAIN UNLOCKS (periods-are-grouped-on-the-server): 366 days, 60 months, 20 years — and each must
+// equal the server's (backend/pkgs/san_period `Grain.MaxBuckets()`, which ExpenseDaily and LiabilityDaily enforce).
+// Counted in the grain's OWN buckets, both ends' included (`spanBuckets`), the way the server counts them — so a
+// range the screen sends is never one the server refuses, and one it holds back is never one the server would take.
+export const MAX_PERIOD_BUCKETS: Record<PeriodGrain, number> = {
+  day: MAX_PERIOD_DAYS,
+  month: 60,
+  year: 20,
+};
+
+// How many buckets of the grain an inclusive `yyyy-mm-dd` range touches, both ends' buckets counted:
+// 2026-01-31 → 2026-02-01 is two days, two months and one year — san_period's `Buckets`, from the calendar fields
+// of the two labels (no zone). `0` if either end is missing, unparseable, or the range runs backwards.
+export function spanBuckets(from: string, to: string, grain: PeriodGrain): number {
+  const days = spanDays(from, to);
+  if (days === 0 || grain === "day") return days;
+
+  const [fy, fm] = from.split("-").map(Number);
+  const [ty, tm] = to.split("-").map(Number);
+
+  if (grain === "year") return ty! - fy! + 1;
+
+  return (ty! - fy!) * 12 + tm! - fm! + 1;
+}
+
 // Every bucket in an inclusive range, ascending — the SPINE the statement lays its rows on.
 //
 // Built by walking the DAY spine and de-duplicating, rather than stepping month by month. Two reasons:
-// the span is capped at 366 days so the walk is trivially cheap, and a second calendar walk is a
-// second chance to disagree with the first about what February contains. There is exactly one date
-// walk in this file, and every grain is a view of it.
+// the walk is cheap even at the longest span a grain unlocks (20 years is ~7 300 days), and a second
+// calendar walk is a second chance to disagree with the first about what February contains. There is
+// exactly one date walk in this file, and every grain is a view of it.
 export function bucketSpine(from: string, to: string, grain: PeriodGrain): string[] {
   if (grain === "day") return daySpine(from, to);
 

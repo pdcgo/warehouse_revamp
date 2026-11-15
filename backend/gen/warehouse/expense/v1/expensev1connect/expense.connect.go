@@ -53,7 +53,7 @@ type ExpenseServiceClient interface {
 	ExpenseCreate(context.Context, *connect.Request[v1.ExpenseCreateRequest]) (*connect.Response[v1.ExpenseCreateResponse], error)
 	// A team's expenses for a PERIOD, with per-kind totals (#168).
 	ExpenseList(context.Context, *connect.Request[v1.ExpenseListRequest]) (*connect.Response[v1.ExpenseListResponse], error)
-	// The same costs, summed PER DAY — the expense half of the daily statement.
+	// The same costs, summed per day, month or year — the expense half of the daily statement.
 	ExpenseDaily(context.Context, *connect.Request[v1.ExpenseDailyRequest]) (*connect.Response[v1.ExpenseDailyResponse], error)
 	// An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169). It is corrected by a
 	// NEW ROW, never by an edit (every-correction-is-a-signed-adjustment): ExpenseUpdate and ExpenseVoid are gone.
@@ -134,7 +134,7 @@ type ExpenseServiceHandler interface {
 	ExpenseCreate(context.Context, *connect.Request[v1.ExpenseCreateRequest]) (*connect.Response[v1.ExpenseCreateResponse], error)
 	// A team's expenses for a PERIOD, with per-kind totals (#168).
 	ExpenseList(context.Context, *connect.Request[v1.ExpenseListRequest]) (*connect.Response[v1.ExpenseListResponse], error)
-	// The same costs, summed PER DAY — the expense half of the daily statement.
+	// The same costs, summed per day, month or year — the expense half of the daily statement.
 	ExpenseDaily(context.Context, *connect.Request[v1.ExpenseDailyRequest]) (*connect.Response[v1.ExpenseDailyResponse], error)
 	// An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169). It is corrected by a
 	// NEW ROW, never by an edit (every-correction-is-a-signed-adjustment): ExpenseUpdate and ExpenseVoid are gone.

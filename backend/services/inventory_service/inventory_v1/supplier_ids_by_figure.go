@@ -28,25 +28,30 @@ const (
 // returned for a band from 0. The caller asks for the complement instead — the ids at or above the band's top — and
 // keeps everyone else.
 //
-// ONE statement. Sold sums every `order` row of `batch_logs` (the same netting SupplierGoods does, in one pass for all
-// suppliers); Ready sums the batches still holding stock.
+// ONE statement. Sold sums the `order` rows of inventory's daily stock fold, `inventory_stock_daily_changes`
+// (the-terjual-band-reads-the-daily-sold-fold): every `batch_logs` row is noted there in its own stock transaction, keyed
+// by the batch's supplier, so Σ change_count per supplier is the ledger's Terjual exactly — a cancel's flipped rows land
+// on the same type and net out — read without the join to batches, from rows that grow with sale-days, not with orders
+// (the equality test against the old ledger query guards it). Ready sums the batches still holding stock.
 func (s *Service) SupplierIDsByFigure(ctx context.Context, figure SupplierFigure, lo, hi int64) ([]uint64, error) {
 	db := s.db.WithContext(ctx)
 
 	var (
-		query *gorm.DB
-		sum   string
+		query    *gorm.DB
+		sum      string
+		supplier string
 	)
 
 	switch figure {
 	case SupplierFigureSold:
-		sum = "-SUM(l.change_count)"
+		sum = "-SUM(d.change_count)"
+		supplier = "d.supplier_id"
 		query = db.
-			Table(inventory_service_models.BatchLog{}.TableName()+" AS l").
-			Joins("JOIN batches b ON b.id = l.batch_id").
-			Where("l.change_type = ?", string(inventory_service_models.TxOrder))
+			Table("inventory_stock_daily_changes AS d").
+			Where("d.change_type = ?", string(inventory_service_models.TxOrder))
 	case SupplierFigureReady:
 		sum = "SUM(b.stock_count)"
+		supplier = "b.supplier_id"
 		query = db.
 			Table(inventory_service_models.Batch{}.TableName() + " AS b").
 			Where("b.stock_count > 0")
@@ -55,9 +60,9 @@ func (s *Service) SupplierIDsByFigure(ctx context.Context, figure SupplierFigure
 	}
 
 	query = query.
-		Select("b.supplier_id").
-		Where("b.supplier_id <> 0").
-		Group("b.supplier_id").
+		Select(supplier).
+		Where(supplier+" <> 0").
+		Group(supplier).
 		Having(sum+" >= ?", lo)
 
 	if hi > 0 {
@@ -67,8 +72,8 @@ func (s *Service) SupplierIDsByFigure(ctx context.Context, figure SupplierFigure
 	var ids []uint64
 
 	err := query.
-		Order("b.supplier_id").
-		Pluck("b.supplier_id", &ids).
+		Order(supplier).
+		Pluck(supplier, &ids).
 		Error
 	if err != nil {
 		return nil, fmt.Errorf("supplier ids by figure: %w", err)

@@ -101,12 +101,12 @@ sequenceDiagram
 
     UI->>UI: DateRangePicker to from/to — refuse if unbounded or over 366 days
 
-    par one period, two services
-        UI->>E: ExpenseDaily(team, from, to, kind, shop)
+    par one period, two services, one grain
+        UI->>E: ExpenseDaily(team, from, to, kind, shop, group_by)
         E->>E: filtered() — the SAME WHERE ExpenseList builds
-        E->>E: GROUP BY occurred_at, kind — every row, adjustments with their sign
-        E->>E: fold (day,kind) pairs into one item per day
-        E-->>UI: SPARSE days + the period's ExpenseTotals
+        E->>E: GROUP BY the bucket (the day, or its month or year) and kind — every row, adjustments with their sign
+        E->>E: sort the grouped rows, fold (bucket,kind) pairs into one item per bucket
+        E-->>UI: SPARSE buckets keyed by their first day + the period's ExpenseTotals
     and the income half, by team type
         alt selling team
             UI->>R: RevenueDaily(team, from, to)
@@ -117,8 +117,8 @@ sequenceDiagram
         end
     end
 
-    UI->>UI: daySpine(from,to) — build EVERY day in the range
-    UI->>UI: per day, income − expenses, then a running total
+    UI->>UI: bucketSpine(from,to,grain) — build EVERY bucket in the range
+    UI->>UI: per bucket, income − expenses, then a running total
     UI->>UI: footer = the SERVERS' totals, never a re-sum of the rows
 ```
 
@@ -148,21 +148,48 @@ the same `filtered()` helper the list uses. That is the point rather than a tidy
 to Ads beside a footer that still counted payroll would put a table and a total describing different
 things on one screen. One WHERE, three readers.
 
+### The grain is grouped on the server
+
+[periods-are-grouped-on-the-server](../../business/settlement/context_decision.md#periods-are-grouped-on-the-server):
+`ExpenseDailyRequest.group_by` (`analytic_base.v1.GroupType` — DAILY, MONTHLY or YEARLY; unset reads DAILY) picks the
+grain, and the ONE grouped query groups by the bucket — `occurred_at` itself, or
+`date_trunc('month' | 'year', occurred_at::timestamp)::date` (`san_period.Grain.Bucket`). Each item's `date` is the
+bucket's **first calendar day** (`2026-08-01`, `2026-01-01`), even when the period starts later in it — the key the
+settlement report already fills by. A month is therefore exactly the sum of its day rows (entries, total, every kind),
+and the browser only lays the rows on its spine; it never adds days into months. `occurred_at` is a DATE a person chose,
+so its month needs no zone. The grouped rows are sorted in Go, not by an `ORDER BY`: with one, Postgres may group by
+sorting every row (it cannot estimate how few buckets there are) and spill to disk at volume.
+
+Pinned by `TestExpenseDaily_AMonthsAndAYearsRowAreTheSumOfTheirDays` (30 Dec → 1 Feb: both edge months partial, a
+correction on 31 Dec, a write-off dated by `JakartaDay` at 00:30 WIB on 1 January — January, 2026 — and at 23:59 WIB on
+31 December — December, 2025; months and years equal the day rows summed, the footer equal at every grain, the kind filter
+too) and `TestExpenseDaily_TheSpanFollowsTheGrain`.
+
 ### The period IS the pagination
 
 `ExpenseDaily` takes no page cursor, and that does not breach HARD RULE 9. The rule guards a `repeated`
-whose length grows **with the data**. This one grows with `to − from`, which the caller states:
+whose length grows **with the data**. This one grows with the buckets in `to − from`, which the caller states:
 
 | | |
 | --- | --- |
 | Both bounds **required** | unlike `ExpenseList`, where they are optional and a page carries the risk |
-| Span **capped at 366 days** | `InvalidArgument` beyond it — refused, never clamped |
-| Result | ten years of expenses and one year of expenses return the same 366 rows |
+| Span **capped per grain** | 366 days · 60 months · 20 years (`san_period`, both ends counted) — `InvalidArgument` beyond it, refused, never clamped |
+| Result | ten years of expenses and one year of expenses return the same 366 day rows at most |
 
-The cap must match the other two services' exactly. The series are read side by side, and a cap that
-differed would let the statement load half a period and still look complete. It lives in **four** places:
-`maxPeriodDays` in expense, revenue and liability, and `MAX_PERIOD_DAYS` in
-[frontend/src/lib/period.ts](../../../frontend/src/lib/period.ts).
+The cap must match LiabilityDaily's exactly. The series are read side by side, and a cap that differed would let the
+statement load half a period and still look complete. It lives in **one** place on the server —
+`backend/pkgs/san_period` (`Grain.MaxBuckets`), which both handlers call — and the daily statement bounds every grain
+by `MAX_PERIOD_DAYS` in [frontend/src/lib/period.ts](../../../frontend/src/lib/period.ts) (its windows are unchanged;
+the yearly view's longer window is not decided).
+
+**Performance** (`TestPerf_ExpenseDaily`, `-tags perfaudit`, 2026-11-15): two queries (the grouped read and the
+period totals) at every grain; a busy team's 54 800 rows over three years among 548 000 — a year daily **11.7 ms**, the
+same year monthly **11.0 ms** (12 rows instead of 365), three years yearly **31.4 ms** (3 rows). Both read
+`expense_records_team_period_idx`. Before/after on one seed (HEAD's handler vs this one): Harian a year 12.0 → 11.4 ms;
+Bulanan 11.2 ms for 365 day rows the browser added up → 11.4 ms for 12 rows; Tahunan over three years 35.2 ms as three
+one-year daily reads (1 096 rows — the only way to ask before) → 30.6 ms in one. Months equal the day rows summed (largest
+difference 0). Not heavy, so no audit file. At three years the totals query seq-scans in this probe (the team is a tenth
+of the table) — 13 ms; a real table with more teams keeps the index.
 
 ### Sparse series, one calendar
 

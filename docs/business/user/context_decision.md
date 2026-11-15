@@ -76,8 +76,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-phone-starts-with-0-or-a-country-code](#a-phone-starts-with-0-or-a-country-code) | a number with neither a leading `0` nor `+` and a country code (nor `62`) is refused, never guessed | owner, 2026-10-06 |
 | [stored-phones-are-rewritten-once](#stored-phones-are-rewritten-once) | the migration rewrites every readable stored phone, leaves an unreadable one, and stops if two accounts share a number | owner, 2026-10-06 |
 | [the-pass-1-prototype-is-accepted](#the-pass-1-prototype-is-accepted) | design_accept of pass 1: the switcher's *All teams*, the strip, Create Team's required Owner and `owner_user_id`, with the five choices made in the prototype | owner, 2026-10-06 |
-| [an-override-shows-a-platform-badge](#an-override-shows-a-platform-badge) | a platform write inside a team carries a shared "by Platform" badge beside the person's name | owner, as recommended | — |
-| [the-override-badge-is-accepted-as-by-root-team](#the-override-badge-is-accepted-as-by-root-team) | the override badge prototype is accepted, named "by Root team" / "oleh tim Root" | owner, as recommended | — |
+| [an-override-shows-a-platform-badge](#an-override-shows-a-platform-badge) | a platform write inside a team carries a shared "by Platform" badge beside the person's name | owner, as recommended, 2026-11-09 |
+| [the-override-badge-is-accepted-as-by-root-team](#the-override-badge-is-accepted-as-by-root-team) | the override badge prototype is accepted, named "by Root team" / "oleh tim Root" | owner, as recommended, 2026-11-11 |
 | ~~[superseded-an-override-shows-as-the-person](#superseded-an-override-shows-as-the-person)~~ ⛔ withdrawn | a platform write inside a team is shown by the person who did it — no separate override badge | owner | — |
 
 ## warehouse-staff-is-the-whole-floor-job

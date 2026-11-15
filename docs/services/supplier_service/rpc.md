@@ -343,7 +343,7 @@ statements). With one, ONE more statement before the count:
 | Discover, big warehouse · page 50 by name | 20 of 2 000 | 35 · 36 ms |
 | own list, big · small warehouse + `q` | 20 of 200 · 20 of 60 | 43 · 22 ms |
 | Discover, big warehouse + Siap < 50 | 20 of 43 | 56 ms |
-| Discover, big warehouse + Terjual 500–1.000 | 0 | 137 ms — the band's own read (≈ 100 ms here, 0.6–0.9 s at 1 M order rows) |
+| Discover, big warehouse + Terjual 500–1.000 | 0 | 137 ms — the band's own read (≈ 100 ms here, 0.6–0.9 s at 1 M order rows); **80 ms since 2026-11-15**, the band (51 ms) reading inventory's daily sold fold — ≈ 0.28 s at 1 M ([the-terjual-band-reads-the-daily-sold-fold](../../business/supplier/context_decision.md#the-terjual-band-reads-the-daily-sold-fold)) |
 | Discover, a warehouse with no goods + Terjual band | 0 | 12 ms — the band is never asked |
 
 The 2 000-id array is ≈ 10 KB (control `SELECT length($1)` 0.6 ms — under this host's ≈ 25 KB loopback stall). The restock

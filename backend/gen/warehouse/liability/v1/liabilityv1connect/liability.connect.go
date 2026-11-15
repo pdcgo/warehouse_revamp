@@ -84,7 +84,7 @@ type LiabilityServiceClient interface {
 	LiabilityPositionList(context.Context, *connect.Request[v1.LiabilityPositionListRequest]) (*connect.Response[v1.LiabilityPositionListResponse], error)
 	// The counterparty detail's running history (#185).
 	LiabilityLogList(context.Context, *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error)
-	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
+	// What the ledger moved per day, month or year — a warehouse's income half of the daily statement.
 	LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error)
 	// The DEBTOR's side of a limit (the-debtor-sees-the-limits-set-on-it): for each team the asking team owes,
 	// the limit that team set on it, the debt it already carries, and how close it stands.
@@ -168,7 +168,7 @@ type LiabilityServiceHandler interface {
 	LiabilityPositionList(context.Context, *connect.Request[v1.LiabilityPositionListRequest]) (*connect.Response[v1.LiabilityPositionListResponse], error)
 	// The counterparty detail's running history (#185).
 	LiabilityLogList(context.Context, *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error)
-	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
+	// What the ledger moved per day, month or year — a warehouse's income half of the daily statement.
 	LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error)
 	// The DEBTOR's side of a limit (the-debtor-sees-the-limits-set-on-it): for each team the asking team owes,
 	// the limit that team set on it, the debt it already carries, and how close it stands.

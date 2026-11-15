@@ -3627,6 +3627,10 @@ flowchart LR
   ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)).
   Grouping on the server makes the screens agree; that fix makes them correct.
 
+✅ Built 2026-11-15 — `ExpenseDaily` and `LiabilityDaily` take the grain (`group_by`: DAILY, MONTHLY, YEARLY) and group in the query — expense over `occurred_at`, the Team Balance ledger over the Jakarta day — one row per bucket keyed by its first day, a month exactly the sum of its days (Go tests across a month, a year and the Jakarta midnight); the span is 366 days / 60 months / 20 years (`backend/pkgs/san_period`). The daily statement sends the grain and no longer buckets days in the browser — same figures; its 366-day bound and yearly window are unchanged ([state](../../development_state/balance/context.md#2026-11-15--the-daily-statements-month-and-year-are-grouped-on-the-server)).
+
+✅ Built 2026-11-15 — the daily statement reads each grain's span: Harian up to 366 days, Bulanan up to 60 months, Tahunan up to 20 years, counted as `san_period` counts them (`frontend/src/lib/period.ts` `MAX_PERIOD_BUCKETS`) — three years of Tahunan are one call per service answering three rows. As on the Settlement Report, a new grain keeps the window, and a range longer than its grain is kept and refused by the line under the picker — never sent, never trimmed ([state](../../development_state/balance/context.md#2026-11-15--the-daily-statement-reads-each-grains-span)).
+
 ## the-fold-locks-shop-then-user
 
 > Owner, in chat (2026-09-28) — *"for q2 yes"*, to [analytic Q2](./analytic_context_clarify.md#question) as

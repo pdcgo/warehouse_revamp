@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.liability.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/analytic_base/v1/analytic.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
@@ -60,7 +61,7 @@ service LiabilityService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // What the ledger moved PER DAY — a warehouse's income half of the daily statement.
+  // What the ledger moved per day, month or year — a warehouse's income half of the daily statement.
   rpc LiabilityDaily(LiabilityDailyRequest) returns (LiabilityDailyResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
     // the-admin-team-monitors-read-only).
@@ -575,12 +576,13 @@ message LiabilityLogListResponse {
 // opinion into the ledger's contract, so the enum is returned whole and the statement documents its
 // choice (it takes HANDLING_FEE).
 //
-// ⚠ NOT PAGINATED, exactly as RevenueDaily and ExpenseDaily are not: the response length is `to − from`,
-// which the caller states, and the span is CAPPED AT 366 DAYS. The cap must equal theirs — the three
-// series are read side by side on one screen, and a cap that differed would let the statement load part
-// of a period and still look complete.
+// ⚠ NOT PAGINATED, exactly as ExpenseDaily is not: the response length is the number of buckets between
+// `from` and `to`, which the caller states, and the span is CAPPED per grain — 366 days, 60 months or 20
+// years (periods-are-grouped-on-the-server). The caps must equal ExpenseDaily's — the series are read side
+// by side on one screen, and a cap that differed would let the statement load part of a period and still
+// look complete.
 //
-// ⚠ SPARSE: a day the ledger did not move is ABSENT, not a zero row. The client owns the date spine.
+// ⚠ SPARSE: a bucket the ledger did not move in is ABSENT, not a zero row. The client owns the date spine.
 message LiabilityDailyFilter {
   // THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
   string from = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
@@ -609,23 +611,33 @@ message LiabilityDailyRequest {
   ];
 
   LiabilityDailyFilter filter = 2 [(buf.validate.field).required = true];
+
+  // THE GRAIN — a row is a day, a month or a year (periods-are-grouped-on-the-server): DAILY, MONTHLY or YEARLY, and
+  // unset reads as DAILY. The SERVER groups, on the Jakarta calendar, so the browser never buckets days into months.
+  // The span cap follows the grain: 366 days, 60 months, 20 years — ExpenseDaily's.
+  warehouse.analytic_base.v1.GroupType group_by = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [0, 2, 4, 5]
+  }];
 }
 
-// One day of the ledger, from the scoped team's point of view.
+// One bucket of the ledger — a day, a month or a year, as the request's grain says — from the scoped team's point of
+// view.
 message LiabilityDayItem {
-  // The day this row sums, as YYYY-MM-DD.
+  // The bucket this row sums, as YYYY-MM-DD — its FIRST calendar day: the day itself, the 1st of its month
+  // (`2026-08-01`), or the 1st of January of its year (`2026-01-01`), even when the period starts later in it.
   //
-  // ⚠ Bucketed in UTC from `created_at`, the same cast RevenueDaily uses and carrying the same caveat:
-  // the business is UTC+7, so an entry posted before 07:00 local lands on the previous day. Consistency
-  // with the period bounds is why — see docs/services/expense_service/rpc.md, which states the same cap.
+  // The JAKARTA calendar (the-liability-day-is-the-jakarta-day): `created_at` is read in Asia/Jakarta before it is
+  // grouped, so a leg owed at 00:30 WIB on 1 January lands in January and in that year, and the period's bounds are
+  // Jakarta midnights.
   string date = 1;
 
-  // How many entry legs the day holds, reversals included.
+  // How many entry legs the bucket holds, reversals included.
   uint64 entries = 2;
 
   // ⚠ ONE SIGN CONVENTION (§4.11), unchanged here: from the scoped team's point of view a RECEIVABLE is
-  // POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum, so a day that charged a fee and reversed
-  // it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
+  // POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum — exactly the sum of its days' — so a day that
+  // charged a fee and reversed it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
   // A series that dropped them would show income the ledger has already taken back.
   double net = 3;
 
@@ -641,7 +653,7 @@ message LiabilityDailyTotals {
 }
 
 message LiabilityDailyResponse {
-  // ASCENDING by date, and SPARSE — see the note on LiabilityDailyFilter.
+  // ASCENDING by date, one item per bucket of the grain, and SPARSE — see the note on LiabilityDailyFilter.
   repeated LiabilityDayItem days = 1;
   // The period's totals, over the same filter. Sent rather than summed in the browser, so the
   // statement's footer is this service's answer and cannot drift from the days above it.

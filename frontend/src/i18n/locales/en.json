@@ -3569,7 +3569,7 @@
     "title": "Statement",
     "selectTeam": "Select a team to view its statement.",
     "rangeUnbounded": "Pick a start and an end date — a statement needs both ends.",
-    "rangeTooLong": "That range covers {{days}} days. A statement covers at most {{max}}.",
+    "rangeTooLong": "That range covers {{span}} {{unit}}. {{grain}} reads at most {{max}} {{unit}}.",
     "expectedMargin": "Expected margin",
     "marginSource": "From orders placed in this period",
     "feesEarned": "Fees earned",
@@ -3604,7 +3604,6 @@
         "year": "Year"
       }
     },
-    "grainCapped": "The series behind this screen covers at most {{max}} days, so a yearly view can only show this year — not last year beside it.",
     "unit": {
       "day": "day",
       "day_other": "days",

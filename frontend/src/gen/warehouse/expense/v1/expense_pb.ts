@@ -5,6 +5,8 @@
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
+import type { GroupType } from "../../analytic_base/v1/analytic_pb";
+import { file_warehouse_analytic_base_v1_analytic } from "../../analytic_base/v1/analytic_pb";
 import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
 import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import type { PageInfo } from "../../common/v1/page_pb";
@@ -16,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense.proto.
  */
 export const file_warehouse_expense_v1_expense: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSK9AgoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoARITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEhoKEmFkanVzdHNfZXhwZW5zZV9pZBgLIAEoBBISCgpuZXRfYW1vdW50GAwgASgBEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgNIAEoBBITCgtpc19vdmVycmlkZRgOIAEoCEoECAkQClIGdm9pZGVkIpMDChRFeHBlbnNlQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARKmAQoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQnW6SHK6AWgKK2V4cGVuc2VfY3JlYXRlLmtpbmQuc3RvY2tfbG9zc19pc19ub3RfdHlwZWQSLnN0b2NrIGxvc3MgaXMgcmVjb3JkZWQgYnkgaW52ZW50b3J5LCBub3QgdHlwZWQaCXRoaXMgIT0gNYIBBBABIAASIAoGYW1vdW50GAMgASgBQhC6SA0SC0ABIQAAAAAAAAAAEjgKC29jY3VycmVkX2F0GAQgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIPCgdzaG9wX2lkGAUgASgEEhYKBG5vdGUYBiABKAlCCLpIBXIDGPQDEiMKEmZpbmFuY2VfYWNjb3VudF9pZBgHIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgBEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAToCOAEivgIKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgBEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSGgoSYWRqdXN0c19leHBlbnNlX2lkGAsgASgEEhIKCm5ldF9hbW91bnQYDCABKAESGgoSZmluYW5jZV9hY2NvdW50X2lkGA0gASgEEhMKC2lzX292ZXJyaWRlGA4gASgISgQICRAKUgZ2b2lkZWQisQEKEUV4cGVuc2VSb3dNYXBJdGVtEkYKCG1hcF9kYXRhGAEgAygLMjQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93SXRlbToCOAEikgEKF0V4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASOgoHZXhwZW5zZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtSABCAwoBZCLHAQoTRXhwZW5zZUxpc3RSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgEIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMixAEKEkV4cGVuc2VEYWlseUZpbHRlchIxCgRmcm9tGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIvCgJ0bxgCIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIoMBChNFeHBlbnNlRGFpbHlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseUZpbHRlckIGukgDyAEBOgyStRgICgYBAgMEBgkisAEKDkV4cGVuc2VEYXlJdGVtEgwKBGRhdGUYASABKAkSDwoHZW50cmllcxgCIAEoBBINCgV0b3RhbBgDIAEoARJBCgdieV9raW5kGAQgAygLMjAud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0uQnlLaW5kRW50cnkaLQoLQnlLaW5kRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgBOgI4ASJ/ChRFeHBlbnNlRGFpbHlSZXNwb25zZRIyCgRkYXlzGAEgAygLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0SMwoGdG90YWxzGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscyKXAQoURXhwZW5zZUFkanVzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKZXhwZW5zZV9pZBgCIAEoBEIHukgEMgIgABIgCgZhbW91bnQYAyABKAFCELpIDRILOQAAAAAAAAAAQAESFgoEbm90ZRgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQihgEKFUV4cGVuc2VBZGp1c3RSZXNwb25zZRI3CgphZGp1c3RtZW50GAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZBI0CgdleHBlbnNlGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzK5AwoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmcKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZSIDkAIBEmoKDEV4cGVuc2VEYWlseRIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseVJlcXVlc3QaKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXNwb25zZSIDkAIBEmgKDUV4cGVuc2VBZGp1c3QSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQWRqdXN0UmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VBZGp1c3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSK9AgoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoARITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEhoKEmFkanVzdHNfZXhwZW5zZV9pZBgLIAEoBBISCgpuZXRfYW1vdW50GAwgASgBEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgNIAEoBBITCgtpc19vdmVycmlkZRgOIAEoCEoECAkQClIGdm9pZGVkIpMDChRFeHBlbnNlQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARKmAQoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQnW6SHK6AWgKK2V4cGVuc2VfY3JlYXRlLmtpbmQuc3RvY2tfbG9zc19pc19ub3RfdHlwZWQSLnN0b2NrIGxvc3MgaXMgcmVjb3JkZWQgYnkgaW52ZW50b3J5LCBub3QgdHlwZWQaCXRoaXMgIT0gNYIBBBABIAASIAoGYW1vdW50GAMgASgBQhC6SA0SC0ABIQAAAAAAAAAAEjgKC29jY3VycmVkX2F0GAQgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIPCgdzaG9wX2lkGAUgASgEEhYKBG5vdGUYBiABKAlCCLpIBXIDGPQDEiMKEmZpbmFuY2VfYWNjb3VudF9pZBgHIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgBEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAToCOAEivgIKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgBEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSGgoSYWRqdXN0c19leHBlbnNlX2lkGAsgASgEEhIKCm5ldF9hbW91bnQYDCABKAESGgoSZmluYW5jZV9hY2NvdW50X2lkGA0gASgEEhMKC2lzX292ZXJyaWRlGA4gASgISgQICRAKUgZ2b2lkZWQisQEKEUV4cGVuc2VSb3dNYXBJdGVtEkYKCG1hcF9kYXRhGAEgAygLMjQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93SXRlbToCOAEikgEKF0V4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASOgoHZXhwZW5zZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtSABCAwoBZCLHAQoTRXhwZW5zZUxpc3RSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgEIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMixAEKEkV4cGVuc2VEYWlseUZpbHRlchIxCgRmcm9tGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIvCgJ0bxgCIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIs4BChNFeHBlbnNlRGFpbHlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseUZpbHRlckIGukgDyAEBEkkKCGdyb3VwX2J5GAMgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQhC6SA2CAQoQARgAGAIYBBgFOgyStRgICgYBAgMEBgkisAEKDkV4cGVuc2VEYXlJdGVtEgwKBGRhdGUYASABKAkSDwoHZW50cmllcxgCIAEoBBINCgV0b3RhbBgDIAEoARJBCgdieV9raW5kGAQgAygLMjAud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0uQnlLaW5kRW50cnkaLQoLQnlLaW5kRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgBOgI4ASJ/ChRFeHBlbnNlRGFpbHlSZXNwb25zZRIyCgRkYXlzGAEgAygLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0SMwoGdG90YWxzGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscyKXAQoURXhwZW5zZUFkanVzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKZXhwZW5zZV9pZBgCIAEoBEIHukgEMgIgABIgCgZhbW91bnQYAyABKAFCELpIDRILOQAAAAAAAAAAQAESFgoEbm90ZRgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQihgEKFUV4cGVuc2VBZGp1c3RSZXNwb25zZRI3CgphZGp1c3RtZW50GAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZBI0CgdleHBlbnNlGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzK5AwoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmcKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZSIDkAIBEmoKDEV4cGVuc2VEYWlseRIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseVJlcXVlc3QaKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXNwb25zZSIDkAIBEmgKDUV4cGVuc2VBZGp1c3QSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQWRqdXN0UmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VBZGp1c3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
@@ -550,12 +552,13 @@ export const ExpenseListResponseSchema: GenMessage<ExpenseListResponse> = /*@__P
  * series side by side and subtracts them, so a difference in how they page, bound or bucket would land
  * on the reader as an unexplainable gap in one column.
  *
- * ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is `to − from`, which the
- * caller states and the server CAPS at 366 days. Both bounds are required here, unlike ExpenseList
- * where they are optional and a page carries the risk instead.
+ * ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is the number of buckets
+ * between `from` and `to`, which the caller states and the server CAPS per grain — 366 days, 60 months or
+ * 20 years (periods-are-grouped-on-the-server). Both bounds are required here, unlike ExpenseList where
+ * they are optional and a page carries the risk instead.
  *
- * ⚠ SPARSE: a day nobody spent anything on is ABSENT, not a zero row. The client owns the date spine
- * because it must build one to merge these days with revenue's.
+ * ⚠ SPARSE: a bucket nobody spent anything in is ABSENT, not a zero row. The client owns the date spine
+ * because it must build one to merge these buckets with the income half's.
  *
  * The one place it is NOT a mirror is bucketing, and that difference is the point of the field it uses.
  * A cost is filed under `occurred_at` — the day the person said it BELONGS to — while revenue is filed
@@ -612,6 +615,15 @@ export type ExpenseDailyRequest = Message<"warehouse.expense.v1.ExpenseDailyRequ
    * @generated from field: warehouse.expense.v1.ExpenseDailyFilter filter = 2;
    */
   filter?: ExpenseDailyFilter | undefined;
+
+  /**
+   * THE GRAIN — a row is a day, a month or a year (periods-are-grouped-on-the-server): DAILY, MONTHLY or YEARLY, and
+   * unset reads as DAILY. The SERVER groups, over the stored day, so the browser never buckets days into months and two
+   * screens cannot compute "August" two ways. The span cap follows the grain: 366 days, 60 months, 20 years.
+   *
+   * @generated from field: warehouse.analytic_base.v1.GroupType group_by = 3;
+   */
+  groupBy: GroupType;
 };
 
 /**
@@ -622,13 +634,15 @@ export const ExpenseDailyRequestSchema: GenMessage<ExpenseDailyRequest> = /*@__P
   messageDesc(file_warehouse_expense_v1_expense, 12);
 
 /**
- * One day's spending.
+ * One bucket's spending — a day's, a month's or a year's, as the request's grain says.
  *
  * @generated from message warehouse.expense.v1.ExpenseDayItem
  */
 export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
   /**
-   * The day this row sums, as YYYY-MM-DD — from `occurred_at`, the day the money BELONGS to.
+   * The bucket this row sums, as YYYY-MM-DD — its FIRST calendar day: the day itself, the 1st of its month
+   * (`2026-08-01`), or the 1st of January of its year (`2026-01-01`), even when the period starts later in it. From
+   * `occurred_at`, the day the money BELONGS to.
    *
    * No timezone caveat here, unlike RevenueDayItem: `occurred_at` is a DATE column, chosen by a person.
    * There is no instant to convert and therefore no zone to get wrong.
@@ -638,7 +652,7 @@ export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
   date: string;
 
   /**
-   * How many rows the day's number is made of — its expenses AND the adjustments that correct them, each counting on
+   * How many rows the bucket's number is made of — its expenses AND the adjustments that correct them, each counting on
    * the corrected expense's day.
    *
    * @generated from field: uint64 entries = 2;
@@ -646,15 +660,15 @@ export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
   entries: bigint;
 
   /**
-   * The day's spending, the exact sum.
+   * The bucket's spending, the exact sum — exactly the sum of its days' totals.
    *
    * @generated from field: double total = 3;
    */
   total: number;
 
   /**
-   * Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
-   * day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
+   * Split by kind, so a bucket that jumped can be read without opening the list. A kind with nothing in
+   * the bucket is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
    * and zero read identically, and building the empty ones would mean this message knowing the enum's
    * members.
    *
@@ -675,7 +689,7 @@ export const ExpenseDayItemSchema: GenMessage<ExpenseDayItem> = /*@__PURE__*/
  */
 export type ExpenseDailyResponse = Message<"warehouse.expense.v1.ExpenseDailyResponse"> & {
   /**
-   * ASCENDING by date, and SPARSE — see the note on ExpenseDailyFilter.
+   * ASCENDING by date, one item per bucket of the grain, and SPARSE — see the note on ExpenseDailyFilter.
    *
    * @generated from field: repeated warehouse.expense.v1.ExpenseDayItem days = 1;
    */
@@ -958,7 +972,7 @@ export const ExpenseService: GenService<{
     output: typeof ExpenseListResponseSchema;
   },
   /**
-   * The same costs, summed PER DAY — the expense half of the daily statement.
+   * The same costs, summed per day, month or year — the expense half of the daily statement.
    *
    * @generated from rpc warehouse.expense.v1.ExpenseService.ExpenseDaily
    */

@@ -7,7 +7,7 @@
 // Volume: 2 000 suppliers kept by 10 selling teams (200 each); 100 000 batches over 8 warehouses — the big one holds 30 %
 // (≈ 30 000 batches, every supplier's goods), each other ≈ 10 000 batches from ≈ 600 suppliers; two in five batches
 // emptied, a third from nobody; 85 % minted by a restock, 10 % by a transfer, 5 % by a return; 300 000 `order` rows on
-// batch_logs.
+// batch_logs, folded into inventory_stock_daily_changes as every take does.
 //
 //	go test -tags perfaudit -p 1 -run TestPerf_SupplierListWarehouse -v ./backend/cmd/app_development/
 package main
@@ -85,6 +85,17 @@ func perfSwVolume(t *testing.T, db *gorm.DB) {
 		 SELECT 9531001, 9530001, bounds.lo + ((t.id * 7919 + n * 104729) % bounds.span), t.id, 'order', -1, -10000,
 		        1, 10000, 10000, '', 1, t.created_at
 		 FROM t CROSS JOIN bounds CROSS JOIN generate_series(1, 2) n`,
+
+		// The order rows folded into inventory's daily stock changes as inventory 00042's backfill does — the rows every
+		// take writes beside its logs, which the Terjual band reads (the-terjual-band-reads-the-daily-sold-fold).
+		`INSERT INTO inventory_stock_daily_changes
+		     (day, warehouse_id, team_id, product_id, supplier_id, change_type, change_count, change_value)
+		 SELECT (l.created_at AT TIME ZONE 'Asia/Jakarta')::date, l.warehouse_id, l.team_id, b.product_id, b.supplier_id,
+		        l.change_type, SUM(l.change_count), SUM(l.change_valuation)
+		 FROM batch_logs l
+		 JOIN batches b ON b.id = l.batch_id
+		 WHERE b.team_id BETWEEN 9530001 AND 9530010
+		 GROUP BY 1, 2, 3, 4, 5, 6`,
 	}
 
 	for _, statement := range statements {
@@ -94,7 +105,8 @@ func perfSwVolume(t *testing.T, db *gorm.DB) {
 		}
 	}
 
-	for _, table := range []string{"suppliers", "inventory_transactions", "batches", "batch_logs"} {
+	for _, table := range []string{"suppliers", "inventory_transactions", "batches", "batch_logs",
+		"inventory_stock_daily_changes"} {
 		err := quiet.Exec("ANALYZE " + table).Error
 		if err != nil {
 			t.Fatalf("analyze %s: %v", table, err)

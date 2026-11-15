@@ -327,13 +327,30 @@ No page cursor, and that does not breach HARD RULE 9 — the rule guards a `repe
 | | |
 | --- | --- |
 | Both bounds **required** | an open end is the unbounded read the rule is about |
-| Span **capped at 366 days** | `InvalidArgument` beyond it — refused, never clamped |
-| Result | a ten-year-old ledger and a one-year-old ledger return the same 366 rows |
+| Span **capped per grain** | 366 days · 60 months · 20 years (`san_period`, both ends counted) — `InvalidArgument` beyond it, refused, never clamped |
+| Result | a ten-year-old ledger and a one-year-old ledger return the same 366 day rows at most |
 
-The cap must equal revenue's and expense's. All three are read side by side, and a cap that differed would
-let the statement load part of a period and still look complete. It lives in **four** places:
-`maxPeriodDays` in liability, revenue and expense, and `MAX_PERIOD_DAYS` in
-[frontend/src/lib/period.ts](../../../frontend/src/lib/period.ts).
+The cap must equal ExpenseDaily's. Both are read side by side, and a cap that differed would let the statement load part
+of a period and still look complete. It lives in **one** place on the server — `backend/pkgs/san_period`
+(`Grain.MaxBuckets`), which both handlers call — and the daily statement bounds every grain by `MAX_PERIOD_DAYS` in
+[frontend/src/lib/period.ts](../../../frontend/src/lib/period.ts) (its windows are unchanged).
+
+### The grain is grouped on the server
+
+[periods-are-grouped-on-the-server](../../business/settlement/context_decision.md#periods-are-grouped-on-the-server):
+`LiabilityDailyRequest.group_by` (`analytic_base.v1.GroupType` — DAILY, MONTHLY or YEARLY; unset reads DAILY) picks the
+grain, and the ONE grouped query groups by the bucket of the **Jakarta** day —
+`date_trunc('month' | 'year', ((created_at AT TIME ZONE 'Asia/Jakarta')::date)::timestamp)::date`
+(`san_period.Grain.Bucket`). Each item's `date` is the bucket's first calendar day (`2026-08-01`, `2026-01-01`); a leg
+owed at 00:30 WIB on 1 January (17:30 UTC on 31 December) lands in January and in that year. A month is exactly the sum
+of its day rows (legs, net, every source); the browser never adds days into months. The grouped rows are sorted in Go,
+not by an `ORDER BY` — with one, Postgres grouped three years of a busy warehouse's legs by sorting them all and spilled
+the sort to disk (`external merge`, 0.47–1.8 s cold); without it, it hashes them into the handful of buckets (≈ 72 ms).
+
+Pinned by `TestLiabilityDaily_AMonthsAndAYearsRowAreTheSumOfTheirJakartaDays` (30 Dec → 1 Feb, legs at 23:59 WIB on
+31 December, 00:00 and 00:30 WIB on 1 January, 23:30 WIB on 31 January and 06:00 WIB on 1 February — the UTC calendar
+would put three of them in the other bucket — a fee and its reversal in January; months and years equal the day rows
+summed, the footer equal at every grain) and `TestLiabilityDaily_TheSpanFollowsTheGrain`.
 
 ### Sparse series, one calendar
 
@@ -366,12 +383,18 @@ Pinned by `TestLiabilityDaily_AnAmountOwedBefore0700WIBLandsOnItsJakartaDay` (00
 23:59 WIB the evening before does not) and `TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull` (23:30 WIB counts,
 00:05 WIB the next day does not — though both are the same UTC day).
 
-**Performance** (`TestPerf_LiabilityDaily`, `-tags perfaudit`, 2026-11-05): one query; 50 000 legs for the team among
-500 000 — a 31-day period **10.7 ms** median, a 366-day period **30 ms**. The plan is the one the UTC grouping had (a
-bitmap scan of `liability_logs_pair_idx` on its `team_id` prefix, then the `created_at` filter; the probe EXPLAINs both
-groupings side by side: 9.7 vs 9.2 ms, 28.5 vs 21.7 ms) — the change moved the group key, not the access path. Not
-heavy, so no audit file. The `created_at` filter removes 46 125 of the team's rows on the 31-day period: an index on
-`(team_id, created_at)` would narrow it, the owner's call if a team's ledger grows far past this.
+**Performance** (`TestPerf_LiabilityDaily`, `-tags perfaudit`, 2026-11-15): one query at every grain; a busy warehouse's
+100 000 legs over three years among 575 000, interleaved — a month daily **2.1 ms**, a year daily **21.9 ms**, the year
+monthly **23.3 ms** (12 rows), three years yearly **71.8 ms** (3 rows). Index `liability_logs_team_created_idx (team_id,
+created_at)` (liability `00015`, a pure index — [a-pure-index-is-added-without-asking](../../technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)):
+before it the read seq-scanned or walked the team's whole history through `liability_logs_pair_idx` — a month daily 22.6 →
+2.5 ms (generic plan 152 → 2.6 ms), a year daily 37 → 23.5 ms, a year monthly 38 → 24 ms, three years unchanged.
+Before/after on one seed (HEAD's handler without the index vs this one with it): Harian a month 21.6 → 2.4 ms, a year
+37.4 → 20.9 ms; Bulanan 37.2 ms for 365 day rows the browser added up → 21.9 ms for 12 rows; Tahunan over three years
+112 ms as three one-year daily reads (1 096 rows) → 64 ms in one. Months equal the day rows summed (largest difference 0).
+The three-year read passes 50 ms — every leg of the team is read and hashed — so it has an audit file:
+[LiabilityDaily.md](../../../audits/services/liability_service/performances/LiabilityDaily.md). (2026-11-05, the Jakarta
+day: 10.7 ms / 30 ms at 50 000 legs, the plan unchanged from the UTC grouping.)
 
 ### The totals are built in the fold, not by a second query
 

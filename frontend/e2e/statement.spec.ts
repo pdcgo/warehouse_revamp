@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
 
@@ -315,4 +315,334 @@ test("Statement: narrowing the range rebuilds the day spine", async ({ page }) =
 
   // Today is the last day of any "last N days" window, so it survives the narrowing.
   await expect(page.getByTestId(`statement-row-${today()}`)).toBeVisible();
+});
+
+// ── THE GRAIN IS THE SERVER'S (periods-are-grouped-on-the-server) ──────────────────────────────────
+//
+// Bulanan and Tahunan are ASKED of both services — the grain is on the wire — and a month's row is the server's month:
+// exactly the sum of its days. In a WAREHOUSE team of its own (backlog #50), so the figures are only this test's: three
+// costs on the last day of the previous month, the first of this one and today — a month boundary inside the window.
+//
+// A new grain re-picks the window (the-yearly-statement-opens-on-five-years): Bulanan opens on the last twelve months,
+// the first of them whole — twelve rows; Tahunan on 1 January four years back → today — five rows. So the test opens
+// the statement on its default and switches the grain, as a person does.
+
+// A Jakarta day, `yyyy-mm-dd` — the calendar the RPCs and the screen use, whatever the runner's clock zone.
+function jakartaDay(daysFromToday = 0): string {
+  return new Date(Date.now() + 7 * 3_600_000 + daysFromToday * 86_400_000).toISOString().slice(0, 10);
+}
+
+// The day before a `yyyy-mm-dd` — date arithmetic on the label itself, no zone.
+function dayBefore(day: string): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+}
+
+// The 1st of the month `months` before a `yyyy-mm-dd`'s month — the first day of the window Bulanan opens on.
+function firstOfMonthBack(day: string, months: number): string {
+  const [y, m] = day.split("-").map(Number);
+
+  return new Date(Date.UTC(y!, m! - 1 - months, 1)).toISOString().slice(0, 10);
+}
+
+// Waits for both Daily reads at a grain over a window — the request the screen sends, its body read as JSON.
+function asked(page: Page, groupBy: string, from: string, to: string) {
+  return Promise.all(
+    ["ExpenseDaily", "LiabilityDaily"].map((rpcName) =>
+      page.waitForRequest((r) => {
+        if (!r.url().endsWith(`/${rpcName}`)) return false;
+        const body = JSON.parse(r.postData() ?? "{}") as { groupBy?: string; filter?: { from?: string; to?: string } };
+
+        return body.groupBy === groupBy && body.filter?.from === from && body.filter?.to === to;
+      }),
+    ),
+  );
+}
+
+test("Statement: Bulanan and Tahunan are the server's months and years — each the sum of its days", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const team = (
+    await rpc<{ team: { id: string } }>(page, "team.v1.TeamService/TeamCreate", {
+      type: "TEAM_TYPE_WAREHOUSE",
+      name: `E2E Statement Grain ${SUFFIX}`,
+      teamCode: `STG${SUFFIX}`,
+      ownerUserId: ROOT_USER_ID,
+    })
+  ).team.id;
+
+  const account = (
+    await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+      teamId: team,
+      type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+      provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+      name: `E2E statement grain ${SUFFIX}`,
+      holderName: "E2E",
+      accountNumber: `E2E-STG-${SUFFIX}`,
+      openingBalance: 0,
+      openingOn: jakartaDay(),
+    })
+  ).account.id;
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: team,
+    accountId: account,
+    operational: true,
+  });
+
+  const now = jakartaDay();
+  const firstOfMonth = `${now.slice(0, 8)}01`;
+  const lastOfPrevious = dayBefore(firstOfMonth);
+  const costs: [string, number][] = [
+    [lastOfPrevious, 1_100_000],
+    [firstOfMonth, 220_000],
+    [now, 33_000],
+  ];
+
+  for (const [day, amount] of costs) {
+    await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
+      teamId: team,
+      kind: 3, // EXPENSE_KIND_OPERATIONAL
+      amount: String(amount),
+      occurredAt: day,
+      note: `E2E statement grain ${SUFFIX}`,
+      financeAccountId: account,
+    });
+  }
+
+  const sumWhere = (keep: (day: string) => boolean) =>
+    costs.filter(([day]) => keep(day)).reduce((total, [, amount]) => total + amount, 0);
+
+  const thisMonth = now.slice(0, 7);
+  const previousMonth = lastOfPrevious.slice(0, 7);
+
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+  await page.goto("/statement");
+  await expect(page.getByTestId("statement-table")).toBeVisible();
+
+  // BULANAN — the last twelve months, the first of them whole, asked of both services by month: twelve rows, and this
+  // month and the previous one carry their own days, nothing more.
+  const twelveMonthsFrom = firstOfMonthBack(now, 11);
+  const askedMonthly = asked(page, "GROUP_TYPE_MONTHLY", twelveMonthsFrom, now);
+  await page.getByTestId("statement-grain-month").click();
+  await askedMonthly;
+
+  await expect(page.getByTestId(`statement-row-${thisMonth}`)).toBeVisible();
+  await expect(page.getByTestId(`statement-row-${twelveMonthsFrom.slice(0, 7)}`)).toBeVisible();
+  await expect(page.locator('[data-testid="statement-table"] tbody tr')).toHaveCount(12);
+  await expect(page).toHaveURL(new RegExp(`range=${twelveMonthsFrom}\\.\\.${now}`));
+
+  await expect
+    .poll(() => rowCell(page, thisMonth, "Other expenses"))
+    .toBe(sumWhere((day) => day.startsWith(thisMonth)));
+  expect(await rowCell(page, previousMonth, "Other expenses")).toBe(1_100_000);
+  expect(await money(page, "statement-footer-profit")).toBe(-1_353_000);
+
+  // TAHUNAN OPENS ON FIVE YEARS — 1 January four years back → today, asked by year: five rows, this year's carrying
+  // its own days.
+  const thisYear = now.slice(0, 4);
+  const fiveYearsFrom = `${Number(thisYear) - 4}-01-01`;
+  const askedYearly = asked(page, "GROUP_TYPE_YEARLY", fiveYearsFrom, now);
+  await page.getByTestId("statement-grain-year").click();
+  await askedYearly;
+
+  await expect(page.locator('[data-testid="statement-table"] tbody tr')).toHaveCount(5);
+  await expect(page.getByTestId(`statement-row-${Number(thisYear) - 4}`)).toBeVisible();
+  await expect(page.getByTestId(`statement-row-${thisYear}`)).toBeVisible();
+  await expect
+    .poll(() => rowCell(page, thisYear, "Other expenses"))
+    .toBe(sumWhere((day) => day.startsWith(thisYear)));
+  expect(await money(page, "statement-footer-profit")).toBe(-1_353_000);
+
+  // The server's month IS the sum of its days — the API at both grains, over the same two months.
+  const period = { from: `${previousMonth}-01`, to: now, kind: 0, shopId: "0" };
+  const days = await rpc<{ days: { date: string; total?: number; entries?: string }[] }>(
+    page,
+    "expense.v1.ExpenseService/ExpenseDaily",
+    { teamId: team, filter: period },
+  );
+  const months = await rpc<{ days: { date: string; total?: number; entries?: string }[] }>(
+    page,
+    "expense.v1.ExpenseService/ExpenseDaily",
+    { teamId: team, filter: period, groupBy: "GROUP_TYPE_MONTHLY" },
+  );
+
+  const rolled = new Map<string, { total: number; entries: number }>();
+  for (const d of days.days) {
+    const key = `${d.date.slice(0, 7)}-01`;
+    const held = rolled.get(key) ?? { total: 0, entries: 0 };
+    held.total += d.total ?? 0;
+    held.entries += Number(d.entries ?? "0");
+    rolled.set(key, held);
+  }
+
+  expect(months.days.map((m) => [m.date, m.total ?? 0, Number(m.entries ?? "0")])).toEqual(
+    [...rolled.entries()].map(([date, b]) => [date, b.total, b.entries]),
+  );
+});
+
+// ── THE SPAN EACH GRAIN UNLOCKS (periods-are-grouped-on-the-server) ────────────────────────────────
+//
+// Harian reads up to 366 days, Bulanan 60 months, Tahunan 20 years — so three years of Tahunan, picked by hand (the URL
+// holds it), is ONE call per service answering three rows: a hand-picked range stays until the grain is switched. Back
+// on Harian the grain re-picks its own window, the last month (the-yearly-statement-opens-on-five-years). Three years
+// at Harian, picked by hand, are named by the line under the picker — never sent, never trimmed. In a WAREHOUSE team of
+// its own (backlog #50): a cost in each of the three years, 31 December and 1 January among them.
+
+// Every Daily read the page sends — which RPC, at which grain, over which window.
+interface StatementRead {
+  rpc: string;
+  groupBy: string;
+  from: string;
+  to: string;
+}
+
+function recordStatementReads(page: Page): StatementRead[] {
+  const reads: StatementRead[] = [];
+
+  page.on("request", (request) => {
+    const rpcName = ["ExpenseDaily", "LiabilityDaily"].find((name) => request.url().endsWith(`/${name}`));
+    if (!rpcName) return;
+
+    const body = JSON.parse(request.postData() ?? "{}") as { groupBy?: string; filter?: { from?: string; to?: string } };
+    reads.push({
+      rpc: rpcName,
+      groupBy: body.groupBy ?? "GROUP_TYPE_UNSPECIFIED",
+      from: body.filter?.from ?? "",
+      to: body.filter?.to ?? "",
+    });
+  });
+
+  return reads;
+}
+
+test("Statement: a hand-picked three years of Tahunan is three rows from one call — back on Harian it opens the last month", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const now = jakartaDay();
+  const year = Number(now.slice(0, 4));
+  const from = `${year - 2}-01-01`;
+
+  const team = (
+    await rpc<{ team: { id: string } }>(page, "team.v1.TeamService/TeamCreate", {
+      type: "TEAM_TYPE_WAREHOUSE",
+      name: `E2E Statement Years ${SUFFIX}`,
+      teamCode: `STY${SUFFIX}`,
+      ownerUserId: ROOT_USER_ID,
+    })
+  ).team.id;
+
+  const account = (
+    await rpc<{ account: { id: string } }>(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+      teamId: team,
+      type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+      provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+      name: `E2E statement years ${SUFFIX}`,
+      holderName: "E2E",
+      accountNumber: `E2E-STY-${SUFFIX}`,
+      openingBalance: 0,
+      openingOn: from,
+    })
+  ).account.id;
+  await rpc(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: team,
+    accountId: account,
+    operational: true,
+  });
+
+  const costs: [string, number][] = [
+    [`${year - 2}-03-10`, 410_000],
+    [`${year - 1}-12-31`, 95_000],
+    [`${year}-01-01`, 64_000],
+    [now, 3_000],
+  ];
+
+  for (const [day, amount] of costs) {
+    await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
+      teamId: team,
+      kind: 3, // EXPENSE_KIND_OPERATIONAL
+      amount: String(amount),
+      occurredAt: day,
+      note: `E2E statement years ${SUFFIX}`,
+      financeAccountId: account,
+    });
+  }
+
+  const yearTotal = (y: number) =>
+    costs.filter(([day]) => day.startsWith(String(y))).reduce((total, [, amount]) => total + amount, 0);
+
+  // TAHUNAN OVER THREE YEARS — opened at its URL (the grain and the window live there).
+  const reads = recordStatementReads(page);
+  await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+  await page.goto(`/statement?grain=year&range=${from}..${now}`);
+
+  await expect(page.locator('[data-testid="statement-table"] tbody tr')).toHaveCount(3);
+  for (const y of [year - 2, year - 1, year]) {
+    await expect.poll(() => rowCell(page, String(y), "Other expenses")).toBe(yearTotal(y));
+  }
+  expect(await money(page, "statement-footer-profit")).toBe(-(yearTotal(year - 2) + yearTotal(year - 1) + yearTotal(year)));
+
+  // ONE call per service, by year, over the whole three years.
+  expect(reads.sort((a, b) => a.rpc.localeCompare(b.rpc))).toEqual([
+    { rpc: "ExpenseDaily", groupBy: "GROUP_TYPE_YEARLY", from, to: now },
+    { rpc: "LiabilityDaily", groupBy: "GROUP_TYPE_YEARLY", from, to: now },
+  ]);
+
+  // BACK TO HARIAN — the grain re-picks its window: the last month, read by day (never three years by day), and the URL
+  // drops both the grain and the range — the screen's defaults.
+  await page.getByTestId("statement-grain-day").click();
+
+  await expect(page.locator('[data-testid="statement-table"] tbody tr')).toHaveCount(lastMonthDays());
+  await expect(page.getByTestId(`statement-row-${now}`)).toBeVisible();
+  await expect(page.getByTestId("statement-range-invalid")).toHaveCount(0);
+  await expect(page).not.toHaveURL(/range=|grain=/);
+  await expect.poll(() => reads.length).toBe(4);
+  expect(reads.slice(2).map((r) => [r.groupBy, r.to])).toEqual([
+    ["GROUP_TYPE_DAILY", now],
+    ["GROUP_TYPE_DAILY", now],
+  ]);
+  expect(new Set(reads.slice(2).map((r) => r.from)).size).toBe(1);
+
+  // THREE YEARS PICKED BY HAND AT HARIAN — the line says it is more days than Harian reads, and nothing is sent: no
+  // daily read left the browser, and no error came back.
+  const days = Math.round((Date.parse(`${now}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+  await page.goto(`/statement?range=${from}..${now}`);
+
+  await expect(page.getByTestId("statement-range-invalid")).toHaveText(
+    `That range covers ${days} days. Daily reads at most 366 days.`,
+  );
+  await expect(page).toHaveURL(new RegExp(`range=${from}\\.\\.${now}`));
+  await expect(page.getByTestId("statement-table")).toHaveCount(0);
+  await expect(page.getByTestId("statement-error")).toHaveCount(0);
+  expect(reads).toHaveLength(4);
+
+  // (The API checks below go through the page too, so the recorded reads stop being only the screen's from here.)
+
+  // The server's year IS the sum of its months — the API at both grains, over the same three years (36 months or fewer,
+  // inside Bulanan's 60).
+  const period = { from, to: now, kind: 0, shopId: "0" };
+  const yearly = await rpc<{ days: { date: string; total?: number }[] }>(page, "expense.v1.ExpenseService/ExpenseDaily", {
+    teamId: team,
+    filter: period,
+    groupBy: "GROUP_TYPE_YEARLY",
+  });
+  const monthly = await rpc<{ days: { date: string; total?: number }[] }>(page, "expense.v1.ExpenseService/ExpenseDaily", {
+    teamId: team,
+    filter: period,
+    groupBy: "GROUP_TYPE_MONTHLY",
+  });
+  const rolled = new Map<string, number>();
+  for (const m of monthly.days) {
+    const key = `${m.date.slice(0, 4)}-01-01`;
+    rolled.set(key, (rolled.get(key) ?? 0) + (m.total ?? 0));
+  }
+  expect(yearly.days.map((y) => [y.date, y.total ?? 0])).toEqual([...rolled.entries()]);
+  expect(yearly.days.map((y) => y.date)).toEqual([year - 2, year - 1, year].map((y) => `${y}-01-01`));
+
+  // Harian's line is the server's own rule: three years by day is refused there too.
+  const refused = await rpc(page, "expense.v1.ExpenseService/ExpenseDaily", { teamId: team, filter: period }).then(
+    () => "",
+    (err: Error) => err.message,
+  );
+  expect(refused).toContain("at most 366 days");
 });

@@ -104,6 +104,7 @@ when it applies one of these.
 | [a-product-picker-needs-no-two-letters](#a-product-picker-needs-no-two-letters) | a product picker has no two-letter minimum — opened, it lists its first page; one letter is a search. ⚠ A warehouse's picker still needs two (its server refuses fewer): it says so, marked | every `ProductSelect` — from Temuan, 2026-11-09 |
 | [a-product-option-shows-its-picture](#a-product-option-shows-its-picture) | every option of the product picker shows the product's picture beside its code and name — the package placeholder when it has none | every `ProductSelect` — from Temuan, 2026-11-09 |
 | [every-screen-says-product-code](#every-screen-says-product-code) | no screen says "SKU" — it is *Kode produk* / *Product code*, on the product screens and every other | the product form, restock statistics, Cetak Label, the product picker — 2026-11-09 |
+| [the-yearly-statement-opens-on-five-years](#the-yearly-statement-opens-on-five-years) | picking Tahunan on the daily statement opens this year and the 4 before it | owner, as recommended, 2026-11-15 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2382,3 +2383,29 @@ Search products by name or SKU                Search products by name or product
 | pinned by | ProductEdit `Save` — *Not filled in: product code* |
 
 What it replaces: the five strings and one placeholder above, which still said SKU.
+
+---
+
+## the-yearly-statement-opens-on-five-years
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to: the daily statement's grains now read their own spans
+> ([periods-are-grouped-on-the-server](../../business/settlement/context_decision.md#periods-are-grouped-on-the-server):
+> 366 days, 60 months, 20 years). Its Tahunan window was *this year to date* only because every read was capped at a year.
+> What should picking Tahunan open on? A: this year and the 4 before it; B: this year only; C: since the team's first entry.
+
+**The verdict.** Switching the daily statement's grain re-picks the window, so the grain has enough rows to read:
+
+| the grain | the window it opens on |
+| --- | --- |
+| Harian | the screen's default, the last month ([the-quick-ranges-are-days-then-months-then-years](#the-quick-ranges-are-days-then-months-then-years)) |
+| Bulanan | the last 12 months, the first of them whole — as before |
+| Tahunan | **1 January four years back → today**: five calendar years, this one to date — five rows to compare |
+
+| | |
+| --- | --- |
+| why it re-picks | thirty days of months is one row, and one row reads as a broken screen; the picker is beside it for any other range |
+| the Jakarta year | *this year* is Jakarta's ([the-system-runs-on-jakarta-time](../architecture/context_decision.md#the-system-runs-on-jakarta-time)) |
+| a hand-picked range | kept until the grain is switched; a range longer than the grain allows is named and not sent |
+| the other screens | the settlement report and the account report stay on [a-metric-reads-at-most-a-year](../../business/analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year) — this is the daily statement only |
+
+✅ Built 2026-11-15 — `pages/daily-statement/index.tsx` `defaultRangeFor`: a grain switch re-picks the window (Harian the last month, Bulanan the 1st of the month eleven back → today, Tahunan 1 January of Jakarta's year four back → today); a hand-picked range stays until the next switch, one past the grain's span is named and not sent. Pinned by stories `Pages/Statements/DailyStatementPage/Span` (on a held clock, 00:30 WIB 1 Jan 2027: twelve rows, then five, one call per service each) and `…/Grain`, and e2e `statement.spec.ts` (Tahunan opens on five years; back on Harian, the last month).

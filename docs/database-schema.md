@@ -1829,7 +1829,8 @@ erDiagram
   construction (asserted after every writer: `ledgerMatchesReport`). Restock reads `restock` and `restock_correction`,
   Transfer `transfer_out` (negated — a cancel's reversal nets on its own day), `transfer_in` and `transfer_correction`
   (a received-count correction on ITS day, signed — `00043`), Returned stock `return`, Ready stock every type:
-  a past day's position is **today's batches − the changes after it**. The migration replays the ledger's changes so far
+  a past day's position is **today's batches − the changes after it**. The supplier list's Terjual band (2026-11-15,
+  `SupplierIDsByFigure`) reads its `order` rows per `supplier_id` — the ledger's Terjual to the unit. The migration replays the ledger's changes so far
   into it (exact — the same sums), so a past day reads right; door rows count from the build, as Lost stock's.
 - **Primary keys**, no surrogate id: the fold's `ON CONFLICT DO UPDATE` target, one index fewer on every stock write. Two
   writers into one row queue on it and both add.
@@ -2158,6 +2159,10 @@ erDiagram
     entry shares the other four values with the entry it undoes.
   - `CHECK (team_id <> counterparty_id)` — a team owing itself could only come from a bug upstream,
     and a ledger is the wrong place to discover one quietly.
+  - **`liability_logs_team_created_idx (team_id, created_at)`** (`00015`) — the daily statement's period read
+    (`LiabilityDaily`, `team_id = ? AND created_at` in a Jakarta window, at a day, month or year grain); the pair index
+    cannot narrow by time. A pure index ([a-pure-index-is-added-without-asking](technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)):
+    a month's read 22.6 → 2.5 ms at 575 000 legs ([audit](../audits/services/liability_service/performances/LiabilityDaily.md)).
 - **The override stamps** (`00013`, beside `liability_terms_logs.override` from `00008`) — each actor column says
   whether that actor was Root or the Administrator inside a team they hold no role in
   ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { expenseClient, liabilityClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
+import { GroupType } from "../../gen/warehouse/analytic_base/v1/analytic_pb";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import type { ExpenseDayItem, ExpenseTotals } from "../../gen/warehouse/expense/v1/expense_pb";
 import { LiabilitySourceType } from "../../gen/warehouse/liability/v1/liability_pb";
@@ -9,7 +10,7 @@ import type {
   LiabilityDailyTotals,
   LiabilityDayItem,
 } from "../../gen/warehouse/liability/v1/liability_pb";
-import { bucketOf, bucketSpine } from "../../lib/period";
+import { bucketFirstDay, bucketSpine } from "../../lib/period";
 import type { PeriodGrain } from "../../lib/period";
 
 // WHOSE statement this is — and today there is only one answer.
@@ -25,8 +26,9 @@ export type StatementMode = "warehouse";
 // ONE ROW OF THE STATEMENT — every service's answer for that bucket, already subtracted.
 //
 // A row is a DAY, a MONTH or a YEAR depending on the grain, and nothing in this shape changes with it:
-// a month's row is the same nine numbers as a day's, summed over more of them. That is the whole reason
-// the grain is a rollup rather than a second data path — one subtraction, one running total, one table.
+// a month's row is the same nine numbers as a day's, summed over more of them — BY THE SERVER, which
+// groups at the grain it is asked for (periods-are-grouped-on-the-server). One subtraction, one running
+// total, one table at every grain.
 //
 // One flat shape for both modes rather than a discriminated union: the fields the other mode does not
 // use are simply 0, and the table picks its columns from the mode. A union would double the table
@@ -97,6 +99,13 @@ export function courierAsks(bySource: { [source: number]: number } | undefined):
   return (bySource?.[COD_FEE] ?? 0) + (bySource?.[RETURN_COD_FEE] ?? 0) + (bySource?.[TRANSFER_COD_FEE] ?? 0);
 }
 
+// The grain on the wire — the server's names for the three resolutions.
+const GROUP_OF_GRAIN: Record<PeriodGrain, GroupType> = {
+  day: GroupType.DAILY,
+  month: GroupType.MONTHLY,
+  year: GroupType.YEARLY,
+};
+
 // The daily statement's read.
 //
 // ⚠ THE SUBTRACTION HAPPENS HERE, ON THE CLIENT, and that is not laziness — it is the same call the
@@ -119,14 +128,14 @@ export function courierAsks(bySource: { [source: number]: number } | undefined):
 // `listQuery` because a range change REFINES the same question: the same team's money over a different
 // window, so the previous rows should stay on screen while the next answer loads. Pair it with
 // RefreshOverlay at the call site.
-// ⚠ THE GRAIN IS NOT PART OF THE REQUEST — it regroups an answer already in hand. The three RPCs
-// return one row per DAY and take no grain of their own, so switching Daily → Monthly is a rollup of
-// the same fetch rather than a different question. It is still in the query key, because the rows are
-// the query's product and a cached statement at one grain is not the answer at another.
 //
-// That also means the 366-day cap governs every grain, which is why a yearly view can currently only
-// reach one year at a time. Lifting it means the three RPCs taking a grain of their own and bounding
-// the response in BUCKETS rather than days — a contract change, and not this screen's to make.
+// THE GRAIN IS PART OF THE REQUEST (periods-are-grouped-on-the-server): both RPCs take it and return one
+// row per bucket, grouped on the server — a month is the server's GROUP BY of its days, so this screen and
+// any other reading the same month cannot add it up two ways. Switching Daily → Monthly is a different
+// question, asked again; the grain is in the query key for that reason.
+//
+// Each grain reaches as far as the server unlocks it — 366 days, 60 months, 20 years (index.tsx `valid`) — so a
+// Tahunan over three years is ONE call per service answering three rows, never three yearly calls.
 export function useDailyStatement(args: {
   teamId: bigint | undefined;
   mode: StatementMode;
@@ -134,7 +143,7 @@ export function useDailyStatement(args: {
   from: string;
   to: string;
   kind: ExpenseKind;
-  /** False when the range is unbounded or longer than the cap — the screen explains, nothing is sent. */
+  /** False when the range is unbounded or longer than its grain unlocks — the screen explains, nothing is sent. */
   valid: boolean;
 }) {
   const { teamId, mode, grain, from, to, kind, valid } = args;
@@ -144,14 +153,17 @@ export function useDailyStatement(args: {
     queryKey: key.revenue(teamId, { statement: true, mode, grain, from, to, kind }),
     enabled: teamId !== undefined && valid,
     queryFn: async (): Promise<Statement> => {
+      const groupBy = GROUP_OF_GRAIN[grain];
+
       // UNSPECIFIED is the "any kind" filter (#170), not a kind of its own.
       const expensesPromise = expenseClient.expenseDaily({
         teamId: teamId!,
         filter: { from, to, kind, shopId: 0n },
+        groupBy,
       });
 
       const [fees, exp] = await Promise.all([
-        liabilityClient.liabilityDaily({ teamId: teamId!, filter: { from, to, counterpartyId: 0n } }),
+        liabilityClient.liabilityDaily({ teamId: teamId!, filter: { from, to, counterpartyId: 0n }, groupBy }),
         expensesPromise,
       ]);
 
@@ -169,28 +181,11 @@ export function useDailyStatement(args: {
   });
 }
 
-// Every sparse series, gathered into the buckets of one grain — `Map<bucket, the rows that fell in it>`.
-//
-// A DAY LANDS IN EXACTLY ONE BUCKET AT EVERY GRAIN, which is what makes the rollup safe: the three
-// services already agree on the `yyyy-mm-dd` label, so prefixing it cannot make two services disagree
-// about which month a day belongs to. At `day` this map is one row per key and the rollup below is the
-// identity — deliberately, so there is no separate daily path to drift.
-function bucketise<T extends { date: string }>(rows: T[], grain: PeriodGrain): Map<string, T[]> {
-  const out = new Map<string, T[]>();
-
-  for (const row of rows) {
-    const at = bucketOf(row.date, grain);
-    const held = out.get(at);
-
-    if (held) held.push(row);
-    else out.set(at, [row]);
-  }
-
-  return out;
+// A sparse series, by the key the server gave each bucket's row — its FIRST day (`2026-08-01` for August).
+// One row per bucket: the server already grouped, so nothing here adds days into months.
+function byFirstDay<T extends { date: string }>(rows: T[]): Map<string, T> {
+  return new Map(rows.map((row) => [row.date, row]));
 }
-
-const sum = <T>(rows: T[], of: (row: T) => number | undefined) =>
-  rows.reduce((total, row) => total + (of(row) ?? 0), 0);
 
 // mergeBuckets lines every sparse series up on the client's spine and runs the subtraction.
 //
@@ -199,14 +194,15 @@ const sum = <T>(rows: T[], of: (row: T) => number | undefined) =>
 // tell "nothing was sold" from "the 14th did not load". A quiet bucket is marked `active: false` so the
 // screen can render it faintly, or hide it on request — but it is never silently missing.
 //
-// ⚠ THE GRAIN CHANGES THE SPINE AND NOTHING ELSE. Summing a month is summing its days, the subtraction
-// is the same subtraction, and the running total still accumulates across the period — so Monthly is not
-// a second implementation of this function with a different date walk, which is exactly how the two
-// resolutions would start disagreeing about a period they both claim to describe.
+// ⚠ THE GRAIN CHANGES THE SPINE AND NOTHING ELSE here. The month's sums are the SERVER's (its GROUP BY of
+// the month's days), the subtraction is the same subtraction, and the running total still accumulates
+// across the period — so Monthly is not a second implementation of this function with a different date
+// walk, which is exactly how the two resolutions would start disagreeing about a period they both claim
+// to describe.
 //
 // ⚠ It took TWO income series until `revenue_service` was removed — one per mode, one of them always
 // empty. The spine, the subtraction and the running total never varied by mode, which is why a second
-// series drops back in here as one more `bucketise` and one more term in `income`.
+// series drops back in here as one more `byFirstDay` and one more term in `income`.
 function mergeBuckets(
   from: string,
   to: string,
@@ -214,19 +210,20 @@ function mergeBuckets(
   feeDays: LiabilityDayItem[],
   expenseDays: ExpenseDayItem[],
 ): StatementRow[] {
-  const feesAt = bucketise(feeDays, grain);
-  const expensesAt = bucketise(expenseDays, grain);
+  const feesAt = byFirstDay(feeDays);
+  const expensesAt = byFirstDay(expenseDays);
 
   let running = 0;
 
   return bucketSpine(from, to, grain).map((bucket) => {
-    const f = feesAt.get(bucket) ?? [];
-    const e = expensesAt.get(bucket) ?? [];
+    const at = bucketFirstDay(bucket, grain);
+    const f = feesAt.get(at);
+    const e = expensesAt.get(at);
 
-    const income = sum(f, (d) => d.bySource[HANDLING_FEE]);
+    const income = f?.bySource[HANDLING_FEE] ?? 0;
 
-    const expenses = sum(e, (d) => d.total);
-    const stockLoss = sum(e, (d) => d.byKind[ExpenseKind.STOCK_LOSS]);
+    const expenses = e?.total ?? 0;
+    const stockLoss = e?.byKind[ExpenseKind.STOCK_LOSS] ?? 0;
 
     const profit = income - expenses;
 
@@ -244,8 +241,8 @@ function mergeBuckets(
       shippingCost: 0,
       unknownCostOrders: 0,
 
-      feeEntries: sum(f, (d) => Number(d.entries)),
-      codFees: sum(f, (d) => courierAsks(d.bySource)),
+      feeEntries: Number(f?.entries ?? 0n),
+      codFees: courierAsks(f?.bySource),
 
       expenses,
       stockLoss,
@@ -253,14 +250,14 @@ function mergeBuckets(
       // stock loss got its own kind: rent is a choice, a dropped pallet is not, and a single
       // "Operational" column that held both could not tell a manager which one moved.
       otherExpenses: expenses - stockLoss,
-      expenseEntries: sum(e, (d) => Number(d.entries)),
+      expenseEntries: Number(e?.entries ?? 0n),
 
       profit,
       running,
       // Absent on EVERY side, not "zero money". A bucket can hold an order worth nothing and still be a
       // period somebody worked, so this asks whether any service returned a row — which is exactly what
       // the sparse series encode.
-      active: f.length > 0 || e.length > 0,
+      active: f !== undefined || e !== undefined,
     };
   });
 }

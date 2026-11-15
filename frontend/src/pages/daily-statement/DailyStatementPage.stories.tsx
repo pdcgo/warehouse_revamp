@@ -67,9 +67,9 @@ const PROFIT = MARGIN - SPENT;
 
 const ADS_SPENT = sum(expenses30.map((d) => d.byKind[ExpenseKind.ADS] ?? 0));
 
-// …and what the MONTHLY view (the last twelve months) can. Every fixture row is inside it by
-// construction — the furthest back is 200 days, and the window's near edge is at least 334 — which the
-// grain stories assert rather than assume.
+// …and what the MONTHLY view (the last twelve months — the window Monthly opens on) can. Every fixture row is inside it
+// by construction — the furthest back is 200 days, and the window's near edge is at least 334 — which the grain stories
+// assert rather than assume.
 const MONTHLY_BUCKETS = 12;
 const OLDEST_AGO = Math.max(...[...sellingRevenue, ...sellingExpenses].map((d) => d.ago));
 const MARGIN_12M = sum(sellingRevenue.map((d) => d.expectedMargin));
@@ -167,7 +167,8 @@ export const Warehouse: Story = {
 // it LOOKS like, and twelve months of one row each is a different screen from thirty days of them.
 //
 // They open on Daily and switch, because that is the real path: a grain is not a route, and a story
-// that mounted straight into Monthly would skip the re-picked window that makes Monthly readable.
+// that mounted straight into Monthly would skip the re-picked window that makes Monthly readable
+// (the-yearly-statement-opens-on-five-years: twelve months, five years).
 export const Monthly: Story = {
   play: async ({ canvasElement }) => {
     await pickGrain(await loaded(canvasElement), "month");
@@ -502,8 +503,9 @@ export const TheMonthlyRollupCoversMonthsTheDailyViewCannotSee: Story = {
 };
 
 // A GRAIN CARRIES ITS OWN WINDOW, because thirty days of MONTHS is one row — and one row under a
-// picker that says "Monthly" reads as a broken screen rather than as a window too short to be one.
-// Switching back restores the daily window, so the grain is a view and not a one-way door.
+// picker that says "Monthly" reads as a broken screen rather than as a window too short to be one
+// (the-yearly-statement-opens-on-five-years). Switching back restores the daily window, so the grain is
+// a view and not a one-way door. Pinned on a held clock, with the asks, in `PerGrainSpan.stories.tsx`.
 export const SwitchingTheGrainRePicksTheWindow: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -514,6 +516,9 @@ export const SwitchingTheGrainRePicksTheWindow: Story = {
     await waitFor(() =>
       expect(canvas.getAllByTestId(/^statement-row-/)).toHaveLength(MONTHLY_BUCKETS),
     );
+
+    await pickGrain(canvas, "year");
+    await waitFor(() => expect(canvas.getAllByTestId(/^statement-row-/)).toHaveLength(5));
 
     await pickGrain(canvas, "day");
     await waitFor(() => expect(canvas.getAllByTestId(/^statement-row-/)).toHaveLength(WINDOW_DAYS));
@@ -546,30 +551,19 @@ export const TheAverageFollowsTheGrain: Story = {
   },
 };
 
-// ⚠ A YEARLY VIEW IS ONE ROW, AND THE SCREEN SAYS WHY. The series underneath is DAILY and capped at a
-// leap year, so "last year beside this one" is a window this screen is not allowed to ask for — and a
-// lone row under a picker that says Yearly is indistinguishable from a screen that failed to load.
-//
-// Shipping the limitation with a sentence attached beats hiding the grain until the contract grows one:
-// the row is real, the total is right, and what is missing is named rather than guessed at.
-export const AYearlyViewIsOneRowAndSaysWhyItCannotBeTwo: Story = {
+// A YEARLY VIEW OPENS ON FIVE YEARS (the-yearly-statement-opens-on-five-years) — this year and the four before it, five
+// rows to compare. It used to be one row, this year to date, pinned by a 366-day cap the grain no longer has.
+export const AYearlyViewOpensOnFiveYears: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await pickGrain(canvas, "year");
 
-    await waitFor(() => expect(canvas.getAllByTestId(/^statement-row-/)).toHaveLength(1));
-    await expect(canvas.getByTestId("statement-grain-capped")).toHaveTextContent(/only show this year/i);
-
-    // With ONE bucket, the row IS the period — so the running total, the row's profit and the footer are
-    // three renderings of a single number, and any of them drifting shows up here.
-    // this year in JAKARTA — the year the page opens on (defaultRangeFor), whatever the runner's clock says
-    const year = jakartaToday().slice(0, 4);
-    const row = canvas.getByTestId(`statement-row-${year}`);
-    const total = canvas.getByTestId("statement-total-profit").textContent!;
-
-    await expect(row).toHaveTextContent(total);
-    await expect(canvas.getByTestId("statement-footer-profit")).toHaveTextContent(total);
+    // Jakarta's year — the year the page counts back from (defaultRangeFor), whatever the runner's clock says.
+    const year = Number(jakartaToday().slice(0, 4));
+    await waitFor(() => expect(canvas.getAllByTestId(/^statement-row-/)).toHaveLength(5));
+    await expect(canvas.getByTestId(`statement-row-${year - 4}`)).toBeInTheDocument();
+    await expect(canvas.getByTestId(`statement-row-${year}`)).toBeInTheDocument();
   },
 };
 
@@ -582,7 +576,6 @@ export const TheScreenOpensOnDaily: Story = {
 
     await waitFor(() => expect(canvas.getAllByTestId(/^statement-row-/)).toHaveLength(WINDOW_DAYS));
     await expect(canvas.getByTestId(`statement-row-${dayKey(0)}`)).toBeInTheDocument();
-    await expect(canvas.queryByTestId("statement-grain-capped")).toBeNull();
   },
 };
 

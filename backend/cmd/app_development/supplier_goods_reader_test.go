@@ -55,6 +55,15 @@ func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 		t.Fatalf("batch log: %v", err)
 	}
 
+	// …and the row the take's stock transaction folds beside it (inventory_ledgers.StockTransaction), which the Terjual
+	// band reads (the-terjual-band-reads-the-daily-sold-fold).
+	err = db.Exec(`INSERT INTO inventory_stock_daily_changes
+		(day, warehouse_id, team_id, product_id, supplier_id, change_type, change_count, change_value)
+		VALUES (CURRENT_DATE, 5, 12, 901, 77, 'order', -3, -3000)`).Error
+	if err != nil {
+		t.Fatalf("daily change: %v", err)
+	}
+
 	parts, err := reader.OrderTakeSuppliers(ctx, take.ID)
 	if err != nil {
 		t.Fatalf("OrderTakeSuppliers: %v", err)

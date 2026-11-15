@@ -47,7 +47,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [past-accepts-are-backfilled-once](#past-accepts-are-backfilled-once) | restocks accepted before the event existed are folded once, by a `san` command, through the same fold | in chat, 2026-10-07 — as recommended |
 | [rate-ranking-needs-50-units](#rate-ranking-needs-50-units) | ranked by broken rate, a supplier needs 50 units in the window; those under it follow, their rate muted | in chat, 2026-10-07 — answers Q18 as recommended |
 | [suppliers-is-a-menu-group-like-products](#suppliers-is-a-menu-group-like-products) | the menu's **Suppliers** is a group of its own — My Supplier, Discover Supplier, Supplier Report — not three children of Inventories | in chat, 2026-10-07 |
-| [a-line-with-no-store-links-under-the-supplier](#a-line-with-no-store-links-under-the-supplier) | an accepted restock line that names a supplier but no store links its product too, under the supplier with no store | owner, as recommended | — |
+| [a-line-with-no-store-links-under-the-supplier](#a-line-with-no-store-links-under-the-supplier) | an accepted restock line that names a supplier but no store links its product too, under the supplier with no store | owner, as recommended, 2026-11-14 |
+| [the-terjual-band-reads-the-daily-sold-fold](#the-terjual-band-reads-the-daily-sold-fold) | the supplier list's Terjual band reads inventory's daily sold fold instead of the order rows | owner, as recommended, 2026-11-15 |
 
 ## reversed-the-supplier-keeps-its-code
 
@@ -1218,3 +1219,13 @@ flowchart LR
 ✅ Built 2026-11-14 — a line naming a supplier and no store links under the supplier with no store (`channel_id` NULL); a line naming no supplier links nothing. Toko reads — when the Produk tab shows the rows (next).
 
 ✅ Built 2026-11-14 — the Produk tab shows those rows: Toko reads —, and its store filter offers "No store" (`no_store`); the file leaves the store cells empty.
+
+---
+
+## the-terjual-band-reads-the-daily-sold-fold
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to: a probe found the supplier list's **Terjual** band ([the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decision.md#the-range-pills-are-a-fixed-set)) can read inventory's daily stock-changes fold (`inventory_stock_daily_changes`, written in the order take's own transaction) with **exactly the same figures** — 0 mismatches over 1,801 suppliers, per supplier, per warehouse, under the warehouse filter, 6 bands — 495 → 290 ms at 1M order rows, no new index or write path. A query rewrite is a code-path change (outside the standing pure-index OK). A: rewrite it; B: leave it until volume grows.
+
+**The verdict.** The Terjual band's supplier ids (`SupplierIDsByFigure`, the Sold branch) are read from `inventory_stock_daily_changes`, summing sold units per supplier, instead of scanning the order rows — over every warehouse, under the warehouse filter too, as [the-warehouse-filter-narrows-only-the-rows](../../technical/frontend/suppliers_decision.md#the-warehouse-filter-narrows-only-the-rows) keeps the band on the supplier's whole. The figures must stay **equal** to today's — an equality test against the old query guards it. The supplier **detail** figures (`SupplierGoods`: orders, last order, per store) are **not** part of this — the fold has none of those; they wait for the running totals still parked. ⚠ Not built.
+
+✅ Built 2026-11-15 — the Terjual band sums the sold units of inventory's daily stock fold per supplier instead of the order rows: the same suppliers in every pill (the `< 500` one too), on My Supplier and Discover, with and without a warehouse picked (the band still tests the whole figure) — proven by tests that run the old query beside the new on the same goods (two teams, two warehouses, cancelled and returned orders); 481–500 → 272–296 ms at 1M order lines. Siap and the supplier detail figures are unchanged.

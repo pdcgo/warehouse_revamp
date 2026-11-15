@@ -383,3 +383,32 @@ Root's true) — both mutation-checked. e2e: `liability.spec.ts`'s payment test 
 payment row naming root (its owner, no badge); the new `the_team_balance_names_who_recorded.spec.ts` drives a pair Dewi
 owns where root pays from inside the seller and accepts from inside the warehouse — Dewi sees her name on the courier's
 row and Root + the badge on the payment's ledger row and payment row, desktop and phone.
+
+## 2026-11-15 — the daily statement's month and year are grouped on the server
+
+[periods-are-grouped-on-the-server](../../business/settlement/context_decision.md#periods-are-grouped-on-the-server) —
+for `LiabilityDaily` (Team Balance's half of the warehouse's daily statement) and `ExpenseDaily` together.
+
+| | |
+| --- | --- |
+| contract | `LiabilityDailyRequest.group_by = 3` (`analytic_base.v1.GroupType`, DAILY / MONTHLY / YEARLY, unset = DAILY); each item's `date` is the bucket's first calendar day |
+| handler | `liability_v1/liability_daily.go`: groups by `san_period.Grain.Bucket` over the Jakarta day; the span per grain (366 days · 60 months · 20 years) from `backend/pkgs/san_period`; grouped rows sorted in Go (an `ORDER BY` spilled a 100 000-leg sort) |
+| schema | liability `00015_liability_logs_team_created_idx.sql` — a pure index `(team_id, created_at)`; applied on `warehouse_test` by the harness, ⚠ not on the dev DB (`go run ./tools/san dev setup`) |
+| tests | `TestLiabilityDaily_AMonthsAndAYearsRowAreTheSumOfTheirJakartaDays` (30 Dec → 1 Feb, legs on the Jakarta midnights the UTC calendar would misfile, a reversal; months and years = the day rows summed), `TestLiabilityDaily_TheSpanFollowsTheGrain`; mutation-checked (UTC grouping → red) |
+| perf | a month daily 22.6 → 2.1 ms, three years yearly ≈ 72 ms at 100 000 legs among 575 000 — [rpc.md](../../services/liability_service/rpc.md#the-grain-is-grouped-on-the-server), [audit](../../../audits/services/liability_service/performances/LiabilityDaily.md) (finding 2 open) |
+| screen | `pages/daily-statement` sends the grain and lays the server's rows on its spine (`queries.ts` `mergeBuckets` — no browser rollup); same figures (stories `Pages/Statements/DailyStatementPage/Grain`, e2e `statement.spec.ts` *Bulanan and Tahunan…*); the 366-day bound and the yearly notice were lifted the same day — [next entry](#2026-11-15--the-daily-statement-reads-each-grains-span) |
+
+## 2026-11-15 — the daily statement reads each grain's span
+
+[periods-are-grouped-on-the-server](../../business/settlement/context_decision.md#periods-are-grouped-on-the-server) —
+*the span it unlocks: 366 days at day, 60 months at month, 20 years at year*, now on the warehouse's daily statement too
+(the server took it the same morning, `backend/pkgs/san_period`).
+
+| | |
+| --- | --- |
+| per grain | **Harian** up to 366 days · **Bulanan** up to 60 months · **Tahunan** up to 20 years — counted in the grain's own buckets, both ends included, as `san_period.Buckets` counts them (`lib/period.ts` `MAX_PERIOD_BUCKETS`, `spanBuckets`; `src/lib/period.test.ts` runs san_period's own cases). Three years of Tahunan = ONE `ExpenseDaily` + ONE `LiabilityDaily` call answering three rows |
+| the window | a new grain **re-picks** the window ([the-yearly-statement-opens-on-five-years](../../technical/frontend/context_decision.md#the-yearly-statement-opens-on-five-years), built the same day — `index.tsx` `defaultRangeFor`, HEAD's reasoning block restored with the cap gone): **Harian** the last month · **Bulanan** the last 12 months, the first of them whole · **Tahunan** 1 January of Jakarta's year four back → today, five rows. A range picked by hand stays until the grain is switched; one longer than the grain reads stays in the picker and the URL, the line under it says how long it is and the most (*That range covers 1050 days. Daily reads at most 366 days.*), and nothing is sent — never trimmed. *(This pass first copied the Settlement Report's keep-the-window — reversed by that decision.)* |
+| ⚠ what settlement itself shows | the Settlement and Finance report SCREENS still cap every grain at 366 days ([a-metric-reads-at-most-a-year](../../business/analytic/rpc_provide_decision.md#a-metric-reads-at-most-a-year)); settlement's 366 / 60 / 20 are its server's time-group search caps. Only the behaviours above were copied, not their 366 |
+| removed | the Tahunan *only this year* notice (`statement-grain-capped`, i18n `statement.grainCapped`); `statement.rangeTooLong` names the grain and its unit |
+| stub | `.storybook/stubTransport.ts` refuses a span past the grain as the server does (`refuseLongSpan`, InvalidArgument) and records each ask's window (`statementScenario.ts` `statementAsks`) |
+| tests | stories `Pages/Statements/DailyStatementPage/Span` (`PerGrainSpan.stories.tsx`, 6: a grain re-picks the window on a held clock — 00:30 WIB 1 Jan 2027, still 2026 in UTC — Bulanan twelve rows, Tahunan five (2023–2027), each from one call per service, back on Harian the last month; a hand-picked three years of Tahunan = three rows from one call; Bulanan over 24 months = 24 rows; back to Harian from that range = the last month; three years picked at Harian refused, then the last month reads; 61 months at Bulanan not sent, Tahunan opens on five years) — red with the window kept (6 across Span + Grain), with Tahunan to date (4), with a UTC today (the held-clock story); `…/Grain` over the re-picked windows (shared helpers `storyYardstick.ts`, `holdTheClock`); e2e `statement.spec.ts` *Bulanan and Tahunan are the server's months and years…* (Bulanan = 12 rows over the last twelve months, Tahunan opens on 5 years) and *a hand-picked three years of Tahunan is three rows from one call — back on Harian it opens the last month* (own warehouse teams, #50; one call per service, the year = its months summed over the API, three years at Harian refused on screen and by the server) |

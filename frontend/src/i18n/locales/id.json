@@ -3544,7 +3544,7 @@
     "title": "Laporan",
     "selectTeam": "Pilih tim untuk melihat laporannya.",
     "rangeUnbounded": "Pilih tanggal mulai dan tanggal akhir — laporan membutuhkan keduanya.",
-    "rangeTooLong": "Rentang itu mencakup {{days}} hari. Laporan maksimal {{max}} hari.",
+    "rangeTooLong": "Rentang itu mencakup {{span}} {{unit}}. {{grain}} membaca maksimal {{max}} {{unit}}.",
     "expectedMargin": "Perkiraan margin",
     "marginSource": "Dari pesanan pada periode ini",
     "feesEarned": "Fee diterima",
@@ -3578,7 +3578,6 @@
         "year": "Tahun"
       }
     },
-    "grainCapped": "Data di balik layar ini mencakup maksimal {{max}} hari, jadi tampilan tahunan hanya bisa menampilkan tahun ini — bukan tahun lalu di sebelahnya.",
     "unit": {
       "day": "hari",
       "day_other": "hari",

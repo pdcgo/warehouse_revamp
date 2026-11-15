@@ -3,33 +3,32 @@ package liability_v1
 import (
 	"context"
 	"errors"
-	"fmt"
+	"slices"
 	"time"
 
 	"connectrpc.com/connect"
 
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_period"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
-// The longest period a daily series may cover — the SAME bound RevenueDaily and ExpenseDaily enforce.
+// The longest period a series may cover follows its GRAIN — 366 days, 60 months, 20 years
+// (periods-are-grouped-on-the-server) — and is san_period's, the SAME bound ExpenseDaily enforces.
 //
-// It must not drift from theirs: the daily statement reads all three side by side, and a cap that
-// differed would let one column load a full period while another refused, which reads as missing money
-// rather than as a refused request.
+// It must not drift from expense's: the daily statement reads both side by side, and a cap that differed would let one
+// column load a full period while another refused, which reads as missing money rather than as a refused request.
 //
-// This number IS the pagination (HARD RULE 9): the response length is `to − from`, which the caller
-// states, so bounding the span bounds the response no matter how large the ledger grows.
-const maxPeriodDays = 366
-
+// That number IS the pagination (HARD RULE 9): the response holds at most one row per bucket of the period, which the
+// caller states, so bounding the span bounds the response no matter how large the ledger grows.
 var (
 	errPeriodRequired = errors.New("a daily series needs both a from and a to date")
-	errPeriodTooLong  = fmt.Errorf("a daily series covers at most %d days", maxPeriodDays)
 	errPeriodInverted = errors.New("the period's from date is after its to date")
 	errBadDate        = errors.New("a date must be YYYY-MM-DD")
 )
 
-// LiabilityDaily sums what the ledger moved PER DAY, from the scoped team's point of view.
+// LiabilityDaily sums what the ledger moved PER BUCKET — a day, a month or a year, as the request's grain says — from
+// the scoped team's point of view.
 //
 // It is a WAREHOUSE's income half of the daily statement. A selling team earns the margin on its orders
 // and revenue_service holds that; a warehouse has no orders at all, so what it earns is the fees it
@@ -39,14 +38,23 @@ var (
 // ⚠ IT DOES NOT DECIDE WHAT COUNTS AS INCOME. Every source type comes back in `by_source` and the caller
 // picks — see the note on LiabilityDailyFilter for why summing all four would double-count.
 //
-// ⚠ ONE GROUPED QUERY, not a query per day.
+// THE SERVER GROUPS (periods-are-grouped-on-the-server): a month's row is the GROUP BY of its Jakarta days, in the
+// query, keyed by the month's first day — the browser never buckets days into months, so a month here is exactly the
+// sum of its day rows at the daily grain.
+//
+// ⚠ ONE GROUPED QUERY, not a query per bucket.
 func (s *Service) LiabilityDaily(
 	ctx context.Context,
 	req *connect.Request[liabilityv1.LiabilityDailyRequest],
 ) (*connect.Response[liabilityv1.LiabilityDailyResponse], error) {
 	filter := req.Msg.GetFilter()
 
-	from, to, err := parsePeriod(filter.GetFrom(), filter.GetTo())
+	grain, err := san_period.Of(req.Msg.GetGroupBy())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	from, to, err := parsePeriod(filter.GetFrom(), filter.GetTo(), grain)
 	if err != nil {
 		return nil, err
 	}
@@ -68,14 +76,17 @@ func (s *Service) LiabilityDaily(
 
 	var rows []liabilityDayRow
 
+	// THE JAKARTA DAY, explicitly (the-liability-day-is-the-jakarta-day): a fee owed at 06:00 WIB lands on that WIB
+	// day, not the UTC day before — and at 00:30 WIB on 1 January in January and in that year. Named rather than left
+	// to the session's TimeZone — the session is Jakarta too (san_dbsession), but a bucket whose row disagreed with
+	// the bounds above, which Go parses as Jakarta midnights, would be unreadable, so the two are one calendar by
+	// construction rather than by configuration. The day itself at the daily grain (the SQL, and so the plan, the
+	// daily read always had), its month's or year's first day otherwise.
+	bucket := grain.Bucket("(created_at AT TIME ZONE 'Asia/Jakarta')::date")
+
 	err = query.
 		Select(
-			// THE JAKARTA DAY, explicitly (the-liability-day-is-the-jakarta-day): a fee owed at 06:00 WIB lands
-			// on that WIB day, not the UTC day before. Named rather than left to the session's TimeZone — the
-			// session is Jakarta too (san_dbsession), but a day whose row disagreed with the bounds above,
-			// which Go parses as Jakarta midnights, would be unreadable, so the two are one calendar by
-			// construction rather than by configuration.
-			"(created_at AT TIME ZONE 'Asia/Jakarta')::date AS day, " +
+			bucket + " AS day, " +
 				"source_type, " +
 				"COUNT(*) AS entries, " +
 				// REVERSALS ARE INCLUDED, not filtered. A cancelled order's fee is undone by an
@@ -83,13 +94,17 @@ func (s *Service) LiabilityDaily(
 				// number. Excluding them would report income the ledger has already taken back.
 				"COALESCE(SUM(amount), 0) AS net",
 		).
-		Group("day, source_type").
-		Order("day ASC").
+		Group(bucket + ", source_type").
 		Scan(&rows).
 		Error
 	if err != nil {
 		return nil, dbError(err)
 	}
+
+	// ASCENDING by bucket — sorted HERE, over the few grouped rows, never by an ORDER BY. With an ORDER BY the planner
+	// groups by SORTING every leg (it cannot estimate how few buckets there are), and three years of a busy warehouse's
+	// legs spill that sort to disk; without one it hashes them into the handful of buckets (TestPerf_LiabilityDaily).
+	slices.SortStableFunc(rows, func(a, b liabilityDayRow) int { return a.Day.Compare(b.Day) })
 
 	days, totals := foldDays(rows)
 
@@ -99,7 +114,7 @@ func (s *Service) LiabilityDaily(
 	}), nil
 }
 
-// liabilityDayRow is the grouped query's shape — one row per (day, source_type).
+// liabilityDayRow is the grouped query's shape — one row per (bucket, source_type); `Day` is the bucket's first day.
 //
 // Grouped by source as well as by day because the day item carries a `by_source` split, and asking the
 // database for it costs nothing extra: the same scan, one GROUP BY wider. Folding the pairs back into
@@ -111,12 +126,12 @@ type liabilityDayRow struct {
 	Net        float64
 }
 
-// foldDays turns (day, source) pairs into one item per day, and accumulates the period totals in the
+// foldDays turns (bucket, source) pairs into one item per bucket, and accumulates the period totals in the
 // same pass.
 //
-// The rows arrive sorted by day, so a day's sources are contiguous and the fold needs no map of days and
-// no re-sort — only a check of whether the day changed. Keeping the order the database produced is what
-// lets the response promise "ascending by date" without sorting it again.
+// The rows arrive sorted by bucket, so a bucket's sources are contiguous and the fold needs no map of
+// buckets and no re-sort — only a check of whether the bucket changed. Keeping that order is what lets the
+// response promise "ascending by date" without sorting it again.
 //
 // The TOTALS are built here rather than by a second aggregate query, and that is the one place this
 // differs from the revenue and expense handlers. They had an existing period-totals query to reuse, and
@@ -166,13 +181,13 @@ const dateLayout = "2006-01-02"
 // WIB has no daylight saving, and a fixed zone needs no tzdata on the host.
 var jakarta = time.FixedZone("WIB", 7*60*60)
 
-// parsePeriod validates a REQUIRED, BOUNDED day range and returns its inclusive ends — each the Jakarta midnight that
-// starts its day.
+// parsePeriod validates a REQUIRED day range, BOUNDED by its grain's span, and returns its inclusive ends — each the
+// Jakarta midnight that starts its day.
 //
 // Proto validation already enforces the SHAPE, and this re-checks it anyway: a pattern is not validity
 // ("2026-02-31" matches and is not a day), and a unit test calling the handler directly gets no
 // validation interceptor at all.
-func parsePeriod(rawFrom, rawTo string) (time.Time, time.Time, error) {
+func parsePeriod(rawFrom, rawTo string, grain san_period.Grain) (time.Time, time.Time, error) {
 	if rawFrom == "" || rawTo == "" {
 		return time.Time{}, time.Time{}, connect.NewError(connect.CodeInvalidArgument, errPeriodRequired)
 	}
@@ -193,10 +208,10 @@ func parsePeriod(rawFrom, rawTo string) (time.Time, time.Time, error) {
 		return time.Time{}, time.Time{}, connect.NewError(connect.CodeInvalidArgument, errPeriodInverted)
 	}
 
-	// Inclusive of both ends, so a single day is a span of 1 rather than 0.
-	span := int(to.Sub(from).Hours()/24) + 1
-	if span > maxPeriodDays {
-		return time.Time{}, time.Time{}, connect.NewError(connect.CodeInvalidArgument, errPeriodTooLong)
+	// Inclusive of both ends, so a single day is a span of 1 rather than 0 — 366 days, 60 months or 20 years.
+	err = san_period.CheckSpan(from, to, grain)
+	if err != nil {
+		return time.Time{}, time.Time{}, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	return from, to, nil

@@ -8,6 +8,7 @@ package liabilityv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v12 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	v11 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
@@ -2039,12 +2040,13 @@ func (x *LiabilityLogListResponse) GetBalance() float64 {
 // opinion into the ledger's contract, so the enum is returned whole and the statement documents its
 // choice (it takes HANDLING_FEE).
 //
-// ⚠ NOT PAGINATED, exactly as RevenueDaily and ExpenseDaily are not: the response length is `to − from`,
-// which the caller states, and the span is CAPPED AT 366 DAYS. The cap must equal theirs — the three
-// series are read side by side on one screen, and a cap that differed would let the statement load part
-// of a period and still look complete.
+// ⚠ NOT PAGINATED, exactly as ExpenseDaily is not: the response length is the number of buckets between
+// `from` and `to`, which the caller states, and the span is CAPPED per grain — 366 days, 60 months or 20
+// years (periods-are-grouped-on-the-server). The caps must equal ExpenseDaily's — the series are read side
+// by side on one screen, and a cap that differed would let the statement load part of a period and still
+// look complete.
 //
-// ⚠ SPARSE: a day the ledger did not move is ABSENT, not a zero row. The client owns the date spine.
+// ⚠ SPARSE: a bucket the ledger did not move in is ABSENT, not a zero row. The client owns the date spine.
 type LiabilityDailyFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
@@ -2108,9 +2110,13 @@ func (x *LiabilityDailyFilter) GetCounterpartyId() uint64 {
 }
 
 type LiabilityDailyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Filter        *LiabilityDailyFilter  `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter *LiabilityDailyFilter  `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	// THE GRAIN — a row is a day, a month or a year (periods-are-grouped-on-the-server): DAILY, MONTHLY or YEARLY, and
+	// unset reads as DAILY. The SERVER groups, on the Jakarta calendar, so the browser never buckets days into months.
+	// The span cap follows the grain: 366 days, 60 months, 20 years — ExpenseDaily's.
+	GroupBy       v12.GroupType `protobuf:"varint,3,opt,name=group_by,json=groupBy,proto3,enum=warehouse.analytic_base.v1.GroupType" json:"group_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2159,20 +2165,29 @@ func (x *LiabilityDailyRequest) GetFilter() *LiabilityDailyFilter {
 	return nil
 }
 
-// One day of the ledger, from the scoped team's point of view.
+func (x *LiabilityDailyRequest) GetGroupBy() v12.GroupType {
+	if x != nil {
+		return x.GroupBy
+	}
+	return v12.GroupType(0)
+}
+
+// One bucket of the ledger — a day, a month or a year, as the request's grain says — from the scoped team's point of
+// view.
 type LiabilityDayItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The day this row sums, as YYYY-MM-DD.
+	// The bucket this row sums, as YYYY-MM-DD — its FIRST calendar day: the day itself, the 1st of its month
+	// (`2026-08-01`), or the 1st of January of its year (`2026-01-01`), even when the period starts later in it.
 	//
-	// ⚠ Bucketed in UTC from `created_at`, the same cast RevenueDaily uses and carrying the same caveat:
-	// the business is UTC+7, so an entry posted before 07:00 local lands on the previous day. Consistency
-	// with the period bounds is why — see docs/services/expense_service/rpc.md, which states the same cap.
+	// The JAKARTA calendar (the-liability-day-is-the-jakarta-day): `created_at` is read in Asia/Jakarta before it is
+	// grouped, so a leg owed at 00:30 WIB on 1 January lands in January and in that year, and the period's bounds are
+	// Jakarta midnights.
 	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
-	// How many entry legs the day holds, reversals included.
+	// How many entry legs the bucket holds, reversals included.
 	Entries uint64 `protobuf:"varint,2,opt,name=entries,proto3" json:"entries,omitempty"`
 	// ⚠ ONE SIGN CONVENTION (§4.11), unchanged here: from the scoped team's point of view a RECEIVABLE is
-	// POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum, so a day that charged a fee and reversed
-	// it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
+	// POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum — exactly the sum of its days' — so a day that
+	// charged a fee and reversed it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
 	// A series that dropped them would show income the ledger has already taken back.
 	Net float64 `protobuf:"fixed64,3,opt,name=net,proto3" json:"net,omitempty"`
 	// Split by LiabilitySourceType's enum number, so the caller can pick which sources it treats as
@@ -2295,7 +2310,7 @@ func (x *LiabilityDailyTotals) GetBySource() map[int32]float64 {
 
 type LiabilityDailyResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// ASCENDING by date, and SPARSE — see the note on LiabilityDailyFilter.
+	// ASCENDING by date, one item per bucket of the grain, and SPARSE — see the note on LiabilityDailyFilter.
 	Days []*LiabilityDayItem `protobuf:"bytes,1,rep,name=days,proto3" json:"days,omitempty"`
 	// The period's totals, over the same filter. Sent rather than summed in the browser, so the
 	// statement's footer is this service's answer and cannot drift from the days above it.
@@ -4638,7 +4653,7 @@ var File_warehouse_liability_v1_liability_proto protoreflect.FileDescriptor
 
 const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\n" +
-	"&warehouse/liability/v1/liability.proto\x12\x16warehouse.liability.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"\xa3\x03\n" +
+	"&warehouse/liability/v1/liability.proto\x12\x16warehouse.liability.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"\xa3\x03\n" +
 	"\fLiabilityLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12'\n" +
@@ -4737,10 +4752,12 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x14LiabilityDailyFilter\x127\n" +
 	"\x04from\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x04from\x123\n" +
 	"\x02to\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x02to\x12'\n" +
-	"\x0fcounterparty_id\x18\x03 \x01(\x04R\x0ecounterpartyId\"\x99\x01\n" +
+	"\x0fcounterparty_id\x18\x03 \x01(\x04R\x0ecounterpartyId\"\xed\x01\n" +
 	"\x15LiabilityDailyRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12L\n" +
-	"\x06filter\x18\x02 \x01(\v2,.warehouse.liability.v1.LiabilityDailyFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter:\f\x92\xb5\x18\b\n" +
+	"\x06filter\x18\x02 \x01(\v2,.warehouse.liability.v1.LiabilityDailyFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12R\n" +
+	"\bgroup_by\x18\x03 \x01(\x0e2%.warehouse.analytic_base.v1.GroupTypeB\x10\xbaH\r\x82\x01\n" +
+	"\x10\x01\x18\x00\x18\x02\x18\x04\x18\x05R\agroupBy:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"\xe4\x01\n" +
 	"\x10LiabilityDayItem\x12\x12\n" +
 	"\x04date\x18\x01 \x01(\tR\x04date\x12\x18\n" +
@@ -5108,6 +5125,7 @@ var file_warehouse_liability_v1_liability_proto_goTypes = []any{
 	(*v11.CommonPagination)(nil), // 79: warehouse.common.v1.CommonPagination
 	(*v11.GeneralMapItem)(nil),   // 80: warehouse.common.v1.GeneralMapItem
 	(*v11.PageInfo)(nil),         // 81: warehouse.common.v1.PageInfo
+	(v12.GroupType)(0),           // 82: warehouse.analytic_base.v1.GroupType
 }
 var file_warehouse_liability_v1_liability_proto_depIdxs = []int32{
 	0,  // 0: warehouse.liability.v1.LiabilityLog.source_type:type_name -> warehouse.liability.v1.LiabilitySourceType
@@ -5136,85 +5154,86 @@ var file_warehouse_liability_v1_liability_proto_depIdxs = []int32{
 	26, // 23: warehouse.liability.v1.LiabilityLogListResponse.items:type_name -> warehouse.liability.v1.LiabilityLogListResponseItem
 	81, // 24: warehouse.liability.v1.LiabilityLogListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	28, // 25: warehouse.liability.v1.LiabilityDailyRequest.filter:type_name -> warehouse.liability.v1.LiabilityDailyFilter
-	69, // 26: warehouse.liability.v1.LiabilityDayItem.by_source:type_name -> warehouse.liability.v1.LiabilityDayItem.BySourceEntry
-	70, // 27: warehouse.liability.v1.LiabilityDailyTotals.by_source:type_name -> warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
-	30, // 28: warehouse.liability.v1.LiabilityDailyResponse.days:type_name -> warehouse.liability.v1.LiabilityDayItem
-	31, // 29: warehouse.liability.v1.LiabilityDailyResponse.totals:type_name -> warehouse.liability.v1.LiabilityDailyTotals
-	5,  // 30: warehouse.liability.v1.LiabilityCredit.state:type_name -> warehouse.liability.v1.LiabilityCreditState
-	71, // 31: warehouse.liability.v1.LiabilityCreditMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry
-	35, // 32: warehouse.liability.v1.LiabilityCreditByIdsRequest.filter:type_name -> warehouse.liability.v1.LiabilityCreditByIdsFilter
-	6,  // 33: warehouse.liability.v1.LiabilityCreditByIdsRequest.data_request:type_name -> warehouse.liability.v1.LiabilityCreditByIdsDataType
-	80, // 34: warehouse.liability.v1.LiabilityCreditByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	34, // 35: warehouse.liability.v1.LiabilityCreditByIdsResponseItem.credit:type_name -> warehouse.liability.v1.LiabilityCreditMapItem
-	37, // 36: warehouse.liability.v1.LiabilityCreditByIdsResponseList.items:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponseItem
-	72, // 37: warehouse.liability.v1.LiabilityCreditByIdsResponse.items:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry
-	7,  // 38: warehouse.liability.v1.LiabilityPayment.status:type_name -> warehouse.liability.v1.LiabilityPaymentStatus
-	40, // 39: warehouse.liability.v1.LiabilityPaymentRecordResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
-	40, // 40: warehouse.liability.v1.LiabilityPaymentConfirmResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
-	40, // 41: warehouse.liability.v1.LiabilityPaymentRejectResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
-	8,  // 42: warehouse.liability.v1.LiabilityPaymentListFilter.side:type_name -> warehouse.liability.v1.LiabilityPaymentSide
-	47, // 43: warehouse.liability.v1.LiabilityPaymentListRequest.filter:type_name -> warehouse.liability.v1.LiabilityPaymentListFilter
-	9,  // 44: warehouse.liability.v1.LiabilityPaymentListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityPaymentListDataType
-	79, // 45: warehouse.liability.v1.LiabilityPaymentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	73, // 46: warehouse.liability.v1.LiabilityPaymentMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry
-	80, // 47: warehouse.liability.v1.LiabilityPaymentListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	49, // 48: warehouse.liability.v1.LiabilityPaymentListResponseItem.payment:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem
-	50, // 49: warehouse.liability.v1.LiabilityPaymentListResponse.items:type_name -> warehouse.liability.v1.LiabilityPaymentListResponseItem
-	81, // 50: warehouse.liability.v1.LiabilityPaymentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	10, // 51: warehouse.liability.v1.LiabilityTermsListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsListDataType
-	79, // 52: warehouse.liability.v1.LiabilityTermsListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	74, // 53: warehouse.liability.v1.LiabilityTermsMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry
-	80, // 54: warehouse.liability.v1.LiabilityTermsListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	54, // 55: warehouse.liability.v1.LiabilityTermsListResponseItem.terms:type_name -> warehouse.liability.v1.LiabilityTermsMapItem
-	55, // 56: warehouse.liability.v1.LiabilityTermsListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsListResponseItem
-	81, // 57: warehouse.liability.v1.LiabilityTermsListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	52, // 58: warehouse.liability.v1.LiabilityTermsSetResponse.terms:type_name -> warehouse.liability.v1.LiabilityTerms
-	75, // 59: warehouse.liability.v1.LiabilityTermsChangeMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry
-	63, // 60: warehouse.liability.v1.LiabilityTermsHistoryListRequest.filter:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListFilter
-	11, // 61: warehouse.liability.v1.LiabilityTermsHistoryListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListDataType
-	79, // 62: warehouse.liability.v1.LiabilityTermsHistoryListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	80, // 63: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	62, // 64: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.change:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem
-	65, // 65: warehouse.liability.v1.LiabilityTermsHistoryListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
-	81, // 66: warehouse.liability.v1.LiabilityTermsHistoryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	13, // 67: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPosition
-	12, // 68: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityLog
-	33, // 69: warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityCredit
-	38, // 70: warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry.value:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponseList
-	40, // 71: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPayment
-	52, // 72: warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTerms
-	61, // 73: warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTermsChange
-	19, // 74: warehouse.liability.v1.LiabilityService.LiabilityPositionList:input_type -> warehouse.liability.v1.LiabilityPositionListRequest
-	24, // 75: warehouse.liability.v1.LiabilityService.LiabilityLogList:input_type -> warehouse.liability.v1.LiabilityLogListRequest
-	29, // 76: warehouse.liability.v1.LiabilityService.LiabilityDaily:input_type -> warehouse.liability.v1.LiabilityDailyRequest
-	36, // 77: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:input_type -> warehouse.liability.v1.LiabilityCreditByIdsRequest
-	41, // 78: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:input_type -> warehouse.liability.v1.LiabilityPaymentRecordRequest
-	43, // 79: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:input_type -> warehouse.liability.v1.LiabilityPaymentConfirmRequest
-	45, // 80: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:input_type -> warehouse.liability.v1.LiabilityPaymentRejectRequest
-	48, // 81: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:input_type -> warehouse.liability.v1.LiabilityPaymentListRequest
-	15, // 82: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:input_type -> warehouse.liability.v1.LiabilityPaymentRequestSendRequest
-	53, // 83: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:input_type -> warehouse.liability.v1.LiabilityTermsListRequest
-	57, // 84: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:input_type -> warehouse.liability.v1.LiabilityTermsSetRequest
-	59, // 85: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:input_type -> warehouse.liability.v1.LiabilityTermsDeleteRequest
-	64, // 86: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:input_type -> warehouse.liability.v1.LiabilityTermsHistoryListRequest
-	22, // 87: warehouse.liability.v1.LiabilityService.LiabilityPositionList:output_type -> warehouse.liability.v1.LiabilityPositionListResponse
-	27, // 88: warehouse.liability.v1.LiabilityService.LiabilityLogList:output_type -> warehouse.liability.v1.LiabilityLogListResponse
-	32, // 89: warehouse.liability.v1.LiabilityService.LiabilityDaily:output_type -> warehouse.liability.v1.LiabilityDailyResponse
-	39, // 90: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:output_type -> warehouse.liability.v1.LiabilityCreditByIdsResponse
-	42, // 91: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:output_type -> warehouse.liability.v1.LiabilityPaymentRecordResponse
-	44, // 92: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:output_type -> warehouse.liability.v1.LiabilityPaymentConfirmResponse
-	46, // 93: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:output_type -> warehouse.liability.v1.LiabilityPaymentRejectResponse
-	51, // 94: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:output_type -> warehouse.liability.v1.LiabilityPaymentListResponse
-	16, // 95: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:output_type -> warehouse.liability.v1.LiabilityPaymentRequestSendResponse
-	56, // 96: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:output_type -> warehouse.liability.v1.LiabilityTermsListResponse
-	58, // 97: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:output_type -> warehouse.liability.v1.LiabilityTermsSetResponse
-	60, // 98: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:output_type -> warehouse.liability.v1.LiabilityTermsDeleteResponse
-	66, // 99: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:output_type -> warehouse.liability.v1.LiabilityTermsHistoryListResponse
-	87, // [87:100] is the sub-list for method output_type
-	74, // [74:87] is the sub-list for method input_type
-	74, // [74:74] is the sub-list for extension type_name
-	74, // [74:74] is the sub-list for extension extendee
-	0,  // [0:74] is the sub-list for field type_name
+	82, // 26: warehouse.liability.v1.LiabilityDailyRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	69, // 27: warehouse.liability.v1.LiabilityDayItem.by_source:type_name -> warehouse.liability.v1.LiabilityDayItem.BySourceEntry
+	70, // 28: warehouse.liability.v1.LiabilityDailyTotals.by_source:type_name -> warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
+	30, // 29: warehouse.liability.v1.LiabilityDailyResponse.days:type_name -> warehouse.liability.v1.LiabilityDayItem
+	31, // 30: warehouse.liability.v1.LiabilityDailyResponse.totals:type_name -> warehouse.liability.v1.LiabilityDailyTotals
+	5,  // 31: warehouse.liability.v1.LiabilityCredit.state:type_name -> warehouse.liability.v1.LiabilityCreditState
+	71, // 32: warehouse.liability.v1.LiabilityCreditMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry
+	35, // 33: warehouse.liability.v1.LiabilityCreditByIdsRequest.filter:type_name -> warehouse.liability.v1.LiabilityCreditByIdsFilter
+	6,  // 34: warehouse.liability.v1.LiabilityCreditByIdsRequest.data_request:type_name -> warehouse.liability.v1.LiabilityCreditByIdsDataType
+	80, // 35: warehouse.liability.v1.LiabilityCreditByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	34, // 36: warehouse.liability.v1.LiabilityCreditByIdsResponseItem.credit:type_name -> warehouse.liability.v1.LiabilityCreditMapItem
+	37, // 37: warehouse.liability.v1.LiabilityCreditByIdsResponseList.items:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponseItem
+	72, // 38: warehouse.liability.v1.LiabilityCreditByIdsResponse.items:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry
+	7,  // 39: warehouse.liability.v1.LiabilityPayment.status:type_name -> warehouse.liability.v1.LiabilityPaymentStatus
+	40, // 40: warehouse.liability.v1.LiabilityPaymentRecordResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
+	40, // 41: warehouse.liability.v1.LiabilityPaymentConfirmResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
+	40, // 42: warehouse.liability.v1.LiabilityPaymentRejectResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
+	8,  // 43: warehouse.liability.v1.LiabilityPaymentListFilter.side:type_name -> warehouse.liability.v1.LiabilityPaymentSide
+	47, // 44: warehouse.liability.v1.LiabilityPaymentListRequest.filter:type_name -> warehouse.liability.v1.LiabilityPaymentListFilter
+	9,  // 45: warehouse.liability.v1.LiabilityPaymentListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityPaymentListDataType
+	79, // 46: warehouse.liability.v1.LiabilityPaymentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	73, // 47: warehouse.liability.v1.LiabilityPaymentMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry
+	80, // 48: warehouse.liability.v1.LiabilityPaymentListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	49, // 49: warehouse.liability.v1.LiabilityPaymentListResponseItem.payment:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem
+	50, // 50: warehouse.liability.v1.LiabilityPaymentListResponse.items:type_name -> warehouse.liability.v1.LiabilityPaymentListResponseItem
+	81, // 51: warehouse.liability.v1.LiabilityPaymentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	10, // 52: warehouse.liability.v1.LiabilityTermsListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsListDataType
+	79, // 53: warehouse.liability.v1.LiabilityTermsListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	74, // 54: warehouse.liability.v1.LiabilityTermsMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry
+	80, // 55: warehouse.liability.v1.LiabilityTermsListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	54, // 56: warehouse.liability.v1.LiabilityTermsListResponseItem.terms:type_name -> warehouse.liability.v1.LiabilityTermsMapItem
+	55, // 57: warehouse.liability.v1.LiabilityTermsListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsListResponseItem
+	81, // 58: warehouse.liability.v1.LiabilityTermsListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	52, // 59: warehouse.liability.v1.LiabilityTermsSetResponse.terms:type_name -> warehouse.liability.v1.LiabilityTerms
+	75, // 60: warehouse.liability.v1.LiabilityTermsChangeMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry
+	63, // 61: warehouse.liability.v1.LiabilityTermsHistoryListRequest.filter:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListFilter
+	11, // 62: warehouse.liability.v1.LiabilityTermsHistoryListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListDataType
+	79, // 63: warehouse.liability.v1.LiabilityTermsHistoryListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	80, // 64: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	62, // 65: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.change:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem
+	65, // 66: warehouse.liability.v1.LiabilityTermsHistoryListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
+	81, // 67: warehouse.liability.v1.LiabilityTermsHistoryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	13, // 68: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPosition
+	12, // 69: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityLog
+	33, // 70: warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityCredit
+	38, // 71: warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry.value:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponseList
+	40, // 72: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPayment
+	52, // 73: warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTerms
+	61, // 74: warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTermsChange
+	19, // 75: warehouse.liability.v1.LiabilityService.LiabilityPositionList:input_type -> warehouse.liability.v1.LiabilityPositionListRequest
+	24, // 76: warehouse.liability.v1.LiabilityService.LiabilityLogList:input_type -> warehouse.liability.v1.LiabilityLogListRequest
+	29, // 77: warehouse.liability.v1.LiabilityService.LiabilityDaily:input_type -> warehouse.liability.v1.LiabilityDailyRequest
+	36, // 78: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:input_type -> warehouse.liability.v1.LiabilityCreditByIdsRequest
+	41, // 79: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:input_type -> warehouse.liability.v1.LiabilityPaymentRecordRequest
+	43, // 80: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:input_type -> warehouse.liability.v1.LiabilityPaymentConfirmRequest
+	45, // 81: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:input_type -> warehouse.liability.v1.LiabilityPaymentRejectRequest
+	48, // 82: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:input_type -> warehouse.liability.v1.LiabilityPaymentListRequest
+	15, // 83: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:input_type -> warehouse.liability.v1.LiabilityPaymentRequestSendRequest
+	53, // 84: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:input_type -> warehouse.liability.v1.LiabilityTermsListRequest
+	57, // 85: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:input_type -> warehouse.liability.v1.LiabilityTermsSetRequest
+	59, // 86: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:input_type -> warehouse.liability.v1.LiabilityTermsDeleteRequest
+	64, // 87: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:input_type -> warehouse.liability.v1.LiabilityTermsHistoryListRequest
+	22, // 88: warehouse.liability.v1.LiabilityService.LiabilityPositionList:output_type -> warehouse.liability.v1.LiabilityPositionListResponse
+	27, // 89: warehouse.liability.v1.LiabilityService.LiabilityLogList:output_type -> warehouse.liability.v1.LiabilityLogListResponse
+	32, // 90: warehouse.liability.v1.LiabilityService.LiabilityDaily:output_type -> warehouse.liability.v1.LiabilityDailyResponse
+	39, // 91: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:output_type -> warehouse.liability.v1.LiabilityCreditByIdsResponse
+	42, // 92: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:output_type -> warehouse.liability.v1.LiabilityPaymentRecordResponse
+	44, // 93: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:output_type -> warehouse.liability.v1.LiabilityPaymentConfirmResponse
+	46, // 94: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:output_type -> warehouse.liability.v1.LiabilityPaymentRejectResponse
+	51, // 95: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:output_type -> warehouse.liability.v1.LiabilityPaymentListResponse
+	16, // 96: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:output_type -> warehouse.liability.v1.LiabilityPaymentRequestSendResponse
+	56, // 97: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:output_type -> warehouse.liability.v1.LiabilityTermsListResponse
+	58, // 98: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:output_type -> warehouse.liability.v1.LiabilityTermsSetResponse
+	60, // 99: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:output_type -> warehouse.liability.v1.LiabilityTermsDeleteResponse
+	66, // 100: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:output_type -> warehouse.liability.v1.LiabilityTermsHistoryListResponse
+	88, // [88:101] is the sub-list for method output_type
+	75, // [75:88] is the sub-list for method input_type
+	75, // [75:75] is the sub-list for extension type_name
+	75, // [75:75] is the sub-list for extension extendee
+	0,  // [0:75] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_liability_v1_liability_proto_init() }

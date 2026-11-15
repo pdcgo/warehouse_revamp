@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	analytic_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
@@ -346,5 +347,206 @@ func TestLiabilityDaily_AnEmptyPeriodIsZeroNotNil(t *testing.T) {
 	}
 	if len(got.GetDays()) != 0 {
 		t.Fatalf("got %d day rows for a period with no entries", len(got.GetDays()))
+	}
+}
+
+func dailyAt(
+	t *testing.T,
+	svc *liability_v1.Service,
+	from, to string,
+	grain analytic_basev1.GroupType,
+) *liabilityv1.LiabilityDailyResponse {
+	t.Helper()
+
+	res, err := svc.LiabilityDaily(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityDailyRequest{
+			TeamId:  warehouse,
+			Filter:  &liabilityv1.LiabilityDailyFilter{From: from, To: to},
+			GroupBy: grain,
+		}))
+	if err != nil {
+		t.Fatalf("LiabilityDaily(%s..%s, %s): %v", from, to, grain, err)
+	}
+
+	return res.Msg
+}
+
+// rollUpLedger sums DAY rows into the buckets `keyOf` names — the rollup the browser used to do, kept here only as the
+// yardstick the server's grouping is measured against.
+func rollUpLedger(days []*liabilityv1.LiabilityDayItem, keyOf func(date string) string) []*liabilityv1.LiabilityDayItem {
+	out := []*liabilityv1.LiabilityDayItem{}
+
+	for _, d := range days {
+		key := keyOf(d.GetDate())
+
+		if len(out) == 0 || out[len(out)-1].GetDate() != key {
+			out = append(out, &liabilityv1.LiabilityDayItem{Date: key, BySource: map[int32]float64{}})
+		}
+
+		b := out[len(out)-1]
+		b.Entries += d.GetEntries()
+		b.Net += d.GetNet()
+
+		for source, amount := range d.GetBySource() {
+			b.BySource[source] += amount
+		}
+	}
+
+	return out
+}
+
+func sameLedgerBuckets(t *testing.T, grain string, got, want []*liabilityv1.LiabilityDayItem) {
+	t.Helper()
+
+	if len(got) != len(want) {
+		t.Fatalf("%s: %d rows, want %d — got %+v", grain, len(got), len(want), got)
+	}
+
+	for i := range want {
+		g, w := got[i], want[i]
+
+		// Exact: every amount here is a whole number of rupiah, so the database's sum and the sum of its days are the
+		// same double.
+		if g.GetDate() != w.GetDate() || g.GetEntries() != w.GetEntries() || g.GetNet() != w.GetNet() ||
+			len(g.GetBySource()) != len(w.GetBySource()) {
+			t.Fatalf("%s row %d = %s / %d legs / %v %v — the days sum to %s / %d / %v %v",
+				grain, i, g.GetDate(), g.GetEntries(), g.GetNet(), g.GetBySource(),
+				w.GetDate(), w.GetEntries(), w.GetNet(), w.GetBySource())
+		}
+
+		for source, amount := range w.GetBySource() {
+			if g.GetBySource()[source] != amount {
+				t.Fatalf("%s row %s source %d = %v, the days sum to %v", grain, g.GetDate(), source, g.GetBySource()[source], amount)
+			}
+		}
+	}
+}
+
+// THE SERVER GROUPS (periods-are-grouped-on-the-server), ON THE JAKARTA CALENDAR: a month's row and a year's row are
+// EXACTLY the sum of their day rows — legs, net and every source — over a period that starts late in December, crosses
+// a month AND a year boundary and ends on the 1st of February. The legs sit on the Jakarta midnights the UTC calendar
+// would put in the other bucket: 00:30 WIB on 1 January is 17:30 UTC on 31 December (January, 2026 — not December,
+// 2025), and 06:00 WIB on 1 February is 23:00 UTC on 31 January (February — not January).
+func TestLiabilityDaily_AMonthsAndAYearsRowAreTheSumOfTheirJakartaDays(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	// OUTSIDE the period, by a minute each side.
+	postOn(t, db, svc, handling(70_000, 1), time.Date(2025, 12, 29, 23, 59, 0, 0, wib))
+	postOn(t, db, svc, handling(80_000, 2), time.Date(2026, 2, 2, 0, 1, 0, 0, wib))
+
+	postOn(t, db, svc, handling(10_000, 3), time.Date(2025, 12, 30, 9, 0, 0, 0, wib))
+	postOn(t, db, svc, codFee(15_000, 4), time.Date(2025, 12, 31, 14, 0, 0, 0, wib))
+	postOn(t, db, svc, handling(30_000, 5), time.Date(2025, 12, 31, 23, 59, 0, 0, wib)) // December, 2025
+	postOn(t, db, svc, handling(40_000, 6), time.Date(2026, 1, 1, 0, 0, 0, 0, wib))     // January, 2026
+	postOn(t, db, svc, handling(50_000, 7), time.Date(2026, 1, 1, 0, 30, 0, 0, wib))    // 17:30 UTC on the 31st
+	// A fee charged and reversed in January — two legs, net zero, both counted.
+	postOn(t, db, svc, handling(60_000, 8), time.Date(2026, 1, 15, 10, 0, 0, 0, wib))
+	reversal := handling(60_000, 8)
+	reversal.Reversal = true
+	postOn(t, db, svc, reversal, time.Date(2026, 1, 16, 10, 0, 0, 0, wib))
+	postOn(t, db, svc, handling(25_000, 9), time.Date(2026, 1, 31, 23, 30, 0, 0, wib))
+	postOn(t, db, svc, handling(35_000, 10), time.Date(2026, 2, 1, 6, 0, 0, 0, wib)) // 23:00 UTC on 31 Jan
+
+	days := dailyAt(t, svc, "2025-12-30", "2026-02-01", analytic_basev1.GroupType_GROUP_TYPE_DAILY)
+	unset := daily(t, svc, warehouse, "2025-12-30", "2026-02-01")
+	months := dailyAt(t, svc, "2025-12-30", "2026-02-01", analytic_basev1.GroupType_GROUP_TYPE_MONTHLY)
+	years := dailyAt(t, svc, "2025-12-30", "2026-02-01", analytic_basev1.GroupType_GROUP_TYPE_YEARLY)
+
+	// No grain is the daily grain — the callers that send none get what they always got.
+	sameLedgerBuckets(t, "unset", unset.GetDays(), days.GetDays())
+
+	monthOf := func(date string) string { return date[:7] + "-01" }
+	yearOf := func(date string) string { return date[:4] + "-01-01" }
+
+	sameLedgerBuckets(t, "monthly", months.GetDays(), rollUpLedger(days.GetDays(), monthOf))
+	sameLedgerBuckets(t, "yearly", years.GetDays(), rollUpLedger(days.GetDays(), yearOf))
+
+	// The midnights, in figures: December = 10.000 + 15.000 + 30.000; January = 40.000 + 50.000 + 0 + 25.000;
+	// February = 35.000. Years: 2025 = December, 2026 = the rest.
+	want := []struct {
+		date string
+		net  float64
+	}{{"2025-12-01", 55_000}, {"2026-01-01", 115_000}, {"2026-02-01", 35_000}}
+
+	for i, w := range want {
+		g := months.GetDays()[i]
+		if g.GetDate() != w.date || g.GetNet() != w.net {
+			t.Fatalf("month %d = %s / %v, want %s / %v", i, g.GetDate(), g.GetNet(), w.date, w.net)
+		}
+	}
+
+	if y := years.GetDays(); len(y) != 2 || y[0].GetDate() != "2025-01-01" || y[0].GetNet() != 55_000 ||
+		y[1].GetDate() != "2026-01-01" || y[1].GetNet() != 150_000 {
+		t.Fatalf("years = %+v, want 2025 = 55000 and 2026 = 150000", y)
+	}
+
+	// The reversal keeps its legs in January's count: 40, 50, 60, −60, 25 → 5 legs.
+	if got := months.GetDays()[1].GetEntries(); got != 5 {
+		t.Fatalf("January holds %d legs, want 5 (the reversal and its fee both count)", got)
+	}
+
+	// One footer whatever the grain.
+	for name, res := range map[string]*liabilityv1.LiabilityDailyResponse{"monthly": months, "yearly": years} {
+		if res.GetTotals().GetNet() != days.GetTotals().GetNet() || res.GetTotals().GetNet() != 205_000 ||
+			res.GetTotals().GetBySource()[codFeeSource] != 15_000 {
+			t.Fatalf("%s totals = %v %v, daily %v, want 205000", name,
+				res.GetTotals().GetNet(), res.GetTotals().GetBySource(), days.GetTotals().GetNet())
+		}
+	}
+}
+
+// THE SPAN FOLLOWS THE GRAIN (periods-are-grouped-on-the-server) — ExpenseDaily's caps exactly, since the two are read
+// side by side: three years yearly is answered, daily refused; 60 months and 20 years fit, one more does not; a week
+// is refused, never read as days.
+func TestLiabilityDaily_TheSpanFollowsTheGrain(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db, nil, nil, nil)
+
+	postOn(t, db, svc, handling(20_000, 1), time.Date(2024, 3, 1, 9, 0, 0, 0, wib))
+	postOn(t, db, svc, handling(30_000, 2), time.Date(2026, 11, 1, 9, 0, 0, 0, wib))
+
+	cases := []struct {
+		name     string
+		from, to string
+		grain    analytic_basev1.GroupType
+		refused  bool
+	}{
+		{"three years yearly", "2024-01-01", "2026-12-31", analytic_basev1.GroupType_GROUP_TYPE_YEARLY, false},
+		{"three years daily", "2024-01-01", "2026-12-31", analytic_basev1.GroupType_GROUP_TYPE_DAILY, true},
+		{"60 months", "2022-01-01", "2026-12-31", analytic_basev1.GroupType_GROUP_TYPE_MONTHLY, false},
+		{"61 months", "2021-12-31", "2026-12-31", analytic_basev1.GroupType_GROUP_TYPE_MONTHLY, true},
+		{"20 years", "2007-01-01", "2026-12-31", analytic_basev1.GroupType_GROUP_TYPE_YEARLY, false},
+		{"21 years", "2006-12-31", "2026-12-31", analytic_basev1.GroupType_GROUP_TYPE_YEARLY, true},
+		{"a week", "2026-11-01", "2026-11-30", analytic_basev1.GroupType_GROUP_TYPE_WEEKLY, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := svc.LiabilityDaily(context.Background(), connect.NewRequest(&liabilityv1.LiabilityDailyRequest{
+				TeamId:  warehouse,
+				Filter:  &liabilityv1.LiabilityDailyFilter{From: tc.from, To: tc.to},
+				GroupBy: tc.grain,
+			}))
+
+			if tc.refused {
+				if connect.CodeOf(err) != connect.CodeInvalidArgument {
+					t.Fatalf("%s..%s %s = %v, want InvalidArgument", tc.from, tc.to, tc.grain, err)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("%s..%s %s: %v", tc.from, tc.to, tc.grain, err)
+			}
+
+			if tc.name == "three years yearly" {
+				y := res.Msg.GetDays()
+				if len(y) != 2 || y[0].GetDate() != "2024-01-01" || y[1].GetDate() != "2026-01-01" || y[1].GetNet() != 30_000 {
+					t.Fatalf("three years yearly = %+v, want 2024 and 2026 (2025 moved nothing, so it is absent)", y)
+				}
+			}
+		})
 	}
 }

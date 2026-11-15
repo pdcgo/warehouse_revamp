@@ -11,7 +11,7 @@ import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { firstOfMonthBack, jakartaToday, jakartaWindowOf } from "../../lib/jakartaDay";
-import { MAX_PERIOD_DAYS, bucketSpine, spanDays } from "../../lib/period";
+import { MAX_PERIOD_BUCKETS, bucketSpine, spanBuckets } from "../../lib/period";
 import type { PeriodGrain } from "../../lib/period";
 import { boolCodec, dateRangeCodec, enumCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { useTeam } from "../../features/team/TeamContext";
@@ -19,21 +19,23 @@ import { useDailyStatement } from "./queries";
 import { StatementSummary } from "./components/StatementSummary";
 import { StatementTable } from "./components/StatementTable";
 
-// THE WINDOW EACH GRAIN OPENS ON, and it is not the same window three times.
+// THE WINDOW EACH GRAIN OPENS ON, and it is not the same window three times
+// (the-yearly-statement-opens-on-five-years, docs/technical/frontend/context_decision.md).
 //
-// A grain is only readable with enough buckets in front of it: 30 days of days is a statement, and 30
-// days of MONTHS is one row. So switching the grain re-picks the window rather than keeping the last
-// one — the alternative is somebody clicking Monthly, getting a single row, and concluding the screen
-// is broken. The picker is right beside it if they want a different period.
+// A grain is only readable with enough buckets in front of it: a month of days is a statement, and a month of MONTHS is
+// one row. So switching the grain re-picks the window rather than keeping the last one — the alternative is somebody
+// clicking Bulanan, getting a single row, and concluding the screen is broken. The picker is right beside it for any
+// other period, and a range picked there stays until the grain is switched again.
 //
-//   day     a rolling 30 days       — always a readable statement, on the 2nd of the month included
-//   month   the last 12 months      — the first of them whole, so a year is twelve comparable rows
-//   year    this year to date       — see the cap below
+//   day     the rolling last month   — always a readable statement, on the 2nd of the month included
+//   month   the last 12 months       — the first of them whole, so a year is twelve comparable rows
+//   year    1 January four years back → today — five calendar years, this one to date: five rows to compare
 //
-// ⚠ THE YEARLY WINDOW IS PINNED BY THE 366-DAY CAP, not chosen. The three RPCs return DAILY rows and
-// refuse a span longer than a leap year, so a yearly view can hold at most one year — and "last year
-// and this one" is not a range this screen is allowed to ask for. It shows year-to-date and says so.
-// Lifting that means giving the RPCs a grain of their own, which is a contract change.
+// THE YEARLY WINDOW IS CHOSEN, no longer pinned by a cap. It was this year to date only because every read was capped at
+// 366 days of daily rows, so "last year beside this one" was a range the screen could not ask for. The grain is now asked
+// of the server and each one reads its own span (periods-are-grouped-on-the-server: 366 days, 60 months, 20 years —
+// `MAX_PERIOD_BUCKETS`), and the owner picked five years over this year only or the team's whole history. All three
+// windows sit inside their grain's span by construction; a range picked by hand past it is named, not sent (`valid`).
 //
 // Today, this month and this year are JAKARTA's (the-system-runs-on-jakarta-time, backlog #37) — the days the Daily RPCs
 // bucket on, whatever the viewer's clock says.
@@ -41,20 +43,19 @@ function defaultRangeFor(grain: PeriodGrain): DateRange {
   const today = jakartaToday();
 
   if (grain === "month") {
-    // The 1st of the month eleven back — twelve calendar months, which is 365 or 366 days and so
-    // never trips the cap.
+    // The 1st of the month eleven back — twelve calendar months, the last of them to date.
     return { kind: "absolute", from: firstOfMonthBack(today, 11), to: today };
   }
 
   if (grain === "year") {
-    return { kind: "absolute", from: `${today.slice(0, 4)}-01-01`, to: today };
+    // 1 January of Jakarta's year four back — this year and the four before it.
+    return { kind: "absolute", from: `${Number(today.slice(0, 4)) - 4}-01-01`, to: today };
   }
 
   // The calendar month would have matched the other three money screens, and it is deliberately NOT one: those
-  // screens answer "how did July do", which is a question about a closed period, while this one answers
-  // "how are we doing", which is a question about the recent past. On the 2nd of the month a month-scoped
-  // statement is two rows. The ROLLING last month — every dated screen's default (owner: *"default 1 bulan"*) — is
-  // always a readable statement.
+  // screens answer "how did July do", which is a question about a closed period, while this one answers "how are we
+  // doing", which is a question about the recent past. On the 2nd of the month a month-scoped statement is two rows.
+  // The ROLLING last month — every dated screen's default (owner: *"default 1 bulan"*) — is always a readable statement.
   return LAST_MONTH;
 }
 
@@ -69,12 +70,13 @@ const GRAIN_CODEC = oneOfCodec<PeriodGrain>(["day", "month", "year"]);
 //
 // IT READS AT THREE GRAINS, and they are three questions rather than three zoom levels:
 //
-//   daily     which Tuesday went wrong           — the reason this screen exists
-//   monthly   whether the quarter is turning     — twelve comparable rows, at a glance
-//   yearly    whether the business is bigger     — currently one year at a time (see `defaultRangeFor`)
+//   daily     which Tuesday went wrong           — the reason this screen exists, up to 366 days
+//   monthly   whether the quarter is turning     — up to 60 months
+//   yearly    whether the business is bigger     — up to 20 years, opening on five (see `defaultRangeFor`)
 //
-// The grain is a ROLLUP of the same daily fetch (see `mergeBuckets`), not a different request, so every
-// rule below — the spine, the subtraction, the server-owned footer — holds identically at all three.
+// The grain is ASKED OF THE SERVER (periods-are-grouped-on-the-server): each RPC returns one row per
+// bucket, grouped there, and `mergeBuckets` only lays them on the spine — so every rule below (the spine,
+// the subtraction, the server-owned footer) holds identically at all three.
 //
 // IT IS THE WAREHOUSE'S MONEY SCREEN: the handling fees it charged, less its expenses — and a
 // warehouse's written-off stock is already an expense on its own team (#211), so the two sides need
@@ -98,8 +100,9 @@ export function DailyStatementPage() {
   // that moved.
   const [hideQuiet, setHideQuiet] = useUrlState("active", false, boolCodec);
 
-  // Changing the grain re-picks the window with it. See `defaultRangeFor` — a grain kept over the
-  // previous grain's window is how Monthly ends up showing one row.
+  // Changing the grain re-picks the window with it. See `defaultRangeFor` — a grain kept over the previous grain's window
+  // is how Bulanan ends up showing one row. Both land in one render, so the old window is never asked at the new grain.
+  // (Unlike the Settlement Report and the account report, which keep the window under a 366-day cap at every grain.)
   const pickGrain = (next: PeriodGrain) => {
     setGrain(next);
     setRange(defaultRangeFor(next));
@@ -114,16 +117,18 @@ export function DailyStatementPage() {
   // A DateRange → the `yyyy-mm-dd` pair both Daily RPCs filter on. A RELATIVE range ("last 30 days") stores only the
   // COUNT so the window stays live; `jakartaWindowOf` turns it into Jakarta's actual 30 days (backlog #37).
   const { from, to } = jakartaWindowOf(range);
-  const span = spanDays(from, to);
 
-  // The SAME bound the server enforces, checked here first — and it is a bound in DAYS at every grain,
-  // because the series underneath is daily whatever the table shows.
+  // THE SPAN THE GRAIN UNLOCKS (periods-are-grouped-on-the-server) — 366 days at Harian, 60 months at Bulanan, 20
+  // years at Tahunan — counted in the grain's own buckets exactly as the server counts them (`spanBuckets`,
+  // backend/pkgs/san_period), and checked here first so a range the server would refuse is never sent.
   //
-  // Refused rather than clamped, and that is the same call the handler makes: silently trimming a
-  // ten-year pick to its last year would answer a question nobody asked, with a total that looks like
-  // the one they wanted. The picker keeps showing what was chosen and the screen says why it is not
-  // loading, so the fix is obvious.
-  const valid = span > 0 && span <= MAX_PERIOD_DAYS;
+  // Refused rather than clamped, and that is the same call the handler makes — and the Settlement Report's: the
+  // picker keeps what was chosen, and the line under it says how long it is and what the most is. Silently trimming
+  // a three-year pick to its last 366 days would answer a question nobody asked, with a total that looks like the one
+  // they wanted. Only a hand-picked range can get here — every window a grain opens on fits it.
+  const span = spanBuckets(from, to, grain);
+  const maxSpan = MAX_PERIOD_BUCKETS[grain];
+  const valid = span > 0 && span <= maxSpan;
 
   // How many BUCKETS the window covers — the divisor for the per-period average, and the denominator
   // the row count is read against. Computed from the same spine the rows are laid on, so the header
@@ -180,24 +185,18 @@ export function DailyStatementPage() {
         </Flex>
       )}
 
-      {/* ⚠ SAID OUT LOUD, because the alternative is a one-row table that looks like a bug. The series
-          behind this screen is DAILY and capped at a leap year, so a yearly view cannot reach back to
-          last year for comparison — which is the only thing anybody wants a yearly row for. Naming the
-          limit is the honest version of shipping it; lifting it is a contract change (see queries.ts). */}
-      {grain === "year" && valid && (
-        <Flex align="center" gap="2" color="warning.fg" data-testid="statement-grain-capped">
-          <Icon as={TriangleAlert} boxSize="4" />
-          <Text fontSize="sm">{t("statement.grainCapped", { max: MAX_PERIOD_DAYS })}</Text>
-        </Flex>
-      )}
-
       {!valid && (
         <Flex align="center" gap="2" color="warning.fg" data-testid="statement-range-invalid">
           <Icon as={TriangleAlert} boxSize="4" />
           <Text fontSize="sm">
             {span === 0
               ? t("statement.rangeUnbounded")
-              : t("statement.rangeTooLong", { max: MAX_PERIOD_DAYS, days: span })}
+              : t("statement.rangeTooLong", {
+                  span,
+                  max: maxSpan,
+                  unit: unit(maxSpan),
+                  grain: t(`periodGrain.${grain}`),
+                })}
           </Text>
         </Flex>
       )}

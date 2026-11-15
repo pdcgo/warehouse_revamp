@@ -57,7 +57,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-restock-prototype-is-accepted](#the-restock-prototype-is-accepted) | design_accept: the seven restock screens and the restock contract are the design to build; a contract change from here is a new pass | chat, 2026-10-15 |
 | [restocks-non-stock-parts-come-before-the-switch-over](#restocks-non-stock-parts-come-before-the-switch-over) | everything in restock that writes no stock is built now, on today's backend; only the accept waits for the ledgers | chat, 2026-10-15 — as recommended |
 | [a-restock-carries-only-the-teams-own-products](#a-restock-carries-only-the-teams-own-products) | a selling team restocks only the products it owns; create and update refuse another team's product, so every unit in stock has one owner | chat, 2026-10-16 — option a, as recommended |
-| [the-restocks-warehouse-opens-its-label-photo](#the-restocks-warehouse-opens-its-label-photo) | the restock's own warehouse opens its label photo through a checked signed link, no share | owner, as recommended | — |
+| [the-restocks-warehouse-opens-its-label-photo](#the-restocks-warehouse-opens-its-label-photo) | the restock's own warehouse opens its label photo through a checked signed link, no share | owner, as recommended, 2026-11-04 |
 
 ## a-line-names-the-channel-it-was-bought-from
 

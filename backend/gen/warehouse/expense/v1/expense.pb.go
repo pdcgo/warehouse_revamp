@@ -8,6 +8,7 @@ package expensev1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v11 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/analytic_base/v1"
 	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -1195,12 +1196,13 @@ func (x *ExpenseListResponse) GetTotals() *ExpenseTotals {
 // series side by side and subtracts them, so a difference in how they page, bound or bucket would land
 // on the reader as an unexplainable gap in one column.
 //
-// ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is `to − from`, which the
-// caller states and the server CAPS at 366 days. Both bounds are required here, unlike ExpenseList
-// where they are optional and a page carries the risk instead.
+// ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is the number of buckets
+// between `from` and `to`, which the caller states and the server CAPS per grain — 366 days, 60 months or
+// 20 years (periods-are-grouped-on-the-server). Both bounds are required here, unlike ExpenseList where
+// they are optional and a page carries the risk instead.
 //
-// ⚠ SPARSE: a day nobody spent anything on is ABSENT, not a zero row. The client owns the date spine
-// because it must build one to merge these days with revenue's.
+// ⚠ SPARSE: a bucket nobody spent anything in is ABSENT, not a zero row. The client owns the date spine
+// because it must build one to merge these buckets with the income half's.
 //
 // The one place it is NOT a mirror is bucketing, and that difference is the point of the field it uses.
 // A cost is filed under `occurred_at` — the day the person said it BELONGS to — while revenue is filed
@@ -1278,9 +1280,13 @@ func (x *ExpenseDailyFilter) GetShopId() uint64 {
 }
 
 type ExpenseDailyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Filter        *ExpenseDailyFilter    `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter *ExpenseDailyFilter    `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	// THE GRAIN — a row is a day, a month or a year (periods-are-grouped-on-the-server): DAILY, MONTHLY or YEARLY, and
+	// unset reads as DAILY. The SERVER groups, over the stored day, so the browser never buckets days into months and two
+	// screens cannot compute "August" two ways. The span cap follows the grain: 366 days, 60 months, 20 years.
+	GroupBy       v11.GroupType `protobuf:"varint,3,opt,name=group_by,json=groupBy,proto3,enum=warehouse.analytic_base.v1.GroupType" json:"group_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1329,21 +1335,30 @@ func (x *ExpenseDailyRequest) GetFilter() *ExpenseDailyFilter {
 	return nil
 }
 
-// One day's spending.
+func (x *ExpenseDailyRequest) GetGroupBy() v11.GroupType {
+	if x != nil {
+		return x.GroupBy
+	}
+	return v11.GroupType(0)
+}
+
+// One bucket's spending — a day's, a month's or a year's, as the request's grain says.
 type ExpenseDayItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The day this row sums, as YYYY-MM-DD — from `occurred_at`, the day the money BELONGS to.
+	// The bucket this row sums, as YYYY-MM-DD — its FIRST calendar day: the day itself, the 1st of its month
+	// (`2026-08-01`), or the 1st of January of its year (`2026-01-01`), even when the period starts later in it. From
+	// `occurred_at`, the day the money BELONGS to.
 	//
 	// No timezone caveat here, unlike RevenueDayItem: `occurred_at` is a DATE column, chosen by a person.
 	// There is no instant to convert and therefore no zone to get wrong.
 	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
-	// How many rows the day's number is made of — its expenses AND the adjustments that correct them, each counting on
+	// How many rows the bucket's number is made of — its expenses AND the adjustments that correct them, each counting on
 	// the corrected expense's day.
 	Entries uint64 `protobuf:"varint,2,opt,name=entries,proto3" json:"entries,omitempty"`
-	// The day's spending, the exact sum.
+	// The bucket's spending, the exact sum — exactly the sum of its days' totals.
 	Total float64 `protobuf:"fixed64,3,opt,name=total,proto3" json:"total,omitempty"`
-	// Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
-	// day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
+	// Split by kind, so a bucket that jumped can be read without opening the list. A kind with nothing in
+	// the bucket is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
 	// and zero read identically, and building the empty ones would mean this message knowing the enum's
 	// members.
 	ByKind        map[int32]float64 `protobuf:"bytes,4,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
@@ -1411,7 +1426,7 @@ func (x *ExpenseDayItem) GetByKind() map[int32]float64 {
 
 type ExpenseDailyResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// ASCENDING by date, and SPARSE — see the note on ExpenseDailyFilter.
+	// ASCENDING by date, one item per bucket of the grain, and SPARSE — see the note on ExpenseDailyFilter.
 	Days []*ExpenseDayItem `protobuf:"bytes,1,rep,name=days,proto3" json:"days,omitempty"`
 	// The same totals ExpenseList reports, over the same period and the same filters. Sent rather than
 	// summed in the browser, so the statement's footer and the expense list's headline are one number.
@@ -1603,7 +1618,7 @@ var File_warehouse_expense_v1_expense_proto protoreflect.FileDescriptor
 
 const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xc6\x03\n" +
+	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xc6\x03\n" +
 	"\rExpenseRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1702,10 +1717,12 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x04from\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x04from\x123\n" +
 	"\x02to\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x02to\x12?\n" +
 	"\x04kind\x18\x03 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04kind\x12\x17\n" +
-	"\ashop_id\x18\x04 \x01(\x04R\x06shopId\"\x93\x01\n" +
+	"\ashop_id\x18\x04 \x01(\x04R\x06shopId\"\xe7\x01\n" +
 	"\x13ExpenseDailyRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12H\n" +
-	"\x06filter\x18\x02 \x01(\v2(.warehouse.expense.v1.ExpenseDailyFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter:\f\x92\xb5\x18\b\n" +
+	"\x06filter\x18\x02 \x01(\v2(.warehouse.expense.v1.ExpenseDailyFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12R\n" +
+	"\bgroup_by\x18\x03 \x01(\x0e2%.warehouse.analytic_base.v1.GroupTypeB\x10\xbaH\r\x82\x01\n" +
+	"\x10\x01\x18\x00\x18\x02\x18\x04\x18\x05R\agroupBy:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"\xda\x01\n" +
 	"\x0eExpenseDayItem\x12\x12\n" +
 	"\x04date\x18\x01 \x01(\tR\x04date\x12\x18\n" +
@@ -1796,6 +1813,7 @@ var file_warehouse_expense_v1_expense_proto_goTypes = []any{
 	(*v1.CommonPagination)(nil),     // 25: warehouse.common.v1.CommonPagination
 	(*v1.GeneralMapItem)(nil),       // 26: warehouse.common.v1.GeneralMapItem
 	(*v1.PageInfo)(nil),             // 27: warehouse.common.v1.PageInfo
+	(v11.GroupType)(0),              // 28: warehouse.analytic_base.v1.GroupType
 }
 var file_warehouse_expense_v1_expense_proto_depIdxs = []int32{
 	0,  // 0: warehouse.expense.v1.ExpenseRecord.kind:type_name -> warehouse.expense.v1.ExpenseKind
@@ -1819,25 +1837,26 @@ var file_warehouse_expense_v1_expense_proto_depIdxs = []int32{
 	9,  // 18: warehouse.expense.v1.ExpenseListResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
 	0,  // 19: warehouse.expense.v1.ExpenseDailyFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
 	14, // 20: warehouse.expense.v1.ExpenseDailyRequest.filter:type_name -> warehouse.expense.v1.ExpenseDailyFilter
-	22, // 21: warehouse.expense.v1.ExpenseDayItem.by_kind:type_name -> warehouse.expense.v1.ExpenseDayItem.ByKindEntry
-	16, // 22: warehouse.expense.v1.ExpenseDailyResponse.days:type_name -> warehouse.expense.v1.ExpenseDayItem
-	9,  // 23: warehouse.expense.v1.ExpenseDailyResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
-	3,  // 24: warehouse.expense.v1.ExpenseAdjustResponse.adjustment:type_name -> warehouse.expense.v1.ExpenseRecord
-	3,  // 25: warehouse.expense.v1.ExpenseAdjustResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
-	10, // 26: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
-	4,  // 27: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
-	8,  // 28: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
-	15, // 29: warehouse.expense.v1.ExpenseService.ExpenseDaily:input_type -> warehouse.expense.v1.ExpenseDailyRequest
-	18, // 30: warehouse.expense.v1.ExpenseService.ExpenseAdjust:input_type -> warehouse.expense.v1.ExpenseAdjustRequest
-	5,  // 31: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
-	13, // 32: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
-	17, // 33: warehouse.expense.v1.ExpenseService.ExpenseDaily:output_type -> warehouse.expense.v1.ExpenseDailyResponse
-	19, // 34: warehouse.expense.v1.ExpenseService.ExpenseAdjust:output_type -> warehouse.expense.v1.ExpenseAdjustResponse
-	31, // [31:35] is the sub-list for method output_type
-	27, // [27:31] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	28, // 21: warehouse.expense.v1.ExpenseDailyRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	22, // 22: warehouse.expense.v1.ExpenseDayItem.by_kind:type_name -> warehouse.expense.v1.ExpenseDayItem.ByKindEntry
+	16, // 23: warehouse.expense.v1.ExpenseDailyResponse.days:type_name -> warehouse.expense.v1.ExpenseDayItem
+	9,  // 24: warehouse.expense.v1.ExpenseDailyResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
+	3,  // 25: warehouse.expense.v1.ExpenseAdjustResponse.adjustment:type_name -> warehouse.expense.v1.ExpenseRecord
+	3,  // 26: warehouse.expense.v1.ExpenseAdjustResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
+	10, // 27: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
+	4,  // 28: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
+	8,  // 29: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
+	15, // 30: warehouse.expense.v1.ExpenseService.ExpenseDaily:input_type -> warehouse.expense.v1.ExpenseDailyRequest
+	18, // 31: warehouse.expense.v1.ExpenseService.ExpenseAdjust:input_type -> warehouse.expense.v1.ExpenseAdjustRequest
+	5,  // 32: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
+	13, // 33: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
+	17, // 34: warehouse.expense.v1.ExpenseService.ExpenseDaily:output_type -> warehouse.expense.v1.ExpenseDailyResponse
+	19, // 35: warehouse.expense.v1.ExpenseService.ExpenseAdjust:output_type -> warehouse.expense.v1.ExpenseAdjustResponse
+	32, // [32:36] is the sub-list for method output_type
+	28, // [28:32] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_expense_v1_expense_proto_init() }

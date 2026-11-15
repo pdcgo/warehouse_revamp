@@ -38,9 +38,9 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-batch-carries-its-owner](#a-batch-carries-its-owner) | `batches.team_id` is written at mint — the restock's team, or the source batch's at a transfer; no climb through restocks | chat, 2026-10-10 — as recommended |
 | [the-transfer-expense-event-waits-for-the-events-pass](#the-transfer-expense-event-waits-for-the-events-pass) | the shipping-expense event is built in one events pass with restock's | chat, 2026-10-10 — as recommended |
 | [balance-posts-the-transfers-on-site-debt-from-the-event](#balance-posts-the-transfers-on-site-debt-from-the-event) | B's accept saves the courier's charge on the transfer and never writes balance; balance posts the team's debt to B from *Warehouse Transfer Accepted*, once per transfer | chat, 2026-10-15 — answers [Q10](./warehouse_transfer_clarify.md#question), as recommended (option B) |
-| [a-transfers-shipping-is-paid-from-any-active-account](#a-transfers-shipping-is-paid-from-any-active-account) | a transfer's shipping is paid from any active account of the team, operational or not | owner | — |
-| [every-side-of-a-transfer-opens-its-label-photo](#every-side-of-a-transfer-opens-its-label-photo) | the sender, the receiver and the owning seller open a transfer's label photo, through a server check | owner, as recommended | — |
-| [the-transfer-lists-read-as-blocks-on-a-phone](#the-transfer-lists-read-as-blocks-on-a-phone) | both transfer lists read as one block per transfer on a phone, and the warehouse block names who opened it | owner, as recommended | — |
+| [a-transfers-shipping-is-paid-from-any-active-account](#a-transfers-shipping-is-paid-from-any-active-account) | a transfer's shipping is paid from any active account of the team, operational or not | owner, 2026-11-05 |
+| [every-side-of-a-transfer-opens-its-label-photo](#every-side-of-a-transfer-opens-its-label-photo) | the sender, the receiver and the owning seller open a transfer's label photo, through a server check | owner, as recommended, 2026-11-05 |
+| [the-transfer-lists-read-as-blocks-on-a-phone](#the-transfer-lists-read-as-blocks-on-a-phone) | both transfer lists read as one block per transfer on a phone, and the warehouse block names who opened it | owner, as recommended, 2026-11-14 |
 
 ---
 

@@ -321,3 +321,17 @@ run is due.
 | perf | `analytic_perf_test.go` now seeds 3 warehouses (522 000 rows + mirror): chip reads ≈ the no-chip ones — SUMMARY top 366 d 21.2 ms (20.8), 30 d 4.2; DAILY 366 d × 200 13.3 (10.9); PRODUCT ids 19.1 (17.1); `MetricSearch` products 15.5 (17.7). The supplier-day index + a filter; no index added. Fold 6 statements, 8.8 ms @ 100 lines. No problem → no audit file; numbers in rpc.md; concurrency rows in lock-order.md |
 
 **Still not real:** product-discover-detail's suppliers (`sampleSuppliers.ts`).
+
+## 2026-11-15 — the Terjual band reads the daily sold fold
+
+[the-terjual-band-reads-the-daily-sold-fold](../../business/supplier/context_decision.md#the-terjual-band-reads-the-daily-sold-fold)
+(flow: [inventory rpc.md § The same goods for supplier_service](../../services/inventory_service/rpc.md#the-same-goods-for-supplier_service--three-in-process-seams-not-rpcs)).
+The supplier list's and Discover's Terjual pills narrow by the same suppliers as before, faster: the band sums inventory's
+daily stock fold instead of every order row. Nothing on screen changes.
+
+| | |
+| --- | --- |
+| backend | `inventory_v1/supplier_ids_by_figure.go` — the Sold branch reads `inventory_stock_daily_changes` (`change_type = 'order'`, `-SUM(change_count)` per `supplier_id`, `supplier_id <> 0`), no join to `batches`; the Siap branch, the seam (`cmd/app_development/supplier_goods_reader.go`), `SupplierList` and `SupplierGoods` untouched. No migration, no index, no write path. Under the Gudang filter the band still tests the WHOLE figure ([the-warehouse-filter-narrows-only-the-rows](../../technical/frontend/suppliers_decision.md#the-warehouse-filter-narrows-only-the-rows)) — the verdict's "per warehouse under the warehouse filter" would change today's ids, which the same verdict forbids |
+| equality | the old ledger query kept verbatim in the tests (`ledgerSoldIDs`, `ledgerTerjualBand`) and run beside the new on ONE fixture through the real stock writes: inventory `supplier_ids_by_figure_fold_test.go` (2 — the 5 pills, the `< 500` one as its complement, + 324 edge bands; per supplier / supplier × warehouse / supplier × team, a fully cancelled supplier at 0, fold rows on 3 days; two teams, a borrowed line, a FIFO draw over two suppliers, cancels on a later day, a return, a batch from nobody) · `cmd/app_development/supplier_terjual_band_test.go` (36 `SupplierList` calls: no warehouse / Gudang 5 / Gudang 6 × own / Discover × no pill + 5 pills — same ids, order and total). Mutation-checked: supplier 0 kept, the sign flipped, every change type, only the last two days — each red, source restored byte-identical |
+| perf | [SupplierIDsByFigure.md](../../../audits/services/inventory_service/performances/SupplierIDsByFigure.md) 🔴 → 🟡: 1 000 000 order rows, old and new on one seed — Terjual ≥ 500 **500 · 484 → 296 · 282 ms**, 500–1.000 **487 · 481 → 282 · 272 ms** (two processes); every supplier's Terjual at volume 0 of 1 801 differ; Siap ≈ 50 ms unchanged. `supplier_list_warehouse_perf_test.go`'s seed now folds its order rows too (the band would read an empty fold): Discover at the big warehouse + Terjual 500–1.000 137 → 80 ms (History row in [SupplierList.md](../../../audits/services/supplier_service/performances/SupplierList.md)) |
+| tests | `supplier_goods_reader_test.go` `AnswersFromInventory` seeds its take's fold row beside the log row (it wrote the log row by hand) |

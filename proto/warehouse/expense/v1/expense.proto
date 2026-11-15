@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.expense.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/analytic_base/v1/analytic.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
@@ -31,7 +32,7 @@ service ExpenseService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // The same costs, summed PER DAY — the expense half of the daily statement.
+  // The same costs, summed per day, month or year — the expense half of the daily statement.
   rpc ExpenseDaily(ExpenseDailyRequest) returns (ExpenseDailyResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
     // the-admin-team-monitors-read-only).
@@ -351,12 +352,13 @@ message ExpenseListResponse {
 // series side by side and subtracts them, so a difference in how they page, bound or bucket would land
 // on the reader as an unexplainable gap in one column.
 //
-// ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is `to − from`, which the
-// caller states and the server CAPS at 366 days. Both bounds are required here, unlike ExpenseList
-// where they are optional and a page carries the risk instead.
+// ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is the number of buckets
+// between `from` and `to`, which the caller states and the server CAPS per grain — 366 days, 60 months or
+// 20 years (periods-are-grouped-on-the-server). Both bounds are required here, unlike ExpenseList where
+// they are optional and a page carries the risk instead.
 //
-// ⚠ SPARSE: a day nobody spent anything on is ABSENT, not a zero row. The client owns the date spine
-// because it must build one to merge these days with revenue's.
+// ⚠ SPARSE: a bucket nobody spent anything in is ABSENT, not a zero row. The client owns the date spine
+// because it must build one to merge these buckets with the income half's.
 //
 // The one place it is NOT a mirror is bucketing, and that difference is the point of the field it uses.
 // A cost is filed under `occurred_at` — the day the person said it BELONGS to — while revenue is filed
@@ -402,32 +404,42 @@ message ExpenseDailyRequest {
   ];
 
   ExpenseDailyFilter filter = 2 [(buf.validate.field).required = true];
+
+  // THE GRAIN — a row is a day, a month or a year (periods-are-grouped-on-the-server): DAILY, MONTHLY or YEARLY, and
+  // unset reads as DAILY. The SERVER groups, over the stored day, so the browser never buckets days into months and two
+  // screens cannot compute "August" two ways. The span cap follows the grain: 366 days, 60 months, 20 years.
+  warehouse.analytic_base.v1.GroupType group_by = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [0, 2, 4, 5]
+  }];
 }
 
-// One day's spending.
+// One bucket's spending — a day's, a month's or a year's, as the request's grain says.
 message ExpenseDayItem {
-  // The day this row sums, as YYYY-MM-DD — from `occurred_at`, the day the money BELONGS to.
+  // The bucket this row sums, as YYYY-MM-DD — its FIRST calendar day: the day itself, the 1st of its month
+  // (`2026-08-01`), or the 1st of January of its year (`2026-01-01`), even when the period starts later in it. From
+  // `occurred_at`, the day the money BELONGS to.
   //
   // No timezone caveat here, unlike RevenueDayItem: `occurred_at` is a DATE column, chosen by a person.
   // There is no instant to convert and therefore no zone to get wrong.
   string date = 1;
 
-  // How many rows the day's number is made of — its expenses AND the adjustments that correct them, each counting on
+  // How many rows the bucket's number is made of — its expenses AND the adjustments that correct them, each counting on
   // the corrected expense's day.
   uint64 entries = 2;
 
-  // The day's spending, the exact sum.
+  // The bucket's spending, the exact sum — exactly the sum of its days' totals.
   double total = 3;
 
-  // Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
-  // day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
+  // Split by kind, so a bucket that jumped can be read without opening the list. A kind with nothing in
+  // the bucket is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
   // and zero read identically, and building the empty ones would mean this message knowing the enum's
   // members.
   map<int32, double> by_kind = 4;
 }
 
 message ExpenseDailyResponse {
-  // ASCENDING by date, and SPARSE — see the note on ExpenseDailyFilter.
+  // ASCENDING by date, one item per bucket of the grain, and SPARSE — see the note on ExpenseDailyFilter.
   repeated ExpenseDayItem days = 1;
 
   // The same totals ExpenseList reports, over the same period and the same filters. Sent rather than

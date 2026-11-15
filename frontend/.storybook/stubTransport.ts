@@ -40,6 +40,8 @@ import {
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
 import { liabilityListCalls, resetLiabilityListCalls } from "./liabilityScenario";
+import { firstDayOfBucket, resetStatementCalls, statementAsks, statementCalls } from "./statementScenario";
+import { GroupType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
 import type { OrderDraft } from "../src/gen/warehouse/selling/v1/order_draft_pb";
 import { draftGaps } from "../src/features/orderDrafts/draftReadiness";
@@ -490,6 +492,7 @@ export function resetLiabilityPayments() {
   positionsTable = liabilityPositions.map((p) => ({ ...p }));
   paymentRequestsTable = liabilityPaymentRequests.map((r) => ({ ...r }));
   resetLiabilityListCalls();
+  resetStatementCalls();
 }
 
 // ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
@@ -958,6 +961,35 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
 const inPeriod = (date: string, filter: { from?: string; to?: string } | undefined) =>
   (!filter?.from || date >= filter.from) && (!filter?.to || date <= filter.to);
 
+// THE SPAN THE GRAIN UNLOCKS, refused as the server refuses it (backend/pkgs/san_period `CheckSpan`): 366 days, 60
+// months, 20 years, counted in the grain's own buckets with both ends' buckets included — so a story that sends a range
+// too long for its grain sees the server's InvalidArgument, not rows the real API would never return. Counted here from
+// the labels' calendar fields, independently of the screen's own check (lib/period `spanBuckets`).
+function refuseLongSpan(filter: { from?: string; to?: string } | undefined, groupBy: GroupType) {
+  const [fy, fm] = (filter?.from ?? "").split("-").map(Number);
+  const [ty, tm] = (filter?.to ?? "").split("-").map(Number);
+  if (!fy || !ty) return;
+
+  const [noun, adjective, max, buckets] =
+    groupBy === GroupType.YEARLY
+      ? ["year", "yearly", 20, ty - fy + 1]
+      : groupBy === GroupType.MONTHLY
+        ? ["month", "monthly", 60, (ty - fy) * 12 + (tm! - fm!) + 1]
+        : [
+            "day",
+            "daily",
+            366,
+            Math.round((Date.parse(`${filter!.to}T00:00:00Z`) - Date.parse(`${filter!.from}T00:00:00Z`)) / 86_400_000) + 1,
+          ];
+
+  if (buckets > max) {
+    throw new ConnectError(
+      `the period is longer than its grain allows: a ${adjective} series covers at most ${max} ${noun}s`,
+      Code.InvalidArgument,
+    );
+  }
+}
+
 // The days one team has in a series, resolved to real dates and ASCENDING — the order every Daily
 // response promises, and the order the screen's running total depends on.
 function periodDays<T extends { teamId: bigint; ago: number }>(
@@ -970,6 +1002,27 @@ function periodDays<T extends { teamId: bigint; ago: number }>(
     .map((r) => ({ ...r, date: dayKey(r.ago) }))
     .filter((r) => inPeriod(r.date, filter))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+// THE SERVER GROUPS (periods-are-grouped-on-the-server): the day items of a Daily RPC folded into one item per bucket
+// of the request's grain, keyed by the bucket's FIRST day — ascending, as the days were. At the daily grain (or unset)
+// every day is its own bucket and the items come back as they went in.
+function intoBuckets<T extends { date: string; entries: bigint }>(
+  days: T[],
+  groupBy: GroupType,
+  merge: (into: T, day: T) => void,
+): T[] {
+  const out: T[] = [];
+
+  for (const day of days) {
+    const at = firstDayOfBucket(day.date, groupBy);
+    const last = out[out.length - 1];
+
+    if (last && last.date === at) merge(last, day);
+    else out.push({ ...day, date: at });
+  }
+
+  return out;
 }
 
 // Sum a per-key money map into an accumulator — how every by-kind / by-source total is built.
@@ -1952,6 +2005,9 @@ export const transport = createRouterTransport(({ service }) => {
     // it treats as earnings. It picks ORDER_FEE alone: COD reimburses cash already handed to a
     // courier, so summing every source and calling it income counts money nobody earned.
     liabilityDaily: (req) => {
+      statementCalls.liability.push(req.groupBy);
+      statementAsks.liability.push({ groupBy: req.groupBy, from: req.filter?.from ?? "", to: req.filter?.to ?? "" });
+      refuseLongSpan(req.filter, req.groupBy);
       const days = periodDays(liabilityDays, req.teamId, req.filter);
       const bySource: Record<number, number> = {};
 
@@ -1972,7 +2028,14 @@ export const transport = createRouterTransport(({ service }) => {
         };
       });
 
-      return { days: perDay, totals: { net: sumMap(bySource), bySource } };
+      const buckets = intoBuckets(perDay, req.groupBy, (into, day) => {
+        into.entries += day.entries;
+        into.net += day.net;
+        into.bySource = { ...into.bySource };
+        addInto(into.bySource, day.bySource);
+      });
+
+      return { days: buckets, totals: { net: sumMap(bySource), bySource } };
     },
 
     // The DEBTOR's side of a limit — one CREDIT item per creditor asked about, keyed by creditor id. Every creditor is
@@ -2271,6 +2334,9 @@ export const transport = createRouterTransport(({ service }) => {
     // The half BOTH modes subtract. One expense record per kind per day, so a day's total and its
     // entry count are both derived from the fixture's map and cannot disagree with each other.
     expenseDaily: (req) => {
+      statementCalls.expense.push(req.groupBy);
+      statementAsks.expense.push({ groupBy: req.groupBy, from: req.filter?.from ?? "", to: req.filter?.to ?? "" });
+      refuseLongSpan(req.filter, req.groupBy);
       const wanted = req.filter?.kind ?? ExpenseKind.UNSPECIFIED;
       const byKindTotal: Record<number, number> = {};
 
@@ -2298,7 +2364,14 @@ export const transport = createRouterTransport(({ service }) => {
         })
         .filter((d) => d.entries > 0n);
 
-      return { days: perDay, totals: { total: sumMap(byKindTotal), byKind: byKindTotal } };
+      const buckets = intoBuckets(perDay, req.groupBy, (into, day) => {
+        into.entries += day.entries;
+        into.total += day.total;
+        into.byKind = { ...into.byKind };
+        addInto(into.byKind, day.byKind);
+      });
+
+      return { days: buckets, totals: { total: sumMap(byKindTotal), byKind: byKindTotal } };
     },
   });
 
