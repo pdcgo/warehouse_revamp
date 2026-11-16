@@ -40,6 +40,25 @@ Business: [order.md](../../business/inventory/order.md) · rules: [guide.md](../
 <tr><td>sale recorded in order settlement</td><td>⬜ untested</td></tr>
 <tr><td>order recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · Order ID on 1 pending order of same shop)</td><td rowspan="2" valign="top">create order</td><td>warning names the used order in frontend</td><td>⬜ untested</td></tr>
+<tr><td>can create but needs confirm in frontend</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · Order ID on 1 cancelled order of same shop)</td><td rowspan="1" valign="top">create order</td><td>no warning in frontend</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · Order ID on 1 pending order of other shop)</td><td rowspan="1" valign="top">create order</td><td>no warning in frontend</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · Order ID on 1 draft of same shop)</td><td rowspan="2" valign="top">create order</td><td>warning names the draft in frontend</td><td>⬜ untested</td></tr>
+<tr><td>can create but needs confirm in frontend</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · debt to warehouse at limit)</td><td rowspan="2" valign="top">create order</td><td>order refused</td><td>⬜ untested</td></tr>
+<tr><td>message names team, debt and limit</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · cross product · 1 warehouse · return map chosen · debt to cross team at limit)</td><td rowspan="2" valign="top">create order</td><td>order refused</td><td>⬜ untested</td></tr>
+<tr><td>message names team, debt and limit</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · debt to warehouse at 80% of limit)</td><td rowspan="2" valign="top">create order</td><td>has warning in frontend</td><td>⬜ untested</td></tr>
+<tr><td>order created</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · cross product · 1 warehouse · no return map)</td><td rowspan="2" valign="top">create order</td><td>cannot create order</td><td>⬜ untested</td></tr>
+<tr><td>reason shown in frontend</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · cross product · 1 warehouse · return map chosen)</td><td rowspan="2" valign="top">create order</td><td>return map saved and locked</td><td>⬜ untested</td></tr>
+<tr><td>return map used on next order</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · no return warehouse set)</td><td rowspan="2" valign="top">create order</td><td>order refused</td><td>⬜ untested</td></tr>
+<tr><td>message says to set return warehouse</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · ready stock less than ordered)</td><td rowspan="1" valign="top">create order</td><td>order refused</td><td>⬜ untested</td></tr>
 <tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · 1 order)</td><td rowspan="4" valign="top">confirm order</td><td>status changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order processed</td><td>⬜ untested</td></tr>
