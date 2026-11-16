@@ -4,7 +4,7 @@ The one ranked list of incomplete work: feature, frontend, API, service, event, 
 Rules: [the-backlog-is-reranked-after-every-slice](../development_lifecycle_decision.md#the-backlog-is-reranked-after-every-slice).
 Open questions are ranked separately in [biggest_question.md](../biggest_question.md).
 
-**Last full re-audit:** 2026-11-04 (against the code, at `2a7fd781`). **Last re-rank:** 2026-11-13 (measured testing #49–#51 added on top of Tier 4).
+**Last full re-audit:** 2026-11-16 (against the code, at `d0d9ecd4`: 41 `⛔ Not built` markers — 39 built, 2 superseded; the gaps found are the screens' `pending.ts` parts with no row, #56–#70). **Last re-rank:** 2026-11-16.
 
 Size: S ≈ under a pass · M ≈ one pass · L ≈ several passes. Kind: bug · frontend · API · service · event · statistic · flow.
 
@@ -23,6 +23,7 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 
 | # | What is incomplete | Kind | Area | Size | Where |
 | --- | --- | --- | --- | --- | --- |
+| 56 | **A restock's Order ID and resi are refused on the screen only** (`a-reference-in-use-stops-the-restock-form`) — nothing on the server refuses a repeat, so two saves at the same moment both pass, and so does any write not coming through the form. Server half: refuse a repeat within the team, any status but cancelled, letter case and spaces aside, safe under two concurrent saves. *(A resi on ANOTHER team's restock — undefined: the decision checks this team's only; built only if the owner defines it)* | service (constraint) | restock | S–M | `restock-form/pending.ts`; RestockRequestCreate/Update |
 
 ### Tier 4 — cleanup and small gaps
 
@@ -30,16 +31,39 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 | --- | --- | --- | --- | --- | --- |
 | 54 | **`readyAt` read "—" once** — `restock_warehouse_wants_to_accept` owner *missing items* read "—" instead of 7, 1 in 36 calls under heavy parallel load, trace lost; watch it: if it recurs, keep the trace and find whether the picked warehouse was lost or the stock read failed | tooling | e2e | S | `frontend/e2e/restock_helpers.ts` |
 | 27 | **Old dev orders have no Team Balance fees** — the dead-lettered `order-placed` events are GONE (the Pub/Sub emulator keeps them in memory; restarted 2026-11-12), so `san pubsub redrive` replays nothing. Only dev orders 5 and 6 miss fees (15.000 warehouse fee each, order 6 also a product fee). Recovery (a one-off backfill / re-publish) or leave dev as is — the owner's call | data | liability | S | `docs/tools/san.md` |
+| 57 | **A restock edit's trail row says only "edited"** (`edits-are-in-the-same-trail`, no ⛔ marker though unbuilt) — not what changed | service · frontend | restock | S | `restock_request_update.go:175`; `trailChanges` in both detail pages |
+| 58 | **The selling note's own author and time are not stored** (`the-notes-are-one-per-writer`) — the page shows the last raise/edit instead | service | restock | S | `sellingNoteBy` (`derived`) on 3 pages |
+| 59 | **A selling note edited after arrival is thrown away** (`the-note-is-edited-in-any-status`) — the server closes the head after arrival | service | restock | S | `lateNote` (`dropped`), restock-selling + detail |
+| 60 | **A warehouse's product picker opens empty and needs 2 letters** (`a-product-picker-needs-no-two-letters`) | API | inventory | S | `features/products/pickerPending.ts`; `warehouse_product_search.go:20` |
+| 61 | **The batch list has no team filter** (owner: *"oke, kasih tim"*) | API | batches | S | `pages/batches/pending.ts`; `BatchListFilter` |
+| 62 | **A batch minted by a return cannot open its return** (`a-batch-opens-where-it-came-from`) — `delivery_id` names restocks only | API | batches | S | `features/inventory/pending.ts` |
+| 63 | **The rack list's totals are its page's only** (`the-rack-list-leads-with-its-figures`) | API · statistic | racks | S | `pages/racks/pending.ts` |
+| 64 | **Cetak Label reads each restock on its own** (`the-labels-mark-their-one-by-one-read`, interim) — needs a read by ids | API | restock | S | `restock-labels/pending.ts` |
+| 65 | **The warehouse restock list's month COD total is a sample** | statistic | restock | S | `restock-warehouse/pending.ts` |
+| 66 | **The broken units' photo and the courier slip's photo are never kept** (`a-broken-product-carries-a-photo`, `the-courier-slip-has-an-optional-photo`, the detail pages' photo decisions) — picked on the accept page, never uploaded; one upload path serves both | API · service · frontend | restock | M | `restock-accept/pending.ts` (`brokenPhoto`, `courierPhoto`), both detail pages |
+| 67 | **The warehouse's own restock note has no field** (`the-warehouse-writes-its-own-note`, `three-notes-one-writer-each`) — Ubah writes, nothing stores. *(From when it may be written — undefined, the owner's "not my call": the field is built, the timing only if he defines it)* | API · service · data | restock | S–M | `restock-warehouse-detail/pending.ts` |
+| 68 | **The restock list's Ekspor and courier filter are dropped; its status cards and per-account payments are samples** (`the-restock-list-exports-and-filters-by-courier` …) | API · statistic · frontend | restock | M (4 parts) | `pages/restock-selling/pending.ts` |
+| 69 | **Discover detail: no gallery; another team's stock history is a sample** (`stock-history-is-everyones`) — `ProductDetail` / `OwnerStockHistory` answer the owning team only | API · frontend | products | S–M | `product-discover-detail/pending.ts` |
+| 70 | **11 decision markers say "not built" about built work** — append a 🔄 built line under each (never edit the old text): balance `a-surplus-claims-a-lost-unit-first` row, opname pt 22 (undo of a failed create), business_level expense correction, cross-markup *What is NOT done*, Lainnya ×2, user erase / root, the Team Balance phone layout, 3 supplier index rows, the settlement importer index row, settlement's two report entries → `the-fold-owns-the-report-not-the-writer`, the gone `AcceptReturnDialog.tsx` path | docs | decisions | S | list: `D:/hermes/profiles/revamp_dev/cache/scratch/backlog_reaudit_1116.md` §6 |
 
 ### Later — decided, bigger
 
 - **Large-sum drift** — `large-sum-drift-is-left-for-now`: revisit when anything sums ~100.000 exact entries (tolerance scaled to the count).
 
-- **Statistics:** `SupplierGoods` can't read the daily sold fold (no orders / last order / store in it — probe `D:/hermes/cache/scratch/stats_terjual_probe.md`); running sold totals per supplier on the order-take write path (`SupplierGoods.md`: ~5 s cold for a 100k-order supplier; `SupplierIDsByFigure.md`: a Terjual band 0.6–0.9 s at 1M order rows); a rebuild path for Penjualan (`AnalyticReplayCompute` replays restock only); product page suppliers and daily in/out; category product count.
+- **Statistics:** `SupplierGoods` can't read the daily sold fold (no orders / last order / store in it — probe `D:/hermes/cache/scratch/stats_terjual_probe.md`); running sold totals per supplier on the order-take write path (`SupplierGoods.md`: ~5 s cold for a 100k-order supplier; `SupplierIDsByFigure.md`: the Terjual band now reads the daily sold fold — 282–296 ms at 1M order rows); Penjualan rebuilds through `san report refold`, only the `AnalyticReplayCompute` RPC still replays restock only; product page suppliers and daily in/out (also on Discover detail); category product count.
 - **OwnerStockHistory leftovers** (`audits/services/inventory_service/performances/OwnerStockHistory.md`): the product's batches are still found by a sequential scan (a full `(team_id, product_id)` index, ≤ 3 ms gain) and the order-key / receipt lookup still runs for every row before paging (a query rewrite — the owner's call); 12.5 s → 19 ms already fixed by inventory 00041.
 - **Inventory metrics at volume** (`audits/services/inventory_service/performances/MetricData.md`): Ready by month over a year ≈ 0.6 s cold and root's one-year headline ≈ 0.3 s — page reads past 128 MB shared buffers (9 ms warm). Options when real volume arrives, the owner's call: a monthly rollup folded on every stock write; a third reader index (costs every stock write).
 - **Generated-file sweep leftovers:** `ShareDocument` answers Internal (not NotFound) when it loses the race to the sweep — nothing shares a generated file today; a scale-to-zero deploy runs no ticker (the `san` command or a scheduler covers it until a deploy decision).
 - **Overrides shown on records — leftovers** (`an-override-shows-a-platform-badge`): `liability_payment_requests` (the notice names the team), `team_agent_policies` (a toggle), `documents` / `document_shares` (no list screen) — nothing to show today; the restock lists' phone blocks name no accepter / arriver, so no badge there.
+
+## Built, e2e pending
+
+A slice the dev bot built and checked, waiting for the e2e tester's report on its snapshot ([a-slice-is-done-after-the-testers-green](../development_lifecycle_decision.md#a-slice-is-done-after-the-testers-green)). Green → Done below; red → back to the top of the ranking.
+
+| Date | Item | Snapshot |
+| --- | --- | --- |
+
+Empty — the first slice through it is Done (2026-11-16).
 
 ## Waiting on the owner
 
@@ -47,12 +71,16 @@ Empty again since 2026-11-07 — #31 fixed (see Done).
 | --- | --- | --- |
 | **Product barcode** | scanning by barcode (several per product) | ⏸ parked by the owner (2026-10-19, kept parked 2026-11-09) |
 | **Real Shopee/TikTok export files** | testing the importers on real data | files from the owner |
+| **The courier charge noted at Tandai Tiba** (`the-cod-can-be-noted-when-the-box-arrives`, screen accepted) | storing it — today `RestockRequestArrive` takes no charge, so it is typed twice | confirm or reverse `the-warehouse-cost-is-the-couriers-charge-at-the-door` (*entered at accept*), whose text stands until the owner changes it |
+| **Broken units put on a rack** (`a-broken-product-may-go-on-a-rack`, screen) | keeping them — today recorded as thrown away | confirm or reverse `a-broken-unit-is-thrown-away` |
+| **Shop critique 6** — the first shop-addressed settlement row opens the account under the caller's team; an ADS expense's shop is checked for presence only | the server check (`ShopAccessCheck` before opening / storing) | the owner's review of critique 6, `docs/business/shop/context_clarify.md` |
 
 ## Done
 
 | Date | Item | Commit |
 | --- | --- | --- |
-| 2026-11-16 | **Stories no longer act on a half-typed search** — sweep after the supplier-report flake: 131 stories typing into a debounced input checked, 9 at risk in 6 files fixed (bundles, shops Filters, ProductBrowser, ChannelBrowser, AddMemberDialog's `search()` helper ×4, liability list): click + paste, or select-all + paste to replace a term; the liability story that proves the debounce types with `delay: null`; 3× alone + once under load green; no e2e has the pattern | uncommitted |
+| 2026-11-16 | **The e2e lane is live** (`the-tester-writes-the-e2e-specs` … `revamp-has-its-own-dev-bot`, 7 decisions recorded) — `san test smoke --isolated` / `affected --run --isolated` run the level-2 e2e in place as worker w1 (template migrated from the tree, :8181+/:5181+, `warehouse-e2e-w1`); a full run and an `--isolated` run refuse each other across the repo's worktrees; the tester's worktree holds the measured-testing baseline; the tester's 5-minute routine runs. Tester GREEN on `208fc6d9`: smoke 11/11 as w1 in 1m22s (`e2e_report/tester/20261116-122546-…`); `go test ./tools/san` green | uncommitted |
+| 2026-11-16 | **Stories no longer act on a half-typed search** — sweep after the supplier-report flake: 131 stories typing into a debounced input checked, 9 at risk in 6 files fixed (bundles, shops Filters, ProductBrowser, ChannelBrowser, AddMemberDialog's `search()` helper ×4, liability list): click + paste, or select-all + paste to replace a term; the liability story that proves the debounce types with `delay: null`; 3× alone + once under load green; no e2e has the pattern | `d0d9ecd4` |
 | 2026-11-15 | **Expiry is typed at the accept and read on the batch screens** (`the-warehouse-types-the-expiry-at-the-accept`, `the-expiry-report-is-the-batch-list`, `the-expiry-prototypes-are-accepted`, `the-product-pages-side-cards-stack-when-narrow`) — prototypes accepted; the accept line's optional `expires_on` (a Jakarta day) lands on its batch's `expired_at`; the Batch list's *Rak* column (the product's racks in that warehouse, one query per page, 3 ms under the 30-day filter at 60k batches); the product page's *Kedaluwarsa*, its side cards below when the page area is narrow (`components/chrome/sideBySide.ts`, shared with restock); `ConfirmDialog`'s default buttons translated (*Batal* / *Konfirmasi*); e2e `the_expiry_is_read_off_the_box.spec.ts` 5/5 — the inventory leftovers are done | `6ea0e58d` |
 | 2026-11-15 | **`warehouse_products` names its owner team** (`the-warehouse-link-names-its-owner-team`) — inventory 00047 adds `owner_team_id`, filled from the product's own rows (batches, restock / transfer / stock lines — one team or the migration refuses and lists the rows), then NOT NULL + CHECK > 0; restock create/update, transfer create and order return write it; a link already stored under another team is kept and logged, never overwritten; dev 13/13 filled, 0 mismatches with product_service | `2b944a4a` |
 | 2026-11-15 | **The legacy supplier tables are dropped; the expiring count reads batches with units left** (`existing-suppliers-move-with-their-ids`, `expiry-is-a-report`) — inventory 00046 refuses ("run san supplier move first") where a legacy row was never moved (same id, team, created_at; offline stores skipped), passes on a fresh DB, then drops both; `san supplier move` and its dev setup step retired; the Batch list's soon filter and strip count require `stock_count > 0` and use `batches_expiry_idx` — at 60k batches the page 169 → 27 ms | `2b944a4a` |

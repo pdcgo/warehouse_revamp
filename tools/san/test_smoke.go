@@ -263,10 +263,17 @@ func printSmokePlan(out io.Writer, root string, flows []smokeFlow, batches []lev
 	}
 }
 
-// runLevel2 runs level-2 batches in THIS working tree and records them in e2e_report/level2/.
-func runLevel2(ctx context.Context, root, kind string, batches []level2Batch, limit time.Duration,
+// runLevel2 runs level-2 batches in THIS working tree and records them in e2e_report/level2/ — on the live tree's
+// warehouse_test and :8081/:5175, or with isolated as worker w1 (test_isolated.go).
+func runLevel2(ctx context.Context, root, kind string, batches []level2Batch, limit time.Duration, isolated bool,
 	out io.Writer) (*RunRecord, error) {
-	err := refuseIfBusy(root)
+	var err error
+	if isolated {
+		err = refuseIsolatedIfBusy(root)
+	} else {
+		err = refuseIfBusy(root)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -274,11 +281,13 @@ func runLevel2(ctx context.Context, root, kind string, batches []level2Batch, li
 	frontend := filepath.Join(root, "frontend")
 	frontends := []string{frontend}
 
-	foreign := cleanupE2E(frontend, frontends, false, out)
+	if !isolated {
+		foreign := cleanupE2E(frontend, frontends, false, out)
 
-	err = preflightE2E(foreign)
-	if err != nil {
-		return nil, err
+		err = preflightE2E(foreign)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	fp, err := takeFingerprint(root)
@@ -298,28 +307,14 @@ func runLevel2(ctx context.Context, root, kind string, batches []level2Batch, li
 
 	deadline := start.Add(limit)
 
-	for i, lb := range batches {
-		b := &BatchResult{N: i + 1, Specs: lb.Specs}
-		fmt.Fprintf(out, "→ b%d %s\n", b.N, strings.Join(lb.Specs, " "))
+	if isolated {
+		err = runIsolatedBatches(ctx, root, rec, batches, dir, deadline, out)
+	} else {
+		runLiveBatches(ctx, frontend, frontends, rec, batches, dir, deadline, limit, out)
+	}
 
-		err = runPlaywrightBatch(ctx, frontend, b, lb.Grep, dir, out)
-
-		rec.E2E.Batches = append(rec.E2E.Batches, b)
-		mergeSpecs(rec.E2E, b)
-
-		if err != nil {
-			rec.Stopped = err.Error()
-
-			break
-		}
-
-		cleanupE2E(frontend, frontends, false, io.Discard)
-
-		if time.Now().After(deadline) && i+1 < len(batches) {
-			rec.Stopped = fmt.Sprintf("over the %s budget after b%d", limit, b.N)
-
-			break
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	rec.Finished = time.Now()
@@ -342,6 +337,34 @@ func runLevel2(ctx context.Context, root, kind string, batches []level2Batch, li
 	}
 
 	return rec, err
+}
+
+// runLiveBatches is runLevel2 on the live tree's warehouse_test and :8081/:5175: each batch, then its leftovers cleared.
+func runLiveBatches(ctx context.Context, frontend string, frontends []string, rec *RunRecord, batches []level2Batch,
+	dir string, deadline time.Time, limit time.Duration, out io.Writer) {
+	for i, lb := range batches {
+		b := &BatchResult{N: i + 1, Specs: lb.Specs}
+		fmt.Fprintf(out, "→ b%d %s\n", b.N, strings.Join(lb.Specs, " "))
+
+		err := runPlaywrightBatch(ctx, frontend, b, lb.Grep, dir, out)
+
+		rec.E2E.Batches = append(rec.E2E.Batches, b)
+		mergeSpecs(rec.E2E, b)
+
+		if err != nil {
+			rec.Stopped = err.Error()
+
+			return
+		}
+
+		cleanupE2E(frontend, frontends, false, io.Discard)
+
+		if time.Now().After(deadline) && i+1 < len(batches) {
+			rec.Stopped = fmt.Sprintf("over the %s budget after b%d", limit, b.N)
+
+			return
+		}
+	}
 }
 
 // mergeSpecs adds a batch's per-spec totals to the run's.

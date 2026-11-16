@@ -28,6 +28,9 @@ import (
 //	go run ./tools/san test report      latest.md and the recent runs
 //	go run ./tools/san test slice       log the files this slice changed
 //	go run ./tools/san test accept-run  make an ended full run the baseline when it only failed to LOAD files
+//
+// `smoke --isolated` and `affected --run --isolated` run as worker w1 in place (test_isolated.go) — the e2e lane's
+// tester runs them in its own worktree, so they never touch the dev checkout's warehouse_test and :8081/:5175.
 func testCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "test",
@@ -162,6 +165,7 @@ func testAffectedCommand() *cli.Command {
 			&cli.StringFlag{Name: "files", Usage: "trace these repo-relative files (comma-separated) instead of the measured change"},
 			&cli.BoolFlag{Name: "run", Usage: "run the affected specs and the smoke set here, in batches (orders alone, the restock family together)"},
 			&cli.BoolFlag{Name: "dry-run", Usage: "with --run: print the Playwright batches, run nothing"},
+			isolatedFlag(),
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			root, err := testRoot()
@@ -179,6 +183,11 @@ func testAffectedCommand() *cli.Command {
 			changed, source, err := changedFiles(root, cmd.String("files"), since)
 			if err != nil {
 				return err
+			}
+
+			isolated := cmd.Bool("isolated")
+			if isolated && !cmd.Bool("run") {
+				return errors.New("--isolated says where the specs run: add --run")
 			}
 
 			res, err := findAffected(root, changed)
@@ -216,21 +225,55 @@ func testAffectedCommand() *cli.Command {
 				fmt.Fprintln(out, "affected --run — the plan (dry run: nothing runs)")
 				printSmokePlan(out, root, nil, batches)
 
-				return nil
+				return printDryRunSeat(out, root, isolated)
 			}
 
-			return reportLevel2(ctx, root, "affected", batches, 0, out)
+			return reportLevel2(ctx, root, "affected", batches, 0, isolated, out)
 		},
 	}
 }
 
+// isolatedFlag is --isolated for smoke and affected --run (test_isolated.go).
+func isolatedFlag() cli.Flag {
+	return &cli.BoolFlag{
+		Name: "isolated",
+		Usage: "run as worker w1 instead of on warehouse_test, :8081/:5175 — warehouse_test_w1 cloned per batch from a " +
+			"template migrated from this tree, ports :8181+/:5181+, events warehouse-e2e-w1, in place (no copy). For a " +
+			"checkout that is not where development happens (the tester's worktree); refused beside any full run",
+	}
+}
+
+// printDryRunSeat adds where an --isolated run would run to a dry run, and whether it could start now.
+func printDryRunSeat(out io.Writer, root string, isolated bool) error {
+	if !isolated {
+		return nil
+	}
+
+	frontend := filepath.Join(root, "frontend")
+
+	w, skipped, err := isolatedSeat(foreignPortBusy([]string{frontend}))
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out)
+	printIsolatedSeat(out, w, skipped)
+
+	if busy := refuseIsolatedIfBusy(root); busy != nil {
+		fmt.Fprintf(out, "\n⚠ it would not start now: %v\n", busy)
+	}
+
+	return nil
+}
+
 // reportLevel2 runs level-2 batches and prints the verdict; a red run is an error (exit 1).
-func reportLevel2(ctx context.Context, root, kind string, batches []level2Batch, limit time.Duration, out io.Writer) error {
+func reportLevel2(ctx context.Context, root, kind string, batches []level2Batch, limit time.Duration, isolated bool,
+	out io.Writer) error {
 	if limit == 0 {
 		limit = 24 * time.Hour
 	}
 
-	rec, err := runLevel2(ctx, root, kind, batches, limit, out)
+	rec, err := runLevel2(ctx, root, kind, batches, limit, isolated, out)
 	if rec != nil {
 		fmt.Fprintf(out, "\n%s\n", runLine(rec))
 
@@ -258,6 +301,7 @@ func testSmokeCommand() *cli.Command {
 		Usage: "run the smoke set — about five key flows from frontend/e2e/smoke.txt, under 5 minutes, in this working tree",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "dry-run", Usage: "print the flows and the Playwright command, and check every entry still names one test"},
+			isolatedFlag(),
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			root, err := testRoot()
@@ -277,15 +321,27 @@ func testSmokeCommand() *cli.Command {
 			}
 
 			batches := smokeBatches(flows, nil)
+			isolated := cmd.Bool("isolated")
 
 			if cmd.Bool("dry-run") {
 				fmt.Fprintln(out, "smoke — the plan (dry run: nothing runs)")
 				printSmokePlan(out, root, flows, batches)
 
+				err = printDryRunSeat(out, root, isolated)
+				if err != nil {
+					return err
+				}
+
 				return listSmoke(ctx, root, flows, out)
 			}
 
-			return reportLevel2(ctx, root, "smoke", batches, smokeCap, out)
+			// The template and the clone cost about half a minute more than the live tree's single reset.
+			limit := smokeCap
+			if isolated {
+				limit += templateCost
+			}
+
+			return reportLevel2(ctx, root, "smoke", batches, limit, isolated, out)
 		},
 	}
 }

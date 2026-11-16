@@ -7,11 +7,12 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
-## 2026-11-16 · test fixes
+## 2026-11-16 · test fixes, a tester bot
 
 | What shipped | What it means for a person |
 | --- | --- |
 | **Fewer false alarms in the full test run** | nine screen tests could read a half-typed search when the machine was busy and fail for no real reason — they now enter the whole word at once |
+| **A second bot now tests each finished piece** | a tester bot checks every piece of work the moment it is finished, on its own copy and its own test database, while development goes straight on — only work it reports green goes into a commit, and it asks you before the long full test run |
 
 ## 2026-11-15 · statistics grouped on the server
 

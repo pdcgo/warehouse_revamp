@@ -180,6 +180,8 @@ flowchart TD
 
 ✅ **Built 2026-11-14** — backlog #51, the *afterwards* row: `san test full --workers N` ([docs/tools/san.md](tools/san.md#test-full)) runs the e2e as N Playwright runs at once on the frozen copy, each with its own test database (`warehouse_test_wN`, every batch a clone of `warehouse_test_tpl`, which is migrated and seeded once per run), its own API and UI ports (8181+/5181+; a port another program holds is skipped, never killed) and its own events project (`warehouse-e2e-wN`, its push subscriptions on its own port). **How many workers — answered by measuring: 3**, the default (31.8 GB RAM, 8 cores: 19.1 GB free idle, 14.2 GB at three workers, about 1.6 GB each; five workers ran the restock specs about twice as slow — the CPU, not the memory, is the limit). Specs are placed longest first by their recorded times and run in name order inside a worker, so every *sorts after* rule still holds; `frontend/e2e/coupled.txt` lists specs that must share one database (none found — every coupling found is of the sort-after kind). Root signs in once per run (a saved storageState) instead of in nearly every test; `restock.spec.ts` is five files by its describe blocks (62 tests, titles unchanged, each passed alone); `--workers 1` keeps the name-ordered single-database batches. Proved on subsets only — three workers × 11 specs green (58 passed), the restock files on five and on two workers, the smoke set green — and `--dry-run` estimates the e2e at about 14 min against about 33 as one database. The full run itself has still not run: it waits for the owner's yes.
 
+🔄 *(2026-11-16)* **Who runs which level — the e2e lane** ([the-tester-writes-the-e2e-specs](#the-tester-writes-the-e2e-specs), [a-slice-is-done-after-the-testers-green](#a-slice-is-done-after-the-testers-green), [the-tester-asks-for-the-full-run](#the-tester-asks-for-the-full-run)): level 1, and level 2's Go tests, stories and race / perf, stay with the dev bot; level 2's e2e — the affected specs and the smoke set — runs in the tester's worktree as worker w1 (`san test affected --run --isolated`); the measurement, the one-line ask and level 3 move to the tester. The rule itself — cheap to expensive, the full run only when measured due and after the owner's yes — is unchanged.
+
 ---
 
 ## a-file-that-fails-to-load-is-re-run-once
@@ -230,3 +232,117 @@ It sets the open point *"how many parallel workers this machine's memory carries
 > Owner (Heri), in chat (2026-11-14): *"can we continue development while e2e running ?"* — after [the-full-e2e-runs-on-one-worker](#the-full-e2e-runs-on-one-worker) put the one-worker run back on the shared `warehouse_test` and :8081/:5175, the database and ports a developer's own Go DB tests and smoke use.
 
 **The verdict.** A full run is fully isolated from the live checkout, on one worker too: its Go tests on `warehouse_test_go`, its e2e as worker w1 (`warehouse_test_w1` cloned from `warehouse_test_tpl`, :8181/:5181, events `warehouse-e2e-w1`), its Storybook on its own port (6116+). While it runs the live tree may run its Go DB tests, `san test smoke` / `affected --run` and Storybook (those first two still one at a time, as they share `warehouse_test`); only a second full run is refused. ⚠ A full run copies the tree as it is — start it when the tree compiles (no half-finished edit). ✅ Built 2026-11-14 — `tools/san` (`test_full.go`, `test_workers.go`, `test_runner.go`), `frontend/vitest.config.ts` (`STORIES_BROWSER_PORT`); docs/tools/san.md *While it runs*.
+
+---
+
+## the-tester-writes-the-e2e-specs
+
+> Owner (Heri), in chat (2026-11-14): *"yes, but in note, in lightweight scenario test is dev bot enough, tester is focus on e2e test and giving report to dev bot."* — on splitting the agent into a dev bot and an e2e tester bot (about 8.8 h of 43 builder hours over 6–14 Nov went to waiting on e2e runs); then *"A"*, as recommended — to: who writes the e2e specs for a new feature? A: the tester, from the business docs and the built slice — the dev bot only adds the test ids; B: the dev bot writes them with the feature, as now, and the tester only runs them and reports; C: the dev bot writes them, and the tester checks them against the business docs and adds missing cases. The whole setup that followed (this entry and the six after it) was approved with *"A"* — build it in two stages — the same day.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| the split | the **dev bot** builds and runs the light checks itself — build, vet, gofmt, typecheck, the touched Go tests and stories, race / perf when a write or a query changed; the **tester bot** owns the e2e and reports to the dev bot |
+| the specs | written by the tester, from `docs/business/` and the built slice; the dev bot adds the test ids a person's actions on its screens need, never a spec |
+| `frontend/e2e/` | the tester's — specs, helpers, `smoke.txt`, `affected.txt`. A helper change still makes the full run due ([the-full-e2e-waits-for-a-measured-yes](#the-full-e2e-waits-for-a-measured-yes)) |
+| a new spec failing | the tester checks its spec first; only an app bug goes to the dev bot |
+
+**What it amends:** [the-full-e2e-waits-for-a-measured-yes](#the-full-e2e-waits-for-a-measured-yes) — level 2's e2e (the affected specs and the smoke set) is the tester's, no longer the slice builder's.
+
+✅ **Built 2026-11-16** — the bots are Hermes profiles outside the repo (`revamp_dev`, `revamp_tester`, 2026-11-14); in the repo, `san test smoke --isolated` and `san test affected --run --isolated` ([docs/tools/san.md](tools/san.md#test-smoke)) run the level-2 e2e in the tester's checkout as worker w1, never on the dev checkout's `warehouse_test`.
+
+---
+
+## a-slice-is-done-after-the-testers-green
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: does a slice count as done before the tester's green? A: no — after its own checks pass the dev bot marks it *built, e2e pending* in the backlog and moves on; it is Done, and may be committed, only after the tester reports green, and a red result sends it back to the dev bot; B: yes — Done after the dev bot's checks, tester failures become new bug rows (faster bookkeeping, but a commit can hold a red slice); C: the dev bot waits for the tester's green before starting the next slice.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| built | the slice's backlog row reads *built, e2e pending*, with its snapshot; the dev bot starts the next slice at once |
+| Done | only after the tester's green on a snapshot holding the slice — then the backlog's Done row, and the tester's new specs brought into the main folder with it |
+| red | back to the dev bot, which fixes a red app bug before new work |
+| a commit | still only on the owner's word — "after green" means only green slices may go into one, not that green commits by itself |
+
+---
+
+## the-tester-asks-for-the-full-run
+
+> Owner (Heri), in chat (2026-11-14): *"B"*, against my recommendation — to: who asks the owner before a full run? A (recommended): the dev bot — it measures (`san test measure`) and sends the usual one-line ask in the revamp chat; after a yes it has the tester run `san test full` on a snapshot; the owner keeps talking to one bot; B: the tester asks directly — it owns the e2e, so it knows best when a run is due; the questions then come from two bots, and the tester needs a chat of its own.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| measures | the tester — `san test measure` in its own worktree, against that worktree's `e2e_report/last_green.json` |
+| asks | the tester, in its own chat ([the-tester-has-its-own-telegram-bot](#the-tester-has-its-own-telegram-bot)) — the same one-line ask |
+| runs | the tester — `san test full` from its worktree, one worker ([the-full-e2e-runs-on-one-worker](#the-full-e2e-runs-on-one-worker)), only after the owner's explicit yes |
+| the dev bot | stops measuring and stops asking about full runs |
+| unchanged | the full run waits for a measured yes ([the-full-e2e-waits-for-a-measured-yes](#the-full-e2e-waits-for-a-measured-yes)) |
+
+✅ **Built 2026-11-16** — the worktree's `e2e_report/` was given the dev checkout's baseline once (last green `20261116-084552`); from now on a green full run moves the worktree's `last_green.json`. `san test full` refuses while a full or `--isolated` run is live in either checkout — they share the template database and `warehouse_test_w1` ([docs/tools/san.md](tools/san.md#test-full)).
+
+---
+
+## the-tester-works-in-its-own-worktree
+
+> Owner (Heri), in chat (2026-11-14): *"is two bot share same workspace ?"* — then *"A"*, as recommended — to: where does the tester work? A: in its own git worktree, a second checkout (`D:/pdcgo/warehouse_revamp_e2e`), switched to the exact snapshot before each test; it writes and runs its specs there; after a green the dev bot copies the new specs into the main folder and commits them with the slice; B: in the same folder, writing only under `frontend/e2e/` — simpler, but each test needs a careful copy of exactly the snapshot, and the tester's half-written specs can be swept into a dev commit. Asked next, *"e2e need different version of backend right ? how you can handle it ?"*: each run starts the snapshot's own backend, database and UI.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| where | `D:/pdcgo/warehouse_revamp_e2e`, a worktree of this repo, detached — never a branch, never a push |
+| per test | switched to the snapshot's commit; its specs are written there and saved as a ref of their own (`refs/e2e/specs/<name>`) |
+| its servers | the snapshot's own: backend built from its code, `warehouse_test_w1` cloned from a template migrated from its migrations, :8181/:5181, events `warehouse-e2e-w1` — never the dev bot's `warehouse_test`, :8081/:5175 |
+| the specs afterwards | brought into the main folder by the dev bot after a green, and committed with the slice on the owner's go |
+
+✅ **Built** — the worktree 2026-11-14 (`node_modules` hard-linked, the submodule copied in); 2026-11-16 the level-2 run in it: `san test smoke --isolated` / `affected --run --isolated`, in place as worker w1 ([docs/tools/san.md](tools/san.md#test-smoke)).
+
+---
+
+## the-tester-listens-for-snapshots
+
+> Owner (Heri), in chat (2026-11-14): *"so tester bot test listen new commit and run test ?"*, *"is snapshoting is fast ?"* (~10 s), *"is snapshot takes huge space ?"* (~1 MB) — then *"A"*, as recommended — to: how does the tester know there is a new snapshot? A: it listens — a check every ~5 minutes that costs nothing when there is nothing new; one test run at a time, several waiting snapshots in one run, nothing lost when a bot restarts; up to 5 minutes before testing starts, and the dev bot reads reports between slices; B: the dev bot pokes it with a background `hermes -p revamp_tester chat -q …` — two slices handed off close together would start two runs that collide unless the tester queues them.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| the hand-off | a snapshot — the dev checkout as a commit on no branch, `refs/e2e/queue/<stamp>-<slice>`, its message the hand-off note (what changed, the business rules, the test ids added, the specs likely affected) |
+| the check | every 5 minutes; no model call while nothing is queued |
+| several queued | snapshots are cumulative: the newest is tested, and its report covers the older ones |
+| the answer | a report file in `e2e_report/tester/`; the snapshot's ref moves to `refs/e2e/done/` |
+| the dev bot | reads new reports between slices |
+
+Commits come too late to listen for: under [a-slice-is-done-after-the-testers-green](#a-slice-is-done-after-the-testers-green) a slice is committed only after the green. The disk is the mailbox — the bots never message each other, and a queued snapshot survives a power cut.
+
+---
+
+## the-tester-has-its-own-telegram-bot
+
+> Owner (Heri), in chat (2026-11-14): *"A"*, as recommended — to: where does the tester talk to the owner (needed by [the-tester-asks-for-the-full-run](#the-tester-asks-for-the-full-run))? A: its own Telegram bot — its questions reach his phone and he answers "yes" there; he creates it with @BotFather and enters its token into the tester's profile himself, never in chat; B: a desktop Bot Chat — ready with no token, but seen only at the desktop.
+
+**The verdict.** The tester has its own Telegram bot; the owner entered its token himself. It speaks for the full-run ask. *(Not asked — the setup's default: a routine run with nothing to ask sends nothing.)* ✅ Token in place 2026-11-14.
+
+---
+
+## revamp-has-its-own-dev-bot
+
+> Owner (Heri), in chat (2026-11-14): *"what if dev bot is new too"* — then *"B"*, against my recommendation — to: A (recommended): a new `revamp_dev` takes over the EXISTING Telegram bot token — the same chat on his phone with a fresh bot behind it, and `default` becomes his general assistant on the desktop; B: a new `revamp_dev` with its own NEW Telegram bot, and `default` keeps its Telegram chat — three Telegram chats; C: keep `default` as the dev bot.
+
+**The verdict.**
+
+| | |
+| --- | --- |
+| the dev bot | a new profile, `revamp_dev`, with its own new Telegram bot — the revamp channel from the switch on |
+| `default` | keeps its Telegram chat as the general assistant; it no longer builds revamp and points revamp work to `revamp_dev` |
+| the chats | three: `default`, `revamp_dev`, `revamp_tester` |
+| carried over | everything on disk — the backlog, the decision files, `heri.md`, the agents' shared skill; not the old chat's history |
+
+The switch waited for the old chat's builders to finish (*"i still have active session … if i choose A, is it safe ?"* — two stages: the profiles first, the repo changes after the builders). ✅ Both profiles 2026-11-14, their tokens entered by the owner.
+
+🔄 *(2026-11-16 12:21)* **Live** — the switch: `san test … --isolated` built, the tester's 5-minute routine resumed, `revamp_dev`'s chat the revamp channel. The first snapshot is the proof run.

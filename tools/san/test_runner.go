@@ -390,6 +390,19 @@ type fullRunLock struct {
 	Shared bool `json:"shared,omitempty"`
 	// Workers are its e2e workers (w1 …), each on its own warehouse_test_wN, ports and events project.
 	Workers []string `json:"workers,omitempty"`
+	// Kind is empty for a full run; "smoke" or "affected" for an --isolated level-2 run, which holds the same lock
+	// because it uses the same template and worker database — but never moves last_green.json.
+	Kind string `json:"kind,omitempty"`
+}
+
+// what names the run holding the lock, for a refusal.
+func (l *fullRunLock) what() string {
+	if l.Kind != "" {
+		return fmt.Sprintf("an --isolated %s run is live (pid %d, started %s, in place as %s)", l.Kind, l.PID,
+			l.Started.Format("15:04"), strings.Join(l.Workers, " "))
+	}
+
+	return fmt.Sprintf("a full run is live (pid %d, started %s, copy %s)", l.PID, l.Started.Format("15:04"), l.Copy)
 }
 
 func fullLockPath(root string) string {
@@ -470,9 +483,8 @@ func (s busyState) liveTreeRefusal() error {
 // warehouse_test. The live tree's own runs on warehouse_test (smoke, affected, Go DB tests) never stop a full run.
 func (s busyState) fullRefusal(shared bool, workers []string) error {
 	if s.Full != nil {
-		return fmt.Errorf("a full run is live (pid %d, started %s, copy %s) — two full runs at once share the "+
-			"template %s, the worker databases (%s_w1 …) and their ports; wait for it (go run ./tools/san test report)",
-			s.Full.PID, s.Full.Started.Format("15:04"), s.Full.Copy, templateDB, testDBName)
+		return fmt.Errorf("%s — two runs at once share the template %s, the worker databases (%s_w1 …) and their "+
+			"ports; wait for it (go run ./tools/san test report)", s.Full.what(), templateDB, testDBName)
 	}
 
 	for _, w := range workers {
@@ -495,7 +507,7 @@ func (s busyState) fullRefusal(shared bool, workers []string) error {
 // is live it refuses — that run moves last_green.json when it ends, and an older run accepted meanwhile could land
 // after it and take the baseline back.
 func (s busyState) acceptRefusal() error {
-	if s.Full != nil {
+	if s.Full != nil && s.Full.Kind == "" {
 		return fmt.Errorf("a full run is live (pid %d, started %s) — it moves last_green.json when it ends, and "+
 			"accepting another run now could undo that; wait for it (go run ./tools/san test report)", s.Full.PID,
 			s.Full.Started.Format("15:04"))
@@ -509,9 +521,15 @@ func refuseIfBusy(root string) error {
 	return readBusy(root).liveTreeRefusal()
 }
 
-// refuseFullIfBusy stops a full run while another full run, or a live-tree run on one of its workers, is live.
+// refuseFullIfBusy stops a full run while another full run, or a live-tree run on one of its workers, is live — in
+// this checkout or in another worktree of the repo (they share one Postgres: the template and warehouse_test_wN).
 func refuseFullIfBusy(root string, shared bool, workers []string) error {
-	return readBusy(root).fullRefusal(shared, workers)
+	err := readBusy(root).fullRefusal(shared, workers)
+	if err != nil {
+		return err
+	}
+
+	return refuseInOtherCheckouts(root, workers)
 }
 
 // ── running a step ────────────────────────────────────────────────────────────────────────────────

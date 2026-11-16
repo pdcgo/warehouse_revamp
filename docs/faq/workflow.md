@@ -52,6 +52,10 @@ Plus the e2e specs the change touches. How much more runs, and when the full sui
 measured from the files, then the owner is asked. ⚠ CI runs the e2e only on `main` and pull requests, never on a
 developer's own branch.
 
+On `backup/inventory` the agents split this: the dev bot runs the lines above (and the touched stories); a tester bot
+runs the e2e on each finished slice in a worktree of its own and asks the owner about the full run — only a slice it
+reports green goes into a commit ([a-slice-is-done-after-the-testers-green](../development_lifecycle_decision.md#a-slice-is-done-after-the-testers-green)).
+
 ---
 
 ## Which docs must I update in the same commit as my change?

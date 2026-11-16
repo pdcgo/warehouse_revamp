@@ -622,6 +622,7 @@ go run ./tools/san test affected --run --dry-run       # print the Playwright ba
 | `--since` | No green baseline yet: the files modified after a time (as for `measure`) |
 | `--run` | Run the affected specs (whole) and the smoke set in this working tree, batched like the full run (`orders.spec.ts` alone; the restock family — `restock.spec.ts`, `restock_*.spec.ts` — together on its own when whole). Recorded in `e2e_report/level2/` |
 | `--dry-run` | With `--run`: print the batches and run nothing |
+| `--isolated` | With `--run`: run them as worker w1 in place, not on `warehouse_test` — [below](#--isolated--a-level-2-run-on-a-worker-of-its-own) |
 
 **How it traces** — by reading the code, not a list someone keeps:
 
@@ -687,6 +688,7 @@ return — and the tests are a checked-in list of real test titles, `frontend/e2
 ```sh
 go run ./tools/san test smoke             # run it here; recorded in e2e_report/level2/<stamp>-smoke/
 go run ./tools/san test smoke --dry-run   # the flows, the command, and a check that every line names one test
+go run ./tools/san test smoke --isolated  # as worker w1 — the tester's worktree (below)
 ```
 
 `smoke.txt`: one flow per `## ` heading; each line is `<spec file> › [<describe> › …] <test title>`,
@@ -718,6 +720,31 @@ anything starts, `smoke` and `affected --run`:
 
 Playwright runs through `node …/@playwright/test/cli.js`, not `npx` — `npx.cmd` goes through cmd.exe,
 which would read a `--grep`'s `|` as a pipe.
+
+### `--isolated` — a level-2 run on a worker of its own
+
+`smoke --isolated` and `affected --run --isolated` run the same batches **as worker w1**, in place, instead of on
+`warehouse_test` and :8081/:5175 — for a checkout that is not where development happens: the e2e tester's worktree
+([the-tester-works-in-its-own-worktree](../development_lifecycle_decision.md#the-tester-works-in-its-own-worktree)),
+where each dev snapshot is checked out and tested while the dev checkout keeps `warehouse_test` for its own Go DB tests.
+
+```sh
+go run ./tools/san test smoke --isolated                                  # the smoke set as w1
+go run ./tools/san test affected --files a.go,b.tsx --run --isolated      # the specs those files reach + the smoke set, as w1
+go run ./tools/san test smoke --isolated --dry-run                        # the plan, the seat, and whether it could start now
+```
+
+| | |
+| --- | --- |
+| database | `warehouse_test_w1`, a fresh clone per batch of `warehouse_test_tpl` — the template migrated and seeded once per run **from this tree** (a snapshot's new migration is in it), dropped afterwards |
+| ports | the first free worker pair from :8181/:5181 — a port another program holds is skipped, never killed |
+| events | the emulator project `warehouse-e2e-w1` |
+| copy | none — the worktree holds exactly the snapshot and nothing edits it during the run |
+| locks | `e2e_report/.full_run.lock` (kind `smoke` / `affected`) for the whole run, and `frontend/.e2e-lock.w1` per batch |
+| refuses | while a full run or another `--isolated` run is live — in this checkout **or any other worktree of the repo** (one Postgres: the template and `warehouse_test_w1` are shared) — or a Playwright run there holds `.e2e-lock.w1` |
+| records | `e2e_report/level2/<stamp>-smoke/` (or `-affected`), the worker in its summary; it never moves `last_green.json` |
+
+`affected --isolated` without `--run` is refused (`--isolated says where the specs run: add --run`).
 
 ---
 
@@ -821,9 +848,9 @@ What still refuses — only what truly collides:
 
 | Started while a full run is live | |
 | --- | --- |
-| a second `test full` | refuses: two full runs share the template `warehouse_test_tpl`, the worker databases and their ports |
+| a second `test full` | refuses: two full runs share the template `warehouse_test_tpl`, the worker databases and their ports — also when the other run is in another worktree of the repo (the e2e tester's), or is an [`--isolated`](#--isolated--a-level-2-run-on-a-worker-of-its-own) level-2 run |
 | a Playwright run in the live tree **as worker w1** (`E2E_WORKER=w1 …`) | refuses: the full run holds the live `frontend/.e2e-lock.w1` (the same `warehouse_test_w1`). Run such a repro as `w9` (`E2E_WORKER=w9 E2E_DB_NAME=warehouse_test_w9 E2E_API_PORT=8189 E2E_UI_PORT=5189 E2E_PUBSUB_PROJECT=warehouse-e2e-w9`) |
-| `test accept-run` | refuses: the full run moves `last_green.json` when it ends; an older run accepted meanwhile could take it back |
+| `test accept-run` | refuses: the full run moves `last_green.json` when it ends; an older run accepted meanwhile could take it back (an `--isolated` level-2 run moves nothing and does not stop it) |
 | `test smoke`, `affected --run`, a plain `npx playwright test`, Go DB tests, Storybook | run — unless the full run was started with `--shared-db` (then they refuse, as before) |
 
 The live tree's CPU is shared, of course: a Storybook or e2e run beside the full run slows both a little.
