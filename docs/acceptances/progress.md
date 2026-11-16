@@ -5,16 +5,16 @@ Every action, under the day it was discussed. The counts are the statuses today 
 
 ## 2026-11-11
 
-- `selling:all` wants to restock · [create restock](inventory/restock.md) (18 thens: ✅ 15, 🚧 3)
-- `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md) (8 thens: ✅ 4, 🚧 1, ⬜ 3)
-- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md) (37 thens: ✅ 23, 🚧 2, ⬜ 12)
-- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md) (66 thens: ✅ 15, 🚧 7, ⬜ 44)
+- `selling:all` wants to restock · [create restock](inventory/restock.md#create) (18 thens: ✅ 15, 🚧 3)
+- `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md#receive) (8 thens: ✅ 4, 🚧 1, ⬜ 3)
+- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md#receive) (37 thens: ✅ 23, 🚧 2, ⬜ 12)
+- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md#create) (66 thens: ✅ 15, 🚧 7, ⬜ 44)
 
 ## 2026-11-14
 
-- `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md) (14 thens: ⬜ 14)
-- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md) (8 thens: 🚧 1, ⬜ 7)
-- `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md) (18 thens: ⬜ 18)
+- `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md#cancel-and-lost) (14 thens: ⬜ 14)
+- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md#cancel-and-lost) (8 thens: 🚧 1, ⬜ 7)
+- `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md#receive) (18 thens: ⬜ 18)
 - `selling:all` wants to create an order · [create order](inventory/order.md#create) (55 thens: ⬜ 55)
 - `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md#process) (8 thens: 🚧 1, ⬜ 7)
 - `warehouse:all` wants to pick an order · [pick order](inventory/order.md#process) (15 thens: 🚧 1, ⬜ 14)
@@ -31,3 +31,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:all` wants to put a found parcel back in stock · [report found](inventory/order.md#problem-and-lost) (2 thens: 🚧 1, ⬜ 1)
 - `selling:all` wants to mark an order as problem · [mark problem order](inventory/order.md#problem-and-lost) (5 thens: 🚧 1, ⬜ 4)
 - `selling:all` wants to resolve a dispute · [resolve dispute order](inventory/order.md#problem-and-lost) (4 thens: 🚧 1, ⬜ 3)
+- `selling:all` wants to follow up restock problems · [list problem restock](inventory/restock.md#resolve) (1 then: 🚧 1)
+- `selling:all` wants to follow up lost restocks · [list lost restock](inventory/restock.md#resolve) (1 then: ⬜ 1)
+- `selling:all` wants to record the supplier's solution · [resolve restock problem](inventory/restock.md#resolve) (6 thens: 🚧 6)
+- `selling:all` wants to record the platform's solution · [resolve lost restock](inventory/restock.md#resolve) (2 thens: 🚧 2)
