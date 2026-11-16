@@ -27,3 +27,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to cancel an order · [cancel order](inventory/order.md#create) (16 thens: ⬜ 16)
 - `selling:all` · `warehouse:all` wants to return an order · [return order](inventory/order.md#return) (13 thens: ⬜ 13)
 - `warehouse:all` wants to accept a return · [accept return](inventory/order.md#return) (20 thens: 🚧 1, ⬜ 19)
+- `selling:all` wants to mark an order lost · [mark lost order](inventory/order.md#problem-and-lost) (7 thens: ⬜ 7)
+- `warehouse:all` wants to put a found parcel back in stock · [report found](inventory/order.md#problem-and-lost) (2 thens: 🚧 1, ⬜ 1)
+- `selling:all` wants to mark an order as problem · [mark problem order](inventory/order.md#problem-and-lost) (5 thens: 🚧 1, ⬜ 4)
+- `selling:all` wants to resolve a dispute · [resolve dispute order](inventory/order.md#problem-and-lost) (4 thens: 🚧 1, ⬜ 3)

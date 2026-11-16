@@ -180,6 +180,32 @@ The parcel comes back: customer service or the warehouse returns the order, the 
 <tr><td>message names opname</td><td>⬜ untested</td></tr>
 </table>
 
+## problem and lost
+
+After the handover something goes wrong: customer service marks a problem and resolves it, or writes the parcel off as lost — and the warehouse puts a lost parcel that turns up back in stock.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order as problem<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark problem order</td><td>status changed from shipped to problem</td><td>⬜ untested</td></tr>
+<tr><td>problem recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees order problem</td><td>⬜ untested</td></tr>
+<tr><td>problem recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>dispute can be resolved</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top"><code>selling:all</code> wants to resolve a dispute<br>(status: problem · 1 order)</td><td rowspan="4" valign="top">resolve dispute order</td><td>status changed from problem to completed</td><td>⬜ untested</td></tr>
+<tr><td>resolve recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
+<tr><td>resolve recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark lost order</td><td>status changed from shipped to lost</td><td>⬜ untested</td></tr>
+<tr><td>lost recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees order lost</td><td>⬜ untested</td></tr>
+<tr><td>lost recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td>no action available on lost order</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: problem · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from problem to lost</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: return · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from return to lost</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to put a found parcel back in stock<br>(status: lost · parcel back at warehouse · 1 product · 1 rack)</td><td rowspan="2" valign="top">report found</td><td>found names the lost order</td><td>🚧 unimplemented</td></tr>
+<tr><td>order stays lost</td><td>⬜ untested</td></tr>
+</table>
+
 ## Warnings
 
 ### brokens-on-rack-goes-against-a-business-decision
