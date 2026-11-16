@@ -59,19 +59,21 @@ Business: [order.md](../../business/inventory/order.md) · rules: [guide.md](../
 <tr><td rowspan="2" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · no return warehouse set)</td><td rowspan="2" valign="top">create order</td><td>order refused</td><td>⬜ untested</td></tr>
 <tr><td>message says to set return warehouse</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>selling:all</code> wants to create an order<br>(1 product · own product · 1 warehouse · ready stock less than ordered)</td><td rowspan="1" valign="top">create order</td><td>order refused</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · 1 order)</td><td rowspan="4" valign="top">confirm order</td><td>status changed from pending to processed</td><td>⬜ untested</td></tr>
+<tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · 1 order)</td><td rowspan="5" valign="top">confirm order</td><td>status changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order processed</td><td>⬜ untested</td></tr>
+<tr><td>confirm recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
 <tr><td>order can be picked</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · multi orders)</td><td rowspan="3" valign="top">confirm order</td><td>status of every order changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in each order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees every order processed</td><td>⬜ untested</td></tr>
-<tr><td rowspan="7" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · 1 product · 1 rack · opened by receipt scan · all items scanned)</td><td rowspan="7" valign="top">pick order</td><td>pick page opens from receipt scan</td><td>⬜ untested</td></tr>
+<tr><td rowspan="8" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · 1 product · 1 rack · opened by receipt scan · all items scanned)</td><td rowspan="8" valign="top">pick order</td><td>pick page opens from receipt scan</td><td>⬜ untested</td></tr>
 <tr><td>pick page shows 1 rack for 1 product</td><td>⬜ untested</td></tr>
 <tr><td>every scanned item correct</td><td>⬜ untested</td></tr>
 <tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
 <tr><td>pick recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order picked</td><td>⬜ untested</td></tr>
+<tr><td>pick recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
 <tr><td>order can be handed over</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · 1 product · 2 racks · all items scanned)</td><td rowspan="2" valign="top">pick order</td><td>pick page shows 2 racks with quantity of each</td><td>⬜ untested</td></tr>
 <tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
@@ -80,10 +82,11 @@ Business: [order.md](../../business/inventory/order.md) · rules: [guide.md](../
 <tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · more items than ordered scanned)</td><td rowspan="2" valign="top">pick order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
 <tr><td>item count stays at ordered quantity</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · not every item scanned)</td><td rowspan="1" valign="top">pick order</td><td>cannot set picked</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 order · receipt scan · mass pickup off)</td><td rowspan="4" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
+<tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 order · receipt scan · mass pickup off)</td><td rowspan="5" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td>hand over recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order shipping</td><td>⬜ untested</td></tr>
-<tr><td>order can be changed to shipped</td><td>⬜ untested</td></tr>
+<tr><td>hand over recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>order can be marked shipped</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · multi orders · receipt scan · mass pickup on)</td><td rowspan="3" valign="top">hand over order</td><td>scanned orders collected in list</td><td>⬜ untested</td></tr>
 <tr><td>status of every order changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td>hand over recorded in each order timeline</td><td>⬜ untested</td></tr>
@@ -97,5 +100,29 @@ Business: [order.md](../../business/inventory/order.md) · rules: [guide.md](../
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(receipt not found · receipt scan)</td><td rowspan="1" valign="top">hand over order</td><td>scan marked not found with wrong sound</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 receipt on 1 order and 1 cancelled order · receipt scan)</td><td rowspan="1" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: processed · mass pickup on · only error scans)</td><td rowspan="1" valign="top">hand over order</td><td>cannot hand over</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 order · from order page)</td><td rowspan="1" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
+<tr><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order shipped<br>(status: shipping · 1 order)</td><td rowspan="5" valign="top">mark shipped order</td><td>status changed from shipping to shipped</td><td>⬜ untested</td></tr>
+<tr><td>shipped recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees order shipped</td><td>⬜ untested</td></tr>
+<tr><td>shipped recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>order can be completed</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top"><code>selling:all</code> wants to complete an order<br>(status: shipped · 1 order)</td><td rowspan="4" valign="top">complete order</td><td>status changed from shipped to completed</td><td>⬜ untested</td></tr>
+<tr><td>complete recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
+<tr><td>complete recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="10" valign="top"><code>selling:all</code> wants to cancel an order<br>(status: pending · 1 product · own product · 1 warehouse · 1 rack · 1 supplier)</td><td rowspan="10" valign="top">cancel order</td><td>status changed from pending to cancelled</td><td>⬜ untested</td></tr>
+<tr><td>cancel recorded in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of 1 product increases at 1 warehouse</td><td>⬜ untested</td></tr>
+<tr><td>stock on 1 rack increases</td><td>⬜ untested</td></tr>
+<tr><td>recorded in product history</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees order cancelled</td><td>⬜ untested</td></tr>
+<tr><td>warehouse fee reversed in liability</td><td>⬜ untested</td></tr>
+<tr><td>sale cancelled in order settlement</td><td>⬜ untested</td></tr>
+<tr><td>cancel recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td>cancel recorded at 1 supplier</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top"><code>selling:all</code> wants to cancel an order<br>(status: pending · 1 product · cross product · 1 warehouse · 1 rack · 1 supplier)</td><td rowspan="3" valign="top">cancel order</td><td>status changed from pending to cancelled</td><td>⬜ untested</td></tr>
+<tr><td>cross team's ready stock increases</td><td>⬜ untested</td></tr>
+<tr><td>product fee reversed in liability to cross team</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to cancel an order<br>(status: processed · 1 product · own product · 1 warehouse)</td><td rowspan="1" valign="top">cancel order</td><td>cannot cancel order</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to cancel an order<br>(status: pending · 1 product · own product · 1 warehouse · stock count on its rack)</td><td rowspan="2" valign="top">cancel order</td><td>cancel refused</td><td>⬜ untested</td></tr>
+<tr><td>message names stock count, who started it and when</td><td>⬜ untested</td></tr>
 </table>
