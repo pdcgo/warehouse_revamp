@@ -81,6 +81,27 @@ The selling team places an order, and takes it back while it is still pending.
 <tr><td>message names opname, who started it and when</td><td>⬜ untested</td></tr>
 </table>
 
+## edit
+
+The selling team fixes the resi or the label file while the parcel is still in the building, and an order recorded in the wrong shop.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="4" valign="top"><code>selling:all</code> wants to fix an order's resi<br>(status: pending · new resi)</td><td rowspan="4" valign="top">edit resi order</td><td>resi changed</td><td>⬜ untested</td></tr>
+<tr><td>old and new resi shown in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees new resi</td><td>⬜ untested</td></tr>
+<tr><td>receipt scan finds order by new resi</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top"><code>selling:all</code> wants to fix an order's resi<br>(status: processed · new label file)</td><td rowspan="3" valign="top">edit resi order</td><td>label changed</td><td>⬜ untested</td></tr>
+<tr><td>label change shown in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>warehouse prints new label</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to fix an order's resi<br>(status: picked · new resi · new label file)</td><td rowspan="1" valign="top">edit resi order</td><td>resi and label changed</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to fix an order's resi<br>(status: picked · label printed · wrong label uploaded · new label file)</td><td rowspan="2" valign="top">edit resi order</td><td>label changed</td><td>⬜ untested</td></tr>
+<tr><td>warehouse told to reprint label</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="3" valign="top"><code>selling:all</code> wants to fix an order's shop<br>(status: completed · order in wrong shop · statement import refused)</td><td rowspan="3" valign="top">edit shop order</td><td>shop changed</td><td>🚧 unimplemented</td></tr>
+<tr><td>shop change shown in order timeline</td><td>🚧 unimplemented</td></tr>
+<tr><td>statement import succeeds</td><td>🚧 unimplemented</td></tr>
+</table>
+
 ## process
 
 The order's way out: the warehouse confirms, picks and hands it over, customer service marks it shipped and completes it.
