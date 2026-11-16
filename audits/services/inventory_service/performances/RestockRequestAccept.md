@@ -87,3 +87,4 @@ put-away one `PutOnPlacements` (four). Same cause as
 | --- | --- | --- | --- |
 | 2026-10-17 | 62.0 ms | 19 / 190 | first audit |
 | 2026-10-17 | 14.1 ms | 17 / 17 | set-based ledger primitives; one rack check, one count update, one problem insert; no association re-upsert |
+| 2026-11-15 | 21.5 ms (10.1 ms @1) | 20 / 20 | each line's optional `expires_on` (the-warehouse-types-the-expiry-at-the-accept) rides the existing `MintBatches` insert as `expired_at` — no statement added, nil cost. The 17 → 20 came with passes after 2026-10-17 (not this one); still flat in lines |

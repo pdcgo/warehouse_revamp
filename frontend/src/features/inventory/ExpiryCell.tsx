@@ -36,8 +36,6 @@ export function ExpiryCell({
   fontSize?: "xs" | "sm" | "md";
   testId?: string;
 }) {
-  const { t } = useTranslation();
-
   if (unix <= 0n) {
     return (
       <Text fontSize={fontSize} color="fg.muted" data-testid={testId}>
@@ -46,25 +44,12 @@ export function ExpiryCell({
     );
   }
 
-  const days = daysUntilUnix(unix);
-  const { color } = band(days);
-  const left =
-    days < 0
-      ? t("batches.expiry.ago", { count: -days })
-      : days === 0
-        ? t("batches.expiry.today")
-        : t("batches.expiry.left", { count: days });
-
   const date = (
     <Span whiteSpace="nowrap" title={formatUnixDate(unix)} data-testid={testId}>
       {formatUnixDateShort(unix)}
     </Span>
   );
-  const remaining = (
-    <Span color={color} whiteSpace="nowrap" data-testid={testId ? `${testId}-left` : undefined} data-band={band(days).key}>
-      {left}
-    </Span>
-  );
+  const remaining = <ExpiryLeft unix={unix} testId={testId ? `${testId}-left` : undefined} />;
 
   if (inline) {
     return (
@@ -81,5 +66,28 @@ export function ExpiryCell({
       {date}
       {remaining}
     </Stack>
+  );
+}
+
+/**
+ * HOW LONG IS LEFT, alone — *20 hari lagi*, *hari ini*, *lewat 3 hari* — in its band's colour (amber within the soon
+ * window, red once past, quiet beyond; an-expiry-says-how-long-is-left). ExpiryCell draws it under the day; a form that
+ * already shows the day (the restock accept's expiry picker) draws it beside the picker. Its size is the parent's.
+ */
+export function ExpiryLeft({ unix, testId }: { unix: bigint; testId?: string }) {
+  const { t } = useTranslation();
+  const days = daysUntilUnix(unix);
+  const { color, key } = band(days);
+  const left =
+    days < 0
+      ? t("batches.expiry.ago", { count: -days })
+      : days === 0
+        ? t("batches.expiry.today")
+        : t("batches.expiry.left", { count: days });
+
+  return (
+    <Span color={color} whiteSpace="nowrap" data-testid={testId} data-band={key}>
+      {left}
+    </Span>
   );
 }

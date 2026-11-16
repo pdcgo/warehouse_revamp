@@ -1,9 +1,24 @@
 # Development state — inventory / restock
 
+🔨 **2026-11-15: the warehouse types each line's expiry at the accept** (decisions
+`the-warehouse-types-the-expiry-at-the-accept`, docs/business/inventory/context_decision.md, and
+`the-expiry-prototypes-are-accepted`, technical/frontend/batches_decision.md) — uncommitted. `RestockRequestReceivedLine`
+gains `expires_on` (a Jakarta day, optional; proto pattern + the handler's calendar check, `errRestockExpiryInvalid` →
+InvalidArgument); `RestockRequestAccept` passes that day's Jakarta midnight on the line's `RestockLine.ExpiredAt` →
+`Mint.ExpiredAt`, so the batch the line mints carries it in the same insert (no statement added — audit History row). A
+line with no good unit mints no batch, so its date is stored nowhere; a past day is accepted. The accept screen:
+`components/ExpiryField` in each line's *Yang tiba* (the line draft's `expiresOn`, `draft.ts`; `receivedLine` sends it only
+when the line has good units), the confirm lists each line's date or — (`ConfirmSummary expiries`). The Storybook switch
+`pages/restock-accept/expiryPrototype.tsx` is deleted; the stub records what the accept sent
+(`.storybook/restockAcceptScenario.ts`). Tests `restock_request_accept_expiry_test.go` (5, incl. carried by a transfer,
+read back by `OwnerBatchList`); stories `RestockAccept/Expiry` (9); e2e `the_expiry_is_read_off_the_box.spec.ts`. The
+confirm's dismiss is now `common.cancel` (*Batal*), no longer a hard-coded English *Cancel* (`components/feedback/ConfirmDialog`,
+every caller that names none). `useSideBySide` moved to `components/chrome/sideBySide.ts` (the product page reuses it).
+
 🔨 **2026-11-13: Kiriman goes below the products when the page is narrow** (decision
 `the-delivery-card-stacks-when-the-page-is-narrow`, technical/frontend/restock_decision.md) — uncommitted. Both restock
-detail pages choose products | 20rem side column by the PAGE AREA's measured width (`features/restock/sideBySide.ts`
-`useSideBySide`, on `lib/useElementWidth` — emotion drops `@container`), no longer the viewport's `xl`: side by side only
+detail pages choose products | 20rem side column by the PAGE AREA's measured width (`features/restock/sideBySide.ts` — since 2026-11-15
+`components/chrome/sideBySide.ts` — `useSideBySide`, on `lib/useElementWidth` — emotion drops `@container`), no longer the viewport's `xl`: side by side only
 when the area holds the products card at its narrowest + the gap + 20rem — warehouse 710 (table 660 + card 50), selling
 830 (table 779 + 50; it had the same fault, scrolling at 1440 and 1600 with the sidebar open). Below that, the stacked
 layout: the info under the products in the nav's order. One tree for both layouts (only the info cards move; the note

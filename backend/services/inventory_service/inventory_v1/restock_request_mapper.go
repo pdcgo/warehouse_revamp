@@ -102,6 +102,8 @@ var (
 	errRestockLineRemoved = errors.New("the box has arrived — a line can be added, not removed")
 	// A stored line's supplier and store are closed once the box has arrived (a-line-added-after-arrival-names-its-supplier).
 	errRestockArrivedSupplierLocked = errors.New("the box has arrived — a stored line keeps its supplier and store")
+	// An accept line's expiry is a day on the calendar (the-warehouse-types-the-expiry-at-the-accept).
+	errRestockExpiryInvalid = errors.New("the expiry is not a day on the calendar")
 )
 
 func restockStatusToText(status inventoryv1.RestockRequestStatus) string {
@@ -410,7 +412,8 @@ func restockErr(err error) error {
 		errors.Is(err, errRestockProductNotOwned),
 		errors.Is(err, errRestockAccountRequired),
 		errors.Is(err, errRestockStoreWithoutSupplier),
-		errors.Is(err, errRestockStoreNotTheSuppliers):
+		errors.Is(err, errRestockStoreNotTheSuppliers),
+		errors.Is(err, errRestockExpiryInvalid):
 		// InvalidArgument: the restock is in a good state — it is the COUNT that is malformed.
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, errRackMissing):

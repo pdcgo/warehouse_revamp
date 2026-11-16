@@ -706,6 +706,12 @@ message RestockRequestReceivedLine {
   // Where the GOOD units went — received − broken, exactly. Empty when there are none.
   repeated RestockPlacement placements = 5;
 
+  // The expiry read off the box (the-warehouse-types-the-expiry-at-the-accept): a Jakarta day, YYYY-MM-DD — optional,
+  // empty = none, and a box mixing several printed dates takes the soonest. It goes on the batch this line mints
+  // (`batches.expired_at`, that day's Jakarta midnight); a line with no good units mints no batch, so its date is stored
+  // nowhere. A past day is allowed — the box says what it says (the-expiry-prototypes-are-accepted).
+  string expires_on = 11 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+
   reserved 2, 3, 4, 6;
   reserved "received_quantity", "rack_id", "unplaced", "place", "damaged";
 }

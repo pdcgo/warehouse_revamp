@@ -2860,7 +2860,12 @@ type RestockRequestReceivedLine struct {
 	BrokenNote  string `protobuf:"bytes,9,opt,name=broken_note,json=brokenNote,proto3" json:"broken_note,omitempty"`
 	MissingNote string `protobuf:"bytes,10,opt,name=missing_note,json=missingNote,proto3" json:"missing_note,omitempty"`
 	// Where the GOOD units went — received − broken, exactly. Empty when there are none.
-	Placements    []*RestockPlacement `protobuf:"bytes,5,rep,name=placements,proto3" json:"placements,omitempty"`
+	Placements []*RestockPlacement `protobuf:"bytes,5,rep,name=placements,proto3" json:"placements,omitempty"`
+	// The expiry read off the box (the-warehouse-types-the-expiry-at-the-accept): a Jakarta day, YYYY-MM-DD — optional,
+	// empty = none, and a box mixing several printed dates takes the soonest. It goes on the batch this line mints
+	// (`batches.expired_at`, that day's Jakarta midnight); a line with no good units mints no batch, so its date is stored
+	// nowhere. A past day is allowed — the box says what it says (the-expiry-prototypes-are-accepted).
+	ExpiresOn     string `protobuf:"bytes,11,opt,name=expires_on,json=expiresOn,proto3" json:"expires_on,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2935,6 +2940,13 @@ func (x *RestockRequestReceivedLine) GetPlacements() []*RestockPlacement {
 		return x.Placements
 	}
 	return nil
+}
+
+func (x *RestockRequestReceivedLine) GetExpiresOn() string {
+	if x != nil {
+		return x.ExpiresOn
+	}
+	return ""
 }
 
 type RestockRequestAcceptResponse struct {
@@ -3878,7 +3890,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x19warehouse_additional_cost\x18\x06 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\x17warehouseAdditionalCost\x12M\n" +
 	"\x1ewarehouse_additional_cost_note\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x1bwarehouseAdditionalCostNote:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\bJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\x10cod_shipping_feeR\n" +
-	"cost_lines\"\x8a\x03\n" +
+	"cost_lines\"\xd1\x03\n" +
 	"\x1aRestockRequestReceivedLine\x12 \n" +
 	"\aitem_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06itemId\x12.\n" +
 	"\x0ereceived_count\x18\a \x01(\x03B\a\xbaH\x04\"\x02(\x00R\rreceivedCount\x12*\n" +
@@ -3889,7 +3901,9 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	" \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\vmissingNote\x12H\n" +
 	"\n" +
 	"placements\x18\x05 \x03(\v2(.warehouse.inventory.v1.RestockPlacementR\n" +
-	"placementsJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x06\x10\aR\x11received_quantityR\arack_idR\bunplacedR\x05placeR\adamaged\"`\n" +
+	"placements\x12E\n" +
+	"\n" +
+	"expires_on\x18\v \x01(\tB&\xbaH#r!2\x1f^([0-9]{4}-[0-9]{2}-[0-9]{2})?$R\texpiresOnJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x06\x10\aR\x11received_quantityR\arack_idR\bunplacedR\x05placeR\adamaged\"`\n" +
 	"\x1cRestockRequestAcceptResponse\x12@\n" +
 	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\xa6\x01\n" +
 	"\x1dRestockRequestMarkLostRequest\x12$\n" +

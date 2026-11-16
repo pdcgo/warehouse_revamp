@@ -3,6 +3,14 @@
 Decisions: [context_decision.md](../../business/product/context_decision.md). Bundles and discovery have their own
 reports ([bundle.md](bundle.md), [discover.md](discover.md)).
 
+## 2026-11-15 — the product page reads each batch's expiry; its side cards stack when narrow
+
+| | |
+| --- | --- |
+| [the-expiry-report-is-the-batch-list](../../business/inventory/context_decision.md#the-expiry-report-is-the-batch-list) | **built** (uncommitted) — the owning team's Batch section (`pages/product-detail/components/BatchSection`) shows *Kedaluwarsa* after *Tiba* — `ExpiryCell` on `OwnerBatchList`'s `expires_on_unix` (already served — confirmed by `TestRestockRequestAccept_TheExpiryGoesOnTheLinesBatch`): *20 hari lagi* amber within 30 days, red once past, — for none; on a phone on the arrival line. The Storybook switch is deleted |
+| [the-product-pages-side-cards-stack-when-narrow](../../technical/frontend/products_decision.md#the-product-pages-side-cards-stack-when-narrow) | **built** (uncommitted) — `pages/product-detail/index.tsx` measures the area beside the nav with `useSideBySide(BATCH_SECTION_FLOOR_PX)` (`components/chrome/sideBySide.ts`, moved from `features/restock/`; floor 701 = the Batch table's narrowest in English 651 + the card's 50; Indonesian 607) instead of the viewport's `xl`; below it the stacked layout (Cross and the derived figures under Batch). 1440 + the sidebar: stacked, no horizontal scroll; 1440 alone, 1920 + sidebar: beside. The Batch table sits in a scroll box (`pd-batch-scroll`) that never scrolls at a desktop width |
+| tests | stories `pages/product-detail/stories/Expiry.stories.tsx` (4: 1440 + sidebar below with each expiry, 1920 + sidebar beside, the sidebar closing, phone); e2e `the_expiry_is_read_off_the_box.spec.ts` (the owning team's page reads *20 hari lagi* and —; 1440 with the app's sidebar: side cards below, no horizontal scroll) |
+
 ## 2026-11-15 — goods in transit on the product screens
 
 | | |

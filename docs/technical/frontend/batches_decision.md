@@ -21,6 +21,7 @@ and priced, is the business record: [batch.md](../../business/inventory/batch.md
 | [the-adjust-dialog-picks-with-chakra-controls](#the-adjust-dialog-picks-with-chakra-controls) | Koreksi's note is a two-row `Textarea`, and its reason a Chakra control — [chakra-first-whenever-it-has-the-component](context_decision.md#chakra-first-whenever-it-has-the-component) applied |
 | [the-adjust-reason-is-a-radio-pill](#the-adjust-reason-is-a-radio-pill) | Koreksi's four reasons are radio pills, all on screen — the list is bounded by the code, so it stays few |
 | [a-batch-is-picked-by-its-own-number](#a-batch-is-picked-by-its-own-number) | Koreksi's batch is a search select (`BatchSelect`) — each option the batch's own number and ready count, where it came from under it; typed by the batch's or the restock's number |
+| [the-expiry-prototypes-are-accepted](#the-expiry-prototypes-are-accepted) | the expiry prototypes are accepted — the accept line's optional expiry date, the Batch list's Rak column, the product page's Kedaluwarsa column |
 
 ## the-batches-follow-the-screen-rules
 
@@ -309,3 +310,32 @@ picked    [ #5031 · 7 siap                      × ⌄ ]
 | pinned by | BatchSelect `Default` (own number, ready, restock under it), `Searches by number`, `Picks and clears`, `Nothing with stock` · AdjustStockDialog `DamagedStillNamesItsBatch` (Adjust off until a batch is picked) |
 
 What it replaces: a `NativeSelect` of batches named by their restock's number.
+
+---
+
+## the-expiry-prototypes-are-accepted
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to the Storybook prototypes of
+> [the-warehouse-types-the-expiry-at-the-accept](../../business/inventory/context_decision.md#the-warehouse-types-the-expiry-at-the-accept)
+> and [the-expiry-report-is-the-batch-list](../../business/inventory/context_decision.md#the-expiry-report-is-the-batch-list)
+> (screenshots: the accept line, its confirm dialog, the Batch list with *Rak*, the product page's Batch section, and the
+> three screens BEFORE). The catch shown: on the product page at 1440 px with the sidebar open the Batch table no longer
+> fits its card. A: accept all three, the product page's side cards go below when the page is narrow; B: accept as shown;
+> C: the product page puts the expiry on the Tiba line instead.
+
+**The verdict.** All three are **accepted as shown**:
+
+| screen | what |
+| --- | --- |
+| the restock accept | each line's *Yang tiba* box: *Tanggal kedaluwarsa (opsional)*, a date with × to clear, read as the batch screens read it (*20 hari lagi*, amber within 30 days, *lewat 3 hari* red); the hint *Tanggal di kotak berbeda-beda? Pilih yang paling awal.*; the confirm dialog lists each line's date or — |
+| the Batch list | a last column **Rak** — the racks the product sits on in that warehouse, the first two then *+n* (all on hover), — for an emptied batch; on a phone a line *Rak …* in each block; on every row, not only under *Kedaluwarsa ≤ 30 hari* |
+| the product page's Batch section | a **Kedaluwarsa** column after Tiba, the batch list's own cell; on a phone, on the arrival line |
+
+| | |
+| --- | --- |
+| a past date | allowed at the accept — it reads red, and Terima still accepts (the box says what it says) |
+| nothing received | the field stays open when Diterima is 0 — the date then has no batch to land on and is not sent |
+| the product page's width | fixed by [the-product-pages-side-cards-stack-when-narrow](./products_decision.md#the-product-pages-side-cards-stack-when-narrow) |
+| the prototype switches | retired when wired — the screens read the live fields |
+
+✅ Built 2026-11-15 — all three live, the two Storybook switches deleted (`pages/restock-accept/expiryPrototype.tsx`, `features/inventory/expiryReportPrototype.tsx`): the accept line's *Tanggal kedaluwarsa (opsional)* is the line draft's `expiresOn`, sent as `expires_on` (only for a line with good units), the confirm lists each line's date or —; the Batch list's *Rak* reads `StockBatch.rack_codes` (no ProductPlaces call); the product page's *Kedaluwarsa* reads `OwnerBatchList`. The prototype stories are live ones (`RestockAccept/Expiry` 9, `BatchList/Expiry report` 4, `ProductDetail/Expiry` 4). e2e `the_expiry_is_read_off_the_box.spec.ts`.

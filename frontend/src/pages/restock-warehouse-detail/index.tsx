@@ -16,7 +16,7 @@ import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { RestockTitleRow } from "../../features/restock/RestockTitleRow";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
 import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
-import { SIDE_COLUMN, useSideBySide } from "../../features/restock/sideBySide";
+import { SIDE_COLUMN, useSideBySide } from "../../components/chrome/sideBySide";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ProductStickyStrip } from "../../features/products/ProductTitleRow";

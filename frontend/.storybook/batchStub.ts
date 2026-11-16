@@ -102,9 +102,40 @@ export function productLeftItsRacksForStory(productId: bigint) {
   leftEveryRack.add(productId.toString());
 }
 
+// Where products sit NOW for ONE story (`productPlacesForStory`) — by product id, `[rackId, onHand]` per rack holding it,
+// as the server's ProductPlaces answers (only racks with the product on them), and the racks BatchList's rows name
+// (`rackCodesOf`). null = ProductPlaces lists every rack, BatchList the racks the product's batches were put on.
+let placesNow: Map<string, [bigint, bigint][]> | null = null;
+
+/** For ONE story (its `beforeEach`): ProductPlaces and BatchList's racks answer these for these products; others as before. */
+export function productPlacesForStory(places: Record<string, [bigint, bigint][]>) {
+  placesNow = new Map(Object.entries(places));
+}
+
+/**
+ * THE RACKS A BATCH'S PRODUCT SITS ON NOW in its warehouse, by code (the-expiry-report-is-the-batch-list) — as BatchList
+ * serves them: none for a batch with nothing left; a story's `productPlacesForStory` racks holding units; none for a
+ * product a story took off every rack; else the racks this warehouse's batches of the product with units left were put
+ * on (a rack counts the product, never a batch).
+ */
+function rackCodesOf(b: BatchFixture): string[] {
+  if (readyNow(b) <= 0n) return [];
+  const codeOf = (rackId: bigint) => racks.find((r) => r.id === rackId && r.warehouseId === b.warehouseId)?.code;
+  const now = placesNow?.get(b.productId.toString());
+  const ids = now
+    ? now.filter(([, onHand]) => onHand > 0n).map(([rackId]) => rackId)
+    : leftEveryRack.has(b.productId.toString())
+      ? []
+      : rows
+          .filter((x) => x.warehouseId === b.warehouseId && x.productId === b.productId && readyNow(x) > 0n)
+          .flatMap((x) => x.shelves.map(([rackId]) => rackId));
+  return [...new Set(ids.map(codeOf).filter((c): c is string => c !== undefined))].sort();
+}
+
 export function resetBatchStub() {
   rows = structuredClone(BATCHES);
   leftEveryRack = new Set();
+  placesNow = null;
   // Koreksi Harga's corrections price these rows too — reset with them.
   resetBatchPriceScenario();
 }
@@ -314,8 +345,9 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
       .sort((a, b) => a.age - b.age || (a.id > b.id ? -1 : 1));
 
     const { rows: page, pageInfo } = pageOf(matched, req.page);
-    const mapData: Record<string, ReturnType<typeof toWire>> = {};
-    for (const b of page) mapData[b.id.toString()] = toWire(b);
+    const mapData: Record<string, ReturnType<typeof toWire> & { rackCodes: string[] }> = {};
+    // BatchList ALONE names the product's racks (StockBatch.rack_codes) — the other reads leave them empty, as the server.
+    for (const b of page) mapData[b.id.toString()] = { ...toWire(b), rackCodes: rackCodesOf(b) };
 
     return {
       items: [{ d: { case: "batch" as const, value: { mapData } } }],
@@ -376,6 +408,15 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
     const items: Record<string, { items: { d: { case: "place"; value: { mapData: Record<string, Place> } } }[] }> = {};
     for (const productId of req.filter?.ids ?? []) {
       const mapData: Record<string, Place> = {};
+      const now = placesNow?.get(productId.toString());
+      if (now) {
+        for (const [rackId, onHand] of now) {
+          const r = racks.find((x) => x.id === rackId && x.warehouseId === req.warehouseId);
+          if (r) mapData[r.id.toString()] = { productId, rackId: r.id, rackCode: r.code, onHand };
+        }
+        items[productId.toString()] = { items: [{ d: { case: "place" as const, value: { mapData } } }] };
+        continue;
+      }
       const held = !leftEveryRack.has(productId.toString());
       for (const r of racks.filter((x) => held && x.warehouseId === req.warehouseId)) {
         mapData[r.id.toString()] = { productId, rackId: r.id, rackCode: r.code, onHand: 0n };

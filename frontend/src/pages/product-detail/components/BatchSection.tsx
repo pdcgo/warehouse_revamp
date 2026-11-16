@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Flex, HStack, Icon, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, HStack, Icon, Stack, Table, Text } from "@chakra-ui/react";
 import { PackageOpen, Tag } from "lucide-react";
 
 import { GrowingPager } from "../../../components/chrome/GrowingPager";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { useOwnerBatches } from "../../../features/products/queries";
+import { ExpiryCell } from "../../../features/inventory/ExpiryCell";
 import { CorrectPriceDialog } from "../../../features/inventory/CorrectPriceDialog";
 import { canCorrectPrice } from "../../../features/inventory/priceChange";
 import { useTeam } from "../../../features/team/TeamContext";
@@ -29,6 +30,15 @@ import { LIGHTS_UP } from "./parts";
 // holding the goods, which is the shape a selling team's purchases actually have.
 
 const PAGE_SIZE = 20;
+
+/**
+ * THE BATCH SECTION'S CARD AT ITS NARROWEST — its table's min-content width in the widest language (English: Delivery /
+ * Warehouse / Arrived / Expiring / Unit cost / Ready / Value and the row's Koreksi Harga menu, 651px; Indonesian 607px)
+ * plus the card's padding and border (50px), measured on the widest fixture (Minyak Goreng's three batches, 2026-11-15).
+ * The product page stands its side cards beside the main column only when the page area holds this + the gap + the side
+ * column (the-product-pages-side-cards-stack-when-narrow): at 1440 with the sidebar open they go below.
+ */
+export const BATCH_SECTION_FLOOR_PX = 701;
 
 export function BatchSection({
   teamId,
@@ -105,9 +115,18 @@ export function BatchSection({
                   {warehouseLabel(b.warehouseId)}
                 </Text>
               </HStack>
-              <Text fontSize="sm" color="fg.muted">
-                {formatUnixDate(b.createdAtUnix)}
-              </Text>
+              {/* The day it arrived, and when it expires on the same line, as the batch list's block foot — EACH BATCH'S
+                  EXPIRY for the team that marks them down (the-expiry-report-is-the-batch-list), read as the batch screens
+                  read it (an-expiry-says-how-long-is-left). A batch with none says nothing more. */}
+              <HStack justify="space-between" gap="2" fontSize="sm" color="fg.muted">
+                <Text>{formatUnixDate(b.createdAtUnix)}</Text>
+                {b.expiresOnUnix > 0n && (
+                  <Text textAlign="end" data-testid={`pd-batch-expiry-line-${b.id}`}>
+                    {t("batches.colExpiring")}{" "}
+                    <ExpiryCell inline fontSize="sm" unix={b.expiresOnUnix} testId={`pd-batch-expiry-${b.id}`} />
+                  </Text>
+                )}
+              </HStack>
               <HStack justify="space-between" gap="2" fontSize="sm">
                 <Text>
                   {t("products.stat.pcs", { n: b.ready.toString() })} × {unitCost(b)}
@@ -121,13 +140,14 @@ export function BatchSection({
       );
     }
 
-    return (
+    const table = (
       <Table.Root size="sm" data-testid="pd-batch-table">
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("products.detail.batch.delivery")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("products.detail.batch.warehouse")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("products.detail.batch.arrivedOn")}</Table.ColumnHeader>
+            <Table.ColumnHeader>{t("batches.colExpiring")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("products.detail.batch.unitCost")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("products.detail.batch.ready")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("products.detail.batch.value")}</Table.ColumnHeader>
@@ -142,6 +162,11 @@ export function BatchSection({
               <Table.Cell>#{b.deliveryId.toString()}</Table.Cell>
               <Table.Cell>{warehouseLabel(b.warehouseId)}</Table.Cell>
               <Table.Cell>{formatUnixDate(b.createdAtUnix)}</Table.Cell>
+              {/* KEDALUWARSA beside Tiba: the day, how long is left under it (amber within 30 days, red once past), a dash
+                  for none — the batch list's own cell. */}
+              <Table.Cell>
+                <ExpiryCell unix={b.expiresOnUnix} testId={`pd-batch-expiry-${b.id}`} />
+              </Table.Cell>
               <Table.Cell textAlign="end">{unitCost(b)}</Table.Cell>
               <Table.Cell textAlign="end">{t("products.stat.pcs", { n: b.ready.toString() })}</Table.Cell>
               <Table.Cell textAlign="end">{value(b)}</Table.Cell>
@@ -154,6 +179,15 @@ export function BatchSection({
           ))}
         </Table.Body>
       </Table.Root>
+    );
+
+    // The page puts its side cards below whenever the main column cannot hold this table at its narrowest
+    // (the-product-pages-side-cards-stack-when-narrow, `BATCH_SECTION_FLOOR_PX`), so at a desktop width it never scrolls;
+    // the box keeps a narrower window (a tablet) scrolling inside the card rather than running past it.
+    return (
+      <Box overflowX="auto" maxW="full" minW="0" data-testid="pd-batch-scroll">
+        {table}
+      </Box>
     );
   }
 

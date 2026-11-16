@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Button, CloseButton, Dialog, Portal, Stack, Text } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 
 interface ConfirmDialogProps {
   // Optional: when this dialog is opened from a menu item, the page controls `open` and there is
@@ -14,8 +15,9 @@ interface ConfirmDialogProps {
    * the answer is part of the act being confirmed: a cancel without it is not the same cancel.
    */
   children?: ReactNode;
+  /** The confirm button. *Confirm* / *Konfirmasi* by default (`common.confirm`). */
   confirmLabel?: string;
-  /** The dismiss button. "Cancel" by default — rename it where the act itself is a cancel. */
+  /** The dismiss button. *Cancel* / *Batal* by default (`common.cancel`) — rename it where the act itself is a cancel. */
   dismissLabel?: string;
   /** Hold the confirm button until the body's question is answered. */
   confirmDisabled?: boolean;
@@ -32,14 +34,17 @@ export function ConfirmDialog({
   title,
   message,
   children,
-  confirmLabel = "Confirm",
-  dismissLabel = "Cancel",
+  confirmLabel,
+  dismissLabel,
   confirmDisabled = false,
   destructive = true,
   onConfirm,
   open: openProp,
   onOpenChange,
 }: ConfirmDialogProps) {
+  // The defaults speak the screen's language — a hard-coded English "Cancel" sat on every Indonesian dialog that
+  // named no dismiss of its own (the restock accept's confirm among them).
+  const { t } = useTranslation();
   // Controlled when `open` is supplied; otherwise the dialog owns its own open state.
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -86,7 +91,9 @@ export function ConfirmDialog({
 
             <Dialog.Footer>
               <Dialog.ActionTrigger asChild>
-                <Button variant="outline">{dismissLabel}</Button>
+                <Button variant="outline" data-testid="confirm-dismiss">
+                  {dismissLabel ?? t("common.cancel")}
+                </Button>
               </Dialog.ActionTrigger>
 
               <Button
@@ -96,7 +103,7 @@ export function ConfirmDialog({
                 onClick={() => void confirm()}
                 data-testid="confirm-action"
               >
-                {confirmLabel}
+                {confirmLabel ?? t("common.confirm")}
               </Button>
             </Dialog.Footer>
 

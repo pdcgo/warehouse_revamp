@@ -19,6 +19,7 @@ Users & Role System, Documents, region, shipping, expense.
 | **Products show goods in transit** | the product screens show the units on their way between your warehouses — a Dalam transfer tile, a line on the phone and on the product page, and a list column while anything is on its way |
 | **The expiring-batches count ignores empty batches** | the warehouse batch list's "expiring within 30 days" now counts only batches that still have units; and the old supplier tables are gone |
 | **A warehouse's product links name their owner** | each record of which products a warehouse handles now names the team that owns the product — nothing visible changes |
+| **Expiry dates are recorded and shown** | the warehouse can type the expiry date off the box when accepting a restock; the batch list's "expiring within 30 days" then shows those batches with their racks, and your product page shows each batch's expiry ("20 hari lagi") |
 
 ## 2026-11-14 · a faster full test run, transfers on a phone, product filters
 

@@ -32,7 +32,11 @@ export const ExportsTheWholeRankingAsNarrowed: Story = {
     await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("supplier-report-rank-by-rate"));
-    await userEvent.type(canvas.getByTestId("supplier-report-search"), "makmur", { delay: 40 });
+    // One input event, not six keystrokes: the search is debounced (250 ms), and a keystroke delayed past that under load
+    // settled "makm" first — which narrows to the same two rows, so the order check passed and Export carried "makm"
+    // (the full run of 2026-11-16 00:24). Pasted, the only term the page ever settles on is "makmur".
+    await userEvent.click(canvas.getByTestId("supplier-report-search"));
+    await userEvent.paste("makmur");
     await waitFor(() => expect(order(canvas)).toEqual(["34", "31"]), { timeout: 4000 });
 
     await userEvent.click(exportButton);

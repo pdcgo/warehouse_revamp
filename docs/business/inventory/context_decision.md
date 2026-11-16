@@ -36,6 +36,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-correct-price-prototype-is-accepted](#the-correct-price-prototype-is-accepted) | Koreksi Harga sits on the product page's Batch rows; the warehouse sees it in the batch history | owner, as recommended | — |
 | [a-corrected-price-is-above-zero](#a-corrected-price-is-above-zero) | a batch's price may be corrected only to more than Rp 0 | owner | — |
 | [the-warehouse-link-names-its-owner-team](#the-warehouse-link-names-its-owner-team) | `warehouse_products` gets `owner_team_id` — the product's owner, written by every upsert |
+| [the-warehouse-types-the-expiry-at-the-accept](#the-warehouse-types-the-expiry-at-the-accept) | a batch's expiry is typed by the receiving warehouse at the restock accept — optional, one date per product line, the soonest printed date |
+| [the-expiry-report-is-the-batch-list](#the-expiry-report-is-the-batch-list) | the expiry report is the warehouse Batch list's Kedaluwarsa ≤ 30 hari, its rows naming the product's racks; the owning team reads expiry on its product page — no new screen |
 | ~~[superseded-a-price-may-be-corrected-to-zero](#superseded-a-price-may-be-corrected-to-zero)~~ ⛔ withdrawn | a batch's price may be corrected down to Rp 0, never below | owner, as recommended | — |
 
 ---
@@ -750,6 +752,8 @@ flowchart LR
 
 ✅ Built 2026-11-15 — *with units left*: the warehouse Batch list's *Kedaluwarsa ≤ 30 hari* filter and the strip's expiring count now count only batches with units left (`stock_count > 0`, read through the partial index `batches_expiry_idx`); the list still shows emptied batches otherwise (`inventory_v1/batch_list.go`).
 
+✅ Built 2026-11-15 — *the report*: where it lives is [the-expiry-report-is-the-batch-list](#the-expiry-report-is-the-batch-list) (the Batch list's *Kedaluwarsa ≤ 30 hari*, its rows naming the product's racks; the owning team's product page reads each batch's expiry), and its dates are typed at the restock accept ([the-warehouse-types-the-expiry-at-the-accept](#the-warehouse-types-the-expiry-at-the-accept)) — so the report is no longer always empty.
+
 ## order-returns-calls-are-return-mds-brief
 
 > Owner, in chat (2026-10-16): *"yes"* — answering [context_clarify Q16](./context_clarify.md#question), *is
@@ -971,3 +975,53 @@ and every write of the link names it.
 | readers | none yet — no screen changes |
 
 ✅ Built 2026-11-15 — inventory `00047` adds `owner_team_id` filled from inventory's own rows naming the product (batches, restock and transfer lines, stock lines — they must name one team: the migration refuses a link with two or none; dev: 13 of 13 filled), then `NOT NULL`; restock create and update write the restock's team, transfer create the transfer's, an order return the selling team its batches are minted for; a link already stored under another team is kept and reported, never overwritten.
+
+---
+
+## the-warehouse-types-the-expiry-at-the-accept
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to: [expiry-is-a-report](#expiry-is-a-report) decides what
+> the report shows (batches with units left whose `expired_at` falls within a window, with their racks) but not who types
+> the date, and nothing does today — the restock accept mints its batches without one, so the report is always empty.
+> A: the receiving warehouse at the restock accept, optional, one date per product line; B: the selling team on the
+> restock line; C: the owning team afterwards, on its product page's batch rows.
+
+**The verdict.** The **receiving warehouse** types a batch's expiry **at the restock accept** — the person counting the
+box reads it off the box.
+
+| | |
+| --- | --- |
+| optional | a line with no date accepts as today; the batch's `expired_at` stays empty |
+| one date per line | the product line's date goes on the batch the accept mints for it; a box mixing several printed dates takes the **soonest** |
+| a day | the date alone, Jakarta's ([an-expiry-says-how-long-is-left](../../technical/frontend/batches_decision.md#an-expiry-says-how-long-is-left)) |
+| carried forward | a transfer, a return and a received-count correction already copy the source batch's expiry — unchanged |
+| not here | the selling team does not type it on the restock line; the owning team does not correct it afterwards (not decided — a later ask if needed) |
+| design | a new input on the accepted restock accept screen — a Storybook prototype and the owner's accept before it is wired |
+
+✅ Built 2026-11-15 — the accept line's optional `expires_on` (a Jakarta day, proto `RestockRequestReceivedLine`) goes on the batch the line mints as that day's Jakarta midnight (`PostRestock` → `Mint.ExpiredAt`); none → empty as before; a line with no good unit mints no batch, so its date is stored nowhere (the screen does not send it); a past day is accepted, a day not on the calendar refused. The accept screen's *Tanggal kedaluwarsa (opsional)* in each line's *Yang tiba* sends it, the confirm lists each line's date or —. Transfers and returns carry it on unchanged. Tests `restock_request_accept_expiry_test.go`, stories `RestockAccept/Expiry`, e2e `the_expiry_is_read_off_the_box.spec.ts`.
+
+---
+
+## the-expiry-report-is-the-batch-list
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — to: [expiry-is-a-report](#expiry-is-a-report) left open
+> *where the report lives* (its window is the accepted amber window, 30 days —
+> [an-expiry-says-how-long-is-left](../../technical/frontend/batches_decision.md#an-expiry-says-how-long-is-left)).
+> A: no new screen — the Batch list's *Kedaluwarsa ≤ 30 hari* is the report, its rows gain the racks, and the owning
+> team reads expiry on its product page's Batch section; B: a new Analytic metric *Expiring stock*; C: both.
+
+**The verdict.** **No new screen.** The report is where the batches already are:
+
+| who | where | what |
+| --- | --- | --- |
+| the warehouse crew | the warehouse **Batch list**, filtered *Kedaluwarsa ≤ 30 hari* (and its strip's count) | batches with units left expiring within 30 days — each row naming **the racks its product sits on** in that warehouse, as `expiry-is-a-report` asks |
+| the owning team | its **product page's Batch section** | each batch's expiry, read as the batch screens read it (*20 hari lagi*, amber within 30 days, red once past) — the team that marks them down |
+
+| | |
+| --- | --- |
+| the racks | where the product sits now (`product_placements` in that warehouse) — a rack counts per product, never per batch, so a row names the product's racks, not the batch's |
+| the window | 30 days, the amber window; the Batch list's expiry date range stays for any other window |
+| no metric | no Analytic *Expiring stock* — a later ask if someone wants it |
+| design | the rack line on the batch rows and the expiry on the product page are visible changes — a Storybook prototype and the owner's accept first |
+
+✅ Built 2026-11-15 — the warehouse Batch list's rows carry the racks their product sits on in that warehouse (`StockBatch.rack_codes`, `product_placements` with units on them, one statement per page): the *Rak* column (two codes then *+n*, all on hover) and a phone line *Rak …*, on every row; an emptied batch reads —. The owning team's product page Batch section shows *Kedaluwarsa* after *Tiba* (`OwnerBatchList`'s `expires_on_unix`), on a phone on the arrival line. No metric. Tests `batch_list_racks_test.go`, perf `TestPerf_BatchList_Racks` ([rpc.md](../../services/inventory_service/rpc.md#batchlist--each-row-names-its-products-racks-2026-11-15)), e2e `the_expiry_is_read_off_the_box.spec.ts`.

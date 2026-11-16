@@ -177,3 +177,20 @@ export const ConfirmWaitsForTheAnswer: Story = {
     await expect(args.onConfirm).toHaveBeenCalled();
   },
 };
+
+// THE DEFAULT BUTTONS SPEAK THE SCREEN'S LANGUAGE — a dialog naming no dismiss (or confirm) of its own reads *Batal* /
+// *Konfirmasi* on an Indonesian screen, never a hard-coded English *Cancel*.
+export const TheDefaultButtonsAreTranslated: Story = {
+  args: { trigger: <Button>Buka</Button>, confirmLabel: undefined, title: "Hapus Produk", message: undefined },
+  globals: { locale: "id" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Buka" }));
+    const dismiss = await screen.findByTestId("confirm-dismiss");
+    await waitFor(() => expect(dismiss).toBeVisible());
+    await expect(dismiss).toHaveTextContent("Batal");
+    await expect(screen.getByTestId("confirm-action")).toHaveTextContent("Konfirmasi");
+    await expect(dismiss).not.toHaveTextContent("Cancel");
+  },
+};

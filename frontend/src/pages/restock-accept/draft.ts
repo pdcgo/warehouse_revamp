@@ -25,6 +25,8 @@ import {
 //   missing    = ordered − received, worked out, never typed (a-short-unit-at-the-door-is-missing)
 //   over       received above ordered is refused — the selling team edits first (accept-refuses-more-than-the-line-says)
 //   placements each named once per line; the handler refuses a placement twice
+//   expiry     typed, optional — the date read off the box (the-warehouse-types-the-expiry-at-the-accept); sent only
+//              when the line has good units, since a line with none mints no batch for it to land on
 
 /** One placement row: where some of the good units go. `place` is a placement id string, "" = not chosen yet. */
 export interface PlacementDraft {
@@ -56,6 +58,11 @@ export interface LineDraft {
   brokenTo: BrokenTo;
   /** The placement chosen for the broken units; "" = none yet. */
   brokenPlace: string;
+  /**
+   * The expiry read off the box, `yyyy-mm-dd` — "" = none (the-warehouse-types-the-expiry-at-the-accept): optional, one
+   * per line, the soonest printed date when the box mixes several. Goes on the batch the line's good units mint.
+   */
+  expiresOn: string;
   placements: PlacementDraft[];
   /**
    * The FIRST row holds whatever the other rows do not — the good units, until the line is split — until somebody
@@ -80,6 +87,7 @@ export function emptyLine(): LineDraft {
     brokenPhoto: null,
     brokenTo: "discard",
     brokenPlace: "",
+    expiresOn: "",
     placements: [{ key: "first", place: "", quantity: "" }],
     firstFollows: true,
   };
@@ -216,5 +224,7 @@ export function receivedLine(
             .filter((row) => row.effective > 0n && row.place !== "")
             .map((row) => ({ placementId: BigInt(row.place), quantity: row.effective }))
         : [],
+    // On the batch the good units mint; a line with none mints no batch, so its date has nowhere to land and is not sent.
+    expiresOn: st.good > 0n ? draft.expiresOn : "",
   };
 }

@@ -13,6 +13,7 @@ import { formatRupiahNumber } from "../../../lib/money";
 import { RadioPills } from "../../../components/inputs/RadioPills";
 import { PhotoPick } from "../../../features/restock/PhotoPick";
 import type { BrokenTo, LineDraft, LineState } from "../draft";
+import { ExpiryField } from "./ExpiryField";
 import { PcsMark } from "./PcsMark";
 import { PlacementPanel } from "./PlacementPanel";
 
@@ -232,6 +233,14 @@ export function LineCard({
                   {t("restock.accept.brokenOverReceived", { n: st.received.toString() })}
                 </ErrorLine>
               )}
+
+              {/* THE EXPIRY READ OFF THE BOX (the-warehouse-types-the-expiry-at-the-accept): typed by the person
+                  counting, so under the counts, before the problem blocks. */}
+              <ExpiryField
+                productId={pid}
+                value={draft.expiresOn}
+                onChange={(expiresOn) => update((d) => ({ ...d, expiresOn }))}
+              />
 
               {/* BROKEN AND MISSING, EACH ITS OWN BLOCK (owner: *"pembagian rusak dan kurang perjelas, yang sekarang terasa
                   menyatu"*, the-broken-and-the-missing-are-blocks-of-their-own) — a tinted edge and a heading in its

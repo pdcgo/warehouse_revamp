@@ -14,13 +14,13 @@ import {
   Stack,
   Tabs,
   Text,
-  useBreakpointValue,
 } from "@chakra-ui/react";
 import { Archive, ArrowLeft, PackagePlus, Pencil, RotateCcw, ShoppingCart, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { Fact, Section } from "../../components/chrome/DetailSection";
 import { SectionNav } from "../../components/chrome/SectionNav";
+import { SIDE_COLUMN, useSideBySide } from "../../components/chrome/sideBySide";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
@@ -62,7 +62,7 @@ import { orderFormFor, restockFormFor } from "../../features/products/presetProd
 import { type StartKind, StartFormDialog } from "../../features/products/StartFormDialog";
 import { SuppliersSection } from "../../features/products/SuppliersSection";
 import { WarehouseFilter, WarehouseNote } from "../../features/products/WarehouseLens";
-import { BatchSection } from "./components/BatchSection";
+import { BATCH_SECTION_FLOOR_PX, BatchSection } from "./components/BatchSection";
 import { PriceSection } from "./components/PriceSection";
 import { WhenOrNever } from "./components/parts";
 import {
@@ -367,11 +367,14 @@ export function ProductDetailPage() {
   }
 
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
-  // The side column only where there is room for it beside the nav: Chakra's `xl`, as on the order detail.
-  // `ssr: false` READS THE SCREEN ON THE FIRST RENDER. By default the hook answers its `base` value first and the real
-  // one a frame later, so a wide screen painted the one-column layout — Info the full width, its picture large — and then
-  // jumped (owner, on the product page: *"ukuran gambarnya tidak konsisten, besar di awal dan jadi sesuai … tiba-tiba"*).
-  const wide = useBreakpointValue({ base: false, xl: true }, { ssr: false }) ?? false;
+  // THE SIDE CARDS BESIDE THE MAIN COLUMN ONLY WHERE THE PAGE AREA HOLDS BOTH (owner: *"A"*,
+  // the-product-pages-side-cards-stack-when-narrow) — measured on the area beside the nav, never the viewport's `xl`,
+  // which ignores the sidebar: at 1440 with the sidebar open the main column got 531px for a Batch table of ≈650. Below
+  // the floor the page draws its stacked layout, the side cards under Batch in their order; a phone is always stacked.
+  // MEASURED BEFORE THE FIRST PAINT (a callback ref, useSideBySide), so a wide screen never paints the one-column layout
+  // first and then jumps (owner, on the product page: *"ukuran gambarnya tidak konsisten, besar di awal dan jadi sesuai …
+  // tiba-tiba"* — the reason the old breakpoint read the screen on the first render).
+  const [areaRef, wide] = useSideBySide<HTMLDivElement>(BATCH_SECTION_FLOOR_PX);
 
   // ONLY THE NAME STICKS (owner: *"nama produk sticky, header kembali ke produk dan action tidak perlu sticky"*) — and only
   // once the name in Info has scrolled away, so the page never shows it twice. The bar is drawn OVER the page rather
@@ -788,33 +791,32 @@ export function ProductDetailPage() {
             and Batch, with the short reference cards BESIDE Info on a wide screen (owner: *"info produk tidak penuh jadi
             penjualan tim lain ke bawah jadi disebelahnya"*). BELOW, the warehouse card and its tabs
             (the-warehouse-zone-is-tabs). A JS branch, so no card exists twice. */}
-        {wide ? (
-          <Stack gap="section" minW="0">
-            {title}
-            <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
+        <Stack ref={areaRef} gap="section" minW="0" w="full">
+          {title}
+          {wide ? (
+            <Grid templateColumns={`minmax(0, 1fr) ${SIDE_COLUMN}`} gap="section" alignItems="start" minW="0">
               {/* The warehouse card is as wide as Info and Batch (owner: *"per gudang selebar batch dan info"*) — the
                   main column, the side cards beside it. */}
-              <Stack gap="section" minW="0">
+              <Stack gap="section" minW="0" data-testid="product-detail-main-column">
                 {infoSection}
                 {batchSection}
                 {warehouseSection}
               </Stack>
-              <Stack gap="section" minW="0">
+              <Stack gap="section" minW="0" data-testid="product-detail-side-column">
                 {crossSection}
                 {derivedSection}
               </Stack>
             </Grid>
-          </Stack>
-        ) : (
-          <Stack gap="section" minW="0" w="full">
-            {title}
-            {infoSection}
-            {batchSection}
-            {crossSection}
-            {derivedSection}
-            {warehouseSection}
-          </Stack>
-        )}
+          ) : (
+            <>
+              {infoSection}
+              {batchSection}
+              {crossSection}
+              {derivedSection}
+              {warehouseSection}
+            </>
+          )}
+        </Stack>
       </Grid>
     </Stack>
   );

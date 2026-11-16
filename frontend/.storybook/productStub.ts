@@ -115,8 +115,25 @@ let neverUsed = new Set<bigint>();
 // Team 15's open transfers for THIS story (`transfersInTransitForStory`) — null = the sample, IN_TRANSIT_SAMPLE below.
 let inTransitLines: InTransitLine[] | null = null;
 
+// Each owner batch's expiry for ONE story (`ownerBatchExpiriesForStory`) — days from today by batch id, null = none.
+// null as a whole = the sample's (a year after it arrived).
+let batchExpiryDays: Record<string, number | null> | null = null;
+
+/** For ONE story (its `beforeEach`): OwnerBatchList's batches expire this many days from today (null = no expiry). */
+export function ownerBatchExpiriesForStory(days: Record<string, number | null>) {
+  batchExpiryDays = { ...days };
+}
+
+function ownerBatchExpiry(batchId: bigint, acceptedAt: bigint): bigint {
+  const days = batchExpiryDays?.[batchId.toString()];
+  if (days === undefined) return acceptedAt + 365n * DAY;
+  if (days === null) return 0n;
+  return BigInt(Math.floor(Date.now() / 1000)) + BigInt(days) * DAY;
+}
+
 export function resetProductStub() {
   resetProductListCalls();
+  batchExpiryDays = null;
   rows = [...productFixtures.map((p) => ({ ...p, images: [] as Image[] })), ...ARCHIVED.map((p) => ({ ...p }))];
   neverUsed = new Set([791n]);
   analyticSamplesListed = false;
@@ -779,7 +796,7 @@ export function ownerBatchList(req: { teamId: bigint; filter?: { productId?: big
           lost: 0n,
           lineCost: Number(b.arrived) * b.unitCost,
           readyValue: Number(b.ready) * b.unitCost,
-          expiresOnUnix: b.acceptedAt + 365n * DAY,
+          expiresOnUnix: ownerBatchExpiry(b.id, b.acceptedAt),
           createdAtUnix: b.acceptedAt - 3n * DAY,
           acceptedAtUnix: b.acceptedAt,
           createdBy: 61n,

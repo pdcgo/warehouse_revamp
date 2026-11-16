@@ -4807,7 +4807,12 @@ type StockBatch struct {
 	// WHICH BUILDING holds it (#232). The warehouse's own lists never needed it — they are scoped to one
 	// warehouse, so every row's answer is the same. The OWNER's list spans every warehouse holding its
 	// goods, and there "which delivery" is only half a location.
-	WarehouseId   uint64 `protobuf:"varint,23,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	WarehouseId uint64 `protobuf:"varint,23,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	// BatchList ONLY — the racks the batch's PRODUCT sits on in that warehouse now, by code in the pick walk's order
+	// (`product_placements` with units on them; the-expiry-report-is-the-batch-list): a rack counts per product, never per
+	// batch, so this names where to go for the product, not which rack holds this batch. Empty for a batch with nothing
+	// left (an emptied batch has nothing to find) and on every other read.
+	RackCodes     []string `protobuf:"bytes,24,rep,name=rack_codes,json=rackCodes,proto3" json:"rack_codes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5001,6 +5006,13 @@ func (x *StockBatch) GetWarehouseId() uint64 {
 		return x.WarehouseId
 	}
 	return 0
+}
+
+func (x *StockBatch) GetRackCodes() []string {
+	if x != nil {
+		return x.RackCodes
+	}
+	return nil
 }
 
 type BatchListRequest struct {
@@ -9616,7 +9628,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12G\n" +
-	"\x05value\x18\x02 \x01(\v21.warehouse.inventory.v1.ProductPlacesResponseListR\x05value:\x028\x01\"\xd7\x05\n" +
+	"\x05value\x18\x02 \x01(\v21.warehouse.inventory.v1.ProductPlacesResponseListR\x05value:\x028\x01\"\xf6\x05\n" +
 	"\n" +
 	"StockBatch\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1f\n" +
@@ -9650,7 +9662,9 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\vaccepted_by\x18\x14 \x01(\x04R\n" +
 	"acceptedBy\x12;\n" +
 	"\x06origin\x18\x16 \x01(\x0e2#.warehouse.inventory.v1.BatchOriginR\x06origin\x12!\n" +
-	"\fwarehouse_id\x18\x17 \x01(\x04R\vwarehouseId\"\x97\x02\n" +
+	"\fwarehouse_id\x18\x17 \x01(\x04R\vwarehouseId\x12\x1d\n" +
+	"\n" +
+	"rack_codes\x18\x18 \x03(\tR\trackCodes\"\x97\x02\n" +
 	"\x10BatchListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12?\n" +
 	"\x06filter\x18\x02 \x01(\v2'.warehouse.inventory.v1.BatchListFilterR\x06filter\x12L\n" +

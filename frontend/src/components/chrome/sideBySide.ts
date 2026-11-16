@@ -1,6 +1,10 @@
 import { useElementWidth } from "../../lib/useElementWidth";
 import { useIsMobile } from "../../layouts/shell";
 
+// A SECTIONED DETAIL PAGE'S SIDE COLUMN STANDS BESIDE ITS MAIN COLUMN ONLY WHERE BOTH FIT — shared by the restock detail
+// pages (the-delivery-card-stacks-when-the-page-is-narrow) and the product page (the-product-pages-side-cards-stack-when-
+// narrow, which reuses it rather than copying it; moved here from features/restock for that).
+//
 // THE INFO COLUMN STANDS BESIDE THE PRODUCTS ONLY WHERE BOTH FIT (owner: *"A"*, the-delivery-card-stacks-when-the-page-is-
 // narrow). A restock detail page draws its products in the main column and Kiriman (on the selling side the money too) in
 // a 20rem column beside it — but the room for the two is the PAGE AREA's, not the screen's: the app's sidebar (259px when
@@ -28,9 +32,10 @@ function remPx(): number {
 }
 
 /**
- * Whether the side column goes BESIDE the products: put the returned ref on the element whose width is the room for both
- * columns (the page's main column, beside the nav). `productsFloorPx` is the products CARD at its narrowest — the table's
- * min-content width plus the card's padding and border — measured on the page's widest fixture. The ref is a callback ref
+ * Whether the side column goes BESIDE the main column: put the returned ref on the element whose width is the room for
+ * both columns (the page's main column, beside the nav). `productsFloorPx` is the main column's widest card at its
+ * narrowest — a restock page's products card, the product page's Batch section: the table's min-content width plus the
+ * card's padding and border — measured on the page's widest fixture, in its widest language. The ref is a callback ref
  * measured before the first paint, so a wide page never paints stacked first.
  */
 export function useSideBySide<T extends HTMLElement>(productsFloorPx: number): [(el: T | null) => void, boolean] {

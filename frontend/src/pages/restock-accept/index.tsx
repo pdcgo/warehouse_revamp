@@ -30,6 +30,7 @@ import { ReadyLine } from "../../components/feedback/ReadyLine";
 import type { ReadyLineItem } from "../../components/feedback/ReadyLine";
 import { toaster } from "../../components/feedback/Toaster";
 import { cameFrom } from "../../lib/cameFrom";
+import { dateInputToUnix } from "../../lib/datetime";
 import { useElementSize, useElementWidth } from "../../lib/useElementWidth";
 import { FLASH_ON_LANDING, jumpTo } from "../../lib/useScrollSpy";
 import { useTeamDetail } from "../../features/teams/queries";
@@ -514,6 +515,12 @@ export function RestockAcceptPage() {
           broken={lines.reduce((sum, l) => sum + l.st.broken, 0n)}
           missing={lines.reduce((sum, l) => sum + l.st.missing, 0n)}
           charge={courierCharge}
+          expiries={lines.map((l) => ({
+            productId: l.item.productId,
+            name: l.item.name,
+            // What is SENT: a line with no good unit carries no date (receivedLine), so its row reads a dash.
+            unix: l.st.good > 0n ? dateInputToUnix(l.draft.expiresOn, false) : 0n,
+          }))}
         />
         <Text fontSize="sm" color="fg.muted">
           {t("restock.accept.confirm.message")}

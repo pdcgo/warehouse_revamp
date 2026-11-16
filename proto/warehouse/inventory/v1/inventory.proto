@@ -1118,6 +1118,12 @@ message StockBatch {
   // warehouse, so every row's answer is the same. The OWNER's list spans every warehouse holding its
   // goods, and there "which delivery" is only half a location.
   uint64 warehouse_id = 23;
+
+  // BatchList ONLY — the racks the batch's PRODUCT sits on in that warehouse now, by code in the pick walk's order
+  // (`product_placements` with units on them; the-expiry-report-is-the-batch-list): a rack counts per product, never per
+  // batch, so this names where to go for the product, not which rack holds this batch. Empty for a batch with nothing
+  // left (an emptied batch has nothing to find) and on every other read.
+  repeated string rack_codes = 24;
 }
 
 // Where a batch's units originated (#218) — a restock delivery, or a return.

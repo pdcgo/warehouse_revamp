@@ -26,7 +26,7 @@ import { CourierChargeFacts, DeliveryFacts, PaymentFacts } from "../../features/
 import { RestockNotes } from "../../features/restock/RestockNotes";
 import { RestockTitleRow } from "../../features/restock/RestockTitleRow";
 import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
-import { SIDE_COLUMN, useSideBySide } from "../../features/restock/sideBySide";
+import { SIDE_COLUMN, useSideBySide } from "../../components/chrome/sideBySide";
 import { ProductsPanel } from "./components/ProductsPanel";
 import { RESTOCK_SELLING_DETAIL_PENDING } from "./pending";
 

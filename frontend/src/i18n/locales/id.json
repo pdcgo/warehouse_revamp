@@ -2034,6 +2034,10 @@
         "courierPhoto": "foto nota",
         "brokenPhoto": "foto barang rusak",
         "brokenRack": "rak barang rusak"
+      },
+      "expiry": {
+        "label": "Tanggal kedaluwarsa",
+        "hint": "Tanggal di kotak berbeda-beda? Pilih yang paling awal."
       }
     },
     "createdByAll": "Siapa saja yang membuat",
@@ -3427,7 +3431,8 @@
         "label": "Filter tim",
         "reason": "Daftar batch belum bisa disaring per tim — pilihannya disimpan, tapi semua batch tetap tampil."
       }
-    }
+    },
+    "colRacks": "Rak"
   },
   "batchDetail": {
     "title": "Batch",

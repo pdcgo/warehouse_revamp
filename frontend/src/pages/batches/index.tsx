@@ -105,6 +105,12 @@ export function BatchesPage() {
   const loading = query.isPending;
   const expiring = res?.expiringSoonCount ?? 0n;
 
+  // EACH ROW NAMES THE RACKS ITS PRODUCT SITS ON (the-expiry-report-is-the-batch-list, the-expiry-prototypes-are-
+  // accepted): where the product is now in this warehouse (product_placements — a rack counts per product, never per
+  // batch), so the crew finds what expires. The list's own read carries them (`StockBatch.rack_codes`, one statement per
+  // page), in the pick walk's order, and none for a batch with nothing left.
+  const racksOf = (b: StockBatch) => b.rackCodes;
+
   // How many filters narrow the list — the phone's Filter count, and what puts Hapus Filter on screen.
   const filtering =
     (search.trim() !== "" ? 1 : 0) +
@@ -180,6 +186,30 @@ export function BatchesPage() {
       <Text color="fg.muted">—</Text>
     );
   };
+
+  // THE RACKS CELL — its first two codes and how many more (each on its hover); a dash when the batch has nothing left to
+  // find (Habis), or the product sits on no rack.
+  function racksCell(b: StockBatch) {
+    const codes = racksOf(b);
+    if (codes.length === 0) {
+      return (
+        <Text color="fg.muted" data-testid={`batches-racks-${b.id}`}>
+          —
+        </Text>
+      );
+    }
+    const more = codes.length - 2;
+    return (
+      <Text whiteSpace="nowrap" title={codes.join(", ")} data-testid={`batches-racks-${b.id}`}>
+        {codes.slice(0, 2).join(", ")}
+        {more > 0 && (
+          <Span color="fg.muted" ms="1">
+            +{more}
+          </Span>
+        )}
+      </Text>
+    );
+  }
 
   const money = (b: StockBatch, v: number) => (b.costKnown ? formatRupiah(v) : t("batches.costUnknown"));
 
@@ -262,6 +292,10 @@ export function BatchesPage() {
                 </Text>
               </Stack>
               {team(b)}
+              {/* Where its product sits, every rack named (a phone's line wraps). */}
+              <Text fontSize="sm" data-testid={`batches-racks-${b.id}`}>
+                <Span color="fg.muted">{t("batches.colRacks")}</Span> {racksOf(b).length > 0 ? racksOf(b).join(", ") : "—"}
+              </Text>
               <Text fontSize="sm">
                 {t("batches.colReady")}{" "}
                 <Span fontWeight="bold" data-testid={`batches-ready-${b.id}`}>
@@ -301,6 +335,7 @@ export function BatchesPage() {
               <Table.ColumnHeader textAlign="end">{t("batches.colCost")}</Table.ColumnHeader>
               <Table.ColumnHeader textAlign="end">{t("batches.colReadyValue")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("batches.colExpiring")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("batches.colRacks")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -343,6 +378,8 @@ export function BatchesPage() {
                 <Table.Cell>
                   <ExpiryCell unix={b.expiresOnUnix} testId={`batches-expiry-${b.id}`} />
                 </Table.Cell>
+                {/* RAK, after when it expires: what expires, when, and where to go for it. */}
+                <Table.Cell>{racksCell(b)}</Table.Cell>
               </Table.Row>
             ))}
           </Table.Body>

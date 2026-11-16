@@ -80,6 +80,7 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [a-discover-card-says-locked-as-the-title-does](#a-discover-card-says-locked-as-the-title-does) | once a Discover card shows real stock, its lock badge says *Terkunci · Min N pcs* as the product page's title does | owner, as recommended | — |
 | [in-transit-is-its-own-figure-beside-siap-and-dikirim](#in-transit-is-its-own-figure-beside-siap-and-dikirim) | goods in transit between warehouses is its own figure beside Siap and Dikirim on every product screen — the list column, the phone block, the stat strip, the product page |
 | [the-in-transit-column-shows-while-any-is-in-transit](#the-in-transit-column-shows-while-any-is-in-transit) | the in-transit prototype is accepted; the list's Dalam transfer column shows only while the view has units in transit — the tile, the phone fact and the product page always show |
+| [the-product-pages-side-cards-stack-when-narrow](#the-product-pages-side-cards-stack-when-narrow) | a product's page stands its side cards beside its main column only when the page area holds both — else they go below, as the restock pages do |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -1848,3 +1849,27 @@ warehouse Overview's *menuju <gudang>* — with one change: the list's column is
 | the prototype switch | retired — the screens read the live fields |
 
 ✅ Built 2026-11-15 — `ProductsTable`'s `inTransitColumn` is the stat strip's in-transit units (`OwnerStockStat`, the same team and warehouse lens) above zero (`pages/products/index.tsx`); at zero the list keeps its eight columns, cells and widths exactly. The tile, the phone fact and the product page's figures always show, 0 pcs included. *(Not asked — the build's default: the archive draws no strip, so it keeps today's columns.)* Stories *Units in transit → the column*, *No units in transit → no column*, *Warehouse lens — the sender's, no column*, *Phone, nothing in transit → 0 pcs*; e2e `the_goods_in_transit.spec.ts` — no transfer: no column, 0 pcs; a shipped transfer: the column, the tile, the 390 px fact and the product page; the receiver's lens shows it, the sender's does not; accepted: 0 and the column gone.
+
+---
+
+## the-product-pages-side-cards-stack-when-narrow
+
+> Owner (Heri), in chat (2026-11-15): *"A"*, as recommended — with the expiry prototypes
+> ([the-expiry-prototypes-are-accepted](./batches_decision.md#the-expiry-prototypes-are-accepted)): at 1440 px with the
+> sidebar open the product page's main column is 531 px, because its side cards stand beside it by the viewport's width
+> alone; the Batch table was already at its narrowest (Tiba wrapping to three lines) and with *Kedaluwarsa* needs 607 px
+> (id) / 651 px (en). The same fault the restock pages fixed with
+> [the-delivery-card-stacks-when-the-page-is-narrow](./restock_decision.md#the-delivery-card-stacks-when-the-page-is-narrow).
+
+**The verdict.** As the restock pages: the product page's two-column layout (the main column | the side cards) is chosen
+by the **page area's own width**, not the viewport's. When the area cannot hold the main column's narrowest width — the
+Batch table's, with *Kedaluwarsa* — **plus** the side column, the side cards go **below** the main column, in their
+order. Wider, they stand beside it as today.
+
+| | |
+| --- | --- |
+| the measure | the page area, measured before the first paint — the restock pages' `useSideBySide(floor)` (`features/restock/sideBySide.ts`), reused, not copied |
+| the floor | the Batch section's narrowest table width in the widest language, plus the side column |
+| a phone | unchanged — one column already |
+
+✅ Built 2026-11-15 — the product page chooses its two columns by the page area's measured width through the restock pages' `useSideBySide` (moved to `components/chrome/sideBySide.ts`, shared, not copied), floor `BATCH_SECTION_FLOOR_PX` = 701 (the Batch table's narrowest in English 651 px — Indonesian 607 — + the card's 50) + the gap + 20rem; below it the stacked layout (Cross and the derived figures under Batch, in their order). At 1440 with the sidebar open: stacked, the Batch table whole, no horizontal scroll; at 1440 alone and 1920 with the sidebar: beside. Stories `ProductDetail/Expiry` (1440 + sidebar below, 1920 + sidebar beside, the sidebar closing, phone); e2e `the_expiry_is_read_off_the_box.spec.ts` (1440 with the app's sidebar).

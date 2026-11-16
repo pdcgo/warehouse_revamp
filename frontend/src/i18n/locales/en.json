@@ -2050,6 +2050,10 @@
         "courierPhoto": "the courier's slip photo",
         "brokenPhoto": "the broken products' photo",
         "brokenRack": "the broken products' rack"
+      },
+      "expiry": {
+        "label": "Expiry date",
+        "hint": "Several dates in the box? Pick the soonest."
       }
     },
     "createdByAll": "Anyone who raised it",
@@ -3452,7 +3456,8 @@
         "label": "Team filter",
         "reason": "The batch list cannot be narrowed by team yet — the pick is kept, but every batch still shows."
       }
-    }
+    },
+    "colRacks": "Racks"
   },
   "batchDetail": {
     "title": "Batch",

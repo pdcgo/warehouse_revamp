@@ -78,6 +78,8 @@ func (s *Service) RestockRequestAccept(
 			brokenNote  string
 			missingNote string
 			placements  []placement
+			// The expiry read off the box, its Jakarta midnight; nil = none (the-warehouse-types-the-expiry-at-the-accept).
+			expiredAt *time.Time
 		}
 
 		counted := make(map[uint64]countedLine, len(req.Msg.GetLines()))
@@ -100,6 +102,15 @@ func (s *Service) RestockRequestAccept(
 			if cl.broken > cl.received {
 				return errRestockBrokenOverReceived
 			}
+
+			// THE EXPIRY READ OFF THE BOX — a Jakarta day; the pattern let through only its shape, so a day that is not
+			// on the calendar is refused here. A past day is not: the box says what it says.
+			expiredAt, expiryErr := expiryDay(line.GetExpiresOn())
+			if expiryErr != nil {
+				return expiryErr
+			}
+
+			cl.expiredAt = expiredAt
 
 			// WHERE THE GOOD UNITS WENT. Every unit in stock is on a placement (there-is-no-unplaced-pile), each named
 			// once, and together they hold exactly received − broken.
@@ -293,7 +304,9 @@ func (s *Service) RestockRequestAccept(
 				PriceUnit:         inventory_mutations.LandedPrice(item.Total, item.Count, freight, allQty),
 				SupplierID:        derefID(item.SupplierID),
 				SupplierChannelID: derefID(item.SupplierChannelID),
-				Placements:        placements,
+				// On the batch this line mints — none for a line with no good unit, so its date is stored nowhere.
+				ExpiredAt:  line.expiredAt,
+				Placements: placements,
 			})
 		}
 
@@ -400,4 +413,20 @@ func derefID(id *uint64) uint64 {
 	}
 
 	return *id
+}
+
+// expiryDay is an accept line's expiry day as the batch stores it: that Jakarta day's midnight
+// (the-warehouse-types-the-expiry-at-the-accept — the date alone, Jakarta's). Empty is none (nil). A string of the right
+// shape that is not a day on the calendar ("2026-02-30") is refused.
+func expiryDay(day string) (*time.Time, error) {
+	if day == "" {
+		return nil, nil
+	}
+
+	at, err := time.ParseInLocation("2006-01-02", day, jakarta)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %q", errRestockExpiryInvalid, day)
+	}
+
+	return &at, nil
 }

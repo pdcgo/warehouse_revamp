@@ -1,6 +1,7 @@
 import { Flex, HStack, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
+import { ExpiryCell } from "../../../features/inventory/ExpiryCell";
 import { formatRupiahNumber } from "../../../lib/money";
 import { PcsMark } from "./PcsMark";
 
@@ -17,11 +18,14 @@ export function ConfirmSummary({
   broken,
   missing,
   charge,
+  expiries,
 }: {
   good: bigint;
   broken: bigint;
   missing: bigint;
   charge: number;
+  /** Each line's expiry, in the page's order — `unix` 0 for none (a line with no good unit sends none). */
+  expiries: { productId: bigint; name: string; unix: bigint }[];
 }) {
   const { t } = useTranslation();
   const pcs = (n: bigint) => t("restock.accept.pcs", { n: n.toString() });
@@ -54,6 +58,24 @@ export function ConfirmSummary({
           </Text>
         )}
       </HStack>
+
+      {/* EACH LINE'S EXPIRY (the-warehouse-types-the-expiry-at-the-accept): the date the batch it mints will carry, read
+          as the batch screens' phone line reads it — *29 Nov · 20 hari lagi* — or a dash for none. */}
+      {expiries.length > 0 && (
+        <Stack gap="1" borderTopWidth="1px" borderColor="border" pt="3" data-testid="accept-confirm-expiry">
+          <Text fontSize="sm" fontWeight="bold">
+            {t("restock.accept.expiry.label")}
+          </Text>
+          {expiries.map((e) => (
+            <Flex key={e.productId.toString()} gap="3" align="baseline" data-testid={`accept-confirm-expiry-${e.productId}`}>
+              <Text fontSize="sm" truncate minW="0" flex="1">
+                {e.name}
+              </Text>
+              <ExpiryCell inline fontSize="sm" unix={e.unix} testId={`accept-confirm-expiry-${e.productId}-day`} />
+            </Flex>
+          ))}
+        </Stack>
+      )}
     </Stack>
   );
 }

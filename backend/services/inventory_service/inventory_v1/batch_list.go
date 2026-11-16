@@ -125,6 +125,11 @@ func (s *Service) BatchList(
 		batches = append(batches, batchRowToProto(&rows[i]))
 	}
 
+	err = s.withProductRacks(ctx, warehouseID, batches)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
 	items, ids := batchListItems(batches, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.BatchListResponse{
@@ -138,6 +143,67 @@ func (s *Service) BatchList(
 		ReadyValueTotal:   agg.ReadyValue,
 		ExpiringSoonCount: uint64(agg.ExpiringSoon),
 	}), nil
+}
+
+// withProductRacks names, on each batch of the page with units left, the racks its PRODUCT sits on in the warehouse now
+// (the-expiry-report-is-the-batch-list: the report's rows name their racks, as expiry-is-a-report asks) — so the crew
+// reading *Kedaluwarsa ≤ 30 hari* knows where to go. A rack counts per product, never per batch
+// (`product_placements`), so two batches of one product name the same racks. Only racks with units on them — a rack the
+// product left is not a place to look (ProductPlaces' rule) — by code, the pick walk's order. An emptied batch names
+// none: nothing of it is left to find.
+//
+// ONE statement for the page, whatever its size (no read per row), and none when no row has units left.
+func (s *Service) withProductRacks(ctx context.Context, warehouseID uint64, batches []*inventoryv1.StockBatch) error {
+	productIDs := make([]uint64, 0, len(batches))
+	seen := make(map[uint64]struct{}, len(batches))
+
+	for _, b := range batches {
+		if b.GetReady() <= 0 {
+			continue
+		}
+
+		if _, dup := seen[b.GetProductId()]; dup {
+			continue
+		}
+
+		seen[b.GetProductId()] = struct{}{}
+		productIDs = append(productIDs, b.GetProductId())
+	}
+
+	if len(productIDs) == 0 {
+		return nil
+	}
+
+	var rows []struct {
+		ProductID uint64
+		Code      string
+	}
+
+	err := s.db.
+		WithContext(ctx).
+		Table("product_placements AS pp").
+		Select("pp.product_id, r.code").
+		Joins("JOIN placements r ON r.id = pp.placement_id").
+		Where("pp.warehouse_id = ? AND pp.product_id IN ? AND pp.stock_count > 0", warehouseID, productIDs).
+		Order("pp.product_id, r.code").
+		Scan(&rows).
+		Error
+	if err != nil {
+		return err
+	}
+
+	codes := make(map[uint64][]string, len(productIDs))
+	for _, r := range rows {
+		codes[r.ProductID] = append(codes[r.ProductID], r.Code)
+	}
+
+	for _, b := range batches {
+		if b.GetReady() > 0 {
+			b.RackCodes = codes[b.GetProductId()]
+		}
+	}
+
+	return nil
 }
 
 // soonCutoff is the "expiring ≤ 30 days" boundary, EXCLUSIVE: the Jakarta midnight that starts the 31st day after

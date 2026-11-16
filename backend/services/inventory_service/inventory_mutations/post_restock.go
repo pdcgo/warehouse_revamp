@@ -2,6 +2,7 @@ package inventory_mutations
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -18,6 +19,10 @@ type RestockLine struct {
 	PriceUnit         float64
 	SupplierID        uint64
 	SupplierChannelID uint64
+	// The expiry read off the box, the Jakarta midnight of its day (the-warehouse-types-the-expiry-at-the-accept); nil =
+	// none, and the batch's `expired_at` stays empty. Lands on the line's batch — a line with no good unit mints none,
+	// so its date is stored nowhere.
+	ExpiredAt *time.Time
 	// Where the good units went; together they hold exactly Good (there-is-no-unplaced-pile).
 	Placements []RestockPlacement
 }
@@ -102,6 +107,7 @@ func PostRestock(tx *gorm.DB, r Restock) (models.InventoryTransaction, error) {
 			PriceUnit:         line.PriceUnit,
 			SupplierID:        line.SupplierID,
 			SupplierChannelID: line.SupplierChannelID,
+			ExpiredAt:         line.ExpiredAt,
 			ChangeType:        string(models.TxRestock),
 			ActorID:           r.ActorID,
 		})

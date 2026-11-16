@@ -52,13 +52,23 @@ import {
   resetReceivedCountScenario,
 } from "./receivedCountScenario";
 import { sessionScenario } from "./sessionScenario";
+import { resetRestockAcceptScenario, restockAcceptScenario } from "./restockAcceptScenario";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 
 let rows: RestockFixture[] = [];
 
+/** `yyyy-mm-dd` naming a real day ("2026-02-30" does not). */
+function isCalendarDay(day: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return false;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
+}
+
 export function resetRestockStub() {
   rows = structuredClone(restockFixtures);
   resetReceivedCountScenario();
+  resetRestockAcceptScenario();
 }
 
 resetRestockStub();
@@ -571,6 +581,9 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       const good = c.receivedCount - c.brokenCount;
       const placed = c.placements.reduce((s, p) => s + p.quantity, 0n);
       if (good > 0n && c.placements.length === 0) throw invalid("a line with good units must say which placement they went to");
+      // The expiry read off the box: a Jakarta day or nothing (the proto's pattern, then the handler's calendar check).
+      // A story may call the stub with a plain object (no proto defaults), so an absent expiry is undefined as well as "".
+      if (c.expiresOn && !isCalendarDay(c.expiresOn)) throw invalid("the expiry is not a day on the calendar");
       if (placed !== good) throw invalid("the placements must add up to the good units");
       for (const p of c.placements) {
         if (!racks.some((rack) => rack.id === p.placementId && rack.warehouseId === r.warehouseId)) {
@@ -581,6 +594,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
 
     let broken = 0n;
     let missing = 0n;
+
+    restockAcceptScenario.expiries.push(Object.fromEntries(req.lines.map((l) => [l.itemId.toString(), l.expiresOn])));
 
     for (const l of r.items) {
       const c = counted.get(l.id.toString())!;

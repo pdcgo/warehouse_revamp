@@ -1154,6 +1154,56 @@ The handler under the soon filter: ≈ 54 ms median wall (3 statements). Test:
 `TestBatchList_ExpiringSoonCountsOnlyBatchesWithUnitsLeft` (an emptied batch expiring in 10 days is neither listed under
 the filter nor counted; one with units is; the unfiltered list still shows both) — mutation-checked on each half.
 
+## RestockRequestAccept — the expiry read off the box (2026-11-15)
+
+Each accept line carries an optional `expires_on` — a Jakarta day, `YYYY-MM-DD`, empty = none
+([the-warehouse-types-the-expiry-at-the-accept](../../business/inventory/context_decision.md#the-warehouse-types-the-expiry-at-the-accept)):
+the receiving warehouse reads it off the box, the soonest printed date when the box mixes several. The handler turns it
+into that day's Jakarta midnight (`expiryDay`, `restock_request_accept.go`) and `PostRestock` passes it on the line's
+`Mint.ExpiredAt` (`inventory_mutations/post_restock.go`) — so it lands in `batches.expired_at` of the batch that line
+mints, in the same insert. A line with no good unit (nothing received, or all broken) mints no batch, so its date is
+stored nowhere; the screen does not send it either. A past day is accepted (the box says what it says —
+[the-expiry-prototypes-are-accepted](../../technical/frontend/batches_decision.md#the-expiry-prototypes-are-accepted));
+a day of the right shape that is not on the calendar (`2026-02-30`) is `InvalidArgument` (`errRestockExpiryInvalid`),
+nothing written. A transfer, a return and a received-count correction already copy the source batch's expiry — unchanged,
+now pinned from an accept-typed date (`TestRestockRequestAccept_TheExpiryTravelsWithATransfer`).
+
+**Performance** — nil cost: the date rides the existing `MintBatches` insert; no statement added (audit
+[RestockRequestAccept.md](../../../audits/services/inventory_service/performances/RestockRequestAccept.md) History row).
+Tests `restock_request_accept_expiry_test.go` (a dated line with broken units, an undated line, a line where nothing
+arrived and one all broken — both dated, neither stored; no date at all; a past date, then listed under *Kedaluwarsa ≤ 30
+hari*; a day not on the calendar refused; carried by a transfer) — mutation-checked.
+
+**OwnerBatchList** already returns each batch's expiry (`StockBatch.expires_on_unix`, the shared `batchRowToProto`) —
+confirmed by the same test reading the accept's date back through it; the product page's Batch section now draws it.
+
+## BatchList — each row names its product's racks (2026-11-15)
+
+`StockBatch.rack_codes` (BatchList only): the racks the batch's **product** sits on in that warehouse now — the
+`product_placements` rows with units on them, by code in the pick walk's order
+([the-expiry-report-is-the-batch-list](../../business/inventory/context_decision.md#the-expiry-report-is-the-batch-list):
+*"each row naming the racks its product sits on"*). A rack counts per product, never per batch, so two batches of one
+product name the same racks. A batch with nothing left names none (the screen's —); a rack the product left (its row at
+0) is not named — ProductPlaces' rule. `withProductRacks` (`batch_list.go`) reads them for the whole page in **one
+statement** after the page (`product_placements ⋈ placements`, `product_id IN (page's products with units left)`), none
+when no row has units left — 4 statements per call instead of 3, whatever the page size
+(`TestBatchList_TheRacksAreOneStatementPerPage`, pages of 1 and 30).
+
+**Performance** — `TestPerf_BatchList_Racks` (`batch_list_racks_perf_test.go`, `-tags perfaudit`): one warehouse with
+60 000 batches of 3 000 products (nine in ten emptied, every one with an expiry), 600 racks, each product on 3 racks with
+units and 3 it left (18 000 rack rows), beside the ledger background's 50 000 batches and 10 000 rack rows:
+
+| call | racks statement (execution) | plan | whole call, median wall |
+| --- | --- | --- | --- |
+| unfiltered, page 50 (5 rows with units) | 0.07 ms | index scan on `product_placements_one_per_product`, nested loop to `placements_pkey` | 122–215 ms |
+| unfiltered, page 200 (20 with units) | 0.23 ms | bitmap scan on the same index | 226–305 ms |
+| *Kedaluwarsa ≤ 30 hari*, page 50 (50 with units) | 3.1 ms | the same scan, a hash join over all 10 600 placements | 68–84 ms |
+| *Kedaluwarsa ≤ 30 hari*, page 200 | 3.3 ms | the same | 34–39 ms |
+
+The whole call is the pre-existing count / page / strip statements (unchanged by this pass, noisy host); the racks read
+adds 0.1–3.3 ms. Not heavy, no audit file. Tests `batch_list_racks_test.go` (two racks by code, another warehouse's rack
+not named, an emptied batch names none while its sibling names both, a product on no rack names none) — mutation-checked.
+
 ## OwnerCostLayerList / OwnerBatchList / OwnerStockHistory — the owner's product DETAIL (#232)
 
 `OwnerStockByIds` above answers per-product aggregates. These three answer **what those aggregates are
