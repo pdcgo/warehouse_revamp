@@ -137,6 +137,13 @@ The order's way out: the warehouse confirms, picks and hands it over, customer s
 <tr><td>complete recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
 <tr><td>complete recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: processed · goods missing on rack · note)</td><td rowspan="5" valign="top">back to pending order</td><td>status changed from processed to pending</td><td>⬜ untested</td></tr>
+<tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees order pending</td><td>⬜ untested</td></tr>
+<tr><td>back to pending recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>order can be cancelled</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: picked · cancelled on platform · goods back on rack · note)</td><td rowspan="2" valign="top">back to pending order</td><td>status changed from picked to pending</td><td>⬜ untested</td></tr>
+<tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
 </table>
 
 ## return

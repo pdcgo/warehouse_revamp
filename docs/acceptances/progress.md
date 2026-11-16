@@ -35,3 +35,4 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to follow up lost restocks · [list lost restock](inventory/restock.md#resolve) (1 then: ⬜ 1)
 - `selling:all` wants to record the supplier's solution · [resolve restock problem](inventory/restock.md#resolve) (6 thens: 🚧 6)
 - `selling:all` wants to record the platform's solution · [resolve lost restock](inventory/restock.md#resolve) (2 thens: 🚧 2)
+- `warehouse:all` wants to hand an order back to pending · [back to pending order](inventory/order.md#process) (7 thens: 🚧 1, ⬜ 6)
