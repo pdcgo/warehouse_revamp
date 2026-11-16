@@ -15,13 +15,15 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md) (14 thens: ⬜ 14)
 - `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md) (8 thens: 🚧 1, ⬜ 7)
 - `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md) (18 thens: ⬜ 18)
-- `selling:all` wants to create an order · [create order](inventory/order.md) (55 thens: ⬜ 55)
-- `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md) (8 thens: 🚧 1, ⬜ 7)
-- `warehouse:all` wants to pick an order · [pick order](inventory/order.md) (15 thens: 🚧 1, ⬜ 14)
-- `warehouse:all` wants to hand an order to the courier · [hand over order](inventory/order.md) (18 thens: 🚧 1, ⬜ 17)
+- `selling:all` wants to create an order · [create order](inventory/order.md#create) (55 thens: ⬜ 55)
+- `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md#process) (8 thens: 🚧 1, ⬜ 7)
+- `warehouse:all` wants to pick an order · [pick order](inventory/order.md#process) (15 thens: 🚧 1, ⬜ 14)
+- `warehouse:all` wants to hand an order to the courier · [hand over order](inventory/order.md#process) (18 thens: 🚧 1, ⬜ 17)
 
 ## 2026-11-16
 
-- `selling:all` wants to mark an order shipped · [mark shipped order](inventory/order.md) (5 thens: 🚧 1, ⬜ 4)
-- `selling:all` wants to complete an order · [complete order](inventory/order.md) (4 thens: 🚧 1, ⬜ 3)
-- `selling:all` wants to cancel an order · [cancel order](inventory/order.md) (16 thens: ⬜ 16)
+- `selling:all` wants to mark an order shipped · [mark shipped order](inventory/order.md#process) (5 thens: 🚧 1, ⬜ 4)
+- `selling:all` wants to complete an order · [complete order](inventory/order.md#process) (4 thens: 🚧 1, ⬜ 3)
+- `selling:all` wants to cancel an order · [cancel order](inventory/order.md#create) (16 thens: ⬜ 16)
+- `selling:all` · `warehouse:all` wants to return an order · [return order](inventory/order.md#return) (13 thens: ⬜ 13)
+- `warehouse:all` wants to accept a return · [accept return](inventory/order.md#return) (20 thens: 🚧 1, ⬜ 19)
