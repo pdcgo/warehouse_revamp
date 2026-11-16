@@ -28,7 +28,12 @@ type Story = StoryObj<typeof meta>;
 async function search(canvasElement: HTMLElement, q: string) {
   await userEvent.click(await within(canvasElement).findByTestId("open-add-member", {}, { timeout: 4000 }));
   const dialog = await screen.findByTestId("add-member-dialog");
-  await userEvent.type(within(dialog).getByTestId("add-member-search"), q, { delay: 20 });
+  // Pasted, not typed: the search is debounced, and Create User fills the username from the SETTLED term. Under load
+  // a keystroke delayed past the debounce settled a prefix ("hend") — no match too, so Create showed and took "hend".
+  // One input event: the only term the dialog settles on is the whole one.
+  const field = within(dialog).getByTestId("add-member-search");
+  await userEvent.click(field);
+  await userEvent.paste(q);
 
   return dialog;
 }

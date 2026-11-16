@@ -180,7 +180,11 @@ export const ASearchFindsATeamByNameOrCodeOnTheServer: Story = {
     const search = canvas.getByTestId("liability-search");
     const receivable = canvas.getByTestId("liability-total-receivable").textContent;
 
-    await userEvent.type(search, "kenanga", { delay: 30 });
+    // Typed key by key — what this half proves is that seven keys make ONE request — but with no delay between the
+    // keys: a delay is a timer, and under load one fired late enough for the 250 ms debounce to settle a prefix
+    // ("kenan") and send it, which the no-prefix check below reads as a request per key. With no timer between them,
+    // nothing can fire mid-word, and a debounce taken away still sends every prefix.
+    await userEvent.type(search, "kenanga", { delay: null });
     await waitFor(() => expect(liabilityListCalls.positions.at(-1)?.q).toBe("kenanga"));
     await waitFor(() => expect(canvas.queryByTestId("liability-row-12")).toBeNull());
     await expect(canvas.getByTestId("liability-row-13")).toBeInTheDocument();
@@ -189,8 +193,12 @@ export const ASearchFindsATeamByNameOrCodeOnTheServer: Story = {
     await expect(canvas.getByTestId("liability-total-receivable")).toHaveTextContent(receivable ?? "");
 
     // By its CODE — Gudang Cabang is WH-02.
-    await userEvent.clear(search);
-    await userEvent.type(search, "wh-02", { delay: 30 });
+    // The old term REPLACED in one input event (select all, paste) — not cleared, then typed: under load the empty box
+    // settled first and was asked, its rows (13 among them) stayed up while "wh-02" loaded, so the row-14 wait passed
+    // on them and the row-13 check read the stale rows. Pasted, the only new term is "wh-02".
+    await userEvent.click(search);
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await userEvent.paste("wh-02");
     await waitFor(() => expect(liabilityListCalls.positions.at(-1)?.q).toBe("wh-02"));
     await waitFor(() => expect(canvas.getByTestId("liability-row-14")).toBeInTheDocument());
     await expect(canvas.queryByTestId("liability-row-13")).toBeNull();

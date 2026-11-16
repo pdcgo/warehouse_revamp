@@ -137,7 +137,11 @@ export const SearchesByAProductInIt: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.type(canvas.getByTestId("bundle-search"), "gula", { delay: 40 });
+    // Pasted, not typed: the search is debounced, and under load a keystroke delayed past it settles a prefix first —
+    // "gu" also drops Budi's Paket Hemat but keeps Paket Dapur (Tepung Terigu), so the wait below passed on it and the
+    // Dapur check read the prefix's rows. One input event: the only term the list settles on is "gula".
+    await userEvent.click(canvas.getByTestId("bundle-search"));
+    await userEvent.paste("gula");
 
     await waitFor(() => expect(canvas.queryByTestId(`bundle-row-${HEMAT_BUDI.id}`)).toBeNull());
     await expect(canvas.getByTestId(`bundle-row-${HEMAT_ANI.id}`)).toBeVisible();

@@ -7,6 +7,12 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-16 · test fixes
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Fewer false alarms in the full test run** | nine screen tests could read a half-typed search when the machine was busy and fail for no real reason — they now enter the whole word at once |
+
 ## 2026-11-15 · statistics grouped on the server
 
 | What shipped | What it means for a person |

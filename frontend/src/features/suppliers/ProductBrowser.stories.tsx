@@ -178,8 +178,12 @@ export const SearchesProductCodeOrStore: Story = {
     await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 1));
     await expect(canvas.getByTestId("product-row-3101")).toBeVisible();
 
-    await userEvent.clear(search);
-    await userEvent.type(search, "Sumber Makmur Store", { delay: 20 });
+    // The old term REPLACED in one input event (select all, paste) — not cleared, then typed: the search is debounced,
+    // and under load the empty box or a short prefix settles first, which lists 3103 among others, so the wait below
+    // passed on it and the one-row count read the stale rows. Pasted, the only new term is the store's whole name.
+    await userEvent.click(search);
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await userEvent.paste("Sumber Makmur Store");
     // The previous answer (one row) stays up while the next loads — wait for THIS one's row.
     await waitFor(() => expect(canvas.getByTestId("product-row-3103")).toBeVisible());
     await expect(rows(canvas)).toHaveLength(1 + 1);

@@ -28,8 +28,12 @@ export const SearchesByNameOrCode: Story = {
     await waitFor(() => expect(canvas.queryByTestId("shop-row-MEL-SHP")).toBeNull());
     await expect(canvas.getByTestId("shop-row-MEL-LAZ")).toBeVisible();
 
-    await userEvent.clear(canvas.getByTestId("shop-search"));
-    await userEvent.type(canvas.getByTestId("shop-search"), "mel-tik", { delay: 40 });
+    // The old term REPLACED in one input event (select all, paste) — not cleared, then typed: the search is debounced,
+    // and under load the empty box or a prefix ("mel-") settles first, which lists MEL-TIK beside MEL-LAZ, so the wait
+    // below passed on it and the MEL-LAZ check read the stale rows. Pasted, the only new term is "mel-tik".
+    await userEvent.click(canvas.getByTestId("shop-search"));
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await userEvent.paste("mel-tik");
     await waitFor(() => expect(canvas.getByTestId("shop-row-MEL-TIK")).toBeVisible());
     await expect(canvas.queryByTestId("shop-row-MEL-LAZ")).toBeNull();
   },

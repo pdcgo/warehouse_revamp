@@ -224,7 +224,11 @@ export const ExportsTheTabAsFiltered: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.type(canvas.getByTestId("channels-search"), "tokopedia.com", { delay: 40 });
+    // One input event, not thirteen keystrokes: the search is debounced (250 ms), and a keystroke delayed past that
+    // under load settles a prefix ("tokopedia") that narrows to the same one store — the row count passed on it and
+    // Export carried the prefix. Pasted, the only term the tab ever settles on is "tokopedia.com".
+    await userEvent.click(canvas.getByTestId("channels-search"));
+    await userEvent.paste("tokopedia.com");
     await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 1));
 
     await userEvent.click(canvas.getByTestId("channels-export"));
