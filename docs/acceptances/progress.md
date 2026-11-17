@@ -54,3 +54,6 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:owner` · `warehouse:admin` · `selling:owner` · `selling:admin` wants a team to pay its debt · [tell to make payment](balance/payment.md) (7 thens: ⬜ 7)
 - `warehouse:owner` · `warehouse:admin` · `selling:owner` · `selling:admin` wants to refuse a wrong payment · [reject payment](balance/payment.md) (7 thens: ⬜ 7)
 - `selling:owner` · `selling:admin` wants to take back a wrong payment · [cancel payment](balance/payment.md) (5 thens: 🚧 5)
+- `warehouse:owner` · `selling:owner` · `selling:admin` wants to cap a team's debt · [set credit limit](balance/credit_limit.md) (10 thens: ⬜ 10)
+- `warehouse:owner` wants to lift a team's own limit · [remove credit limit](balance/credit_limit.md) (3 thens: ⬜ 3)
+- `selling:all` wants to create an order · [create order at the credit limit](balance/credit_limit.md) (1 then: ⬜ 1)
