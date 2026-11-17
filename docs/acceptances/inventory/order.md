@@ -81,6 +81,18 @@ The selling team places an order, and takes it back while it is still pending.
 <tr><td>message names opname, who started it and when</td><td>⬜ untested</td></tr>
 </table>
 
+## draft
+
+Drafts come in from a third-party app; the selling team finishes them in the order form, or clears them.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to see their drafts<br>(own drafts · colleague's drafts)</td><td rowspan="1" valign="top">list draft order</td><td>only own drafts shown</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to finish a draft<br>(1 draft from app · 1 product)</td><td rowspan="1" valign="top">open draft order</td><td>draft opens in order form with its data</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to clear drafts<br>(1 draft)</td><td rowspan="1" valign="top">delete draft order</td><td>draft removed from drafts</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to clear drafts<br>(multi drafts selected)</td><td rowspan="1" valign="top">delete draft order</td><td>every selected draft removed</td><td>⬜ untested</td></tr>
+</table>
+
 ## edit
 
 What can still change on an order after create: the resi, the shop, and notes added by either side.
@@ -124,6 +136,10 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 <tr><td>status of every order changed from pending to processed</td><td>🚧 unimplemented</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to print receipts<br>(status: pending · multi orders · unboxing warning off)</td><td rowspan="1" valign="top">print receipt order</td><td>labels printed without unboxing warning</td><td>🚧 unimplemented</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to print receipts<br>(status: pending · multi orders · 1 order without label)</td><td rowspan="1" valign="top">print receipt order</td><td>message names order without label</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to print receipts<br>(status: pending · multi orders · status change off)</td><td rowspan="2" valign="top">print receipt order</td><td>labels printed</td><td>🚧 unimplemented</td></tr>
+<tr><td>orders stay pending</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to print receipts<br>(status: processed · 1 order · reprint)</td><td rowspan="2" valign="top">print receipt order</td><td>label printed</td><td>🚧 unimplemented</td></tr>
+<tr><td>status unchanged</td><td>🚧 unimplemented</td></tr>
 <tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · 1 order)</td><td rowspan="5" valign="top">confirm order</td><td>status changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order processed</td><td>⬜ untested</td></tr>
@@ -286,6 +302,32 @@ After the handover something goes wrong: customer service marks a problem and re
 <tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to put a found parcel back in stock<br>(status: lost · parcel back at warehouse · 1 product · 1 rack)</td><td rowspan="2" valign="top">report found</td><td>found names the lost order</td><td>🚧 unimplemented</td></tr>
 <tr><td>order stays lost</td><td>⬜ untested</td></tr>
 </table>
+
+## export
+
+Either side takes the list it is looking at — its filter, every page — to a spreadsheet.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="3" valign="top"><code>selling:all</code> wants to take orders to a spreadsheet<br>(status tab: shipped · multi pages)</td><td rowspan="3" valign="top">export order</td><td>file holds every order of the tab, all pages</td><td>⬜ untested</td></tr>
+<tr><td>file shows money columns</td><td>⬜ untested</td></tr>
+<tr><td>progress shown while exporting</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to take orders to a spreadsheet<br>(status tab: picked · search filter)</td><td rowspan="2" valign="top">export order</td><td>file holds only the filtered orders</td><td>⬜ untested</td></tr>
+<tr><td>file shows no seller money</td><td>⬜ untested</td></tr>
+</table>
+
+## import
+
+> ❓ **Open — no givens yet (2026-11-17).** Importing a marketplace file of orders is not decided, so it is held as
+> questions until it is. The settlement import is the main import; this one has to be placed beside it.
+>
+> - **What does it change?** The order's status only, as the system does today (after handover), or also the order's
+>   settlement — the sale total (*Terjual*), or the payout and deductions the settlement import already posts?
+> - **How are the products in the file treated?** Matched to the order's lines, used to correct them, or ignored?
+> - **An order in the file with no order here** — ignored, listed, or made into a draft? And one that belongs to
+>   another shop?
+> - **Which statuses may it move, and from when?** Only after handover today: shipped, completed, return, lost.
+> - **One file, two imports?** If the platform's files overlap, which import owns which figure, so nothing is posted twice.
 
 ## Warnings
 

@@ -43,5 +43,9 @@ Every action, under the day it was discussed. The counts are the statuses today 
 
 - `selling:all` · `warehouse:all` wants to leave a note on an order · [add order note](inventory/order.md#edit) (6 thens: ⬜ 6)
 - `warehouse:all` wants to find a parcel in a pile · [find parcel](inventory/order.md#process-hand-over) (6 thens: ⬜ 6)
-- `warehouse:all` wants to print receipts · [print receipt order](inventory/order.md#process-confirm) (6 thens: 🚧 6)
+- `warehouse:all` wants to print receipts · [print receipt order](inventory/order.md#process-confirm) (10 thens: 🚧 10)
 - `warehouse:all` wants to pick goods for many orders · [bulk pick order](inventory/order.md#process-pick-and-pack) (3 thens: 🚧 3)
+- `selling:all` wants to see their drafts · [list draft order](inventory/order.md#draft) (1 then: ⬜ 1)
+- `selling:all` wants to finish a draft · [open draft order](inventory/order.md#draft) (1 then: ⬜ 1)
+- `selling:all` wants to clear drafts · [delete draft order](inventory/order.md#draft) (2 thens: ⬜ 2)
+- `selling:all` · `warehouse:all` wants to take orders to a spreadsheet · [export order](inventory/order.md#export) (5 thens: ⬜ 5)
