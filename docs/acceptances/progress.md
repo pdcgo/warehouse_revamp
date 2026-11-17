@@ -16,14 +16,14 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md#cancel-and-lost) (8 thens: 🚧 1, ⬜ 7)
 - `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md#receive) (18 thens: ⬜ 18)
 - `selling:all` wants to create an order · [create order](inventory/order.md#create) (55 thens: ⬜ 55)
-- `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md#process) (8 thens: 🚧 1, ⬜ 7)
-- `warehouse:all` wants to pick an order · [pick order](inventory/order.md#process) (15 thens: 🚧 1, ⬜ 14)
-- `warehouse:all` wants to hand an order to the courier · [hand over order](inventory/order.md#process) (18 thens: 🚧 1, ⬜ 17)
+- `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md#process-confirm) (8 thens: 🚧 1, ⬜ 7)
+- `warehouse:all` wants to validate an order's package · [validate package order](inventory/order.md#process-pick-and-pack) (15 thens: 🚧 1, ⬜ 14)
+- `warehouse:all` wants to hand an order to the courier · [hand over order](inventory/order.md#process-hand-over) (22 thens: 🚧 2, ⬜ 20)
 
 ## 2026-11-16
 
-- `selling:all` wants to mark an order shipped · [mark shipped order](inventory/order.md#process) (5 thens: 🚧 1, ⬜ 4)
-- `selling:all` wants to complete an order · [complete order](inventory/order.md#process) (4 thens: 🚧 1, ⬜ 3)
+- `selling:all` wants to mark an order shipped · [mark shipped order](inventory/order.md#process-delivery) (5 thens: 🚧 1, ⬜ 4)
+- `selling:all` wants to complete an order · [complete order](inventory/order.md#process-delivery) (4 thens: 🚧 1, ⬜ 3)
 - `selling:all` wants to cancel an order · [cancel order](inventory/order.md#create) (16 thens: ⬜ 16)
 - `selling:all` · `warehouse:all` wants to return an order · [return order](inventory/order.md#return) (13 thens: ⬜ 13)
 - `warehouse:all` wants to accept a return · [accept return](inventory/order.md#return) (20 thens: 🚧 1, ⬜ 19)
@@ -35,6 +35,13 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to follow up lost restocks · [list lost restock](inventory/restock.md#resolve) (1 then: ⬜ 1)
 - `selling:all` wants to record the supplier's solution · [resolve restock problem](inventory/restock.md#resolve) (6 thens: 🚧 6)
 - `selling:all` wants to record the platform's solution · [resolve lost restock](inventory/restock.md#resolve) (2 thens: 🚧 2)
-- `warehouse:all` wants to hand an order back to pending · [back to pending order](inventory/order.md#process) (7 thens: 🚧 1, ⬜ 6)
+- `warehouse:all` wants to hand an order back to pending · [back to pending order](inventory/order.md#process-confirm) (7 thens: 🚧 1, ⬜ 6)
 - `selling:all` wants to fix an order's resi · [edit resi order](inventory/order.md#edit) (10 thens: 🚧 1, ⬜ 9)
 - `selling:all` wants to fix an order's shop · [edit shop order](inventory/order.md#edit) (3 thens: 🚧 3)
+
+## 2026-11-17
+
+- `selling:all` · `warehouse:all` wants to leave a note on an order · [add order note](inventory/order.md#edit) (6 thens: ⬜ 6)
+- `warehouse:all` wants to find a parcel in a pile · [find parcel](inventory/order.md#process-hand-over) (6 thens: ⬜ 6)
+- `warehouse:all` wants to print receipts · [print receipt order](inventory/order.md#process-confirm) (6 thens: 🚧 6)
+- `warehouse:all` wants to pick goods for many orders · [bulk pick order](inventory/order.md#process-pick-and-pack) (3 thens: 🚧 3)

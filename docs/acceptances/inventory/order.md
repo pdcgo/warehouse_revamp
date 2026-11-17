@@ -83,7 +83,7 @@ The selling team places an order, and takes it back while it is still pending.
 
 ## edit
 
-The selling team fixes the resi or the label file while the parcel is still in the building, and an order recorded in the wrong shop.
+What can still change on an order after create: the resi, the shop, and notes added by either side.
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
@@ -100,23 +100,57 @@ The selling team fixes the resi or the label file while the parcel is still in t
 <tr><td rowspan="3" valign="top"><code>selling:all</code> wants to fix an order's shop<br>(status: completed · order in wrong shop · statement import refused)</td><td rowspan="3" valign="top">edit shop order</td><td>shop changed</td><td>🚧 unimplemented</td></tr>
 <tr><td>shop change shown in order timeline</td><td>🚧 unimplemented</td></tr>
 <tr><td>statement import succeeds</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="3" valign="top"><code>selling:all</code> wants to leave a note on an order<br>(status: pending · 1 order)</td><td rowspan="3" valign="top">add order note</td><td>note shown in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>note shown as from selling team</td><td>⬜ untested</td></tr>
+<tr><td>warehouse sees note</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to leave a note on an order<br>(status: processed · 1 order)</td><td rowspan="3" valign="top">add order note</td><td>note shown in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>note shown as from warehouse</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees note</td><td>⬜ untested</td></tr>
 </table>
 
 ## process
 
-The order's way out: the warehouse confirms, picks and hands it over, customer service marks it shipped and completes it.
+The order's way out: the warehouse confirms, picks, packs and hands it over, customer service marks it shipped and completes it.
+
+### process: confirm
+
+**pending → processed** — the warehouse takes the order on: prints the receipts and confirms. **processed / picked → pending** — it hands an order back.
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to print receipts<br>(status: pending · multi orders · unboxing warning on)</td><td rowspan="4" valign="top">print receipt order</td><td>print page shows chosen orders</td><td>🚧 unimplemented</td></tr>
+<tr><td>labels printed in one session</td><td>🚧 unimplemented</td></tr>
+<tr><td>unboxing video warning printed</td><td>🚧 unimplemented</td></tr>
+<tr><td>status of every order changed from pending to processed</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to print receipts<br>(status: pending · multi orders · unboxing warning off)</td><td rowspan="1" valign="top">print receipt order</td><td>labels printed without unboxing warning</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to print receipts<br>(status: pending · multi orders · 1 order without label)</td><td rowspan="1" valign="top">print receipt order</td><td>message names order without label</td><td>🚧 unimplemented</td></tr>
 <tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · 1 order)</td><td rowspan="5" valign="top">confirm order</td><td>status changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
-<tr><td>order can be picked</td><td>⬜ untested</td></tr>
+<tr><td>package can be validated</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · multi orders)</td><td rowspan="3" valign="top">confirm order</td><td>status of every order changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in each order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees every order processed</td><td>⬜ untested</td></tr>
-<tr><td rowspan="8" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · 1 product · 1 rack · opened by receipt scan · all items scanned)</td><td rowspan="8" valign="top">pick order</td><td>pick page opens from receipt scan</td><td>⬜ untested</td></tr>
+<tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: processed · goods missing on rack · note)</td><td rowspan="5" valign="top">back to pending order</td><td>status changed from processed to pending</td><td>⬜ untested</td></tr>
+<tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees order pending</td><td>⬜ untested</td></tr>
+<tr><td>back to pending recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>order can be cancelled</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: picked · cancelled on platform · goods back on rack · note)</td><td rowspan="2" valign="top">back to pending order</td><td>status changed from picked to pending</td><td>⬜ untested</td></tr>
+<tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
+</table>
+
+### process: pick and pack
+
+**processed → picked** — the goods come off the racks, for many orders at once, and each package is validated by scanning every item.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick goods for many orders<br>(status: processed · multi orders · grouped by product)</td><td rowspan="2" valign="top">bulk pick order</td><td>each product shown with total quantity and its racks</td><td>🚧 unimplemented</td></tr>
+<tr><td>order stays processed</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to pick goods for many orders<br>(status: processed · multi orders · grouped by order)</td><td rowspan="1" valign="top">bulk pick order</td><td>each order shown with its products and racks</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="8" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · 1 product · 1 rack · opened by receipt scan · all items scanned)</td><td rowspan="8" valign="top">validate package order</td><td>pick page opens from receipt scan</td><td>⬜ untested</td></tr>
 <tr><td>pick page shows 1 rack for 1 product</td><td>⬜ untested</td></tr>
 <tr><td>every scanned item correct</td><td>⬜ untested</td></tr>
 <tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
@@ -124,31 +158,57 @@ The order's way out: the warehouse confirms, picks and hands it over, customer s
 <tr><td>selling team sees order picked</td><td>⬜ untested</td></tr>
 <tr><td>pick recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
 <tr><td>order can be handed over</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · 1 product · 2 racks · all items scanned)</td><td rowspan="2" valign="top">pick order</td><td>pick page shows 2 racks with quantity of each</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · 1 product · 2 racks · all items scanned)</td><td rowspan="2" valign="top">validate package order</td><td>pick page shows 2 racks with quantity of each</td><td>⬜ untested</td></tr>
 <tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · item not on order scanned)</td><td rowspan="2" valign="top">pick order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · item not on order scanned)</td><td rowspan="2" valign="top">validate package order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
 <tr><td>cannot set picked</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · more items than ordered scanned)</td><td rowspan="2" valign="top">pick order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · more items than ordered scanned)</td><td rowspan="2" valign="top">validate package order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
 <tr><td>item count stays at ordered quantity</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to pick an order<br>(status: processed · not every item scanned)</td><td rowspan="1" valign="top">pick order</td><td>cannot set picked</td><td>⬜ untested</td></tr>
-<tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 order · receipt scan · mass pickup off)</td><td rowspan="5" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · not every item scanned)</td><td rowspan="1" valign="top">validate package order</td><td>cannot set picked</td><td>⬜ untested</td></tr>
+</table>
+
+### process: hand over
+
+**picked → shipping** — the packed parcels go to the courier by scan. Finding one in the pile changes no status.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 order · receipt scan · bulk handover off)</td><td rowspan="5" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td>hand over recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order shipping</td><td>⬜ untested</td></tr>
 <tr><td>hand over recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
 <tr><td>order can be marked shipped</td><td>⬜ untested</td></tr>
-<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · multi orders · receipt scan · mass pickup on)</td><td rowspan="3" valign="top">hand over order</td><td>scanned orders collected in list</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · multi orders · receipt scan · bulk handover on)</td><td rowspan="4" valign="top">hand over order</td><td>scanned orders collected in list</td><td>⬜ untested</td></tr>
 <tr><td>status of every order changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td>hand over recorded in each order timeline</td><td>⬜ untested</td></tr>
+<tr><td>parcel count per courier shown</td><td>🚧 unimplemented</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · multi orders · selected from list)</td><td rowspan="1" valign="top">hand over order</td><td>status of every order changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: processed · receipt scan)</td><td rowspan="1" valign="top">hand over order</td><td>scan marked error with wrong sound</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · same receipt scanned twice · mass pickup on)</td><td rowspan="1" valign="top">hand over order</td><td>order listed once</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · same receipt scanned twice · bulk handover on)</td><td rowspan="1" valign="top">hand over order</td><td>order listed once</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 receipt on 2 orders · receipt scan)</td><td rowspan="2" valign="top">hand over order</td><td>both orders shown</td><td>⬜ untested</td></tr>
 <tr><td>no order handed over</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked and processed · multi orders · selected from list)</td><td rowspan="2" valign="top">hand over order</td><td>picked orders changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td>processed orders skipped with warning</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(receipt not found · receipt scan)</td><td rowspan="1" valign="top">hand over order</td><td>scan marked not found with wrong sound</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 receipt on 1 order and 1 cancelled order · receipt scan)</td><td rowspan="1" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: processed · mass pickup on · only error scans)</td><td rowspan="1" valign="top">hand over order</td><td>cannot hand over</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: processed · bulk handover on · only error scans)</td><td rowspan="1" valign="top">hand over order</td><td>cannot hand over</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked and processed · multi orders · receipt scan · bulk handover on)</td><td rowspan="2" valign="top">hand over order</td><td>only picked orders handed over</td><td>⬜ untested</td></tr>
+<tr><td>processed scans marked error</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · resi changed after label printed · old label scanned)</td><td rowspan="1" valign="top">hand over order</td><td>scan marked not found with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to find a parcel in a pile<br>(status: picked · 1 order · its label scanned)</td><td rowspan="2" valign="top">find parcel</td><td>scan shows match with right sound</td><td>⬜ untested</td></tr>
+<tr><td>order status unchanged</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to find a parcel in a pile<br>(status: shipping · 1 order · another order's label scanned)</td><td rowspan="1" valign="top">find parcel</td><td>scan shows not this parcel with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to find a parcel in a pile<br>(status: picked · 1 order · no resi recorded · its Order ID scanned)</td><td rowspan="1" valign="top">find parcel</td><td>scan shows match with right sound</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to find a parcel in a pile<br>(status: picked · 1 order · resi changed after label printed · old label scanned)</td><td rowspan="1" valign="top">find parcel</td><td>scan shows not this parcel with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to find a parcel in a pile<br>(status: shipping · 2 orders with same Order ID · other order's label scanned)</td><td rowspan="1" valign="top">find parcel<br><a href="#a-same-order-id-matches-another-parcel">⚠ a risk</a></td><td>scan shows match with right sound</td><td>⬜ untested</td></tr>
+</table>
+
+### process: delivery
+
+**shipping → shipped → completed** — customer service follows the parcel on the platform.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
 <tr><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order shipped<br>(status: shipping · 1 order)</td><td rowspan="5" valign="top">mark shipped order</td><td>status changed from shipping to shipped</td><td>⬜ untested</td></tr>
 <tr><td>shipped recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order shipped</td><td>⬜ untested</td></tr>
@@ -158,13 +218,6 @@ The order's way out: the warehouse confirms, picks and hands it over, customer s
 <tr><td>complete recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
 <tr><td>complete recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
-<tr><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: processed · goods missing on rack · note)</td><td rowspan="5" valign="top">back to pending order</td><td>status changed from processed to pending</td><td>⬜ untested</td></tr>
-<tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
-<tr><td>selling team sees order pending</td><td>⬜ untested</td></tr>
-<tr><td>back to pending recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
-<tr><td>order can be cancelled</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: picked · cancelled on platform · goods back on rack · note)</td><td rowspan="2" valign="top">back to pending order</td><td>status changed from picked to pending</td><td>⬜ untested</td></tr>
-<tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
 </table>
 
 ## return
@@ -227,7 +280,7 @@ After the handover something goes wrong: customer service marks a problem and re
 <tr><td>lost recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order lost</td><td>⬜ untested</td></tr>
 <tr><td>lost recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>no action available on lost order</td><td>⬜ untested</td></tr>
+<tr><td>no status change available on lost order</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: problem · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from problem to lost</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: return · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from return to lost</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to put a found parcel back in stock<br>(status: lost · parcel back at warehouse · 1 product · 1 rack)</td><td rowspan="2" valign="top">report found</td><td>found names the lost order</td><td>🚧 unimplemented</td></tr>
@@ -235,6 +288,13 @@ After the handover something goes wrong: customer service marks a problem and re
 </table>
 
 ## Warnings
+
+### a-same-order-id-matches-another-parcel
+
+⚠ Find This Parcel matches a scan against the order's resi, its Order ID and its order number. An Order ID may sit on
+two live orders of one shop (it is warned at create, not refused), so when both parcels are in the same pile, scanning
+the OTHER order's label still reads *Match — this is the parcel* if the label carries the Order ID. A different resi
+tells them apart; the Order ID does not. Recorded as a risk: the given checks the system as it is.
 
 ### brokens-on-rack-goes-against-a-business-decision
 
