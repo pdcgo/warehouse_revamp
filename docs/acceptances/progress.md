@@ -49,3 +49,4 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to finish a draft · [open draft order](inventory/order.md#draft) (1 then: ⬜ 1)
 - `selling:all` wants to clear drafts · [delete draft order](inventory/order.md#draft) (2 thens: ⬜ 2)
 - `selling:all` · `warehouse:all` wants to take orders to a spreadsheet · [export order](inventory/order.md#export) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` wants to pay a debt · [make payment](balance/payment.md) (10 thens: 🚧 1, ⬜ 9)
