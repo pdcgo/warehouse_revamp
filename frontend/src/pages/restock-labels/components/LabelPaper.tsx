@@ -82,9 +82,10 @@ export function LabelSticker({
 function LabelCell({ label, settings: s, today }: { label: RestockLabel; settings: LabelSettings; today: string }) {
   const box = labelBox(s);
   const pad = paddingOf(s);
-  // The QR carries sku/batch: one batch per line (one-batch-per-line), so the scan finds the exact stock. An arrived
-  // restock's label has no batch yet (labels-print-from-arrived) — its QR is the SKU alone.
-  const payload = label.batchId > 0n ? `${label.productCode}/${label.batchId.toString()}` : label.productCode;
+  // THE QR IS THE PRODUCT CODE ALONE (the-label-qr-is-the-product-code) — accepted and arrived alike. It is scanned
+  // where an order's package is validated, which knows the product's code and nothing about batches; `sku/batch` made
+  // every sticker read "not on this order". The batch stays on the label's data (one-batch-per-line), not in the QR.
+  const payload = label.productCode;
 
   const cell: CSSProperties = {
     boxSizing: "border-box",

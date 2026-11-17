@@ -96,12 +96,12 @@ function idsOf(search: string): bigint[] {
 // RestockLabelsPage prints the stickers for an ACCEPTED delivery — the step after counting it in: one label per
 // shelved unit (or per placement) so a picker can find and scan what just landed.
 //
-// It is warehouse-only, like accepting: the crew that shelved the goods prints them. The QR encodes
-// `sku/batch-id` — one batch per line (one-batch-per-line). Every good unit is on a placement
-// (there-is-no-unplaced-pile), so every label has one; there is no holding pile to print.
+// It is warehouse-only, like accepting: the crew that shelved the goods prints them. The QR is the product's code
+// alone (the-label-qr-is-the-product-code), so the sticker scans wherever the product is asked for. Every good unit is
+// on a placement (there-is-no-unplaced-pile), so every label has one; there is no holding pile to print.
 //
 // AN ACCEPTED RESTOCK — AND AN ARRIVED ONE (owner: *"halaman ini juga bisa diakses status tiba, tapi tanpa penempatan
-// harusnya"*, labels-print-from-arrived). Accepted, the labels are the server's: one per placement, its batch in the QR.
+// harusnya"*, labels-print-from-arrived). Accepted, the labels are the server's: one per placement.
 // Arrived, the box is signed for and not yet counted, so nothing is on a placement and no batch exists: the labels are
 // the restock's own lines — one per product, as many as were ordered, NO PLACEMENT, the SKU alone in the QR. Any other
 // status has none, and the page says so rather than asking for labels the server would refuse.
