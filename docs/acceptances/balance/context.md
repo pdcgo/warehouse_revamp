@@ -7,7 +7,7 @@ checked in the feature it comes from. Rules: [guide.md](../guide.md).
 
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
-| [payment](payment.md) | | | 1 | 9 |
+| [payment](payment.md) | | | 1 | 29 |
 | [credit_limit](credit_limit.md) | | | | |
 | [position](position.md) | | | | |
 
