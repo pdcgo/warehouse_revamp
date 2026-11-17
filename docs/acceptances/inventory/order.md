@@ -181,6 +181,13 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 <tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · more items than ordered scanned)</td><td rowspan="2" valign="top">validate package order</td><td>scan refused with wrong sound</td><td>⬜ untested</td></tr>
 <tr><td>item count stays at ordered quantity</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · not every item scanned)</td><td rowspan="1" valign="top">validate package order</td><td>cannot set picked</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · 1 product · restock sticker scanned)</td><td rowspan="1" valign="top">validate package order</td><td>every scanned item correct</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · 1 receipt on 2 orders · receipt scan)</td><td rowspan="2" valign="top">validate package order</td><td>both orders shown</td><td>⬜ untested</td></tr>
+<tr><td>no pick page opened</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: cancel · receipt of cancelled order scanned)</td><td rowspan="2" valign="top">validate package order</td><td>scan marked with wrong sound</td><td>⬜ untested</td></tr>
+<tr><td>no pick page opened</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: picked · set picked by another person)</td><td rowspan="2" valign="top">validate package order</td><td>set picked refused</td><td>⬜ untested</td></tr>
+<tr><td>message says already picked</td><td>⬜ untested</td></tr>
 </table>
 
 ### process: hand over
@@ -225,11 +232,12 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order shipped<br>(status: shipping · 1 order)</td><td rowspan="5" valign="top">mark shipped order</td><td>status changed from shipping to shipped</td><td>⬜ untested</td></tr>
+<tr><td rowspan="6" valign="top"><code>selling:all</code> wants to mark an order shipped<br>(status: shipping · 1 order)</td><td rowspan="6" valign="top">mark shipped order</td><td>status changed from shipping to shipped</td><td>⬜ untested</td></tr>
 <tr><td>shipped recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order shipped</td><td>⬜ untested</td></tr>
 <tr><td>shipped recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
 <tr><td>order can be completed</td><td>⬜ untested</td></tr>
+<tr><td>parcel tracking shown on order</td><td>🚧 unimplemented</td></tr>
 <tr><td rowspan="4" valign="top"><code>selling:all</code> wants to complete an order<br>(status: shipped · 1 order)</td><td rowspan="4" valign="top">complete order</td><td>status changed from shipped to completed</td><td>⬜ untested</td></tr>
 <tr><td>complete recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
