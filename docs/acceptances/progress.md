@@ -57,3 +57,5 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:owner` · `selling:owner` · `selling:admin` wants to cap a team's debt · [set credit limit](balance/credit_limit.md) (10 thens: ⬜ 10)
 - `warehouse:owner` wants to lift a team's own limit · [remove credit limit](balance/credit_limit.md) (3 thens: ⬜ 3)
 - `selling:all` wants to create an order · [create order at the credit limit](balance/credit_limit.md) (1 then: ⬜ 1)
+- `selling:all` wants to record the platform's payouts · [import settlement](settlement/settlement_importer.md) (15 thens: ⬜ 15)
+- `selling:all` wants to check what an import did · [open import detail](settlement/settlement_importer.md) (1 then: ⬜ 1)
