@@ -17,7 +17,7 @@ import {
 //   error         the read failed, or the restock is not this warehouse's to read (unknown, or another's)
 //   notPrintable  neither Tiba nor Diterima — it has no labels, and says so
 //   ready         its labels:
-//                   Diterima — the server's, one per placement, its batch in the QR
+//                   Diterima — the server's, one per placement, the product code in the QR
 //                   Tiba     — its own lines, one per product, as many as ordered, no placement, no batch
 //                            (labels-print-from-arrived)
 export interface LabelSet {

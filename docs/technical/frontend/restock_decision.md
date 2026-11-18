@@ -98,6 +98,7 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-print-list-is-each-label-and-its-count](#the-print-list-is-each-label-and-its-count) | Cetak Label shows one paper in Pratinjau, then Yang Dicetak: each label once with its count to print, typed over — what prints is exactly those counts |
 | [ctrl-p-prints-the-labels](#ctrl-p-prints-the-labels) | on Cetak Label, Ctrl+P / ⌘P is the page's own print — the same act as Cetak; with nothing to print it says so |
 | [labels-print-from-arrived](#labels-print-from-arrived) | Cetak Label opens from Tiba too, beside Terima: one label per line, as many as ordered, no placement, the SKU alone in the QR — and the page says so |
+| [the-label-qr-is-the-product-code](#the-label-qr-is-the-product-code) | a sticker's QR is the product code alone — accepted and arrived alike; it was `sku/batch` on an accepted restock, which the order's package validation refused |
 | [labels-print-several-restocks](#labels-print-several-restocks) | Cetak Label prints several restocks in one run: a Restok card over the Pratinjau — each restock with its labels and ✕, and *Tambah Restok* (a search select of Tiba and Diterima) — and Yang Dicetak is grouped by restock |
 | [print-is-the-labels-action](#print-is-the-labels-action) | the labels' action is *Cetak* — the verb alone, on the list's row, the restock's page and its sticky bar; the page it opens is still Cetak Label |
 | [the-list-prints-the-ticked-restocks](#the-list-prints-the-ticked-restocks) | the warehouse list has a box before each row — enabled for Tiba and Diterima — and a page box in the head; while any is ticked the title's row offers *Cetak N Restok*, opening Cetak Label with all of them |
@@ -2121,7 +2122,7 @@ phone     ←  Label · Restok #503  [Diterima]                                 
 | [an-empty-list-shows-a-hint](context_decision.md#an-empty-list-shows-a-hint) | a run with nothing to label is an `EmptyHint` |
 | [nothing-runs-past-a-phones-edge](context_decision.md#nothing-runs-past-a-phones-edge) | the preview scales each paper to the column, and a paper wider than a phone scrolls in its own box — a 300px label column ran past a 320px phone |
 | [every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story) · [a-page-story-has-its-shells-gutter](context_decision.md#a-page-story-has-its-shells-gutter) | **Default** and **Mobile** lead; the stories lost Storybook's `padded` layout; every story has a short name; `From the list · back` is new |
-| kept | the QR (`sku/batch-id`); *Pcs / Rak* as a segmented control |
+| kept | the QR (`sku/batch-id`) — 🔄 now the product code alone, [the-label-qr-is-the-product-code](#the-label-qr-is-the-product-code); *Pcs / Rak* as a segmented control |
 | pinned by | `Default`, `Mobile`, `Ongoing, no labels`, `From the list · back` |
 
 What it replaces: the labels page's own layout — a labelled back over the title, the browser's select and date, a
@@ -2162,7 +2163,7 @@ Cetak     Satu label per [Pcs | Rak]
 | --- | --- |
 | the paper | **width × height in mm, default 35 × 15**; one paper holds **rows × columns** of labels with a **gap** between them, **default 1 × 1, gap 0**. Each label's box is the paper less the gaps, shared out |
 | padding | inside each label, **the same all round** (default **2 mm**) **or each side its own** — top, right, bottom, left |
-| what is on it | the **main SKU**, the **placement**, the **product's name**, and **today's date — off by default**; each shown or not, **each its own size in pt** (defaults SKU 5.5, placement 7, name 5.5, date 5 — they fit a 12-character SKU and two lines of name on 35 × 15 with its 11 mm QR). The QR stays (`sku/batch-id`, one batch per line). Gone from the sticker: the restock's reference and date, the HPP, the *1/5* copy number |
+| what is on it | the **main SKU**, the **placement**, the **product's name**, and **today's date — off by default**; each shown or not, **each its own size in pt** (defaults SKU 5.5, placement 7, name 5.5, date 5 — they fit a 12-character SKU and two lines of name on 35 × 15 with its 11 mm QR). The QR stays (`sku/batch-id`, one batch per line) — 🔄 now the product code alone, [the-label-qr-is-the-product-code](#the-label-qr-is-the-product-code). Gone from the sticker: the restock's reference and date, the HPP, the *1/5* copy number |
 | the name | cut after **N lines** (default **2**), so a long name never pushes the rest off |
 | how it is set | **bold — on by default**; **centred — off by default**; **condensed font — off**; the **gap between the QR and the text** (default 1.5 mm) |
 | the run | *Satu label per* Pcs or Rak, as before; a **limit** of labels per print (default **100**) and the **page** — which hundred — *dari N*; the header says *label 101–200 dari 245 · 100 kertas* |
@@ -2284,7 +2285,7 @@ skipped the page's print and would send a blank page with nothing to print.
 status        actions                labels
 Dalam Jalan   Tandai Tiba · Terima   none — "Restok #501 belum bisa dilabeli"
 Tiba          Terima · Cetak         one per LINE       · count = ordered   · no placement · QR = SKU
-Diterima      Cetak · Struk          one per PLACEMENT  · count = put away  · its rack     · QR = SKU/batch
+Diterima      Cetak · Struk          one per PLACEMENT  · count = put away  · its rack     · QR = SKU (was SKU/batch)
 ```
 
 | | |
@@ -2292,7 +2293,7 @@ Diterima      Cetak · Struk          one per PLACEMENT  · count = put away  ·
 | the action | an arrived restock offers **Cetak** — the labels ([print-is-the-labels-action](#print-is-the-labels-action)) — beside Terima — on the list's row, the restock's page and its sticky bar (`warehouseActions(ARRIVED)` is `accept`, `labels`) |
 | the labels | one per line of the restock, its count **what was ordered** (*Dipesan 12 pcs* under it, where an accepted label says its rack) — nothing is counted yet, so there is no other number to start from; the count is typed over as on any label ([the-print-list-is-each-label-and-its-count](#the-print-list-is-each-label-and-its-count)) |
 | no placement | the sticker has no placement line — the box has not been put away; the rest of the sticker is unchanged |
-| the QR | **the SKU alone** — there is no batch until Terima mints one ([one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line)); an accepted label stays `sku/batch` |
+| the QR | **the SKU alone** — there is no batch until Terima mints one ([one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line)); an accepted label stays `sku/batch` — 🔄 now the SKU alone too, [the-label-qr-is-the-product-code](#the-label-qr-is-the-product-code) |
 | said | an info line over Yang Dicetak: *Restok ini baru Tiba — label tanpa penempatan, dan jumlahnya dari yang dipesan. Setelah diterima, labelnya per penempatan.* |
 | not printable | before Tiba, the Alert reads *Restok #{{id}} belum bisa dilabeli* — *Label bisa dicetak saat restok sudah Tiba atau Diterima.* (testid `labels-not-printable`) |
 | pinned by | `Arrived, no placement` (17 labels of 2 kinds, no placement, *Ordered 12 pcs*) · `Ongoing, no labels` · the Actions and SignForBox stories of the list and the restock's page (502, and 501/504 after signing, now offer Cetak) |
@@ -2617,3 +2618,35 @@ What it replaces: `?ids=503,502` printed under the page in those stories, readin
 **The verdict.** *Jumlah barang* on the cards of [the-restock-statistics-count-transactions-under-the-tabs](#the-restock-statistics-count-transactions-under-the-tabs) — the Total's, each status's and a status tab's — is the pieces ordered on the restocks' lines, on every status, Diterima included: the sum of the rows' *N pcs*. ⛔ Not built — backlog #72.
 
 ✅ **Built 2026-11-16** — `RestockSellingPile.unit_count` sums the lines' ordered `count` on every status, an accepted one included (never `received_count`); pinned by `TestRestockSellingStat_CountsEachStatus` (an accepted pile counted in short still reads what was ordered) and the story `Per tab` (Diterima: 45 pcs ordered, 44 counted in) ([rpc.md](../../services/inventory_service/rpc.md#restocksellingstat--the-selling-lists-statistics-built-2026-11-16)).
+
+---
+
+## the-label-qr-is-the-product-code
+
+> Owner (hfrada), in chat (2026-11-17): *"tidak-tidak, harusnya tidak sku/batch, benarkan keputusan itu juga"* — after
+> finding that the QR of a sticker printed from an accepted restock was `sku/batch` (`KH-01/57`), and that
+> validating an order's package compares the WHOLE scan with the product code, so every such sticker read *"Not on this
+> order"*. The form had never been decided: it was carried as *kept* through
+> [the-restock-labels-follow-the-screen-rules](#the-restock-labels-follow-the-screen-rules),
+> [the-label-is-set-up-in-mm](#the-label-is-set-up-in-mm) and [labels-print-from-arrived](#labels-print-from-arrived).
+
+**The verdict.** A sticker's QR is the **product code alone**, whether the restock is accepted or arrived. A scan of
+the sticker is the product, wherever the product is asked for.
+
+```mermaid
+flowchart LR
+  S["sticker on a unit - QR KH-01"] --> V["validate package order - expects KH-01"]
+  V --> OK["counted - every scanned item correct"]
+  B["was - QR KH-01/57"] -.->|"refused - not on this order"| V
+```
+
+| | |
+| --- | --- |
+| the QR | `product_code` — the same text printed under it |
+| accepted and arrived | the same QR; an arrived label never had a batch |
+| the batch | still minted per line ([one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line)) and still on the label's data (`RestockLabel.batch_id`) — only not in the QR |
+| what reads the QR | an order's package validation (`ItemScan`, by product code); nothing read the batch back out of it |
+
+What it replaces: `sku/batch-id` in the QR of an accepted restock's sticker.
+
+✅ Built 2026-11-17 — `LabelPaper` writes `label.productCode` as the QR; comments in `restock-labels/index.tsx` and `labelSets.ts` follow.

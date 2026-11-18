@@ -5,17 +5,57 @@ Every action, under the day it was discussed. The counts are the statuses today 
 
 ## 2026-11-11
 
-- `selling:all` wants to restock · [create restock](inventory/restock.md) (18 thens: ✅ 15, 🚧 3)
-- `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md) (8 thens: ✅ 4, 🚧 1, ⬜ 3)
-- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md) (37 thens: ✅ 23, 🚧 2, ⬜ 12)
-- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md) (66 thens: ✅ 15, 🚧 7, ⬜ 44)
+- `selling:all` wants to restock · [create restock](inventory/restock.md#create) (18 thens: ✅ 15, 🚧 3)
+- `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md#receive) (8 thens: ✅ 4, 🚧 1, ⬜ 3)
+- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md#receive) (37 thens: ✅ 23, 🚧 2, ⬜ 12)
+- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md#create) (66 thens: ✅ 15, 🚧 7, ⬜ 44)
 
 ## 2026-11-14
 
-- `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md) (14 thens: ⬜ 14)
-- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md) (8 thens: 🚧 1, ⬜ 7)
-- `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md) (18 thens: ⬜ 18)
-- `selling:all` wants to create an order · [create order](inventory/order.md) (55 thens: ⬜ 55)
-- `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md) (7 thens: ⬜ 7)
-- `warehouse:all` wants to pick an order · [pick order](inventory/order.md) (14 thens: ⬜ 14)
-- `warehouse:all` wants to hand an order to the courier · [hand over order](inventory/order.md) (18 thens: ⬜ 18)
+- `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md#cancel-and-lost) (14 thens: ⬜ 14)
+- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md#cancel-and-lost) (8 thens: 🚧 1, ⬜ 7)
+- `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md#receive) (18 thens: ⬜ 18)
+- `selling:all` wants to create an order · [create order](inventory/order.md#create) (55 thens: ⬜ 55)
+- `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md#process-confirm) (8 thens: 🚧 1, ⬜ 7)
+- `warehouse:all` wants to validate an order's package · [validate package order](inventory/order.md#process-pick-and-pack) (22 thens: 🚧 1, ⬜ 21)
+- `warehouse:all` wants to hand an order to the courier · [hand over order](inventory/order.md#process-hand-over) (22 thens: 🚧 2, ⬜ 20)
+
+## 2026-11-16
+
+- `selling:all` wants to mark an order shipped · [mark shipped order](inventory/order.md#process-delivery) (6 thens: 🚧 2, ⬜ 4)
+- `selling:all` wants to complete an order · [complete order](inventory/order.md#process-delivery) (4 thens: 🚧 1, ⬜ 3)
+- `selling:all` wants to cancel an order · [cancel order](inventory/order.md#create) (16 thens: ⬜ 16)
+- `selling:all` · `warehouse:all` wants to return an order · [return order](inventory/order.md#return) (13 thens: ⬜ 13)
+- `warehouse:all` wants to accept a return · [accept return](inventory/order.md#return) (20 thens: 🚧 1, ⬜ 19)
+- `selling:all` wants to mark an order lost · [mark lost order](inventory/order.md#problem-and-lost) (7 thens: ⬜ 7)
+- `warehouse:all` wants to put a found parcel back in stock · [report found](inventory/order.md#problem-and-lost) (2 thens: 🚧 1, ⬜ 1)
+- `selling:all` wants to mark an order as problem · [mark problem order](inventory/order.md#problem-and-lost) (5 thens: 🚧 1, ⬜ 4)
+- `selling:all` wants to resolve a dispute · [resolve dispute order](inventory/order.md#problem-and-lost) (4 thens: 🚧 1, ⬜ 3)
+- `selling:all` wants to follow up restock problems · [list problem restock](inventory/restock.md#resolve) (1 then: 🚧 1)
+- `selling:all` wants to follow up lost restocks · [list lost restock](inventory/restock.md#resolve) (1 then: ⬜ 1)
+- `selling:all` wants to record the supplier's solution · [resolve restock problem](inventory/restock.md#resolve) (6 thens: 🚧 6)
+- `selling:all` wants to record the platform's solution · [resolve lost restock](inventory/restock.md#resolve) (2 thens: 🚧 2)
+- `warehouse:all` wants to hand an order back to pending · [back to pending order](inventory/order.md#process-confirm) (7 thens: 🚧 1, ⬜ 6)
+- `selling:all` wants to fix an order's resi · [edit resi order](inventory/order.md#edit) (10 thens: 🚧 1, ⬜ 9)
+- `selling:all` wants to fix an order's shop · [edit shop order](inventory/order.md#edit) (3 thens: 🚧 3)
+
+## 2026-11-17
+
+- `selling:all` · `warehouse:all` wants to leave a note on an order · [add order note](inventory/order.md#edit) (6 thens: ⬜ 6)
+- `warehouse:all` wants to find a parcel in a pile · [find parcel](inventory/order.md#process-hand-over) (6 thens: ⬜ 6)
+- `warehouse:all` wants to print receipts · [print receipt order](inventory/order.md#process-confirm) (10 thens: 🚧 10)
+- `warehouse:all` wants to pick goods for many orders · [bulk pick order](inventory/order.md#process-pick-and-pack) (3 thens: 🚧 3)
+- `selling:all` wants to see their drafts · [list draft order](inventory/order.md#draft) (1 then: ⬜ 1)
+- `selling:all` wants to finish a draft · [open draft order](inventory/order.md#draft) (1 then: ⬜ 1)
+- `selling:all` wants to clear drafts · [delete draft order](inventory/order.md#draft) (2 thens: ⬜ 2)
+- `selling:all` · `warehouse:all` wants to take orders to a spreadsheet · [export order](inventory/order.md#export) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to pay a debt · [make payment](balance/payment.md) (15 thens: 🚧 1, ⬜ 14)
+- `warehouse:owner` · `warehouse:admin` · `selling:owner` · `selling:admin` wants to accept a payment · [confirm payment](balance/payment.md) (16 thens: ⬜ 16)
+- `warehouse:owner` · `warehouse:admin` · `selling:owner` · `selling:admin` wants a team to pay its debt · [tell to make payment](balance/payment.md) (7 thens: ⬜ 7)
+- `warehouse:owner` · `warehouse:admin` · `selling:owner` · `selling:admin` wants to refuse a wrong payment · [reject payment](balance/payment.md) (7 thens: ⬜ 7)
+- `selling:owner` · `selling:admin` wants to take back a wrong payment · [cancel payment](balance/payment.md) (5 thens: 🚧 5)
+- `warehouse:owner` · `selling:owner` · `selling:admin` wants to cap a team's debt · [set credit limit](balance/credit_limit.md) (10 thens: ⬜ 10)
+- `warehouse:owner` wants to lift a team's own limit · [remove credit limit](balance/credit_limit.md) (3 thens: ⬜ 3)
+- `selling:all` wants to create an order · [create order at the credit limit](balance/credit_limit.md) (1 then: ⬜ 1)
+- `selling:all` wants to record the platform's payouts · [import settlement](settlement/settlement_importer.md) (15 thens: ⬜ 15)
+- `selling:all` wants to check what an import did · [open import detail](settlement/settlement_importer.md) (1 then: ⬜ 1)

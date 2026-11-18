@@ -2,6 +2,10 @@
 
 Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md](../guide.md)
 
+## create
+
+The selling team orders goods for a warehouse, and changes the restock while it can.
+
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
 <tr><td rowspan="6" valign="top"><code>selling:all</code> wants to restock<br>(1 product · 1 warehouse · operational account · no shipping cost)</td><td rowspan="6" valign="top">create restock</td><td>restock created with 1 product</td><td>✅ ok</td></tr>
@@ -22,69 +26,6 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 <tr><td>operational account balance decreases by product total + shipping cost</td><td>✅ ok</td></tr>
 <tr><td>recorded in operational account history</td><td>✅ ok</td></tr>
 <tr><td>restock recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
-<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from ongoing to arrived</td><td>✅ ok</td></tr>
-<tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
-<tr><td>can print barcode</td><td>⬜ untested</td></tr>
-<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: lost · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from lost to arrived</td><td>✅ ok</td></tr>
-<tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
-<tr><td>can print barcode</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · COD)</td><td rowspan="2" valign="top">mark arrived restock</td><td>COD recorded on restock</td><td>🚧 unimplemented</td></tr>
-<tr><td>can print barcode</td><td>⬜ untested</td></tr>
-<tr><td rowspan="10" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: arrived · all received · new product · no COD · 1 supplier)</td><td rowspan="10" valign="top">accept restock</td><td>status changed from arrived to accepted</td><td>✅ ok</td></tr>
-<tr><td>ready stock increases by all received</td><td>✅ ok</td></tr>
-<tr><td>ongoing stock decreases by all received</td><td>✅ ok</td></tr>
-<tr><td>all received on rack</td><td>✅ ok</td></tr>
-<tr><td>price set on batch</td><td>✅ ok</td></tr>
-<tr><td>recorded in product history</td><td>⬜ untested</td></tr>
-<tr><td>new product listed in warehouse</td><td>⬜ untested</td></tr>
-<tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
-<tr><td>can print barcode</td><td>⬜ untested</td></tr>
-<tr><td>all received recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="11" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · 1 supplier)</td><td rowspan="11" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
-<tr><td>ready stock increases by all received</td><td>✅ ok</td></tr>
-<tr><td>ongoing stock decreases by all received</td><td>✅ ok</td></tr>
-<tr><td>all received on rack</td><td>✅ ok</td></tr>
-<tr><td>price set on batch</td><td>✅ ok</td></tr>
-<tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
-<tr><td>recorded in product history</td><td>⬜ untested</td></tr>
-<tr><td>new product listed in warehouse</td><td>✅ ok</td></tr>
-<tr><td>recorded at 1 supplier</td><td>✅ ok</td></tr>
-<tr><td>can print barcode</td><td>⬜ untested</td></tr>
-<tr><td>all received recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens thrown away · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
-<tr><td>ready stock increases, brokens excluded</td><td>✅ ok</td></tr>
-<tr><td>brokens thrown away recorded</td><td>✅ ok</td></tr>
-<tr><td>brokens recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens on rack · new product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>brokens on rack</td><td>🚧 unimplemented</td></tr>
-<tr><td>brokens recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · missing items · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
-<tr><td>ready stock increases, missing items excluded</td><td>✅ ok</td></tr>
-<tr><td>missing items recorded</td><td>✅ ok</td></tr>
-<tr><td>missing items recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · listed product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>listed product not listed again</td><td>✅ ok</td></tr>
-<tr><td>all received recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · COD · 1 supplier)</td><td rowspan="3" valign="top">accept restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
-<tr><td>COD recorded in liability</td><td>✅ ok</td></tr>
-<tr><td>COD recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
-<tr><td><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers)</td><td>accept restock</td><td>recorded at each supplier</td><td>✅ ok</td></tr>
-<tr><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · all received · received count too high · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>⬜ untested</td></tr>
-<tr><td>correction recorded in restock timeline</td><td>⬜ untested</td></tr>
-<tr><td>ready stock decreases</td><td>⬜ untested</td></tr>
-<tr><td>stock on 1 rack decreases</td><td>⬜ untested</td></tr>
-<tr><td>missing items increase</td><td>⬜ untested</td></tr>
-<tr><td>selling team sees correction value</td><td>⬜ untested</td></tr>
-<tr><td>correction recorded in product history</td><td>⬜ untested</td></tr>
-<tr><td>missing items recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
-<tr><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · missing items · received count too low · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>⬜ untested</td></tr>
-<tr><td>correction recorded in restock timeline</td><td>⬜ untested</td></tr>
-<tr><td>ready stock increases</td><td>⬜ untested</td></tr>
-<tr><td>stock on 1 rack increases</td><td>⬜ untested</td></tr>
-<tr><td>missing items decrease</td><td>⬜ untested</td></tr>
-<tr><td>selling team sees correction value</td><td>⬜ untested</td></tr>
-<tr><td>correction recorded in product history</td><td>⬜ untested</td></tr>
-<tr><td>missing items recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
 <tr><td rowspan="8" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · add product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">edit restock</td><td>new product added</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>ongoing total adjusted</td><td>✅ ok</td></tr>
@@ -151,6 +92,85 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 <tr><td>edit recorded in account history</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+</table>
+
+## receive
+
+The warehouse signs for the box, counts it in, and corrects a count found wrong afterwards.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from ongoing to arrived</td><td>✅ ok</td></tr>
+<tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
+<tr><td>can print barcode</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: lost · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from lost to arrived</td><td>✅ ok</td></tr>
+<tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
+<tr><td>can print barcode</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · COD)</td><td rowspan="2" valign="top">mark arrived restock</td><td>COD recorded on restock</td><td>🚧 unimplemented</td></tr>
+<tr><td>can print barcode</td><td>⬜ untested</td></tr>
+<tr><td rowspan="10" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: arrived · all received · new product · no COD · 1 supplier)</td><td rowspan="10" valign="top">accept restock</td><td>status changed from arrived to accepted</td><td>✅ ok</td></tr>
+<tr><td>ready stock increases by all received</td><td>✅ ok</td></tr>
+<tr><td>ongoing stock decreases by all received</td><td>✅ ok</td></tr>
+<tr><td>all received on rack</td><td>✅ ok</td></tr>
+<tr><td>price set on batch</td><td>✅ ok</td></tr>
+<tr><td>recorded in product history</td><td>⬜ untested</td></tr>
+<tr><td>new product listed in warehouse</td><td>⬜ untested</td></tr>
+<tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
+<tr><td>can print barcode</td><td>⬜ untested</td></tr>
+<tr><td>all received recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="11" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · 1 supplier)</td><td rowspan="11" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
+<tr><td>ready stock increases by all received</td><td>✅ ok</td></tr>
+<tr><td>ongoing stock decreases by all received</td><td>✅ ok</td></tr>
+<tr><td>all received on rack</td><td>✅ ok</td></tr>
+<tr><td>price set on batch</td><td>✅ ok</td></tr>
+<tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
+<tr><td>recorded in product history</td><td>⬜ untested</td></tr>
+<tr><td>new product listed in warehouse</td><td>✅ ok</td></tr>
+<tr><td>recorded at 1 supplier</td><td>✅ ok</td></tr>
+<tr><td>can print barcode</td><td>⬜ untested</td></tr>
+<tr><td>all received recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens thrown away · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
+<tr><td>ready stock increases, brokens excluded</td><td>✅ ok</td></tr>
+<tr><td>brokens thrown away recorded</td><td>✅ ok</td></tr>
+<tr><td>brokens recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens on rack · new product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>brokens on rack</td><td>🚧 unimplemented</td></tr>
+<tr><td>brokens recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · missing items · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
+<tr><td>ready stock increases, missing items excluded</td><td>✅ ok</td></tr>
+<tr><td>missing items recorded</td><td>✅ ok</td></tr>
+<tr><td>missing items recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · listed product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>listed product not listed again</td><td>✅ ok</td></tr>
+<tr><td>all received recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · COD · 1 supplier)</td><td rowspan="3" valign="top">accept restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
+<tr><td>COD recorded in liability</td><td>✅ ok</td></tr>
+<tr><td>COD recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers)</td><td>accept restock</td><td>recorded at each supplier</td><td>✅ ok</td></tr>
+<tr><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · all received · received count too high · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>⬜ untested</td></tr>
+<tr><td>correction recorded in restock timeline</td><td>⬜ untested</td></tr>
+<tr><td>ready stock decreases</td><td>⬜ untested</td></tr>
+<tr><td>stock on 1 rack decreases</td><td>⬜ untested</td></tr>
+<tr><td>missing items increase</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees correction value</td><td>⬜ untested</td></tr>
+<tr><td>correction recorded in product history</td><td>⬜ untested</td></tr>
+<tr><td>missing items recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
+<tr><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · missing items · received count too low · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>⬜ untested</td></tr>
+<tr><td>correction recorded in restock timeline</td><td>⬜ untested</td></tr>
+<tr><td>ready stock increases</td><td>⬜ untested</td></tr>
+<tr><td>stock on 1 rack increases</td><td>⬜ untested</td></tr>
+<tr><td>missing items decrease</td><td>⬜ untested</td></tr>
+<tr><td>selling team sees correction value</td><td>⬜ untested</td></tr>
+<tr><td>correction recorded in product history</td><td>⬜ untested</td></tr>
+<tr><td>missing items recorded in analytic metric</td><td>⬜ untested</td></tr>
+<tr><td>recorded at 1 supplier</td><td>⬜ untested</td></tr>
+</table>
+
+## cancel and lost
+
+The selling team ends a restock before the box arrives: it is called off, or given up as lost.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
 <tr><td rowspan="8" valign="top"><code>selling:all</code> wants to cancel a restock<br>(status: ongoing · money returned · 1 product · shipping cost · 1 warehouse · operational account)</td><td rowspan="8" valign="top">cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a></td><td>status changed from ongoing to cancelled</td><td>⬜ untested</td></tr>
 <tr><td>cancel recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>ongoing stock of 1 product decreases</td><td>⬜ untested</td></tr>
@@ -174,6 +194,31 @@ Business: [restock.md](../../business/inventory/restock.md) · rules: [guide.md]
 <tr><td>operational account balance unchanged</td><td>⬜ untested</td></tr>
 <tr><td>lost recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
 </table>
+
+## resolve
+
+What happens after a problem: missing and broken units are settled with the supplier, a lost restock with the platform.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to follow up restock problems<br>(status: accepted · missing items · broken items)</td><td rowspan="1" valign="top">list problem restock</td><td>restock listed with missing and broken count</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="1" valign="top"><code>selling:all</code> wants to follow up lost restocks<br>(status: lost)</td><td rowspan="1" valign="top">list lost restock</td><td>restock listed in lost tab</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · missing items · money refunded · operational account)</td><td rowspan="4" valign="top">resolve restock problem</td><td>solution recorded on restock</td><td>🚧 unimplemented</td></tr>
+<tr><td>solution shown in restock timeline</td><td>🚧 unimplemented</td></tr>
+<tr><td>operational account balance increases by refund</td><td>🚧 unimplemented</td></tr>
+<tr><td>refund recorded in operational account history</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · broken items · goods resent)</td><td rowspan="2" valign="top">resolve restock problem</td><td>solution recorded on restock</td><td>🚧 unimplemented</td></tr>
+<tr><td>resent goods arrive as new restock</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="2" valign="top"><code>selling:all</code> wants to record the platform's solution<br>(status: lost · money refunded · operational account)</td><td rowspan="2" valign="top">resolve lost restock</td><td>solution recorded on restock</td><td>🚧 unimplemented</td></tr>
+<tr><td>operational account balance increases by refund</td><td>🚧 unimplemented</td></tr>
+</table>
+
+> 📝 **A note from a discussion (2026-11-16), not a decision.** Missing and broken units at the door are settled with
+> the supplier, and a lost restock with the platform — by goods sent again, money back, or another way. The system
+> should record it: the restocks with missing or broken units, the lost restocks, the solution, and its money in an
+> account when there is any. Only the Lost tab exists today; nothing in the business docs asks for the rest yet, so
+> these givens record the discussion as it stood. Goods sent again are proposed as a **new restock** that names the one
+> it settles, so they are counted at the door like any other.
 
 ## Warnings
 
