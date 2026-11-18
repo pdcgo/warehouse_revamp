@@ -111,6 +111,9 @@ const (
 	// InventoryServiceDiscoverStockByIdsProcedure is the fully-qualified name of the InventoryService's
 	// DiscoverStockByIds RPC.
 	InventoryServiceDiscoverStockByIdsProcedure = "/warehouse.inventory.v1.InventoryService/DiscoverStockByIds"
+	// InventoryServiceDiscoverStockHistoryProcedure is the fully-qualified name of the
+	// InventoryService's DiscoverStockHistory RPC.
+	InventoryServiceDiscoverStockHistoryProcedure = "/warehouse.inventory.v1.InventoryService/DiscoverStockHistory"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -200,6 +203,14 @@ type InventoryServiceClient interface {
 	// call per page. The cost itself is never in the answer: another team's cost is not readable across teams; the cross
 	// price is the cost with the product's markup on top, computed here (inventory-computes-the-markup).
 	DiscoverStockByIds(context.Context, *connect.Request[v1.DiscoverStockByIdsRequest]) (*connect.Response[v1.DiscoverStockByIdsResponse], error)
+	// RIWAYAT STOK OF ANY TEAM'S PRODUCT — the discover detail's stock history (stock-history-is-everyones: *"riwayat stok
+	// boleh dibaca semua orang"*): what came in, what went out and what was left, per warehouse. OwnerStockHistory's
+	// sibling, as DiscoverStockByIds is OwnerStockByIds': the SAME rows of the OWNER's batch ledger with the same running
+	// balance, but none of the owner's money and nothing else of theirs — no price, no value, no batch, no reason, no
+	// reference, no person (the discover detail never shows another team's cost; its columns are Waktu · Transaksi · Gudang
+	// · Perubahan · Sesudahnya, the-discover-history-names-no-batch). A price correction moved no unit and is only money,
+	// so it is not a row here. Paged like the owner's ledger.
+	DiscoverStockHistory(context.Context, *connect.Request[v1.DiscoverStockHistoryRequest]) (*connect.Response[v1.DiscoverStockHistoryResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -393,6 +404,13 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		discoverStockHistory: connect.NewClient[v1.DiscoverStockHistoryRequest, v1.DiscoverStockHistoryResponse](
+			httpClient,
+			baseURL+InventoryServiceDiscoverStockHistoryProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("DiscoverStockHistory")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -424,6 +442,7 @@ type inventoryServiceClient struct {
 	batchRevalue           *connect.Client[v1.BatchRevalueRequest, v1.BatchRevalueResponse]
 	supplierGoods          *connect.Client[v1.SupplierGoodsRequest, v1.SupplierGoodsResponse]
 	discoverStockByIds     *connect.Client[v1.DiscoverStockByIdsRequest, v1.DiscoverStockByIdsResponse]
+	discoverStockHistory   *connect.Client[v1.DiscoverStockHistoryRequest, v1.DiscoverStockHistoryResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -556,6 +575,11 @@ func (c *inventoryServiceClient) DiscoverStockByIds(ctx context.Context, req *co
 	return c.discoverStockByIds.CallUnary(ctx, req)
 }
 
+// DiscoverStockHistory calls warehouse.inventory.v1.InventoryService.DiscoverStockHistory.
+func (c *inventoryServiceClient) DiscoverStockHistory(ctx context.Context, req *connect.Request[v1.DiscoverStockHistoryRequest]) (*connect.Response[v1.DiscoverStockHistoryResponse], error) {
+	return c.discoverStockHistory.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -644,6 +668,14 @@ type InventoryServiceHandler interface {
 	// call per page. The cost itself is never in the answer: another team's cost is not readable across teams; the cross
 	// price is the cost with the product's markup on top, computed here (inventory-computes-the-markup).
 	DiscoverStockByIds(context.Context, *connect.Request[v1.DiscoverStockByIdsRequest]) (*connect.Response[v1.DiscoverStockByIdsResponse], error)
+	// RIWAYAT STOK OF ANY TEAM'S PRODUCT — the discover detail's stock history (stock-history-is-everyones: *"riwayat stok
+	// boleh dibaca semua orang"*): what came in, what went out and what was left, per warehouse. OwnerStockHistory's
+	// sibling, as DiscoverStockByIds is OwnerStockByIds': the SAME rows of the OWNER's batch ledger with the same running
+	// balance, but none of the owner's money and nothing else of theirs — no price, no value, no batch, no reason, no
+	// reference, no person (the discover detail never shows another team's cost; its columns are Waktu · Transaksi · Gudang
+	// · Perubahan · Sesudahnya, the-discover-history-names-no-batch). A price correction moved no unit and is only money,
+	// so it is not a row here. Paged like the owner's ledger.
+	DiscoverStockHistory(context.Context, *connect.Request[v1.DiscoverStockHistoryRequest]) (*connect.Response[v1.DiscoverStockHistoryResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -833,6 +865,13 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceDiscoverStockHistoryHandler := connect.NewUnaryHandler(
+		InventoryServiceDiscoverStockHistoryProcedure,
+		svc.DiscoverStockHistory,
+		connect.WithSchema(inventoryServiceMethods.ByName("DiscoverStockHistory")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -887,6 +926,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceSupplierGoodsHandler.ServeHTTP(w, r)
 		case InventoryServiceDiscoverStockByIdsProcedure:
 			inventoryServiceDiscoverStockByIdsHandler.ServeHTTP(w, r)
+		case InventoryServiceDiscoverStockHistoryProcedure:
+			inventoryServiceDiscoverStockHistoryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -998,4 +1039,8 @@ func (UnimplementedInventoryServiceHandler) SupplierGoods(context.Context, *conn
 
 func (UnimplementedInventoryServiceHandler) DiscoverStockByIds(context.Context, *connect.Request[v1.DiscoverStockByIdsRequest]) (*connect.Response[v1.DiscoverStockByIdsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.DiscoverStockByIds is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) DiscoverStockHistory(context.Context, *connect.Request[v1.DiscoverStockHistoryRequest]) (*connect.Response[v1.DiscoverStockHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.DiscoverStockHistory is not implemented"))
 }

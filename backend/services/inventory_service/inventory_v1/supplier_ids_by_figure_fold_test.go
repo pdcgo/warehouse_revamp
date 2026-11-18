@@ -96,7 +96,7 @@ func tfSold(t *testing.T) sgFixture {
 		tfP4: {TeamID: sgMelati}, tfP5: {TeamID: sgMelati}, tfP6: {TeamID: sgSinar}, tfP7: {TeamID: sgMelati},
 		tfP8: {TeamID: sgMelati}, tfP9: {TeamID: sgSinar}, tfP0: {TeamID: sgMelati},
 	}
-	svc := inventory_v1.NewService(db, nil, nil, fakeSupplierService{fakeSuppliers: known}, nil, facts, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, fakeSupplierService{fakeSuppliers: known}, nil, facts, nil, nil, nil, nil)
 	f := sgFixture{svc: svc, db: db}
 
 	rak5 := newRack(t, svc, sgGudang5, "rak-tf-5")

@@ -14,6 +14,10 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 )
 
+// warehouseStockListMinQ is the shortest term the Stock screen searches, after trimming. Only the screen's search: the
+// product PICKER over the same set has no minimum (a-product-picker-needs-no-two-letters).
+const warehouseStockListMinQ = 2
+
 var errWarehouseStockListShort = errors.New("type at least 2 characters of a product's name or code, or clear the search")
 
 // WarehouseStockList is the Stock screen (the-stock-screen-lists-what-the-warehouse-has-held): every product with a
@@ -40,9 +44,9 @@ func (s *Service) WarehouseStockList(
 	page := msg.GetPage()
 	q := strings.TrimSpace(msg.GetFilter().GetQ())
 
-	// No term lists everything held here; a term is the picker's, at least 2 characters — one letter matches most of a
-	// warehouse, and the screen sends none until a second is typed.
-	if q != "" && utf8.RuneCountInString(q) < warehouseProductSearchMinQ {
+	// No term lists everything held here; a term is at least 2 characters — the screen sends none until a second is
+	// typed.
+	if q != "" && utf8.RuneCountInString(q) < warehouseStockListMinQ {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errWarehouseStockListShort)
 	}
 

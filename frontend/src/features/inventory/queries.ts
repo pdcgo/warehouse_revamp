@@ -536,14 +536,17 @@ export function useCostLayers(args: { warehouseId: bigint | undefined; productId
   });
 }
 
-// The warehouse-wide batch list (#209/#217) — every stock batch, with search / expiry / date-range
+// The warehouse-wide batch list (#209/#217) — every stock batch, with search / team / expiry / date-range
 // filters and the header stat tiles. Paginated (HARD RULE 9). The owning TEAM per row (#142) is
-// resolved client-side: the warehouse holds other teams' goods, and the owner lives on the product,
-// which is another service's data the list query cannot join.
+// resolved client-side: the warehouse holds other teams' goods, and the owner's name lives on the product,
+// which is another service's data the list query cannot join. The team FILTER is the server's
+// (the-batch-list-filters-by-team): the owner written on the batch, so the pages and the figures narrow together.
 export function useWarehouseBatches(args: {
   warehouseId: bigint | undefined;
   search: string;
   supplierId: bigint;
+  /** Whose goods — a selling team's id; 0n = every team's. */
+  ownerTeamId: bigint;
   expiry: number;
   dateField: number;
   fromUnix: bigint;
@@ -551,7 +554,7 @@ export function useWarehouseBatches(args: {
   page: number;
   pageSize: number;
 }) {
-  const { warehouseId, search, supplierId, expiry, dateField, fromUnix, toUnix, page, pageSize } = args;
+  const { warehouseId, search, supplierId, ownerTeamId, expiry, dateField, fromUnix, toUnix, page, pageSize } = args;
 
   return useQuery({
     // A page turn, a search or a filter REFINES the same list, so the previous rows stay while it refetches (RULE 10).
@@ -560,6 +563,7 @@ export function useWarehouseBatches(args: {
       batchList: "all",
       search,
       supplierId: supplierId.toString(),
+      ownerTeamId: ownerTeamId.toString(),
       expiry,
       dateField,
       fromUnix: fromUnix.toString(),
@@ -571,7 +575,7 @@ export function useWarehouseBatches(args: {
     queryFn: async () => {
       const raw = await inventoryClient.batchList({
         teamId: warehouseId!,
-        filter: { search, supplierId, expiry, dateField, fromUnix, toUnix },
+        filter: { search, supplierId, ownerTeamId, expiry, dateField, fromUnix, toUnix },
         dataRequest: batchListRowData(),
         page: { page, limit: pageSize },
       });

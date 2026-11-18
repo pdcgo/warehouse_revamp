@@ -112,6 +112,7 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [at-most-fifty-restocks-a-print](#at-most-fifty-restocks-a-print) | at most 50 restocks a print — Cetak Label's address holds the first 50 and Tambah Restok stops there; the list's ticks stop there too, each saying why |
 | [the-labels-address-probe-is-hidden](#the-labels-address-probe-is-hidden) | the address a Cetak Label story reads (`?ids=…`) is kept off the screen under review — in the DOM for the test, not shown |
 | [the-delivery-card-stacks-when-the-page-is-narrow](#the-delivery-card-stacks-when-the-page-is-narrow) | the restock warehouse page puts Kiriman below the products whenever the page area is too narrow for both | owner, as recommended | — |
+| [jumlah-barang-counts-the-pieces-ordered](#jumlah-barang-counts-the-pieces-ordered) | the status cards' *Jumlah barang* is the pieces ordered on the lines, on every status — the rows' *N pcs*, the same basis as *Nilai barang* |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -227,6 +228,8 @@ a status (Diterima)
 | the tab | bold when picked — for every screen, [a-selected-tab-is-bold](context_decision.md#a-selected-tab-is-bold) |
 | `formatCountCompact` | new in `lib/money.ts` — a count on the compact rupiah's scale (*1,2rb*), so units and value read alike |
 
+✅ **Built 2026-11-16** — the cards and Rincian are real: `RestockRequestService.RestockSellingStat` counts the team's restocks through the list's own predicate (`restockListScope`, the status cleared on a copy — the tab picks the pile) and the raising side only (`team_id`; no warehouse role), per status and in all — restocks, the pieces ordered, the different products (the total's over every status at once), Nilai barang, the freight, Ongkir COD outside Nilai transaksi — and per status × paying account. Read only while Statistik is open (`useRestockSellingStat`, enabled by it), then following every filter; a tab change reads nothing. Rincian names each account by id (`useFinancialAccountsByIds`), an archived one included, and a restock with no account named is a row of its own (*not asked — the build's default*), so the rows add up to the card. `summarySample.ts` and the `summary` / `payments` marks are gone (the page keeps `export` and `cancelReview`, now its ⚠ 1 and 2). Pinned by `restock_selling_stat_test.go` and the stories `Shut, then counted`, `Per tab`, `Follows a filter`, `Rincian per account` ([rpc.md](../../services/inventory_service/rpc.md#restocksellingstat--the-selling-lists-statistics-built-2026-11-16)).
+
 ## the-statistics-button-ends-the-tab-row
 
 > Owner, in chat (2026-10-31): *"apa ada desain lain buka tutup statistik? kurasa banyak ruang kosong"* — offered the
@@ -273,6 +276,10 @@ Restok                                                              [⬇] [+]
 | ⚠ export | `dropped`: restock has no export RPC (the order list's is `OrderExport`, a server stream ending in a file link). The click says *Ekspor restok belum tersedia.* rather than doing nothing |
 | ⚠ courier | `dropped`: `RestockRequestListFilter` has no shipment channel, so the pick is held and the rows do not move; *nothing matches* is not said for it |
 | the marks | numbered by where they sit — Ekspor 1, the courier 2, then the statistics 3 and the payments 4 |
+
+✅ **Built 2026-11-16** — the COURIER half: `RestockRequestListFilter.shipment_id` (11) narrows the list on the server (`shipment_id = ?` inside the list's one predicate, `restockListScope`), the page sends the picker's pick, the rows and the pager follow it, *nothing matches* is said for it, and its ⚠ mark is gone — the marks now read Ekspor 1, the statistics 2, the payments 3. A restock that names no courier is listed only under *Semua kurir* (no pick asks for one without). Ekspor stays `dropped`. See [the list's predicate](../../services/inventory_service/rpc.md#restockrequestlist--one-predicate-the-courier-and-each-date-its-own-column-built-2026-11-16).
+
+✅ **Built 2026-11-16** — the EKSPOR half: the button writes the list as a file — `RestockRequestService.RestockRequestExport`, a server stream over the list's own predicate (`restockListScope`) with the filter the rows were asked with (the tab, the courier and every other filter), the restocks this team raised, every page in the list's order, the screen's columns (Order ID · Resi · Pemasok · Gudang · Produk · Total · Kurir · Status · Dibuat · Dibuat oleh · Diterima · Diterima oleh — *not asked, the build's default* within [a-report-export-is-the-whole-view-as-a-file](context_decision.md#a-report-export-is-the-whole-view-as-a-file)), `.xlsx`, ending in an expiring link to a private `TABLE_EXPORT` document; its progress on the button, and the ⚠ mark and its toast gone — the marks now read the cancel check alone, ⚠ 1. Selling roles only, no warehouse role ([the-warehouse-sees-the-cod-it-paid](#the-warehouse-sees-the-cod-it-paid)). ⚠ **It removes a button a monitor saw:** while it was marked, the admin team monitoring the team saw Ekspor; an export stores a file, so its RPC is not a read and the button is now HIDDEN while monitoring, as the order list's — REQUIRED by [monitoring-keeps-what-only-reads](context_decision.md#monitoring-keeps-what-only-reads). See [rpc.md](../../services/inventory_service/rpc.md#restockrequestexport--the-selling-list-as-a-file-built-2026-11-16).
 
 ## a-restock-cancel-warns-it-will-be-checked
 
@@ -484,6 +491,29 @@ nav │ title                                            │
 | the strip | the page's not-implemented strip is now always shown — four parts: the cancel check, the note's author, the warehouse note, an edit's content |
 | backend needed | a warehouse note on the restock with its author and time; the selling note's author and time; an edit's trail row naming what changed |
 
+✅ **Built 2026-11-16** — the Riwayat's edit content: the server keeps what an edit changed, field by field
+([edits-are-in-the-same-trail](../../business/inventory/restock_decision.md#edits-are-in-the-same-trail)), and the edit's row
+draws it under itself, one line per thing — *Kopi Arabika 250g · 10 → 12 pcs · “extra stock”*, *Ditambah Teh Melati
+100g × 3 · …*, *Resi A → B* (`features/restock/RestockEditChanges.tsx`). On the warehouse's page without the price, totals,
+supplier, store, account, Order ID and shipping ([the-warehouse-reads-the-box-not-the-purchase](#the-warehouse-reads-the-box-not-the-purchase)).
+The `trailChanges` mark is gone from both detail pages; an edit written before has nothing stored and shows who and when,
+as before.
+
+✅ **Built 2026-11-16** — the selling note's own writer and time: the server keeps who last wrote `restocks.note` and when
+(inventory `00050`, `RestockRequest.note_by_user_id` / `note_at_unix` / `note_by_is_override`) — stamped by the raise, and by an
+edit or a note set only when it changes the note, never by an edit of a line. The Catatan head reads them on both restock
+pages and in the list's dialog (`SellingNoteHead`), with the *by Root team* badge for an override; the `sellingNoteBy` mark
+is gone from all three. A note written before has no writer stored: the restock's last raise or edit stands in, as before,
+and says so (*perubahan terakhir restok — penulis catatan ini tidak tercatat*, `restock-detail-note-selling-by-fallback`)
+— nothing is invented. Spec: [rpc.md](../../services/inventory_service/rpc.md#the-selling-note--its-own-writer-kept-in-any-status-built-2026-11-16).
+
+✅ **Built 2026-11-16** — the warehouse's note on the restock with its author and time: kept by the server
+([the-warehouse-writes-its-own-note](#the-warehouse-writes-its-own-note)), and read on the selling team's page and in the
+list's Catatan dialog under the warehouse's badge with who and when (`WarehouseNoteBlock`,
+`restock-detail-note-warehouse-by`), never written there; the `warehouseNote` marks (`missing`) are gone from both. When it
+may be written is still not decided — nothing refuses a status. The selling note's stand-in for an old note never reads the
+warehouse's write as the restock's last edit.
+
 ## the-list-opens-the-notes-in-a-dialog
 
 > Owner, in chat (2026-11-02): *"di listnya aku ingin ada modal menampilkan catatannya atau dialog bukan modal di aksi,
@@ -573,6 +603,8 @@ SKU-BERAS-5K +1 lainnya ┐                    SKU-BERAS-5K +1 lainnya  ──cl
 | the list's date range opening on every date ([the-restock-list-follows-the-screen-rules](#the-restock-list-follows-the-screen-rules)) | *oke* | *Semua tanggal* — no longer only my reading |
 | the cancel warning on the restock's Batalkan only ([a-restock-cancel-warns-it-will-be-checked](#a-restock-cancel-warns-it-will-be-checked)) | *benar* | the sales order's cancel is untouched |
 
+✅ **Built 2026-11-16** — Rincian › on Nilai transaksi is no longer a sample: its rows are each restock's paying account as RestockSellingStat counts them, and the cards read every date until a range is picked ([the-restock-statistics-count-transactions-under-the-tabs](#the-restock-statistics-count-transactions-under-the-tabs)).
+
 ## the-count-is-one-adjustment-column
 
 > Owner, in chat (2026-11-02): *"di produk ada datang baik rusak dan kurang kepanjangan di tabel, lebih baik jadi penyesuaian
@@ -618,6 +650,12 @@ Produk · Pemasok · Dipesan · Penyesuaian                       · Harga satua
 | on its way | saved, as before — the restock sent back whole with the note changed |
 | past its way | ⚠ `dropped`: the server closes the head of a restock once the box has arrived, the note with it, and refuses any change there; accepted, lost and cancelled take no update at all. The save is not sent — a toast says *Catatan belum tersimpan …* and the note reads as it was. Ubah carries the mark (`lateNote`) on those statuses |
 | backend needed | a note change the server takes in any status — a note-only write, or the update's arrived window and the closed statuses letting `note` through |
+
+✅ **Built 2026-11-16** — a note edited past the restock's way is kept: `RestockRequestNoteSet` takes the selling team's note
+alone in every status (arrived, accepted, lost, cancelled — and ongoing), under the restock's lock, with its writer and an
+edit's row on the Riwayat saying the note before and after. Ubah saves through it once the restock is past its way; on its
+way it still sends the restock back whole, as above. The `lateNote` mark and the *Catatan belum tersimpan* toast are gone
+from the list and the restock page. Spec: [rpc.md](../../services/inventory_service/rpc.md#the-selling-note--its-own-writer-kept-in-any-status-built-2026-11-16).
 
 ## the-timeline-names-its-people-small
 
@@ -1148,6 +1186,8 @@ NOW      [Restok masuk 3] [Produk 4] [Pcs 131] [Menunggu paling lama 4 hari] [On
 What it replaces: *"MONEY IS IN THE HEADLINE, NOT IN THE ROWS"* (owner, 2026-07-30) — the queue's value as a card. The
 warehouse now sees no restock money at all; `RestockInboundPreview.amount` is no longer read by this screen.
 
+✅ **Built 2026-11-16** — the card's figure is real: `RestockRequestService.RestockCodPaidStat` sums `warehouse_additional_cost` over the restocks going to this warehouse, accepted in the window with a charge above 0, and counts them; the screen asks for this Jakarta month (00:00 WIB on the 1st through 23:59:59 WIB today). The warehouse's own money only — never the restock's value or the selling team's freight; not narrowed by *Dari*, which restates the queue's question. `codSample.ts` and the `cod` sample mark are gone (the page keeps `arrivalCod`, now its ⚠ 1). Inventory `00051` adds the pure index `restocks_warehouse_accepted_at_idx` (a month 21.7 ms → 0.56 ms at 50 000 restocks into one warehouse). Pinned by `restock_cod_paid_stat_test.go` and the stories `Only the COD it paid` and `COD, this month only` ([rpc.md](../../services/inventory_service/rpc.md#restockcodpaidstat--the-cod-the-warehouse-paid-built-2026-11-16)).
+
 ## the-inbound-status-sits-before-its-dates
 
 > Owner, in chat (2026-11-04): *"status sebelum tanggal"*.
@@ -1238,6 +1278,8 @@ teams, under a lock, and has no Order ID rule; this is the screen half of it, wi
 
 What it replaces: `NothingIsMarkedNotImplemented` — the form carries two marks again.
 
+✅ **Built 2026-11-16** — the SERVER half: inventory `00048` adds two partial unique indexes on `restocks`, `(team_id, lower(btrim(receipt)))` and `(team_id, lower(btrim(invoice_ref_id)))`, each `WHERE status <> 'cancelled' AND btrim(...) <> ''` — each reference on its own, this team's restocks only, any status but cancelled, letter case and the spaces around it aside, an empty one holding nothing, the restock being edited never its own duplicate, an arrived one never asked (its references cannot change). Two saves of one value at the same second: one wins, the other is refused. `RestockRequestCreate` and an ongoing `RestockRequestUpdate` answer **AlreadyExists** with a `RestockReferenceInUse` detail naming each holder's number and status ([rpc.md](../../services/inventory_service/rpc.md#a-reference-in-use--the-resi-and-the-order-id-held-by-one-restock-built-2026-11-16)); the form maps it onto the same danger under the field (`refusalsOf` / `withRefusal`). The migration refuses a database where two restocks of a team already share a reference and lists them. Mark **1 · Cek Order ID** is gone; **Cek resi** stays, re-worded: a resi on ANOTHER team's restock is not caught by either half — undefined by this decision, not built. Pinned by `restock_reference_in_use_test.go`, `restock_reference_in_use_race_test.go` (raceaudit), stories `TheServersRefusalIsDangerToo` and `OnlyTheReferenceChecksAreMarked` (now one mark).
+
 ## the-cod-can-be-noted-when-the-box-arrives
 
 > Owner, in chat (2026-11-04): *"ongkir cod bisa keduanya, tiba itu untuk menandai, diterima itu final, status tidak perlu
@@ -1315,6 +1357,8 @@ photo is evidence of the unit, not a place for it. `stock_thoni` also puts a bro
 
 What it replaces: a broken row with a count and a note only.
 
+✅ Built 2026-11-16 (backlog #66): the photo is uploaded the moment it is picked, under the receiving warehouse, the label photo's way (`useReceiptUpload`, an order receipt, 15 MB), and Terima sends its document id on the line (`RestockRequestReceivedLine.broken_photo_file`); the accept keeps it on the line's broken row (`restock_problem_items.photo_file`, `00052`, a CHECK keeps it off a missing row). Still optional; Terima waits only for a photo still uploading (*foto masih diunggah · …*), and a refused upload is a toast, the picker as before. The pending mark and Terima's *not kept* words for it are gone. Pinned by `ABrokenLineTakesAPhoto`, `AcceptingKeepsTheDoorsPhotos`, `TerimaWaitsForAPhotoOnItsWay`, `ARefusedPhotoIsSaid`; Go `TestRestockRequestAccept_KeepsTheDoorPhotos`, `_WithoutPhotosIsUnchanged`, `_ASlipWithNoChargeIsNotKept`, `TestRestockProblemItems_AMissingRowHoldsNoPhoto`.
+
 ## the-detail-pages-show-the-broken-photo
 
 > Owner, in chat (2026-11-05): *"contoh di detail?"* — where the photo picked at Terima is read back.
@@ -1336,6 +1380,8 @@ warehouse          the Rusak cell          [▣] ⚠2  2   → opens it whole
 | pinned by | `TheBrokenRowShowsItsPhoto`, `OnAPhoneTheBrokenPhotoIsAThumbnail` (selling), `TheBrokenCountShowsItsPhoto` (warehouse) |
 
 What it replaces: *"not here — the selling and warehouse detail pages show no photo"* in [a-broken-product-carries-a-photo](#a-broken-product-carries-a-photo).
+
+✅ Built 2026-11-16 (backlog #66): both pages show the line's OWN photo, read through `RestockDoorPhotos` — either side of the restock (its selling team or its warehouse; a third team reads NotFound), each link signed for the warehouse that uploaded it, asked only when the restock names a photo. A line without one shows none. The sample drawing and the pending mark are gone (the drawing lives on as Storybook's fixture). Pinned by `TheBrokenRowShowsItsPhoto`, `OnAPhoneTheBrokenPhotoIsAThumbnail`, `NoKeptPhotoShowsNone` (selling), `TheBrokenCountShowsItsPhoto`, `NoKeptPhotoShowsNone` (warehouse); Go `TestRestockDoorPhotos_BothSidesOpenThem`, `_AnotherTeamIsRefused`, `_OnlyTheWarehousesOwnUploadOpens`, `_Policy`.
 
 ## a-broken-product-may-go-on-a-rack
 
@@ -1383,6 +1429,8 @@ Foto nota   [▣] nota.jpg ✕   [📷 Ganti Foto]   ⚠1 (at Terima)
 
 What it replaces: *"no photo — the courier's slip is not photographed"* in [the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives).
 
+✅ Built 2026-11-16 (backlog #66), at **Terima**: the slip is uploaded the moment it is picked, under the receiving warehouse (the label photo's way), and Terima sends its document id with the charge (`warehouse_additional_cost_file`); the accept keeps it on the restock beside the charge, only with a charge above 0 — with none it is dropped. The accept page's mark and Terima's *not kept* words for it are gone; Terima waits only for a slip still uploading (*foto nota masih diunggah*). **Tandai Tiba unchanged**: it keeps no charge yet, so its photo is still not uploaded and the dialog's one mark still covers it. Pinned by `TheCouriersSlipTakesAPhoto`, `AcceptingKeepsTheDoorsPhotos`, `AcceptingSaysWhatWasNotKept` (a slip without a charge is not sent).
+
 ## the-rest-of-thonis-restock-stays-ours
 
 > Owner, in chat (2026-11-05), on the differences still open: *"1. kita"*, *"3. belum tahu kondisi lapangan, tidak pernah
@@ -1422,6 +1470,8 @@ warehouse, Tempat       A-01 (5), B-02 (2)
 | pinned by | `TheSlipIsShownWithTheCharge` (both pages), `TheBrokenRackIsUnderThePlaces` |
 
 What it replaces: the slip and the rack shown nowhere after Terima ([the-courier-slip-has-an-optional-photo](#the-courier-slip-has-an-optional-photo), [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack)).
+
+✅ Built 2026-11-16 (backlog #66), **the slip only**: both pages show the restock's OWN slip under the charge's note, read through `RestockDoorPhotos` (either side of the restock; a third team reads NotFound); a restock without one shows none. Its sample and pending mark are gone — the selling page's marks after it and the warehouse page's rack move up. **The rack is not built**: it waits on [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack) against [a-broken-unit-is-thrown-away](../../business/inventory/context_decision.md#a-broken-unit-is-thrown-away), so it stays a sample with its `conflict: true` mark. Pinned by `TheSlipIsShownWithTheCharge` (both pages), `NoKeptPhotoShowsNone` (warehouse).
 
 ## terima-starts-from-the-charge-noted-at-tiba
 
@@ -1517,6 +1567,14 @@ Belum ada catatan dari gudang.
 | pinned by | `TheWarehouseWritesItsOwnNote` |
 
 What it replaces: the warehouse's note as a read-only, empty block on its own page.
+
+✅ **Built 2026-11-16** — the warehouse's note is kept: `RestockRequestWarehouseNoteSet` stores it on the restock with its own
+writer and time (inventory `00053`, `RestockRequest.warehouse_note` / `warehouse_note_by_user_id` / `warehouse_note_at_unix` /
+`warehouse_note_by_is_override`), written by the receiving warehouse's roles only (the selling team that raised it reads
+NotFound), and its change is an edit's row on the Riwayat (*Catatan gudang “…”*). The warehouse's Ubah saves it and reads it
+back with who and when; the `warehouseNoteKept` mark (`dropped`) is gone. FROM WHEN the warehouse may write it stays
+undecided ([the-notes-are-one-per-writer](#the-notes-are-one-per-writer)) — no status rule was picked: the page offers its
+Ubah in every status, and the server refuses none. Spec: [rpc.md](../../services/inventory_service/rpc.md#the-warehouses-note--its-own-writer-written-by-the-receiving-warehouse-built-2026-11-16).
 
 ## the-charge-is-asked-for-before-it-is-filled
 
@@ -2436,6 +2494,8 @@ per restock                                   5 restocks     50 restocks
 
 What it replaces: a page reading one call per restock with nothing on it saying so.
 
+✅ **Built 2026-11-16** — `RestockRequestService.RestockRequestByIds`: every restock on the print in ONE call (1–50 ids, at-most-fifty-restocks-a-print), the restock as the list reads it plus an accepted one's labels from the same builder `RestockRequestLabels` uses; each slice keeps its one-restock read's scope, an id outside it is absent and its row reads *Label tersebut tidak tersedia.* `labelSets.ts` is the one read that changed, as this decision said — one call, not the two it estimated, since the labels travel as the read's second slice. The interim mark `byIds` and `pages/restock-labels/pending.ts` are gone. 50 restocks: 6 queries, ~23 ms, against the old 100 calls' 700 queries, ~366 ms. Pinned by `restock_request_by_ids_test.go` (labels equal Labels' field for field) and the stories `Read in one call` and `Fifty in one call` (replacing `One-by-one read, marked`) ([rpc.md](../../services/inventory_service/rpc.md#restockrequestbyids--several-restocks-in-one-read-built-2026-11-16)).
+
 ## the-labels-stories-are-folders-by-part
 
 > Owner, in chat (2026-11-06): *"story labelnya sesuaikan seperti lainnya"*.
@@ -2547,3 +2607,13 @@ What it replaces: `?ids=503,502` printed under the page in those stories, readin
 ✅ Built 2026-11-13 — `features/restock/sideBySide.ts` `useSideBySide(floor)` measures the page's main column (`lib/useElementWidth`, before the first paint; a CSS container query is not passed through by the app's emotion) and stands *Kiriman* beside the products only when it holds the products card's narrowest (the table's 660 px + the card's padding and border = 710) + the gap + 20rem; otherwise the stacked layout, in the nav's order. One tree for both, so the sidebar toggling moves only *Kiriman*. Applied to the **selling** detail page too, which had the same fault (its table's narrowest is 779 px → floor 830; it scrolled at 1440 and 1600 with the sidebar open). Pinned by `RestockWarehouseDetail/Layout` (1440 + sidebar below, 1920 + sidebar beside, 1440 alone, the sidebar closing, phone), `Products / Fits beside the open sidebar` (1600: still beside), and `RestockSellingDetail/Layout`.
 
 ✅ Built 2026-11-15 — `useSideBySide` moved to `components/chrome/sideBySide.ts` (both restock detail pages import it from there) so the product page reuses it ([the-product-pages-side-cards-stack-when-narrow](./products_decision.md#the-product-pages-side-cards-stack-when-narrow)); behaviour unchanged, `RestockWarehouseDetail/Layout` and `RestockSellingDetail/Layout` green.
+
+---
+
+## jumlah-barang-counts-the-pieces-ordered
+
+> Owner (Heri), in chat (2026-11-16): *"A"*, as recommended — to: on the restock list's status cards, what does *Jumlah barang* (pcs) count on an accepted restock? A: the pieces ordered on its lines — the *N pcs* each row already shows, the same basis as *Nilai barang* ([all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered)); B: on Diterima the good units counted in (received − broken), ordered on every other status; C: Diterima shows both, *Dipesan* and *Masuk*, in one card.
+
+**The verdict.** *Jumlah barang* on the cards of [the-restock-statistics-count-transactions-under-the-tabs](#the-restock-statistics-count-transactions-under-the-tabs) — the Total's, each status's and a status tab's — is the pieces ordered on the restocks' lines, on every status, Diterima included: the sum of the rows' *N pcs*. ⛔ Not built — backlog #72.
+
+✅ **Built 2026-11-16** — `RestockSellingPile.unit_count` sums the lines' ordered `count` on every status, an accepted one included (never `received_count`); pinned by `TestRestockSellingStat_CountsEachStatus` (an accepted pile counted in short still reads what was ordered) and the story `Per tab` (Diterima: 45 pcs ordered, 44 counted in) ([rpc.md](../../services/inventory_service/rpc.md#restocksellingstat--the-selling-lists-statistics-built-2026-11-16)).

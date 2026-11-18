@@ -443,6 +443,8 @@ stateDiagram-v2
 > does not settle are [Q30](./context_clarify.md#question): whether *Erased* is final, the `erased<id>` name, and the
 > photo file.
 
+🔄 *(2026-11-16, re-audit)* **Built** — `UserErase` (`user_service/user_v1/user_erase.go`, `user_erase_test.go`) and *"Former user #57"* on the screens (`frontend/src/lib/users.ts` `formerUserId`), as the 2026-10-06 note above says; the *⚠ Not built* spec header above is history.
+
 ## only-root-and-the-administrator-suspend
 
 > `context.md` §Suspend Users 1–4 *(owner, 2026-10-02)*: *"no user can be deleted in our system. we just do suspend."* ·
@@ -539,6 +541,8 @@ flowchart LR
 | `tools/san` | a command to add a Root and to remove one. 🔄 *(2026-10-06, built)* `san user root add` / `remove`, through `user_v1`'s `GrantRoot` / `RevokeRoot` — in-process, no RPC — under the account's row lock, logged with actor `san` |
 | suspend | already refuses user 1 only, by id. With several Roots it must refuse by role ([only-root-and-the-administrator-suspend](#only-root-and-the-administrator-suspend)) |
 | the last Root | ✅ confirmed (Q20c): removing the last Root is refused, so the system is never left with nobody who can do anything. 🔄 *(2026-10-06, built)* counted under a lock on every Root's row — interleaved: a second removal waits, then counts one fewer |
+
+🔄 *(2026-11-16, re-audit)* **Built** — `san user root add` / `remove` (`tools/san/user_root.go`) through `GrantRoot` / `RevokeRoot` (`user_service/user_v1/root_grants.go`; the last Root refused, `TestRevokeRoot_NeverTheLast`, `root_grants_race_test.go`), and suspend refuses by role, not by user 1's id (`checkSuspend`, `user_v1/member_rules.go` — [only-root-and-the-administrator-suspend](#only-root-and-the-administrator-suspend)); the *⚠ Not built* spec header above is history.
 
 ## root-grants-the-administrator
 

@@ -281,6 +281,8 @@ sequenceDiagram
 | in the same commit | `CLAUDE.md` §Rules that are easy to get wrong, [docs/faq/contract.md](../../faq/contract.md#where-do-i-declare-who-may-call-an-rpc) and [docs/faq/workflow.md](../../faq/workflow.md#why-does-san-remote-have-its-own-token-instead-of-a-normal-login) — *server streams are authorized on their request, client and bidi streams are refused* — and the comment at [tools/san/remote/auth.go:34](../../../tools/san/remote/auth.go#L34) |
 | ✅ state | **built 2026-09-29** (19c9a95) — a server stream's token is checked from its headers before the handler runs, and its one request through `Receive`, before the handler body; client and bidi streams stay refused. Was: not built |
 
+🔄 *(2026-11-16, re-audit)* **Built** — as the *✅ state* row above says (19c9a95): `WrapStreamingHandler` (`user_service/access_interceptors/interceptor.go`) authorizes a server stream's one request in `Receive` and refuses client and bidi streams (`interceptor_test.go`: `TestServerStreamIsAuthorizedOnItsRequest`, `TestServerStreamRefusesANonMemberBeforeTheHandler`, `TestClientAndBidiStreamsAreRefused`). The index row's *Not built yet* is history.
+
 ## an-upload-is-never-reverted
 
 > Chat *(owner, 2026-09-28)* — *"for q4, no, revert cost is hard"*, to

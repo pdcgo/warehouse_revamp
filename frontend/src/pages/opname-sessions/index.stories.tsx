@@ -159,7 +159,9 @@ export const PlanOneProduct: Story = {
     await expect(option).toHaveTextContent("Toko Melati");
     await waitFor(() => expect(within(dialog).getAllByRole("option")).toHaveLength(1));
     await expect(within(dialog).queryByTestId("product-select-option-SL-03-ANG-039")).toBeNull();
-    await userEvent.click(option);
+    // Read again: the picker opens on its first page (a-product-picker-needs-no-two-letters), and the option found there
+    // is redrawn when the typed answer lands — a click on the old node goes nowhere.
+    await userEvent.click(within(dialog).getByTestId("product-select-option-SKU-BERAS-5K"));
 
     await waitFor(() => expect(within(dialog).getByTestId("opname-new-session-submit")).toBeEnabled());
     await userEvent.click(within(dialog).getByTestId("opname-new-session-submit"));

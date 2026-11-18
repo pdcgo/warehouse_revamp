@@ -63,7 +63,7 @@ func TestPerf_BatchList_ExpiringSoon(t *testing.T) {
 		}
 	}
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(1), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(1), nil, nil, nil, nil)
 
 	soonFilter := &inventoryv1.BatchListFilter{Expiry: inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON}
 

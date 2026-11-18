@@ -1860,6 +1860,8 @@ point 22. ⛔ Not built. Left of *does NOT settle*: the undo of a failed order c
 
 ✅ **Built 2026-11-03** (verified in code 2026-11-05) — the transfer half settled above: `PostTransferOut` shares the take's `LockedRacks.Free`, `WarehouseTransferCancel` goes through `ReversePlacementLogs`' `RefuseCounted`, and B's put-away is refused on a counted rack (`PutOnPlacements`); test `count_lock_test.go` `TestCountLock_ATransferAndItsCancelWaitForTheCount`.
 
+🔄 *(2026-11-16, re-audit)* **Built** — the undo of a failed order create, left *still open* and *⛔ Not built* above, was settled by [a-cancel-still-meets-the-count-first](../order/context_decision.md#a-cancel-still-meets-the-count-first) (it waits for the count) and is built: selling's `compensateTake` (`selling_service/selling_v1/order_take_compensation.go`, called from `order_place.go`) releases the take by its key and always publishes `InventoryTxCancel`; its listener (`inventory_service/inventory_v1/inventory_tx_cancel_listener.go`) answers a counted rack with an error, so the broker redelivers until the count ends (`TestInventoryTxCancel_ACountLockIsAnErrorUntilTheCountEnds`); the *still open* / *not built* lines above are history.
+
 ---
 
 ## an-adjust-found-waits-for-the-owner-or-admin

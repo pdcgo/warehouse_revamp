@@ -223,6 +223,7 @@ A test pins the order (`TestMigrationOrderPinsTheDependencies`).
 | `not inside a warehouse_revamp checkout: no go.mod beside backend/services …` | Run from outside the repo |
 | `a goose command is required (up, down, status, create, ...)` | `san migrate` with no goose verb |
 | `create needs a name: migrate create <name> --service <svc>` | `create` with no migration name |
+| `restocks of one team already share a reference (team 89 resi 'asdasd': restocks 5 accepted, 14 accepted) — a resi or an Order ID is held by one restock that is not cancelled (a-reference-in-use-stops-the-restock-form): change all but one of each on this (local) database, then migrate again` | inventory_service `00048`'s guard ([a-reference-in-use-stops-the-restock-form](../technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form)): two restocks of one team, neither cancelled, already hold one resi or one Order ID (letter case and the spaces around it aside), so its unique indexes cannot be made. Nothing created, the version not recorded. Change all but one of each listed restock's reference on that (local) database by hand — which one keeps it is the owner's call — then migrate again |
 
 ---
 

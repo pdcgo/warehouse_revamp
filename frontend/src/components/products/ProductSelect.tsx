@@ -4,8 +4,6 @@ import { Package } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { type ProductSearchScope, type SearchedProduct, useProductSearch } from "../../features/products/queries";
 import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { PRODUCT_PICKER_PENDING } from "../../features/products/pickerPending";
 import { useDebounced } from "../../lib/useDebounced";
 
 // What a picked product contributes to an order line — a SNAPSHOT (#67): the opaque product id plus
@@ -61,7 +59,7 @@ export interface ProductSelectProps {
 // satu"*, a-search-select-reopens-whole). The picked label the machine writes into the field used to be sent as the
 // search, so the list opened again held the one product picked. A catalogue cannot be loaded whole, so "everything" is
 // its first page — and the picked product stays on the list, so its label never goes blank.
-export const description = "Searchable product picker (Chakra Combobox, server-side). Opened with nothing typed it lists the first page; typing searches it from one letter, and only what is typed (⚠ a warehouse's search still needs two, marked in the panel) — opened again after a pick it shows the list, not the one picked. Each option shows its picture (the cover, or the package placeholder). Emits the picked product's id + product code + name snapshot, and `null` when the × empties it (a caller holding `value` clears it, so the × goes). `scope`: \"team\" (default, this team's catalogue), \"all\" (cross-team discovery, #110 — selling roles only) or \"warehouse\" (only what this warehouse holds or has held, each with its owner — a-warehouse-picks-only-what-it-has-held).";
+export const description = "Searchable product picker (Chakra Combobox, server-side). Opened with nothing typed it lists the first page; typing searches it from one letter, and only what is typed — a warehouse's too — opened again after a pick it shows the list, not the one picked. Each option shows its picture (the cover, or the package placeholder). Emits the picked product's id + product code + name snapshot, and `null` when the × empties it (a caller holding `value` clears it, so the × goes). `scope`: \"team\" (default, this team's catalogue), \"all\" (cross-team discovery, #110 — selling roles only) or \"warehouse\" (only what this warehouse holds or has held, each with its owner — a-warehouse-picks-only-what-it-has-held).";
 
 export function ProductSelect({
   teamId,
@@ -89,15 +87,13 @@ export function ProductSelect({
   const results = useProductSearch({ teamId, q, scope });
 
   // NO TWO-LETTER MINIMUM (owner: *"harusnya tidak perlu minimal 2 huruf"*, a-product-picker-needs-no-two-letters):
-  // nothing typed is the first page, one letter is a search. ⚠ A warehouse's search still refuses fewer than two on its
-  // server, so there the panel says to type two and carries its mark (pickerPending.ts) — it does not ask.
-  const short = scope === "warehouse" && q.length < 2;
+  // nothing typed is the first page, one letter is a search — in every scope, a warehouse's held set too.
 
   // The picked product first when the page does not hold it.
   useEffect(() => {
-    const found = !short && teamId > 0n ? (results.data ?? []) : [];
+    const found = teamId > 0n ? (results.data ?? []) : [];
     set(picked && !found.some((p) => p.id === picked.id) ? [picked, ...found] : found);
-  }, [short, teamId, results.data, picked, set]);
+  }, [teamId, results.data, picked, set]);
 
   return (
     <Combobox.Root
@@ -136,16 +132,7 @@ export function ProductSelect({
       <Portal disabled={!portalled}>
         <Combobox.Positioner>
           <Combobox.Content>
-            <Combobox.Empty>
-              {short ? (
-                <HStack gap="1.5" data-testid="product-select-type-two">
-                  <Span>{t("products.picker.typeTwo")}</Span>
-                  <NotImplemented list={PRODUCT_PICKER_PENDING} id="warehouseOpensEmpty" />
-                </HStack>
-              ) : (
-                t("products.picker.none")
-              )}
-            </Combobox.Empty>
+            <Combobox.Empty data-testid="product-select-none">{t("products.picker.none")}</Combobox.Empty>
             {collection.items.map((p) => (
               <Combobox.Item item={p} key={p.id.toString()} data-testid={`product-select-option-${p.productCode}`}>
                 {/* ITS PICTURE (owner: *"select product ada gambarnya"*, a-product-option-shows-its-picture) — the cover as

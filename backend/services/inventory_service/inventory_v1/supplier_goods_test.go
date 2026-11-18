@@ -58,7 +58,7 @@ func sgStocked(t *testing.T) sgFixture {
 		},
 	}
 	facts := fakeFacts{sgKaos: {TeamID: sgMelati}, sgCelana: {TeamID: sgSinar}, sgTopi: {TeamID: sgMelati}}
-	svc := inventory_v1.NewService(db, nil, nil, suppliers, nil, facts, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, suppliers, nil, facts, nil, nil, nil, nil)
 
 	rak5 := newRack(t, svc, sgGudang5, "rak-5")
 	rak6 := newRack(t, svc, sgGudang6, "rak-6")

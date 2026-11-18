@@ -183,7 +183,9 @@ export const FoundPicksOnlyWhatWasHeldHere: Story = {
     await expect(within(dialog).getByTestId("product-select-option-SL-03-ANG-002")).toBeVisible();
     await waitFor(() => expect(within(dialog).getAllByRole("option")).toHaveLength(2));
     await expect(within(dialog).queryByTestId("product-select-option-SL-03-ANG-006")).toBeNull();
-    await userEvent.click(option);
+    // Read again: the picker opens on its first page (a-product-picker-needs-no-two-letters), and the option found there
+    // is redrawn when the typed answer lands — a click on the old node goes nowhere.
+    await userEvent.click(within(dialog).getByTestId("product-select-option-SL-03-ANG-004"));
 
     await userEvent.click(within(dialog).getByTestId("opname-found-submit"));
     await expect(await screen.findByText("Tepung Terigu Serbaguna 1kg — Karton added to A-01-1")).toBeInTheDocument();

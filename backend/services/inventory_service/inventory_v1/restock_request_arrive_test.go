@@ -1,6 +1,8 @@
 package inventory_v1_test
 
 import (
+	"strconv"
+	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -40,13 +42,17 @@ func arrLines() []*inventoryv1.RestockRequestItem {
 	}
 }
 
-// arrRaise raises a restock as the buyer, the way the form does: a paying account and two lines.
+// arrReceipts numbers each raised restock's resi: one resi is one parcel, and another restock of the team never holds
+// it (a-reference-in-use-stops-the-restock-form) — a test raising several needs several.
+var arrReceipts atomic.Uint64
+
+// arrRaise raises a restock as the buyer, the way the form does: a paying account, a resi of its own and two lines.
 func arrRaise(t *testing.T, svc *inventory_v1.Service) *inventoryv1.RestockRequest {
 	t.Helper()
 
 	created, err := svc.RestockRequestCreate(ctxUser(arrBuyer), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: arrSellingTeam, WarehouseId: arrWarehouse, FinanceAccountId: arrAccount,
-		Receipt: "SCP123", ShipmentCost: 20000,
+		Receipt: "SCP123-" + strconv.FormatUint(arrReceipts.Add(1), 10), ShipmentCost: 20000,
 		Items: arrLines(),
 	}))
 	if err != nil {
@@ -224,7 +230,7 @@ func TestRestockRequestArrive_OpensTheArrivedWindow(t *testing.T) {
 	edit := func(mutate func(*inventoryv1.RestockRequestUpdateRequest)) error {
 		req := &inventoryv1.RestockRequestUpdateRequest{
 			TeamId: arrSellingTeam, RequestId: raised.GetId(),
-			WarehouseId: arrWarehouse, FinanceAccountId: arrAccount, Receipt: "SCP123", ShipmentCost: 20000,
+			WarehouseId: arrWarehouse, FinanceAccountId: arrAccount, Receipt: raised.GetReceipt(), ShipmentCost: 20000,
 			Items: arrLines(),
 		}
 		mutate(req)

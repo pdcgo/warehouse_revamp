@@ -445,6 +445,8 @@ A `ByIds` read, per the service guideline.
 
 ✅ Built 2026-11-07 — the **All** tab, first and the default on the pair detail: every movement of the pair in the ledger's order with *Balance after* on every row; the four cuts unchanged ([development_state](../../development_state/balance/context.md)). The phone layout is a Storybook prototype only (#32), not built.
 
+🔄 *(2026-11-16, re-audit)* **Built** — the phone layout the line above calls *not built* went live 2026-11-07 under [the-team-balance-phone-layout-is-accepted](#the-team-balance-phone-layout-is-accepted): `pages/liability-list/index.tsx` and `pages/liability-detail/index.tsx` read `useIsMobile()`, with their `Mobile*` stories, and `features/liability/phonePrototype.tsx` is deleted; the *not built* words above are history.
+
 ---
 
 ## the-team-balance-phone-layout-is-accepted

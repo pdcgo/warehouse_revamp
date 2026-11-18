@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, CloseButton, Dialog, Flex, HStack, Icon, Portal, Separator, Span, Stack, Table, Text } from "@chakra-ui/react";
 import { CircleCheck } from "lucide-react";
@@ -18,7 +17,6 @@ import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSu
 import { PhotoView } from "../../../features/restock/PhotoView";
 import { BoxStats } from "../../../features/restock/BoxStats";
 import { LineNoteIcon } from "../../../features/restock/LineNoteIcon";
-import { brokenPhotoSample } from "../../../features/restock/photoSamples";
 import { useProductsByIds } from "../../../features/products/queries";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { formatRupiahNumber } from "../../../lib/money";
@@ -35,8 +33,8 @@ export interface ProductsPanelProps {
   request: RestockRequest;
   /** The READING team — whose catalogue the covers are looked up in. */
   teamId: bigint | undefined;
-  /** The page's mark on the broken photo — a sample until the received line carries one. */
-  brokenPhotoMark?: ReactNode;
+  /** The broken units' photos the warehouse kept at Terima — each line's link, by product id (RestockDoorPhotos). */
+  brokenPhotos: ReadonlyMap<string, string>;
 }
 
 // PRODUCTS — WHAT WAS ORDERED, WHERE IT WAS BOUGHT, AND WHAT THE BOX HELD.
@@ -63,9 +61,9 @@ export interface ProductsPanelProps {
 // lines — the line's note is an icon beside the product, its words in the tooltip; a problem's note shares the line of
 // what it was worth — and on a phone each line is a block (a-phone-reads-each-line-as-a-block).
 //
-// THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — in the Penyesuaian dialog under the broken row, and as a
-// thumbnail in a phone's block. ⚠ A SAMPLE (photoSamples.ts): nothing stores one yet.
-export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPanelProps) {
+// THE BROKEN UNITS' PHOTO (the-detail-pages-show-the-broken-photo) — in the Penyesuaian dialog under the broken row, and
+// as a thumbnail in a phone's block: the one the warehouse kept at Terima. A line without one shows none.
+export function ProductsPanel({ request, teamId, brokenPhotos }: ProductsPanelProps) {
   const { t } = useTranslation();
 
   const counted = request.status === RestockRequestStatus.ACCEPTED;
@@ -82,6 +80,9 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
 
   const isMobile = useIsMobile();
   const coverOf = (item: RestockRequestItem) => covers.data?.get(item.productId.toString());
+  // A line's broken photo — only where it has broken units and kept one.
+  const photoOf = (item: RestockRequestItem) =>
+    brokenQuantity(item) > 0n ? (brokenPhotos.get(item.productId.toString()) ?? "") : "";
 
   // The page's Produk SECTION draws the card and the title (the-restock-detail-is-the-product-pages-shape) — never a card
   // inside a card.
@@ -98,7 +99,7 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
                   item={item}
                   counted={counted}
                   cover={coverOf(item)}
-                  photoMark={brokenPhotoMark}
+                  photo={photoOf(item)}
                   correction={correctionOf(item)}
                   supplier={
                     <LineSupplier
@@ -170,7 +171,7 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
                       </Table.Cell>
                       <Table.Cell textAlign="end">{item.count.toString()}</Table.Cell>
                       <Table.Cell>
-                        <AdjustmentCell item={item} counted={counted} photoMark={brokenPhotoMark} correction={correctionOf(item)} />
+                        <AdjustmentCell item={item} counted={counted} photo={photoOf(item)} correction={correctionOf(item)} />
                       </Table.Cell>
                       <Table.Cell textAlign="end">{formatRupiahNumber(unitPrice(item))}</Table.Cell>
                       <Table.Cell textAlign="end">{formatRupiahNumber(lineTotal(item))}</Table.Cell>
@@ -197,12 +198,13 @@ export function ProductsPanel({ request, teamId, brokenPhotoMark }: ProductsPane
 function AdjustmentCell({
   item,
   counted,
-  photoMark,
+  photo,
   correction,
 }: {
   item: RestockRequestItem;
   counted: boolean;
-  photoMark?: ReactNode;
+  /** The broken units' photo link — "" when none was kept. */
+  photo: string;
   /** The line's received-count correction: its own *Kurang (koreksi)* badge, its money in the dialog. */
   correction?: LineCorrectionView;
 }) {
@@ -264,7 +266,7 @@ function AdjustmentCell({
           )}
         </Button>
       </Dialog.Trigger>
-      <AdjustmentDialog item={item} photoMark={photoMark} correction={correction} />
+      <AdjustmentDialog item={item} photo={photo} correction={correction} />
     </Dialog.Root>
   );
 }
@@ -273,16 +275,16 @@ function AdjustmentCell({
 // The problems' worth is the LANDED price (the-problem-price-is-filled-by-the-system), not the line's unit price.
 function AdjustmentDialog({
   item,
-  photoMark,
+  photo,
   correction,
 }: {
   item: RestockRequestItem;
-  photoMark?: ReactNode;
+  /** The broken units' photo link — "" when none was kept. */
+  photo: string;
   correction?: LineCorrectionView;
 }) {
   const { t } = useTranslation();
   const pid = item.productId;
-  const photo = brokenPhotoSample(item);
 
   const row = (label: string, value: string, testId: string, strong = false) => (
     <Flex justify="space-between" gap="3" fontWeight={strong ? "bold" : undefined}>
@@ -328,7 +330,6 @@ function AdjustmentDialog({
               title={t("restock.detail.brokenPhoto.title")}
               alt={t("restock.detail.brokenPhoto.alt", { name: item.name })}
               subject={item.name}
-              mark={photoMark}
               testId={`restock-detail-broken-photo-${pid}`}
             />
           </Flex>
@@ -386,14 +387,15 @@ function LineBlock({
   counted,
   cover,
   supplier,
-  photoMark,
+  photo,
   correction,
 }: {
   item: RestockRequestItem;
   counted: boolean;
   cover?: { defaultImageUrl?: string; defaultImageThumbnailUrl?: string };
   supplier: React.ReactNode;
-  photoMark?: ReactNode;
+  /** The broken units' photo link — "" when none was kept. */
+  photo: string;
   /** The line's received-count correction. */
   correction?: LineCorrectionView;
 }) {
@@ -401,7 +403,6 @@ function LineBlock({
   const broken = brokenQuantity(item);
   const missing = missingQuantity(item);
   const pid = item.productId;
-  const photo = brokenPhotoSample(item);
 
   const problem = (type: RestockProblemType, count: bigint, label: string, testId: string) => {
     const corrected = type === RestockProblemType.MISSING ? correction : undefined;
@@ -473,7 +474,6 @@ function LineBlock({
           title={t("restock.detail.brokenPhoto.title")}
           alt={t("restock.detail.brokenPhoto.alt", { name: item.name })}
           subject={item.name}
-          mark={photoMark}
           testId={`restock-detail-broken-photo-${pid}`}
         />
       )}

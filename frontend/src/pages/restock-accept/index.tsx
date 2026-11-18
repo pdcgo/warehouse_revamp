@@ -51,6 +51,8 @@ import { emptyLine, lineState, receivedLine } from "./draft";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { RESTOCK_ACCEPT_PENDING } from "./pending";
+import { keptPhoto, photoUploading } from "../../features/restock/doorPhoto";
+import type { DoorPhoto } from "../../features/restock/doorPhoto";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -86,10 +88,12 @@ function lineBlocker(st: LineState): string {
 //   more than ordered                → refused: the selling team edits the line first (accept-refuses-more-than-the-line-says)
 //   the courier's charge             → its own debt, outside the total, inside the unit price
 //                                       (the-couriers-charge-stays-out-of-total)
-//   a photo of the broken units      → optional, one per line — ⚠ picked, NOT KEPT yet (a-broken-product-carries-a-photo)
+//   a photo of the broken units      → optional, one per line, kept on its broken row (a-broken-product-carries-a-photo)
 //   where the broken units go        → thrown away, or onto a rack that is then required — ⚠ the rack is NOT KEPT yet
 //                                       (a-broken-product-may-go-on-a-rack)
-//   a photo of the courier's slip    → optional — ⚠ NOT KEPT yet (the-courier-slip-has-an-optional-photo)
+//   a photo of the courier's slip    → optional, kept with the charge (the-courier-slip-has-an-optional-photo)
+//   both photos are uploaded under this warehouse the moment they are picked (PhotoPick); Terima waits only while one is
+//   still on its way, and sends their documents with the count.
 export function RestockAcceptPage() {
   const { current } = useTeam();
   const { requestId: rawId } = useParams();
@@ -108,7 +112,9 @@ export function RestockAcceptPage() {
   // THE READY LINE TAKES YOU TO WHAT IT NAMES (owner: *"usulan 1 oke"*, the-ready-line-jumps-to-what-it-names) — a line,
   // or the courier's charge; it scrolls there, clear of the header, and the card blinks (a-nav-jump-blinks-where-it-lands).
   function jumpToMissing(id: string) {
-    const target = id.startsWith("line-") ? id : "charge";
+    // A photo still uploading is named by where it sits: its line's (`photo-line-…`), or the charge's.
+    const named = id.replace(/^photo-/, "");
+    const target = named.startsWith("line-") ? named : "charge";
     const el = pageRef.current?.querySelector<HTMLElement>(`[data-jump="${target}"]`);
     if (el) jumpTo(el);
   }
@@ -128,8 +134,8 @@ export function RestockAcceptPage() {
   const [chargeAsked, setChargeAsked] = useState(false);
   const [charge, setCharge] = useState("");
   const [chargeNote, setChargeNote] = useState("");
-  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — picked, not kept.
-  const [chargePhoto, setChargePhoto] = useState<File | null>(null);
+  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — uploaded as it is picked, kept with the charge.
+  const [chargePhoto, setChargePhoto] = useState<DoorPhoto | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -203,6 +209,13 @@ export function RestockAcceptPage() {
       .map((l) => ({ id: `line-${l.item.productId}`, label: t(lineBlocker(l.st), { name: l.item.name }) })),
     chargeAmountMissing && { id: "chargeAmount", label: t("restock.accept.missing.chargeAmount") },
     chargeNoteMissing && { id: "chargeNote", label: t("restock.accept.missing.chargeNote") },
+    // A PHOTO STILL ON ITS WAY — Terima would send the count without it. Only a photo that will be sent: the broken
+    // units' on a line with broken units, the slip with a charge.
+    ...lines
+      .filter((l) => l.st.broken > 0n && photoUploading(l.draft.brokenPhoto))
+      .map((l) => ({ id: `photo-line-${l.item.productId}`, label: t("restock.accept.missing.photo", { name: l.item.name }) })),
+    courierCharge > 0 &&
+      photoUploading(chargePhoto) && { id: "photo-charge", label: t("restock.accept.missing.slipPhoto") },
   ].filter((m): m is ReadyLineItem => Boolean(m));
   const ready = lines.length > 0 && missing.length === 0;
   const busy = accept.isPending;
@@ -227,17 +240,16 @@ export function RestockAcceptPage() {
         lines: lines.map((l) => receivedLine(l.item, l.draft, l.st)),
         warehouseAdditionalCost: courierCharge,
         warehouseAdditionalCostNote: courierCharge > 0 ? chargeNote.trim() : "",
+        // The slip goes with the charge, or not at all (the-courier-slip-has-an-optional-photo).
+        warehouseAdditionalCostFile: courierCharge > 0 ? keptPhoto(chargePhoto) : "",
       });
 
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
-      // WHAT WAS GIVEN AND NOT KEPT — the slip's photo, a broken photo, a rack for broken units — said in one toast, not
-      // swallowed (restock-accept/pending.ts).
+      // WHAT WAS GIVEN AND NOT KEPT — a rack for broken units — said in one toast, not swallowed (restock-accept/pending.ts).
       const broken = lines.filter((l) => l.st.broken > 0n);
-      const notKept = [
-        chargeAsked && chargePhoto && t("restock.accept.notKept.courierPhoto"),
-        broken.some((l) => l.draft.brokenPhoto) && t("restock.accept.notKept.brokenPhoto"),
-        broken.some((l) => l.draft.brokenTo === "rack") && t("restock.accept.notKept.brokenRack"),
-      ].filter(Boolean);
+      const notKept = [broken.some((l) => l.draft.brokenTo === "rack") && t("restock.accept.notKept.brokenRack")].filter(
+        Boolean,
+      );
       if (notKept.length > 0) {
         toaster.create({ type: "warning", title: t("restock.accept.toast.notKept", { parts: notKept.join(", ") }) });
       }
@@ -368,7 +380,6 @@ export function RestockAcceptPage() {
             thumbnailUrl={product?.defaultImageThumbnailUrl}
             // Real placements only — a pile with no placement is not somewhere to put things.
             recommendations={places.filter((p) => p.productId === item.productId && p.rackId !== 0n)}
-            brokenPhotoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenPhoto" />}
             brokenRackMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenRack" />}
             layout={layout}
             update={updater(item.id)}
@@ -398,9 +409,9 @@ export function RestockAcceptPage() {
             onNote={setChargeNote}
             photo={chargePhoto}
             onPhoto={setChargePhoto}
+            photoUploadTo={teamId ?? 0n}
             team={sellingTeam}
             mark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="codFromArrival" />}
-            photoMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="courierPhoto" />}
           />
         </Card.Body>
       </Card.Root>
@@ -480,7 +491,7 @@ export function RestockAcceptPage() {
         </Text>
       )}
 
-      {/* What is not kept yet — the broken photo, the broken rack, the charge from Tiba, the slip (pending.ts). */}
+      {/* What is not kept yet — the broken rack, the charge from Tiba (pending.ts). */}
       <NotImplementedSummary list={RESTOCK_ACCEPT_PENDING} />
 
       {/* THE BOX ON THE LEFT, THE INFO ON THE RIGHT (owner: *"produk semua di kiri, info lain di kanan"*,

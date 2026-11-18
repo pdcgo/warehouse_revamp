@@ -14,7 +14,10 @@ import { API_URL } from "./env";
 //     — and the rack holds the 2 (a-return-mints-one-batch-per-batch-the-order-took), the order names its return
 //     transaction, and the warehouse's note on the order names the missing and the broken unit with the crew's note
 //     (a-short-return-is-missing-at-the-door, a-broken-returned-unit-is-thrown-away-at-the-door,
-//     a-return-door-row-carries-an-optional-note).
+//     a-return-door-row-carries-an-optional-note);
+//   · the batch the return minted names its order — *Return · order #<id>* on the return warehouse's Batch list and on
+//     the batch's page — and opens that order's warehouse page, /warehouse-orders/<id>, where the return was accepted
+//     (a-returns-batch-opens-its-order, docs/technical/frontend/batches_decision.md; backlog #62).
 //
 // A SELLING TEAM AND TWO WAREHOUSES OF ITS OWN, named to sort after orders.spec.ts and statement.spec.ts (they assert an
 // empty start on the one shared database); the restock is paid from this team's own account, so root's team — whose
@@ -270,4 +273,50 @@ test("Note: the order's warehouse note names the missing and the broken unit, wi
   await expect(notes).toContainText("Missing from the returned parcel: 1 ×");
   await expect(notes).toContainText(`Broken, thrown away: 1 ×`);
   await expect(notes).toContainText(`(${NOTE})`);
+});
+
+test("Batch: the batch the return minted reads Return · order #<id> on the Batch list and its page, and opens the order's warehouse page", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.returnWarehouse);
+
+  // The return warehouse holds ONE batch of the product — the one the return minted for its 2 sound units — and the batch
+  // read names the order whose return made it.
+  type Batch = { origin?: string; returnOrderId?: string };
+  type Listed = { ids: string[]; items: { batch?: { mapData: Record<string, Batch> } }[] };
+  const listed = await ok<Listed>(page, "inventory.v1.InventoryService/BatchList", {
+    teamId: state.returnWarehouse,
+    filter: { productId: state.product },
+    page: { page: 1, limit: 5 },
+  });
+  expect(listed.ids).toHaveLength(1);
+  const batch = String(listed.ids[0]);
+  const read = listed.items.find((i) => i.batch)?.batch?.mapData[batch];
+  expect(read?.origin).toBe("BATCH_ORIGIN_RETURN");
+  expect(read?.returnOrderId).toBe(state.order);
+
+  // THE LIST: the row's source names the order; a click opens the order's warehouse page — not the batch the row opens.
+  await page.goto("/inventories/batches");
+  const source = page.getByTestId(`batches-source-${batch}`);
+  await expect(source).toHaveText(`Return · order #${state.order}`);
+  await expect(source).toHaveAttribute("data-order-id", state.order);
+  await source.click();
+  await expect(page).toHaveURL(new RegExp(`/warehouse-orders/${state.order}$`));
+  await expect(page.getByRole("heading", { name: `Order #${state.order}` })).toBeVisible();
+  await expect(page.getByTestId("pick-order-error")).toHaveCount(0);
+
+  // The browser's Back returns to the list it was opened from (the page's own Back button is not this slice's).
+  await page.goBack();
+  await expect(page).toHaveURL(/\/inventories\/batches(\?.*)?$/);
+  await expect(page.getByTestId(`batches-source-${batch}`)).toBeVisible();
+
+  // THE BATCH'S PAGE: its Dari reads the same, and opens the same order.
+  await page.goto(`/inventories/batches/${batch}`);
+  const from = page.getByTestId("batch-detail-return");
+  await expect(from).toHaveText(`Return · order #${state.order}`);
+  await expect(from).toHaveAttribute("data-order-id", state.order);
+  await from.click();
+  await expect(page).toHaveURL(new RegExp(`/warehouse-orders/${state.order}$`));
+  await expect(page.getByRole("heading", { name: `Order #${state.order}` })).toBeVisible();
 });

@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-11-13: `RestockReceivedCountCorrect` and `WarehouseTransferReceivedCountCorrect` (Koreksi Jumlah Terima) — see [Koreksi Jumlah Terima](#koreksi-jumlah-terima-2026-11-13) · 2026-11-12: every stock writer's report rows (the four inventory metrics) — see [The stock reports are every stock transaction's last locks](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12) · 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
+| Last swept | 2026-11-16: `RestockRequestCreate` / `RestockRequestUpdate` — a resi or an Order ID held by one restock (inventory 00048) — see [A reference in use](#a-reference-in-use-2026-11-16) · 2026-11-13: `RestockReceivedCountCorrect` and `WarehouseTransferReceivedCountCorrect` (Koreksi Jumlah Terima) — see [Koreksi Jumlah Terima](#koreksi-jumlah-terima-2026-11-13) · 2026-11-12: every stock writer's report rows (the four inventory metrics) — see [The stock reports are every stock transaction's last locks](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12) · 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
 
 ---
 
@@ -368,4 +368,52 @@ read takes no lock, and the upsert sits where it always sat in each writer.
 
 ```sh
 go test -tags raceaudit -p 1 -count=1 -run 'TestInterleave_WarehouseProductLink' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## A reference in use (2026-11-16)
+
+[a-reference-in-use-stops-the-restock-form](../../../../docs/technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form):
+a resi or an Order ID is held by ONE restock of the team that is not cancelled — inventory 00048's two partial unique
+indexes on `restocks`. No new `FOR UPDATE` and no change of order; the one new wait is the index's own:
+
+| Writer | Where it can wait now | On what |
+| --- | --- | --- |
+| `RestockRequestCreate` | its `INSERT INTO restocks`, the transaction's first write — holding nothing yet | a twin's uncommitted restock with the same (team, value); released on its commit (then a unique violation) or rollback |
+| `RestockRequestUpdate` (ongoing) | its `UPDATE restocks` of the row it holds `FOR UPDATE` | another save's uncommitted new value — or another EDIT's old value, while that edit is changing it |
+
+Two edits TRADING references (A takes B's resi while B takes A's) each hold their own row and wait on the other's old
+value: a cycle Postgres breaks by aborting one (40P01). In either serial order both are refused — the other restock still
+holds the value — so the aborted one is read as the same refusal (`isReferenceClash`): both answer AlreadyExists naming
+the other, neither changes. The holder is named by an index probe AFTER the rollback, on no lock.
+
+| Claim | Proof |
+| --- | --- |
+| Two creates of one Order ID (typed differently) — exactly one restock, the other AlreadyExists naming it | `TestRace_RestockReference_TwoCreatesOfOneOrderID` — 20 rounds. Mutation-checked: with the indexes dropped, red in round 0 |
+| The same for one resi, and for an ongoing edit racing a create | `TestRace_RestockReference_TwoCreatesOfOneResi`, `TestRace_RestockReference_AnEditAndACreateOfOneResi` — 20 rounds each |
+| Two edits trading resis — both refused, each naming the other, neither restock changed | `TestRace_RestockReference_TwoEditsTradingResis` — 20 rounds (the deadlock itself is rare at this speed: the trade usually meets a committed old value and is refused at once); the 40P01 classification is pinned by `TestIsReferenceClash` |
+| The writers' own races are unchanged | `TestRace_RestockRequestCreate_*`, `TestRace_RestockRequestUpdate_*` — re-run 2026-11-16 |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockReference|TestRace_RestockRequest' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## The selling note, in any status (2026-11-16)
+
+[the-note-is-edited-in-any-status](../../../../docs/technical/frontend/restock_decision.md#the-note-is-edited-in-any-status):
+`RestockRequestNoteSet` writes the selling team's note alone, in every status, with its own writer
+([the-notes-are-one-per-writer](../../../../docs/technical/frontend/restock_decision.md#the-notes-are-one-per-writer), inventory
+00050). No new lock and no new order — it takes the one every restock write takes:
+
+| Writer | Locks, in order |
+| --- | --- |
+| `RestockRequestNoteSet` | **`restocks` — the ONE row `FOR UPDATE`** (Update's, Arrive's, Accept's, MarkLost's, Cancel's) → `restocks` UPDATE (note, its writer, `updated_at`) → `restock_logs` INSERT → `restock_log_changes` INSERT → *(read: `restock_items` by restock)*. Nothing to write when the note is unchanged |
+| `RestockRequestUpdate` | unchanged — it now also writes the note's writer in the same `restocks` UPDATE, when the note changed |
+
+| Claim | Proof |
+| --- | --- |
+| Eight writers of one note at once: all land, one after another; the note changes chain and the stored writer is the last change's | `TestRace_RestockRequestNoteSet_ManyWritersOneStory` — ×5 rounds. Mutation-checked: without `FOR UPDATE`, red in round 0 (seven changes start from the same note) |
+| A note set racing the edit form (which sends the note it read): whichever lands second, note, writer and trail agree | `TestRace_RestockRequestNoteSet_RacingTheEditFormKeepsOneStory` — 12 rounds, both orders hit |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockRequestNoteSet' -v ./backend/services/inventory_service/inventory_v1/
 ```

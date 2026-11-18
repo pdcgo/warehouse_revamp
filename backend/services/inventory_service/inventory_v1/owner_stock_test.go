@@ -509,7 +509,7 @@ func TestOwnerStockByIds_InTransitIsOneStatementPerPage(t *testing.T) {
 	f.create(t, wtLine(wtKaosPolos, 2))
 
 	db, probe := san_perf.Wrap(f.db)
-	svc := inventory_v1.NewService(db, nil, nil, nil, f.sent.send, wtFacts(), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, f.sent.send, wtFacts(), nil, nil, nil, nil)
 
 	page := []uint64{wtKaosHitam, wtKaosPolos}
 	for id := uint64(10_000); len(page) < 200; id++ {

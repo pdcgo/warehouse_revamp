@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -91,7 +92,7 @@ func wpsStocked(t *testing.T) *inventory_v1.Service {
 	t.Helper()
 
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, wpsFacts(), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, wpsFacts(), nil, nil, nil, nil)
 
 	rakA := newRack(t, svc, otWarehouse, "rak-a")
 	otRestock(t, svc, otMelati, otKaosHitam, 8, 80000, []*inventoryv1.RestockPlacement{{PlacementId: rakA, Quantity: 8}})
@@ -255,33 +256,91 @@ func TestWarehouseProductSearch_Pages(t *testing.T) {
 	}
 }
 
-// A warehouse that has held nothing answers nothing — and a term of one character is refused, spaces or not.
-func TestWarehouseProductSearch_NothingHeldAndTooShort(t *testing.T) {
+// A warehouse that has held nothing answers nothing — whatever is typed, and with nothing typed.
+func TestWarehouseProductSearch_NothingHeld(t *testing.T) {
 	svc := wpsStocked(t)
 
 	const empty uint64 = 77
 
-	items, info := wpsSearch(t, svc, empty, "kaos", 1, 20)
-	if len(items) != 0 || info.GetTotalItems() != 0 {
-		t.Fatalf("an empty warehouse found %v (total %d), want nothing", wpsIDs(items), info.GetTotalItems())
+	for _, q := range []string{"kaos", "k", ""} {
+		items, info := wpsSearch(t, svc, empty, q, 1, 20)
+		if len(items) != 0 || info.GetTotalItems() != 0 {
+			t.Fatalf("an empty warehouse found %v for %q (total %d), want nothing", wpsIDs(items), q, info.GetTotalItems())
+		}
+	}
+}
+
+// NO TWO-LETTER MINIMUM (a-product-picker-needs-no-two-letters). Opened with nothing typed, the picker lists its first
+// page — everything this warehouse has held, by name, and only that (Gudang 6's Kaos Kuning and the never-stocked Kaos
+// Ungu stay out); spaces alone are nothing typed. ONE letter is a search: "p" narrows to Kaos Polos, padded or not.
+func TestWarehouseProductSearch_NoTwoLetterMinimum(t *testing.T) {
+	svc := wpsStocked(t)
+
+	for _, q := range []string{"", "   "} {
+		items, info := wpsSearch(t, svc, otWarehouse, q, 1, 20)
+		if !slices.Equal(wpsIDs(items), []uint64{otKaosHitam, otKaosPolos}) {
+			t.Fatalf("%q in Gudang 5 = %v, want its whole held set by name — Kaos Hitam, Kaos Polos", q, wpsIDs(items))
+		}
+
+		if info.GetTotalItems() != 2 {
+			t.Fatalf("%q total = %d, want 2", q, info.GetTotalItems())
+		}
 	}
 
-	_, err := svc.WarehouseProductSearch(ctxAs(41, otWarehouse, role_basev1.Role_ROLE_WAREHOUSE_STAFF), connect.NewRequest(
-		&inventoryv1.WarehouseProductSearchRequest{
+	// The first page is a page: one at a time walks the held set in order.
+	first, info := wpsSearch(t, svc, otWarehouse, "", 1, 1)
+	if !slices.Equal(wpsIDs(first), []uint64{otKaosHitam}) || info.GetTotalPage() != 2 {
+		t.Fatalf("first page of 1 = %v over %d pages, want Kaos Hitam of 2", wpsIDs(first), info.GetTotalPage())
+	}
+
+	for _, q := range []string{"p", " p "} {
+		items, info := wpsSearch(t, svc, otWarehouse, q, 1, 20)
+		if !slices.Equal(wpsIDs(items), []uint64{otKaosPolos}) || info.GetTotalItems() != 1 {
+			t.Fatalf("%q = %v (total %d), want Kaos Polos alone — one letter searches", q, wpsIDs(items), info.GetTotalItems())
+		}
+	}
+
+	// One letter matching both, by name.
+	both, _ := wpsSearch(t, svc, otWarehouse, "k", 1, 20)
+	if !slices.Equal(wpsIDs(both), []uint64{otKaosHitam, otKaosPolos}) {
+		t.Fatalf("k = %v, want Kaos Hitam, Kaos Polos", wpsIDs(both))
+	}
+
+	// Gudang 6, opened empty, lists its own and nothing of Gudang 5's.
+	other, _ := wpsSearch(t, svc, wpsOther, "", 1, 20)
+	if !slices.Equal(wpsIDs(other), []uint64{wpsKaosKunin}) {
+		t.Fatalf("Gudang 6 opened empty = %v, want only Kaos Kuning", wpsIDs(other))
+	}
+}
+
+// The CONTRACT agrees: the request's validation (the interceptor's, run here directly) takes an empty term and one
+// letter, and still refuses a term past 100 characters.
+func TestWarehouseProductSearch_ContractTakesAnyShortTerm(t *testing.T) {
+	request := func(q string) *inventoryv1.WarehouseProductSearchRequest {
+		return &inventoryv1.WarehouseProductSearchRequest{
 			WarehouseId: otWarehouse,
-			Filter:      &inventoryv1.WarehouseProductSearchFilter{Q: " k "},
-			Page:        &commonv1.CommonPagination{Page: 1, Limit: 20},
-		},
-	))
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("\" k \" = %v, want InvalidArgument", err)
+			Filter:      &inventoryv1.WarehouseProductSearchFilter{Q: q},
+			Page:        &commonv1.CommonPagination{Page: 1, Limit: 10},
+		}
+	}
+
+	for _, q := range []string{"", "k"} {
+		err := protovalidate.GlobalValidator.Validate(request(q))
+		if err != nil {
+			t.Fatalf("%q refused by the contract: %v", q, err)
+		}
+	}
+
+	err := protovalidate.GlobalValidator.Validate(request(strings.Repeat("k", 101)))
+	if err == nil {
+		t.Fatal("a 101-character term passed the contract, want it refused")
 	}
 }
 
 // With no product_service to ask, the search fails loudly rather than reading as "held none of it".
 func TestWarehouseProductSearch_NoProductServiceIsUnavailable(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	rak := newRack(t, svc, otWarehouse, "rak-a")
 	otRestock(t, svc, otMelati, otKaosHitam, 1, 10000, []*inventoryv1.RestockPlacement{{PlacementId: rak, Quantity: 1}})

@@ -32,7 +32,7 @@ func TestPerf_StockHistory_ABatchsRacks(t *testing.T) {
 		t.Fatalf("restock transactions: %v", err)
 	}
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(1), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(1), nil, nil, nil, nil)
 	rakA := newRack(t, svc, otWarehouse, "perf-a")
 	rakB := newRack(t, svc, otWarehouse, "perf-b")
 	perfStock(t, db, otWarehouse, 1, 1, 5000, []uint64{rakA})

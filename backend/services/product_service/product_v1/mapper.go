@@ -7,13 +7,7 @@ import (
 )
 
 func toProto(p *product_service_models.Product) *productv1.Product {
-	images := make([]*productv1.ProductImage, 0, len(p.Images))
-	for i := range p.Images {
-		images = append(images, &productv1.ProductImage{
-			Url:          p.Images[i].URL,
-			ThumbnailUrl: p.Images[i].ThumbnailURL,
-		})
-	}
+	images := toImagesProto(p.Images)
 
 	return &productv1.Product{
 		Id:                       p.ID,
@@ -30,6 +24,20 @@ func toProto(p *product_service_models.Product) *productv1.Product {
 		CrossLocked:              p.CrossLocked,
 		ReservedStock:            p.ReservedStock,
 	}
+}
+
+// toImagesProto is a gallery's rows as the wire carries them, in the order given — ProductDetail's and the by-ids IMAGES
+// slice's, so the two read one product's pictures alike.
+func toImagesProto(rows []product_service_models.ProductImage) []*productv1.ProductImage {
+	images := make([]*productv1.ProductImage, 0, len(rows))
+	for i := range rows {
+		images = append(images, &productv1.ProductImage{
+			Url:          rows[i].URL,
+			ThumbnailUrl: rows[i].ThumbnailURL,
+		})
+	}
+
+	return images
 }
 
 // modelImages turns request images into rows, preserving their order as Position (0 = cover).
@@ -162,9 +170,12 @@ func productListItems(
 
 // productByIdsMap builds the by-ids response: a map keyed by product id, each value holding the
 // requested slices for that one product (defaulting to the PRODUCT row slice).
+// images is each product's gallery, read only when the IMAGES slice is asked (galleriesOf); a product with none maps to an
+// empty list.
 func productByIdsMap(
 	products []product_service_models.Product,
 	types []productv1.ProductByIdsDataType,
+	images map[uint64][]product_service_models.ProductImage,
 ) map[uint64]*productv1.ProductByIdsResponseList {
 	if len(types) == 0 {
 		types = []productv1.ProductByIdsDataType{productv1.ProductByIdsDataType_PRODUCT_BY_IDS_DATA_TYPE_PRODUCT}
@@ -184,6 +195,14 @@ func productByIdsMap(
 			case productv1.ProductByIdsDataType_PRODUCT_BY_IDS_DATA_TYPE_PRODUCT:
 				slices = append(slices, &productv1.ProductByIdsResponseItem{
 					D: &productv1.ProductByIdsResponseItem_Product{Product: productRowMap(one)},
+				})
+			case productv1.ProductByIdsDataType_PRODUCT_BY_IDS_DATA_TYPE_IMAGES:
+				slices = append(slices, &productv1.ProductByIdsResponseItem{
+					D: &productv1.ProductByIdsResponseItem_Images{Images: &productv1.ProductImagesMapItem{
+						MapData: map[uint64]*productv1.ProductImages{
+							products[i].ID: {Items: toImagesProto(images[products[i].ID])},
+						},
+					}},
 				})
 			}
 		}

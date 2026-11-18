@@ -1439,6 +1439,8 @@ read them as [features/products/DiscoverBadges.tsx](../../../frontend/src/featur
 Lain* row (*"the markup, and the lock's reading"*), its *Info* row (*"Pemilik"*, *"the cover"*), and its verdict that
 Produk Turunan *"is not carried over"*. Read them as this entry says.
 
+✅ **Built 2026-11-16** — the pictures are the WHOLE gallery: `ProductByIds`' IMAGES slice (the pictures alone, in order, the cover first; refused to a warehouse role, as Discover is), read beside the record (`useDiscoverGallery`), the cover standing in while it loads or if it fails. *Hanya sampul* and the `gallery` mark are gone; thumbnails carry `discover-detail-thumb-<i>`. Stories `AnotherTeamsWholeGallery`, `ARefusedGalleryKeepsTheCover`.
+
 ## each-warehouse-says-ready-and-its-price
 
 > Owner, in chat (2026-10-30), after the column was explained: *"bisa diambil kurasa tidak perlu, di rak berarti ready
@@ -1549,6 +1551,8 @@ warehouse. The discover detail's Riwayat Stok tab shows it for another team's pr
 **What it replaces** (HARD RULE 11): [the-discover-detail-has-the-warehouse-zone](#the-discover-detail-has-the-warehouse-zone)'s
 *Riwayat Stok* row — *"another team's says Riwayat stok hanya bisa dibaca tim pemilik produk ini., ⚠ history (missing)"*
 — is stale: it is shown, as a sample.
+
+✅ **Built 2026-11-16** — another team's Riwayat Stok is REAL: `InventoryService.DiscoverStockHistory`, the owner's batch ledger read for any selling team (Discover's policy) — units, building, time and the owner's running balance only, never a price, value, batch, reason, reference or person; a price correction (no unit moved) is not a row. `DiscoverHistorySection` draws it with the owner's pager; `historySample.ts`, `SampleHistorySection` and the `history` mark are gone. Stories `AnotherTeamsHistoryIsShown`, `AnotherTeamsHistoryFollowsThePicker`, `YourOwnHistoryIsTheOwnersLedger`.
 
 ## the-lock-is-the-title-badge
 

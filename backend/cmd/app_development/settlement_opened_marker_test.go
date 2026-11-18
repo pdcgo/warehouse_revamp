@@ -48,7 +48,7 @@ func newOpenedFixture(t *testing.T, team, warehouse, product uint64) *openedFixt
 		return nil
 	}
 
-	inventory := inventory_v1.NewService(f.db, nil, nil, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(f.db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	f.orders = selling_v1.NewService(f.db, NewStockPicker(inventory), capture, nil, nil, runsEveryShop{}, nil, nil, nil, nil, nil)
 	f.settlement = settlement_v1.NewService(f.db, nil, nil, nil, NewSettlementOpenedMarker(f.orders), nil, nil)
 

@@ -4,6 +4,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { besideTheOpenSidebar } from "../../../../.storybook/pageStory";
 import { kirimanPlacement } from "../../../features/restock/storyLayout";
 import { At503, WAREHOUSE_DETAIL_META, loaded } from "./kit";
+import { withoutDoorPhotosForStory } from "../../../../.storybook/restockStub";
+import { doorPhotoScenario } from "../../../../.storybook/doorPhotoScenario";
 
 // RESTOCK WAREHOUSE DETAIL — the lines as counted — missing, broken with its photo, where the good units went.
 // The page's stories are grouped by the part of the screen they are about
@@ -17,8 +19,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — 503's rice: a thumbnail beside the broken count that opens
-// the photo whole. A SAMPLE, the page's second mark (after the charge at Tiba); the tea, nothing broken, has none.
+// THE BROKEN UNITS' PHOTO (the-detail-pages-show-the-broken-photo) — 503's rice: a thumbnail beside the broken count that
+// opens the photo whole — the one this warehouse kept at Terima, its own link (RestockDoorPhotos), no mark. The tea,
+// nothing broken, has none.
 export const TheBrokenCountShowsItsPhoto: Story = {
   name: "Broken photo",
   render: () => <At503 />,
@@ -26,13 +29,37 @@ export const TheBrokenCountShowsItsPhoto: Story = {
     const canvas = await loaded(canvasElement);
 
     const cell = canvas.getByTestId("restock-detail-broken-74");
-    await expect(within(cell).getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("2");
+    const open = await within(cell).findByTestId("restock-detail-broken-photo-74-open", {}, { timeout: 4000 });
+    await expect(within(cell).queryByTestId("not-implemented-brokenPhoto")).toBeNull();
+    await expect(within(open).getByRole("img")).toHaveAttribute(
+      "src",
+      expect.stringMatching(/^data:image\/svg\+xml.*#doc-restock-503-broken-74$/),
+    );
     await expect(canvas.queryByTestId("restock-detail-broken-photo-72")).toBeNull();
+    await expect(doorPhotoScenario.calls).toContainEqual({ teamId: 11n, requestId: 503n });
 
-    await userEvent.click(within(cell).getByTestId("restock-detail-broken-photo-74-open"));
+    await userEvent.click(open);
     const whole = await screen.findByTestId("restock-detail-broken-photo-74-dialog");
     await waitFor(() => expect(whole).toBeVisible());
     await expect(within(whole).getByRole("img")).toBeVisible();
+  },
+};
+
+// A RESTOCK THAT KEPT NO PHOTO SHOWS NONE — and asks for none: the broken count stands alone in its cell, the charge has
+// no slip under it, and the page never calls RestockDoorPhotos.
+export const NoKeptPhotoShowsNone: Story = {
+  name: "No photo kept",
+  render: () => <At503 />,
+  beforeEach: () => withoutDoorPhotosForStory(503n),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const cell = canvas.getByTestId("restock-detail-broken-74");
+    await expect(cell).toHaveTextContent("2");
+    await expect(within(cell).queryByTestId("restock-detail-broken-photo-74")).toBeNull();
+    await expect(await canvas.findByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 5.000");
+    await expect(canvas.queryByTestId("restock-detail-courier-photo")).toBeNull();
+    await expect(doorPhotoScenario.calls).toEqual([]);
   },
 };
 
@@ -82,7 +109,7 @@ export const TheStatisticsWaitForTheCount: Story = {
 };
 
 // WHERE THE BROKEN UNITS WENT (owner: *"tampilkan"*, the-detail-pages-show-the-slip-and-the-broken-rack) — under the good
-// units' places, when they were put on a rack. A SAMPLE, the page's third mark — and against a business decision, which the
+// units' places, when they were put on a rack. A SAMPLE, the page's second mark — and against a business decision, which the
 // strip says (a-conflict-with-a-business-decision-is-said-in-its-mark). The tea, nothing broken, has none.
 export const TheBrokenRackIsUnderThePlaces: Story = {
   name: "Broken rack",
@@ -93,7 +120,7 @@ export const TheBrokenRackIsUnderThePlaces: Story = {
     const rack = await canvas.findByTestId("restock-detail-broken-rack-74", {}, { timeout: 4000 });
 
     await expect(rack).toHaveTextContent(/^Broken 2 → \S+/);
-    await expect(within(rack).getByTestId("not-implemented-brokenRack")).toHaveTextContent("3");
+    await expect(within(rack).getByTestId("not-implemented-brokenRack")).toHaveTextContent("2");
     await expect(canvas.queryByTestId("restock-detail-broken-rack-72")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("not-implemented-toggle"));

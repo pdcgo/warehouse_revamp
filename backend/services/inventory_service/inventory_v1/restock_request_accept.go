@@ -40,6 +40,13 @@ func (s *Service) RestockRequestAccept(
 		return nil, restockErr(errRestockCostNoteMissing)
 	}
 
+	// THE COURIER'S SLIP, optional (the-courier-slip-has-an-optional-photo) — kept beside the charge it belongs to, so
+	// only with a charge: with none there is no slip, and a photo sent anyway is dropped, never kept on its own.
+	courierSlip := ""
+	if courierCharge > 0 {
+		courierSlip = req.Msg.GetWarehouseAdditionalCostFile()
+	}
+
 	var (
 		rr        inventory_service_models.Restock
 		acceptLog inventory_service_models.RestockLog
@@ -77,6 +84,8 @@ func (s *Service) RestockRequestAccept(
 			broken      int64
 			brokenNote  string
 			missingNote string
+			// The broken units' photo, a document id; "" = none (a-broken-product-carries-a-photo).
+			brokenPhoto string
 			placements  []placement
 			// The expiry read off the box, its Jakarta midnight; nil = none (the-warehouse-types-the-expiry-at-the-accept).
 			expiredAt *time.Time
@@ -97,6 +106,7 @@ func (s *Service) RestockRequestAccept(
 				broken:      line.GetBrokenCount(),
 				brokenNote:  line.GetBrokenNote(),
 				missingNote: line.GetMissingNote(),
+				brokenPhoto: line.GetBrokenPhotoFile(),
 			}
 
 			if cl.broken > cl.received {
@@ -202,10 +212,12 @@ func (s *Service) RestockRequestAccept(
 
 			// THE PROBLEM ROWS, written before stock moves: broken as typed, missing worked out, each with the warehouse's
 			// optional note (a-broken-reason-is-optional) and the landed price — the same as a good unit's
-			// (all-qty-is-every-unit-ordered). Keyed by restock and product, one row per kind.
+			// (all-qty-is-every-unit-ordered). Keyed by restock and product, one row per kind. The broken row also keeps
+			// the units' photo (a-broken-product-carries-a-photo); a line with no broken unit has no such row, so a photo
+			// sent for it is stored nowhere, and a missing row never has one.
 			landed := inventory_mutations.LandedPrice(item.Total, item.Count, freight, allQty)
 
-			problem := func(kind string, count int64, note string) inventory_service_models.RestockProblemItem {
+			problem := func(kind string, count int64, note, photo string) inventory_service_models.RestockProblemItem {
 				return inventory_service_models.RestockProblemItem{
 					RestockID:         rr.ID,
 					ProductID:         item.ProductID,
@@ -215,15 +227,16 @@ func (s *Service) RestockRequestAccept(
 					PriceUnit:         landed,
 					Total:             landed * float64(count),
 					Note:              note,
+					PhotoFile:         photo,
 				}
 			}
 
 			if line.broken > 0 {
-				problems = append(problems, problem(restockProblemBroken, line.broken, line.brokenNote))
+				problems = append(problems, problem(restockProblemBroken, line.broken, line.brokenNote, line.brokenPhoto))
 			}
 
 			if missing := item.Count - line.received; missing > 0 {
-				problems = append(problems, problem(restockProblemMissing, missing, line.missingNote))
+				problems = append(problems, problem(restockProblemMissing, missing, line.missingNote, ""))
 			}
 
 			// Where the good units went, for the answer — the ledger's rack rows below are the record.
@@ -332,9 +345,11 @@ func (s *Service) RestockRequestAccept(
 		rr.AcceptedByUserID = actor
 		rr.AcceptedAt = &acceptedAt
 
-		// The courier's charge: ONE per restock, on the restock, with its note (the-courier-is-paid-once-per-restock).
+		// The courier's charge: ONE per restock, on the restock, with its note (the-courier-is-paid-once-per-restock)
+		// and the photo of its slip (the-courier-slip-has-an-optional-photo) — on the row this transaction already holds.
 		rr.WarehouseAdditionalCost = courierCharge
 		rr.WarehouseAdditionalCostNote = courierNote
+		rr.WarehouseAdditionalCostFile = courierSlip
 
 		updates := map[string]any{
 			"status":                         restockStatusAccepted,
@@ -342,6 +357,7 @@ func (s *Service) RestockRequestAccept(
 			"accepted_at":                    acceptedAt,
 			"warehouse_additional_cost":      courierCharge,
 			"warehouse_additional_cost_note": courierNote,
+			"warehouse_additional_cost_file": courierSlip,
 			"transaction_id":                 rr.TransactionID,
 			"updated_at":                     acceptedAt,
 		}

@@ -38,8 +38,23 @@ export interface DiscoverStockCall {
 export const productDiscoverCalls: ProductDiscoverCall[] = [];
 export const discoverStockCalls: DiscoverStockCall[] = [];
 
+// THE DISCOVER DETAIL'S OTHER TWO READS of another team's product — its stock history (DiscoverStockHistory, the lens and
+// page asked; stock-history-is-everyones) and its gallery (ProductByIds' IMAGES slice, the-discover-detail-shows-no-
+// markup). Reset with the list's.
+export interface DiscoverHistoryCall {
+  teamId: bigint;
+  productId: bigint;
+  warehouseId: bigint;
+  page: number;
+}
+
+export const discoverHistoryCalls: DiscoverHistoryCall[] = [];
+export const productImagesCalls: { teamId: bigint; ids: bigint[] }[] = [];
+
 export function resetProductListCalls() {
   productListCalls.length = 0;
   productDiscoverCalls.length = 0;
   discoverStockCalls.length = 0;
+  discoverHistoryCalls.length = 0;
+  productImagesCalls.length = 0;
 }

@@ -219,6 +219,19 @@ service InventoryService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // RIWAYAT STOK OF ANY TEAM'S PRODUCT — the discover detail's stock history (stock-history-is-everyones: *"riwayat stok
+  // boleh dibaca semua orang"*): what came in, what went out and what was left, per warehouse. OwnerStockHistory's
+  // sibling, as DiscoverStockByIds is OwnerStockByIds': the SAME rows of the OWNER's batch ledger with the same running
+  // balance, but none of the owner's money and nothing else of theirs — no price, no value, no batch, no reason, no
+  // reference, no person (the discover detail never shows another team's cost; its columns are Waktu · Transaksi · Gudang
+  // · Perubahan · Sesudahnya, the-discover-history-names-no-batch). A price correction moved no unit and is only money,
+  // so it is not a row here. Paged like the owner's ledger.
+  rpc DiscoverStockHistory(DiscoverStockHistoryRequest) returns (DiscoverStockHistoryResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -891,12 +904,10 @@ message WarehouseProductSearchRequest {
 }
 
 message WarehouseProductSearchFilter {
-  // A name or a product code, or part of one — matched anywhere, case-insensitive. At least 2 characters after the server
-  // trims it: a picker searches only what is typed, and one letter matches most of a warehouse.
-  string q = 1 [(buf.validate.field).string = {
-    min_len: 2
-    max_len: 100
-  }];
+  // A name or a product code, or part of one — matched anywhere, case-insensitive, after the server trims it. No
+  // minimum (a-product-picker-needs-no-two-letters): EMPTY lists the first page of every product held here — the picker
+  // opened with nothing typed — and ONE character is a search.
+  string q = 1 [(buf.validate.field).string.max_len = 100];
 }
 
 enum WarehouseProductSearchDataType {
@@ -1124,6 +1135,13 @@ message StockBatch {
   // batch, so this names where to go for the product, not which rack holds this batch. Empty for a batch with nothing
   // left (an emptied batch has nothing to find) and on every other read.
   repeated string rack_codes = 24;
+
+  // BatchList and BatchDetail ONLY — for a batch a RETURN minted (origin RETURN), the order whose return it is: the order
+  // that names the batch's `return` transaction (`orders.return_transaction_id`, selling_service's), resolved in ONE read
+  // per page (a-returns-batch-opens-its-order). The screen opens that order's warehouse page, `/warehouse-orders/:id`,
+  // where the return was accepted. 0 for every other origin, for a return no order names yet (its stock went in and the
+  // order's move to return_completed has not landed), and on every other read.
+  uint64 return_order_id = 25;
 }
 
 // Where a batch's units originated (#218) — a restock delivery, or a return.
@@ -1167,6 +1185,10 @@ message BatchListFilter {
   BatchDateField date_field = 5 [(buf.validate.field).enum.defined_only = true];
   int64 from_unix = 6;
   int64 to_unix = 7;
+  // WHOSE GOODS (the-batch-list-filters-by-team): only the batches this selling team owns — the owner written on the
+  // batch at mint (a-batch-carries-its-owner, `batches.team_id`). 0 = every team's. Narrows the rows, the count and the
+  // header figures alike; it reveals nothing the list did not already show, since each row already names its owner.
+  uint64 owner_team_id = 8;
 }
 
 enum BatchListDataType {
@@ -2059,4 +2081,71 @@ message DiscoverStockByIdsResponse {
   // One entry per product ASKED ABOUT, in the order asked, including the ones with nothing (zeros, cross_known false):
   // a gap would read the same as a partial answer. An id that exists nowhere answers zeros too.
   repeated DiscoverStockItem items = 1;
+}
+
+// Read: whoever may browse Discover (DiscoverStockByIds' policy) — a warehouse role is refused. The history is every
+// team's (stock-history-is-everyones), so team_id only authorizes — the rows are the product's OWNER's whoever asks.
+message DiscoverStockHistoryRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  DiscoverStockHistoryFilter filter = 2 [(buf.validate.field).required = true];
+  repeated DiscoverStockHistoryDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message DiscoverStockHistoryFilter {
+  // Any team's product. One nobody owns (unknown) reads no rows.
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // 0 = every warehouse.
+  uint64 warehouse_id = 2;
+}
+
+enum DiscoverStockHistoryDataType {
+  DISCOVER_STOCK_HISTORY_DATA_TYPE_UNSPECIFIED = 0;
+  DISCOVER_STOCK_HISTORY_DATA_TYPE_GENERAL = 1;
+  DISCOVER_STOCK_HISTORY_DATA_TYPE_MOVEMENT = 2;
+}
+
+// DiscoverMovement is one line of a product's stock history as ANY team reads it — OwnerMovement's units and nothing
+// else: never a price, a value, a batch, a reason, a reference or a person (each is the owner's).
+message DiscoverMovement {
+  // The ledger row — the same id OwnerStockHistory answers for it.
+  uint64 id = 1;
+  uint64 product_id = 2;
+  uint64 warehouse_id = 3;
+  MovementKind kind = 4;
+  int64 delta = 5; // signed: + in, - out
+  // The owner's on-hand of this product in this warehouse after the movement — OwnerMovement.balance, the same running
+  // sum over the owner's whole ledger.
+  int64 balance = 6;
+  int64 created_at_unix = 7;
+}
+
+message DiscoverMovementMapItem {
+  map<uint64, DiscoverMovement> map_data = 1;
+}
+
+message DiscoverStockHistoryResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    DiscoverMovementMapItem movement = 2;
+  }
+}
+
+message DiscoverStockHistoryResponse {
+  repeated DiscoverStockHistoryResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }

@@ -8,7 +8,7 @@ import { rpcError } from "../../api/clients";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
-import { useRestockRequest } from "../../features/restock/queries";
+import { useRestockDoorPhotos, useRestockRequest } from "../../features/restock/queries";
 import { shortfall } from "../../features/restock/summary";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
@@ -93,6 +93,11 @@ export function RestockSellingDetailPage() {
 
   // TeamDetail is unscoped, so the destination warehouse's NAME is readable here. "Warehouse #3" is not a place.
   const warehouse = useTeamDetail({ teamId: warehouseId, enabled: warehouseId > 0n });
+
+  // THE DOOR'S PHOTOS — the broken units' and the courier's slip, as the warehouse kept them at Terima
+  // (the-detail-pages-show-the-broken-photo, the-detail-pages-show-the-slip-and-the-broken-rack). One read, only when
+  // the restock kept one.
+  const doorPhotos = useRestockDoorPhotos({ teamId, request });
 
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
   // The courier's charge is a section only once accepted — the warehouse enters it at the door.
@@ -236,39 +241,25 @@ export function RestockSellingDetailPage() {
       <CourierChargeFacts
         request={request}
         owed={t("restock.detail.courierChargeOwedBySelling", { warehouse: warehouseName })}
-        slipMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="courierPhoto" />}
+        slipUrl={doorPhotos.slip}
       />,
       "restock-detail-courier-charge-card",
     );
   const products = section(
     "products",
-    <ProductsPanel
-      request={request}
-      teamId={teamId}
-      brokenPhotoMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="brokenPhoto" />}
-    />,
+    <ProductsPanel request={request} teamId={teamId} brokenPhotos={doorPhotos.broken} />,
     "restock-detail-products",
   );
-  // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, real; the warehouse's, not stored yet.
-  const note = section(
-    "note",
-    <RestockNotes
-      request={request}
-      teamId={teamId}
-      sellingByMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="sellingNoteBy" />}
-      lateMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="lateNote" />}
-      warehouseMark={<NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="warehouseNote" />}
-    />,
-    "restock-detail-note-section",
-  );
+  // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, written here; the receiving warehouse's,
+  // read here with who and when (the-warehouse-writes-its-own-note).
+  const note = section("note", <RestockNotes request={request} teamId={teamId} />, "restock-detail-note-section");
   // The timeline draws no card of its own inside its section (never a card inside a card); it keeps `restock-detail-timeline`.
-  // THE SYSTEM'S VOICE (the-notes-are-one-per-writer) — every move, who and when. ⚠ An edit's row should say what
-  // changed; the server writes only that something did.
+  // THE SYSTEM'S VOICE (the-notes-are-one-per-writer) — every move, who and when, and under an edit what it changed
+  // (edits-are-in-the-same-trail): the purchase's too — this is the team that bought it.
   const timeline = section(
     "timeline",
-    <RestockTimeline request={request} bare />,
+    <RestockTimeline request={request} bare teamId={teamId} purchase />,
     "restock-detail-timeline-section",
-    <NotImplemented list={RESTOCK_SELLING_DETAIL_PENDING} id="trailChanges" />,
   );
 
   return (

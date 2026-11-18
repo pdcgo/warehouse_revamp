@@ -277,7 +277,7 @@ func TestRestockRequestAccept_AnExpiryNotOnTheCalendarIsRefused(t *testing.T) {
 func TestRestockRequestAccept_TheExpiryTravelsWithATransfer(t *testing.T) {
 	f := &wtFixture{sent: &sentEvents{}}
 	f.db = san_testdb.DB(t)
-	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, nil)
+	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, nil, nil, nil)
 
 	f.rakA = newRack(t, f.svc, wtA, "rak-a")
 	f.rakB1 = newRack(t, f.svc, wtB, "rak-b1")

@@ -1824,6 +1824,8 @@ the rest:
 ⚠ **What this decision does not say**, and the clarify asks: **which service owns the table**, and
 whether the settlement report **waits** for that pipeline or ships as a query first.
 
+🔄 *(2026-11-16, re-audit)* superseded by [the-fold-owns-the-report-not-the-writer](#the-fold-owns-the-report-not-the-writer) — this entry was withdrawn by [the-analytic-pointer-is-withdrawn-until-it-is-mature](#the-analytic-pointer-is-withdrawn-until-it-is-mature), and the pipeline it required is built under the fold decision: settlement publishes `SettlementLogPosted` (`settlement_service/settlement_v1/events.go`; `proto/warehouse/events/v1/event.proto`, field 300), `settlement_v1/analytic_fold.go` folds it, and the report tables are `settlement_service/db_migrations/00005_settlement_analytics.sql`; the ⛔ rows above are history.
+
 ---
 
 ## the-report-ships-as-a-query-first
@@ -1966,6 +1968,8 @@ owns the numbers is still open — see the clarify.
 [the-report-is-movement-dated](#the-report-is-movement-dated),
 [posted-on-buckets-the-report](#posted-on-buckets-the-report). This changes who computes them and when,
 never what they are.
+
+🔄 *(2026-11-16, re-audit)* **Built** — the fold-vs-writer choice this entry left open was closed by [the-fold-owns-the-report-not-the-writer](#the-fold-owns-the-report-not-the-writer) (the fold; its reason here was withdrawn by [the-analytic-pointer-is-withdrawn-until-it-is-mature](#the-analytic-pointer-is-withdrawn-until-it-is-mature)), and it is built: settlement publishes `SettlementLogPosted` (`settlement_service/settlement_v1/events.go`), `settlement_v1/analytic_fold.go` consumes it, the report tables are `settlement_service/db_migrations/00005_settlement_analytics.sql`; no `GROUP BY` phase exists. The ⛔ rows above are history.
 
 ---
 

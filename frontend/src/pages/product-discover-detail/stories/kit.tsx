@@ -66,6 +66,27 @@ export const SUGAR_PICTURE = `data:image/svg+xml;utf8,${encodeURIComponent(
     `</svg>`,
 )}`;
 
+/**
+ * GULA'S WHOLE GALLERY, for one story's `beforeEach`: three pictures, the sugar bag the cover — through the stub, whose
+ * reset takes them back. Each a flat drawing in its own colour, so the three are told apart by their `src`.
+ */
+export const GULA_GALLERY = ["#e0f2fe", "#fef3c7", "#dcfce7"].map((bg, i) =>
+  i === 0
+    ? SUGAR_PICTURE
+    : `data:image/svg+xml;utf8,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="${bg}"/>` +
+          `<circle cx="32" cy="32" r="${10 + i * 6}" fill="#94a3b8"/></svg>`,
+      )}`,
+);
+
+export function gulaHasItsGallery() {
+  patchProduct(GULA.id, {
+    images: GULA_GALLERY.map((url) => ({ url, thumbnailUrl: url })),
+    defaultImageUrl: GULA_GALLERY[0]!,
+    defaultImageThumbnailUrl: GULA_GALLERY[0]!,
+  });
+}
+
 /** Everything in a file's meta but its title. */
 export const DISCOVER_PRODUCT_DETAIL_META = {
   component: AtGula,
@@ -93,6 +114,12 @@ export async function openTab(canvas: ReturnType<typeof within>, key: "overview"
   await userEvent.click(await canvas.findByTestId(`dd-tab-${key}`));
   await waitFor(() => expect(canvas.getByTestId(`dd-panel-${key}`)).toBeVisible());
   return within(canvas.getByTestId(`dd-panel-${key}`));
+}
+
+/** The page's folded ⚠ strip, opened — its rows, one per part still unwired (`pending-row-<id>`). */
+export async function openPendingStrip(canvas: ReturnType<typeof within>) {
+  await userEvent.click(await canvas.findByTestId("not-implemented-toggle"));
+  await waitFor(() => expect(canvas.getByTestId("pending-row-division")).toBeVisible());
 }
 
 export async function stockLoaded(canvasElement: HTMLElement) {

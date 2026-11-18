@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { noRacksAt, rackRow, rackService } from "../../../.storybook/rackStub";
+import { noRacksAt, rackHoldsForStory, rackRow, rackService } from "../../../.storybook/rackStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { RacksPage } from "./index";
@@ -275,10 +275,12 @@ export const FormExamplesAndCounts: Story = {
   },
 };
 
-// PAST ONE PAGE (the-rack-list-leads-with-its-figures) — 18 more racks, 21 in all, 20 a page: *Rak* is the server's 21,
-// while Terisi, Kosong and Stok di rak are the page's 20 — and say so, marked `missing`, with the strip over them.
-export const FiguresPastOnePage: Story = {
-  name: "Figures past one page",
+// PAST ONE PAGE (the-rack-list-leads-with-its-figures) — 19 more racks, 22 in all, 20 a page, and the last, Z-99-1, holds
+// 7 pcs on page 2. Every figure is the WHOLE list's (RackStat, summed on the server): Rak 22, Terisi 3 (A-01-1, A-01-2 and
+// Z-99-1), Kosong 19, Stok di rak 41 pcs — where the first page alone would read 2 · 18 · 34 pcs. Nothing is marked: the
+// three were the page's, marked `pageTotals`, until the read that sums every rack.
+export const FiguresOverEveryPage: Story = {
+  name: "Figures over every page",
   beforeEach: async () => {
     for (let i = 1; i <= 18; i++) {
       await rackService.rackCreate!(
@@ -286,15 +288,38 @@ export const FiguresPastOnePage: Story = {
         {} as never,
       );
     }
+    await rackService.rackCreate!({ teamId: 11n, code: "Z-99-1", name: "", description: "" } as never, {} as never);
+    rackHoldsForStory(rackRow(11n, "Z-99-1")!.id, 71n, 7n);
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByTestId("rack-row-A-01-1", {}, { timeout: 4000 });
 
-    await waitFor(() => expect(canvas.getByTestId("racks-stat-racks")).toHaveTextContent("21"));
-    await expect(canvas.getByTestId("racks-stat-empty")).toHaveTextContent("18");
-    await expect(within(canvas.getByTestId("racks-stat-filled")).getByTestId("not-implemented-pageTotals")).toBeVisible();
-    await expect(within(canvas.getByTestId("racks-stat-racks")).queryByTestId("not-implemented-pageTotals")).toBeNull();
-    await expect(canvas.getByTestId("not-implemented-summary")).toHaveTextContent("1 part of this screen is not implemented yet");
+    await waitFor(() => expect(canvas.getByTestId("racks-stat-racks")).toHaveTextContent("22"));
+    await waitFor(() => expect(canvas.getByTestId("racks-stat-filled")).toHaveTextContent("3"));
+    await expect(canvas.getByTestId("racks-stat-empty")).toHaveTextContent("19");
+    await expect(canvas.getByTestId("racks-stat-stock")).toHaveTextContent("41 pcs");
+    // Z-99-1 is not on this page — its pieces are in the figures all the same.
+    await expect(canvas.queryByTestId("rack-row-Z-99-1")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvasElement.querySelector('[data-testid^="not-implemented-"]')).toBeNull();
+  },
+};
+
+// A SEARCH NARROWS THE FIGURES TOO (the-rack-list-leads-with-its-figures) — they describe the list as it is shown: "a-01"
+// keeps A-01-1 (25) and A-01-2 (9), both holding stock, none empty.
+export const TheSearchNarrowsTheFigures: Story = {
+  name: "Search narrows the figures",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("rack-row-A-01-1", {}, { timeout: 4000 });
+    await waitFor(() => expect(canvas.getByTestId("racks-stat-empty")).toHaveTextContent("1"));
+
+    await type(canvas.getByTestId("rack-search"), "a-01");
+
+    await waitFor(() => expect(canvas.getByTestId("racks-stat-racks")).toHaveTextContent("2"));
+    await waitFor(() => expect(canvas.getByTestId("racks-stat-empty")).toHaveTextContent("0"));
+    await expect(canvas.getByTestId("racks-stat-filled")).toHaveTextContent("2");
+    await expect(canvas.getByTestId("racks-stat-stock")).toHaveTextContent("34 pcs");
   },
 };

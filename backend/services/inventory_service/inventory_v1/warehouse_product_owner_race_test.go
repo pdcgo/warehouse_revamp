@@ -50,7 +50,7 @@ func TestInterleave_WarehouseProductLink_ASecondOwnerWaitsThenKeepsTheFirst(t *t
 				raceOwnerWarehouse, raceOwnerProduct, raceOwnerFirst).Error
 		}),
 		san_race.Block("B", second, func(tx *gorm.DB) error {
-			_, err := inventory_v1.NewService(tx, nil, nil, nil, nil, nil, nil, nil).RestockRequestCreate(ctxUser(1),
+			_, err := inventory_v1.NewService(tx, nil, nil, nil, nil, nil, nil, nil, nil, nil).RestockRequestCreate(ctxUser(1),
 				connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 					TeamId: raceOwnerSecond, WarehouseId: raceOwnerWarehouse,
 					Items: []*inventoryv1.RestockRequestItem{

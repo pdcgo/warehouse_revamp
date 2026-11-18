@@ -5,9 +5,7 @@ import { X } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import { RestockStatusBadge } from "../../../components/badges/RestockStatusBadge";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { LABELS_MAX_RESTOCKS } from "../../../features/restock/labelsPath";
-import { RESTOCK_LABELS_PENDING } from "../pending";
 import type { LabelSet } from "../labelSets";
 import { AddRestockSelect } from "./AddRestockSelect";
 
@@ -54,8 +52,6 @@ export function RestocksCard({
             <Text fontSize="xs" color="fg.muted">
               {sets.length}
             </Text>
-            {/* Each restock here is its own read — marked until several can be read at once (pending.ts). */}
-            <NotImplemented list={RESTOCK_LABELS_PENDING} id="byIds" />
           </Flex>
 
           {/* A day's deliveries can be many: past a handful the rows scroll in place, the bar on the card's edge, so the

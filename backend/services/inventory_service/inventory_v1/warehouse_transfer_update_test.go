@@ -93,7 +93,7 @@ func TestWarehouseTransferUpdate_RefusesNoAccountAnotherSideAndAnAcceptedTransfe
 func TestWarehouseTransferUpdate_RefusesAChangedAccountThatIsNotActive(t *testing.T) {
 	f := wtStocked(t)
 	accounts := restockAccounts()
-	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, accounts)
+	f.svc = inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, accounts, nil, nil)
 
 	tr := f.create(t, wtLine(wtKaosPolos, 1))
 

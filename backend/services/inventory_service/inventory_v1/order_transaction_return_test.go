@@ -50,7 +50,7 @@ func rtStocked(t *testing.T) *rtFixture {
 	f.svc = inventory_v1.NewService(f.db, f.poster, f.expense, nil, nil, fakeFacts{
 		otKaosHitam: {TeamID: otMelati, ProductCode: "KH-001", Name: "Kaos Hitam"},
 		otKaosPolos: {TeamID: otSinar, ProductCode: "KP-001", Name: "Kaos Polos", CrossMarkupBps: 2000},
-	}, nil, nil)
+	}, nil, nil, nil, nil)
 
 	f.rakA = newRack(t, f.svc, rtShipWarehouse, "rak-a")
 	f.rakR1 = newRack(t, f.svc, rtReturnWarehouse, "rak-r1")

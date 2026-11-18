@@ -1113,6 +1113,8 @@ alone. ⚠ **It must be deleted in the same change that moves the charge**, or i
 **→ What is still open is the backend move**, and it is not mine to pick:
 [technical Q10](../../technical/balance/team_balance_design_clarify.md#question).
 
+🔄 *(2026-11-16, re-audit)* **Built** — the backend move this section left open: `liability_terms.product_markup_bp` is dropped with the terms log's two markup columns (liability `db_migrations/00010_drop_terms_product_markup.sql`; the field reserved in `proto/warehouse/liability/v1/liability.proto`), liability reads no markup — the product fee posts the order lines' frozen totals, priced at the product's own `cross_markup_bps` (`liability_service/liability_v1/order_fees.go`) — and `TermsEditDialog.tsx`'s pass-through bridge is deleted ([the-ledger-charges-the-frozen-line-total](../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)); the *What is NOT done* text above is history.
+
 ## an-accepted-payment-is-final
 
 > The owner, in chat *(2026-10-01)* — *"remove it, when accept it, its final and cannot change or
@@ -1218,6 +1220,8 @@ flowchart LR
 
 **What it costs — accepted.** Nothing in the system says an old figure is settled; a month already reported can still be
 argued over.
+
+🔄 *(2026-11-16, re-audit)* **Built** — the *false `found`* row's bound: `warehouse_stock_problems` exists (inventory `db_migrations/00035_opname_sessions.sql`), a lost unit writes its row (`inventory_service/inventory_mutations/post_problem.go` `PostShelfProblem`, and a count's shortage in `post_count.go`), and a surplus claims the oldest open `lost` problem before any new batch is minted — `LoadCountBook` reads `OpenLosses`, `SettleCount`'s FOUND step writes the claim lines (`inventory_mutations/post_count.go`; a found report through `post_found.go`) — [a-surplus-claims-a-lost-unit-first](../inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first); the *⛔ not built* cell above is history.
 
 ## a-payment-always-moves-money
 

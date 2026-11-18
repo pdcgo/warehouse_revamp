@@ -1,18 +1,18 @@
 import type { PendingList, PendingPart } from "../../features/pending/registry";
 
-// WHAT THE RESTOCK FORM CANNOT DO YET. Every field it shows is stored; what is not finished is the check that a resi or
-// an Order ID is not already on another restock (a-reference-in-use-stops-the-restock-form). The form asks the list's
-// own search, so the check is real — but it can only see what a selling team may list, and nothing behind it refuses.
+// WHAT THE RESTOCK FORM CANNOT DO YET. Every field it shows is stored, and the check that a resi or an Order ID is not
+// already on another restock (a-reference-in-use-stops-the-restock-form) is built on both halves: the screen asks the
+// list's own search, and the server refuses a repeat of either within the team (inventory 00048's unique indexes), so two
+// saves at the same moment cannot both pass. The Order ID's mark is gone with that. What is left is the resi on ANOTHER
+// team's restock: the decision checks this team's only, and whether a resi another team holds should stop the form is
+// not defined — so it is said here, not built.
 
 /** One unwired part of the form. The id is also its i18n key (`restock.form.pending.<id>`). */
-export type PendingId = "invoiceRefCheck" | "receiptCheck";
+export type PendingId = "receiptCheck";
 
 const PARTS: PendingPart<PendingId>[] = [
-  // ⚠ CHECKED ON THE SCREEN ONLY. Nothing on the server refuses a second restock with the same Order ID, so two saves
-  // at the same moment both pass, and so does anything that does not come through this form.
-  { id: "invoiceRefCheck", kind: "derived" },
-  // ⚠ …and the resi the same way, over THIS TEAM's restocks only — a selling team cannot list another team's, so a resi
-  // already on another team's restock is not caught.
+  // ⚠ OVER THIS TEAM'S RESTOCKS ONLY — on the screen and on the server alike. A resi already on another team's restock
+  // is not caught: a selling team cannot list another team's, and the decision does not say it should be refused.
   { id: "receiptCheck", kind: "derived" },
 ];
 

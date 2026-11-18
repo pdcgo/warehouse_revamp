@@ -1,23 +1,38 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { noBatchesAt } from "../../../.storybook/batchStub";
+import { batchListScenario, noBatchesAt } from "../../../.storybook/batchStub";
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Text } from "@chakra-ui/react";
+import { useLocation, useParams } from "react-router-dom";
 
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import { cameFrom } from "../../lib/cameFrom";
 import { BatchesPage } from "./index";
 
 // THE BATCH LIST — Gudang Pusat's (11) batches, read by its crew (batchStub.ts): six of them, newest first — a return
-// of Kopi (9101), restock 503's Beras (5031, expiring in 20 days) and Teh (5032), restock 507's Teh, all used (5071,
+// of Kopi (9101, order 106's), restock 503's Beras (5031, expiring in 20 days) and Teh (5032), restock 507's Teh, all used (5071,
 // Habis), and restock 398's Kopi (3982, expiring in 9 days) and Gula (3981, expired 3 days ago).
+
+/** An order's warehouse page, saying which order and where it was opened from (its Back). */
+function AtWarehouseOrder() {
+  const { orderId } = useParams();
+  const from = cameFrom(useLocation());
+
+  return (
+    <Text data-testid="at-warehouse-order" data-order-id={orderId} data-from={from ?? ""}>
+      at-warehouse-order
+    </Text>
+  );
+}
 
 const Routed = routedPage(
   [
     { path: "/inventories/batches", element: <BatchesPage /> },
     { path: "/inventories/batches/:batchId", element: <LocationProbe /> },
     { path: "/inventories/restock/:requestId", element: <Text data-testid="at-restock-detail">at-restock-detail</Text> },
+    { path: "/warehouse-orders/:orderId", element: <AtWarehouseOrder /> },
   ],
   "/inventories/batches",
 );
@@ -139,15 +154,16 @@ export const ExpiringSoon: Story = {
   },
 };
 
-// WHOSE GOODS (the-batch-list-filters-by-team) — a search select over the selling teams, the pick its name alone; it is
-// held and counted as a filter, but narrows nothing yet: its ⚠ says so, every batch stays, and Hapus Filter clears it.
+// WHOSE GOODS (the-batch-list-filters-by-team) — a search select over the selling teams, the pick its name alone. The
+// server narrows the list to that team's batches: picked Toko Melati, only its Beras (5031) is left — the count and the
+// card strip with it, the ask carrying the team — and Hapus Filter brings every team's back. No ⚠.
 export const TeamFilter: Story = {
   name: "Team filter",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const field = canvas.getByTestId("batches-team-filter");
 
-    await expect(within(field).getByTestId("not-implemented-teamFilter")).toHaveTextContent("2");
+    await expect(within(field).queryByTestId("not-implemented-teamFilter")).toBeNull();
 
     // TeamSelect portals, so its option is on the screen.
     await userEvent.type(within(field).getByRole("combobox"), "SL-01", { delay: 40 });
@@ -158,12 +174,19 @@ export const TeamFilter: Story = {
     await waitFor(() => expect(within(field).getByRole("combobox")).toHaveValue("Toko Melati"));
     await expect(within(field).queryByText("Selling")).toBeNull();
 
-    // Thrown away: the list is the whole list still.
-    await expect(canvas.getByTestId("batches-row-9101")).toBeInTheDocument();
-    await expect(canvas.getByTestId("batches-stat-count")).toHaveTextContent("6");
+    // Narrowed: Toko Melati's batch alone, the count and the expiring card with it, the ask carrying the team.
+    await waitFor(() => expect(canvas.queryByTestId("batches-row-9101")).toBeNull());
+    await expect(canvas.getByTestId("batches-row-5031")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("batches-row-5032")).toBeNull();
+    await expect(canvas.getByTestId("batches-stat-count")).toHaveTextContent("1");
+    await expect(canvas.getByTestId("batches-stat-expiring")).toHaveTextContent("1");
+    await expect(batchListScenario.ownerTeamIds.at(-1)).toBe(12n);
 
     await userEvent.click(canvas.getByTestId("batches-filter-clear"));
     await waitFor(() => expect(within(field).getByRole("combobox")).toHaveValue(""));
+    await expect(await canvas.findByTestId("batches-row-9101")).toBeInTheDocument();
+    await expect(canvas.getByTestId("batches-stat-count")).toHaveTextContent("6");
+    await expect(batchListScenario.ownerTeamIds.at(-1)).toBe(0n);
   },
 };
 
@@ -227,19 +250,36 @@ export const ExpiryCell: Story = {
 };
 
 // WHERE IT CAME FROM, AS A WAY THERE (a-batch-opens-where-it-came-from) — *Restock #503* opens the restock, not the batch;
-// a return says *Return* with its ⚠: a batch does not know its return's number yet.
+// a return names its order (a-returns-batch-opens-its-order), so nothing on the list is marked unbuilt any more.
 export const OpensItsSource: Story = {
   name: "Opens its source",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(within(canvas.getByTestId("batches-source-9101")).getByTestId("not-implemented-returnLink")).toBeVisible();
-    // A return's source and the team filter (pages/batches/pending.ts) — the return keeps its 1 on both batch screens.
-    await expect(canvas.getByTestId("not-implemented-summary")).toHaveTextContent("2 parts of this screen are not implemented yet");
-    await expect(within(canvas.getByTestId("batches-source-9101")).getByTestId("not-implemented-returnLink")).toHaveTextContent("1");
+    await expect(canvas.getByTestId("batches-source-9101")).toHaveTextContent(/^Return · order #106$/);
+    await expect(canvas.queryByTestId("not-implemented-returnLink")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("batches-source-5031"));
     await canvas.findByTestId("at-restock-detail");
+    await expect(screen.queryByTestId("location-search")).toBeNull();
+  },
+};
+
+// A RETURN'S BATCH OPENS ITS ORDER (a-returns-batch-opens-its-order) — *Return · order #106* opens that order's
+// warehouse page, /warehouse-orders/106 (where the return was accepted), not the batch, carrying the list it was opened
+// from — filter and all — so Back returns to it.
+export const OpensAReturnsOrder: Story = {
+  name: "Opens a return's order",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("batches-source-9101"));
+
+    const at = await canvas.findByTestId("at-warehouse-order");
+    await expect(at).toHaveAttribute("data-order-id", "106");
+    await expect(at).toHaveAttribute("data-from", "/inventories/batches");
+    // The batch's own page did not open under it.
     await expect(screen.queryByTestId("location-search")).toBeNull();
   },
 };

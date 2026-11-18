@@ -63,7 +63,7 @@ func TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheAccountCall(t *tes
 		idleInTx, locks, probeErr = raceRestockHeldLocks(h.DB())
 	}
 
-	_, err := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, probe).RestockRequestCreate(ctxUser(1),
+	_, err := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, probe, nil, nil).RestockRequestCreate(ctxUser(1),
 		connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, FinanceAccountId: 41, Items: raceRestockItems(),
 		}))
@@ -92,8 +92,8 @@ func TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheAccountRoundTrip(t *t
 	const latency = 800 * time.Millisecond
 
 	slow := &raceAccountSlow{latency: latency, called: make(chan struct{})}
-	updater := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, slow)
-	canceller := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, nil)
+	updater := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, slow, nil, nil)
+	canceller := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	ctx := ctxUser(1)
 
 	res := h.Race(t, 2, func(i int) error {

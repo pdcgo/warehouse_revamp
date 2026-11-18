@@ -29,7 +29,12 @@ import {
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
-import { useRestockInbound, useRestockPeople, useRestockRequests } from "../../features/restock/queries";
+import {
+  useRestockCodPaid,
+  useRestockInbound,
+  useRestockPeople,
+  useRestockRequests,
+} from "../../features/restock/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
@@ -61,7 +66,6 @@ import { formatRupiahNumber } from "../../lib/money";
 import { PRESSABLE } from "../../lib/motion";
 import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
-import { sampleCodPaid } from "./codSample";
 import { RESTOCK_INBOUND_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -114,7 +118,7 @@ const ACTOR_ROLE_CODEC = oneOfCodec<ActorRole>(["created", "accepted"]);
 //
 //   Restok Masuk
 //   Kiriman yang menuju gudang ini — …
-//   [Restok masuk 3] [Produk 4] [Pcs 74] [Menunggu paling lama 3 hari] [Ongkir COD dibayar Rp … ⚠]   ← SummaryStrip
+//   [Restok masuk 3] [Produk 4] [Pcs 74] [Menunggu paling lama 3 hari] [Ongkir COD dibayar Rp …]   ← SummaryStrip
 //   [⌕ Cari restok, resi, order ID, atau SKU] [Dari semua tim ⌄] [Dibuat oleh ⌄│Siapa saja] [Dibuat · 7 hari terakhir]
 //   Semua Status · Dalam Perjalanan · Tiba · Diterima · Hilang · Dibatalkan
 //   Restok  Dari          Produk   Pengiriman     Status         Dibuat        Sampai          Aksi
@@ -198,6 +202,8 @@ export function RestockWarehousePage() {
   // not move it. It is always the queue still to do — ongoing and arrived — so switching to Accepted shows what has been
   // done beneath a headline of what has not.
   const inbound = useRestockInbound({ teamId, requestingTeamId: requesterFilter });
+  // The COD it paid at the door this month — over every restock it accepted, never the lens (useRestockCodPaid).
+  const codPaid = useRestockCodPaid({ teamId });
 
   // Every team type, not just SELLING: a root team can raise a restock too, and a "From" column that silently failed to
   // name one would read as a missing team rather than an unfiltered lookup.
@@ -410,8 +416,7 @@ export function RestockWarehousePage() {
   }
 
   const oldestUnix = inbound.data?.oldestPendingUnix ?? 0n;
-  // ⚠ SAMPLE — nothing sums the COD yet (pending.ts).
-  const cod = sampleCodPaid(current.teamId);
+  const cod = codPaid.data;
   const oldestDays = daysSinceUnix(oldestUnix);
 
   function list() {
@@ -664,7 +669,7 @@ export function RestockWarehousePage() {
         </Text>
       )}
 
-      {/* What is not real yet — the COD figure; the queue itself is. */}
+      {/* What is not real yet — the courier's charge noted at Tandai Tiba (pending.ts); the queue and the COD it paid are. */}
       <NotImplementedSummary list={RESTOCK_INBOUND_PENDING} />
 
       {/* WHAT IS STILL TO DO (owner) — the order list's card strip (a-list-summary-is-the-order-lists-card-strip).
@@ -708,13 +713,12 @@ export function RestockWarehousePage() {
           testId="restock-stat-oldest"
         />
         {/* THE COD IT PAID (the-warehouse-sees-the-cod-it-paid) — the courier's charge handed over at the door on the
-            restocks it accepted this month, owed back by the selling teams. Not the queue, so last; a SAMPLE until a read
-            sums it (pending.ts). */}
+            restocks it accepted this month, owed back by the selling teams. Not the queue, so last; summed on the server
+            (RestockCodPaidStat) over this Jakarta month. */}
         <SummaryCard
           label={t("restock.stat.codPaid")}
-          mark={<NotImplemented list={RESTOCK_INBOUND_PENDING} id="cod" />}
-          value={formatRupiahNumber(cod.amount)}
-          line={t("restock.stat.codPaidLine", { count: cod.restocks })}
+          value={cod ? formatRupiahNumber(cod.amount) : "—"}
+          line={cod ? t("restock.stat.codPaidLine", { count: cod.restocks }) : undefined}
           note={t("restock.stat.codPaidNote")}
           testId="restock-stat-cod"
         />

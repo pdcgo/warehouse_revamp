@@ -95,7 +95,7 @@ func TestPerf_SupplierWarehouseChip(t *testing.T) {
 
 	db, probe := san_perf.Wrap(raw)
 	ctx := context.Background()
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	reader := NewSupplierGoodsReader(inventory, db)
 	catalog := NewSupplierProductCatalog(product_v1.NewService(db, nil, nil, nil, nil))
 	svc := supplier_v1.NewService(db, nil, nil, reader, perfSpStore{}, catalog)

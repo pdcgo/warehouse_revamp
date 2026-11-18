@@ -42,7 +42,7 @@ func restockListOverrides(t *testing.T, svc *inventory_v1.Service, team uint64) 
 // counted it in later (the accept's override is a later trail row, not the create's).
 func TestRestockRequestList_CreatedByIsOverride(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil, nil, nil)
 	rack := newRack(t, svc, otWarehouse, "rak-a")
 
 	rootInSeller := ctxAs(ovRoot, otMelati, role_basev1.Role_ROLE_UNSPECIFIED)
@@ -116,7 +116,7 @@ type steps struct{ created, arrived, accepted bool }
 // from ongoing was signed for by that count, so its arrive reads the accept's row; an edit (the status kept) is no step.
 func TestRestockRequestList_EachStepSaysWhetherRootTookIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil, nil, nil)
 	rack := newRack(t, svc, otWarehouse, "rak-a")
 
 	rootInSeller := ctxAs(ovRoot, otMelati, role_basev1.Role_ROLE_UNSPECIFIED)

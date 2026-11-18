@@ -5,38 +5,22 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // (the-restock-page-leads-with-the-box) — the number on a badge is its position here.
 
 /** One unwired part of the page. The id is also its i18n key (`restock.detail.pending.<id>`). */
-export type PendingId =
-  | "arrivalCod"
-  | "brokenPhoto"
-  | "brokenRack"
-  | "courierPhoto"
-  | "sellingNoteBy"
-  | "warehouseNoteKept"
-  | "trailChanges";
+export type PendingId = "arrivalCod" | "brokenRack";
 
 const PARTS: PendingPart<PendingId>[] = [
   // ⚠ THE CHARGE NOTED AT TANDAI TIBA IS THROWN AWAY (the-cod-can-be-noted-when-the-box-arrives): RestockRequestArrive
   // takes no charge. The title row's sign dialog has the fields; a toast after the sign says to enter it again at Terima.
   // And it goes AGAINST the business decision the-warehouse-cost-is-the-couriers-charge-at-the-door (entered at accept).
   { id: "arrivalCod", kind: "dropped", conflict: true },
-  // ⚠ THE BROKEN UNITS' PHOTO IS A SAMPLE (a-broken-product-carries-a-photo): the accept page picks one and keeps nothing,
-  // so every broken line shows the same drawing (photoSamples.ts) beside its count.
-  { id: "brokenPhoto", kind: "sample" },
+  // (The broken units' photo and the courier's slip were samples here until Terima kept them — they are the restock's own
+  // now, read through RestockDoorPhotos: the-detail-pages-show-the-broken-photo,
+  // the-detail-pages-show-the-slip-and-the-broken-rack.)
   // ⚠ THE BROKEN UNITS' RACK IS A SAMPLE (the-detail-pages-show-the-slip-and-the-broken-rack): Terima's "put on a rack" is
   // not kept, so the Tempat cell shows the line's first place as where they went. And it goes AGAINST the business decision
   // a-broken-unit-is-thrown-away.
   { id: "brokenRack", kind: "sample", conflict: true },
-  // ⚠ THE COURIER'S SLIP IS A SAMPLE (the-detail-pages-show-the-slip-and-the-broken-rack): no act keeps the photo, so a
-  // restock with a charge shows the same drawing in its Ongkir COD section.
-  { id: "courierPhoto", kind: "sample" },
-  // ⚠ WHO WROTE THE SELLING TEAM'S NOTE, AND WHEN, IS NOT STORED (the-notes-are-one-per-writer): shown is the restock's last
-  // raise or edit — real, but an edit that changed only a line counts too.
-  { id: "sellingNoteBy", kind: "derived" },
-  // ⚠ THIS WAREHOUSE'S NOTE IS THROWN AWAY (the-warehouse-writes-its-own-note): Ubah writes it, and nothing stores it — a
-  // save says so, and the block reads empty again.
-  { id: "warehouseNoteKept", kind: "dropped" },
-  // ⚠ AN EDIT'S ROW DOES NOT SAY WHAT CHANGED. The server writes "edited" and nothing more; the row shows who and when.
-  { id: "trailChanges", kind: "missing" },
+  // (This warehouse's note was thrown away here until it was kept — RestockRequestWarehouseNoteSet stores it with its
+  // writer and time: the-warehouse-writes-its-own-note.)
 ];
 
 /** What the badges and the summary on this page read. `ns` is where its copy lives. */

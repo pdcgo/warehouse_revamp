@@ -70,8 +70,11 @@ func uploadPhotoAs(
 func insertWiredRestock(t *testing.T, db *gorm.DB, seller, warehouse uint64, documentID string) uint64 {
 	t.Helper()
 
+	// Each restock its own resi: a team's active resi is unique since inventory 00048
+	// (a-reference-in-use-stops-the-restock-form), and this test raises three for one seller.
 	restock := inventory_service_models.Restock{
-		TeamID: seller, WarehouseID: warehouse, Status: "ongoing", Receipt: "JNE-WIRE", ReceiptFile: documentID,
+		TeamID: seller, WarehouseID: warehouse, Status: "ongoing", Receipt: "JNE-WIRE-" + documentID,
+		ReceiptFile: documentID,
 	}
 
 	err := db.Create(&restock).Error
@@ -100,7 +103,7 @@ func TestRestockPhotoLinker_TheRestocksWarehouseOpensTheSellersPhoto(t *testing.
 
 	cfg := docstore.DefaultConfig(docstore.Config{Dir: t.TempDir(), BaseURL: "http://test.local/files", TokenSecret: "test"})
 	documents := document_v1.NewService(db, cfg)
-	restocks := inventory_v1.NewService(db, nil, nil, nil, nil, nil, NewRestockPhotoLinker(documents), nil)
+	restocks := inventory_v1.NewService(db, nil, nil, nil, nil, nil, NewRestockPhotoLinker(documents), nil, nil, nil)
 
 	photo := uploadPhotoAs(t, documents, cfg, seller, documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT)
 	restock := insertWiredRestock(t, db, seller, warehouse, photo)

@@ -87,5 +87,6 @@ owner's call (HARD RULE 3).
 | Date | Median @10, 5 000 held | Median @10, 10 000 held | Statements | Change |
 | --- | --- | --- | --- | --- |
 | 2026-11-04 | 62.2 ms (≈ 49 ms loopback) | 18.9 ms | 2 | first audit, at the build (3 statements and 128 ms before the window count) |
+| 2026-11-16 | `kaos` 62.5 · empty 60.6 · `k` 65.1 ms (≈ 50 ms loopback) | `kaos` 23.5 · empty 29.2 · `k` 32.7 ms | 2 | no two-letter minimum ([a-product-picker-needs-no-two-letters](../../../../docs/technical/frontend/context_decision.md#a-product-picker-needs-no-two-letters)): an empty term lists the held set's first page, one letter searches — same 2 statements, executed in 6–8 ms (`products_pkey` over the held ids, top-N heapsort) |
 
 > *(2026-11-03, later)* `AND NOT archived` was dropped ([an-archived-product-held-here-can-be-picked](../../../../docs/business/inventory/opname_decision.md#an-archived-product-held-here-can-be-picked)): the held set already bounds the rows, so one predicate fewer cannot make the plan heavier; not re-measured.

@@ -22,7 +22,8 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // and the screen rounds it for display. Amounts are compared at 4 digits, never with ==.
 service RestockRequestService {
   // The selling team raises a restock — the restock and its lines in one transaction, then Restock Created
-  // (a-created-restock-tells-the-financial-account).
+  // (a-created-restock-tells-the-financial-account). A resi or an Order ID another restock of the team holds, not
+  // cancelled, is ALREADY_EXISTS with RestockReferenceInUse (a-reference-in-use-stops-the-restock-form).
   rpc RestockRequestCreate(RestockRequestCreateRequest) returns (RestockRequestCreateResponse);
   // Both sides list: a team sees restocks it raised and restocks coming to it as a warehouse.
   rpc RestockRequestList(RestockRequestListRequest) returns (RestockRequestListResponse) {
@@ -43,7 +44,8 @@ service RestockRequestService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // The selling team edits — everything while ongoing, only the lines while arrived
-  // (the-lines-stay-editable-until-accepted).
+  // (the-lines-stay-editable-until-accepted). An ongoing edit to a resi or an Order ID another restock of the team holds
+  // is ALREADY_EXISTS with RestockReferenceInUse, as for Create.
   rpc RestockRequestUpdate(RestockRequestUpdateRequest) returns (RestockRequestUpdateResponse);
   // The warehouse signs for the box: ongoing or lost → arrived (a-late-lost-box-is-signed-for-as-arrived).
   rpc RestockRequestArrive(RestockRequestArriveRequest) returns (RestockRequestArriveResponse);
@@ -66,6 +68,35 @@ service RestockRequestService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // THE COD THE WAREHOUSE PAID (the-warehouse-sees-the-cod-it-paid): the courier's charge it handed over at the door
+  // (`warehouse_additional_cost`) on the restocks it accepted in a window, summed, and how many carried one.
+  rpc RestockCodPaidStat(RestockCodPaidStatRequest) returns (RestockCodPaidStatResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // THE SELLING RESTOCK LIST'S STATISTICS (the-restock-statistics-count-transactions-under-the-tabs): the team's restocks
+  // under the list's own filter, counted per status and in all, with what was ordered and paid — and the value per
+  // paying account for Rincian. Read only while the statistics are open (the-statistics-are-shut-and-read-when-opened).
+  rpc RestockSellingStat(RestockSellingStatRequest) returns (RestockSellingStatResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // THE SELLING RESTOCK LIST AS A FILE (the-restock-list-exports-and-filters-by-courier, on
+  // one-export-is-the-list-as-a-file and a-report-export-is-the-whole-view-as-a-file): exactly the restocks the list holds
+  // with this filter — the list's one predicate, the status tab and the courier included — every page of them, in the
+  // list's order and the screen's columns, as .xlsx. A server stream: every step a message with the progress, the
+  // expiring link to the stored file on the last. NOT a read — it stores a file — so the admin team's monitor and an
+  // agent's credential are refused (monitoring-keeps-what-only-reads).
+  rpc RestockRequestExport(RestockRequestExportRequest) returns (stream RestockRequestExportResponse);
+  // SEVERAL RESTOCKS IN ONE READ, for Cetak Label (the-labels-mark-their-one-by-one-read): each restock with its lines,
+  // and an accepted one's labels, by id — the guideline's ByIds shape, one call for every restock on the print.
+  rpc RestockRequestByIds(RestockRequestByIdsRequest) returns (RestockRequestByIdsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
   // (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
   rpc RestockReceiptPhoto(RestockReceiptPhotoRequest) returns (RestockReceiptPhotoResponse) {
@@ -73,9 +104,28 @@ service RestockRequestService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // THE PHOTOS TAKEN AT THE DOOR, for both detail pages (the-detail-pages-show-the-broken-photo,
+  // the-detail-pages-show-the-slip-and-the-broken-rack): the courier's slip and each line's broken units, as the receiving
+  // warehouse kept them at Terima — for the restock's selling team and its warehouse, checked here, signed by
+  // document_service in-process (the label photo's door), no share.
+  rpc RestockDoorPhotos(RestockDoorPhotosRequest) returns (RestockDoorPhotosResponse) {
+    // A READ — it writes no row and moves no file; it signs links (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // KOREKSI JUMLAH TERIMA — the receiving warehouse corrects an ACCEPTED restock's received count
   // (the-warehouse-corrects-a-wrong-stock-in-alone), under the restock row's lock; see received_count.proto.
   rpc RestockReceivedCountCorrect(RestockReceivedCountCorrectRequest) returns (RestockReceivedCountCorrectResponse);
+  // The selling team writes ITS NOTE on the restock alone, in EVERY status (the-note-is-edited-in-any-status) — on its
+  // way, at the door, and once accepted, lost or cancelled — under the restock row's lock; nothing else of the restock
+  // moves. The note's own writer and time are kept with it (the-notes-are-one-per-writer), and the trail gets an edit's
+  // row saying what the note was and now is (edits-are-in-the-same-trail).
+  rpc RestockRequestNoteSet(RestockRequestNoteSetRequest) returns (RestockRequestNoteSetResponse);
+  // The RECEIVING WAREHOUSE writes ITS OWN NOTE on the restock (the-warehouse-writes-its-own-note) — its one writer
+  // (three-notes-one-writer-each, the-notes-are-one-per-writer), under the restock row's lock; nothing else moves. Kept
+  // with its own writer and time, and the trail gets an edit's row saying what it was and now is
+  // (edits-are-in-the-same-trail). The selling team reads it, never writes it.
+  rpc RestockRequestWarehouseNoteSet(RestockRequestWarehouseNoteSetRequest) returns (RestockRequestWarehouseNoteSetResponse);
 }
 
 // Where a restock is. APPEND ONLY, like every enum here — the values were renamed in place
@@ -129,6 +179,10 @@ message RestockProblemItem {
   // The WAREHOUSE's note on this row — "box crushed". Optional (a-broken-reason-is-optional); its one writer is the
   // warehouse (three-notes-one-writer-each).
   string note = 5 [(buf.validate.field).string.max_len = 200];
+  // THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — a BROKEN row only, one per line, optional: the document
+  // id of the receiving warehouse's upload at Terima, "" = none. A missing row never carries one. Opened through
+  // RestockDoorPhotos, never by this id (the-detail-pages-show-the-broken-photo).
+  string photo_file = 6 [(buf.validate.field).string.max_len = 500];
 }
 
 // RestockPlacement — how many of a line's good units went to ONE placement. Every unit in stock is on a placement
@@ -221,6 +275,69 @@ message RestockLog {
   // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
   // From `restock_logs.is_override`.
   bool is_override = 7;
+  // WHAT AN EDIT CHANGED, field by field, before and after (edits-are-in-the-same-trail) — *Kaos 10 → 12, extra stock*.
+  // Set on an edit's row only (from = to), in the order the edit wrote them: the restock's own fields first, then the
+  // lines. EMPTY on a status row, on an edit that changed nothing, and on every edit written before the changes were
+  // kept (its `description` is the bare "edited"): nothing is made up for those. From `restock_log_changes` (00049).
+  repeated RestockLogChange changes = 8;
+}
+
+// What one field of a restock read before an edit and after it. APPEND ONLY.
+enum RestockLogChangeField {
+  RESTOCK_LOG_CHANGE_FIELD_UNSPECIFIED = 0;
+
+  // The restock's own fields — changeable only while ongoing (a-restock-is-edited-only-while-ongoing).
+  // The receiving warehouse, a team id.
+  RESTOCK_LOG_CHANGE_FIELD_WAREHOUSE = 1;
+  // The courier's tracking number, the resi.
+  RESTOCK_LOG_CHANGE_FIELD_RECEIPT = 2;
+  // The label photo, a document id — the screen says it was added, replaced or removed, never the id.
+  RESTOCK_LOG_CHANGE_FIELD_RECEIPT_FILE = 3;
+  // The courier, a shipment channel id.
+  RESTOCK_LOG_CHANGE_FIELD_SHIPMENT = 4;
+  // The store's Order ID.
+  RESTOCK_LOG_CHANGE_FIELD_INVOICE_REF = 5;
+  // The paying account, a financial account id.
+  RESTOCK_LOG_CHANGE_FIELD_FINANCE_ACCOUNT = 6;
+  // The shipping the selling team paid, an amount.
+  RESTOCK_LOG_CHANGE_FIELD_SHIPMENT_COST = 7;
+  // The selling team's note on the restock.
+  RESTOCK_LOG_CHANGE_FIELD_NOTE = 8;
+
+  // A line — `product_id` and `product_name` say which.
+  // Added by the edit: `after` is its count; its total, note, supplier and store, when given, follow as their own
+  // changes with no `before` (a-line-added-after-arrival-names-its-supplier).
+  RESTOCK_LOG_CHANGE_FIELD_LINE_ADDED = 9;
+  // Removed by the edit (ongoing only): `before` is its count.
+  RESTOCK_LOG_CHANGE_FIELD_LINE_REMOVED = 10;
+  // How many were ordered.
+  RESTOCK_LOG_CHANGE_FIELD_LINE_COUNT = 11;
+  // The line's total, an amount.
+  RESTOCK_LOG_CHANGE_FIELD_LINE_TOTAL = 12;
+  // The selling team's note on the line — *extra stock*.
+  RESTOCK_LOG_CHANGE_FIELD_LINE_NOTE = 13;
+  // The line's supplier, a supplier id.
+  RESTOCK_LOG_CHANGE_FIELD_LINE_SUPPLIER = 14;
+  // The line's store, a supplier channel id.
+  RESTOCK_LOG_CHANGE_FIELD_LINE_STORE = 15;
+
+  // The RECEIVING WAREHOUSE's own note on the restock (the-warehouse-writes-its-own-note) — a field of the restock
+  // itself, written by RestockRequestWarehouseNoteSet alone, never by the selling team's edit.
+  RESTOCK_LOG_CHANGE_FIELD_WAREHOUSE_NOTE = 16;
+}
+
+// ONE THING AN EDIT CHANGED (edits-are-in-the-same-trail). The values are TEXT as stored: a count or an amount in
+// decimal, an id in decimal, words verbatim; "" is none — no before for an added line or a newly named supplier, no
+// after for a removed line or a cleared note. Ids are named at read time by the screen, like the row's person.
+message RestockLogChange {
+  RestockLogChangeField field = 1;
+  // The line it is about; 0 for a field of the restock itself.
+  uint64 product_id = 2;
+  // The line's name as the restock carried it at the edit — its own snapshot, so a line removed since still reads.
+  // "" for a field of the restock itself.
+  string product_name = 3;
+  string before = 4;
+  string after = 5;
 }
 
 message RestockRequest {
@@ -261,9 +378,32 @@ message RestockRequest {
   // (the-courier-is-paid-once-per-restock). Entered at accept; 0 until then.
   double warehouse_additional_cost = 38;
   string warehouse_additional_cost_note = 39;
+  // THE COURIER'S SLIP (the-courier-slip-has-an-optional-photo) — a photo of it, optional, kept with the charge at Terima:
+  // the document id of the receiving warehouse's upload, "" = none (always "" while there is no charge). Opened through
+  // RestockDoorPhotos, never by this id (the-detail-pages-show-the-slip-and-the-broken-rack).
+  string warehouse_additional_cost_file = 47;
 
   // The SELLING team's note on the restock as a whole (three-notes-one-writer-each).
   string note = 18;
+  // WHO WROTE THAT NOTE, AND WHEN (the-notes-are-one-per-writer) — the note's OWN writer, never the restock's last edit:
+  // set at the raise (the note is written then, empty or not), and by an edit or a note set that CHANGES the note; an
+  // edit that changes only a line, the resi or the money leaves them. A user_service id (0 = not recorded), unix
+  // seconds (0 = not recorded), and whether that writer was Root or the System Administrator acting from outside the
+  // team (an-override-shows-a-platform-badge). 0 / 0 / false on a restock whose note was last written before they were
+  // kept (00050): nothing is invented for it — the screen says it falls back to the restock's last raise or edit.
+  uint64 note_by_user_id = 44;
+  int64 note_at_unix = 45;
+  bool note_by_is_override = 46;
+
+  // THE RECEIVING WAREHOUSE'S OWN NOTE on the restock as a whole (the-warehouse-writes-its-own-note) — its one writer is
+  // the warehouse (three-notes-one-writer-each, the-notes-are-one-per-writer); the selling team reads it. "" = none.
+  string warehouse_note = 48;
+  // WHO WROTE IT, AND WHEN — stamped by RestockRequestWarehouseNoteSet when it CHANGES the note, never by anything else:
+  // a user_service id (0 = never written), unix seconds (0 = never written), and whether that writer was Root or the
+  // System Administrator acting from outside the warehouse (an-override-shows-a-platform-badge).
+  uint64 warehouse_note_by_user_id = 49;
+  int64 warehouse_note_at_unix = 50;
+  bool warehouse_note_by_is_override = 51;
 
   // The inventory transaction the accept made; 0 until accepted.
   uint64 transaction_id = 32;
@@ -346,6 +486,31 @@ message RestockRequestCreateResponse {
   RestockRequest request = 1;
 }
 
+// Which of a restock's two references a refusal names (a-reference-in-use-stops-the-restock-form). APPEND ONLY.
+enum RestockReference {
+  RESTOCK_REFERENCE_UNSPECIFIED = 0;
+  // The courier's tracking number — `receipt`, the resi.
+  RESTOCK_REFERENCE_RECEIPT = 1;
+  // The store's Order ID — `invoice_ref_id`.
+  RESTOCK_REFERENCE_INVOICE_REF = 2;
+}
+
+// One reference of the refused save, and the restock that already holds it.
+message RestockReferenceHeld {
+  RestockReference reference = 1;
+  // The other restock of the same team holding it — never a cancelled one — and its status.
+  uint64 holder_id = 2;
+  RestockRequestStatus holder_status = 3;
+}
+
+// RestockReferenceInUse rides on the ALREADY_EXISTS of a create or an ongoing edit refused because its resi or its Order
+// ID — each on its own, exact, letter case and the spaces around it aside — is on another restock of the same team that
+// is not cancelled (a-reference-in-use-stops-the-restock-form). The database's unique index refuses it, so two saves of
+// one value at the same second cannot both pass. One entry per reference held — never none.
+message RestockReferenceInUse {
+  repeated RestockReferenceHeld held = 1;
+}
+
 message RestockRequestListRequest {
   // Either side — the selling team that raised it, or the warehouse it is coming to.
   option (warehouse.role_base.v1.request_policy) = {
@@ -377,7 +542,8 @@ message RestockRequestListFilter {
   uint64 product_id = 2;
   // Only restocks going to THIS warehouse; 0 = every warehouse. Selling side only.
   uint64 warehouse_id = 3;
-  // The period, and WHICH date it is about. Both bounds 0 = every restock. A row without that date is excluded:
+  // The period, and WHICH date it is about — each field reads its own column (created_at, accepted_at,
+  // cancelled_at, arrived_at, lost_at). Both bounds 0 = every restock. A row without that date is excluded:
   // "arrived last week" cannot be true of a box that has not arrived.
   RestockDateField date_field = 4 [(buf.validate.field).enum.defined_only = true];
   int64 from_unix = 5;
@@ -390,6 +556,10 @@ message RestockRequestListFilter {
   // By person: who raised it, who accepted it. 0 = anybody; both set = AND.
   uint64 created_by_user_id = 9;
   uint64 accepted_by_user_id = 10;
+  // Only restocks THIS COURIER brought — the restock's `shipment_id`, a shipment channel id
+  // (the-restock-list-exports-and-filters-by-courier). 0 = any courier; a restock that names none (0) is read only
+  // then — no pick asks for "no courier".
+  uint64 shipment_id = 11;
 }
 
 // Which of a restock's dates a range filter is about. APPEND ONLY.
@@ -576,6 +746,235 @@ message RestockInboundStatResponse {
   RestockInboundPreview preview = 1;
 }
 
+// RestockCodPaidStatRequest — the warehouse list's *Ongkir COD dibayar* card (the-warehouse-sees-the-cod-it-paid). The
+// warehouse's OWN money only: what it handed the courier at the door, entered at accept
+// (the-warehouse-cost-is-the-couriers-charge-at-the-door). Never the restock's value, never the selling team's freight —
+// what the goods cost is the selling team's business. Warehouse side only, RestockInboundStat's roles: the card sits in
+// the same strip, read by whoever reads the queue.
+message RestockCodPaidStatRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — the scope. Only restocks going TO it count.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The window, on WHEN THE RESTOCK WAS ACCEPTED, unix seconds, both ends inclusive — as the list's accepted-date filter
+  // reads its bounds. The screen asks for this Jakarta month: 00:00 WIB of the 1st through 23:59:59 WIB today.
+  int64 from_unix = 2 [(buf.validate.field).int64.gt = 0];
+  int64 to_unix = 3 [(buf.validate.field).int64.gt = 0];
+
+  option (buf.validate.message).cel = {
+    id: "restock_cod_paid_stat.window"
+    message: "to_unix must not be before from_unix"
+    expression: "this.to_unix >= this.from_unix"
+  };
+}
+
+// The COD the warehouse paid in the window: the restocks it accepted that carried a courier's charge (above 0), and the
+// charges summed. A restock with no charge is not counted — the card's line says how many it PAID on.
+message RestockCodPaidStatResponse {
+  int64 restock_count = 1;
+  // Rupiah, double (money-is-double-in-the-api-too).
+  double amount = 2;
+}
+
+// ── The selling restock list's statistics (the-restock-statistics-count-transactions-under-the-tabs) ───────────────────
+
+// RestockSellingStatRequest — the cards under the selling team's restock tabs and Rincian's value per paying account.
+//
+// THE SAME SET AS THE LIST: the list's own filter, read through the list's one predicate, so a card and the rows under it
+// cannot disagree about which restocks a filter means. Its `status` is IGNORED — the census answers every status at once
+// and the tab picks the pile.
+//
+// THE SELLING SIDE ONLY: the restocks this team RAISED (`team_id` = the scoped team), never the list's other side, the
+// restocks coming to it as a warehouse. No warehouse role — a warehouse sees no restock money
+// (the-warehouse-sees-the-cod-it-paid); the selling roles that read the list, Root and the Administrator.
+message RestockSellingStatRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The list's filter — every field but `status`, which is ignored.
+  RestockRequestListFilter filter = 2;
+}
+
+// One pile — a status, or every status (the total). A live census over the filter's restocks, not a window of its own.
+message RestockSellingPile {
+  // UNSPECIFIED on the total.
+  RestockRequestStatus status = 1;
+  // Restocks — transactions, not lines.
+  int64 restock_count = 2;
+  // *Jumlah barang*: the pieces ORDERED on their lines, on every status, an accepted one included
+  // (jumlah-barang-counts-the-pieces-ordered) — the rows' *N pcs* summed.
+  int64 unit_count = 3;
+  // *Jumlah SKU*: DIFFERENT products across the pile's lines, not lines. The total's is counted over every status at
+  // once — a product on an ongoing and an accepted restock is one product, never the larger of the piles'.
+  int64 product_count = 4;
+  // *Nilai barang*: Σ `subtotal`, the lines' totals. Rupiah, double (money-is-double-in-the-api-too).
+  double goods_value = 5;
+  // Σ `shipment_cost` — the freight the selling team paid, inside `value`.
+  double shipment_cost = 6;
+  // *Ongkir COD*: Σ `warehouse_additional_cost` — what the warehouse paid the courier at the door
+  // (the-warehouse-cost-is-the-couriers-charge-at-the-door). OUTSIDE `value` (the-couriers-charge-stays-out-of-total).
+  double courier_charge = 7;
+  // *Nilai transaksi*: Σ `total` = goods + shipping — what the paying accounts were charged.
+  double value = 8;
+}
+
+// One status's restocks paid from one account (a-restock-names-its-paying-account) — Rincian's row. The account is the
+// restock's CURRENT one: an edit may move it, and the row reads what the restock says now.
+message RestockSellingAccount {
+  RestockRequestStatus status = 1;
+  // A financial_account_service id. 0 = a restock raised before naming its account was required — kept as a row of its
+  // own, so a status's rows add up to its card.
+  uint64 finance_account_id = 2;
+  int64 restock_count = 3;
+  // Σ `total` — goods + shipping, as the card's.
+  double value = 4;
+}
+
+message RestockSellingStatResponse {
+  // Every status at once.
+  RestockSellingPile total = 1;
+  // One entry per status that HAS restocks under the filter; a status with none is absent rather than a zero row (the
+  // OrderStat convention — the caller knows the enum and draws the gaps).
+  repeated RestockSellingPile by_status = 2;
+  // Per status × paying account; the rows of a status add up to its pile's `restock_count` and `value`.
+  repeated RestockSellingAccount by_account = 3;
+}
+
+// ── The selling restock list as a file (the-restock-list-exports-and-filters-by-courier) ─────────────────────────────
+
+// RestockRequestExportRequest — Ekspor on the selling restock list. Whoever may read that list may export it (the order
+// list's rule, OrderExportRequest): the selling roles, Root and the Administrator. No warehouse role — the file carries
+// what the restocks cost, and a warehouse sees no restock money (the-warehouse-sees-the-cod-it-paid).
+//
+// THE SAME SET AS THE LIST: the list's own filter through the list's one predicate, narrowed — as the statistics are —
+// to the restocks this team RAISED. A selling team is never a restock's warehouse, so for one that narrows nothing the
+// list shows.
+message RestockRequestExportRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The list's own filter — the status tab included.
+  RestockRequestListFilter filter = 2;
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message RestockRequestExportResponse {
+  // A sentence about the step.
+  string message = 1;
+  // Restocks written so far, of the total the filter holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
+}
+
+// ── Several restocks by id (the-labels-mark-their-one-by-one-read) ─────────────────────────────────────────────────
+
+// RestockRequestByIdsRequest — Cetak Label's one read for every restock on the print. Warehouse side only, as
+// RestockRequestLabels: the crew that shelved the goods prints them. Each slice keeps the scope of the one-restock read
+// it stands for — RESTOCK_REQUEST is Detail's (raised by the team, or going to it), LABELS is Labels' (going to it,
+// accepted). An id outside that scope, or unknown, is ABSENT from the answer: the id itself must not confirm it exists.
+message RestockRequestByIdsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  RestockRequestByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Empty defaults to the RESTOCK_REQUEST slice.
+  repeated RestockRequestByIdsDataType data_request = 3;
+}
+
+message RestockRequestByIdsFilter {
+  // At most 50 — a print holds at most fifty restocks (at-most-fifty-restocks-a-print), so the read is bounded by what
+  // its one screen can ask (HARD RULE 9's capped read).
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum RestockRequestByIdsDataType {
+  RESTOCK_REQUEST_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  // The restock as the LIST reads it — its lines, no trail, no problems.
+  RESTOCK_REQUEST_BY_IDS_DATA_TYPE_RESTOCK_REQUEST = 1;
+  // An ACCEPTED restock's printable labels, exactly as RestockRequestLabels answers them. A restock not accepted has
+  // none, so it carries no LABELS item — never an error for the whole read.
+  RESTOCK_REQUEST_BY_IDS_DATA_TYPE_LABELS = 2;
+}
+
+// One accepted restock's labels — RestockRequestLabelsResponse's figures, without the id the map is keyed by.
+message RestockLabelSet {
+  int64 received_at_unix = 1;
+  repeated RestockLabel labels = 2;
+  // Units broken or missing — they never became stock, so got no label.
+  int64 excluded_count = 3;
+}
+
+message RestockRequestByIdsResponseItem {
+  oneof d {
+    RestockRequest restock_request = 1;
+    RestockLabelSet labels = 2;
+  }
+}
+
+message RestockRequestByIdsResponseList {
+  repeated RestockRequestByIdsResponseItem items = 1;
+}
+
+message RestockRequestByIdsResponse {
+  // Keyed by restock id; an id outside the caller's scope, or unknown, is absent.
+  map<uint64, RestockRequestByIdsResponseList> items = 1;
+}
+
 message RestockRequestUpdateRequest {
   // The selling team edits its own restock. The warehouse does not edit what it is sent; it signs and counts.
   option (warehouse.role_base.v1.request_policy) = {
@@ -683,6 +1082,10 @@ message RestockRequestAcceptRequest {
     finite: true
   }];
   string warehouse_additional_cost_note = 7 [(buf.validate.field).string.max_len = 200];
+  // A PHOTO OF THE COURIER'S SLIP, optional (the-courier-slip-has-an-optional-photo): the document id of this warehouse's
+  // upload (document_service, an order receipt — the restock's label photo's type), "" = none. Kept on the restock only
+  // beside a charge above 0 — with none there is no slip to keep, and it is dropped.
+  string warehouse_additional_cost_file = 8 [(buf.validate.field).string.max_len = 500];
 
   reserved 4, 5;
   reserved "cod_shipping_fee", "cost_lines";
@@ -711,6 +1114,11 @@ message RestockRequestReceivedLine {
   // (`batches.expired_at`, that day's Jakarta midnight); a line with no good units mints no batch, so its date is stored
   // nowhere. A past day is allowed — the box says what it says (the-expiry-prototypes-are-accepted).
   string expires_on = 11 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+
+  // A PHOTO OF THE BROKEN UNITS, optional, one per line (a-broken-product-carries-a-photo): the document id of this
+  // warehouse's upload (document_service, an order receipt — the restock's label photo's type), "" = none. Kept on the
+  // line's broken row; a line with no broken unit writes no such row, so its photo is stored nowhere.
+  string broken_photo_file = 12 [(buf.validate.field).string.max_len = 500];
 
   reserved 2, 3, 4, 6;
   reserved "received_quantity", "rack_id", "unplaced", "place", "damaged";
@@ -845,6 +1253,52 @@ message RestockReceiptPhotoResponse {
   int64 expires_at_unix = 2;
 }
 
+// THE PHOTOS TAKEN AT THE DOOR (the-detail-pages-show-the-broken-photo, the-detail-pages-show-the-slip-and-the-broken-rack)
+// — read back on BOTH detail pages, so either side of the restock: its selling team (`team_id` = the restock's team) or
+// its receiving warehouse (`team_id` = its `warehouse_id`) — RestockRequestDetail's two sides and roles, exactly. Any
+// other team reads NotFound, as an id that does not exist. Root and the Administrator name either side as team_id.
+//
+// The photos are the WAREHOUSE's uploads (it photographed them at Terima), so document_service is told the restock's
+// warehouse owns them — inventory's finding, never the browser's — and signs each from its own table; no share is
+// written. A photo whose file is gone is left out of the answer.
+message RestockDoorPhotosRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// One line's broken units, photographed — the line is its product (a-product-appears-once-per-restock).
+message RestockBrokenPhoto {
+  uint64 product_id = 1;
+  string url = 2;
+}
+
+// Short-lived signed links, minted per call — never stored. Bounded by ONE restock: at most one slip and one photo per
+// line, so it is not paged (a restock's lines are not, either).
+message RestockDoorPhotosResponse {
+  // The courier's slip; "" when the restock keeps none.
+  string courier_slip_url = 1;
+  // Each line whose broken units were photographed, in product id order; the others are absent.
+  repeated RestockBrokenPhoto broken = 2;
+  // When the links stop opening (unix seconds); 0 when there are none.
+  int64 expires_at_unix = 3;
+}
+
 // RestockReceivedCountCorrectRequest — KOREKSI JUMLAH TERIMA on a restock. WHO (the-received-count-prototype-is-accepted):
 // the RECEIVING warehouse's Owner or Admin — `team_id`, scoped, the restock's warehouse — plus Root and the System
 // Administrator, stamped an override from outside (an-override-is-stamped-in-every-service). Never Staff, never the
@@ -886,5 +1340,74 @@ message RestockReceivedCountCorrectRequest {
 
 message RestockReceivedCountCorrectResponse {
   // The restock as Detail reads it for the warehouse — the corrected counts and the new history rows.
+  RestockRequest request = 1;
+}
+
+// THE SELLING TEAM'S NOTE, ALONE, IN ANY STATUS (owner: "catatan bisa diedit kapanpun", the-note-is-edited-in-any-status).
+// Its one writer is the selling team (three-notes-one-writer-each), so the roles are RestockRequestUpdate's and the scope
+// is the RAISING team: another team's restock — the receiving warehouse's included — reads NotFound. Every status takes
+// it: ongoing, arrived, accepted, lost and cancelled. Only `note` changes; the rest of the restock, its lines and its
+// money stay as stored, so no money event is sent. A note equal to the stored one changes nothing and writes nothing.
+// A changed one stamps the note's writer and time (RestockRequest.note_by_user_id / note_at_unix) and writes an edit's
+// row on the trail — the status unchanged — with ONE change under it, the note before and after
+// (edits-are-in-the-same-trail).
+message RestockRequestNoteSetRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The whole note as it should now read — the same limit as the raise and the edit; empty clears it.
+  string note = 3 [(buf.validate.field).string.max_len = 1000];
+}
+
+message RestockRequestNoteSetResponse {
+  RestockRequest request = 1;
+}
+
+// THE RECEIVING WAREHOUSE'S OWN NOTE (the-warehouse-writes-its-own-note: *"bisa mengubah catatan warehouse"*). Its one
+// writer is the warehouse (three-notes-one-writer-each, the-notes-are-one-per-writer), so the roles are the warehouse's —
+// any member, as signing for the box is — and the scope is the RECEIVING warehouse: another team's restock, the raising
+// selling team's included, reads NotFound. A SEPARATE request from RestockRequestNoteSet because the ACL lives on the
+// message: the two notes have different writers and different scopes.
+//
+// FROM WHICH STATUS the warehouse may write it is NOT decided (the owner: *"aku tidak punya hak untuk memutuskannya"*,
+// the-notes-are-one-per-writer) — so no status is refused here: the warehouse's restock page offers its Ubah in every
+// status, and this takes it in every status. Only `warehouse_note` changes; nothing else of the restock moves and no
+// money event is sent. A note equal to the stored one changes nothing and writes nothing. A changed one stamps its writer
+// and time (RestockRequest.warehouse_note_by_user_id / warehouse_note_at_unix) and writes an edit's row on the trail — the
+// status unchanged — with ONE change under it, RESTOCK_LOG_CHANGE_FIELD_WAREHOUSE_NOTE before and after.
+message RestockRequestWarehouseNoteSetRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The receiving warehouse — must be the restock's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The whole note as it should now read — the selling note's limit (both are edited by one editor); empty clears it.
+  string note = 3 [(buf.validate.field).string.max_len = 1000];
+}
+
+message RestockRequestWarehouseNoteSetResponse {
   RestockRequest request = 1;
 }

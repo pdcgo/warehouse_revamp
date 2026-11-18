@@ -87,8 +87,6 @@ export interface SellingRestockActionsProps {
   idSuffix?: string;
   /** Offer Catatan, in every status — the list's rows (the-list-opens-the-notes-in-a-dialog). */
   withNotes?: boolean;
-  /** The screen's ⚠ marks for the notes dialog — who wrote the note, the warehouse's note. */
-  notesMarks?: { sellingBy?: ReactNode; late?: ReactNode; warehouse?: ReactNode };
 }
 
 // The actions, and the two dialogs behind them. Nothing renders when the status allows nothing — a disabled button
@@ -100,7 +98,6 @@ export function SellingRestockActions({
   cancelReviewMark,
   idSuffix = "",
   withNotes = false,
-  notesMarks,
 }: SellingRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -210,7 +207,6 @@ export function SellingRestockActions({
           onOpenChange={(open) => !open && setDialog("")}
           teamId={teamId}
           requestId={request.id}
-          marks={notesMarks}
         />
       )}
     </>

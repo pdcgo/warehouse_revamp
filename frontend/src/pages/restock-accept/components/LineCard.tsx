@@ -54,7 +54,6 @@ export function LineCard({
   imageUrl,
   thumbnailUrl,
   recommendations,
-  brokenPhotoMark,
   brokenRackMark,
   layout,
   update,
@@ -66,8 +65,6 @@ export function LineCard({
   imageUrl?: string;
   thumbnailUrl?: string;
   recommendations: ProductPlace[];
-  /** The page's mark on the broken photo — picked and not kept yet. */
-  brokenPhotoMark?: ReactNode;
   /** The page's mark on "put on a rack" — chosen and not kept yet. */
   brokenRackMark?: ReactNode;
   /** How the three parts sit — from the lines column's width (`lineLayout`). */
@@ -260,12 +257,13 @@ export function LineCard({
                     testId={`accept-broken-note-${pid}`}
                     onChange={(brokenNote) => update((d) => ({ ...d, brokenNote }))}
                   />
-                  {/* What the broken units look like (a-broken-product-carries-a-photo) — under its note, both optional. */}
+                  {/* What the broken units look like (a-broken-product-carries-a-photo) — under its note, both optional. Kept:
+                      uploaded under this warehouse as it is picked, and sent with the count on the line's broken row. */}
                   <PhotoPick
-                    file={draft.brokenPhoto}
+                    value={draft.brokenPhoto}
                     onChange={(brokenPhoto) => update((d) => ({ ...d, brokenPhoto }))}
+                    uploadTo={warehouseId}
                     alt={t("restock.accept.brokenPhoto.alt")}
-                    mark={brokenPhotoMark}
                     testId={`accept-broken-photo-${pid}`}
                   />
                   {/* WHERE THEY GO (owner: *"ditaruh rak itu opsional, jadi ada 2 pilihan"*,

@@ -115,18 +115,21 @@ export const OngkirCodIsASectionOnceAccepted: Story = {
 };
 
 // THE COURIER'S SLIP (owner: *"tampilkan"*, the-detail-pages-show-the-slip-and-the-broken-rack) — under the charge's note,
-// a thumbnail that opens it whole. A SAMPLE, the page's second mark.
+// a thumbnail that opens it whole: the one the warehouse kept at Terima, its own link (RestockDoorPhotos), no mark.
 export const TheSlipIsShownWithTheCharge: Story = {
   name: "Slip photo",
   render: () => <At503 />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const slip = canvas.getByTestId("restock-detail-courier-photo");
+    const slip = await canvas.findByTestId("restock-detail-courier-photo", {}, { timeout: 4000 });
 
-    await expect(within(slip).getByTestId("not-implemented-courierPhoto")).toHaveTextContent("3");
+    await expect(within(slip).queryByTestId("not-implemented-courierPhoto")).toBeNull();
     await userEvent.click(within(slip).getByTestId("restock-detail-courier-photo-open"));
     const whole = await screen.findByTestId("restock-detail-courier-photo-dialog");
     await waitFor(() => expect(whole).toBeVisible());
-    await expect(within(whole).getByRole("img")).toHaveAttribute("src", expect.stringMatching(/^data:image\/svg\+xml/));
+    await expect(within(whole).getByRole("img")).toHaveAttribute(
+      "src",
+      expect.stringMatching(/^data:image\/svg\+xml.*#doc-restock-503-slip$/),
+    );
   },
 };

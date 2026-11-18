@@ -76,7 +76,7 @@ func TestRestockPayingAccounts_AnswersFromTheAccounts(t *testing.T) {
 		}
 	}
 
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, seam)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, seam, nil, nil)
 
 	raise := func(accountID uint64) error {
 		_, err := inventory.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{

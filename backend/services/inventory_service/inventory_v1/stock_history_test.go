@@ -43,7 +43,7 @@ func wantOverrideByActor(t *testing.T, read string, actors []uint64, overrides [
 // transaction Root made from outside the warehouse says so — the "by Root team" badge in the By column.
 func TestStockHistory_ReadsTheOverrideStamp(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil, nil, nil)
 	rack := newRack(t, svc, otWarehouse, "rak-a")
 
 	// Root raises the first and the warehouse's staff count it in; the seller raises the second and Root, from outside

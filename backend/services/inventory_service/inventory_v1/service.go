@@ -43,6 +43,15 @@ type Service struct {
 	// financial_account_service in-process (a-restock-names-its-paying-account). See paying_accounts.go here and
 	// restock_accounts.go in the composition root.
 	accounts PayingAccounts
+	// Which order each `return` transaction put back on the shelf — asked of selling_service in-process, so a batch a
+	// return minted reads *Retur · order #<id>* (a-returns-batch-opens-its-order). See return_orders.go here and in the
+	// composition root.
+	returnOrders ReturnOrders
+	// Where the selling restock list's file goes, and the names its rows need — document_service for the file, the
+	// supplier, team, shipment and user services for the names, AS THE CALLER
+	// (the-restock-list-exports-and-filters-by-courier). See export_store.go here and restock_exports.go in the
+	// composition root. Nil answers RestockRequestExport Unimplemented.
+	exports ExportStore
 }
 
 // SupplierChecker answers whether a supplier is LIVE — any selling team's
@@ -94,6 +103,8 @@ func NewService(
 	products ProductReader,
 	photos ReceiptPhotoLinker,
 	accounts PayingAccounts,
+	returnOrders ReturnOrders,
+	exports ExportStore,
 ) *Service {
 	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
 	// box and the wrong one for production — the composition root always wires the real thing, and
@@ -132,6 +143,12 @@ func NewService(
 		accounts = accountsUnchecked{}
 	}
 
+	// A nil order seam names no return's order — a test reading batches has no selling_service; the composition root
+	// always wires the real one.
+	if returnOrders == nil {
+		returnOrders = noReturnOrders{}
+	}
+
 	return &Service{
 		accounts:  accounts,
 		db:        db,
@@ -141,6 +158,9 @@ func NewService(
 		events:    events,
 		products:  products,
 		photos:    photos,
+
+		returnOrders: returnOrders,
+		exports:      exports,
 	}
 }
 

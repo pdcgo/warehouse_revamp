@@ -10,6 +10,7 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
@@ -320,6 +321,167 @@ func TestRestockRequestList_FilterByDateField(t *testing.T) {
 		DateField: inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_ACCEPTED,
 	}); len(rows) != 3 {
 		t.Fatalf("no range at all = %d rows, want 3 (the date field must not filter on its own)", len(rows))
+	}
+}
+
+// EACH DATE FIELD READS ITS OWN DATE — Dibuat created_at, Diterima accepted_at, Dibatalkan cancelled_at, Tiba
+// arrived_at, Hilang lost_at — and a row without that date is EXCLUDED (the proto's rule). Tiba and Hilang used to fall
+// through to created_at, so "Tiba · last week" listed what was RAISED last week.
+//
+// Per field, in a team of its own:
+//   - in: its date inside the window, created long before it — kept only by ITS date;
+//   - out: its date outside the window, created inside it — a read of created_at would keep it;
+//   - without: no such date at all, created inside the window — must not be kept by the creation date either.
+func TestRestockRequestList_EachDateFieldReadsItsOwnDate(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	now := time.Now()
+	inside := now.AddDate(0, 0, -7)
+	outside := now.AddDate(0, 0, -30)
+	from, to := now.AddDate(0, 0, -10).Unix(), now.AddDate(0, 0, -5).Unix()
+
+	type restock = inventory_service_models.Restock
+
+	cases := []struct {
+		name   string
+		field  inventoryv1.RestockDateField
+		status string
+		set    func(r *restock, at time.Time)
+	}{
+		{"created", inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_CREATED, "ongoing",
+			func(r *restock, at time.Time) { r.CreatedAt = at }},
+		{"accepted", inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_ACCEPTED, "accepted",
+			func(r *restock, at time.Time) { r.AcceptedAt = &at }},
+		{"cancelled", inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_CANCELLED, "cancelled",
+			func(r *restock, at time.Time) { r.CancelledAt = &at }},
+		{"arrived", inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_ARRIVED, "arrived",
+			func(r *restock, at time.Time) { r.ArrivedAt = &at }},
+		{"lost", inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_LOST, "lost",
+			func(r *restock, at time.Time) { r.LostAt = &at }},
+	}
+
+	for i, c := range cases {
+		team := uint64(40 + i)
+
+		seed := func(r restock) uint64 {
+			t.Helper()
+
+			r.TeamID, r.WarehouseID, r.UpdatedAt = team, 5, now
+
+			err := db.Create(&r).Error
+			if err != nil {
+				t.Fatalf("%s: seed: %v", c.name, err)
+			}
+
+			return r.ID
+		}
+
+		in := restock{Status: c.status, CreatedAt: outside}
+		c.set(&in, inside)
+		inID := seed(in)
+
+		out := restock{Status: c.status, CreatedAt: inside}
+		c.set(&out, outside)
+		seed(out)
+
+		// Every restock has a creation date, so only the other four have a row without theirs.
+		if c.field != inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_CREATED {
+			seed(restock{Status: "ongoing", CreatedAt: inside})
+		}
+
+		filter := &inventoryv1.RestockRequestListFilter{DateField: c.field, FromUnix: from, ToUnix: to}
+
+		rows := listRestocks(t, svc, ctx, team, filter)
+		if len(rows) != 1 || rows[0].GetId() != inID {
+			got := make([]uint64, 0, len(rows))
+			for _, r := range rows {
+				got = append(got, r.GetId())
+			}
+
+			t.Errorf("%s window = %v, want just #%d (the row whose %s date is inside it)", c.name, got, inID, c.name)
+		}
+
+		// The pager counts the same set.
+		if total := listTotal(t, svc, ctx, team, filter); total != 1 {
+			t.Errorf("%s window total = %d, want 1", c.name, total)
+		}
+	}
+}
+
+// BY COURIER (the-restock-list-exports-and-filters-by-courier): the restock's own shipment channel id narrows the
+// rows AND the pager; 0 is any courier, and a restock that names none shows only then. The same RPC serves the
+// receiving warehouse, which the field narrows the same way.
+func TestRestockRequestList_FilterByCourier(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+	const jne, jnt, sicepat uint64 = 91, 92, 93
+
+	create := func(courier uint64) *inventoryv1.RestockRequest {
+		t.Helper()
+
+		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+			TeamId: sellingTeam, WarehouseId: warehouse, ShipmentId: courier,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100},
+			},
+		}))
+		if err != nil {
+			t.Fatalf("create: %v", err)
+		}
+
+		return resp.Msg.GetRequest()
+	}
+
+	byJne1 := create(jne)
+	byJnt := create(jnt)
+	byJne2 := create(jne)
+	create(0) // names no courier
+
+	ids := func(rows []*inventoryv1.RestockRequest) []uint64 {
+		out := make([]uint64, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, r.GetId())
+		}
+
+		return out
+	}
+
+	// 0 is any courier — the restock with none included.
+	if all := listRestocks(t, svc, ctx, sellingTeam, &inventoryv1.RestockRequestListFilter{}); len(all) != 4 {
+		t.Fatalf("any courier = %v, want all 4", ids(all))
+	}
+
+	for _, team := range []uint64{sellingTeam, warehouse} {
+		got := listRestocks(t, svc, ctx, team, &inventoryv1.RestockRequestListFilter{ShipmentId: jne})
+		if len(got) != 2 || got[0].GetId() != byJne2.GetId() || got[1].GetId() != byJne1.GetId() {
+			t.Fatalf("team %d, JNE = %v, want [#%d #%d] newest first", team, ids(got), byJne2.GetId(), byJne1.GetId())
+		}
+
+		if total := listTotal(t, svc, ctx, team, &inventoryv1.RestockRequestListFilter{ShipmentId: jne}); total != 2 {
+			t.Fatalf("team %d, JNE total = %d, want 2", team, total)
+		}
+	}
+
+	only := listRestocks(t, svc, ctx, sellingTeam, &inventoryv1.RestockRequestListFilter{ShipmentId: jnt})
+	if len(only) != 1 || only[0].GetId() != byJnt.GetId() {
+		t.Fatalf("J&T = %v, want just #%d", ids(only), byJnt.GetId())
+	}
+
+	// A courier no restock names reads nothing — and the pager says 0.
+	if total := listTotal(t, svc, ctx, sellingTeam, &inventoryv1.RestockRequestListFilter{ShipmentId: sicepat}); total != 0 {
+		t.Fatalf("SiCepat total = %d, want 0", total)
+	}
+
+	// It ANDs with the other filters, as each of them does.
+	if rows := listRestocks(t, svc, ctx, sellingTeam, &inventoryv1.RestockRequestListFilter{
+		ShipmentId: jne, Q: "#" + formatID(byJnt.GetId()),
+	}); len(rows) != 0 {
+		t.Fatalf("JNE + the J&T restock's number = %v, want none", ids(rows))
 	}
 }
 

@@ -10,7 +10,7 @@
 //   5071  Teh 72 (Pusat)      restock 507   arrived 15 = 15 used — DEPLETED                  no expiry
 //   3981  Gula 73 (Kenanga)   restock 398   arrived 50 = 45 used + 5 ready                   EXPIRED 3 days ago
 //   3982  Kopi 71 (Pusat)     restock 398   arrived 24 = 6 used + 18 ready                   expires in 9 days
-//   9101  Kopi 71 (Pusat)     a RETURN      arrived 2  = 2 ready                             no expiry
+//   9101  Kopi 71 (Pusat)     a RETURN      arrived 2  = 2 ready                             no expiry   order 106's return
 //
 // KOREKSI JUMLAH TERIMA (receivedCountScenario.ts) reaches these rows too: a correction's units out are Hilang at the batch
 // price — never Terpakai — and leave Siap; units in come back (batch_detail.go countOutExpr); its history row is an ADJUST
@@ -18,7 +18,8 @@
 //
 // The rules the server plays (batch_list.go, batch_detail.go): scoped to the warehouse (another's batch is NotFound);
 // the list newest first; *expiring soon* is within 30 days; the header totals are over the WHOLE filtered set, not
-// the page. A batch's places are where the accept put it (a-batch-shows-the-racks-it-was-put-on) — history, not where
+// the page; the team filter keeps the batches its OWNER holds (the-batch-list-filters-by-team) — here the product's
+// team in productStub's catalogue, the same owner the row names. A batch's places are where the accept put it (a-batch-shows-the-racks-it-was-put-on) — history, not where
 // its units sit now.
 
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
@@ -32,6 +33,7 @@ import {
 } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { racks } from "./fixtures";
 import { isEmptied, priceLogsOf, priceNow, resetBatchPriceScenario } from "./batchPriceScenario";
+import { allProducts } from "./productStub";
 import { correctionsOfBatch } from "./receivedCountScenario";
 
 const DAY = 86_400n;
@@ -61,11 +63,13 @@ interface BatchFixture {
   createdBy: bigint;
   acceptedBy: bigint;
   origin: BatchOrigin;
+  /** The order whose return minted it — 0 for any other batch (a-returns-batch-opens-its-order). */
+  returnOrderId: bigint;
   /** Where the accept put it: rack id → units. */
   shelves: [bigint, bigint][];
 }
 
-function batch(f: Omit<BatchFixture, "warehouseId" | "costKnown" | "broken" | "lost" | "used" | "createdBy" | "acceptedBy" | "origin" | "supplierId" | "receiptNo"> & Partial<BatchFixture>): BatchFixture {
+function batch(f: Omit<BatchFixture, "warehouseId" | "costKnown" | "broken" | "lost" | "used" | "createdBy" | "acceptedBy" | "origin" | "supplierId" | "receiptNo" | "returnOrderId"> & Partial<BatchFixture>): BatchFixture {
   return {
     warehouseId: 11n,
     costKnown: true,
@@ -75,6 +79,7 @@ function batch(f: Omit<BatchFixture, "warehouseId" | "costKnown" | "broken" | "l
     createdBy: 61n,
     acceptedBy: 62n,
     origin: BatchOrigin.RESTOCK,
+    returnOrderId: 0n,
     supplierId: 0n,
     receiptNo: "",
     ...f,
@@ -82,8 +87,9 @@ function batch(f: Omit<BatchFixture, "warehouseId" | "costKnown" | "broken" | "l
 }
 
 const BATCHES: BatchFixture[] = [
-  // A return carries no restock number — the server reads 0 there (batch_detail.go: COALESCE(r.id, 0)).
-  batch({ id: 9101n, deliveryId: 0n, productId: 71n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g", unitCost: 40500, arrived: 2n, ready: 2n, expiresIn: 0, age: 3, origin: BatchOrigin.RETURN, shelves: [[43n, 2n]] }),
+  // A return carries no restock number — the server reads 0 there (batch_detail.go: COALESCE(r.id, 0)) — and names the
+  // order whose return it is (return_orders.go: the order naming its `return` transaction) — Pak Firman's 106.
+  batch({ id: 9101n, deliveryId: 0n, productId: 71n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g", unitCost: 40500, arrived: 2n, ready: 2n, expiresIn: 0, age: 3, origin: BatchOrigin.RETURN, returnOrderId: 106n, shelves: [[43n, 2n]] }),
   batch({ id: 5031n, deliveryId: 503n, receiptNo: "SCP5544332211", productId: 74n, productCode: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg", supplierId: 31n, unitCost: 66167, arrived: 10n, broken: 2n, lost: 1n, ready: 7n, expiresIn: 20, age: 6, shelves: [[41n, 5n], [43n, 2n]] }),
   batch({ id: 5032n, deliveryId: 503n, receiptNo: "SCP5544332211", productId: 72n, productCode: "SKU-TEH-100", name: "Teh Melati 100g", supplierId: 31n, unitCost: 16167, arrived: 20n, used: 3n, ready: 17n, expiresIn: 150, age: 6, shelves: [[42n, 20n]] }),
   batch({ id: 5071n, deliveryId: 507n, receiptNo: "JNE5555666677", productId: 72n, productCode: "SKU-TEH-100", name: "Teh Melati 100g", supplierId: 31n, unitCost: 15667, arrived: 15n, used: 15n, ready: 0n, expiresIn: 0, age: 27, shelves: [[42n, 15n]] }),
@@ -132,7 +138,16 @@ function rackCodesOf(b: BatchFixture): string[] {
   return [...new Set(ids.map(codeOf).filter((c): c is string => c !== undefined))].sort();
 }
 
+/** Every team filter BatchList was asked with (0n = none), as sent — reset with the stub, so a story reads its own. */
+export const batchListScenario = { ownerTeamIds: [] as bigint[] };
+
+/** Whose a batch is — its product's owner in the catalogue (the server reads `batches.team_id`, the same team). */
+function ownerOf(b: BatchFixture): bigint {
+  return allProducts().find((p) => p.id === b.productId)?.teamId ?? 0n;
+}
+
 export function resetBatchStub() {
+  batchListScenario.ownerTeamIds = [];
   rows = structuredClone(BATCHES);
   leftEveryRack = new Set();
   placesNow = null;
@@ -212,6 +227,7 @@ function toWire(b: BatchFixture) {
     createdBy: b.createdBy,
     acceptedBy: b.acceptedBy,
     origin: b.origin,
+    returnOrderId: b.returnOrderId,
   };
 }
 
@@ -317,11 +333,13 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
     const f = req.filter;
     const q = (f?.search ?? "").trim().toLowerCase().replace(/^#/, "");
     const field = f?.dateField ?? BatchDateField.UNSPECIFIED;
+    batchListScenario.ownerTeamIds.push(f?.ownerTeamId ?? 0n);
 
     const matched = rows
       .filter((b) => b.warehouseId === req.teamId)
       .filter((b) => !f?.productId || b.productId === f.productId)
       .filter((b) => !f?.supplierId || b.supplierId === f.supplierId)
+      .filter((b) => !f?.ownerTeamId || ownerOf(b) === f.ownerTeamId)
       .filter(
         (b) =>
           !q ||

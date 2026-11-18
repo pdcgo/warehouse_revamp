@@ -59,6 +59,7 @@ export function useReceiptUpload({
   teamId,
   onChange,
   onFile,
+  failedTitle,
 }: {
   teamId: bigint;
   onChange: (receipt: ReceiptValue) => void;
@@ -67,6 +68,11 @@ export function useReceiptUpload({
    * check reads these bytes BESIDE the upload (receipt-check-takes-the-file-bytes), never the stored copy.
    */
   onFile?: (file: File | null) => void;
+  /**
+   * The failure toast's title — the receipt's by default. Another file sent the same way (a photo taken at a restock's
+   * door, features/restock/PhotoPick) says what IT is.
+   */
+  failedTitle?: string;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -134,7 +140,7 @@ export function useReceiptUpload({
     } catch (err) {
       // A file that never arrived is not one to read numbers from.
       onFile?.(null);
-      toaster.create({ type: "error", title: t("orders.receiptFailed"), description: rpcError(err) });
+      toaster.create({ type: "error", title: failedTitle ?? t("orders.receiptFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
       uploadingRef.current = false;

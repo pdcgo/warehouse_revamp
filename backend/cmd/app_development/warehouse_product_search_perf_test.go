@@ -103,7 +103,7 @@ func TestPerf_WarehouseProductSearch(t *testing.T) {
 	perfPickerVolume(t, raw)
 
 	db, probe := san_perf.Wrap(raw)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil, nil, nil)), nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(product_v1.NewService(db, nil, nil, nil, nil)), nil, nil, nil, nil)
 	ctx := context.Background()
 
 	search := func(warehouse uint64, q string, limit uint32) *inventoryv1.WarehouseProductSearchResponse {
@@ -132,6 +132,12 @@ func TestPerf_WarehouseProductSearch(t *testing.T) {
 		{perfPickWarehouse, "5 000", "zzzz", 10},
 		{perfPickBigWarehouse, "10 000", "kaos", 10},
 		{perfPickBigWarehouse, "10 000", "kaos", 200},
+		// NO TWO-LETTER MINIMUM (a-product-picker-needs-no-two-letters): the picker opened with nothing typed — the first
+		// page of the whole held set — and one letter, which matches most of a warehouse.
+		{perfPickWarehouse, "5 000", "", 10},
+		{perfPickWarehouse, "5 000", "k", 10},
+		{perfPickBigWarehouse, "10 000", "", 10},
+		{perfPickBigWarehouse, "10 000", "k", 10},
 	}
 
 	for _, c := range cases {
@@ -158,12 +164,16 @@ func TestPerf_WarehouseProductSearch(t *testing.T) {
 		probe.Report(t, name)
 	}
 
-	// The plans, at the 5 000-held warehouse and the common term.
-	probe.Reset()
-	search(perfPickWarehouse, "kaos", 10)
+	// The plans, at the 5 000-held warehouse: the common term, nothing typed, and one letter.
+	for _, q := range []string{"kaos", "", "k"} {
+		probe.Reset()
+		search(perfPickWarehouse, q, 10)
 
-	for _, q := range probe.Queries() {
-		san_perf.Explain(t, raw, q.SQL)
+		t.Logf("plans for q=%q", q)
+
+		for _, statement := range probe.Queries() {
+			san_perf.Explain(t, raw, statement.SQL)
+		}
 	}
 
 	// THE CONTROL: the same held-id list bound to a query that does nothing with it. Whatever this takes is the cost of

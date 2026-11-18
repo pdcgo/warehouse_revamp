@@ -15,8 +15,6 @@ import { MovementTable } from "../../features/inventory/MovementTable";
 import { BatchExplainer } from "../../features/inventory/BatchExplainer";
 import { BatchSource } from "../../features/inventory/BatchSource";
 import { ExpiryCell } from "../../features/inventory/ExpiryCell";
-import { BATCH_PENDING } from "../../features/inventory/pending";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useBatchDetail, useBatchHistory, useBatchPlacements } from "../../features/inventory/queries";
 import { useRackCodes } from "../../features/racks/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
@@ -580,9 +578,6 @@ export function BatchDetailPage() {
       data-testid="batch-detail-page"
       style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
     >
-      {/* What is not wired yet — only a return's batch shows it (features/inventory/pending.ts). */}
-      {isReturn && <NotImplementedSummary list={BATCH_PENDING} />}
-
       {/* THE STICKY STRIP — the section chips on a phone (always), and the title bar under them, drawn over the page once
           the heading has gone behind it. */}
       <ProductStickyStrip

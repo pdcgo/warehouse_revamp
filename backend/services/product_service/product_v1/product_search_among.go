@@ -26,8 +26,9 @@ type ProductSearchAmong struct {
 // and hands their ids here, where the names and codes live. It searches only among them — never the rest of the
 // catalogue — so a warehouse finds what it has held and nothing it has not.
 //
-// Two modes, one statement: with a term it narrows by name or code (the picker, which asks only with a term of 2 or
-// more); with NONE it lists every product of the set, in the same order (the Stock screen before anything is typed).
+// Two modes, one statement: with a term it narrows by name or code (the picker from one letter, the Stock screen from
+// two); with NONE it lists every product of the set, in the same order (the picker opened with nothing typed —
+// a-product-picker-needs-no-two-letters — and the Stock screen before anything is typed).
 //
 // A plain method, not an RPC: the composition root calls it for inventory's WarehouseProductSearch, which ran its own
 // policy against the warehouse, and it reads nothing but product_service's rows (HARD RULE 3). As an RPC it would have to

@@ -3970,6 +3970,8 @@ to find the order: the server accepts it by id, but no list or scan of its own m
 
 ✅ **Built 2026-11-04** — accepted the same day ([the-return-receiving-screens-are-accepted](#the-return-receiving-screens-are-accepted)). `pages/pick-queue/components/ReceiveReturnDialog.tsx`, `features/orders/useForceReturn.tsx`, `features/orders/AcceptReturnDialog.tsx` (moved, shared by three pages); Force Return on pick-order and the warehouse order detail, which also gained Accept Return. No server change.
 
+🔄 *(2026-11-16, re-audit)* **Moved** — `features/orders/AcceptReturnDialog.tsx`, named in the ✅ line above, is gone (deleted in e3e36c49, 2026-11-09): Accept Return is now a page, `pages/order-return-accept/` (route `/warehouse-orders/:orderId/accept-return`), opened by `useOpenReturnAccept` (`features/orders/returnAccept.ts`) from the pick page, the warehouse order detail and *Receive a Return*'s found order — [the-return-accept-page-is-accepted](../inventory/return_decision.md#the-return-accept-page-is-accepted). `pages/pick-queue/components/ReceiveReturnDialog.tsx` and `features/orders/useForceReturn.tsx` stand. The dialog path above is history.
+
 ---
 
 ## every-allowed-move-has-a-button

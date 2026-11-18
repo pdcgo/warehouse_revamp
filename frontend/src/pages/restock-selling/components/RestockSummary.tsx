@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Button, Flex, Icon } from "@chakra-ui/react";
+import { Box, Button, Icon } from "@chakra-ui/react";
 import { ChevronRight } from "lucide-react";
 
 import { RestockStatusBadge } from "../../../components/badges/RestockStatusBadge";
 import { SummaryCard, SummaryStrip } from "../../../features/orders/SummaryCard";
 import { RESTOCK_STATUS_TABS } from "../../../features/restock/statusTabs";
 import { formatCountCompact, formatRupiahCompact, formatRupiahNumber } from "../../../lib/money";
-import { type RestockPile, type RestockSummaryData, pileValue } from "../summarySample";
+import type { RestockPile, RestockSummaryData } from "../../../features/restock/sellingStat";
 
 // THE RESTOCK LIST'S STATISTICS — two strips, one per kind of tab, as the order list's (owner: *"untuk statistik di semua
 // status adalah total dan per status … untuk di tab status ada transaksi, jumlah barang, jumlah sku, nilai barang, ongkir
@@ -24,17 +24,19 @@ import { type RestockPile, type RestockSummaryData, pileValue } from "../summary
 // ⚠ ONGKIR COD IS THE WAREHOUSE'S, OUTSIDE THE VALUE (owner: *"ongkir cod itu biaya kurir yang dibayar oleh gudang"*) —
 // what the courier asked at the door (the-couriers-charge-stays-out-of-total). Nilai transaksi is goods plus shipping, so
 // Nilai barang and Ongkir COD never add up to it, and its line says what does.
+//
+// THE FIGURES ARE THE SERVER'S (RestockSellingStat, useRestockSellingStat) — read through the list's own predicate, so
+// they follow every filter the rows follow. *Jumlah barang* is the pieces ORDERED on the lines, on every status, an
+// accepted one included (jumlah-barang-counts-the-pieces-ordered); the total's *Jumlah SKU* is counted over every status
+// at once, never the largest pile's.
 export function RestockSummary({
   data,
   tab,
-  marks,
   onPayments,
 }: {
   data: RestockSummaryData;
   /** The status tab — `all` draws the piles, a status draws its figures. */
   tab: string;
-  /** Build-status marks, above the figures. */
-  marks?: ReactNode;
   /** Opens the transaction value per paying account — a status tab's Nilai transaksi card. */
   onPayments: (pile: RestockPile) => void;
 }) {
@@ -43,13 +45,6 @@ export function RestockSummary({
 
   return (
     <Box data-testid="restock-summary" data-pile={selected?.key ?? "all"} minW="0" maxW="full">
-      {marks && (
-        // Right-aligned, above the figures — out of the reading path of the numbers themselves.
-        <Flex gap="2" align="center" justify="flex-end" mb="2" data-testid="restock-summary-marks">
-          {marks}
-        </Flex>
-      )}
-
       {selected ? (
         <SummaryStrip testId="restock-summary-measures">
           <SummaryCard
@@ -101,7 +96,7 @@ export function RestockSummary({
                 </Button>
               ) : undefined
             }
-            value={formatRupiahNumber(pileValue(selected))}
+            value={formatRupiahNumber(selected.value)}
             note={t("restock.selling.summary.valueLine")}
             testId="restock-summary-measure-value"
           />
@@ -149,7 +144,7 @@ function PileCard({
       value={t("restock.selling.summary.transactionCount", { count: pile.transactions })}
       line={t("restock.selling.summary.pileLine", {
         units: formatCountCompact(pile.units),
-        value: formatRupiahCompact(BigInt(Math.round(pileValue(pile)))),
+        value: formatRupiahCompact(BigInt(Math.round(pile.value))),
       })}
       muted={pile.transactions === 0}
       testId={testId}

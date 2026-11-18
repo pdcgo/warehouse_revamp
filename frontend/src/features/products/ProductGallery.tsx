@@ -16,7 +16,7 @@ export interface GalleryImage {
 //   several   one at a time, THUMBNAILS as the indicators: a thumbnail says which picture you are about to get, which is
 //             the whole reason to look at a second one. Position 0 is the cover.
 //
-// Test ids from `prefix`: `<prefix>-images`, `<prefix>-image-<i>`, `<prefix>-no-images`.
+// Test ids from `prefix`: `<prefix>-images`, `<prefix>-image-<i>`, `<prefix>-thumb-<i>` (several only), `<prefix>-no-images`.
 export function ProductGallery({ images, name, prefix }: { images: GalleryImage[]; name: string; prefix: string }) {
   const { t } = useTranslation();
 
@@ -70,6 +70,7 @@ export function ProductGallery({ images, name, prefix }: { images: GalleryImage[
             index={i}
             unstyled
             aria-label={t("products.detail.showImage", { n: i + 1 })}
+            data-testid={`${prefix}-thumb-${i}`}
             cursor="pointer"
             boxSize="10"
             p="0"

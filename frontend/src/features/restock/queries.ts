@@ -1,12 +1,20 @@
+import { ConnectError } from "@connectrpc/connect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { restockClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
 import { fetchActors, peopleFor, useActors, WHO_FILTER_SIZE } from "../users/queries";
-import type { RestockActorRole } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockDateField, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import type { RestockActorRole, RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import {
+  RestockDateField,
+  RestockReference,
+  RestockReferenceInUseSchema,
+  RestockRequestStatus,
+} from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { firstOfMonthBack, jakartaDayEndUnix, jakartaDayStartUnix, jakartaToday } from "../../lib/jakartaDay";
 import { useDebounced } from "../../lib/useDebounced";
 import { restocksFromList, restockListRowData } from "./adapt";
+import { restockSummaryOf } from "./sellingStat";
 
 // The restock screens' reads (#176).
 //
@@ -28,7 +36,9 @@ export interface RestockListArgs {
    * nobody, so this and the Pending tab together correctly return nothing.
    */
   acceptedByUserId?: bigint;
-  /** Which of a restock's three dates the range is about; UNSPECIFIED reads as created. */
+  /** 0 = any courier. Which shipment channel brought it — a restock naming none is read only under any. */
+  shipmentId?: bigint;
+  /** Which of a restock's dates the range is about; UNSPECIFIED reads as created. */
   dateField?: RestockDateField;
   /** Unix seconds; 0 = open at that end. */
   fromUnix?: bigint;
@@ -47,6 +57,7 @@ export function useRestockRequests(args: RestockListArgs) {
     requestingTeamId = 0n,
     createdByUserId = 0n,
     acceptedByUserId = 0n,
+    shipmentId = 0n,
     dateField = RestockDateField.UNSPECIFIED,
     fromUnix = 0n,
     toUnix = 0n,
@@ -65,6 +76,7 @@ export function useRestockRequests(args: RestockListArgs) {
       requestingTeamId: requestingTeamId.toString(),
       createdByUserId: createdByUserId.toString(),
       acceptedByUserId: acceptedByUserId.toString(),
+      shipmentId: shipmentId.toString(),
       dateField,
       fromUnix: fromUnix.toString(),
       toUnix: toUnix.toString(),
@@ -83,6 +95,7 @@ export function useRestockRequests(args: RestockListArgs) {
           requestingTeamId,
           createdByUserId,
           acceptedByUserId,
+          shipmentId,
           dateField,
           fromUnix,
           toUnix,
@@ -139,8 +152,9 @@ const normalised = (ref: string) => ref.trim().toLowerCase();
 // restock being edited is not its own duplicate. Every other status holds it: an accepted box cannot arrive twice, and
 // a lost one may still turn up.
 //
-// ⚠ THIS TEAM'S RESTOCKS ONLY — the list a selling team may read. A resi on another team's restock is not caught, and
-// nothing on the server refuses a repeated one: the form's two pending marks say so (`restock-form/pending.ts`).
+// ⚠ THIS TEAM'S RESTOCKS ONLY — the list a selling team may read, and the rule as decided. The SERVER refuses the same
+// (a save's AlreadyExists, `refusalsOf` below), so a check this read was too early to see still stops the save; a resi
+// on ANOTHER team's restock is caught by neither — the decision does not cover it (`restock-form/pending.ts`).
 //
 // Keyed on the value, so each one typed is its own question — never `listQuery`, which would show the answer about the
 // previous value while asking about this one.
@@ -186,6 +200,53 @@ export function useRestockRefInUse(args: {
   if (query.isError) return { state: "failed" };
 
   return query.data ? { state: "taken", ...query.data } : { state: "free" };
+}
+
+/** The server's refusal of one reference: the value the save sent (normalised) and the restock holding it. */
+export interface RefRefusal {
+  value: string;
+  id: bigint;
+  status: RestockRequestStatus;
+}
+
+export type RefRefusals = Partial<Record<RestockRef, RefRefusal>>;
+
+// THE SERVER'S HALF OF THE CHECK (a-reference-in-use-stops-the-restock-form). The list is asked before the save, so a
+// restock saved with the same resi or Order ID in between — another tab, the person beside you — passes the screen's
+// check. The server refuses it (inventory 00048's unique indexes) as AlreadyExists carrying a `RestockReferenceInUse`
+// detail: each reference held and its holder. Read here against the values the save SENT, so the refusal sticks to that
+// value and lets go the moment the field changes. `{}` for any other error.
+export function refusalsOf(err: unknown, sent: { receipt: string; invoiceRef: string }): RefRefusals {
+  const [inUse] = ConnectError.from(err).findDetails(RestockReferenceInUseSchema);
+  if (!inUse) return {};
+
+  const out: RefRefusals = {};
+
+  for (const held of inUse.held) {
+    const ref: RestockRef | undefined =
+      held.reference === RestockReference.RECEIPT
+        ? "receipt"
+        : held.reference === RestockReference.INVOICE_REF
+          ? "invoiceRef"
+          : undefined;
+    if (!ref) continue;
+
+    out[ref] = { value: normalised(sent[ref]), id: held.holderId, status: held.holderStatus };
+  }
+
+  return out;
+}
+
+/**
+ * The check as the form shows it: the server's refusal of THIS value wins over the screen's own answer, which may have
+ * been asked before the holder was saved. Any other value is the screen's question again.
+ */
+export function withRefusal(check: RefCheck, refusal: RefRefusal | undefined, value: string): RefCheck {
+  if (refusal && check.state !== "idle" && normalised(value) === refusal.value) {
+    return { state: "taken", id: refusal.id, status: refusal.status };
+  }
+
+  return check;
 }
 
 // WHO A RESTOCK LIST'S "WHO" FILTER OFFERS (a-who-filter-lists-the-people-on-its-rows): everyone who raised — or
@@ -251,28 +312,98 @@ export function useRestockInbound(args: { teamId: bigint | undefined; requesting
   });
 }
 
-// The printable labels for a fulfilled restock (#207), scoped to the accepting warehouse. Its own
-// key params so it caches independently of the request detail — a different question about the same
-// receipt. Only enabled once we have a warehouse team and a real request id.
+// THE COD THE WAREHOUSE PAID THIS MONTH (owner: *"gudang tidak perlu tahu nilai restok, tapi nilai cod yang mereka
+// bayarkan mungkin lebih baik"*, the-warehouse-sees-the-cod-it-paid) — the courier's charge it handed over at the door on
+// the restocks it ACCEPTED this month, and how many carried one: its own money, owed back by the selling teams, never the
+// restock's value. "This month" is the JAKARTA month (the-system-runs-on-jakarta-time): 00:00 WIB on the 1st through
+// 23:59:59 WIB today, both ends in, as the server reads its window.
 //
-// The OPTIONS are exported as well as the hook, so a page reading several restocks at once (Cetak Label over many,
-// labels-print-several-restocks) asks `useQueries` the very same question — one cache entry per restock, shared with
-// the single reads.
-export function restockLabelsQuery(teamId: bigint | undefined, requestId: bigint) {
-  return {
-    queryKey: key.restock(teamId, { labels: requestId.toString() }),
-    enabled: teamId !== undefined && requestId > 0n,
+// Over every restock it accepted this month — not the FROM lens, which restates the QUEUE's question (useRestockInbound),
+// nor a tab or a search: this card is money already paid, not the queue.
+export function useRestockCodPaid(args: { teamId: bigint | undefined }) {
+  const { teamId } = args;
+  const today = jakartaToday();
+  const firstOfMonth = firstOfMonthBack(today, 0);
+
+  return useQuery({
+    queryKey: key.restock(teamId, { codPaid: firstOfMonth, through: today }),
+    enabled: teamId !== undefined,
     queryFn: async () => {
-      const res = await restockClient.restockRequestLabels({ teamId: teamId!, requestId });
+      const res = await restockClient.restockCodPaidStat({
+        teamId: teamId!,
+        fromUnix: jakartaDayStartUnix(firstOfMonth),
+        toUnix: jakartaDayEndUnix(today),
+      });
 
-      return res;
+      return { restocks: Number(res.restockCount), amount: res.amount };
     },
-  };
+  });
 }
 
-export function useRestockLabels(args: { teamId: bigint | undefined; requestId: bigint }) {
-  return useQuery(restockLabelsQuery(args.teamId, args.requestId));
+/** The list's filters the statistics follow — everything the list sends but its status, its page and its page size. */
+export type RestockStatArgs = Omit<RestockListArgs, "status" | "requestingTeamId" | "page" | "pageSize"> & {
+  /** False holds the read — the selling list asks only while its statistics are open. */
+  enabled: boolean;
+};
+
+// THE SELLING RESTOCK LIST'S STATISTICS (the-restock-statistics-count-transactions-under-the-tabs) — the cards under its
+// tabs and Rincian's value per paying account, read ONLY while the statistics are open, then following every filter
+// the list follows (the-statistics-are-shut-and-read-when-opened). The server reads them through the list's own
+// predicate, so a card and the rows under it cannot disagree about which restocks a filter means.
+//
+// The TAB is not in the key: the census answers every status at once, and a tab only picks which pile is drawn — so
+// changing it reads nothing. A filter change refines the same question, so the previous figures stay up while it
+// re-reads (`listQuery`).
+export function useRestockSellingStat(args: RestockStatArgs) {
+  const {
+    teamId,
+    warehouseId = 0n,
+    createdByUserId = 0n,
+    acceptedByUserId = 0n,
+    shipmentId = 0n,
+    dateField = RestockDateField.UNSPECIFIED,
+    fromUnix = 0n,
+    toUnix = 0n,
+    q = "",
+    enabled,
+  } = args;
+
+  return useQuery({
+    queryKey: key.restock(teamId, {
+      sellingStat: true,
+      warehouseId: warehouseId.toString(),
+      createdByUserId: createdByUserId.toString(),
+      acceptedByUserId: acceptedByUserId.toString(),
+      shipmentId: shipmentId.toString(),
+      dateField,
+      fromUnix: fromUnix.toString(),
+      toUnix: toUnix.toString(),
+      q,
+    }),
+    ...listQuery,
+    enabled: enabled && teamId !== undefined,
+    queryFn: async () => {
+      const res = await restockClient.restockSellingStat({
+        teamId: teamId!,
+        filter: {
+          warehouseId,
+          createdByUserId,
+          acceptedByUserId,
+          shipmentId,
+          dateField,
+          fromUnix,
+          toUnix,
+          q,
+        },
+      });
+
+      return restockSummaryOf(res);
+    },
+  });
 }
+
+// Cetak Label's labels are read for every restock on the print in one call, by RestockRequestByIds — its query lives with
+// the page (pages/restock-labels/labelSets.ts, the-labels-mark-their-one-by-one-read).
 
 export function restockRequestQuery(teamId: bigint | undefined, requestId: bigint) {
   return {
@@ -288,6 +419,47 @@ export function restockRequestQuery(teamId: bigint | undefined, requestId: bigin
 
 export function useRestockRequest(args: { teamId: bigint | undefined; requestId: bigint }) {
   return useQuery(restockRequestQuery(args.teamId, args.requestId));
+}
+
+/** The door's photos, as the detail pages draw them: the slip's link ("" = none) and each photographed line's, by product. */
+export interface RestockDoorPhotoLinks {
+  slip: string;
+  broken: ReadonlyMap<string, string>;
+}
+
+const NO_DOOR_PHOTOS: RestockDoorPhotoLinks = { slip: "", broken: new Map() };
+
+/** Whether the restock kept any photo at the door — its slip, or a broken row's photo. */
+export function hasDoorPhotos(request: RestockRequest | null | undefined): boolean {
+  if (!request) return false;
+  if (request.warehouseAdditionalCostFile !== "") return true;
+
+  return request.items.some((item) => item.problems.some((p) => p.photoFile !== ""));
+}
+
+// THE PHOTOS TAKEN AT THE DOOR, READ BACK on both detail pages (the-detail-pages-show-the-broken-photo,
+// the-detail-pages-show-the-slip-and-the-broken-rack): ONE read for the whole restock — the slip and every photographed
+// line — signed links from RestockDoorPhotos, which checks the reader is the restock's selling team or its warehouse.
+// Asked only when the restock kept a photo, so a restock without one makes no call. The links are short-lived and never
+// stored: the page reads them fresh, as everything (HARD RULE 10).
+export function useRestockDoorPhotos(args: { teamId: bigint | undefined; request: RestockRequest | null | undefined }) {
+  const { teamId, request } = args;
+  const requestId = request?.id ?? 0n;
+
+  const query = useQuery({
+    queryKey: key.restock(teamId, { doorPhotos: requestId.toString() }),
+    enabled: teamId !== undefined && requestId > 0n && hasDoorPhotos(request),
+    queryFn: async (): Promise<RestockDoorPhotoLinks> => {
+      const res = await restockClient.restockDoorPhotos({ teamId: teamId!, requestId });
+
+      return {
+        slip: res.courierSlipUrl,
+        broken: new Map(res.broken.map((b) => [b.productId.toString(), b.url])),
+      };
+    },
+  });
+
+  return query.data ?? NO_DOOR_PHOTOS;
 }
 
 // How many of each printable status the picker offers before anything is typed.
@@ -381,6 +553,31 @@ export function useSaveRestockRequest() {
       vars.requestId === undefined
         ? await restockClient.restockRequestCreate(vars.fields)
         : await restockClient.restockRequestUpdate({ ...vars.fields, requestId: vars.requestId }),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// THE SELLING TEAM'S NOTE ALONE, IN ANY STATUS (the-note-is-edited-in-any-status) — RestockRequestNoteSet changes the note
+// and nothing else: no line, no stock, no money, so the restock domain is all it makes stale. The server keeps who wrote
+// it and when (the-notes-are-one-per-writer) and puts the change on the trail.
+export function useSetRestockNote() {
+  const invalidate = useInvalidateRestock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof restockClient.restockRequestNoteSet>[0]) => restockClient.restockRequestNoteSet(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// THE RECEIVING WAREHOUSE'S OWN NOTE (the-warehouse-writes-its-own-note) — RestockRequestWarehouseNoteSet changes that note
+// and nothing else, so, as the selling note's, the restock domain is all it makes stale. The server keeps who wrote it and
+// when (the-notes-are-one-per-writer) and puts the change on the trail.
+export function useSetWarehouseNote() {
+  const invalidate = useInvalidateRestock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof restockClient.restockRequestWarehouseNoteSet>[0]) =>
+      restockClient.restockRequestWarehouseNoteSet(vars),
     onSuccess: () => invalidate(),
   });
 }

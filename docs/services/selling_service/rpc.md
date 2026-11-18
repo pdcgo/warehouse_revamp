@@ -303,6 +303,22 @@ flowchart LR
 | the index | `orders_return_team_idx` (selling `00034`) — `(team_id) WHERE status IN ('return','return_completed')`. Without it the third arm read every order of the configured teams and the planner chose a sequential scan of the table (9 ms over 50 000); with it the three arms are one BitmapOr, 2–4 ms — the two-arm scope's own figure (`TestPerf_OrderList_ReturnWarehouse`) |
 | the stale label | a third warehouse reads nothing of the order; it can accept it by id, and after the accept it still reads nothing — a gap, above |
 
+### Which order a return's batch came back from — `OrderIDsByReturnTransactions` (2026-11-16)
+
+Inventory's batch screens name a batch a return minted *Retur · order #<id>* and open `/warehouse-orders/:id`
+([a-returns-batch-opens-its-order](../../technical/frontend/batches_decision.md#a-returns-batch-opens-its-order)). The
+batch knows its `return` transaction; the order naming it is selling's — `orders.return_transaction_id`, written above.
+`selling_v1.OrderIDsByReturnTransactions(ctx, db, ids)` (`order_ids_by_return.go`) answers it: a PLAIN function over
+selling's own table, called by the composition root's `ReturnOrders` adapter once per page of batches (the flow:
+[inventory's rpc.md](../inventory_service/rpc.md#batchlist--batchdetail--a-returns-batch-names-its-order-2026-11-16)).
+
+| | |
+| --- | --- |
+| answers | `return transaction → order id`; a transaction no order names is absent. Order ids only — no money, no status |
+| no RPC | the caller is inventory's own policed read, scoped to the warehouse holding the batches; a `*Service` dep would close a Wire cycle (selling takes stock through inventory), so it is `ProductHasHistory`'s shape |
+| the index | selling `00050` `orders_return_transaction_idx` — `(return_transaction_id) WHERE return_transaction_id IS NOT NULL`: 200 transactions over 200 000 orders 43 ms → 0.62 ms |
+| ⚠ the link's page | `/warehouse-orders/:id` reads through `orderReaders`, whose return-warehouse arm is the team's return warehouse NOW — a warehouse that accepted a return and was since replaced as the team's return warehouse opens the order as NotFound. Not changed here |
+
 ---
 
 ## The create form asks before it takes — `StockTakeQuote` (#90, an-order-is-costed-at-what-leaves-the-shelf)

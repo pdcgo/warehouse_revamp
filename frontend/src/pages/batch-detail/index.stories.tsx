@@ -1,21 +1,37 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Text } from "@chakra-ui/react";
+import { useLocation, useParams } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { productLeftItsRacksForStory } from "../../../.storybook/batchStub";
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import { cameFrom } from "../../lib/cameFrom";
 import { BatchDetailPage } from "./index";
 
 // ONE BATCH — Gudang Pusat's (11), read by its crew (batchStub.ts). 5031 is restock 503's Beras: 10 arrived, 2 broken,
-// 1 missing, 7 ready, put on A-01-1 (5) and B-02-1 (2), expiring in 20 days. 9101 is a return of Kopi. 5071 is Teh,
-// all used.
+// 1 missing, 7 ready, put on A-01-1 (5) and B-02-1 (2), expiring in 20 days. 9101 is a return of Kopi — order 106's.
+// 5071 is Teh, all used.
+
+/** An order's warehouse page, saying which order and where it was opened from (its Back). */
+function AtWarehouseOrder() {
+  const { orderId } = useParams();
+  const from = cameFrom(useLocation());
+
+  return (
+    <Text data-testid="at-warehouse-order" data-order-id={orderId} data-from={from ?? ""}>
+      at-warehouse-order
+    </Text>
+  );
+}
 
 function routes() {
   return [
     { path: "/inventories/batches/:batchId", element: <BatchDetailPage /> },
     marker("/inventories/batches", "at-batch-list"),
     marker("/inventories/restock/:requestId", "at-restock-detail"),
+    { path: "/warehouse-orders/:orderId", element: <AtWarehouseOrder /> },
   ];
 }
 
@@ -216,7 +232,8 @@ export const HistoryNamesEachRack: Story = {
   },
 };
 
-// A RETURN — its origin says so, and there is no restock to open.
+// A RETURN — its origin says so, there is no restock to open, and Info's *Dari* names the order whose return it is
+// (a-returns-batch-opens-its-order) — nothing marked unbuilt any more.
 export const AReturn: Story = {
   name: "A return",
   render: () => <At9101 />,
@@ -225,10 +242,26 @@ export const AReturn: Story = {
 
     await expect(canvas.getByTestId("batch-detail-origin")).toHaveTextContent("Return");
     await expect(canvas.queryByTestId("batch-detail-order")).toBeNull();
-    // It cannot open its return yet — marked (a-batch-opens-where-it-came-from).
-    await expect(within(canvas.getByTestId("batch-detail-return")).getByTestId("not-implemented-returnLink")).toBeVisible();
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await expect(canvas.getByTestId("batch-detail-return")).toHaveTextContent(/^Return · order #106$/);
+    await expect(canvas.queryByTestId("not-implemented-returnLink")).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
     await expect(canvas.queryByTestId("batch-detail-expiring")).toBeNull();
+  },
+};
+
+// A RETURN'S BATCH OPENS ITS ORDER — *Return · order #106* opens /warehouse-orders/106, the order's warehouse page where
+// the return was accepted, carrying this batch's page so Back returns here.
+export const OpensItsReturnsOrder: Story = {
+  name: "Opens its return's order",
+  render: () => <At9101 />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("batch-detail-return"));
+
+    const at = await canvas.findByTestId("at-warehouse-order");
+    await expect(at).toHaveAttribute("data-order-id", "106");
+    await expect(at).toHaveAttribute("data-from", "/inventories/batches/9101");
   },
 };
 

@@ -33,8 +33,7 @@ import { sampleDerived } from "../../features/products/derivedSample";
 import { DiscoverBadges } from "../../features/products/DiscoverBadges";
 import { ownPriceOf } from "../../features/products/discoverSample";
 import { FigureRows, type FigureRow } from "../../features/products/FigureRows";
-import { HistorySection, SampleHistorySection } from "../../features/products/HistorySection";
-import { sampleHistory } from "../../features/products/historySample";
+import { DiscoverHistorySection, HistorySection } from "../../features/products/HistorySection";
 import { ProductGallery } from "../../features/products/ProductGallery";
 import { lockedByMinimumNow } from "../../features/products/ProductLock";
 import { orderFormFor } from "../../features/products/presetProduct";
@@ -43,6 +42,7 @@ import { fromHere } from "../../lib/cameFrom";
 
 import { ProductStickyStrip, ProductTitleRow } from "../../features/products/ProductTitleRow";
 import {
+  useDiscoverGallery,
   useDiscoverProduct,
   useDiscoverStockByWarehouse,
   useOwnerStockByWarehouse,
@@ -101,14 +101,17 @@ function parseProductId(raw: string | undefined): bigint {
 // under it — sticking in small once it scrolls away, a navigation beside ONE PAGE OF SECTIONS, Info with the picture,
 // the large ready figure and the record as one list down, and Produk Turunan beside it:
 //
-//   Info               the pictures, how much is ready (every shelf, summed), the team, the category, the cross price
+//   Info               the pictures (the whole gallery), how much is ready (every shelf, summed), the team, the category,
+//                      the cross price
 //   Produk Turunan ⚠   the owner's page's, beside it — no Penjualan Tim Lain: the lock is the title's badge
 //   Harga per Gudang   every warehouse's ready stock and cross price — where the owner's page has Batch, never lensed
 //   Per Gudang         the owner's page's warehouse card WITHOUT Harga Modal (owner: *"per gudang itu masukkan ke detail
 //                      discover ini dengan tanpa harga modal"*, the-discover-detail-has-the-warehouse-zone): the picker,
 //                      then Overview (the lens's ready, on its way, stock age), Pemasok ⚠, Keluar Masuk Harian ⚠, Riwayat Stok
 //
-// Read-only, and it never calls ProductDetail: that RPC answers only the owning team.
+// Read-only, and it never calls ProductDetail: that RPC answers only the owning team. The gallery is ProductByIds' IMAGES
+// slice and another team's Riwayat Stok is DiscoverStockHistory — each the pictures or the units alone, nothing else of
+// the owner's.
 export function DiscoverProductDetailPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
@@ -122,6 +125,9 @@ export function DiscoverProductDetailPage() {
   const teamId = current?.teamId;
 
   const query = useDiscoverProduct({ teamId, productId: id });
+  // THE WHOLE GALLERY (the-discover-detail-shows-no-markup: "the pictures are the product page's gallery") — its own read,
+  // so a failure costs the pictures alone; the record's cover stands in while it loads or if it fails.
+  const gallery = useDiscoverGallery({ teamId, productId: id });
   const product = query.data?.product ?? null;
   const categories = query.data?.categories ?? [];
   const own = product !== null && product.teamId === teamId;
@@ -231,6 +237,13 @@ export function DiscoverProductDetailPage() {
 
   const owner = owners.data?.[product.teamId.toString()];
   const cover = product.defaultImageUrl || product.defaultImageThumbnailUrl;
+  // Every picture, the cover first — the record's cover alone until the gallery answers (or if it cannot).
+  const pictures =
+    gallery.data && gallery.data.length > 0
+      ? gallery.data.map((image) => ({ url: image.url, thumbnailUrl: image.thumbnailUrl }))
+      : cover
+        ? [{ url: product.defaultImageUrl, thumbnailUrl: product.defaultImageThumbnailUrl }]
+        : [];
   const ownStock = ownActivity.data?.stock;
   // Another team's figures in a warehouse — "0" is every warehouse (DiscoverStockByIds, the card's read).
   const theirsAt = (w: bigint) => theirs.data?.get(w.toString());
@@ -454,22 +467,10 @@ export function DiscoverProductDetailPage() {
   const infoSection = section(
     "info",
     <Grid templateColumns={{ base: "1fr", md: "minmax(0, 1fr) minmax(0, 3fr)" }} gap="section" alignItems="start">
-      {/* THE PICTURES — the owner's page's gallery (owner: *"gambar produk ada"*). A by-ids row carries the cover and no
-          image list, so the cover is the one picture shown (⚠ gallery); none at all means the product has none, since
-          the cover is its first image. */}
-      <Stack gap="1.5">
-        <ProductGallery
-          images={cover ? [{ url: product.defaultImageUrl, thumbnailUrl: product.defaultImageThumbnailUrl }] : []}
-          name={product.name}
-          prefix="discover-detail"
-        />
-        {cover && (
-          <HStack gap="1" fontSize="xs" color="fg.muted">
-            <Text>{t("discoverDetail.coverOnly")}</Text>
-            {mark("gallery")}
-          </HStack>
-        )}
-      </Stack>
+      {/* THE PICTURES — the owner's page's gallery (owner: *"gambar produk ada"*, the-discover-detail-shows-no-markup):
+          one picture square, several as a carousel with thumbnails, none as a sentence — every one of them, read by the
+          by-ids IMAGES slice. */}
+      <ProductGallery images={pictures} name={product.name} prefix="discover-detail" />
 
       <Stack gap="section" minW="0">
         {notOffered ?? (
@@ -536,14 +537,15 @@ export function DiscoverProductDetailPage() {
   //   Overview        the lens's small figures — Siap, Dikirim, Umur stok — the owner's page's less Rentang HPP
   //   Pemasok ⚠       the owner's page's tab, with the store it was bought at — and no cost (the-supplier-tab-names-the-store)
   //   Harian ⚠        the owner's page's sample
-  //   Riwayat Stok    the owner's ledger — real on the team's own product; another team's cannot be read (⚠ missing)
+  //   Riwayat Stok    the owner's ledger — the team's own product's whole (OwnerStockHistory), another team's units
+  //                   (DiscoverStockHistory, stock-history-is-everyones)
   //
   // Harga Modal's replacement is NOT a tab here: it is Harga per Gudang, the section above the card.
   // ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   const picker = <WarehouseFilter value={warehouseId} onChange={setWarehouseId} testId="dd-warehouse-filter" />;
   const warehouseEntry = discoverSection("warehouse");
   const tabMark = (key: DiscoverWarehouseTab) =>
-    key === "suppliers" ? mark("suppliers") : key === "daily" ? mark("daily") : key === "history" && !own ? mark("history") : null;
+    key === "suppliers" ? mark("suppliers") : key === "daily" ? mark("daily") : null;
 
   // THE OVERVIEW'S FIGURES, in the lens — the owner's page's Overview (the-overview-is-small-details) with the CROSS PRICE
   // RANGE where Rentang HPP stood, and no stock age (owner: *"di overview tidak perlu umur [stok], malah butuh rentang
@@ -627,9 +629,10 @@ export function DiscoverProductDetailPage() {
         </Tabs.Content>
 
         {/* RIWAYAT STOK — every team may read it (owner: *"riwayat stok boleh dibaca semua orang"*,
-            stock-history-is-everyones), but the owner's ledger answers only the owning team: real on the team's own
-            product, the sample on another team's — each warehouse's story ending at its real shelf (⚠ history). No
-            Batch column on this page (the-discover-history-names-no-batch). */}
+            stock-history-is-everyones): the team's own product reads its owner's ledger as its own page does; another
+            team's reads the same ledger's units through DiscoverStockHistory — what came in and went out, where, and
+            what was left, never the owner's price or person. No Batch column on this page
+            (the-discover-history-names-no-batch). */}
         <Tabs.Content value="history" data-testid="dd-panel-history">
           {own ? (
             <HistorySection
@@ -640,14 +643,11 @@ export function DiscoverProductDetailPage() {
               batch={false}
             />
           ) : (
-            <SampleHistorySection
-              movements={sampleHistory(
-                product.id,
-                warehouseList.map((w) => ({ warehouseId: w.id, ready: readyAt(w.id) ?? 0n })),
-              )}
+            <DiscoverHistorySection
+              teamId={teamId}
+              productId={product.id}
               warehouseId={warehouseId}
               warehouseLabel={warehouseLabel}
-              batch={false}
             />
           )}
         </Tabs.Content>

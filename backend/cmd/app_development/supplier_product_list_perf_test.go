@@ -282,7 +282,7 @@ func TestPerf_SupplierProductList(t *testing.T) {
 
 	db, probe := san_perf.Wrap(raw)
 	ctx := context.Background()
-	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
+	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil), db)
 	catalog := NewSupplierProductCatalog(product_v1.NewService(db, nil, nil, nil, nil))
 	svc := supplier_v1.NewService(db, nil, nil, reader, perfSpStore{}, catalog)
 

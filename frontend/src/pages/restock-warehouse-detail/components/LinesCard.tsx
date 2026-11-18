@@ -19,7 +19,7 @@ import {
 } from "../../../features/restock/summary";
 import { LineNoteIcon } from "../../../features/restock/LineNoteIcon";
 import { PhotoView } from "../../../features/restock/PhotoView";
-import { brokenPhotoSample, brokenRackSample } from "../../../features/restock/photoSamples";
+import { brokenRackSample } from "../../../features/restock/photoSamples";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatRupiahNumber } from "../../../lib/money";
 import { type LineCorrectionView, lineCorrection } from "../../../features/receivedCount/corrections";
@@ -59,17 +59,18 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // Its narrowest (≈660px) is the page's PRODUCTS_FLOOR_PX (../index.tsx): where the page area cannot hold it beside Kiriman,
 // Kiriman goes below (the-delivery-card-stacks-when-the-page-is-narrow). A new column means measuring that again.
 //
-// THE BROKEN UNITS' PHOTO (a-broken-product-carries-a-photo) — a thumbnail beside the broken count, opening it whole.
+// THE BROKEN UNITS' PHOTO (the-detail-pages-show-the-broken-photo) — a thumbnail beside the broken count, opening it
+// whole: the one this warehouse kept at Terima; a line without one shows none.
 // WHERE THE BROKEN UNITS WENT (the-detail-pages-show-the-slip-and-the-broken-rack) — a line under the good units' places
-// when they were put on a rack. ⚠ Both SAMPLES (photoSamples.ts); the rack goes against a business decision.
+// when they were put on a rack. ⚠ A SAMPLE (photoSamples.ts), and it goes against a business decision.
 export function LinesCard({
   request,
-  brokenPhotoMark,
+  brokenPhotos,
   brokenRackMark,
 }: {
   request: RestockRequest;
-  /** The page's mark on the broken photo — a sample until the received line carries one. */
-  brokenPhotoMark?: ReactNode;
+  /** The broken units' photos kept at Terima — each line's link, by product id (RestockDoorPhotos). */
+  brokenPhotos: ReadonlyMap<string, string>;
   /** The page's mark on the broken units' rack — a sample until the received line carries one. */
   brokenRackMark?: ReactNode;
 }) {
@@ -109,7 +110,7 @@ export function LinesCard({
   };
 
   const photoOf = (item: RestockRequestItem) => {
-    const url = brokenPhotoSample(item);
+    const url = brokenQuantity(item) > 0n ? (brokenPhotos.get(item.productId.toString()) ?? "") : "";
 
     return url ? (
       <PhotoView
@@ -117,7 +118,6 @@ export function LinesCard({
         title={t("restock.detail.brokenPhoto.title")}
         alt={t("restock.detail.brokenPhoto.alt", { name: item.name })}
         subject={item.name}
-        mark={brokenPhotoMark}
         testId={`restock-detail-broken-photo-${item.productId}`}
       />
     ) : null;

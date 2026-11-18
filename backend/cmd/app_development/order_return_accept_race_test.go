@@ -43,7 +43,7 @@ func (ownCatalog) Snapshots(_ context.Context, _ uint64, ids []uint64) (map[uint
 
 // returnService is orderService with a catalogue — the accept reads whose each line is.
 func returnService(db *gorm.DB) *selling_v1.Service {
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	return selling_v1.NewService(db, NewStockPicker(inventory), nil, ownCatalog{}, nil, runsEveryShop{}, nil,
 		NewWarehouseFeePricer(warehouse_v1.NewService(db, nil)), nil, nil, nil)

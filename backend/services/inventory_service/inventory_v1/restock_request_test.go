@@ -2,6 +2,7 @@ package inventory_v1_test
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -497,11 +498,14 @@ func TestRestockRequest_SupplierMustBeLive(t *testing.T) {
 
 	svc := newServiceWithSuppliers(t, db, fakeSuppliers{mine: true, theirs: true, deleted: false})
 
-	// The supplier rides each LINE now (a-line-connects-to-any-teams-supplier-from-a-popup).
+	// The supplier rides each LINE now (a-line-connects-to-any-teams-supplier-from-a-popup). Each restock its own resi
+	// and Order ID — another restock of the team never holds one (a-reference-in-use-stops-the-restock-form).
+	raised := 0
 	create := func(supplierID uint64) error {
+		raised++
 		_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: 5,
-			InvoiceRefId: "SHP-77", Receipt: "JP1234567890",
+			InvoiceRefId: "SHP-77-" + strconv.Itoa(raised), Receipt: "JP1234567890-" + strconv.Itoa(raised),
 			Items: []*inventoryv1.RestockRequestItem{
 				{ProductId: 100, ProductCode: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplierID},
 			},
@@ -1999,7 +2003,7 @@ func restockAccounts() fakeAccounts {
 func TestRestockRequestCreate_RefusesAnAccountThatIsNotOperational(t *testing.T) {
 	db := san_testdb.DB(t)
 	ctx := ctxUser(1)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, restockAccounts())
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, restockAccounts(), nil, nil)
 
 	const sellingTeam, warehouse uint64 = 2, 5
 
@@ -2058,7 +2062,7 @@ func TestRestockRequestUpdate_RefusesAChangedAccountThatIsNotOperational(t *test
 	db := san_testdb.DB(t)
 	ctx := ctxUser(1)
 	accounts := restockAccounts()
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, accounts)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, accounts, nil, nil)
 
 	const sellingTeam, warehouse uint64 = 2, 5
 

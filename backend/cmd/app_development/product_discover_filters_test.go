@@ -79,7 +79,7 @@ func newDiscoverFiltersFixture(t *testing.T) discoverFiltersFixture {
 	f := discoverFiltersFixture{
 		db:        db,
 		products:  products,
-		inventory: inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(products), nil, nil),
+		inventory: inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(products), nil, nil, nil, nil),
 	}
 
 	f.makanan = category("Makanan DF", 0)

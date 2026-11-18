@@ -47,6 +47,13 @@ func (s *Service) BatchList(
 			q = q.Where("b.supplier_id = ?", supplierID)
 		}
 
+		// WHOSE GOODS (the-batch-list-filters-by-team): the selling team written on the batch at mint
+		// (a-batch-carries-its-owner) — inventory's own column, so the rows, the count and the header figures narrow in
+		// the same statements, and no page is ever short of a team's batches on another page.
+		if ownerTeamID := filter.GetOwnerTeamId(); ownerTeamID != 0 {
+			q = q.Where("b.team_id = ?", ownerTeamID)
+		}
+
 		switch filter.GetExpiry() {
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON:
 			// Batches WITH UNITS LEFT only (expiry-is-a-report: "batches with units left whose expired_at falls within a
@@ -129,6 +136,9 @@ func (s *Service) BatchList(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	// A return's batch names its order — one call for the page (a-returns-batch-opens-its-order).
+	s.withReturnOrders(ctx, rows, batches)
 
 	items, ids := batchListItems(batches, req.Msg.GetDataRequest())
 

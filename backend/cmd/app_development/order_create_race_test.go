@@ -112,7 +112,7 @@ func seedTwoBatches(t *testing.T, db *gorm.DB) uint64 {
 
 // orderService is selling wired to the REAL take and the REAL fee, through the composition root's own adapters.
 func orderService(db *gorm.DB, fees selling_v1.WarehouseFeePricer) *selling_v1.Service {
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	if fees == nil {
 		fees = NewWarehouseFeePricer(warehouse_v1.NewService(db, nil))

@@ -279,7 +279,7 @@ func describeRelease(event *eventsv1.Event) (string, bool) {
 // No poster, no product reader, no photo linker — a release writes the order transaction's rollback in inventory's own
 // tables, and its events fall to EmptySender.
 func NewReleaseInventory(db *gorm.DB) *inventory_v1.Service {
-	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 }
 
 // pubsubReleasesCommand is `san pubsub releases list|replay`.

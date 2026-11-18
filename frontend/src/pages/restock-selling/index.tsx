@@ -1,7 +1,22 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Badge, Box, Button, Collapsible, Flex, HStack, Heading, Icon, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Button,
+  Collapsible,
+  Flex,
+  HStack,
+  Heading,
+  Icon,
+  Skeleton,
+  Span,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+} from "@chakra-ui/react";
 import { ClipboardList, Download, Plus, SearchX } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -17,8 +32,10 @@ import { personName } from "../../lib/users";
 import { RootTeamBadge } from "../../components/entity/ActorName";
 import { useTeams } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
-import { useRestockPeople, useRestockRequests } from "../../features/restock/queries";
-import { useFinancialAccountOptions } from "../../features/financialAccount/queries";
+import { useRestockPeople, useRestockRequests, useRestockSellingStat } from "../../features/restock/queries";
+import { useRestockExport } from "../../features/restock/exports";
+import type { RestockPile, RestockSummaryData } from "../../features/restock/sellingStat";
+import { useFinancialAccountsByIds } from "../../features/financialAccount/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { LineSupplier, useLineSuppliers } from "../../features/restock/LineSupplier";
@@ -44,7 +61,6 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { ShipmentChannelSelect } from "../../components/pickers/ShipmentChannelSelect";
-import { toaster } from "../../components/feedback/Toaster";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
@@ -54,7 +70,6 @@ import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState 
 import { PaymentBreakdown } from "./components/PaymentBreakdown";
 import { RestockSummary } from "./components/RestockSummary";
 import { RESTOCK_SELLING_PENDING } from "./pending";
-import { type RestockPile, samplePaymentSplit, sampleRestockSummary } from "./summarySample";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -129,7 +144,8 @@ export function RestockSellingPage() {
   // 0 = anybody. Two ids, not one: see the pickers below for why the two sides are separate filters.
   const [createdByFilter, setCreatedByFilter] = useUrlState("creator", 0n, idCodec);
   const [acceptedByFilter, setAcceptedByFilter] = useUrlState("acceptor", 0n, idCodec);
-  // The courier — held on screen and thrown away (`dropped`): the list cannot ask for it yet. 0n = any courier.
+  // The courier (the-restock-list-exports-and-filters-by-courier) — the restock's shipment channel. 0n = any courier; a
+  // restock that names none is listed only then.
   const [courierFilter, setCourierFilter] = useUrlState("courier", 0n, idCodec);
   const [range, setRange] = useUrlState<DateRange>("range", ALL_DATES, dateRangeCodec);
   const [dateField, setDateField] = useUrlState<RestockDateField>("date", RestockDateField.CREATED, DATE_FIELD_CODEC);
@@ -153,6 +169,7 @@ export function RestockSellingPage() {
     warehouseId: warehouseFilter,
     createdByUserId: createdByFilter,
     acceptedByUserId: acceptedByFilter,
+    shipmentId: courierFilter,
     dateField,
     fromUnix,
     toUnix,
@@ -163,6 +180,22 @@ export function RestockSellingPage() {
 
   // Whether the statistics are open — page state only, shut on every visit.
   const [statsOpen, setStatsOpen] = useState(false);
+
+  // THE STATISTICS' CENSUS (the-restock-statistics-count-transactions-under-the-tabs) — NOT READ until they are opened,
+  // then following every filter the list follows (the-statistics-are-shut-and-read-when-opened). The tab is not sent:
+  // the census answers every status at once, and the tab picks the pile.
+  const stat = useRestockSellingStat({
+    teamId,
+    warehouseId: warehouseFilter,
+    createdByUserId: createdByFilter,
+    acceptedByUserId: acceptedByFilter,
+    shipmentId: courierFilter,
+    dateField,
+    fromUnix,
+    toUnix,
+    q: term,
+    enabled: statsOpen,
+  });
 
   // The two "who" filters' people — everyone on this team's restocks who raised one, and who accepted one.
   const createdBy = useRestockPeople({ teamId, role: RestockActorRole.CREATED });
@@ -205,8 +238,7 @@ export function RestockSellingPage() {
   const error = query.isError ? rpcError(query.error) : "";
 
   // How many filters narrow the list — the phone's Filter count, and what puts Hapus Filter on screen. The date type
-  // alone narrows nothing: it says which date a range is about. The courier counts though the rows do not move for it,
-  // so Clear is there to take it back.
+  // alone narrows nothing: it says which date a range is about.
   const filtering =
     (search.trim() !== "" ? 1 : 0) +
     (warehouseFilter !== 0n ? 1 : 0) +
@@ -216,7 +248,12 @@ export function RestockSellingPage() {
     (isAllDates(range) ? 0 : 1);
   // What the rows on screen were asked with, which is what "nothing matches" is about.
   const narrowed =
-    term !== "" || warehouseFilter !== 0n || createdByFilter !== 0n || acceptedByFilter !== 0n || !isAllDates(range);
+    term !== "" ||
+    warehouseFilter !== 0n ||
+    courierFilter !== 0n ||
+    createdByFilter !== 0n ||
+    acceptedByFilter !== 0n ||
+    !isAllDates(range);
 
   // Any change to a filter restarts at page 1 — the page number belongs to the OLD question, and
   // page 5 of "All Status" is very likely past the end of "Cancelled".
@@ -239,9 +276,22 @@ export function RestockSellingPage() {
     });
 
   const newRestock = () => navigate("/inventories/restock/new");
-  // EXPORT (owner: *"restok ada … export"*) — the list as a file, as the order list's. Nothing makes the file yet
-  // (`dropped`): the click says so rather than doing nothing.
-  const exportList = () => toaster.create({ type: "info", title: t("restock.selling.exportPending") });
+  // EXPORT (owner: *"restok ada … export"*, the-restock-list-exports-and-filters-by-courier) — the list as a file, as the
+  // order list's (one-export-is-the-list-as-a-file): exactly what the rows on screen were asked with — the tab, every
+  // filter, the settled search — every page of it, streamed with its progress on the button, then downloaded.
+  const exporter = useRestockExport(teamId);
+  const exportList = () =>
+    void exporter.start({
+      status,
+      warehouseId: warehouseFilter,
+      createdByUserId: createdByFilter,
+      acceptedByUserId: acceptedByFilter,
+      shipmentId: courierFilter,
+      dateField,
+      fromUnix,
+      toUnix,
+      q: term,
+    });
   const open = (request: RestockRequest) => navigate(`/inventories/restock/${request.id}`);
 
   // Who did it. 0 is "not recorded" — every restock raised before the actor columns existed, and the
@@ -321,11 +371,6 @@ export function RestockSellingPage() {
           variant="menu"
           withNotes
           cancelReviewMark={<NotImplemented list={RESTOCK_SELLING_PENDING} id="cancelReview" />}
-          notesMarks={{
-            sellingBy: <NotImplemented list={RESTOCK_SELLING_PENDING} id="sellingNoteBy" />,
-            late: <NotImplemented list={RESTOCK_SELLING_PENDING} id="lateNote" />,
-            warehouse: <NotImplemented list={RESTOCK_SELLING_PENDING} id="warehouseNote" />,
-          }}
         />
       </Box>
     );
@@ -619,8 +664,10 @@ export function RestockSellingPage() {
           {t("restock.selling.title")}
         </Heading>
         {/* THE ACTIONS CARRY THEIR ICONS (an-action-button-carries-its-icon) — Export, then New Restock, the order list's
-            pair; on a phone they are their icons (a-phone-header-action-is-an-icon). */}
-        {isMobile ? (
+            pair; on a phone they are their icons (a-phone-header-action-is-an-icon). NEITHER while the admin team
+            monitors the team (the-admin-team-monitors-read-only): New Restock writes a restock, and Export stores a file —
+            its RPC is not marked a read, so the server refuses the monitor (monitoring-keeps-what-only-reads). */}
+        {!writable ? null : isMobile ? (
           <CompactActions
             menuLabel={t("restock.selling.actions")}
             actions={[
@@ -628,43 +675,48 @@ export function RestockSellingPage() {
                 id: "export",
                 label: t("restock.selling.export"),
                 icon: Download,
-                mark: <NotImplemented list={RESTOCK_SELLING_PENDING} id="export" />,
                 testId: "restock-export",
+                // An icon has no room for the count; it rests while the file is made (the toast says when it is ready).
+                disabled: exporter.running,
                 onClick: exportList,
               },
-              // Not while the admin team monitors the team (the-admin-team-monitors-read-only).
-              ...(writable
-                ? [
-                    {
-                      id: "create",
-                      label: t("restock.newRequest"),
-                      icon: Plus,
-                      primary: true,
-                      testId: "open-create-restock",
-                      onClick: newRestock,
-                    },
-                  ]
-                : []),
+              {
+                id: "create",
+                label: t("restock.newRequest"),
+                icon: Plus,
+                primary: true,
+                testId: "open-create-restock",
+                onClick: newRestock,
+              },
             ]}
           />
         ) : (
           <Flex gap="2" align="center">
-            <Button size="xs" variant="outline" colorPalette="gray" data-testid="restock-export" onClick={exportList}>
+            <Button
+              size="xs"
+              variant="outline"
+              colorPalette="gray"
+              data-testid="restock-export"
+              loading={exporter.running}
+              loadingText={
+                exporter.progress
+                  ? t("common.export.running", { done: exporter.progress.done, total: exporter.progress.total })
+                  : undefined
+              }
+              onClick={exportList}
+            >
               <Icon as={Download} boxSize="4" />
               {t("restock.selling.export")}
-              <NotImplemented list={RESTOCK_SELLING_PENDING} id="export" />
             </Button>
-            {writable && (
-              <Button size="xs" colorPalette="brand" data-testid="open-create-restock" onClick={newRestock}>
-                <Icon as={Plus} boxSize="4" />
-                {t("restock.newRequest")}
-              </Button>
-            )}
+            <Button size="xs" colorPalette="brand" data-testid="open-create-restock" onClick={newRestock}>
+              <Icon as={Plus} boxSize="4" />
+              {t("restock.newRequest")}
+            </Button>
           </Flex>
         )}
       </Flex>
 
-      {/* What is not real yet — the export, the courier filter and the statistics; the list itself is. */}
+      {/* What is not real yet — the check a cancel warns of; the list, its statistics and its export are. */}
       <NotImplementedSummary list={RESTOCK_SELLING_PENDING} />
 
       {/* THE SHARED FILTER STRIP (a-phone-filters-from-a-sheet, clear-filters-is-red-and-bold) — the search stays in the
@@ -695,20 +747,15 @@ export function RestockSellingPage() {
             onChange={(id) => refilter(() => setWarehouseFilter(id))}
           />
         </FilterField>
-        {/* WHICH COURIER brought it (owner: *"restok ada filter pengiriman"*) — the courier picker the restock form names
-            one with, clearable back to any. Marked: `RestockRequestListFilter` has no courier yet, so the pick is held
-            and the rows do not move (`dropped`). */}
+        {/* WHICH COURIER brought it (owner: *"restok ada filter pengiriman"*,
+            the-restock-list-exports-and-filters-by-courier) — the courier picker the restock form names one with,
+            clearable back to any; the server narrows by the restock's shipment channel (`RestockRequestListFilter.shipment_id`). */}
         <FilterField w="15rem" testId="restock-courier-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <ShipmentChannelSelect
-                value={courierFilter > 0n ? courierFilter : undefined}
-                placeholder={t("restock.selling.courierAll")}
-                onChange={(id) => refilter(() => setCourierFilter(id))}
-              />
-            </Box>
-            <NotImplemented list={RESTOCK_SELLING_PENDING} id="courier" />
-          </Flex>
+          <ShipmentChannelSelect
+            value={courierFilter > 0n ? courierFilter : undefined}
+            placeholder={t("restock.selling.courierAll")}
+            onChange={(id) => refilter(() => setCourierFilter(id))}
+          />
         </FilterField>
         {/* BY PERSON (owner) — TWO pickers, because they answer two questions asked by two people: a manager reviewing
             purchasing asks whose orders these are, somebody chasing a bad delivery asks who was at the door. One
@@ -781,12 +828,21 @@ export function RestockSellingPage() {
 
         {/* THE STATISTICS, UNDER THE TABS AND SHUT (owner: *"statistiknya adalah di bawah tab status"*, *"kita tutup
             saja"*; the-restock-statistics-count-transactions-under-the-tabs) — the order list's Statistik button. Shut on
-            every visit, page state only; the strip mounts, and reads, only while open. The tab above decides which strip:
-            the piles on Semua Status, that status's figures on a status. */}
+            every visit, page state only; the strip mounts, and the census is read, only while open. The tab above decides
+            which strip: the piles on Semua Status, that status's figures on a status. */}
         <Collapsible.Root open={statsOpen} lazyMount unmountOnExit>
           <Collapsible.Content>
             <Box pt="card" data-testid="restock-summary-panel">
-              {teamId !== undefined && <Statistics teamId={teamId} tab={tab} />}
+              {teamId !== undefined && (
+                <Statistics
+                  teamId={teamId}
+                  tab={tab}
+                  data={stat.data}
+                  pending={stat.isPending}
+                  refreshing={stat.isFetching && !stat.isPending}
+                  error={stat.isError ? rpcError(stat.error) : ""}
+                />
+              )}
             </Box>
           </Collapsible.Content>
         </Collapsible.Root>
@@ -840,27 +896,62 @@ export function RestockSellingPage() {
   );
 }
 
-// THE OPEN STATISTICS — mounted only while the Statistik button is open, so nothing behind them is read before. The
-// figures are SAMPLES (summarySample.ts); the paying accounts are the team's real operational ones, which a restock is
-// paid from.
-function Statistics({ teamId, tab }: { teamId: bigint; tab: string }) {
-  const data = useMemo(() => sampleRestockSummary(teamId), [teamId]);
-  const accounts = useFinancialAccountOptions({ teamId, operationalOnly: true });
+// THE OPEN STATISTICS — mounted only while the Statistik button is open; the census behind them is read only then
+// (useRestockSellingStat, enabled by the same switch). The first read draws the strip's shape, never a strip of zeros
+// that reads as "nothing bought"; a later re-read keeps the figures up under RefreshOverlay.
+//
+// RINCIAN NAMES THE ACCOUNTS BY ID (useFinancialAccountsByIds) — an archived or no-longer-operational account still paid
+// its restocks, so the operational picker's list would leave its row nameless.
+function Statistics({
+  teamId,
+  tab,
+  data,
+  pending,
+  refreshing,
+  error,
+}: {
+  teamId: bigint;
+  tab: string;
+  data: RestockSummaryData | undefined;
+  pending: boolean;
+  refreshing: boolean;
+  error: string;
+}) {
+  const { t } = useTranslation();
   const [payments, setPayments] = useState<RestockPile | null>(null);
+  const shares = payments && data ? (data.payments[payments.key] ?? []) : [];
+  const accounts = useFinancialAccountsByIds(
+    teamId,
+    shares.map((row) => row.accountId),
+  );
+
+  if (error) {
+    return (
+      <Text color="error.fg" data-testid="restock-summary-error">
+        {error}
+      </Text>
+    );
+  }
+
+  if (pending || !data) {
+    return (
+      <HStack gap="card" role="status" aria-label={t("common.loading")} data-testid="restock-summary-loading">
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} h="20" flex="1" borderRadius="l2" />
+        ))}
+      </HStack>
+    );
+  }
 
   return (
     <>
-      <RestockSummary
-        data={data}
-        tab={tab}
-        marks={<NotImplemented list={RESTOCK_SELLING_PENDING} id="summary" />}
-        onPayments={setPayments}
-      />
+      <RefreshOverlay busy={refreshing}>
+        <RestockSummary data={data} tab={tab} onPayments={setPayments} />
+      </RefreshOverlay>
       <PaymentBreakdown
         open={payments !== null}
         onOpenChange={(open) => !open && setPayments(null)}
-        rows={payments ? samplePaymentSplit(payments, accounts.data ?? []) : []}
-        mark={<NotImplemented list={RESTOCK_SELLING_PENDING} id="payments" />}
+        rows={shares.map((row) => ({ ...row, account: accounts.data?.get(row.accountId.toString()) }))}
       />
     </>
   );

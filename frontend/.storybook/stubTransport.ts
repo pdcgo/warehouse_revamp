@@ -105,6 +105,7 @@ import { shopService } from "./shopStub";
 import { categoryService } from "./categoryStub";
 import {
   discoverStockByIds,
+  discoverStockHistory,
   orderActivityStat,
   orderProductActivityByIds,
   ownerBatchList,
@@ -116,6 +117,7 @@ import {
   shelfSample,
 } from "./productStub";
 import { restockRequestService } from "./restockStub";
+import { resetUploadScenario, uploadScenario } from "./uploadScenario";
 import { batchStubService } from "./batchStub";
 import { batchRevalue } from "./batchPriceStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
@@ -767,6 +769,7 @@ export function stubUploads() {
   pendingUploads.clear();
   uploadedDocs.clear();
   uploadSeq = 0;
+  resetUploadScenario();
 
   // Wrapped ONCE and kept: re-wrapping per story would nest a wrapper around a wrapper each time.
   const w = window as unknown as { __storybookRealFetch?: typeof fetch };
@@ -785,6 +788,9 @@ export function stubUploads() {
     if (!pending) {
       return new Response(null, { status: 404, statusText: "Unknown upload token" });
     }
+
+    // A story holding the uploads (uploadScenario.ts): the bytes are still on their way until it lets them through.
+    if (uploadScenario.gate) await uploadScenario.gate;
 
     pending.objectUrl = URL.createObjectURL(init?.body instanceof Blob ? init.body : new Blob([]));
     return new Response(null, { status: 200 });
@@ -1389,6 +1395,10 @@ export const transport = createRouterTransport(({ service }) => {
     // DISCOVER'S CARD FIGURES — every product on the page, whoever owns it: ready, on its way, the every-warehouse total
     // and the cross price, never the cost (productStub.ts `discoverStockSample`).
     discoverStockByIds: (req) => discoverStockByIds(req),
+
+    // ANY TEAM'S STOCK HISTORY of a product — the owner's ledger's units, never its money or person
+    // (stock-history-is-everyones; productStub.ts `discoverStockHistory`).
+    discoverStockHistory: (req) => discoverStockHistory(req),
 
     // The SELLING side's own-stock read — what this team owns at a warehouse, plus what it has on
     // order elsewhere. Two lenses over one message, so `filter.warehouseId` decides which one the
@@ -2220,6 +2230,10 @@ export const transport = createRouterTransport(({ service }) => {
   // storage path; this only lets a story (and the person reviewing it) actually attach a file.
   service(DocumentService, {
     requestUpload: (req) => {
+      // A story refusing the uploads (uploadScenario.ts) gets the server's words back, as a real refusal.
+      if (uploadScenario.refusal) {
+        throw new ConnectError(uploadScenario.refusal, Code.Unavailable);
+      }
       const token = `upload-${++uploadSeq}`;
       pendingUploads.set(token, {
         teamId: req.teamId,

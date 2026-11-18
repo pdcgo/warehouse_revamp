@@ -44,6 +44,8 @@ flowchart LR
 **What follows:** a new kind of charge between teams owes this claim — a cause, a frozen amount, an actor, both sides'
 view — or it is not transparent by the project's own definition.
 
+🔄 *(2026-11-16, re-audit)* **Built** — the *never overwritten* row's expense correction: `ExpenseUpdate` is gone and an expense is corrected only by a new signed row, `rpc ExpenseAdjust` (`proto/warehouse/expense/v1/expense.proto`; `expense_service/expense_v1/expense_adjust.go`, `expense_adjust_test.go`, `expense_adjust_race_test.go`) — [every-correction-is-a-signed-adjustment](./analytic/context_decision.md#every-correction-is-a-signed-adjustment); the *⛔ not built* cell above is history.
+
 ## a-team-has-exactly-one-type
 
 > Owner, in chat (2026-11-02): *"i follow your recomendation"* — confirming the overtaken list, which named [Q3](./business_level_clarify.md#question), *can a

@@ -105,7 +105,8 @@ message ProductImage {
 }
 
 // ProductImages wraps the gallery for UPDATE: a message field has presence, so a nil wrapper means
-// "leave the images alone" while a present (even empty) wrapper means "replace with exactly these".
+// "leave the images alone" while a present (even empty) wrapper means "replace with exactly these". It is also the
+// by-ids IMAGES slice's one product's gallery (ProductImagesMapItem).
 message ProductImages {
   repeated ProductImage items = 1 [(buf.validate.field).repeated.max_items = 5];
 }
@@ -573,6 +574,12 @@ enum ProductByIdsDataType {
   PRODUCT_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
   PRODUCT_BY_IDS_DATA_TYPE_GENERAL = 1;
   PRODUCT_BY_IDS_DATA_TYPE_PRODUCT = 2;
+  // IMAGES: the product's whole gallery, ordered, the cover first (ProductImagesMapItem) — the pictures and nothing else,
+  // so a team reading ANOTHER team's product sees what its owner's page shows (the-discover-detail-shows-no-markup: "the
+  // pictures are the product page's gallery"). Discover's slice, so Discover's rule: a WAREHOUSE role asking for it is
+  // refused (PermissionDenied) — Discover is a selling team's "find things to sell" and serves no warehouse; the rest of
+  // this request still answers a warehouse as before.
+  PRODUCT_BY_IDS_DATA_TYPE_IMAGES = 3;
 }
 
 // ProductByIdsFilter carries the NON-scope inputs (the ids to resolve). The scoped team_id stays
@@ -593,7 +600,14 @@ message ProductByIdsResponseItem {
   oneof d {
     warehouse.common.v1.GeneralMapItem general = 1;
     ProductRowMapItem product = 2;
+    ProductImagesMapItem images = 3;
   }
+}
+
+// ProductImagesMapItem is the IMAGES slice: each product's gallery keyed by its id — at most 5, ordered, the first the
+// cover (the same order ProductDetail answers). A product with no picture maps to an empty list.
+message ProductImagesMapItem {
+  map<uint64, ProductImages> map_data = 1;
 }
 
 message ProductByIdsResponseList {

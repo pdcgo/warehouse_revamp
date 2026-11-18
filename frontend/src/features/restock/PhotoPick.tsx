@@ -1,44 +1,91 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { Button, FileUpload, Flex, HStack, Icon, IconButton, Image, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Camera, X } from "lucide-react";
 
+import { useReceiptUpload } from "../../components/orders/ReceiptUpload";
+import type { DoorPhoto } from "./doorPhoto";
+
 // ONE PHOTO TAKEN AT THE DOOR — the broken units' (a-broken-product-carries-a-photo) and the courier's slip
 // (the-courier-slip-has-an-optional-photo). One per thing, replaced rather than added to, as the restock's Foto resi is.
-// Optional wherever it sits: it never holds an act up.
+// Optional wherever it sits: it never holds an act up — only an upload still running does, for the seconds it runs.
 //
 // On a phone the picker opens the CAMERA (`capture`): the person is standing over the box, and a gallery is one more step
 // between them and the picture.
 //
-// ⚠ NOT KEPT, AND NOT UPLOADED. Neither the arrival nor the accept carries a photo, so the picked file is shown here and
-// goes no further — an upload nothing points at is a file nobody can find again. The mark beside it is the page's, and
-// the act's toast says what was not kept.
+// KEPT AT TERIMA, the way the restock's label photo is (`uploadTo` — the warehouse's team): the moment a photo is picked
+// it goes up through document_service's two-phase upload, an order receipt as the label photo's ReceiptUpload stores it
+// (useReceiptUpload: the same 15 MB ceiling, the same refusal), and the page sends its document id with the count. A
+// failed upload is said in a toast and the photo goes back to what it was. WITHOUT `uploadTo` — the sign dialog at Tandai
+// Tiba, where the charge itself is not kept yet — the file is only shown, never uploaded: an upload nothing points at is a
+// file nobody can find again.
 export function PhotoPick({
-  file,
+  value,
   onChange,
+  uploadTo,
   alt,
   mark,
   testId,
 }: {
-  file: File | null;
-  onChange: (file: File | null) => void;
+  value: DoorPhoto | null;
+  onChange: (photo: DoorPhoto | null) => void;
+  /** The team the photo is kept under — given, a pick is uploaded at once; absent, it is only shown. */
+  uploadTo?: bigint;
   /** What the picture shows — said to a screen reader. */
   alt: string;
   mark?: ReactNode;
-  /** `<testId>-pick`, `<testId>-input`, `<testId>-shown`, `<testId>-remove`. */
+  /**
+   * `<testId>-pick`, `<testId>-input`, `<testId>-shown` (its `data-state`: `kept`, `uploading` or `shown`),
+   * `<testId>-remove`.
+   */
   testId: string;
 }) {
   const { t } = useTranslation();
+  const file = value?.file ?? null;
   // A local preview of the picked file, released when it is replaced or the control goes.
   const url = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
   useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url]);
 
+  // What was there before the pick — put back if its upload fails — and the file being sent.
+  const before = useRef<DoorPhoto | null>(null);
+  const sending = useRef<File | null>(null);
+
+  const { upload, busy, pickerKey } = useReceiptUpload({
+    teamId: uploadTo ?? 0n,
+    failedTitle: t("restock.photo.uploadFailed"),
+    // The upload has started (past the size check): show the photo at once, still uploading.
+    onFile: (started) => {
+      if (started) {
+        sending.current = started;
+        onChange({ file: started, documentId: "" });
+        return;
+      }
+      // It failed — said in the hook's toast — so the photo goes back to what it was.
+      onChange(before.current);
+    },
+    onChange: (receipt) => {
+      if (sending.current) onChange({ file: sending.current, documentId: receipt.documentId });
+    },
+  });
+
+  function pick(picked: File) {
+    if (uploadTo === undefined) {
+      onChange({ file: picked, documentId: "" });
+      return;
+    }
+
+    before.current = value;
+    void upload(picked);
+  }
+
+  const state = !value ? "" : uploadTo === undefined ? "shown" : value.documentId ? "kept" : "uploading";
+
   return (
     <Flex gap="2" align="center" wrap="wrap" data-testid={testId}>
       {file && (
-        <HStack gap="2" minW="0" flex="1" data-testid={`${testId}-shown`}>
-          <Image src={url} alt={alt} boxSize="12" objectFit="cover" borderRadius="md" />
+        <HStack gap="2" minW="0" flex="1" data-state={state} data-testid={`${testId}-shown`}>
+          <Image src={url} alt={alt} boxSize="12" objectFit="cover" borderRadius="md" opacity={busy ? 0.6 : 1} />
           <Text fontSize="xs" color="fg.muted" lineClamp={1} minW="0">
             {file.name}
           </Text>
@@ -47,6 +94,8 @@ export function PhotoPick({
             variant="ghost"
             aria-label={t("restock.photo.remove")}
             data-testid={`${testId}-remove`}
+            // Not while it uploads: the upload would land after and put the photo back.
+            disabled={busy}
             onClick={() => onChange(null)}
           >
             <Icon as={X} boxSize="4" />
@@ -54,21 +103,22 @@ export function PhotoPick({
         </HStack>
       )}
 
-      {/* Remounted per pick, so picking the same file twice is still a pick. */}
+      {/* Remounted per pick (and after every upload), so picking the same file twice is still a pick. */}
       <FileUpload.Root
-        key={file ? `${file.name}:${file.lastModified}` : "none"}
+        key={`${file ? `${file.name}:${file.lastModified}` : "none"}:${pickerKey}`}
         accept="image/*"
         capture="environment"
         maxFiles={1}
+        disabled={busy}
         onFileChange={(details) => {
           const picked = details.acceptedFiles[0];
-          if (picked) onChange(picked);
+          if (picked) pick(picked);
         }}
         w="auto"
       >
         <FileUpload.HiddenInput data-testid={`${testId}-input`} />
         <FileUpload.Trigger asChild>
-          <Button size="xs" variant="outline" data-testid={`${testId}-pick`}>
+          <Button size="xs" variant="outline" loading={busy} data-testid={`${testId}-pick`}>
             <Icon as={Camera} boxSize="4" />
             {file ? t("restock.photo.replace") : t("restock.photo.add")}
           </Button>

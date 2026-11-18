@@ -117,6 +117,8 @@ What it replaces: an empty rack told apart only by the 0 in its Stok column.
 
 What it replaces: a list with no figures over it.
 
+✅ **Built 2026-11-16** — the three past *Rak* are the WHOLE list's now: `RackService.RackStat` sums every rack the list matches on the server (RackList's own scope — a search narrows them too — and its roles): Terisi = racks whose stock count is above 0, Kosong = the rest, Stok di rak = their pieces. *Rak* still reads the list's own total. The `pageTotals` mark and `pages/racks/pending.ts` are gone. Pinned by `rack_stat_test.go` (whole list vs every page summed, the search, policy) and the stories `Figures over every page` (22 racks, 7 pcs on page 2: 22 · 3 · 19 · 41 pcs, no mark — it replaced `Figures past one page`) and `Search narrows the figures` ([rpc.md](../../services/inventory_service/rpc.md)).
+
 ## a-rack-page-is-one-page-of-sections
 
 > Owner, in chat (2026-11-09): *"inisiasi rack detail page"*; offered the other detail pages' shape in place of the

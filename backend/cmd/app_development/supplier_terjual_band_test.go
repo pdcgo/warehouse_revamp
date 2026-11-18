@@ -109,7 +109,7 @@ func TestSupplierList_TheTerjualBandFromTheFoldEqualsTheLedgerUnderTheGudangFilt
 	diam := supplier(melati, "Diam Belum Laku")          // received at Gudang 6, never sold
 	ours := []uint64{besar, tengah, lima, kecil, diam}
 
-	inventory := inventory_v1.NewService(db, nil, nil, everySupplierLive{}, nil, nil, nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, everySupplierLive{}, nil, nil, nil, nil, nil, nil)
 
 	racks := map[uint64]uint64{}
 

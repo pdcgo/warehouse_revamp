@@ -16,8 +16,24 @@
 //   the-problem-price-is-filled-by-the-system               a problem row's price = the landed unit price × n.
 //   the-courier-is-paid-once-per-restock                    one charge, its note required when above 0.
 //   the-couriers-charge-stays-out-of-total                  total = goods + shipping.
-//   every-status-change-is-logged, edits-are-in-the-same-trail   every change appends a trail row.
+//   every-status-change-is-logged, edits-are-in-the-same-trail   every change appends a trail row; an edit's row is the
+//                                                           bare "edited" with what it changed under it, each field
+//                                                           before and after (editChanges = restock_log_changes.go).
 //   a-product-appears-once-per-restock                      a product twice on one restock is refused.
+//   the-notes-are-one-per-writer                            the note keeps its OWN writer and time: the raise stamps
+//                                                           it, an edit or a note set only when it changes the note.
+//   the-note-is-edited-in-any-status                        NoteSet takes the raising team's note in every status, the
+//                                                           note alone, an edit's row with the note before and after;
+//                                                           the same note again writes nothing.
+//   the-warehouse-writes-its-own-note                       WarehouseNoteSet: the RECEIVING warehouse's own note (the
+//                                                           selling team reads NotFound), every status — when it may be
+//                                                           written is not decided — kept with its writer and time, an
+//                                                           edit's row with the warehouse note before and after; the
+//                                                           same note again writes nothing.
+//   a-reference-in-use-stops-the-restock-form               Create, and an ongoing Update, refuse a resi or an Order ID
+//                                                           another restock of the team holds, not cancelled, letter
+//                                                           case and spaces aside — AlreadyExists with
+//                                                           RestockReferenceInUse, naming the holder (00048's indexes).
 //   a-restock-names-its-paying-account                      Create, and an ongoing Update that CHANGES the account,
 //                                                           refuse one that is not the team's active operational
 //                                                           account (payingAccountRefusal, the server's words).
@@ -35,7 +51,11 @@ import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import {
   RestockActorRole,
   RestockDateField,
+  RestockLogChangeField as CF,
   RestockProblemType,
+  RestockReference,
+  RestockReferenceInUseSchema,
+  RestockRequestByIdsDataType,
   RestockRequestListDataType,
   RestockRequestService,
   RestockRequestStatus as S,
@@ -43,7 +63,7 @@ import {
 import { unitHpp } from "../src/features/restock/counting";
 import { payingAccountRefusal } from "./financialAccountStub";
 import { racks } from "./fixtures";
-import { type LineFixture, type RestockFixture, restockFixtures } from "./restockFixtures";
+import { type ChangeFixture, type LineFixture, type RestockFixture, restockFixtures } from "./restockFixtures";
 import { SELF_ID } from "./userStub";
 import {
   correctionFieldsOf,
@@ -53,6 +73,9 @@ import {
 } from "./receivedCountScenario";
 import { sessionScenario } from "./sessionScenario";
 import { resetRestockAcceptScenario, restockAcceptScenario } from "./restockAcceptScenario";
+import { brokenPhotoLink, doorPhotoScenario, resetDoorPhotoScenario, slipPhotoLink } from "./doorPhotoScenario";
+import { resetRestockReadScenario, restockReadScenario } from "./restockReadScenario";
+import { resetRestockExportScenario, restockExportScenario } from "./restockExportScenario";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 
 let rows: RestockFixture[] = [];
@@ -69,9 +92,49 @@ export function resetRestockStub() {
   rows = structuredClone(restockFixtures);
   resetReceivedCountScenario();
   resetRestockAcceptScenario();
+  resetRestockReadScenario();
+  resetRestockExportScenario();
+  resetDoorPhotoScenario();
+}
+
+/**
+ * For a story: restock `id` kept NO photo at the door — no slip with its charge, no broken units' photo — as a restock
+ * accepted before the photos were kept, or with none taken. Returns the restore (a `beforeEach` returns it).
+ */
+export function withoutDoorPhotosForStory(id: bigint): () => void {
+  const fixture = restockFixtures.find((r) => r.id === id);
+  if (!fixture) throw new Error(`no restock fixture ${id}`);
+
+  const saved = {
+    slip: fixture.warehouseAdditionalCostFile,
+    photos: fixture.items.map((l) => l.problems.map((p) => p.photoFile)),
+  };
+  fixture.warehouseAdditionalCostFile = "";
+  for (const l of fixture.items) for (const p of l.problems) p.photoFile = "";
+  resetRestockStub();
+
+  return () => {
+    fixture.warehouseAdditionalCostFile = saved.slip;
+    fixture.items.forEach((l, i) => l.problems.forEach((p, j) => (p.photoFile = saved.photos[i]![j])));
+    resetRestockStub();
+  };
 }
 
 resetRestockStub();
+
+/**
+ * For a story: restock `id` was ACCEPTED at `acceptedAtUnix` with the courier's charge `charge` — what the warehouse list's
+ * COD card sums (the-warehouse-sees-the-cod-it-paid). The fixtures' own dates run from today, so a story about "this
+ * month" places its restocks itself.
+ */
+export function restockCodPaidForStory(id: bigint, charge: number, acceptedAtUnix: bigint) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no restock ${id} in the stub`);
+  row.status = S.ACCEPTED;
+  row.warehouseAdditionalCost = charge;
+  row.warehouseAdditionalCostNote = charge > 0 ? "Ongkos bongkar di gudang" : "";
+  row.acceptedAtUnix = acceptedAtUnix;
+}
 
 /** For a story: who raised restock `id` — e.g. a former user, to show the list naming them (erase-keeps-the-row). */
 export function restockRaisedByForStory(id: bigint, userId: bigint) {
@@ -89,6 +152,31 @@ export function restockStepByForStory(id: bigint, step: "arrived" | "accepted", 
   if (!row) throw new Error(`no restock ${id} in the stub`);
   if (step === "arrived") row.arrivedByUserId = userId;
   else row.acceptedByUserId = userId;
+}
+
+/**
+ * For a story: who wrote restock `id`'s note, and when (the-notes-are-one-per-writer) — e.g. Root from outside the team,
+ * or `0n, 0n` for a note written before its writer was kept.
+ */
+export function restockNoteByForStory(id: bigint, userId: bigint, atUnix: bigint, isOverride = false) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no restock ${id} in the stub`);
+  row.noteByUserId = userId;
+  row.noteAtUnix = atUnix;
+  row.noteByIsOverride = isOverride;
+}
+
+/**
+ * For a story: the receiving warehouse's own note on restock `id`, who wrote it and when
+ * (the-warehouse-writes-its-own-note) — e.g. Root from outside the warehouse.
+ */
+export function restockWarehouseNoteForStory(id: bigint, note: string, userId: bigint, atUnix: bigint, isOverride = false) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no restock ${id} in the stub`);
+  row.warehouseNote = note;
+  row.warehouseNoteByUserId = userId;
+  row.warehouseNoteAtUnix = atUnix;
+  row.warehouseNoteByIsOverride = isOverride;
 }
 
 /**
@@ -155,10 +243,80 @@ function comingTo(teamId: bigint, id: bigint): RestockFixture {
   return found;
 }
 
-function appendLog(r: RestockFixture, from: S, to: S, description: string) {
+// AN ACCEPTED RESTOCK'S LABELS — one per placement its good units went to, each with its batch's price (the landed unit
+// price the accept minted the batch at); the broken and missing units, which got none, counted. RestockRequestLabels and
+// RestockRequestByIds' LABELS slice both answer it, as the server's one builder does.
+function labelSetOf(r: RestockFixture) {
+  const labels = r.items.flatMap((l) => {
+    const hpp = goodOf(l) > 0n ? landedOf(r, l) : 0;
+
+    return l.placements.map((p) => ({
+      productId: l.productId,
+      productCode: l.productCode,
+      name: l.name,
+      batchId: l.id,
+      quantity: p.quantity,
+      placementCode: racks.find((rack) => rack.id === p.placementId)?.code ?? "",
+      hpp,
+    }));
+  });
+  const excluded = r.items.reduce((s, l) => s + l.problems.reduce((t, p) => t + p.count, 0n), 0n);
+
+  return { receivedAtUnix: r.acceptedAtUnix, labels, excludedCount: excluded };
+}
+
+function appendLog(r: RestockFixture, from: S, to: S, description: string, changes?: ChangeFixture[]) {
   const id = r.logs.reduce((max, l) => (l.id > max ? l.id : max), 0n) + 1n;
 
-  r.logs.push({ id, fromStatus: from, toStatus: to, actorUserId: SELF_ID, description, atUnix: now() });
+  r.logs.push({ id, fromStatus: from, toStatus: to, actorUserId: SELF_ID, description, atUnix: now(), changes });
+}
+
+// WHAT AN EDIT CHANGES — the server's restockEditChanges (restock_log_changes.go), read before the edit is applied: every
+// field that differs, the restock's own first, then the lines in the order sent (an added one says its count and total,
+// then its note, supplier and store when given), then the lines removed. A unit price, the totals and a line's name are
+// not changes of their own. An id is decimal text, "" for none.
+function editChanges(r: RestockFixture, req: UpdateIn): ChangeFixture[] {
+  const out: ChangeFixture[] = [];
+  const id = (v: bigint) => (v === 0n ? "" : v.toString());
+  const amount = (v: number) => String(v);
+  const change = (field: CF, productId: bigint, productName: string, before: string, after: string) => {
+    if (before !== after) out.push({ field, productId, productName, before, after });
+  };
+
+  change(CF.WAREHOUSE, 0n, "", id(r.warehouseId), id(req.warehouseId));
+  change(CF.RECEIPT, 0n, "", r.receipt, req.receipt);
+  change(CF.RECEIPT_FILE, 0n, "", r.receiptFile, req.receiptFile);
+  change(CF.SHIPMENT, 0n, "", id(r.shipmentId), id(req.shipmentId));
+  change(CF.INVOICE_REF, 0n, "", r.invoiceRefId, req.invoiceRefId);
+  change(CF.FINANCE_ACCOUNT, 0n, "", id(r.financeAccountId), id(req.financeAccountId));
+  change(CF.SHIPMENT_COST, 0n, "", amount(r.shipmentCost), amount(req.shipmentCost));
+  change(CF.NOTE, 0n, "", r.note, req.note);
+
+  for (const it of req.items) {
+    const old = r.items.find((l) => l.productId === it.productId);
+    if (!old) {
+      change(CF.LINE_ADDED, it.productId, it.name, "", it.count.toString());
+      out.push({ field: CF.LINE_TOTAL, productId: it.productId, productName: it.name, before: "", after: amount(it.total) });
+      change(CF.LINE_NOTE, it.productId, it.name, "", it.note);
+      change(CF.LINE_SUPPLIER, it.productId, it.name, "", id(it.supplierId));
+      change(CF.LINE_STORE, it.productId, it.name, "", id(it.supplierChannelId));
+      continue;
+    }
+
+    change(CF.LINE_COUNT, it.productId, it.name, old.count.toString(), it.count.toString());
+    change(CF.LINE_TOTAL, it.productId, it.name, amount(old.total), amount(it.total));
+    change(CF.LINE_NOTE, it.productId, it.name, old.note, it.note);
+    change(CF.LINE_SUPPLIER, it.productId, it.name, id(old.supplierId), id(it.supplierId));
+    change(CF.LINE_STORE, it.productId, it.name, id(old.supplierChannelId), id(it.supplierChannelId));
+  }
+
+  for (const old of r.items) {
+    if (!req.items.some((it) => it.productId === old.productId)) {
+      change(CF.LINE_REMOVED, old.productId, old.name, old.count.toString(), "");
+    }
+  }
+
+  return out;
 }
 
 const goodOf = (l: LineFixture) => {
@@ -224,6 +382,19 @@ type LineIn = {
   note: string;
 };
 
+// The fields of an update editChanges compares — the request as the router hands it.
+type UpdateIn = {
+  warehouseId: bigint;
+  receipt: string;
+  receiptFile: string;
+  shipmentId: bigint;
+  invoiceRefId: string;
+  financeAccountId: bigint;
+  shipmentCost: number;
+  note: string;
+  items: LineIn[];
+};
+
 function onceEach(items: LineIn[]) {
   const seen = new Set<string>();
   for (const it of items) {
@@ -272,6 +443,64 @@ export function restockWire(id: bigint) {
   if (!found) throw new Error(`no restock ${id}`);
 
   return toWire(found, true);
+}
+
+/**
+ * For a story: ANOTHER restock of `teamId` raised with this resi and/or Order ID right now — the twin save that lands
+ * after the form asked the list and before its own save, so only the server's refusal can catch it. Returns its id.
+ */
+export function raiseTwinRestockForStory(teamId: bigint, refs: { receipt?: string; invoiceRefId?: string }): bigint {
+  const source = rows.find((r) => r.requestingTeamId === teamId);
+  if (!source) throw new Error(`no restock of team ${teamId} in the stub to copy`);
+
+  const id = rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
+  rows.push({
+    ...structuredClone(source),
+    id,
+    status: S.ONGOING,
+    receipt: refs.receipt ?? "",
+    invoiceRefId: refs.invoiceRefId ?? "",
+    createdAtUnix: now(),
+    logs: [],
+  });
+
+  return id;
+}
+
+// a-reference-in-use-stops-the-restock-form, as inventory 00048's unique indexes keep it: each reference on its own,
+// against the team's other restocks that are not cancelled, letter case and the spaces around it aside; an empty one
+// holds nothing. The server's AlreadyExists and its RestockReferenceInUse detail, naming each holder.
+function refuseHeldReferences(teamId: bigint, exceptId: bigint, receipt: string, invoiceRefId: string) {
+  const bare = (v: string) => v.replace(/^ +| +$/g, "").toLowerCase();
+  const holderOf = (pick: (r: RestockFixture) => string, value: string) =>
+    bare(value) === ""
+      ? undefined
+      : rows
+          .filter((r) => r.requestingTeamId === teamId && r.id !== exceptId && r.status !== S.CANCELLED)
+          .filter((r) => bare(pick(r)) === bare(value))
+          .sort((a, b) => (a.id > b.id ? -1 : 1))[0];
+
+  const held = [
+    { reference: RestockReference.RECEIPT, word: "resi", holder: holderOf((r) => r.receipt, receipt) },
+    { reference: RestockReference.INVOICE_REF, word: "Order ID", holder: holderOf((r) => r.invoiceRefId, invoiceRefId) },
+  ].filter((h) => h.holder !== undefined);
+  if (held.length === 0) return;
+
+  const words = held.map((h) => `the ${h.word} is already on restock #${h.holder!.id} (${S[h.holder!.status].toLowerCase()})`);
+
+  throw new ConnectError(
+    `a resi or an Order ID of this restock is already on another restock of this team: ${words.join("; ")}`,
+    Code.AlreadyExists,
+    undefined,
+    [
+      {
+        desc: RestockReferenceInUseSchema,
+        value: {
+          held: held.map((h) => ({ reference: h.reference, holderId: h.holder!.id, holderStatus: h.holder!.status })),
+        },
+      },
+    ],
+  );
 }
 
 // Change one restock for a story — a case the fixtures do not hold (a restock with no order id). Call it from the
@@ -361,12 +590,77 @@ export function restockCorrectedForStory(
 // The words the server writes (san_money.Text): the exact figure, up to 3 decimals — never rounded to the rupiah.
 const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID", { maximumFractionDigits: 3 })}`;
 
+type ListFilter = Parameters<NonNullable<typeof restockRequestService.restockRequestList>>[0]["filter"];
+
+// THE LIST'S ONE PREDICATE, as restock_list_scope.go: both sides' scope and every filter. RestockRequestList pages it and
+// RestockSellingStat counts it (status cleared, the raising side only), so the stub's cards and rows cannot disagree
+// either.
+function inListScope(r: RestockFixture, teamId: bigint, f: ListFilter): boolean {
+  const q = (f?.q ?? "").trim().toLowerCase();
+  const idQuery = q.replace(/^#/, "");
+  const field = f?.dateField ?? RestockDateField.UNSPECIFIED;
+
+  if (r.requestingTeamId !== teamId && r.warehouseId !== teamId) return false;
+  if (f?.status && r.status !== f.status) return false;
+  if (f?.productId && !r.items.some((l) => l.productId === f.productId)) return false;
+  if (f?.warehouseId && r.warehouseId !== f.warehouseId) return false;
+  if (f?.requestingTeamId && r.requestingTeamId !== f.requestingTeamId) return false;
+  if (f?.createdByUserId && r.createdByUserId !== f.createdByUserId) return false;
+  if (f?.acceptedByUserId && r.acceptedByUserId !== f.acceptedByUserId) return false;
+  // The courier: 0 = any; a restock naming none matches no pick.
+  if (f?.shipmentId && r.shipmentId !== f.shipmentId) return false;
+
+  if (f?.fromUnix || f?.toUnix) {
+    const at = dateOf(r, field);
+    if (at === 0n) return false;
+    if ((f.fromUnix && at < f.fromUnix) || (f.toUnix && at > f.toUnix)) return false;
+  }
+
+  return (
+    !q ||
+    r.id.toString() === idQuery ||
+    r.receipt.toLowerCase().includes(q) ||
+    r.invoiceRefId.toLowerCase().includes(q) ||
+    r.items.some((l) => l.productCode.toLowerCase().includes(q) || l.name.toLowerCase().includes(q))
+  );
+}
+
+// One pile of the selling statistics, as restock_selling_stat.go sums it: the pieces ORDERED (never received), the
+// different products, the goods, the freight, the courier's charge (outside the value) and goods + freight.
+function pileOfRestocks(status: S, restocks: RestockFixture[]) {
+  const lines = restocks.flatMap((r) => r.items);
+  const goods = lines.reduce((sum, l) => sum + l.total, 0);
+  const shipping = restocks.reduce((sum, r) => sum + r.shipmentCost, 0);
+
+  return {
+    status,
+    restockCount: BigInt(restocks.length),
+    unitCount: lines.reduce((sum, l) => sum + l.count, 0n),
+    productCount: BigInt(new Set(lines.map((l) => l.productId.toString())).size),
+    goodsValue: goods,
+    shipmentCost: shipping,
+    courierCharge: restocks.reduce((sum, r) => sum + r.warehouseAdditionalCost, 0),
+    value: goods + shipping,
+  };
+}
+
+/**
+ * For a story: restock `id` was paid from account `accountId` — 0 is one raised before naming its account was required.
+ * Reset with the stub, per story.
+ */
+export function restockPaidFromForStory(id: bigint, accountId: bigint) {
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no restock ${id} in the stub`);
+  row.financeAccountId = accountId;
+}
+
 export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestService>> = {
   restockRequestCreate(req) {
     if (req.items.length === 0) throw invalid("items: at least one line is required");
     if (req.financeAccountId === 0n) throw invalid("finance_account_id: value is required");
     onceEach(req.items);
     refuseAccount(req.teamId, req.financeAccountId);
+    refuseHeldReferences(req.teamId, 0n, req.receipt, req.invoiceRefId);
 
     const id = rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
     const r: RestockFixture = {
@@ -385,6 +679,9 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       warehouseAdditionalCost: 0,
       warehouseAdditionalCostNote: "",
       note: req.note,
+      // The raise writes the note — empty or not — so its writer is the raiser (the-notes-are-one-per-writer).
+      noteByUserId: SELF_ID,
+      noteAtUnix: now(),
       transactionId: 0n,
       createdByUserId: SELF_ID,
       arrivedByUserId: 0n,
@@ -405,33 +702,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
   },
 
   restockRequestList(req) {
-    const f = req.filter;
-    const q = (f?.q ?? "").trim().toLowerCase();
-    const idQuery = q.replace(/^#/, "");
-    const field = f?.dateField ?? RestockDateField.UNSPECIFIED;
-
     const matched = rows
-      .filter((r) => r.requestingTeamId === req.teamId || r.warehouseId === req.teamId)
-      .filter((r) => !f?.status || r.status === f.status)
-      .filter((r) => !f?.productId || r.items.some((l) => l.productId === f.productId))
-      .filter((r) => !f?.warehouseId || r.warehouseId === f.warehouseId)
-      .filter((r) => !f?.requestingTeamId || r.requestingTeamId === f.requestingTeamId)
-      .filter((r) => !f?.createdByUserId || r.createdByUserId === f.createdByUserId)
-      .filter((r) => !f?.acceptedByUserId || r.acceptedByUserId === f.acceptedByUserId)
-      .filter((r) => {
-        if (!f?.fromUnix && !f?.toUnix) return true;
-        const at = dateOf(r, field);
-        if (at === 0n) return false;
-        return (!f.fromUnix || at >= f.fromUnix) && (!f.toUnix || at <= f.toUnix);
-      })
-      .filter(
-        (r) =>
-          !q ||
-          r.id.toString() === idQuery ||
-          r.receipt.toLowerCase().includes(q) ||
-          r.invoiceRefId.toLowerCase().includes(q) ||
-          r.items.some((l) => l.productCode.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)),
-      )
+      .filter((r) => inListScope(r, req.teamId, req.filter))
       .sort((a, b) => (a.id > b.id ? -1 : 1));
 
     const { rows: page, pageInfo } = pageOf(matched, req.page);
@@ -490,6 +762,14 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     if (r.status === S.ONGOING) {
       // Only a CHANGED account is judged — an unchanged one is the restock keeping what it holds.
       if (req.financeAccountId !== r.financeAccountId) refuseAccount(req.teamId, req.financeAccountId);
+      refuseHeldReferences(req.teamId, r.id, req.receipt, req.invoiceRefId);
+      const changes = editChanges(r, req);
+      // The note's own writer moves only when this edit changes the note.
+      if (req.note !== r.note) {
+        r.noteByUserId = SELF_ID;
+        r.noteAtUnix = now();
+        r.noteByIsOverride = false;
+      }
       r.warehouseId = req.warehouseId;
       r.receipt = req.receipt;
       r.receiptFile = req.receiptFile;
@@ -499,7 +779,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       r.shipmentCost = req.shipmentCost;
       r.note = req.note;
       r.items = newLines(r, req.items, r.items.length + 10);
-      appendLog(r, S.ONGOING, S.ONGOING, "edited");
+      appendLog(r, S.ONGOING, S.ONGOING, "edited", changes);
 
       return { request: toWire(r, true, req.teamId) };
     }
@@ -518,7 +798,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       req.note !== r.note;
     if (headerChanged) throw precondition("only the lines can change once the box has arrived");
 
-    const changes: string[] = [];
+    const changes = editChanges(r, req);
     const next: LineFixture[] = [];
 
     for (const existing of r.items) {
@@ -527,20 +807,53 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       if (incoming.supplierId !== existing.supplierId || incoming.supplierChannelId !== existing.supplierChannelId) {
         throw precondition("a line's store cannot change once the box has arrived");
       }
-      if (incoming.count !== existing.count) {
-        changes.push(`${existing.name} ${existing.count} → ${incoming.count}${incoming.note ? `, ${incoming.note}` : ""}`);
-      }
       next.push({ ...existing, count: incoming.count, total: incoming.total, note: incoming.note });
     }
 
     const added = req.items.filter((it) => !r.items.some((l) => l.productId === it.productId));
     for (const it of added) {
       if (it.note.trim() === "") throw invalid("a line added after the box arrived needs a note");
-      changes.push(`added ${it.name} × ${it.count}, ${it.note}`);
     }
 
     r.items = [...next, ...newLines(r, added, r.items.length + 20)];
-    appendLog(r, S.ARRIVED, S.ARRIVED, changes.length > 0 ? changes.join("; ") : "edited");
+    appendLog(r, S.ARRIVED, S.ARRIVED, "edited", changes);
+
+    return { request: toWire(r, true, req.teamId) };
+  },
+
+  // THE NOTE ALONE, IN ANY STATUS (restock_request_note_set.go, the-note-is-edited-in-any-status): the raising team only
+  // (the warehouse reads NotFound), every status; a changed note stamps its writer and is an edit's row with the note
+  // before and after; the same note again writes nothing.
+  restockRequestNoteSet(req) {
+    const r = raisedBy(req.teamId, req.requestId);
+    if (req.note !== r.note) {
+      const changes: ChangeFixture[] = [{ field: CF.NOTE, productId: 0n, productName: "", before: r.note, after: req.note }];
+      r.note = req.note;
+      r.noteByUserId = SELF_ID;
+      r.noteAtUnix = now();
+      r.noteByIsOverride = false;
+      appendLog(r, r.status, r.status, "edited", changes);
+    }
+
+    return { request: toWire(r, true, req.teamId) };
+  },
+
+  // THE RECEIVING WAREHOUSE'S OWN NOTE (restock_request_warehouse_note_set.go, the-warehouse-writes-its-own-note): the
+  // receiving warehouse only (the raising team reads NotFound), every status; a changed note stamps its writer and is an
+  // edit's row with the warehouse note before and after; the same note again writes nothing.
+  restockRequestWarehouseNoteSet(req) {
+    const r = comingTo(req.teamId, req.requestId);
+    const before = r.warehouseNote ?? "";
+    if (req.note !== before) {
+      const changes: ChangeFixture[] = [
+        { field: CF.WAREHOUSE_NOTE, productId: 0n, productName: "", before, after: req.note },
+      ];
+      r.warehouseNote = req.note;
+      r.warehouseNoteByUserId = SELF_ID;
+      r.warehouseNoteAtUnix = now();
+      r.warehouseNoteByIsOverride = false;
+      appendLog(r, r.status, r.status, "edited", changes);
+    }
 
     return { request: toWire(r, true, req.teamId) };
   },
@@ -596,6 +909,11 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     let missing = 0n;
 
     restockAcceptScenario.expiries.push(Object.fromEntries(req.lines.map((l) => [l.itemId.toString(), l.expiresOn])));
+    // The door's photos as SENT — a story may call the stub with a plain object, so an absent one is "" too.
+    restockAcceptScenario.photos.push({
+      broken: Object.fromEntries(req.lines.map((l) => [l.itemId.toString(), l.brokenPhotoFile ?? ""])),
+      slip: req.warehouseAdditionalCostFile ?? "",
+    });
 
     for (const l of r.items) {
       const c = counted.get(l.id.toString())!;
@@ -603,7 +921,13 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       l.placements = c.placements.map((p) => ({ placementId: p.placementId, quantity: p.quantity }));
       l.problems = [];
       if (c.brokenCount > 0n) {
-        l.problems.push({ type: RestockProblemType.BROKEN, count: c.brokenCount, note: c.brokenNote });
+        // The broken units' photo is kept on their row (a-broken-product-carries-a-photo); a line with none has no row.
+        l.problems.push({
+          type: RestockProblemType.BROKEN,
+          count: c.brokenCount,
+          note: c.brokenNote,
+          photoFile: c.brokenPhotoFile ?? "",
+        });
         broken += c.brokenCount;
       }
       const short = l.count - c.receivedCount;
@@ -623,6 +947,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     }
     r.warehouseAdditionalCost = req.warehouseAdditionalCost;
     r.warehouseAdditionalCostNote = req.warehouseAdditionalCostNote;
+    // The slip goes with the charge, or not at all (the-courier-slip-has-an-optional-photo) — as the server.
+    r.warehouseAdditionalCostFile = req.warehouseAdditionalCost > 0 ? (req.warehouseAdditionalCostFile ?? "") : "";
     r.transactionId = 9000n + r.id;
 
     const parts = [`${broken} broken, ${missing} missing`];
@@ -660,28 +986,64 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     const r = comingTo(req.teamId, req.requestId);
     if (r.status !== S.ACCEPTED) throw precondition("restock request is not accepted");
 
-    // Each label carries its batch's price — the landed unit price, the same the accept minted the batch at.
-    const labels = r.items.flatMap((l) => {
-      const hpp = goodOf(l) > 0n ? landedOf(r, l) : 0;
+    return { restockId: r.id, ...labelSetOf(r) };
+  },
 
-      return l.placements.map((p) => ({
-        productId: l.productId,
-        productCode: l.productCode,
-        name: l.name,
-        batchId: l.id,
-        quantity: p.quantity,
-        placementCode: racks.find((rack) => rack.id === p.placementId)?.code ?? "",
-        hpp,
-      }));
-    });
-    const excluded = r.items.reduce((s, l) => s + l.problems.reduce((t, p) => t + p.count, 0n), 0n);
+  // CETAK LABEL'S ONE READ (the-labels-mark-their-one-by-one-read) — as the server: each slice keeps its one-restock read's
+  // scope (RESTOCK_REQUEST is Detail's, LABELS is Labels': going to the warehouse, accepted); an id outside it, or
+  // unknown, is absent. Every call's ids are recorded for the stories (restockReadScenario.byIdsCalls).
+  restockRequestByIds(req) {
+    const ids = req.filter?.ids ?? [];
+    restockReadScenario.byIdsCalls.push([...ids]);
+    const types = req.dataRequest.length > 0 ? req.dataRequest : [RestockRequestByIdsDataType.RESTOCK_REQUEST];
+    const items: Record<string, { items: { d: { case: "restockRequest" | "labels"; value: unknown } }[] }> = {};
+    const add = (id: bigint, d: { case: "restockRequest" | "labels"; value: unknown }) => {
+      (items[id.toString()] ??= { items: [] }).items.push({ d });
+    };
 
-    return { restockId: r.id, receivedAtUnix: r.acceptedAtUnix, labels, excludedCount: excluded };
+    for (const id of ids) {
+      const r = rows.find((x) => x.id === id);
+      if (!r) continue;
+
+      const raisedOrComing = r.requestingTeamId === req.teamId || r.warehouseId === req.teamId;
+      if (types.includes(RestockRequestByIdsDataType.RESTOCK_REQUEST) && raisedOrComing) {
+        add(id, { case: "restockRequest", value: toWire(r, false, req.teamId) });
+      }
+      if (types.includes(RestockRequestByIdsDataType.LABELS) && r.warehouseId === req.teamId && r.status === S.ACCEPTED) {
+        add(id, { case: "labels", value: labelSetOf(r) });
+      }
+    }
+
+    return { items } as never;
   },
 
   // the-restocks-warehouse-opens-its-label-photo — the server's rules: the restock must be going to the calling warehouse
   // (another's reads NotFound, as an unknown id), and one with no photo is FailedPrecondition. The URL names the route
   // so a story can tell this link from the owner's GetDownloadUrl one.
+  // THE DOOR'S PHOTOS (the-detail-pages-show-the-broken-photo, the-detail-pages-show-the-slip-and-the-broken-rack) — as the
+  // server: either side of the restock (Detail's scope; another team reads NotFound), the slip and each photographed
+  // broken line in product order, links that are drawings named by their document (doorPhotoScenario.ts). Every read is
+  // recorded.
+  restockDoorPhotos(req) {
+    doorPhotoScenario.calls.push({ teamId: req.teamId, requestId: req.requestId });
+    const r = visible(req.teamId, req.requestId);
+    const broken = r.items
+      .flatMap((l) =>
+        l.problems
+          .filter((p) => p.type === RestockProblemType.BROKEN && (p.photoFile ?? "") !== "")
+          .map((p) => ({ productId: l.productId, url: brokenPhotoLink(p.photoFile!) })),
+      )
+      .sort((a, b) => (a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0));
+    const slip = r.warehouseAdditionalCostFile ?? "";
+    const any = slip !== "" || broken.length > 0;
+
+    return {
+      courierSlipUrl: slip ? slipPhotoLink(slip) : "",
+      broken,
+      expiresAtUnix: any ? BigInt(Math.floor(Date.now() / 1000) + 900) : 0n,
+    };
+  },
+
   restockReceiptPhoto(req) {
     const r = comingTo(req.teamId, req.requestId);
     if (!r.receiptFile) throw precondition("this restock has no label photo");
@@ -689,6 +1051,82 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     return {
       url: `https://example.invalid/restock-photo/${r.receiptFile}`,
       expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 900),
+    };
+  },
+
+  // THE COD THE WAREHOUSE PAID (the-warehouse-sees-the-cod-it-paid) — as the server: restocks going to it, accepted in the
+  // window (both ends in), that carried a courier's charge; the charges summed. Every window asked is recorded.
+  restockCodPaidStat(req) {
+    restockReadScenario.codWindows.push({ teamId: req.teamId, fromUnix: req.fromUnix, toUnix: req.toUnix });
+    const paid = rows.filter(
+      (r) =>
+        r.warehouseId === req.teamId &&
+        r.status === S.ACCEPTED &&
+        r.acceptedAtUnix >= req.fromUnix &&
+        r.acceptedAtUnix <= req.toUnix &&
+        r.warehouseAdditionalCost > 0,
+    );
+
+    return {
+      restockCount: BigInt(paid.length),
+      amount: paid.reduce((sum, r) => sum + r.warehouseAdditionalCost, 0),
+    };
+  },
+
+  // THE SELLING RESTOCK LIST AS A FILE (restock_request_export.go): the list's own predicate, the tab included, the
+  // restocks the team RAISED, newest first — a count, then (once a story's hold is released) the link. The link is an
+  // empty data: URL, so the download a story triggers goes nowhere. What was asked is recorded.
+  restockRequestExport: async function* (req) {
+    const raised = rows
+      .filter((r) => r.requestingTeamId === req.teamId && inListScope(r, req.teamId, req.filter))
+      .sort((a, b) => (a.id > b.id ? -1 : 1));
+    const total = BigInt(raised.length);
+
+    restockExportScenario.calls.push({ teamId: req.teamId, filter: req.filter, rows: raised.length });
+
+    yield { message: "exporting restocks", done: 0n, total };
+    if (restockExportScenario.hold) await restockExportScenario.hold;
+    yield {
+      message: "the file is ready",
+      done: total,
+      total,
+      downloadUrl: "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,",
+      filename: "restok.xlsx",
+    };
+  },
+
+  // THE SELLING RESTOCK LIST'S STATISTICS (restock_selling_stat.go): the list's own predicate with its status cleared, the
+  // restocks the team RAISED only — a pile per status that has any, the total over every status (its products counted
+  // together), and a row per status × paying account (0 included). Every filter asked is recorded.
+  restockSellingStat(req) {
+    restockReadScenario.sellingStatCalls.push({ teamId: req.teamId, filter: req.filter });
+    const filter = req.filter ? { ...req.filter, status: S.UNSPECIFIED } : undefined;
+    const raised = rows.filter((r) => r.requestingTeamId === req.teamId && inListScope(r, req.teamId, filter));
+    const statuses = [S.ONGOING, S.ARRIVED, S.ACCEPTED, S.LOST, S.CANCELLED];
+
+    const byAccount = [];
+    for (const status of statuses) {
+      const accounts = new Map<string, RestockFixture[]>();
+      for (const r of raised.filter((x) => x.status === status)) {
+        const key = r.financeAccountId.toString();
+        accounts.set(key, [...(accounts.get(key) ?? []), r]);
+      }
+      for (const [id, paid] of accounts) {
+        byAccount.push({
+          status,
+          financeAccountId: BigInt(id),
+          restockCount: BigInt(paid.length),
+          value: pileOfRestocks(status, paid).value,
+        });
+      }
+    }
+
+    return {
+      total: pileOfRestocks(S.UNSPECIFIED, raised),
+      byStatus: statuses
+        .map((status) => pileOfRestocks(status, raised.filter((r) => r.status === status)))
+        .filter((p) => p.restockCount > 0n),
+      byAccount,
     };
   },
 

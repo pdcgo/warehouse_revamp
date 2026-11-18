@@ -49,7 +49,7 @@ func TestPerf_LostMetric(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLostBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil, nil, nil)
 
 	today := time.Now()
 	window := func(from int) []*analytic_basev1.FilterItem {

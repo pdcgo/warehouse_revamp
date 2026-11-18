@@ -109,7 +109,7 @@ func TestPerf_InventoryMetrics(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfStockReportBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil, nil, nil)
 
 	today := time.Now().In(metricWIB)
 	window := func(from, to int) []*analytic_basev1.FilterItem {

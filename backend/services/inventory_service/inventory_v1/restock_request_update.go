@@ -24,7 +24,8 @@ import (
 //	           Any other field that differs from what is stored is refused.
 //	otherwise → FailedPrecondition.
 //
-// Every edit is a row of the trail, the status unchanged (edits-are-in-the-same-trail).
+// Every edit is a row of the trail, the status unchanged (edits-are-in-the-same-trail), with what it changed under it —
+// each field before and after (restock_log_changes.go); an edit that changes nothing is still a row, with none.
 //
 // The row is loaded FOR UPDATE and the status re-checked inside the transaction: the check and the write have to be
 // atomic, or an edit racing the warehouse's accept could land just after the box was counted.
@@ -60,6 +61,7 @@ func (s *Service) RestockRequestUpdate(
 		oldAmount  float64
 		editedAt   time.Time
 		editLogID  uint64
+		changes    []inventory_service_models.RestockLogChange
 	)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -146,12 +148,23 @@ func (s *Service) RestockRequestUpdate(
 			oldAmount += stored[i].Total
 		}
 
+		// WHAT THIS EDIT CHANGES, field by field (edits-are-in-the-same-trail) — read before it is applied, while `rr` and
+		// `stored` still hold what was there: editOngoing overwrites the restock, editArrived the stored lines in place.
+		changes = restockEditChanges(&rr, stored, msg)
+
 		editedAt = time.Now()
 
 		var editErr error
 
 		switch rr.Status {
 		case restockStatusOngoing:
+			// The note's OWN writer moves only when this edit changes the note (the-notes-are-one-per-writer) — an edit of
+			// the lines, the resi or the money leaves who wrote it, and when, as they were. Arrived refuses a note change
+			// here (editArrived): the note past the restock's way is RestockRequestNoteSet's.
+			if rr.Note != msg.GetNote() {
+				stampNote(&rr, actorFrom(ctx), overrideFrom(ctx), editedAt)
+			}
+
 			editErr = s.editOngoing(tx, &rr, msg, editedAt)
 		case restockStatusArrived:
 			editErr = editArrived(tx, &rr, stored, byProduct, msg, editedAt)
@@ -179,12 +192,26 @@ func (s *Service) RestockRequestUpdate(
 
 		editLogID = row.ID
 
+		// Under the edit's own row, in the same transaction: the trail says what changed, never only that something did.
+		changesErr := recordRestockLogChanges(tx, row.ID, changes)
+		if changesErr != nil {
+			return changesErr
+		}
+
 		// Asking a warehouse to stock a product is what makes it VISIBLE there (#142) — a product added by this edit
 		// included, under the restock's team (the-warehouse-link-names-its-owner-team). ON CONFLICT DO NOTHING, so the
 		// products already linked cost nothing.
 		return linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
 	})
 	if err != nil {
+		// An ongoing edit to a resi or an Order ID another restock of the team holds
+		// (a-reference-in-use-stops-the-restock-form): 00048's unique index refused the UPDATE — or two edits trading
+		// references deadlocked on it. This restock is never its own duplicate — named once the transaction is gone
+		// (restock_reference_in_use.go).
+		if isReferenceClash(err) {
+			return nil, s.referenceRefusal(ctx, teamID, msg.GetRequestId(), msg.GetReceipt(), msg.GetInvoiceRefId(), err)
+		}
+
 		return nil, restockErr(err)
 	}
 
@@ -236,7 +263,11 @@ func (s *Service) editOngoing(
 			"finance_account_id": rr.FinanceAccountID,
 			"shipment_cost":      rr.ShipmentCost,
 			"note":               rr.Note,
-			"updated_at":         editedAt,
+			// Who wrote the note and when — as stamped by the caller when the note changed, else as stored.
+			"note_by_user_id":     rr.NoteByUserID,
+			"note_by_is_override": rr.NoteByIsOverride,
+			"note_at":             rr.NoteAt,
+			"updated_at":          editedAt,
 		}).
 		Error
 	if updErr != nil {

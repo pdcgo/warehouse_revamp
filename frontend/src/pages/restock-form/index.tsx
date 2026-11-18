@@ -33,10 +33,13 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import {
   type RefCheck,
+  type RefRefusals,
   type RestockRef,
+  refusalsOf,
   useRestockRefInUse,
   useRestockRequest,
   useSaveRestockRequest,
+  withRefusal,
 } from "../../features/restock/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
@@ -232,6 +235,9 @@ export function RestockFormPage() {
   const [allSupplier, setAllSupplier] = useState<SupplierChannelPick | null>(null);
 
   const [error, setError] = useState("");
+  // The references the SERVER refused on the last save, and who holds each (a-reference-in-use-stops-the-restock-form)
+  // — shown as the field's own danger while the field still holds that value.
+  const [refused, setRefused] = useState<RefRefusals>({});
 
   // ── Create from a product's page: that product as the first line, once ───────────────────────
   const seededPreset = useRef("");
@@ -312,8 +318,12 @@ export function RestockFormPage() {
   // IS THE RESI, OR THE ORDER ID, ON ANOTHER RESTOCK? (a-reference-in-use-stops-the-restock-form) — asked while the
   // parcel is open; an arrived restock's are closed and were checked when they were typed.
   const checksOpen = mode === "create" || mode === "ongoing";
-  const invoiceRefCheck = useRestockRefInUse({ teamId, ref: "invoiceRef", value: invoiceRef, exceptId: id, enabled: checksOpen });
-  const receiptCheck = useRestockRefInUse({ teamId, ref: "receipt", value: receipt, exceptId: id, enabled: checksOpen });
+  const invoiceRefAsked = useRestockRefInUse({ teamId, ref: "invoiceRef", value: invoiceRef, exceptId: id, enabled: checksOpen });
+  const receiptAsked = useRestockRefInUse({ teamId, ref: "receipt", value: receipt, exceptId: id, enabled: checksOpen });
+  // …and what the server answered a save: a restock saved with the same value after the list was asked is refused there,
+  // and that refusal is the field's danger like any other holder.
+  const invoiceRefCheck = withRefusal(invoiceRefAsked, refused.invoiceRef, invoiceRef);
+  const receiptCheck = withRefusal(receiptAsked, refused.receipt, receipt);
 
   // How many columns the width holds — read on the first render (`ssr: false`), so a wide screen never paints one
   // column first and then jumps.
@@ -465,6 +475,14 @@ export function RestockFormPage() {
 
       void navigate(backTo);
     } catch (err) {
+      // A resi or an Order ID another restock took first: the server names it, and it goes under its field in danger —
+      // the line by Buat names it too, so no second message is needed (a-reference-in-use-stops-the-restock-form).
+      const held = refusalsOf(err, { receipt: header.receipt, invoiceRef: header.invoiceRefId });
+      if (held.receipt || held.invoiceRef) {
+        setRefused(held);
+        return;
+      }
+
       setError(rpcError(err));
     }
   }
@@ -723,7 +741,6 @@ export function RestockFormPage() {
             <Field.Label>
               <HStack gap="1">
                 {t("restock.form.invoiceRef")}
-                <NotImplemented list={RESTOCK_FORM_PENDING} id="invoiceRefCheck" />
               </HStack>
             </Field.Label>
             <Input

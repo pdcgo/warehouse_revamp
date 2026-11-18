@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { RadioPills } from "../../components/inputs/RadioPills";
 import { PhotoPick } from "./PhotoPick";
+import type { DoorPhoto } from "./doorPhoto";
 
 /** The longest the charge's note may be — the contract's `max_len` (`warehouse_additional_cost_note`). */
 const MAX_CHARGE_NOTE = 200;
@@ -33,7 +34,8 @@ const MAX_CHARGE_NOTE = 200;
 // owed by the selling team. It IS in the unit price, so every HPP on the accept page moves as it is typed.
 //
 // A PHOTO OF THE COURIER'S SLIP, optional (owner: *"kurasa masuk akal kalau opsional"*,
-// the-courier-slip-has-an-optional-photo) — under the amount and the note, at both acts. ⚠ Not kept (PhotoPick).
+// the-courier-slip-has-an-optional-photo) — under the amount and the note, at both acts. Kept at Terima, uploaded as it
+// is picked (`photoUploadTo`); at Tandai Tiba, where the charge itself is not kept yet, only shown (PhotoPick).
 export function CourierCharge({
   asked,
   onAsked,
@@ -44,7 +46,7 @@ export function CourierCharge({
   onNote,
   photo = null,
   onPhoto,
-  photoMark,
+  photoUploadTo,
   hint,
   mark,
   testId = "accept-courier",
@@ -59,10 +61,10 @@ export function CourierCharge({
   onAmount: (value: string) => void;
   onNote: (value: string) => void;
   /** The slip's photo — shown only where `onPhoto` is given. */
-  photo?: File | null;
-  onPhoto?: (file: File | null) => void;
-  /** A pending mark beside the photo, where the charge itself IS kept but the photo is not. */
-  photoMark?: ReactNode;
+  photo?: DoorPhoto | null;
+  onPhoto?: (photo: DoorPhoto | null) => void;
+  /** The team the slip is kept under — given (Terima), it is uploaded as it is picked; absent, only shown. */
+  photoUploadTo?: bigint;
   /** What this act means for the charge — the accept page's by default. */
   hint?: string;
   /** A pending mark beside the title, where the charge is not kept yet. */
@@ -146,10 +148,10 @@ export function CourierCharge({
                 </Text>
               </Field.Label>
               <PhotoPick
-                file={photo}
+                value={photo}
                 onChange={onPhoto}
+                uploadTo={photoUploadTo}
                 alt={t("restock.accept.courier.photoAlt")}
-                mark={photoMark}
                 testId={`${testId}-photo`}
               />
             </Field.Root>

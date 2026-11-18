@@ -66,19 +66,41 @@ const (
 	// RestockRequestServiceRestockInboundStatProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockInboundStat RPC.
 	RestockRequestServiceRestockInboundStatProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockInboundStat"
+	// RestockRequestServiceRestockCodPaidStatProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockCodPaidStat RPC.
+	RestockRequestServiceRestockCodPaidStatProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockCodPaidStat"
+	// RestockRequestServiceRestockSellingStatProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockSellingStat RPC.
+	RestockRequestServiceRestockSellingStatProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockSellingStat"
+	// RestockRequestServiceRestockRequestExportProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestExport RPC.
+	RestockRequestServiceRestockRequestExportProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestExport"
+	// RestockRequestServiceRestockRequestByIdsProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestByIds RPC.
+	RestockRequestServiceRestockRequestByIdsProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestByIds"
 	// RestockRequestServiceRestockReceiptPhotoProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockReceiptPhoto RPC.
 	RestockRequestServiceRestockReceiptPhotoProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockReceiptPhoto"
+	// RestockRequestServiceRestockDoorPhotosProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockDoorPhotos RPC.
+	RestockRequestServiceRestockDoorPhotosProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockDoorPhotos"
 	// RestockRequestServiceRestockReceivedCountCorrectProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockReceivedCountCorrect RPC.
 	RestockRequestServiceRestockReceivedCountCorrectProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockReceivedCountCorrect"
+	// RestockRequestServiceRestockRequestNoteSetProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestNoteSet RPC.
+	RestockRequestServiceRestockRequestNoteSetProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestNoteSet"
+	// RestockRequestServiceRestockRequestWarehouseNoteSetProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestWarehouseNoteSet RPC.
+	RestockRequestServiceRestockRequestWarehouseNoteSetProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestWarehouseNoteSet"
 )
 
 // RestockRequestServiceClient is a client for the warehouse.inventory.v1.RestockRequestService
 // service.
 type RestockRequestServiceClient interface {
 	// The selling team raises a restock — the restock and its lines in one transaction, then Restock Created
-	// (a-created-restock-tells-the-financial-account).
+	// (a-created-restock-tells-the-financial-account). A resi or an Order ID another restock of the team holds, not
+	// cancelled, is ALREADY_EXISTS with RestockReferenceInUse (a-reference-in-use-stops-the-restock-form).
 	RestockRequestCreate(context.Context, *connect.Request[v1.RestockRequestCreateRequest]) (*connect.Response[v1.RestockRequestCreateResponse], error)
 	// Both sides list: a team sees restocks it raised and restocks coming to it as a warehouse.
 	RestockRequestList(context.Context, *connect.Request[v1.RestockRequestListRequest]) (*connect.Response[v1.RestockRequestListResponse], error)
@@ -87,7 +109,8 @@ type RestockRequestServiceClient interface {
 	// One restock in full, with its lines and its trail. Same two-sided scope as List.
 	RestockRequestDetail(context.Context, *connect.Request[v1.RestockRequestDetailRequest]) (*connect.Response[v1.RestockRequestDetailResponse], error)
 	// The selling team edits — everything while ongoing, only the lines while arrived
-	// (the-lines-stay-editable-until-accepted).
+	// (the-lines-stay-editable-until-accepted). An ongoing edit to a resi or an Order ID another restock of the team holds
+	// is ALREADY_EXISTS with RestockReferenceInUse, as for Create.
 	RestockRequestUpdate(context.Context, *connect.Request[v1.RestockRequestUpdateRequest]) (*connect.Response[v1.RestockRequestUpdateResponse], error)
 	// The warehouse signs for the box: ongoing or lost → arrived (a-late-lost-box-is-signed-for-as-arrived).
 	RestockRequestArrive(context.Context, *connect.Request[v1.RestockRequestArriveRequest]) (*connect.Response[v1.RestockRequestArriveResponse], error)
@@ -102,12 +125,44 @@ type RestockRequestServiceClient interface {
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
 	// The headline over the warehouse's inbound queue: what is still on its way or at the door.
 	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
+	// THE COD THE WAREHOUSE PAID (the-warehouse-sees-the-cod-it-paid): the courier's charge it handed over at the door
+	// (`warehouse_additional_cost`) on the restocks it accepted in a window, summed, and how many carried one.
+	RestockCodPaidStat(context.Context, *connect.Request[v1.RestockCodPaidStatRequest]) (*connect.Response[v1.RestockCodPaidStatResponse], error)
+	// THE SELLING RESTOCK LIST'S STATISTICS (the-restock-statistics-count-transactions-under-the-tabs): the team's restocks
+	// under the list's own filter, counted per status and in all, with what was ordered and paid — and the value per
+	// paying account for Rincian. Read only while the statistics are open (the-statistics-are-shut-and-read-when-opened).
+	RestockSellingStat(context.Context, *connect.Request[v1.RestockSellingStatRequest]) (*connect.Response[v1.RestockSellingStatResponse], error)
+	// THE SELLING RESTOCK LIST AS A FILE (the-restock-list-exports-and-filters-by-courier, on
+	// one-export-is-the-list-as-a-file and a-report-export-is-the-whole-view-as-a-file): exactly the restocks the list holds
+	// with this filter — the list's one predicate, the status tab and the courier included — every page of them, in the
+	// list's order and the screen's columns, as .xlsx. A server stream: every step a message with the progress, the
+	// expiring link to the stored file on the last. NOT a read — it stores a file — so the admin team's monitor and an
+	// agent's credential are refused (monitoring-keeps-what-only-reads).
+	RestockRequestExport(context.Context, *connect.Request[v1.RestockRequestExportRequest]) (*connect.ServerStreamForClient[v1.RestockRequestExportResponse], error)
+	// SEVERAL RESTOCKS IN ONE READ, for Cetak Label (the-labels-mark-their-one-by-one-read): each restock with its lines,
+	// and an accepted one's labels, by id — the guideline's ByIds shape, one call for every restock on the print.
+	RestockRequestByIds(context.Context, *connect.Request[v1.RestockRequestByIdsRequest]) (*connect.Response[v1.RestockRequestByIdsResponse], error)
 	// The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
 	// (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
 	RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error)
+	// THE PHOTOS TAKEN AT THE DOOR, for both detail pages (the-detail-pages-show-the-broken-photo,
+	// the-detail-pages-show-the-slip-and-the-broken-rack): the courier's slip and each line's broken units, as the receiving
+	// warehouse kept them at Terima — for the restock's selling team and its warehouse, checked here, signed by
+	// document_service in-process (the label photo's door), no share.
+	RestockDoorPhotos(context.Context, *connect.Request[v1.RestockDoorPhotosRequest]) (*connect.Response[v1.RestockDoorPhotosResponse], error)
 	// KOREKSI JUMLAH TERIMA — the receiving warehouse corrects an ACCEPTED restock's received count
 	// (the-warehouse-corrects-a-wrong-stock-in-alone), under the restock row's lock; see received_count.proto.
 	RestockReceivedCountCorrect(context.Context, *connect.Request[v1.RestockReceivedCountCorrectRequest]) (*connect.Response[v1.RestockReceivedCountCorrectResponse], error)
+	// The selling team writes ITS NOTE on the restock alone, in EVERY status (the-note-is-edited-in-any-status) — on its
+	// way, at the door, and once accepted, lost or cancelled — under the restock row's lock; nothing else of the restock
+	// moves. The note's own writer and time are kept with it (the-notes-are-one-per-writer), and the trail gets an edit's
+	// row saying what the note was and now is (edits-are-in-the-same-trail).
+	RestockRequestNoteSet(context.Context, *connect.Request[v1.RestockRequestNoteSetRequest]) (*connect.Response[v1.RestockRequestNoteSetResponse], error)
+	// The RECEIVING WAREHOUSE writes ITS OWN NOTE on the restock (the-warehouse-writes-its-own-note) — its one writer
+	// (three-notes-one-writer-each, the-notes-are-one-per-writer), under the restock row's lock; nothing else moves. Kept
+	// with its own writer and time, and the trail gets an edit's row saying what it was and now is
+	// (edits-are-in-the-same-trail). The selling team reads it, never writes it.
+	RestockRequestWarehouseNoteSet(context.Context, *connect.Request[v1.RestockRequestWarehouseNoteSetRequest]) (*connect.Response[v1.RestockRequestWarehouseNoteSetResponse], error)
 }
 
 // NewRestockRequestServiceClient constructs a client for the
@@ -193,10 +248,44 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		restockCodPaidStat: connect.NewClient[v1.RestockCodPaidStatRequest, v1.RestockCodPaidStatResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockCodPaidStatProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockCodPaidStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		restockSellingStat: connect.NewClient[v1.RestockSellingStatRequest, v1.RestockSellingStatResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockSellingStatProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockSellingStat")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestExport: connect.NewClient[v1.RestockRequestExportRequest, v1.RestockRequestExportResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestExportProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestExport")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestByIds: connect.NewClient[v1.RestockRequestByIdsRequest, v1.RestockRequestByIdsResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestByIdsProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		restockReceiptPhoto: connect.NewClient[v1.RestockReceiptPhotoRequest, v1.RestockReceiptPhotoResponse](
 			httpClient,
 			baseURL+RestockRequestServiceRestockReceiptPhotoProcedure,
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockReceiptPhoto")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		restockDoorPhotos: connect.NewClient[v1.RestockDoorPhotosRequest, v1.RestockDoorPhotosResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockDoorPhotosProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockDoorPhotos")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -206,24 +295,43 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockReceivedCountCorrect")),
 			connect.WithClientOptions(opts...),
 		),
+		restockRequestNoteSet: connect.NewClient[v1.RestockRequestNoteSetRequest, v1.RestockRequestNoteSetResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestNoteSetProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestNoteSet")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestWarehouseNoteSet: connect.NewClient[v1.RestockRequestWarehouseNoteSetRequest, v1.RestockRequestWarehouseNoteSetResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestWarehouseNoteSetProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestWarehouseNoteSet")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // restockRequestServiceClient implements RestockRequestServiceClient.
 type restockRequestServiceClient struct {
-	restockRequestCreate        *connect.Client[v1.RestockRequestCreateRequest, v1.RestockRequestCreateResponse]
-	restockRequestList          *connect.Client[v1.RestockRequestListRequest, v1.RestockRequestListResponse]
-	restockActorList            *connect.Client[v1.RestockActorListRequest, v1.RestockActorListResponse]
-	restockRequestDetail        *connect.Client[v1.RestockRequestDetailRequest, v1.RestockRequestDetailResponse]
-	restockRequestUpdate        *connect.Client[v1.RestockRequestUpdateRequest, v1.RestockRequestUpdateResponse]
-	restockRequestArrive        *connect.Client[v1.RestockRequestArriveRequest, v1.RestockRequestArriveResponse]
-	restockRequestAccept        *connect.Client[v1.RestockRequestAcceptRequest, v1.RestockRequestAcceptResponse]
-	restockRequestMarkLost      *connect.Client[v1.RestockRequestMarkLostRequest, v1.RestockRequestMarkLostResponse]
-	restockRequestCancel        *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
-	restockRequestLabels        *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
-	restockInboundStat          *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
-	restockReceiptPhoto         *connect.Client[v1.RestockReceiptPhotoRequest, v1.RestockReceiptPhotoResponse]
-	restockReceivedCountCorrect *connect.Client[v1.RestockReceivedCountCorrectRequest, v1.RestockReceivedCountCorrectResponse]
+	restockRequestCreate           *connect.Client[v1.RestockRequestCreateRequest, v1.RestockRequestCreateResponse]
+	restockRequestList             *connect.Client[v1.RestockRequestListRequest, v1.RestockRequestListResponse]
+	restockActorList               *connect.Client[v1.RestockActorListRequest, v1.RestockActorListResponse]
+	restockRequestDetail           *connect.Client[v1.RestockRequestDetailRequest, v1.RestockRequestDetailResponse]
+	restockRequestUpdate           *connect.Client[v1.RestockRequestUpdateRequest, v1.RestockRequestUpdateResponse]
+	restockRequestArrive           *connect.Client[v1.RestockRequestArriveRequest, v1.RestockRequestArriveResponse]
+	restockRequestAccept           *connect.Client[v1.RestockRequestAcceptRequest, v1.RestockRequestAcceptResponse]
+	restockRequestMarkLost         *connect.Client[v1.RestockRequestMarkLostRequest, v1.RestockRequestMarkLostResponse]
+	restockRequestCancel           *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
+	restockRequestLabels           *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
+	restockInboundStat             *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
+	restockCodPaidStat             *connect.Client[v1.RestockCodPaidStatRequest, v1.RestockCodPaidStatResponse]
+	restockSellingStat             *connect.Client[v1.RestockSellingStatRequest, v1.RestockSellingStatResponse]
+	restockRequestExport           *connect.Client[v1.RestockRequestExportRequest, v1.RestockRequestExportResponse]
+	restockRequestByIds            *connect.Client[v1.RestockRequestByIdsRequest, v1.RestockRequestByIdsResponse]
+	restockReceiptPhoto            *connect.Client[v1.RestockReceiptPhotoRequest, v1.RestockReceiptPhotoResponse]
+	restockDoorPhotos              *connect.Client[v1.RestockDoorPhotosRequest, v1.RestockDoorPhotosResponse]
+	restockReceivedCountCorrect    *connect.Client[v1.RestockReceivedCountCorrectRequest, v1.RestockReceivedCountCorrectResponse]
+	restockRequestNoteSet          *connect.Client[v1.RestockRequestNoteSetRequest, v1.RestockRequestNoteSetResponse]
+	restockRequestWarehouseNoteSet *connect.Client[v1.RestockRequestWarehouseNoteSetRequest, v1.RestockRequestWarehouseNoteSetResponse]
 }
 
 // RestockRequestCreate calls warehouse.inventory.v1.RestockRequestService.RestockRequestCreate.
@@ -281,9 +389,34 @@ func (c *restockRequestServiceClient) RestockInboundStat(ctx context.Context, re
 	return c.restockInboundStat.CallUnary(ctx, req)
 }
 
+// RestockCodPaidStat calls warehouse.inventory.v1.RestockRequestService.RestockCodPaidStat.
+func (c *restockRequestServiceClient) RestockCodPaidStat(ctx context.Context, req *connect.Request[v1.RestockCodPaidStatRequest]) (*connect.Response[v1.RestockCodPaidStatResponse], error) {
+	return c.restockCodPaidStat.CallUnary(ctx, req)
+}
+
+// RestockSellingStat calls warehouse.inventory.v1.RestockRequestService.RestockSellingStat.
+func (c *restockRequestServiceClient) RestockSellingStat(ctx context.Context, req *connect.Request[v1.RestockSellingStatRequest]) (*connect.Response[v1.RestockSellingStatResponse], error) {
+	return c.restockSellingStat.CallUnary(ctx, req)
+}
+
+// RestockRequestExport calls warehouse.inventory.v1.RestockRequestService.RestockRequestExport.
+func (c *restockRequestServiceClient) RestockRequestExport(ctx context.Context, req *connect.Request[v1.RestockRequestExportRequest]) (*connect.ServerStreamForClient[v1.RestockRequestExportResponse], error) {
+	return c.restockRequestExport.CallServerStream(ctx, req)
+}
+
+// RestockRequestByIds calls warehouse.inventory.v1.RestockRequestService.RestockRequestByIds.
+func (c *restockRequestServiceClient) RestockRequestByIds(ctx context.Context, req *connect.Request[v1.RestockRequestByIdsRequest]) (*connect.Response[v1.RestockRequestByIdsResponse], error) {
+	return c.restockRequestByIds.CallUnary(ctx, req)
+}
+
 // RestockReceiptPhoto calls warehouse.inventory.v1.RestockRequestService.RestockReceiptPhoto.
 func (c *restockRequestServiceClient) RestockReceiptPhoto(ctx context.Context, req *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error) {
 	return c.restockReceiptPhoto.CallUnary(ctx, req)
+}
+
+// RestockDoorPhotos calls warehouse.inventory.v1.RestockRequestService.RestockDoorPhotos.
+func (c *restockRequestServiceClient) RestockDoorPhotos(ctx context.Context, req *connect.Request[v1.RestockDoorPhotosRequest]) (*connect.Response[v1.RestockDoorPhotosResponse], error) {
+	return c.restockDoorPhotos.CallUnary(ctx, req)
 }
 
 // RestockReceivedCountCorrect calls
@@ -292,11 +425,23 @@ func (c *restockRequestServiceClient) RestockReceivedCountCorrect(ctx context.Co
 	return c.restockReceivedCountCorrect.CallUnary(ctx, req)
 }
 
+// RestockRequestNoteSet calls warehouse.inventory.v1.RestockRequestService.RestockRequestNoteSet.
+func (c *restockRequestServiceClient) RestockRequestNoteSet(ctx context.Context, req *connect.Request[v1.RestockRequestNoteSetRequest]) (*connect.Response[v1.RestockRequestNoteSetResponse], error) {
+	return c.restockRequestNoteSet.CallUnary(ctx, req)
+}
+
+// RestockRequestWarehouseNoteSet calls
+// warehouse.inventory.v1.RestockRequestService.RestockRequestWarehouseNoteSet.
+func (c *restockRequestServiceClient) RestockRequestWarehouseNoteSet(ctx context.Context, req *connect.Request[v1.RestockRequestWarehouseNoteSetRequest]) (*connect.Response[v1.RestockRequestWarehouseNoteSetResponse], error) {
+	return c.restockRequestWarehouseNoteSet.CallUnary(ctx, req)
+}
+
 // RestockRequestServiceHandler is an implementation of the
 // warehouse.inventory.v1.RestockRequestService service.
 type RestockRequestServiceHandler interface {
 	// The selling team raises a restock — the restock and its lines in one transaction, then Restock Created
-	// (a-created-restock-tells-the-financial-account).
+	// (a-created-restock-tells-the-financial-account). A resi or an Order ID another restock of the team holds, not
+	// cancelled, is ALREADY_EXISTS with RestockReferenceInUse (a-reference-in-use-stops-the-restock-form).
 	RestockRequestCreate(context.Context, *connect.Request[v1.RestockRequestCreateRequest]) (*connect.Response[v1.RestockRequestCreateResponse], error)
 	// Both sides list: a team sees restocks it raised and restocks coming to it as a warehouse.
 	RestockRequestList(context.Context, *connect.Request[v1.RestockRequestListRequest]) (*connect.Response[v1.RestockRequestListResponse], error)
@@ -305,7 +450,8 @@ type RestockRequestServiceHandler interface {
 	// One restock in full, with its lines and its trail. Same two-sided scope as List.
 	RestockRequestDetail(context.Context, *connect.Request[v1.RestockRequestDetailRequest]) (*connect.Response[v1.RestockRequestDetailResponse], error)
 	// The selling team edits — everything while ongoing, only the lines while arrived
-	// (the-lines-stay-editable-until-accepted).
+	// (the-lines-stay-editable-until-accepted). An ongoing edit to a resi or an Order ID another restock of the team holds
+	// is ALREADY_EXISTS with RestockReferenceInUse, as for Create.
 	RestockRequestUpdate(context.Context, *connect.Request[v1.RestockRequestUpdateRequest]) (*connect.Response[v1.RestockRequestUpdateResponse], error)
 	// The warehouse signs for the box: ongoing or lost → arrived (a-late-lost-box-is-signed-for-as-arrived).
 	RestockRequestArrive(context.Context, *connect.Request[v1.RestockRequestArriveRequest]) (*connect.Response[v1.RestockRequestArriveResponse], error)
@@ -320,12 +466,44 @@ type RestockRequestServiceHandler interface {
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
 	// The headline over the warehouse's inbound queue: what is still on its way or at the door.
 	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
+	// THE COD THE WAREHOUSE PAID (the-warehouse-sees-the-cod-it-paid): the courier's charge it handed over at the door
+	// (`warehouse_additional_cost`) on the restocks it accepted in a window, summed, and how many carried one.
+	RestockCodPaidStat(context.Context, *connect.Request[v1.RestockCodPaidStatRequest]) (*connect.Response[v1.RestockCodPaidStatResponse], error)
+	// THE SELLING RESTOCK LIST'S STATISTICS (the-restock-statistics-count-transactions-under-the-tabs): the team's restocks
+	// under the list's own filter, counted per status and in all, with what was ordered and paid — and the value per
+	// paying account for Rincian. Read only while the statistics are open (the-statistics-are-shut-and-read-when-opened).
+	RestockSellingStat(context.Context, *connect.Request[v1.RestockSellingStatRequest]) (*connect.Response[v1.RestockSellingStatResponse], error)
+	// THE SELLING RESTOCK LIST AS A FILE (the-restock-list-exports-and-filters-by-courier, on
+	// one-export-is-the-list-as-a-file and a-report-export-is-the-whole-view-as-a-file): exactly the restocks the list holds
+	// with this filter — the list's one predicate, the status tab and the courier included — every page of them, in the
+	// list's order and the screen's columns, as .xlsx. A server stream: every step a message with the progress, the
+	// expiring link to the stored file on the last. NOT a read — it stores a file — so the admin team's monitor and an
+	// agent's credential are refused (monitoring-keeps-what-only-reads).
+	RestockRequestExport(context.Context, *connect.Request[v1.RestockRequestExportRequest], *connect.ServerStream[v1.RestockRequestExportResponse]) error
+	// SEVERAL RESTOCKS IN ONE READ, for Cetak Label (the-labels-mark-their-one-by-one-read): each restock with its lines,
+	// and an accepted one's labels, by id — the guideline's ByIds shape, one call for every restock on the print.
+	RestockRequestByIds(context.Context, *connect.Request[v1.RestockRequestByIdsRequest]) (*connect.Response[v1.RestockRequestByIdsResponse], error)
 	// The restock's own warehouse opens its label photo (`receipt_file`) to match the box at its door
 	// (the-restocks-warehouse-opens-its-label-photo): checked here, signed by document_service in-process, no share.
 	RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error)
+	// THE PHOTOS TAKEN AT THE DOOR, for both detail pages (the-detail-pages-show-the-broken-photo,
+	// the-detail-pages-show-the-slip-and-the-broken-rack): the courier's slip and each line's broken units, as the receiving
+	// warehouse kept them at Terima — for the restock's selling team and its warehouse, checked here, signed by
+	// document_service in-process (the label photo's door), no share.
+	RestockDoorPhotos(context.Context, *connect.Request[v1.RestockDoorPhotosRequest]) (*connect.Response[v1.RestockDoorPhotosResponse], error)
 	// KOREKSI JUMLAH TERIMA — the receiving warehouse corrects an ACCEPTED restock's received count
 	// (the-warehouse-corrects-a-wrong-stock-in-alone), under the restock row's lock; see received_count.proto.
 	RestockReceivedCountCorrect(context.Context, *connect.Request[v1.RestockReceivedCountCorrectRequest]) (*connect.Response[v1.RestockReceivedCountCorrectResponse], error)
+	// The selling team writes ITS NOTE on the restock alone, in EVERY status (the-note-is-edited-in-any-status) — on its
+	// way, at the door, and once accepted, lost or cancelled — under the restock row's lock; nothing else of the restock
+	// moves. The note's own writer and time are kept with it (the-notes-are-one-per-writer), and the trail gets an edit's
+	// row saying what the note was and now is (edits-are-in-the-same-trail).
+	RestockRequestNoteSet(context.Context, *connect.Request[v1.RestockRequestNoteSetRequest]) (*connect.Response[v1.RestockRequestNoteSetResponse], error)
+	// The RECEIVING WAREHOUSE writes ITS OWN NOTE on the restock (the-warehouse-writes-its-own-note) — its one writer
+	// (three-notes-one-writer-each, the-notes-are-one-per-writer), under the restock row's lock; nothing else moves. Kept
+	// with its own writer and time, and the trail gets an edit's row saying what it was and now is
+	// (edits-are-in-the-same-trail). The selling team reads it, never writes it.
+	RestockRequestWarehouseNoteSet(context.Context, *connect.Request[v1.RestockRequestWarehouseNoteSetRequest]) (*connect.Response[v1.RestockRequestWarehouseNoteSetResponse], error)
 }
 
 // NewRestockRequestServiceHandler builds an HTTP handler from the service implementation. It
@@ -406,6 +584,33 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	restockRequestServiceRestockCodPaidStatHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockCodPaidStatProcedure,
+		svc.RestockCodPaidStat,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockCodPaidStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockSellingStatHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockSellingStatProcedure,
+		svc.RestockSellingStat,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockSellingStat")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestExportHandler := connect.NewServerStreamHandler(
+		RestockRequestServiceRestockRequestExportProcedure,
+		svc.RestockRequestExport,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestExport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestByIdsHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestByIdsProcedure,
+		svc.RestockRequestByIds,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	restockRequestServiceRestockReceiptPhotoHandler := connect.NewUnaryHandler(
 		RestockRequestServiceRestockReceiptPhotoProcedure,
 		svc.RestockReceiptPhoto,
@@ -413,10 +618,29 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	restockRequestServiceRestockDoorPhotosHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockDoorPhotosProcedure,
+		svc.RestockDoorPhotos,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockDoorPhotos")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	restockRequestServiceRestockReceivedCountCorrectHandler := connect.NewUnaryHandler(
 		RestockRequestServiceRestockReceivedCountCorrectProcedure,
 		svc.RestockReceivedCountCorrect,
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockReceivedCountCorrect")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestNoteSetHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestNoteSetProcedure,
+		svc.RestockRequestNoteSet,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestNoteSet")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestWarehouseNoteSetHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestWarehouseNoteSetProcedure,
+		svc.RestockRequestWarehouseNoteSet,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestWarehouseNoteSet")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/warehouse.inventory.v1.RestockRequestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -443,10 +667,24 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 			restockRequestServiceRestockRequestLabelsHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockInboundStatProcedure:
 			restockRequestServiceRestockInboundStatHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockCodPaidStatProcedure:
+			restockRequestServiceRestockCodPaidStatHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockSellingStatProcedure:
+			restockRequestServiceRestockSellingStatHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestExportProcedure:
+			restockRequestServiceRestockRequestExportHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestByIdsProcedure:
+			restockRequestServiceRestockRequestByIdsHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockReceiptPhotoProcedure:
 			restockRequestServiceRestockReceiptPhotoHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockDoorPhotosProcedure:
+			restockRequestServiceRestockDoorPhotosHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockReceivedCountCorrectProcedure:
 			restockRequestServiceRestockReceivedCountCorrectHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestNoteSetProcedure:
+			restockRequestServiceRestockRequestNoteSetHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestWarehouseNoteSetProcedure:
+			restockRequestServiceRestockRequestWarehouseNoteSetHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -500,10 +738,38 @@ func (UnimplementedRestockRequestServiceHandler) RestockInboundStat(context.Cont
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockInboundStat is not implemented"))
 }
 
+func (UnimplementedRestockRequestServiceHandler) RestockCodPaidStat(context.Context, *connect.Request[v1.RestockCodPaidStatRequest]) (*connect.Response[v1.RestockCodPaidStatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockCodPaidStat is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockSellingStat(context.Context, *connect.Request[v1.RestockSellingStatRequest]) (*connect.Response[v1.RestockSellingStatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockSellingStat is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestExport(context.Context, *connect.Request[v1.RestockRequestExportRequest], *connect.ServerStream[v1.RestockRequestExportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestExport is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestByIds(context.Context, *connect.Request[v1.RestockRequestByIdsRequest]) (*connect.Response[v1.RestockRequestByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestByIds is not implemented"))
+}
+
 func (UnimplementedRestockRequestServiceHandler) RestockReceiptPhoto(context.Context, *connect.Request[v1.RestockReceiptPhotoRequest]) (*connect.Response[v1.RestockReceiptPhotoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockReceiptPhoto is not implemented"))
 }
 
+func (UnimplementedRestockRequestServiceHandler) RestockDoorPhotos(context.Context, *connect.Request[v1.RestockDoorPhotosRequest]) (*connect.Response[v1.RestockDoorPhotosResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockDoorPhotos is not implemented"))
+}
+
 func (UnimplementedRestockRequestServiceHandler) RestockReceivedCountCorrect(context.Context, *connect.Request[v1.RestockReceivedCountCorrectRequest]) (*connect.Response[v1.RestockReceivedCountCorrectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockReceivedCountCorrect is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestNoteSet(context.Context, *connect.Request[v1.RestockRequestNoteSetRequest]) (*connect.Response[v1.RestockRequestNoteSetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestNoteSet is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestWarehouseNoteSet(context.Context, *connect.Request[v1.RestockRequestWarehouseNoteSetRequest]) (*connect.Response[v1.RestockRequestWarehouseNoteSetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestWarehouseNoteSet is not implemented"))
 }

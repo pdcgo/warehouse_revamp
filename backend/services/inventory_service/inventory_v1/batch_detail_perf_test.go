@@ -32,7 +32,7 @@ func TestPerf_BatchDetail_ALongCorrectedBatch(t *testing.T) {
 		t.Fatalf("restock transactions: %v", err)
 	}
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(1), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(1), nil, nil, nil, nil)
 	rack := newRack(t, svc, otWarehouse, "perf-shelf")
 	perfStock(t, db, otWarehouse, 1, 1, 5000, []uint64{rack})
 

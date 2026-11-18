@@ -113,6 +113,15 @@ No scrollbar flashes through the fold ([the-summary-folds-without-a-scrollbar](.
 An edit opens with its one shared supplier on top, one product included ([an-edit-opens-with-its-one-supplier](../../technical/frontend/restock_decision.md#an-edit-opens-with-its-one-supplier)).
 The form goes back where it was opened — the list or the restock's page; by a link, the list ([the-restock-form-returns-where-it-was-opened](../../technical/frontend/restock_decision.md#the-restock-form-returns-where-it-was-opened)).
 
+✅ **2026-11-16 (backlog #58 + #59, uncommitted): the selling note's own writer, and a late note kept.** inventory `00050`
+keeps who last wrote `restocks.note` and when (`note_by_user_id`, `note_by_is_override`, `note_at` — the raise, or an edit /
+note set that changes it; never backfilled), and `RestockRequestNoteSet` writes the note alone in every status with an
+edit's trail row (the note before and after). The three pages read the real writer (`SellingNoteHead`, Root badge on an
+override); a note written before reads the restock's last raise or edit, labelled as that
+(`restock-detail-note-selling-by-fallback`). The `sellingNoteBy` and `lateNote` marks are gone
+([rpc.md](../../services/inventory_service/rpc.md#the-selling-note--its-own-writer-kept-in-any-status-built-2026-11-16)).
+The warehouse's own note is still unstored (backlog #67).
+
 🔀 **2026-11-04: the warehouse's inbound list follows the screen rules** — uncommitted, for the owner's pass
 ([the-warehouse-restock-list-follows-the-screen-rules](../../technical/frontend/restock_decision.md#the-warehouse-restock-list-follows-the-screen-rules)).
 `pages/restock-warehouse`: the card strip, `FilterBar` with a search (`q`), short dates, a block per restock on a phone,
@@ -130,6 +139,13 @@ restock of this team is in danger under its field and holds Buat back — `useRe
 search, no proto change ([a-reference-in-use-stops-the-restock-form](../../technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form)).
 **Backend needed:** a resi refused on create and update while another restock not cancelled holds it, across teams; the
 same for the Order ID; and `shipment_id > 0`.
+
+✅ **2026-11-16 (backlog #56, uncommitted): the server half, within the team.** inventory `00048`'s two partial unique
+indexes hold a resi and an Order ID to one restock of the team that is not cancelled (letter case and spaces aside); Create
+and an ongoing Update answer AlreadyExists with `RestockReferenceInUse` naming the holder, and the form shows it as the
+field's danger ([rpc.md](../../services/inventory_service/rpc.md#a-reference-in-use--the-resi-and-the-order-id-held-by-one-restock-built-2026-11-16)).
+The Order ID's pending mark is gone. ⚠ *Across teams* above is NOT built: the decision checks this team's restocks only and
+does not define another team's resi — the `receiptCheck` mark stays for it. `shipment_id > 0` is still the form's only.
 
 🔀 **2026-11-04: the courier's charge at Tandai Tiba** — uncommitted, for the owner's pass. The sign dialog carries the
 accept page's charge (`CourierCharge`, moved to `features/restock/`): optional at Tiba, final at Terima, one charge
@@ -206,13 +222,18 @@ pending marks remain.
 Referensi first, the order and tracking numbers copyable and capped (`CopyText` `maxW`), no #id on the desktop row.
 Then the statistics
 ([the-restock-statistics-count-transactions-under-the-tabs](../../technical/frontend/restock_decision.md#the-restock-statistics-count-transactions-under-the-tabs)):
-under the tabs, shut until opened, ⚠ **all sample** (`pages/restock-selling/pending.ts`: `summary`, `payments`). **Backend
-needed:** one read under the list's own filters returning, per status and in total, the restock count, the units, the
-distinct products, the goods value, the shipping, the courier's charge at the door — and the transaction value per paying
-account. The selling list no longer reads `OwnerStockStat`. Then Ekspor and a courier filter
+under the tabs, shut until opened — **real since 2026-11-16** (#72): `RestockSellingStat` over the list's own filters
+returns, per status and in total, the restock count, the pieces ordered
+([jumlah-barang-counts-the-pieces-ordered](../../technical/frontend/restock_decision.md#jumlah-barang-counts-the-pieces-ordered)),
+the distinct products, the goods value, the shipping, the courier's charge at the door — and the transaction value per
+paying account. The selling list no longer reads `OwnerStockStat`. Then Ekspor and a courier filter
 ([the-restock-list-exports-and-filters-by-courier](../../technical/frontend/restock_decision.md#the-restock-list-exports-and-filters-by-courier)),
-⚠ both `dropped`. **Backend needed:** `shipment_id` on `RestockRequestListFilter` (and on the statistics read), and a
-restock export — a server stream ending in a file link, as `OrderExport`, over the list's own filter and tab.
+the courier filter built 2026-11-16 (`RestockRequestListFilter.shipment_id`, #68; the statistics read takes the same
+filter); Ekspor built 2026-11-16 (#73): `RestockRequestExport`, a server stream on `san_export` over the list's own
+predicate and tab (the raising side only, every page, the screen's twelve columns, exact money, WIB moments) ending in an
+expiring link to a private `TABLE_EXPORT`; progress on the button (`useRestockExport`), its ⚠ mark and toast gone; HIDDEN
+while the admin team monitors — it stores a file, so it is not a read (monitoring-keeps-what-only-reads); see
+[rpc.md](../../services/inventory_service/rpc.md#restockrequestexport--the-selling-list-as-a-file-built-2026-11-16).
 The cancel dialog warns that a cancellation will be checked
 ([a-restock-cancel-warns-it-will-be-checked](../../technical/frontend/restock_decision.md#a-restock-cancel-warns-it-will-be-checked)),
 ⚠ marked `missing` on the list and the selling detail: nothing checks one yet. The Statistik button ends the tab row on a desktop and is an

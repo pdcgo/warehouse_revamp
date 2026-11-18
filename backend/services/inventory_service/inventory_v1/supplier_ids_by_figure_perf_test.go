@@ -68,7 +68,7 @@ func TestPerf_SupplierIDsByFigure(t *testing.T) {
 	t.Logf("order rows: batch_logs %d, fold %d (the synthetic seed hits a random batch per row, so it barely compresses)",
 		counts.OrderLogs, counts.FoldRows)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	read := func(figure inventory_v1.SupplierFigure, lo, hi int64) func(int) error {
 		return func(int) error {

@@ -104,7 +104,8 @@ export const TheOngkirTheWarehousePaid: Story = {
 };
 
 // A PHOTO OF THE COURIER'S SLIP (owner: *"kurasa masuk akal kalau opsional"*, the-courier-slip-has-an-optional-photo) —
-// under the charge's amount and note, optional, the page's fourth mark — the last, in the info after the lines.
+// under the charge's amount and note, optional. KEPT: picked, it is uploaded at once under this warehouse, and Terima
+// sends it with the charge — no pending mark beside it any more.
 export const TheCouriersSlipTakesAPhoto: Story = {
   name: "Slip photo",
   play: async ({ canvasElement }) => {
@@ -112,9 +113,10 @@ export const TheCouriersSlipTakesAPhoto: Story = {
     await askCharge(canvasElement);
     const slip = within(canvas.getByTestId("accept-courier-photo"));
 
-    await expect(slip.getByTestId("not-implemented-courierPhoto")).toHaveTextContent("4");
+    await expect(slip.queryByTestId("not-implemented-courierPhoto")).toBeNull();
     await userEvent.upload(slip.getByTestId("accept-courier-photo-input"), PHOTO());
     await waitFor(() => expect(slip.getByTestId("accept-courier-photo-shown")).toHaveTextContent("rusak.png"));
+    await waitFor(() => expect(slip.getByTestId("accept-courier-photo-shown")).toHaveAttribute("data-state", "kept"));
   },
 };
 
@@ -122,8 +124,8 @@ export const TheCouriersSlipTakesAPhoto: Story = {
 // section ongkir cod dari kurir kasih teks keterangan berapa yang dibayarkan, nanti ada interaksi untuk bisa
 // mengubahnya"*, the-cod-paid-is-said-in-its-own-section) — the page AS IT OPENS: *Dibayar gudang Rp 15.000 · Biaya COD ·
 // diganti oleh Toko Melati*, Ubah beside it, no fields; the charge is nowhere in what Terima waits for. Nothing is typed,
-// so the story stays on this view. Tandai Tiba keeps none yet, so 502 is given one by hand; the page's third mark says the
-// rest is missing.
+// so the story stays on this view. Tandai Tiba keeps none yet, so 502 is given one by hand; the page's second mark says
+// the rest is missing.
 export const TheChargeOpensWithTheRestocks: Story = {
   name: "Opens with Tiba's charge",
   beforeEach: arrivedWithACharge,
@@ -137,7 +139,7 @@ export const TheChargeOpensWithTheRestocks: Story = {
     // Text, not a form.
     await expect(canvas.queryByTestId("accept-courier-asked-yes")).toBeNull();
     await expect(canvas.queryByTestId("accept-courier-charge")).toBeNull();
-    await expect(within(canvas.getByTestId("accept-courier")).getByTestId("not-implemented-codFromArrival")).toHaveTextContent("3");
+    await expect(within(canvas.getByTestId("accept-courier")).getByTestId("not-implemented-codFromArrival")).toHaveTextContent("2");
 
     // NOTHING TO SET AGAIN: what Terima waits for is the box — the two lines — never the charge.
     await lineOf(canvasElement, COFFEE.productId);

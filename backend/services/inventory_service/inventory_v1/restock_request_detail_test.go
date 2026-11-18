@@ -14,7 +14,7 @@ import (
 // are not in reads is_override on the create row; the warehouse staff's accept row beside it does not.
 func TestRestockRequestDetail_ReadsTheOverrideStamp(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil, nil, nil)
 	rack := newRack(t, svc, otWarehouse, "rak-a")
 
 	id := restockAs(t, svc, ctxAs(ovRoot, otMelati, rootOutsideRole), ctxAs(31, otWarehouse, staffRole), rack)

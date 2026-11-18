@@ -72,7 +72,7 @@ func takeLatency(t *testing.T, db *gorm.DB) {
 	perfLedgerBackground(t, db)
 	perfChangesBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil, nil, nil)
 	racks := []uint64{newRack(t, svc, otWarehouse, "lat-a"), newRack(t, svc, otWarehouse, "lat-b"), newRack(t, svc, otWarehouse, "lat-c")}
 	perfStock(t, db, otWarehouse, 20, 10, 100, racks)
 

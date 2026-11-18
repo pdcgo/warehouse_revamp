@@ -7,12 +7,31 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
-## 2026-11-16 · test fixes, a tester bot
+## 2026-11-16 · 
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **The restock list is complete; Discover shows the whole product** | the restock list filters by courier (and the Tiba/Hilang dates now filter by their own day), its statistics and per-account breakdown are real, and Ekspor downloads it; on Discover another team's product shows its gallery and stock history |
+
+## 2026-11-17 · partition manager library
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Partition manager library (`san_pgpartition`)** | Big history tables (logs) can later be split by month, so screens reading recent data stay fast as years of data pile up. Nothing in the app uses it yet — no screen changes. |
+
+## 2026-11-16 · test fixes, a tester bot, restock references
 
 | What shipped | What it means for a person |
 | --- | --- |
 | **Fewer false alarms in the full test run** | nine screen tests could read a half-typed search when the machine was busy and fail for no real reason — they now enter the whole word at once |
 | **A second bot now tests each finished piece** | a tester bot checks every piece of work the moment it is finished, on its own copy and its own test database, while development goes straight on — only work it reports green goes into a commit, and it asks you before the long full test run |
+| **A restock's resi and Order ID can't be used twice** | the system itself now refuses a second restock with a resi or Order ID your team already uses (unless the first was cancelled) — before, only the form warned, so two people saving at the same moment could both get through |
+| **A restock's history says what was edited** | when a restock is edited, its history now lists each change with before and after (resi, courier, counts, added and removed lines); the warehouse sees only the box side, never prices or payments |
+| **Restock notes name who wrote them, and can be edited any time** | the seller's note on a restock now shows who wrote it and when, and it can be changed after the box has arrived or been accepted — before, a late edit was silently lost |
+| **Product picking and the batch list are quicker to use** | the warehouse's product picker shows its products as soon as it opens (no need to type 2 letters first), and the batch list can be filtered by team |
+| **Rack and COD figures are real, labels load at once** | the rack list's figures now count every rack (not just the page shown), the warehouse's monthly COD card shows the real total it paid, and Cetak Label loads all chosen restocks in one go |
+| **Broken-unit and courier slip photos are kept** | the photos the warehouse takes at Terima (broken units, the courier's slip) are now saved and shown on both restock detail pages, to the seller and the warehouse only |
+| **A return's batch opens its order; the warehouse keeps its own note** | a batch made by a return now says which order it came from and opens it; on a restock the warehouse writes its own note, saved with its name and time, which the seller reads |
 
 ## 2026-11-15 · statistics grouped on the server
 

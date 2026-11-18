@@ -2338,6 +2338,8 @@ opened   → the first page                      opened   → "Ketik minimal 2 h
 
 What it replaces: the picker's wait for a second letter, and a warehouse picker that opened on *No products found*.
 
+✅ **Built 2026-11-16** — a warehouse's picker needs no two letters either: `WarehouseProductSearchFilter.q` lost its `min_len: 2` and the handler its check, so an empty term lists the first page of what the warehouse has held (by name) and one letter is a search (`inventory_v1/warehouse_product_search.go`; product_service's `SearchAmong` already listed the whole held set with no term). The picker asks in every scope (`useProductSearch`); the panel's *Ketik minimal 2 huruf* hint, its ⚠ `warehouseOpensEmpty` and `features/products/pickerPending.ts` are gone, with both locales' `products.picker.typeTwo` / `pending` copy. Tests `TestWarehouseProductSearch_NoTwoLetterMinimum`, `_ContractTakesAnyShortTerm`, `_NothingHeld`; story ProductSelect `Warehouse, opened on its first page`; perf: 2 statements, ≈ 29–33 ms at 10 000 held for an empty term or one letter ([audit](../../../audits/services/inventory_service/performances/WarehouseProductSearch.md#history)). The Stock screen's own search (`WarehouseStockList`) keeps its two — it is not a picker.
+
 ## a-product-option-shows-its-picture
 
 > Owner, in chat (2026-11-09), on Temuan's product picker: *"select product ada gambarnya"*.

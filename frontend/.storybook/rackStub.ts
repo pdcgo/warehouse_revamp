@@ -1,7 +1,7 @@
-// inventory_service's RackService as Storybook's stub: the registry the Racks page lists and edits (RackList, RackCreate,
-// RackUpdate, RackDelete — as the real server answers them), the reads behind Rack detail, and its two PROTOTYPE writes —
-// RackMove and RackSample. The real server answers the writes Unimplemented until design_accept, so this is their only
-// implementation; the reads are here because Rack detail had never been in Storybook.
+// inventory_service's RackService as Storybook's stub: the registry the Racks page lists and edits (RackList, RackStat,
+// RackCreate, RackUpdate, RackDelete — as the real server answers them), the reads behind Rack detail, and its two
+// PROTOTYPE writes — RackMove and RackSample. The real server answers the writes Unimplemented until design_accept, so
+// this is their only implementation; the reads are here because Rack detail had never been in Storybook.
 //
 // It plays the DECIDED rules (docs/business/inventory/placement_decision.md, transaction_decision.md):
 //   a-move-is-one-rack-to-one-or-more-racks          from one rack of this warehouse to one or more others; never back
@@ -197,6 +197,21 @@ export function rackRow(warehouseId: bigint, code: string): RackRow | undefined 
   return rackRows.find((r) => r.warehouseId === warehouseId && r.code === code && !r.deleted);
 }
 
+/**
+ * For a story: `rackId` holds `units` of `productId` — e.g. stock on a rack the list's first page does not show. Lasts
+ * the story: preview's `beforeEach` resets the stub.
+ */
+export function rackHoldsForStory(rackId: bigint, productId: bigint, units: bigint) {
+  const shelf = shelfOf(rackId);
+  const line = shelf.find((l) => l.productId === productId);
+  if (line) {
+    line.onHand = units;
+    return;
+  }
+
+  shelf.push({ productId, onHand: units, unitCost: 0, counting: false });
+}
+
 const notFound = () => new ConnectError("rack not found", Code.NotFound);
 const invalid = (msg: string) => new ConnectError(msg, Code.InvalidArgument);
 const precondition = (msg: string) => new ConnectError(msg, Code.FailedPrecondition);
@@ -299,15 +314,22 @@ function codeTaken(warehouseId: bigint, code: string, except?: bigint) {
   return rackRows.some((r) => r.warehouseId === warehouseId && r.code === code && !r.deleted && r.id !== except);
 }
 
+// WHICH RACKS THE LIST HOLDS — scoped by the warehouse, undeleted, `q` on code or name, ordered by code: the server's
+// `rackListScope`, which RackList pages and RackStat sums, so the two can never describe different racks.
+function listedRacks(teamId: bigint, filterQ: string | undefined) {
+  const q = (filterQ ?? "").trim().toLowerCase();
+
+  return rackRows
+    .filter((r) => r.warehouseId === teamId && !r.deleted)
+    .filter((r) => q === "" || r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
+    .sort((a, b) => a.code.localeCompare(b.code));
+}
+
 export const rackService: Partial<ServiceImpl<typeof RackService>> = {
-  // Scoped by the warehouse, undeleted, `q` on code or name, ordered by code — as the server answers it. The STOCK slice
-  // is each rack's stock count, and only when asked for (a picker asks for RACK alone).
+  // As the server answers it: the listed racks, a page of them. The STOCK slice is each rack's stock count, and only when
+  // asked for (a picker asks for RACK alone).
   rackList: (req) => {
-    const q = (req.filter?.q ?? "").trim().toLowerCase();
-    const all = rackRows
-      .filter((r) => r.warehouseId === req.teamId && !r.deleted)
-      .filter((r) => q === "" || r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
-      .sort((a, b) => a.code.localeCompare(b.code));
+    const all = listedRacks(req.teamId, req.filter?.q);
     const { rows, pageInfo } = pageOf(all, req.page as PageReq);
     const types = req.dataRequest.length > 0 ? req.dataRequest : [RackListDataType.RACK];
 
@@ -339,6 +361,22 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
     });
 
     return { items, ids: rows.map((r) => r.id), pageInfo };
+  },
+
+  // THE FIGURES OVER THE LIST (the-rack-list-leads-with-its-figures) — every listed rack, never a page of them: filled
+  // when its stock count is above 0, empty when it is 0, and the pieces on them all.
+  rackStat: (req) => {
+    const all = listedRacks(req.teamId, req.filter?.q);
+    const filled = all.filter((r) => stockOnRack(r.id) > 0n).length;
+
+    return {
+      preview: {
+        rackCount: BigInt(all.length),
+        filledCount: BigInt(filled),
+        emptyCount: BigInt(all.length - filled),
+        stockCount: all.reduce((sum, r) => sum + stockOnRack(r.id), 0n),
+      },
+    };
   },
 
   rackCreate: (req) => {

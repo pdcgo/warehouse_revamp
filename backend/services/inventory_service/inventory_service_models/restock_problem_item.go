@@ -28,6 +28,10 @@ type RestockProblemItem struct {
 	// The warehouse's note on these units — optional (a-broken-reason-is-optional, three-notes-one-writer-each).
 	Note string
 
+	// A photo of the broken units (a-broken-product-carries-a-photo, 00052) — a document_service document id, the
+	// receiving warehouse's upload at Terima; "" = none. A broken row only: the database CHECKs a missing row has none.
+	PhotoFile string
+
 	CreatedAt time.Time
 }
 

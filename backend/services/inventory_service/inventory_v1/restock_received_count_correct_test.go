@@ -59,7 +59,7 @@ func rcAccepted(t *testing.T) *rcFixture {
 
 	db := san_testdb.DB(t)
 	f := &rcFixture{db: db, sender: &recordingSender{}}
-	f.svc = inventory_v1.NewService(db, nil, nil, nil, f.sender.send, rcFacts(), nil, nil)
+	f.svc = inventory_v1.NewService(db, nil, nil, nil, f.sender.send, rcFacts(), nil, nil, nil, nil)
 
 	f.rakA = newRack(t, f.svc, ledgerWarehouse, "rak-a")
 	f.rakB = newRack(t, f.svc, ledgerWarehouse, "rak-b")
@@ -386,7 +386,7 @@ func TestRestockReceivedCountCorrect_TooFewPutsUnitsIntoTheSameBatch(t *testing.
 func TestRestockReceivedCountCorrect_ALineWithNoBatchMintsOneAtItsPrice(t *testing.T) {
 	db := san_testdb.DB(t)
 	f := &rcFixture{db: db, sender: &recordingSender{}}
-	f.svc = inventory_v1.NewService(db, nil, nil, nil, f.sender.send, rcFacts(), nil, nil)
+	f.svc = inventory_v1.NewService(db, nil, nil, nil, f.sender.send, rcFacts(), nil, nil, nil, nil)
 	f.rakA = newRack(t, f.svc, ledgerWarehouse, "rak-a")
 	f.rakB = newRack(t, f.svc, ledgerWarehouse, "rak-b")
 

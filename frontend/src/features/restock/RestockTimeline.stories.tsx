@@ -4,8 +4,8 @@ import { expect, within } from "storybook/test";
 import { RestockTimeline } from "./RestockTimeline";
 import { storyRestock } from "./storyRestock";
 
-// A RESTOCK'S TRAIL — one row per status change, and an edit is a row too, where the status stays and the description
-// says what changed (every-status-change-is-logged, edits-are-in-the-same-trail). Both detail pages render it.
+// A RESTOCK'S TRAIL — one row per status change, and an edit is a row too, where the status stays and under it what
+// changed, field by field (every-status-change-is-logged, edits-are-in-the-same-trail). Both detail pages render it.
 const meta = {
   title: "Features/Restock/RestockTimeline",
   component: RestockTimeline,
@@ -15,13 +15,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// 502 — signed for, then the selling team edited a line: the edit sits in the same trail.
+// 502 — signed for, then the selling team edited a line: the edit sits in the same trail, the line and what moved on it
+// under the row — the bare "edited" the server writes beside it is not shown.
 export const ArrivedWithAnEdit: Story = {
   args: { request: storyRestock(502n) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("restock-timeline-3-description")).toHaveTextContent("10 → 12");
+    await expect(await canvas.findByTestId("restock-timeline-3-change-line-71")).toHaveTextContent(
+      "Kopi Arabika 250g · 10 → 12 pcs · “extra stock — 2 bonus dari supplier”",
+    );
+    await expect(canvas.queryByTestId("restock-timeline-3-description")).toBeNull();
     await expect(canvas.getByTestId("restock-timeline-2-description")).toHaveTextContent(/signed for/i);
   },
 };

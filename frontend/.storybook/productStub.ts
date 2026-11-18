@@ -26,17 +26,27 @@ import { Code, ConnectError } from "@connectrpc/connect";
 
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import { BatchOrigin, MovementKind } from "../src/gen/warehouse/inventory/v1/inventory_pb";
-import { ProductLockFilter, ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
+import { ProductByIdsDataType, ProductLockFilter, ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
+import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { SAMPLE_LOST_WAREHOUSE, SAMPLE_PRODUCTS, SAMPLE_SELLER } from "../src/features/analytic/sample";
 import { productBatches, products as productFixtures, teams as teamFixtures, warehouseStock } from "./fixtures";
 import { isEmptied, priceLogsOf, priceNow } from "./batchPriceScenario";
 import { subtreeOf } from "./categoryStub";
-import { discoverStockCalls, productDiscoverCalls, productListCalls, resetProductListCalls } from "./productListScenario";
+import {
+  discoverHistoryCalls,
+  discoverStockCalls,
+  productDiscoverCalls,
+  productImagesCalls,
+  productListCalls,
+  resetProductListCalls,
+} from "./productListScenario";
+import { sessionScenario } from "./sessionScenario";
 
 type Image = { url: string; thumbnailUrl: string };
 type ProductRow = (typeof productFixtures)[number] & { images: Image[] };
 
 const FIGURED_TEAM = 15n;
+const WAREHOUSE_ROLES: Role[] = [Role.WAREHOUSE_OWNER, Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_STAFF];
 
 /** An Analytic sample product as a by-ids row — undefined for any other id. */
 function analyticSampleProduct(id: bigint): ProductRow | undefined {
@@ -361,11 +371,31 @@ export const productService = {
   // Melati's, the ones Lost stock's stub loses) are answered too, by-ids only, so a served product row is named by this
   // lookup as on the server — never a catalogue row, so no list or picker sees them, unless a story lists them
   // (`listAnalyticSampleProducts`, for the Analytic product filter).
-  productByIds: (req: { filter?: { ids?: bigint[] } }) => {
+  //
+  // The IMAGES slice (the discover detail's gallery, the-discover-detail-shows-no-markup) answers each product's pictures
+  // in order, an empty list for one with none — and, as on the server, is refused to a WAREHOUSE role: it is Discover's,
+  // and Discover serves no warehouse. Every other slice reads as before; a request with no data_request is the row.
+  productByIds: (req: { teamId?: bigint; filter?: { ids?: bigint[] }; dataRequest?: ProductByIdsDataType[] }) => {
+    const types = req.dataRequest?.length ? req.dataRequest : [ProductByIdsDataType.PRODUCT];
+    const withImages = types.includes(ProductByIdsDataType.IMAGES);
+    if (withImages) {
+      productImagesCalls.push({ teamId: req.teamId ?? 0n, ids: [...(req.filter?.ids ?? [])] });
+      if (WAREHOUSE_ROLES.includes(sessionScenario.role)) {
+        throw new ConnectError("a product's gallery is read on Discover, which serves selling teams only", Code.PermissionDenied);
+      }
+    }
     const items: Record<string, unknown> = {};
     for (const id of req.filter?.ids ?? []) {
       const row = rows.find((r) => r.id === id) ?? analyticSampleProduct(id);
-      if (row) items[id.toString()] = { items: [{ d: { case: "product", value: { mapData: { [id.toString()]: row } } } }] };
+      if (!row) continue;
+      const slices: unknown[] = [];
+      if (types.some((t) => t !== ProductByIdsDataType.IMAGES)) {
+        slices.push({ d: { case: "product", value: { mapData: { [id.toString()]: row } } } });
+      }
+      if (withImages) {
+        slices.push({ d: { case: "images", value: { mapData: { [id.toString()]: { items: row.images.map((im) => ({ ...im })) } } } } });
+      }
+      items[id.toString()] = { items: slices };
     }
     return { items };
   },
@@ -871,4 +901,48 @@ export function ownerStockHistory(req: { teamId: bigint; filter?: { productId?: 
     })
     .reverse();
   return paged("movement", movements, (m) => m.id, req.page);
+}
+
+/**
+ * DiscoverStockHistory — ANY team's read of a product's stock history (stock-history-is-everyones): the owner's ledger,
+ * its units only — no price, value, batch, reason, reference or person, and no price correction (it moved no unit), as
+ * the server answers. Team 15's catalogue reads its owner's rows (OwnerStockHistory's, whoever asks); a fixture product
+ * tells Gudang Pusat's story — one delivery in, four orders out — ENDING AT ITS REAL SHELF (`warehouseStock`), so the
+ * ledger never contradicts Harga per Gudang above it. Every call is recorded (`discoverHistoryCalls`).
+ */
+export function discoverStockHistory(req: { teamId: bigint; filter?: { productId?: bigint; warehouseId?: bigint }; page?: PageReq }) {
+  const productId = req.filter?.productId ?? 0n;
+  const warehouseId = req.filter?.warehouseId ?? 0n;
+  discoverHistoryCalls.push({ teamId: req.teamId, productId, warehouseId, page: Number(req.page?.page ?? 1n) || 1 });
+
+  type Row = { id: bigint; productId: bigint; warehouseId: bigint; kind: MovementKind; delta: bigint; balance: bigint; createdAtUnix: bigint };
+  let all: Row[] = [];
+
+  if (figured(productId)) {
+    const owner = ownerStockHistory({ teamId: FIGURED_TEAM, filter: { productId, warehouseId }, page: { page: 1n, limit: 1000n } });
+    const map = (owner.items[0]?.d.value.mapData ?? {}) as Record<string, Row & { kind: MovementKind }>;
+    all = owner.ids
+      .map((id) => map[id.toString()]!)
+      .filter((m) => m.kind !== MovementKind.REVALUATION)
+      .map((m) => ({ id: m.id, productId: m.productId, warehouseId: m.warehouseId, kind: m.kind, delta: m.delta, balance: m.balance, createdAtUnix: m.createdAtUnix }));
+  } else if (rows.some((r) => r.id === productId)) {
+    const shelf = warehouseStock[productId.toString()] ?? 0n;
+    if (shelf > 0n && (warehouseId === 0n || warehouseId === GUDANG_PUSAT)) {
+      const n = Number(productId % 97n);
+      const picks = [1, 2, 3, 4].map((i) => BigInt(1 + ((n + i * 3) % 4)));
+      const received = shelf + picks.reduce((a, b) => a + b, 0n);
+      const base = productId * 100n;
+      let balance = received;
+      const story: Row[] = [
+        { id: base + 1n, productId, warehouseId: GUDANG_PUSAT, kind: MovementKind.RECEIVE, delta: received, balance, createdAtUnix: NOW - BigInt(20 + (n % 9)) * DAY },
+      ];
+      [12n, 8n, 4n, 1n].forEach((days, i) => {
+        balance -= picks[i]!;
+        story.push({ id: base + 2n + BigInt(i), productId, warehouseId: GUDANG_PUSAT, kind: MovementKind.PICK, delta: -picks[i]!, balance, createdAtUnix: NOW - days * DAY });
+      });
+      all = story.reverse();
+    }
+  }
+
+  return paged("movement", all, (m) => m.id, req.page);
 }

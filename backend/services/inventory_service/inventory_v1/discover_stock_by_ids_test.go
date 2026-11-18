@@ -41,7 +41,7 @@ func dsService(t *testing.T) *inventory_v1.Service {
 	svc := inventory_v1.NewService(db, nil, nil, nil, nil, fakeFacts{
 		dsKaosHijau: {TeamID: dsMelati, CrossMarkupBps: 1000},
 		dsKaosBiru:  {TeamID: dsSinar},
-	}, nil, nil)
+	}, nil, nil, nil, nil)
 
 	rak1 := newRack(t, svc, dsGudang1, "ds-rak-1")
 	rak2 := newRack(t, svc, dsGudang2, "ds-rak-2")

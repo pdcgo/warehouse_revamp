@@ -966,6 +966,8 @@ on a phone — the Filter sheet: Semua jenis toko · Terjual (pills) · Siap (pi
 
 ✅ Built 2026-11-07 — the bands' source closed by the-range-pills-are-a-fixed-set; a pick narrows the list on the server and is no longer `dropped`.
 
+🔄 *(2026-11-16, re-audit)* **Built** — Terjual and Siap narrow the list on the server: `SupplierListFilter.sold` / `.ready` (`proto/warehouse/supplier/v1/supplier.proto`), `narrowByBand` in `supplier_service/supplier_v1/supplier_list.go`, the bands per [the-range-pills-are-a-fixed-set](#the-range-pills-are-a-fixed-set), the panel `features/suppliers/SupplierRangeFilter.tsx` on `pages/suppliers` and `pages/supplier-discover`; no supplier page keeps a `pending.ts`. The index row's *not built yet* is history.
+
 ## the-figure-filters-are-two-panels
 
 > Owner, in chat (2026-10-13), on the figures panel: *"pisahkan aja panelnya, terlalu lebar juga panelnya"*.
@@ -1091,6 +1093,8 @@ on a phone      the Filter sheet: Semua gudang · (Semua tim) · … — the war
 | shared | `SupplierWarehouseFilter` in `features/suppliers/`, with its story under *Features/Suppliers* |
 
 ✅ Built 2026-11-14 — the Gudang filter narrows the supplier list and Discover › Suppliers on the server, before the count and the page: `SupplierList` takes `warehouse_id` and keeps the suppliers whose page lists that warehouse among Gudang terkait (a batch of theirs there holding units, minted by a restock, or sold from — every team's goods, the batch's own line supplier), asked of inventory in-process. Both pages send the URL's pick; the ⚠ mark and its pending entry are gone (`listPending.ts` deleted). A warehouse role may name only its own building.
+
+🔄 *(2026-11-16, re-audit)* **Built** — `SupplierListFilter.warehouse_id` (`proto/warehouse/supplier/v1/supplier.proto`, `supplier_service/supplier_v1/supplier_list.go`), sent by `SupplierWarehouseFilter` on `pages/suppliers/index.tsx` and `pages/supplier-discover/index.tsx`; `features/suppliers/listPending.ts` is gone. The index row's *not built yet* is history.
 
 ## the-detail-tabs-show-sold-and-ready
 
@@ -1294,6 +1298,8 @@ a phone    [Cari nama…] [⚙ Filter] [+ Tambah Toko]
 ✅ Built 2026-11-14 — the Toko and Produk files take the Gudang terkait chip too: under a chip, the file holds the tab's rows under it, with that warehouse's figures. Statistik's file does not narrow yet, as its tab does not.
 
 ✅ Built 2026-11-14 — Statistik's file takes the chip as its tab does (`SupplierFigureExport` with a warehouse filter).
+
+🔄 *(2026-11-16, re-audit)* **Built** — all three tabs export: `SupplierChannelExport` (Toko) and `SupplierProductExport` (Produk) in `proto/warehouse/supplier/v1/supplier_channel.proto`, `SupplierFigureExport` (Statistik) in `supplier_analytic.proto`, served by `supplier_service/supplier_v1/supplier_channel_export.go`, `supplier_product_export.go`, `supplier_figure_export.go`, and placed by `SupplierTabExport` in `features/suppliers/ChannelBrowser.tsx`, `ProductBrowser.tsx`, `SupplierStatistics.tsx`. The index row's *not built yet* is history.
 
 ## the-report-export-folds-on-a-phone
 

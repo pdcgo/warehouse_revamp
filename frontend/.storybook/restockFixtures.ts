@@ -5,6 +5,7 @@
 // Every id is APPENDED, never reordered — stories reach for these by id through `restockFixture(id)`.
 
 import {
+  RestockLogChangeField,
   RestockProblemType,
   RestockRequestStatus,
 } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
@@ -29,7 +30,8 @@ export interface LineFixture {
   note: string;
   // Filled by the accept.
   receivedCount: bigint;
-  problems: { type: RestockProblemType; count: bigint; note: string }[];
+  /** `photoFile` — the broken units' photo the warehouse kept at Terima (a document id; absent or "" = none). */
+  problems: { type: RestockProblemType; count: bigint; note: string; photoFile?: string }[];
   placements: { placementId: bigint; quantity: bigint }[];
 }
 
@@ -42,6 +44,21 @@ export interface LogFixture {
   atUnix: bigint;
   /** Root or the System Administrator took this step from outside the team (`is_override`); absent reads false. */
   isOverride?: boolean;
+  /**
+   * WHAT AN EDIT CHANGED, as the server keeps it (restock_log_changes, edits-are-in-the-same-trail): each field before
+   * and after. Absent on a status row — and on an edit written before the changes were kept, whose description is the
+   * bare "edited".
+   */
+  changes?: ChangeFixture[];
+}
+
+/** One thing an edit changed — `RestockLogChange` on the wire. Values are text: a count, an amount, an id, words. */
+export interface ChangeFixture {
+  field: RestockLogChangeField;
+  productId: bigint;
+  productName: string;
+  before: string;
+  after: string;
 }
 
 export interface RestockFixture {
@@ -59,7 +76,25 @@ export interface RestockFixture {
   shipmentCost: number;
   warehouseAdditionalCost: number;
   warehouseAdditionalCostNote: string;
+  /** The courier's slip the warehouse kept at Terima with the charge (a document id; absent or "" = none). */
+  warehouseAdditionalCostFile?: string;
   note: string;
+  /**
+   * WHO WROTE THE NOTE, AND WHEN (the-notes-are-one-per-writer) — its own writer, as the server keeps it since 00050: the
+   * raise, or the last edit or note set that changed it. 0n / 0n on a note last written before they were kept (503).
+   */
+  noteByUserId: bigint;
+  noteAtUnix: bigint;
+  /** Root or the System Administrator wrote it from outside the team; absent reads false. */
+  noteByIsOverride?: boolean;
+  /**
+   * THE RECEIVING WAREHOUSE'S OWN NOTE (the-warehouse-writes-its-own-note, 00053) and who wrote it, when — absent reads
+   * none, as every restock the warehouse has not written on. Only RestockRequestWarehouseNoteSet writes them.
+   */
+  warehouseNote?: string;
+  warehouseNoteByUserId?: bigint;
+  warehouseNoteAtUnix?: bigint;
+  warehouseNoteByIsOverride?: boolean;
   transactionId: bigint;
   createdByUserId: bigint;
   arrivedByUserId: bigint;
@@ -99,10 +134,16 @@ function line(
 }
 
 function restock(fields: Partial<RestockFixture> & Pick<RestockFixture, "id" | "status" | "items">): RestockFixture {
+  const createdAtUnix = fields.createdAtUnix ?? daysAgo(3);
+  const createdByUserId = fields.createdByUserId ?? 61n;
+
   return {
     requestingTeamId: 12n,
     warehouseId: 11n,
-    createdAtUnix: daysAgo(3),
+    createdAtUnix,
+    // The raise writes the note, empty or not — its writer is the raiser, at the raise (the server since 00050).
+    noteByUserId: createdByUserId,
+    noteAtUnix: createdAtUnix,
     receipt: "",
     receiptFile: "",
     shipmentId: 0n,
@@ -180,7 +221,21 @@ export const restockFixtures: RestockFixture[] = [
     logs: [
       log(1, NONE, ONGOING, 61n, "created", 4),
       log(2, ONGOING, ARRIVED, 62n, "signed for the box", 1),
-      log(3, ARRIVED, ARRIVED, 61n, "Kopi Arabika 250g 10 → 12, extra stock — 2 bonus dari supplier", 1),
+      // The edit's row as the server writes it now: the bare word, and under it what changed — the count, and the note
+      // saying why (the total stays: the two were a bonus).
+      {
+        ...log(3, ARRIVED, ARRIVED, 61n, "edited", 1),
+        changes: [
+          { field: RestockLogChangeField.LINE_COUNT, productId: 71n, productName: "Kopi Arabika 250g", before: "10", after: "12" },
+          {
+            field: RestockLogChangeField.LINE_NOTE,
+            productId: 71n,
+            productName: "Kopi Arabika 250g",
+            before: "",
+            after: "extra stock — 2 bonus dari supplier",
+          },
+        ],
+      },
     ],
   }),
 
@@ -199,7 +254,14 @@ export const restockFixtures: RestockFixture[] = [
     shipmentCost: 30000,
     warehouseAdditionalCost: 5000,
     warehouseAdditionalCostNote: "Ongkos bongkar di gudang",
+    // The slip and the broken units' photo the warehouse kept at Terima — document ids, as the accept sends them; the
+    // pages open them through RestockDoorPhotos (the-detail-pages-show-the-broken-photo).
+    warehouseAdditionalCostFile: "doc-restock-503-slip",
     note: "Stok bulanan",
+    // Raised before the note's own writer was kept (00050): none stored, so the pages fall back to the restock's last
+    // raise or edit and say so — nothing is invented.
+    noteByUserId: 0n,
+    noteAtUnix: 0n,
     transactionId: 9001n,
     arrivedByUserId: 62n,
     acceptedByUserId: 62n,
@@ -210,7 +272,7 @@ export const restockFixtures: RestockFixture[] = [
         ...line(5031, 74n, "SKU-BERAS-5K", "Beras Pandan Wangi 5kg", 10, 650000, { supplierId: 31n, supplierChannelId: 312n }),
         receivedCount: 9n,
         problems: [
-          { type: RestockProblemType.BROKEN, count: 2n, note: "Karung sobek" },
+          { type: RestockProblemType.BROKEN, count: 2n, note: "Karung sobek", photoFile: "doc-restock-503-broken-74" },
           { type: RestockProblemType.MISSING, count: 1n, note: "" },
         ],
         placements: [

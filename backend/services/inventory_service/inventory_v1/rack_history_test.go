@@ -14,7 +14,7 @@ import (
 // "by Root team" badge on the stock-in Root made from outside the warehouse, and not on the staff's.
 func TestRackHistory_ReadsTheOverrideStamp(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, otFacts(), nil, nil, nil, nil)
 	rack := newRack(t, svc, otWarehouse, "rak-a")
 
 	// Root raises the first and the warehouse's staff count it in; the seller raises the second and Root, from outside

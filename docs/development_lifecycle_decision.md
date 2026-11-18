@@ -346,3 +346,28 @@ Commits come too late to listen for: under [a-slice-is-done-after-the-testers-gr
 The switch waited for the old chat's builders to finish (*"i still have active session … if i choose A, is it safe ?"* — two stages: the profiles first, the repo changes after the builders). ✅ Both profiles 2026-11-14, their tokens entered by the owner.
 
 🔄 *(2026-11-16 12:21)* **Live** — the switch: `san test … --isolated` built, the tester's 5-minute routine resumed, `revamp_dev`'s chat the revamp channel. The first snapshot is the proof run.
+
+---
+
+## acceptance-testing-goes-on-top-of-the-regression-run
+
+> Owner (Heri), in `revamp_tester`'s desktop chat (2026-11-16 15:12): *"i have docs/acceptances"*, *"it should be acceptances testing"* — the tester's checks were regression only (affected + smoke per snapshot); `docs/acceptances/` held 263 thens over 11 actions, 57 ✅, then-by-then specs for four restock actions only.
+> Then *"A"*, as recommended — to: what should acceptance testing replace? A: nothing — it goes on top: every snapshot still gets its affected specs + smoke (what makes a slice Done), and the tester's main spec work becomes covering the thens of `docs/acceptances/`, one block per given + when, one step per then, with a per-then result list for the owner; B: replace the regression run with only the action's acceptance thens.
+
+**The verdict.** Acceptance testing is added on top of the regression gate ([a-slice-is-done-after-the-testers-green](#a-slice-is-done-after-the-testers-green) is unchanged). The tester writes the acceptance specs too — they are e2e specs under [the-tester-writes-the-e2e-specs](#the-tester-writes-the-e2e-specs) (the owner asked *"who write the acceptance test code ?"* — the tester; not a new decision), and they run in every affected, smoke and full run. Its reports carry an `## Acceptance` table: one row per then, passes / fails / not built. *(Not asked — `docs/acceptances/guide.md`'s rule: a check of a then that fails on an app bug keeps `test.fail` with the report's link, so the suite stays green.)*
+
+---
+
+## the-tester-marks-a-then-on-the-owners-word
+
+> Owner (Heri), in `revamp_tester`'s desktop chat (2026-11-16): *"B"*, against my recommendation — to: how do per-then results reach the owner, and who changes a then's status? A (recommended): the report's table; a Telegram line when there are new passes; the owner tells revamp_dev which thens to mark and revamp_dev edits `docs/acceptances/`; B: the same table, but the owner tells the TESTER and it edits the status itself — a new exception to its *reports only* rule.
+
+**The verdict.** On the owner's word naming the thens, the tester edits their status itself in `docs/acceptances/` — the then's cell and that action's counts in `<big>/context.md` and `progress.md` — left uncommitted in the live tree. It is the one exception to *the tester writes only reports in the main checkout*. A status still changes only on the owner's word (`docs/acceptances/guide.md`). revamp_dev commits those edits as bookkeeping and never reverts them.
+
+---
+
+## the-tester-writes-acceptance-specs-when-nothing-is-queued
+
+> Owner (Heri), in `revamp_tester`'s desktop chat (2026-11-16): *"A"*, as recommended — to: when does the tester write the acceptance specs? A: on wakes with no snapshot queued — one given + when at a time, restock first (the owner's *"the focus is restock"*), a queued snapshot always first; each finished action gets a specs ref, the spec alone, the affected run and a report; idle wakes then cost model time and keep worker w1 busy; B: only when the owner names an action.
+
+**The verdict.** The tester works through `e2e_report/tester/acceptance_todo.md` (restock's actions, then order's) on every wake with nothing queued; a snapshot always goes first. Each action's report has `Snapshot: none` and no backlog row; on GREEN revamp_dev brings its specs in with the report's command, on RED its app bugs go first like any tester failure. Live from 2026-11-16 15:31.

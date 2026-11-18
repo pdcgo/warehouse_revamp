@@ -3,7 +3,19 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { warehouseStock } from "../../../../.storybook/fixtures";
 import { pickTeam } from "../../../../.storybook/pageStory";
-import { DISCOVER_PRODUCT_DETAIL_META, GULA, STOCKED, loaded, openTab, sectionOf, stockLoaded } from "./kit";
+import { discoverHistoryCalls } from "../../../../.storybook/productListScenario";
+import {
+  AtBeras,
+  DISCOVER_PRODUCT_DETAIL_META,
+  EMPTY,
+  GULA,
+  STOCKED,
+  loaded,
+  openPendingStrip,
+  openTab,
+  sectionOf,
+  stockLoaded,
+} from "./kit";
 
 // DISCOVER PRODUCT DETAIL — Per Gudang, the owner's page's warehouse card without Harga Modal
 // (the-discover-detail-has-the-warehouse-zone): the overview under the picker, the suppliers and their stores, the stock
@@ -72,23 +84,62 @@ export const TheSupplierStoreOpensItsLink: Story = {
   },
 };
 
-// RIWAYAT STOK IS EVERYONE'S (stock-history-is-everyones) — another team's product shows the ledger, its rows a sample
-// (marked) that ends at the real shelf: Gula's newest Gudang Pusat movement leaves exactly what is ready there.
+// RIWAYAT STOK IS EVERYONE'S (stock-history-is-everyones) — another team's product shows its REAL ledger, read by
+// DiscoverStockHistory: Gula's deliveries in and orders out of Gudang Pusat, its newest movement leaving exactly what is
+// ready there. Unmarked now. No Batch column (the-discover-history-names-no-batch) and no money of the owner's.
 export const AnotherTeamsHistoryIsShown: Story = {
   name: "Another team's history",
   play: async ({ canvasElement }) => {
     const canvas = await stockLoaded(canvasElement);
 
-    await expect(within(canvas.getByTestId("dd-tab-history")).getByTestId("not-implemented-history")).toBeInTheDocument();
+    await expect(within(canvas.getByTestId("dd-tab-history")).queryByTestId("not-implemented-history")).toBeNull();
     const history = await openTab(canvas, "history");
+    await history.findByTestId("dd-history");
     const table = await history.findByTestId("pd-history-table");
+    await waitFor(() => expect(within(table).getAllByRole("row").slice(1).length).toBe(5));
     const rows = within(table).getAllByRole("row").slice(1);
 
-    await expect(rows.length).toBe(5);
-    // No Batch column here (the-discover-history-names-no-batch) — the warehouse names each movement's building.
-    const headings = within(table).getAllByRole('columnheader').map((h) => h.textContent);
-    await expect(headings).toContain('Warehouse');
-    await expect(headings).not.toContain('Batch');
+    // The read the page asked: Toko Melati (12) about Kenanga's Gula, every warehouse, page 1.
+    await expect(discoverHistoryCalls.at(-1)).toEqual({ teamId: 12n, productId: GULA.id, warehouseId: 0n, page: 1 });
+
+    const headings = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    await expect(headings).toContain("Warehouse");
+    await expect(headings).not.toContain("Batch");
     await expect(rows[0]).toHaveTextContent(`${warehouseStock[GULA.id.toString()]}`);
+    await expect(table).not.toHaveTextContent("Rp");
+
+    // …and the page's ⚠ strip no longer lists it.
+    await openPendingStrip(canvas);
+    await expect(canvas.queryByTestId("pending-row-history")).toBeNull();
+  },
+};
+
+// THE HISTORY FOLLOWS THE PICKER, as the owner's page's does: Gudang Cabang never held Gula, so its lens reads the empty
+// hint — asked of the server with that warehouse, not cut on the screen.
+export const AnotherTeamsHistoryFollowsThePicker: Story = {
+  name: "Another team's history, in the lens",
+  play: async ({ canvasElement }) => {
+    const canvas = await stockLoaded(canvasElement);
+    const history = await openTab(canvas, "history");
+    await history.findByTestId("pd-history-table");
+
+    await pickTeam(canvas.getByTestId("dd-warehouse-filter"), "WH-02");
+    await waitFor(() => expect(discoverHistoryCalls.at(-1)?.warehouseId).toBe(EMPTY.id));
+    await waitFor(() => expect(history.getByTestId("pd-history-empty")).toBeVisible());
+  },
+};
+
+// THE TEAM'S OWN PRODUCT keeps the owner's ledger (OwnerStockHistory), as its own page reads it — the discover read is
+// never asked for it.
+export const YourOwnHistoryIsTheOwnersLedger: Story = {
+  name: "Your own product's history",
+  render: () => <AtBeras />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const history = await openTab(canvas, "history");
+
+    await waitFor(() => expect(history.getByTestId("pd-history-empty")).toBeVisible());
+    await expect(history.queryByTestId("dd-history")).toBeNull();
+    await expect(discoverHistoryCalls).toHaveLength(0);
   },
 };

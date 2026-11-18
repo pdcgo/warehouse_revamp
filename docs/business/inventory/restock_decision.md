@@ -1123,6 +1123,12 @@ flowchart LR
 | a status change | the old status | the new status | why, if given |
 | an edit | the current status | the same | what changed |
 
+✅ **Built 2026-11-16.** An edit's trail row keeps the status and now says what changed: every field the edit moved, before
+and after, as `restock_log_changes` rows (inventory `00049`) under it, written in the edit's transaction — *Kopi 10 → 12,
+“extra stock”* — and served as `RestockLog.changes` by `RestockRequestDetail`; both restock detail pages draw them under
+the edit's row (the warehouse's without the purchase's figures). The row's `description` stays the bare *edited*; an edit
+written before has no changes stored and reads as it did. Spec: [rpc.md](../../services/inventory_service/rpc.md#what-an-edit-changed--the-trail-rows-changes-built-2026-11-16).
+
 ## there-is-no-unplaced-pile
 
 > Owner, in chat *(2026-10-09)*: *"for a,b,d,e follow your recomendation"*. It answers
@@ -1167,6 +1173,13 @@ flowchart LR
 | `restocks.note` | 🆕 the selling team | the restock as a whole |
 | `restock_items.note` | the selling team | one line — e.g. *extra stock* |
 | `restock_problem_items.note` | 🆕 the warehouse, at accept | one broken or missing row — optional |
+
+✅ **Built 2026-11-16** — beside the three, the receiving warehouse's own note on the restock as a whole
+([the-warehouse-writes-its-own-note](../../technical/frontend/restock_decision.md#the-warehouse-writes-its-own-note)) keeps
+one writer too: `restocks.warehouse_note` (inventory `00053`) with its writer and time, written only through
+`RestockRequestWarehouseNoteSet` (scoped to the receiving warehouse) and read by both teams. Neither team's write reaches
+the other's note — the selling team's edit and note set leave it, and the warehouse's write leaves `restocks.note`.
+
 ## the-restock-contract-changes-in-place
 
 > Owner, in chat *(2026-10-09)*: *"1. B"* — asked how the API contract should change for the prototype, between **A** a new
@@ -1229,6 +1242,10 @@ flowchart LR
 | how the server tells them apart | a line in the update with no stored `restock_items` row for its product is new; a stored line whose supplier or store differs from what is stored is refused while `arrived` |
 | the edit's trail row | names the added line and, if given, its supplier ([edits-are-in-the-same-trail](#edits-are-in-the-same-trail)) |
 | the event | *Restock Accepted* carries each line's supplier and store as usual, so the added line reaches the supplier report |
+
+✅ **Built 2026-11-16** — the edit's trail row: a line added says its name and count, its total, and — when given — its
+note, supplier and store ([edits-are-in-the-same-trail](#edits-are-in-the-same-trail)); the selling team's page names the
+supplier and store, the warehouse's leaves them out ([the-warehouse-reads-the-box-not-the-purchase](../../technical/frontend/restock_decision.md#the-warehouse-reads-the-box-not-the-purchase)).
 
 ## balance-posts-the-couriers-debt-from-the-event
 

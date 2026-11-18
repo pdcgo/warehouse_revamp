@@ -1316,6 +1316,8 @@ flowchart LR
 | ⚠ one real account, once | the number is unique per provider ([a-real-account-is-recorded-once](#a-real-account-is-recorded-once)) — every bank outside the list shares *Lainnya*, so a Mandiri and a BRI account with the same number would collide. Rare; appending a bank to the list removes it for that bank |
 | ⚠ not built | the contract's `FinancialAccountCreateRequest.provider` allows 1–5 and `checkIdentity` refuses `unknown` — the screens offer it with a pending mark and a warning, and saving one is refused. The backend is not changed (owner) |
 
+🔄 *(2026-11-16, re-audit)* **Built, as reshaped** — a bank outside the list became **type** Lainnya ([the-type-decides-the-provider](#the-type-decides-the-provider)), and the server opens it ([lainnya-is-opened-by-the-server](#lainnya-is-opened-by-the-server)): `FinancialAccountCreate` passes `allowOther` to `checkIdentity` (`financial_account_service/financial_account_v1/financial_account_create.go`, `account_rules.go`), which takes type and provider `unknown` as a pair, number optional (`TestFinancialAccountCreate_TypeLainnyaOpensWithoutANumber`); a bank-type account with provider Lainnya stays refused as half a pair (`TestFinancialAccountCreate_RefusesHalfALainnyaPairOrTomorrow`); the *⚠ not built* row above is history.
+
 ## the-type-decides-the-provider
 
 > In chat *(owner, 2026-10-06)* — *"gini aja, tambah jenis lainnya, penyedianya jelas lainnya, no rekening tidak wajib ·
@@ -1352,6 +1354,8 @@ flowchart LR
   Lainnya, not a bank account with provider Lainnya. Its number-collision caveat moves with it: every Lainnya account
   shares provider *Lainnya*, so the same number at two banks outside the list would collide — a number is optional
   there, which lessens it.
+
+🔄 *(2026-11-16, re-audit)* **Built** — [lainnya-is-opened-by-the-server](#lainnya-is-opened-by-the-server) lifted the no-API-change rule for Lainnya: New Account opens type and provider `unknown` as a pair, number optional, through `checkIdentity`'s `allowOther` (`financial_account_service/financial_account_v1/account_rules.go`, `financial_account_create.go`; `TestFinancialAccountCreate_TypeLainnyaOpensWithoutANumber`, `TestFinancialAccountCreate_ALainnyaIsAllowedWhatAnUnknownIs`), and no pending mark is left on the account screens (`features/financialAccount/`); the *⚠ not built* row above is history.
 
 ## lainnya-is-opened-by-the-server
 

@@ -71,7 +71,7 @@ func TestPerf_SupplierGoods(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfSupplierGoodsBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	read := func(group inventoryv1.SupplierGoodsGroup, ids []uint64) func(int) error {
 		return func(int) error {

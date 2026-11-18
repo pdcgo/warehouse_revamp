@@ -9,7 +9,8 @@ import { useTranslation } from "react-i18next";
 // soalnya sepertinya yang sekarang kepotong"*, a-door-photo-is-a-thumbnail-that-opens-whole). It was drawn there at the
 // dialog's width and cut to fit; the photo is only ever shown whole when it is opened.
 //
-// The pages pass the URL — today a SAMPLE (photoSamples.ts), marked by each page's own pending mark.
+// The pages pass the URL — the restock's own photo, a short-lived link from RestockDoorPhotos (features/restock/queries.ts
+// useRestockDoorPhotos). `mark` stays for a part still drawn from a sample.
 export function PhotoView({
   url,
   title,

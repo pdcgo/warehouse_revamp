@@ -36,7 +36,7 @@ func TestRace_WarehouseTransferCreate_HoldsNoTransactionDuringTheAccountCall(t *
 		idleInTx, locks, probeErr = raceRestockHeldLocks(h.DB())
 	}
 
-	_, err := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, probe).WarehouseTransferCreate(context.Background(),
+	_, err := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, probe, nil, nil).WarehouseTransferCreate(context.Background(),
 		connect.NewRequest(&inventoryv1.WarehouseTransferCreateRequest{
 			TeamId: raceOwner, FromWarehouseId: raceWarehouse, ToWarehouseId: raceReceiver,
 			Lines: []*inventoryv1.WarehouseTransferLine{wtLine(raceProductA, 1)}, ShipmentCost: 18000, FinanceAccountId: 41,
@@ -63,7 +63,7 @@ func TestRace_WarehouseTransferUpdate_ACancelDoesNotWaitForTheAccountRoundTrip(t
 	h := san_race.New(t, transferTables...)
 	raceTransferSeed(t, h.DB(), 10, raceProductA)
 
-	plain := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, nil)
+	plain := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	tr, err := raceTransferCreate(plain, wtLine(raceProductA, 1))
 	if err != nil {
@@ -73,7 +73,7 @@ func TestRace_WarehouseTransferUpdate_ACancelDoesNotWaitForTheAccountRoundTrip(t
 	const latency = 800 * time.Millisecond
 
 	slow := &raceAccountSlow{latency: latency, called: make(chan struct{})}
-	updater := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, slow)
+	updater := inventory_v1.NewService(h.DB(), nil, nil, nil, nil, nil, nil, slow, nil, nil)
 	ctx := context.Background()
 
 	res := h.Race(t, 2, func(i int) error {

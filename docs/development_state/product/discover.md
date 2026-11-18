@@ -1,5 +1,16 @@
 # Development state — product discover
 
+> 🔀 **2026-11-16 — the detail's gallery and another team's Riwayat Stok are real** (backlog #69; decisions
+> [the-discover-detail-shows-no-markup](../../technical/frontend/products_decision.md#the-discover-detail-shows-no-markup),
+> [stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)).
+>
+> | | |
+> | --- | --- |
+> | gallery | `ProductByIdsDataType.IMAGES` — each asked product's pictures, ordered, nothing else; refused to a warehouse role (Discover's rule) by a handler narrowing. The page reads it alone (`useDiscoverGallery`) and keeps the record's cover while it loads or if it fails. *Hanya sampul* (`discoverDetail.coverOnly`) and the `gallery` mark are gone; thumbnails `discover-detail-thumb-<i>` |
+> | history | `InventoryService.DiscoverStockHistory` — the owner's batch ledger for any selling team (Discover's policy, `NO_SIDE_EFFECTS`), `DiscoverMovement` = id, product, warehouse, kind, delta, balance, time; never price/value/batch/reason/ref/person; price corrections left out. `DiscoverHistorySection` (`features/products/HistorySection.tsx`, shared `LedgerView` with the owner's `HistorySection`), section testid `dd-history`. `historySample.ts`, `SampleHistorySection` and the `history` mark are gone; the own product keeps `OwnerStockHistory` |
+> | pending.ts | left: `division`, `derived`, `suppliers`, `daily` |
+> | tests | Go: `product_by_ids_images_test.go` (3), `discover_stock_history_test.go` (6); perf `product_by_ids_images_perf_test.go`, `discover_stock_history_perf_test.go` ([inventory rpc.md](../../services/inventory_service/rpc.md#another-teams-stock-history--discoverstockhistory-built-2026-11-16), [product rpc.md](../../services/product_service/rpc.md#the-discover-details-gallery--productbyids-images-slice-built-2026-11-16)). Stories: Info `AnotherTeamsWholeGallery`, `ARefusedGalleryKeepsTheCover`; Warehouse `AnotherTeamsHistoryIsShown` (now real), `AnotherTeamsHistoryFollowsThePicker`, `YourOwnHistoryIsTheOwnersLedger`. Stub: `productByIds` honours `dataRequest` (IMAGES), `discoverStockHistory` (productStub), calls in `productListScenario` |
+
 > 🔀 **2026-11-14, later — Discover phase 2: Gudang, Stok siap, Harga cross and Kategori are real; the detail's figures too**
 > (scoping B5 + F2; decisions
 > [discovers-warehouse-keeps-ready-stock-there](../../technical/frontend/products_decision.md#discovers-warehouse-keeps-ready-stock-there),
@@ -117,7 +128,7 @@ What the screen is built ahead of, in the order a seller would feel it. Each is 
 | 3 | **Another team's cross price**, and the Harga cross filter | another team's unit cost is not readable across teams — and who may see it is open in [product clarify](../../business/product/context_clarify.md) (*Awaiting*); the card shows the cross price only, never the cost |
 | 4 | **Kategori filter** | ProductDiscover takes no category filter (product context_decision: a subquery, not a join, or the page count breaks) |
 | 5 | **Prioritas · Riset · Umum** stored per product | not in the business context yet; replaces or sits beside the team-level `priority_product` — the business context decides |
-| 7 | **A product's stock history for any team** (the detail's Riwayat Stok) | every team may read it ([stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)), but `OwnerStockHistory` filters by the caller's team — another team's product reads nothing, so the tab shows samples |
+| 7 | ~~**A product's stock history for any team**~~ ✅ built 2026-11-16 (`DiscoverStockHistory`) | every team may read it ([stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)), but `OwnerStockHistory` filters by the caller's team — another team's product reads nothing, so the tab shows samples |
 | 8 | **Who supplies a product** (the Pemasok tab, both pages) | `metrics/suppliers` takes no product filter, and `supplier_channel_products` is not written yet — the tab's rows are samples |
 | 6 | **The reserve check on an order at exactly the minimum** | the screens close a product AT its minimum (≤); the business context opens it there (`<`) — [product clarify Q13](../../business/product/context_clarify.md#question). Whatever enforces the reserve on an order follows the answer |
 
@@ -150,7 +161,7 @@ carries only the cover).
 | id | kind | blocked on |
 | --- | --- | --- |
 | `division` | sample | the division is stored nowhere — the card's `sampleDivision` |
-| `gallery` | missing | the image list comes only from the owner-scoped `ProductDetail` |
+| ~~`gallery`~~ | ✅ real 2026-11-16 | ProductByIds' IMAGES slice — mark gone |
 | ~~`ongoing`~~ | ✅ real 2026-11-14 | DiscoverStockByIds (every warehouse and each), the card's read — mark gone |
 | ~~`crossPrice`~~ | ✅ real 2026-11-14 | DiscoverStockByIds' cross range, per warehouse too; the cost never sent — mark gone |
 | `derived` | sample | the link a return to another team makes is recorded nowhere — the product page's `sampleDerived` |

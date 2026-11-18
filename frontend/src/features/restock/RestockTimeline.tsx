@@ -15,11 +15,17 @@ import { RootTeamBadge } from "../../components/entity/ActorName";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { trailOf } from "../receivedCount/corrections";
+import { RestockEditChanges, type TrailNames, useTrailNames } from "./RestockEditChanges";
 
 // THE TRAIL — `request.logs`, oldest first (every-status-change-is-logged). One row per status change AND per edit: an
-// edit is a row whose status did not change, and its description says what did — "Kopi 10 → 12, extra stock"
-// (edits-are-in-the-same-trail). So one history answers both "when did it arrive, and who signed" and "who changed the
-// count after the box was opened".
+// edit is a row whose status did not change, and under it what did — "Kopi 10 → 12, extra stock", each field the server
+// kept before and after (edits-are-in-the-same-trail, RestockEditChanges). So one history answers both "when did it
+// arrive, and who signed" and "who changed the count after the box was opened". An edit written before those were kept
+// has none, and reads as it always did: who and when.
+//
+// `purchase` — the selling team's page, which reads the purchase: an edit's price, totals, supplier, store, account,
+// Order ID and shipping. Off on the warehouse's (the-warehouse-reads-the-box-not-the-purchase). `teamId` is the reader's,
+// for the names the purchase's ids need.
 //
 // Who did it is resolved by id at read time — never a snapshot — through the shared user lookup; an id that does not
 // resolve names its number rather than claiming nobody did it.
@@ -92,8 +98,19 @@ function StepLines({ first, last }: { first: boolean; last: boolean }) {
   );
 }
 
-export function RestockTimeline({ request, bare = false }: { request: RestockRequest; bare?: boolean }) {
+export function RestockTimeline({
+  request,
+  bare = false,
+  teamId,
+  purchase = false,
+}: {
+  request: RestockRequest;
+  bare?: boolean;
+  teamId?: bigint;
+  purchase?: boolean;
+}) {
   const { t } = useTranslation();
+  const names = useTrailNames(request.logs, teamId, purchase);
   const actors = useRestockActors([
     ...request.logs.map((log) => log.actorUserId),
     ...request.countCorrections.map((c) => c.actorUserId),
@@ -120,6 +137,8 @@ export function RestockTimeline({ request, bare = false }: { request: RestockReq
                 actor={actors.data?.get(step.log.actorUserId.toString())}
                 first={i === 0}
                 last={i === trail.length - 1 && !awaitingKey}
+                names={names}
+                purchase={purchase}
               />
             ) : (
               <LogStep
@@ -179,11 +198,16 @@ function LogStep({
   last,
   correction,
   productName = "",
+  names,
+  purchase = false,
 }: {
   log: RestockLog;
   actor?: PublicUser;
   first: boolean;
   last: boolean;
+  /** The trail's looked-up names, for what an edit changed. */
+  names?: TrailNames;
+  purchase?: boolean;
   /** The received-count correction this row stands for — its own kind, never a status row. */
   correction?: ReceivedCountCorrection;
   productName?: string;
@@ -244,8 +268,8 @@ function LogStep({
             </HStack>
             )}
             {/* What changed (an edit) or why (a status change). A raise has no "why" — the row says it was raised. */}
-            {/* The server's bare "edited" says nothing the row's title does not — it is not shown (an edit's row should
-                name what changed; the-notes-are-one-per-writer). */}
+            {/* The server's bare "edited" says nothing the row's title does not — it is not shown: an edit's row names what
+                changed, field by field, under it (the-notes-are-one-per-writer, edits-are-in-the-same-trail). */}
             {!correction && kind !== "created" && log.description && log.description !== "edited" && (
               <Text
                 fontSize="sm"
@@ -255,6 +279,9 @@ function LogStep({
               >
                 {log.description}
               </Text>
+            )}
+            {!correction && kind === "edit" && names && log.changes.length > 0 && (
+              <RestockEditChanges changes={log.changes} names={names} purchase={purchase} testId={testId} />
             )}
             <Timeline.Description>
               {log.atUnix > 0n ? formatUnixDateTime(log.atUnix) : t("restock.timeline.noDate")}

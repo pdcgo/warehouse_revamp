@@ -73,7 +73,7 @@ export const SignForBoxFromTheRow: Story = {
 };
 
 // THE COURIER'S CHARGE IN THE ROW'S SIGN DIALOG IS NOT KEPT YET (the-cod-can-be-noted-when-the-box-arrives) — its mark is
-// this page's second, after the COD card's.
+// this page's only one now: the COD card's figure, its first, is real (the-warehouse-sees-the-cod-it-paid).
 export const TheSignDialogMarksItsCourierCharge: Story = {
   name: "Courier charge, marked",
   play: async ({ canvasElement }) => {
@@ -82,7 +82,7 @@ export const TheSignDialogMarksItsCourierCharge: Story = {
     await userEvent.click(canvas.getByTestId("restock-action-sign-501"));
     const charge = await screen.findByTestId("sign-courier");
     await waitFor(() => expect(charge).toBeVisible());
-    await expect(within(charge).getByTestId("not-implemented-arrivalCod")).toHaveTextContent("2");
+    await expect(within(charge).getByTestId("not-implemented-arrivalCod")).toHaveTextContent("1");
   },
 };
 

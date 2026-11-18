@@ -115,7 +115,7 @@ func TestPerf_DiscoverCards(t *testing.T) {
 
 	db, probe := san_perf.Wrap(raw)
 	products := product_v1.NewService(db, nil, nil, NewProductStockNarrower(db), nil)
-	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(products), nil, nil)
+	inventory := inventory_v1.NewService(db, nil, nil, nil, nil, NewInventoryProductReader(products), nil, nil, nil, nil)
 	ctx := context.Background()
 
 	var discoverTeams []uint64

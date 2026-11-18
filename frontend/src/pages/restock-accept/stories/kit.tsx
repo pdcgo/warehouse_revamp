@@ -136,7 +136,7 @@ export async function expectAccept(canvasElement: HTMLElement, enabled: boolean)
   await waitFor(() => expect(blocked()).toBe(!enabled));
 }
 
-// A picture file the browser takes from a picker — the bytes do not matter, it is never sent.
+// A picture file the browser takes from a picker — the bytes do not matter: the stub's upload takes them as they are.
 export const PHOTO = () => new File([new Uint8Array([137, 80, 78, 71])], "rusak.png", { type: "image/png" });
 
 // TERIMA STARTS FROM THE CHARGE NOTED AT TIBA (terima-starts-from-the-charge-noted-at-tiba) — Tandai Tiba keeps none yet,

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
@@ -21,15 +22,7 @@ func (s *Service) RackList(
 ) (*connect.Response[inventoryv1.RackListResponse], error) {
 	page := req.Msg.GetPage()
 
-	query := s.db.
-		WithContext(ctx).
-		Model(&inventory_service_models.Rack{}).
-		Where("warehouse_id = ? AND deleted_at IS NULL", req.Msg.GetTeamId())
-
-	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
-		pattern := "%" + escapeLike(q) + "%"
-		query = query.Where("code ILIKE ? OR name ILIKE ?", pattern, pattern)
-	}
+	query := rackListScope(s.db.WithContext(ctx), req.Msg.GetTeamId(), req.Msg.GetFilter())
 
 	var total int64
 
@@ -74,6 +67,23 @@ func (s *Service) RackList(
 type rackTotal struct {
 	StockCount   int64
 	ProductCount uint32
+}
+
+// rackListScope is WHICH RACKS the Racks list holds — the warehouse's racks in use, narrowed by `q` on the code or the
+// name. RackList pages it and RackStat sums it (the-rack-list-leads-with-its-figures), so the list and its figures can
+// never describe two different sets of racks.
+func rackListScope(db *gorm.DB, warehouseID uint64, filter *inventoryv1.RackListFilter) *gorm.DB {
+	query := db.
+		Model(&inventory_service_models.Rack{}).
+		Where("placements.warehouse_id = ? AND placements.deleted_at IS NULL", warehouseID)
+
+	q := strings.TrimSpace(filter.GetQ())
+	if q != "" {
+		pattern := "%" + escapeLike(q) + "%"
+		query = query.Where("(placements.code ILIKE ? OR placements.name ILIKE ?)", pattern, pattern)
+	}
+
+	return query
 }
 
 // rackStockTotals is each rack's stock count — the sum of its products' on-hand, the same rows Rack detail's header

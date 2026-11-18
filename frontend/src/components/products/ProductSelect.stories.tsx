@@ -6,7 +6,8 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { products } from "../../../.storybook/fixtures";
 import { asRole } from "../../../.storybook/sessionScenario";
-import { warehouseProductSearchScenario } from "../../../.storybook/warehouseProductSearchStub";
+import { allProducts } from "../../../.storybook/productStub";
+import { heldHere, warehouseProductSearchScenario } from "../../../.storybook/warehouseProductSearchStub";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { ProductSelect, type PickedProduct, description } from "./ProductSelect";
 
@@ -42,7 +43,7 @@ export const OneLetterSearches: Story = {
 
     const option = await screen.findByTestId(`product-select-option-${products[0]!.productCode}`);
     await waitFor(() => expect(option).toBeVisible());
-    await expect(screen.queryByTestId("product-select-type-two")).toBeNull();
+    await expect(screen.queryByTestId("product-select-none")).toBeNull();
   },
 };
 
@@ -274,26 +275,40 @@ export const WarehouseScope: Story = {
   },
 };
 
-// ⚠ OPENED WITH NOTHING TYPED, A WAREHOUSE'S PICKER SAYS TO TYPE TWO LETTERS (a-product-picker-needs-no-two-letters) — its
-// server still refuses fewer, so it does not ask, and the panel says so with its mark instead of "No products found".
-// One letter is still short here; the second lists.
-export const WarehouseScopeOpensWithAHint: Story = {
-  name: "Warehouse, opened empty",
+// A WAREHOUSE'S PICKER NEEDS NO TWO LETTERS EITHER (a-product-picker-needs-no-two-letters) — opened with nothing typed it
+// lists its first page: what this warehouse has held, by name, and nothing it has not (Kopi Arabika was never here). It
+// asks with nothing typed, and ONE letter is a search that narrows the page to what holds it. No "type two letters" hint,
+// no ⚠ mark, never "No products found" while there is something held.
+export const WarehouseScopeOpensOnItsFirstPage: Story = {
+  name: "Warehouse, opened on its first page",
   args: { scope: "warehouse" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = canvas.getByRole("combobox");
 
-    await userEvent.click(input);
-    const hint = await screen.findByTestId("product-select-type-two");
-    await expect(hint).toHaveTextContent("Type at least 2 letters");
-    await expect(within(hint).getByTestId("not-implemented-warehouseOpensEmpty")).toBeVisible();
-    await expect(screen.queryByText("No products found")).toBeNull();
+    // What the stub serves: this warehouse's held set, by name then code, ten to a page.
+    const held = heldHere(11n);
+    const byName = allProducts()
+      .filter((p) => held.has(p.id))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.productCode.localeCompare(b.productCode));
+    const optionIds = () => screen.getAllByRole("option").map((o) => o.getAttribute("data-testid"));
+    const testIdsOf = (rows: typeof byName) => rows.slice(0, 10).map((p) => `product-select-option-${p.productCode}`);
 
-    await userEvent.type(input, "g", { delay: 20 });
-    await expect(screen.getByTestId("product-select-type-two")).toBeInTheDocument();
+    await userEvent.click(input);
+    await waitFor(() => expect(optionIds()).toEqual(testIdsOf(byName)));
+    await expect(screen.getByTestId(`product-select-option-${products[2]!.productCode}`)).toBeVisible();
+    await expect(screen.queryByTestId(`product-select-option-${products[0]!.productCode}`)).toBeNull();
+    await expect(screen.queryByTestId("not-implemented-warehouseOpensEmpty")).toBeNull();
+    await expect(screen.queryByTestId("product-select-none")).toBeNull();
+    // It asked with nothing typed — the newest term the stub was sent.
+    await expect(warehouseProductSearchScenario.terms.at(-1)).toBe("");
+
+    // One letter: the page narrows to the held products whose name or code holds it.
     await userEvent.type(input, "u", { delay: 20 });
-    await waitFor(() => expect(screen.getByTestId(`product-select-option-${products[2]!.productCode}`)).toBeVisible());
+    const withU = byName.filter((p) => p.name.toLowerCase().includes("u") || p.productCode.toLowerCase().includes("u"));
+    await expect(withU.length).toBeLessThan(byName.length);
+    await waitFor(() => expect(optionIds()).toEqual(testIdsOf(withU)));
+    await expect(warehouseProductSearchScenario.terms.at(-1)).toBe("u");
   },
 };
 

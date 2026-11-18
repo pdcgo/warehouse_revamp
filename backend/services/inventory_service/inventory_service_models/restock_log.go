@@ -28,6 +28,11 @@ type RestockLog struct {
 	// WHEN IT HAPPENED. The writer sets it to the instant of the change it records, so the trail and the column the
 	// handler stamps agree; the trail orders by it.
 	CreatedAt time.Time
+
+	// WHAT AN EDIT CHANGED, field by field (00049, edits-are-in-the-same-trail) — loaded by Detail only, written by the
+	// edit itself beside this row. Empty for a status change, for an edit that changed nothing, and for an edit written
+	// before the changes were kept.
+	Changes []RestockLogChange `gorm:"foreignKey:RestockLogID"`
 }
 
 func (RestockLog) TableName() string {

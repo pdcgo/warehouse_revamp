@@ -40,8 +40,6 @@ import { QuantityInput } from "../../components/inputs/QuantityInput";
 import { LabelPaper, LabelSticker } from "./components/LabelPaper";
 import { LabelSettingsPanel } from "./components/LabelSettingsPanel";
 import { RestocksCard } from "./components/RestocksCard";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { RESTOCK_LABELS_PENDING } from "./pending";
 import type { LabelSet } from "./labelSets";
 import { useLabelSets } from "./labelSets";
 import type { LabelSettings } from "./settings";
@@ -426,11 +424,6 @@ export function RestockLabelsPage() {
       </Flex>
 
       {mobile && <Box className="no-print">{summary}</Box>}
-
-      {/* What is not wired yet — the restocks are read one by one (pending.ts). */}
-      <Box className="no-print">
-        <NotImplementedSummary list={RESTOCK_LABELS_PENDING} />
-      </Box>
 
       {/* THE SETTINGS BESIDE THE PREVIEW where there is room — held in view while the preview scrolls
           (the-label-page-is-settings-and-a-preview); on the right, what is printed: the restocks, the Pratinjau, Yang

@@ -23,7 +23,7 @@ func TestPerf_OrderTransactionReturn(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 	perfLedgerBackground(t, db)
 
-	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil)
+	svc := inventory_v1.NewService(db, nil, nil, nil, (&sentEvents{}).send, perfFacts(20), nil, nil, nil, nil)
 	racks := []uint64{newRack(t, svc, otWarehouse, "perf-a"), newRack(t, svc, otWarehouse, "perf-b"), newRack(t, svc, otWarehouse, "perf-c")}
 	returnRack := newRack(t, svc, rtReturnWarehouse, "perf-return")
 

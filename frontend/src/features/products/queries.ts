@@ -14,7 +14,10 @@ import { teamsByIdsQuery } from "../teams/queries";
 import {
   activityFromByIds,
   batchesFromList,
+  discoverMovementData,
+  discoverMovementsFromList,
   discoverStockFromResponse,
+  imagesFromByIds,
   layersFromList,
   movementsFromList,
   ownerBatchData,
@@ -22,6 +25,7 @@ import {
   ownerMovementData,
   ownerStockFromByIds,
   productByIdsRowData,
+  productImagesData,
   productListRowData,
   productsFromByIds,
   productsFromList,
@@ -390,6 +394,28 @@ export function useDiscoverProduct(args: { teamId: bigint | undefined; productId
   });
 }
 
+// ANOTHER TEAM'S PRODUCT'S PICTURES — the discover detail's gallery (the-discover-detail-shows-no-markup: "the pictures
+// are the product page's gallery"): ProductByIds' IMAGES slice, every picture in order, the cover first. Its own read
+// beside the record's, so a refusal (the slice is Discover's: a warehouse role is refused) or a failure costs the page
+// its gallery alone — the page keeps the cover the record carries.
+export function useDiscoverGallery(args: { teamId: bigint | undefined; productId: bigint }) {
+  const { teamId, productId } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, { discover: true, gallery: productId.toString() }),
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await productClient.productByIds({
+        teamId: teamId!,
+        filter: { ids: [productId] },
+        dataRequest: productImagesData(),
+      });
+
+      return imagesFromByIds(res, productId);
+    },
+  });
+}
+
 // One product, with the category tree it is filed against.
 //
 // Both together: the detail screen names the product's category, and rendering the product before
@@ -670,6 +696,43 @@ export function useOwnerStockHistory(args: {
   });
 }
 
+// ANY TEAM'S STOCK HISTORY of a product — the discover detail's Riwayat Stok on another team's product
+// (stock-history-is-everyones): DiscoverStockHistory, the owner's ledger read for anybody — the units, the building, the
+// time and what was left, never the owner's price, value, batch, reason, reference or person. Paged as the owner's.
+export function useDiscoverStockHistory(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  warehouseId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, productId, warehouseId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, {
+      discoverHistory: productId.toString(),
+      warehouseId: warehouseId.toString(),
+      page,
+      pageSize,
+    }),
+    ...listQuery,
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.discoverStockHistory({
+        teamId: teamId!,
+        filter: { productId, warehouseId },
+        dataRequest: discoverMovementData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        movements: discoverMovementsFromList(res),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
 // ── Writes (#177) ───────────────────────────────────────────────────────────────────────────────
 //
 // The catalogue's writes. Each declares its invalidation here rather than leaving the page that
@@ -776,9 +839,9 @@ export function useProductSearch(args: {
     queryKey: key.products(teamId, { search: q, scope }),
     ...referenceQuery,
     // Nothing typed is a browse of the first page (a-search-select-reopens-whole), and ONE character is a search
-    // (a-product-picker-needs-no-two-letters). ⚠ Except a warehouse's: its server still refuses fewer than two
-    // characters, so the picker does not ask and says so (ProductSelect, pickerPending.ts).
-    enabled: teamId > 0n && (scope !== "warehouse" || q.length >= 2),
+    // (a-product-picker-needs-no-two-letters) — in every scope, a warehouse's too: WarehouseProductSearch lists the first
+    // page of what it has held when nothing is typed.
+    enabled: teamId > 0n,
     queryFn: async (): Promise<SearchedProduct[]> => {
       // A warehouse picks only what has had a batch in it — inventory's read, named by product_service on the server. A
       // warehouse role may not call ProductDiscover, and a warehouse never browses every team's catalogue.

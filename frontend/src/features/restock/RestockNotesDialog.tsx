@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, CloseButton, Dialog, Portal, Separator, Stack, Text } from "@chakra-ui/react";
 
@@ -14,10 +13,11 @@ import { SellingNote } from "./SellingNote";
 //
 //   ┌ Catatan Restok ─────────────────────────── × ┐
 //   │ INV/2026/10/1001                              │
-//   │ [Penjual]  Ani Rahayu · 29 Okt 13:05 ⚠ [✎ Ubah]│   ← SellingNote — the same as the restock page's
+//   │ [Penjual]  Ani Rahayu · 29 Okt 13:05  [✎ Ubah]│   ← SellingNote — the same as the restock page's
 //   │ Urgent, untuk sale 10.10                      │
 //   │ ───────────────────────────────────────────── │
-//   │ [Gudang] ⚠  Belum ada catatan dari gudang.    │
+//   │ [Gudang]   Budi Santoso · 30 Okt 09:12        │   ← WarehouseNoteBlock — the warehouse's, read
+//   │ Kardus penyok di sudut                        │
 //   │                                       [Tutup] │
 //   └───────────────────────────────────────────────┘
 //
@@ -27,14 +27,11 @@ export function RestockNotesDialog({
   onOpenChange,
   teamId,
   requestId,
-  marks,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teamId: bigint;
   requestId: bigint;
-  /** The screen's ⚠ marks — who wrote the note (derived), a late edit (dropped), the warehouse's note (missing). */
-  marks?: { sellingBy?: ReactNode; late?: ReactNode; warehouse?: ReactNode };
 }) {
   const { t } = useTranslation();
   const query = useRestockRequest({ teamId: open ? teamId : undefined, requestId });
@@ -68,16 +65,9 @@ export function RestockNotesDialog({
                 <ListSkeleton rows={2} testId="restock-notes-loading" />
               ) : (
                 <Stack gap="card">
-                  <SellingNote
-                    request={request}
-                    teamId={teamId}
-                    mark={marks?.sellingBy}
-                    lateMark={marks?.late}
-                    onEditingChange={setEditing}
-                    inPlace
-                  />
+                  <SellingNote request={request} teamId={teamId} onEditingChange={setEditing} inPlace />
                   <Separator />
-                  <WarehouseNoteBlock mark={marks?.warehouse} />
+                  <WarehouseNoteBlock request={request} />
                 </Stack>
               )}
             </Dialog.Body>

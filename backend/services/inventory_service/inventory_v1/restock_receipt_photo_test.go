@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -50,8 +52,12 @@ func (f *fakePhotoLinker) LabelURL(_ context.Context, ownerTeamID uint64, docume
 }
 
 func photoService(db *gorm.DB, linker inventory_v1.ReceiptPhotoLinker) *inventory_v1.Service {
-	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, linker, nil)
+	return inventory_v1.NewService(db, nil, nil, nil, nil, nil, linker, nil, nil, nil)
 }
+
+// photoReceipts numbers each inserted restock's resi — another restock of the team never holds it
+// (a-reference-in-use-stops-the-restock-form).
+var photoReceipts atomic.Uint64
 
 // insertPhotoRestock writes a restock of selling team 2 going to `warehouse`, with a label photo or none.
 func insertPhotoRestock(t *testing.T, db *gorm.DB, warehouse uint64, documentID string) uint64 {
@@ -61,7 +67,7 @@ func insertPhotoRestock(t *testing.T, db *gorm.DB, warehouse uint64, documentID 
 		TeamID:      photoSeller,
 		WarehouseID: warehouse,
 		Status:      "ongoing",
-		Receipt:     "JNE-PHOTO",
+		Receipt:     "JNE-PHOTO-" + strconv.FormatUint(photoReceipts.Add(1), 10),
 		ReceiptFile: documentID,
 	}
 

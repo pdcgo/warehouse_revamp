@@ -7,7 +7,7 @@ import { rpcError } from "../../api/clients";
 import type { Rack } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { RackTotals } from "../../features/racks/adapt";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
-import { useDeleteRack, useRacks } from "./queries";
+import { useDeleteRack, useRackStat, useRacks } from "./queries";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { FilterBar, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
@@ -22,10 +22,7 @@ import { PRESSABLE } from "../../lib/motion";
 import { useDebounced } from "../../lib/useDebounced";
 import { textCodec, useUrlState } from "../../lib/urlState";
 import { RackFormDialog } from "./components/RackFormDialog";
-import { racksPending } from "./pending";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -73,6 +70,8 @@ export function RacksPage() {
 
   // The server already orders by code — the code is how a person reads the warehouse.
   const query = useRacks({ teamId, q: term, page, pageSize });
+  // The figures over the whole list, as narrowed by the search — never the page's (the-rack-list-leads-with-its-figures).
+  const stat = useRackStat({ teamId, q: term });
   const deleteRack = useDeleteRack();
 
   const racks = query.data?.racks ?? [];
@@ -87,14 +86,11 @@ export function RacksPage() {
   const isEmpty = (rack: Rack) => (totalsOf(rack)?.stockCount ?? 0n) === 0n;
 
   // THE FIGURES OVER THE LIST (owner: *"3, 4"*, the-rack-list-leads-with-its-figures) — how many racks, how many hold
-  // something, how many are empty, and the pieces on them all. The racks are the server's total; the other three are
-  // summed from the racks this page holds — exact while every rack fits one page, marked when they do not.
-  const filled = racks.filter((rack) => !isEmpty(rack)).length;
-  const pieces = racks.reduce((sum, rack) => sum + Number(totalsOf(rack)?.stockCount ?? 0n), 0);
-  const partial = !loading && totalItems > racks.length;
-  const pending = racksPending(partial);
-  const pageMark = partial ? <NotImplemented list={pending} id="pageTotals" /> : undefined;
+  // something, how many are empty, and the pieces on them all. The racks are the list's own total; the other three are
+  // RackStat's, summed on the server over EVERY rack the list matches, whatever page is open.
+  const figures = stat.data;
   const figure = (n: number) => (loading ? "—" : String(n));
+  const statFigure = (n: number | undefined) => (n === undefined ? "—" : String(n));
   // The rack's page, carrying this list — so its back returns here with the search (a-form-returns-where-it-was-opened).
   const open = (rack: Rack) => navigate(`/inventories/racks/${rack.id}`, { state: fromHere(location) });
   const search = (value: string) => {
@@ -369,12 +365,9 @@ export function RacksPage() {
         )}
       </Flex>
 
-      {/* What is not real yet — the three figures, only while the racks run past one page (pending.ts). */}
-      <NotImplementedSummary list={pending} />
-
       {/* THE FIGURES OVER THE LIST, the order list's card strip (a-list-summary-is-the-order-lists-card-strip) — the
           racks lead; then filled, empty, and the pieces on them (the-rack-list-leads-with-its-figures). They describe
-          the list as it is narrowed: a search narrows them too. */}
+          the WHOLE list as it is narrowed — every page of it; a search narrows them too. */}
       <SummaryStrip testId="racks-summary">
         <SummaryCard
           emphasis
@@ -385,22 +378,19 @@ export function RacksPage() {
         />
         <SummaryCard
           label={t("racks.stat.filled")}
-          mark={pageMark}
-          value={figure(filled)}
+          value={statFigure(figures?.filled)}
           note={t("racks.stat.filledNote")}
           testId="racks-stat-filled"
         />
         <SummaryCard
           label={t("racks.stat.empty")}
-          mark={pageMark}
-          value={figure(racks.length - filled)}
+          value={statFigure(figures?.empty)}
           note={t("racks.stat.emptyNote")}
           testId="racks-stat-empty"
         />
         <SummaryCard
           label={t("racks.stat.stock")}
-          mark={pageMark}
-          value={loading ? "—" : t("racks.stockCount", { count: pieces })}
+          value={figures === undefined ? "—" : t("racks.stockCount", { count: figures.pieces })}
           note={t("racks.stat.stockNote")}
           testId="racks-stat-stock"
         />

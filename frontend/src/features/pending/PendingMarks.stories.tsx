@@ -84,12 +84,11 @@ export const HiddenLeavesNothingBehind: Story = {
   },
 };
 
-// The accept page's copy, borrowed for the same reason as LIST's: one part against a business decision, two not.
-const CONFLICTED: PendingList<"courierPhoto" | "brokenPhoto" | "brokenRack"> = {
+// The accept page's copy, borrowed for the same reason as LIST's: one part against a business decision, one not.
+const CONFLICTED: PendingList<"codFromArrival" | "brokenRack"> = {
   ns: "restock.accept",
   parts: [
-    { id: "courierPhoto", kind: "dropped" },
-    { id: "brokenPhoto", kind: "dropped" },
+    { id: "codFromArrival", kind: "missing" },
     { id: "brokenRack", kind: "dropped", conflict: true },
   ],
 };
@@ -113,7 +112,7 @@ export const AConflictIsSaidInItsRow: Story = {
     const row = await canvas.findByTestId("pending-row-brokenRack-conflict");
     await waitFor(() => expect(row).toBeVisible());
     await expect(row).toHaveTextContent("Against a business decision: a broken unit is thrown away — no rack holds it.");
-    await expect(canvas.queryByTestId("pending-row-brokenPhoto-conflict")).toBeNull();
+    await expect(canvas.queryByTestId("pending-row-codFromArrival-conflict")).toBeNull();
 
     await expect(canvas.getByTestId("not-implemented-brokenRack")).toHaveAttribute(
       "title",

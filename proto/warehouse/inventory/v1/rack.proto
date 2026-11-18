@@ -26,6 +26,13 @@ service RackService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // THE FIGURES OVER THE RACK LIST (the-rack-list-leads-with-its-figures) — how many racks, how many hold something, how
+  // many are empty, and the pieces on them all, over EVERY rack the list matches, never over the page it serves.
+  rpc RackStat(RackStatRequest) returns (RackStatResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // One rack in full, for the detail page (#138).
   rpc RackDetail(RackDetailRequest) returns (RackDetailResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
@@ -176,6 +183,46 @@ message RackListResponse {
   repeated RackListResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// RackStatRequest — the Racks list's card strip (the-rack-list-leads-with-its-figures). It describes the SAME racks the
+// list does, so it takes the list's own filter and RackListRequest's roles exactly: anyone who may read the list may read
+// its figures.
+message RackStatRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The list's filter — a search narrows the figures too: they describe the list as it is shown.
+  RackListFilter filter = 2;
+}
+
+// RackPreview — the figures over every rack the list matches, whatever page the list is on. A rack's stock is RackList's
+// STOCK slice for it (the sum of its products' stock counts, a-rack-shows-its-stock-count-for-now), so a rack is FILLED
+// when that is above 0 and EMPTY when it is 0 (an-empty-rack-says-so) — rack_count = filled_count + empty_count.
+message RackPreview {
+  // The racks the list matches — the same number as RackListResponse.page_info.total_items.
+  int64 rack_count = 1;
+  // Racks holding something.
+  int64 filled_count = 2;
+  // Racks holding nothing.
+  int64 empty_count = 3;
+  // The pieces on every one of them — their stock counts summed.
+  int64 stock_count = 4;
+}
+
+message RackStatResponse {
+  RackPreview preview = 1;
 }
 
 message RackDetailRequest {

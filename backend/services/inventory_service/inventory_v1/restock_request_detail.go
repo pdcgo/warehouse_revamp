@@ -49,6 +49,9 @@ func (s *Service) restockDetail(ctx context.Context, requestID, teamID uint64) (
 		// months ago), and the id breaks the tie when two rows share a second — an edit made in the same second as the
 		// create must still read second.
 		Preload("Logs", func(db *gorm.DB) *gorm.DB { return db.Order("created_at ASC, id ASC") }).
+		// What each edit changed (00049, edits-are-in-the-same-trail), in the order the edit wrote it — one more read
+		// over the trail's ids, on restock_log_changes_log_idx. A status row and an old edit have none.
+		Preload("Logs.Changes", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Where("id = ? AND (team_id = ? OR warehouse_id = ?)", requestID, teamID, teamID).
 		First(&rr).
 		Error

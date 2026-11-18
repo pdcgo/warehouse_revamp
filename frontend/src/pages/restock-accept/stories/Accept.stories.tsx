@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { restockRequestService } from "../../../../.storybook/restockStub";
+import { restockAcceptScenario } from "../../../../.storybook/restockAcceptScenario";
+import { holdUploads, refuseUploads } from "../../../../.storybook/uploadScenario";
 import { RestockProblemType, RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
   A_01_1,
@@ -10,10 +12,12 @@ import {
   COFFEE,
   PHOTO,
   RICE,
+  B_02_1,
   acceptControl,
   askCharge,
   count,
   countWhole,
+  expectAccept,
   lineOf,
   loaded,
   place,
@@ -172,9 +176,11 @@ export const AcceptingCountsTheBoxIn: Story = {
   },
 };
 
-// …and Terima says, after it lands, everything given that was not kept — in one toast, never a silent loss.
-export const AcceptingSaysWhatWasNotKept: Story = {
-  name: "Says what was not kept",
+// THE DOOR'S PHOTOS ARE KEPT (a-broken-product-carries-a-photo, the-courier-slip-has-an-optional-photo): Terima sends the
+// slip's document with the charge and the broken units' on their line — the uploads made as they were picked — and the
+// rice line, with nothing broken, sends none. Nothing is left to say was not kept, so no warning follows.
+export const AcceptingKeepsTheDoorsPhotos: Story = {
+  name: "Keeps the door's photos",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const pid = COFFEE.productId;
@@ -182,19 +188,122 @@ export const AcceptingSaysWhatWasNotKept: Story = {
     await askCharge(canvasElement);
     await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
     await typeInto(canvas.getByTestId("accept-courier-note"), "Biaya COD");
-    await userEvent.upload(within(canvas.getByTestId("accept-courier-photo")).getByTestId("accept-courier-photo-input"), PHOTO());
+    const slip = within(canvas.getByTestId("accept-courier-photo"));
+    await userEvent.upload(slip.getByTestId("accept-courier-photo-input"), PHOTO());
+    await waitFor(() => expect(slip.getByTestId("accept-courier-photo-shown")).toHaveAttribute("data-state", "kept"));
     await count(canvasElement, pid, "12", "1");
     const line = await lineOf(canvasElement, pid);
     await userEvent.upload(await line.findByTestId(`accept-broken-photo-${pid}-input`), PHOTO());
-    await line.findByTestId(`accept-broken-photo-${pid}-shown`);
+    await waitFor(() => expect(line.getByTestId(`accept-broken-photo-${pid}-shown`)).toHaveAttribute("data-state", "kept"));
     await place(canvasElement, pid, 0, A_01_1);
     await countWhole(canvasElement, RICE.productId, A_01_2);
 
     await confirmAccept(canvasElement);
     await expect(await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 })).toBeInTheDocument();
-    await expect(
-      await screen.findByText("Not kept: the courier's slip photo, the broken products' photo."),
-    ).toBeInTheDocument();
+
+    // What was SENT — the stub's uploaded documents, each where it belongs.
+    await expect(restockAcceptScenario.photos).toHaveLength(1);
+    const sent = restockAcceptScenario.photos[0]!;
+    await expect(sent.slip).toMatch(/^stub-upload-/);
+    await expect(sent.broken[COFFEE.id.toString()]).toMatch(/^stub-upload-/);
+    await expect(sent.broken[COFFEE.id.toString()]).not.toBe(sent.slip);
+    await expect(sent.broken[RICE.id.toString()]).toBe("");
+
+    // …and kept on the restock: the slip beside the charge, the photo on the coffee's broken row.
+    const stored = (
+      await restockRequestService.restockRequestDetail!({ teamId: 11n, requestId: 502n } as never, {} as never)
+    ).request!;
+    await expect(stored.warehouseAdditionalCostFile).toBe(sent.slip);
+    const coffee = stored.items!.find((l) => l.productId === COFFEE.productId)!;
+    await expect(coffee.problems!.find((p) => p.type === RestockProblemType.BROKEN)?.photoFile).toBe(
+      sent.broken[COFFEE.id.toString()],
+    );
+    await expect(screen.queryByText(/^Not kept:/)).toBeNull();
+  },
+};
+
+// …and only what goes with what it belongs to: a slip picked under *Ada*, then the charge taken back to *Tidak ada*, is not
+// sent — there is no charge for it to go with. A rack for the broken units is still the one thing not kept, and Terima
+// still says so (a-broken-product-may-go-on-a-rack).
+export const AcceptingSaysWhatWasNotKept: Story = {
+  name: "Says what was not kept",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const pid = COFFEE.productId;
+
+    await askCharge(canvasElement);
+    const slip = within(canvas.getByTestId("accept-courier-photo"));
+    await userEvent.upload(slip.getByTestId("accept-courier-photo-input"), PHOTO());
+    await waitFor(() => expect(slip.getByTestId("accept-courier-photo-shown")).toHaveAttribute("data-state", "kept"));
+    await userEvent.click(canvas.getByTestId("accept-courier-asked-none"));
+    await count(canvasElement, pid, "12", "1");
+    await place(canvasElement, pid, 0, A_01_1);
+    const line = await lineOf(canvasElement, pid);
+    await userEvent.click(line.getByTestId(`accept-broken-to-rack-${pid}`));
+    const row = within(await line.findByTestId(`accept-placement-broken-${pid}`));
+    const field = within(row.getByTestId(`accept-broken-place-${pid}`));
+    await userEvent.click(field.getByTestId("rack-select"));
+    const option = await field.findByTestId(`rack-select-option-${B_02_1}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await countWhole(canvasElement, RICE.productId, A_01_2);
+
+    await confirmAccept(canvasElement);
+    await expect(await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 })).toBeInTheDocument();
+    await expect(restockAcceptScenario.photos[0]?.slip).toBe("");
+    await expect(await screen.findByText("Not kept: the broken products' rack.")).toBeInTheDocument();
+  },
+};
+
+// A PHOTO STILL ON ITS WAY HOLDS TERIMA (a-save-button-says-what-it-waits-for): the box is counted, but the broken units'
+// photo has not finished uploading — the line by Terima names it, and Terima waits; the moment it lands, Terima is free.
+export const TerimaWaitsForAPhotoOnItsWay: Story = {
+  name: "Waits for a photo on its way",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const pid = COFFEE.productId;
+
+    await count(canvasElement, pid, "12", "1");
+    await place(canvasElement, pid, 0, A_01_1);
+    await countWhole(canvasElement, RICE.productId, A_01_2);
+    await expectAccept(canvasElement, true);
+
+    const release = holdUploads();
+    const line = await lineOf(canvasElement, pid);
+    await userEvent.upload(await line.findByTestId(`accept-broken-photo-${pid}-input`), PHOTO());
+    await waitFor(() =>
+      expect(line.getByTestId(`accept-broken-photo-${pid}-shown`)).toHaveAttribute("data-state", "uploading"),
+    );
+    await expect(canvas.getByTestId(`accept-ready-line-missing-photo-line-${pid}`)).toHaveTextContent(
+      "photo still uploading · Kopi Arabika 250g",
+    );
+    await expectAccept(canvasElement, false);
+
+    release();
+    await waitFor(() => expect(line.getByTestId(`accept-broken-photo-${pid}-shown`)).toHaveAttribute("data-state", "kept"));
+    await waitFor(() => expect(canvas.queryByTestId(`accept-ready-line-missing-photo-line-${pid}`)).toBeNull());
+    await expectAccept(canvasElement, true);
+  },
+};
+
+// A PHOTO THAT CANNOT BE UPLOADED IS SAID, NEVER KEPT SILENTLY: the refusal is a toast in the photo's own words, the
+// picker reads as it did before, and Terima waits for nothing — the photo is optional (a-broken-product-carries-a-photo).
+export const ARefusedPhotoIsSaid: Story = {
+  name: "A refused photo",
+  play: async ({ canvasElement }) => {
+    const pid = COFFEE.productId;
+
+    await count(canvasElement, pid, "12", "1");
+    await place(canvasElement, pid, 0, A_01_1);
+    await countWhole(canvasElement, RICE.productId, A_01_2);
+
+    refuseUploads();
+    const line = await lineOf(canvasElement, pid);
+    await userEvent.upload(await line.findByTestId(`accept-broken-photo-${pid}-input`), PHOTO());
+    await expect(await screen.findByText("The photo could not be uploaded")).toBeInTheDocument();
+    await waitFor(() => expect(line.queryByTestId(`accept-broken-photo-${pid}-shown`)).toBeNull());
+    await expect(line.getByTestId(`accept-broken-photo-${pid}-pick`)).toHaveTextContent("Add Photo");
+    await expectAccept(canvasElement, true);
   },
 };
 

@@ -35,7 +35,8 @@ const (
 )
 
 // What a trail row says beside its statuses (edits-are-in-the-same-trail). A status change says what moved it; an
-// edit keeps the status and says it was an edit.
+// edit keeps the status and says it was an edit — WHAT it changed sits under the row, field by field
+// (restock_log_changes.go), so an edit written before those were kept reads exactly as a new one's description does.
 const (
 	restockLogCreated   = "created"
 	restockLogEdited    = "edited"
@@ -164,8 +165,11 @@ func restockPaymentFromText(text string) inventoryv1.RestockPaymentType {
 
 // restockLogToProto carries one trail row over the wire, its statuses read back from the stored words. "" as the
 // from-status is the create, which the wire says as UNSPECIFIED.
+//
+// An edit's row carries what it changed (edits-are-in-the-same-trail) — when the caller preloaded it, which only Detail
+// does. A row written before the changes were kept has none and goes out as it always did: its bare "edited".
 func restockLogToProto(l *inventory_service_models.RestockLog) *inventoryv1.RestockLog {
-	return &inventoryv1.RestockLog{
+	out := &inventoryv1.RestockLog{
 		Id:          l.ID,
 		FromStatus:  restockStatusFromText(l.FromStatus),
 		ToStatus:    restockStatusFromText(l.ToStatus),
@@ -175,6 +179,12 @@ func restockLogToProto(l *inventory_service_models.RestockLog) *inventoryv1.Rest
 		// The "by Root team" badge beside the actor (an-override-shows-a-platform-badge).
 		IsOverride: l.IsOverride,
 	}
+
+	for i := range l.Changes {
+		out.Changes = append(out.Changes, restockLogChangeToProto(&l.Changes[i]))
+	}
+
+	return out
 }
 
 // problemCounts is how many of one line's units were broken and how many missing.
@@ -264,6 +274,7 @@ func restockRequestToProto(r *inventory_service_models.Restock) *inventoryv1.Res
 			PriceUnit: row.PriceUnit,
 			Total:     row.Total,
 			Note:      row.Note,
+			PhotoFile: row.PhotoFile,
 		})
 	}
 
@@ -323,11 +334,29 @@ func restockRequestToProto(r *inventory_service_models.Restock) *inventoryv1.Res
 		// The courier's charge, one per restock with its note (the-courier-is-paid-once-per-restock).
 		WarehouseAdditionalCost:     r.WarehouseAdditionalCost,
 		WarehouseAdditionalCostNote: r.WarehouseAdditionalCostNote,
+		WarehouseAdditionalCostFile: r.WarehouseAdditionalCostFile,
 	}
 
 	// THE TRAIL, oldest first — empty unless the caller preloaded it, which only Detail does.
 	for i := range r.Logs {
 		out.Logs = append(out.Logs, restockLogToProto(&r.Logs[i]))
+	}
+
+	// The note's own writer (the-notes-are-one-per-writer) — 0 / 0 / false on a note last written before 00050, which
+	// the screen reads as "not recorded", never as somebody.
+	out.NoteByUserId = r.NoteByUserID
+	out.NoteByIsOverride = r.NoteByIsOverride
+	if r.NoteAt != nil {
+		out.NoteAtUnix = r.NoteAt.Unix()
+	}
+
+	// The receiving warehouse's own note and its writer (the-warehouse-writes-its-own-note) — "" / 0 / 0 / false until
+	// the warehouse first writes it.
+	out.WarehouseNote = r.WarehouseNote
+	out.WarehouseNoteByUserId = r.WarehouseNoteByUserID
+	out.WarehouseNoteByIsOverride = r.WarehouseNoteByIsOverride
+	if r.WarehouseNoteAt != nil {
+		out.WarehouseNoteAtUnix = r.WarehouseNoteAt.Unix()
 	}
 
 	// NULL means "it has not happened", which the wire says as 0, not as the zero time.Time.

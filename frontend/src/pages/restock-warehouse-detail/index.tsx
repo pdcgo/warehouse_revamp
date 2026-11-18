@@ -8,7 +8,7 @@ import { rpcError } from "../../api/clients";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
-import { useRestockRequest } from "../../features/restock/queries";
+import { useRestockDoorPhotos, useRestockRequest } from "../../features/restock/queries";
 import { shortfall } from "../../features/restock/summary";
 import { CourierChargeFacts, DeliveryFacts } from "../../features/restock/RestockFacts";
 import { RestockNotes } from "../../features/restock/RestockNotes";
@@ -97,6 +97,11 @@ export function RestockWarehouseDetailPage() {
 
   // Who the goods are coming FROM. TeamDetail is unscoped, so the name resolves for either side.
   const requester = useTeamDetail({ teamId: requestingTeamId, enabled: requestingTeamId > 0n });
+
+  // THE DOOR'S PHOTOS — the broken units' and the courier's slip, as this warehouse kept them at Terima
+  // (the-detail-pages-show-the-broken-photo, the-detail-pages-show-the-slip-and-the-broken-rack). One read, only when
+  // the restock kept one.
+  const doorPhotos = useRestockDoorPhotos({ teamId, request });
 
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
   // NO PEMBAYARAN (owner: *"harga barang dan totalnya juga tidak perlu"*, the-warehouse-reads-the-box-not-the-purchase) —
@@ -235,7 +240,7 @@ export function RestockWarehouseDetailPage() {
           <CourierChargeFacts
             request={request}
             owed={t("restock.detail.courierChargeOwedToUs", { team: fromName })}
-            slipMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="courierPhoto" />}
+            slipUrl={doorPhotos.slip}
           />
         ) : undefined
       }
@@ -246,29 +251,24 @@ export function RestockWarehouseDetailPage() {
     "products",
     <LinesCard
       request={request}
-      brokenPhotoMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="brokenPhoto" />}
+      brokenPhotos={doorPhotos.broken}
       brokenRackMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="brokenRack" />}
     />,
     "restock-detail-products",
   );
   // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, READ here, never changed; this warehouse's,
-  // WRITTEN here (the-warehouse-writes-its-own-note), which nothing stores yet.
+  // WRITTEN here and kept with its writer and time (the-warehouse-writes-its-own-note).
   const note = section(
     "note",
-    <RestockNotes
-      request={request}
-      teamId={teamId}
-      side="warehouse"
-      sellingByMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="sellingNoteBy" />}
-      warehouseMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="warehouseNoteKept" />}
-    />,
+    <RestockNotes request={request} teamId={teamId} side="warehouse" />,
     "restock-detail-note-section",
   );
+  // The trail, and under an edit what it changed (edits-are-in-the-same-trail) — the box's side only: no price, total,
+  // supplier, store, account, Order ID or shipping (the-warehouse-reads-the-box-not-the-purchase), so no `purchase`.
   const timeline = section(
     "timeline",
-    <RestockTimeline request={request} bare />,
+    <RestockTimeline request={request} bare teamId={teamId} />,
     "restock-detail-timeline-section",
-    <NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="trailChanges" />,
   );
 
   return (

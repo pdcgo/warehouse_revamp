@@ -21,7 +21,7 @@ import (
 // across field by field, and each figure named to inventory's own (Terjual → sold, Siap → ready).
 func TestSupplierGoodsReader_AnswersFromInventory(t *testing.T) {
 	db := san_testdb.DB(t)
-	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
+	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil), db)
 	ctx := context.Background()
 
 	restock := inventory_service_models.InventoryTransaction{WarehouseID: 5, TeamID: 12, TxType: inventory_service_models.TxRestock}
@@ -160,7 +160,7 @@ func TestSupplierGoodsReader_TheWarehouseFilterReadsTheBatches(t *testing.T) {
 	restock(gudang6, melati, sinarJaya)
 	restock(gudang5, sinar, lain)
 
-	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
+	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil), db)
 	svc := supplier_v1.NewService(db, nil, nil, reader, nil, nil)
 
 	list := func(scope supplierv1.SupplierListScope, warehouse uint64) []uint64 {

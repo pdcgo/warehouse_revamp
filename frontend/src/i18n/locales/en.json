@@ -501,7 +501,6 @@
     "invalidId": "Invalid product id.",
     "notFound": "Product not found.",
     "team": "Team",
-    "coverOnly": "Cover only",
     "crossPrice": "Cross price",
     "cost": "Cost",
     "openOwn": "Open in My Product",
@@ -519,10 +518,6 @@
         "label": "Priority / Research",
         "reason": "sample — a product's division is set per product but stored nowhere yet, so it is the same invented one the Discover card shows"
       },
-      "gallery": {
-        "label": "Images",
-        "reason": "only the cover — the full gallery comes from ProductDetail, which answers only the owning team"
-      },
       "derived": {
         "label": "Derived products",
         "reason": "sample — goods returned to another team become that team's product; the link is not recorded yet, so the rows are the same ones the owner's product page shows"
@@ -534,10 +529,6 @@
       "daily": {
         "label": "Daily in and out",
         "reason": "sample — stock movements are not summed per day yet; the same sample as the owner's product page"
-      },
-      "history": {
-        "label": "Stock history",
-        "reason": "sample — every team may read the stock history, but only the owning team can read it yet; each warehouse ends at its real ready stock. Your own team's products show the real history"
       }
     }
   },
@@ -849,14 +840,7 @@
     },
     "picker": {
       "archived": "Archived",
-      "none": "No products found",
-      "typeTwo": "Type at least 2 letters of a name or product code",
-      "pending": {
-        "warehouseOpensEmpty": {
-          "label": "This warehouse's products, opened with nothing typed",
-          "reason": "A warehouse's product search still needs 2 letters, so the list cannot show before they are typed."
-        }
-      }
+      "none": "No products found"
     }
   },
   "bundles": {
@@ -1441,44 +1425,17 @@
         "valueLine": "goods + shipping",
         "details": "Details",
         "paymentsTitle": "Transaction Value by Paying Account",
-        "paymentsNone": "No operational account to pay restocks from."
+        "paymentsNone": "No restock in this status.",
+        "noAccount": "No paying account",
+        "accountRef": "Account #{{id}}"
       },
       "pending": {
-        "export": {
-          "label": "Export",
-          "reason": "Nothing makes a restock file yet — the click is thrown away."
-        },
-        "courier": {
-          "label": "Filtering by courier",
-          "reason": "The restock list cannot ask for a courier yet — the pick is kept, the rows do not move."
-        },
-        "summary": {
-          "label": "Restock statistics",
-          "reason": "Nothing counts a team's restocks by status yet — every figure is a sample, and it does not follow the filters."
-        },
-        "payments": {
-          "label": "Value by paying account",
-          "reason": "Each restock names its paying account, but nothing sums them yet — the accounts are real, the split is a sample."
-        },
         "cancelReview": {
           "label": "Checking a cancellation",
           "reason": "The cancel dialog says a cancellation will be checked; nothing checks it yet."
-        },
-        "sellingNoteBy": {
-          "label": "Who wrote the note, and when",
-          "reason": "Not stored — shown is the restock's last raise or edit, which may have changed only a line."
-        },
-        "warehouseNote": {
-          "label": "The warehouse's note",
-          "reason": "Nothing stores a warehouse note on the restock yet."
-        },
-        "lateNote": {
-          "label": "Editing the note later",
-          "reason": "Once the restock has arrived the server keeps its note closed — an edit then is not saved."
         }
       },
       "export": "Export",
-      "exportPending": "Exporting restocks is not available yet.",
       "courierAll": "All couriers"
     },
     "searchPlaceholder": "Search restock, tracking, order or product code",
@@ -1513,10 +1470,6 @@
       "clearPicked": "Clear the selection",
       "pickFull": "At most {{max}} restocks a print — the rest cannot be ticked.",
       "pending": {
-        "cod": {
-          "label": "COD paid",
-          "reason": "Nothing sums the courier's charge this warehouse paid yet — the figure is a sample."
-        },
         "arrivalCod": {
           "label": "Courier's charge at Mark Arrived",
           "reason": "The charge, its note and the slip's photo typed in the Mark Arrived dialog are not kept — marking arrived takes none of them yet. Enter them again at Accept.",
@@ -1585,43 +1538,15 @@
           "label": "Checking a cancellation",
           "reason": "The cancel dialog says a cancellation will be checked; nothing checks it yet."
         },
-        "sellingNoteBy": {
-          "label": "Who wrote the note, and when",
-          "reason": "Not stored — shown is the restock's last raise or edit, which may have changed only a line."
-        },
-        "warehouseNote": {
-          "label": "The warehouse's note",
-          "reason": "Nothing stores a warehouse note on the restock yet."
-        },
-        "trailChanges": {
-          "label": "What an edit changed",
-          "reason": "The server records that the restock was edited, not what changed."
-        },
-        "lateNote": {
-          "label": "Editing the note later",
-          "reason": "Once the restock has arrived the server keeps its note closed — an edit then is not saved."
-        },
         "arrivalCod": {
           "label": "Courier's charge at Mark Arrived",
           "reason": "The charge, its note and the slip's photo typed in the Mark Arrived dialog are not kept — marking arrived takes none of them yet. Enter them again at Accept.",
           "conflict": "the courier's charge is entered at accept."
         },
-        "brokenPhoto": {
-          "label": "Broken product photo",
-          "reason": "A sample — no photo is kept yet, so every broken line shows the same drawing."
-        },
-        "courierPhoto": {
-          "label": "Courier's slip photo",
-          "reason": "A sample — no photo of the slip is kept yet, so every restock with a charge shows the same drawing."
-        },
         "brokenRack": {
           "label": "Broken products' rack",
           "reason": "A sample — Put on a rack is not kept yet, so the line's first place is shown as where the broken units went.",
           "conflict": "a broken unit is thrown away — no rack holds it."
-        },
-        "warehouseNoteKept": {
-          "label": "The warehouse's note",
-          "reason": "Written here and not kept — the warehouse's note has nowhere to go yet; a save says so."
         }
       },
       "navLabel": "Restock sections",
@@ -1666,7 +1591,39 @@
       "lost": "Marked lost",
       "changed": "Status changed",
       "awaitingSign": "Waiting for the warehouse to sign for the box",
-      "awaitingCount": "Waiting for the warehouse to count it in"
+      "awaitingCount": "Waiting for the warehouse to count it in",
+      "change": {
+        "none": "—",
+        "unknownWarehouse": "Warehouse #{{id}}",
+        "unknownCourier": "Courier #{{id}}",
+        "unknownAccount": "Account #{{id}}",
+        "warehouse": "Warehouse {{from}} → {{to}}",
+        "receipt": "Tracking no. {{from}} → {{to}}",
+        "receiptFileAdded": "Label photo added",
+        "receiptFileReplaced": "Label photo replaced",
+        "receiptFileRemoved": "Label photo removed",
+        "shipment": "Courier {{from}} → {{to}}",
+        "invoiceRef": "Order ID {{from}} → {{to}}",
+        "account": "Paid from {{from}} → {{to}}",
+        "shipmentCost": "Shipping {{from}} → {{to}}",
+        "noteSet": "Note “{{to}}”",
+        "noteChanged": "Note “{{from}}” → “{{to}}”",
+        "noteRemoved": "Note removed",
+        "warehouseNoteSet": "Warehouse note “{{to}}”",
+        "warehouseNoteChanged": "Warehouse note “{{from}}” → “{{to}}”",
+        "warehouseNoteRemoved": "Warehouse note removed",
+        "lineAdded": "Added {{name}} × {{count}}",
+        "lineRemoved": "Removed {{name}} × {{count}}",
+        "count": "{{from}} → {{to}} pcs",
+        "total": "total {{from}} → {{to}}",
+        "supplier": "supplier {{from}} → {{to}}",
+        "supplierSet": "supplier {{to}}",
+        "store": "store {{from}} → {{to}}",
+        "storeSet": "store {{to}}",
+        "lineNoteSet": "“{{to}}”",
+        "lineNoteChanged": "“{{from}}” → “{{to}}”",
+        "lineNoteRemoved": "note removed"
+      }
     },
     "summary": {
       "totalProducts": "Total products",
@@ -1805,13 +1762,9 @@
       "receiptTaken": "This tracking number is already on restock #{{id}}",
       "refCheckFailed": "Could not check whether another restock has it.",
       "pending": {
-        "invoiceRefCheck": {
-          "label": "Order ID check",
-          "reason": "Checked on this screen only. The server does not refuse a repeated Order ID yet, so two saves at the same moment both pass."
-        },
         "receiptCheck": {
           "label": "Tracking number check",
-          "reason": "Checked on this screen, over this team's restocks only — a tracking number on another team's restock is not caught, and the server does not refuse a repeated one yet."
+          "reason": "Checked on this screen and refused by the server, over this team's restocks only — a tracking number on another team's restock is not caught, and whether it should be is not decided."
         }
       }
     },
@@ -1860,12 +1813,6 @@
       "printShortcut": "Print (Ctrl+P)",
       "nothingToPrint": "No labels to print — every count is 0.",
       "headingMany": "Labels · {{count}} Restocks",
-      "pending": {
-        "byIds": {
-          "label": "Restocks read one by one",
-          "reason": "There is no read of several restocks at once yet, so each is read on its own — its detail, and an accepted one's labels: 5 restocks are up to 10 calls, 50 up to 100. With a read by ids it would be two."
-        }
-      },
       "backAny": "Back",
       "restocks": {
         "title": "Restocks",
@@ -1973,7 +1920,9 @@
         "received": "received · {{name}}",
         "count": "a count that fits · {{name}}",
         "brokenRack": "rack for the broken units · {{name}}",
-        "placement": "placement · {{name}}"
+        "placement": "placement · {{name}}",
+        "photo": "photo still uploading · {{name}}",
+        "slipPhoto": "slip photo still uploading"
       },
       "lineNote": "Selling team:",
       "count": "What arrived",
@@ -2021,14 +1970,6 @@
         "alt": "Photo of the broken products"
       },
       "pending": {
-        "brokenPhoto": {
-          "label": "Broken product photo",
-          "reason": "Picked on this screen and not uploaded — accepting keeps no photo yet."
-        },
-        "courierPhoto": {
-          "label": "Courier's slip photo",
-          "reason": "Picked on this screen and not uploaded — accepting keeps the charge and its note, not the photo."
-        },
         "brokenRack": {
           "label": "Broken products' rack",
           "reason": "Put on a rack is not kept — the broken units are still recorded as thrown away.",
@@ -2047,8 +1988,6 @@
         "pickInPutaway": "Its rack is picked under Put away to placements."
       },
       "notKept": {
-        "courierPhoto": "the courier's slip photo",
-        "brokenPhoto": "the broken products' photo",
         "brokenRack": "the broken products' rack"
       },
       "expiry": {
@@ -2131,15 +2070,15 @@
       "save": "Save Notes",
       "saved": "Notes saved",
       "saveFailed": "Couldn't save the notes",
-      "notStored": "Not saved — once the restock has arrived the server does not take a note change yet.",
-      "warehouseNotStored": "The warehouse's note was not kept — nothing stores it yet.",
+      "byFallback": "the restock's last change — the note's own writer was not recorded",
       "warehouseLabel": "The warehouse's note",
       "warehouseEditTitle": "Edit the Warehouse's Note"
     },
     "photo": {
       "add": "Add Photo",
       "replace": "Replace Photo",
-      "remove": "Remove photo"
+      "remove": "Remove photo",
+      "uploadFailed": "The photo could not be uploaded"
     }
   },
   "shops": {
@@ -2453,12 +2392,6 @@
       "emptyNote": "free to put away into, or delete",
       "stock": "Stock on racks",
       "stockNote": "every rack's pieces, summed"
-    },
-    "pending": {
-      "pageTotals": {
-        "label": "Holding stock, Empty and Stock on racks",
-        "reason": "Nothing sums every rack yet, so these three are counted from the racks on this page — racks on the other pages are not in them."
-      }
     },
     "reportFound": {
       "action": "Found",
@@ -3422,6 +3355,7 @@
     "subtitle": "Stock that came in together at one price — one per product of each accepted restock.",
     "fromRestock": "Restock #{{id}}",
     "fromReturn": "Return",
+    "fromReturnOrder": "Return · order #{{id}}",
     "none": "No batches yet",
     "noneHint": "A batch is made when a restock is accepted — one for each product with good units.",
     "statBatchesNote": "in this list",
@@ -3446,16 +3380,6 @@
       "today": "today",
       "ago_one": "expired {{count}} day ago",
       "ago_other": "expired {{count}} days ago"
-    },
-    "pending": {
-      "returnLink": {
-        "label": "The return a batch came from",
-        "reason": "A batch read carries the restock's number only, so a batch a return made does not know its return — it cannot open the return's page yet."
-      },
-      "teamFilter": {
-        "label": "Team filter",
-        "reason": "The batch list cannot be narrowed by team yet — the pick is kept, but every batch still shows."
-      }
     },
     "colRacks": "Racks"
   },

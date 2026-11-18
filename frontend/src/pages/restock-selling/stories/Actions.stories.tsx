@@ -75,8 +75,10 @@ export const CancelFromTheRowAsksAboutTheMoney: Story = {
     // It warns that a cancellation is checked (a-restock-cancel-warns-it-will-be-checked).
     const review = screen.getByTestId("restock-cancel-review");
     await expect(review).toHaveTextContent("Cancelling a restock will be checked.");
-    // …and nothing checks it yet: marked, the list's fifth.
-    await expect(within(review).getByTestId("not-implemented-cancelReview")).toHaveTextContent("5");
+    // …and nothing checks it yet: marked, the list's first and only (the marks ahead of it are gone — the courier filter,
+    // the statistics' `summary` and `payments` since RestockSellingStat counts them, and Ekspor since
+    // RestockRequestExport writes the file).
+    await expect(within(review).getByTestId("not-implemented-cancelReview")).toHaveTextContent("1");
     await expect(confirm).toBeDisabled();
     await userEvent.click(screen.getByTestId("restock-cancel-money-no"));
     await waitFor(() => expect(confirm).toBeEnabled());

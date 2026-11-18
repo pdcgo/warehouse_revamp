@@ -176,12 +176,11 @@ export const TheBrokenNoteShowsAnExample: Story = {
 };
 
 // A BROKEN LINE TAKES A PHOTO (owner: *"foto maksudku untuk produk rusak"*, a-broken-product-carries-a-photo) — under the
-// broken note, only once something is broken; optional, one per line, replaced or removed. Not kept yet: the page's mark
-// is beside it and its strip at the top.
+// broken note, only once something is broken; optional, one per line, replaced or removed. KEPT: picked, it is uploaded
+// at once under this warehouse (the label photo's way), so it carries no pending mark any more.
 export const ABrokenLineTakesAPhoto: Story = {
   name: "Broken photo",
   play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
     const pid = COFFEE.productId;
     const line = await lineOf(canvasElement, pid);
 
@@ -191,12 +190,12 @@ export const ABrokenLineTakesAPhoto: Story = {
     await typeInto(line.getByTestId(`accept-broken-${pid}`), "1");
     const photo = within(await line.findByTestId(`accept-broken-photo-${pid}`));
     await expect(photo.getByTestId(`accept-broken-photo-${pid}-pick`)).toHaveTextContent("Add Photo");
-    // The page's first mark — the lines lead the page; the charge's two marks are in the info after them.
-    await expect(photo.getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("1");
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await expect(photo.queryByTestId("not-implemented-brokenPhoto")).toBeNull();
 
     await userEvent.upload(photo.getByTestId(`accept-broken-photo-${pid}-input`), PHOTO());
     await waitFor(() => expect(photo.getByTestId(`accept-broken-photo-${pid}-shown`)).toHaveTextContent("rusak.png"));
+    // Uploaded: the stub's document came back, and the photo is the kept one.
+    await waitFor(() => expect(photo.getByTestId(`accept-broken-photo-${pid}-shown`)).toHaveAttribute("data-state", "kept"));
     await expect(photo.getByTestId(`accept-broken-photo-${pid}-pick`)).toHaveTextContent("Replace Photo");
 
     await userEvent.click(photo.getByTestId(`accept-broken-photo-${pid}-remove`));
@@ -209,7 +208,7 @@ export const ABrokenLineTakesAPhoto: Story = {
 // thrown away, as before and by default, or onto a rack, which then must be chosen: Terima waits for it. The rack is
 // picked in Taruh ke penempatan, as a row marked Rusak (owner: *"rusak kalau ditaruh di rak kasih ke penempatan dan tanda
 // penempatan rusak"*, the-broken-units-rack-is-a-marked-placement), holding all the broken units; a rack the good units
-// hold is off there. Not kept yet: the mark is on the rack choice, the page's second.
+// hold is off there. Not kept yet: the mark is on the rack choice, the page's first.
 export const BrokenUnitsCanGoOnARack: Story = {
   name: "Broken onto a rack",
   play: async ({ canvasElement }) => {
@@ -226,7 +225,8 @@ export const BrokenUnitsCanGoOnARack: Story = {
     await expectAccept(canvasElement, true);
 
     await userEvent.click(to.getByTestId(`accept-broken-to-rack-${pid}`));
-    await expect(to.getByTestId("not-implemented-brokenRack")).toHaveTextContent("2");
+    // The page's first mark now — the photos above it are kept.
+    await expect(to.getByTestId("not-implemented-brokenRack")).toHaveTextContent("1");
     await expect(to.getByTestId(`accept-broken-to-hint-${pid}`)).toHaveTextContent("Put away to placements");
 
     // The marked row in the put-away panel: Rusak, its rack, 1 pcs — and Terima waits for the rack.

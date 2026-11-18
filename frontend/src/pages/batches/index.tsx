@@ -11,8 +11,6 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useWarehouseBatches } from "../../features/inventory/queries";
 import { BatchExplainer } from "../../features/inventory/BatchExplainer";
 import { BatchSource } from "../../features/inventory/BatchSource";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { CopyText } from "../../components/chrome/CopyText";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
@@ -32,7 +30,6 @@ import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, enumCodec, idCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { ExpiryCell } from "../../features/inventory/ExpiryCell";
 import { ExpirySelect } from "./components/ExpirySelect";
-import { BATCH_LIST_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -75,7 +72,7 @@ export function BatchesPage() {
   // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a batch, opens the same
   // narrowed list.
   const [search, setSearch] = useUrlState("q", "", textCodec);
-  // Whose goods — held and thrown away until the list can ask for a team (pending.ts, teamFilter).
+  // Whose goods (the-batch-list-filters-by-team) — the server narrows the list, its pages and its figures to that team's.
   const [teamId, setTeamId] = useUrlState("team", 0n, idCodec);
   const [expiry, setExpiry] = useUrlState("expiry", BatchExpiryFilter.UNSPECIFIED, EXPIRY_CODEC);
   const [dateField, setDateField] = useUrlState("date", BatchDateField.ARRIVED, DATE_FIELD_CODEC);
@@ -90,6 +87,7 @@ export function BatchesPage() {
     warehouseId,
     search: term,
     supplierId: 0n,
+    ownerTeamId: teamId,
     expiry,
     // A range with no bound chosen applies to nothing, so send UNSPECIFIED unless a bound is set.
     dateField: isAllDates(dateRange) ? BatchDateField.UNSPECIFIED : dateField,
@@ -403,10 +401,6 @@ export function BatchesPage() {
         </Box>
       </Stack>
 
-      {/* What is not wired yet — a return batch cannot open its return, and the team filter narrows nothing
-          (pending.ts). */}
-      <NotImplementedSummary list={BATCH_LIST_PENDING} />
-
       {/* THE FIGURES, the order list's card strip (a-list-summary-is-the-order-lists-card-strip) — over the whole
           filtered set, not the page: how many batches, what their ready units are worth, how many expire within 30
           days. */}
@@ -447,20 +441,16 @@ export function BatchesPage() {
         />
         {/* WHOSE GOODS (owner: *"oke, kasih tim"*) — a warehouse holds several selling teams' stock. A search select: there
             is no ceiling on how many teams. Every option is a selling team, so the pick is its name alone
-            (a-one-type-picker-shows-the-name-alone). Held in the URL; its ⚠ says it narrows nothing yet. */}
+            (a-one-type-picker-shows-the-name-alone). Held in the URL; the server narrows the list to that team's batches
+            (the-batch-list-filters-by-team). */}
         <FilterField w="15rem" testId="batches-team-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <TeamSelect
-                teamType={TeamType.SELLING}
-                value={teamId > 0n ? teamId : undefined}
-                placeholder={t("batches.teamAll")}
-                showType={false}
-                onChange={(id) => refilter(() => setTeamId(id))}
-              />
-            </Box>
-            <NotImplemented list={BATCH_LIST_PENDING} id="teamFilter" />
-          </Flex>
+          <TeamSelect
+            teamType={TeamType.SELLING}
+            value={teamId > 0n ? teamId : undefined}
+            placeholder={t("batches.teamAll")}
+            showType={false}
+            onChange={(id) => refilter(() => setTeamId(id))}
+          />
         </FilterField>
         <FilterField w="14rem" testId="batches-expiry-field">
           <ExpirySelect value={expiry} onChange={(v) => refilter(() => setExpiry(v))} />

@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -78,6 +79,13 @@ func (s *Service) RestockRequestCreate(
 		CreatedByUserID: actorFrom(ctx),
 	}
 
+	// The raise WRITES the note — empty or not — so its writer is whoever raised it, at the raise's own instant
+	// (the-notes-are-one-per-writer). CreatedAt is set here rather than by GORM so the note, the row and the trail's
+	// first row carry one moment.
+	raisedAt := time.Now()
+	rr.CreatedAt = raisedAt
+	stampNote(&rr, rr.CreatedByUserID, overrideFrom(ctx), raisedAt)
+
 	// Subtotal, total and each line's unit price, from the lines as typed — stored with them (restockTotals).
 	restockTotals(&rr)
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -102,6 +110,12 @@ func (s *Service) RestockRequestCreate(
 		return linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
 	})
 	if err != nil {
+		// A resi or an Order ID another restock of the team holds (a-reference-in-use-stops-the-restock-form): 00048's
+		// unique index refused the INSERT — named once the transaction is gone (restock_reference_in_use.go).
+		if isUniqueViolation(err) {
+			return nil, s.referenceRefusal(ctx, teamID, 0, rr.Receipt, rr.InvoiceRefID, err)
+		}
+
 		return nil, restockErr(err)
 	}
 

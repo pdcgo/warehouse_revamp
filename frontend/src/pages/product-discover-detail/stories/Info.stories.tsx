@@ -1,10 +1,27 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, waitFor } from "storybook/test";
+import { expect, userEvent, waitFor } from "storybook/test";
 
 import { teams, warehouseStock } from "../../../../.storybook/fixtures";
+import { productImagesCalls } from "../../../../.storybook/productListScenario";
 import { discoverStockSample } from "../../../../.storybook/productStub";
+import { asRole } from "../../../../.storybook/sessionScenario";
+import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { formatRupiahRange } from "../../../lib/money";
-import { AtKopi, AtTeh, DISCOVER_PRODUCT_DETAIL_META, GULA, KOPI, SUGAR_PICTURE, TEH, loaded, sectionOf, stockLoaded } from "./kit";
+import {
+  AtKopi,
+  AtTeh,
+  DISCOVER_PRODUCT_DETAIL_META,
+  GULA,
+  GULA_GALLERY,
+  KOPI,
+  SUGAR_PICTURE,
+  TEH,
+  gulaHasItsGallery,
+  loaded,
+  openPendingStrip,
+  sectionOf,
+  stockLoaded,
+} from "./kit";
 
 // DISCOVER PRODUCT DETAIL — the Info section: whose product it is and no markup, the picture and the derived products,
 // the cross price as the card says it, and the ready figure. The page's stories are grouped by the part of the screen
@@ -43,8 +60,8 @@ export const NamesTheTeamNotTheMarkup: Story = {
 };
 
 // THE PICTURE AND PRODUK TURUNAN, as on the owner's page (owner: *"gambar produk ada, produk turunan juga ditampilkan"*):
-// the shared gallery shows the cover — the one picture a by-ids row carries, marked — and the derived products are the
-// owner's page's sample rows, marked too.
+// the shared gallery shows Gula's one picture, square — its gallery IS its cover, so there is nothing more and nothing
+// marked — and the derived products are the owner's page's sample rows, marked.
 export const ThePictureAndTheDerivedProducts: Story = {
   name: "Picture and derived",
   play: async ({ canvasElement }) => {
@@ -53,10 +70,57 @@ export const ThePictureAndTheDerivedProducts: Story = {
     const derived = await sectionOf(canvas, "derived");
 
     await expect(info.getByTestId("discover-detail-image-0")).toHaveAttribute("src", SUGAR_PICTURE);
-    await expect(info.getByTestId("not-implemented-gallery")).toBeInTheDocument();
+    await expect(info.queryByTestId("discover-detail-thumb-0")).toBeNull();
+    await expect(info.queryByTestId("not-implemented-gallery")).toBeNull();
+    await expect(info.queryByText("Cover only")).toBeNull();
     await expect(derived.getByTestId("pd-derived-to")).toBeInTheDocument();
     await expect(derived.getAllByTestId(/^pd-derived-to-\d+$/).length).toBeGreaterThan(0);
     await expect(derived.getByTestId("not-implemented-derived")).toBeInTheDocument();
+  },
+};
+
+// ANOTHER TEAM'S WHOLE GALLERY (the-discover-detail-shows-no-markup: "the pictures are the product page's gallery") —
+// every picture its owner gave it, in order, the cover first, as a carousel with a thumbnail per picture; a thumbnail
+// shows its picture. Read by ProductByIds' IMAGES slice for this one product — no Hanya sampul, no ⚠.
+export const AnotherTeamsWholeGallery: Story = {
+  name: "Another team's whole gallery",
+  beforeEach: gulaHasItsGallery,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const info = await sectionOf(canvas, "info");
+
+    await waitFor(() => expect(info.getAllByTestId(/^discover-detail-thumb-\d+$/)).toHaveLength(GULA_GALLERY.length));
+    for (const [i, url] of GULA_GALLERY.entries()) {
+      await expect(info.getByTestId(`discover-detail-image-${i}`)).toHaveAttribute("src", url);
+    }
+    await expect(productImagesCalls.at(-1)).toEqual({ teamId: 12n, ids: [GULA.id] });
+
+    await userEvent.click(info.getByTestId("discover-detail-thumb-2"));
+    await waitFor(() => expect(info.getByTestId("discover-detail-thumb-2")).toHaveAttribute("data-current"));
+    await expect(info.getByTestId("discover-detail-thumb-0")).not.toHaveAttribute("data-current");
+
+    await expect(info.queryByTestId("not-implemented-gallery")).toBeNull();
+    await expect(info.queryByText("Cover only")).toBeNull();
+    // …and the page's ⚠ strip no longer lists it.
+    await openPendingStrip(canvas);
+    await expect(canvas.queryByTestId("pending-row-gallery")).toBeNull();
+  },
+};
+
+// THE GALLERY IS DISCOVER'S: a warehouse role asking for it is refused (Discover serves no warehouse) — and a refusal
+// costs the page its gallery alone. The record's cover still stands, nothing else on the page breaks.
+export const ARefusedGalleryKeepsTheCover: Story = {
+  name: "Refused gallery keeps the cover",
+  beforeEach: [gulaHasItsGallery, asRole(Role.WAREHOUSE_ADMIN)],
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const info = await sectionOf(canvas, "info");
+
+    await waitFor(() => expect(productImagesCalls.length).toBeGreaterThan(0));
+    await expect(info.getByTestId("discover-detail-image-0")).toHaveAttribute("src", GULA_GALLERY[0]);
+    await expect(info.queryByTestId("discover-detail-thumb-0")).toBeNull();
+    await expect(canvas.queryByTestId("discover-detail-error")).toBeNull();
+    await expect(info.getByTestId("discover-detail-owner")).toBeInTheDocument();
   },
 };
 

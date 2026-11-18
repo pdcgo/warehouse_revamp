@@ -248,8 +248,13 @@ func (s *Service) BatchDetail(
 	// price (a-stock-in-correction-keeps-the-batch-price) — net of units put back.
 	door.Lost -= logs.CountCorrected
 
+	batch := batchRowToProto(&r)
+
+	// A return's batch names its order (a-returns-batch-opens-its-order) — its page's *Dari*.
+	s.withReturnOrders(ctx, []batchRow{r}, []*inventoryv1.StockBatch{batch})
+
 	resp := &inventoryv1.BatchDetailResponse{
-		Batch:       batchRowToProto(&r),
+		Batch:       batch,
 		ReturnedQty: logs.Qty,
 		BrokenValue: door.Broken,
 		LostValue:   door.Lost,

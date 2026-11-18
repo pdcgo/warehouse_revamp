@@ -2,10 +2,8 @@ package inventory_v1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -14,12 +12,6 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	models "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
-
-// warehouseProductSearchMinQ is the shortest term searched, after trimming — the proto's min_len, held again here
-// because the proto counts the spaces a person typed around it.
-const warehouseProductSearchMinQ = 2
-
-var errWarehouseProductSearchShort = errors.New("type at least 2 characters of a product's name or code")
 
 // WarehouseProductSearch is the warehouse's product picker — Report Found, a count's product plan, a count's found
 // (a-warehouse-picks-only-what-it-has-held): the products with a batch in THIS warehouse, any team's, at 0 today or
@@ -35,6 +27,10 @@ var errWarehouseProductSearchShort = errors.New("type at least 2 characters of a
 // a-unit-never-stocked-here-comes-in-by-restock) — a batch carries its product's owner (a-batch-carries-its-owner), so
 // "held here" and "its team had a batch here" are one set. ProductDiscover is not widened: a warehouse never browses
 // every team's catalogue.
+//
+// NO MINIMUM TERM (a-product-picker-needs-no-two-letters): an empty term lists the first page of the whole held set, by
+// name — the picker opened with nothing typed — and one character is a search. The set is inventory's (never a browse of
+// the catalogue), so listing it whole shows a warehouse nothing it does not hold.
 func (s *Service) WarehouseProductSearch(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.WarehouseProductSearchRequest],
@@ -43,10 +39,6 @@ func (s *Service) WarehouseProductSearch(
 	warehouseID := msg.GetWarehouseId()
 	page := msg.GetPage()
 	q := strings.TrimSpace(msg.GetFilter().GetQ())
-
-	if utf8.RuneCountInString(q) < warehouseProductSearchMinQ {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errWarehouseProductSearchShort)
-	}
 
 	held, err := heldProductIDs(s.db.WithContext(ctx), warehouseID)
 	if err != nil {

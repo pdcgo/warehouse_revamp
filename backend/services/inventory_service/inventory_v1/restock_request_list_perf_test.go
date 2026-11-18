@@ -23,6 +23,11 @@ import (
 // `arrived_by_is_override`, `accepted_by_is_override`) are ONE extra query per page — a GROUP BY over the page's trail
 // rows, by `restock_logs_restock_idx` (restock_id, created_at, id) — whatever the page size or depth. The previous
 // created-only lookup (DISTINCT ON) is EXPLAINed over the same page as the control.
+//
+// The COURIER filter (the-restock-list-exports-and-filters-by-courier): every restock names one of seven couriers
+// (every seventh none), and the list narrows by `shipment_id = ?` inside the team's scope with no index of its own —
+// measured on a selling team's 10 000, a warehouse's ~16 700, and laid over a status tab and an Arrived window
+// (arrived_at, no index either: the Tiba date read since this slice).
 func TestPerf_RestockRequestList(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
 
@@ -31,12 +36,16 @@ func TestPerf_RestockRequestList(t *testing.T) {
 
 	for i := range 50_000 {
 		team := uint64(2 + i%5)
+		created := now.Add(-time.Duration(50_000-i) * time.Minute)
+		arrived := created.Add(time.Hour)
 		restocks = append(restocks, inventory_service_models.Restock{
 			TeamID:          team,
 			WarehouseID:     uint64(900 + i%3),
 			Status:          "accepted",
+			ShipmentID:      []uint64{0, 91, 92, 93, 94, 95, 96}[i%7],
 			CreatedByUserID: 1000*team + uint64(i%40),
-			CreatedAt:       now.Add(-time.Duration(50_000-i) * time.Minute),
+			CreatedAt:       created,
+			ArrivedAt:       &arrived,
 			UpdatedAt:       now,
 		})
 	}
@@ -68,6 +77,20 @@ func TestPerf_RestockRequestList(t *testing.T) {
 		{"selling, 200", &inventoryv1.RestockRequestListRequest{TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 200}}},
 		{"selling, page 100 of 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Page: &commonv1.CommonPagination{Page: 100, Limit: 20}}},
 		{"warehouse, 20", &inventoryv1.RestockRequestListRequest{TeamId: 900, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"selling, courier, 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Filter: &inventoryv1.RestockRequestListFilter{ShipmentId: 93}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"selling, courier, page 50 of 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Filter: &inventoryv1.RestockRequestListFilter{ShipmentId: 93}, Page: &commonv1.CommonPagination{Page: 50, Limit: 20}}},
+		{"warehouse, courier, 20", &inventoryv1.RestockRequestListRequest{TeamId: 900, Filter: &inventoryv1.RestockRequestListFilter{ShipmentId: 93}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"selling, courier + accepted tab, 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Filter: &inventoryv1.RestockRequestListFilter{
+			ShipmentId: 93, Status: inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED,
+		}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"selling, courier + arrived 7 days, 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Filter: &inventoryv1.RestockRequestListFilter{
+			ShipmentId: 93, DateField: inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_ARRIVED,
+			FromUnix: now.AddDate(0, 0, -7).Unix(), ToUnix: now.Unix(),
+		}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"selling, arrived 7 days, 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Filter: &inventoryv1.RestockRequestListFilter{
+			DateField: inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_ARRIVED,
+			FromUnix:  now.AddDate(0, 0, -7).Unix(), ToUnix: now.Unix(),
+		}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
 	}
 
 	for _, c := range cases {
@@ -110,8 +133,8 @@ func TestPerf_RestockRequestList(t *testing.T) {
 			t.Logf("%s wall=%v db=%v queries=%d", c.name, wall, dbTime, probe.Count())
 		}
 
-		t.Logf("%s MEDIAN wall %v, of %d rows badged: created %d, arrived %d, accepted %d",
-			c.name, san_perf.Median(walls), len(res.Msg.GetIds()), created, arrived, accepted)
+		t.Logf("%s MEDIAN wall %v, total %d, of %d rows badged: created %d, arrived %d, accepted %d",
+			c.name, san_perf.Median(walls), res.Msg.GetPageInfo().GetTotalItems(), len(res.Msg.GetIds()), created, arrived, accepted)
 
 		for _, q := range probe.Queries() {
 			if strings.HasPrefix(q.SQL, "SAVEPOINT") || strings.HasPrefix(q.SQL, "RELEASE") {

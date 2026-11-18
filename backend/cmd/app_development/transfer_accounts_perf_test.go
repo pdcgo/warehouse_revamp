@@ -79,7 +79,7 @@ func TestPerf_TransferPayingAccount(t *testing.T) {
 
 	db, probe := san_perf.Wrap(raw)
 	seam := NewRestockPayingAccounts(financial_account_v1.NewService(db, nil, nil))
-	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, seam)
+	svc := inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, seam, nil, nil)
 	ctx := context.Background()
 
 	for _, size := range []int{1, 20} {

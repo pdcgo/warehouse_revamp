@@ -3,6 +3,7 @@ import { create } from "@bufbuild/protobuf";
 import {
   ProductByIdsDataType,
   type ProductByIdsResponse,
+  type ProductImage,
   ProductListDataType,
   type ProductListResponseItem,
   type Product,
@@ -11,7 +12,10 @@ import {
 } from "../../gen/warehouse/product/v1/product_pb";
 import {
   type CostLayer,
+  type DiscoverMovement,
   type DiscoverStockByIdsResponse,
+  DiscoverStockHistoryDataType,
+  type DiscoverStockHistoryResponse,
   OwnerBatchListDataType,
   type OwnerBatchListResponse,
   OwnerCostLayerListDataType,
@@ -79,6 +83,21 @@ export function productsFromList(items: ProductListResponseItem[], ids: bigint[]
 }
 
 // productsFromByIds rebuilds Product[] from a by-ids response. Unordered — match by id.
+// THE GALLERY — the by-ids IMAGES slice, the discover detail's (the-discover-detail-shows-no-markup): another team's
+// product's every picture, in order, the cover first. Asked alone, beside the record's own read.
+export const productImagesData = (): ProductByIdsDataType[] => [ProductByIdsDataType.IMAGES];
+
+/** One product's pictures from an IMAGES answer — empty when it has none, or when the product is absent. */
+export function imagesFromByIds(res: ProductByIdsResponse, productId: bigint): ProductImage[] {
+  const list = res.items[productId.toString()];
+
+  for (const it of list?.items ?? []) {
+    if (it.d.case === "images") return it.d.value.mapData[productId.toString()]?.items ?? [];
+  }
+
+  return [];
+}
+
 export function productsFromByIds(res: ProductByIdsResponse): Product[] {
   const out: Product[] = [];
 
@@ -210,6 +229,8 @@ export function activityFromByIds(res: OrderProductActivityByIdsResponse): Map<s
 export const ownerLayerData = (): OwnerCostLayerListDataType[] => [OwnerCostLayerListDataType.LAYER];
 export const ownerBatchData = (): OwnerBatchListDataType[] => [OwnerBatchListDataType.BATCH];
 export const ownerMovementData = (): OwnerStockHistoryDataType[] => [OwnerStockHistoryDataType.MOVEMENT];
+// ANY team's stock history of a product (stock-history-is-everyones) — the owner's units, nothing else of theirs.
+export const discoverMovementData = (): DiscoverStockHistoryDataType[] => [DiscoverStockHistoryDataType.MOVEMENT];
 
 export function layersFromList(res: OwnerCostLayerListResponse): CostLayer[] {
   const out: CostLayer[] = [];
@@ -243,6 +264,21 @@ export function batchesFromList(res: OwnerBatchListResponse): StockBatch[] {
 
 export function movementsFromList(res: OwnerStockHistoryResponse): OwnerMovement[] {
   const out: OwnerMovement[] = [];
+
+  for (const it of res.items) {
+    if (it.d.case !== "movement") continue;
+
+    for (const id of res.ids) {
+      const row = it.d.value.mapData[id.toString()];
+      if (row) out.push(row);
+    }
+  }
+
+  return out;
+}
+
+export function discoverMovementsFromList(res: DiscoverStockHistoryResponse): DiscoverMovement[] {
+  const out: DiscoverMovement[] = [];
 
   for (const it of res.items) {
     if (it.d.case !== "movement") continue;

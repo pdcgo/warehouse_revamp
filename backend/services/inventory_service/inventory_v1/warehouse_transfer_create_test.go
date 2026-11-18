@@ -154,7 +154,7 @@ func TestWarehouseTransferCreate_RefusesTheShapeRules(t *testing.T) {
 // asks nothing.
 func TestWarehouseTransferCreate_RefusesAnAccountThatIsNotActive(t *testing.T) {
 	f := wtStocked(t)
-	svc := inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, restockAccounts())
+	svc := inventory_v1.NewService(f.db, nil, nil, nil, f.sent.send, wtFacts(), nil, restockAccounts(), nil, nil)
 
 	create := func(cost float64, account uint64) error {
 		_, err := svc.WarehouseTransferCreate(ctxUser(wtSeller), connect.NewRequest(&inventoryv1.WarehouseTransferCreateRequest{

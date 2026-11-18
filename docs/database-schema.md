@@ -399,7 +399,7 @@ erDiagram
         text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — a duplicate is warned by the order form, never refused (a-duplicate-ref-is-warned-not-refused)"
         text        idempotency_key     "UK - the key the submit that created it minted (00035). NOT NULL, UNIQUE. Older dev rows filled as order:id. The key its stock take is filed under"
         bigint      transaction_id      "the inventory transaction its stock take wrote (00036) - no FK, another service's id. NULL = none recorded, no backfill"
-        bigint      return_transaction_id "the inventory return transaction its accepted return was put back on the shelf in (00049) - no FK, another service's id. NULL = not accepted back, no backfill"
+        bigint      return_transaction_id "the inventory return transaction its accepted return was put back on the shelf in (00049) - no FK, another service's id. NULL = not accepted back, no backfill. Partial index orders_return_transaction_idx on the non-NULLs (00050)"
         timestamptz settlement_opened_at "when its settlement account opened (00040) - stamped once by settlement in-process at the first initial_total. NULL = NOT YET. Partial index orders_settlement_not_opened_idx on the NULLs"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         boolean     is_override         "the creator was Root or the Administrator, not a member - set at placement, never updated (00033)"
@@ -664,7 +664,7 @@ erDiagram
   RULE 3) and no index (nothing reads orders by it); on the wire as `Order.return_transaction_id`. NULL = not accepted
   back — a developer's order accepted before the stock half names none, no backfill
   ([revamp-has-no-real-orders-yet](business/order/context_decision.md#revamp-has-no-real-orders-yet)). The Down drops the
-  column.
+  column. Indexed since `00050` (below), when the batch screens began reading orders by it.
 - **`orders.settlement_opened_at`** (`00040`) — when the order's settlement account OPENED
   ([a-missing-account-is-found-by-its-opened-at](business/settlement/context_decision.md#a-missing-account-is-found-by-its-opened-at)).
   `TIMESTAMPTZ NULL`; **NULL = not yet** — the open failed, is dead-lettered, or never ran, and the order committed all the
@@ -685,6 +685,14 @@ erDiagram
   returns only (`orderReaders`, [a-return-may-land-in-another-warehouse](business/order/context_decision.md#a-return-may-land-in-another-warehouse)).
   Without it that arm read every order of the configured teams and the planner fell back to a sequential scan of
   `orders` on every warehouse's list; with it the scope is one BitmapOr of three index scans.
+- **`orders_return_transaction_idx`** (`00050`, backlog #62, 2026-11-16) — `(return_transaction_id) WHERE
+  return_transaction_id IS NOT NULL`, partial: only an order whose return was accepted names one. The read is inventory's
+  batch screens naming a return's batch *Retur · order #<id>*
+  ([a-returns-batch-opens-its-order](technical/frontend/batches_decision.md#a-returns-batch-opens-its-order)) — selling's
+  `OrderIDsByReturnTransactions`, one statement per page of batches. 200 return transactions over 200 000 orders: 0.62 ms
+  with it, 43 ms (a parallel sequential scan of `orders`) without (`TestPerf_ReturnOrders`). A pure index
+  ([a-pure-index-is-added-without-asking](technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)).
+  The Down drops it.
 - **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.goods_cost` (`cogs`
   until `00027`) as what the goods cost the SELLER: Σ the lines' frozen `total`, so a borrowed line counts WITH its
   owner's markup ([the-cross-charge-lives-on-the-line](business/order/context_decision.md#the-cross-charge-lives-on-the-line)).
@@ -1053,6 +1061,7 @@ erDiagram
 
     restocks ||--o{ restock_items : "restock_id"
     restocks ||--o{ restock_logs : "restock_id"
+    restock_logs ||--o{ restock_log_changes : "what an edit changed (00049)"
     restock_items ||--o{ restock_problem_items : "restock_id, product_id"
     restock_items ||--o{ restock_count_corrections : "corrected after accept (00043)"
 
@@ -1061,8 +1070,8 @@ erDiagram
         bigint      team_id            "SELLING team that raised it, opaque, no FK (requesting_team_id until 00030)"
         bigint      warehouse_id       "target WAREHOUSE team that accepts it, opaque, no FK"
         text        status             "ongoing / arrived / accepted / lost / cancelled (mapper-guarded, #80)"
-        text        invoice_ref_id     "the store's INVOICE reference (order_ref until 00030)"
-        text        receipt            "optional: courier tracking number (resi)"
+        text        invoice_ref_id     "the store's INVOICE reference (order_ref until 00030), held by one restock of the team not cancelled (00048)"
+        text        receipt            "optional: courier tracking number (resi), held by one restock of the team not cancelled (00048)"
         text        receipt_file       "a photo of the label; '' = none"
         bigint      shipment_id        "the courier, opaque shipment_service id, no FK; 0 = not named"
         bigint      finance_account_id "the account that paid, opaque financial_account_service id; 0 = raised before it was required"
@@ -1072,8 +1081,16 @@ erDiagram
         float8      total              "00030: subtotal + shipment_cost, never the courier's charge"
         float8      warehouse_additional_cost "the courier's ONE charge at the door, CHECK >= 0; outside the total, inside the unit price"
         text        warehouse_additional_cost_note "what the charge was for — required above 0 by the contract"
+        text        warehouse_additional_cost_file "the courier's slip photo (00052): the warehouse's document_service upload id, kept by the accept only beside a charge above 0; '' = none"
         text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); read-only history"
         text        note               "the selling team's note on the whole restock"
+        bigint      note_by_user_id    "who WROTE that note (00050) - the raise, or the last edit or note set that changed it; opaque user_service id, no FK; 0 = not recorded"
+        boolean     note_by_is_override "that writer was Root or the Administrator from outside the team (00050)"
+        timestamptz note_at            "nullable: when the note was last written (00050); NULL = not recorded, no backfill"
+        text        warehouse_note     "the RECEIVING WAREHOUSE's own note on the whole restock (00053); empty = none, written only by RestockRequestWarehouseNoteSet"
+        bigint      warehouse_note_by_user_id "who last WROTE the warehouse note (00053); opaque user_service id, no FK; 0 = never written"
+        boolean     warehouse_note_by_is_override "that writer was Root or the Administrator from outside the warehouse (00053)"
+        timestamptz warehouse_note_at  "nullable: when the warehouse note was last written (00053); NULL = never written"
         bigint      created_by_user_id "who RAISED it, opaque user_service id, no FK; 0 = not recorded"
         bigint      arrived_by_user_id "who SIGNED for the box; 0 = not signed"
         bigint      accepted_by_user_id "who COUNTED it; 0 = not accepted yet"
@@ -1094,8 +1111,18 @@ erDiagram
         text        to_status          "the same as from_status for an edit"
         bigint      actor_user_id      "who did it, opaque user_service id, no FK; 0 = not recorded"
         boolean     is_override        "the actor was Root or the Administrator, not a member of the scoped team (00034)"
-        text        description        "what moved it, or what an edit changed"
+        text        description        "what moved it; an edit's is the bare word edited, its changes under it"
         timestamptz created_at         "WHEN IT HAPPENED, set by the writer; 00030 folded the backfill's at into it"
+    }
+
+    restock_log_changes {
+        bigserial   id                 PK "the order the edit wrote them in"
+        bigint      restock_log_id     FK "-> restock_logs(id), ON DELETE CASCADE"
+        text        field              "CHECK: warehouse, receipt, receipt_file, shipment, invoice_ref, finance_account, shipment_cost, note, warehouse_note (00053), line_added, line_removed, line_count, line_total, line_note, line_supplier, line_store"
+        bigint      product_id         "the line's product; 0 for the restock's own field (CHECKed against field)"
+        text        product_name       "the line's name as the restock carried it at the edit; empty for the restock's own"
+        text        before_value       "decimal count or amount, decimal id, or words; empty = none"
+        text        after_value        "the same; empty = none"
     }
 
     restock_items {
@@ -1125,6 +1152,7 @@ erDiagram
         float8      price_unit          "the LANDED unit price, filled at accept, CHECK >= 0"
         float8      total               "price_unit x count, CHECK >= 0"
         text        note                "the warehouse's optional note"
+        text        photo_file          "the broken units' photo (00052): the warehouse's document_service upload id at Terima; '' = none; CHECK only a broken row holds one"
         timestamptz created_at
     }
 
@@ -1229,6 +1257,14 @@ erDiagram
   product appears once per restock, so the product finds its line, and the composite FK to
   `restock_items (restock_id, product_id)` says so. One row per kind (`UNIQUE (restock_id, product_id, problem_type)`);
   `00030` merged the older rows of one kind on one line.
+- **The photos taken at the door** (`00052`, built 2026-11-16) — `restock_problem_items.photo_file` is a line's broken
+  units' photo, on its BROKEN row, so one per line (a-broken-product-carries-a-photo; the CHECK
+  `restock_problem_items_photo_is_broken` refuses one on a missing row); `restocks.warehouse_additional_cost_file` is the
+  courier's slip, kept with the charge it belongs to and only with a charge above 0 (the-courier-slip-has-an-optional-photo).
+  Each is a document_service document id of the RECEIVING WAREHOUSE's upload (an `order_receipt`, the label photo's
+  type, uploaded the moment it is picked); '' = none, and old rows read ''. Never opened by the id: `RestockDoorPhotos`
+  checks the caller is a side of the restock and asks document_service, in-process, to sign it for the warehouse that
+  uploaded it.
 - **`restock_count_corrections`** (`00043`) — KOREKSI JUMLAH TERIMA: the receiving warehouse corrects an ACCEPTED line's
   `received_count` (the-received-count-prototype-is-accepted). One append-only row per line per correction, never a
   problem row (those hold one missing row per product and are the accept's) and never a trail row (it must not read as
@@ -1242,6 +1278,14 @@ erDiagram
   same instant. It replaced `restock_request_events` in `00024`; `00030` keyed it by `restock_id` and folded its `at`
   into `created_at` (the backfilled rows keep their moment). The columns on `restocks` stay too: the list filters and
   sorts on them, and a filter cannot reach into a child table cheaply.
+- **`restock_log_changes`** (`00049`) — WHAT AN EDIT CHANGED, one append-only row per field it moved, before and after,
+  under the edit's `restock_logs` row and written in the edit's transaction
+  ([edits-are-in-the-same-trail](business/inventory/restock_decision.md#edits-are-in-the-same-trail)): *Kaos 10 → 12, extra
+  stock* is a `line_count` and a `line_note` row. A line is named by its product and the name the restock carried for it
+  (its own snapshot — a line removed later still reads); the restock's own fields have product 0. Values are text (a count
+  or an amount in decimal, an id in decimal, words verbatim; empty = none). A new table, so `restock_logs` itself is
+  untouched; NO backfill — an edit written before `00049` has no rows here and reads as the bare *edited* it always did.
+  Read by `RestockRequestDetail` only, one preload over the trail's ids on `restock_log_changes_log_idx (restock_log_id, id)`.
 - **`restock_logs.is_override`** (`00034`) — the row's actor was Root or the Administrator, inside the team the call was
   scoped to (the seller's for a create or an edit, the warehouse's for an arrive or an accept) with no role there
   ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
@@ -1253,6 +1297,35 @@ erDiagram
   body; opaque user_service ids with no FK, names resolved at read time. Nothing is backfilled — a restock raised
   before `00018` keeps `0` / `NULL`. The timestamps are what the list's date-range filter ranges on
   (`RestockDateField`); partial indexes on `(team_id, accepted_at)` and `(team_id, cancelled_at)` serve it.
+- **The selling note's own writer** (`00050`,
+  [the-notes-are-one-per-writer](technical/frontend/restock_decision.md#the-notes-are-one-per-writer)) —
+  `note_by_user_id`, `note_by_is_override`, `note_at`: who last WROTE `restocks.note`, whether they were an override, and
+  when — stamped in the same transaction as the note by the raise (empty note or not), and by an edit
+  (`RestockRequestUpdate`) or a note set (`RestockRequestNoteSet`, any status —
+  [the-note-is-edited-in-any-status](technical/frontend/restock_decision.md#the-note-is-edited-in-any-status)) only when it
+  CHANGES the note; an edit of a line leaves them. Unlike the other acts' flag, the override sits on the restock here
+  because these columns name ONE act — the note's last write — and the screen reads them without the trail. NO backfill: a
+  restock whose note was last written before `00050` keeps `0` / `false` / `NULL`, and the screens fall back to the
+  restock's last raise or edit, said as that.
+- **The receiving warehouse's own note** (`00053`,
+  [the-warehouse-writes-its-own-note](technical/frontend/restock_decision.md#the-warehouse-writes-its-own-note)) —
+  `warehouse_note`, `warehouse_note_by_user_id`, `warehouse_note_by_is_override`, `warehouse_note_at`: the restock's
+  second note, one writer each ([three-notes-one-writer-each](business/inventory/restock_decision.md#three-notes-one-writer-each))
+  — written ONLY by `RestockRequestWarehouseNoteSet`, scoped to the receiving warehouse, and stamped with its writer and
+  time in the same transaction only when it CHANGES the note; nothing at the raise, and no selling write touches it.
+  Every status takes it — from when the warehouse may write it is not decided, so the columns hold no rule. Its change is
+  an edit's trail row with one `restock_log_changes` row, `warehouse_note` — `00053` drops and re-adds
+  `restock_log_changes_field_check` with that word (the Down deletes those change rows first). NO backfill: nothing was
+  ever stored, so every existing restock reads `''` / `0` / `false` / `NULL`.
+- **A resi or an Order ID is held by ONE restock of the team** (`00048`,
+  [a-reference-in-use-stops-the-restock-form](technical/frontend/restock_decision.md#a-reference-in-use-stops-the-restock-form))
+  — two partial unique expression indexes, `restocks_receipt_in_use_idx ON restocks (team_id, lower(btrim(receipt)))`
+  and `restocks_invoice_ref_in_use_idx ON restocks (team_id, lower(btrim(invoice_ref_id)))`, each `WHERE status <>
+  'cancelled' AND btrim(<column>) <> ''`: each reference on its own, letter case and the spaces around it aside, any status
+  but cancelled, an empty one holding nothing, another team's restock not compared. A create or an ongoing edit that
+  would make a second holder fails at its own write — of two concurrent saves the second waits on the first and fails —
+  and inventory_v1 answers AlreadyExists naming the holder (`restock_reference_in_use.go`). The migration REFUSES on a
+  database already holding such a pair and lists each (team, reference, value, restocks with their status).
 - **A line's supplier and store** (`supplier_id`, `supplier_channel_id`) are opaque supplier_service ids, both
   optional, the store one of the supplier's (a-line-may-name-a-supplier-without-a-channel). The handler asks
   supplier_service that a newly named one is live; one a line already holds is not re-checked, so deleting a supplier
@@ -1392,6 +1465,13 @@ erDiagram
   history row names its order key or restock receipt (`ledger_history.go`'s `refExpr`), and the owner's history works
   that out for every row of the product; without them each row scanned both tables — 12.5 s for a product with 3 000
   takes, ~19 ms with them ([OwnerStockHistory.md](../audits/services/inventory_service/performances/OwnerStockHistory.md)).
+- **A warehouse's accepted restocks are read by month** — `00051` `restocks_warehouse_accepted_at_idx ON restocks
+  (warehouse_id, accepted_at) WHERE accepted_at IS NOT NULL`, the warehouse side's twin of `restocks_accepted_at_idx
+  (team_id, accepted_at)`: the warehouse list's *Ongkir COD dibayar* card (`RestockCodPaidStat`,
+  [the-warehouse-sees-the-cod-it-paid](technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)) sums
+  the courier's charge over the restocks a warehouse accepted this month; with only `restocks_warehouse_idx` it read every
+  restock ever sent there — 21.7 ms → 0.56 ms for a month at 50 000 restocks into one warehouse. A pure index
+  ([a-pure-index-is-added-without-asking](technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)).
 - **Written set-based** — a write locks each ledger's rows in one statement, works the rows out in memory, and stores
   each table with one `UPDATE … FROM unnest(…)` or one multi-row `INSERT`, however many lines
   ([ledger-writes-are-set-based](technical/stock/design_decision.md#ledger-writes-are-set-based)).

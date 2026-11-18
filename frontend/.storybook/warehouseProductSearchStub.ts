@@ -9,7 +9,8 @@
 //   who        Root, the Administrator, the warehouse Owner, Admin and Staff, and the admin team's monitor (a read) — a
 //              selling role is refused as the policy refuses it. Unlike most stubs this one checks: the bug this RPC
 //              fixes was a picker whose policy no stub ever checked (ProductDiscover refusing warehouse roles).
-//   the term   at least 2 characters after trimming, in the name or the code, case-insensitive.
+//   the term   any length after trimming (a-product-picker-needs-no-two-letters) — in the name or the code, case-
+//              insensitive; NOTHING typed lists the whole held set, one letter is a search.
 //   the set    archived ones too, flagged — a warehouse is offered what it holds (an-archived-product-held-here-can-be-picked).
 //   the order  by name, then code; paged.
 //
@@ -36,9 +37,10 @@ const PICKERS = new Set<Role>([
 
 /**
  * How many searches the stub REFUSED on the policy — the only sign a story has that the picker asked and was turned away,
- * since the picker shows "No products found" either way. A story reads it before and after; nothing resets it.
+ * since the picker shows "No products found" either way — and every term it was asked, as sent. A story reads them
+ * before and after; nothing resets them.
  */
-export const warehouseProductSearchScenario = { refused: 0 };
+export const warehouseProductSearchScenario = { refused: 0, terms: [] as string[] };
 
 /** Every product with a batch in this warehouse, at 0 or not — the set the picker searches, and nothing else. */
 export function heldHere(warehouseId: bigint): Set<bigint> {
@@ -52,9 +54,9 @@ export function warehouseProductSearch(req: WarehouseProductSearchRequest) {
   }
 
   const term = (req.filter?.q ?? "").trim().toLowerCase();
-  if ([...term].length < 2) {
-    throw new ConnectError("type at least 2 characters of a product's name or code", Code.InvalidArgument);
-  }
+
+  // Every term asked, as sent — a story reads that the picker asked with nothing typed and with one letter.
+  warehouseProductSearchScenario.terms.push(req.filter?.q ?? "");
 
   const held = heldHere(req.warehouseId);
   const rows = allProducts()

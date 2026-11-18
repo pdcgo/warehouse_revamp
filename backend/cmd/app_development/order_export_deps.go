@@ -42,6 +42,16 @@ func NewOrderExportStore(
 	client *internalHTTPClient,
 	documents documentv1connect.DocumentServiceClient,
 ) selling_v1.OrderExportStore {
+	return newOrderExports(cfg, client, documents)
+}
+
+// newOrderExports is OrderExport's store as its own type — the restock list's export names its warehouses, couriers and
+// people through the same forwarding clients (restock_exports.go).
+func newOrderExports(
+	cfg *Config,
+	client *internalHTTPClient,
+	documents documentv1connect.DocumentServiceClient,
+) *orderExports {
 	forward := connect.WithInterceptors(san_auth.ForwardBearer())
 
 	return &orderExports{

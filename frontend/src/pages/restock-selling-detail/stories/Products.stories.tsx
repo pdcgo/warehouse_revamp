@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { At502, At503, SELLING_DETAIL_META, loaded, openTab, routedAt } from "./kit";
+import { withoutDoorPhotosForStory } from "../../../../.storybook/restockStub";
+import { doorPhotoScenario } from "../../../../.storybook/doorPhotoScenario";
 
 // RESTOCK SELLING DETAIL — the lines — the adjustment column and its dialog, the broken units' photo, where each was bought, and
 // on a phone a block per line.
@@ -70,11 +72,14 @@ export const TheBrokenRowShowsItsPhoto: Story = {
 
     // A THUMBNAIL, never the dialog's width cut to fit (a-door-photo-is-a-thumbnail-that-opens-whole) — opened, the photo
     // is shown whole in its own dialog.
-    const photo = within(dialog).getByTestId("restock-detail-broken-photo-74");
+    // THE PHOTO THE WAREHOUSE KEPT AT TERIMA (the-detail-pages-show-the-broken-photo) — its own link, read through
+    // RestockDoorPhotos by this selling team; no sample, no pending mark.
+    const photo = await within(dialog).findByTestId("restock-detail-broken-photo-74", {}, { timeout: 4000 });
     const thumb = within(photo).getByRole("img");
-    await expect(thumb).toHaveAttribute("src", expect.stringMatching(/^data:image\/svg\+xml/));
+    await expect(thumb).toHaveAttribute("src", expect.stringMatching(/^data:image\/svg\+xml.*#doc-restock-503-broken-74$/));
     await expect(thumb.getBoundingClientRect().width).toBeLessThanOrEqual(48);
-    await expect(within(photo).getByTestId("not-implemented-brokenPhoto")).toHaveTextContent("2");
+    await expect(within(photo).queryByTestId("not-implemented-brokenPhoto")).toBeNull();
+    await expect(doorPhotoScenario.calls).toContainEqual({ teamId: 12n, requestId: 503n });
     await userEvent.click(within(photo).getByTestId("restock-detail-broken-photo-74-open"));
     const whole = await screen.findByTestId("restock-detail-broken-photo-74-dialog");
     await waitFor(() => expect(whole).toBeVisible());
@@ -98,10 +103,30 @@ export const OnAPhoneTheBrokenPhotoIsAThumbnail: Story = {
     await openTab(canvas, "products");
 
     const rice = canvas.getByTestId("restock-detail-item-74");
-    await userEvent.click(within(rice).getByTestId("restock-detail-broken-photo-74-open"));
+    await userEvent.click(await within(rice).findByTestId("restock-detail-broken-photo-74-open"));
     const whole = await screen.findByTestId("restock-detail-broken-photo-74-dialog");
     await waitFor(() => expect(whole).toBeVisible());
     await expect(within(whole).getByRole("img")).toBeVisible();
+  },
+};
+
+// A RESTOCK THAT KEPT NO PHOTO SHOWS NONE — and asks for none: the broken row reads its count, worth and note, with no
+// thumbnail, and the page never calls RestockDoorPhotos (a restock accepted before the photos were kept, or with none taken).
+export const NoKeptPhotoShowsNone: Story = {
+  name: "No photo kept",
+  render: () => <At503 />,
+  beforeEach: () => withoutDoorPhotosForStory(503n),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openTab(canvas, "products");
+
+    await userEvent.click(canvas.getByTestId("restock-detail-adjustment-74"));
+    const dialog = await screen.findByTestId("restock-detail-adjustment-74-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(within(dialog).getByTestId("restock-detail-broken-74-count")).toHaveTextContent("2");
+    await expect(within(dialog).queryByTestId("restock-detail-broken-photo-74")).toBeNull();
+    await expect(screen.queryByTestId("restock-detail-courier-photo")).toBeNull();
+    await expect(doorPhotoScenario.calls).toEqual([]);
   },
 };
 

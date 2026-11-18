@@ -14,6 +14,7 @@ import { useArriveRestockRequest, useCorrectRestockReceivedCount } from "./queri
 import { labelsPath } from "./labelsPath";
 import { toRupiah } from "./counting";
 import { CourierCharge } from "./CourierCharge";
+import type { DoorPhoto } from "./doorPhoto";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
@@ -262,8 +263,9 @@ function SignForBoxDialog({
   const [asked, setAsked] = useState(false);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — not kept with the rest of the charge.
-  const [photo, setPhoto] = useState<File | null>(null);
+  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — not kept with the rest of the charge: shown
+  // only, never uploaded here (no `photoUploadTo`), as Tandai Tiba keeps no charge yet.
+  const [photo, setPhoto] = useState<DoorPhoto | null>(null);
 
   const charged = asked && toRupiah(amount) > 0;
   // Ticked, both are required; the note's error shows once there is an amount, so a fresh tick is not all red.

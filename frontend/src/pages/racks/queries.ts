@@ -44,6 +44,29 @@ export function useRacks(args: {
   });
 }
 
+// THE FIGURES OVER THE LIST (the-rack-list-leads-with-its-figures) — RackStat sums EVERY rack the list matches, never the
+// page it serves: how many, how many hold something, how many are empty, and the pieces on them all. A search refines
+// the same question, so the previous figures stay while it refetches (RULE 10); a page turn does not ask again.
+export function useRackStat(args: { teamId: bigint | undefined; q: string }) {
+  const { teamId, q } = args;
+
+  return useQuery({
+    ...listQuery,
+    queryKey: key.racks(teamId, { stat: true, q }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await rackClient.rackStat({ teamId: teamId!, filter: { q } });
+
+      return {
+        racks: Number(res.preview?.rackCount ?? 0n),
+        filled: Number(res.preview?.filledCount ?? 0n),
+        empty: Number(res.preview?.emptyCount ?? 0n),
+        pieces: Number(res.preview?.stockCount ?? 0n),
+      };
+    },
+  });
+}
+
 export function useRack(args: { teamId: bigint | undefined; rackId: bigint }) {
   const { teamId, rackId } = args;
 

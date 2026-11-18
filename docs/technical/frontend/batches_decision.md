@@ -22,6 +22,7 @@ and priced, is the business record: [batch.md](../../business/inventory/batch.md
 | [the-adjust-reason-is-a-radio-pill](#the-adjust-reason-is-a-radio-pill) | Koreksi's four reasons are radio pills, all on screen — the list is bounded by the code, so it stays few |
 | [a-batch-is-picked-by-its-own-number](#a-batch-is-picked-by-its-own-number) | Koreksi's batch is a search select (`BatchSelect`) — each option the batch's own number and ready count, where it came from under it; typed by the batch's or the restock's number |
 | [the-expiry-prototypes-are-accepted](#the-expiry-prototypes-are-accepted) | the expiry prototypes are accepted — the accept line's optional expiry date, the Batch list's Rak column, the product page's Kedaluwarsa column |
+| [a-returns-batch-opens-its-order](#a-returns-batch-opens-its-order) | a batch a return made shows *Retur · order #<id>* and opens the order's warehouse page, `/warehouse-orders/:orderId` — the return half of a-batch-opens-where-it-came-from |
 
 ## the-batches-follow-the-screen-rules
 
@@ -199,6 +200,8 @@ What it replaces: *Restok #503 · resi* as plain text on the list, and on a batc
 
 What it replaces: a filter strip with no way to ask whose goods.
 
+✅ **Built 2026-11-16** — the team filter narrows: `BatchListFilter.owner_team_id` keeps the batches that selling team owns (`batches.team_id`, written at mint — [a-batch-carries-its-owner](../../business/inventory/warehouse_transfer_decision.md#a-batch-carries-its-owner)), so the rows, the count and the card strip narrow together on the server (`inventory_v1/batch_list.go`); the page sends `?team=` as it (`useWarehouseBatches`), and its ⚠ `teamFilter` is gone (`pages/batches/pending.ts` keeps only the return's mark). Tests `batch_list_team_test.go` (each team's batches, every team's with none picked, a team with nothing here, paged, with the product filter) — mutation-checked; story BatchList `Team filter` (Toko Melati's batch alone, *Batch* 1, the ask carrying team 12, Hapus Filter back to 6). Perf `TestPerf_BatchList_OwnerTeam`: at 60 000 batches in one warehouse the filtered call is never slower than the unfiltered one (112 ms → 98 / 56 / 10 ms for a team holding half / a tenth / 60 of them); no index added — [rpc.md](../../services/inventory_service/rpc.md#batchlist--the-team-filter-2026-11-16).
+
 ## a-batch-page-is-one-page-of-sections
 
 > Owner, in chat (2026-11-10): *"inisiasi bacth detail"* — after a rack's page became one page of sections, *"iya seperti
@@ -339,3 +342,13 @@ What it replaces: a `NativeSelect` of batches named by their restock's number.
 | the prototype switches | retired when wired — the screens read the live fields |
 
 ✅ Built 2026-11-15 — all three live, the two Storybook switches deleted (`pages/restock-accept/expiryPrototype.tsx`, `features/inventory/expiryReportPrototype.tsx`): the accept line's *Tanggal kedaluwarsa (opsional)* is the line draft's `expiresOn`, sent as `expires_on` (only for a line with good units), the confirm lists each line's date or —; the Batch list's *Rak* reads `StockBatch.rack_codes` (no ProductPlaces call); the product page's *Kedaluwarsa* reads `OwnerBatchList`. The prototype stories are live ones (`RestockAccept/Expiry` 9, `BatchList/Expiry report` 4, `ProductDetail/Expiry` 4). e2e `the_expiry_is_read_off_the_box.spec.ts`.
+
+---
+
+## a-returns-batch-opens-its-order
+
+> Owner (Heri), in chat (2026-11-16): *"A"*, as recommended — after asking where [a-batch-opens-where-it-came-from](#a-batch-opens-where-it-came-from)'s *"retur juga"* came from (Frada's session, 2026-11-09, merged 2026-11-12) and re-asking it — to: what should a batch made by a return open? A: *Retur · order #<id>*, opening that order's warehouse page (`/warehouse-orders/:orderId`), where the return was accepted; B: the seller's order page (`/orders/:orderId`) — the warehouse holding the batch could not follow it; C: no link, parked as undefined.
+
+**The verdict.** A batch a return minted shows **Retur · order #<id>** — on the list's row and block, and on a batch's page — and opens that order's warehouse page, `/warehouse-orders/:orderId`. It settles the return half of [a-batch-opens-where-it-came-from](#a-batch-opens-where-it-came-from), whose `/inventories/returns/:id` is a preview of a return record that [the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed) ruled out. *(Not asked — the build's: how the batch finds its order, a read from the selling service.)* ⛔ Not built — backlog #62.
+
+✅ **Built 2026-11-16** — a batch a return minted reads **Retur · order #<id>** on the Batch list's row and phone block and in a batch's Info (*Dari*), one component (`features/inventory/BatchSource`), a link to `/warehouse-orders/:orderId` carrying where it was opened (`fromHere`); a return no order names yet (its stock went in, the move has not landed) reads plain *Retur*. The order comes from the batch read — `StockBatch.return_order_id` (BatchList, BatchDetail), resolved through selling's `OrderIDsByReturnTransactions` in ONE in-process call per page (new partial index selling `00050`, 43 → 0.62 ms for a page of 200; BatchList +0.5–1 ms at 60 000 batches — [rpc.md](../../services/inventory_service/rpc.md#batchlist--batchdetail--a-returns-batch-names-its-order-2026-11-16)). The ⚠ `returnLink` mark is gone, with both batch screens' pending lists. Tests `batch_list_return_order_test.go`, `order_ids_by_return_test.go`, `cmd/app_development/return_orders_test.go` (through the real return accept) — mutation-checked; stories BatchSource `Opens the return's order`, `A return with no order yet`, BatchList `Opens a return's order`, BatchDetail `A return`, `Opens its return's order`.

@@ -1,10 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { daysAgo } from "../../../../.storybook/fixtures";
+import { restockNoteByForStory, restockWarehouseNoteForStory, restockWire } from "../../../../.storybook/restockStub";
 import { asAdminTeam } from "../../../../.storybook/sessionScenario";
+import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
+import { toaster } from "../../../components/feedback/Toaster";
+import { formatUnixDateTimeShort } from "../../../lib/datetime";
 import { SELLING_META, loaded, menuOf } from "./kit";
 
-// RESTOCK SELLING — Catatan from the row (the-list-opens-the-notes-in-a-dialog) — read, edited, and a late one not kept. The page's stories are grouped by the part of the screen they are about
+// RESTOCK SELLING — Catatan from the row (the-list-opens-the-notes-in-a-dialog) — read with its own writer, edited, and
+// kept in any status. The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -16,7 +22,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // CATATAN FROM THE ROW (owner: *"di listnya aku ingin ada modal menampilkan catatannya … di aksi, bisa edit juga"*,
-// the-list-opens-the-notes-in-a-dialog) — both notes, one per writer, the warehouse's marked; the selling team's edited
+// the-list-opens-the-notes-in-a-dialog) — both notes, one per writer, the warehouse's read; the selling team's edited
 // in place while the restock is on its way, its count shown, and saved. The row does not open behind the dialog.
 export const NotesOpenFromTheRowAndSave: Story = {
   name: "Open and save",
@@ -31,7 +37,11 @@ export const NotesOpenFromTheRowAndSave: Story = {
     // READ FIRST, CHANGED ON PURPOSE (the-note-is-edited-from-a-button): the note as text, and Ubah beside its head.
     await expect(await within(dialog).findByTestId("restock-detail-note")).toHaveTextContent("Untuk promo 10.10");
     await expect(within(dialog).queryByTestId("restock-notes-input")).toBeNull();
-    await expect(within(within(dialog).getByTestId("restock-detail-note-warehouse")).getByTestId("not-implemented-warehouseNote")).toBeVisible();
+    // The warehouse's note is read here, never written — none on 501 yet, and no ⚠ on it any more.
+    const warehouse = within(dialog).getByTestId("restock-detail-note-warehouse");
+    await expect(within(warehouse).getByTestId("restock-detail-note-warehouse-text")).toHaveTextContent("No note from the warehouse yet.");
+    await expect(within(dialog).queryByTestId("not-implemented-warehouseNote")).toBeNull();
+    await expect(within(warehouse).queryByTestId("restock-warehouse-note-edit")).toBeNull();
 
     // Ubah opens the edit IN the dialog — it does not close it (owner: *"ubah tidak close modalnya"*).
     await userEvent.click(within(dialog).getByTestId("restock-notes-edit"));
@@ -48,6 +58,9 @@ export const NotesOpenFromTheRowAndSave: Story = {
     await expect(within(dialog).getByTestId("restock-notes-save")).toBeDisabled();
     await userEvent.clear(input);
     await userEvent.type(input, "Urgent", { delay: 30 });
+    // A toast an earlier story left up would read as this save's — clear them first.
+    toaster.remove();
+    await waitFor(() => expect(screen.queryByText("Notes saved")).toBeNull());
     await userEvent.click(within(dialog).getByTestId("restock-notes-save"));
 
     await expect(await screen.findByText("Notes saved")).toBeInTheDocument();
@@ -101,10 +114,11 @@ export const OnAPhoneTheDialogEditsInPlace: Story = {
   },
 };
 
-// …the note is edited IN ANY STATUS (owner: *"catatan bisa diedit kapanpun"*, the-note-is-edited-in-any-status) — but once the
-// box has arrived the server keeps the note closed: Ubah carries its ⚠, and a save says it was not kept.
-export const AnArrivedRestocksNoteIsNotKeptYet: Story = {
-  name: "Arrived · not kept",
+// …the note is edited IN ANY STATUS, and KEPT (owner: *"catatan bisa diedit kapanpun"*, the-note-is-edited-in-any-status) —
+// once the box has arrived the note alone is sent (RestockRequestNoteSet): saved, read back, no mark on Ubah, and its
+// writer is whoever saved it, now (the-notes-are-one-per-writer).
+export const AnArrivedRestocksNoteIsKept: Story = {
+  name: "Arrived · kept",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
@@ -112,15 +126,68 @@ export const AnArrivedRestocksNoteIsNotKeptYet: Story = {
     await userEvent.click(screen.getByTestId("restock-action-notes-502"));
     const dialog = await screen.findByTestId("restock-notes-dialog");
     const edit = await within(dialog).findByTestId("restock-notes-edit");
-    await expect(within(dialog).getByTestId("not-implemented-lateNote")).toBeVisible();
-    const before = within(dialog).getByTestId("restock-detail-note").textContent;
+    await expect(within(dialog).queryByTestId("not-implemented-lateNote")).toBeNull();
+    await expect(within(dialog).queryByTestId("not-implemented-sellingNoteBy")).toBeNull();
 
     await userEvent.click(edit);
     const input = await within(dialog).findByTestId("restock-notes-input");
-    await userEvent.type(input, " — dicek ulang", { delay: 20 });
+    await userEvent.type(input, "Dicek ulang di gudang", { delay: 20 });
+    // A toast an earlier story left up would read as this save's — clear them first.
+    toaster.remove();
+    await waitFor(() => expect(screen.queryByText("Notes saved")).toBeNull());
     await userEvent.click(within(dialog).getByTestId("restock-notes-save"));
 
-    await expect(await screen.findByText(/^Not saved/)).toBeInTheDocument();
-    await waitFor(() => expect(within(dialog).getByTestId("restock-detail-note").textContent).toBe(before));
+    await expect(await screen.findByText("Notes saved")).toBeInTheDocument();
+    await waitFor(() => expect(within(dialog).getByTestId("restock-detail-note")).toHaveTextContent("Dicek ulang di gudang"));
+    // Still at the door — the note moved, nothing else did.
+    await expect(restockWire(502n).status).toBe(RestockRequestStatus.ARRIVED);
+    const by = within(dialog).getByTestId("restock-detail-note-selling-by");
+    await waitFor(() => expect(by).toHaveTextContent(`Ani Rahayu · ${formatUnixDateTimeShort(restockWire(502n).noteAtUnix)}`));
+    await expect(by).toHaveAttribute("data-source", "note");
+  },
+};
+
+// THE NOTE NAMES ITS OWN WRITER (the-notes-are-one-per-writer) — Budi wrote 501's note yesterday, after Ani raised it: the
+// dialog says Budi and when he wrote it, never the restock's raise; no ⚠ on who and when any more.
+const BUDI_AT = daysAgo(1);
+
+export const TheNoteNamesItsOwnWriter: Story = {
+  name: "Its own writer",
+  beforeEach: () => restockNoteByForStory(501n, 62n, BUDI_AT),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await menuOf(canvas, 501);
+    await userEvent.click(screen.getByTestId("restock-action-notes-501"));
+    const dialog = await screen.findByTestId("restock-notes-dialog");
+
+    const by = await within(dialog).findByTestId("restock-detail-note-selling-by");
+    await waitFor(() => expect(by).toHaveTextContent(`Budi Santoso · ${formatUnixDateTimeShort(BUDI_AT)}`));
+    await expect(by).toHaveAttribute("data-source", "note");
+    await expect(within(dialog).queryByTestId("restock-detail-note-selling-by-fallback")).toBeNull();
+    await expect(within(dialog).queryByTestId("not-implemented-sellingNoteBy")).toBeNull();
+  },
+};
+
+// THE WAREHOUSE'S NOTE, FROM THE ROW (the-warehouse-writes-its-own-note) — the dialog reads what the receiving warehouse
+// wrote, with who and when, beside the selling team's own; it is never written here.
+export const TheDialogReadsTheWarehouseNote: Story = {
+  name: "Warehouse's note, read",
+  beforeEach: () => restockWarehouseNoteForStory(501n, "Kardus penyok di sudut, isi aman", 62n, BUDI_AT),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await menuOf(canvas, 501);
+    await userEvent.click(screen.getByTestId("restock-action-notes-501"));
+    const dialog = await screen.findByTestId("restock-notes-dialog");
+    const warehouse = await within(dialog).findByTestId("restock-detail-note-warehouse");
+
+    await expect(within(warehouse).getByTestId("restock-detail-note-warehouse-text")).toHaveTextContent("Kardus penyok di sudut, isi aman");
+    await waitFor(() =>
+      expect(within(warehouse).getByTestId("restock-detail-note-warehouse-by")).toHaveTextContent(
+        `Budi Santoso · ${formatUnixDateTimeShort(BUDI_AT)}`,
+      ),
+    );
+    await expect(within(warehouse).queryByTestId("restock-warehouse-note-edit")).toBeNull();
   },
 };

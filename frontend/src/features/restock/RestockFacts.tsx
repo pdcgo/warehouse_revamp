@@ -6,7 +6,6 @@ import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_re
 import { committedValue, courierCharge, goodsTotal } from "./summary";
 import { PhotoView } from "./PhotoView";
 import { ReceiptPhoto } from "./ReceiptPhoto";
-import { courierSlipSample } from "./photoSamples";
 import { useFinancialAccount } from "../financialAccount/queries";
 import { useShipmentChannelsByIds } from "../shipment/queries";
 import { paymentTypeLabel } from "../../components/pickers/PaymentTypeSelect";
@@ -145,16 +144,19 @@ export function PaymentFacts({ request, teamId }: { request: RestockRequest; tea
   );
 }
 
-// The slip's photo sits under the charge's note (the-detail-pages-show-the-slip-and-the-broken-rack) — ⚠ a sample
-// (photoSamples.ts), marked by the page. `owed` is the page's own line: who owes it to whom, from where it is read.
+// The slip's photo sits under the charge's note (the-detail-pages-show-the-slip-and-the-broken-rack) — the one the
+// warehouse kept at Terima, a thumbnail that opens it whole (a-door-photo-is-a-thumbnail-that-opens-whole); none kept,
+// none drawn. `slipUrl` is its signed link from the page's RestockDoorPhotos read. `owed` is the page's own line: who owes
+// it to whom, from where it is read.
 export function CourierChargeFacts({
   request,
   owed,
-  slipMark,
+  slipUrl,
 }: {
   request: RestockRequest;
   owed: string;
-  slipMark?: ReactNode;
+  /** The slip's link — "" when the restock kept no photo of it (or it has not been read yet). */
+  slipUrl: string;
 }) {
   const { t } = useTranslation();
   const charge = courierCharge(request);
@@ -175,14 +177,15 @@ export function CourierChargeFacts({
       <Text fontSize="sm" wordBreak="break-word" data-testid="restock-detail-courier-charge-note">
         {request.warehouseAdditionalCostNote}
       </Text>
-      <PhotoView
-        url={courierSlipSample(request)}
-        title={t("restock.detail.slipPhoto.title")}
-        alt={t("restock.detail.slipPhoto.alt")}
-        subject={`#${request.id.toString()}`}
-        mark={slipMark}
-        testId="restock-detail-courier-photo"
-      />
+      {slipUrl && (
+        <PhotoView
+          url={slipUrl}
+          title={t("restock.detail.slipPhoto.title")}
+          alt={t("restock.detail.slipPhoto.alt")}
+          subject={`#${request.id.toString()}`}
+          testId="restock-detail-courier-photo"
+        />
+      )}
       <Text fontSize="xs" color="fg.muted">
         {owed}
       </Text>

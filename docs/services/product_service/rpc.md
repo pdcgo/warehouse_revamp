@@ -327,3 +327,36 @@ The rest is the loopback carrying the `bigint[]`/`float8[]` parameters (≈ 100�
 `SELECT length($1)` they take 0.5–1.2 ms here, so no stall of the
 [the-id-list-stalls-on-this-loopback](../../../audits/services/inventory_service/performances/WarehouseProductSearch.md#the-id-list-stalls-on-this-loopback-)
 kind). Kategori is the existing `products_category_idx` with an id list. No index added; no audit file (audits/README.md).
+
+## The discover detail's gallery — `ProductByIds`' IMAGES slice (built 2026-11-16)
+
+A by-ids row carries the cover alone; the discover detail shows ANOTHER team's product's whole gallery
+([the-discover-detail-shows-no-markup](../../technical/frontend/products_decision.md#the-discover-detail-shows-no-markup):
+*"the pictures are the product page's gallery"*). `ProductByIdsDataType.IMAGES` (3) adds a `ProductImagesMapItem` slice —
+each asked product's pictures, ordered `position, id` (ProductDetail's order), an empty list for one with none — and
+nothing else: `ProductDetail`, the other read of the gallery, answers only the owning team and carries the whole record.
+`product_v1/product_by_ids.go` (`galleriesOf`, one statement for the found ids over `product_images_product_idx`); the
+page asks it alone, beside the record's read (`useDiscoverGallery`), so a refusal or a failure costs only the gallery and
+the record's cover stands in.
+
+| | |
+| --- | --- |
+| who | ProductByIds' policy is unchanged (selling and warehouse roles, Root, Administrator). The IMAGES slice is Discover's, so Discover's rule: a WAREHOUSE role asking for it is refused (`PermissionDenied`, a handler narrowing on `san_auth.GetCallerRole` — the proto cannot say "this slice, these roles"); the rest of the read answers a warehouse as before |
+| unchanged | a call that does not ask IMAGES reads no `product_images` row (pinned by `TestProductByIds_NoImagesUnlessAsked`) |
+| tests | `product_by_ids_images_test.go` — another team's gallery in order, an empty gallery, every warehouse role refused, Root and every selling role read it |
+
+```mermaid
+sequenceDiagram
+    participant S as Discover detail — a selling team
+    participant P as ProductByIds — product_service
+    participant DB as Postgres
+    S->>P: team 12, ids [the product], data_request IMAGES
+    P->>P: a warehouse role asking IMAGES — PermissionDenied
+    P->>DB: products by id
+    P->>DB: product_images of the found ids, by product, position, id
+    P-->>S: per id — its pictures, the cover first
+```
+
+**Performance** (`product_v1/product_by_ids_images_perf_test.go`, `-tags perfaudit`; 100 000 products over 40 teams, each
+with a full gallery — 500 000 image rows; median of 5): 1 id 0.52 → 1.05 ms with IMAGES, 200 ids 1.66 → 4.78 ms; the
+images read is an index scan of `product_images_product_idx` (0.78 ms executed for 1 000 rows). Not heavy; no audit file.

@@ -41,11 +41,33 @@ type Restock struct {
 	// unit price (the-couriers-ask-is-in-the-unit-price).
 	WarehouseAdditionalCost     float64
 	WarehouseAdditionalCostNote string
+	// A photo of the courier's slip for that charge (the-courier-slip-has-an-optional-photo, 00052) — a document_service
+	// document id, the warehouse's upload at accept; "" = none, and always "" while there is no charge.
+	WarehouseAdditionalCostFile string
 
 	// How a restock raised before paying accounts was paid for (#127) — read-only history, mapped in the handler layer.
 	PaymentType string
 	// The selling team's note on the whole restock (three-notes-one-writer-each).
 	Note string
+	// WHO WROTE THAT NOTE, AND WHEN (the-notes-are-one-per-writer, 00050) — the note's OWN writer: stamped at the raise
+	// and by a write that CHANGES the note (an edit, a note set), never by one that changes only a line or the money.
+	// The writer's opaque user_service id (0 = not recorded), whether they were an override
+	// (an-override-is-stamped-in-every-service), and when. 0 / false / NULL on a restock whose note was last written
+	// before 00050 — deliberately not backfilled: a guessed writer would put a real person's name against words they
+	// may not have typed.
+	NoteByUserID     uint64
+	NoteByIsOverride bool
+	NoteAt           *time.Time
+
+	// THE RECEIVING WAREHOUSE'S OWN NOTE on the whole restock (the-warehouse-writes-its-own-note, 00053) — its one writer
+	// is the warehouse (three-notes-one-writer-each); the selling team reads it. "" = none. With it, who last wrote it and
+	// when, stamped only by RestockRequestWarehouseNoteSet when it CHANGES the note: the writer's opaque user_service id
+	// (0 = never written), whether they were an override (an-override-is-stamped-in-every-service), and when (NULL =
+	// never written). Nothing writes it at the raise — the raise is the selling team's.
+	WarehouseNote             string
+	WarehouseNoteByUserID     uint64
+	WarehouseNoteByIsOverride bool
+	WarehouseNoteAt           *time.Time
 
 	// WHO handled it, as opaque user_service ids (no FK, like the team ids above). 0 until the act happens — and 0 on
 	// any row raised before 00018, which is deliberately not backfilled: a guessed id would put a real person's name

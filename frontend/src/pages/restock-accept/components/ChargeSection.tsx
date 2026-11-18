@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Check, Pencil } from "lucide-react";
 
 import { CourierCharge } from "../../../features/restock/CourierCharge";
+import type { DoorPhoto } from "../../../features/restock/doorPhoto";
 import { formatRupiahNumber } from "../../../lib/money";
 
 // THE COURIER'S COD CHARGE ON TERIMA — WHAT WAS PAID, AS TEXT; CHANGED ON ASKING (owner: *"di paket ongkir hilangkan, di
@@ -31,9 +32,9 @@ export function ChargeSection({
   onNote,
   photo,
   onPhoto,
+  photoUploadTo,
   team,
   mark,
-  photoMark,
 }: {
   asked: boolean;
   onAsked: (asked: boolean) => void;
@@ -45,12 +46,14 @@ export function ChargeSection({
   noteMissing: boolean;
   onAmount: (value: string) => void;
   onNote: (value: string) => void;
-  photo: File | null;
-  onPhoto: (file: File | null) => void;
+  /** The courier's slip (the-courier-slip-has-an-optional-photo) — kept with the charge, uploaded as it is picked. */
+  photo: DoorPhoto | null;
+  onPhoto: (photo: DoorPhoto | null) => void;
+  /** The team the slip is kept under — the warehouse counting the box in. */
+  photoUploadTo: bigint;
   /** The selling team that owes it back. */
   team: string;
   mark?: ReactNode;
-  photoMark?: ReactNode;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
@@ -70,8 +73,8 @@ export function ChargeSection({
           onNote={onNote}
           photo={photo}
           onPhoto={onPhoto}
+          photoUploadTo={photoUploadTo}
           mark={mark}
-          photoMark={photoMark}
         />
         <Button
           size="xs"

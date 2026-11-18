@@ -62,7 +62,7 @@ func TestRestockRequest_StoresItsTotalsAndEachLinesUnitPrice(t *testing.T) {
 
 		_, err := svc.RestockRequestUpdate(ctxUser(arrBuyer), connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
 			TeamId: arrSellingTeam, RequestId: raised.GetId(), WarehouseId: arrWarehouse, FinanceAccountId: arrAccount,
-			Receipt: "SCP123", ShipmentCost: freight, Items: items,
+			Receipt: raised.GetReceipt(), ShipmentCost: freight, Items: items,
 		}))
 		if err != nil {
 			t.Fatalf("edit: %v", err)

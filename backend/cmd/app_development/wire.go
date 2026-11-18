@@ -83,9 +83,13 @@ func InitializeApp() (*App, error) {
 		category_v1.NewService,
 		document_v1.NewService,
 		inventory_v1.NewService,
+		// Which order a return's batch came back from — asked of selling_service in-process. See return_orders.go.
+		NewInventoryReturnOrders,
 		// Whether a restock's supplier is live — asked of supplier_service. See supplier_deps.go.
 		NewSupplierClient,
 		NewInventorySupplierChecker,
+		// Where the selling restock list's file goes, and the names its rows need — see restock_exports.go.
+		NewRestockExportStore,
 		liability_v1.NewService,
 		// Whether a payment's *Paid from* / *Received into* is the team's own live account — asked of
 		// financial_account_service under the caller's token. See liability_deps.go.

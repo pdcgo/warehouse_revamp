@@ -118,7 +118,7 @@ func TestSupplierProductCatalog_TheProduktabReadsTheRealRows(t *testing.T) {
 	link(melati, katun, &shopee.ID, 1)
 	link(kenanga, benang, nil, 2)
 
-	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
+	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil), db)
 	catalog := NewSupplierProductCatalog(product_v1.NewService(db, nil, nil, nil, nil))
 	svc := supplier_v1.NewService(db, nil, nil, reader, nil, catalog)
 
@@ -290,7 +290,7 @@ func TestSupplierGoodsReader_TheWarehouseChipNarrowsTheTabs(t *testing.T) {
 	link(kenanga, benang, nil, 2)
 	link(melati, rayon, &tokped.ID, 3)
 
-	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil), db)
+	reader := NewSupplierGoodsReader(inventory_v1.NewService(db, nil, nil, nil, nil, nil, nil, nil, nil, nil), db)
 	catalog := NewSupplierProductCatalog(product_v1.NewService(db, nil, nil, nil, nil))
 	svc := supplier_v1.NewService(db, nil, nil, reader, nil, catalog)
 

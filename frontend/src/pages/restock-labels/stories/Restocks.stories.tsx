@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { restockReadScenario } from "../../../../.storybook/restockReadScenario";
 import { At503And502, At503Probed, AtFiftyTwo, LABELS_META, printedLabels, sheet, typeMeasure } from "./kit";
 
 // RESTOCK LABELS — the Restok card: several restocks in one print, Tambah Restok, a restock's jump to its labels, and
-// the one-by-one read that is marked (labels-print-several-restocks). The page's stories are grouped by the part of the
+// the one read for all of them (labels-print-several-restocks, the-labels-mark-their-one-by-one-read). The page's stories are grouped by the part of the
 // screen they are about (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -126,19 +127,34 @@ export const AtMostFifty: Story = {
   },
 };
 
-// THE ONE-BY-ONE READ IS MARKED (owner: *"kasih unimplemented"*, an-interim-read-is-marked) — every restock is its own
-// read until several can be read at once: the strip under the title says so, an interim read, and the Restok card
-// carries its ⚠ 1.
-export const TheOneByOneReadIsMarked: Story = {
-  name: "One-by-one read, marked",
+// ONE READ FOR EVERY RESTOCK ON THE PRINT (owner: *"restock detail harusnya ada yang dipanggil ids"*,
+// the-labels-mark-their-one-by-one-read) — 503 and 502 come in ONE RestockRequestByIds call, 503 with its labels and 502
+// with its lines; the interim mark is gone, from the strip and from the Restok card.
+export const ReadInOneCall: Story = {
+  name: "Read in one call",
   render: () => <At503And502 />,
   play: async ({ canvasElement }) => {
     const canvas = await sheet(canvasElement);
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toHaveTextContent("1 part of this screen is not implemented yet");
-    await expect(within(canvas.getByTestId("labels-restocks")).getByTestId("not-implemented-byIds")).toHaveTextContent("1");
-    await userEvent.click(canvas.getByTestId("not-implemented-toggle"));
-    await waitFor(() => expect(canvas.getByTestId("pending-row-byIds")).toHaveTextContent("Restocks read one by one"));
-    await expect(canvas.getByTestId("pending-row-byIds")).toHaveTextContent("interim read");
+    await expect(canvas.getByTestId("labels-restock-503-count")).toHaveTextContent("27 labels");
+    await expect(canvas.getByTestId("labels-restock-502-count")).toHaveTextContent("17 labels");
+    await expect(restockReadScenario.byIdsCalls).toEqual([[503n, 502n]]);
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(within(canvas.getByTestId("labels-restocks")).queryByTestId("not-implemented-byIds")).toBeNull();
+  },
+};
+
+// FIFTY RESTOCKS, STILL ONE READ — the address's first 50 in one call (the read takes at most 50, as a print holds); a
+// number that is no restock of this warehouse's is absent from the answer, and its row says so.
+export const FiftyInOneCall: Story = {
+  name: "Fifty in one call",
+  render: () => <AtFiftyTwo />,
+  play: async ({ canvasElement }) => {
+    const canvas = await sheet(canvasElement);
+
+    await expect(canvas.getByTestId("labels-restock-503-count")).toHaveTextContent("27 labels");
+    await expect(canvas.getByTestId("labels-restock-900-count")).toHaveTextContent("Those labels are not available.");
+    await expect(restockReadScenario.byIdsCalls).toHaveLength(1);
+    await expect(restockReadScenario.byIdsCalls[0]).toHaveLength(50);
   },
 };
