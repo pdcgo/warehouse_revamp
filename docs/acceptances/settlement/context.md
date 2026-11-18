@@ -9,7 +9,7 @@ at cancel, is checked in [order](../inventory/order.md). Rules: [guide.md](../gu
 | --- | --- | --- | --- | --- |
 | [settlement_importer](settlement_importer.md) | | | | 16 |
 | [order_settlement](order_settlement.md) | | | | 23 |
-| [shop_entry](shop_entry.md) | | | | |
+| [shop_entry](shop_entry.md) | | | | 13 |
 | [report](report.md) | | | | |
 
 An empty row has not been discussed yet.

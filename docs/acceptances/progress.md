@@ -63,3 +63,9 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to see how the margin adds up · [open margin breakdown](settlement/order_settlement.md) (4 thens: ⬜ 4)
 - `selling:all` wants to record money on an order · [add settlement entry](settlement/order_settlement.md) (9 thens: ⬜ 9)
 - `selling:all` wants to undo a wrong entry · [reverse settlement entry](settlement/order_settlement.md) (5 thens: ⬜ 5)
+
+## 2026-11-18
+
+- `selling:all` wants to see money not tied to an order · [open shop entries](settlement/shop_entry.md) (6 thens: ⬜ 6)
+- `selling:all` wants to find a shop's entries · [filter shop entries](settlement/shop_entry.md) (2 thens: ⬜ 2)
+- `selling:all` wants to undo a wrong shop entry · [reverse shop entry](settlement/shop_entry.md) (5 thens: ⬜ 5)
