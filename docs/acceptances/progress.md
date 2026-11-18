@@ -69,3 +69,8 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to see money not tied to an order · [open shop entries](settlement/shop_entry.md) (6 thens: ⬜ 6)
 - `selling:all` wants to find a shop's entries · [filter shop entries](settlement/shop_entry.md) (2 thens: ⬜ 2)
 - `selling:all` wants to undo a wrong shop entry · [reverse shop entry](settlement/shop_entry.md) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` wants to record a cost · [record expense](financial_account/expense.md#record) (19 thens: 🚧 10, ⬜ 9)
+- `selling:owner` · `selling:admin` wants to correct a cost · [adjust expense](financial_account/expense.md#adjust-and-cancel) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` wants to take back a cost · [cancel expense](financial_account/expense.md#adjust-and-cancel) (4 thens: ⬜ 4)
+- `selling:owner` · `selling:admin` wants to see what was spent in a month · [open expenses](financial_account/expense.md#read) (4 thens: 🚧 1, ⬜ 3)
+- `selling:owner` · `selling:admin` wants to find a kind of cost · [filter expenses](financial_account/expense.md#read) (2 thens: ⬜ 2)
