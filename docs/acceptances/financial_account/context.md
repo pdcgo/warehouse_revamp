@@ -6,6 +6,6 @@ the acceptances split it by what a person does. Rules: [guide.md](../guide.md).
 
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
-| [expense](expense.md) | | | 11 | 23 |
+| [expense](expense.md) | | | 35 | 23 |
 
 An empty row has not been discussed yet.
