@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
-import { At503, WAREHOUSE_DETAIL_META, loaded } from "./kit";
+import { signedForWithAChargeForStory } from "../../../features/restock/storyRestock";
+import { At501, At503, WAREHOUSE_DETAIL_META, loaded } from "./kit";
 
 // RESTOCK WAREHOUSE DETAIL — the ongkir this warehouse paid at the door, a fact in Kiriman, and its slip; the label photo
 // it opens from Kiriman too.
@@ -57,6 +58,30 @@ export const TheWarehouseOpensTheLabelPhoto: Story = {
       ),
     );
     open.mockRestore();
+  },
+};
+
+// THE CHARGE NOTED AT TANDAI TIBA IS SHOWN, AS NOTED (the-courier-charge-is-noted-at-tiba-and-final-at-terima) — 501
+// signed for with Rp 15.000, its note and its slip: Kiriman reads them as it reads Terima's, the slip opens, and the line
+// under says it is final at Terima — owed back from then, not yet.
+export const TheChargeNotedAtTibaIsShown: Story = {
+  name: "Ongkir · noted at Tiba",
+  render: () => <At501 />,
+  beforeEach: () => signedForWithAChargeForStory(501n, 15000, "Biaya COD", "doc-tiba-slip"),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const delivery = canvas.getByTestId("restock-detail-info");
+
+    await expect(within(delivery).getByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 15.000");
+    await expect(within(delivery).getByTestId("restock-detail-courier-charge-note")).toHaveTextContent("Biaya COD");
+    await expect(within(delivery).getByTestId("restock-detail-courier-charge-owed")).toHaveTextContent(
+      "Noted by this warehouse when the box was signed for — final when it is accepted",
+    );
+    const slip = await within(delivery).findByTestId("restock-detail-courier-photo", {}, { timeout: 4000 });
+    await userEvent.click(within(slip).getByTestId("restock-detail-courier-photo-open"));
+    const whole = await screen.findByTestId("restock-detail-courier-photo-dialog");
+    await waitFor(() => expect(whole).toBeVisible());
+    await expect(within(whole).getByRole("img")).toHaveAttribute("src", expect.stringMatching(/#doc-tiba-slip$/));
   },
 };
 

@@ -38,6 +38,7 @@ import type { OrderAddress, OrderItem } from "../../gen/warehouse/selling/v1/ord
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { CustomerLineItem } from "../../components/customers/CustomerLineItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
+import { ChangeShopAction } from "../../features/orders/ChangeShopDialog";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
 import { orderDeadline } from "../../features/orders/deadline";
@@ -270,6 +271,18 @@ export function SellerOrderDetailPage() {
           <Fact label={t("orders.team")}>{teamName}</Fact>
           <Fact label={t("orders.marketplace")}>
             {shop ? <MarketplaceBadge marketplace={shop.marketplace} size="sm" /> : undefined}
+          </Fact>
+          {/* THE SHOP IT IS FILED UNDER — and, from the order's handover on, the fix of a wrong one beside it
+              (an-orders-shop-is-fixed-and-counted-on-the-day). */}
+          <Fact label={t("orders.shop")}>
+            {shop ? (
+              <Flex gap="2" align="center" wrap="wrap">
+                <Text fontSize="sm" data-testid="order-shop-name">
+                  {shop.name}
+                </Text>
+                <ChangeShopAction teamId={teamId} order={order} />
+              </Flex>
+            ) : undefined}
           </Fact>
           <Fact label={t("orderDetail.info.createdAt")}>{formatUnixDateTime(order.createdAtUnix)}</Fact>
           {/* WHEN THE BUYER ORDERED, beside when we wrote it down — two facts, and an order typed in on Monday for a

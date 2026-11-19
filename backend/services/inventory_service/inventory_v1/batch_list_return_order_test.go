@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
@@ -53,6 +54,15 @@ func (r *recordingReturnOrders) OrderIDsByReturnTransactions(_ context.Context, 
 	}
 
 	return out, nil
+}
+
+// FoundOrder and NoteFound complete the order seam: these tests read batches, and no found here names an order.
+func (r *recordingReturnOrders) FoundOrder(context.Context, uint64) (inventory_v1.FoundOrder, bool, error) {
+	return inventory_v1.FoundOrder{}, false, nil
+}
+
+func (r *recordingReturnOrders) NoteFound(context.Context, *gorm.DB, inventory_v1.FoundNote) error {
+	return nil
 }
 
 func returnOrdersStocked(t *testing.T) *returnOrdersFixture {

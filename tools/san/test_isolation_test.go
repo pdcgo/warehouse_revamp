@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -96,15 +97,16 @@ func TestOneWorkerPlanIsIsolatedWithTodaysBatches(t *testing.T) {
 		t.Errorf("orders alone and the restock family together: %v", w.Batches)
 	}
 
-	// And today's caps: 590 s, the restock family's batch 1500 s.
+	// And their caps: three times each batch's estimate, at least today's fixed caps — 590 s, the restock family's
+	// batch 1500 s (estimatedCap). One test a spec, no recorded run: every estimate is under its floor.
 	for i, b := range w.Batches {
-		if got, want := p.batchCap(w, i), capFor(b); got != want {
+		if got, want := p.batchCap(w, i), estimatedCap(b, w.BatchSecs[i]); got != want {
 			t.Errorf("b%d cap %s, want %s", i+1, got, want)
 		}
 	}
 
 	if p.batchCap(w, 3) != longSpecCap || p.batchCap(w, 0) != batchCap {
-		t.Error("the restock batch gets 1500 s, the others 590 s")
+		t.Error("the restock batch gets at least 1500 s, the others at least 590 s")
 	}
 
 	if len(w.BatchSecs) != len(w.Batches) {
@@ -216,7 +218,8 @@ func TestPlanFullRunsOneIsolatedWorker(t *testing.T) {
 		"meanwhile    the live tree's Go DB tests and smoke / affected --run (warehouse_test, :8081/:5175",
 		"b2  orders.spec.ts",
 		"b3  restock.spec.ts", "restock_warehouse_wants_to_accept.spec.ts",
-		"cap 9m50s (restock 25m0s)",
+		"capped at 3× its estimate, at least 9m50s (restock 25m0s)",
+		"· cap 25m0s",
 		"e2e wall     about",
 	} {
 		if !strings.Contains(out.String(), want) {
@@ -384,5 +387,205 @@ func TestReadBusySeesOthersLocksNotItsOwn(t *testing.T) {
 	err = refuseFullIfBusy(root, false, []string{"w1"})
 	if err == nil || !strings.Contains(err.Error(), "a full run is live") {
 		t.Errorf("a second full run must refuse: %v", err)
+	}
+}
+
+// What the tester measured on worker w1 (e2e_report/tester/20261117-133040-acceptance-correct-received-count-restock.md
+// and the reports before it): the restock family at ~1680 s of spec time — correct count 88 s, lost 121, cancel 157,
+// edit 646, raise 245, accept 361, receive 62 — plus restock.spec.ts and restock_references_in_use.spec.ts (~63 s in the
+// last full run): 1743 s, over the family's fixed 1500 s. The order acceptance specs beside them
+// (20261117-145552…165554): create ~430 s, return-and-stock ~230 s, … — 1116 s in one ordinary batch, over its 590 s.
+var measured75 = map[string]float64{
+	"a_warehouse_picker_needs_no_two_letters.spec.ts": 6,
+	"auth.spec.ts":                                           19,
+	"bundles.spec.ts":                                        18,
+	"expenses.spec.ts":                                       19,
+	"finance_metrics.spec.ts":                                11,
+	"financial_accounts.spec.ts":                             42,
+	"order_selling_wants_to_create.spec.ts":                  430,
+	"order_selling_wants_to_create_debt_limit.spec.ts":       98,
+	"order_selling_wants_to_create_return_and_stock.spec.ts": 230,
+	"order_warehouse_wants_to_confirm.spec.ts":               39,
+	"order_warehouse_wants_to_hand_over.spec.ts":             214,
+	"order_warehouse_wants_to_pick.spec.ts":                  105,
+	"orders.spec.ts":                                         243,
+	"products.spec.ts":                                       27,
+	"restock.spec.ts":                                        50,
+	"restock_references_in_use.spec.ts":                      13,
+	"restock_selling_wants_to_cancel.spec.ts":                157,
+	"restock_selling_wants_to_edit.spec.ts":                  646,
+	"restock_selling_wants_to_raise.spec.ts":                 245,
+	"restock_selling_wants_to_report_lost.spec.ts":           121,
+	"restock_warehouse_wants_to_accept.spec.ts":              361,
+	"restock_warehouse_wants_to_correct_count.spec.ts":       88,
+	"restock_warehouse_wants_to_receive.spec.ts":             62,
+}
+
+// measuredRepo is a checkout whose last full run recorded measured75 — one test a spec, so no time is rescaled.
+func measuredRepo(t *testing.T) (string, []string) {
+	t.Helper()
+
+	files := map[string]string{}
+	rec := &RunRecord{ID: "20261117-133040", Kind: "full", E2E: &E2EResult{Specs: map[string]*SpecResult{}}}
+
+	var specs []string
+
+	for s, secs := range measured75 {
+		files["frontend/e2e/"+s] = "test(\"x\", async () => {});\n"
+		rec.E2E.Specs[s] = &SpecResult{Counts: Counts{Passed: 1}, Secs: secs}
+		specs = append(specs, s)
+	}
+
+	sort.Strings(specs)
+
+	root := fakeRepo(t, files)
+
+	err := writeJSON(filepath.Join(reportDir(root), "runs", rec.ID, "run.json"), rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return root, specs
+}
+
+// batchHolding is the index of the batch that runs spec.
+func batchHolding(t *testing.T, batches [][]string, spec string) int {
+	t.Helper()
+
+	for i, b := range batches {
+		if contains(b, spec) {
+			return i
+		}
+	}
+
+	t.Fatalf("no batch runs %s: %v", spec, batches)
+
+	return -1
+}
+
+// #75: a batch's cap follows what its specs were measured to take — three times it, never under the old fixed cap —
+// so the restock family (1743 s) and the order acceptance specs' batch (1116 s) no longer outgrow 1500 s / 590 s.
+func TestOneWorkerCapsGrowWithTheMeasuredBatch(t *testing.T) {
+	root, specs := measuredRepo(t)
+
+	p, err := planWorkers(root, specs, 1, "", func(int) bool { return false })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := p.Workers[0]
+
+	// The batches are the single-database ones, unchanged: the family still runs together, the order specs in an
+	// ordinary batch of six, orders.spec.ts alone.
+	if got, want := w.Batches, planBatches(specs, batchSize); len(got) != len(want) {
+		t.Fatalf("batches %v, want %v", got, want)
+	}
+
+	fam := batchHolding(t, w.Batches, "restock_selling_wants_to_edit.spec.ts")
+	ord := batchHolding(t, w.Batches, "order_selling_wants_to_create.spec.ts")
+	alone := batchHolding(t, w.Batches, "orders.spec.ts")
+	small := batchHolding(t, w.Batches, "auth.spec.ts")
+
+	if len(w.Batches[fam]) != 9 || len(w.Batches[ord]) != 6 || len(w.Batches[alone]) != 1 {
+		t.Fatalf("the family (9), the order specs (6) and orders.spec.ts alone: %v", w.Batches)
+	}
+
+	cases := []struct {
+		name     string
+		i        int
+		measured float64
+		want     time.Duration
+	}{
+		{"the restock family", fam, 1743, 5229 * time.Second},
+		{"the order acceptance specs", ord, 1116, 3348 * time.Second},
+		{"orders.spec.ts alone", alone, 243, 729 * time.Second},
+		{"a short batch", small, 115, batchCap},
+	}
+
+	for _, c := range cases {
+		if w.BatchSecs[c.i] != c.measured {
+			t.Errorf("%s: estimated %.0f s, want the recorded %.0f s", c.name, w.BatchSecs[c.i], c.measured)
+		}
+
+		got := p.batchCap(w, c.i)
+		if got != c.want {
+			t.Errorf("%s: cap %s, want %s (3× %.0f s, at least %s)", c.name, got, c.want, c.measured, capFor(w.Batches[c.i]))
+		}
+
+		if got <= time.Duration(c.measured)*time.Second {
+			t.Errorf("%s: cap %s would stop a batch that takes its measured %.0f s", c.name, got, c.measured)
+		}
+	}
+
+	// The fixed caps these replace would have stopped both mid-run.
+	if capFor(w.Batches[fam]) != longSpecCap || longSpecCap >= 1743*time.Second ||
+		capFor(w.Batches[ord]) != batchCap || batchCap >= 1116*time.Second {
+		t.Error("the measured family / order batch no longer outgrow their fixed caps — the case this test pins is gone")
+	}
+
+	var out bytes.Buffer
+
+	p.print(&out, specs)
+
+	if !strings.Contains(out.String(), "restock_warehouse_wants_to_receive.spec.ts (62s)  · about 1743s · cap 1h27m9s") {
+		t.Errorf("the plan does not show the family batch's estimate and cap:\n%s", out.String())
+	}
+}
+
+// The --shared-db batches are capped the same way.
+func TestSharedDBCapsGrowWithTheMeasuredBatch(t *testing.T) {
+	root, _ := measuredRepo(t)
+	noListeners(t)
+
+	plan, err := planFull(root, fullOptions{SharedDB: true}, time.Date(2026, 11, 18, 12, 0, 0, 0, time.Local))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(plan.BatchCaps) != len(plan.Batches) {
+		t.Fatalf("%d caps for %d batches", len(plan.BatchCaps), len(plan.Batches))
+	}
+
+	fam := batchHolding(t, plan.Batches, "restock_selling_wants_to_edit.spec.ts")
+	ord := batchHolding(t, plan.Batches, "order_selling_wants_to_create.spec.ts")
+
+	if b := plan.sharedBatch(fam); b.Cap != 5229*time.Second || b.N != fam+1 || len(b.Specs) != 9 {
+		t.Errorf("the family's --shared-db batch: b%d cap %s, %d specs — want cap 1h27m9s, 9 specs", b.N, b.Cap, len(b.Specs))
+	}
+
+	if plan.sharedCap(ord) != 3348*time.Second {
+		t.Errorf("the order specs' --shared-db batch: cap %s, want 55m48s", plan.sharedCap(ord))
+	}
+
+	fp, err := takeFingerprint(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+
+	plan.print(&out, fp, nil)
+
+	if !strings.Contains(out.String(), "restock_warehouse_wants_to_receive.spec.ts  · cap 1h27m9s") {
+		t.Errorf("the --shared-db plan does not show the family batch's cap:\n%s", out.String())
+	}
+}
+
+// The dry runs — what the tester reads before a run — print the cap each batch will run under: the full run's
+// family batch, and affected --run's long spec alone (the edit spec, 646 s: over the 590 s it got before #75).
+func TestDryRunsPrintTheMeasuredCaps(t *testing.T) {
+	root, _ := measuredRepo(t)
+	noListeners(t)
+
+	out, err := runSan(t, root, "test", "full", "--dry-run", "--skip", "go", "--skip", "stories")
+	if err != nil || !strings.Contains(out, "restock_warehouse_wants_to_receive.spec.ts (62s)  · about 1743s · cap 1h27m9s") ||
+		!strings.Contains(out, "order_warehouse_wants_to_pick.spec.ts (105s)  · about 1116s · cap 55m48s") {
+		t.Errorf("full --dry-run: %v\n%s", err, out)
+	}
+
+	out, err = runSan(t, root, "test", "affected", "--files", "frontend/e2e/restock_selling_wants_to_edit.spec.ts",
+		"--run", "--dry-run")
+	if err != nil || !strings.Contains(out, "(cap 32m18s)") || !strings.Contains(out, "restock_selling_wants_to_edit.spec.ts") {
+		t.Errorf("affected --run --dry-run: %v\n%s", err, out)
 	}
 }

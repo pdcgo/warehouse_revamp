@@ -34,6 +34,7 @@ import { ActorName } from "../../components/entity/ActorName";
 import { SettlementType } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import {
   type UploadedFile,
+  type UploadedFileLine,
   UploadedFileLineOutcome,
   UploadedFileLineReason,
   UploadedFileStatus,
@@ -41,6 +42,13 @@ import {
 import { formatRupiah } from "../../lib/money";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// The order a row's money went to, linked under its result: a row that posted, or was already there, with no reason.
+// A row posted to the shop (NO_ORDER, SEVERAL_ORDERS) keeps its own reason and the orders it found, as accepted.
+function orderOf(line: UploadedFileLine): bigint {
+  const landed = line.outcome === UploadedFileLineOutcome.POSTED || line.outcome === UploadedFileLineOutcome.EXISTING;
+  return landed && line.reason === UploadedFileLineReason.UNSPECIFIED ? line.orderId : 0n;
+}
 
 const REASON: Record<UploadedFileLineReason, string> = {
   [UploadedFileLineReason.UNSPECIFIED]: "settlementImports.reason.unspecified",
@@ -58,10 +66,16 @@ const VIEW_NOTE: Record<LineView, string> = {
   held: "settlementImports.detail.heldNote",
   skipped: "settlementImports.detail.skippedNote",
   toShop: "settlementImports.detail.toShopNote",
+  posted: "settlementImports.detail.postedNote",
+  existing: "settlementImports.detail.existingNote",
 };
 
-// SettlementImportDetailPage — one imported statement: what it posted, and every row that did not
-// simply post to its order. Design: docs/business/settlement/settlement_importer_decision.md.
+// The views in their tab order: the three a person acts on or reads first, as accepted, then every posted row and
+// every row already there — so each row of the file is shown with its result (acceptance *open import detail*).
+const VIEWS: readonly LineView[] = ["held", "skipped", "toShop", "posted", "existing"];
+
+// SettlementImportDetailPage — one imported statement: what it posted, and each of its rows with what
+// became of it. Design: docs/business/settlement/settlement_importer_decision.md.
 //
 // Mounted at /settlement/imports/:fileId, reached by clicking a row of the list (a detail view is a
 // page, not a dialog).
@@ -71,6 +85,9 @@ const VIEW_NOTE: Record<LineView, string> = {
 //    (by decision) and POSTED TO THE SHOP (their order was not found, or their ref is on several live orders —
 //    each of those named, a link to the order, so a person can place the money:
 //    two-live-orders-on-a-ref-post-to-the-shop);
+//  - then every POSTED row (each with the order it went to, a link — or the shop) and every row ALREADY THERE, so each
+//    row of the file is shown with its result (the owner's acceptance row *open import detail*, backlog #93). Each view
+//    pages on the server: a statement runs to thousands of rows;
 //  - the original is downloadable, through a signed URL minted when asked;
 //  - there is NO Revert and NO Reprocess (an-upload-is-never-reverted, the-row-key-is-the-only-dedupe).
 export function SettlementImportDetailPage() {
@@ -138,10 +155,25 @@ function FileDetail({ teamId, file }: { teamId: bigint; file: UploadedFile }) {
   const lines = useUploadedFileLines({ teamId, fileId: file.id, view, page, pageSize });
   const rows = lines.data?.lines ?? [];
 
+  // What became of a row, in the "Why" column. A row with a reason says it, as accepted; a row that posted, or was
+  // already there, with no reason says where its money is — its order (linked under it) or the shop.
+  const resultOf = (line: UploadedFileLine) => {
+    if (line.reason !== UploadedFileLineReason.UNSPECIFIED) return t(REASON[line.reason]);
+    if (line.outcome === UploadedFileLineOutcome.POSTED) {
+      return line.orderId > 0n
+        ? t("settlementImports.result.postedToOrder")
+        : t("settlementImports.result.postedToShop");
+    }
+    if (line.outcome === UploadedFileLineOutcome.EXISTING) return t("settlementImports.result.existing");
+    return t(REASON[UploadedFileLineReason.UNSPECIFIED]);
+  };
+
   const counts: Record<LineView, number> = {
     held: file.tally?.held ?? 0,
     skipped: file.tally?.skipped ?? 0,
     toShop: file.tally?.postedToShop ?? 0,
+    posted: file.tally?.posted ?? 0,
+    existing: file.tally?.existing ?? 0,
   };
 
   // The URL is minted when somebody asks for it — a signed link resolved on page load would quietly
@@ -231,7 +263,7 @@ function FileDetail({ teamId, file }: { teamId: bigint; file: UploadedFile }) {
         }}
       >
         <Tabs.List>
-          {(["held", "skipped", "toShop"] as const).map((v) => (
+          {VIEWS.map((v) => (
             <Tabs.Trigger key={v} value={v} data-testid={`lines-tab-${v}`}>
               {t(`settlementImports.detail.view.${v}`, { count: counts[v] })}
             </Tabs.Trigger>
@@ -288,7 +320,16 @@ function FileDetail({ teamId, file }: { teamId: bigint; file: UploadedFile }) {
                       {formatRupiah(line.change)}
                     </Table.Cell>
                     <Table.Cell>
-                      <Text data-testid={`line-reason-${line.id}`}>{t(REASON[line.reason])}</Text>
+                      <Text data-testid={`line-reason-${line.id}`}>{resultOf(line)}</Text>
+                      {orderOf(line) > 0n && (
+                        <HStack gap="2" wrap="wrap" fontSize="xs">
+                          <Link asChild colorPalette="primary" fontFamily="mono">
+                            <RouterLink to={`/orders/${line.orderId}`} data-testid={`line-order-${line.id}`}>
+                              #{line.orderId.toString()}
+                            </RouterLink>
+                          </Link>
+                        </HStack>
+                      )}
                       {line.foundOrderIds.length > 0 && (
                         <HStack gap="2" wrap="wrap" fontSize="xs" data-testid={`line-found-orders-${line.id}`}>
                           {line.foundOrderIds.map((orderId) => (

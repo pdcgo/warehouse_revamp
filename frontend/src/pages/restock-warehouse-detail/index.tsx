@@ -9,16 +9,17 @@ import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_r
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
 import { useRestockDoorPhotos, useRestockRequest } from "../../features/restock/queries";
-import { shortfall } from "../../features/restock/summary";
+import { courierCharge, shortfall } from "../../features/restock/summary";
 import { CourierChargeFacts, DeliveryFacts } from "../../features/restock/RestockFacts";
 import { RestockNotes } from "../../features/restock/RestockNotes";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { RestockTitleRow } from "../../features/restock/RestockTitleRow";
+import { RestockTagsBox } from "../../features/restock/RestockTagsBox";
+import { tagsOfRequest } from "../../features/restock/restockTags";
+import { useRestockTags } from "../../features/restock/tagQueries";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
 import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
 import { SIDE_COLUMN, useSideBySide } from "../../components/chrome/sideBySide";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { Section } from "../../components/chrome/DetailSection";
@@ -28,12 +29,12 @@ import { useIsMobile } from "../../layouts/shell";
 import { useScrollSpy } from "../../lib/useScrollSpy";
 import { useStickyTitle } from "../../lib/useStickyTitle";
 import { LinesCard } from "./components/LinesCard";
-import { RESTOCK_WAREHOUSE_DETAIL_PENDING } from "./pending";
 
 // The warehouse's sections, in its own order (the-restock-page-leads-with-the-box): the box, then the info about it.
 // No Pembayaran (the-warehouse-reads-the-box-not-the-purchase).
 // The Ongkir COD it paid is a fact in Kiriman, not a section (the-warehouse-sees-the-ongkir-it-paid).
-const WAREHOUSE_ORDER: RestockSectionKey[] = ["products", "delivery", "note", "timeline"];
+// "tags" (#87) — under Kiriman on the right, before the note below.
+const WAREHOUSE_ORDER: RestockSectionKey[] = ["products", "delivery", "tags", "note", "timeline"];
 
 // THE PRODUCTS CARD AT ITS NARROWEST (the-delivery-card-stacks-when-the-page-is-narrow) — the lines table's min-content,
 // 660px on 503 counted in (its places, a broken row's worth and note — LinesCard holds no cell wider than its words must,
@@ -108,8 +109,13 @@ export function RestockWarehouseDetailPage() {
   // the goods' price and the restock's total are the selling team's purchase; the warehouse's own money is the courier's
   // charge it paid, a fact in Kiriman.
   const accepted = request?.status === RestockRequestStatus.ACCEPTED;
+  // THE CHARGE IT PAID, ONCE THERE IS ONE ON THE RESTOCK — Terima's, final, once accepted; before that, the one noted at
+  // Tandai Tiba (the-courier-charge-is-noted-at-tiba-and-final-at-terima), said as noted. Neither yet: "—".
+  const chargeNoted = request !== null && !accepted && courierCharge(request) > 0;
   // THE BOX FIRST (owner: *"karena ini gudang, produk taruh atas, lalu info ada di kanan"*,
   // the-restock-page-leads-with-the-box) — what is in it leads, then where it came from; the nav follows that order.
+  // THE TAGS (backlog #87) — read and changed through the live RPCs (tagQueries.ts).
+  const tagsApi = useRestockTags();
   const keys = WAREHOUSE_ORDER;
   // The info on the right only where the PAGE AREA holds it beside the products (owner: *"A"*,
   // the-delivery-card-stacks-when-the-page-is-narrow) — measured on the main column, never the viewport's `xl`, which
@@ -121,7 +127,7 @@ export function RestockWarehouseDetailPage() {
     stick.bar,
     keys,
     restockSectionDomId,
-    wide ? keys.filter((key) => key !== "delivery") : undefined,
+    wide ? keys.filter((key) => key !== "delivery" && key !== "tags") : undefined,
   );
   const navSections = keys.map((key) => {
     const entry = restockSection(key);
@@ -164,9 +170,6 @@ export function RestockWarehouseDetailPage() {
   const missing = shortfall(request);
   const fromName = requester.data?.name || t("restock.teamRef", { id: request.requestingTeamId.toString() });
 
-  // The sign dialog's courier charge is typed and not kept (the-cod-can-be-noted-when-the-box-arrives).
-  const codMark = <NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="arrivalCod" />;
-
   // ── THE TITLE ROW — back, the tracking number, the status, and the acts at the door held to the right. ONE builder,
   // drawn twice: as the page's title, and as the sticky bar once that title has scrolled behind it. ───────────────────
   const titleRow = (stuck: boolean) => (
@@ -194,15 +197,10 @@ export function RestockWarehouseDetailPage() {
         // always the compact one, its test ids suffixed `-sticky`, so a test finds each of the page's once.
         stuck ? (
           <Box data-testid="restock-detail-sticky-actions">
-            <WarehouseRestockActions request={request} teamId={teamId} variant="compact" codMark={codMark} idSuffix="-sticky" />
+            <WarehouseRestockActions request={request} teamId={teamId} variant="compact" idSuffix="-sticky" />
           </Box>
         ) : (
-          <WarehouseRestockActions
-            request={request}
-            teamId={teamId}
-            variant={isMobile ? "compact" : "buttons"}
-            codMark={codMark}
-          />
+          <WarehouseRestockActions request={request} teamId={teamId} variant={isMobile ? "compact" : "buttons"} />
         )
       }
     />
@@ -223,7 +221,8 @@ export function RestockWarehouseDetailPage() {
   // KIRIMAN — what finds the box at the door: who sent it, the courier, THE ONGKIR THIS WAREHOUSE PAID — the charge at the
   // door, its note and slip, owed back by the selling team (owner: *"ongkirnya yang dibayar gudang … dibayar selling kita
   // tidak perlu tahu"*, the-warehouse-sees-the-ongkir-it-paid) — the label's photo, when. The tracking number is the title.
-  // Before the box is counted the charge is not on the restock, so it reads "—".
+  // Before the box is counted it reads the charge noted at Tandai Tiba, if one was — noted, final at Terima — and "—" if
+  // none was (the-courier-charge-is-noted-at-tiba-and-final-at-terima).
   const delivery = section(
     "delivery",
     <DeliveryFacts
@@ -236,10 +235,14 @@ export function RestockWarehouseDetailPage() {
       party={{ label: t("restock.detail.from"), name: fromName, testId: "restock-detail-from" }}
       withCourierCharge
       courierCharge={
-        accepted ? (
+        accepted || chargeNoted ? (
           <CourierChargeFacts
             request={request}
-            owed={t("restock.detail.courierChargeOwedToUs", { team: fromName })}
+            owed={
+              accepted
+                ? t("restock.detail.courierChargeOwedToUs", { team: fromName })
+                : t("restock.detail.courierChargeNotedToUs", { team: fromName })
+            }
             slipUrl={doorPhotos.slip}
           />
         ) : undefined
@@ -249,12 +252,15 @@ export function RestockWarehouseDetailPage() {
   );
   const products = section(
     "products",
-    <LinesCard
-      request={request}
-      brokenPhotos={doorPhotos.broken}
-      brokenRackMark={<NotImplemented list={RESTOCK_WAREHOUSE_DETAIL_PENDING} id="brokenRack" />}
-    />,
+    <LinesCard request={request} brokenPhotos={doorPhotos.broken} />,
     "restock-detail-products",
+  );
+  // THE RESTOCK'S TAGS (#87), the same set the selling team's screen shows, and the warehouse tags it too
+  // (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps). Under Kiriman where there is room, else before the note.
+  const tags = section(
+    "tags",
+    <RestockTagsBox requestId={request.id} tags={tagsOfRequest(request)} api={tagsApi} />,
+    "restock-detail-tags-section",
   );
   // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, READ here, never changed; this warehouse's,
   // WRITTEN here and kept with its writer and time (the-warehouse-writes-its-own-note).
@@ -279,9 +285,6 @@ export function RestockWarehouseDetailPage() {
       data-testid="restock-detail-page"
       style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
     >
-      {/* What is not real yet (pending.ts). */}
-      <NotImplementedSummary list={RESTOCK_WAREHOUSE_DETAIL_PENDING} />
-
       {/* THE STICKY STRIP — the section chips on a phone (always), and the title bar under them, drawn over the page once
           the title has gone behind it. */}
       <ProductStickyStrip
@@ -315,12 +318,14 @@ export function RestockWarehouseDetailPage() {
             <Stack gap="section" minW="0">
               {products}
               {!wide && delivery}
+              {!wide && tags}
               {note}
               {timeline}
             </Stack>
             {wide && (
               <Stack gap="section" minW="0">
                 {delivery}
+                {tags}
               </Stack>
             )}
           </Grid>

@@ -51,7 +51,7 @@ func reverseShop(t *testing.T, svc *settlement_v1.Service, of settlement_v1.Post
 // The opposite row lands on the same shop, the shop's position returns, and the totals with it.
 func TestSettlementPost_ReversesAShopEntry(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	wrong := shopRow(t, svc, "wrong", -45_000)
 
@@ -69,7 +69,7 @@ func TestSettlementPost_ReversesAShopEntry(t *testing.T) {
 // A ROW IS REVERSED ONCE: a second Reverse under another key is refused; the same key again is the first one's retry.
 func TestSettlementPost_RefusesASecondReversal(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	wrong := shopRow(t, svc, "wrong", -45_000)
 
@@ -125,7 +125,7 @@ func TestSettlementPost_RefusesASecondReversal(t *testing.T) {
 // A reversal is THE NEGATION, SAME TYPE (a-correction-is-a-new-row) — another amount or kind is refused.
 func TestSettlementPost_RefusesAReversalThatIsNotTheOpposite(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	wrong := shopRow(t, svc, "wrong", -45_000)
 
@@ -147,7 +147,7 @@ func TestSettlementPost_RefusesAReversalThatIsNotTheOpposite(t *testing.T) {
 // kind at all), and never another shop's row.
 func TestSettlementPost_AShopReversalReachesOnlyItsShopsRows(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	sale, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {

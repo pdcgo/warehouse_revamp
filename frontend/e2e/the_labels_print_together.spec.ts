@@ -15,9 +15,12 @@ import { API_URL } from "./env";
 //   · the merged file is the warehouse's own document (it reads it back), and the seller's labels were never shared;
 //   · ANOTHER warehouse asking for the same orders gets none of them: NOT_SHIPPED_HERE each, and no link.
 //
-// The staff print the way the crew does, from the LIVE warehouse list (/warehouse-orders): tick the three rows, press the
-// bulk bar's Print Labels — one OrderLabels with the ticked ids, in the list's order — and read the answer that minted
-// the link (headless Chromium's popup never loads, so the response is what is asserted).
+// The staff print the way the crew does, from the LIVE warehouse list (/warehouse-orders): tick the three rows and press
+// the bulk bar's Cetak Resi, which OPENS THE PRINT PAGE (/warehouse-orders/print) with them, in the list's order
+// (the-print-page-and-the-courier-count-prototype-is-accepted — it no longer prints at once); the page names the order
+// with no label before printing, and its Print sends one OrderLabels with the ticked ids, in that order. The answer that
+// minted the link is what is asserted; the page's window.open of the PDF is recorded instead of opened (headless
+// Chromium's popup never loads), so the one file it opens is counted.
 //
 // A SELLING TEAM AND TWO WAREHOUSES OF ITS OWN, named to sort after orders.spec.ts and statement.spec.ts (they assert an
 // empty start on the one shared database); the restock is paid from this team's own account, so root's team — whose
@@ -234,20 +237,44 @@ test("Print: the warehouse's staff prints the three together — one PDF of 3 pa
   }
   await expect(page.getByTestId("pick-queue-bulk-count")).toHaveText("3 selected");
 
-  const answered = page.waitForResponse((res) => res.url().endsWith("/warehouse.selling.v1.OrderService/OrderLabels"));
+  // Cetak Resi opens the print page with the three, in the list's order — it prints nothing yet.
   await page.getByTestId("pick-queue-bulk-print").click();
+  await expect(page).toHaveURL(new RegExp(`/warehouse-orders/print\\?ids=${ticked.join("(,|%2C)")}$`));
+  for (const id of ticked) await expect(page.getByTestId(`print-receipts-step-${id}`)).toBeVisible();
+  // The order with no label is named before printing.
+  await expect(page.getByTestId(`print-receipts-label-${state.withoutLabel}`)).toHaveAttribute("data-label", "missing");
+  await expect(page.getByTestId(`print-receipts-label-${state.withShopee}`)).toHaveAttribute("data-label", "attached");
+  await expect(page.getByTestId(`print-receipts-label-${state.withLazada}`)).toHaveAttribute("data-label", "attached");
+
+  // The PDF's window.open, recorded instead of opened.
+  await page.evaluate(() => {
+    const w = window as unknown as { __opened: string[]; open: (url?: string | URL) => Window | null };
+    w.__opened = [];
+    w.open = (url?: string | URL) => {
+      w.__opened.push(String(url));
+      return null;
+    };
+  });
+
+  const answered = page.waitForResponse((res) => res.url().endsWith("/warehouse.selling.v1.OrderService/OrderLabels"));
+  await page.getByTestId("print-receipts-print").click();
   const response = await answered;
   expect(response.status()).toBe(200);
 
-  const asked = JSON.parse(response.request().postData() ?? "{}") as { teamId: string; orderIds: string[] };
+  const asked = JSON.parse(response.request().postData() ?? "{}") as {
+    teamId: string;
+    orderIds: string[];
+    unboxingWarning?: boolean;
+  };
   const labels = (await response.json()) as {
     url: string;
     expiresAtUnix: string;
     results: { orderId: string; included?: boolean; reason?: string }[];
   };
 
-  // ONE call for the three, as the warehouse, in the list's order.
-  expect(asked).toEqual({ teamId: state.warehouse, orderIds: ticked });
+  // ONE call for the three, as the warehouse, in the list's order (no unboxing warning: never switched on here).
+  expect({ teamId: asked.teamId, orderIds: asked.orderIds }).toEqual({ teamId: state.warehouse, orderIds: ticked });
+  expect(asked.unboxingWarning ?? false).toBe(false);
 
   // A result per order, in the asked order: two in, the one with no label said so — and the screen says it too.
   expect(labels.results).toEqual([
@@ -255,7 +282,13 @@ test("Print: the warehouse's staff prints the three together — one PDF of 3 pa
     { orderId: state.withoutLabel, reason: "ORDER_LABEL_REASON_NO_LABEL" },
     { orderId: state.withLazada, included: true },
   ]);
-  await expect(page.getByText("1 label is not in the PDF").first()).toBeVisible();
+  await expect(page.getByTestId("print-receipts-result-title")).toHaveText("2 of 3 labels in the PDF");
+  await expect(page.getByTestId(`print-receipts-result-left-out-${state.withoutLabel}`)).toHaveText(
+    `Order #${state.withoutLabel} has no label attached yet — ask the seller to attach it`,
+  );
+
+  // ONE PDF opened — the answer's link.
+  expect(await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).toEqual([labels.url]);
 
   // ONE link, expiring, to the merged file — its own name, not either label's.
   expect(labels.url).toMatch(/labels-\d{4}-\d{2}-\d{2}-\d{6}\.pdf/);

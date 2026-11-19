@@ -37,7 +37,7 @@ import { useTeamDetail } from "../../features/teams/queries";
 import { useProductsByIds } from "../../features/products/queries";
 import { useProductPlaces } from "../../features/inventory/queries";
 import { toRupiah, unitHpp } from "../../features/restock/counting";
-import { useAcceptRestockRequest, useRestockRequest } from "../../features/restock/queries";
+import { useAcceptRestockRequest, useRestockDoorPhotos, useRestockRequest } from "../../features/restock/queries";
 import { RESTOCK_STATUS_TABS } from "../../features/restock/statusTabs";
 import { useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
@@ -48,10 +48,7 @@ import { LineCard, lineLayout } from "./components/LineCard";
 import { PcsMark } from "./components/PcsMark";
 import type { LineDraft, LineState } from "./draft";
 import { emptyLine, lineState, receivedLine } from "./draft";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { RESTOCK_ACCEPT_PENDING } from "./pending";
-import { keptPhoto, photoUploading } from "../../features/restock/doorPhoto";
+import { keptDoorPhoto, keptPhoto, photoUploading } from "../../features/restock/doorPhoto";
 import type { DoorPhoto } from "../../features/restock/doorPhoto";
 
 function parseRequestId(raw: string | undefined): bigint {
@@ -69,12 +66,12 @@ function acceptable(request: RestockRequest): boolean {
   return request.status === RestockRequestStatus.ONGOING || request.status === RestockRequestStatus.ARRIVED;
 }
 
-// What still holds a line up — the FIRST of it, in the card's order: the count, the broken units' rack, the put-away.
+// What still holds a line up — the FIRST of it, in the card's order: the count, then the put-away. The broken units hold
+// nothing up of their own — no rack (a-restocks-broken-units-are-just-broken-for-now).
 // The line itself says the detail (its badge, its error); the ready line only names what to go and finish.
 function lineBlocker(st: LineState): string {
   if (!st.counted) return "restock.accept.missing.received";
   if (st.over > 0n || st.brokenOver) return "restock.accept.missing.count";
-  if (st.brokenNeedsPlace) return "restock.accept.missing.brokenRack";
   return "restock.accept.missing.placement";
 }
 
@@ -89,9 +86,12 @@ function lineBlocker(st: LineState): string {
 //   the courier's charge             → its own debt, outside the total, inside the unit price
 //                                       (the-couriers-charge-stays-out-of-total)
 //   a photo of the broken units      → optional, one per line, kept on its broken row (a-broken-product-carries-a-photo)
-//   where the broken units go        → thrown away, or onto a rack that is then required — ⚠ the rack is NOT KEPT yet
-//                                       (a-broken-product-may-go-on-a-rack)
+//   the broken units                 → recorded as broken only — their count, note and photo; no rack, no placement
+//                                       (a-restocks-broken-units-are-just-broken-for-now)
 //   a photo of the courier's slip    → optional, kept with the charge (the-courier-slip-has-an-optional-photo)
+//   the charge noted at Tandai Tiba  → the page opens with it — amount, note and slip — still open to change; what
+//                                       Terima sends is FINAL and replaces it (the-courier-charge-is-noted-at-tiba-and-
+//                                       final-at-terima)
 //   both photos are uploaded under this warehouse the moment they are picked (PhotoPick); Terima waits only while one is
 //   still on its way, and sends their documents with the count.
 export function RestockAcceptPage() {
@@ -148,9 +148,9 @@ export function RestockAcceptPage() {
   const request = query.data ?? null;
 
   // TERIMA STARTS FROM THE CHARGE NOTED AT TIBA (owner: *"tiba dan diterima bisa mengubah ongkir, kalau sudah diset di
-  // tiba, diterima tidak perlu set lagi"*, terima-starts-from-the-charge-noted-at-tiba) — the restock's own charge and
-  // note, read ONCE per restock so a refetch never overwrites what is being typed; still open to change here.
-  // ⚠ Tandai Tiba keeps no charge yet, so this is empty today — the `codFromArrival` mark says so.
+  // tiba, diterima tidak perlu set lagi"*, terima-starts-from-the-charge-noted-at-tiba) — the restock's own charge, note
+  // and slip, as Tandai Tiba kept them (the-courier-charge-is-noted-at-tiba-and-final-at-terima), read ONCE per restock so
+  // a refetch never overwrites what is being typed; still open to change here, and what Terima sends replaces them.
   const seededCharge = useRef("");
   useEffect(() => {
     if (!request || seededCharge.current === request.id.toString()) return;
@@ -160,8 +160,14 @@ export function RestockAcceptPage() {
       setChargeAsked(true);
       setCharge(String(request.warehouseAdditionalCost));
       setChargeNote(request.warehouseAdditionalCostNote);
+      // …with its slip, already kept: sent again as it is unless replaced or removed.
+      if (request.warehouseAdditionalCostFile !== "") setChargePhoto(keptDoorPhoto(request.warehouseAdditionalCostFile));
     }
   }, [request]);
+  // The kept slip is drawn from its signed link — the restock's door photos, read only when it keeps one.
+  const doorPhotos = useRestockDoorPhotos({ teamId, request });
+  const shownChargePhoto =
+    chargePhoto && chargePhoto.file === null ? { ...chargePhoto, link: chargePhoto.link || doorPhotos.slip } : chargePhoto;
   const items = request?.items ?? [];
   const loading = query.isPending && teamId !== undefined && requestId !== 0n;
   const loadError = query.isError ? rpcError(query.error) : "";
@@ -245,14 +251,6 @@ export function RestockAcceptPage() {
       });
 
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
-      // WHAT WAS GIVEN AND NOT KEPT — a rack for broken units — said in one toast, not swallowed (restock-accept/pending.ts).
-      const broken = lines.filter((l) => l.st.broken > 0n);
-      const notKept = [broken.some((l) => l.draft.brokenTo === "rack") && t("restock.accept.notKept.brokenRack")].filter(
-        Boolean,
-      );
-      if (notKept.length > 0) {
-        toaster.create({ type: "warning", title: t("restock.accept.toast.notKept", { parts: notKept.join(", ") }) });
-      }
       navigate(openedFrom ?? `/inventories/restock/${request.id}`);
     } catch (err) {
       setSubmitError(rpcError(err));
@@ -380,7 +378,6 @@ export function RestockAcceptPage() {
             thumbnailUrl={product?.defaultImageThumbnailUrl}
             // Real placements only — a pile with no placement is not somewhere to put things.
             recommendations={places.filter((p) => p.productId === item.productId && p.rackId !== 0n)}
-            brokenRackMark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="brokenRack" />}
             layout={layout}
             update={updater(item.id)}
           />
@@ -407,11 +404,10 @@ export function RestockAcceptPage() {
             noteMissing={chargeNoteMissing}
             onAmount={setCharge}
             onNote={setChargeNote}
-            photo={chargePhoto}
+            photo={shownChargePhoto}
             onPhoto={setChargePhoto}
             photoUploadTo={teamId ?? 0n}
             team={sellingTeam}
-            mark={<NotImplemented list={RESTOCK_ACCEPT_PENDING} id="codFromArrival" />}
           />
         </Card.Body>
       </Card.Root>
@@ -490,9 +486,6 @@ export function RestockAcceptPage() {
           {submitError}
         </Text>
       )}
-
-      {/* What is not kept yet — the broken rack, the charge from Tiba (pending.ts). */}
-      <NotImplementedSummary list={RESTOCK_ACCEPT_PENDING} />
 
       {/* THE BOX ON THE LEFT, THE INFO ON THE RIGHT (owner: *"produk semua di kiri, info lain di kanan"*,
           the-accept-page-puts-the-box-left-and-the-info-right) — every line in the main column; the restock's record and

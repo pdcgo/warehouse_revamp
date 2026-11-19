@@ -14,7 +14,8 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, PackageCheck, StickyNote, TriangleAlert, Undo2 } from "lucide-react";
+import { ArrowLeft, PackageCheck, PackageSearch, StickyNote, TriangleAlert, Undo2 } from "lucide-react";
+import { useState } from "react";
 
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -32,6 +33,8 @@ import { formatUnixDateTime } from "../../lib/datetime";
 import { useOpenReturnAccept } from "../../features/orders/returnAccept";
 import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ReportFoundFromOrderDialog } from "../../features/inventory/ReportFoundFromOrderDialog";
+import { canReportFound } from "../../lib/roles";
 import { ItemScan } from "./components/ItemScan";
 import { PICK_ORDER_PENDING } from "./pending";
 
@@ -93,6 +96,8 @@ export function PickOrderPage() {
   // THE FORCED RETURN (a-return-is-received-by-search-then-forced, A): the parcel is in hand before customer service
   // claimed it. Once moved, the order re-reads in `return` and Accept Return takes the button's place.
   const forceReturn = useForceReturn({ teamId: warehouseId });
+  // A LOST ORDER'S PARCEL, FOUND (a-found-lost-parcel-is-a-found-stock-in): Report Found, prefilled with the order.
+  const [reportingFound, setReportingFound] = useState(false);
 
   const order = query.data?.order ?? null;
   const locations = query.data?.locations ?? [];
@@ -233,6 +238,16 @@ export function PickOrderPage() {
             {t("picking.action.acceptReturn")}
           </Button>
         )}
+        {/* A LOST ORDER'S PARCEL TURNED UP HERE (a-found-lost-parcel-is-a-found-stock-in): it goes back in stock as a found
+            naming the order — the order stays lost (lost-is-final). Whoever stands at the shelf reports
+            (staff-may-report-a-found); another Owner or Admin approves. */}
+        {order.status === OrderStatus.LOST && order.warehouseId === warehouseId && canWrite(current) &&
+          canReportFound(current.role) && (
+          <Button variant="outline" onClick={() => setReportingFound(true)} data-testid="pick-order-report-found">
+            <Icon as={PackageSearch} boxSize="4" />
+            {t("picking.action.reportFound")}
+          </Button>
+        )}
         {/* …and an order that left the building but is not a return yet: Force Return, confirmed, then the accept above. */}
         {canForceReturn(order.status) && canWrite(current) && (
           <Button
@@ -248,6 +263,21 @@ export function PickOrderPage() {
         )}
       </Flex>
       {forceReturn.dialog}
+      {order.status === OrderStatus.LOST && warehouseId !== undefined && order.warehouseId === warehouseId && (
+        <ReportFoundFromOrderDialog
+          key={order.id.toString()}
+          warehouseId={warehouseId}
+          orderId={order.id}
+          lines={order.items.map((i) => ({
+            productId: i.productId,
+            productCode: i.productCode,
+            name: i.name,
+            quantity: i.quantity,
+          }))}
+          open={reportingFound}
+          onOpenChange={setReportingFound}
+        />
+      )}
 
       {/* WHERE IT IS GOING — the block this screen was missing entirely (owner).
           It used to show the customer's NAME and nothing else, while the order carried a phone, a frozen

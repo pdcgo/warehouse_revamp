@@ -59,6 +59,9 @@ const (
 	// OrderServiceOrderReceiptUpdateProcedure is the fully-qualified name of the OrderService's
 	// OrderReceiptUpdate RPC.
 	OrderServiceOrderReceiptUpdateProcedure = "/warehouse.selling.v1.OrderService/OrderReceiptUpdate"
+	// OrderServiceOrderShopUpdateProcedure is the fully-qualified name of the OrderService's
+	// OrderShopUpdate RPC.
+	OrderServiceOrderShopUpdateProcedure = "/warehouse.selling.v1.OrderService/OrderShopUpdate"
 	// OrderServiceShopeeOrderImportProcedure is the fully-qualified name of the OrderService's
 	// ShopeeOrderImport RPC.
 	OrderServiceShopeeOrderImportProcedure = "/warehouse.selling.v1.OrderService/ShopeeOrderImport"
@@ -82,6 +85,12 @@ const (
 	// OrderServiceOrderLabelsProcedure is the fully-qualified name of the OrderService's OrderLabels
 	// RPC.
 	OrderServiceOrderLabelsProcedure = "/warehouse.selling.v1.OrderService/OrderLabels"
+	// OrderServiceOrderPickLinesProcedure is the fully-qualified name of the OrderService's
+	// OrderPickLines RPC.
+	OrderServiceOrderPickLinesProcedure = "/warehouse.selling.v1.OrderService/OrderPickLines"
+	// OrderServiceOrderPrintByIdsProcedure is the fully-qualified name of the OrderService's
+	// OrderPrintByIds RPC.
+	OrderServiceOrderPrintByIdsProcedure = "/warehouse.selling.v1.OrderService/OrderPrintByIds"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -127,6 +136,14 @@ type OrderServiceClient interface {
 	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
 	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
 	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
+	// FIX AN ORDER'S SHOP (an-orders-shop-is-fixed-and-counted-on-the-day): the selling team moves an order filed under
+	// the wrong shop to another shop of the SAME team and marketplace (a-shops-marketplace-and-team-are-fixed) that the
+	// caller may write (a-write-needs-a-grant-or-a-manager), in any status from handover on — shipping, shipped, problem,
+	// completed, return, return_completed, lost; an order before handover, or cancelled, is refused. A note row names the
+	// old and the new shop; OrderShopChanged moves the order's settlement account to the new shop, so that shop's
+	// statement imports, and the order metrics count the move on the day of the fix — the old shop −1, the new +1 — never
+	// re-filing a past day.
+	OrderShopUpdate(context.Context, *connect.Request[v1.OrderShopUpdateRequest]) (*connect.Response[v1.OrderShopUpdateResponse], error)
 	// THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
 	// export from the platform moves each order it names along customer service's moves after handover, and every other
 	// order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
@@ -171,6 +188,18 @@ type OrderServiceClient interface {
 	// ids — a PDF label adds its pages, a label photo one page — stored as a private ORDER_LABELS document of the
 	// warehouse, and the link is that file. A label that cannot be read is refused for its order, and the rest merge.
 	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
+	// THE ORDERS' LINES FOR THE BULK PICK LIST (the-bulk-pick-list-prototype-is-accepted): up to 50 orders that ship from
+	// the caller's warehouse, each with what its parcel carries (shop, ref, courier, resi), its take's inventory
+	// transaction (the-placement-page-reads-racks-by-transaction-id) and its lines — product and quantity, never money.
+	// OrderList answers a summary with no lines and OrderDetail one order, so the list's ticked orders are read here at
+	// once instead of one OrderDetail each.
+	OrderPickLines(context.Context, *connect.Request[v1.OrderPickLinesRequest]) (*connect.Response[v1.OrderPickLinesResponse], error)
+	// THE PRINT PAGE'S ORDERS (the-print-page-and-the-courier-count-prototype-is-accepted): up to 50 orders that ship from
+	// the caller's warehouse, each with what its line on the print page shows — its step, shop, ref, courier and resi — and
+	// whether a label file is attached, so an order with none is named BEFORE the print. OrderList has no ids and OrderDetail
+	// reads one order; OrderPickLines carries no label. So the chosen orders are read here at once instead of one
+	// OrderDetail each.
+	OrderPrintByIds(context.Context, *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -240,6 +269,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
 			connect.WithClientOptions(opts...),
 		),
+		orderShopUpdate: connect.NewClient[v1.OrderShopUpdateRequest, v1.OrderShopUpdateResponse](
+			httpClient,
+			baseURL+OrderServiceOrderShopUpdateProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderShopUpdate")),
+			connect.WithClientOptions(opts...),
+		),
 		shopeeOrderImport: connect.NewClient[v1.ShopeeOrderImportRequest, v1.ShopeeOrderImportResponse](
 			httpClient,
 			baseURL+OrderServiceShopeeOrderImportProcedure,
@@ -294,6 +329,20 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		orderPickLines: connect.NewClient[v1.OrderPickLinesRequest, v1.OrderPickLinesResponse](
+			httpClient,
+			baseURL+OrderServiceOrderPickLinesProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderPickLines")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		orderPrintByIds: connect.NewClient[v1.OrderPrintByIdsRequest, v1.OrderPrintByIdsResponse](
+			httpClient,
+			baseURL+OrderServiceOrderPrintByIdsProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderPrintByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -308,6 +357,7 @@ type orderServiceClient struct {
 	orderReturnAccept         *connect.Client[v1.OrderReturnAcceptRequest, v1.OrderReturnAcceptResponse]
 	orderNoteCreate           *connect.Client[v1.OrderNoteCreateRequest, v1.OrderNoteCreateResponse]
 	orderReceiptUpdate        *connect.Client[v1.OrderReceiptUpdateRequest, v1.OrderReceiptUpdateResponse]
+	orderShopUpdate           *connect.Client[v1.OrderShopUpdateRequest, v1.OrderShopUpdateResponse]
 	shopeeOrderImport         *connect.Client[v1.ShopeeOrderImportRequest, v1.ShopeeOrderImportResponse]
 	tiktokOrderImport         *connect.Client[v1.TiktokOrderImportRequest, v1.TiktokOrderImportResponse]
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
@@ -316,6 +366,8 @@ type orderServiceClient struct {
 	orderByExternalRefs       *connect.Client[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse]
 	orderCreatorList          *connect.Client[v1.OrderCreatorListRequest, v1.OrderCreatorListResponse]
 	orderLabels               *connect.Client[v1.OrderLabelsRequest, v1.OrderLabelsResponse]
+	orderPickLines            *connect.Client[v1.OrderPickLinesRequest, v1.OrderPickLinesResponse]
+	orderPrintByIds           *connect.Client[v1.OrderPrintByIdsRequest, v1.OrderPrintByIdsResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -363,6 +415,11 @@ func (c *orderServiceClient) OrderReceiptUpdate(ctx context.Context, req *connec
 	return c.orderReceiptUpdate.CallUnary(ctx, req)
 }
 
+// OrderShopUpdate calls warehouse.selling.v1.OrderService.OrderShopUpdate.
+func (c *orderServiceClient) OrderShopUpdate(ctx context.Context, req *connect.Request[v1.OrderShopUpdateRequest]) (*connect.Response[v1.OrderShopUpdateResponse], error) {
+	return c.orderShopUpdate.CallUnary(ctx, req)
+}
+
 // ShopeeOrderImport calls warehouse.selling.v1.OrderService.ShopeeOrderImport.
 func (c *orderServiceClient) ShopeeOrderImport(ctx context.Context, req *connect.Request[v1.ShopeeOrderImportRequest]) (*connect.ServerStreamForClient[v1.ShopeeOrderImportResponse], error) {
 	return c.shopeeOrderImport.CallServerStream(ctx, req)
@@ -401,6 +458,16 @@ func (c *orderServiceClient) OrderCreatorList(ctx context.Context, req *connect.
 // OrderLabels calls warehouse.selling.v1.OrderService.OrderLabels.
 func (c *orderServiceClient) OrderLabels(ctx context.Context, req *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error) {
 	return c.orderLabels.CallUnary(ctx, req)
+}
+
+// OrderPickLines calls warehouse.selling.v1.OrderService.OrderPickLines.
+func (c *orderServiceClient) OrderPickLines(ctx context.Context, req *connect.Request[v1.OrderPickLinesRequest]) (*connect.Response[v1.OrderPickLinesResponse], error) {
+	return c.orderPickLines.CallUnary(ctx, req)
+}
+
+// OrderPrintByIds calls warehouse.selling.v1.OrderService.OrderPrintByIds.
+func (c *orderServiceClient) OrderPrintByIds(ctx context.Context, req *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error) {
+	return c.orderPrintByIds.CallUnary(ctx, req)
 }
 
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
@@ -446,6 +513,14 @@ type OrderServiceHandler interface {
 	// file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
 	// courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
 	OrderReceiptUpdate(context.Context, *connect.Request[v1.OrderReceiptUpdateRequest]) (*connect.Response[v1.OrderReceiptUpdateResponse], error)
+	// FIX AN ORDER'S SHOP (an-orders-shop-is-fixed-and-counted-on-the-day): the selling team moves an order filed under
+	// the wrong shop to another shop of the SAME team and marketplace (a-shops-marketplace-and-team-are-fixed) that the
+	// caller may write (a-write-needs-a-grant-or-a-manager), in any status from handover on — shipping, shipped, problem,
+	// completed, return, return_completed, lost; an order before handover, or cancelled, is refused. A note row names the
+	// old and the new shop; OrderShopChanged moves the order's settlement account to the new shop, so that shop's
+	// statement imports, and the order metrics count the move on the day of the fix — the old shop −1, the new +1 — never
+	// re-filing a past day.
+	OrderShopUpdate(context.Context, *connect.Request[v1.OrderShopUpdateRequest]) (*connect.Response[v1.OrderShopUpdateResponse], error)
 	// THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
 	// export from the platform moves each order it names along customer service's moves after handover, and every other
 	// order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
@@ -490,6 +565,18 @@ type OrderServiceHandler interface {
 	// ids — a PDF label adds its pages, a label photo one page — stored as a private ORDER_LABELS document of the
 	// warehouse, and the link is that file. A label that cannot be read is refused for its order, and the rest merge.
 	OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error)
+	// THE ORDERS' LINES FOR THE BULK PICK LIST (the-bulk-pick-list-prototype-is-accepted): up to 50 orders that ship from
+	// the caller's warehouse, each with what its parcel carries (shop, ref, courier, resi), its take's inventory
+	// transaction (the-placement-page-reads-racks-by-transaction-id) and its lines — product and quantity, never money.
+	// OrderList answers a summary with no lines and OrderDetail one order, so the list's ticked orders are read here at
+	// once instead of one OrderDetail each.
+	OrderPickLines(context.Context, *connect.Request[v1.OrderPickLinesRequest]) (*connect.Response[v1.OrderPickLinesResponse], error)
+	// THE PRINT PAGE'S ORDERS (the-print-page-and-the-courier-count-prototype-is-accepted): up to 50 orders that ship from
+	// the caller's warehouse, each with what its line on the print page shows — its step, shop, ref, courier and resi — and
+	// whether a label file is attached, so an order with none is named BEFORE the print. OrderList has no ids and OrderDetail
+	// reads one order; OrderPickLines carries no label. So the chosen orders are read here at once instead of one
+	// OrderDetail each.
+	OrderPrintByIds(context.Context, *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -555,6 +642,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderReceiptUpdate")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderShopUpdateHandler := connect.NewUnaryHandler(
+		OrderServiceOrderShopUpdateProcedure,
+		svc.OrderShopUpdate,
+		connect.WithSchema(orderServiceMethods.ByName("OrderShopUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orderServiceShopeeOrderImportHandler := connect.NewServerStreamHandler(
 		OrderServiceShopeeOrderImportProcedure,
 		svc.ShopeeOrderImport,
@@ -609,6 +702,20 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderPickLinesHandler := connect.NewUnaryHandler(
+		OrderServiceOrderPickLinesProcedure,
+		svc.OrderPickLines,
+		connect.WithSchema(orderServiceMethods.ByName("OrderPickLines")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderPrintByIdsHandler := connect.NewUnaryHandler(
+		OrderServiceOrderPrintByIdsProcedure,
+		svc.OrderPrintByIds,
+		connect.WithSchema(orderServiceMethods.ByName("OrderPrintByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServiceOrderCreateProcedure:
@@ -629,6 +736,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderNoteCreateHandler.ServeHTTP(w, r)
 		case OrderServiceOrderReceiptUpdateProcedure:
 			orderServiceOrderReceiptUpdateHandler.ServeHTTP(w, r)
+		case OrderServiceOrderShopUpdateProcedure:
+			orderServiceOrderShopUpdateHandler.ServeHTTP(w, r)
 		case OrderServiceShopeeOrderImportProcedure:
 			orderServiceShopeeOrderImportHandler.ServeHTTP(w, r)
 		case OrderServiceTiktokOrderImportProcedure:
@@ -645,6 +754,10 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderCreatorListHandler.ServeHTTP(w, r)
 		case OrderServiceOrderLabelsProcedure:
 			orderServiceOrderLabelsHandler.ServeHTTP(w, r)
+		case OrderServiceOrderPickLinesProcedure:
+			orderServiceOrderPickLinesHandler.ServeHTTP(w, r)
+		case OrderServiceOrderPrintByIdsProcedure:
+			orderServiceOrderPrintByIdsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -690,6 +803,10 @@ func (UnimplementedOrderServiceHandler) OrderReceiptUpdate(context.Context, *con
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderReceiptUpdate is not implemented"))
 }
 
+func (UnimplementedOrderServiceHandler) OrderShopUpdate(context.Context, *connect.Request[v1.OrderShopUpdateRequest]) (*connect.Response[v1.OrderShopUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderShopUpdate is not implemented"))
+}
+
 func (UnimplementedOrderServiceHandler) ShopeeOrderImport(context.Context, *connect.Request[v1.ShopeeOrderImportRequest], *connect.ServerStream[v1.ShopeeOrderImportResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.ShopeeOrderImport is not implemented"))
 }
@@ -720,4 +837,12 @@ func (UnimplementedOrderServiceHandler) OrderCreatorList(context.Context, *conne
 
 func (UnimplementedOrderServiceHandler) OrderLabels(context.Context, *connect.Request[v1.OrderLabelsRequest]) (*connect.Response[v1.OrderLabelsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderLabels is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderPickLines(context.Context, *connect.Request[v1.OrderPickLinesRequest]) (*connect.Response[v1.OrderPickLinesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderPickLines is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderPrintByIds(context.Context, *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderPrintByIds is not implemented"))
 }

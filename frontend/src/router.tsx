@@ -170,6 +170,12 @@ const PickQueuePage = lazy(() =>
 const PickOrderPage = lazy(() =>
   import("./pages/pick-order").then((m) => ({ default: m.PickOrderPage })),
 );
+const BulkPickPage = lazy(() =>
+  import("./pages/bulk-pick").then((m) => ({ default: m.BulkPickPage })),
+);
+const PrintReceiptsPage = lazy(() =>
+  import("./pages/print-receipts").then((m) => ({ default: m.PrintReceiptsPage })),
+);
 const OrderReturnAcceptPage = lazy(() =>
   import("./pages/order-return-accept").then((m) => ({ default: m.OrderReturnAcceptPage })),
 );
@@ -393,6 +399,14 @@ export const router = createBrowserRouter([
       // /orders has shops, money and a New Order button that a warehouse team has none of. The detail
       // route /orders/:orderId above is shared: the crew that shipped an order can open and read it.
       { path: "warehouse-orders", element: <PickQueuePage /> },
+      // THE BULK PICK LIST (the-bulk-pick-list-prototype-is-accepted): the ticked Dikonfirmasi orders' goods in one walk,
+      // opened by the list's Daftar Ambil with `?ids=…` — a read, so every warehouse role reaches it. A static segment, so
+      // it ranks above `:orderId`.
+      { path: "warehouse-orders/bulk-pick", element: <BulkPickPage /> },
+      // CETAK RESI (the-print-page-and-the-courier-count-prototype-is-accepted): the chosen orders' labels as one PDF, then
+      // the Perlu konfirmasi ones confirmed — opened by the bar's Cetak Resi and a row's Print Label with `?ids=…`. Every
+      // warehouse role reaches it: printing is a read, and a monitor's page moves nothing. A static segment, above `:orderId`.
+      { path: "warehouse-orders/print", element: <PrintReceiptsPage /> },
       { path: "warehouse-orders/:orderId", element: <PickOrderPage /> },
       // ACCEPT RETURN (the-return-accept-page-is-accepted): the return warehouse's crew counts the parcel and racks its
       // sound units — a write, so a read-only role is turned away at the door.

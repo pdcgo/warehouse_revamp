@@ -19,8 +19,9 @@ import (
 //	              money: never the restock's value, never the selling team's freight.
 //	which restocks the ones going TO this warehouse (`warehouse_id` = the scoped team), accepted, with `accepted_at` in
 //	              the window, both ends inclusive — the list's accepted-date filter's bounds (applyRestockDateRange).
-//	              The charge is written by the accept alone (one per restock, the-courier-is-paid-once-per-restock), so
-//	              an accepted restock's charge is final.
+//	              The charge is final at the accept (one per restock, the-courier-is-paid-once-per-restock — Terima's figure
+//	              replaces one noted at Tandai Tiba, the-courier-charge-is-noted-at-tiba-and-final-at-terima), so an
+//	              accepted restock's charge is final; one only noted at Tiba is not counted until it is.
 //	how many      only the restocks that carried a charge (above 0): the card's line says how many it PAID on.
 //
 // ONE aggregate over the warehouse's accepted restocks in the window.

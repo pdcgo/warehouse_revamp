@@ -61,6 +61,8 @@ export interface FoundRequestFixture {
   /** APPROVED: what it posted. A waiting one's lines are worked out on each read. */
   posted: FoundPostedLine[];
   transactionId: bigint;
+  /** The LOST order whose parcel it is (a-found-lost-parcel-is-a-found-stock-in); absent = none. */
+  orderId?: bigint;
 }
 
 /** An open lost row of the register (warehouse_stock_problems) a found claims back, oldest first. */

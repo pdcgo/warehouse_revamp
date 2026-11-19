@@ -181,7 +181,7 @@ func TestExpenseCreate_RefusesAnAccountThatMayNotPay(t *testing.T) {
 func TestExpenseCreate_StockLossNamesNoAccount(t *testing.T) {
 	db := san_testdb.DB(t)
 	// No account service at all: every account would be refused, so the write proves it never asked.
-	svc := expense_v1.NewService(db, nil, nil, nil)
+	svc := expense_v1.NewService(db, nil, nil, nil, nil)
 
 	for _, sentAccount := range []uint64{0, payingAccount} {
 		res, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{

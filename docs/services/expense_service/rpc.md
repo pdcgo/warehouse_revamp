@@ -232,10 +232,15 @@ sequenceDiagram
   participant UI as Record Expense dialog
   participant E as expense_service
   participant FA as financial_account, in-process
+  participant SH as the shop, over Connect
   participant DB as expense_records
   participant B as Pub/Sub
   UI->>E: ExpenseCreate(team, kind, amount, day, shop, finance_account_id)
   E->>E: the day, then the shop rule — ADS needs a shop, any other kind none
+  opt a shop is named
+    E->>SH: ShopAccessCheck(team, shop) — BEFORE any transaction
+    SH-->>E: the shop, open or closed — or NotFound, and the expense is refused
+  end
   alt STOCK_LOSS — inventory's internal call
     E->>DB: INSERT with account 0 — no cash moved, nothing published
   else every kind a person types
@@ -255,6 +260,7 @@ sequenceDiagram
 | `finance_account_id` | `uint64.gt = 0` in the proto, re-checked in the handler (InvalidArgument) — a caller that skips the interceptor is not trusted |
 | a refused account | FailedPrecondition, naming it: *"BCA Gaji is not one of the team's active operational accounts — pick another, or ask an admin to mark it operational"*, *"… is archived — …"*, or *"account #N …"* for another team's or an unknown id (never confirms an id) |
 | the shop | ADS with shop 0 → InvalidArgument *"an ads expense names its shop"* · any other kind with a shop → *"only an ads expense names a shop"* |
+| the shop is the team's | 2026-11-18, [settlement-and-expense-ask-the-shop-first](../../business/shop/context_decision.md#settlement-and-expense-ask-the-shop-first): a non-zero `shop_id` is asked of the shop BEFORE the account and before any transaction — `Shops`, an interface expense owns, answered by the composition root's [expense_shops.go](../../../backend/cmd/app_development/expense_shops.go) with `ShopAccessCheck` over the shop client, under the caller's token. Another team's or an unknown shop → **NotFound** *"shop #N is not one of this team's shops"* (the same words for both), nothing stored — no row, no Analytic figure, no event. A CLOSED shop is taken (an expense is money still running on it). An expense naming no shop asks nothing; who may spend is unchanged |
 | `STOCK_LOSS` | through the API: InvalidArgument *"stock loss is recorded by inventory, not typed"* (a CEL rule on `kind`, enforced by the validation interceptor). Inventory's `expensePoster` calls the handler directly, with no account and no interceptor — stored with account 0 whatever was sent, the account service never asked, nothing published |
 | the event | `ExpenseCreated` (topic `expense-created`) — expense id, team, kind, account, amount, the expense's day, shop, actor + override. Published AFTER the commit; a failed publish is logged with its event_id and never fails the expense (no outbox, as a restock's) |
 | never published | a `STOCK_LOSS`, an account 0 |

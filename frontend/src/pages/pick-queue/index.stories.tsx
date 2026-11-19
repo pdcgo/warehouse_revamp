@@ -9,6 +9,7 @@ import {
   labelScanScenario,
   orderExportScenario,
   orderLabelScenario,
+  orderPrintScenario,
   returnAcceptScenario,
   statusChangeScenario,
   withOrderStatus,
@@ -18,6 +19,8 @@ import {
 
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { deadlineUrgency, hoursFromNow, orderDeadline } from "../../features/orders/deadline";
+import { PrintReceiptsPage } from "../print-receipts/index";
+import { on110AsJnt } from "../print-receipts/stories/kit";
 import { PickQueuePage } from "./index";
 
 // THE WAREHOUSE'S ORDER LIST — /warehouse-orders, the old system's columns (`the-warehouse-row-is-the-old-systems-columns`),
@@ -40,6 +43,10 @@ import { PickQueuePage } from "./index";
 //   | HandoverScanCollectsAndChecks      | mass: a picked parcel is ready, a rescan does not double,    |
 //   |                                    | another step is an error, the button hands over the ready    |
 //   | HandoverOneByOne                   | mass off: a good scan is handed over at once                 |
+//   | HandoverCountsPerCourier           | Per kurir: the good parcels per courier, most first; a wrong |
+//   |                                    | step or a rescan is no extra parcel                          |
+//   | HandoverCountsStayAfterHandOver    | handed over, the counts stay                                 |
+//   | HandoverCountsOneByOne             | mass off: each parcel handed over at once is counted too     |
 //   | FindParcelSoundsAMatch             | a wrong label is not it; the right one is a match            |
 //   | TheActionsAreThereFromTheStart     | the bar is always there; tick-only actions wait for a tick   |
 //   | HandOverSkipsWhatIsNotPicked       | the bar's Hand Over skips what is not picked, and says so    |
@@ -47,9 +54,9 @@ import { PickQueuePage } from "./index";
 //   | ARowOpensThePickList               | the row's way in                                            |
 //   | ASellingTeamIsTurnedAway           | a seller has no shelves                                     |
 //   | NoMarkIsLeft                       | every gap is closed — no ⚠ anywhere on the list             |
-//   | PrintLabelsMergesTheTickedRows     | one OrderLabels for every ticked row, in the list's order;  |
-//   |                                    | the merged PDF opens and the toast names who is left out    |
-//   | PrintLabelsWithNothingPrintable    | nothing opens, and every order says why                     |
+//   | CetakResiOpensThePrintPage         | the ticked rows land on the print page, in the list's order, |
+//   |                                    | read in one call; nothing printed or moved by the click      |
+//   | PrintLabelOpensThePrintPage…       | a row's Print Label: the print page with that one order      |
 //   | ScanLabelOpensItsPickPage …        | Scan Label: one live order opens its pick page (resi, ref)  |
 //   | ScanLabelListsSeveralAndOpensNone  | two live orders on one label: both listed, none opened      |
 //   | ScanLabelSkipsACancelledTwin       | one live + one cancelled: the live one opens                |
@@ -80,6 +87,9 @@ const REF = WITH_REF.orderExternalRefId ?? "";
 const Routed = routedPage(
   [
     { path: "/warehouse-orders", element: <PickQueuePage /> },
+    // Cetak Resi and a row's Print Label open the print page (Pages/Warehouse/PrintReceipts) — mounted for real, so a story
+    // shows the way in lands.
+    { path: "/warehouse-orders/print", element: <PrintReceiptsPage /> },
     marker("/warehouse-orders/:orderId", "at-pick-order"),
     // Receive a Return's Accept opens the accept page (the-return-accept-page-is-accepted) — its own stories are
     // Pages/Warehouse/OrderReturnAccept.
@@ -466,6 +476,121 @@ export const HandoverOneByOne: Story = {
   },
 };
 
+// ── Per kurir (the-print-page-and-the-courier-count-prototype-is-accepted) ──────────────────────────────────────────
+//
+// The parcels: 105 and 111 are Sudah diambil with JNE (91); 102 (SiCepat, 93) and 110 (J&T, 92 — on110AsJnt) are read
+// Sudah diambil for these stories; 103 is Dikonfirmasi — a wrong step at the handover.
+
+const resiOfId = (id: bigint) => orders.find((o) => o.id === id)!.receiptCode;
+
+/** Opens the handover dialog, mass pickup on or off. */
+async function openHandover(canvasElement: HTMLElement, mass: boolean) {
+  await rowOf(canvasElement, NEW_HERE[0]!.id);
+  await headerAction(canvasElement, "warehouse-orders-handover");
+  const dialog = await screen.findByTestId("handover-dialog");
+  if (mass) await userEvent.click(within(dialog).getByText("Mass pickup"));
+  return within(dialog);
+}
+
+async function scanParcel(dialog: ReturnType<typeof within>, code: string) {
+  await userEvent.type(dialog.getByTestId("handover-scan"), `${code}{Enter}`, { delay: 10 });
+}
+
+/** The per-courier counts, as drawn: channel id → count, in the strip's order. */
+function countsOf(dialog: ReturnType<typeof within>): [string, string][] {
+  return [...dialog.getByTestId("handover-courier-counts").querySelectorAll("[data-testid^='handover-courier-count-']")]
+    .filter((el) => el.hasAttribute("data-count"))
+    .map((el) => [el.getAttribute("data-testid")!.replace("handover-courier-count-", ""), el.getAttribute("data-count")!]);
+}
+
+/** Mass pickup on, the four Sudah diambil parcels scanned, then 103 (a wrong step) and 105 again. */
+async function scanTheFour(canvasElement: HTMLElement) {
+  const dialog = await openHandover(canvasElement, true);
+
+  // Nothing scanned — nothing counted.
+  await expect(dialog.queryByTestId("handover-courier-counts")).toBeNull();
+
+  for (const id of [105n, 111n, 102n, 110n]) {
+    await scanParcel(dialog, resiOfId(id));
+    await waitFor(() => expect(dialog.getByTestId(`handover-entry-${resiOfId(id)}`)).toHaveAttribute("data-state", "ready"));
+  }
+  await scanParcel(dialog, resiOfId(103n));
+  await waitFor(() =>
+    expect(dialog.getByTestId(`handover-entry-${resiOfId(103n)}`)).toHaveAttribute("data-state", "wrongStep"),
+  );
+  await scanParcel(dialog, resiOfId(105n));
+
+  return dialog;
+}
+
+const THE_FOUR_PICKED = () => {
+  withOrderStatus(102n, OrderStatus.PICKED)();
+  withOrderStatus(110n, OrderStatus.PICKED)();
+  return on110AsJnt();
+};
+
+/**
+ * PER KURIR (acceptance order.md:207): mass pickup on, the good parcels counted by courier, most first and a tie in id
+ * order — JNE 2 (105, 111), J&T 1 (110), SiCepat 1 (102), 4 parcels. 103 is Dikonfirmasi, an error with the wrong sound,
+ * and no parcel for a courier; 105 scanned again is not a second one. A count on screen, no manifest
+ * (scanning-is-the-crews-hands).
+ */
+export const HandoverCountsPerCourier: Story = {
+  beforeEach: THE_FOUR_PICKED,
+  play: async ({ canvasElement }) => {
+    const dialog = await scanTheFour(canvasElement);
+
+    await expect(countsOf(dialog)).toEqual([
+      ["91", "2"],
+      ["92", "1"],
+      ["93", "1"],
+    ]);
+    await expect(dialog.getByTestId("handover-courier-total")).toHaveTextContent("4 parcels");
+    await expect(within(dialog.getByTestId("handover-courier-count-91")).getByText("JNE")).toBeInTheDocument();
+    await expect(dialog.getByTestId("handover-submit")).toHaveTextContent("Hand Over 4");
+  },
+};
+
+/** Handed over, the counts stay — they are what the crew reads out to the drivers as the van fills. */
+export const HandoverCountsStayAfterHandOver: Story = {
+  beforeEach: THE_FOUR_PICKED,
+  play: async ({ canvasElement }) => {
+    const dialog = await scanTheFour(canvasElement);
+
+    await userEvent.click(dialog.getByTestId("handover-submit"));
+    await waitFor(() =>
+      expect(dialog.getByTestId(`handover-entry-${resiOfId(110n)}`)).toHaveAttribute("data-state", "handedOver"),
+    );
+    await expect(statusChangeScenario.calls.at(-1)?.orderIds).toHaveLength(4);
+    await expect(countsOf(dialog)).toEqual([
+      ["91", "2"],
+      ["92", "1"],
+      ["93", "1"],
+    ]);
+  },
+};
+
+/** Mass pickup off: each good scan is handed over at once, and counted as it goes. */
+export const HandoverCountsOneByOne: Story = {
+  beforeEach: withOrderStatus(102n, OrderStatus.PICKED),
+  play: async ({ canvasElement }) => {
+    const dialog = await openHandover(canvasElement, false);
+
+    for (const id of [105n, 102n]) {
+      await scanParcel(dialog, resiOfId(id));
+      await waitFor(() =>
+        expect(dialog.getByTestId(`handover-entry-${resiOfId(id)}`)).toHaveAttribute("data-state", "handedOver"),
+      );
+    }
+
+    await expect(countsOf(dialog)).toEqual([
+      ["91", "1"],
+      ["93", "1"],
+    ]);
+    await expect(dialog.getByTestId("handover-courier-total")).toHaveTextContent("2 parcels");
+  },
+};
+
 /** Finding a parcel in a sack: a wrong label is not it, the right one sounds a match — no server asked. */
 export const FindParcelSoundsAMatch: Story = {
   play: async ({ canvasElement }) => {
@@ -628,62 +753,87 @@ async function tick(canvasElement: HTMLElement, id: bigint) {
   await userEvent.click(within(canvas.getByTestId(`pick-queue-select-${id}`)).getByRole("checkbox", { hidden: true }));
 }
 
+/** The orders the print page lists, in its order — a table row on a desktop, a block on a phone. */
+function printedRows(canvasElement: HTMLElement): string[] {
+  return [...canvasElement.querySelectorAll("[data-testid^='print-receipts-row-'], [data-testid^='print-receipts-block-']")].map(
+    (el) => el.getAttribute("data-testid")!.replace(/^print-receipts-(row|block)-/, ""),
+  );
+}
+
 /**
- * PRINT LABELS PRINTS THE TICKED ROWS AS ONE PDF (a-warehouse-prints-the-labels-of-orders-it-ships): ONE OrderLabels with
- * every ticked id in the list's order; the merged PDF opens, and the toast names the order left out and why.
+ * CETAK RESI OPENS THE PRINT PAGE (the-print-page-and-the-courier-count-prototype-is-accepted): the ticked rows land on
+ * the print page in the list's order, read there in ONE OrderPrintByIds for all of them; the click prints nothing and
+ * moves nothing — the page's Print does. Back returns to the list. The page itself: Pages/Warehouse/PrintReceipts.
  */
-export const PrintLabelsMergesTheTickedRows: Story = {
-  beforeEach: () => {
-    orderLabelScenario.labelled = [NEW_HERE[0]!.id, NEW_HERE[1]!.id];
-  },
+export const CetakResiOpensThePrintPage: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const [a, b, none] = [NEW_HERE[0]!, NEW_HERE[1]!, NEW_HERE[2]!];
+    const [a, b, c] = [NEW_HERE[0]!, NEW_HERE[1]!, NEW_HERE[2]!];
     const open = spyOn(window, "open").mockReturnValue(null);
 
-    for (const order of [a, b, none]) await tick(canvasElement, order.id);
+    for (const order of [a, b, c]) await tick(canvasElement, order.id);
     await waitFor(() => expect(canvas.getByTestId("pick-queue-bulk-count")).toHaveTextContent("3 selected"));
+    const sent = listedOrder(canvasElement, [a.id, b.id, c.id]);
 
     await userEvent.click(canvas.getByTestId("pick-queue-bulk-print"));
 
-    const sent = listedOrder(canvasElement, [a.id, b.id, none.id]);
-    await waitFor(() => expect(orderLabelScenario.last).toEqual({ teamId: WAREHOUSE.id, orderIds: sent }));
+    await waitFor(() => expect(canvas.getByTestId("print-receipts-heading")).toHaveTextContent("Print Labels · 3 Orders"), {
+      timeout: 4000,
+    });
+    await waitFor(() => expect(printedRows(canvasElement)).toEqual(sent.map(String)));
+    await expect(orderPrintScenario.calls.at(-1)).toEqual({ teamId: WAREHOUSE.id, orderIds: sent });
+    await expect(orderPrintScenario.calls.every((call) => call.orderIds.length === 3)).toBe(true);
+    await expect(orderLabelScenario.last).toBeUndefined();
+    await expect(open).not.toHaveBeenCalled();
+    await expect(statusChangeScenario.calls).toHaveLength(0);
 
-    const printed = sent.filter((id) => id !== none.id).join("-");
-    await waitFor(() =>
-      expect(open).toHaveBeenCalledWith(`https://example.invalid/labels/merged-${printed}.pdf`, "_blank", "noopener,noreferrer"),
-    );
-    await expect(open).toHaveBeenCalledTimes(1);
-
-    await expect((await screen.findAllByText("1 label is not in the PDF")).length).toBeGreaterThan(0);
-    await expect(
-      (await screen.findAllByText(`Order #${none.id} has no label attached yet — ask the seller to attach it`)).length,
-    ).toBeGreaterThan(0);
+    await userEvent.click(canvas.getByTestId("print-receipts-back"));
+    await expect(await canvas.findByTestId("pick-queue-bulk-bar", {}, { timeout: 4000 })).toBeInTheDocument();
     open.mockRestore();
   },
 };
 
-/** Nothing printable among the ticked rows: no PDF opens, and every order says why — a broken file and a missing one. */
-export const PrintLabelsWithNothingPrintable: Story = {
+/**
+ * A ROW'S PRINT LABEL OPENS THE PRINT PAGE WITH THAT ONE ORDER (a-rows-print-label-opens-the-print-page) — the same page and
+ * rules as Cetak Resi: Konfirmasi setelah dicetak is on, nothing is printed by the click, and the page's Print sends the
+ * one order to OrderLabels and then moves it, Perlu konfirmasi, to Dikonfirmasi.
+ */
+export const PrintLabelOpensThePrintPageWithItsOrder: Story = {
   beforeEach: () => {
     orderLabelScenario.labelled = [NEW_HERE[0]!.id];
-    orderLabelScenario.unreadable = [NEW_HERE[0]!.id];
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const [broken, none] = [NEW_HERE[0]!, NEW_HERE[2]!];
+    const order = NEW_HERE[0]!;
     const open = spyOn(window, "open").mockReturnValue(null);
 
-    await tick(canvasElement, broken.id);
-    await tick(canvasElement, none.id);
-    await userEvent.click(canvas.getByTestId("pick-queue-bulk-print"));
+    await rowOf(canvasElement, order.id);
+    await userEvent.click(canvas.getByTestId(`pick-queue-actions-${order.id}`));
+    const item = await screen.findByTestId(`pick-queue-print-${order.id}`);
+    await waitFor(() => expect(item).toBeVisible());
+    await userEvent.click(item);
 
-    await expect((await screen.findAllByText("No label could be printed")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(canvas.getByTestId("print-receipts-heading")).toHaveTextContent("Print Labels · 1 Order"), {
+      timeout: 4000,
+    });
+    await waitFor(() => expect(printedRows(canvasElement)).toEqual([String(order.id)]));
+    await waitFor(() =>
+      expect(canvas.getByTestId(`print-receipts-label-${order.id}`)).toHaveAttribute("data-label", "attached"),
+    );
     await expect(
-      (await screen.findAllByText(`The label file of order #${broken.id} can't be read — ask the seller to upload it again`, { exact: false }))
-        .length,
-    ).toBeGreaterThan(0);
+      within(canvas.getByTestId("print-receipts-status-change")).getByRole("checkbox", { hidden: true }),
+    ).toBeChecked();
+    await expect(orderLabelScenario.last).toBeUndefined();
     await expect(open).not.toHaveBeenCalled();
+
+    await userEvent.click(canvas.getByTestId("print-receipts-print"));
+    await waitFor(() => expect(orderLabelScenario.last).toEqual({ teamId: WAREHOUSE.id, orderIds: [order.id] }));
+    await waitFor(() => expect(statusChangeScenario.calls).toHaveLength(1));
+    await expect(statusChangeScenario.calls[0]).toEqual({
+      teamId: WAREHOUSE.id,
+      orderIds: [order.id],
+      to: OrderStatus.PROCESSED,
+    });
     open.mockRestore();
   },
 };

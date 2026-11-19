@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
-import { Button, FileUpload, Flex, HStack, Icon, IconButton, Image, Text } from "@chakra-ui/react";
+import { Box, Button, FileUpload, Flex, HStack, Icon, IconButton, Image, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Camera, X } from "lucide-react";
 
@@ -14,12 +14,15 @@ import type { DoorPhoto } from "./doorPhoto";
 // On a phone the picker opens the CAMERA (`capture`): the person is standing over the box, and a gallery is one more step
 // between them and the picture.
 //
-// KEPT AT TERIMA, the way the restock's label photo is (`uploadTo` — the warehouse's team): the moment a photo is picked
-// it goes up through document_service's two-phase upload, an order receipt as the label photo's ReceiptUpload stores it
-// (useReceiptUpload: the same 15 MB ceiling, the same refusal), and the page sends its document id with the count. A
-// failed upload is said in a toast and the photo goes back to what it was. WITHOUT `uploadTo` — the sign dialog at Tandai
-// Tiba, where the charge itself is not kept yet — the file is only shown, never uploaded: an upload nothing points at is a
-// file nobody can find again.
+// KEPT, the way the restock's label photo is (`uploadTo` — the warehouse's team): the moment a photo is picked it goes up
+// through document_service's two-phase upload, an order receipt as the label photo's ReceiptUpload stores it
+// (useReceiptUpload: the same 15 MB ceiling, the same refusal), and the act — Terima, or Tandai Tiba for the slip
+// (the-courier-charge-is-noted-at-tiba-and-final-at-terima) — sends its document id. A failed upload is said in a toast
+// and the photo goes back to what it was. WITHOUT `uploadTo` the file is only shown, never uploaded: an upload nothing
+// points at is a file nobody can find again.
+//
+// A photo the restock ALREADY keeps (no file here — the slip noted at Tiba, as Terima opens with it) is shown from its
+// signed link, named as kept; it is replaced or removed like any other.
 export function PhotoPick({
   value,
   onChange,
@@ -46,6 +49,8 @@ export function PhotoPick({
   // A local preview of the picked file, released when it is replaced or the control goes.
   const url = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
   useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url]);
+  // What is shown: the picked file, or — for a photo the restock already keeps — its signed link ("" until read).
+  const shown = url || (value?.link ?? "");
 
   // What was there before the pick — put back if its upload fails — and the file being sent.
   const before = useRef<DoorPhoto | null>(null);
@@ -83,11 +88,15 @@ export function PhotoPick({
 
   return (
     <Flex gap="2" align="center" wrap="wrap" data-testid={testId}>
-      {file && (
+      {value && (
         <HStack gap="2" minW="0" flex="1" data-state={state} data-testid={`${testId}-shown`}>
-          <Image src={url} alt={alt} boxSize="12" objectFit="cover" borderRadius="md" opacity={busy ? 0.6 : 1} />
+          {shown ? (
+            <Image src={shown} alt={alt} boxSize="12" objectFit="cover" borderRadius="md" opacity={busy ? 0.6 : 1} />
+          ) : (
+            <Box boxSize="12" borderRadius="md" bg="bg.muted" flexShrink={0} />
+          )}
           <Text fontSize="xs" color="fg.muted" lineClamp={1} minW="0">
-            {file.name}
+            {file ? file.name : t("restock.photo.kept")}
           </Text>
           <IconButton
             size="xs"
@@ -105,7 +114,7 @@ export function PhotoPick({
 
       {/* Remounted per pick (and after every upload), so picking the same file twice is still a pick. */}
       <FileUpload.Root
-        key={`${file ? `${file.name}:${file.lastModified}` : "none"}:${pickerKey}`}
+        key={`${file ? `${file.name}:${file.lastModified}` : value ? `kept:${value.documentId}` : "none"}:${pickerKey}`}
         accept="image/*"
         capture="environment"
         maxFiles={1}
@@ -120,7 +129,7 @@ export function PhotoPick({
         <FileUpload.Trigger asChild>
           <Button size="xs" variant="outline" loading={busy} data-testid={`${testId}-pick`}>
             <Icon as={Camera} boxSize="4" />
-            {file ? t("restock.photo.replace") : t("restock.photo.add")}
+            {value ? t("restock.photo.replace") : t("restock.photo.add")}
           </Button>
         </FileUpload.Trigger>
       </FileUpload.Root>

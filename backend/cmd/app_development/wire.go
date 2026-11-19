@@ -99,8 +99,9 @@ func InitializeApp() (*App, error) {
 		// token. See liability_deps.go.
 		NewLiabilityTeamNamer,
 		settlement_v1.NewService,
-		// Who an imported shop row counts for — the shop's primary CS, asked over Connect under the
-		// caller's token. See shop_primary.go.
+		// Who an imported shop row counts for — the shop's primary CS — and whether every shop-addressed row's shop is
+		// the team's (settlement-and-expense-ask-the-shop-first), asked over Connect under the caller's token. See
+		// shop_primary.go.
 		NewShopClient,
 		NewShopPrimary,
 		// Where the order learns its settlement account opened — orders.settlement_opened_at, stamped in-process by
@@ -137,6 +138,9 @@ func InitializeApp() (*App, error) {
 		// And which side of Analytic a team's expenses sit on, Seller or Warehouse — a local read of the team's type,
 		// see expense_team_sides.go.
 		NewExpenseTeamSides,
+		// And whether the shop an expense names is the team's — ShopAccessCheck over the same shop client
+		// (settlement-and-expense-ask-the-shop-first), see expense_shops.go.
+		NewExpenseShops,
 		// The restock's paying account is asked the same question of the same service — see restock_accounts.go.
 		NewRestockPayingAccounts,
 		// The money a team holds — its accounts, their logs, the withdrawal listener. Its one outside question,

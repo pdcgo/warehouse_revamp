@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
@@ -16,7 +16,7 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { ArrowRight, Download, PackageOpen, PackageSearch, Printer, ScanBarcode, ScanLine, SearchX, Truck, Undo2 } from "lucide-react";
+import { ArrowRight, ClipboardList, Download, PackageOpen, PackageSearch, Printer, ScanBarcode, ScanLine, SearchX, Truck, Undo2 } from "lucide-react";
 import { Menu, Portal } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
@@ -39,7 +39,8 @@ import { CopyText } from "../../components/chrome/CopyText";
 import { OrderCourierBadge } from "../../features/orders/OrderCourierBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
-import { useOrderLabels } from "../../features/orders/labels";
+import { bulkPickPath } from "../../features/picking/bulkPick";
+import { fromHere } from "../../lib/cameFrom";
 import { useOrders, useOrderStat } from "../../features/orders/queries";
 import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
@@ -72,6 +73,7 @@ import { HandoverScanDialog } from "./components/HandoverScanDialog";
 import { FindParcelDialog } from "./components/FindParcelDialog";
 import { ReceiveReturnDialog } from "./components/ReceiveReturnDialog";
 import { ScanLabelDialog } from "./components/ScanLabelDialog";
+import { printReceiptsPath } from "../print-receipts/path";
 import { WarehouseStatusBadge } from "./components/WarehouseStatusBadge";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -105,6 +107,7 @@ const EVERY_STATUS = ORDER_STATUSES.map((meta) => meta.status);
 export function PickQueuePage() {
   const { current } = useTeam();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const mobile = useIsMobile();
 
@@ -137,7 +140,6 @@ export function PickQueuePage() {
   // The warehouse's Owner, Admin and Staff move orders and receive returns; a monitoring team reads only
   // (the-admin-team-monitors-read-only). Printing and exporting are reads, so they stay.
   const mayWrite = canWrite(current);
-  const { openLabel, printLabels, opening: printing } = useOrderLabels();
 
   const debouncedSearch = useDebounced(search.trim());
   const filters: OrderFilters = useMemo(() => {
@@ -227,18 +229,41 @@ export function PickQueuePage() {
     setSelected(new Set());
   }
 
-  // ONE label, through a short-lived signed URL fetched on the click — the receipt is the SELLER's private document, so
-  // the warehouse asks the order for it (OrderLabels, a-warehouse-prints-the-labels-of-orders-it-ships).
-  async function printOne(order: Order) {
-    if (warehouseId === undefined) return;
-
-    await openLabel({ teamId: warehouseId, teamType: TeamType.WAREHOUSE, order });
+  // CETAK RESI OPENS THE PRINT PAGE (the-print-page-and-the-courier-count-prototype-is-accepted) with these orders, in the
+  // list's order, opened with where it came from so Back returns to the list as it was (a-form-returns-where-it-was-opened).
+  // The page prints them as one PDF (OrderLabels) and, with Konfirmasi setelah dicetak on, confirms the Perlu konfirmasi
+  // ones it printed. Opening it prints and moves nothing.
+  function openPrintPage(list: Order[]) {
+    navigate(printReceiptsPath(list.map((order) => order.id)), { state: fromHere(location) });
   }
 
-  // THE TICKED ROWS' LABELS AS ONE PDF — the same OrderLabels with every ticked id, in the list's order; the server
-  // merges them and names each order it left out.
+  // A ROW'S PRINT LABEL is the same page with that one order (a-rows-print-label-opens-the-print-page) — same switches,
+  // same rules as the bar's Cetak Resi.
+  function printOne(order: Order) {
+    openPrintPage([order]);
+  }
+
+  // THE BAR'S CETAK RESI — the ticked rows.
   function printSelected() {
-    void printLabels({ teamId: warehouseId, orders: selectedOrders });
+    openPrintPage(selectedOrders);
+  }
+
+  // DAFTAR AMBIL (the-bulk-pick-list-prototype-is-accepted): the ticked orders that are Dikonfirmasi go onto the pick
+  // list, in the list's order; the others are skipped and the toast says how many, as Hand Over does for what is not
+  // picked (the-bulk-actions-are-always-on-screen). The page is opened with where it came from, so Back returns to the
+  // list as it was (a-form-returns-where-it-was-opened). A read — it moves nothing.
+  function openPickList() {
+    const processed = selectedOrders.filter((order) => order.status === OrderStatus.PROCESSED);
+    const skipped = selectedOrders.length - processed.length;
+
+    if (processed.length === 0) {
+      toaster.create({ type: "warning", title: t("bulkPick.noneConfirmed") });
+      return;
+    }
+
+    if (skipped > 0) toaster.create({ type: "warning", title: t("bulkPick.skipped", { count: skipped }) });
+
+    navigate(bulkPickPath(processed.map((order) => order.id)), { state: fromHere(location) });
   }
 
   function handOverSelected() {
@@ -256,7 +281,7 @@ export function PickQueuePage() {
         canMove={mayWrite}
         onMove={(to) => requestMove([order], to)}
         onFind={() => setFindOrder(order)}
-        onPrint={() => void printOne(order)}
+        onPrint={() => printOne(order)}
         onOpen={() => navigate(`/warehouse-orders/${order.id}`)}
       />
     );
@@ -473,8 +498,8 @@ export function PickQueuePage() {
               canWrite={mayWrite}
               moves={commonMoves(selectedOrders.map((order) => order.status))}
               onMove={(to) => requestMove(selectedOrders, to)}
+              onPickList={openPickList}
               onPrint={printSelected}
-              printing={printing}
               onHandover={handOverSelected}
               exportLabel={
                 exporter.progress
@@ -829,8 +854,8 @@ function BulkBar({
   canWrite: mayWrite,
   moves,
   onMove,
+  onPickList,
   onPrint,
-  printing = false,
   onHandover,
   onExport,
   exportLabel,
@@ -841,9 +866,10 @@ function BulkBar({
   canWrite: boolean;
   moves: WarehouseStep[];
   onMove: (to: WarehouseStep) => void;
+  /** Daftar Ambil — the ticked Dikonfirmasi orders' pick list (the-bulk-pick-list-prototype-is-accepted). */
+  onPickList: () => void;
+  /** Cetak Resi — opens the print page with the ticked orders. */
   onPrint: () => void;
-  /** A print of the ticked labels is on its way. */
-  printing?: boolean;
   onHandover: () => void;
   onExport: () => void;
   /** "Exporting 200 / 456" while an export runs; undefined otherwise. */
@@ -901,12 +927,19 @@ function BulkBar({
         </Menu.Root>
       )}
 
-      {/* One PDF of every ticked order's label (a-warehouse-prints-the-labels-of-orders-it-ships). */}
+      {/* DAFTAR AMBIL — THE TICKED ORDERS' GOODS IN ONE WALK (the-bulk-pick-list-prototype-is-accepted): a read, so a
+          monitor has it too; it waits for a tick like the others (the-bulk-actions-are-always-on-screen) and skips what
+          is not Dikonfirmasi. */}
+      <Button size="xs" variant="outline" disabled={count === 0} data-testid="pick-queue-bulk-pick-list" onClick={onPickList}>
+        <Icon as={ClipboardList} boxSize="4" />
+        {t("bulkPick.bar")}
+      </Button>
+
+      {/* Cetak Resi — the print page with the ticked orders (the-print-page-and-the-courier-count-prototype-is-accepted). */}
       <Button
         size="xs"
         variant="outline"
         disabled={count === 0}
-        loading={printing}
         data-testid="pick-queue-bulk-print"
         onClick={onPrint}
       >

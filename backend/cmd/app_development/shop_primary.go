@@ -27,7 +27,8 @@ func NewShopClient(cfg *Config, client *internalHTTPClient) sellingv1connect.Sho
 }
 
 // shopPrimary answers settlement's ShopPrimary — who an imported shop row counts for
-// (#settlement-asks-the-shop-for-its-primary-cs).
+// (#settlement-asks-the-shop-for-its-primary-cs), and, by its NotFound, whether a shop-addressed row's shop is the
+// team's at all (settlement-and-expense-ask-the-shop-first). A closed shop is answered: its money rows still post.
 type shopPrimary struct {
 	shops sellingv1connect.ShopServiceClient
 }

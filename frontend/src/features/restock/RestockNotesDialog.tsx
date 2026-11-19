@@ -21,7 +21,8 @@ import { SellingNote } from "./SellingNote";
 //   │                                       [Tutup] │
 //   └───────────────────────────────────────────────┘
 //
-// It reads the STORED restock by id (not the list's row): SellingNote saves the restock whole.
+// It reads the STORED restock by id (not the list's row) — its note's writer, its trail and the warehouse's note are the
+// detail's. The save sends the selling team's note alone (RestockRequestNoteSet), in every status.
 export function RestockNotesDialog({
   open,
   onOpenChange,

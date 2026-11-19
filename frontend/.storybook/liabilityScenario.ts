@@ -17,9 +17,18 @@ export const liabilityListCalls = {
   termsHistory: [] as (LiabilityTermsHistoryListFilter | undefined)[],
 };
 
+// A PAYMENT'S STATUS AS A STORY NEEDS IT before the page reads (a-pending-payment-is-cancelled-by-its-selling-team): the
+// creditor's view of a claim its payer already cancelled, or a warehouse's own pending payment. Keyed by payment id;
+// the stub applies it on its next payment call and empties it — set it in a story's `beforeEach`, which runs after
+// preview.tsx's reset. Statuses are LiabilityPaymentStatus numbers (1 pending · 2 accepted · 4 rejected · 5 cancelled).
+export const liabilityPaymentScenario = {
+  statusOf: {} as Record<string, number>,
+};
+
 export function resetLiabilityListCalls() {
   liabilityListCalls.positions = [];
   liabilityListCalls.logs = [];
   liabilityListCalls.payments = [];
   liabilityListCalls.termsHistory = [];
+  liabilityPaymentScenario.statusOf = {};
 }

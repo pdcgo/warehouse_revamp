@@ -26,7 +26,8 @@ type ExportStore interface {
 	// ChannelNames names the restocks' couriers by their shipment channel's NAME, as the row's badge reads it — a deleted
 	// channel still resolves (a-deleted-channel-still-resolves-by-id).
 	ChannelNames(ctx context.Context, ids []uint64) (map[uint64]string, error)
-	// UserNames names who raised and who accepted each restock.
+	// UserNames names who raised and who accepted each restock — and who started the stock count a refusal names
+	// (count_lock_names.go, an-abandoned-count-waits-for-the-admin).
 	UserNames(ctx context.Context, ids []uint64) (map[uint64]string, error)
 }
 

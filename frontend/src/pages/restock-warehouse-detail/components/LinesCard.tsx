@@ -19,7 +19,6 @@ import {
 } from "../../../features/restock/summary";
 import { LineNoteIcon } from "../../../features/restock/LineNoteIcon";
 import { PhotoView } from "../../../features/restock/PhotoView";
-import { brokenRackSample } from "../../../features/restock/photoSamples";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatRupiahNumber } from "../../../lib/money";
 import { type LineCorrectionView, lineCorrection } from "../../../features/receivedCount/corrections";
@@ -61,18 +60,15 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 // THE BROKEN UNITS' PHOTO (the-detail-pages-show-the-broken-photo) — a thumbnail beside the broken count, opening it
 // whole: the one this warehouse kept at Terima; a line without one shows none.
-// WHERE THE BROKEN UNITS WENT (the-detail-pages-show-the-slip-and-the-broken-rack) — a line under the good units' places
-// when they were put on a rack. ⚠ A SAMPLE (photoSamples.ts), and it goes against a business decision.
+// NO RACK FOR THE BROKEN UNITS: they are just broken (a-restocks-broken-units-are-just-broken-for-now) — the Tempat
+// cell names where the GOOD units went, and nothing more.
 export function LinesCard({
   request,
   brokenPhotos,
-  brokenRackMark,
 }: {
   request: RestockRequest;
   /** The broken units' photos kept at Terima — each line's link, by product id (RestockDoorPhotos). */
   brokenPhotos: ReadonlyMap<string, string>;
-  /** The page's mark on the broken units' rack — a sample until the received line carries one. */
-  brokenRackMark?: ReactNode;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -122,19 +118,6 @@ export function LinesCard({
       />
     ) : null;
   };
-  const rackOf = (item: RestockRequestItem) => {
-    const rack = brokenRackSample(item, codes);
-
-    return rack ? (
-      <HStack gap="1.5" wrap="wrap" data-testid={`restock-detail-broken-rack-${item.productId}`}>
-        <Text fontSize="xs" color="error.fg">
-          {t("restock.detail.brokenRack", { count: Number(brokenQuantity(item)), rack })}
-        </Text>
-        {brokenRackMark}
-      </HStack>
-    ) : null;
-  };
-
 
   return (
     <Stack gap="card" minW="0">
@@ -150,7 +133,6 @@ export function LinesCard({
               counted={counted}
               places={counted ? placementLabel(t, item, codes) : ""}
               photo={photoOf(item)}
-              rack={rackOf(item)}
               correction={correctionOf(item)}
             />
           ))}
@@ -199,12 +181,9 @@ export function LinesCard({
                     testId={`restock-detail-missing-${item.productId}`}
                   />
                   {counted && (
-                    // Two lines at most: where the good units went, then — when they were put on a rack — the broken ones.
+                    // Where the good units went — the places wrap between racks.
                     <Table.Cell whiteSpace="normal" data-testid={`restock-detail-placement-${item.productId}`}>
-                      <Stack gap="0.5">
-                        <Text>{placementLabel(t, item, codes) || "—"}</Text>
-                        {rackOf(item)}
-                      </Stack>
+                      {placementLabel(t, item, codes) || "—"}
                     </Table.Cell>
                   )}
                 </Table.Row>
@@ -339,7 +318,6 @@ function LineBlock({
   counted,
   places,
   photo,
-  rack,
   correction,
 }: {
   item: RestockRequestItem;
@@ -347,7 +325,6 @@ function LineBlock({
   counted: boolean;
   places: string;
   photo: ReactNode;
-  rack: ReactNode;
   /** The line's received-count correction — see ProblemCell. */
   correction?: LineCorrectionView;
 }) {
@@ -416,7 +393,6 @@ function LineBlock({
           <Span color="fg">{places}</Span>
         </Text>
       )}
-      {rack}
       {item.note && (
         <Text fontSize="sm" color="fg.muted" data-testid={`restock-detail-line-note-${pid}`}>
           {t("restock.detail.lineNote", { note: item.note })}

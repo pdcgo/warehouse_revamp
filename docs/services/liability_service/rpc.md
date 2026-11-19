@@ -683,7 +683,12 @@ sequenceDiagram
 
     C->>C: open the proof and check it manually
 
-    alt the money is there
+    alt the payer takes it back first
+        P->>S: LiabilityPaymentCancel — a selling payer's owner or admin
+        Note over S: lock FOR UPDATE, demand status = recorded
+        Note over S: status = cancelled. NOTHING is posted.
+        S-->>C: gone from the badge and the awaiting list, kept in the history
+    else the money is there
         C->>S: LiabilityPaymentConfirm — Received into
         Note over S: lock FOR UPDATE, demand status = recorded
         S->>S: status = confirmed AND PostEntry — one transaction
@@ -695,7 +700,7 @@ sequenceDiagram
         S-->>P: the payer reads the reason and re-records
     end
 
-    Note over S: confirmed and rejected are both FINAL — nothing leaves either
+    Note over S: confirmed, rejected and cancelled are all FINAL — nothing leaves any
 ```
 
 ### An accepted payment is FINAL
@@ -708,6 +713,7 @@ decision, was never called by any screen, and was removed.
 | | refuses | posts | after it |
 | --- | --- | --- | --- |
 | `Reject` | a **claim** | **nothing** | final — the payer re-records if they still mean to pay |
+| `Cancel` | the payer's **own claim**, before anyone decided | **nothing** | final — the payer records a new one to pay again |
 | `Confirm` | — | the **settling entry** | final — the check happens BEFORE accepting, never after |
 
 - **The status needed no migration** — the column is `TEXT`, for the same reason
@@ -813,6 +819,7 @@ sequenceDiagram
 | `Record` | the **payer** — and the pair's **debtor** | you may only assert a movement of your own money, and only toward a team you owe |
 | `Confirm` | the **creditor** | a payer who could confirm their own payment could write off any debt |
 | `Reject` | the **creditor** | only the team that was supposedly paid can say the money did not arrive |
+| `Cancel` | the **payer** — a **selling** team | only the team that made the claim takes it back, and never a warehouse payer |
 
 The scope is in the `WHERE` of the lookup, not a check after loading, so somebody else's payment
 reads as **NOT FOUND** rather than forbidden — a caller must not be able to probe payment ids to
@@ -851,7 +858,51 @@ the count inside the query it already makes, so the badge and the rows cannot di
 
 It means `recorded` payments where **this team is the creditor** — never the ones it recorded itself,
 which are waiting on somebody else. Counting both sides would show every payer a permanent
-notification for work that is not theirs.
+notification for work that is not theirs. A `cancelled` payment is not `recorded`, so a payer's cancel takes it out of
+the badge, the inbox and the pair list's *awaiting* filter with no change to any of the three reads.
+
+### The payer takes a pending claim back — `LiabilityPaymentCancel` (built 2026-11-18)
+
+[a-pending-payment-is-cancelled-by-its-selling-team](../../business/balance/context_decision.md#a-pending-payment-is-cancelled-by-its-selling-team):
+the paying **selling** team's owner or admin cancels its own payment while it is still pending. An arm *before* the
+accept, so [an-accepted-payment-is-final](../../business/balance/context_decision.md#an-accepted-payment-is-final)
+is untouched.
+
+```mermaid
+sequenceDiagram
+    participant P as Payer — a selling team
+    participant S as liability_service
+    participant T as team_service
+    P->>S: LiabilityPaymentCancel — team_id = the payer, payment_id
+    S->>T: TeamFacts(payer) — in process, BEFORE the transaction
+    alt not a selling team, or unknown
+        S-->>P: PermissionDenied
+    else a selling team
+        S->>S: tx — SELECT the payment WHERE id AND payer_team_id FOR UPDATE
+        alt no such payment of this payer
+            S-->>P: NotFound
+        else not recorded — accepted, rejected or cancelled already
+            S-->>P: FailedPrecondition
+        else recorded
+            S->>S: status = cancelled, updated_at — nothing else
+            S-->>P: the payment, cancelled
+        end
+    end
+```
+
+| | |
+| --- | --- |
+| who | `request_policy` Root, Administrator, Selling Owner, Selling Admin — the CS and every warehouse role are refused before the handler, and the admin team's monitor and an agent too (a write, not `NO_SIDE_EFFECTS`). Root or the Administrator acting inside a **warehouse** pass the policy, so the handler asks the payer's type of team_service (`TeamNamer.TeamFacts`) and refuses anything but a selling team, failing closed |
+| scope | the **payer** in the lookup's `WHERE` — the creditor's or a stranger's attempt is `NotFound` |
+| only pending | `recorded` → `cancelled`; an accepted, rejected or cancelled payment is `FailedPrecondition` and stays as it is |
+| posts | **nothing** — no ledger row, no `LiabilityPaymentAccepted`, so the accounts never move. A pending claim posted nothing to undo |
+| what it keeps | the proof rows and their shares (a share is permanent — [a-payment-must-carry-proof](../../business/balance/context_decision.md#a-payment-must-carry-proof)), `confirmed_by` / `confirmed_at` empty, `reason` empty. Like reject it stamps no actor; the row stays in both teams' history |
+| the request | a creditor's open payment request, cleared when the claim was recorded, is not brought back — as after a reject |
+| paying again | a new `Record`, unchanged — nothing about a cancelled claim blocks it |
+| the lock | the row `FOR UPDATE`, as confirm and reject: a cancel racing an accept must not mark a posted payment withdrawn. `payment_cancel_race_test.go` (`-tags raceaudit`): cancel vs confirm and cancel vs reject, 8 callers each — exactly one wins and the status, ledger and balance agree — and `TestInterleave_CancelWaitsForAnAcceptAndRefuses` (the cancel waits on the held row, re-reads, refuses) |
+| schema | none — `status` is `TEXT` with no CHECK; `cancelled` maps to `LIABILITY_PAYMENT_STATUS_CANCELLED = 5` |
+| cost | one in-process team read and one PK lookup — not heavy, no audit file |
+| the screen | the pair detail's **My payments**: a pending row this selling team paid offers **Cancel** (*Batalkan*) to its Owner and Admin, through a confirmation; a cancelled row reads **Cancelled** in the rejected badge's tone. Hidden for the CS, a warehouse team, and a monitor |
 
 ### Asking to be paid — `LiabilityPaymentRequestSend`
 
@@ -876,7 +927,7 @@ sequenceDiagram
 | who | the creditor team's owner and admin, warehouse or selling — the request's `team_id` is the creditor |
 | amount | the creditor's balance on the pair at that moment; a live figure is the position itself |
 | again | replaces the request — amount, sender and time |
-| cleared | by the debtor recording a payment to that creditor, whatever its amount; rejecting it later does not bring the request back |
+| cleared | by the debtor recording a payment to that creditor, whatever its amount; rejecting or cancelling it later does not bring the request back |
 | shown | `LiabilityPosition.payment_request`, on both teams' rows of the pair |
 
 ## The fifth obligation — stock the warehouse broke or lost (`STOCK_DAMAGE`)

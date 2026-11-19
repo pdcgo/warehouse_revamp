@@ -30,6 +30,15 @@ import (
 //
 // — the order a count's finalize keeps after its session and its waiting requests, so the two cannot deadlock. A
 // second approval or a rejection waits on the request row and then finds it no longer waiting.
+//
+// A REQUEST NAMING A LOST ORDER (a-found-lost-parcel-is-a-found-stock-in) claims no loss and posts no money: its `found`
+// transaction mints the units at the cost the order took them at, one batch per batch the take drew from
+// (inventory_mutations.PostOrderFoundApproval). Its locks, in order:
+//
+//	the request FOR UPDATE → (the count lock, read early) → the order's take row → the rack row → the count lock again
+//
+// — two approvals of one order's founds queue on the take row, and the second counts the first's units; a return accept
+// locks the same take row before its racks, the same way round.
 func (s *Service) FoundRequestApprove(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.FoundRequestApproveRequest],
@@ -84,28 +93,45 @@ func (s *Service) FoundRequestApprove(
 			return codeErr
 		}
 
+		units := inventory_mutations.FoundUnits{
+			WarehouseID: warehouseID, TeamID: row.TeamID, ProductID: row.ProductID, PlacementID: row.PlacementID,
+			PlacementCode: codes[row.PlacementID], Count: row.StockCount,
+		}
+
 		var postErr error
 
-		approved, postErr = inventory_mutations.PostFoundApproval(tx, inventory_mutations.FoundApproval{
-			FoundUnits: inventory_mutations.FoundUnits{
-				WarehouseID: warehouseID, TeamID: row.TeamID, ProductID: row.ProductID, PlacementID: row.PlacementID,
-				PlacementCode: codes[row.PlacementID], Count: row.StockCount,
-			},
-			ActorID:     actor,
-			IsOverride:  overrideFrom(ctx),
-			Description: foundNote(row.ID),
-		})
-		if errors.Is(postErr, inventory_mutations.ErrNeverStockedHere) {
-			return errFoundNoPrice
-		}
+		if row.OrderID != nil && row.OrderTakeTransactionID != nil {
+			// A LOST ORDER'S PARCEL: at the cost the order took it at — no claim, so no debt to post.
+			approved, postErr = inventory_mutations.PostOrderFoundApproval(tx, inventory_mutations.OrderFoundApproval{
+				OrderFoundUnits: inventory_mutations.OrderFoundUnits{
+					FoundUnits: units, RequestID: row.ID, OrderID: *row.OrderID, TakeTransactionID: *row.OrderTakeTransactionID,
+				},
+				ActorID:     actor,
+				IsOverride:  overrideFrom(ctx),
+				Description: foundOrderNote(row.ID, *row.OrderID),
+			})
+			if postErr != nil {
+				return postErr
+			}
+		} else {
+			approved, postErr = inventory_mutations.PostFoundApproval(tx, inventory_mutations.FoundApproval{
+				FoundUnits:  units,
+				ActorID:     actor,
+				IsOverride:  overrideFrom(ctx),
+				Description: foundNote(row.ID),
+			})
+			if errors.Is(postErr, inventory_mutations.ErrNeverStockedHere) {
+				return errFoundNoPrice
+			}
 
-		if postErr != nil {
-			return postErr
-		}
+			if postErr != nil {
+				return postErr
+			}
 
-		debtErr := s.postCountDebts(ctx, tx, warehouseID, actor, []inventory_mutations.CountTransaction{approved.Transaction})
-		if debtErr != nil {
-			return debtErr
+			debtErr := s.postCountDebts(ctx, tx, warehouseID, actor, []inventory_mutations.CountTransaction{approved.Transaction})
+			if debtErr != nil {
+				return debtErr
+			}
 		}
 
 		now := time.Now()

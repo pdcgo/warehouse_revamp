@@ -39,7 +39,7 @@ import {
   LiabilitySourceType,
   LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
-import { liabilityListCalls, resetLiabilityListCalls } from "./liabilityScenario";
+import { liabilityListCalls, liabilityPaymentScenario, resetLiabilityListCalls } from "./liabilityScenario";
 import { firstDayOfBucket, resetStatementCalls, statementAsks, statementCalls } from "./statementScenario";
 import { GroupType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
@@ -124,7 +124,7 @@ import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock
 import { warehouseTransferService } from "./warehouseTransferStub";
 import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
-import { batchList, foundRequestService, stockAdjust } from "./foundRequestStub";
+import { batchList, foundOrderNotesOf, foundRequestService, stockAdjust } from "./foundRequestStub";
 import { expenseService } from "./expenseStub";
 import { warehouseProductSearch } from "./warehouseProductSearchStub";
 import { warehouseStockList } from "./warehouseStockListStub";
@@ -132,6 +132,9 @@ import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_req
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
 import { orderReturnAccept, orderStatusChange, readsOrder, returnLabelsOf, scenarioStatus } from "./returnAcceptStub";
+import { orderShopUpdate, resetOrderShopFixes, shopFixNotesOf, shopOf } from "./orderShopStub";
+import { orderPickLines, stockPickLocations as stockPickLocationsOf } from "./bulkPickStub";
+import { orderPrintByIds } from "./orderPrintStub";
 import { orderByExternalRefs, orderDraftByExternalRefs } from "./duplicateRefStub";
 import { orderAnswerInterceptor, refuseOrderCreateIfScripted } from "./orderAnswerStub";
 import { warehouseFeeService } from "./warehouseFeeStub";
@@ -182,7 +185,6 @@ import {
   orderDraftDetailFor,
   orderDrafts,
   STATUS_OFFSET,
-  pickLocationsByTransaction,
   orders,
   productCosts,
   products,
@@ -366,6 +368,8 @@ let nextNoteLogId = 9_000n;
 export function resetOrderNotes() {
   writtenNotes = new Map();
   nextNoteLogId = 9_000n;
+  // …and the shops a story fixed, with their note rows (orderShopStub.ts).
+  resetOrderShopFixes();
 }
 
 function channelById(id: bigint): StubChannel {
@@ -488,6 +492,18 @@ function inLiabilityPeriod(unix: bigint, filter: { from?: string; to?: string } 
 // itself, so a shallow spread of the array would still hand the next story the mutated object — and
 // a claim another story already refused would render as terminal, making "there is a Reject button"
 // depend on which story ran first.
+// A story's payment statuses (liabilityPaymentScenario), applied on the first payment call after its `beforeEach` set
+// them and then emptied — so a creditor's story can open on a claim its payer already cancelled.
+function applyPaymentScenario() {
+  for (const [id, status] of Object.entries(liabilityPaymentScenario.statusOf)) {
+    const row = paymentsTable.find((p) => p.id === BigInt(id));
+    if (row) {
+      row.status = status;
+    }
+  }
+  liabilityPaymentScenario.statusOf = {};
+}
+
 export function resetLiabilityPayments() {
   paymentsTable = liabilityPayments.map((p) => ({ ...p }));
   nextPaymentId = 700n;
@@ -1523,8 +1539,9 @@ export const transport = createRouterTransport(({ service }) => {
 
     // The shelves an order's goods were drawn from, read by the take's TRANSACTION id — the order's `transactionId`
     // (the-placement-page-reads-racks-by-transaction-id). A transaction no fixture order holds answers EMPTY, as the
-    // server would — "nothing was drawn" is a real answer, not an error.
-    stockPickLocations: (req) => ({ locations: pickLocationsByTransaction(req.transactionId) }),
+    // server would — "nothing was drawn" is a real answer, not an error. Many takes at once for the bulk pick list
+    // (the-bulk-pick-list-prototype-is-accepted) — bulkPickStub.ts.
+    stockPickLocations: (req) => stockPickLocationsOf(req),
 
     // The Adjust dialog (features/inventory/AdjustStockDialog): its write, and the batches Damaged and Lost pick from.
     // FOUND is refused here, as on the server — the dialog reports it through FoundRequestCreate (foundRequestStub.ts).
@@ -1597,6 +1614,11 @@ export const transport = createRouterTransport(({ service }) => {
               ...o,
               itemQuantity: unitsOf(o.id),
               dateEnteredAtUnix: entered === undefined ? 0n : enteredAt(o, entered),
+              // A label a story lends the order (orderLabelScenario.labelled) rides on its row, as the server's list
+              // carries the order's `receipt` — so the row's ⋯ Print Label is on for it.
+              ...(orderLabelScenario.labelled.includes(o.id)
+                ? { receipt: { documentId: `doc-${o.id}`, filename: `resi-${o.id}.pdf`, mimeType: "application/pdf" } }
+                : {}),
             };
           }),
         req.page,
@@ -1627,7 +1649,16 @@ export const transport = createRouterTransport(({ service }) => {
         order: {
           // The status a return-accept story reads the order in (returnAcceptStub.ts); the fixture's otherwise.
           ...read,
-          timelineLogs: [...order.timelineLogs, ...(writtenNotes.get(order.id.toString()) ?? [])],
+          // The shop a story fixed it to (orderShopStub.ts); the fixture's otherwise.
+          shopId: shopOf(read),
+          // …and the note a found naming this lost order wrote (a-found-lost-parcel-is-a-found-stock-in, foundRequestStub).
+          timelineLogs: [
+            ...order.timelineLogs,
+            ...(writtenNotes.get(order.id.toString()) ?? []),
+            ...foundOrderNotesOf(order.id),
+            // …and the note each fix of its shop wrote (an-orders-shop-is-fixed-and-counted-on-the-day).
+            ...shopFixNotesOf(order.id),
+          ],
         },
         // While it is a return, the code each borrowed line comes back as (a-returned-borrowed-unit-is-relabelled-at-the-accept).
         returnLabels: returnLabelsOf(read),
@@ -1638,13 +1669,21 @@ export const transport = createRouterTransport(({ service }) => {
     // warehouse — or any order, for the root team — with a label is included; another warehouse's order, or no such
     // order, is NOT_SHIPPED_HERE; one with no label is NO_LABEL. ONE id links that order's own file; SEVERAL read the
     // files (an `unreadable` one is UNREADABLE) and link one merged PDF. 1 to 50 ids, as the contract caps it.
+    // THE BULK PICK LIST'S ORDERS (the-bulk-pick-list-prototype-is-accepted) — bulkPickStub.ts.
+    orderPickLines: (req) => orderPickLines(req),
+    // THE PRINT PAGE'S ORDERS (the-print-page-and-the-courier-count-prototype-is-accepted) — orderPrintStub.ts.
+    orderPrintByIds: (req) => orderPrintByIds(req),
+
     orderLabels: (req) => {
       orderLabelScenario.last = { teamId: req.teamId, orderIds: [...req.orderIds] };
+      // The unboxing warning is the server's to stamp — the stub only records that it was asked.
+      orderLabelScenario.unboxing = req.unboxingWarning;
       if (req.orderIds.length < 1 || req.orderIds.length > 50) {
         throw new ConnectError("order_ids: 1 to 50 orders", Code.InvalidArgument);
       }
 
-      const several = req.orderIds.length > 1;
+      // Several are merged — and so is ONE with the unboxing warning, whose page must carry the line.
+      const several = req.orderIds.length > 1 || req.unboxingWarning;
 
       const results = req.orderIds.map((orderId) => {
         const order = orderDetailFor(orderId);
@@ -1723,6 +1762,10 @@ export const transport = createRouterTransport(({ service }) => {
 
       return { order };
     },
+
+    // UBAH TOKO (an-orders-shop-is-fixed-and-counted-on-the-day) — orderShopStub.ts: the selling team only, from the
+    // order's handover on, a shop of the same team and marketplace the story's writer may write; the order reads in it after.
+    orderShopUpdate: (req) => orderShopUpdate(req),
 
     // Every plain move (one-status-change-for-every-plain-move). STATELESS on purpose: the page reads the
     // new status back through the invalidation, and a stub that remembered a move would leak it into the
@@ -2079,6 +2122,7 @@ export const transport = createRouterTransport(({ service }) => {
     // The period (the day it was recorded) and the SIDE — My payments / Their payments — are the server's too (backlog
     // #34): each tab its own page.
     liabilityPaymentList: (req) => {
+      applyPaymentScenario();
       liabilityListCalls.payments.push(req.filter);
       const side = req.filter?.side ?? LiabilityPaymentSide.UNSPECIFIED;
 
@@ -2221,6 +2265,35 @@ export const transport = createRouterTransport(({ service }) => {
 
       row.status = 4;
       row.reason = req.reason;
+
+      return { payment: row };
+    },
+
+    // CANCEL — the PAYER takes its own pending claim back (a-pending-payment-is-cancelled-by-its-selling-team). As the
+    // server: another team's payment is NOT FOUND (the scope is the payer), anything but pending is refused, and IT POSTS
+    // NOTHING — only the claim's row changes, and the creditor's awaiting count drops it.
+    liabilityPaymentCancel: (req) => {
+      applyPaymentScenario();
+      const row = paymentsTable.find((p) => p.id === req.paymentId && p.payerTeamId === req.teamId);
+
+      if (!row) {
+        throw new ConnectError("payment not found", Code.NotFound);
+      }
+
+      if (row.status !== 1) {
+        throw new ConnectError(
+          "only a pending payment can be cancelled — once the team you paid accepts or rejects it, or it is cancelled already, it stays as it is",
+          Code.FailedPrecondition,
+        );
+      }
+
+      row.status = 5;
+
+      // The positions are signed from Gudang Pusat's (11) side: a claim TO it no longer waits on it.
+      const waiting = row.creditorTeamId === 11n ? positionsTable.find((p) => p.counterpartyId === row.payerTeamId) : undefined;
+      if (waiting && waiting.awaitingConfirmation > 0) {
+        waiting.awaitingConfirmation -= 1;
+      }
 
       return { payment: row };
     },

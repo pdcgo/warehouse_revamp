@@ -66,6 +66,14 @@ service OrderService {
   // file, or both, while the parcel is still in the building — pending, processed, picked. From shipping on the
   // courier has scanned the number, so it is refused. Each edit leaves a note row naming the old and the new.
   rpc OrderReceiptUpdate(OrderReceiptUpdateRequest) returns (OrderReceiptUpdateResponse);
+  // FIX AN ORDER'S SHOP (an-orders-shop-is-fixed-and-counted-on-the-day): the selling team moves an order filed under
+  // the wrong shop to another shop of the SAME team and marketplace (a-shops-marketplace-and-team-are-fixed) that the
+  // caller may write (a-write-needs-a-grant-or-a-manager), in any status from handover on — shipping, shipped, problem,
+  // completed, return, return_completed, lost; an order before handover, or cancelled, is refused. A note row names the
+  // old and the new shop; OrderShopChanged moves the order's settlement account to the new shop, so that shop's
+  // statement imports, and the order metrics count the move on the day of the fix — the old shop −1, the new +1 — never
+  // re-filing a past day.
+  rpc OrderShopUpdate(OrderShopUpdateRequest) returns (OrderShopUpdateResponse);
   // THE ORDER IMPORT (the-import-moves-only-after-handover, the-order-import-is-one-rpc-per-platform): one shop's order
   // export from the platform moves each order it names along customer service's moves after handover, and every other
   // order is listed with its reason. One RPC per platform, each a stream of leveled log lines.
@@ -137,6 +145,26 @@ service OrderService {
   rpc OrderLabels(OrderLabelsRequest) returns (OrderLabelsResponse) {
     // A READ — it changes no order and no label (an-agent-only-reads-for-now, the-admin-team-monitors-read-only). The
     // merged PDF it stores is its answer, the way an export's file is, not a record of anything.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // THE ORDERS' LINES FOR THE BULK PICK LIST (the-bulk-pick-list-prototype-is-accepted): up to 50 orders that ship from
+  // the caller's warehouse, each with what its parcel carries (shop, ref, courier, resi), its take's inventory
+  // transaction (the-placement-page-reads-racks-by-transaction-id) and its lines — product and quantity, never money.
+  // OrderList answers a summary with no lines and OrderDetail one order, so the list's ticked orders are read here at
+  // once instead of one OrderDetail each.
+  rpc OrderPickLines(OrderPickLinesRequest) returns (OrderPickLinesResponse) {
+    // A READ — no row, no event, no file (an-agent-only-reads-for-now, the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // THE PRINT PAGE'S ORDERS (the-print-page-and-the-courier-count-prototype-is-accepted): up to 50 orders that ship from
+  // the caller's warehouse, each with what its line on the print page shows — its step, shop, ref, courier and resi — and
+  // whether a label file is attached, so an order with none is named BEFORE the print. OrderList has no ids and OrderDetail
+  // reads one order; OrderPickLines carries no label. So the chosen orders are read here at once instead of one
+  // OrderDetail each.
+  rpc OrderPrintByIds(OrderPrintByIdsRequest) returns (OrderPrintByIdsResponse) {
+    // A READ — no row, no event, no file (an-agent-only-reads-for-now, the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -1274,6 +1302,38 @@ message OrderReceiptUpdateResponse {
   Order order = 1;
 }
 
+// OrderShopUpdateRequest fixes the shop an order is filed under (an-orders-shop-is-fixed-and-counted-on-the-day).
+message OrderShopUpdateRequest {
+  // Every role of the selling team (`selling:all` in the checklist); the warehouse does not file a seller's orders.
+  // Writing the NEW shop needs a grant on it or the team's owner/admin role — the order writes' own gate
+  // (a-write-needs-a-grant-or-a-manager).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The order's selling team. Any other team, its warehouse included, reads NotFound.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The shop the order belongs in: the same team's (another team's reads NotFound) and the same marketplace as the
+  // order's shop now (a-shops-marketplace-and-team-are-fixed). A closed shop is taken — it refuses only new selling
+  // (a-closed-shop-refuses-only-new-selling), and its statements still import.
+  uint64 shop_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderShopUpdateResponse {
+  // The order as it now is. Unchanged, with no note written and nothing announced, when it is already in that shop.
+  Order order = 1;
+}
+
 // ── Order activity, per product ──────────────────────────────────────────────────────────────────
 
 // OrderProductActivityItem is what one product has been doing on this team's orders.
@@ -1691,6 +1751,12 @@ message OrderLabelsRequest {
       uint64: {gt: 0}
     }
   }];
+
+  // THE UNBOXING WARNING (the-unboxing-warning-is-one-sentence-on-each-label): on, ONE fixed sentence is stamped along
+  // the bottom margin of EVERY label page — in Indonesian, whatever the screen's language; the sentence is the server's,
+  // never the caller's. Off (the default), the labels print as they are. On, even ONE id is merged and stored like
+  // several, so its one page carries the sentence too.
+  bool unboxing_warning = 3;
 }
 
 // Why an order's label is not behind the link.
@@ -1722,4 +1788,128 @@ message OrderLabelsResponse {
   int64 expires_at_unix = 2;
   // One per asked order, in the asked order.
   repeated OrderLabelResult results = 3;
+}
+
+// ── The bulk pick list's orders ──────────────────────────────────────────────────────────────────
+//
+// OrderPickLines (the-bulk-pick-list-prototype-is-accepted): the ticked Dikonfirmasi orders' goods for ONE walk of the
+// racks. Inventory answers WHERE each line was taken from (StockPickLocations, many takes at once); this answers WHAT
+// each order holds. A read for the crew: no price, cost, markup or platform total — a warehouse sees no seller money.
+
+message OrderPickLinesRequest {
+  // The warehouse crew — the people who walk to the shelf — and Root and the Administrator, as OrderLabels.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — the scope. Only orders that ship FROM it are answered (`orders.warehouse_id`); the root team reads
+  // any order, as it opens any order's label.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The ticked orders, in the list's order. 1 to 50 — the warehouse list's largest page, one tick of its head — and that
+  // cap is what bounds the answer (the HARD RULE 9 exemption: a detail read of the asked orders, never a growing list).
+  repeated uint64 order_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+// One line of an order, as the crew fetches it: the product and how many. Its lines' money is not here.
+message OrderPickLine {
+  uint64 product_id = 1;
+  string product_code = 2;
+  string name = 3;
+  uint32 quantity = 4;
+}
+
+// One asked order: what the parcel carries, the take its racks are read by, and its lines in the order they were typed.
+message OrderPick {
+  uint64 order_id = 1;
+  // The take's inventory transaction — what StockPickLocations reads the racks by. 0 = the order took nothing (placed
+  // before stock was integrated), so its lines have no recorded rack.
+  uint64 transaction_id = 2;
+  OrderStatus status = 3;
+  uint64 shop_id = 4;
+  string order_external_ref_id = 5;
+  uint64 shipment_channel_id = 6;
+  // The resi; "" when nobody recorded one.
+  string receipt_code = 7;
+  repeated OrderPickLine lines = 8;
+}
+
+message OrderPickLinesResponse {
+  // The asked orders that ship from the warehouse, in the asked order. Another warehouse's order, or no such order, is
+  // simply absent — the two read alike, so ids cannot be probed.
+  repeated OrderPick orders = 1;
+}
+
+// ── The print page's orders ──────────────────────────────────────────────────────────────────────
+//
+// OrderPrintByIds (the-print-page-and-the-courier-count-prototype-is-accepted): the orders ticked for Cetak Resi, read
+// at once for the print page — what each line there shows, and whether the label OrderLabels will merge is attached. A
+// read for the crew: no price, cost, markup or platform total — a warehouse sees no seller money
+// (a-warehouse-sees-no-seller-money).
+
+message OrderPrintByIdsRequest {
+  // The warehouse crew, and Root and the Administrator — as OrderLabels, whose print this read comes before.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — the scope. Only orders that ship FROM it are answered (`orders.warehouse_id`), the check OrderLabels
+  // makes; the root team reads any order, as it prints any order's label.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The chosen orders, in the list's order. 1 to 50 — OrderLabels' cap, the warehouse list's largest page — and that cap
+  // is what bounds the answer (the HARD RULE 9 exemption: a detail read of the asked orders, never a growing list).
+  repeated uint64 order_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+// One chosen order, as its line on the print page reads it.
+message OrderPrint {
+  uint64 order_id = 1;
+  OrderStatus status = 2;
+  uint64 shop_id = 3;
+  string order_external_ref_id = 4;
+  uint64 shipment_channel_id = 5;
+  // The resi; "" when nobody recorded one.
+  string receipt_code = 6;
+  // Whether a label file is attached — the seller's document OrderLabels reads (NO_LABEL there when false). Its id is not
+  // sent: the warehouse opens a label only through OrderLabels, never as a document.
+  bool has_label = 7;
+}
+
+message OrderPrintByIdsResponse {
+  // The asked orders that ship from the warehouse, in the asked order. Another warehouse's order, or no such order, is
+  // simply absent — the two read alike, so ids cannot be probed.
+  repeated OrderPrint orders = 1;
 }

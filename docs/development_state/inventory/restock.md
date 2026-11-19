@@ -1,5 +1,56 @@
 # Development state — inventory / restock
 
+🔨 **2026-11-18: restock tags are live** (backlog #87, `the-restock-tags-prototype-is-accepted`; the rules
+`a-restock-tag-is-system-or-custom`, `custom-tags-are-shared-system-tags-are-the-admins-and-the-apps`,
+`a-restock-problem-is-a-system-tag`) — uncommitted. Both owner points are settled (🔄 under the accept): a tag goes on
+and comes off in **every status**, and the seller's **Tag column is always drawn** (the table scrolls in its box).
+- **Backend**: migration `00055_restock_tags` (`tags` — one app-wide list, unique on `lower(name)` after trim and
+  space-fold, `system` / `custom`, `app_task` for the app's own; `restock_tags` keyed (restock, tag) with who / when,
+  `restock_tags_tag_idx`; seeds *Barang kurang* / *Barang rusak*; a data step tags restocks already accepted with
+  problem rows — 0 rows on the test database). `restock_tag.proto` + ten RPCs on `RestockRequestService`
+  (rpc.md *Restock tags*): the list / the admins' list with counts; create custom (a name that exists answers that tag);
+  create system, rename, delete (Root / Administrator, as their own proto messages); put a custom tag on / off from either
+  side, every role but a monitor; an admin's system tag on / off. App tags locked for everyone. `RestockRequest.tags`
+  on list rows and the detail; `RestockRequestListFilter.tag_ids` (ANY of) in `restockListScope`, so the list,
+  `RestockSellingStat` and `RestockRequestExport` agree (the #72 matrix test carries four tag filters); the export gains
+  a *Tag* column after Status. Terima (`restock_request_accept.go`) puts the problem tags on in its transaction.
+- **Tests** (inventory_v1): `restock_tag_create_test.go`, `restock_tag_admin_test.go`, `restock_request_tag_add_test.go`
+  (incl. every status, another team's restock refused), `restock_request_accept_tags_test.go` (incl. the migration's
+  data step), `restock_request_tag_filter_test.go`, the stat matrix and export tests; 14/14 mutations killed. Race
+  `restock_tags_race_test.go` (one name → one tag; put-on vs delete; two renames) — 4/4 lock mutations killed. Perf
+  `restock_tags_perf_test.go` (50 000 restocks: every list case ≤ 27 ms; the index halves a rare tag's list).
+- **Frontend**: the gate (`restockTagsPrototype.tsx`, `.storybook/restockTagStory.tsx`) is deleted;
+  `features/restock/tagQueries.ts` (the catalogue feed, the live writes), `restockTags.ts` (wire mapping, `TAGS_CODEC`),
+  `RestockTagFilter` a multi-select (`?tag=1,2`, ANY of) on both lists, sent to the list, Statistik and Ekspor; the Tag
+  column and the box on both sides always. The stub answers the real RPCs (`.storybook/restockTagScenario.ts`, kit
+  `restockTagKit.ts`); the four `Tags` stories are the pages' own (BEFORE stories dropped; *tag a received / a lost
+  restock* added); the lists' `Rows` column stories gained *Tags*. New test ids: `restock-tag-filter-input`,
+  `restock-tag-filter-picks`, `restock-tag-filter-pick-<id>`, `restock-tag-filter-more`, `restock-tag-filter-clear`.
+- **Not done here**: e2e (`the_restock_list_counts_and_exports.spec.ts` expects the old export columns — it needs *Tag*
+  after *Status*; no spec exercises tags yet). When a problem tag comes off waits on the problem's solution.
+
+🔨 **2026-11-18: a restock's broken units are just broken — the rack choice is gone** (backlog #77,
+`a-restocks-broken-units-are-just-broken-for-now`) — uncommitted, frontend only (the received line never carried a rack).
+Terima's Rusak block keeps the count, its note and its photo and offers no *Dibuang / Ditaruh di rak*; *Taruh ke
+penempatan* has the good units' rows only (one-rack-once-per-line among them), and a line is finished without a rack. The
+warehouse detail's Tempat cell names the good units' places only — no sample *Rusak N → rack*. Marks gone: the accept
+page's `brokenRack` (`dropped`) and the warehouse detail's (`sample`), both `conflict: true`, with Terima's *Belum
+tersimpan* toast; both pages' `pending.ts` (now empty) and `features/restock/photoSamples.ts` deleted. Stories:
+RestockAccept/Count *Broken, no rack*, Accept *Nothing left unkept*, RestockWarehouseDetail/Products *Broken, no rack*;
+`Features/Pending/PendingMarks` brings its own example copy.
+
+🔨 **2026-11-18: the courier's charge noted at Tandai Tiba is kept** (backlog #76,
+`the-courier-charge-is-noted-at-tiba-and-final-at-terima`) — uncommitted. `RestockRequestArriveRequest` gains
+`warehouse_additional_cost` / `_note` / `_file` (3–5, Accept's rules); the sign writes them in its own `UPDATE` under the
+restock's existing `FOR UPDATE`, publishes nothing. Terima opens with charge, note and slip (the slip a kept `DoorPhoto`,
+`file: null` + its `RestockDoorPhotos` link) and REPLACES them with what it sends; money only from *Restock Accepted*.
+Both detail pages show a noted charge with a *noted — final at Terima* line (`restock.detail.courierChargeNoted*`).
+Marks gone: the warehouse list's `arrivalCod` (its last — `pages/restock-warehouse/pending.ts` deleted), the warehouse
+detail's `arrivalCod` (broken rack now its 1), the accept page's `codFromArrival`; the *enter it again* toast too. Tests:
+`restock_request_arrive_charge_test.go`, `restock_request_arrive_charge_race_test.go`; stories in
+`Features/Restock/WarehouseRestockActions`, the list's Actions, the warehouse detail's SignForBox / Payment, the selling
+detail's Payment, RestockAccept/Charge. rpc.md *RestockRequestArrive — the courier's charge noted at Tiba*.
+
 🔨 **2026-11-15: the warehouse types each line's expiry at the accept** (decisions
 `the-warehouse-types-the-expiry-at-the-accept`, docs/business/inventory/context_decision.md, and
 `the-expiry-prototypes-are-accepted`, technical/frontend/batches_decision.md) — uncommitted. `RestockRequestReceivedLine`
@@ -76,10 +127,11 @@ phone, two-line cells, Default and Mobile stories. Then the product page's shape
 one page of sections with the nav on the left, the order id and the tracking number as the title, no tabs; *Faktur* is
 *Order ID* everywhere ([the-store-reference-is-the-order-id](../../technical/frontend/restock_decision.md#the-store-reference-is-the-order-id)).
 The notes: one per writer ([the-notes-are-one-per-writer](../../technical/frontend/restock_decision.md#the-notes-are-one-per-writer)),
-⚠ the warehouse note, the note's author and an edit's content all unstored. **Backend needed:** a warehouse note with its
-author and time, the selling note's author and time, an edit's trail row naming what changed.
+the warehouse note (#67), the selling note's author and time (#58) and an edit's trail row naming what changed (#57) are
+stored since 2026-11-16.
 The selling note is edited in any status ([the-note-is-edited-in-any-status](../../technical/frontend/restock_decision.md#the-note-is-edited-in-any-status)),
-⚠ kept only while ongoing. **Backend needed:** a note change the server takes in any status.
+kept in every status through `RestockRequestNoteSet` (#59, 2026-11-16) — on its way too, the note alone, since #71
+(2026-11-18).
 On a phone the restock page edits it in a bottom sheet, the list's dialog in place
 ([a-phone-edits-the-note-in-a-sheet](../../technical/frontend/restock_decision.md#a-phone-edits-the-note-in-a-sheet)).
 The timeline centres each icon, gives every person one width, and runs its line icon to icon
@@ -159,12 +211,12 @@ Then a photo of the broken units on the accept page — one per line, optional, 
 Both detail pages show where it is read back — the selling page's Penyesuaian dialog and phone block, the warehouse
 page's broken cell — with a sample drawing, ⚠ `sample` ([the-detail-pages-show-the-broken-photo](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-broken-photo)).
 At Terima the broken units are thrown away or put on a rack, then required — ⚠ `dropped`
-([a-broken-product-may-go-on-a-rack](../../technical/frontend/restock_decision.md#a-broken-product-may-go-on-a-rack)); the courier's charge takes an optional photo of the
+([a-broken-product-may-go-on-a-rack](../../technical/frontend/restock_decision.md#a-broken-product-may-go-on-a-rack); withdrawn and removed 2026-11-18, #77 — broken is just broken, no rack); the courier's charge takes an optional photo of the
 slip at Tiba and Terima — ⚠ `dropped` ([the-courier-slip-has-an-optional-photo](../../technical/frontend/restock_decision.md#the-courier-slip-has-an-optional-photo)). The `thoni`
 comparison is closed: the rest stays ours ([the-rest-of-thonis-restock-stays-ours](../../technical/frontend/restock_decision.md#the-rest-of-thonis-restock-stays-ours)).
 The two parts that go against a business decision — the broken rack, the charge at Tiba — say so in their marks
 ([a-conflict-with-a-business-decision-is-said-in-its-mark](../../technical/frontend/context_decision.md#a-conflict-with-a-business-decision-is-said-in-its-mark)).
-The detail pages show the slip photo, and the warehouse's the broken rack — samples
+The detail pages show the slip photo, and the warehouse's the broken rack (removed 2026-11-18, #77) — samples
 ([the-detail-pages-show-the-slip-and-the-broken-rack](../../technical/frontend/restock_decision.md#the-detail-pages-show-the-slip-and-the-broken-rack)); Terima opens with the restock's own charge, empty
 today, marked missing ([terima-starts-from-the-charge-noted-at-tiba](../../technical/frontend/restock_decision.md#terima-starts-from-the-charge-noted-at-tiba)).
 The warehouse's restock page follows the screen rules and the selling page's shape — sections under a nav, the resi
@@ -200,7 +252,7 @@ are each a block of their own
 ([the-line-reads-ordered-then-what-it-came-to](../../technical/frontend/restock_decision.md#the-line-reads-ordered-then-what-it-came-to),
 [the-broken-and-the-missing-are-blocks-of-their-own](../../technical/frontend/restock_decision.md#the-broken-and-the-missing-are-blocks-of-their-own)).
 The put-away panel is off until Diterima is set, a good row holds at most Diterima − Rusak, and broken units on a rack
-get their rack as a row of that panel, marked Rusak
+get their rack as a row of that panel, marked Rusak (removed 2026-11-18, #77)
 ([putaway-waits-for-the-count](../../technical/frontend/restock_decision.md#putaway-waits-for-the-count),
 [the-broken-units-rack-is-a-marked-placement](../../technical/frontend/restock_decision.md#the-broken-units-rack-is-a-marked-placement));
 Rusak is off while Diterima is blank or 0, and empties when it goes back to 0
@@ -426,6 +478,12 @@ stateDiagram-v2
 | tests | Go: every package green from the root, 0 skips · stories: **1171** green · mermaid: 1006 parse |
 
 ## Pending marks
+
+✅ *(2026-11-18)* A restock's broken units are just broken (backlog #77): the accept page's `brokenRack` (`dropped`) and
+the warehouse detail's (`sample`) are gone with the rack they marked; both pages' `pending.ts` are deleted.
+
+✅ *(2026-11-18)* The courier's charge noted at Tandai Tiba is kept (backlog #76): its `dropped` marks on the warehouse
+list and detail and the accept page's `codFromArrival` (`missing`) are gone.
 
 ⚠ *(2026-11-05)* **Ten are back** — the accept page's slip photo and broken rack are `dropped` too. The warehouse list's COD
 card is a `sample`; the broken photo on both detail pages is a

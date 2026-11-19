@@ -36,6 +36,9 @@ const (
 	batchCap    = 590 * time.Second
 	longSpecCap = 1500 * time.Second
 	batchSize   = 6
+	// capHeadroom is how many times its estimated spec time a batch may run before its cap stops it — the rule a
+	// parallel worker's batch has had since #51, now every batch's (estimatedCap).
+	capHeadroom = 3
 )
 
 // aloneSpecs run in a batch of their own: orders.spec.ts counts every order root can see (an earlier
@@ -44,8 +47,10 @@ var aloneSpecs = map[string]bool{"orders.spec.ts": true}
 
 // restockFamily is the old restock.spec.ts (62 tests, ~12 min, a third of the suite), split by its describe blocks
 // into restock.spec.ts and restock_*.spec.ts (backlog #51) so parallel workers can share it out. On ONE worker (the
-// default, --workers 1) and in the --shared-db batches the family still runs as ONE batch of its own, under
-// longSpecCap — exactly what the one file did.
+// default, --workers 1) and in the --shared-db batches the family still runs as ONE batch of its own — exactly what
+// the one file did. That is all the grouping keeps: no member reads another's data (each seeds its own ground —
+// frontend/e2e/coupled.txt, restock_helpers.ts), and parallel workers spread them out. Its CAP is not the grouping's:
+// it grows with the family (estimatedCap), so a spec added to it cannot push the batch into a cap hit (#75).
 func restockFamily(spec string) bool {
 	return spec == "restock.spec.ts" || strings.HasPrefix(spec, "restock_") && strings.HasSuffix(spec, ".spec.ts")
 }
@@ -110,7 +115,8 @@ func planBatchesWith(specs []string, size int, alone map[string]bool, family fun
 	return batches
 }
 
-// capFor is a batch's time cap: the restock family's batch outgrows the batch cap (~62 tests, ~12 min).
+// capFor is a batch's FIXED time cap — its least cap once an estimate is known (estimatedCap): the restock family's
+// batch outgrows the batch cap (~62 tests, ~12 min).
 func capFor(batch []string) time.Duration {
 	for _, s := range batch {
 		if !restockFamily(s) {
@@ -123,6 +129,14 @@ func capFor(batch []string) time.Duration {
 	}
 
 	return batchCap
+}
+
+// estimatedCap is a batch's time cap from the estimated seconds of the specs it runs (estimateSpecTimes): three
+// times the estimate (capHeadroom), never less than its fixed cap (capFor). A fixed cap alone went stale as specs
+// grew — the restock acceptance specs brought the family to ~1680 s of spec time over its 1500 s, and the order
+// specs' ordinary batch past 590 s (#75); a cap hit is a timeout that turns the run red without a failed check.
+func estimatedCap(batch []string, secs float64) time.Duration {
+	return time.Duration(max(capFor(batch).Seconds(), capHeadroom*secs)) * time.Second
 }
 
 // specFiles lists frontend/e2e/*.spec.ts.

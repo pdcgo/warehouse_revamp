@@ -27,6 +27,10 @@ each old heading there now points here.
 | [scan-label-opens-the-pick-page](#scan-label-opens-the-pick-page) | a Scan Label button in the list header opens the scanned order's pick page | owner, as recommended | — |
 | [the-warehouse-list-has-a-returns-tab](#the-warehouse-list-has-a-returns-tab) | the new warehouse list carries a Returns tab after Handed Over | owner, as recommended | — |
 | [scan-label-stays-an-icon-on-a-phone](#scan-label-stays-an-icon-on-a-phone) | on a phone, Scan Label stays a one-tap icon; the other header actions fold behind ⋯ | owner, as recommended | — |
+| [the-bulk-pick-list-prototype-is-accepted](#the-bulk-pick-list-prototype-is-accepted) | the bulk pick list from the Dikonfirmasi bar is accepted as drawn: Per Produk first, Per Pesanan, no status move, no print |
+| [the-print-page-and-the-courier-count-prototype-is-accepted](#the-print-page-and-the-courier-count-prototype-is-accepted) | the print page (Cetak Resi → chosen orders, confirm after printing ON each time) and the handover's count per courier are accepted as drawn |
+| [the-unboxing-warning-is-one-sentence-on-each-label](#the-unboxing-warning-is-one-sentence-on-each-label) | the unboxing switch prints one fixed sentence — *Wajib video unboxing saat membuka paket* (🔄 A) on every label page; the switch is remembered on the device |
+| [a-rows-print-label-opens-the-print-page](#a-rows-print-label-opens-the-print-page) | a list row's Print Label opens the print page with that one order (printing confirms it); the order page's label card only views the file |
 
 ## the-two-ends-are-two-screens
 
@@ -597,3 +601,73 @@ The list's search box stays a search, not a scan field. ⚠ Not built.
 **The verdict.** An exception to the fold, for this list only: on a phone **Scan Label is always its own icon** beside ⋯, and the rest of the header's actions (Scan Handover, Receive a Return) fold behind ⋯. It is the crew's action on almost every order, so it stays one tap. A monitor, who has only Scan Label, sees just its icon. Amends [scan-label-opens-the-pick-page](#scan-label-opens-the-pick-page)'s *"an icon on a phone"*. ⚠ Not built.
 
 ✅ Built 2026-11-09 — `CompactAction.pinned` in `components/chrome/CompactActions.tsx` (past two, a pinned action keeps its icon and only the others fold; story `APinnedActionStaysAnIcon`); the warehouse list's Scan Label is pinned (`pages/pick-queue/index.tsx`, story `Phone`).
+
+---
+
+## the-bulk-pick-list-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-18): *"A"*, as recommended — to the design accept of backlog #80, the bulk pick list (Storybook prototype `Pages/Warehouse/BulkPick`, screenshots `01_proposed_entry_bar_desktop` … `06_proposed_entry_bar_phone`, today's Dikonfirmasi tab last as BEFORE): A accept as drawn — it opens on *Per Produk*, so the crew walks past each rack once, and has no print button (the printed paper is the shipping label, `docs/business/inventory/order_clarify.md`); B accept with changes. From his checklist, [inventory/order.md](../../acceptances/inventory/order.md):166–168 (*bulk pick order — each product shown with total quantity and its racks · order stays processed · each order shown with its products and racks*).
+
+**The verdict.** The prototype is the design to build:
+
+| part | as accepted |
+| --- | --- |
+| the door | **Daftar Ambil** on the Dikonfirmasi tab's bulk bar, always on screen, disabled until a tick ([the-bulk-actions-are-always-on-screen](#the-bulk-actions-are-always-on-screen)); orders not Dikonfirmasi are skipped with a toast, as Hand Over does |
+| the page | two line tabs, **Per Produk** first: each product's total and each rack's quantity, in walk order (by first rack), unplaced / unrecorded units said in words; **Per Pesanan**: each order's products with the racks its own take used, *Buka* opens its pick page |
+| status | none moves — the orders stay Dikonfirmasi; each parcel is still scanned on its pick page |
+| print | none |
+| phone | one block per product / per order |
+
+**The backend step:** `StockPickLocations` takes many transaction ids (one query, scoped to the caller's warehouse) and names each location's transaction; the orders' lines read for many orders at once; the route `/warehouse-orders/bulk-pick`; the prototype gate removed and its stories folded into the page's own.
+
+**What it does NOT settle:** nothing open. ⛔ Not built — backlog #80.
+
+✅ **Built 2026-11-18.** Backend: `InventoryService.StockPickLocations` takes `transaction_ids` (4; 1–50, unique — exactly one of it or `transaction_id`, message CEL) in the SAME one statement scoped to the caller's warehouse, and each location names its take (`StockPickLocation.transaction_id`, 6); the single pick page's call is unchanged. The orders' lines: no warehouse read gave lines for a set of ids, so `OrderService.OrderPickLines` (selling, `order_pick_lines.go`) answers 1–50 ids that ship FROM the warehouse, in the asked order, with take, shop, ref, courier, resi and lines — no money. Cap 50 = the list's largest page. Perf: 1 statement, 50 takes ≈1.3 ms over 500 000 placement log rows; OrderPickLines 2 statements, 50 ids ≈1.7 ms over 50 000 orders — no index added. Tests `stock_pick_locations_test.go` (+3), `order_pick_lines_test.go` (5), `TestPerf_StockPickLocationsManyTakes`, `TestPerf_OrderPickLines`, mutation-checked. Frontend: route `/warehouse-orders/bulk-pick` (`pages/bulk-pick`, `useBulkPick` in `features/picking/queries.ts`), the Dikonfirmasi bar's *Daftar Ambil* live (`pages/pick-queue`), the gate `bulkPickPrototype.tsx` deleted, its stories folded into `Pages/Warehouse/BulkPick` with stubs answering the real RPCs (`.storybook/bulkPickStub.ts`, new `Reads` stories). [inventory rpc.md](../../services/inventory_service/rpc.md#many-takes-at-once--the-bulk-pick-list-built-2026-11-18), [selling rpc.md](../../services/selling_service/rpc.md#the-bulk-pick-lists-orders--orderpicklines).
+
+---
+
+## the-print-page-and-the-courier-count-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-18): *"A"*, as recommended — to the design accept of backlog #79 + #83, the print page and the handover's count per courier (Storybook `Pages/Warehouse/PrintReceipts` and `Pages/Warehouse/PickQueuePage/PrototypePrintAndHandover`; screenshots `01_print_page_desktop` … `06_handover_counts_phone`, today's two screens last as BEFORE): A accept as drawn — *Konfirmasi setelah dicetak* ON every time the page opens, not remembered; B accept with changes. From his flow ([docs/business/inventory/order.md](../../business/inventory/order.md):113–124, *print, then Order set Processed*) and his checklist ([inventory/order.md](../../acceptances/inventory/order.md):133–142, 207).
+
+**The verdict.** The prototype is the design to build:
+
+| part | as accepted |
+| --- | --- |
+| the door | **Cetak Resi** on the list's bulk bar opens the print page with the ticked orders, in the list's order |
+| the page | each chosen order listed; one with no label is named **before** printing; ✕ takes an order off; Back returns where it was opened |
+| **Konfirmasi setelah dicetak** | ON each time the page opens (not remembered); after the one merged PDF is made, the *Perlu konfirmasi* orders in it move to *Dikonfirmasi* in one status change; a reprint keeps its step; an order left out (no label) keeps its step; printing again moves nothing |
+| a monitor | prints (a read) but moves nothing — the switch off and locked ([the-admin-team-monitors-read-only](../../business/user/context_decision.md#the-admin-team-monitors-read-only)) |
+| the unboxing switch | drawn as a placeholder that prints nothing — its wording and place are asked next |
+| **Per kurir** (#83) | in *Serah ke Kurir*: parcels counted per courier over the scans that are ready or handed over, most first, with the total; wrong-step / not-found scans not counted; on screen only — nothing printed or stored |
+| phone | one header row, settings above, each order a block |
+
+**The backend step:** one read for the chosen orders (the page reads them one by one in the prototype — ⚠ interim, as the restock labels did before [the-labels-mark-their-one-by-one-read](restock_decision.md#the-labels-mark-their-one-by-one-read)); the route; the status change after the PDF through the existing status change; the gates removed and the stories folded into the pages' own.
+
+**What it does NOT settle:** the unboxing warning's text and place; whether a single order's *Print Label* (the row's ⋯ menu) opens this page too — until answered the row menu prints at once as today. ⛔ Not built — backlog #79, #83.
+
+✅ **Built 2026-11-18 — the print page and Per kurir are live.** `/warehouse-orders/print` is the page (`pages/print-receipts`, Storybook `Pages/Warehouse/PrintReceipts`); the list bar's *Cetak Resi* opens it with the ticked orders in the list's order, and a row's ⋯ *Print Label* with its one order ([a-rows-print-label-opens-the-print-page](#a-rows-print-label-opens-the-print-page)). The chosen orders are read in ONE call — the new selling read `OrderPrintByIds` (1–50 ids, OrderLabels' ships-from check, each order's step, shop, ref, courier, resi and `has_label`, no money; one primary-key statement, 0.5–0.9 ms for 50 among 50 000 orders) — so the prototype's one `OrderDetail` per order and its `interim` mark are gone; with the unboxing switch built ([the-unboxing-warning-is-one-sentence-on-each-label](#the-unboxing-warning-is-one-sentence-on-each-label)) `pages/print-receipts/pending.ts` is deleted. *Konfirmasi setelah dicetak* is ON at every open: after `OrderLabels` makes the PDF, the *Perlu konfirmasi* orders in it move to *Dikonfirmasi* in ONE `OrderStatusChange`; a reprint, an order left out and a second print move nothing; a monitor's switch is off and locked. *Per kurir* draws in *Serah ke Kurir* (`CourierCounts`). Both gates (`print-receipts/prototype.tsx`, `pick-queue/components/handoverCountsPrototype.tsx`) are deleted and `PrototypePrintAndHandover` is folded into `Pages/Warehouse/PickQueuePage` (`CetakResiOpensThePrintPage`, `PrintLabelOpensThePrintPageWithItsOrder`, `HandoverCounts…`). Tests `order_print_by_ids_test.go` and its perf probe; flow in [rpc.md](../../services/selling_service/rpc.md#the-print-pages-orders--orderprintbyids).
+
+---
+
+## the-unboxing-warning-is-one-sentence-on-each-label
+
+> Owner (Heri), in chat (2026-11-18): *"A"*, as recommended — to: what should the unboxing-video warning say, and where does it print? (his checklist, [inventory/order.md](../../acceptances/inventory/order.md):133–137 — *print receipts (unboxing warning on / off) … unboxing video warning printed*). A: one fixed sentence, printed on each label page when the switch is on — the wording his (the agent's *"Wajib video unboxing saat membuka paket"* was only an example; asked *"is … from toni?"*, it is in no doc), the switch remembered on the device as [the-label-settings-are-remembered](restock_decision.md#the-label-settings-are-remembered); B: each selling team's own text from its settings; C: a separate warning sheet after each label.
+
+**The verdict.** The print page's **unboxing switch** prints **one fixed sentence on every label page** of the PDF when it is on; off, the labels print as they are. The switch is **remembered on the device**. Follows [the-print-page-and-the-courier-count-prototype-is-accepted](#the-print-page-and-the-courier-count-prototype-is-accepted).
+
+*(Not decided yet: the sentence itself — the owner's wording, asked next. Not asked — the build's default: the server stamps it in the page's margin, in Indonesian whatever the screen's language.)* ⛔ Not built — backlog #79.
+
+🔄 *(2026-11-18)* **Settled in chat — the sentence.** Owner: *"A"* — to: what exactly should it say? A: *"Wajib video unboxing saat membuka paket"* (the agent's example); B: his own words. So every label page prints **Wajib video unboxing saat membuka paket** when the switch is on.
+
+✅ **Built 2026-11-18.** `OrderLabels` gains `unboxing_warning` (field 3): on, the one constant `unboxingWarning` in `order_labels.go` — *Wajib video unboxing saat membuka paket*, in Indonesian whatever the screen's language — is stamped along the bottom margin of EVERY page of the PDF, a photo's page too, by `san_pdf_merge.StampEveryPage` (pdfcpu, the merge's own library: centred 4 pt above the edge, 75 % of the page's width), and one order asked with it is merged and stored too, since its own file has no such line; off, the labels print as they are. A stamp that cannot be drawn fails the print. The print page's switch is remembered on the device (`print-receipts.unboxing.v1`, only *on* stored, as [the-label-settings-are-remembered](restock_decision.md#the-label-settings-are-remembered)) and sent with Print; the result says every label page carries it. No pending mark is left. +38 ms on a 50-label merge. Tests `TestOrderLabels_TheUnboxingWarningIsOnEveryPage` / `TestOrderLabels_NoUnboxingWarningStampsNone`, `TestMerge_TheStampIsOnEveryPage` / `TestMerge_NoStampStampsNone`; stories `The unboxing warning prints`, `The unboxing switch is remembered` ([rpc.md](../../services/selling_service/rpc.md#the-labels-a-warehouse-prints--orderlabels)).
+
+---
+
+## a-rows-print-label-opens-the-print-page
+
+> Owner (Heri), in chat (2026-11-18): *"A"*, as recommended — to: the *Print Label* in a single order's ⋯ menu (today it opens that order's label file at once, no status move; the accepted print page opens only from the bulk bar — [the-print-page-and-the-courier-count-prototype-is-accepted](#the-print-page-and-the-courier-count-prototype-is-accepted)). A: the row's *Print Label* opens the print page with that one order, so printing one *Perlu konfirmasi* order also confirms it, as in his flow (print, then processed); the order page's label card keeps opening the file just to look, with no move; B: only the bulk bar opens the page, the row menu prints at once and a single order needs *Ubah Langkah*; C: every place that opens a label (the row menu and the order page) goes through the page.
+
+**The verdict.** The list row's ⋯ **Print Label** opens the **print page with that one order** — the same page, switches and rules as the bulk bar's *Cetak Resi* (confirm after printing ON; a reprint keeps its step). The **order page's label card** stays a viewer: it opens the file and moves nothing. ⛔ Not built — backlog #79.
+
+✅ **Built 2026-11-18.** The list row's ⋯ *Print Label* (`pick-queue-print-<id>`, still off for an order with no label attached) opens `/warehouse-orders/print?ids=<that id>` with the way back to the list, where Print runs the bar's rules; the order page's label card (`ReceiptCard`, `useOrderLabels().openLabel`) is unchanged — it opens the file and moves nothing. Story `PrintLabelOpensThePrintPageWithItsOrder` (Pages/Warehouse/PickQueuePage).

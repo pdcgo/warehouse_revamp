@@ -221,7 +221,7 @@ func runIsolatedBatches(ctx context.Context, root string, rec *RunRecord, batche
 			break
 		}
 
-		b := &BatchResult{N: i + 1, Worker: w.Name, Specs: lb.Specs}
+		b := lb.result(i+1, w.Name)
 		fmt.Fprintf(out, "→ %s b%d %s\n", w.Name, b.N, strings.Join(lb.Specs, " "))
 
 		err = runPlaywrightBatch(ctx, frontend, b, lb.Grep, dir, out, w.env()...)

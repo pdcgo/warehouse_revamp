@@ -38,6 +38,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-warehouse-link-names-its-owner-team](#the-warehouse-link-names-its-owner-team) | `warehouse_products` gets `owner_team_id` — the product's owner, written by every upsert |
 | [the-warehouse-types-the-expiry-at-the-accept](#the-warehouse-types-the-expiry-at-the-accept) | a batch's expiry is typed by the receiving warehouse at the restock accept — optional, one date per product line, the soonest printed date |
 | [the-expiry-report-is-the-batch-list](#the-expiry-report-is-the-batch-list) | the expiry report is the warehouse Batch list's Kedaluwarsa ≤ 30 hari, its rows naming the product's racks; the owning team reads expiry on its product page — no new screen |
+| [a-restocks-broken-units-are-just-broken-for-now](#a-restocks-broken-units-are-just-broken-for-now) | a restock's broken units are recorded as broken only — no rack, no placement, no tracking (for now); the screens' rack choice is withdrawn |
 | ~~[superseded-a-price-may-be-corrected-to-zero](#superseded-a-price-may-be-corrected-to-zero)~~ ⛔ withdrawn | a batch's price may be corrected down to Rp 0, never below | owner, as recommended | — |
 
 ---
@@ -446,6 +447,10 @@ flowchart LR
 | the batch ledger | the unit leaves its batch — [broken-takes-its-batch-before-lost](./opname_decision.md#broken-takes-its-batch-before-lost) |
 | the money | a `broken` problem row, `claimable_stock_count` 0 — the warehouse pays the team |
 | found again | never — only a lost unit is claimed back ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first)) |
+
+🔄 *(2026-11-18)* Confirmed for a restock's accept too: [a-restocks-broken-units-are-just-broken-for-now](#a-restocks-broken-units-are-just-broken-for-now) — no rack, no placement; the screens' rack choice ([a-broken-product-may-go-on-a-rack](../../technical/frontend/restock_decision.md#a-broken-product-may-go-on-a-rack)) is withdrawn.
+
+🔄 *(2026-11-18)* **A restock's broken units may go back to the supplier.** The owner's later word, his draft [custom_shipments/context.md](../custom_shipments/context.md) (*"Reshipping Restock back to supplier if a problem happen"*), recorded as [a-custom-shipment-is-a-parcel-that-is-not-an-order](../custom_shipments/context_decision.md#a-custom-shipment-is-a-parcel-that-is-not-an-order): a problem restock's broken units can be sent back to its supplier as a custom shipment (a reship). Units not sent back stay as this rule and [a-restocks-broken-units-are-just-broken-for-now](#a-restocks-broken-units-are-just-broken-for-now) say — broken, on no rack.
 
 ## the-two-inventory-designs-live-on-separate-branches
 
@@ -1025,3 +1030,11 @@ box reads it off the box.
 | design | the rack line on the batch rows and the expiry on the product page are visible changes — a Storybook prototype and the owner's accept first |
 
 ✅ Built 2026-11-15 — the warehouse Batch list's rows carry the racks their product sits on in that warehouse (`StockBatch.rack_codes`, `product_placements` with units on them, one statement per page): the *Rak* column (two codes then *+n*, all on hover) and a phone line *Rak …*, on every row; an emptied batch reads —. The owning team's product page Batch section shows *Kedaluwarsa* after *Tiba* (`OwnerBatchList`'s `expires_on_unix`), on a phone on the arrival line. No metric. Tests `batch_list_racks_test.go`, perf `TestPerf_BatchList_Racks` ([rpc.md](../../services/inventory_service/rpc.md#batchlist--each-row-names-its-products-racks-2026-11-15)), e2e `the_expiry_is_read_off_the_box.spec.ts`.
+
+---
+
+## a-restocks-broken-units-are-just-broken-for-now
+
+> Owner (Heri), in chat (2026-11-18): *"for now, broken is enough to be broken, no need placement where the broken good tracked and moved to rack"* — after the agent had started building the screens' *Ditaruh di rak* choice ([a-broken-product-may-go-on-a-rack](../../technical/frontend/restock_decision.md#a-broken-product-may-go-on-a-rack), [the-broken-units-rack-is-a-marked-placement](../../technical/frontend/restock_decision.md#the-broken-units-rack-is-a-marked-placement), Frada's entries of 2026-11-05/06, built from the `thoni` branch's design) against my recommendation to keep the rack as *where the broken units lie*.
+
+**The verdict.** A restock's broken units are recorded as **broken** — the problem row, its count, note and photo — and nothing more: no rack, no placement, no tracking of where they lie or of their moves. [a-broken-unit-is-thrown-away](#a-broken-unit-is-thrown-away) holds at the restock's accept as everywhere. *For now* — the rack can be asked again later. *(Not asked — follows from the verdict: the accept page's *Dibuang / Ditaruh di rak* choice and its Rusak placement row, which nothing keeps, are removed, and the warehouse detail page's sample *Rusak N → rack* line goes — backlog #77.)*

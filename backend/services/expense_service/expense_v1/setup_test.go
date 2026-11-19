@@ -32,6 +32,38 @@ const (
 // The shop an ADS expense names in the helpers (an-expense-names-a-shop-only-for-ads).
 const adsShop uint64 = 77
 
+// The shops the fake shop service answers for (settlement-and-expense-ask-the-shop-first): every shop id is answered as
+// the asking team's — so the helpers' shops, and a race test's fresh team, need no setup — except otherTeamsShop, which
+// is warehouseTeam's alone, and unknownShop, which is nobody's.
+const (
+	// Closed — an expense still runs on it (a-closed-shop-refuses-only-new-selling).
+	closedShop uint64 = 78
+	// Another team's — answered as absent for every team but its own, as ShopAccessCheck does.
+	otherTeamsShop uint64 = 79
+	// No shop has this id.
+	unknownShop uint64 = 99
+)
+
+// fakeShops is the shop's answer, and counts how often it was asked.
+type fakeShops struct {
+	asked *int
+}
+
+func (f fakeShops) ShopOfTeam(_ context.Context, teamID, shopID uint64) (bool, error) {
+	if f.asked != nil {
+		*f.asked++
+	}
+
+	switch shopID {
+	case otherTeamsShop:
+		return teamID == warehouseTeam, nil
+	case unknownShop:
+		return false, nil
+	}
+
+	return true, nil
+}
+
 type fakeAccounts struct{}
 
 func (fakeAccounts) Account(_ context.Context, teamID, accountID uint64) (expense_v1.PayingAccount, bool, error) {
@@ -73,7 +105,7 @@ func (fakeSides) SideOf(_ context.Context, teamID uint64) (expense_v1.TeamSide, 
 func newService(t *testing.T, db *gorm.DB) *expense_v1.Service {
 	t.Helper()
 
-	return expense_v1.NewService(db, nil, fakeAccounts{}, fakeSides{})
+	return expense_v1.NewService(db, nil, fakeAccounts{}, fakeSides{}, fakeShops{})
 }
 
 // sentEvents records what the service published, in order.
@@ -91,7 +123,7 @@ func (s *sentEvents) send(_ context.Context, _ *role_basev1.Identity, event *eve
 func newServiceSending(t *testing.T, db *gorm.DB, sent *sentEvents) *expense_v1.Service {
 	t.Helper()
 
-	return expense_v1.NewService(db, sent.send, fakeAccounts{}, fakeSides{})
+	return expense_v1.NewService(db, sent.send, fakeAccounts{}, fakeSides{}, fakeShops{})
 }
 
 // shopFor is the shop a helper's expense names: ADS names one, every other kind none.

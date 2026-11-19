@@ -245,11 +245,12 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		return out, errChangeNotFinite
 	}
 
-	// WHO AN IMPORTED SHOP ROW COUNTS FOR — the shop's primary CS, asked here, before the transaction
-	// (#settlement-asks-the-shop-for-its-primary-cs). An order row counts for its creator and a shop row
-	// posted by hand for its actor, so only this row asks.
+	// A SHOP-ADDRESSED ROW ASKS THE SHOP FIRST, before the transaction (settlement-and-expense-ask-the-shop-first):
+	// whether the shop is the team's — so no team opens, or writes on, another team's shop account — and, for an
+	// imported row, who it counts for: the shop's primary CS (#settlement-asks-the-shop-for-its-primary-cs). An order
+	// row asks nothing: its account and shop come from the order, which its own service checked.
 	//
-	// ⚠ A FAILED ASK IS HELD, NOT RETURNED — only a WRITE needs the person. A retry of a row already
+	// ⚠ A FAILED ASK IS HELD, NOT RETURNED — only a WRITE needs the answer. A retry of a row already
 	// written is answered from the ledger inside the transaction, like every retry, and its user_id was
 	// settled when it was first written. Returning the error here refused exactly that retry, and the
 	// re-post that republishes a lost event, whenever the shop could not answer or had lost its primary.
@@ -258,8 +259,8 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		askErr error
 	)
 
-	if sourceText == sourceImporter && in.OrderID == 0 {
-		userID, askErr = s.importedShopRowUser(ctx, in)
+	if in.OrderID == 0 {
+		userID, askErr = s.askShop(ctx, in, sourceText)
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -274,6 +275,12 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 
 			// The position this row builds on, whichever account it came from.
 			prevBalance float64
+
+			// A post naming another shop than the order account's — refused, but only AFTER the idempotency lookup
+			// below: a retry of a row the ledger already holds under that shop (an order event redelivered after the
+			// order's shop was fixed and the account moved, MoveOrderShop) is answered with its own row, as every
+			// retry is, and writes nothing (an-orders-shop-is-fixed-and-counted-on-the-day).
+			wrongShop bool
 		)
 
 		if in.OrderID != 0 {
@@ -311,9 +318,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 				return errWrongTeam
 			}
 
-			if orderState.ShopID != in.ShopID {
-				return errWrongShop
-			}
+			wrongShop = orderState.ShopID != in.ShopID
 
 			prevBalance = orderState.LastBalance
 		} else {
@@ -344,8 +349,14 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 
 			// Same reasoning as the order account: the scope proves the caller's team, not the
 			// account's. A shop belongs to one team, so a mismatch means the caller named someone
-			// else's shop.
+			// else's shop — and when the shop itself said so, it reads as the shop does: NotFound, never confirming
+			// the id (settlement-and-expense-ask-the-shop-first). An account another team opened before the shop
+			// was asked is not re-homed: the shop's own team still meets errWrongTeam on it.
 			if shopState.TeamID != in.TeamID {
+				if isShopNotTheTeams(askErr) {
+					return askErr
+				}
+
 				return errWrongTeam
 			}
 
@@ -395,8 +406,13 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			return nil
 		}
 
-		// A NEW imported shop row whose person the shop could not name — refused now, with the ask's own
-		// reason, and before anything is written.
+		if wrongShop {
+			return errWrongShop
+		}
+
+		// A NEW shop row the shop did not vouch for — another team's or an unknown shop, no answer, or an imported
+		// row with no person to count for — refused now, with the ask's own reason. The account the insert above
+		// may have opened for it rolls back with the transaction, so nothing is written.
 		if askErr != nil {
 			return askErr
 		}

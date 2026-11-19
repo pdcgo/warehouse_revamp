@@ -621,7 +621,7 @@ go run ./tools/san test affected --run --dry-run       # print the Playwright ba
 | --- | --- |
 | `--files` | Trace these repo-relative files (comma-separated) instead of the measured change |
 | `--since` | No green baseline yet: the files modified after a time (as for `measure`) |
-| `--run` | Run the affected specs (whole) and the smoke set in this working tree, batched like the full run (`orders.spec.ts` alone; the restock family — `restock.spec.ts`, `restock_*.spec.ts` — together on its own when whole). Recorded in `e2e_report/level2/` |
+| `--run` | Run the affected specs (whole) and the smoke set in this working tree, batched like the full run (`orders.spec.ts` alone; the restock family — `restock.spec.ts`, `restock_*.spec.ts` — together on its own when whole), each batch capped like the full run's: three times the estimate of the specs it runs whole, at least its fixed cap ([the caps](#the-batches-and-their-caps)). Recorded in `e2e_report/level2/` |
 | `--dry-run` | With `--run`: print the batches and run nothing |
 | `--isolated` | With `--run`: run them as worker w1 in place, not on `warehouse_test` — [below](#--isolated--a-level-2-run-on-a-worker-of-its-own) |
 
@@ -862,11 +862,30 @@ so a Vite running in the live tree (its smoke, a dev server) pinned the copy's l
 (seen on the first run beside a live smoke).
 
 **The batches** (one worker, the default — and `--shared-db`) are the old `e2e_batches.sh` ported: name-ordered, 6
-specs each, `orders.spec.ts` alone and the **restock family** — `restock.spec.ts` and the four `restock_*.spec.ts` split
-from it (backlog #51) — together in one batch of its own, as the one file was; each capped at 590 s (the restock batch at
-1500 s — a cap hit is a timeout, not a failure: re-run that spec alone). On the worker each batch starts on a fresh clone
-of the template, so the sort-order rules hold inside the batch exactly as on the old single database. Before each batch
-it stops only its own leftover servers on its two ports, never another program's.
+specs each, `orders.spec.ts` alone and the **restock family** — `restock.spec.ts` and every `restock_*.spec.ts` split
+from it (backlog #51) or added since (the acceptance specs) — together in one batch of its own, as the one file was. On
+the worker each batch starts on a fresh clone of the template, so the sort-order rules hold inside the batch exactly as
+on the old single database. Before each batch it stops only its own leftover servers on its two ports, never another
+program's.
+
+#### The batches and their caps
+
+Each batch runs under a time cap — a cap hit kills the batch (Playwright's own per-test timeout has not fired: the batch
+is simply longer than its cap) and turns the run red with no failed check. **A batch's cap is three times its estimated
+spec time, never less than its fixed cap** — 590 s, or 1500 s for a restock-family batch — the estimate being the one
+the plan prints (the newest recorded run's per-spec times, else the rate of the spec a file was split from, else 6.5 s a
+test). That is the rule a parallel worker's batch has had since #51 (there at least 590 s); since backlog #75 it is every
+batch's — on one worker, with `--shared-db`, and in [`affected --run`](#test-affected), where only the specs a batch runs
+WHOLE count (a smoke entry's few tests stay under the fixed cap).
+
+| Why | |
+| --- | --- |
+| fixed caps went stale | the restock acceptance specs brought the family's batch to ~1680 s of spec time (tester, 2026-11-17: edit 646 s, accept 361, raise 245, cancel 157, lost 121, correct count 88, receive 62) — over its 1500 s before `restock.spec.ts` and `restock_references_in_use.spec.ts` were added; the order acceptance specs' ordinary batch was estimated at 663 s against 590 s; one spec alone (the edit spec) already took more than 590 s |
+| why not split the family | it would not have helped: a name-ordered six-spec restock batch is still ~1200 s and the edit spec alone ~650 s — both over 590 s — so the cap must follow the estimate either way. The family's grouping keeps only the one-worker batches as they were (nothing reads another member's data — each seeds its own ground, `frontend/e2e/coupled.txt`), so it stays |
+| why three times | the estimate can lag: a spec no full run has timed yet is estimated from its test count (the acceptance specs ran 3–6× longer than that). A batch that hangs is still stopped |
+
+The dry run prints each batch's estimate and cap (`· about 1218s · cap 1h0m52s`), so a batch nearing its cap is visible
+before the run.
 
 ### A file that fails to load is re-run once
 
@@ -940,7 +959,8 @@ per-spec times the newest recorded full runs hold (`e2e_report/runs/*/run.json`)
 (`--times`, each batch's time shared by the tests its `b<N>.log` ran), else the per-test rate of the spec a file was
 split from (`restock_x.spec.ts` ← `restock.spec.ts`), else 6.5 s a test (Playwright `--list` counts them). Inside a
 worker the specs run in **name order**, in batches of up to 6 (orders alone), each batch on a fresh clone — so every
-"named to sort after `orders.spec.ts`" rule still holds where two such specs meet.
+"named to sort after `orders.spec.ts`" rule still holds where two such specs meet. Each batch is capped at three times
+its estimate, at least 590 s ([the caps](#the-batches-and-their-caps)).
 
 **Coupled specs.** Specs that must share one database — one READS what an earlier one wrote — are listed in
 [frontend/e2e/coupled.txt](../../frontend/e2e/coupled.txt), one group per line, and travel as one unit (same worker,
@@ -974,41 +994,46 @@ contention for every spec.
 | `stories-rerun-<n>.log`, `w<K>-rerun<n>.log` | a load-failed file's one re-run ([above](#a-file-that-fails-to-load-is-re-run-once)); `reruns` in `run.json` and a table in `summary.md` say which, why, and how each went |
 | `accept-<stamp>/` | the logs of a later [`test accept-run`](#test-accept-run); `acceptances` in `run.json` |
 
-The plan on one worker (`go run ./tools/san test full --dry-run`, 2026-11-14):
+The plan on one worker (`go run ./tools/san test full --dry-run`, 2026-11-18 — each batch's estimate and cap at the end
+of its line):
 
 ```
 (dry run: nothing is copied or run)
 full run — the plan
 
-  fingerprint  3274 source files (99d9d592a36b) — 107 changed since the last green run
-  copy         D:\pdcgo\warehouse_revamp → D:\pdcgo\.san_frozen\warehouse_revamp-20261114-152958
+  fingerprint  3466 source files (6921abd25057) — 369 changed since the last green run
+  copy         D:\pdcgo\warehouse_revamp → D:\pdcgo\.san_frozen\warehouse_revamp-20261118-115423
                without .git, build output, e2e_report; generated code kept;
                frontend/node_modules hard-linked file by file (its .vite/.vitest/.cache the copy's own, empty)
   locks        e2e_report/.full_run.lock (a second full run refuses), and the live frontend/.e2e-lock.w1 (a live-tree run as that worker refuses)
   meanwhile    the live tree's Go DB tests and smoke / affected --run (warehouse_test, :8081/:5175 — still one of those at a time) and its Storybook (:6106) share nothing with this run and may go on
   1 go         go test -count=1 ./...   (in the copy, on its own database warehouse_test_go — not warehouse_test; cap 30m0s)
   2 stories    node node_modules\vitest\vitest.mjs run --project=storybook   (in the copy's frontend, vitest browser port :6116 — not the live tree's :6106; cap 20m0s)
-  3 e2e        52 specs on ONE worker
+  3 e2e        76 specs on ONE worker
                ONE worker with its OWN database (a clone of warehouse_test_tpl), API and UI ports and events project — nothing the live tree's runs use (warehouse_test, :8081/:5175);
-               name order, batches of up to 6 specs, orders.spec.ts alone, the restock family (restock*.spec.ts) together; each on a fresh clone, cap 9m50s (restock 25m0s)
+               name order, batches of up to 6 specs, orders.spec.ts alone, the restock family (restock*.spec.ts) together; each on a fresh clone, capped at 3× its estimate, at least 9m50s (restock 25m0s)
        tpl  warehouse_test_tpl — migrated + seeded once (db reset-test, migrate up-all, region load-seed, seed root), about 20s
-       w1  db warehouse_test_w1 · API :8181 · UI :5181 · events warehouse-e2e-w1 · 52 specs in 11 batches · about 43 min
-           b1  auth.spec.ts (20s) bundles.spec.ts (20s) expenses.spec.ts (26s) finance_metrics.spec.ts (15s) financial_accounts.spec.ts (58s) found_requests.spec.ts (41s)
-           b2  inventory.spec.ts (4s) language.spec.ts (5s) liability.spec.ts (28s) opname_sessions.spec.ts (31s) order_drafts.spec.ts (29s)
-           b3  orders.spec.ts (331s)
-           b4  products.spec.ts (34s) profile.spec.ts (8s) racks.spec.ts (15s)
-           b5  restock.spec.ts (51s) restock_selling_wants_to_edit.spec.ts (305s) restock_selling_wants_to_raise.spec.ts (190s) restock_warehouse_wants_to_accept.spec.ts (332s) restock_warehouse_wants_to_receive.spec.ts (33s)
-           …   (b6–b10: six specs each, name order)
-           b11  warehouses.spec.ts (17s) writes_need_a_shop_grant.spec.ts (10s)
+       w1  db warehouse_test_w1 · API :8181 · UI :5181 · events warehouse-e2e-w1 · 76 specs in 14 batches · about 62 min
+           b1  a_warehouse_picker_needs_no_two_letters.spec.ts (6s) auth.spec.ts (19s) bundles.spec.ts (18s) expenses.spec.ts (19s) finance_metrics.spec.ts (11s) financial_accounts.spec.ts (42s)  · about 116s · cap 9m50s
+           b2  found_requests.spec.ts (29s) inventory.spec.ts (4s) language.spec.ts (4s) liability.spec.ts (19s) opname_sessions.spec.ts (23s) order_drafts.spec.ts (20s)  · about 98s · cap 9m50s
+           b3  order_selling_wants_to_create.spec.ts (136s) order_selling_wants_to_create_debt_limit.spec.ts (98s) order_selling_wants_to_create_return_and_stock.spec.ts (78s) order_warehouse_wants_to_confirm.spec.ts (39s) order_warehouse_wants_to_hand_over.spec.ts (214s) order_warehouse_wants_to_pick.spec.ts (98s)  · about 663s · cap 33m9s
+           b4  orders.spec.ts (243s)  · about 243s · cap 12m7s
+           b5  products.spec.ts (27s) profile.spec.ts (7s) racks.spec.ts (11s)  · about 45s · cap 9m50s
+           b6  restock.spec.ts (36s) restock_references_in_use.spec.ts (13s) restock_selling_wants_to_cancel.spec.ts (27s) restock_selling_wants_to_edit.spec.ts (591s) restock_selling_wants_to_raise.spec.ts (199s) restock_selling_wants_to_report_lost.spec.ts (18s) restock_warehouse_wants_to_accept.spec.ts (274s) restock_warehouse_wants_to_correct_count.spec.ts (18s) restock_warehouse_wants_to_receive.spec.ts (41s)  · about 1218s · cap 1h0m52s
+           …   (b7–b13: six specs each, name order, 77–166s, cap 9m50s)
+           b14  users.spec.ts (76s) warehouses.spec.ts (11s) writes_need_a_shop_grant.spec.ts (9s)  · about 96s · cap 9m50s
        coupled      none listed (frontend/e2e/coupled.txt) — every spec is placed on its own
-       e2e wall     about 44 min on one worker (the template, then its batches one after another)
-       times        1 from its test count, 51 from a recorded full run
+       e2e wall     about 62 min on one worker (the template, then its batches one after another)
+       times        18 from its test count, 4 from the rate of the spec it was split from, 54 from a recorded full run
                before each batch: stop that worker's own leftover servers on its two ports (never another program's), check Docker and Postgres; afterwards the template is dropped
   load retry   a story or spec file that only failed to LOAD is re-run once, by itself, in the copy; a failed check never is (a-file-that-fails-to-load-is-re-run-once)
   record       e2e_report/runs/<stamp>/ (run.json, summary.md, fingerprint.json, logs, failures/), latest.md
   last green   e2e_report/last_green.json moves only when go, Storybook and every e2e batch are green
-  estimate     about 50 min
+  estimate     about 68 min
 ```
+
+Before #75 the same plan capped b3 at 9m50s (its 663 s estimate already over it) and b6 at 25m0s (the tester measured
+the family at ~1740 s on w1).
 
 ### Errors you should expect
 
@@ -1777,7 +1802,7 @@ service's `db_migrations`:
 | --- | --- | --- | --- | --- | --- | --- |
 | `shop_settlement_daily_reports` + state `shop_settlement_reports` (settlement) | **event** | `settlement-log-posted` → `settlement_v1` `FoldHandler` (sub `settlement-fold`) | `settlement_logs` | (shop, team, day) + carried balance | `settlement_event_logs` (`settlement-log:<id>`) | **`settlement-shop-daily --shop`** |
 | `user_settlement_daily_reports` + state `user_settlement_reports` (settlement) | **event** | the same fold | `settlement_logs` | (person, team, day) + carried balance | `settlement_event_logs` — shared with the shop report | **`settlement-user-daily --user`** |
-| `order_daily_reports` (selling) | **event** | `order-placed` · `order-cancelled` · `order-status-changed` · `order-return-accepted` → `selling_v1` `Analytic.FoldHandler` (subs `selling-order-fold-*`) | `orders.created_at` + `order_timeline_logs` (the rows INTO cancel, return, lost, return_completed) | (day, metric, **seller team**, shop, warehouse, creator) | `order_event_logs` (`order-placed:<o>`, `order-cancelled:<o>`, `order-status-changed:<row>`, `order-return-accepted:<o>`) | **`order-daily --team`** |
+| `order_daily_reports` (selling) | **event** | `order-placed` · `order-cancelled` · `order-status-changed` · `order-return-accepted` → `selling_v1` `Analytic.FoldHandler` (subs `selling-order-fold-*`) | `orders.created_at` + `order_timeline_logs` (the rows INTO cancel, return, lost, return_completed, and every other move — Order status moves) | (day, metric, **seller team**, shop, warehouse, creator) | `order_event_logs` (`order-placed:<o>`, `order-cancelled:<o>`, `order-status-changed:<row>`, `order-return-accepted:<o>`) | **`order-daily --team`** |
 | `supplier_product_daily_reports` (supplier) | **event** | `restock-accepted` → `supplier_v1` `FoldHandler` (sub `supplier-fold`); `restock-received-count-corrected` → the same (sub `supplier-count-corrected`) | inventory's accepted restocks (`inventory_v1.RestockAcceptedEventsOn` — the accept's own event builder) and received-count corrections (`RestockCountCorrectionEventsOn`) | (day, **supplier**, product, restocking team) | `supplier_event_logs` (`restock-accepted:<r>`) | **`supplier-restock-daily --supplier`** |
 | `supplier_sale_daily_reports` (supplier) | **event** | `order-placed` · `order-cancelled` → `supplier_v1` `SalesFoldHandler` (subs `supplier-order-placed`, `-cancelled`) | selling's orders (`selling_v1.OrderSaleEventsOn`) and inventory's take (`OrderTakeSuppliers`) | (day, **supplier**, product, owning team) | `supplier_sale_orders` (`placed_day`, `cancelled_day` per order) + `supplier_sale_order_parts` | **`supplier-sale-daily --supplier`** |
 | `expense_metric_daily_reports` (expense) | in the expense row's transaction (`metric_fold.go`) | — | `expense_records` | (day, kind, team, shop, person) | — | not needed |
@@ -1943,6 +1968,7 @@ built from, one event per move — and every figure is the order's own frozen on
 | the timeline row INTO `cancel` | `order-cancelled:<order>` | `cancelled` +1 … — and `warehouse_fee` −1, −the fee |
 | a timeline row INTO `return` / `lost` | `order-status-changed:<timeline row>` | `return_created` / `lost_created` |
 | the timeline row INTO `return_completed` | `order-return-accepted:<order>` | `return_arrived` |
+| a timeline row INTO `processed` · `pending` (after the placement's own row) · `picked` · `shipping` · `shipped` · `problem` · `completed` | `order-status-changed:<timeline row>` | Order status moves: `moves_confirmed` · `moves_back_to_pending` · `moves_picked` · `moves_handed_over` · `moves_shipped` · `moves_problem` · `moves_completed` +1, no money |
 
 ### A supplier's figures — `supplier-restock-daily` · `supplier-sale-daily`
 
@@ -2130,6 +2156,8 @@ constant beside the handler that serves it):
 | `liability-restock-accepted` | `restock-accepted` | the selling team owes the warehouse the courier's charge at a restock's door, posted once per restock ([balance-posts-the-couriers-debt-from-the-event](../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)) — push route `/event/liability-restock-accepted/push` |
 | `liability-order-return-accepted` | `order-return-accepted` | the selling team owes the warehouse the courier's charge at a return's door, posted once per order as a `return_incidental_fee` ([a-return-may-carry-the-couriers-ask](../business/balance/context_decision.md#a-return-may-carry-the-couriers-ask)) — push route `/event/liability-order-return-accepted/push` |
 | `selling-order-fold-return-accepted` | `order-return-accepted` | the order metrics count Return Arrived from the warehouse's accept ([the-accept-is-the-status-return-completed](../business/order/context_decision.md#the-accept-is-the-status-return-completed)) — push route `/event/selling-order-fold-return-accepted/push` |
+| `selling-order-fold-shop-changed` | `order-shop-changed` | the order metrics count a fix of an order's shop on the day of the fix — every metric the order had counted, −1 under the old shop and +1 under the new ([an-orders-shop-is-fixed-and-counted-on-the-day](../business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day)) — push route `/event/selling-order-fold-shop-changed/push` |
+| `settlement-order-shop-changed` | `order-shop-changed` | settlement moves the fixed order's account to its new shop — the account's shop, and a pair of rows per settlement type out of the old shop and into the new — so the new shop's statement imports ([an-orders-shop-is-fixed-and-counted-on-the-day](../business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day)) — push route `/event/settlement-order-shop-changed/push` |
 | `selling-member-removed` | `member-removed` | a person removed from a team loses their grants on its shops ([removing-a-member-drops-their-shop-access](../business/user/context_decision.md#removing-a-member-drops-their-shop-access)) — push route `/event/selling-member-removed/push` |
 | `financial-account-team-payment` | `liability-payment-accepted` | an accepted team payment posts out of the payer's account and into the creditor's ([a-team-payment-posts-on-accept](../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) — push route `/event/financial-account-team-payment/push` |
 | `financial-account-restock-created` | `restock-created` | a restock's payment, goods plus shipping, out of the account it names ([a-created-restock-tells-the-financial-account](../business/inventory/restock_decision.md#a-created-restock-tells-the-financial-account)) — push route `/event/financial-account-restock-created/push` |

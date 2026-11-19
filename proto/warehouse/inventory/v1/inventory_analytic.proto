@@ -92,13 +92,23 @@ message InventoryLostMetricByDay {
 //
 // Read from inventory's own reports, written in each stock change's own transaction (never behind): the day's net change
 // of every stock writer per key and change type (`inventory_stock_daily_changes`) and the door's broken / missing of a
-// restock or a return accept (`inventory_door_daily_reports`). Who reads: the warehouse its own side, the seller owning
-// the goods, the root team every team's, any other team nothing. A WAREHOUSE reads units only on Restock, Transfer and
-// Returned stock — their value fields come back UNSET (a-warehouse-sees-no-seller-money) — and Ready stock's units AND
-// value (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+// restock or a return accept — plus a restock's ordered, lost and COD, written by its create, edit, cancel, lost, sign
+// and accept (`inventory_door_daily_reports`). Who reads: the warehouse its own side, the seller owning the goods, the
+// root team every team's, any other team nothing. A WAREHOUSE reads units only on Restock (and the COD it paid),
+// Transfer and Returned stock — their value fields come back UNSET (a-warehouse-sees-no-seller-money) — and Ready
+// stock's units AND value (a-warehouse-sees-ready-value-but-a-shelf-only-units).
 
-// RESTOCK — what the receiving warehouse accepted onto its racks on the accept's Jakarta day, and what its door found
-// broken or missing. Warehouse = where it was received.
+// RESTOCK — a restock from the day it is raised to the day it is counted in (the-inventory-metrics-prototype-is-accepted,
+// widened before the accept by the-restock-before-the-accept-prototype-is-accepted): what is ORDERED (the create day;
+// each edit's difference on the edit day — lines, warehouse, shipping, ongoing and arrived; a cancel taking it back on
+// the cancel day — a-cancelled-restock-takes-its-ordered-back-on-its-day), what is LOST ON THE WAY (the lost day; taken
+// back on the day a lost box is signed for as arrived — a-lost-box-that-turns-up-takes-its-lost-back-on-its-day), what
+// the warehouse ACCEPTED onto its racks and what its door found broken or missing (the accept day), and the courier's
+// COD (the accept day, Terima's final figure). Warehouse = where the restock goes — a warehouse change moves its ordered
+// out of the old warehouse and into the new one on the edit day. The values are the restock's total (goods + the
+// shipping its team paid, never the courier's COD — the-couriers-charge-stays-out-of-total); by product or supplier the
+// shipping, and at the accept the COD, is spread over the units ORDERED as the landed price spreads it. A warehouse
+// reads the units and the COD it paid (the-warehouse-sees-the-cod-it-paid), never a value.
 message InventoryRestockMetric {
   option (warehouse.analytic_base.v1.metric) = {
     metric_id: "metrics/inventory/restock"
@@ -123,6 +133,26 @@ message InventoryRestockMetric {
     ]
   };
 
+  // Units ordered — signed: an edit that removes units, a warehouse change's old warehouse, or a cancel reads negative.
+  int64 ordered_count = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Those units' share of the restock's total (goods + shipping), rupiah, signed like the units. Unset for a warehouse.
+  optional double ordered_value = 6 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Units given up as lost on the way — negative on the day a lost box is signed for as arrived.
+  int64 lost_count = 7 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Those units' share of the restock's total, rupiah, signed like the units. Unset for a warehouse.
+  optional double lost_value = 8 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
   // Good units accepted onto the racks.
   int64 accepted_count = 1 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
@@ -143,9 +173,15 @@ message InventoryRestockMetric {
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
   ];
+  // The courier's charge the warehouse paid at the door, rupiah — Terima's final figure, on the accept day. A warehouse
+  // reads it (the-warehouse-sees-the-cod-it-paid).
+  double cod_amount = 9 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
 }
 
-// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+// Keyed by product, supplier (0 = a line naming none), seller team or warehouse id.
 message InventoryRestockMetricByID {
   map<uint64, InventoryRestockMetric> items = 1;
 }

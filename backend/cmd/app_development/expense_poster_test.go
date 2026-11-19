@@ -26,7 +26,7 @@ import (
 // would just quietly stop answering the question again.
 func TestExpensePoster_FilesAStockWriteOffUnderItsOwnKind(t *testing.T) {
 	db := san_testdb.DB(t)
-	expenses := expense_v1.NewService(db, nil, nil, nil)
+	expenses := expense_v1.NewService(db, nil, nil, nil, nil)
 	poster := NewExpensePoster(expenses)
 
 	// Synthetic, for the reason spelled out in the test below: this asserts a total, and a committed
@@ -75,7 +75,7 @@ func TestExpensePoster_FilesAStockWriteOffUnderItsOwnKind(t *testing.T) {
 // easy and entirely plausible mistake.
 func TestExpensePoster_TheLossLandsOnTheWarehouseNotTheGoodsOwner(t *testing.T) {
 	db := san_testdb.DB(t)
-	expenses := expense_v1.NewService(db, nil, nil, nil)
+	expenses := expense_v1.NewService(db, nil, nil, nil, nil)
 	poster := NewExpensePoster(expenses)
 
 	// ⚠ SYNTHETIC IDS, deliberately far from the dev fixture's.
@@ -130,7 +130,7 @@ func TestExpensePoster_TheLossLandsOnTheWarehouseNotTheGoodsOwner(t *testing.T) 
 // clock in UTC on both sides of the edge: 23:59 WIB keeps its day, 00:30 WIB is the next one.
 func TestExpensePoster_AWriteOffAt0030WIBLandsOnItsJakartaDay(t *testing.T) {
 	db := san_testdb.DB(t)
-	expenses := expense_v1.NewService(db, nil, nil, nil)
+	expenses := expense_v1.NewService(db, nil, nil, nil, nil)
 
 	// Synthetic, as above: the test reads a day's total, which a stray committed row would change.
 	const warehouse uint64 = 9_000_020

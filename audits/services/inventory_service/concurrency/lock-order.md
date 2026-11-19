@@ -128,11 +128,15 @@ the batches and the racks, and a finalize locks the requests it settles right af
 | Handler | Locks, in order |
 | --- | --- |
 | `FoundRequestApprove` | `found_requests` (one row) → `warehouse_stock_problems` (open losses, oldest first) → `batches` (by id) → `product_placements` (the rack row) → **liability** |
+| `FoundRequestApprove` — a found naming a LOST order (2026-11-18) | `found_requests` (one row) → `inventory_transactions` (the order's take row — two approvals of one order's founds queue here, and the second reads the first's units) → `product_placements` (the rack row, `RefuseCounted` under it). No register, no existing batch (new batches only), no liability. A return accept locks the same take row before its racks — the same way round |
+| `FoundRequestCreate` naming a lost order | no lock — plain reads of the take and the order's founds, the `found_requests` insert and the order's timeline note (selling's `order_timeline_logs`, through the composition root) in ONE transaction; two reports racing past the take's units are capped at the approval |
 | `FoundRequestReject` | `found_requests` (one row) |
 | `OpnameSessionFinalize` | `opname_sessions` → `found_requests` (the WAITING ones it settles, by id) → `warehouse_stock_problems` → `batches` → `product_placements` → **liability** |
 
 Proved, with the races and the one accepted behaviour (two identical reports are two requests), in
-[FoundRequest.md](FoundRequest.md).
+[FoundRequest.md](FoundRequest.md). The lost order's found: `TestInterleave_FoundRequestOrder_TheSecondApprovalWaitsOnTheTake`
+and `TestRace_FoundRequestOrder_NeverBringsBackMoreThanTaken` (`found_request_order_race_test.go`; both fail with the take's
+lock removed).
 
 ## Order takes and their release (2026-11-04)
 
@@ -416,4 +420,23 @@ go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockReference|TestRace_R
 
 ```sh
 go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockRequestNoteSet' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## The courier's charge noted at Tiba (2026-11-18)
+
+[the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../../../docs/business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima):
+`RestockRequestArrive` now also writes the courier's charge, its note and its slip. No new lock and no new order — three
+more columns in the `restocks` UPDATE the sign already made, on the row it already holds:
+
+| Writer | Locks, in order |
+| --- | --- |
+| `RestockRequestArrive` | *(before the transaction: the note rule — lock-free)* → **`restocks` — the ONE row `FOR UPDATE`** (Update's, Accept's, MarkLost's, Cancel's, NoteSet's) → `restocks` UPDATE (status, arrived_by/at, the charge, its note, its slip, `updated_at`) → `restock_logs` INSERT → *(read: `restock_items` by restock)*. No event |
+| `RestockRequestAccept` | unchanged — it writes Terima's charge on the same row, under the same lock, REPLACING the one noted at Tiba |
+
+| Claim | Proof |
+| --- | --- |
+| A sign with a charge racing Terima on one box: sign first → Terima replaces its charge; Terima first → the sign is refused (FailedPrecondition). Either way the restock keeps Terima's charge, note and slip, and *Restock Accepted* carries it once | `TestRace_RestockArriveCharge_TerimasFigureWinsWhenItCommitsLast` — 16 rounds, 8 each way. Mutation-checked: without the sign's `FOR UPDATE`, red in round 1 (status back to arrived, Tiba's 15.000 over Terima's) |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockArriveCharge' -v ./backend/services/inventory_service/inventory_v1/
 ```

@@ -18,7 +18,7 @@ import { PaymentTable } from "./components/PaymentTable";
 import { PairSummary } from "./components/PairSummary";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
-import { canRequestPayment } from "../../lib/roles";
+import { canCancelPayment, canRequestPayment } from "../../lib/roles";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
@@ -34,6 +34,7 @@ import {
   liabilityPeriod,
   useLiabilityLogs,
   useLiabilityPayments,
+  useCancelPayment,
   useLiabilityPosition,
   useRequestPayment,
 } from "../../features/liability/queries";
@@ -132,6 +133,9 @@ export function LiabilityDetailPage() {
   // reject refuses a claim and posts nothing, confirm posts money — and one piece of state holding
   // both is how a mis-click becomes a settlement.
   const [rejectTarget, setRejectTarget] = useState<LiabilityPayment | null>(null);
+  // THE PAYER'S CANCEL — its own target too (a-pending-payment-is-cancelled-by-its-selling-team): a different act by the
+  // other side of the pair, on a payment the creditor's two targets never hold.
+  const [cancelTarget, setCancelTarget] = useState<LiabilityPayment | null>(null);
   const [requestOpen, setRequestOpen] = useState(false);
 
   const teamId = current?.teamId;
@@ -163,6 +167,7 @@ export function LiabilityDetailPage() {
   // THE OPEN PAYMENT REQUEST, either way (a-creditor-may-request-payment) — read off the pair's position row.
   const positionQuery = useLiabilityPosition(teamId, counterpartyId);
   const requestPayment = useRequestPayment();
+  const cancelPayment = useCancelPayment();
 
   // The counterparty is another team — resolve its name and kind (#142).
   const teamQuery = useQuery({
@@ -233,6 +238,9 @@ export function LiabilityDetailPage() {
   // or owing this team, is offered none; the server refuses them as FailedPrecondition. Read off the loaded balance, so
   // it appears once the ledger has said this team owes — never offered on a guess.
   const mayPay = writable && !entriesQuery.isPending && signOfRupiah(balance) < 0;
+  // CANCEL A PENDING PAYMENT — the paying SELLING team's Owner and Admin (a-pending-payment-is-cancelled-by-its-selling-team);
+  // never its CS, never a warehouse payer, never a monitor. Offered on My payments' pending rows only.
+  const mayCancel = writable && canCancelPayment(current.role, current.teamType);
 
   async function sendRequest() {
     try {
@@ -240,6 +248,18 @@ export function LiabilityDetailPage() {
       toaster.create({ type: "success", title: t("liabilityDetail.requestDone", { name }) });
     } catch (err) {
       toaster.create({ type: "error", title: t("liabilityDetail.requestFailed"), description: rpcError(err) });
+    }
+  }
+
+  // The payer takes its claim back. Nothing posts, so the balance stays; the row stays in the history, marked.
+  async function sendCancel() {
+    if (!cancelTarget) return;
+
+    try {
+      await cancelPayment.mutateAsync({ teamId: readerTeamId, paymentId: cancelTarget.id });
+      toaster.create({ type: "success", title: t("liabilityDetail.cancelDone") });
+    } catch (err) {
+      toaster.create({ type: "error", title: t("liabilityDetail.cancelFailed"), description: rpcError(err) });
     }
   }
 
@@ -255,6 +275,7 @@ export function LiabilityDetailPage() {
       readerTeamId={readerTeamId}
       onConfirm={setConfirmTarget}
       onReject={setRejectTarget}
+      onCancel={mayCancel ? setCancelTarget : undefined}
       phone={phone}
     />
     );
@@ -533,6 +554,21 @@ export function LiabilityDetailPage() {
         target={rejectTarget}
         onClose={() => setRejectTarget(null)}
         teamId={current.teamId}
+      />
+
+      {/* CANCEL — it posts nothing, but the claim is closed for good and leaves the creditor's list, so it is confirmed
+          (destructive actions always confirm), saying what stays: the balance, and the row in the history. */}
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => !open && setCancelTarget(null)}
+        title={t("liabilityDetail.cancelTitle")}
+        message={t("liabilityDetail.cancelMessage", {
+          amount: formatRupiah(cancelTarget?.amount ?? 0),
+          name,
+        })}
+        confirmLabel={t("liabilityDetail.cancelConfirm")}
+        dismissLabel={t("liabilityDetail.cancelKeep")}
+        onConfirm={sendCancel}
       />
 
       {/* It posts nothing and blocks nothing, but it is SENT to another team — so it is confirmed, with what it says. */}

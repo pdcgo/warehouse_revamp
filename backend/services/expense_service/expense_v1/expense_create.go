@@ -26,7 +26,9 @@ import (
 // STOCK_LOSS is outside the rule: inventory records it by an internal call (no validation interceptor), it moves no
 // cash, so it is stored with no account — whatever was sent — and never published.
 //
-// THE SHOP IS FOR ADS ONLY, AND ADS NEEDS ONE (an-expense-names-a-shop-only-for-ads): InvalidArgument either way.
+// THE SHOP IS FOR ADS ONLY, AND ADS NEEDS ONE (an-expense-names-a-shop-only-for-ads): InvalidArgument either way. And it
+// must be ONE OF THE TEAM'S (settlement-and-expense-ask-the-shop-first): asked of the shop before anything is stored —
+// another team's or an unknown shop is NotFound, a closed one is taken. Who in the team may spend is not asked again.
 //
 // ANALYTIC (expense-figures-are-read-from-its-own-records): a typed expense also adds its amount to its day's
 // `expense_metric_daily_reports` row — on its own `occurred_at`, for the person who typed it — in the SAME transaction
@@ -47,6 +49,11 @@ func (s *Service) ExpenseCreate(
 	account := req.Msg.GetFinanceAccountId()
 
 	err = shopRule(kind, req.Msg.GetShopId())
+	if err != nil {
+		return nil, costErr(err)
+	}
+
+	err = s.checkShop(ctx, req.Msg.GetTeamId(), req.Msg.GetShopId())
 	if err != nil {
 		return nil, costErr(err)
 	}

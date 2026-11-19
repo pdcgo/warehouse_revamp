@@ -8,7 +8,7 @@
 //   And the headline: the same metrics read with group SUMMARY and no keys (the-headline-is-the-metric-grouped-by-summary).
 //
 // A metric with a `schema` is SERVED: its service answers MetricSearch / MetricData over the wire — the five order
-// metrics and Warehouse Fee by selling_service, the two settlement metrics by settlement_service, the two Finance
+// metrics, Order status moves and Warehouse Fee by selling_service, the two settlement metrics by settlement_service, the two Finance
 // metrics by financial_account_service, Lost stock and the four inventory metrics (Restock, Transfer, Returned stock,
 // Ready stock) by inventory_service, Ads expense and Expenses by expense_service.
 // Every live metric is served; a PROTOTYPE (catalogue.ts) is still a SAMPLE (sample.ts), answered here by the same two
@@ -180,10 +180,15 @@ const ROOT_READER = "1";
 
 /**
  * May `reader` (the caller's team) read the fact? A fact naming an `owner` (the expense prototypes) is read by that team
- * and by root alone. Without a reader — the Storybook stubs, which scope their own — every fact counts.
+ * and by root alone; one naming `readers` (an order status move — the order stub passes its caller — or a prototype's
+ * restock: the seller and the warehouse) by those teams and root. Without a reader — the Storybook stubs that scope
+ * their own — every fact counts.
  */
 function readable(fact: Fact, reader: string | undefined): boolean {
-  return reader === undefined || reader === ROOT_READER || fact.owner === undefined || fact.owner === reader;
+  if (reader === undefined || reader === ROOT_READER) return true;
+  if (fact.readers !== undefined) return fact.readers.includes(reader);
+
+  return fact.owner === undefined || fact.owner === reader;
 }
 
 /**
@@ -487,7 +492,9 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
 export function answeredFields(defs: MetricDef[], result: ReportResult, readerIsWarehouse = false): MetricDef[] {
   return defs.map((def) => {
     const headline = result.summary[def.metricId];
-    if (headline === undefined) {
+    // A PROTOTYPE (no `schema`) is answered by the sample, which leaves nothing unset — so a warehouse's screen leaves out
+    // what the service will not give a warehouse, as the served answer would (the warehouse view of a prototype).
+    if (headline === undefined || (readerIsWarehouse && !def.schema)) {
       return readerIsWarehouse ? { ...def, fields: def.fields.filter((f) => !f.warehouseHidden) } : def;
     }
 

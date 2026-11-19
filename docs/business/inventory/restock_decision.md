@@ -58,6 +58,10 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [restocks-non-stock-parts-come-before-the-switch-over](#restocks-non-stock-parts-come-before-the-switch-over) | everything in restock that writes no stock is built now, on today's backend; only the accept waits for the ledgers | chat, 2026-10-15 — as recommended |
 | [a-restock-carries-only-the-teams-own-products](#a-restock-carries-only-the-teams-own-products) | a selling team restocks only the products it owns; create and update refuse another team's product, so every unit in stock has one owner | chat, 2026-10-16 — option a, as recommended |
 | [the-restocks-warehouse-opens-its-label-photo](#the-restocks-warehouse-opens-its-label-photo) | the restock's own warehouse opens its label photo through a checked signed link, no share | owner, as recommended, 2026-11-04 |
+| [the-courier-charge-is-noted-at-tiba-and-final-at-terima](#the-courier-charge-is-noted-at-tiba-and-final-at-terima) | the courier's charge can be set at Tiba and edited at Terima; Terima's figure is final and the money moves only there | owner, as recommended, 2026-11-18 |
+| [a-restock-tag-is-system-or-custom](#a-restock-tag-is-system-or-custom) | a restock carries tags and the list filters by them; a tag is `system` (owned by the system) or `custom` (created freely by a user) | owner, in his own words, 2026-11-18 |
+| [custom-tags-are-shared-system-tags-are-the-admins-and-the-apps](#custom-tags-are-shared-system-tags-are-the-admins-and-the-apps) | a tag's name is unique app-wide; a custom tag is usable by every team; only admins and the app's own processes make or put on a system tag; only admins rename or delete a tag (🔄 A, as recommended) | owner, against my recommendation, 2026-11-18 |
+| [a-restock-problem-is-a-system-tag](#a-restock-problem-is-a-system-tag) | a restock's problem (missing / broken units at Terima) is a system tag the app puts on — not a new status; the restock stays Diterima; two tags, Barang kurang and Barang rusak (🔄 A, as recommended) | owner, in his own words, 2026-11-18 |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -1009,6 +1013,10 @@ flowchart LR
 **What it does NOT settle** — [restock_clarify Q19](./restock_clarify.md#question): one number or a line per charge, and
 whether it sits inside `total`.
 
+🔄 *(2026-11-18)* Widened by the owner: the charge is noted at Tiba or at Terima, final at Terima — [the-courier-charge-is-noted-at-tiba-and-final-at-terima](#the-courier-charge-is-noted-at-tiba-and-final-at-terima). *Entered at accept* above is history; what the charge is stands.
+
+🔄 *(2026-11-18)* Widened by the owner: the charge is noted at Tiba or at Terima, final at Terima — [the-courier-charge-is-noted-at-tiba-and-final-at-terima](#the-courier-charge-is-noted-at-tiba-and-final-at-terima). *Entered at accept* above is history; what the charge is stands.
+
 ## the-couriers-charge-stays-out-of-total
 
 > Owner, in chat *(2026-10-09)*: *"no, its outside total"* — to *is the courier's charge inside `total`?* It answers
@@ -1534,3 +1542,65 @@ flowchart LR
 
 ✅ **Built 2026-11-04.** `RestockRequestService.RestockReceiptPhoto` (`inventory_v1/restock_receipt_photo.go`) checks `warehouse_id = team_id`, then `NewRestockPhotoLinker` → `document_v1.LabelURL` signs the link (the photo is an `order_receipt` upload, owner = the restock's selling team). Tests `restock_receipt_photo_test.go`, `restock_photo_linker_test.go`; story `TheWarehouseOpensTheLabelPhoto`; e2e *Restock detail: the warehouse's staff opens the seller's label photo*.
 
+---
+
+## the-courier-charge-is-noted-at-tiba-and-final-at-terima
+
+> Owner (Heri), in chat (2026-11-18): *"arrived can set that, and can edited too in accept stock"* — option A, as recommended — to: should the courier's charge typed at Tandai Tiba be kept? A: kept — saved and shown on both restock pages, Terima opens with it filled in, Terima stays final (its figure replaces the Tiba one) and the money moves only at Terima; B: the charge at Terima only, the field removed from the Tiba dialog; C: as it is, typed at Tiba and thrown away. Asked as confirm-or-reverse of [the-warehouse-cost-is-the-couriers-charge-at-the-door](#the-warehouse-cost-is-the-couriers-charge-at-the-door) (*entered at accept*) against [the-cod-can-be-noted-when-the-box-arrives](../../technical/frontend/restock_decision.md#the-cod-can-be-noted-when-the-box-arrives) (*"ongkir cod bisa keduanya"*, 2026-11-04).
+
+**The verdict.** The courier's charge at the door — its amount and its note — can be **set when the box is signed for (Tiba)** and **edited at Terima**. What Tiba sets is kept on the restock and shown; Terima opens with it and its figure is final, replacing Tiba's, never adding to it ([the-courier-is-paid-once-per-restock](#the-courier-is-paid-once-per-restock)). The money — the selling team owing the warehouse — still moves only at Terima: a box signed for and then lost or cancelled moves none. [the-warehouse-cost-is-the-couriers-charge-at-the-door](#the-warehouse-cost-is-the-couriers-charge-at-the-door) is widened from *entered at accept* to *noted at Tiba or at Terima, final at Terima*; what the charge IS is unchanged. ⛔ Not built — backlog #76.
+
+✅ **Built 2026-11-18** (backlog #76). `RestockRequestArrive` takes the charge, its note and the photo of its slip — optional, under Terima's rules (a note once above 0, the slip only with a charge) — and keeps them on the restock in the columns Terima writes, under the sign's own lock. Both restock pages show a noted charge as they show Terima's, its line saying it is noted — final at Terima, owed from then *(Not asked — the build's default)*. Terima opens with the charge, its note and its slip, still open to change, and what it sends REPLACES Tiba's — untouched, changed or removed. No money at Tiba: the sign publishes nothing, the debt is posted only from *Restock Accepted* with Terima's figure, and a box signed for can no longer be lost or cancelled (both ongoing-only). Pinned by Go `restock_request_arrive_charge_test.go` (kept and read back by both sides, Terima's validation, no money, Terima's figure replaces Tiba's, posted once or dropped, a late lost box, refused on a counted box) and `TestRace_RestockArriveCharge_TerimasFigureWinsWhenItCommitsLast`; spec in [rpc.md](../../services/inventory_service/rpc.md#restockrequestarrive--the-couriers-charge-noted-at-tiba-built-2026-11-18).
+
+---
+
+## a-restock-tag-is-system-or-custom
+
+> Owner (Heri), in chat (2026-11-18): *"can we add that feature ? so restock have tag and can filter in list"*, then — asked whose tags they are and who sees them (A the selling team's own; B shared with the warehouse; C a set per side) — he answered with their kinds instead: *"tag have type, 1. `system` 2. `custom`, `system` is special tag that owned by system. and custom is freely created by user."*
+
+**The verdict.** A restock can carry **tags**, and the restock list **filters by tag**. A tag has a **type**:
+
+- **`system`** — a special tag **owned by the system**: the system defines it; users do not create or edit it.
+- **`custom`** — created **freely by a user**.
+
+*(Not decided yet: which system tags exist and when each is put on; whose custom tags they are and who sees them. Asked next.)* ⛔ Not built — backlog row *Restock tags*.
+
+🔄 *(2026-11-18, minutes later)* The open points are answered in [custom-tags-are-shared-system-tags-are-the-admins-and-the-apps](#custom-tags-are-shared-system-tags-are-the-admins-and-the-apps).
+
+✅ Built 2026-11-18 — tables `tags` (type `system` / `custom`) and `restock_tags` (inventory migration 00055, database-schema.md); a restock's reads carry its `tags`, and the list's filter `tag_ids` (any of) sits in `restockListScope`, so the rows, the selling statistics and the export narrow alike (inventory rpc.md *Restock tags*; `restock_request_tag_filter_test.go`, the stat matrix test).
+
+---
+
+## custom-tags-are-shared-system-tags-are-the-admins-and-the-apps
+
+> Owner (Heri), in chat (2026-11-18): *"tag is globally unique and can use all accross team. except `system`, its only for admin related and app/scheduler/task in sytem"* — to: whose custom tags are they and who sees them? A (recommended) each team makes its own, each sees and filters only its own, as [three-notes-one-writer-each](#three-notes-one-writer-each); B only the selling team has custom tags; C shared — both sides see the same tags on a restock and both can add them. His answer is closest to C, against my recommendation.
+
+**The verdict.** Follows [a-restock-tag-is-system-or-custom](#a-restock-tag-is-system-or-custom).
+
+- A tag's name is **unique across the whole app** — one tag list, not one per team.
+- A **custom** tag, once made by any user, can be **used by every team**; a restock's tags are the restock's, seen and filtered on the seller's and the warehouse's lists alike.
+- A **system** tag is only for **admins** (the app's Root / Administrator) and the **app's own processes** — scheduler, tasks: only they make one or put it on or take it off; a team's user sees it, filters by it, and cannot change it.
+
+*(Not asked — the build's defaults, shown in the prototype for the accept: no system tag is made up front — an admin makes one, and each app task names its own when that task is built; a team's user who may edit the restock may tag it.)* ⛔ Not built — backlog #87.
+
+🔄 *(2026-11-18)* **Settled in chat — who renames or deletes a tag.** Owner: *"A"*, as recommended — to: who may rename or delete a custom tag, since one shared list means deleting it strips it from every team's restocks? A: any user who may edit a restock puts a tag on it or takes it off; only **admins** rename or delete a tag in the shared list — the same people who manage system tags; B: whoever made a custom tag may rename or delete it, for every team; C: never renamed or deleted, only taken off restocks. So a team's user **makes** a custom tag and **puts it on / takes it off** a restock it may edit; **renaming and deleting** a tag in the list is the admins' alone.
+
+🔄 *(2026-11-18)* The build's default *no system tag is made up front* no longer holds: the **problem tag** is a system tag the app makes and puts on at Terima — [a-restock-problem-is-a-system-tag](#a-restock-problem-is-a-system-tag).
+
+✅ Built 2026-11-18 — one app-wide `tags` table, the name unique on `lower(name)` after trim and space-fold: making a name that exists, in any case, answers that tag — never a twin (race-tested). `RestockTagCreate` (a custom tag) for every team role that may tag; `RestockTagSystemCreate`, `RestockRequestSystemTagAdd` / `Remove`, `RestockTagRename` and `RestockTagDelete` (it comes off every restock) for Root / the Administrator only; `RestockRequestTagAdd` / `Remove` from either side of the restock, every role but a monitor, in every status; another team's restock is NotFound. Tests `restock_tag_create_test.go`, `restock_tag_admin_test.go`, `restock_request_tag_add_test.go`, `restock_tags_race_test.go`.
+
+---
+
+## a-restock-problem-is-a-system-tag
+
+> Owner (Heri), in chat (2026-11-18): *"tagging system is connected about problem on restock, problem is tag system, not a new status"* — after the agent showed a restock's five statuses (none for a problem; missing / broken units are problem items written at Terima, the restock still Diterima) and he parked the problem rows (*"problem in restock still lack of context, i will write in bussiness/custom_shipping"*), then asked for tags ([a-restock-tag-is-system-or-custom](#a-restock-tag-is-system-or-custom), [custom-tags-are-shared-system-tags-are-the-admins-and-the-apps](#custom-tags-are-shared-system-tags-are-the-admins-and-the-apps)).
+
+**The verdict.** A restock's **problem is a `system` tag, not a new status**: when Terima records missing or broken units (the problem items), the **app** puts the problem tag on; the restock stays **Diterima**. A team's user sees it and filters by it, and cannot put it on or take it off. The restock list filtered by it is the problem list of his checklist (*list problem restock — restock listed with missing and broken count*, [inventory/restock.md](../../acceptances/inventory/restock.md)).
+
+*(Not decided yet: one tag per problem kind or one problem tag — asked next; when it comes off — with the problem's solution, whose context the owner is writing in `docs/business/custom_shipments`; whether a lost restock — already its own status, Hilang — carries a tag too.)* ⛔ Not built — backlog #87.
+
+🔄 *(2026-11-18)* **Settled in chat — one tag per kind.** Owner: *"A"*, as recommended — to: one problem tag, or one per kind? A: two system tags, **Barang kurang** (missing) and **Barang rusak** (broken), matching the two problem types Terima records — a restock with both kinds carries both; B: one system tag *Bermasalah* for any problem, the row showing the missing and broken counts. So Terima puts **Barang kurang** on when it records missing units and **Barang rusak** when it records broken ones.
+
+✅ Built 2026-11-18 — migration 00055 seeds *Barang kurang* (`app_task` `restock.problem.missing`) and *Barang rusak* (`restock.problem.broken`), locked for everyone, admins included (never put on, taken off, renamed or deleted by hand — FailedPrecondition); `RestockRequestAccept` puts them on in its own transaction when it records missing / broken units, and the migration's data step tags the restocks already accepted with problem rows the same way (0 rows on the test database). When they come off stays undecided. Test `restock_request_accept_tags_test.go`.
+
+✅ Built 2026-11-19 — the problem list's counts (backlog #89): every accepted row on both restock lists carries its missing and broken units (`RestockRequestList`, one grouped statement per page), so the list filtered by *Barang kurang* + *Barang rusak* reads *kurang N · rusak N* on each row. Test `restock_request_list_problems_test.go`.

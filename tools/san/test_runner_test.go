@@ -240,6 +240,105 @@ func TestSmokeBatches(t *testing.T) {
 	}
 }
 
+// estimatedCap: three times the batch's estimated spec time, never under its fixed cap (#75).
+func TestEstimatedCapIsThreeTimesTheEstimateAtLeastTheFixedCap(t *testing.T) {
+	family := []string{"restock.spec.ts", "restock_selling_wants_to_edit.spec.ts"}
+
+	cases := []struct {
+		name  string
+		batch []string
+		secs  float64
+		want  time.Duration
+	}{
+		{"a short batch keeps the batch cap", []string{"auth.spec.ts"}, 100, batchCap},
+		{"a longer batch gets three times its estimate", []string{"auth.spec.ts"}, 300, 900 * time.Second},
+		{"a short family batch keeps the long cap", family, 100, longSpecCap},
+		{"the measured family (1743 s) gets three times it", family, 1743, 5229 * time.Second},
+		{"one long spec alone: its estimate, not the 590 s it exceeds", []string{"restock_selling_wants_to_edit.spec.ts"}, 646, 1938 * time.Second},
+		{"no estimate: the fixed cap", []string{"restock.spec.ts"}, 0, longSpecCap},
+	}
+
+	for _, c := range cases {
+		if got := estimatedCap(c.batch, c.secs); got != c.want {
+			t.Errorf("%s: %s, want %s", c.name, got, c.want)
+		}
+	}
+}
+
+// affected --run caps each batch by the specs it runs WHOLE — the tester ran the edit spec (646 s) beside another
+// restock spec only to get the family's cap (20261117-115800-acceptance-edit-restock.md); a smoke entry's few tests
+// leave a batch on its fixed cap.
+func TestAffectedRunCapsEachBatchByItsWholeSpecs(t *testing.T) {
+	flows := []smokeFlow{
+		{Name: "sign in", Entries: []smokeEntry{{Spec: "auth.spec.ts", Titles: []string{"x"}}}},
+		{Name: "accept a restock", Entries: []smokeEntry{{Spec: "restock_warehouse_wants_to_accept.spec.ts",
+			Titles: []string{"warehouse:all wants to accept a restock", "accept"}}}},
+	}
+	times := map[string]specTime{
+		"auth.spec.ts":                              {Secs: 19},
+		"restock.spec.ts":                           {Secs: 50},
+		"restock_selling_wants_to_edit.spec.ts":     {Secs: 646},
+		"restock_selling_wants_to_raise.spec.ts":    {Secs: 245},
+		"restock_warehouse_wants_to_accept.spec.ts": {Secs: 361},
+	}
+
+	whole := map[string]bool{"restock_selling_wants_to_edit.spec.ts": true}
+
+	got := withEstimatedCaps(smokeBatches(flows, whole), whole, times)
+
+	want := map[string]time.Duration{
+		"auth.spec.ts":                              batchCap,           // a smoke entry: its fixed cap
+		"restock_selling_wants_to_edit.spec.ts":     1938 * time.Second, // whole, alone: 3× 646 s
+		"restock_warehouse_wants_to_accept.spec.ts": batchCap,           // its one smoke test, not its 361 s
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("batches %+v", got)
+	}
+
+	for i, b := range got {
+		joined := strings.Join(b.Specs, " ")
+		if b.Cap != want[joined] || b.cap() != want[joined] {
+			t.Errorf("b%d %s: cap %s, want %s", i+1, joined, b.Cap, want[joined])
+		}
+
+		r := b.result(i+1, "w1")
+		if r.Cap != b.Cap || r.N != i+1 || r.Worker != "w1" || strings.Join(r.Specs, " ") != joined {
+			t.Errorf("b%d's record %+v does not carry its cap %s", i+1, r, b.Cap)
+		}
+	}
+
+	// The whole family together: three times its sum.
+	whole = map[string]bool{"restock.spec.ts": true, "restock_selling_wants_to_edit.spec.ts": true,
+		"restock_selling_wants_to_raise.spec.ts": true, "restock_warehouse_wants_to_accept.spec.ts": true}
+
+	got = withEstimatedCaps(smokeBatches(flows, whole), whole, times)
+
+	for _, b := range got {
+		if contains(b.Specs, "restock.spec.ts") && (len(b.Specs) != 4 || b.Cap != 3*(50+646+245+361)*time.Second) {
+			t.Errorf("the whole family's batch %v: cap %s, want 3× 1302 s", b.Specs, b.Cap)
+		}
+	}
+
+	// The dry run prints the cap the batch will run under.
+	var out bytes.Buffer
+
+	printSmokePlan(&out, t.TempDir(), nil, withEstimatedCaps(smokeBatches(flows[:1],
+		map[string]bool{"restock_selling_wants_to_edit.spec.ts": true}),
+		map[string]bool{"restock_selling_wants_to_edit.spec.ts": true}, times))
+
+	if !strings.Contains(out.String(), "(cap 32m18s)") || !strings.Contains(out.String(), "(cap 9m50s)") {
+		t.Errorf("the plan does not print each batch's own cap:\n%s", out.String())
+	}
+
+	// Smoke alone sets no cap: every batch keeps its fixed one.
+	for _, b := range smokeBatches(flows, nil) {
+		if b.Cap != 0 || b.cap() != capFor(b.Specs) {
+			t.Errorf("smoke batch %v: cap %s", b.Specs, b.cap())
+		}
+	}
+}
+
 // liveTree is a checkout with an installed node_modules and the things a copy must leave behind.
 func liveTree(t *testing.T) string {
 	t.Helper()

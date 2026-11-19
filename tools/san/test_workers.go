@@ -43,7 +43,8 @@ import (
 // ONE worker is still a worker: warehouse_test_w1 cloned per batch, :8181/:5181, warehouse-e2e-w1, .e2e-lock.w1 — so a
 // full run shares nothing with the live tree's own runs (warehouse_test, :8081/:5175) and development goes on beside
 // it. Its batches are the single-database ones it always had (planBatches: name order, six a batch, orders.spec.ts
-// alone, the restock family together) under the same caps (capFor); only where each batch runs changed.
+// alone, the restock family together); only where each batch runs changed — and since #75 each batch's cap is three
+// times its estimate, at least its old fixed cap (estimatedCap).
 
 const (
 	defaultWorkers  = 1
@@ -111,6 +112,15 @@ func (w *e2eWorker) estimate(workers int) time.Duration {
 	}
 
 	return time.Duration(secs*float64(time.Second)) + time.Duration(len(w.Batches))*batchOverhead
+}
+
+// batchSecs is batch i's estimated test time (0 when the worker carries no estimate for it — an --isolated seat).
+func (w *e2eWorker) batchSecs(i int) float64 {
+	if i < len(w.BatchSecs) {
+		return w.BatchSecs[i]
+	}
+
+	return 0
 }
 
 // env is the environment that makes a Playwright run this worker (frontend/e2e/env.ts reads it).
@@ -645,7 +655,7 @@ func planWorkers(root string, specs []string, n int, timesFile string, busy port
 		}
 
 		if n == 1 {
-			// The one worker runs the single-database batches it always ran — restock family together, its cap.
+			// The one worker runs the single-database batches it always ran — the restock family together.
 			w.Batches = keepCoupled(planBatches(specs, batchSize), coupled)
 			w.BatchSecs = batchSecsOf(w.Batches, times)
 		} else {
@@ -740,14 +750,18 @@ func dropSpec(list []string, drop string) []string {
 	return out
 }
 
-// batchCap is a batch's time cap: on ONE worker today's single-database caps (capFor: 590 s, the restock family's batch
-// 1500 s); beside other workers three times its estimate, at least the batch cap (the CPU is shared).
+// batchCap is a batch's time cap — three times its estimate (capHeadroom). On ONE worker at least today's
+// single-database fixed cap (estimatedCap: capFor's 590 s, the restock family's batch 1500 s), so the family's and
+// any other batch's cap grows with the specs measured in it (#75); beside other workers at least the batch cap (the
+// CPU is shared).
 func (p *workerPlan) batchCap(w *e2eWorker, i int) time.Duration {
+	secs := w.batchSecs(i)
+
 	if len(p.Workers) == 1 {
-		return capFor(w.Batches[i])
+		return estimatedCap(w.Batches[i], secs)
 	}
 
-	return time.Duration(math.Max(workerBatchCapMin.Seconds(), 3*w.BatchSecs[i])) * time.Second
+	return time.Duration(math.Max(workerBatchCapMin.Seconds(), capHeadroom*secs)) * time.Second
 }
 
 // pickWorkerPorts gives worker i the API port 8181+k and the UI port 5181+k for the next k at which neither is held
@@ -791,12 +805,14 @@ func (p *workerPlan) print(out io.Writer, specs []string) {
 	if len(p.Workers) == 1 {
 		fmt.Fprintf(out, "               ONE worker with its OWN database (a clone of %s), API and UI ports and events "+
 			"project — nothing the live tree's runs use (%s, :%d/:%d);\n               name order, batches of up to %d "+
-			"specs, orders.spec.ts alone, the restock family (restock*.spec.ts) together; each on a fresh clone, cap %s "+
-			"(restock %s)\n", templateDB, testDBName, e2eAPIPort, e2eUIPort, batchSize, batchCap, longSpecCap)
+			"specs, orders.spec.ts alone, the restock family (restock*.spec.ts) together; each on a fresh clone, capped "+
+			"at %d× its estimate, at least %s (restock %s)\n", templateDB, testDBName, e2eAPIPort, e2eUIPort, batchSize,
+			capHeadroom, batchCap, longSpecCap)
 	} else {
 		fmt.Fprintf(out, "               %d workers at once, each its OWN database (a clone of %s), API and UI ports and "+
-			"events project;\n               inside a worker: name order, batches of up to %d specs, each on a fresh clone\n",
-			len(p.Workers), templateDB, batchSize)
+			"events project;\n               inside a worker: name order, batches of up to %d specs, each on a fresh clone, "+
+			"capped at %d× its estimate, at least %s\n", len(p.Workers), templateDB, batchSize, capHeadroom,
+			workerBatchCapMin)
 	}
 	fmt.Fprintf(out, "       tpl  %s — migrated + seeded once (db reset-test, migrate up-all, region load-seed, seed root), "+
 		"about %s\n", templateDB, templateCost)
@@ -815,7 +831,8 @@ func (p *workerPlan) print(out io.Writer, specs []string) {
 				parts = append(parts, fmt.Sprintf("%s (%.0fs)", s, p.Times[s].Secs))
 			}
 
-			fmt.Fprintf(out, "           b%d  %s\n", i+1, strings.Join(parts, " "))
+			fmt.Fprintf(out, "           b%d  %s  · about %.0fs · cap %s\n", i+1, strings.Join(parts, " "), w.batchSecs(i),
+				p.batchCap(w, i))
 		}
 	}
 

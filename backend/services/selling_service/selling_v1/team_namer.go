@@ -6,8 +6,9 @@ import (
 )
 
 // TeamNamer names teams for a sentence a person reads — the return accept's refusal, which names the warehouse a parcel
-// goes to (only-the-return-warehouse-accepts-a-return: "this return goes to Gudang C"), and order create's refusal of a
-// team with no return warehouse, which names the team (create-refuses-a-team-with-no-return-warehouse). An interface this
+// goes to (only-the-return-warehouse-accepts-a-return: "this return goes to Gudang C"), order create's refusal of a
+// team with no return warehouse, which names the team (create-refuses-a-team-with-no-return-warehouse), and order
+// create's credit refusal, which names the creditor (over-the-limit-refuses-the-create). An interface this
 // service owns, so selling_service never imports team_service; the composition root answers it from TeamByIds in
 // process. An unknown team is absent from the map.
 type TeamNamer interface {

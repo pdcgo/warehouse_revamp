@@ -42,6 +42,11 @@ type LabelFile struct {
 
 var errNoLabelLinker = errors.New("order labels are not wired on this server")
 
+// unboxingWarning is THE ONE SENTENCE the print page's unboxing switch stamps on every label page
+// (the-unboxing-warning-is-one-sentence-on-each-label) — the owner's words, in Indonesian whatever the screen's language.
+// It lives here and nowhere else: the screen sends a yes or no (`unboxing_warning`), never the words.
+const unboxingWarning = "Wajib video unboxing saat membuka paket"
+
 // OrderLabels implements [sellingv1connect.OrderServiceHandler].
 //
 // THE LABELS A WAREHOUSE PRINTS (a-warehouse-prints-the-labels-of-orders-it-ships): the order service checks each
@@ -54,6 +59,10 @@ var errNoLabelLinker = errors.New("order labels are not wired on this server")
 //   - SEVERAL are merged into ONE PDF, in the order of the ids (the list's order): a PDF label adds its pages, a label
 //     photo one page. The PDF is stored as a private ORDER_LABELS document of the caller's team and the link is that.
 //     Two orders naming the same file print it once.
+//
+// THE UNBOXING WARNING (the-unboxing-warning-is-one-sentence-on-each-label): with `unboxing_warning` on, every page of the
+// PDF carries unboxingWarning along its bottom margin — and so ONE id is merged and stored too, since its own file has no
+// such line. Off, the labels print as they are.
 //
 // Every asked order gets a result: included, NOT_SHIPPED_HERE (another warehouse's, or no such order — the two read
 // alike, so ids cannot be probed), NO_LABEL (none attached, or the file is gone) or UNREADABLE (a file the merge cannot
@@ -122,10 +131,12 @@ func (s *Service) OrderLabels(
 		return connect.NewResponse(res), nil
 	}
 
-	if len(ids) == 1 {
+	warn := req.Msg.GetUnboxingWarning()
+
+	if len(ids) == 1 && !warn {
 		err = s.linkOneLabel(ctx, labelled[0], results[labelled[0].ID], res)
 	} else {
-		err = s.mergeLabels(ctx, teamID, labelled, results, res)
+		err = s.mergeLabels(ctx, teamID, labelled, results, res, warn)
 	}
 
 	if err != nil {
@@ -164,13 +175,15 @@ func (s *Service) linkOneLabel(
 	return nil
 }
 
-// mergeLabels is several asked orders: their files, read once each, merged into one stored PDF.
+// mergeLabels is several asked orders — or one carrying the unboxing warning: their files, read once each, merged into one
+// stored PDF, every page stamped with unboxingWarning when `warn` is on.
 func (s *Service) mergeLabels(
 	ctx context.Context,
 	teamID uint64,
 	labelled []*selling_service_models.Order,
 	results map[uint64]*sellingv1.OrderLabelResult,
 	res *sellingv1.OrderLabelsResponse,
+	warn bool,
 ) error {
 	refs := make([]LabelRef, 0, len(labelled))
 	for _, order := range labelled {
@@ -214,7 +227,12 @@ func (s *Service) mergeLabels(
 		return nil
 	}
 
-	merged, outcome, err := san_pdf_merge.Merge(inputs)
+	var opts []san_pdf_merge.Option
+	if warn {
+		opts = append(opts, san_pdf_merge.StampEveryPage(unboxingWarning))
+	}
+
+	merged, outcome, err := san_pdf_merge.Merge(inputs, opts...)
 	if err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}

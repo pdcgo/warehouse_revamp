@@ -37,12 +37,13 @@ type Restock struct {
 	Total        float64
 
 	// The courier's charge at the door (the-warehouse-cost-is-the-couriers-charge-at-the-door): ONE per restock, with
-	// its note (the-courier-is-paid-once-per-restock), entered by the warehouse at accept. Outside the total, inside the
-	// unit price (the-couriers-ask-is-in-the-unit-price).
+	// its note (the-courier-is-paid-once-per-restock), noted by the warehouse at Tandai Tiba or entered at Terima — final
+	// at Terima, whose figure replaces Tiba's (the-courier-charge-is-noted-at-tiba-and-final-at-terima). Outside the total,
+	// inside the unit price (the-couriers-ask-is-in-the-unit-price).
 	WarehouseAdditionalCost     float64
 	WarehouseAdditionalCostNote string
 	// A photo of the courier's slip for that charge (the-courier-slip-has-an-optional-photo, 00052) — a document_service
-	// document id, the warehouse's upload at accept; "" = none, and always "" while there is no charge.
+	// document id, the warehouse's upload at Tiba or Terima; "" = none, and always "" while there is no charge.
 	WarehouseAdditionalCostFile string
 
 	// How a restock raised before paying accounts was paid for (#127) — read-only history, mapped in the handler layer.

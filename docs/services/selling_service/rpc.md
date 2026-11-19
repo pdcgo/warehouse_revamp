@@ -309,8 +309,16 @@ Inventory's batch screens name a batch a return minted *Retur · order #<id>* an
 ([a-returns-batch-opens-its-order](../../technical/frontend/batches_decision.md#a-returns-batch-opens-its-order)). The
 batch knows its `return` transaction; the order naming it is selling's — `orders.return_transaction_id`, written above.
 `selling_v1.OrderIDsByReturnTransactions(ctx, db, ids)` (`order_ids_by_return.go`) answers it: a PLAIN function over
-selling's own table, called by the composition root's `ReturnOrders` adapter once per page of batches (the flow:
+selling's own table, called by the composition root's `SellingOrders` adapter once per page of batches (the flow:
 [inventory's rpc.md](../inventory_service/rpc.md#batchlist--batchdetail--a-returns-batch-names-its-order-2026-11-16)).
+
+**A found naming a lost order** (2026-11-18, [a-found-lost-parcel-is-a-found-stock-in](../../business/order/context_decision.md#a-found-lost-parcel-is-a-found-stock-in)):
+the same adapter reads the order a found report names — `selling_v1.FoundOrderOf(ctx, db, id)` (`order_found.go`): its
+team, warehouse, status and take, nothing of its money — and writes the warehouse's note on its timeline naming the
+request, `selling_v1.RecordFoundNote(ctx, tx, …)`, inside INVENTORY's report transaction. The note moves no status:
+the order stays `lost` ([lost-is-final](../../business/order/context_decision.md#lost-is-final)) and reads as any note
+from the warehouse, by the reporter (`TestFoundOrder_ReadsTheOrderAndNotesTheFoundWhileItStaysLost`). The flow:
+[inventory's rpc.md](../inventory_service/rpc.md#a-found-naming-a-lost-order).
 
 | | |
 | --- | --- |
@@ -874,7 +882,9 @@ freezes the courier's charge as typed before its note check, its event and the l
 `unit_price` is information, kept as read. The order form previews the same exact figures — the line figures summed,
 nothing rounded (`features/orders/form/money.ts`, the fee quote as the warehouse answers it) — so the preview, the fee's
 basis and the frozen order are one figure; only the screen rounds, to 3 decimals. The credit block's message writes
-its figures with `san_money.Text` ("Rp 52.000.000", a fraction to 3 places).
+its figures with `san_money.Text` ("Rp 52.000.000", a fraction to 3 places) and names the creditor by its name through
+the `TeamNamer` seam (*"credit limit reached with Gudang Pusat: Rp 52.000.000 owed of a Rp 50.000.000 limit — settle
+before ordering again"*; *"team #900"* when it cannot be named — [over-the-limit-refuses-the-create](../../business/order/context_decision.md#over-the-limit-refuses-the-create), backlog #74).
 
 **Each line carries its frozen `total`** (`00023`) — what inventory's take priced it at, the goods plus the product's own
 markup ([inventory-computes-the-markup](../../business/order/context_decision.md#inventory-computes-the-markup)). The
@@ -900,7 +910,9 @@ which is a record of who published, never something a consumer authorises from.
 ## The order metrics — the fold and `OrderAnalyticService`
 
 The five order metrics of [order_statistic_metric.md](../../business/order/order_statistic_metric.md) — Created, Cancel,
-Return Created, Return Arrived, Lost Created — and **Warehouse Fee** (`metrics/warehouse_fee`,
+Return Created, Return Arrived, Lost Created — **Order status moves** (`metrics/orders/moves`,
+[the-order-status-moves-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-order-status-moves-prototype-is-accepted))
+and **Warehouse Fee** (`metrics/warehouse_fee`,
 [the-warehouse-fee-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-warehouse-fee-prototype-is-accepted))
 through the analytic pattern
 ([rpc_provide.md](../../business/analytic/rpc_provide.md)): a folded report, ranked by `MetricSearch` and filled by
@@ -918,21 +930,23 @@ sequenceDiagram
 
     S->>B: OrderPlaced, OrderCancelled, OrderStatusChanged, OrderReturnAccepted - after each commit
     B->>F: four push subscriptions, one per topic, one handler
-    Note over F: created, cancelled, a move to return or lost, or a return accepted - anything else is ACKED
+    Note over F: created, cancelled, a move to return or lost, a return accepted, or any other move - a count of Order status moves
     F->>R: one transaction - claim the event id in order_event_logs, read the order, upsert its day row
     F->>R: placed or cancelled with a fee - then the day's warehouse_fee row, +1 and +fee or -1 and -fee
     A->>T: is the reader a warehouse - TeamByIds
     A->>R: the reader rows - root all, a warehouse by warehouse_id, a seller by team_id
     Note over A: a warehouse gets counts only on the five order metrics - money unset, a sort on it refused
     Note over A: Warehouse Fee - the amount is set and sortable for a warehouse too
+    Note over A: Order status moves - seven counts, no money, every one set and sortable for a warehouse
 ```
 
 | | |
 | --- | --- |
-| the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed), `selling-order-fold-return-accepted` (order-return-accepted — Return Arrived, since `return_completed` is the accept's own event) — each its OWN subscription on a topic liability and settlement also read |
+| the subscriptions | `selling-order-fold-placed` (order-placed), `selling-order-fold-cancelled` (order-cancelled), `selling-order-fold-moved` (order-status-changed), `selling-order-fold-return-accepted` (order-return-accepted — Return Arrived, since `return_completed` is the accept's own event), `selling-order-fold-shop-changed` (order-shop-changed — a fix of the order's shop, [below](#an-orders-shop-is-fixed--ordershopupdate-2026-11-18)) — each its OWN subscription on a topic liability and settlement also read |
 | the day | the event's `occurred_at` as a Jakarta date — the placement, the cancel, the move's timeline row ([a-fact-counts-on-the-day-it-happened](../../business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened)) |
-| the row | (day, metric, seller, shop, warehouse, creator) += 1 order, its `total_cost`, its `platform_total`, read off the order |
+| the row | (day, metric, seller, shop, warehouse, creator) += 1 order, its `total_cost`, its `platform_total`, read off the order — the shop being the one the order was in AT the move (`shopAsOf`: the from-shop of the first `order_shop_changes` row after the move's timeline row, else the order's shop now), so a late event or a re-fold never files a past move under a shop the order only moved to later |
 | Warehouse Fee | a sixth `metric` value, `warehouse_fee` (00038), written by the SAME claim: a placement adds +1 and the order's frozen `warehouse_fee` to the placement day's fee row, a cancel −1 and the fee to the CANCEL day's row ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)) — an earlier day is never re-folded, so a period can read negative. `order_count` = Fee transactions, `total` = Fee amount, `mp_total` 0. An order with no fee writes no fee row. The keys and filters are the order metrics' ([warehouse-fee-groups-like-the-order-metrics](../../business/analytic/rpc_provide_decision.md#warehouse-fee-groups-like-the-order-metrics)); `amount` is set for a warehouse ([a-warehouse-sees-its-own-fee-amount](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-its-own-fee-amount), `orderMetric.warehouseMoney`). Why a metric row and not a column: the signed row reuses every read (search, fill, summary, sort) unchanged, where a column on `created`/`cancelled` would need a cross-row net in each. The fee row is always the transaction's second report lock, so a placement and a cancel meeting on it queue (raced ×10, 0 deadlocks) |
+| Order status moves | ONE metric, seven COUNTS, each its own `metric` value (00052): a move INTO processed → `moves_confirmed`, INTO pending → `moves_back_to_pending` (only from processed or picked — the placement publishes OrderPlaced, never this), picked → `moves_picked`, shipping → `moves_handed_over`, shipped → `moves_shipped`, problem → `moves_problem`, completed → `moves_completed` (a resolve from problem too) — named by where the order went ([the-order-metric-ids-name-what-moved](../../business/order/order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved)). Folded from `OrderStatusChanged` by the same claim and row as the five, on the move's own day, under the order's creator, never the person who moved it; `order_count` +1, `total` and `mp_total` 0 — no money field (`selling_v1/order_analytic_moves.go`, `moveFigures`). The reads serve it with the five's machinery: `orderMetric.reports` lists its seven values, each proto field reads its own value's `order_count` (`metricField`), the search ranks by the sorted count's rows (`sumSQL`, a `FILTER (WHERE r.metric = …)`) over every key with any move, and the headline is the sum of its rows. A warehouse reads every count of the orders it ships ([a-warehouse-reads-the-orders-it-ships](../../business/order/order_statistic_metric_decision.md#a-warehouse-reads-the-orders-it-ships)) — pinned on the Go response (`TestOrderMovesData_EachReaderReadsItsOwn`); another team none. Counted from the fold onward ([the-order-metrics-count-from-the-fold-onward](../../business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)): a move made before 00052 has no row Cost (`order_analytic_perf_test.go`, `-tags perfaudit`, 2026-11-19): the seed widened from 120 450 to 260 975 report rows (a year × 13 metric values); every read stays 1–2 queries, the moves' search over a warehouse's year 25.8 ms (48 545 rows by `order_daily_reports_warehouse_idx`), the heaviest read root's summary of all seven metrics 49.5 ms (was 33.5 ms for six over 120 450) — not heavy, no index added. The re-fold dry run over 20 000 orders, 40 000 moves and 2 000 fixes: 15.4 s, 42 012 queries — unchanged per order |
 | a redelivery | the claim is the write: a second claim finds the row and folds nothing. Raced 40/40 |
 | the reads | one statement each, after the team-type lookup. A seller's or a warehouse's read uses its scope index (1–8 ms over 100 000 rows); root's scans (13–30 ms) |
 | an id of 0 | left out of an id group: `IDList` takes ids above 0 ([a-no-user-row-cannot-be-a-key](../../business/order/order_statistic_metric_clarify.md#a-no-user-row-cannot-be-a-key)) |
@@ -945,10 +959,56 @@ The operator's repair for a day the fold left short — a lost event — `san re
 (`selling_v1/order_analytic_refold.go`), no wire contract: it re-reads the team's orders and timeline rows of the Jakarta
 day, claims each move whose event was never claimed and is over an hour old (`order_event_logs`, the event's own id, so a
 redelivery folds nothing), takes `order_daily_reports` in SHARE ROW EXCLUSIVE — the lock the fold's upsert waits on — and
-replaces the day's rows with the fold's own sums. No order or timeline row is written. Its sequence is the shared one in
-san.md; the lock row is in [lock-order.md](../../../audits/services/selling_service/concurrency/lock-order.md).
+replaces the day's rows with the fold's own sums. No order or timeline row is written. Order status moves' seven counts
+are rebuilt the same way, from the timeline rows into their statuses — a row into pending only when an earlier status row
+precedes it (`afterThePlacement`), since the placement's own pending row is Order Created's — and a fix of the order's
+shop carries them too (−1 / +1, no money, `shopMoveCountsColumns`, shared by the fold and the re-fold). Its sequence is
+the shared one in san.md; the lock row is in
+[lock-order.md](../../../audits/services/selling_service/concurrency/lock-order.md).
 `selling_v1.OrderSaleEventsOn` is the read the SUPPLIER re-fold asks of selling: the day's OrderPlaced and OrderCancelled as
 the orders announced them.
+
+## An order's shop is fixed — `OrderShopUpdate` (2026-11-18)
+
+[an-orders-shop-is-fixed-and-counted-on-the-day](../../business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day):
+an order filed under the wrong shop moves to another shop of the SAME team and marketplace
+([a-shops-marketplace-and-team-are-fixed](../../business/shop/context_decision.md#a-shops-marketplace-and-team-are-fixed))
+that the caller may write ([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)),
+so that shop's statement — refused while the order sat elsewhere
+([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)) — imports.
+`selling_v1/order_shop_update.go`.
+
+```mermaid
+sequenceDiagram
+    participant C as the seller - Ubah Toko
+    participant S as selling_service
+    participant B as Pub/Sub
+    participant F as the order metrics fold
+    participant L as settlement_service
+
+    C->>S: OrderShopUpdate - team_id, order_id, shop_id
+    S->>S: shopAccess - the new shop is the team's, and the caller writes it - else NotFound or PermissionDenied
+    S->>S: one transaction - the order FOR UPDATE, its status fixable, the same marketplace
+    S->>S: orders.shop_id, a note row Toko A to B, an order_shop_changes row naming the note
+    S->>B: OrderShopChanged - after the commit, non-fatal
+    B->>F: selling-order-fold-shop-changed
+    F->>F: on the FIX day - every metric the order had counted before the note, -1 old shop, +1 new
+    B->>L: settlement-order-shop-changed
+    L->>L: under the account lock - a pair of rows per type out of the old shop and into the new, the account's shop moved
+```
+
+| | |
+| --- | --- |
+| roles | `ROLE_ROOT`, `ROLE_ADMINISTRATOR`, `ROLE_SELLING_OWNER`, `ROLE_SELLING_ADMIN`, `ROLE_SELLING_CS` — every selling role (`selling:all`), scoped to the order's team; the warehouse reads NotFound |
+| the new shop | asked first (`shopAccess`, as every order write asks it): another team's → NotFound; no grant and not the team's owner/admin → PermissionDenied naming it; a CLOSED shop is taken (it refuses only new selling, and its statements still import) |
+| when | `shopFixable`: every status FROM HANDOVER ON — shipping, shipped, problem, completed, return, return_completed, lost (the owner's 🔄 of 2026-11-18 on [an-orders-shop-is-fixed-and-counted-on-the-day](../../business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day)): a platform statement may carry the order from then — the import posts a line to an order whatever its status, and customer service sets the statuses after handover by hand, so a paid order can still read shipped. Before handover (pending, processed, picked) and a cancelled order are REFUSED FailedPrecondition, never ignored. No status from handover on leads back to pending, so a fixed order is never cancelled |
+| the marketplace | the order's shop now and the new one must match — FailedPrecondition otherwise (another marketplace's statement can never carry the order) |
+| the same shop | writes nothing, announces nothing |
+| the write | under the order's row lock (`loadScopedOrder`), so a fix and a status move — or two fixes — queue: `orders.shop_id`, a NOTE row (no status, from `selling`) reading `Toko: <old> → <new>`, and an `order_shop_changes` row (00051) naming that note — the record the metrics read a past move's shop from |
+| the event | `OrderShopChanged` (topic `order-shop-changed`), id `order-shop-changed:<change id>`, `occurred_at` the fix's instant. Two consumers, each its own subscription: the order metrics fold and settlement (`settlement-order-shop-changed`, [settlement rpc.md](../settlement_service/rpc.md#an-orders-account-moves-with-its-shop--moveordershop-2026-11-18)) |
+| the metrics | the fix's day only: for each metric the order had counted before the fix's note row — created, its timeline moves into cancel / return / return_completed / lost, and Warehouse Fee's net — −n with the order's frozen figures under the old shop and +n under the new (`shopMoveRows`, written in `metricLockRank` order, the fee row last). A move after the fix counts under the new shop by its own event; a late event of a move before it counts under the old shop (`shopAsOf`) and the fix's −1 nets it. Past days never change; the day re-fold rebuilds the same rows from `order_shop_changes` (`dayShopFixes`) |
+| tests | `order_shop_update_test.go`, `order_analytic_shop_fix_test.go`, raced in `order_shop_update_race_test.go` (two fixes chain; a fix against a return move, folded scrambled; crossing fixes fold with no deadlock); the import end to end in `cmd/app_development/order_shop_fix_import_test.go` |
+| cost | the day re-fold over 20 000 orders, 40 000 moves and 2 000 fixes of one team's day, one seed, old and new interleaved in one process (`order_shop_fix_perf_test.go`, `-tags perfaudit`): every event lost (the dry run claims all) 20.9 s / 40 010 queries before → 21.4 s / 42 012 after (+2.5 %: one claim per fix event, the claim loop's own shape — none per move or order); all claimed 1.11 s / 6 → 1.19 s / 8 (+7.5 %: the fixes' read, twice). The as-of lookup is an index scan on `order_shop_changes_order_idx` per move, the fixes' counts on `order_timeline_logs_order_idx` per fix. The time is the pre-existing claim-one-event-per-statement loop (≈17.8 s of the 21 s), unchanged by the fix — no index or rewrite proposed |
 
 ## Draft orders — `OrderDraftPush` and the blanks-only merge (#190, #191)
 
@@ -1443,7 +1503,8 @@ draft carries absent. Same roles as `OrderCreate` (ROOT, ADMINISTRATOR, SELLING_
 A shipping label is the SELLER's document — uploaded under its team — so the warehouse that ships the order cannot read
 it with `GetDownloadUrl` (NotFound: owner or share only). It asks the ORDER
 ([a-warehouse-prints-the-labels-of-orders-it-ships](../../technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)).
-One id links that order's own file; several are merged into ONE PDF (2026-11-09, backlog #16e):
+One id links that order's own file; several are merged into ONE PDF (2026-11-09, backlog #16e) — and so is one with the
+unboxing warning on, every page stamped (2026-11-18):
 
 ```mermaid
 sequenceDiagram
@@ -1452,18 +1513,18 @@ sequenceDiagram
   participant L as LabelLinker - order_label_linker.go
   participant D as document_v1
   participant M as san_pdf_merge
-  W->>O: team_id = the warehouse, order_ids = 1 to 50, in the list's order
+  W->>O: team_id = the warehouse, order_ids = 1 to 50, in the list's order, unboxing_warning
   O->>O: orders WHERE id IN ids AND warehouse_id = team - root reads all
   O-->>W: none found - NOT_SHIPPED_HERE, no label file - NO_LABEL
-  alt one id
+  alt one id, the warning off
     O->>L: LabelURL - the order's team as owner, its receipt document id
     L->>D: in-process call, not an RPC
     D-->>O: signed URL of the order's own file, or NotFound - NO_LABEL
-  else several ids
+  else several ids - or the warning on
     O->>L: LabelFiles - each label with its owner
     L->>D: one documents query, then one read per file
     D-->>O: the bytes and type of each active order_receipt of its owner
-    O->>M: Merge - the distinct files in the asked order
+    O->>M: Merge - the distinct files in the asked order, StampEveryPage when the warning is on
     M-->>O: one PDF and a result per file - pages, or the file can't be read
     O->>L: StoreOrderLabels - the warehouse's team, labels-date-time.pdf
     L->>D: an active private order_labels document, then its signed URL
@@ -1476,14 +1537,83 @@ sequenceDiagram
 | policy | WAREHOUSE_OWNER / ADMIN / STAFF, ROOT, ADMINISTRATOR — `NO_SIDE_EFFECTS`: it changes no order and no label; the merged PDF it stores is its answer, the way an export's file is. The seller keeps `GetDownloadUrl` |
 | the check | the order's `warehouse_id` is the scoped team; another warehouse's order and a missing id both read `NOT_SHIPPED_HERE`, and document_service is never asked for its file |
 | the cap | `order_ids` 1 to 50, unique — the warehouse list's largest page; the merge holds every file in memory and a label may be up to 15 MiB |
-| one id | as step 1: the link is the order's own file (a photo stays a photo, the download keeps its name) — nothing is read, merged or stored |
+| one id | with the warning off, as step 1: the link is the order's own file (a photo stays a photo, the download keeps its name) — nothing is read, merged or stored |
 | several ids | the files are read once each (two orders naming one file print it once), merged in the asked order — a PDF label adds its pages, a label photo one page of its own size — and stored as a private `order_labels` document of the CALLER's team (the warehouse, or root's team 1), its creator the caller, override-stamped like any upload. A run with nothing printable stores nothing and answers no link |
+| the unboxing warning | `unboxing_warning` (field 3, 2026-11-18, [the-unboxing-warning-is-one-sentence-on-each-label](../../technical/frontend/warehouse_order_list_decision.md#the-unboxing-warning-is-one-sentence-on-each-label)): on, ONE sentence — the constant `unboxingWarning` in `order_labels.go`, *Wajib video unboxing saat membuka paket*, in Indonesian whatever the screen's language; the caller sends a yes, never the words — is stamped along the bottom margin of EVERY page of the merged PDF, a photo's page too (`san_pdf_merge.StampEveryPage`: pdfcpu's stamp, Helvetica Bold, centred 4 pt above the edge, its width 75 % of the page's so a 100 mm label, an A4 page and a photo carry it alike), and one id is then merged and stored too, since its own file has no such line. A stamp that cannot be drawn fails the call (`ErrStamp`) — a print asked to warn never comes out without it. Off, the labels print as they are. The print page sends it from a switch remembered on the device. The stamp adds ≈38 ms to a 50-label merge (85 → 123 ms, +9 KB; `TestPerf_MergeStamped`). Pinned by `TestOrderLabels_TheUnboxingWarningIsOnEveryPage` / `…NoUnboxingWarningStampsNone` and `san_pdf_merge`'s `TestMerge_TheStampIsOnEveryPage` / `TestMerge_NoStampStampsNone` |
 | the reasons | `NOT_SHIPPED_HERE`, `NO_LABEL` (none attached, or the file is not the seller's / not there), `UNREADABLE` (several only: not a PDF or a picture, broken, gone from storage, or over the upload limit). One refusal never blocks the rest |
 | a hostile file | [san_pdf_merge](../../../backend/pkgs/san_pdf_merge/merge.go) (pdfcpu v0.15.0, pure Go, Apache-2.0) reads each file on its own, rewrites it once and reads it back (pdfcpu reads lazily, so a broken stream otherwise surfaces only in the merged file), and recovers a library panic per file. The result is written without object streams (a classic xref) for any viewer or printer. `TestMerge_CorruptedFilesNeverCrash` overwrites every sample at 24 places |
 | a sideways photo | a JPEG label photo is placed the way its EXIF `Orientation` (1–8) says it is seen — turned or mirrored, then re-encoded at quality 92 (`san_pdf_merge/orientation.go`, a small reader of the APP1 segment; no new dependency). A photo with no readable tag is placed byte for byte, and one past 50 megapixels is placed unturned rather than decoded. ≈ 0.3 s for a 12-megapixel photo taken in portrait, 1 ms for one already upright (`TestPerf_MergeTurnedPhoto`). `TestMerge_AJPEGIsPlacedTheWayItsEXIFSaysItIsSeen` — all eight orientations, both byte orders, each corner's colour (backlog #39, 2026-11-11) |
 | the seam | selling's `LabelLinker` (`LabelURL`, `LabelFiles`, `StoreOrderLabels`) → composition root `NewOrderLabelLinker` → `document_v1.Service` plain methods over document_service's own table and store. No `document_shares` row is ever written; `RequestUpload` refuses the `ORDER_LABELS` type |
 | errors | document_service's NotFound on one id becomes `NO_LABEL` (and a WARN log); any other read or store failure is the call's error |
 | cost | 3 queries (the orders by key, the documents by key, the stored row), ≈85 ms for 50 real labels (4.9 MB) end to end, ≈70 ms of it the merge; one id is one primary-key read, 0.5 ms at 50 000 orders — not heavy |
+
+## The bulk pick list's orders — `OrderPickLines`
+
+The crew ticks Dikonfirmasi orders on the warehouse list and opens **Daftar Ambil** — their goods for ONE walk of the
+racks ([the-bulk-pick-list-prototype-is-accepted](../../technical/frontend/warehouse_order_list_decision.md#the-bulk-pick-list-prototype-is-accepted),
+built 2026-11-18). No existing read gave lines for a SET of orders: `OrderList` answers a summary without lines,
+`OrderDetail` one order, `OrderExport` a file and `OrderLabels` the labels. So this read answers the ticked orders at
+once; inventory then reads every take's racks in one call
+([StockPickLocations, many takes](../inventory_service/rpc.md#many-takes-at-once--the-bulk-pick-list-built-2026-11-18)).
+
+```mermaid
+sequenceDiagram
+  participant W as bulk pick page - the address's ids
+  participant O as selling_service OrderPickLines
+  participant DB as Postgres
+  participant I as inventory StockPickLocations
+  W->>O: team_id = the warehouse, order_ids = 1 to 50, in the list's order
+  O->>DB: orders WHERE id IN ids AND warehouse_id = team - root reads all
+  O->>DB: their order_items - product, code, name, quantity only
+  O-->>W: the found orders in the asked order, each with its take and lines - no money
+  W->>I: warehouse_id, transaction_ids = the orders' takes - one call
+  I-->>W: every rack each take drew from, named by its take
+```
+
+| | |
+| --- | --- |
+| policy | WAREHOUSE_OWNER / ADMIN / STAFF, ROOT, ADMINISTRATOR — as `OrderLabels`; `NO_SIDE_EFFECTS` (no row, no event, no file), so the monitor and an agent may read it |
+| the scope | the order's SHIPPING warehouse — `warehouse_id = team_id`; the return warehouse's narrow arm of `orderReaders` is not here (a warehouse picks only what ships from it). Another warehouse's order, or no such order, is simply absent — the two read alike. The root team reads any order (`readsEveryTeam`) |
+| the cap | `order_ids` 1 to 50, unique, each gt 0 — the warehouse list's largest page; the bound that keeps the unpaged answer a detail read of the asked orders (HARD RULE 9) |
+| the answer | `OrderPick` per found order, in the asked order: `order_id`, `transaction_id` (0 = the order took nothing), `status`, `shop_id`, `order_external_ref_id`, `shipment_channel_id`, `receipt_code`, `lines` (`OrderPickLine`: `product_id`, `product_code`, `name`, `quantity`, in the order typed). No price, cost, markup or platform total — `TestOrderPickLines_CarriesNoMoney` pins the field lists |
+| the screen | the page draws no status move — the orders stay Dikonfirmasi; the shop names come from `ShopByIds` as on the list |
+| tests | `order_pick_lines_test.go` — lines in the asked order; another warehouse / return arm / unknown left out and root reads all; the 1–50 cap; no money; policy, scope and `NO_SIDE_EFFECTS` |
+| cost | 2 statements whatever the count (the orders by primary key, then their lines by `order_items_order_idx`) — 1 id ≈0.6 ms, 50 ids ≈1.7 ms over 50 000 orders with 150 000 lines (`TestPerf_OrderPickLines`, asserts two). No index added; not heavy, no audit file |
+
+## The print page's orders — `OrderPrintByIds`
+
+The crew ticks orders on the warehouse list and presses **Cetak Resi**, or a row's ⋯ **Print Label** — the print page
+opens with those orders ([the-print-page-and-the-courier-count-prototype-is-accepted](../../technical/frontend/warehouse_order_list_decision.md#the-print-page-and-the-courier-count-prototype-is-accepted),
+[a-rows-print-label-opens-the-print-page](../../technical/frontend/warehouse_order_list_decision.md#a-rows-print-label-opens-the-print-page),
+built 2026-11-18). The page names an order with no label BEFORE the print, so it needs each order's label state; no
+existing read gave that for a SET: `OrderList` has no ids (and carries the seller's money), `OrderDetail` reads one
+order, `OrderPickLines` carries no label. The prototype read one `OrderDetail` per order (an `interim` mark); this read
+answers them at once.
+
+```mermaid
+sequenceDiagram
+  participant P as print page - the chosen orders
+  participant O as selling_service
+  P->>O: OrderPrintByIds - team_id = the warehouse, order_ids = 1 to 50, in the list's order
+  O->>O: orders WHERE id IN ids AND warehouse_id = team - root reads all, one statement
+  O-->>P: each found order in the asked order - step, shop, ref, courier, resi, has_label
+  Note over P: Print
+  P->>O: OrderLabels - the same ids, unboxing_warning from the remembered switch
+  O-->>P: one PDF link, a result per order
+  P->>O: OrderStatusChange - to processed, the Perlu konfirmasi orders the PDF holds - only with the switch on and a team that writes
+```
+
+| | |
+| --- | --- |
+| policy | WAREHOUSE_OWNER / ADMIN / STAFF, ROOT, ADMINISTRATOR — OrderLabels' roles — `NO_SIDE_EFFECTS`, so the admin team's monitor and an agent may read it |
+| the check | OrderLabels' own: the order's `warehouse_id` is the scoped team (the return warehouse's narrow arm of `orderReaders` is not here — the page lists exactly what the print may hold); another warehouse's order and an unknown id are both simply absent, so ids cannot be probed; the root team reads any order |
+| the cap | `order_ids` 1 to 50, unique, above 0 — OrderLabels' cap, the list's largest page; the HARD RULE 9 exemption (a detail read of the asked orders) |
+| the answer | `OrderPrint`: `order_id`, `status`, `shop_id`, `order_external_ref_id`, `shipment_channel_id`, `receipt_code`, `has_label` (`receipt_document_id` set — OrderLabels' `NO_LABEL` test as a yes or no). No money and no document id (a-warehouse-sees-no-seller-money); `TestOrderPrintByIds_CarriesNoMoney` pins the field list |
+| the screen | `pages/print-receipts` reads it once per set of ids under the orders' query key (`listQuery`), so a status change re-reads it and an order taken off keeps the others on screen. The `interim` mark and `pages/print-receipts/pending.ts` are gone |
+| cost | ONE statement whatever the count — `orders_pkey` index scan on `id = ANY(…)`, the warehouse a filter on those rows: 50 ids over 50 000 orders ≈0.05 ms in the database, 0.5–0.9 ms wall (own, a third own, root; `TestPerf_OrderPrintByIds`). The prototype's one `OrderDetail` per order was 50 calls. Not heavy — no audit file |
+
+Tests: `order_print_by_ids_test.go` (asked order and facts, scope, 50 in one statement, the cap, no money, the policy) and
+`order_print_by_ids_perf_test.go` (`-tags perfaudit`).
 
 ## The order list's money sorts and its *settlement not opened* filter — `OrderList` (2026-11-05)
 

@@ -110,7 +110,44 @@ func wholeSpecGrep(spec string) string {
 // level2Batch is one Playwright invocation of a level-2 run.
 type level2Batch struct {
 	Specs []string
-	Grep  string // empty: every test of the specs
+	Grep  string        // empty: every test of the specs
+	Cap   time.Duration // its time cap (withEstimatedCaps); 0: its fixed cap (capFor)
+}
+
+// cap is the batch's time cap.
+func (b level2Batch) cap() time.Duration {
+	if b.Cap > 0 {
+		return b.Cap
+	}
+
+	return capFor(b.Specs)
+}
+
+// result is the batch's record as batch n (of worker, "" on the live tree), carrying its cap to runPlaywrightBatch.
+func (b level2Batch) result(n int, worker string) *BatchResult {
+	return &BatchResult{N: n, Worker: worker, Specs: b.Specs, Cap: b.Cap}
+}
+
+// withEstimatedCaps sets each batch's cap from the estimate of the specs it runs WHOLE (estimatedCap) — so an
+// affected run's restock family, or one long spec alone (restock_selling_wants_to_edit.spec.ts, ~650 s, over the
+// 590 s batch cap), is capped by what it takes (#75). A smoke entry's few tests add nothing: capFor's floor holds them.
+func withEstimatedCaps(batches []level2Batch, whole map[string]bool, times map[string]specTime) []level2Batch {
+	out := make([]level2Batch, len(batches))
+
+	for i, b := range batches {
+		var secs float64
+
+		for _, s := range b.Specs {
+			if whole[s] {
+				secs += times[s].Secs
+			}
+		}
+
+		b.Cap = estimatedCap(b.Specs, secs)
+		out[i] = b
+	}
+
+	return out
 }
 
 // smokeBatches puts the smoke set (and any whole specs) into batches, each limited to its entries by
@@ -259,7 +296,7 @@ func printSmokePlan(out io.Writer, root string, flows []smokeFlow, batches []lev
 			args = append(args, "--grep", fmt.Sprintf("%q", b.Grep))
 		}
 
-		fmt.Fprintf(out, "  b%d  (cap %s) %s\n", i+1, capFor(b.Specs), strings.Join(playwrightArgv(frontend, args...), " "))
+		fmt.Fprintf(out, "  b%d  (cap %s) %s\n", i+1, b.cap(), strings.Join(playwrightArgv(frontend, args...), " "))
 	}
 }
 
@@ -343,7 +380,7 @@ func runLevel2(ctx context.Context, root, kind string, batches []level2Batch, li
 func runLiveBatches(ctx context.Context, frontend string, frontends []string, rec *RunRecord, batches []level2Batch,
 	dir string, deadline time.Time, limit time.Duration, out io.Writer) {
 	for i, lb := range batches {
-		b := &BatchResult{N: i + 1, Specs: lb.Specs}
+		b := lb.result(i+1, "")
 		fmt.Fprintf(out, "→ b%d %s\n", b.N, strings.Join(lb.Specs, " "))
 
 		err := runPlaywrightBatch(ctx, frontend, b, lb.Grep, dir, out)

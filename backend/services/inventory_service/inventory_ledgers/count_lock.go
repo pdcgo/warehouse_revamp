@@ -27,6 +27,25 @@ type CountLock struct {
 	StartedByID   uint64
 	StartedAt     time.Time
 	PlacementCode string
+	// StartedByName is the starter's display name — never read here (the person is user_service's): the service fills it
+	// after the write is refused, outside its transaction (inventory_v1 nameCountStarters). Empty, the refusal names the
+	// user id instead.
+	StartedByName string
+}
+
+// Starter is who started the count, as a refusal names them (an-abandoned-count-waits-for-the-admin: *"started by Ani"*):
+// the display name once the service has filled it, otherwise the user id.
+func (l CountLock) Starter() string {
+	return starter(l.StartedByID, l.StartedByName)
+}
+
+// starter is a count's starter in a refusal's words: the name, or — when it could not be read — the user id.
+func starter(id uint64, name string) string {
+	if name != "" {
+		return name
+	}
+
+	return fmt.Sprintf("user #%d", id)
 }
 
 // wib is the warehouse's clock, for a refusal a person reads.
@@ -39,9 +58,9 @@ type CountedError struct {
 }
 
 func (e *CountedError) Error() string {
-	return fmt.Sprintf("product %d on rack %s is being counted — count #%d, started by user #%d at %s; "+
+	return fmt.Sprintf("product %d on rack %s is being counted — count #%d, started by %s at %s; "+
 		"it is released when the count is finalized or cancelled",
-		e.ProductID, e.PlacementCode, e.SessionID, e.StartedByID, e.StartedAt.In(wib).Format("2006-01-02 15:04 MST"))
+		e.ProductID, e.PlacementCode, e.SessionID, e.Starter(), e.StartedAt.In(wib).Format("2006-01-02 15:04 MST"))
 }
 
 // CountLocks reads the open snapshot rows over the given rack rows, keyed by rack row. One statement whatever the number
@@ -145,12 +164,14 @@ type RackCountedError struct {
 	StartedByID   uint64
 	StartedAt     time.Time
 	PlacementCode string
+	// StartedByName is filled by the service after the refusal, as CountLock's is; empty names the user id.
+	StartedByName string `gorm:"-"`
 }
 
 func (e *RackCountedError) Error() string {
-	return fmt.Sprintf("rack %s is held by a stock count — count #%d, started by user #%d at %s; "+
+	return fmt.Sprintf("rack %s is held by a stock count — count #%d, started by %s at %s; "+
 		"delete it after the count is finalized or cancelled",
-		e.PlacementCode, e.SessionID, e.StartedByID, e.StartedAt.In(wib).Format("2006-01-02 15:04 MST"))
+		e.PlacementCode, e.SessionID, starter(e.StartedByID, e.StartedByName), e.StartedAt.In(wib).Format("2006-01-02 15:04 MST"))
 }
 
 // RefuseRackCounted refuses deleting the rack while an active count holds it. ⚠ Call it AFTER the rack row is locked,

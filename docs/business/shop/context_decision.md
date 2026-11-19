@@ -39,6 +39,7 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [the-shop-gets-its-own-service](#the-shop-gets-its-own-service) | shops and shop access leave `selling_service` for `shop_service` — every other service calls it, and it calls only `user_service` | owner | ⚠ moving the shops that exist — a technical item |
 | [the-close-shop-prototype-is-accepted](#the-close-shop-prototype-is-accepted) | the Close Shop prototype is the design; closed shops show by a Status filter | owner, as recommended | — |
 | [report-filters-offer-closed-shops](#report-filters-offer-closed-shops) | report and list filters offer closed shops after the open ones, badged Closed | owner, as recommended | — |
+| [settlement-and-expense-ask-the-shop-first](#settlement-and-expense-ask-the-shop-first) | settlement and expense ask `ShopAccessCheck` for the team before opening a shop's account or storing an expense's shop; another team's or an unknown shop answers NotFound | owner, as recommended | — |
 
 ## access-is-given-per-user-per-shop
 
@@ -425,6 +426,8 @@ flowchart LR
 
 ⛔ **Under review** — [critique 6](./context_clarify.md#critique): one team can claim another team's shop account by
 posting to it first.
+
+⛔ **Superseded 2026-11-18** by the owner — [settlement-and-expense-ask-the-shop-first](#settlement-and-expense-ask-the-shop-first); the *under review* above is closed.
 
 ## the-shop-manages-its-access-list
 
@@ -984,3 +987,13 @@ flowchart LR
 **The verdict.** Every **filter** that picks a shop to read by — Orders, Returns, Order Settlement, Statement Imports, Analytic, Financial Accounts, and any later report — offers **closed shops too, after the open ones, badged *Closed***, so a closed shop's history stays reachable. Forms that **write** new selling still offer open shops only ([a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling)). ⚠ Not built.
 
 ✅ Built 2026-11-06 — `ShopSelect asFilter` (closed shops after the open ones, badged; a picked closed shop keeps its badge in the field) on the Orders, Returns, Order Settlement, Statement Imports, Analytic and Financial Accounts filters; the order form and an account's shop link stay open-only.
+
+---
+
+## settlement-and-expense-ask-the-shop-first
+
+> Owner (Heri), in chat (2026-11-18): *"A"*, as recommended — to [critique 6](./context_clarify.md#critique): settlement and expense take a `shop_id` on trust, so team A can open team B's shop settlement account by posting to it first (then B's own posts answer `errWrongTeam`), and an expense stores any shop id. A: both ask `ShopAccessCheck` for the team before opening a shop's settlement account and before storing an expense's shop — another team's or an unknown shop answers NotFound; who in the team may post is unchanged (imports already need a grant, [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager)); B: A plus a grant or a manager for every manual settlement entry and expense naming a shop; C: left on trust.
+
+**The verdict.** Before `settlement_service` opens a shop's settlement account (a row with no order naming a shop) and before `expense_service` stores an expense's `shop_id`, each asks [`ShopAccessCheck`](#one-call-answers-the-shop-and-the-access) scoped to the caller's team ([every-shop-call-is-scoped-to-its-team](#every-shop-call-is-scoped-to-its-team)): a shop that is not the team's, or does not exist, answers **NotFound** and nothing is written. Who in the team may post or spend is unchanged. Supersedes [other-services-keep-a-shop-id-unchecked](#other-services-keep-a-shop-id-unchecked). *(Not asked — the build's: a closed shop still takes money rows, per [a-closed-shop-refuses-only-new-selling](#a-closed-shop-refuses-only-new-selling); an account another team already opened is not re-homed.)* ⛔ Not built — backlog #78.
+
+✅ Built 2026-11-18 — backlog #78. **Settlement:** every shop-addressed row (imported or by hand) asks `ShopAccessCheck` for the caller's team before its transaction (`settlement_v1/shop_primary.go` `askShop`, the existing `ShopPrimary` seam over the shop client); another team's or an unknown shop is NotFound *"shop #N is not one of this team's shops"*, no row and no account — NotFound also wins over `errWrongTeam` when the account already exists under another team (`post_entry.go`). A closed shop is answered and posts; an account opened under another team before the check stays where it is (its shop's own team still meets PermissionDenied, the opener adds nothing new). **Expense:** `ExpenseCreate` asks the shop for a non-zero `shop_id` after the ads-only rule and before the account (`expense_v1/shops.go` `Shops` seam, `cmd/app_development/expense_shops.go` adapter, wire); the same NotFound, nothing stored, a closed shop taken. Tests `post_entry_shop_scope_test.go` (the claim, unknown shop, another team's open account, own shop, not re-homed), `expense_create_shop_test.go`, and over the real `ShopAccessCheck` `cmd/app_development/settlement_shop_scope_test.go` + `expense_shops_test.go` (closed shop taken).

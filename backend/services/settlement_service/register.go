@@ -27,6 +27,10 @@ const (
 	OrderCancelledSubscription = "settlement-order-cancelled"
 )
 
+// OrderShopChangedSubscription moves a fixed order's account to its new shop (an-orders-shop-is-fixed-and-counted-on-the-day)
+// — settlement's OWN subscription on the order-shop-changed topic, beside the order metrics' fold on the same one.
+const OrderShopChangedSubscription = "settlement-order-shop-changed"
+
 // NewRegister mounts settlement_service's Connect handlers under the shared interceptor chain, mounts
 // the fold's push route, and reports the Connect services for reflection.
 //
@@ -53,6 +57,8 @@ func NewRegister(
 		sale := event_source.NewMuxPushHandler(settlement.OrderSaleHandler())
 		mux.Handle("/event/"+OrderPlacedSubscription+"/push", sale)
 		mux.Handle("/event/"+OrderCancelledSubscription+"/push", sale)
+		// A fixed order's account, moved to its new shop.
+		mux.Handle("/event/"+OrderShopChangedSubscription+"/push", event_source.NewMuxPushHandler(settlement.OrderShopHandler()))
 
 		return san_grpc.ServiceReflectNames{
 			settlementv1connect.SettlementServiceName,

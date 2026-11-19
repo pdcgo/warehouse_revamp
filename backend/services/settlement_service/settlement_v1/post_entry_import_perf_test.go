@@ -355,7 +355,9 @@ func impVariants(t *testing.T, ledgerDB *gorm.DB, ledger, ask *san_perf.Probe, r
 
 	ctx := context.Background()
 
-	manualSvc := settlement_v1.NewService(ledgerDB, nil, nil, nil, nil, nil, nil)
+	// A manual shop row asks the shop too since settlement-and-expense-ask-the-shop-first (whether it is the team's) — the
+	// stub answers it, so this row measures the ledger plus a free ask.
+	manualSvc := settlement_v1.NewService(ledgerDB, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 	stubSvc := settlement_v1.NewService(ledgerDB, nil, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 	connectSvc := settlement_v1.NewService(ledgerDB, nil, nil, realAsk, nil, nil, nil)
 
@@ -378,7 +380,7 @@ func impVariants(t *testing.T, ledgerDB *gorm.DB, ledger, ask *san_perf.Probe, r
 		}
 	}
 
-	manual := impMeasure(t, tag+": manual shop row (no ask)", ledger, ask,
+	manual := impMeasure(t, tag+": manual shop row, stub ask", ledger, ask,
 		postRow(manualSvc, settlementv1.SourceType_SOURCE_TYPE_MANUAL, "manual"))
 
 	stub := impMeasure(t, tag+": imported shop row, stub ask", ledger, ask,

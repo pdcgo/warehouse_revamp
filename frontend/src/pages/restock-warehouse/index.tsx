@@ -7,6 +7,7 @@ import {
   Button,
   Checkbox,
   Flex,
+  HStack,
   Heading,
   Icon,
   IconButton,
@@ -40,6 +41,10 @@ import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
 import { shortfall } from "../../features/restock/summary";
+import { RestockTagChips } from "../../features/restock/RestockTagChips";
+import { RestockTagFilter } from "../../features/restock/RestockTagFilter";
+import { NO_TAGS, TAGS_CODEC, brokenTotal, tagsOfRequest } from "../../features/restock/restockTags";
+import { useRestockTagCatalogue } from "../../features/restock/tagQueries";
 import { WarehouseRestockActions, warehouseActions } from "../../features/restock/WarehouseRestockActions";
 import { LABELS_MAX_RESTOCKS, labelsPath } from "../../features/restock/labelsPath";
 import { CompactActions } from "../../components/chrome/CompactActions";
@@ -58,15 +63,12 @@ import { DateRangePicker, resolveRange } from "../../components/datetime/DateRan
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useIsMobile } from "../../layouts/shell";
 import { daysSinceUnix, formatUnixDate, formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { PRESSABLE } from "../../lib/motion";
 import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
-import { RESTOCK_INBOUND_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -157,6 +159,13 @@ export function RestockWarehousePage() {
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useUrlState("q", "", textCodec);
   const [requesterFilter, setRequesterFilter] = useUrlState("from", 0n, idCodec);
+  // THE TAGS (backlog #87 — a restock's tags are seen and filtered on the warehouse's list as on the seller's,
+  // custom-tags-are-shared-system-tags-are-the-admins-and-the-apps). SEVERAL at once, a restock in when it carries ANY
+  // (the-restock-tags-prototype-is-accepted), kept in the address (`?tag=1,2`). Sent as `RestockRequestListFilter.tag_ids`;
+  // like the person and the dates it narrows the ROWS — the headline follows the From lens alone.
+  const [tagPick, setTagPick] = useUrlState<bigint[]>("tag", NO_TAGS, TAGS_CODEC);
+  // The filter's options — the app-wide list, every team's.
+  const tagCatalogue = useRestockTagCatalogue(current?.teamId);
 
   // ONE PERSON FILTER WITH A TYPE (owner), not two pickers: "which person" and "in which role" are asked together, the
   // way the date range asks "which window" and "which date" in one control. The cost, invisible from the control: the
@@ -194,6 +203,7 @@ export function RestockWarehousePage() {
     fromUnix,
     toUnix,
     q: term,
+    tagIds: tagPick,
     page,
     pageSize,
   });
@@ -233,10 +243,11 @@ export function RestockWarehousePage() {
   const filtering =
     (search.trim() !== "" ? 1 : 0) +
     (requesterFilter !== 0n ? 1 : 0) +
+    (tagPick.length > 0 ? 1 : 0) +
     (actorId !== 0n ? 1 : 0) +
     (defaultRange ? 0 : 1);
   // What the rows on screen were asked with, which is what "nothing matches" is about.
-  const narrowed = term !== "" || requesterFilter !== 0n || actorId !== 0n || !defaultRange;
+  const narrowed = term !== "" || requesterFilter !== 0n || tagPick.length > 0 || actorId !== 0n || !defaultRange;
 
   // Any change to a filter restarts at page 1 — the page number belongs to the OLD question, and page 5 of "everyone" is
   // very likely past the end of "Bandung only".
@@ -251,6 +262,7 @@ export function RestockWarehousePage() {
     refilter(() => {
       setSearch("");
       setRequesterFilter(0n);
+      setTagPick(NO_TAGS);
       setActorRole("created");
       setActorId(0n);
       setRange(DEFAULT_RANGE);
@@ -331,6 +343,34 @@ export function RestockWarehousePage() {
     );
   }
 
+  // The broken units beside *kurang N*, the problem list's second count (#87, a-restock-problem-is-a-system-tag) — only
+  // on a counted row.
+  function brokenBadge(request: RestockRequest) {
+    const broken = brokenTotal(request);
+    if (broken <= 0n) return null;
+
+    return (
+      <Badge colorPalette="warning" data-testid={`restock-broken-${request.id}`}>
+        {t("restock.tags.brokenBadge", { count: Number(broken) })}
+      </Badge>
+    );
+  }
+
+  // The table's status cell keeps to two lines (one-context-per-column-and-never-three-lines): *kurang N* and *rusak N*
+  // share the second.
+  function problemBadges(request: RestockRequest) {
+    const missing = missingBadge(request);
+    const broken = brokenBadge(request);
+    if (!missing && !broken) return null;
+
+    return (
+      <HStack gap="1">
+        {missing}
+        {broken}
+      </HStack>
+    );
+  }
+
   // The courier and the tracking number — how the box is found at the door (a-restock-carries-its-tracking-number). The
   // number is copyable: it is typed into the courier's tracking page.
   function shipment(request: RestockRequest) {
@@ -357,12 +397,7 @@ export function RestockWarehousePage() {
 
     return (
       <Box display="inline-flex" onClick={(e) => e.stopPropagation()}>
-        <WarehouseRestockActions
-          request={request}
-          teamId={teamId}
-          variant="row"
-          codMark={<NotImplemented list={RESTOCK_INBOUND_PENDING} id="arrivalCod" />}
-        />
+        <WarehouseRestockActions request={request} teamId={teamId} variant="row" />
       </Box>
     );
   }
@@ -484,6 +519,7 @@ export function RestockWarehousePage() {
                 </Text>
                 <RestockStatusBadge status={request.status} />
                 {missingBadge(request)}
+                {brokenBadge(request)}
                 <Text fontSize="xs" color="fg.muted" ms="auto" whiteSpace="nowrap">
                   {formatUnixDateTimeShort(request.createdAtUnix)}
                 </Text>
@@ -503,6 +539,8 @@ export function RestockWarehousePage() {
                   </Span>
                 )}
               </Text>
+              {/* Its tags (#87), the system's first and locked; only when it has any. */}
+              <RestockTagChips tags={tagsOfRequest(request)} max={3} wrap testId={`restock-tags-${request.id}`} />
               {request.arrivedAtUnix > 0n && (
                 <Text fontSize="xs" color="fg.muted" data-testid={`restock-arrived-${request.id}`}>
                   {t("restock.table.arrived")} {formatUnixDateTimeShort(request.arrivedAtUnix)}
@@ -550,6 +588,8 @@ export function RestockWarehousePage() {
               {/* THE STATUS BEFORE THE DATES (owner: *"status sebelum tanggal"*, the-inbound-status-sits-before-its-dates)
                   — where it has got to, then when it got there; the selling list's order. */}
               <Table.ColumnHeader>{t("restock.table.status")}</Table.ColumnHeader>
+              {/* The restock's tags (#87), after where it has got to — always drawn, as the seller's. */}
+              <Table.ColumnHeader>{t("restock.tags.column")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.created")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.arrived")}</Table.ColumnHeader>
               <Table.ColumnHeader textAlign="end">{t("restock.table.actions")}</Table.ColumnHeader>
@@ -582,8 +622,11 @@ export function RestockWarehousePage() {
                 <Table.Cell>
                   <Stack gap="1" align="start">
                     <RestockStatusBadge status={request.status} />
-                    {missingBadge(request)}
+                    {problemBadges(request)}
                   </Stack>
+                </Table.Cell>
+                <Table.Cell data-testid={`restock-tags-cell-${request.id}`}>
+                  <RestockTagChips tags={tagsOfRequest(request)} testId={`restock-tags-${request.id}`} />
                 </Table.Cell>
                 {/* CREATED AND ARRIVED (owner: *"ada tanggal dibuat dan sampai"*) — when it was raised (who raised it is
                     under the team), and when the box reached the door with who signed for it. */}
@@ -669,9 +712,6 @@ export function RestockWarehousePage() {
         </Text>
       )}
 
-      {/* What is not real yet — the courier's charge noted at Tandai Tiba (pending.ts); the queue and the COD it paid are. */}
-      <NotImplementedSummary list={RESTOCK_INBOUND_PENDING} />
-
       {/* WHAT IS STILL TO DO (owner) — the order list's card strip (a-list-summary-is-the-order-lists-card-strip).
           Server-side totals over every restock targeting this warehouse that is ON ITS WAY OR AT THE DOOR, so they
           describe the queue rather than the visible page. THE COARSEST COUNT LEADS — how many deliveries, which is what a
@@ -744,6 +784,15 @@ export function RestockWarehousePage() {
             showType={false}
             placeholder={t("restock.inbound.fromAll")}
             onChange={(id) => refilter(() => setRequesterFilter(id))}
+          />
+        </FilterField>
+        {/* WHICH TAGS it carries (#87): several picks of the app-wide list, a restock in when it carries ANY; × back to
+            any — the seller's list's tag filter, after the team it comes from (this list has no courier filter). */}
+        <FilterField w="15rem" testId="restock-tag-filter">
+          <RestockTagFilter
+            tags={tagCatalogue.data ?? []}
+            value={tagPick}
+            onChange={(ids) => refilter(() => setTagPick(ids))}
           />
         </FilterField>
         {/* BY PERSON — the role and the picker read as ONE control (owner), in one bordered group: [ Dibuat oleh ▾ │ person ].
@@ -859,6 +908,7 @@ export function RestockWarehousePage() {
                 dateRangeCodec.encode(range),
                 dateField,
                 pageSize,
+                TAGS_CODEC.encode(tagPick),
               ].join("|")}
               pageSize={pageSize}
               pageSizeOptions={PAGE_SIZE_OPTIONS}

@@ -2,8 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { asRole } from "../../../.storybook/sessionScenario";
-import { liabilityListCalls } from "../../../.storybook/liabilityScenario";
+import { asAdminTeam, asRole } from "../../../.storybook/sessionScenario";
+import { liabilityListCalls, liabilityPaymentScenario } from "../../../.storybook/liabilityScenario";
+import { toaster } from "../../components/feedback/Toaster";
 import { liabilityPeriod } from "../../features/liability/queries";
 import { LiabilityLogDirection, LiabilityPaymentSide } from "../../gen/warehouse/liability/v1/liability_pb";
 import { teams } from "../../../.storybook/fixtures";
@@ -613,6 +614,188 @@ export const AcceptingNamesTheAccountItLandedIn: Story = {
   },
 };
 
+// ── THE PAYER TAKES A PENDING PAYMENT BACK (a-pending-payment-is-cancelled-by-its-selling-team) ──────────────────────
+//
+// Toko Melati's (12) pending 2.000.000 to Gudang Pusat — payment 602. The paying selling team's Owner or Admin cancels it
+// from My payments, through a confirmation. Nothing posts, so the balance stays; the row stays in the history marked
+// Cancelled, in the rejected badge's tone; and Make Payment is still offered — the team may pay again. Never the CS,
+// never a warehouse payer, never a monitor; the creditor only sees it end.
+
+async function myPayments(canvas: ReturnType<typeof within>, id = 602) {
+  await userEvent.click(await canvas.findByTestId("liability-detail-tab-mine"));
+  const mine = await canvas.findByTestId("liability-detail-mine");
+  // The row is drawn and pending BEFORE any "not offered" check — an absent button on an unloaded tab proves nothing.
+  await waitFor(() => expect(within(mine).getByTestId(`liability-detail-payment-status-${id}`)).toHaveTextContent("Pending"));
+  return mine;
+}
+
+export const ThePayerCancelsAPendingPayment: Story = {
+  render: () => <MelatiAtGudangPusat />,
+  // The toaster is module-level: the last story's toasts are cleared before this one reads its own.
+  beforeEach: () => {
+    asTheDebtor();
+    toaster.remove();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("8.700.000"));
+    const balanceBefore = canvas.getByTestId("liability-detail-balance").textContent;
+    const mine = await myPayments(canvas);
+
+    // Only the PENDING claim offers it — the rejected 603 is over — and never the creditor's two acts.
+    await expect(within(mine).getByTestId("liability-detail-payment-status-603")).toHaveTextContent("Rejected");
+    await expect(within(mine).queryByTestId("liability-detail-cancel-603")).toBeNull();
+    await expect(within(mine).queryByTestId("liability-detail-confirm-602")).toBeNull();
+    await expect(within(mine).queryByTestId("liability-detail-reject-602")).toBeNull();
+
+    // DESTRUCTIVE ACTIONS ALWAYS CONFIRM: the dialog says what it takes back, and its way out keeps the payment.
+    await userEvent.click(within(mine).getByTestId("liability-detail-cancel-602"));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    const dialog = screen.getByRole("alertdialog");
+    await expect(dialog).toHaveTextContent("Cancel Payment");
+    await expect(dialog).toHaveTextContent("Rp 2.000.000");
+    await expect(dialog).toHaveTextContent("Gudang Pusat will no longer see it to accept");
+    await expect(within(dialog).getByTestId("confirm-dismiss")).toHaveTextContent("Keep Payment");
+
+    toaster.remove();
+    await userEvent.click(confirm);
+    await expect(await screen.findByText("Payment cancelled")).toBeInTheDocument();
+
+    // It STAYS in the history, marked — in the rejected claim's tone — and offers nothing more.
+    const status = canvas.getByTestId("liability-detail-payment-status-602");
+    await waitFor(() => expect(status).toHaveTextContent("Cancelled"));
+    await expect(getComputedStyle(status).backgroundColor).toBe(
+      getComputedStyle(canvas.getByTestId("liability-detail-payment-status-603")).backgroundColor,
+    );
+    await expect(canvas.queryByTestId("liability-detail-cancel-602")).toBeNull();
+
+    // NOTHING MOVED — a pending claim posted nothing — and the team may pay again.
+    await expect(canvas.getByTestId("liability-detail-balance").textContent).toBe(balanceBefore);
+    await expect(canvas.getByTestId("liability-detail-make-payment")).toBeInTheDocument();
+  },
+};
+
+// Keeping it changes nothing: the dismiss closes the dialog, and the claim is still pending with its Cancel.
+export const KeepingThePaymentChangesNothing: Story = {
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: asTheDebtor,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mine = await myPayments(canvas);
+
+    await userEvent.click(within(mine).getByTestId("liability-detail-cancel-602"));
+    const keep = await screen.findByTestId("confirm-dismiss");
+    await waitFor(() => expect(keep).toBeVisible());
+    await userEvent.click(keep);
+
+    await waitFor(() => expect(screen.queryByTestId("confirm-action")).toBeNull());
+    await expect(within(mine).getByTestId("liability-detail-payment-status-602")).toHaveTextContent("Pending");
+    await expect(within(mine).getByTestId("liability-detail-cancel-602")).toBeInTheDocument();
+  },
+};
+
+// The selling ADMIN may too — the decision names the owner or admin.
+export const TheSellingAdminMayCancel: Story = {
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: () => {
+    asTeam(COUNTERPARTY)();
+    asRole(Role.SELLING_ADMIN)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mine = await myPayments(canvas);
+
+    await expect(within(mine).getByTestId("liability-detail-cancel-602")).toBeVisible();
+  },
+};
+
+// Never the selling CS — the checklist names the owner or admin, and a role it does not name cannot.
+export const TheCsIsNotOfferedCancel: Story = {
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: () => {
+    asTeam(COUNTERPARTY)();
+    asRole(Role.SELLING_CS)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mine = await myPayments(canvas);
+
+    await expect(within(mine).queryByTestId("liability-detail-cancel-602")).toBeNull();
+  },
+};
+
+// The admin team MONITORS Toko Melati, read-only: the pending claim is there, and nothing to do with it — though a
+// monitor's screen role is the Owner's (the-admin-team-monitors-read-only).
+export const AMonitorIsNotOfferedCancel: Story = {
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: [asAdminTeam(), asTeam(COUNTERPARTY)],
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mine = await myPayments(canvas);
+
+    await expect(within(mine).queryByTestId("liability-detail-cancel-602")).toBeNull();
+    await expect(canvas.queryByTestId("liability-detail-make-payment")).toBeNull();
+  },
+};
+
+// NOT A WAREHOUSE PAYER: Gudang Pusat's own claim to Melati (601, made pending here) waits for Melati — its Owner, and
+// Root acting inside it, are offered no Cancel.
+export const AWarehousePayerIsNotOfferedCancel: Story = {
+  beforeEach: () => {
+    liabilityPaymentScenario.statusOf["601"] = 1;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mine = await myPayments(canvas, 601);
+
+    await expect(within(mine).queryByTestId("liability-detail-cancel-601")).toBeNull();
+  },
+};
+
+export const RootInAWarehouseIsNotOfferedCancel: Story = {
+  beforeEach: () => {
+    asRole(Role.ROOT)();
+    liabilityPaymentScenario.statusOf["601"] = 1;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mine = await myPayments(canvas, 601);
+
+    await expect(within(mine).queryByTestId("liability-detail-cancel-601")).toBeNull();
+  },
+};
+
+// THE CREDITOR'S SIDE: Gudang Pusat accepts or rejects Melati's pending claim and is never offered Cancel — it is not
+// its claim to take back.
+export const TheCreditorIsNeverOfferedCancel: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const tab = await teamPayments(canvas);
+
+    await expect(within(tab).getByTestId("liability-detail-confirm-602")).toBeVisible();
+    await expect(within(tab).queryByTestId("liability-detail-cancel-602")).toBeNull();
+  },
+};
+
+// …and once Melati has cancelled it, the creditor no longer has it to accept: the row stays in its history, marked
+// Cancelled, with neither Accept nor Reject.
+export const ACancelledClaimLeavesTheCreditorNothingToDo: Story = {
+  beforeEach: () => {
+    liabilityPaymentScenario.statusOf["602"] = 5;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(await canvas.findByTestId("liability-detail-tab-team"));
+    const tab = await canvas.findByTestId("liability-detail-team");
+
+    await waitFor(() => expect(within(tab).getByTestId("liability-detail-payment-status-602")).toHaveTextContent("Cancelled"));
+    await expect(within(tab).queryByTestId("liability-detail-confirm-602")).toBeNull();
+    await expect(within(tab).queryByTestId("liability-detail-reject-602")).toBeNull();
+    await expect(within(tab).queryByTestId("liability-detail-cancel-602")).toBeNull();
+  },
+};
+
 
 // ── THE DEBTOR'S SIDE OF THE SAME PAIR (the-debtor-sees-the-limits-set-on-it) ───────────────────────────────────────
 
@@ -858,5 +1041,32 @@ export const MobileLimitChangesAreBlocks: Story = {
     await expect(table).toHaveAttribute("data-layout", "blocks");
     await expect(canvas.getByTestId("terms-change-3")).toHaveTextContent("Cap lifted for the ramadan push");
     await expect(within(canvas.getByTestId("terms-change-3")).getByTestId("root-team-badge")).toBeInTheDocument();
+  },
+};
+
+// The payer's phone: the pending block carries Cancel beside its proof; once confirmed the block reads Cancelled.
+export const MobileThePayerCancels: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  render: () => <MelatiAtGudangPusat />,
+  beforeEach: () => {
+    asTheDebtor();
+    toaster.remove();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mine = await myPayments(canvas);
+
+    const block = within(mine).getByTestId("liability-detail-payment-602");
+    await expect(block.tagName).not.toBe("TR");
+    const cancel = within(block).getByTestId("liability-detail-cancel-602");
+    await expect(cancel).toBeVisible();
+
+    await userEvent.click(cancel);
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(within(block).getByTestId("liability-detail-payment-status-602")).toHaveTextContent("Cancelled"));
+    await expect(within(block).queryByTestId("liability-detail-cancel-602")).toBeNull();
   },
 };

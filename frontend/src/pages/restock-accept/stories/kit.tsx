@@ -139,17 +139,27 @@ export async function expectAccept(canvasElement: HTMLElement, enabled: boolean)
 // A picture file the browser takes from a picker — the bytes do not matter: the stub's upload takes them as they are.
 export const PHOTO = () => new File([new Uint8Array([137, 80, 78, 71])], "rusak.png", { type: "image/png" });
 
-// TERIMA STARTS FROM THE CHARGE NOTED AT TIBA (terima-starts-from-the-charge-noted-at-tiba) — Tandai Tiba keeps none yet,
-// so a story gives 502 one by hand, and puts it back after.
+/** The slip Tandai Tiba kept with 502's charge, in `arrivedWithACharge`. */
+export const TIBA_SLIP = "doc-tiba-slip";
+
+// TERIMA STARTS FROM THE CHARGE NOTED AT TIBA (terima-starts-from-the-charge-noted-at-tiba,
+// the-courier-charge-is-noted-at-tiba-and-final-at-terima) — 502 as Tandai Tiba left it: Rp 15.000, its note and its
+// slip, kept on the restock. Given on the fixture (502 is already arrived), and put back after.
 export function arrivedWithACharge() {
-  const saved = { cost: ARRIVED.warehouseAdditionalCost, note: ARRIVED.warehouseAdditionalCostNote };
+  const saved = {
+    cost: ARRIVED.warehouseAdditionalCost,
+    note: ARRIVED.warehouseAdditionalCostNote,
+    file: ARRIVED.warehouseAdditionalCostFile,
+  };
   ARRIVED.warehouseAdditionalCost = 15000;
   ARRIVED.warehouseAdditionalCostNote = "Biaya COD";
+  ARRIVED.warehouseAdditionalCostFile = TIBA_SLIP;
   resetRestockStub();
 
   return () => {
     ARRIVED.warehouseAdditionalCost = saved.cost;
     ARRIVED.warehouseAdditionalCostNote = saved.note;
+    ARRIVED.warehouseAdditionalCostFile = saved.file;
     resetRestockStub();
   };
 }

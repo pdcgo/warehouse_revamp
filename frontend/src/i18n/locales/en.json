@@ -160,6 +160,7 @@
     "statusRecorded": "Pending",
     "statusConfirmed": "Accepted",
     "statusRejected": "Rejected",
+    "statusCancelled": "Cancelled",
     "statusUnknown": "—",
     "kindWarehouse": "Warehouse team",
     "kindSelling": "Selling team",
@@ -178,6 +179,13 @@
     "rejectReasonPlaceholder": "e.g. no transfer of this amount reached our account",
     "rejectReasonHelp": "The payer reads this. Tell them whether to re-send the proof or the money.",
     "rejectLabel": "Reject Payment",
+    "cancel": "Cancel",
+    "cancelTitle": "Cancel Payment",
+    "cancelMessage": "Take back this pending payment of {{amount}}? Nothing has been posted, so the balance stays as it is. {{name}} will no longer see it to accept, it stays in your history as cancelled, and you can make a new payment.",
+    "cancelConfirm": "Cancel Payment",
+    "cancelKeep": "Keep Payment",
+    "cancelDone": "Payment cancelled",
+    "cancelFailed": "Could not cancel the payment",
     "recordTitle": "Make a Payment",
     "recordDescription": "Record a payment you are sending to {{name}}. It stays pending until they confirm it arrived — recording alone does not move the ledger.",
     "recordAmount": "Amount",
@@ -1247,6 +1255,17 @@
     "settlementMissing": {
       "filter": "Settlement not opened",
       "badge": "No settlement account"
+    },
+    "changeShop": {
+      "action": "Change Shop",
+      "intro": "For an order filed under the wrong shop. Only shops of the same marketplace that you may write are offered. The order's notes name both shops, and the reports count the move today.",
+      "current": "Current shop",
+      "newShop": "New shop",
+      "placeholder": "Choose a shop",
+      "next": "Next",
+      "back": "Back",
+      "confirm": "Move order #{{id}} from {{from}} to {{to}}? Its settlement moves too, so {{to}}'s statement can import it.",
+      "saved": "Shop changed"
     }
   },
   "orderDetail": {
@@ -1469,13 +1488,6 @@
       "printPicked_other": "Print {{count}} Restocks",
       "clearPicked": "Clear the selection",
       "pickFull": "At most {{max}} restocks a print — the rest cannot be ticked.",
-      "pending": {
-        "arrivalCod": {
-          "label": "Courier's charge at Mark Arrived",
-          "reason": "The charge, its note and the slip's photo typed in the Mark Arrived dialog are not kept — marking arrived takes none of them yet. Enter them again at Accept.",
-          "conflict": "the courier's charge is entered at accept."
-        }
-      },
       "title": "Incoming Restocks",
       "subtitle": "Deliveries on their way to this warehouse — sign for a box when it arrives, accept it to count it onto the shelves.",
       "empty": "Nothing is coming in to this warehouse yet.",
@@ -1520,6 +1532,8 @@
       "courierCharge": "Courier's charge at the door",
       "courierChargeOwedBySelling": "Paid by {{warehouse}} when the box was handed over. Your team owes it to the warehouse — it is not part of the total.",
       "courierChargeOwedToUs": "Paid by this warehouse when the box was handed over. {{team}} owes it back — it is not part of the total.",
+      "courierChargeNotedBySelling": "Noted by {{warehouse}} when the box was signed for — final when it is accepted, and from then your team owes it to the warehouse. It is not part of the total.",
+      "courierChargeNotedToUs": "Noted by this warehouse when the box was signed for — final when it is accepted, and from then {{team}} owes it back. It is not part of the total.",
       "courierChargeNone": "None — the courier asked for nothing at the door.",
       "note": "Note",
       "products": "Products",
@@ -1537,16 +1551,6 @@
         "cancelReview": {
           "label": "Checking a cancellation",
           "reason": "The cancel dialog says a cancellation will be checked; nothing checks it yet."
-        },
-        "arrivalCod": {
-          "label": "Courier's charge at Mark Arrived",
-          "reason": "The charge, its note and the slip's photo typed in the Mark Arrived dialog are not kept — marking arrived takes none of them yet. Enter them again at Accept.",
-          "conflict": "the courier's charge is entered at accept."
-        },
-        "brokenRack": {
-          "label": "Broken products' rack",
-          "reason": "A sample — Put on a rack is not kept yet, so the line's first place is shown as where the broken units went.",
-          "conflict": "a broken unit is thrown away — no rack holds it."
         }
       },
       "navLabel": "Restock sections",
@@ -1569,7 +1573,6 @@
         "title": "Courier's Slip",
         "alt": "Photo of the courier's slip"
       },
-      "brokenRack": "Broken {{count}} → {{rack}}",
       "stat": {
         "products": "Products",
         "ordered_one": "{{count}} pc ordered",
@@ -1902,8 +1905,7 @@
       },
       "toast": {
         "accepted": "Delivery accepted",
-        "failed": "Could not accept the delivery",
-        "notKept": "Not kept: {{parts}}."
+        "failed": "Could not accept the delivery"
       },
       "actions": "Actions",
       "notAcceptable": {
@@ -1919,7 +1921,6 @@
         "chargeNote": "what the courier's charge was for",
         "received": "received · {{name}}",
         "count": "a count that fits · {{name}}",
-        "brokenRack": "rack for the broken units · {{name}}",
         "placement": "placement · {{name}}",
         "photo": "photo still uploading · {{name}}",
         "slipPhoto": "slip photo still uploading"
@@ -1968,27 +1969,6 @@
       },
       "brokenPhoto": {
         "alt": "Photo of the broken products"
-      },
-      "pending": {
-        "brokenRack": {
-          "label": "Broken products' rack",
-          "reason": "Put on a rack is not kept — the broken units are still recorded as thrown away.",
-          "conflict": "a broken unit is thrown away — no rack holds it."
-        },
-        "codFromArrival": {
-          "label": "Charge noted at Mark Arrived",
-          "reason": "The charge opens with the restock's own — and marking arrived keeps none yet, so one noted there must be entered again."
-        }
-      },
-      "brokenTo": {
-        "label": "Broken units",
-        "discard": "Thrown away",
-        "rack": "Put on a rack",
-        "rackRequired": "Pick a rack for the broken units.",
-        "pickInPutaway": "Its rack is picked under Put away to placements."
-      },
-      "notKept": {
-        "brokenRack": "the broken products' rack"
       },
       "expiry": {
         "label": "Expiry date",
@@ -2048,7 +2028,6 @@
         "lost": "Restock marked lost",
         "lostFailed": "Mark lost failed",
         "arrived": "Restock marked as arrived",
-        "arrivedCodNotKept": "What was entered for the courier's charge was not kept — enter it again at Accept.",
         "arriveFailed": "Sign for box failed"
       },
       "notes": "Notes"
@@ -2078,7 +2057,49 @@
       "add": "Add Photo",
       "replace": "Replace Photo",
       "remove": "Remove photo",
-      "uploadFailed": "The photo could not be uploaded"
+      "uploadFailed": "The photo could not be uploaded",
+      "kept": "Saved photo"
+    },
+    "tags": {
+      "title": "Tags",
+      "column": "Tags",
+      "filterAll": "All tags",
+      "filterSearch": "Search tags",
+      "filterEmpty": "No tags yet",
+      "noMatch": "No tag matches",
+      "none": "No tags on this restock yet.",
+      "add": "Add a tag…",
+      "addLabel": "Add a tag",
+      "typeToCreate": "Type a name to make a new tag",
+      "createCustom": "Create tag “{{name}}”",
+      "createSystem": "Create system tag “{{name}}”",
+      "system": "System tag",
+      "adminOnly": "Admin only",
+      "alreadyOn": "Already on this restock",
+      "remove": "Remove tag {{name}}",
+      "saveFailed": "The tags were not saved",
+      "shared": "The selling team and the warehouse see the same tags.",
+      "lockedHint": "A system tag (with a lock) is put on by the app or an admin; you cannot change it.",
+      "adminHint": "As an admin you may also make a system tag, put one on or take it off, and rename or delete any tag.",
+      "brokenBadge_one": "{{count}} broken",
+      "brokenBadge_other": "{{count}} broken",
+      "manage": {
+        "open": "Manage tags",
+        "title": "Manage tags",
+        "hint": "Every team's tags. A rename or a delete applies to every restock that carries the tag.",
+        "usage_one": "{{count}} restock",
+        "usage_other": "{{count}} restocks",
+        "rename": "Rename {{name}}",
+        "delete": "Delete {{name}}",
+        "save": "Save",
+        "taken": "Another tag already has this name.",
+        "deleteTitle": "Delete tag “{{name}}”?",
+        "deleteMessage_one": "It comes off the {{count}} restock that carries it, for every team. This cannot be undone.",
+        "deleteMessage_other": "It comes off the {{count}} restocks that carry it, for every team. This cannot be undone.",
+        "deleteMessageNone": "No restock carries it. It leaves the list for every team.",
+        "deleteConfirm": "Delete tag"
+      },
+      "byApp": "Put on by the app"
     }
   },
   "shops": {
@@ -2986,7 +3007,16 @@
     "adjustFoundSend": "Send for Approval",
     "adjustFoundSentToast": "{{count}} × {{productCode}} sent for approval",
     "adjustFoundSentToastDetail": "Nothing changes until the warehouse Owner or Admin approves it.",
-    "pickHeldHelp": "Only products this warehouse holds or has held. One never stocked here comes in by its team's restock."
+    "pickHeldHelp": "Only products this warehouse holds or has held. One never stocked here comes in by its team's restock.",
+    "foundFromOrder": {
+      "title": "Report Found from Order #{{id}}",
+      "staysLost": "The order stays lost and its timeline names this report. Stock changes once another Owner or Admin approves it.",
+      "product": "Product of the order",
+      "productPlaceholder": "Pick a product of the order",
+      "rack": "Rack it goes on",
+      "rackPlaceholder": "Pick a rack",
+      "amountHelper": "At most {{n}} — what the order took."
+    }
   },
   "address": {
     "loading": "Loading…",
@@ -3183,7 +3213,8 @@
       "markHandedOver": "Mark Handed Over",
       "acceptReturn": "Accept Return",
       "forceReturn": "Force Return",
-      "receiveReturn": "Receive a Return"
+      "receiveReturn": "Receive a Return",
+      "reportFound": "Report Found"
     },
     "detail": {
       "title": "Order #{{id}}",
@@ -3224,6 +3255,16 @@
       "relabelCount_one": "Print {{count}} label and stick it over {{code}}",
       "relabelCount_other": "Print {{count}} labels and stick each over {{code}}",
       "relabelNone": "Nothing sound comes back — no label to print",
+      "relabelPrint": {
+        "title": "Print the Labels",
+        "accepted": "Return #{{id}} is accepted — print its labels now",
+        "intro": "Stick each label over the old one before the units go on the shelf, so a later pick scan matches.",
+        "total_one": "{{count}} label to print",
+        "total_other": "{{count}} labels to print",
+        "paper": "on this device's label paper, {{width}} × {{height}} mm",
+        "print": "Print Labels",
+        "done": "Done"
+      },
       "cameBack": "What came back",
       "missing": "Missing",
       "missingOf": "Missing units of {{name}}",
@@ -4035,7 +4076,10 @@
       "done_one": "{{count}} parcel handed over",
       "done_other": "{{count}} parcels handed over",
       "several": "Several orders — none handed over",
-      "severalHint": "{{orders}} carry this label. Ask the selling team or the warehouse admin which one ships."
+      "severalHint": "{{orders}} carry this label. Ask the selling team or the warehouse admin which one ships.",
+      "perCourier": "Per courier",
+      "parcels_one": "{{count}} parcel",
+      "parcels_other": "{{count}} parcels"
     },
     "find": {
       "title": "Find This Parcel",
@@ -4135,11 +4179,17 @@
         "skipped_one": "Skipped ({{count}})",
         "skipped_other": "Skipped ({{count}})",
         "toShop_one": "Posted to the shop ({{count}})",
-        "toShop_other": "Posted to the shop ({{count}})"
+        "toShop_other": "Posted to the shop ({{count}})",
+        "posted_one": "Posted ({{count}})",
+        "posted_other": "Posted ({{count}})",
+        "existing_one": "Already there ({{count}})",
+        "existing_other": "Already there ({{count}})"
       },
       "heldNote": "These rows could not post. Once the reason is fixed, upload the same file again — only these rows go in.",
       "skippedNote": "These rows are not recorded, by design — they repeat money another row already carries, or a withdrawal that did not go through.",
       "toShopNote": "These rows went to the shop: their order was not found, or their ref is on several live orders (each named). An order entered later does not receive them.",
+      "postedNote": "Every row that posted — each to the order its ref names, or to the shop: a row that names no order, like a withdrawal, or whose order was not found (those are also under Posted to the shop).",
+      "existingNote": "These rows were already in the ledger — the same rows, imported before — so nothing was posted again.",
       "noLines": "No rows here."
     },
     "line": {
@@ -4160,6 +4210,11 @@
       "repeatsOrderDetails": "Repeats the order rows",
       "failedWithdrawal": "A withdrawal that did not succeed",
       "severalOrders": "On several live orders — none was credited"
+    },
+    "result": {
+      "postedToOrder": "Posted to its order",
+      "postedToShop": "Posted to the shop — the row names no order",
+      "existing": "Already in the ledger — imported before"
     },
     "type": {
       "unspecified": "—",
@@ -5279,6 +5334,7 @@
       "ordersReturnCreated": "Returns created",
       "ordersReturnArrived": "Returns arrived",
       "ordersLostCreated": "Orders lost",
+      "ordersMoves": "Order status moves",
       "settlement": "Settlement",
       "settlementTypes": "Settlement by type",
       "ads": "Ads expense",
@@ -5335,6 +5391,15 @@
       "ordersCancelled": {
         "mp_total": "Cancelled MP total"
       },
+      "ordersMoves": {
+        "confirmed_count": "Confirmed",
+        "back_to_pending_count": "Back to pending",
+        "picked_count": "Picked",
+        "handed_over_count": "Handed over",
+        "shipped_count": "Shipped",
+        "problem_count": "Problem",
+        "completed_count": "Completed"
+      },
       "financialAccounts": {
         "opening_balance": "Opening balance",
         "expense": "Expense",
@@ -5367,10 +5432,15 @@
         "total": "Total expenses"
       },
       "inventoryRestock": {
+        "ordered_count": "Units ordered",
+        "ordered_value": "Value ordered",
+        "lost_count": "Units lost on the way",
+        "lost_value": "Value lost on the way",
         "accepted_count": "Units accepted",
         "accepted_value": "Value accepted",
         "broken_count": "Broken at the door",
-        "missing_count": "Missing at the door"
+        "missing_count": "Missing at the door",
+        "cod_amount": "Courier COD"
       },
       "inventoryTransfer": {
         "sent_count": "Units sent",
@@ -5574,7 +5644,8 @@
       "withdrawn": "Withdrawn by {{name}} · {{when}}",
       "settledBy": "Closed by {{name}}'s finalize · {{when}}",
       "settledByCount": "Settled by count #{{id}}",
-      "settledLine": "The count counted these units on the rack and posted them itself — nothing more posts."
+      "settledLine": "The count counted these units on the rack and posted them itself — nothing more posts.",
+      "fromOrder": "From lost order #{{id}}"
     },
     "lines": {
       "type": "Posts",
@@ -5584,7 +5655,9 @@
       "amount": "Amount",
       "newBatch": "New batch",
       "newBatchId": "New batch #{{id}}",
-      "claims": "loss #{{id}} of {{date}}"
+      "claims": "loss #{{id}} of {{date}}",
+      "orderBatch": "New batch, at the order's cost",
+      "orderBatchId": "New batch #{{id}}, at the order's cost"
     },
     "table": {
       "no": "No.",
@@ -5596,7 +5669,8 @@
       "value": "Value",
       "actions": "Actions",
       "units_one": "{{count}} unit",
-      "units_other": "{{count}} units"
+      "units_other": "{{count}} units",
+      "order": "Order #{{id}}"
     },
     "detail": {
       "title": "Found #{{id}} Details"
@@ -5604,7 +5678,8 @@
     "post": {
       "unspecified": "—",
       "claim": "Claimed back",
-      "mint": "New stock"
+      "mint": "New stock",
+      "orderMint": "Back from the order"
     },
     "block": {
       "ownReport": "You reported it — another Owner or Admin approves it.",
@@ -5745,6 +5820,309 @@
       "out": "{{count}} Missing (correction)",
       "in": "{{count}} into the batch",
       "kind": "Received count corrected"
+    }
+  },
+  "bulkPick": {
+    "title": "Pick List",
+    "bar": "Pick List",
+    "summary_one": "{{count}} order · {{units}} units",
+    "summary_other": "{{count}} orders · {{units}} units",
+    "view": {
+      "product": "By Product",
+      "order": "By Order"
+    },
+    "staysNote": "A list for walking the racks — the orders stay Confirmed. Each parcel is still scanned on its order's page before it is Picked.",
+    "col": {
+      "total": "Total Qty",
+      "racks": "Racks · qty",
+      "orders": "Orders"
+    },
+    "forOrders_one": "for {{count}} order",
+    "forOrders_other": "for {{count}} orders",
+    "units_one": "{{count}} unit",
+    "units_other": "{{count}} units",
+    "open": "Open",
+    "openLabel": "Open order {{ref}} to scan it",
+    "empty": {
+      "title": "No orders chosen",
+      "hint": "Tick Confirmed orders on the list, then Pick List."
+    },
+    "skipped": "{{count}} not Confirmed — skipped",
+    "noneConfirmed": "None of the ticked orders is Confirmed"
+  },
+  "printReceipts": {
+    "title": "Print Labels",
+    "heading_one": "Print Labels · {{count}} Order",
+    "heading_other": "Print Labels · {{count}} Orders",
+    "back": "Back to the order list",
+    "print": "Print",
+    "warehouseOnly": "Only a warehouse prints the labels of the orders it ships.",
+    "none": "No order on this print",
+    "noneHint": "Tick orders on the warehouse's order list, then press Print Labels.",
+    "settings": {
+      "title": "Print Settings",
+      "statusChange": "Confirm after printing",
+      "statusChangeOn": "Orders still To confirm move to Confirmed once their label is in the PDF. A reprint keeps the order's step.",
+      "statusChangeOff": "The labels print and every order keeps its step.",
+      "monitorHint": "A monitoring team prints only — no order moves.",
+      "unboxing": "Unboxing video warning",
+      "unboxingOn": "Every label page carries the unboxing-video sentence at its foot. Remembered on this device.",
+      "unboxingOff": "The labels print as they are. Remembered on this device."
+    },
+    "list": {
+      "title": "Orders on This Print",
+      "line_one": "{{count}} order",
+      "line_other": "{{count}} orders",
+      "withoutLabel_one": "{{count}} without a label",
+      "withoutLabel_other": "{{count}} without a label",
+      "toConfirm_one": "{{count}} to confirm",
+      "toConfirm_other": "{{count}} to confirm",
+      "order": "Order",
+      "label": "Label",
+      "remove": "Take order #{{id}} off this print",
+      "loading": "Reading the order…",
+      "notFound": "Not an order of this warehouse."
+    },
+    "label": {
+      "attached": "Label attached",
+      "missing": "No label",
+      "printed": "In the PDF",
+      "leftOut": "Not in the PDF",
+      "reason": {
+        "notShippedHere": "Not shipped from here",
+        "noLabel": "No label attached",
+        "unreadable": "File can't be read",
+        "refused": "Could not be opened"
+      }
+    },
+    "move": {
+      "moved": "Moved just now",
+      "refused": "Not moved: {{reason}}"
+    },
+    "result": {
+      "printed": "{{printed}} of {{total}} labels in the PDF",
+      "moved_one": "{{count}} order moved to Confirmed",
+      "moved_other": "{{count}} orders moved to Confirmed",
+      "nothingToMove": "No order was waiting to be confirmed — every step stays.",
+      "statusOff": "Confirm after printing was off — every order keeps its step.",
+      "openPdf": "Open PDF",
+      "unboxing": "Every label page carries the unboxing-video warning."
+    }
+  },
+  "customShipment": {
+    "title": "Custom Shipments",
+    "titleWarehouse": "Parcels to Ship",
+    "new": "New Parcel",
+    "unavailable": "Custom shipments are a prototype — not available yet.",
+    "sellingOnly": "Custom shipments are created by a selling team.",
+    "warehouseOnly": "This page is the shipping warehouse's.",
+    "teamRef": "Team #{{id}}",
+    "userRef": "User #{{id}}",
+    "searchPlaceholder": "Search #, recipient or product",
+    "kindAll": "All kinds",
+    "warehouseAll": "All warehouses",
+    "none": "No parcels match",
+    "empty": "No custom shipments yet",
+    "emptyHint": "Send a sample to someone, or a problem restock's broken goods back to its supplier.",
+    "emptyWarehouse": "No parcels to ship",
+    "emptyTab": "No {{status}} parcels",
+    "tab": {
+      "all": "All"
+    },
+    "status": {
+      "requested": "Requested",
+      "picked": "Picked",
+      "handedOver": "Handed over",
+      "cancelled": "Cancelled"
+    },
+    "kind": {
+      "sample": "Sample",
+      "reship": "Back to supplier"
+    },
+    "payer": {
+      "team": "We pay",
+      "warehouse": "Warehouse pays",
+      "teamForWarehouse": "{{team}} pays — do not pay the courier",
+      "warehouseForWarehouse": "Warehouse pays — billed to {{team}}"
+    },
+    "actions": {
+      "menu": "Parcel actions",
+      "editCost": "Edit Shipping Cost",
+      "cancel": "Cancel",
+      "handover": "Hand Over to Courier"
+    },
+    "table": {
+      "parcel": "Parcel",
+      "recipient": "Recipient",
+      "warehouse": "Warehouse",
+      "owner": "Owner",
+      "products": "Products",
+      "shipping": "Courier",
+      "value": "Value",
+      "actions": "Actions",
+      "by": "by {{name}}",
+      "more_one": "+{{count}} more",
+      "more_other": "+{{count}} more",
+      "itemsSummary_one": "{{count}} product · {{pieces}} pcs",
+      "itemsSummary_other": "{{count}} products · {{pieces}} pcs",
+      "units_one": "{{count}} unit",
+      "units_other": "{{count}} units",
+      "teamPays": "We pay · {{amount}}",
+      "costNotYet": "cost not set yet",
+      "teamPaysForWarehouse": "Paid by the team",
+      "warehousePays": "Warehouse pays · at handover",
+      "warehousePaid": "Warehouse paid {{amount}}",
+      "product": "Product",
+      "qty": "Qty",
+      "rack": "Rack",
+      "brokenNote": "Broken note",
+      "kind": "Kind",
+      "created": "Created"
+    },
+    "form": {
+      "back": "Back",
+      "kind": "Kind",
+      "sampleHint": "The team's goods from the warehouse's racks, sent to someone. A sample handed over in person is still recorded on the rack.",
+      "reshipHint": "A problem restock's broken units, sent back to its supplier. They were never on a rack, so no rack stock is taken.",
+      "goods": "Goods",
+      "warehouse": "Warehouse",
+      "warehousePlaceholder": "Select a warehouse",
+      "products": "Products",
+      "pickProducts": "Pick Products",
+      "warehouseFirst": "Pick the warehouse first — the products come from its shelves.",
+      "noLines": "No products yet.",
+      "available": "{{count}} on hand",
+      "availableUnknown": "on hand unknown",
+      "removeLine": "Remove",
+      "restock": "Problem restock",
+      "restockPlaceholder": "Select a restock with broken goods",
+      "restockOption_one": "#{{id}} · {{warehouse}} · {{count}} broken unit",
+      "restockOption_other": "#{{id}} · {{warehouse}} · {{count}} broken units",
+      "restockFacts": "Received at {{warehouse}} on {{date}} — it ships from there.",
+      "noRestock": "No received restock has broken goods left to send back.",
+      "supplier": "Supplier",
+      "supplierHint": "One parcel goes to one supplier — the others' broken goods are a parcel of their own.",
+      "noSupplier": "No supplier named",
+      "brokenNote": "Broken: {{note}}",
+      "brokenLeft": "{{count}} broken left",
+      "brokenLeftAfterSent": "{{count}} left · {{broken}} broken, {{sent}} already on a parcel",
+      "recipient": "Recipient",
+      "prefilled": "Filled in from {{name}}'s supplier record — change it if needed.",
+      "prefilledPartly": "Filled in from {{name}}'s supplier record, which lacks a contact or an address — type what is missing.",
+      "prefilledNone": "These lines name no supplier — type the recipient.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Rina Kusuma",
+      "phone": "Phone",
+      "phonePlaceholder": "e.g. 0812-3456-7890",
+      "address": "Address",
+      "addressPlaceholder": "e.g. Jl. Merdeka 12, Sukajadi, Bandung 40162",
+      "shipping": "Shipping",
+      "courier": "Courier",
+      "courierPlaceholder": "Select a courier",
+      "payer": "Who pays the courier",
+      "warehousePaysHint": "The warehouse pays the courier at the handover and types the real cost; the team owes it back through Team Balance.",
+      "teamPaysHint": "The team pays from one of its accounts — an expense. The cost can be set or changed until the handover.",
+      "account": "Paid from",
+      "cost": "Shipping cost",
+      "costHint": "May be typed later, until the handover.",
+      "note": "Note for the warehouse",
+      "notePlaceholder": "e.g. wrap in bubble wrap, send before Friday",
+      "sampleValueHint": "Taken from the racks at create, at the batches' value — it leaves as a sample.",
+      "reshipValueHint": "Broken units only — no rack stock is taken.",
+      "ready": "Ready to create",
+      "submit": "Create Parcel",
+      "missing": {
+        "warehouse": "warehouse",
+        "lines": "products",
+        "count": "quantity",
+        "stock": "over stock",
+        "restock": "restock",
+        "supplier": "supplier",
+        "broken": "broken units",
+        "overBroken": "over the broken count",
+        "name": "name",
+        "phone": "phone",
+        "address": "address",
+        "courier": "courier",
+        "account": "account"
+      }
+    },
+    "detail": {
+      "title": "Parcel #{{id}}",
+      "back": "Back",
+      "backToQueue": "Back",
+      "notFound": "Parcel not found.",
+      "parcel": "Parcel",
+      "kind": "Kind",
+      "fromRestock": "from restock #{{id}}",
+      "warehouse": "Ships from",
+      "owner": "Owner",
+      "recipient": "Recipient",
+      "address": "Address",
+      "courier": "Courier",
+      "payer": "Who pays",
+      "ongkir": "Shipping cost",
+      "account": "Paid from",
+      "accountRef": "Account #{{id}}",
+      "resi": "Receipt number",
+      "created": "Created",
+      "note": "Note",
+      "costNotYet": "Not set yet — until the handover",
+      "doNotPay": "Paid by the team — not the warehouse's",
+      "costAtHandover": "Typed by the warehouse at the handover",
+      "owedToWarehouse": "{{amount}} — owed to the warehouse through Team Balance",
+      "owedByTeam": "{{amount}} — billed to {{team}}",
+      "lines": "Goods",
+      "brokenHint": "Broken units of restock #{{id}} — never on a rack.",
+      "noteFromTeam": "Note from the team"
+    },
+    "pick": {
+      "title": "Pick list",
+      "noRack": "No recorded rack"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "created": "Requested",
+      "picked": "Picked",
+      "handedOver": "Handed over to the courier",
+      "cancelled": "Cancelled",
+      "changed": "Changed",
+      "costEdited": "Shipping cost changed",
+      "awaitingPick": "Waiting for the warehouse to pick",
+      "awaitingHandover": "Waiting for the handover",
+      "warehousePaid": "The warehouse paid {{amount}} — owed back through Team Balance",
+      "teamPaid": "The courier is paid by us",
+      "teamPaidForWarehouse": "Paid by the team",
+      "resi": "Receipt {{resi}}"
+    },
+    "cost": {
+      "title": "Shipping cost of #{{id}}",
+      "message": "Our account and the cost — until the parcel is handed over.",
+      "confirm": "Save"
+    },
+    "cancel": {
+      "title": "Cancel parcel #{{id}}?",
+      "confirm": "Cancel Parcel",
+      "dismiss": "Keep",
+      "messageSample": "Its units go back on the racks they were taken from.",
+      "messageReship": "Its broken units can go on another parcel."
+    },
+    "handover": {
+      "title": "Hand over #{{id}} to the courier",
+      "confirm": "Hand Over",
+      "cost": "Shipping cost the warehouse paid",
+      "costHint": "Billed to {{team}} through Team Balance. 0 is allowed.",
+      "teamPays": "{{team}} pays this courier — the warehouse does not pay.",
+      "resi": "Receipt number",
+      "resiPlaceholder": "e.g. JNE0123456789"
+    },
+    "toast": {
+      "created": "Parcel created",
+      "cancelled": "Parcel cancelled",
+      "costSaved": "Shipping cost saved",
+      "picked": "Parcel picked",
+      "handedOver": "Handed over to the courier",
+      "refused": "Not allowed in this status"
     }
   }
 }

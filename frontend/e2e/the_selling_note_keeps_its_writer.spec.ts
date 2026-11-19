@@ -21,8 +21,8 @@ import { SUFFIX, api } from "./restock_helpers";
 //
 // ⚠ NOT PINNED: an OLD restock — one whose note was written before the writer was kept — and its fallback label
 // (`restock-detail-note-selling-by-fallback`). Every raise stamps the writer, so no such row can be made through the
-// contract. An ONGOING restock's note saved from the screen still goes through the whole update (unchanged by the slice);
-// only the API test sets an ongoing note, through the note set.
+// contract. An ONGOING restock's note saved from the screen goes alone through the note set since backlog #71 — the last
+// test pins it, a colleague's line edit made while the note was open kept.
 
 const PASSWORD = "e2e-note-pass-1";
 const SERVICE = "inventory.v1.RestockRequestService";
@@ -356,6 +356,94 @@ test.describe("the selling note keeps its writer, and is written in any status",
         "claim filed with the courier → ",
       ]);
     });
+
+    await g.root.close();
+  });
+
+  test("Selling note: on an ONGOING restock it is saved alone — a colleague's line edit made while the note was open is kept, from the page and from the list's Catatan", async ({
+    browser,
+    page,
+  }) => {
+    const g = await noteGround(browser, page, "D");
+    const N1 = "first batch for the 11.11 sale";
+    const N2 = "keep two aside for the live stream";
+    const N3 = "the rest goes to the reseller";
+
+    // Every restock write Sari's page sends, by RPC name, from now on.
+    const writes: string[] = [];
+    page.on("request", (r) => {
+      const m = r.url().match(/RestockRequestService\/(RestockRequest(?:NoteSet|Update))$/);
+      if (m) writes.push(m[1]!);
+    });
+
+    // GIVEN — Sari's restock of 2 units, on its way.
+    const raised = await raise(page, g, 1, N1);
+    const id = String(raised.id);
+
+    // A colleague's edit of the line (root's, from its own page), the note sent back as it stood.
+    const lineEdit = (count: number, note: string) =>
+      api(g.root, `${SERVICE}/RestockRequestUpdate`, {
+        teamId: g.seller,
+        requestId: id,
+        warehouseId: g.warehouse,
+        financeAccountId: g.account,
+        receipt: raised.receipt,
+        note,
+        items: [{ productId: g.product.id, productCode: g.product.code, name: g.product.name, count, total: count * 10_000 }],
+      });
+
+    // WHEN — Sari opens the note on the restock's page and types; meanwhile the colleague changes the line to 3; she saves.
+    await page.goto(`/inventories/restock/${id}`);
+    const note = page.getByTestId("restock-detail-note-selling");
+    await expect(note.getByTestId("restock-detail-note")).toHaveText(N1);
+    await note.getByTestId("restock-notes-edit").click();
+    await note.getByTestId("restock-notes-input").fill(N2);
+    await lineEdit(3, N1);
+    await note.getByTestId("restock-notes-save").click();
+    await expect(note.getByTestId("restock-detail-note")).toHaveText(N2);
+
+    // THEN — the note went ALONE: the page sent one note set and no update.
+    expect(writes).toEqual(["RestockRequestNoteSet"]);
+
+    // THEN — the colleague's line edit is kept (3 units, Rp 30.000); the note is Sari's; still on its way.
+    const after = await detail(page, g, id);
+    expect(after.status).toBe("RESTOCK_REQUEST_STATUS_ONGOING");
+    expect(after.items).toHaveLength(1);
+    expect(after.items[0].count).toBe("3");
+    expect(Number(after.items[0].total)).toBe(30_000);
+    expect(after.note).toBe(N2);
+    expect(after.noteByUserId).toBe(g.sari);
+
+    // THEN — the trail: the colleague's edit row, then Sari's, which says the note before → after and nothing else.
+    expect(noteChanges(after)).toEqual([`${N1} → ${N2}`]);
+    const rows = editRows(after);
+    expect(rows).toHaveLength(2);
+    await page.reload();
+    await expect(page.getByTestId(`${rows[1]}-change-note`)).toHaveText(`Note “${N1}” → “${N2}”`);
+    await expect(page.getByTestId(`${rows[1]}-changes`).locator(`[data-testid^='${rows[1]}-change-']`)).toHaveCount(1);
+
+    // WHEN — again from the list's ⋯ › Catatan: the colleague changes the line to 4 while the dialog's note is open.
+    await page.goto("/inventories/restock");
+    await page.getByTestId(`restock-actions-${id}`).click();
+    await page.getByTestId(`restock-action-notes-${id}`).click();
+    const dialog = page.getByTestId("restock-notes-dialog");
+    await expect(dialog).toBeVisible();
+    const inDialog = dialog.getByTestId("restock-detail-note-selling");
+    await expect(inDialog.getByTestId("restock-detail-note")).toHaveText(N2);
+    await inDialog.getByTestId("restock-notes-edit").click();
+    await inDialog.getByTestId("restock-notes-input").fill(N3);
+    await lineEdit(4, N2);
+    await inDialog.getByTestId("restock-notes-save").click();
+    await expect(inDialog.getByTestId("restock-detail-note")).toHaveText(N3);
+
+    // THEN — alone again, and the line edit kept: 4 units, the note Sari's third.
+    expect(writes).toEqual(["RestockRequestNoteSet", "RestockRequestNoteSet"]);
+    const again = await detail(page, g, id);
+    expect(again.status).toBe("RESTOCK_REQUEST_STATUS_ONGOING");
+    expect(again.items[0].count).toBe("4");
+    expect(Number(again.items[0].total)).toBe(40_000);
+    expect(again.note).toBe(N3);
+    expect(noteChanges(again)).toEqual([`${N1} → ${N2}`, `${N2} → ${N3}`]);
 
     await g.root.close();
   });

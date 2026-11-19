@@ -9,7 +9,7 @@ import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_r
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
 import { useRestockDoorPhotos, useRestockRequest } from "../../features/restock/queries";
-import { shortfall } from "../../features/restock/summary";
+import { courierCharge, shortfall } from "../../features/restock/summary";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
 import { NotImplemented } from "../../features/pending/NotImplemented";
@@ -25,6 +25,9 @@ import { useStickyTitle } from "../../lib/useStickyTitle";
 import { CourierChargeFacts, DeliveryFacts, PaymentFacts } from "../../features/restock/RestockFacts";
 import { RestockNotes } from "../../features/restock/RestockNotes";
 import { RestockTitleRow } from "../../features/restock/RestockTitleRow";
+import { RestockTagsBox } from "../../features/restock/RestockTagsBox";
+import { tagsOfRequest } from "../../features/restock/restockTags";
+import { useRestockTags } from "../../features/restock/tagQueries";
 import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
 import { SIDE_COLUMN, useSideBySide } from "../../components/chrome/sideBySide";
 import { ProductsPanel } from "./components/ProductsPanel";
@@ -32,7 +35,8 @@ import { RESTOCK_SELLING_DETAIL_PENDING } from "./pending";
 
 // The page's sections in its own order (owner: *"kurasa selling juga sama, infonya di atas ongkir berarti"*,
 // the-restock-page-leads-with-the-box): the box, then the info about it — Kiriman over the money.
-const SELLING_ORDER: RestockSectionKey[] = ["products", "delivery", "payment", "courier", "note", "timeline"];
+// "tags" (#87) — under the money on the right, before the note below.
+const SELLING_ORDER: RestockSectionKey[] = ["products", "delivery", "payment", "courier", "tags", "note", "timeline"];
 
 // THE PRODUCTS CARD AT ITS NARROWEST — the warehouse page's rule (owner: *"A"*, the-delivery-card-stacks-when-the-page-is-
 // narrow) applied to its twin, which had the same fault: the lines table's min-content, 779px on 503 counted in (the
@@ -100,9 +104,14 @@ export function RestockSellingDetailPage() {
   const doorPhotos = useRestockDoorPhotos({ teamId, request });
 
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────
-  // The courier's charge is a section only once accepted — the warehouse enters it at the door.
+  // The courier's charge is a section once there is one on the restock — Terima's, final, once accepted; before that, the
+  // one the warehouse noted at Tandai Tiba, said as noted (the-courier-charge-is-noted-at-tiba-and-final-at-terima). An
+  // uncounted box with none noted has no section: Terima may still enter one.
   const accepted = request?.status === RestockRequestStatus.ACCEPTED;
-  const keys = SELLING_ORDER.filter((key) => key !== "courier" || accepted);
+  const chargeNoted = request !== null && !accepted && courierCharge(request) > 0;
+  // THE TAGS (backlog #87) — read and changed through the live RPCs (tagQueries.ts).
+  const tagsApi = useRestockTags();
+  const keys = SELLING_ORDER.filter((key) => key !== "courier" || accepted || chargeNoted);
   // The info and money column only where the PAGE AREA holds it beside the products (the-delivery-card-stacks-when-the-
   // page-is-narrow) — measured on the main column before the first paint, never the viewport's `xl`, which ignores the
   // sidebar: at 1440 and 1600 with the sidebar open the products table scrolled sideways beside it.
@@ -115,7 +124,7 @@ export function RestockSellingDetailPage() {
     stick.bar,
     keys,
     restockSectionDomId,
-    wide ? keys.filter((key) => key !== "delivery" && key !== "payment" && key !== "courier") : undefined,
+    wide ? keys.filter((key) => key !== "delivery" && key !== "payment" && key !== "courier" && key !== "tags") : undefined,
   );
   const navSections = keys.map((key) => {
     const entry = restockSection(key);
@@ -235,12 +244,16 @@ export function RestockSellingDetailPage() {
   );
   const payment = section("payment", <PaymentFacts request={request} teamId={teamId} />, "restock-detail-payment");
   const courier =
-    accepted &&
+    (accepted || chargeNoted) &&
     section(
       "courier",
       <CourierChargeFacts
         request={request}
-        owed={t("restock.detail.courierChargeOwedBySelling", { warehouse: warehouseName })}
+        owed={
+          accepted
+            ? t("restock.detail.courierChargeOwedBySelling", { warehouse: warehouseName })
+            : t("restock.detail.courierChargeNotedBySelling", { warehouse: warehouseName })
+        }
         slipUrl={doorPhotos.slip}
       />,
       "restock-detail-courier-charge-card",
@@ -249,6 +262,13 @@ export function RestockSellingDetailPage() {
     "products",
     <ProductsPanel request={request} teamId={teamId} brokenPhotos={doorPhotos.broken} />,
     "restock-detail-products",
+  );
+  // THE RESTOCK'S TAGS (#87): one set, the warehouse's screen reads the same (custom-tags-are-shared-system-tags-are-the-
+  // admins-and-the-apps). Under the money on the right where there is room, else before the note.
+  const tags = section(
+    "tags",
+    <RestockTagsBox requestId={request.id} tags={tagsOfRequest(request)} api={tagsApi} />,
+    "restock-detail-tags-section",
   );
   // ONE NOTE PER WRITER (the-notes-are-one-per-writer) — the selling team's, written here; the receiving warehouse's,
   // read here with who and when (the-warehouse-writes-its-own-note).
@@ -296,7 +316,7 @@ export function RestockSellingDetailPage() {
         )}
 
         {/* THE MONEY ON THE RIGHT, SMALL (owner: *"pembayaran terlalu kurang desainnya buat lebih kecil saja taruh kanan"*,
-            payment-is-a-receipt-on-the-right) — Pembayaran, and Ongkir COD under it once accepted, a 20rem column beside the
+            payment-is-a-receipt-on-the-right) — Pembayaran, and Ongkir COD under it once there is one, a 20rem column beside the
             main one where the page area has room for both (the-delivery-card-stacks-when-the-page-is-narrow); below the
             products otherwise, in the nav's order. A JS branch, so no card exists twice. ⚠ ONE TREE FOR BOTH: the sidebar
             opening or closing flips the layout, and only the info cards move — the products, the note being typed and the
@@ -309,6 +329,7 @@ export function RestockSellingDetailPage() {
               {!wide && delivery}
               {!wide && payment}
               {!wide && courier}
+              {!wide && tags}
               {note}
               {timeline}
             </Stack>
@@ -318,6 +339,7 @@ export function RestockSellingDetailPage() {
                 {delivery}
                 {payment}
                 {courier}
+                {tags}
               </Stack>
             )}
           </Grid>

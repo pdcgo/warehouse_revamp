@@ -193,6 +193,8 @@ flowchart LR
 
 ## an-adjustment-counts-on-the-day-it-fixes
 
+> ⛔ **SUPERSEDED for Analytic** *(2026-11-06, marked 2026-11-18)* by [an-expense-correction-counts-on-the-day-it-is-made](./rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made) — in Analytic a correction counts on **the day it is made**; the Expenses page's month list keeps this rule. (The scoped mark was missed when the newer entry was recorded.)
+
 > Owner, in chat (2026-10-19): *"yes, follow recomendation"* — to [Q6](./context_clarify.md#question), *"which day does an
 > adjustment count on: the day it's made, or the day of the expense it fixes?"*. As recommended.
 

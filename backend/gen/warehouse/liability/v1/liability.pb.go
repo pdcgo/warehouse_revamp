@@ -490,6 +490,13 @@ const (
 	// with a claim that never landed could only leave it at RECORDED forever — or confirm it, writing a
 	// real ledger movement for money that never moved.
 	LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_REJECTED LiabilityPaymentStatus = 4
+	// THE PAYER TOOK ITS OWN CLAIM BACK before the creditor decided (a-pending-payment-is-cancelled-by-its-selling-team) —
+	// a selling team that recorded a wrong amount, say. Only a RECORDED payment gets here, and only by its payer.
+	//
+	// ⚠ IT POSTS NOTHING, like REJECTED: a pending claim never moved money, so there is nothing to undo. It is TERMINAL —
+	// the creditor can no longer accept or reject it — and the row stays in both teams' history. Paying again is a NEW
+	// payment, as after a rejection.
+	LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_CANCELLED LiabilityPaymentStatus = 5
 )
 
 // Enum value maps for LiabilityPaymentStatus.
@@ -499,12 +506,14 @@ var (
 		1: "LIABILITY_PAYMENT_STATUS_RECORDED",
 		2: "LIABILITY_PAYMENT_STATUS_CONFIRMED",
 		4: "LIABILITY_PAYMENT_STATUS_REJECTED",
+		5: "LIABILITY_PAYMENT_STATUS_CANCELLED",
 	}
 	LiabilityPaymentStatus_value = map[string]int32{
 		"LIABILITY_PAYMENT_STATUS_UNSPECIFIED": 0,
 		"LIABILITY_PAYMENT_STATUS_RECORDED":    1,
 		"LIABILITY_PAYMENT_STATUS_CONFIRMED":   2,
 		"LIABILITY_PAYMENT_STATUS_REJECTED":    4,
+		"LIABILITY_PAYMENT_STATUS_CANCELLED":   5,
 	}
 )
 
@@ -3319,6 +3328,105 @@ func (x *LiabilityPaymentRejectResponse) GetPayment() *LiabilityPayment {
 	return nil
 }
 
+// The PAYER takes back its own pending claim (a-pending-payment-is-cancelled-by-its-selling-team).
+type LiabilityPaymentCancelRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The PAYER — and the scope, as in record. Only the team that made the claim may take it back; another team's payment
+	// reads as NOT FOUND, so ids cannot be probed to learn who owes whom.
+	TeamId        uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	PaymentId     uint64 `protobuf:"varint,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LiabilityPaymentCancelRequest) Reset() {
+	*x = LiabilityPaymentCancelRequest{}
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LiabilityPaymentCancelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LiabilityPaymentCancelRequest) ProtoMessage() {}
+
+func (x *LiabilityPaymentCancelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LiabilityPaymentCancelRequest.ProtoReflect.Descriptor instead.
+func (*LiabilityPaymentCancelRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *LiabilityPaymentCancelRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentCancelRequest) GetPaymentId() uint64 {
+	if x != nil {
+		return x.PaymentId
+	}
+	return 0
+}
+
+type LiabilityPaymentCancelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Payment       *LiabilityPayment      `protobuf:"bytes,1,opt,name=payment,proto3" json:"payment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LiabilityPaymentCancelResponse) Reset() {
+	*x = LiabilityPaymentCancelResponse{}
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LiabilityPaymentCancelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LiabilityPaymentCancelResponse) ProtoMessage() {}
+
+func (x *LiabilityPaymentCancelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LiabilityPaymentCancelResponse.ProtoReflect.Descriptor instead.
+func (*LiabilityPaymentCancelResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *LiabilityPaymentCancelResponse) GetPayment() *LiabilityPayment {
+	if x != nil {
+		return x.Payment
+	}
+	return nil
+}
+
 type LiabilityPaymentListFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 0 = every counterparty.
@@ -3338,7 +3446,7 @@ type LiabilityPaymentListFilter struct {
 
 func (x *LiabilityPaymentListFilter) Reset() {
 	*x = LiabilityPaymentListFilter{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[35]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3350,7 +3458,7 @@ func (x *LiabilityPaymentListFilter) String() string {
 func (*LiabilityPaymentListFilter) ProtoMessage() {}
 
 func (x *LiabilityPaymentListFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[35]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3363,7 +3471,7 @@ func (x *LiabilityPaymentListFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityPaymentListFilter.ProtoReflect.Descriptor instead.
 func (*LiabilityPaymentListFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{35}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *LiabilityPaymentListFilter) GetCounterpartyId() uint64 {
@@ -3413,7 +3521,7 @@ type LiabilityPaymentListRequest struct {
 
 func (x *LiabilityPaymentListRequest) Reset() {
 	*x = LiabilityPaymentListRequest{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[36]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3425,7 +3533,7 @@ func (x *LiabilityPaymentListRequest) String() string {
 func (*LiabilityPaymentListRequest) ProtoMessage() {}
 
 func (x *LiabilityPaymentListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[36]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3438,7 +3546,7 @@ func (x *LiabilityPaymentListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityPaymentListRequest.ProtoReflect.Descriptor instead.
 func (*LiabilityPaymentListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{36}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *LiabilityPaymentListRequest) GetTeamId() uint64 {
@@ -3478,7 +3586,7 @@ type LiabilityPaymentMapItem struct {
 
 func (x *LiabilityPaymentMapItem) Reset() {
 	*x = LiabilityPaymentMapItem{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[37]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3490,7 +3598,7 @@ func (x *LiabilityPaymentMapItem) String() string {
 func (*LiabilityPaymentMapItem) ProtoMessage() {}
 
 func (x *LiabilityPaymentMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[37]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3503,7 +3611,7 @@ func (x *LiabilityPaymentMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityPaymentMapItem.ProtoReflect.Descriptor instead.
 func (*LiabilityPaymentMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{37}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *LiabilityPaymentMapItem) GetMapData() map[uint64]*LiabilityPayment {
@@ -3526,7 +3634,7 @@ type LiabilityPaymentListResponseItem struct {
 
 func (x *LiabilityPaymentListResponseItem) Reset() {
 	*x = LiabilityPaymentListResponseItem{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[38]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3538,7 +3646,7 @@ func (x *LiabilityPaymentListResponseItem) String() string {
 func (*LiabilityPaymentListResponseItem) ProtoMessage() {}
 
 func (x *LiabilityPaymentListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[38]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3551,7 +3659,7 @@ func (x *LiabilityPaymentListResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityPaymentListResponseItem.ProtoReflect.Descriptor instead.
 func (*LiabilityPaymentListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{38}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *LiabilityPaymentListResponseItem) GetD() isLiabilityPaymentListResponseItem_D {
@@ -3606,7 +3714,7 @@ type LiabilityPaymentListResponse struct {
 
 func (x *LiabilityPaymentListResponse) Reset() {
 	*x = LiabilityPaymentListResponse{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[39]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3618,7 +3726,7 @@ func (x *LiabilityPaymentListResponse) String() string {
 func (*LiabilityPaymentListResponse) ProtoMessage() {}
 
 func (x *LiabilityPaymentListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[39]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3631,7 +3739,7 @@ func (x *LiabilityPaymentListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityPaymentListResponse.ProtoReflect.Descriptor instead.
 func (*LiabilityPaymentListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{39}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *LiabilityPaymentListResponse) GetItems() []*LiabilityPaymentListResponseItem {
@@ -3680,7 +3788,7 @@ type LiabilityTerms struct {
 
 func (x *LiabilityTerms) Reset() {
 	*x = LiabilityTerms{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[40]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3692,7 +3800,7 @@ func (x *LiabilityTerms) String() string {
 func (*LiabilityTerms) ProtoMessage() {}
 
 func (x *LiabilityTerms) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[40]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3705,7 +3813,7 @@ func (x *LiabilityTerms) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTerms.ProtoReflect.Descriptor instead.
 func (*LiabilityTerms) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{40}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *LiabilityTerms) GetTeamId() uint64 {
@@ -3740,7 +3848,7 @@ type LiabilityTermsListRequest struct {
 
 func (x *LiabilityTermsListRequest) Reset() {
 	*x = LiabilityTermsListRequest{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[41]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3752,7 +3860,7 @@ func (x *LiabilityTermsListRequest) String() string {
 func (*LiabilityTermsListRequest) ProtoMessage() {}
 
 func (x *LiabilityTermsListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[41]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3765,7 +3873,7 @@ func (x *LiabilityTermsListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsListRequest.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{41}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *LiabilityTermsListRequest) GetTeamId() uint64 {
@@ -3800,7 +3908,7 @@ type LiabilityTermsMapItem struct {
 
 func (x *LiabilityTermsMapItem) Reset() {
 	*x = LiabilityTermsMapItem{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[42]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3812,7 +3920,7 @@ func (x *LiabilityTermsMapItem) String() string {
 func (*LiabilityTermsMapItem) ProtoMessage() {}
 
 func (x *LiabilityTermsMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[42]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3825,7 +3933,7 @@ func (x *LiabilityTermsMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsMapItem.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{42}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *LiabilityTermsMapItem) GetMapData() map[uint64]*LiabilityTerms {
@@ -3848,7 +3956,7 @@ type LiabilityTermsListResponseItem struct {
 
 func (x *LiabilityTermsListResponseItem) Reset() {
 	*x = LiabilityTermsListResponseItem{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[43]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3860,7 +3968,7 @@ func (x *LiabilityTermsListResponseItem) String() string {
 func (*LiabilityTermsListResponseItem) ProtoMessage() {}
 
 func (x *LiabilityTermsListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[43]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3873,7 +3981,7 @@ func (x *LiabilityTermsListResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsListResponseItem.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{43}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *LiabilityTermsListResponseItem) GetD() isLiabilityTermsListResponseItem_D {
@@ -3928,7 +4036,7 @@ type LiabilityTermsListResponse struct {
 
 func (x *LiabilityTermsListResponse) Reset() {
 	*x = LiabilityTermsListResponse{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[44]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3940,7 +4048,7 @@ func (x *LiabilityTermsListResponse) String() string {
 func (*LiabilityTermsListResponse) ProtoMessage() {}
 
 func (x *LiabilityTermsListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[44]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3953,7 +4061,7 @@ func (x *LiabilityTermsListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsListResponse.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{44}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *LiabilityTermsListResponse) GetItems() []*LiabilityTermsListResponseItem {
@@ -3997,7 +4105,7 @@ type LiabilityTermsSetRequest struct {
 
 func (x *LiabilityTermsSetRequest) Reset() {
 	*x = LiabilityTermsSetRequest{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[45]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4009,7 +4117,7 @@ func (x *LiabilityTermsSetRequest) String() string {
 func (*LiabilityTermsSetRequest) ProtoMessage() {}
 
 func (x *LiabilityTermsSetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[45]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4022,7 +4130,7 @@ func (x *LiabilityTermsSetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsSetRequest.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsSetRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{45}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *LiabilityTermsSetRequest) GetTeamId() uint64 {
@@ -4062,7 +4170,7 @@ type LiabilityTermsSetResponse struct {
 
 func (x *LiabilityTermsSetResponse) Reset() {
 	*x = LiabilityTermsSetResponse{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[46]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4074,7 +4182,7 @@ func (x *LiabilityTermsSetResponse) String() string {
 func (*LiabilityTermsSetResponse) ProtoMessage() {}
 
 func (x *LiabilityTermsSetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[46]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4087,7 +4195,7 @@ func (x *LiabilityTermsSetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsSetResponse.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsSetResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{46}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *LiabilityTermsSetResponse) GetTerms() *LiabilityTerms {
@@ -4112,7 +4220,7 @@ type LiabilityTermsDeleteRequest struct {
 
 func (x *LiabilityTermsDeleteRequest) Reset() {
 	*x = LiabilityTermsDeleteRequest{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[47]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4124,7 +4232,7 @@ func (x *LiabilityTermsDeleteRequest) String() string {
 func (*LiabilityTermsDeleteRequest) ProtoMessage() {}
 
 func (x *LiabilityTermsDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[47]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4137,7 +4245,7 @@ func (x *LiabilityTermsDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsDeleteRequest.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{47}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *LiabilityTermsDeleteRequest) GetTeamId() uint64 {
@@ -4169,7 +4277,7 @@ type LiabilityTermsDeleteResponse struct {
 
 func (x *LiabilityTermsDeleteResponse) Reset() {
 	*x = LiabilityTermsDeleteResponse{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[48]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4181,7 +4289,7 @@ func (x *LiabilityTermsDeleteResponse) String() string {
 func (*LiabilityTermsDeleteResponse) ProtoMessage() {}
 
 func (x *LiabilityTermsDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[48]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4194,7 +4302,7 @@ func (x *LiabilityTermsDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsDeleteResponse.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{48}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{50}
 }
 
 // LiabilityTermsChange is one recorded change to a creditor's terms toward one debtor.
@@ -4233,7 +4341,7 @@ type LiabilityTermsChange struct {
 
 func (x *LiabilityTermsChange) Reset() {
 	*x = LiabilityTermsChange{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[49]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4245,7 +4353,7 @@ func (x *LiabilityTermsChange) String() string {
 func (*LiabilityTermsChange) ProtoMessage() {}
 
 func (x *LiabilityTermsChange) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[49]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4258,7 +4366,7 @@ func (x *LiabilityTermsChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsChange.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsChange) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{49}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *LiabilityTermsChange) GetId() uint64 {
@@ -4340,7 +4448,7 @@ type LiabilityTermsChangeMapItem struct {
 
 func (x *LiabilityTermsChangeMapItem) Reset() {
 	*x = LiabilityTermsChangeMapItem{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[50]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4352,7 +4460,7 @@ func (x *LiabilityTermsChangeMapItem) String() string {
 func (*LiabilityTermsChangeMapItem) ProtoMessage() {}
 
 func (x *LiabilityTermsChangeMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[50]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4365,7 +4473,7 @@ func (x *LiabilityTermsChangeMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsChangeMapItem.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsChangeMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{50}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *LiabilityTermsChangeMapItem) GetMapData() map[uint64]*LiabilityTermsChange {
@@ -4390,7 +4498,7 @@ type LiabilityTermsHistoryListFilter struct {
 
 func (x *LiabilityTermsHistoryListFilter) Reset() {
 	*x = LiabilityTermsHistoryListFilter{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[51]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4402,7 +4510,7 @@ func (x *LiabilityTermsHistoryListFilter) String() string {
 func (*LiabilityTermsHistoryListFilter) ProtoMessage() {}
 
 func (x *LiabilityTermsHistoryListFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[51]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4415,7 +4523,7 @@ func (x *LiabilityTermsHistoryListFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsHistoryListFilter.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsHistoryListFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{51}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *LiabilityTermsHistoryListFilter) GetCounterpartyId() uint64 {
@@ -4451,7 +4559,7 @@ type LiabilityTermsHistoryListRequest struct {
 
 func (x *LiabilityTermsHistoryListRequest) Reset() {
 	*x = LiabilityTermsHistoryListRequest{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[52]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4463,7 +4571,7 @@ func (x *LiabilityTermsHistoryListRequest) String() string {
 func (*LiabilityTermsHistoryListRequest) ProtoMessage() {}
 
 func (x *LiabilityTermsHistoryListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[52]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4476,7 +4584,7 @@ func (x *LiabilityTermsHistoryListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityTermsHistoryListRequest.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsHistoryListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{52}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *LiabilityTermsHistoryListRequest) GetTeamId() uint64 {
@@ -4520,7 +4628,7 @@ type LiabilityTermsHistoryListResponseItem struct {
 
 func (x *LiabilityTermsHistoryListResponseItem) Reset() {
 	*x = LiabilityTermsHistoryListResponseItem{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[53]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4532,7 +4640,7 @@ func (x *LiabilityTermsHistoryListResponseItem) String() string {
 func (*LiabilityTermsHistoryListResponseItem) ProtoMessage() {}
 
 func (x *LiabilityTermsHistoryListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[53]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4545,7 +4653,7 @@ func (x *LiabilityTermsHistoryListResponseItem) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use LiabilityTermsHistoryListResponseItem.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsHistoryListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{53}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *LiabilityTermsHistoryListResponseItem) GetD() isLiabilityTermsHistoryListResponseItem_D {
@@ -4600,7 +4708,7 @@ type LiabilityTermsHistoryListResponse struct {
 
 func (x *LiabilityTermsHistoryListResponse) Reset() {
 	*x = LiabilityTermsHistoryListResponse{}
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[54]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4612,7 +4720,7 @@ func (x *LiabilityTermsHistoryListResponse) String() string {
 func (*LiabilityTermsHistoryListResponse) ProtoMessage() {}
 
 func (x *LiabilityTermsHistoryListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[54]
+	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4625,7 +4733,7 @@ func (x *LiabilityTermsHistoryListResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use LiabilityTermsHistoryListResponse.ProtoReflect.Descriptor instead.
 func (*LiabilityTermsHistoryListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{54}
+	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *LiabilityTermsHistoryListResponse) GetItems() []*LiabilityTermsHistoryListResponseItem {
@@ -4851,6 +4959,14 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\xbaH\ar\x05\x10\x01\x18\xf4\x03R\x06reason:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"d\n" +
 	"\x1eLiabilityPaymentRejectResponse\x12B\n" +
+	"\apayment\x18\x01 \x01(\v2(.warehouse.liability.v1.LiabilityPaymentR\apayment\"y\n" +
+	"\x1dLiabilityPaymentCancelRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
+	"\n" +
+	"payment_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tpaymentId:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"d\n" +
+	"\x1eLiabilityPaymentCancelResponse\x12B\n" +
 	"\apayment\x18\x01 \x01(\v2(.warehouse.liability.v1.LiabilityPaymentR\apayment\"\xbf\x02\n" +
 	"\x1aLiabilityPaymentListFilter\x12'\n" +
 	"\x0fcounterparty_id\x18\x01 \x01(\x04R\x0ecounterpartyId\x128\n" +
@@ -4990,12 +5106,13 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x1cLiabilityCreditByIdsDataType\x121\n" +
 	"-LIABILITY_CREDIT_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")LIABILITY_CREDIT_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12,\n" +
-	"(LIABILITY_CREDIT_BY_IDS_DATA_TYPE_CREDIT\x10\x02*\xe1\x01\n" +
+	"(LIABILITY_CREDIT_BY_IDS_DATA_TYPE_CREDIT\x10\x02*\x89\x02\n" +
 	"\x16LiabilityPaymentStatus\x12(\n" +
 	"$LIABILITY_PAYMENT_STATUS_UNSPECIFIED\x10\x00\x12%\n" +
 	"!LIABILITY_PAYMENT_STATUS_RECORDED\x10\x01\x12&\n" +
 	"\"LIABILITY_PAYMENT_STATUS_CONFIRMED\x10\x02\x12%\n" +
-	"!LIABILITY_PAYMENT_STATUS_REJECTED\x10\x04\"\x04\b\x03\x10\x03*!LIABILITY_PAYMENT_STATUS_REVERSED*\x84\x01\n" +
+	"!LIABILITY_PAYMENT_STATUS_REJECTED\x10\x04\x12&\n" +
+	"\"LIABILITY_PAYMENT_STATUS_CANCELLED\x10\x05\"\x04\b\x03\x10\x03*!LIABILITY_PAYMENT_STATUS_REVERSED*\x84\x01\n" +
 	"\x14LiabilityPaymentSide\x12&\n" +
 	"\"LIABILITY_PAYMENT_SIDE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bLIABILITY_PAYMENT_SIDE_PAID\x10\x01\x12#\n" +
@@ -5015,11 +5132,12 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x15LiabilityPositionList\x124.warehouse.liability.v1.LiabilityPositionListRequest\x1a5.warehouse.liability.v1.LiabilityPositionListResponse\"\x03\x90\x02\x01\x12z\n" +
 	"\x10LiabilityLogList\x12/.warehouse.liability.v1.LiabilityLogListRequest\x1a0.warehouse.liability.v1.LiabilityLogListResponse\"\x03\x90\x02\x01\x12t\n" +
 	"\x0eLiabilityDaily\x12-.warehouse.liability.v1.LiabilityDailyRequest\x1a..warehouse.liability.v1.LiabilityDailyResponse\"\x03\x90\x02\x01\x12\x86\x01\n" +
-	"\x14LiabilityCreditByIds\x123.warehouse.liability.v1.LiabilityCreditByIdsRequest\x1a4.warehouse.liability.v1.LiabilityCreditByIdsResponse\"\x03\x90\x02\x012\xdc\x05\n" +
+	"\x14LiabilityCreditByIds\x123.warehouse.liability.v1.LiabilityCreditByIdsRequest\x1a4.warehouse.liability.v1.LiabilityCreditByIdsResponse\"\x03\x90\x02\x012\xe6\x06\n" +
 	"\x17LiabilityPaymentService\x12\x87\x01\n" +
 	"\x16LiabilityPaymentRecord\x125.warehouse.liability.v1.LiabilityPaymentRecordRequest\x1a6.warehouse.liability.v1.LiabilityPaymentRecordResponse\x12\x8a\x01\n" +
 	"\x17LiabilityPaymentConfirm\x126.warehouse.liability.v1.LiabilityPaymentConfirmRequest\x1a7.warehouse.liability.v1.LiabilityPaymentConfirmResponse\x12\x87\x01\n" +
-	"\x16LiabilityPaymentReject\x125.warehouse.liability.v1.LiabilityPaymentRejectRequest\x1a6.warehouse.liability.v1.LiabilityPaymentRejectResponse\x12\x86\x01\n" +
+	"\x16LiabilityPaymentReject\x125.warehouse.liability.v1.LiabilityPaymentRejectRequest\x1a6.warehouse.liability.v1.LiabilityPaymentRejectResponse\x12\x87\x01\n" +
+	"\x16LiabilityPaymentCancel\x125.warehouse.liability.v1.LiabilityPaymentCancelRequest\x1a6.warehouse.liability.v1.LiabilityPaymentCancelResponse\x12\x86\x01\n" +
 	"\x14LiabilityPaymentList\x123.warehouse.liability.v1.LiabilityPaymentListRequest\x1a4.warehouse.liability.v1.LiabilityPaymentListResponse\"\x03\x90\x02\x01\x12\x96\x01\n" +
 	"\x1bLiabilityPaymentRequestSend\x12:.warehouse.liability.v1.LiabilityPaymentRequestSendRequest\x1a;.warehouse.liability.v1.LiabilityPaymentRequestSendResponse2\xb0\x04\n" +
 	"\x15LiabilityTermsService\x12\x80\x01\n" +
@@ -5041,7 +5159,7 @@ func file_warehouse_liability_v1_liability_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_liability_v1_liability_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
-var file_warehouse_liability_v1_liability_proto_msgTypes = make([]protoimpl.MessageInfo, 64)
+var file_warehouse_liability_v1_liability_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
 var file_warehouse_liability_v1_liability_proto_goTypes = []any{
 	(LiabilitySourceType)(0),                      // 0: warehouse.liability.v1.LiabilitySourceType
 	(LiabilityPositionListDataType)(0),            // 1: warehouse.liability.v1.LiabilityPositionListDataType
@@ -5090,150 +5208,155 @@ var file_warehouse_liability_v1_liability_proto_goTypes = []any{
 	(*LiabilityPaymentConfirmResponse)(nil),       // 44: warehouse.liability.v1.LiabilityPaymentConfirmResponse
 	(*LiabilityPaymentRejectRequest)(nil),         // 45: warehouse.liability.v1.LiabilityPaymentRejectRequest
 	(*LiabilityPaymentRejectResponse)(nil),        // 46: warehouse.liability.v1.LiabilityPaymentRejectResponse
-	(*LiabilityPaymentListFilter)(nil),            // 47: warehouse.liability.v1.LiabilityPaymentListFilter
-	(*LiabilityPaymentListRequest)(nil),           // 48: warehouse.liability.v1.LiabilityPaymentListRequest
-	(*LiabilityPaymentMapItem)(nil),               // 49: warehouse.liability.v1.LiabilityPaymentMapItem
-	(*LiabilityPaymentListResponseItem)(nil),      // 50: warehouse.liability.v1.LiabilityPaymentListResponseItem
-	(*LiabilityPaymentListResponse)(nil),          // 51: warehouse.liability.v1.LiabilityPaymentListResponse
-	(*LiabilityTerms)(nil),                        // 52: warehouse.liability.v1.LiabilityTerms
-	(*LiabilityTermsListRequest)(nil),             // 53: warehouse.liability.v1.LiabilityTermsListRequest
-	(*LiabilityTermsMapItem)(nil),                 // 54: warehouse.liability.v1.LiabilityTermsMapItem
-	(*LiabilityTermsListResponseItem)(nil),        // 55: warehouse.liability.v1.LiabilityTermsListResponseItem
-	(*LiabilityTermsListResponse)(nil),            // 56: warehouse.liability.v1.LiabilityTermsListResponse
-	(*LiabilityTermsSetRequest)(nil),              // 57: warehouse.liability.v1.LiabilityTermsSetRequest
-	(*LiabilityTermsSetResponse)(nil),             // 58: warehouse.liability.v1.LiabilityTermsSetResponse
-	(*LiabilityTermsDeleteRequest)(nil),           // 59: warehouse.liability.v1.LiabilityTermsDeleteRequest
-	(*LiabilityTermsDeleteResponse)(nil),          // 60: warehouse.liability.v1.LiabilityTermsDeleteResponse
-	(*LiabilityTermsChange)(nil),                  // 61: warehouse.liability.v1.LiabilityTermsChange
-	(*LiabilityTermsChangeMapItem)(nil),           // 62: warehouse.liability.v1.LiabilityTermsChangeMapItem
-	(*LiabilityTermsHistoryListFilter)(nil),       // 63: warehouse.liability.v1.LiabilityTermsHistoryListFilter
-	(*LiabilityTermsHistoryListRequest)(nil),      // 64: warehouse.liability.v1.LiabilityTermsHistoryListRequest
-	(*LiabilityTermsHistoryListResponseItem)(nil), // 65: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
-	(*LiabilityTermsHistoryListResponse)(nil),     // 66: warehouse.liability.v1.LiabilityTermsHistoryListResponse
-	nil,                          // 67: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry
-	nil,                          // 68: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry
-	nil,                          // 69: warehouse.liability.v1.LiabilityDayItem.BySourceEntry
-	nil,                          // 70: warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
-	nil,                          // 71: warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry
-	nil,                          // 72: warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry
-	nil,                          // 73: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry
-	nil,                          // 74: warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry
-	nil,                          // 75: warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry
-	(v1.TeamType)(0),             // 76: warehouse.team.v1.TeamType
-	(v11.CommonSortType)(0),      // 77: warehouse.common.v1.CommonSortType
-	(v11.GeneralSort)(0),         // 78: warehouse.common.v1.GeneralSort
-	(*v11.CommonPagination)(nil), // 79: warehouse.common.v1.CommonPagination
-	(*v11.GeneralMapItem)(nil),   // 80: warehouse.common.v1.GeneralMapItem
-	(*v11.PageInfo)(nil),         // 81: warehouse.common.v1.PageInfo
-	(v12.GroupType)(0),           // 82: warehouse.analytic_base.v1.GroupType
+	(*LiabilityPaymentCancelRequest)(nil),         // 47: warehouse.liability.v1.LiabilityPaymentCancelRequest
+	(*LiabilityPaymentCancelResponse)(nil),        // 48: warehouse.liability.v1.LiabilityPaymentCancelResponse
+	(*LiabilityPaymentListFilter)(nil),            // 49: warehouse.liability.v1.LiabilityPaymentListFilter
+	(*LiabilityPaymentListRequest)(nil),           // 50: warehouse.liability.v1.LiabilityPaymentListRequest
+	(*LiabilityPaymentMapItem)(nil),               // 51: warehouse.liability.v1.LiabilityPaymentMapItem
+	(*LiabilityPaymentListResponseItem)(nil),      // 52: warehouse.liability.v1.LiabilityPaymentListResponseItem
+	(*LiabilityPaymentListResponse)(nil),          // 53: warehouse.liability.v1.LiabilityPaymentListResponse
+	(*LiabilityTerms)(nil),                        // 54: warehouse.liability.v1.LiabilityTerms
+	(*LiabilityTermsListRequest)(nil),             // 55: warehouse.liability.v1.LiabilityTermsListRequest
+	(*LiabilityTermsMapItem)(nil),                 // 56: warehouse.liability.v1.LiabilityTermsMapItem
+	(*LiabilityTermsListResponseItem)(nil),        // 57: warehouse.liability.v1.LiabilityTermsListResponseItem
+	(*LiabilityTermsListResponse)(nil),            // 58: warehouse.liability.v1.LiabilityTermsListResponse
+	(*LiabilityTermsSetRequest)(nil),              // 59: warehouse.liability.v1.LiabilityTermsSetRequest
+	(*LiabilityTermsSetResponse)(nil),             // 60: warehouse.liability.v1.LiabilityTermsSetResponse
+	(*LiabilityTermsDeleteRequest)(nil),           // 61: warehouse.liability.v1.LiabilityTermsDeleteRequest
+	(*LiabilityTermsDeleteResponse)(nil),          // 62: warehouse.liability.v1.LiabilityTermsDeleteResponse
+	(*LiabilityTermsChange)(nil),                  // 63: warehouse.liability.v1.LiabilityTermsChange
+	(*LiabilityTermsChangeMapItem)(nil),           // 64: warehouse.liability.v1.LiabilityTermsChangeMapItem
+	(*LiabilityTermsHistoryListFilter)(nil),       // 65: warehouse.liability.v1.LiabilityTermsHistoryListFilter
+	(*LiabilityTermsHistoryListRequest)(nil),      // 66: warehouse.liability.v1.LiabilityTermsHistoryListRequest
+	(*LiabilityTermsHistoryListResponseItem)(nil), // 67: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
+	(*LiabilityTermsHistoryListResponse)(nil),     // 68: warehouse.liability.v1.LiabilityTermsHistoryListResponse
+	nil,                          // 69: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry
+	nil,                          // 70: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry
+	nil,                          // 71: warehouse.liability.v1.LiabilityDayItem.BySourceEntry
+	nil,                          // 72: warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
+	nil,                          // 73: warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry
+	nil,                          // 74: warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry
+	nil,                          // 75: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry
+	nil,                          // 76: warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry
+	nil,                          // 77: warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry
+	(v1.TeamType)(0),             // 78: warehouse.team.v1.TeamType
+	(v11.CommonSortType)(0),      // 79: warehouse.common.v1.CommonSortType
+	(v11.GeneralSort)(0),         // 80: warehouse.common.v1.GeneralSort
+	(*v11.CommonPagination)(nil), // 81: warehouse.common.v1.CommonPagination
+	(*v11.GeneralMapItem)(nil),   // 82: warehouse.common.v1.GeneralMapItem
+	(*v11.PageInfo)(nil),         // 83: warehouse.common.v1.PageInfo
+	(v12.GroupType)(0),           // 84: warehouse.analytic_base.v1.GroupType
 }
 var file_warehouse_liability_v1_liability_proto_depIdxs = []int32{
 	0,  // 0: warehouse.liability.v1.LiabilityLog.source_type:type_name -> warehouse.liability.v1.LiabilitySourceType
 	14, // 1: warehouse.liability.v1.LiabilityPosition.payment_request:type_name -> warehouse.liability.v1.LiabilityPaymentRequest
 	14, // 2: warehouse.liability.v1.LiabilityPaymentRequestSendResponse.request:type_name -> warehouse.liability.v1.LiabilityPaymentRequest
-	76, // 3: warehouse.liability.v1.LiabilityPositionListFilter.counterparty_type:type_name -> warehouse.team.v1.TeamType
-	77, // 4: warehouse.liability.v1.LiabilityPositionListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	78, // 5: warehouse.liability.v1.LiabilityPositionListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	78, // 3: warehouse.liability.v1.LiabilityPositionListFilter.counterparty_type:type_name -> warehouse.team.v1.TeamType
+	79, // 4: warehouse.liability.v1.LiabilityPositionListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	80, // 5: warehouse.liability.v1.LiabilityPositionListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	2,  // 6: warehouse.liability.v1.LiabilityPositionListFilterSort.position:type_name -> warehouse.liability.v1.LiabilityPositionSort
 	17, // 7: warehouse.liability.v1.LiabilityPositionListRequest.filter:type_name -> warehouse.liability.v1.LiabilityPositionListFilter
 	18, // 8: warehouse.liability.v1.LiabilityPositionListRequest.sort:type_name -> warehouse.liability.v1.LiabilityPositionListFilterSort
 	1,  // 9: warehouse.liability.v1.LiabilityPositionListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityPositionListDataType
-	79, // 10: warehouse.liability.v1.LiabilityPositionListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	67, // 11: warehouse.liability.v1.LiabilityPositionMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry
-	80, // 12: warehouse.liability.v1.LiabilityPositionListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	81, // 10: warehouse.liability.v1.LiabilityPositionListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	69, // 11: warehouse.liability.v1.LiabilityPositionMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry
+	82, // 12: warehouse.liability.v1.LiabilityPositionListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	20, // 13: warehouse.liability.v1.LiabilityPositionListResponseItem.position:type_name -> warehouse.liability.v1.LiabilityPositionMapItem
 	21, // 14: warehouse.liability.v1.LiabilityPositionListResponse.items:type_name -> warehouse.liability.v1.LiabilityPositionListResponseItem
-	81, // 15: warehouse.liability.v1.LiabilityPositionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	83, // 15: warehouse.liability.v1.LiabilityPositionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	3,  // 16: warehouse.liability.v1.LiabilityLogListFilter.direction:type_name -> warehouse.liability.v1.LiabilityLogDirection
 	23, // 17: warehouse.liability.v1.LiabilityLogListRequest.filter:type_name -> warehouse.liability.v1.LiabilityLogListFilter
 	4,  // 18: warehouse.liability.v1.LiabilityLogListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityLogListDataType
-	79, // 19: warehouse.liability.v1.LiabilityLogListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	68, // 20: warehouse.liability.v1.LiabilityLogMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry
-	80, // 21: warehouse.liability.v1.LiabilityLogListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	81, // 19: warehouse.liability.v1.LiabilityLogListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	70, // 20: warehouse.liability.v1.LiabilityLogMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry
+	82, // 21: warehouse.liability.v1.LiabilityLogListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	25, // 22: warehouse.liability.v1.LiabilityLogListResponseItem.log:type_name -> warehouse.liability.v1.LiabilityLogMapItem
 	26, // 23: warehouse.liability.v1.LiabilityLogListResponse.items:type_name -> warehouse.liability.v1.LiabilityLogListResponseItem
-	81, // 24: warehouse.liability.v1.LiabilityLogListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	83, // 24: warehouse.liability.v1.LiabilityLogListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	28, // 25: warehouse.liability.v1.LiabilityDailyRequest.filter:type_name -> warehouse.liability.v1.LiabilityDailyFilter
-	82, // 26: warehouse.liability.v1.LiabilityDailyRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	69, // 27: warehouse.liability.v1.LiabilityDayItem.by_source:type_name -> warehouse.liability.v1.LiabilityDayItem.BySourceEntry
-	70, // 28: warehouse.liability.v1.LiabilityDailyTotals.by_source:type_name -> warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
+	84, // 26: warehouse.liability.v1.LiabilityDailyRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	71, // 27: warehouse.liability.v1.LiabilityDayItem.by_source:type_name -> warehouse.liability.v1.LiabilityDayItem.BySourceEntry
+	72, // 28: warehouse.liability.v1.LiabilityDailyTotals.by_source:type_name -> warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
 	30, // 29: warehouse.liability.v1.LiabilityDailyResponse.days:type_name -> warehouse.liability.v1.LiabilityDayItem
 	31, // 30: warehouse.liability.v1.LiabilityDailyResponse.totals:type_name -> warehouse.liability.v1.LiabilityDailyTotals
 	5,  // 31: warehouse.liability.v1.LiabilityCredit.state:type_name -> warehouse.liability.v1.LiabilityCreditState
-	71, // 32: warehouse.liability.v1.LiabilityCreditMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry
+	73, // 32: warehouse.liability.v1.LiabilityCreditMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry
 	35, // 33: warehouse.liability.v1.LiabilityCreditByIdsRequest.filter:type_name -> warehouse.liability.v1.LiabilityCreditByIdsFilter
 	6,  // 34: warehouse.liability.v1.LiabilityCreditByIdsRequest.data_request:type_name -> warehouse.liability.v1.LiabilityCreditByIdsDataType
-	80, // 35: warehouse.liability.v1.LiabilityCreditByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	82, // 35: warehouse.liability.v1.LiabilityCreditByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	34, // 36: warehouse.liability.v1.LiabilityCreditByIdsResponseItem.credit:type_name -> warehouse.liability.v1.LiabilityCreditMapItem
 	37, // 37: warehouse.liability.v1.LiabilityCreditByIdsResponseList.items:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponseItem
-	72, // 38: warehouse.liability.v1.LiabilityCreditByIdsResponse.items:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry
+	74, // 38: warehouse.liability.v1.LiabilityCreditByIdsResponse.items:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry
 	7,  // 39: warehouse.liability.v1.LiabilityPayment.status:type_name -> warehouse.liability.v1.LiabilityPaymentStatus
 	40, // 40: warehouse.liability.v1.LiabilityPaymentRecordResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
 	40, // 41: warehouse.liability.v1.LiabilityPaymentConfirmResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
 	40, // 42: warehouse.liability.v1.LiabilityPaymentRejectResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
-	8,  // 43: warehouse.liability.v1.LiabilityPaymentListFilter.side:type_name -> warehouse.liability.v1.LiabilityPaymentSide
-	47, // 44: warehouse.liability.v1.LiabilityPaymentListRequest.filter:type_name -> warehouse.liability.v1.LiabilityPaymentListFilter
-	9,  // 45: warehouse.liability.v1.LiabilityPaymentListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityPaymentListDataType
-	79, // 46: warehouse.liability.v1.LiabilityPaymentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	73, // 47: warehouse.liability.v1.LiabilityPaymentMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry
-	80, // 48: warehouse.liability.v1.LiabilityPaymentListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	49, // 49: warehouse.liability.v1.LiabilityPaymentListResponseItem.payment:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem
-	50, // 50: warehouse.liability.v1.LiabilityPaymentListResponse.items:type_name -> warehouse.liability.v1.LiabilityPaymentListResponseItem
-	81, // 51: warehouse.liability.v1.LiabilityPaymentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	10, // 52: warehouse.liability.v1.LiabilityTermsListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsListDataType
-	79, // 53: warehouse.liability.v1.LiabilityTermsListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	74, // 54: warehouse.liability.v1.LiabilityTermsMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry
-	80, // 55: warehouse.liability.v1.LiabilityTermsListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	54, // 56: warehouse.liability.v1.LiabilityTermsListResponseItem.terms:type_name -> warehouse.liability.v1.LiabilityTermsMapItem
-	55, // 57: warehouse.liability.v1.LiabilityTermsListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsListResponseItem
-	81, // 58: warehouse.liability.v1.LiabilityTermsListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	52, // 59: warehouse.liability.v1.LiabilityTermsSetResponse.terms:type_name -> warehouse.liability.v1.LiabilityTerms
-	75, // 60: warehouse.liability.v1.LiabilityTermsChangeMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry
-	63, // 61: warehouse.liability.v1.LiabilityTermsHistoryListRequest.filter:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListFilter
-	11, // 62: warehouse.liability.v1.LiabilityTermsHistoryListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListDataType
-	79, // 63: warehouse.liability.v1.LiabilityTermsHistoryListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	80, // 64: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	62, // 65: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.change:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem
-	65, // 66: warehouse.liability.v1.LiabilityTermsHistoryListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
-	81, // 67: warehouse.liability.v1.LiabilityTermsHistoryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	13, // 68: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPosition
-	12, // 69: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityLog
-	33, // 70: warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityCredit
-	38, // 71: warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry.value:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponseList
-	40, // 72: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPayment
-	52, // 73: warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTerms
-	61, // 74: warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTermsChange
-	19, // 75: warehouse.liability.v1.LiabilityService.LiabilityPositionList:input_type -> warehouse.liability.v1.LiabilityPositionListRequest
-	24, // 76: warehouse.liability.v1.LiabilityService.LiabilityLogList:input_type -> warehouse.liability.v1.LiabilityLogListRequest
-	29, // 77: warehouse.liability.v1.LiabilityService.LiabilityDaily:input_type -> warehouse.liability.v1.LiabilityDailyRequest
-	36, // 78: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:input_type -> warehouse.liability.v1.LiabilityCreditByIdsRequest
-	41, // 79: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:input_type -> warehouse.liability.v1.LiabilityPaymentRecordRequest
-	43, // 80: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:input_type -> warehouse.liability.v1.LiabilityPaymentConfirmRequest
-	45, // 81: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:input_type -> warehouse.liability.v1.LiabilityPaymentRejectRequest
-	48, // 82: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:input_type -> warehouse.liability.v1.LiabilityPaymentListRequest
-	15, // 83: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:input_type -> warehouse.liability.v1.LiabilityPaymentRequestSendRequest
-	53, // 84: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:input_type -> warehouse.liability.v1.LiabilityTermsListRequest
-	57, // 85: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:input_type -> warehouse.liability.v1.LiabilityTermsSetRequest
-	59, // 86: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:input_type -> warehouse.liability.v1.LiabilityTermsDeleteRequest
-	64, // 87: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:input_type -> warehouse.liability.v1.LiabilityTermsHistoryListRequest
-	22, // 88: warehouse.liability.v1.LiabilityService.LiabilityPositionList:output_type -> warehouse.liability.v1.LiabilityPositionListResponse
-	27, // 89: warehouse.liability.v1.LiabilityService.LiabilityLogList:output_type -> warehouse.liability.v1.LiabilityLogListResponse
-	32, // 90: warehouse.liability.v1.LiabilityService.LiabilityDaily:output_type -> warehouse.liability.v1.LiabilityDailyResponse
-	39, // 91: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:output_type -> warehouse.liability.v1.LiabilityCreditByIdsResponse
-	42, // 92: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:output_type -> warehouse.liability.v1.LiabilityPaymentRecordResponse
-	44, // 93: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:output_type -> warehouse.liability.v1.LiabilityPaymentConfirmResponse
-	46, // 94: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:output_type -> warehouse.liability.v1.LiabilityPaymentRejectResponse
-	51, // 95: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:output_type -> warehouse.liability.v1.LiabilityPaymentListResponse
-	16, // 96: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:output_type -> warehouse.liability.v1.LiabilityPaymentRequestSendResponse
-	56, // 97: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:output_type -> warehouse.liability.v1.LiabilityTermsListResponse
-	58, // 98: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:output_type -> warehouse.liability.v1.LiabilityTermsSetResponse
-	60, // 99: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:output_type -> warehouse.liability.v1.LiabilityTermsDeleteResponse
-	66, // 100: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:output_type -> warehouse.liability.v1.LiabilityTermsHistoryListResponse
-	88, // [88:101] is the sub-list for method output_type
-	75, // [75:88] is the sub-list for method input_type
-	75, // [75:75] is the sub-list for extension type_name
-	75, // [75:75] is the sub-list for extension extendee
-	0,  // [0:75] is the sub-list for field type_name
+	40, // 43: warehouse.liability.v1.LiabilityPaymentCancelResponse.payment:type_name -> warehouse.liability.v1.LiabilityPayment
+	8,  // 44: warehouse.liability.v1.LiabilityPaymentListFilter.side:type_name -> warehouse.liability.v1.LiabilityPaymentSide
+	49, // 45: warehouse.liability.v1.LiabilityPaymentListRequest.filter:type_name -> warehouse.liability.v1.LiabilityPaymentListFilter
+	9,  // 46: warehouse.liability.v1.LiabilityPaymentListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityPaymentListDataType
+	81, // 47: warehouse.liability.v1.LiabilityPaymentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	75, // 48: warehouse.liability.v1.LiabilityPaymentMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry
+	82, // 49: warehouse.liability.v1.LiabilityPaymentListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	51, // 50: warehouse.liability.v1.LiabilityPaymentListResponseItem.payment:type_name -> warehouse.liability.v1.LiabilityPaymentMapItem
+	52, // 51: warehouse.liability.v1.LiabilityPaymentListResponse.items:type_name -> warehouse.liability.v1.LiabilityPaymentListResponseItem
+	83, // 52: warehouse.liability.v1.LiabilityPaymentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	10, // 53: warehouse.liability.v1.LiabilityTermsListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsListDataType
+	81, // 54: warehouse.liability.v1.LiabilityTermsListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	76, // 55: warehouse.liability.v1.LiabilityTermsMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry
+	82, // 56: warehouse.liability.v1.LiabilityTermsListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	56, // 57: warehouse.liability.v1.LiabilityTermsListResponseItem.terms:type_name -> warehouse.liability.v1.LiabilityTermsMapItem
+	57, // 58: warehouse.liability.v1.LiabilityTermsListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsListResponseItem
+	83, // 59: warehouse.liability.v1.LiabilityTermsListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	54, // 60: warehouse.liability.v1.LiabilityTermsSetResponse.terms:type_name -> warehouse.liability.v1.LiabilityTerms
+	77, // 61: warehouse.liability.v1.LiabilityTermsChangeMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry
+	65, // 62: warehouse.liability.v1.LiabilityTermsHistoryListRequest.filter:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListFilter
+	11, // 63: warehouse.liability.v1.LiabilityTermsHistoryListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListDataType
+	81, // 64: warehouse.liability.v1.LiabilityTermsHistoryListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	82, // 65: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	64, // 66: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem.change:type_name -> warehouse.liability.v1.LiabilityTermsChangeMapItem
+	67, // 67: warehouse.liability.v1.LiabilityTermsHistoryListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
+	83, // 68: warehouse.liability.v1.LiabilityTermsHistoryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	13, // 69: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPosition
+	12, // 70: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityLog
+	33, // 71: warehouse.liability.v1.LiabilityCreditMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityCredit
+	38, // 72: warehouse.liability.v1.LiabilityCreditByIdsResponse.ItemsEntry.value:type_name -> warehouse.liability.v1.LiabilityCreditByIdsResponseList
+	40, // 73: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPayment
+	54, // 74: warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTerms
+	63, // 75: warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTermsChange
+	19, // 76: warehouse.liability.v1.LiabilityService.LiabilityPositionList:input_type -> warehouse.liability.v1.LiabilityPositionListRequest
+	24, // 77: warehouse.liability.v1.LiabilityService.LiabilityLogList:input_type -> warehouse.liability.v1.LiabilityLogListRequest
+	29, // 78: warehouse.liability.v1.LiabilityService.LiabilityDaily:input_type -> warehouse.liability.v1.LiabilityDailyRequest
+	36, // 79: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:input_type -> warehouse.liability.v1.LiabilityCreditByIdsRequest
+	41, // 80: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:input_type -> warehouse.liability.v1.LiabilityPaymentRecordRequest
+	43, // 81: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:input_type -> warehouse.liability.v1.LiabilityPaymentConfirmRequest
+	45, // 82: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:input_type -> warehouse.liability.v1.LiabilityPaymentRejectRequest
+	47, // 83: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentCancel:input_type -> warehouse.liability.v1.LiabilityPaymentCancelRequest
+	50, // 84: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:input_type -> warehouse.liability.v1.LiabilityPaymentListRequest
+	15, // 85: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:input_type -> warehouse.liability.v1.LiabilityPaymentRequestSendRequest
+	55, // 86: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:input_type -> warehouse.liability.v1.LiabilityTermsListRequest
+	59, // 87: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:input_type -> warehouse.liability.v1.LiabilityTermsSetRequest
+	61, // 88: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:input_type -> warehouse.liability.v1.LiabilityTermsDeleteRequest
+	66, // 89: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:input_type -> warehouse.liability.v1.LiabilityTermsHistoryListRequest
+	22, // 90: warehouse.liability.v1.LiabilityService.LiabilityPositionList:output_type -> warehouse.liability.v1.LiabilityPositionListResponse
+	27, // 91: warehouse.liability.v1.LiabilityService.LiabilityLogList:output_type -> warehouse.liability.v1.LiabilityLogListResponse
+	32, // 92: warehouse.liability.v1.LiabilityService.LiabilityDaily:output_type -> warehouse.liability.v1.LiabilityDailyResponse
+	39, // 93: warehouse.liability.v1.LiabilityService.LiabilityCreditByIds:output_type -> warehouse.liability.v1.LiabilityCreditByIdsResponse
+	42, // 94: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:output_type -> warehouse.liability.v1.LiabilityPaymentRecordResponse
+	44, // 95: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:output_type -> warehouse.liability.v1.LiabilityPaymentConfirmResponse
+	46, // 96: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject:output_type -> warehouse.liability.v1.LiabilityPaymentRejectResponse
+	48, // 97: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentCancel:output_type -> warehouse.liability.v1.LiabilityPaymentCancelResponse
+	53, // 98: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList:output_type -> warehouse.liability.v1.LiabilityPaymentListResponse
+	16, // 99: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRequestSend:output_type -> warehouse.liability.v1.LiabilityPaymentRequestSendResponse
+	58, // 100: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList:output_type -> warehouse.liability.v1.LiabilityTermsListResponse
+	60, // 101: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsSet:output_type -> warehouse.liability.v1.LiabilityTermsSetResponse
+	62, // 102: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:output_type -> warehouse.liability.v1.LiabilityTermsDeleteResponse
+	68, // 103: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:output_type -> warehouse.liability.v1.LiabilityTermsHistoryListResponse
+	90, // [90:104] is the sub-list for method output_type
+	76, // [76:90] is the sub-list for method input_type
+	76, // [76:76] is the sub-list for extension type_name
+	76, // [76:76] is the sub-list for extension extendee
+	0,  // [0:76] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_liability_v1_liability_proto_init() }
@@ -5258,19 +5381,19 @@ func file_warehouse_liability_v1_liability_proto_init() {
 		(*LiabilityCreditByIdsResponseItem_General)(nil),
 		(*LiabilityCreditByIdsResponseItem_Credit)(nil),
 	}
-	file_warehouse_liability_v1_liability_proto_msgTypes[38].OneofWrappers = []any{
+	file_warehouse_liability_v1_liability_proto_msgTypes[40].OneofWrappers = []any{
 		(*LiabilityPaymentListResponseItem_General)(nil),
 		(*LiabilityPaymentListResponseItem_Payment)(nil),
 	}
-	file_warehouse_liability_v1_liability_proto_msgTypes[40].OneofWrappers = []any{}
-	file_warehouse_liability_v1_liability_proto_msgTypes[43].OneofWrappers = []any{
+	file_warehouse_liability_v1_liability_proto_msgTypes[42].OneofWrappers = []any{}
+	file_warehouse_liability_v1_liability_proto_msgTypes[45].OneofWrappers = []any{
 		(*LiabilityTermsListResponseItem_General)(nil),
 		(*LiabilityTermsListResponseItem_Terms)(nil),
 	}
-	file_warehouse_liability_v1_liability_proto_msgTypes[45].OneofWrappers = []any{}
-	file_warehouse_liability_v1_liability_proto_msgTypes[49].OneofWrappers = []any{}
+	file_warehouse_liability_v1_liability_proto_msgTypes[47].OneofWrappers = []any{}
 	file_warehouse_liability_v1_liability_proto_msgTypes[51].OneofWrappers = []any{}
-	file_warehouse_liability_v1_liability_proto_msgTypes[53].OneofWrappers = []any{
+	file_warehouse_liability_v1_liability_proto_msgTypes[53].OneofWrappers = []any{}
+	file_warehouse_liability_v1_liability_proto_msgTypes[55].OneofWrappers = []any{
 		(*LiabilityTermsHistoryListResponseItem_General)(nil),
 		(*LiabilityTermsHistoryListResponseItem_Change)(nil),
 	}
@@ -5280,7 +5403,7 @@ func file_warehouse_liability_v1_liability_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_liability_v1_liability_proto_rawDesc), len(file_warehouse_liability_v1_liability_proto_rawDesc)),
 			NumEnums:      12,
-			NumMessages:   64,
+			NumMessages:   66,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

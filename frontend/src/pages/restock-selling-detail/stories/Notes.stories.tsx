@@ -3,8 +3,10 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { daysAgo } from "../../../../.storybook/fixtures";
 import { restockNoteByForStory, restockWarehouseNoteForStory, restockWire } from "../../../../.storybook/restockStub";
+import { restockWriteScenario } from "../../../../.storybook/restockWriteScenario";
 import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { toaster } from "../../../components/feedback/Toaster";
+import { aColleagueEditsALineOf501ForStory } from "../../../features/restock/storyTrail";
 import { formatUnixDateTimeShort } from "../../../lib/datetime";
 import { At503, SELLING_DETAIL_META, loaded } from "./kit";
 
@@ -143,6 +145,56 @@ export const TheNoteIsEditedOnThePage: Story = {
         `Ani Rahayu · ${formatUnixDateTimeShort(restockWire(501n).noteAtUnix)}`,
       ),
     );
+  },
+};
+
+// …AND ON ITS WAY THE NOTE IS SAVED ALONE (the-note-is-edited-in-any-status, #71) — the page read 501, and while the note
+// was being typed a colleague changed Beras 10 → 12 through the edit form. Simpan sends the note alone
+// (RestockRequestNoteSet), never the page's copy of the restock sent back whole (RestockRequestUpdate): the colleague's
+// line is kept, and the Riwayat gains the note's row — the note before and after, nothing else — under the colleague's own.
+export const OnItsWayTheNoteIsSavedAlone: Story = {
+  name: "On its way · the note alone",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const section = canvas.getByTestId("restock-detail-note-section");
+
+    await expect(within(section).getByTestId("restock-detail-note")).toHaveTextContent("Untuk promo 10.10");
+    await userEvent.click(within(section).getByTestId("restock-notes-edit"));
+    const input = await within(section).findByTestId("restock-notes-input");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Urgent", { delay: 30 });
+
+    // The colleague's edit lands while the note is open — the page still holds the restock as it WAS.
+    await aColleagueEditsALineOf501ForStory();
+    const from = restockWriteScenario.writes.length;
+
+    // A toast an earlier story left up would read as this save's — clear them first.
+    toaster.remove();
+    await waitFor(() => expect(screen.queryByText("Notes saved")).toBeNull());
+    await userEvent.click(within(section).getByTestId("restock-notes-save"));
+
+    await expect(await screen.findByText("Notes saved")).toBeInTheDocument();
+    await waitFor(() => expect(within(section).getByTestId("restock-detail-note")).toHaveTextContent("Urgent"));
+
+    // The note alone was sent — never the whole restock — and the colleague's line stands.
+    await expect(restockWriteScenario.writes.slice(from)).toEqual([
+      { rpc: "RestockRequestNoteSet", teamId: 12n, requestId: 501n, note: "Urgent" },
+    ]);
+    await expect(restockWire(501n).items.find((it) => it.productId === 74n)?.count).toBe(12n);
+    await waitFor(() =>
+      expect(within(section).getByTestId("restock-detail-note-selling-by")).toHaveTextContent(
+        `Ani Rahayu · ${formatUnixDateTimeShort(restockWire(501n).noteAtUnix)}`,
+      ),
+    );
+
+    // The Riwayat: the colleague's row says the line; the save's says the note, before and after, and no line.
+    const timeline = canvas.getByTestId("restock-detail-timeline-section");
+    await expect(await within(timeline).findByTestId("restock-timeline-3-change-note")).toHaveTextContent(
+      "Note “Untuk promo 10.10” → “Urgent”",
+    );
+    await expect(within(timeline).queryByTestId("restock-timeline-3-change-line-74")).toBeNull();
+    await expect(within(timeline).getByTestId("restock-timeline-2-change-line-74")).toBeVisible();
+    await expect(within(timeline).queryByTestId("restock-timeline-2-change-note")).toBeNull();
   },
 };
 

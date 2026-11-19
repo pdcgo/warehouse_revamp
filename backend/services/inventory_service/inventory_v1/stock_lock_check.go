@@ -79,6 +79,10 @@ func (s *Service) StockLockCheck(
 
 	var counted *inventory_ledgers.CountedError
 	if errors.As(err, &counted) {
+		// The cancel's refusal is these words (selling's StockLock.Reason): named by the person who started the count
+		// (count_lock_names.go).
+		s.nameCountStarters(ctx, counted)
+
 		return counted, nil
 	}
 

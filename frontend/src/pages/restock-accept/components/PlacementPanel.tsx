@@ -1,18 +1,16 @@
 import { Badge, Box, Button, Flex, Icon, IconButton, Spacer, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { History, LayoutGrid, PackageX, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { History, LayoutGrid, Plus, Trash2 } from "lucide-react";
 
 import type { ProductPlace } from "../../../gen/warehouse/inventory/v1/inventory_pb";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import type { LineDraft, LineState } from "../draft";
 import { nextKey } from "../draft";
-import { PcsMark } from "./PcsMark";
 import { PlacementSelect } from "./PlacementSelect";
 
 // WHERE THE UNITS GO — the good units onto placements of this warehouse, adding up to exactly received − broken
-// (there-is-no-unplaced-pile); and, when the broken units go onto a rack, THEIR rack too, as a row of its own marked Rusak
-// (owner: *"rusak kalau ditaruh di rak kasih ke penempatan dan tanda penempatan rusak"*,
-// the-broken-units-rack-is-a-marked-placement). The badge in the corner is the line's put-away balance; until it
+// (there-is-no-unplaced-pile). The broken units go on no rack: they are just broken
+// (a-restocks-broken-units-are-just-broken-for-now). The badge in the corner is the line's put-away balance; until it
 // balances, the header's ready line names this line's placement as what Terima waits for.
 //
 // NOTHING HERE MOVES UNTIL DITERIMA IS SET (owner: *"disabled penempatan jika diterima belum di set, maksimalnya ikut ke
@@ -39,8 +37,6 @@ export function PlacementPanel({
   const { t } = useTranslation();
   const locked = !st.counted;
   const nothingToPlace = st.counted && st.good === 0n;
-  // The broken units on a rack — a row of its own here, holding all of them.
-  const brokenOnRack = st.counted && !st.brokenOver && st.broken > 0n && draft.brokenTo === "rack";
   // The most one good row can hold: what Diterima leaves good.
   const maxGood = st.counted && st.good > 0n ? Number(st.good) : undefined;
 
@@ -69,16 +65,11 @@ export function PlacementPanel({
     }));
   }
 
-  // ONE RACK ONCE PER LINE (one-rack-once-per-line) — each row's picker shows the racks the OTHER rows hold, disabled:
-  // the good rows' and the broken row's alike, so a rack holds this product's good units or its broken ones, never both.
+  // ONE RACK ONCE PER LINE (one-rack-once-per-line) — each row's picker shows the racks the OTHER rows hold, disabled.
   // (`duplicate` in draft.ts stays as the guard the accept handler also is.)
-  const goodPlaces = draft.placements.map((row) => row.place).filter((place) => place !== "");
-  const brokenPlace = brokenOnRack && draft.brokenPlace !== "" ? [draft.brokenPlace] : [];
-  const chosen = [...goodPlaces, ...brokenPlace];
-  const takenBy = (index: number) => [
-    ...draft.placements.filter((row, i) => i !== index && row.place !== "").map((row) => row.place),
-    ...brokenPlace,
-  ];
+  const chosen = draft.placements.map((row) => row.place).filter((place) => place !== "");
+  const takenBy = (index: number) =>
+    draft.placements.filter((row, i) => i !== index && row.place !== "").map((row) => row.place);
 
   // A "placed here before" chip drops the goods onto a shelf they already sit on (#156): the first row with no
   // placement yet, else the first row. A rack another row already holds is off — a chip must not make the duplicate the
@@ -195,44 +186,6 @@ export function PlacementPanel({
             </Button>
           </>
         )}
-
-        {/* THE BROKEN UNITS' RACK, MARKED (the-broken-units-rack-is-a-marked-placement) — chosen in the Rusak block as
-            "Ditaruh di rak", placed here: a Rusak tag, its rack, and all the broken units, which is not typed. */}
-        {brokenOnRack && (
-          <Stack
-            gap="1.5"
-            borderTopWidth={nothingToPlace ? undefined : "1px"}
-            borderColor="border"
-            pt={nothingToPlace ? undefined : "card"}
-            data-testid={`accept-placement-broken-${productId}`}
-          >
-            <Flex align="center" gap="2" wrap="wrap">
-              {/* What goes there, then where: Rusak, how many, the rack. */}
-              <Flex align="center" gap="1.5" flexShrink={0}>
-                <Badge colorPalette="error" variant="subtle" data-testid={`accept-placement-broken-tag-${productId}`}>
-                  <Icon as={PackageX} boxSize="3.5" />
-                  {t("restock.problem.broken")}
-                </Badge>
-                <PcsMark tone="error" testId={`accept-placement-broken-qty-${productId}`}>
-                  {t("restock.accept.pcs", { n: st.broken.toString() })}
-                </PcsMark>
-              </Flex>
-              <PlacementSelect
-                warehouseId={warehouseId}
-                value={draft.brokenPlace}
-                takenRackIds={goodPlaces}
-                testId={`accept-broken-place-${productId}`}
-                onChange={(next) => update((d) => ({ ...d, brokenPlace: next }))}
-              />
-            </Flex>
-            {st.brokenNeedsPlace && (
-              <Flex gap="1.5" align="flex-start" color="error.fg" data-testid={`accept-broken-place-error-${productId}`}>
-                <Icon as={TriangleAlert} boxSize="4" mt="0.5" flexShrink={0} />
-                <Text fontSize="sm">{t("restock.accept.brokenTo.rackRequired")}</Text>
-              </Flex>
-            )}
-          </Stack>
-        )}
       </Stack>
     </Box>
   );
@@ -256,7 +209,6 @@ function BalanceBadge({ productId, st }: { productId: bigint; st: LineState }) {
   }
 
   if (st.good === 0n) {
-    if (st.brokenNeedsPlace) return blocked(t("restock.accept.choosePlacement"));
     return (
       <Badge colorPalette="gray" data-testid={`accept-balanced-${productId}`}>
         {t("restock.accept.nothingToPlace")}
@@ -264,7 +216,7 @@ function BalanceBadge({ productId, st }: { productId: bigint; st: LineState }) {
     );
   }
 
-  if (st.needsPlace || st.brokenNeedsPlace) return blocked(t("restock.accept.choosePlacement"));
+  if (st.needsPlace) return blocked(t("restock.accept.choosePlacement"));
   if (st.duplicate) return blocked(t("restock.accept.duplicatePlacement"));
   if (st.toPlace > 0n) return blocked(t("restock.accept.toPlace", { count: st.toPlace.toString() }));
   if (st.toPlace < 0n) return blocked(t("restock.accept.tooMany", { count: (-st.toPlace).toString() }));

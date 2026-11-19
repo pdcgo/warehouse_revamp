@@ -45,6 +45,10 @@ import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTa
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
 import { askedQuantity, committedValue, shortfall } from "../../features/restock/summary";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
+import { RestockTagChips } from "../../features/restock/RestockTagChips";
+import { RestockTagFilter } from "../../features/restock/RestockTagFilter";
+import { NO_TAGS, TAGS_CODEC, brokenTotal, tagsOfRequest } from "../../features/restock/restockTags";
+import { useRestockTagCatalogue } from "../../features/restock/tagQueries";
 import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { CompactActions } from "../../components/chrome/CompactActions";
@@ -147,6 +151,11 @@ export function RestockSellingPage() {
   // The courier (the-restock-list-exports-and-filters-by-courier) — the restock's shipment channel. 0n = any courier; a
   // restock that names none is listed only then.
   const [courierFilter, setCourierFilter] = useUrlState("courier", 0n, idCodec);
+  // THE TAGS (backlog #87 — a-restock-tag-is-system-or-custom: the restock list filters by tag). SEVERAL at once, a
+  // restock in when it carries ANY of them (the-restock-tags-prototype-is-accepted), kept in the address
+  // (a-lists-filters-live-in-the-url: `?tag=1,2`). Sent as `RestockRequestListFilter.tag_ids`, inside the list's one
+  // predicate on the server — so the statistics and Ekspor follow it too.
+  const [tagPick, setTagPick] = useUrlState<bigint[]>("tag", NO_TAGS, TAGS_CODEC);
   const [range, setRange] = useUrlState<DateRange>("range", ALL_DATES, dateRangeCodec);
   const [dateField, setDateField] = useUrlState<RestockDateField>("date", RestockDateField.CREATED, DATE_FIELD_CODEC);
 
@@ -174,6 +183,7 @@ export function RestockSellingPage() {
     fromUnix,
     toUnix,
     q: term,
+    tagIds: tagPick,
     page,
     pageSize,
   });
@@ -194,6 +204,7 @@ export function RestockSellingPage() {
     fromUnix,
     toUnix,
     q: term,
+    tagIds: tagPick,
     enabled: statsOpen,
   });
 
@@ -230,6 +241,8 @@ export function RestockSellingPage() {
   const requests = query.data?.requests ?? [];
   const actors = query.data?.actors;
   const totalItems = query.data?.totalItems ?? 0;
+  // The Tag filter's options — the app-wide list, every team's (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps).
+  const tagCatalogue = useRestockTagCatalogue(teamId);
   const loading = query.isPending;
   // Always-fresh means every tab, page and filter change refetches; `listQuery` keeps the rows that
   // are already up while it does, and RefreshOverlay is what says so. `isPending` is excluded — a
@@ -243,6 +256,7 @@ export function RestockSellingPage() {
     (search.trim() !== "" ? 1 : 0) +
     (warehouseFilter !== 0n ? 1 : 0) +
     (courierFilter !== 0n ? 1 : 0) +
+    (tagPick.length > 0 ? 1 : 0) +
     (createdByFilter !== 0n ? 1 : 0) +
     (acceptedByFilter !== 0n ? 1 : 0) +
     (isAllDates(range) ? 0 : 1);
@@ -251,6 +265,7 @@ export function RestockSellingPage() {
     term !== "" ||
     warehouseFilter !== 0n ||
     courierFilter !== 0n ||
+    tagPick.length > 0 ||
     createdByFilter !== 0n ||
     acceptedByFilter !== 0n ||
     !isAllDates(range);
@@ -269,6 +284,7 @@ export function RestockSellingPage() {
       setSearch("");
       setWarehouseFilter(0n);
       setCourierFilter(0n);
+      setTagPick(NO_TAGS);
       setCreatedByFilter(0n);
       setAcceptedByFilter(0n);
       setRange(ALL_DATES);
@@ -291,6 +307,7 @@ export function RestockSellingPage() {
       fromUnix,
       toUnix,
       q: term,
+      tagIds: tagPick,
     });
   const open = (request: RestockRequest) => navigate(`/inventories/restock/${request.id}`);
 
@@ -354,6 +371,34 @@ export function RestockSellingPage() {
       <Badge colorPalette="warning" data-testid={`restock-missing-${request.id}`}>
         {t("restock.table.missingBadge", { count: Number(missing) })}
       </Badge>
+    );
+  }
+
+  // THE PROBLEM LIST'S SECOND COUNT (#87, a-restock-problem-is-a-system-tag: *"list problem restock — restock listed
+  // with missing and broken count"*): beside *kurang N*, the broken units — only on a counted row.
+  function brokenBadge(request: RestockRequest) {
+    const broken = brokenTotal(request);
+    if (broken <= 0n) return null;
+
+    return (
+      <Badge colorPalette="warning" data-testid={`restock-broken-${request.id}`}>
+        {t("restock.tags.brokenBadge", { count: Number(broken) })}
+      </Badge>
+    );
+  }
+
+  // The table's status cell keeps to two lines (one-context-per-column-and-never-three-lines): *kurang N* and *rusak N*
+  // share the second.
+  function problemBadges(request: RestockRequest) {
+    const missing = missingBadge(request);
+    const broken = brokenBadge(request);
+    if (!missing && !broken) return null;
+
+    return (
+      <HStack gap="1">
+        {missing}
+        {broken}
+      </HStack>
     );
   }
 
@@ -506,10 +551,14 @@ export function RestockSellingPage() {
                   {warehouse?.name || t("restock.warehouseRef", { id: request.warehouseId.toString() })}
                 </Text>
 
+                {/* Its tags (#87), one line of chips, the system's first and locked; only when it has any. */}
+                <RestockTagChips tags={tagsOfRequest(request)} max={3} wrap testId={`restock-tags-${request.id}`} />
+
                 {/* Where it has got to, and when it was raised — with its ⋯. */}
                 <Flex align="center" gap="2">
                   <RestockStatusBadge status={request.status} />
                   {missingBadge(request)}
+                  {brokenBadge(request)}
                   {/* Root's restock from outside carries the "by Root team" badge after the name
                       (an-override-shows-a-platform-badge); that line may take two rows rather than cut the badge off. */}
                   <Text
@@ -555,6 +604,9 @@ export function RestockSellingPage() {
               <Table.ColumnHeader textAlign="end">{t("restock.table.total")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.shipment")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.status")}</Table.ColumnHeader>
+              {/* The restock's tags (#87), after where it has got to — ALWAYS drawn (the owner's 🔄 under
+                  the-restock-tags-prototype-is-accepted): the table scrolls in its own box. */}
+              <Table.ColumnHeader>{t("restock.tags.column")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.created")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("restock.table.accepted")}</Table.ColumnHeader>
               <Table.ColumnHeader textAlign="end">{t("restock.table.actions")}</Table.ColumnHeader>
@@ -607,8 +659,11 @@ export function RestockSellingPage() {
                   <Table.Cell>
                     <Stack gap="1" align="start">
                       <RestockStatusBadge status={request.status} />
-                      {missingBadge(request)}
+                      {problemBadges(request)}
                     </Stack>
+                  </Table.Cell>
+                  <Table.Cell data-testid={`restock-tags-cell-${request.id}`}>
+                    <RestockTagChips tags={tagsOfRequest(request)} testId={`restock-tags-${request.id}`} />
                   </Table.Cell>
                   {/* Created: when, and BY WHOM — one event, so one cell. Date AND TIME (owner): several restocks are
                       raised in one morning, and the day alone cannot put them in order. */}
@@ -757,6 +812,15 @@ export function RestockSellingPage() {
             onChange={(id) => refilter(() => setCourierFilter(id))}
           />
         </FilterField>
+        {/* WHICH TAGS it carries (#87, a-restock-tag-is-system-or-custom), beside the courier: several picks of the
+            app-wide list, a restock in when it carries ANY; × back to any. */}
+        <FilterField w="15rem" testId="restock-tag-filter">
+          <RestockTagFilter
+            tags={tagCatalogue.data ?? []}
+            value={tagPick}
+            onChange={(ids) => refilter(() => setTagPick(ids))}
+          />
+        </FilterField>
         {/* BY PERSON (owner) — TWO pickers, because they answer two questions asked by two people: a manager reviewing
             purchasing asks whose orders these are, somebody chasing a bad delivery asks who was at the door. One
             "involved this person" box could not say which.
@@ -880,6 +944,7 @@ export function RestockSellingPage() {
                 dateRangeCodec.encode(range),
                 dateField,
                 pageSize,
+                TAGS_CODEC.encode(tagPick),
               ].join("|")}
               pageSize={pageSize}
               pageSizeOptions={PAGE_SIZE_OPTIONS}

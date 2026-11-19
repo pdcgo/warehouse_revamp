@@ -3,7 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { asAdminTeam, asRole } from "../../../.storybook/sessionScenario";
-import { foundRequestsNoneWaiting } from "../../../.storybook/foundRequestStub";
+import { foundRequestsNoneWaiting, withFoundFromLostOrder } from "../../../.storybook/foundRequestStub";
 import { FoundRequestStatus } from "../../gen/warehouse/inventory/v1/found_request_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { FoundRequestsPage } from "./index";
@@ -355,6 +355,42 @@ export const StaffSeeAndWithdrawTheirOwn: Story = {
     // Their history is their own too: the two Ani reported, nobody else's.
     await userEvent.click(canvas.getByTestId("found-requests-tab-all"));
     await waitFor(() => expect(rowIds(canvas)).toEqual(["found-request-302", "found-request-288"]));
+  },
+};
+
+// A LOST ORDER'S PARCEL, FOUND (a-found-lost-parcel-is-a-found-stock-in). #304 names order #106 (Melati's, lost): the
+// row and the Rincian name it, each a way to the order; approving it posts ONE line back from the order — no loss is
+// claimed, the unit comes back at the cost the order took it at (the stub's take: Beras's oldest batch, Rp 62.000).
+export const AFoundNamesTheLostOrder: Story = {
+  beforeEach: withFoundFromLostOrder,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "found-request-304");
+
+    const link = row(canvas, "304").getByTestId("found-request-order-304");
+    await expect(link).toHaveTextContent("Order #106");
+    await expect(link).toHaveAttribute("href", "/warehouse-orders/106");
+    // A found naming no order names none.
+    await expect(row(canvas, "301").queryByTestId("found-request-order-301")).toBeNull();
+
+    const detail = await openDetail(canvas, "304");
+    await expect(detail.getByTestId("found-detail-order")).toHaveTextContent("From lost order #106");
+    await expect(detail.getByTestId("found-detail-order")).toHaveAttribute("href", "/warehouse-orders/106");
+    await expect(detail.getByTestId("found-detail-line-0")).toHaveTextContent("Back from the order");
+    await expect(detail.getByTestId("found-detail-line-0")).toHaveTextContent("New batch, at the order's cost");
+    await expect(detail.getByTestId("found-detail-line-0")).toHaveTextContent("Rp 62.000");
+    await expect(detail.queryByTestId("found-detail-line-1")).toBeNull();
+
+    await userEvent.click(detail.getByTestId("found-detail-approve"));
+    const dialog = await screen.findByRole("alertdialog");
+    await expect(dialog).toHaveTextContent("claimed back Rp 0, new stock Rp 62.000");
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await waitFor(() => expect(canvas.queryByTestId("found-request-304")).toBeNull());
+
+    await userEvent.click(canvas.getByTestId("found-requests-tab-approved"));
+    await canvas.findByTestId("found-request-304");
+    const posted = await openDetail(canvas, "304");
+    await expect(posted.getByTestId("found-detail-line-0")).toHaveTextContent("New batch #100, at the order's cost");
+    await expect(posted.getByTestId("found-detail-order")).toHaveTextContent("From lost order #106");
   },
 };
 

@@ -21,6 +21,7 @@ import {
 import { ArrowLeft, PackageCheck } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
+import type { OrderReturnLabel } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { OrderStatusBadge, orderStatusLabelKey } from "../../components/badges/OrderStatusBadge";
@@ -35,6 +36,7 @@ import { useProductsByIds } from "../../features/products/queries";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeamsByIds } from "../../features/teams/queries";
 import { useIsMobile } from "../../layouts/shell";
+import { RelabelPrintStep } from "./components/RelabelPrintStep";
 import { ReturnLineCard } from "./components/ReturnLineCard";
 import type { ReturnTotals } from "./components/ReturnSummary";
 import { ReturnSummary } from "./components/ReturnSummary";
@@ -55,7 +57,7 @@ function parseOrderId(raw: string | undefined): bigint {
 }
 
 export const description =
-  "Accept Return: the return warehouse's crew has the parcel in its hands. Per line it types what is missing and what is broken, with a note if it wants one; the sound units are worked out and go onto its racks, split if they need to; a borrowed line says the code to print. The courier's ask at the door is entered only if it asked one. Accept waits until every sound unit has a rack. Another warehouse holding the parcel is told where it goes, and has no Accept.";
+  "Accept Return: the return warehouse's crew has the parcel in its hands. Per line it types what is missing and what is broken, with a note if it wants one; the sound units are worked out and go onto its racks, split if they need to; a borrowed line says the code to print, and once accepted its labels are printed there and then, one per sound unit. The courier's ask at the door is entered only if it asked one. Accept waits until every sound unit has a rack. Another warehouse holding the parcel is told where it goes, and has no Accept.";
 
 // A PAGE, as Accept Delivery and a transfer's accept are (a-counted-line-is-three-columns), at
 // `/warehouse-orders/:orderId/accept-return` (the-return-accept-page-is-accepted). Three screens open it — the pick page,
@@ -70,7 +72,8 @@ export const description =
 //                                that do not come back come off the newest layer (a-return-mints-one-batch-per-batch-the-order-took)
 //   broken / missing            door rows, borne by the selling team, named on the order's note for customer service,
 //                                with the crew's optional note (a-return-door-row-carries-an-optional-note)
-//   borrowed                    the own product's code to print, per sound unit (a-returned-borrowed-unit-is-relabelled-at-the-accept)
+//   borrowed                    the own product's code to print, per sound unit (a-returned-borrowed-unit-is-relabelled-at-the-accept);
+//                                the accept answers the labels and the page stays to print them (RelabelPrintStep)
 //   the courier's ask           an optional amount and its note, as today (a-return-may-carry-the-couriers-ask)
 export function OrderReturnAcceptPage() {
   const { current } = useTeam();
@@ -93,6 +96,8 @@ export function OrderReturnAcceptPage() {
   const [note, setNote] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  // The labels the accept answered for its borrowed lines — set, the page is the print step (RelabelPrintStep).
+  const [toPrint, setToPrint] = useState<OrderReturnLabel[] | null>(null);
 
   const accept = useAcceptReturn();
 
@@ -135,6 +140,14 @@ export function OrderReturnAcceptPage() {
           {t("picking.warehouseOnly")}
         </Text>
       </Stack>
+    );
+  }
+
+  // ACCEPTED, WITH BORROWED UNITS TO RELABEL (a-returned-borrowed-unit-is-relabelled-at-the-accept) — the accept's own
+  // answer, so it holds whatever the refetched order now reads (return_completed).
+  if (toPrint) {
+    return (
+      <RelabelPrintStep orderId={orderId} title={title} back={back} mobile={mobile} labels={toPrint} onDone={goBack} />
     );
   }
 
@@ -264,7 +277,7 @@ export function OrderReturnAcceptPage() {
     setSubmitError("");
 
     try {
-      await accept.mutateAsync({
+      const res = await accept.mutateAsync({
         teamId: current.teamId,
         orderId: order.id,
         lines: lines.map((l) => acceptLine(l.item.id, l.st)),
@@ -273,6 +286,13 @@ export function OrderReturnAcceptPage() {
       });
 
       toaster.create({ type: "success", title: t("picking.acceptReturn.accepted") });
+      // A borrowed line's labels print NOW, while the units are in hand — the page stays for them; a return of own
+      // products only has none, and goes back as before.
+      const labels = res.labels.filter((label) => label.quantity > 0);
+      if (labels.length > 0) {
+        setToPrint(labels);
+        return;
+      }
       goBack();
     } catch (err) {
       setSubmitError(rpcError(err));

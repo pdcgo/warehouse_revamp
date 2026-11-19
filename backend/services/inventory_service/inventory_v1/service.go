@@ -43,10 +43,11 @@ type Service struct {
 	// financial_account_service in-process (a-restock-names-its-paying-account). See paying_accounts.go here and
 	// restock_accounts.go in the composition root.
 	accounts PayingAccounts
-	// Which order each `return` transaction put back on the shelf — asked of selling_service in-process, so a batch a
-	// return minted reads *Retur · order #<id>* (a-returns-batch-opens-its-order). See return_orders.go here and in the
-	// composition root.
-	returnOrders ReturnOrders
+	// What inventory asks selling_service about orders, in-process: which order each `return` transaction put back on the
+	// shelf, so a batch a return minted reads *Retur · order #<id>* (a-returns-batch-opens-its-order); and the lost order a
+	// found report names, with the note on its timeline (a-found-lost-parcel-is-a-found-stock-in). See return_orders.go
+	// here and in the composition root.
+	orders SellingOrders
 	// Where the selling restock list's file goes, and the names its rows need — document_service for the file, the
 	// supplier, team, shipment and user services for the names, AS THE CALLER
 	// (the-restock-list-exports-and-filters-by-courier). See export_store.go here and restock_exports.go in the
@@ -103,7 +104,7 @@ func NewService(
 	products ProductReader,
 	photos ReceiptPhotoLinker,
 	accounts PayingAccounts,
-	returnOrders ReturnOrders,
+	orders SellingOrders,
 	exports ExportStore,
 ) *Service {
 	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
@@ -143,10 +144,10 @@ func NewService(
 		accounts = accountsUnchecked{}
 	}
 
-	// A nil order seam names no return's order — a test reading batches has no selling_service; the composition root
-	// always wires the real one.
-	if returnOrders == nil {
-		returnOrders = noReturnOrders{}
+	// A nil order seam names no return's order and finds no lost order — a test reading batches has no selling_service;
+	// the composition root always wires the real one.
+	if orders == nil {
+		orders = noSellingOrders{}
 	}
 
 	return &Service{
@@ -159,8 +160,8 @@ func NewService(
 		products:  products,
 		photos:    photos,
 
-		returnOrders: returnOrders,
-		exports:      exports,
+		orders:  orders,
+		exports: exports,
 	}
 }
 

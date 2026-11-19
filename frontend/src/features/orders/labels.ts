@@ -70,38 +70,9 @@ export function useOrderLabels() {
     }
   }
 
-  /**
-   * PRINTING SEVERAL AT ONCE — the warehouse's ticked orders, ONE call (a-warehouse-prints-the-labels-of-orders-it-ships):
-   * the server merges their labels into one PDF, in the order sent (the list's), and says per order why one is not in
-   * it. The PDF opens when any label made it; the toast names every order left out and why, so the crew knows which
-   * parcels still need a label. Every ticked order is sent — the server, not the row, knows whether a file is there.
-   */
-  async function printLabels(args: { teamId: bigint | undefined; orders: Order[] }) {
-    const { teamId, orders } = args;
+  // PRINTING SEVERAL AT ONCE — and a list row's one label — is the print page's (pages/print-receipts,
+  // the-print-page-and-the-courier-count-prototype-is-accepted, a-rows-print-label-opens-the-print-page); this opens one
+  // label to READ it, as the order page's label card does.
 
-    if (teamId === undefined || orders.length === 0) return;
-
-    setOpening(true);
-
-    try {
-      const res = await orderClient.orderLabels({ teamId, orderIds: orders.map((order) => order.id) });
-      const refused = res.results.filter((result) => !result.included);
-
-      if (res.url) window.open(res.url, "_blank", "noopener,noreferrer");
-
-      if (refused.length > 0) {
-        toaster.create({
-          type: res.url ? "warning" : "error",
-          title: res.url ? t("orders.label.someLeftOut", { count: refused.length }) : t("orders.label.noneToPrint"),
-          description: refused.map((result) => t(REFUSAL[result.reason], { id: result.orderId.toString() })).join("\n"),
-        });
-      }
-    } catch (err) {
-      toaster.create({ type: "error", title: rpcError(err) });
-    } finally {
-      setOpening(false);
-    }
-  }
-
-  return { openLabel, printLabels, opening };
+  return { openLabel, opening };
 }

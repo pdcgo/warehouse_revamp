@@ -10,9 +10,8 @@ import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { toCount } from "../../../features/restock/counting";
 import { FLASH_ON_LANDING } from "../../../lib/useScrollSpy";
 import { formatRupiahNumber } from "../../../lib/money";
-import { RadioPills } from "../../../components/inputs/RadioPills";
 import { PhotoPick } from "../../../features/restock/PhotoPick";
-import type { BrokenTo, LineDraft, LineState } from "../draft";
+import type { LineDraft, LineState } from "../draft";
 import { ExpiryField } from "./ExpiryField";
 import { PcsMark } from "./PcsMark";
 import { PlacementPanel } from "./PlacementPanel";
@@ -54,7 +53,6 @@ export function LineCard({
   imageUrl,
   thumbnailUrl,
   recommendations,
-  brokenRackMark,
   layout,
   update,
 }: {
@@ -65,8 +63,6 @@ export function LineCard({
   imageUrl?: string;
   thumbnailUrl?: string;
   recommendations: ProductPlace[];
-  /** The page's mark on "put on a rack" — chosen and not kept yet. */
-  brokenRackMark?: ReactNode;
   /** How the three parts sit — from the lines column's width (`lineLayout`). */
   layout: LineLayout;
   update: (fn: (d: LineDraft) => LineDraft) => void;
@@ -241,7 +237,9 @@ export function LineCard({
 
               {/* BROKEN AND MISSING, EACH ITS OWN BLOCK (owner: *"pembagian rusak dan kurang perjelas, yang sekarang terasa
                   menyatu"*, the-broken-and-the-missing-are-blocks-of-their-own) — a tinted edge and a heading in its
-                  tone, so where the broken units' note, photo and rack end and the missing units' note begins is plain. */}
+                  tone, so where the broken units' note and photo end and the missing units' note begins is plain. The
+                  broken units are just broken: their count, note and photo — no rack, no placement
+                  (a-restocks-broken-units-are-just-broken-for-now). */}
               {st.broken > 0n && !st.brokenOver && (
                 <ProblemBlock
                   tone="error"
@@ -266,38 +264,6 @@ export function LineCard({
                     alt={t("restock.accept.brokenPhoto.alt")}
                     testId={`accept-broken-photo-${pid}`}
                   />
-                  {/* WHERE THEY GO (owner: *"ditaruh rak itu opsional, jadi ada 2 pilihan"*,
-                      a-broken-product-may-go-on-a-rack) — thrown away, as before, or onto a rack, which then needs one. */}
-                  <Stack gap="1.5" data-testid={`accept-broken-to-${pid}`}>
-                    <Text fontSize="xs" fontWeight="bold" color="fg.label">
-                      {t("restock.accept.brokenTo.label")}
-                    </Text>
-                    <RadioPills<BrokenTo>
-                      value={draft.brokenTo}
-                      onChange={(brokenTo) => update((d) => ({ ...d, brokenTo }))}
-                      ariaLabel={t("restock.accept.brokenTo.label")}
-                      options={[
-                        {
-                          value: "discard",
-                          label: t("restock.accept.brokenTo.discard"),
-                          testId: `accept-broken-to-discard-${pid}`,
-                        },
-                        {
-                          value: "rack",
-                          label: t("restock.accept.brokenTo.rack"),
-                          mark: brokenRackMark,
-                          testId: `accept-broken-to-rack-${pid}`,
-                        },
-                      ]}
-                    />
-                    {/* The rack itself is chosen in Taruh ke penempatan, as a row marked Rusak
-                        (the-broken-units-rack-is-a-marked-placement) — said here, so the choice does not look unanswered. */}
-                    {draft.brokenTo === "rack" && (
-                      <Text fontSize="xs" color="fg.muted" data-testid={`accept-broken-to-hint-${pid}`}>
-                        {t("restock.accept.brokenTo.pickInPutaway")}
-                      </Text>
-                    )}
-                  </Stack>
                 </ProblemBlock>
               )}
 
@@ -379,7 +345,6 @@ function Outcome({
 //   ▌ ⊠ Rusak  [1 pcs]                 ▌ ⊟ Kurang  [3 pcs]
 //   ▌ Catatan barang rusak (opsional)  ▌ Catatan barang kurang (opsional)
 //   ▌ [📷 Tambah Foto]                 ▌ [ … ]
-//   ▌ Barang rusak (• Dibuang) ( Rak )
 function ProblemBlock({
   tone,
   icon,

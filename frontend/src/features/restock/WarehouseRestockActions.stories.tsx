@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { holdUploads } from "../../../.storybook/uploadScenario";
 import { toaster } from "../../components/feedback/Toaster";
-import { storyRestock } from "./storyRestock";
+import { storedRestockForStory, storyRestock } from "./storyRestock";
 import { WarehouseRestockActions } from "./WarehouseRestockActions";
 
 // WHAT THE WAREHOUSE MAY DO, by status: ongoing → Sign for Box, Accept; arrived → Accept; lost → Sign for Box (a late
@@ -54,10 +55,9 @@ export const AsARow: Story = { args: { variant: "row" } };
 
 // TANDAI TIBA ONLY MARKS (tiba-marks-and-terima-is-final): the dialog says stock waits for Terima, and its toast never
 // says "received". THE COURIER'S CHARGE CAN BE NOTED IN IT (the-cod-can-be-noted-when-the-box-arrives) — optional, with a
-// note once there is an amount, as at Terima. Not kept yet: the page's mark sits by the title, and a second toast says to
-// enter it again at Terima.
+// note once there is an amount, as at Terima — and KEPT (the-courier-charge-is-noted-at-tiba-and-final-at-terima): the
+// sign sends it, the restock holds it, and no mark or toast says to enter it again at Terima.
 export const SignForBoxNotesTheCourierCharge: Story = {
-  args: { codMark: <span data-testid="story-cod-mark">mark</span> },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -66,7 +66,7 @@ export const SignForBoxNotesTheCourierCharge: Story = {
     await waitFor(() => expect(confirm).toBeVisible());
 
     await expect(screen.getByText(/stock does not go up until you accept it/)).toBeVisible();
-    await expect(within(screen.getByTestId("sign-courier")).getByTestId("story-cod-mark")).toBeVisible();
+    await expect(within(screen.getByTestId("sign-courier")).queryByTestId(/^not-implemented-/)).toBeNull();
     // ASKED FIRST (the-charge-is-asked-for-before-it-is-filled) — unticked, nothing to fill, and the sign goes ahead.
     await expect(screen.queryByTestId("sign-courier-charge")).toBeNull();
     await expect(confirm).toBeEnabled();
@@ -85,9 +85,49 @@ export const SignForBoxNotesTheCourierCharge: Story = {
     await userEvent.click(confirm);
 
     await expect(await screen.findByText("Restock marked as arrived")).toBeInTheDocument();
-    await expect(
-      await screen.findByText("What was entered for the courier's charge was not kept — enter it again at Accept."),
-    ).toBeInTheDocument();
+    await expect(screen.queryByText(/enter it again at Accept/)).toBeNull();
+
+    // KEPT on the restock — what both its pages show and Terima opens with; no slip was picked, so none.
+    const stored = await storedRestockForStory(501n);
+    await expect(stored.warehouseAdditionalCost).toBe(15000);
+    await expect(stored.warehouseAdditionalCostNote).toBe("COD handling fee");
+    await expect(stored.warehouseAdditionalCostFile).toBe("");
+  },
+};
+
+// THE SLIP IS KEPT WITH THE CHARGE, as at Terima (the-courier-slip-has-an-optional-photo): picked, it goes up at once under
+// this warehouse; the sign waits while it is on its way, then sends it with the charge, and the restock keeps it beside it.
+export const SignForBoxKeepsTheSlip: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("restock-action-sign-501"));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(screen.getByTestId("sign-courier-asked-yes"));
+    await userEvent.type(await screen.findByTestId("sign-courier-charge"), "15000", { delay: 20 });
+    await userEvent.type(screen.getByTestId("sign-courier-note"), "COD handling fee", { delay: 20 });
+    await waitFor(() => expect(confirm).toBeEnabled());
+
+    // On its way: the photo shows, the sign waits.
+    const release = holdUploads();
+    await userEvent.upload(
+      screen.getByTestId("sign-courier-photo-input"),
+      new File([new Uint8Array([137, 80, 78, 71])], "nota.png", { type: "image/png" }),
+    );
+    await waitFor(() => expect(screen.getByTestId("sign-courier-photo-shown")).toHaveAttribute("data-state", "uploading"));
+    await expect(confirm).toBeDisabled();
+
+    // Landed: kept, and the sign is free.
+    release();
+    await waitFor(() => expect(screen.getByTestId("sign-courier-photo-shown")).toHaveAttribute("data-state", "kept"));
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+    await expect(await screen.findByText("Restock marked as arrived")).toBeInTheDocument();
+
+    const stored = await storedRestockForStory(501n);
+    await expect(stored.warehouseAdditionalCost).toBe(15000);
+    await expect(stored.warehouseAdditionalCostFile).toMatch(/^stub-upload-/);
   },
 };
 
@@ -102,6 +142,7 @@ export const SignForBoxWithoutACharge: Story = {
     await userEvent.click(confirm);
 
     await expect(await screen.findByText("Restock marked as arrived")).toBeInTheDocument();
-    await expect(screen.queryByText("What was entered for the courier's charge was not kept — enter it again at Accept.")).toBeNull();
+    await expect(screen.queryByText(/enter it again at Accept/)).toBeNull();
+    await expect((await storedRestockForStory(501n)).warehouseAdditionalCost).toBe(0);
   },
 };

@@ -24,7 +24,13 @@ export const POST: Record<FoundRequestPostType, { key: string; color: string }> 
   [FoundRequestPostType.UNSPECIFIED]: { key: "foundRequest.post.unspecified", color: "gray" },
   [FoundRequestPostType.CLAIM]: { key: "foundRequest.post.claim", color: "success" },
   [FoundRequestPostType.MINT]: { key: "foundRequest.post.mint", color: "info" },
+  // A lost order's parcel back at the cost the order took it at (a-found-lost-parcel-is-a-found-stock-in) — stock with no
+  // money, as a mint.
+  [FoundRequestPostType.ORDER_MINT]: { key: "foundRequest.post.orderMint", color: "info" },
 };
+
+/** Where a found naming a lost order opens it: the warehouse's page of the order. */
+export const orderPathOf = (r: FoundRequest) => `/warehouse-orders/${r.orderId.toString()}`;
 
 /** A rejection by the person who reported it is their withdrawal (the-reporter-may-withdraw-their-found). */
 export function isWithdrawn(r: FoundRequest): boolean {

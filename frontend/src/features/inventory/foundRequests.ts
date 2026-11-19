@@ -113,7 +113,8 @@ export function useRejectFoundRequest() {
 
 /**
  * A found, reported: FoundRequestCreate — no batch. It posts nothing, so no stock read changes — only the approval list
- * and the menu's count do.
+ * and the menu's count do. One naming a LOST order (a-found-lost-parcel-is-a-found-stock-in) also writes a note on the
+ * order's timeline, so the order's reads refresh too — the order itself stays lost.
  */
 export function useReportFound() {
   const client = useQueryClient();
@@ -121,6 +122,11 @@ export function useReportFound() {
   return useMutation({
     mutationFn: (vars: Parameters<typeof foundRequestClient.foundRequestCreate>[0]) =>
       foundRequestClient.foundRequestCreate(vars),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["foundRequests"] }),
+    onSuccess: async (_res, vars) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["foundRequests"] }),
+        vars.orderId ? client.invalidateQueries({ queryKey: ["orders"] }) : Promise.resolve(),
+      ]);
+    },
   });
 }

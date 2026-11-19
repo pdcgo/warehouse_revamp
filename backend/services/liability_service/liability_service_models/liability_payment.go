@@ -21,8 +21,9 @@ type LiabilityPayment struct {
 	// Exact rupiah (the-backend-never-rounds-money), always positive. Direction lives in the two ids above, never in a sign.
 	Amount float64
 
-	// recorded | confirmed | rejected | reversed — see the mapper. Text rather than an enum column for
-	// the same reason `liability_logs.source_type` is.
+	// recorded | confirmed | rejected | cancelled | reversed — see the mapper. Text rather than an enum column for
+	// the same reason `liability_logs.source_type` is. `cancelled` is the payer taking a pending claim back
+	// (a-pending-payment-is-cancelled-by-its-selling-team) — like `rejected`, it never touched the ledger.
 	//
 	// ⚠ `rejected` AND `reversed` ARE DIFFERENT FAILURES. Rejected refuses a CLAIM and posts nothing;
 	// reversed undoes a CONFIRMATION with a compensating entry. Only the second one ever touched the

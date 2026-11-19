@@ -87,6 +87,18 @@ func restockListScope(db *gorm.DB, teamID uint64, filter *inventoryv1.RestockReq
 		query = query.Where("shipment_id = ?", shipmentID)
 	}
 
+	// BY TAG (the-restock-tags-prototype-is-accepted): the restocks carrying ANY of the picked tags — *Barang kurang* +
+	// *Barang rusak* together is the problem list. EXISTS rather than a JOIN, for the reason the product filter gives: a
+	// restock carrying two of the picks must be read once, in the rows and in the total. The probe is the key of
+	// `restock_tags` (restock_id, tag_id); a rare tag over a big book is read from its own side by
+	// `restock_tags_tag_idx` (tag_id, restock_id) — measured in restock_request_list_perf_test.go.
+	if tagIDs := filter.GetTagIds(); len(tagIDs) > 0 {
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM restock_tags rt WHERE rt.restock_id = restocks.id AND rt.tag_id IN ?)",
+			tagIDs,
+		)
+	}
+
 	query = applyRestockDateRange(query, filter)
 	query = applyRestockSearch(query, filter.GetQ())
 

@@ -24,7 +24,7 @@ func TestRegister_TheExpenseMetricsAnswer(t *testing.T) {
 	db := san_testdb.DB(t)
 	mux := http.NewServeMux()
 
-	names := expense_service.NewRegister(mux, expense_v1.NewService(db, nil, nil, nil), connect.WithInterceptors())()
+	names := expense_service.NewRegister(mux, expense_v1.NewService(db, nil, nil, nil, nil), connect.WithInterceptors())()
 	if !slices.Contains(names, expensev1connect.ExpenseAnalyticServiceName) {
 		t.Fatalf("reflection names %v, want %s too", names, expensev1connect.ExpenseAnalyticServiceName)
 	}

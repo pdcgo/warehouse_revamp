@@ -213,3 +213,170 @@ func TestStockPickLocations_PolicyIsTheWarehouseCrew(t *testing.T) {
 		t.Fatalf("scope = %d (ok %v), want the warehouse 77", scope, ok)
 	}
 }
+
+// ── many takes at once: the bulk pick list (the-bulk-pick-list-prototype-is-accepted) ─────────────────────────────
+
+// takeMany takes several lines under one key and returns the take's transaction.
+func takeMany(t *testing.T, svc *inventory_v1.Service, warehouse uint64, key string, lines ...*inventoryv1.OrderTransactionLine) uint64 {
+	t.Helper()
+
+	res, err := svc.OrderTransactionCreate(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionCreateRequest{
+		TeamId: seedOwner, IdempotencyKey: key, WarehouseId: warehouse, Lines: lines,
+	}))
+	if err != nil {
+		t.Fatalf("take for %s: %v", key, err)
+	}
+
+	return res.Msg.GetTransactionId()
+}
+
+func pickLocationsOfMany(t *testing.T, svc *inventory_v1.Service, warehouse uint64, takes ...uint64) []*inventoryv1.StockPickLocation {
+	t.Helper()
+
+	res, err := svc.StockPickLocations(ctxUser(1), connect.NewRequest(&inventoryv1.StockPickLocationsRequest{
+		WarehouseId: warehouse, TransactionIds: takes,
+	}))
+	if err != nil {
+		t.Fatalf("StockPickLocations(warehouse %d, takes %v): %v", warehouse, takes, err)
+	}
+
+	return res.Msg.GetLocations()
+}
+
+// stop is one location as a comparable value.
+type stop struct {
+	take, product uint64
+	code          string
+	qty           int64
+}
+
+func stopsOf(locs []*inventoryv1.StockPickLocation) []stop {
+	out := make([]stop, 0, len(locs))
+	for _, l := range locs {
+		out = append(out, stop{take: l.GetTransactionId(), product: l.GetProductId(), code: l.GetRackCode(), qty: l.GetQuantity()})
+	}
+
+	return out
+}
+
+// MANY TAKES IN ONE CALL, EACH STOP NAMED BY ITS TAKE: three orders' takes meeting on the same racks come back as each
+// take's own stops — never summed across takes (the screen sums per product itself, and files each rack under its own
+// order) — ordered take, then product, then rack, and each take's stops are exactly what its single read answers.
+func TestStockPickLocations_ManyTakesNameEachStopByItsTake(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	productY := uint64(productX + 1)
+	rackA := insertRack(t, db, warehouseA, "A-01-1")
+	rackB := insertRack(t, db, warehouseA, "B-02-1")
+
+	seedLevel(t, db, warehouseA, productX, &rackA, 2)
+	seedLevel(t, db, warehouseA, productX, &rackB, 50)
+	seedLevel(t, db, warehouseA, productY, &rackB, 50)
+
+	first := takeMany(t, svc, warehouseA, "bulk-1", &inventoryv1.OrderTransactionLine{ProductId: productX, Quantity: 3})
+	second := takeMany(t, svc, warehouseA, "bulk-2",
+		&inventoryv1.OrderTransactionLine{ProductId: productY, Quantity: 2},
+		&inventoryv1.OrderTransactionLine{ProductId: productX, Quantity: 1})
+	third := takeMany(t, svc, warehouseA, "bulk-3", &inventoryv1.OrderTransactionLine{ProductId: productY, Quantity: 4})
+
+	got := stopsOf(pickLocationsOfMany(t, svc, warehouseA, third, first, second))
+
+	want := []stop{
+		{first, productX, "a-01-1", 2},
+		{first, productX, "b-02-1", 1},
+		{second, productX, "b-02-1", 1},
+		{second, productY, "b-02-1", 2},
+		{third, productY, "b-02-1", 4},
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("the walk = %+v\nwant %+v", got, want)
+	}
+
+	// Each take's stops in the many-take answer are exactly its single read — the single call names its take too.
+	for _, take := range []uint64{first, second, third} {
+		single := stopsOf(pickLocations(t, svc, take))
+		var inMany []stop
+
+		for _, s := range got {
+			if s.take == take {
+				inMany = append(inMany, s)
+			}
+		}
+
+		if !slices.Equal(single, inMany) {
+			t.Fatalf("take %d: single read %+v, in the many-take read %+v", take, single, inMany)
+		}
+	}
+}
+
+// ONE BUILDING NEVER READS ANOTHER'S TAKES, many at once too: the asked takes of another warehouse add nothing, and a
+// released take (netted to zero) and an unknown id drop out — the rest of the walk stands.
+func TestStockPickLocations_ManyTakesReadOnlyThisWarehouse(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	rackA := insertRack(t, db, warehouseA, "A-01-1")
+	rackB := insertRack(t, db, warehouseB, "C-01-1")
+	seedLevel(t, db, warehouseA, productX, &rackA, 30)
+	seedLevel(t, db, warehouseB, productX, &rackB, 30)
+
+	mine := takeTx(t, svc, warehouseA, productX, 2, "bulk-mine")
+	released := takeTx(t, svc, warehouseA, productX, 5, "bulk-released")
+	theirs := takeTx(t, svc, warehouseB, productX, 4, "bulk-theirs")
+
+	_, err := svc.OrderTransactionRelease(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
+		TeamId: seedOwner, IdempotencyKey: "bulk-released",
+	}))
+	if err != nil {
+		t.Fatalf("release: %v", err)
+	}
+
+	asked := []uint64{theirs, mine, released, theirs + 1_000_000}
+
+	if got := stopsOf(pickLocationsOfMany(t, svc, warehouseA, asked...)); !slices.Equal(got, []stop{{mine, productX, "a-01-1", 2}}) {
+		t.Fatalf("warehouse A's walk = %+v, want only its own take %d", got, mine)
+	}
+
+	if got := stopsOf(pickLocationsOfMany(t, svc, warehouseB, asked...)); !slices.Equal(got, []stop{{theirs, productX, "c-01-1", 4}}) {
+		t.Fatalf("warehouse B's walk = %+v, want only its own take %d", got, theirs)
+	}
+}
+
+// ONE OR MANY, NEVER NEITHER OR BOTH, AND AT MOST 50: the single pick page names one take, the bulk list 1–50 (the
+// warehouse list's largest page). 51 takes, a take named twice, a zero take, or both forms at once are refused before
+// the handler runs.
+func TestStockPickLocations_OneOrManyTakesAtMostFifty(t *testing.T) {
+	takes := func(n int) []uint64 {
+		out := make([]uint64, n)
+		for i := range out {
+			out[i] = uint64(i + 1)
+		}
+
+		return out
+	}
+
+	for name, ok := range map[string]*inventoryv1.StockPickLocationsRequest{
+		"one take":  {WarehouseId: warehouseA, TransactionId: 9},
+		"1 of many": {WarehouseId: warehouseA, TransactionIds: takes(1)},
+		"50":        {WarehouseId: warehouseA, TransactionIds: takes(50)},
+	} {
+		err := protovalidate.Validate(ok)
+		if err != nil {
+			t.Fatalf("%s was refused: %v", name, err)
+		}
+	}
+
+	for name, bad := range map[string]*inventoryv1.StockPickLocationsRequest{
+		"neither":   {WarehouseId: warehouseA},
+		"both":      {WarehouseId: warehouseA, TransactionId: 9, TransactionIds: []uint64{10}},
+		"51":        {WarehouseId: warehouseA, TransactionIds: takes(51)},
+		"twice":     {WarehouseId: warehouseA, TransactionIds: []uint64{7, 7}},
+		"a zero id": {WarehouseId: warehouseA, TransactionIds: []uint64{7, 0}},
+	} {
+		err := protovalidate.Validate(bad)
+		if err == nil {
+			t.Fatalf("%s passed validation", name)
+		}
+	}
+}

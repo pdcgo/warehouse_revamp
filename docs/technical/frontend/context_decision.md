@@ -2046,6 +2046,8 @@ What it replaces: `ProductSelect` withholding its list until two characters were
 
 What it replaces: a conflict recorded only in the technical decision entry.
 
+🔄 *(2026-11-18)* Its example — the accept page's broken-rack mark and `BrokenUnitsCanGoOnARack` — is gone: the owner withdrew the rack ([a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now)); `PendingMarks`' `AConflictIsSaidInItsRow` now carries its own example text.
+
 ## stories-are-grouped-by-the-part-of-the-screen
 
 > Owner, in chat (2026-11-05): *"aku sekarang punya masalah pada story yang kebanyakan, misal restok selling ada banyak

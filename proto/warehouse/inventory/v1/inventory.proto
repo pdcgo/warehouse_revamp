@@ -93,7 +93,8 @@ service InventoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
+  // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column. One take (the single pick page),
+  // or up to 50 at once (the bulk pick list, the-bulk-pick-list-prototype-is-accepted) in ONE query.
   rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
     // the-admin-team-monitors-read-only).
@@ -789,7 +790,17 @@ message StockTakeQuoteResponse {
 // what happened rather than a snapshot of what is.
 //
 // So the shelf column is not a suggestion the screen computes. It is what the system already committed.
+//
+// ONE TAKE OR MANY (the-bulk-pick-list-prototype-is-accepted): the single pick page names one take
+// (`transaction_id`), the bulk pick list the ticked orders' takes (`transaction_ids`, 1–50) — exactly one of the two.
+// Both are answered by the same one query, and each location names its take.
 message StockPickLocationsRequest {
+  option (buf.validate.message).cel = {
+    id: "stock_pick_locations.one_or_many_takes"
+    message: "name exactly one of transaction_id or transaction_ids"
+    expression: "(this.transaction_id > 0u) != (size(this.transaction_ids) > 0)"
+  };
+
   // Read: the WAREHOUSE crew — the people who walk to the shelf. Scoped to the warehouse, like the rest
   // of the crew's work (#150), because the crew holds no role in the selling team that placed the order.
   option (warehouse.role_base.v1.request_policy) = {
@@ -812,7 +823,21 @@ message StockPickLocationsRequest {
   // order's key, so the order keeps the transaction id for exactly this read. Naming the transaction rather than the
   // order keeps inventory_service ignorant of what a selling order IS. Read only within `warehouse_id`: one building
   // never reads another's take.
-  uint64 transaction_id = 3 [(buf.validate.field).uint64.gt = 0];
+  //
+  // Required unless `transaction_ids` is given (the message rule above); it was `gt: 0` on its own until the many-take
+  // form, and a request naming neither is still refused.
+  uint64 transaction_id = 3;
+
+  // MANY TAKES AT ONCE — the bulk pick list's ticked orders' `transaction_id`s (the-bulk-pick-list-prototype-is-accepted),
+  // read in ONE query, still only within `warehouse_id`: a take of another building reads as nothing. At most 50, the
+  // warehouse list's largest page — one tick of its head fills it — and that cap is what bounds the answer.
+  repeated uint64 transaction_ids = 4 [(buf.validate.field).repeated = {
+    max_items: 50
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
 
   // `ref` was the pick's string reference — first `order:<id>`, then the order's idempotency key. Replaced by
   // transaction_id (backlog #10 slice 6).
@@ -843,16 +868,20 @@ message StockPickLocation {
   // began is picked as usual, which the count then reads as a match, not a false surplus.
   reserved 5;
   reserved "counting_session_id";
+
+  // WHICH TAKE this stop belongs to — the asked `transaction_id` (or one of `transaction_ids`), so a bulk pick list
+  // files each rack under its own order (the-bulk-pick-list-prototype-is-accepted). Set on the single-take answer too.
+  uint64 transaction_id = 6;
 }
 
 message StockPickLocationsResponse {
-  // Ordered product, then the UNPLACED pile, then shelves by label — the same order StockPick drained
-  // in (#149), so the list reads as the walk the system already planned.
+  // Ordered take, then product, then the UNPLACED pile, then shelves by label — per take the same order StockPick
+  // drained in (#149), so the list reads as the walk the system already planned.
   //
   // UNPAGINATED, deliberately, and this is the HARD RULE 9 exemption stated out loud: it is bounded by
-  // ONE pick's committed movements — an order's lines, each on a handful of shelves — not by a table
-  // that grows. It is a detail-of-one-entity read, the same category as RestockRequestDetail's items.
-  // The moment it could serve many picks at once it stops being exempt and takes a page filter.
+  // the ASKED takes' committed movements — at most 50 takes (the request's cap, the warehouse list's largest page), each
+  // an order's lines on a handful of shelves — not by a table that grows. The cap on the ids is what keeps it exempt:
+  // lifting it past a page is the moment it takes a page filter.
   repeated StockPickLocation locations = 1;
 }
 

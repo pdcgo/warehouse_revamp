@@ -17,7 +17,8 @@ import (
 // and must never appear in its own badge — counting both sides would show every payer a permanent
 // notification for work that is not theirs, which is how a badge stops meaning anything.
 //
-// Only RECORDED counts. A confirmed payment is done, and a reversed one has been dealt with twice.
+// Only RECORDED counts. A confirmed payment is done, a rejected one refused, and a CANCELLED one was taken back by its
+// payer before anybody decided (a-pending-payment-is-cancelled-by-its-selling-team) — none of them waits on this team.
 func (s *Service) awaitingConfirmation(ctx context.Context, teamID uint64) (map[uint64]uint32, error) {
 	type row struct {
 		PayerTeamID uint64

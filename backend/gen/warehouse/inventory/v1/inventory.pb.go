@@ -3473,6 +3473,10 @@ func (x *StockTakeQuoteResponse) GetItems() []*StockTakeQuoteItem {
 // what happened rather than a snapshot of what is.
 //
 // So the shelf column is not a suggestion the screen computes. It is what the system already committed.
+//
+// ONE TAKE OR MANY (the-bulk-pick-list-prototype-is-accepted): the single pick page names one take
+// (`transaction_id`), the bulk pick list the ticked orders' takes (`transaction_ids`, 1–50) — exactly one of the two.
+// Both are answered by the same one query, and each location names its take.
 type StockPickLocationsRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	WarehouseId uint64                 `protobuf:"varint,1,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
@@ -3481,9 +3485,16 @@ type StockPickLocationsRequest struct {
 	// order's key, so the order keeps the transaction id for exactly this read. Naming the transaction rather than the
 	// order keeps inventory_service ignorant of what a selling order IS. Read only within `warehouse_id`: one building
 	// never reads another's take.
+	//
+	// Required unless `transaction_ids` is given (the message rule above); it was `gt: 0` on its own until the many-take
+	// form, and a request naming neither is still refused.
 	TransactionId uint64 `protobuf:"varint,3,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// MANY TAKES AT ONCE — the bulk pick list's ticked orders' `transaction_id`s (the-bulk-pick-list-prototype-is-accepted),
+	// read in ONE query, still only within `warehouse_id`: a take of another building reads as nothing. At most 50, the
+	// warehouse list's largest page — one tick of its head fills it — and that cap is what bounds the answer.
+	TransactionIds []uint64 `protobuf:"varint,4,rep,packed,name=transaction_ids,json=transactionIds,proto3" json:"transaction_ids,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *StockPickLocationsRequest) Reset() {
@@ -3530,6 +3541,13 @@ func (x *StockPickLocationsRequest) GetTransactionId() uint64 {
 	return 0
 }
 
+func (x *StockPickLocationsRequest) GetTransactionIds() []uint64 {
+	if x != nil {
+		return x.TransactionIds
+	}
+	return nil
+}
+
 // One product, on one rack, in the quantity taken FROM THAT RACK for this pick.
 //
 // A product drawn from two shelves appears TWICE — once per shelf — rather than once with a chosen
@@ -3545,7 +3563,10 @@ type StockPickLocation struct {
 	RackId   uint64 `protobuf:"varint,2,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
 	RackCode string `protobuf:"bytes,3,opt,name=rack_code,json=rackCode,proto3" json:"rack_code,omitempty"`
 	// How much to take from THIS shelf. Positive.
-	Quantity      int64 `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Quantity int64 `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	// WHICH TAKE this stop belongs to — the asked `transaction_id` (or one of `transaction_ids`), so a bulk pick list
+	// files each rack under its own order (the-bulk-pick-list-prototype-is-accepted). Set on the single-take answer too.
+	TransactionId uint64 `protobuf:"varint,6,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3608,15 +3629,22 @@ func (x *StockPickLocation) GetQuantity() int64 {
 	return 0
 }
 
+func (x *StockPickLocation) GetTransactionId() uint64 {
+	if x != nil {
+		return x.TransactionId
+	}
+	return 0
+}
+
 type StockPickLocationsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Ordered product, then the UNPLACED pile, then shelves by label — the same order StockPick drained
-	// in (#149), so the list reads as the walk the system already planned.
+	// Ordered take, then product, then the UNPLACED pile, then shelves by label — per take the same order StockPick
+	// drained in (#149), so the list reads as the walk the system already planned.
 	//
 	// UNPAGINATED, deliberately, and this is the HARD RULE 9 exemption stated out loud: it is bounded by
-	// ONE pick's committed movements — an order's lines, each on a handful of shelves — not by a table
-	// that grows. It is a detail-of-one-entity read, the same category as RestockRequestDetail's items.
-	// The moment it could serve many picks at once it stops being exempt and takes a page filter.
+	// the ASKED takes' committed movements — at most 50 takes (the request's cap, the warehouse list's largest page), each
+	// an order's lines on a handful of shelves — not by a table that grows. The cap on the ids is what keeps it exempt:
+	// lifting it past a page is the moment it takes a page filter.
 	Locations     []*StockPickLocation `protobuf:"bytes,1,rep,name=locations,proto3" json:"locations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -10021,17 +10049,21 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"_unit_cost\"Z\n" +
 	"\x16StockTakeQuoteResponse\x12@\n" +
-	"\x05items\x18\x01 \x03(\v2*.warehouse.inventory.v1.StockTakeQuoteItemR\x05items\"\x93\x01\n" +
+	"\x05items\x18\x01 \x03(\v2*.warehouse.inventory.v1.StockTakeQuoteItemR\x05items\"\xec\x02\n" +
 	"\x19StockPickLocationsRequest\x12.\n" +
-	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12.\n" +
-	"\x0etransaction_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\rtransactionId:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\bJ\x04\b\x02\x10\x03R\x03ref\"\x9f\x01\n" +
+	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12%\n" +
+	"\x0etransaction_id\x18\x03 \x01(\x04R\rtransactionId\x129\n" +
+	"\x0ftransaction_ids\x18\x04 \x03(\x04B\x10\xbaH\r\x92\x01\n" +
+	"\x102\x18\x01\"\x042\x02 \x00R\x0etransactionIds:\xb1\x01\xbaH\xa2\x01\x1a\x9f\x01\n" +
+	"&stock_pick_locations.one_or_many_takes\x125name exactly one of transaction_id or transaction_ids\x1a>(this.transaction_id > 0u) != (size(this.transaction_ids) > 0)\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\bJ\x04\b\x02\x10\x03R\x03ref\"\xc6\x01\n" +
 	"\x11StockPickLocation\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x17\n" +
 	"\arack_id\x18\x02 \x01(\x04R\x06rackId\x12\x1b\n" +
 	"\track_code\x18\x03 \x01(\tR\brackCode\x12\x1a\n" +
-	"\bquantity\x18\x04 \x01(\x03R\bquantityJ\x04\b\x05\x10\x06R\x13counting_session_id\"e\n" +
+	"\bquantity\x18\x04 \x01(\x03R\bquantity\x12%\n" +
+	"\x0etransaction_id\x18\x06 \x01(\x04R\rtransactionIdJ\x04\b\x05\x10\x06R\x13counting_session_id\"e\n" +
 	"\x1aStockPickLocationsResponse\x12G\n" +
 	"\tlocations\x18\x01 \x03(\v2).warehouse.inventory.v1.StockPickLocationR\tlocations\"Q\n" +
 	"\x1bWarehouseProductListRequestJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\fwarehouse_idR\fdata_requestR\x04page\"G\n" +

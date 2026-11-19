@@ -231,8 +231,10 @@ func (s *Service) opnameActiveRefusal(ctx context.Context, warehouseID uint64) e
 		return connect.NewError(connect.CodeFailedPrecondition, errOpnameActiveExists)
 	}
 
-	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: count #%d, started by user #%d at %s",
-		errOpnameActiveExists, active.ID, active.CreatedByID, active.CreatedAt.In(jakarta).Format("2006-01-02 15:04 MST")))
+	// Named by the person who started it (count_lock_names.go), the when as it was.
+	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w: count #%d, started by %s at %s",
+		errOpnameActiveExists, active.ID, s.countStarter(ctx, active.CreatedByID),
+		active.CreatedAt.In(jakarta).Format("2006-01-02 15:04 MST")))
 }
 
 // fillOpnameNames asks product_service for the names of a session's rows that have none, and writes them — the rows a

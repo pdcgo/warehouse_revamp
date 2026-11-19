@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/found_request.proto.
  */
 export const file_warehouse_inventory_v1_found_request: GenFile = /*@__PURE__*/
-  fileDesc("Cip3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ZvdW5kX3JlcXVlc3QucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEi0gEKFEZvdW5kUmVxdWVzdFBvc3RMaW5lEjoKBHR5cGUYASABKA4yLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFBvc3RUeXBlEhAKCGJhdGNoX2lkGAIgASgEEhMKC3N0b2NrX2NvdW50GAMgASgDEhIKCnByaWNlX3VuaXQYBCABKAESDgoGYW1vdW50GAUgASgBEhIKCnByb2JsZW1faWQYBiABKAQSHwoXcHJvYmxlbV9jcmVhdGVkX2F0X3VuaXgYByABKAMihwUKDEZvdW5kUmVxdWVzdBIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDwoHdGVhbV9pZBgDIAEoBBISCgpwcm9kdWN0X2lkGAQgASgEEhQKDHByb2R1Y3RfY29kZRgFIAEoCRIUCgxwcm9kdWN0X25hbWUYBiABKAkSDwoHcmFja19pZBgHIAEoBBIRCglyYWNrX2NvZGUYCCABKAkSEwoLc3RvY2tfY291bnQYCSABKAMSDAoEbm90ZRgKIAEoCRIWCg5yZXBvcnRlZF9ieV9pZBgLIAEoBBIYChByZXBvcnRlZF9hdF91bml4GAwgASgDEjoKBnN0YXR1cxgNIAEoDjIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0U3RhdHVzEhUKDWRlY2lkZWRfYnlfaWQYDiABKAQSFwoPZGVjaWRlZF9hdF91bml4GA8gASgDEhUKDXJlamVjdF9yZWFzb24YECABKAkSOwoFbGluZXMYESADKAsyLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFBvc3RMaW5lEhYKDmNsYWltZWRfYW1vdW50GBIgASgBEhUKDW1pbnRlZF9hbW91bnQYEyABKAESFgoOdHJhbnNhY3Rpb25faWQYFCABKAQSPwoFYmxvY2sYFSABKA4yMC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdEFwcHJvdmVCbG9jaxIbChNjb3VudGluZ19zZXNzaW9uX2lkGBYgASgEEiYKHnNldHRsZWRfYnlfY291bnRpbmdfc2Vzc2lvbl9pZBgXIAEoBCKwAQoZRm91bmRSZXF1ZXN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhgKB3JhY2tfaWQYAyABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYBCABKANCB7pIBCICIAASFgoEbm90ZRgFIAEoCUIIukgFcgMYyAE6C5K1GAcKBQECBgkIIlkKGkZvdW5kUmVxdWVzdENyZWF0ZVJlc3BvbnNlEjsKDWZvdW5kX3JlcXVlc3QYASABKAsyJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdCKJAgoXRm91bmRSZXF1ZXN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESPgoGZmlsdGVyGAIgASgLMi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RMaXN0RmlsdGVyEkYKDGRhdGFfcmVxdWVzdBgDIAMoDjIwLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0TGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIGCQgiXgoWRm91bmRSZXF1ZXN0TGlzdEZpbHRlchJECgZzdGF0dXMYASABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFN0YXR1c0IIukgFggECEAEitwEKE0ZvdW5kUmVxdWVzdE1hcEl0ZW0SSgoIbWFwX2RhdGEYASADKAsyOC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdE1hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdDoCOAEimwEKHEZvdW5kUmVxdWVzdExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI+CgdyZXF1ZXN0GAIgASgLMisud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RNYXBJdGVtSABCAwoBZCKeAQoYRm91bmRSZXF1ZXN0TGlzdFJlc3BvbnNlEkMKBWl0ZW1zGAEgAygLMjQud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvImkKGkZvdW5kUmVxdWVzdEFwcHJvdmVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEiEKEGZvdW5kX3JlcXVlc3RfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECBgkicgobRm91bmRSZXF1ZXN0QXBwcm92ZVJlc3BvbnNlEjsKDWZvdW5kX3JlcXVlc3QYASABKAsyJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdBIWCg50cmFuc2FjdGlvbl9pZBgCIAEoBCKFAQoZRm91bmRSZXF1ZXN0UmVqZWN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIhChBmb3VuZF9yZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAEhoKBnJlYXNvbhgDIAEoCUIKukgHcgUQARj0AzoLkrUYBwoFAQIGCQgiWQoaRm91bmRSZXF1ZXN0UmVqZWN0UmVzcG9uc2USOwoNZm91bmRfcmVxdWVzdBgBIAEoCzIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0Ks0BChJGb3VuZFJlcXVlc3RTdGF0dXMSJAogRk9VTkRfUkVRVUVTVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIgChxGT1VORF9SRVFVRVNUX1NUQVRVU19XQUlUSU5HEAESIQodRk9VTkRfUkVRVUVTVF9TVEFUVVNfQVBQUk9WRUQQAhIhCh1GT1VORF9SRVFVRVNUX1NUQVRVU19SRUpFQ1RFRBADEikKJUZPVU5EX1JFUVVFU1RfU1RBVFVTX1NFVFRMRURfQllfQ09VTlQQBCqEAQoURm91bmRSZXF1ZXN0UG9zdFR5cGUSJwojRk9VTkRfUkVRVUVTVF9QT1NUX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1GT1VORF9SRVFVRVNUX1BPU1RfVFlQRV9DTEFJTRABEiAKHEZPVU5EX1JFUVVFU1RfUE9TVF9UWVBFX01JTlQQAirPAQoYRm91bmRSZXF1ZXN0QXBwcm92ZUJsb2NrEisKJ0ZPVU5EX1JFUVVFU1RfQVBQUk9WRV9CTE9DS19VTlNQRUNJRklFRBAAEisKJ0ZPVU5EX1JFUVVFU1RfQVBQUk9WRV9CTE9DS19OT1RfV0FJVElORxABEioKJkZPVU5EX1JFUVVFU1RfQVBQUk9WRV9CTE9DS19PV05fUkVQT1JUEAISLQopRk9VTkRfUkVRVUVTVF9BUFBST1ZFX0JMT0NLX0JFSU5HX0NPVU5URUQQAyqcAQoYRm91bmRSZXF1ZXN0TGlzdERhdGFUeXBlEiwKKEZPVU5EX1JFUVVFU1RfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIoCiRGT1VORF9SRVFVRVNUX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIoCiRGT1VORF9SRVFVRVNUX0xJU1RfREFUQV9UWVBFX1JFUVVFU1QQAjKLBAoTRm91bmRSZXF1ZXN0U2VydmljZRJ7ChJGb3VuZFJlcXVlc3RDcmVhdGUSMS53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdENyZWF0ZVJlcXVlc3QaMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdENyZWF0ZVJlc3BvbnNlEnoKEEZvdW5kUmVxdWVzdExpc3QSLy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdExpc3RSZXF1ZXN0GjAud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RMaXN0UmVzcG9uc2UiA5ACARJ+ChNGb3VuZFJlcXVlc3RBcHByb3ZlEjIud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RBcHByb3ZlUmVxdWVzdBozLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0QXBwcm92ZVJlc3BvbnNlEnsKEkZvdW5kUmVxdWVzdFJlamVjdBIxLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0UmVqZWN0UmVxdWVzdBoyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0UmVqZWN0UmVzcG9uc2VCUlpQZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9pbnZlbnRvcnkvdjE7aW52ZW50b3J5djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cip3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ZvdW5kX3JlcXVlc3QucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEi0gEKFEZvdW5kUmVxdWVzdFBvc3RMaW5lEjoKBHR5cGUYASABKA4yLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFBvc3RUeXBlEhAKCGJhdGNoX2lkGAIgASgEEhMKC3N0b2NrX2NvdW50GAMgASgDEhIKCnByaWNlX3VuaXQYBCABKAESDgoGYW1vdW50GAUgASgBEhIKCnByb2JsZW1faWQYBiABKAQSHwoXcHJvYmxlbV9jcmVhdGVkX2F0X3VuaXgYByABKAMimQUKDEZvdW5kUmVxdWVzdBIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDwoHdGVhbV9pZBgDIAEoBBISCgpwcm9kdWN0X2lkGAQgASgEEhQKDHByb2R1Y3RfY29kZRgFIAEoCRIUCgxwcm9kdWN0X25hbWUYBiABKAkSDwoHcmFja19pZBgHIAEoBBIRCglyYWNrX2NvZGUYCCABKAkSEwoLc3RvY2tfY291bnQYCSABKAMSDAoEbm90ZRgKIAEoCRIWCg5yZXBvcnRlZF9ieV9pZBgLIAEoBBIYChByZXBvcnRlZF9hdF91bml4GAwgASgDEjoKBnN0YXR1cxgNIAEoDjIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0U3RhdHVzEhUKDWRlY2lkZWRfYnlfaWQYDiABKAQSFwoPZGVjaWRlZF9hdF91bml4GA8gASgDEhUKDXJlamVjdF9yZWFzb24YECABKAkSOwoFbGluZXMYESADKAsyLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFBvc3RMaW5lEhYKDmNsYWltZWRfYW1vdW50GBIgASgBEhUKDW1pbnRlZF9hbW91bnQYEyABKAESFgoOdHJhbnNhY3Rpb25faWQYFCABKAQSPwoFYmxvY2sYFSABKA4yMC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdEFwcHJvdmVCbG9jaxIbChNjb3VudGluZ19zZXNzaW9uX2lkGBYgASgEEiYKHnNldHRsZWRfYnlfY291bnRpbmdfc2Vzc2lvbl9pZBgXIAEoBBIQCghvcmRlcl9pZBgYIAEoBCLCAQoZRm91bmRSZXF1ZXN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhgKB3JhY2tfaWQYAyABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYBCABKANCB7pIBCICIAASFgoEbm90ZRgFIAEoCUIIukgFcgMYyAESEAoIb3JkZXJfaWQYBiABKAQ6C5K1GAcKBQECBgkIIlkKGkZvdW5kUmVxdWVzdENyZWF0ZVJlc3BvbnNlEjsKDWZvdW5kX3JlcXVlc3QYASABKAsyJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdCKJAgoXRm91bmRSZXF1ZXN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESPgoGZmlsdGVyGAIgASgLMi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RMaXN0RmlsdGVyEkYKDGRhdGFfcmVxdWVzdBgDIAMoDjIwLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0TGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIGCQgiXgoWRm91bmRSZXF1ZXN0TGlzdEZpbHRlchJECgZzdGF0dXMYASABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFN0YXR1c0IIukgFggECEAEitwEKE0ZvdW5kUmVxdWVzdE1hcEl0ZW0SSgoIbWFwX2RhdGEYASADKAsyOC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdE1hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdDoCOAEimwEKHEZvdW5kUmVxdWVzdExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI+CgdyZXF1ZXN0GAIgASgLMisud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RNYXBJdGVtSABCAwoBZCKeAQoYRm91bmRSZXF1ZXN0TGlzdFJlc3BvbnNlEkMKBWl0ZW1zGAEgAygLMjQud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvImkKGkZvdW5kUmVxdWVzdEFwcHJvdmVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEiEKEGZvdW5kX3JlcXVlc3RfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECBgkicgobRm91bmRSZXF1ZXN0QXBwcm92ZVJlc3BvbnNlEjsKDWZvdW5kX3JlcXVlc3QYASABKAsyJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdBIWCg50cmFuc2FjdGlvbl9pZBgCIAEoBCKFAQoZRm91bmRSZXF1ZXN0UmVqZWN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIhChBmb3VuZF9yZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAEhoKBnJlYXNvbhgDIAEoCUIKukgHcgUQARj0AzoLkrUYBwoFAQIGCQgiWQoaRm91bmRSZXF1ZXN0UmVqZWN0UmVzcG9uc2USOwoNZm91bmRfcmVxdWVzdBgBIAEoCzIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0Ks0BChJGb3VuZFJlcXVlc3RTdGF0dXMSJAogRk9VTkRfUkVRVUVTVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIgChxGT1VORF9SRVFVRVNUX1NUQVRVU19XQUlUSU5HEAESIQodRk9VTkRfUkVRVUVTVF9TVEFUVVNfQVBQUk9WRUQQAhIhCh1GT1VORF9SRVFVRVNUX1NUQVRVU19SRUpFQ1RFRBADEikKJUZPVU5EX1JFUVVFU1RfU1RBVFVTX1NFVFRMRURfQllfQ09VTlQQBCqsAQoURm91bmRSZXF1ZXN0UG9zdFR5cGUSJwojRk9VTkRfUkVRVUVTVF9QT1NUX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1GT1VORF9SRVFVRVNUX1BPU1RfVFlQRV9DTEFJTRABEiAKHEZPVU5EX1JFUVVFU1RfUE9TVF9UWVBFX01JTlQQAhImCiJGT1VORF9SRVFVRVNUX1BPU1RfVFlQRV9PUkRFUl9NSU5UEAMqzwEKGEZvdW5kUmVxdWVzdEFwcHJvdmVCbG9jaxIrCidGT1VORF9SRVFVRVNUX0FQUFJPVkVfQkxPQ0tfVU5TUEVDSUZJRUQQABIrCidGT1VORF9SRVFVRVNUX0FQUFJPVkVfQkxPQ0tfTk9UX1dBSVRJTkcQARIqCiZGT1VORF9SRVFVRVNUX0FQUFJPVkVfQkxPQ0tfT1dOX1JFUE9SVBACEi0KKUZPVU5EX1JFUVVFU1RfQVBQUk9WRV9CTE9DS19CRUlOR19DT1VOVEVEEAMqnAEKGEZvdW5kUmVxdWVzdExpc3REYXRhVHlwZRIsCihGT1VORF9SRVFVRVNUX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASKAokRk9VTkRfUkVRVUVTVF9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESKAokRk9VTkRfUkVRVUVTVF9MSVNUX0RBVEFfVFlQRV9SRVFVRVNUEAIyiwQKE0ZvdW5kUmVxdWVzdFNlcnZpY2USewoSRm91bmRSZXF1ZXN0Q3JlYXRlEjEud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RDcmVhdGVSZXF1ZXN0GjIud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RDcmVhdGVSZXNwb25zZRJ6ChBGb3VuZFJlcXVlc3RMaXN0Ei8ud2FyZWhvdXNlLmludmVudG9yeS52MS5Gb3VuZFJlcXVlc3RMaXN0UmVxdWVzdBowLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0TGlzdFJlc3BvbnNlIgOQAgESfgoTRm91bmRSZXF1ZXN0QXBwcm92ZRIyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuRm91bmRSZXF1ZXN0QXBwcm92ZVJlcXVlc3QaMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdEFwcHJvdmVSZXNwb25zZRJ7ChJGb3VuZFJlcXVlc3RSZWplY3QSMS53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFJlamVjdFJlcXVlc3QaMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkZvdW5kUmVxdWVzdFJlamVjdFJlc3BvbnNlQlJaUGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvaW52ZW50b3J5L3YxO2ludmVudG9yeXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One posting line. On a WAITING request it is what approving NOW would post — read without locks, so another approval
@@ -32,7 +32,8 @@ export type FoundRequestPostLine = Message<"warehouse.inventory.v1.FoundRequestP
   type: FoundRequestPostType;
 
   /**
-   * A claim: the lost problem's batch, which the units go back into. A mint: 0 until approved, then the minted batch.
+   * A claim: the lost problem's batch, which the units go back into. A mint (an order mint too): 0 until approved, then
+   * the minted batch.
    *
    * @generated from field: uint64 batch_id = 2;
    */
@@ -45,7 +46,8 @@ export type FoundRequestPostLine = Message<"warehouse.inventory.v1.FoundRequestP
 
   /**
    * Rupiah, double (money-is-double-in-the-api-too). A claim: the lost problem's `price_unit`. A mint: the team's
-   * newest batch price of the product in this warehouse, emptied batches included.
+   * newest batch price of the product in this warehouse, emptied batches included. An order mint: the price the lost
+   * order's take drew those units at.
    *
    * @generated from field: double price_unit = 4;
    */
@@ -231,6 +233,14 @@ export type FoundRequest = Message<"warehouse.inventory.v1.FoundRequest"> & {
    * @generated from field: uint64 settled_by_counting_session_id = 23;
    */
   settledByCountingSessionId: bigint;
+
+  /**
+   * The LOST order whose parcel this is (a-found-lost-parcel-is-a-found-stock-in) — the order's timeline names the request
+   * back. 0 = a found of no order. Its lines are then order mints, never claims.
+   *
+   * @generated from field: uint64 order_id = 24;
+   */
+  orderId: bigint;
 };
 
 /**
@@ -277,6 +287,16 @@ export type FoundRequestCreateRequest = Message<"warehouse.inventory.v1.FoundReq
    * @generated from field: string note = 5;
    */
   note: string;
+
+  /**
+   * OPTIONAL — the order whose parcel came back after it went `lost` (a-found-lost-parcel-is-a-found-stock-in); 0 = none.
+   * It must be LOST and shipped from this warehouse, and the product one its take drew for the order's own team, at
+   * most the units the take drew less those already reported found for it. The order stays lost; a note on its timeline
+   * names the request.
+   *
+   * @generated from field: uint64 order_id = 6;
+   */
+  orderId: bigint;
 };
 
 /**
@@ -296,6 +316,10 @@ export type FoundRequestCreateResponse = Message<"warehouse.inventory.v1.FoundRe
    * there is no price to mint it at, so it comes in by the team's restock
    * (a-found-never-stocked-here-is-refused-at-the-report, last-price-is-the-teams-newest-batch-here). NotFound for a
    * rack not in this warehouse or a product that exists nowhere.
+   *
+   * Naming an order: NotFound for an order this warehouse did not ship; FailedPrecondition for one not `lost`, one
+   * whose parcel already came back as its return, a product of another team than the order's, a product its take never
+   * drew, and more units than the take drew less those already reported found for it (waiting or approved).
    *
    * @generated from field: warehouse.inventory.v1.FoundRequest found_request = 1;
    */
@@ -467,7 +491,8 @@ export const FoundRequestApproveRequestSchema: GenMessage<FoundRequestApproveReq
 export type FoundRequestApproveResponse = Message<"warehouse.inventory.v1.FoundRequestApproveResponse"> & {
   /**
    * APPROVED, its lines what was posted. FailedPrecondition for any FoundRequestApproveBlock (a request settled by a
-   * count is NOT_WAITING); NotFound for another warehouse's request.
+   * count is NOT_WAITING); NotFound for another warehouse's request. A request naming a lost order is also refused
+   * FailedPrecondition when the founds of that order already approved leave fewer units of the take than it reports.
    *
    * @generated from field: warehouse.inventory.v1.FoundRequest found_request = 1;
    */
@@ -612,6 +637,15 @@ export enum FoundRequestPostType {
    * @generated from enum value: FOUND_REQUEST_POST_TYPE_MINT = 2;
    */
   MINT = 2,
+
+  /**
+   * A found naming a LOST order: minted as a new batch at the cost the order took the units at — the price the batch
+   * its take drew them from had when they left the shelf (a-found-lost-parcel-is-a-found-stock-in). No loss is claimed
+   * and no money moves.
+   *
+   * @generated from enum value: FOUND_REQUEST_POST_TYPE_ORDER_MINT = 3;
+   */
+  ORDER_MINT = 3,
 }
 
 /**
@@ -707,6 +741,14 @@ export const FoundRequestListDataTypeSchema: GenEnum<FoundRequestListDataType> =
  *
  * Built 2026-11-03 (the-found-stock-prototype-is-accepted): table `found_requests` (inventory 00036),
  * inventory_v1/found_request_*.go.
+ *
+ * A FOUND FROM A LOST ORDER (a-found-lost-parcel-is-a-found-stock-in, docs/business/order/context_decision.md): a parcel
+ * of an order gone `lost` that turns up at the warehouse it shipped from is reported through the same door, NAMING THE
+ * ORDER (FoundRequestCreateRequest.order_id). The order stays lost (lost-is-final) — the report only writes a note on
+ * its timeline naming the request. Approving it claims no loss: it mints the units back under the order's team at THE
+ * COST THE ORDER TOOK THEM AT — one batch per batch the order's take drew from, oldest first, after the units earlier
+ * approved founds of the order already brought back (FOUND_REQUEST_POST_TYPE_ORDER_MINT). Built 2026-11-18 (inventory
+ * 00054).
  *
  * @generated from service warehouse.inventory.v1.FoundRequestService
  */

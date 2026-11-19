@@ -10,6 +10,12 @@
 //   a-found-never-stocked-here-is-refused-at-the-report  no batch of it here, ever: the report is refused.
 //   a-lock-stops-sales-and-cancels-too                 a counted product on the rack: the report is refused, the approval waits.
 //   a-count-settles-the-found-it-counted               a finalized count closes the request it counted (fixture #286).
+//   a-found-lost-parcel-is-a-found-stock-in            a found may name a LOST order this warehouse shipped: its product one
+//                                                      of the order's lines, its units no more than the line less what the
+//                                                      order's founds already report; it claims nothing and mints at the
+//                                                      cost the take drew (here: the product's OLDEST batch price), and the
+//                                                      order's timeline gets a note naming it (foundOrderNotesOf). The
+//                                                      order stays lost.
 //
 // It also plays StockAdjust for the Adjust dialog: FOUND is refused there, as the server does — FoundRequestCreate is the
 // one door.
@@ -27,7 +33,9 @@ import {
 } from "../src/gen/warehouse/inventory/v1/found_request_pb";
 import { StockAdjustReason, type StockAdjustRequest } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
-import { products, racks } from "./fixtures";
+import { OrderStatus, OrderTimelineFrom } from "../src/gen/warehouse/selling/v1/order_pb";
+import { orderDetailFor, products, racks } from "./fixtures";
+import { scenarioStatus } from "./returnAcceptStub";
 import {
   type FoundBatchFixture,
   type FoundLockFixture,
@@ -50,10 +58,29 @@ let nextRequestId = 400n;
 let nextBatchId = 100n;
 let nextTransactionId = 5_100n;
 
-/** What the last FoundRequestCreate carried — a story pins that a found names no batch. */
+/** What the last FoundRequestCreate carried — a story pins that a found names no batch, and the order it names. */
 export const reportScenario = {
-  last: undefined as undefined | { productId: bigint; rackId: bigint; quantity: bigint; note: string },
+  // `orderId` only when it names one — a found of no order reads as it always did.
+  last: undefined as undefined | { productId: bigint; rackId: bigint; quantity: bigint; note: string; orderId?: bigint },
 };
+
+/** A note a found naming a lost order wrote on the order's timeline — the shape OrderDetail's rows have. */
+type FoundOrderNote = {
+  id: bigint;
+  status: OrderStatus;
+  note: string;
+  from: OrderTimelineFrom;
+  actorId: bigint;
+  createdAtUnix: bigint;
+};
+
+let foundOrderNotes = new Map<string, FoundOrderNote[]>();
+let nextFoundNoteId = 9_500n;
+
+/** The notes founds wrote on an order's timeline — the order detail stub (stubTransport.ts) adds them to its rows. */
+export function foundOrderNotesOf(orderId: bigint): FoundOrderNote[] {
+  return foundOrderNotes.get(orderId.toString()) ?? [];
+}
 
 export function resetFoundRequestStub() {
   requests = structuredClone(foundRequestFixtures);
@@ -64,9 +91,37 @@ export function resetFoundRequestStub() {
   nextBatchId = 100n;
   nextTransactionId = 5_100n;
   reportScenario.last = undefined;
+  foundOrderNotes = new Map();
+  nextFoundNoteId = 9_500n;
 }
 
 resetFoundRequestStub();
+
+/**
+ * A `beforeEach`: order #106 (Melati's, Gudang Pusat — 1 Beras) went lost, and Budi has reported its parcel found on
+ * B-02-1 as request #304 — waiting, naming the order (a-found-lost-parcel-is-a-found-stock-in).
+ */
+export function withFoundFromLostOrder() {
+  const beras = foundRequestFixtures.find((r) => r.productId === 74n)!;
+  requests.push({
+    ...structuredClone(beras),
+    id: 304n,
+    rackId: 43n,
+    rackCode: "B-02-1",
+    stockCount: 1n,
+    note: "Order #106's parcel came back from the courier's depot",
+    reportedById: 62n, // Budi — not Ani, so she may approve it
+    reportedAtUnix: now(),
+    status: ST.WAITING,
+    decidedById: 0n,
+    decidedAtUnix: 0n,
+    rejectReason: "",
+    settledByCountingSessionId: 0n,
+    posted: [],
+    transactionId: 0n,
+    orderId: 106n,
+  });
+}
 
 /**
  * The products with a batch in this warehouse, emptied ones included — the batch register the never-stocked refusal
@@ -119,8 +174,25 @@ const lockOf = (r: { warehouseId: bigint; productId: bigint; rackId: bigint }) =
 
 // ── What approving would post — the oldest loss first, then the mint ──────────────────────────────────────────────
 
+/**
+ * A found naming a lost order: no claim — ONE order mint at the cost the take drew (the stub's take is the product's
+ * OLDEST batch here; the server's is the take's own batch rows, oldest first).
+ */
+function settleOrder(r: FoundRequestFixture): FoundPostedLine[] | undefined {
+  const oldest = batches
+    .filter((b) => b.warehouseId === r.warehouseId && b.teamId === r.teamId && b.productId === r.productId)
+    .sort((a, b) => (a.id < b.id ? -1 : 1))[0];
+  if (!oldest) return undefined;
+
+  return [
+    { type: PT.ORDER_MINT, batchId: 0n, stockCount: r.stockCount, priceUnit: oldest.priceUnit, problemId: 0n, problemCreatedAtUnix: 0n },
+  ];
+}
+
 /** `undefined` when nothing could post: no loss to claim and the team never had a batch here. */
 function settle(r: FoundRequestFixture): FoundPostedLine[] | undefined {
+  if (r.orderId) return settleOrder(r);
+
   const lines: FoundPostedLine[] = [];
   let left = r.stockCount;
 
@@ -177,9 +249,10 @@ function wire(r: FoundRequestFixture) {
     decidedAtUnix: r.decidedAtUnix,
     rejectReason: r.rejectReason,
     settledByCountingSessionId: r.settledByCountingSessionId,
+    orderId: r.orderId ?? 0n,
     lines: lines.map((l) => ({ ...l, priceUnit: Number(l.priceUnit), amount: amountOf(l) })),
     claimedAmount: lines.filter((l) => l.type === PT.CLAIM).reduce((a, l) => a + amountOf(l), 0),
-    mintedAmount: lines.filter((l) => l.type === PT.MINT).reduce((a, l) => a + amountOf(l), 0),
+    mintedAmount: lines.filter((l) => l.type === PT.MINT || l.type === PT.ORDER_MINT).reduce((a, l) => a + amountOf(l), 0),
     transactionId: r.transactionId,
     block,
     countingSessionId: block === Block.BEING_COUNTED ? (lockOf(r)?.sessionId ?? 0n) : 0n,
@@ -209,7 +282,13 @@ export const foundRequestService: Partial<ServiceImpl<typeof FoundRequestService
     const product = products.find((p) => p.id === req.productId);
     if (!product) throw new ConnectError("product not found", Code.NotFound);
 
-    reportScenario.last = { productId: req.productId, rackId: req.rackId, quantity: req.quantity, note: req.note };
+    reportScenario.last = {
+      productId: req.productId,
+      rackId: req.rackId,
+      quantity: req.quantity,
+      note: req.note,
+      ...(req.orderId > 0n ? { orderId: req.orderId } : {}),
+    };
 
     const lock = lockOf({ warehouseId: req.teamId, productId: req.productId, rackId: req.rackId });
     if (lock) {
@@ -222,6 +301,35 @@ export const foundRequestService: Partial<ServiceImpl<typeof FoundRequestService
       throw precondition(
         `${product.name} (${product.productCode}) was never stocked here for team #${product.teamId} — bring it in by restock`,
       );
+    }
+
+    // A LOST ORDER'S PARCEL (a-found-lost-parcel-is-a-found-stock-in) — the server's refusals, in its order.
+    const order = req.orderId > 0n ? orderDetailFor(req.orderId) : undefined;
+    if (req.orderId > 0n) {
+      if (!order || order.warehouseId !== req.teamId) {
+        throw new ConnectError(`no order #${req.orderId} shipped from this warehouse`, Code.NotFound);
+      }
+      const status = scenarioStatus(order).status;
+      if (status !== OrderStatus.LOST) {
+        throw precondition(`order #${req.orderId} is ${OrderStatus[status]?.toLowerCase()}, not lost — only a lost order's parcel comes back as a found; a live one comes back as its return`);
+      }
+      if (order.teamId !== product.teamId) {
+        throw precondition(
+          `${product.name} (${product.productCode}) is team #${product.teamId}'s and order #${req.orderId} is team #${order.teamId}'s — a found names only its own team's lost order`,
+        );
+      }
+      const taken = order.items.filter((i) => i.productId === product.id).reduce((a, i) => a + BigInt(i.quantity), 0n);
+      if (taken === 0n) throw precondition(`the lost order's take never drew this product for its team: product ${product.id} is not in order #${req.orderId}'s take`);
+      const reported = requests
+        .filter((r) => r.orderId === req.orderId && r.productId === product.id)
+        .filter((r) => r.status === ST.WAITING || r.status === ST.APPROVED)
+        .reduce((a, r) => a + r.stockCount, 0n);
+      if (reported + req.quantity > taken) {
+        const left = taken - reported > 0n ? taken - reported : 0n;
+        throw precondition(
+          `more units than the lost order took: order #${req.orderId} took ${taken} of product ${product.id} and ${reported} are already reported found — ${left} more at most`,
+        );
+      }
     }
 
     const request: FoundRequestFixture = {
@@ -244,8 +352,25 @@ export const foundRequestService: Partial<ServiceImpl<typeof FoundRequestService
       settledByCountingSessionId: 0n,
       posted: [],
       transactionId: 0n,
+      ...(order ? { orderId: order.id } : {}),
     };
     requests.push(request);
+
+    // THE ORDER'S TIMELINE NAMES THE REQUEST — one note from the warehouse, by the reporter; the order stays lost.
+    if (order) {
+      const key = order.id.toString();
+      foundOrderNotes.set(key, [
+        ...(foundOrderNotes.get(key) ?? []),
+        {
+          id: nextFoundNoteId++,
+          status: OrderStatus.UNSPECIFIED,
+          note: `Found at the warehouse: ${request.stockCount} × ${request.productCode} ${request.productName} on rack ${request.rackCode} — found request #${request.id}. The order stays lost.`,
+          from: OrderTimelineFrom.WAREHOUSE,
+          actorId: SELF_ID,
+          createdAtUnix: now(),
+        },
+      ]);
+    }
 
     return { foundRequest: wire(request) };
   },

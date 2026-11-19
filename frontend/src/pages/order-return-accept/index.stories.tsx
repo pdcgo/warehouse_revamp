@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { orders, teams } from "../../../.storybook/fixtures";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { withReturnWarehouse } from "../../../.storybook/returnConfigurationStub";
 import { returnAcceptScenario, withOrdersInReturn } from "../../../.storybook/sessionScenario";
+import { clearSettings } from "../../features/labels/settings";
 import { RETURN_ACCEPT_PATH } from "../../features/orders/returnAccept";
 import { PickOrderPage } from "../pick-order";
 import { PickQueuePage } from "../pick-queue";
@@ -27,6 +28,8 @@ import { OrderReturnAcceptPage, description } from "./index";
 //   | AcceptWaitsForEveryRack                 | one line without a rack holds Accept, counted in the header              |
 //   | ASplitAcrossTwoRacks                    | the first row follows, a second row takes a share; a rack twice holds   |
 //   | ABorrowedLineShowsTheCodeToPrint        | the own code on the line, one label per sound unit                       |
+//   | TheAcceptPrintsTheBorrowedLabels        | accepted, the answer's labels print: the own code, one per sound unit    |
+//   | TheAcceptPrintsTheBorrowedLabelsOnAPhone | the phone: Print and Done are the header's icons                        |
 //   | TheCourierAskNeedsWhatItWasFor          | the courier's ask as today — a charge needs its note                     |
 //   | TheWrongWarehouseIsRefused              | not the return warehouse: "this return goes to Gudang Cabang", no Accept |
 //   | TheRefusalOpensTheOrder                 | its way on is the order, never an Accept                                 |
@@ -391,6 +394,109 @@ export const ABorrowedLineShowsTheCodeToPrint: Story = {
       ),
     );
     await expect(canvas.getByTestId("return-accept-summary-labels")).toHaveTextContent("1");
+  },
+};
+
+/** The Kaos borrowed from Toko Kenanga, coming back as Melati's own MLT-KAOS-01 — the label the accept answers. */
+function kaosIsBorrowed() {
+  returnAcceptScenario.labels = [
+    {
+      orderItemId: KAOS,
+      borrowedProductId: 301n,
+      borrowedProductCode: "KPH-M",
+      ownProductId: 74n,
+      ownProductCode: "MLT-KAOS-01",
+      ownProductName: "Kaos Polos Hitam — M (Melati)",
+      quantity: 2,
+    },
+  ];
+}
+
+/** The print step's setup: the borrowed Kaos, the device's label paper at its defaults, and the browser's print spied. */
+function printStepSetup() {
+  kaosIsBorrowed();
+  clearSettings();
+  const print = spyOn(window, "print").mockImplementation(() => undefined);
+
+  return () => {
+    print.mockRestore();
+    clearSettings();
+  };
+}
+
+/** Every line on a rack (one Kaos broken, so 1 of its 2 comes back sound), then Accept. */
+async function acceptWithOneKaosBroken(canvasElement: HTMLElement) {
+  const kaos = await lineOf(canvasElement, KAOS);
+  await typeInto(kaos.getByTestId(`return-accept-broken-${KAOS}`), "1");
+  await pickRack(canvasElement, KAOS, 0, A_01_1);
+  await pickRack(canvasElement, PUTIH, 0, A_01_2);
+  await pickRack(canvasElement, TOPI, 0, B_02_1);
+  await accept(canvasElement);
+}
+
+/**
+ * THE ACCEPT PRINTS THE BORROWED LABELS (a-returned-borrowed-unit-is-relabelled-at-the-accept; acceptance *accept return →
+ * can print barcode of mapped own product*). Accepted, the answer names each borrowed line's own product and its SOUND
+ * units — so the page stays, the units still in hand: one MLT-KAOS-01 label per sound unit (2 ordered, 1 broken → 1),
+ * Print sends them to the browser's print on the device's label paper, and Done goes back. A whole-own return still goes
+ * straight back (AWholeParcelGoesOnTheShelf).
+ */
+export const TheAcceptPrintsTheBorrowedLabels: Story = {
+  beforeEach: printStepSetup,
+  play: async ({ canvasElement }) => {
+    await acceptWithOneKaosBroken(canvasElement);
+
+    const canvas = within(canvasElement);
+    const step = await canvas.findByTestId("return-accept-relabels", {}, { timeout: 4000 });
+    // Accepted — and still here: nothing went back while there are labels to print.
+    await expect(returnAcceptScenario.accepted).toContain(ORDER.id);
+    await expect(canvas.queryByTestId("at-pick-order")).toBeNull();
+    await expect(canvas.getByTestId("return-accept-relabels-accepted")).toHaveTextContent("Return #101 is accepted");
+
+    // The mapped own product, one label per sound unit, over the lender's code.
+    await expect(within(step).getByTestId(`return-accept-relabels-code-${KAOS}`)).toHaveTextContent("MLT-KAOS-01");
+    await expect(within(step).getByTestId(`return-accept-relabels-count-${KAOS}`)).toHaveTextContent(
+      "Print 1 label and stick it over KPH-M",
+    );
+    await expect(canvas.getByTestId("return-accept-relabels-total")).toHaveTextContent("1 label to print");
+    await expect(canvas.getByTestId("return-accept-relabels-total")).toHaveTextContent("35 × 15 mm");
+    // An own line prints nothing.
+    await expect(canvas.queryByTestId(`return-accept-relabels-line-${PUTIH}`)).toBeNull();
+
+    // WHAT PRINTS — the own code in the QR and on the SKU line, once per sound unit; nothing of the lender's.
+    const root = screen.getByTestId("return-accept-relabels-root");
+    await expect(root.querySelectorAll(".print-label")).toHaveLength(1);
+    await expect(within(root).getAllByTestId("label-sku").map((el) => el.textContent)).toEqual(["MLT-KAOS-01"]);
+    await expect(root).not.toHaveTextContent("KPH-M");
+
+    await userEvent.click(canvas.getByTestId("return-accept-relabel-print"));
+    await expect(window.print).toHaveBeenCalledTimes(1);
+
+    // Done — back where the page was opened from.
+    await userEvent.click(canvas.getByTestId("return-accept-relabels-done"));
+    await waitFor(() => expect(canvas.getByTestId("at-pick-order")).toBeInTheDocument());
+  },
+};
+
+/** …ON A PHONE — the one-row header, Print and Done as its icons; two whole Kaos print two labels. */
+export const TheAcceptPrintsTheBorrowedLabelsOnAPhone: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  beforeEach: printStepSetup,
+  play: async ({ canvasElement }) => {
+    await pickRack(canvasElement, KAOS, 0, A_01_1);
+    await pickRack(canvasElement, PUTIH, 0, A_01_2);
+    await pickRack(canvasElement, TOPI, 0, B_02_1);
+    await accept(canvasElement);
+
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("return-accept-relabels", {}, { timeout: 4000 });
+    await expect(canvas.getByTestId("return-accept-relabels-total")).toHaveTextContent("2 labels to print");
+    await expect(screen.getByTestId("return-accept-relabels-root").querySelectorAll(".print-label")).toHaveLength(2);
+
+    const print = canvas.getByTestId("return-accept-relabel-print");
+    await expect(print).toHaveAccessibleName("Print Labels");
+    await userEvent.click(print);
+    await expect(window.print).toHaveBeenCalledTimes(1);
   },
 };
 

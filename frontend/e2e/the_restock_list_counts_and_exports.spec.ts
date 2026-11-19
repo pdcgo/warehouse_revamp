@@ -18,7 +18,10 @@ import { readXlsx } from "./xlsx";
 //   the-couriers-charge-stays-out-of-total (docs/business/inventory/restock_decision.md) — Ongkir COD is the warehouse's
 //     charge at the door and stays outside Nilai transaksi;
 //   the-restock-list-exports-and-filters-by-courier — Ekspor writes the list as a file: the list's own filter (the tab
-//     and the courier included), every page of it, newest first, the screen's columns;
+//     and the courier included), every page of it, newest first, the screen's columns — since #87
+//     (the-restock-tags-prototype-is-accepted) a *Tag* column after Status, a restock's tag names (C, counted in one
+//     short, carries the app's *Barang kurang*: a-restock-problem-is-a-system-tag); the Tag filter's own narrowing of
+//     the list, Statistik and Ekspor is the_restock_tags.spec.ts's;
 //   monitoring-keeps-what-only-reads (context_decision.md) — an export stores a file, so the admin team's monitor is
 //     offered no Ekspor and the server refuses it; the statistics are a read and stay. No warehouse role reads either
 //     (the-warehouse-sees-the-cod-it-paid).
@@ -203,6 +206,7 @@ const COLUMNS = [
   "Total",
   "Kurir",
   "Status",
+  "Tag",
   "Dibuat",
   "Dibuat oleh",
   "Diterima",
@@ -662,7 +666,8 @@ test("Ekspor: the file is every page of the list, newest first, in the screen's 
   const byResi = (key: string) => rows.find((r) => r[1] === state.resi[key])!;
 
   // C: its Order ID kept as text (the leading 0), its supplier and store, the pieces ORDERED and its code, goods +
-  // shipping exact (the courier's Rp 7.500 at the door stays out), J&T, Diterima, each date in WIB beside who.
+  // shipping exact (the courier's Rp 7.500 at the door stays out), J&T, Diterima, its tag — counted in one short, the
+  // app put *Barang kurang* on it at Terima — each date in WIB beside who.
   const c = await detail(state.r.C!);
   expect(c.acceptedAtUnix).toBeTruthy();
   expect(byResi("C")).toEqual([
@@ -674,13 +679,14 @@ test("Ekspor: the file is every page of the list, newest first, in the screen's 
     "42000",
     state.couriers.jnt!.name,
     "Diterima",
+    "Barang kurang",
     wib(c.createdAtUnix),
     state.sariName,
     wib(c.acceptedAtUnix!),
     state.ganiName,
   ]);
 
-  // B: two lines, no supplier connected, arrived — not received, so the row ends at who raised it.
+  // B: two lines, no supplier connected, arrived, no tag — not received, so the row ends at who raised it.
   const b = await detail(state.r.B!);
   expect(byResi("B")).toEqual([
     "",
@@ -691,6 +697,7 @@ test("Ekspor: the file is every page of the list, newest first, in the screen's 
     "45000",
     state.couriers.jne!.name,
     "Tiba",
+    "",
     wib(b.createdAtUnix),
     state.sariName,
   ]);
@@ -703,7 +710,9 @@ test("Ekspor: the file is every page of the list, newest first, in the screen's 
   expect(byResi("A")[5]).toBe("25000");
   expect(byResi("A")[7]).toBe("Dalam Perjalanan");
   expect(byResi("E")[7]).toBe("Hilang");
-  expect(byResi("D")[11]).toBe(state.ganiName);
+  // D was counted in whole: no problem, so no tag — its Tag cell empty, Diterima oleh after it.
+  expect(byResi("D")[8]).toBe("");
+  expect(byResi("D")[12]).toBe(state.ganiName);
 });
 
 test("Ekspor: a tab and a courier narrow the file exactly as they narrow the list", async ({ page }) => {

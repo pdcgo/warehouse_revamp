@@ -45,9 +45,13 @@ export interface RestockListArgs {
   toUnix?: bigint;
   /** Free text over number / tracking / order ref / SKU / product name. */
   q?: string;
+  /** Empty = any tag. A restock is in when it carries ANY of these (#87, the-restock-tags-prototype-is-accepted). */
+  tagIds?: bigint[];
   page: number;
   pageSize: number;
 }
+
+const NO_TAGS: bigint[] = [];
 
 export function useRestockRequests(args: RestockListArgs) {
   const {
@@ -62,6 +66,7 @@ export function useRestockRequests(args: RestockListArgs) {
     fromUnix = 0n,
     toUnix = 0n,
     q = "",
+    tagIds = NO_TAGS,
     page,
     pageSize,
   } = args;
@@ -81,6 +86,7 @@ export function useRestockRequests(args: RestockListArgs) {
       fromUnix: fromUnix.toString(),
       toUnix: toUnix.toString(),
       q,
+      tagIds: tagIds.map(String),
       page,
       pageSize,
     }),
@@ -100,6 +106,7 @@ export function useRestockRequests(args: RestockListArgs) {
           fromUnix,
           toUnix,
           q,
+          tagIds,
         },
         dataRequest: restockListRowData(),
         page: { page, limit: pageSize },
@@ -365,6 +372,7 @@ export function useRestockSellingStat(args: RestockStatArgs) {
     fromUnix = 0n,
     toUnix = 0n,
     q = "",
+    tagIds = NO_TAGS,
     enabled,
   } = args;
 
@@ -379,6 +387,7 @@ export function useRestockSellingStat(args: RestockStatArgs) {
       fromUnix: fromUnix.toString(),
       toUnix: toUnix.toString(),
       q,
+      tagIds: tagIds.map(String),
     }),
     ...listQuery,
     enabled: enabled && teamId !== undefined,
@@ -394,6 +403,7 @@ export function useRestockSellingStat(args: RestockStatArgs) {
           fromUnix,
           toUnix,
           q,
+          tagIds,
         },
       });
 

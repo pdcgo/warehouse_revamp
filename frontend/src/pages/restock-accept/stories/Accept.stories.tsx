@@ -5,6 +5,7 @@ import { restockRequestService } from "../../../../.storybook/restockStub";
 import { restockAcceptScenario } from "../../../../.storybook/restockAcceptScenario";
 import { holdUploads, refuseUploads } from "../../../../.storybook/uploadScenario";
 import { RestockProblemType, RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
+import { toaster } from "../../../components/feedback/Toaster";
 import {
   A_01_1,
   A_01_2,
@@ -12,7 +13,6 @@ import {
   COFFEE,
   PHOTO,
   RICE,
-  B_02_1,
   acceptControl,
   askCharge,
   count,
@@ -25,7 +25,7 @@ import {
   typeInto,
 } from "./kit";
 
-// RESTOCK ACCEPT — Terima itself: the one line by it saying what it waits for, what it sends, what it says was not kept,
+// RESTOCK ACCEPT — Terima itself: the one line by it saying what it waits for, what it sends — with nothing left unkept —
 // and where every way out lands.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
@@ -223,10 +223,15 @@ export const AcceptingKeepsTheDoorsPhotos: Story = {
 };
 
 // …and only what goes with what it belongs to: a slip picked under *Ada*, then the charge taken back to *Tidak ada*, is not
-// sent — there is no charge for it to go with. A rack for the broken units is still the one thing not kept, and Terima
-// still says so (a-broken-product-may-go-on-a-rack).
+// sent — there is no charge for it to go with. Nothing else is left unkept: the broken units' rack, the last thing Terima
+// said it did not keep, is gone (a-restocks-broken-units-are-just-broken-for-now) — so no warning follows, broken units
+// and all.
 export const AcceptingSaysWhatWasNotKept: Story = {
-  name: "Says what was not kept",
+  name: "Nothing left unkept",
+  // The toaster is module-level: a story reading the toasts clears the last story's first.
+  beforeEach: () => {
+    toaster.remove();
+  },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const pid = COFFEE.productId;
@@ -238,20 +243,14 @@ export const AcceptingSaysWhatWasNotKept: Story = {
     await userEvent.click(canvas.getByTestId("accept-courier-asked-none"));
     await count(canvasElement, pid, "12", "1");
     await place(canvasElement, pid, 0, A_01_1);
-    const line = await lineOf(canvasElement, pid);
-    await userEvent.click(line.getByTestId(`accept-broken-to-rack-${pid}`));
-    const row = within(await line.findByTestId(`accept-placement-broken-${pid}`));
-    const field = within(row.getByTestId(`accept-broken-place-${pid}`));
-    await userEvent.click(field.getByTestId("rack-select"));
-    const option = await field.findByTestId(`rack-select-option-${B_02_1}`);
-    await waitFor(() => expect(option).toBeVisible());
-    await userEvent.click(option);
     await countWhole(canvasElement, RICE.productId, A_01_2);
 
     await confirmAccept(canvasElement);
     await expect(await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 })).toBeInTheDocument();
     await expect(restockAcceptScenario.photos[0]?.slip).toBe("");
-    await expect(await screen.findByText("Not kept: the broken products' rack.")).toBeInTheDocument();
+    // Accepted — and that is all Terima says.
+    await expect(await screen.findByText("Delivery accepted")).toBeInTheDocument();
+    await expect(screen.queryByText(/^Not kept:/)).toBeNull();
   },
 };
 

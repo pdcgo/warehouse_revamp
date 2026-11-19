@@ -672,6 +672,8 @@ flowchart LR
 | a blocked action | names the session, who started it and when |
 | who cancels | the warehouse admin — whoever may open a session ([an-opname-is-a-locked-session](#an-opname-is-a-locked-session)) |
 
+✅ Built 2026-11-19 — a blocked action names the PERSON who started the count, not a user id (backlog #90): *count #12, started by Ani at 2026-11-13 17:00 WIB* — a refused move, sample, adjustment, put-away, return, take, cancel, rack delete and second count alike. The name is read after the refusal through the user read the restock export names people with; when it cannot be read the refusal names the user id as before. The when keeps its format (date, time, WIB). Test `count_lock_names_test.go` (inventory rpc.md, *The lock*).
+
 ## superseded-a-lock-stops-units-moving-not-sales
 
 > ⛔ **SUPERSEDED in its sales half (2026-11-03)** by [a-lock-stops-sales-and-cancels-too](#a-lock-stops-sales-and-cancels-too): an order's take and its

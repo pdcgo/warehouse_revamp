@@ -13,6 +13,10 @@ import { FOLDED_AS_OF } from "./fixtures";
 //
 // Gudang Pusat (11) is a WAREHOUSE: it gets counts only, every money field unset (a-warehouse-sees-no-seller-money), as
 // the server answers it — except Warehouse Fee's amount, the warehouse's own income (a-warehouse-sees-its-own-fee-amount).
+//
+// The caller's team is passed on as the sample's READER, as the server scopes by it: Order status moves' facts name the
+// seller and the warehouse that ships them (a-warehouse-reads-the-orders-it-ships), so another team reads none of them
+// and root every one. The other order facts name no reader, so they read as before for every caller.
 
 const WAREHOUSE_TEAM = 11n;
 
@@ -34,6 +38,7 @@ const ONEOF: Record<string, string> = {
   "metrics/orders/return_created": "returnCreated",
   "metrics/orders/return_arrived": "returnArrived",
   "metrics/orders/lost_created": "lostCreated",
+  "metrics/orders/moves": "moves",
   "metrics/warehouse_fee": "warehouseFee",
 };
 
@@ -90,6 +95,7 @@ export const orderAnalyticService: Partial<ServiceImpl<typeof OrderAnalyticServi
       dir: req.sort?.sortType === SortType.ASC ? "asc" : "desc",
       offset: req.page?.offset ?? 0,
       limit: req.page?.limit ?? 20,
+      reader: String(req.teamId),
     });
 
     return {
@@ -103,6 +109,7 @@ export const orderAnalyticService: Partial<ServiceImpl<typeof OrderAnalyticServi
   metricData: (req) => {
     const filters = filtersOf(req.filters);
     const warehouse = req.teamId === WAREHOUSE_TEAM;
+    const reader = String(req.teamId);
 
     return {
       asOfUnix: FOLDED_AS_OF,
@@ -111,13 +118,13 @@ export const orderAnalyticService: Partial<ServiceImpl<typeof OrderAnalyticServi
         const prefix = ONEOF[id]!;
 
         if (req.groupBy === GroupType.SUMMARY) {
-          return { m: { case: `${prefix}Summary`, value: messageOf(def, sampleService.summary(def, filters), warehouse) } };
+          return { m: { case: `${prefix}Summary`, value: messageOf(def, sampleService.summary(def, filters, reader), warehouse) } };
         }
 
         const groupBy = GROUP[req.groupBy]!;
         const keys =
           req.keys?.k.case === "days" ? req.keys.k.value.days : req.keys?.k.case === "ids" ? req.keys.k.value.ids.map(String) : [];
-        const bodies = sampleService.data(def, groupBy, filters, keys);
+        const bodies = sampleService.data(def, groupBy, filters, keys, reader);
 
         return {
           m: {

@@ -5,8 +5,8 @@ import { RotateCcw } from "lucide-react";
 
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { RadioPills } from "../../../components/inputs/RadioPills";
-import type { LabelMode, LabelSettings, PaddingMode } from "../settings";
-import { BOUNDS } from "../settings";
+import type { LabelMode, LabelSettings, PaddingMode } from "../../../features/labels/settings";
+import { BOUNDS } from "../../../features/labels/settings";
 import { MeasureInput } from "./MeasureInput";
 
 // EVERY SETTING OF A LABEL RUN (owner, 2026-11-06, the-label-is-set-up-in-mm), in four groups read top to bottom — the

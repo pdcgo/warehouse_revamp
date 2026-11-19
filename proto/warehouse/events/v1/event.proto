@@ -101,6 +101,7 @@ message Event {
     OrderStatusChanged order_status_changed = 202;
     OrderReturnAccepted order_return_accepted = 203;
     InventoryTxCancel inventory_tx_cancel = 204;
+    OrderShopChanged order_shop_changed = 205;
 
     SettlementLogPosted settlement_log_posted = 300;
 
@@ -460,6 +461,46 @@ message OrderReturnAccepted {
   double courier_charge = 7;
   // What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
   string courier_charge_note = 8;
+}
+
+// OrderShopChanged announces that an order's SHOP WAS FIXED — filed under the wrong shop, moved to another shop of the
+// same team and marketplace (an-orders-shop-is-fixed-and-counted-on-the-day) — and the fix COMMITTED.
+//
+// Published by selling_service after OrderShopUpdate's transaction commits, after the commit and non-fatal, as
+// OrderStatusChanged is. Two consumers, each its own subscription:
+//
+//   - selling_service's order-metrics fold counts the move ON THE DAY OF THE FIX: every metric the order had been
+//     counted in before the fix (the moves on its timeline before `timeline_log_id`) −1 with the order's figures under
+//     the old shop and +1 under the new one. Past days are never re-filed.
+//   - settlement_service moves the order's account to the new shop: the account's shop, and a pair of rows per
+//     settlement type — out of the old shop, into the new — on the day it learns of it, so the new shop's statement
+//     imports and the shop reports move with it.
+//
+// ⚠ `event_id` is `order-shop-changed:<change_id>` — one per fix, so a redelivery and a replay collide in every
+// consumer's dedup. `occurred_at` is the fix's own instant (its timeline row's), the day the move counts on
+// (a-fact-counts-on-the-day-it-happened). Fixes of one order are serialised by the order's row lock, so a later fix
+// always has a larger `change_id`: a consumer that already applied a later one ignores an older one delivered late.
+message OrderShopChanged {
+  option (event_config).topic = "order-shop-changed";
+
+  // The SELLING team that owns the order, and the order.
+  uint64 team_id = 1;
+  uint64 order_id = 2;
+
+  // The shop the order was filed under, and the one it is filed under now — both the team's, one marketplace.
+  uint64 from_shop_id = 3;
+  uint64 to_shop_id = 4;
+
+  // The `order_shop_changes` row the fix wrote — what the event id is derived from, and how fixes of one order are
+  // ordered.
+  uint64 change_id = 5;
+  // The note row the fix wrote on the order's timeline: the moves BEFORE it are the ones the fix carries over.
+  uint64 timeline_log_id = 6;
+
+  // WHO FIXED IT (every-entry-names-who-posted-it) — 0 when unattended — and whether as Root or the Administrator from
+  // outside the team (an-override-is-stamped-in-every-service). Stamped on settlement's moving rows.
+  uint64 actor_id = 7;
+  bool actor_is_override = 8;
 }
 
 // RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.

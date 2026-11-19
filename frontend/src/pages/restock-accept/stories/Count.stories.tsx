@@ -5,7 +5,6 @@ import {
   A_01_1,
   A_01_2,
   ACCEPT_META,
-  B_02_1,
   COFFEE,
   PHOTO,
   RICE,
@@ -18,8 +17,8 @@ import {
   typeInto,
 } from "./kit";
 
-// RESTOCK ACCEPT — a line's middle column: the two numbers typed, what they mean, and the broken units' note, photo and
-// rack; a line's worth, filled by the system.
+// RESTOCK ACCEPT — a line's middle column: the two numbers typed, what they mean, and the broken units' note and photo
+// (no rack — a-restocks-broken-units-are-just-broken-for-now); a line's worth, filled by the system.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -204,57 +203,34 @@ export const ABrokenLineTakesAPhoto: Story = {
   },
 };
 
-// BROKEN UNITS GO TWO WAYS (owner: *"ditaruh rak itu opsional, jadi ada 2 pilihan"*, a-broken-product-may-go-on-a-rack) —
-// thrown away, as before and by default, or onto a rack, which then must be chosen: Terima waits for it. The rack is
-// picked in Taruh ke penempatan, as a row marked Rusak (owner: *"rusak kalau ditaruh di rak kasih ke penempatan dan tanda
-// penempatan rusak"*, the-broken-units-rack-is-a-marked-placement), holding all the broken units; a rack the good units
-// hold is off there. Not kept yet: the mark is on the rack choice, the page's first.
-export const BrokenUnitsCanGoOnARack: Story = {
-  name: "Broken onto a rack",
+// BROKEN IS JUST BROKEN (owner: *"for now, broken is enough to be broken, no need placement where the broken good tracked
+// and moved to rack"*, a-restocks-broken-units-are-just-broken-for-now) — the Rusak block holds the broken units' note
+// and photo and asks nothing about where they go: no Dibuang / Ditaruh di rak, no rack, in the block or in Taruh ke
+// penempatan. With every good unit placed the line is finished — Terima waits for no rack.
+export const BrokenUnitsAreJustBroken: Story = {
+  name: "Broken, no rack",
   play: async ({ canvasElement }) => {
     const pid = COFFEE.productId;
-
     await count(canvasElement, pid, "12", "1");
+    const line = await lineOf(canvasElement, pid);
+
+    // The block: its note and photo, nothing to choose.
+    const block = within(await line.findByTestId(`accept-broken-block-${pid}`));
+    await expect(block.getByTestId(`accept-broken-note-${pid}`)).toBeInTheDocument();
+    await expect(block.getByTestId(`accept-broken-photo-${pid}`)).toBeInTheDocument();
+    await expect(block.queryByRole("radio")).toBeNull();
+    await expect(block.queryByText(/rack/i)).toBeNull();
+    // …and no rack for them anywhere in the line — the put-away panel has the good units' row only.
+    await expect(line.queryByTestId(/^accept-broken-(to|place)/)).toBeNull();
+    await expect(line.queryByTestId(`accept-placement-broken-${pid}`)).toBeNull();
+
+    // The 11 good units on A-01-1, the rice whole: the line is finished, and Terima is free.
     await place(canvasElement, pid, 0, A_01_1);
     await countWhole(canvasElement, RICE.productId, A_01_2);
-
-    const line = await lineOf(canvasElement, pid);
-    const to = within(line.getByTestId(`accept-broken-to-${pid}`));
-    await expect(to.getByTestId(`accept-broken-to-discard-${pid}`)).toHaveAttribute("data-state", "checked");
-    await expect(line.queryByTestId(`accept-placement-broken-${pid}`)).toBeNull();
+    await waitFor(() => expect(line.getByTestId(`accept-balanced-${pid}`)).toHaveTextContent("11 placed"));
+    await expect(within(canvasElement).queryByTestId(`accept-ready-line-missing-line-${pid}`)).toBeNull();
     await expectAccept(canvasElement, true);
-
-    await userEvent.click(to.getByTestId(`accept-broken-to-rack-${pid}`));
-    // The page's first mark now — the photos above it are kept.
-    await expect(to.getByTestId("not-implemented-brokenRack")).toHaveTextContent("1");
-    await expect(to.getByTestId(`accept-broken-to-hint-${pid}`)).toHaveTextContent("Put away to placements");
-
-    // The marked row in the put-away panel: Rusak, its rack, 1 pcs — and Terima waits for the rack.
-    const row = within(await line.findByTestId(`accept-placement-broken-${pid}`));
-    await expect(row.getByTestId(`accept-placement-broken-tag-${pid}`)).toHaveTextContent("Broken");
-    await expect(row.getByTestId(`accept-placement-broken-qty-${pid}`)).toHaveTextContent("1 pcs");
-    await expect(row.getByTestId(`accept-broken-place-error-${pid}`)).toBeVisible();
-    await expect(within(canvasElement).getByTestId(`accept-ready-line-missing-line-${pid}`)).toHaveTextContent(
-      "rack for the broken units · Kopi Arabika 250g",
-    );
-    await expectAccept(canvasElement, false);
-
-    const field = within(row.getByTestId(`accept-broken-place-${pid}`));
-    await userEvent.click(field.getByTestId("rack-select"));
-    // A-01-1 holds the good units — off for the broken ones (one-rack-once-per-line).
-    await expect(await field.findByTestId(`rack-select-option-${A_01_1}`)).toHaveAttribute("data-disabled");
-    const option = await field.findByTestId(`rack-select-option-${B_02_1}`);
-    await waitFor(() => expect(option).toBeVisible());
-    await userEvent.click(option);
-
-    await waitFor(() => expect(row.queryByTestId(`accept-broken-place-error-${pid}`)).toBeNull());
-    await expectAccept(canvasElement, true);
-
-    // The choice goes against a business decision, and the page's strip says which
-    // (a-conflict-with-a-business-decision-is-said-in-its-mark).
-    await userEvent.click(within(canvasElement).getByTestId("not-implemented-toggle"));
-    const conflict = await within(canvasElement).findByTestId("pending-row-brokenRack-conflict");
-    await waitFor(() => expect(conflict).toBeVisible());
-    await expect(conflict).toHaveTextContent("a broken unit is thrown away");
+    // Nothing on the page is marked as not kept.
+    await expect(within(canvasElement).queryByTestId("not-implemented-summary")).toBeNull();
   },
 };

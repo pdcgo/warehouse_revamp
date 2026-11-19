@@ -138,6 +138,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [only-the-return-warehouse-accepts-a-return](#only-the-return-warehouse-accepts-a-return) | a return is accepted only by the selling team's configured return warehouse | owner, against the recommendation | — |
 | [the-return-warehouse-warning-says-orders-are-refused](#the-return-warehouse-warning-says-orders-are-refused) | the Settings card warns that the team cannot create orders until a return warehouse is set | owner, as recommended | — |
 | [the-order-search-matches-ids-first](#the-order-search-matches-ids-first) | the order list's search matches order ids through its indexes first (a union of three id sets), then applies the scope — the same rows, faster for root |
+| [an-orders-shop-is-fixed-and-counted-on-the-day](#an-orders-shop-is-fixed-and-counted-on-the-day) | an order's shop can be fixed (same team and marketplace, a grant on the new shop); its settlement moves with it and the reports count the move on the day of the fix |
 
 ---
 
@@ -2544,6 +2545,8 @@ flowchart LR
 | the answer | an error naming the creditor, the debt and the limit — the form shows it and the person decides (remove the line, or wait) |
 | partial order | never — the whole create is refused |
 
+✅ **Fixed 2026-11-18** — the refusal named the creditor by its number (*"credit limit reached with team 5: …"*, backlog #74, found by the tester's create-order acceptance). It now names it by its name, through the same `TeamNamer` seam the return-warehouse refusal uses: *"credit limit reached with Gudang Pusat: Rp 52.000.000 owed of a Rp 50.000.000 limit — settle before ordering again"* — *"team #<id>"* only when the team cannot be named. Still `FailedPrecondition`; the order form shows it as written (`order-create-error`). `selling_v1/order_place.go` `creditBlocked`, tests `order_credit_names_test.go`. Two creditors at their limit at once: the one with the lower team id is named, as before.
+
 ---
 
 ## the-warehouse-is-a-creditor-on-every-order
@@ -3381,6 +3384,8 @@ flowchart LR
 | the label | the mapped own product's code ([a-borrowed-line-needs-its-map-at-create](#a-borrowed-line-needs-its-map-at-create)) |
 | own units | unchanged |
 
+✅ Built 2026-11-19 — **the print.** Once the accept answers its labels (`OrderReturnAcceptResponse.labels`: per borrowed line the mapped own product and its sound units), the accept page stays as a print step (`pages/order-return-accept/components/RelabelPrintStep.tsx`): the own product's label once per sound unit — the app's one label print, Cetak Label's sticker with the code in the QR on the label paper set up on this device (`LabelPaper`, its settings and print rules moved to `features/labels/` to be shared) — *Print Labels* through the browser's print dialog, *Done* back to where the page was opened; a return of own products goes back as before. ⚠ my build's reading of *when*: after the accept, from its answer (the acceptance's then of *accept return*, *can print barcode of mapped own product*), not a print button on the line before it. Stories `TheAcceptPrintsTheBorrowedLabels`, `TheAcceptPrintsTheBorrowedLabelsOnAPhone`.
+
 ---
 
 ## a-short-return-is-accepted-and-the-gap-written-off
@@ -3496,6 +3501,20 @@ flowchart LR
 | the order | stays `lost`. No status move |
 | the money | settled by hand by customer service, as for any lost parcel |
 | inventory's to build | a `found` stock-in outside an opname session, carrying an optional order reference |
+
+✅ **Built 2026-11-18.** `FoundRequestCreateRequest.order_id` names the lost order (`found_requests.order_id` +
+`order_take_transaction_id`, inventory `00054`). Checked at the report, through the composition root's order seam (selling's
+plain `FoundOrderOf`, as the batch return-order lookup reads selling): the order is `lost`, shipped from this warehouse, and
+the product owner's team's; the product is one the order's take drew, and the units at most what it drew less the founds
+already naming it (waiting or approved). The report writes a warehouse note on the order's timeline naming the request,
+in the same transaction — **the order stays lost**. The approval (`inventory_mutations.PostOrderFoundApproval`) claims no
+loss and posts no liability: it mints one batch per batch the take drew, oldest first, past the units earlier founds of the
+order brought back, at each batch's price as the take took it — under the take's row lock, so two approvals never bring
+back more than was taken. The found list and Rincian link the order; Report Found is offered on a lost order's pick page
+and warehouse order detail, prefilled with the order (`ReportFoundFromOrderDialog`). Rule implemented for more units than
+taken: refused at the report and capped at the approval. Proved: `inventory_v1/found_request_order_test.go`,
+`selling_v1/order_found_test.go`, `cmd/app_development/lost_order_found_test.go`, raceaudit
+`found_request_order_race_test.go` ([rpc](../../services/inventory_service/rpc.md#a-found-naming-a-lost-order)).
 
 ---
 
@@ -4407,3 +4426,17 @@ applies the scope (team, warehouse, status, dates) and the page. Nothing a perso
 | not part of it | the count of an unfiltered root view (finding 4) and sort by total (finding 3) |
 
 ✅ **Built 2026-11-15** — `selling_v1/order_search.go` (`orderSearchIDsFirst`): `orders.id = ANY(ARRAY(<address rows> UNION <refs> UNION <receipts> [UNION the id]))`, an InitPlan computed once before the scope, for OrderList, OrderStat and OrderExport through `scopedOrders`. *(Not asked — the build's default: a term with no run of three letters or digits, which no trigram serves, keeps the old scan; ids first measured 2–3× slower there.)* The same rows: `order_search_ids_first_test.go` runs the real handlers with the old clause kept verbatim and with the built one — 525 list reads (root, two sellers, a warehouse, a return warehouse × text, digits, an order's id, a term matching the address and the ref, wildcards, 1–2 characters, no search × every status, the Returns tab, three date windows, the other filters), the stat beside each and 7 exports, identical; mutation-checked. Kept on the measure (`TestPerf_OrderList_Root`, twice, custom / generic plan): root's tracking-number search 74 → 4 / 74 → 3 ms, a warehouse's 54 → 4 / 75 → 3 ms, the stat 58–65 → 2 ms — [OrderList audit](../../../audits/services/selling_service/performances/OrderList.md), finding 1.
+
+---
+
+## an-orders-shop-is-fixed-and-counted-on-the-day
+
+> Owner (Heri), in chat (2026-11-18): *"A"*, as recommended — to: when an order's shop is fixed (his checklist, [inventory/order.md](../../acceptances/inventory/order.md):112–114 — `selling:all` fixes an order's shop (completed · order in wrong shop · statement import refused): *shop changed · shop change shown in order timeline · statement import succeeds*), what happens to the reports? A: the order and shop reports move it on the day of the fix (−1 under the old shop, +1 under the new), past days never change, as [an-expense-correction-counts-on-the-day-it-is-made](../analytic/rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made); B: re-filed under the new shop from the order's first day; C: only the order and its settlement move, the reports keep the old shop.
+
+**The verdict.** An order's shop can be fixed to another shop of the **same team and marketplace** ([a-shops-marketplace-and-team-are-fixed](../shop/context_decision.md#a-shops-marketplace-and-team-are-fixed)) by a person who may write that shop ([a-write-needs-a-grant-or-a-manager](../shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). The order's timeline shows the change; its **settlement account and entries move to the new shop**, so the shop's statement imports. The order and shop **reports count the move on the day of the fix** — the old shop −1, the new +1, with the order's figures — and past days never change. ⛔ Not built — backlog #86.
+
+✅ Built 2026-11-18 — selling `OrderShopUpdate` (`selling_v1/order_shop_update.go`; every selling role, the order's team only): the new shop through `shopAccess` (another team's NotFound, no grant PermissionDenied naming it, a closed shop taken), the same marketplace (else FailedPrecondition), under the order's row lock — `orders.shop_id`, a note row *"Toko: A → B"* (Catatan on the order's page) and an `order_shop_changes` row (selling `00051`); then `OrderShopChanged` (topic `order-shop-changed`). *(Not asked — the build's reading: the fix is taken at completed, return, return_completed and lost, where a statement still settles the order's money; every other status is refused, never ignored.)* Settlement `MoveOrderShop` (`settlement-order-shop-changed`, `00012`) moves the account's shop and posts a pair of rows per settlement type — out of the old shop, into the new — on the fix's day, so the shop reports move on that day and the new shop's statement imports (`cmd/app_development/order_shop_fix_import_test.go`: refused before, `Done — 1 posted` after, through the importer's own adapters). The order metrics count it on the fix's day: every metric the order had counted, −1 under the old shop and +1 under the new; each past move counts under the shop the order was in at that move (`shopAsOf`), in the fold and the day re-fold alike. Front: *Ubah Toko* beside the shop on the seller's order page (`ChangeShopDialog`: same-marketplace shops the person may write, then a confirm naming both). Tests mutation-checked; raced (two fixes, a fix against a return, crossing folds, a move against the statement).
+
+🔄 *(2026-11-18)* **Settled in chat — which statuses allow the fix.** Owner: *"A, and is shop change is logged ?, and in settlement side is adjusted too right ?"* — as recommended, after asking *"tell more"*, *"so settlement check order status too ?"* (no: the import posts a line to the order whatever its status and refuses a file with an order of another shop whatever its status; customer service sets the statuses after handover by hand, so an order the platform has paid can still read *shipped*) and *"i still confuse, explain more"*. The options: A any status **from handover on** — shipping, shipped, problem, completed, return, return completed, lost; B completed, return, return completed and lost (the first build); C completed only, as the checklist row reads. So **an order's shop can be fixed in every status from handover on**; before handover (pending → picked) and a cancelled order are refused — the platform has paid nothing yet. Answered in the same message: the fix **is logged** (a timeline note naming the old and the new shop, and an `order_shop_changes` row with who and when), and **settlement is adjusted** (the order's settlement figures move out of the old shop and into the new on the day of the fix).
+
+✅ **Built again 2026-11-18 — from handover on.** `shopFixable` (selling_v1/order_shop_update.go) takes shipping, shipped, problem, completed, return, return_completed and lost; pending, processed, picked and cancel are refused (`TestOrderShopUpdate_FromHandoverOn`, 11 subtests); the dialog and the stub follow (`ShopFix.stories.tsx`: a shipped order fixes, a picked one shows no button). The status set in the ✅ line above is superseded by this one. Perf: the day re-fold at 20,000 orders / 40,000 moves / 2,000 fixes, 20.90 s → 21.42 s (+2.5 %), queries per order and per move unchanged (`TestPerf_OrderShopFix_DayRefold`).

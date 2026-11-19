@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { authClient } from "../../api/clients";
 import type { Identity } from "../../gen/warehouse/role_base/v1/role_pb";
 import { clearToken, getToken, isRemembered, setToken } from "./tokenStorage";
+import { serverRefusedTheToken } from "./tokenVerdict";
 
 interface AuthState {
   identity: Identity | null;
@@ -42,15 +43,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setIdentity(res.identity ?? null);
-    } catch {
-      // Expired, suspended, or garbage. Drop it — a stale token must not linger.
-      clearToken();
-      setIdentity(null);
+    } catch (err) {
+      // Expired, suspended, or garbage — the SERVER's verdict: drop it, a stale token must not linger. Anything else (the
+      // request aborted because the person navigated mid-check, the network, a server error) says nothing about the token:
+      // keep it and whoever is signed in, and the next page load asks again (tokenVerdict.ts).
+      if (serverRefusedTheToken(err)) {
+        clearToken();
+        setIdentity(null);
+      }
     } finally {
       setReady(true);
     }
   }, []);
 
+  // ⚠ Under StrictMode (main.tsx) a DEV build runs this effect twice, so a page load sends two CheckAccess calls — React's
+  // mount/unmount/mount check, not a second caller; a production build sends one. Leaving the page while the second is in
+  // flight aborts it, which is why an abort must never drop the token (the catch above).
   useEffect(() => {
     void check();
   }, [check]);

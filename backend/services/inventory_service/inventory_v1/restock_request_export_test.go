@@ -40,8 +40,8 @@ import (
 // exportColumns is the file's header row — the screen's columns, its Referensi cell split in two and each date's
 // by-line beside it.
 var exportColumns = []string{
-	"Order ID", "Resi", "Pemasok", "Gudang", "Produk", "Total", "Kurir", "Status", "Dibuat", "Dibuat oleh", "Diterima",
-	"Diterima oleh",
+	"Order ID", "Resi", "Pemasok", "Gudang", "Produk", "Total", "Kurir", "Status", "Tag", "Dibuat", "Dibuat oleh",
+	"Diterima", "Diterima oleh",
 }
 
 // fakeRestockExports keeps the stored file and names everything from fixed maps; it records each lookup's size, which
@@ -187,7 +187,8 @@ var statusWords = map[inventoryv1.RestockRequestStatus]string{
 
 // expectedRow is what the file must hold for a row of the LIST — derived from the list's own answer
 // (RestockRequestList), never from the export's code: the references as typed, every line's supplier and store, the
-// warehouse, the lines summed, the money exact, the courier, the status's word, both moments in WIB and who acted.
+// warehouse, the lines summed, the money exact, the courier, the status's word, its tags as the list reads them (backlog
+// #87), both moments in WIB and who acted.
 func expectedRow(r *inventoryv1.RestockRequest, names *fakeRestockExports) []string {
 	name := func(m map[uint64]string, id uint64, prefix string) string {
 		if n, ok := m[id]; ok {
@@ -257,6 +258,11 @@ func expectedRow(r *inventoryv1.RestockRequest, names *fakeRestockExports) []str
 		acceptedBy = person(r.GetAcceptedByUserId(), r.GetAcceptedByIsOverride())
 	}
 
+	tags := make([]string, 0, len(r.GetTags()))
+	for _, tag := range r.GetTags() {
+		tags = append(tags, tag.GetName())
+	}
+
 	return []string{
 		strings.TrimSpace(r.GetInvoiceRefId()),
 		strings.TrimSpace(r.GetReceipt()),
@@ -267,6 +273,7 @@ func expectedRow(r *inventoryv1.RestockRequest, names *fakeRestockExports) []str
 		strconv.FormatFloat(goods+r.GetShipmentCost(), 'f', -1, 64),
 		courier,
 		statusWords[r.GetStatus()],
+		strings.Join(tags, ", "),
 		time.Unix(r.GetCreatedAtUnix(), 0).In(wibZone).Format("2006-01-02 15:04"),
 		person(r.GetCreatedByUserId(), r.GetCreatedByIsOverride()),
 		accepted,
@@ -408,6 +415,26 @@ func seedExportFixture(t *testing.T, db *gorm.DB) []uint64 {
 		t.Fatalf("seed trail: %v", err)
 	}
 
+	// TAGS (backlog #87): every fourth restock carries *Prioritas*, every sixth *Lebaran 2026*, the app's *Barang
+	// kurang* every ninth accepted one — so a row with two, one and none, and the tag filter's any-of.
+	prioritas := seedTag(t, db, "Prioritas", "custom")
+	lebaran := seedTag(t, db, "Lebaran 2026", "custom")
+	kurang := appTagID(t, db, "restock.problem.missing")
+
+	for i := range restocks {
+		if i%4 == 0 {
+			tagOn(t, db, restocks[i].ID, prioritas)
+		}
+
+		if i%6 == 0 {
+			tagOn(t, db, restocks[i].ID, lebaran)
+		}
+
+		if i%9 == 2 && restocks[i].Status == "accepted" {
+			tagOn(t, db, restocks[i].ID, kurang)
+		}
+	}
+
 	slices.Reverse(ids)
 
 	return ids
@@ -462,6 +489,13 @@ func TestRestockRequestExport_TheFileIsTheListEveryPage(t *testing.T) {
 			Status: inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED, ShipmentId: 91, WarehouseId: 5,
 			DateField: inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_CREATED,
 			FromUnix:  now.Add(-1400 * time.Hour).Unix(), ToUnix: now.Unix(), Q: "sku",
+		}},
+		{"tag prioritas", &inventoryv1.RestockRequestListFilter{TagIds: []uint64{exportTag(t, db, "Prioritas")}}},
+		{"tags prioritas or lebaran", &inventoryv1.RestockRequestListFilter{
+			TagIds: []uint64{exportTag(t, db, "Prioritas"), exportTag(t, db, "Lebaran 2026")},
+		}},
+		{"tag barang kurang, tab accepted", &inventoryv1.RestockRequestListFilter{
+			TagIds: []uint64{exportTag(t, db, "Barang kurang")}, Status: inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED,
 		}},
 		{"nothing matches", &inventoryv1.RestockRequestListFilter{Q: "no such restock"}},
 	}
@@ -575,6 +609,11 @@ func TestRestockRequestExport_Columns(t *testing.T) {
 		}
 	}
 
+	// Its tags, in the chips' order whatever order they went on in: the system's first, then by name.
+	tagOn(t, db, full.ID, seedTag(t, db, "Retur ke Supplier", "custom"))
+	tagOn(t, db, full.ID, appTagID(t, db, "restock.problem.broken"))
+	tagOn(t, db, full.ID, seedTag(t, db, "Lebaran 2026", "custom"))
+
 	err := db.Create(&[]inventory_service_models.RestockLog{
 		{RestockID: full.ID, ToStatus: "ongoing", ActorUserID: 7, CreatedAt: created},
 		{RestockID: full.ID, FromStatus: "arrived", ToStatus: "accepted", ActorUserID: 11, IsOverride: true, CreatedAt: accepted},
@@ -594,10 +633,10 @@ func TestRestockRequestExport_Columns(t *testing.T) {
 		// Newest first, as the list: bare was raised an hour later. Its creator is not recorded — the trail's override
 		// stands for nobody, so the cell stays empty.
 		{"", "", "Belum terhubung ke supplier", "Gudang Pusat", "1 produk · 1 pcs (SKU-1)", "500", "", "Dalam Perjalanan",
-			"2026-11-04 07:30", "", "", ""},
+			"", "2026-11-04 07:30", "", "", ""},
 		{"0071234", "081234567890", "Sumber Rejeki · Toko Melati; Supplier #503 · Toko #699; CV Abadi · tanpa toko",
 			"Gudang #6", "4 produk · 13 pcs (SKU-1, SKU-2, SKU-3, SKU-4)", "127501.0357", "J&T Express", "Diterima",
-			"2026-11-04 06:30", "Rina", "2026-11-06 00:05", "#11 (oleh tim Root)"},
+			"Barang rusak, Lebaran 2026, Retur ke Supplier", "2026-11-04 06:30", "Rina", "2026-11-06 00:05", "#11 (oleh tim Root)"},
 	}
 
 	if len(file.rows) != len(want) {
@@ -696,7 +735,8 @@ func TestRestockRequestExport_ANameLookupAsksAtMost200(t *testing.T) {
 	}
 
 	for _, row := range file.rows[1:] {
-		if !strings.HasPrefix(row[9], "Pembuat ") || !strings.HasPrefix(row[11], "Penerima ") {
+		// The by-lines sit after the Tag column (backlog #87): Dibuat oleh 10, Diterima oleh 12.
+		if !strings.HasPrefix(row[10], "Pembuat ") || !strings.HasPrefix(row[12], "Penerima ") {
 			t.Fatalf("a row's people went unnamed: %q", row)
 		}
 	}

@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
-import { At503, SELLING_DETAIL_META, loaded } from "./kit";
+import { signedForWithAChargeForStory } from "../../../features/restock/storyRestock";
+import { At501, At503, SELLING_DETAIL_META, loaded } from "./kit";
 
 // RESTOCK SELLING DETAIL — the money — the receipt, the parcel and the paying account, and the courier's charge on its own.
 // The page's stories are grouped by the part of the screen they are about
@@ -105,7 +106,30 @@ export const PaymentIsAReceipt: Story = {
   },
 };
 
-// The courier's charge is a section only once accepted — an ongoing restock's nav has no Ongkir COD.
+// THE CHARGE NOTED AT TANDAI TIBA IS SHOWN, AS NOTED (the-courier-charge-is-noted-at-tiba-and-final-at-terima) — 501,
+// signed for with Rp 15.000, its note and its slip: Ongkir COD is a section already, in the nav, read as an accepted one's
+// is, the slip opening — and its line says the charge is final at Terima and owed from then, not yet. Outside the total.
+export const TheChargeNotedAtTibaIsShown: Story = {
+  name: "Ongkir COD noted at Tiba",
+  render: () => <At501 />,
+  beforeEach: () => signedForWithAChargeForStory(501n, 15000, "Biaya COD", "doc-tiba-slip"),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("section-nav-courier")).toBeInTheDocument();
+    const card = canvas.getByTestId("restock-detail-courier-charge-card");
+    await expect(within(card).getByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 15.000");
+    await expect(within(card).getByTestId("restock-detail-courier-charge-note")).toHaveTextContent("Biaya COD");
+    await expect(within(card).getByTestId("restock-detail-courier-charge-owed")).toHaveTextContent(
+      /^Noted by .+ when the box was signed for — final when it is accepted, and from then your team owes it/,
+    );
+    await expect(canvas.getByTestId("restock-detail-total")).toHaveTextContent("Rp 2.080.000");
+    const slip = await within(card).findByTestId("restock-detail-courier-photo", {}, { timeout: 4000 });
+    await expect(within(slip).getByRole("img")).toHaveAttribute("src", expect.stringMatching(/#doc-tiba-slip$/));
+  },
+};
+
+// The courier's charge is a section once there is one — an ongoing restock with none noted has no Ongkir COD in its nav.
 export const OngkirCodIsASectionOnceAccepted: Story = {
   name: "Ongkir COD once accepted",
   play: async ({ canvasElement }) => {

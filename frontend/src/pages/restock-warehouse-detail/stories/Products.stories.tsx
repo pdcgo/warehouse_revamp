@@ -7,7 +7,7 @@ import { At503, WAREHOUSE_DETAIL_META, loaded } from "./kit";
 import { withoutDoorPhotosForStory } from "../../../../.storybook/restockStub";
 import { doorPhotoScenario } from "../../../../.storybook/doorPhotoScenario";
 
-// RESTOCK WAREHOUSE DETAIL — the lines as counted — missing, broken with its photo, where the good units went.
+// RESTOCK WAREHOUSE DETAIL — the lines as counted — missing, broken with its photo (no rack), where the good units went.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -108,24 +108,23 @@ export const TheStatisticsWaitForTheCount: Story = {
   },
 };
 
-// WHERE THE BROKEN UNITS WENT (owner: *"tampilkan"*, the-detail-pages-show-the-slip-and-the-broken-rack) — under the good
-// units' places, when they were put on a rack. A SAMPLE, the page's second mark — and against a business decision, which the
-// strip says (a-conflict-with-a-business-decision-is-said-in-its-mark). The tea, nothing broken, has none.
-export const TheBrokenRackIsUnderThePlaces: Story = {
-  name: "Broken rack",
+// THE BROKEN UNITS HAVE NO RACK (owner: *"for now, broken is enough to be broken"*,
+// a-restocks-broken-units-are-just-broken-for-now) — 503's rice, 2 broken: the Tempat cell names where the GOOD units went
+// and nothing more, no *Rusak 2 → rack* under it; the page marks nothing as a sample.
+export const TheBrokenUnitsHaveNoRack: Story = {
+  name: "Broken, no rack",
   render: () => <At503 />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    // The rack codes arrive in their own read, after the lines.
-    const rack = await canvas.findByTestId("restock-detail-broken-rack-74", {}, { timeout: 4000 });
 
-    await expect(rack).toHaveTextContent(/^Broken 2 → \S+/);
-    await expect(within(rack).getByTestId("not-implemented-brokenRack")).toHaveTextContent("2");
-    await expect(canvas.queryByTestId("restock-detail-broken-rack-72")).toBeNull();
-
-    await userEvent.click(canvas.getByTestId("not-implemented-toggle"));
-    const conflict = await canvas.findByTestId("pending-row-brokenRack-conflict");
-    await waitFor(() => expect(conflict).toBeVisible());
+    await expect(canvas.getByTestId("restock-detail-broken-74-count")).toHaveTextContent("2");
+    // The rack codes arrive in their own read, after the lines — the cell is the good units' places, whole and alone.
+    await waitFor(() =>
+      expect(canvas.getByTestId("restock-detail-placement-74")).toHaveTextContent(/^A-01-1 \(5\), B-02-1 \(2\)$/),
+    );
+    await expect(canvas.queryByTestId(/^restock-detail-broken-rack-/)).toBeNull();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(canvas.queryByTestId(/^not-implemented-/)).toBeNull();
   },
 };
 

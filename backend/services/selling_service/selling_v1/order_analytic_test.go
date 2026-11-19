@@ -145,8 +145,9 @@ func pricedOrder(t *testing.T, svc *selling_v1.Service, shopID uint64) uint64 {
 	return created.Msg.GetOrder().GetId()
 }
 
-// EACH MOVE COUNTS ONCE, for its own metric: a redelivery counts nothing, a move no metric counts is ACKED, and every
-// figure is the order's — its total_cost and its platform_total.
+// EACH MOVE COUNTS ONCE, for its own metric: a redelivery counts nothing, and every figure is the order's — its
+// total_cost and its platform_total. The confirm counts too now, for Order status moves
+// (the-order-status-moves-prototype-is-accepted) — order_analytic_moves_test.go pins its figures.
 func TestOrderMetricFold_EachMoveCountsOnceForItsMetric(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithFees(t, db, knownCosts(), &fakeFees{percent: 2.5})
@@ -188,9 +189,10 @@ func TestOrderMetricFold_EachMoveCountsOnceForItsMetric(t *testing.T) {
 	var rows int64
 
 	err = db.Raw(`SELECT count(*) FROM order_daily_reports`).Scan(&rows).Error
-	// Five moves' rows, and Warehouse Fee's one: the placement and the cancel fell on the same day, so they share it.
-	if err != nil || rows != 6 {
-		t.Fatalf("%d report rows (err %v), want 6 — the confirm counts for no metric", rows, err)
+	// Five moves' rows, Warehouse Fee's one (the placement and the cancel fell on the same day, so they share it), and
+	// the confirm's row of Order status moves.
+	if err != nil || rows != 7 {
+		t.Fatalf("%d report rows (err %v), want 7 — the five, the fee and the confirm", rows, err)
 	}
 }
 

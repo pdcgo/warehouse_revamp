@@ -37,12 +37,13 @@ import { useElementWidth } from "../../lib/useElementWidth";
 import { useFitToWindow } from "../../lib/useFitToWindow";
 import { FLASH_ON_LANDING, jumpTo } from "../../lib/useScrollSpy";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
-import { LabelPaper, LabelSticker } from "./components/LabelPaper";
+import { LabelPaper, LabelSticker } from "../../features/labels/LabelPaper";
+import { PrintStyles } from "../../features/labels/PrintStyles";
 import { LabelSettingsPanel } from "./components/LabelSettingsPanel";
 import { RestocksCard } from "./components/RestocksCard";
 import type { LabelSet } from "./labelSets";
 import { useLabelSets } from "./labelSets";
-import type { LabelSettings } from "./settings";
+import type { LabelSettings } from "../../features/labels/settings";
 import {
   DEFAULT_SETTINGS,
   PX_PER_MM,
@@ -53,7 +54,7 @@ import {
   papersOf,
   runOf,
   saveSettings,
-} from "./settings";
+} from "../../features/labels/settings";
 
 /** One label on the print — the restock it is from, and what it is a label OF. */
 interface Entry {
@@ -682,24 +683,5 @@ function LabelItem({
         />
       </Flex>
     </Stack>
-  );
-}
-
-// The page's print rules — the page's size IS the paper's, no margin; the app and everything but the run's papers is
-// dropped; one paper a page. Written with the settings in it, because `@page` takes no variables.
-function PrintStyles({ settings }: { settings: LabelSettings }) {
-  return (
-    <style>{`
-      .labels-print-root { display: none; }
-      @media print {
-        @page { size: ${settings.paperWidth}mm ${settings.paperHeight}mm; margin: 0; }
-        html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
-        body > *:not(.labels-print-root) { display: none !important; }
-        .labels-print-root { display: block !important; }
-        .labels-print-root .label-paper { break-after: page; page-break-after: always; }
-        .labels-print-root .label-paper:last-child { break-after: auto; page-break-after: auto; }
-        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      }
-    `}</style>
   );
 }

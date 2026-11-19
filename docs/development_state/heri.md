@@ -7,6 +7,29 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-19 · analytic order moves, restock and sign-in fixes, the import page
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Order status moves in Analytic** | Analytic › Order has a new metric that counts each order's moves per day — confirmed, back to pending, picked, handed over, shipped, problem, completed — by shop, creator, warehouse or seller; a warehouse sees the orders it ships |
+| **Restock lists show missing and broken again** | both restock lists show *kurang N · rusak N* on an accepted restock with problems — it had stopped showing |
+| **A blocked action names who is counting** | when a stock count blocks an action (e.g. cancelling an order), the message names the person who started the count instead of *user #25* |
+| **A borrowed unit's label can be printed at a return** | after accepting a return with a borrowed unit, the page lists the labels to print and stick over the lender's code |
+| **A slow or interrupted page no longer signs you out** | only the server saying the login is expired or suspended signs you out; a dropped or interrupted check keeps you signed in |
+| **The import page shows every row** | a statement import's page now also lists the rows posted to their order (with the order linked) and the rows already imported before — each tab matches its total |
+
+## 2026-11-18 · partition library: linked tables
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Partitioning also works for tables other tables point at** | A history table that other tables link to (like orders pointing at a user) can now be split by month too; the links keep being checked and the app needs no change. Also fixed: tidying up rows that arrived while the nightly job was missed could have deleted linked rows — it now keeps them. Nothing in the app uses it yet. |
+| **Restock fixes; the credit refusal names the creditor** | the courier's charge noted at Tandai Tiba is now kept (Terima can still change it); saving a restock's note no longer overwrites a colleague's edit; the broken-units rack choice is gone (broken is just broken); an order refused at the credit limit names the creditor team |
+| **Settlement and expenses check the shop belongs to the team** | a team can no longer post settlement or expense money on another team's shop (it reads "shop #N is not one of this team's shops"); closed shops still take money |
+| **A payment can be cancelled before it is confirmed** | the selling team that sent a payment can cancel it while the warehouse hasn't confirmed it yet; it stays in the history as cancelled |
+| **A lost parcel that turns up names its order** | when the warehouse finds goods from an order that was marked lost, the found record names that order and the stock goes back into the same batches at their price |
+| **Printing labels, picking in bulk, fixing an order's shop** | the warehouse prints the chosen orders' labels from one print page (pending orders move to processed after printing, unless switched off), sees one pick list for many orders by product or by order, and sees parcels per courier at handover; a seller can move an order recorded in the wrong shop so its marketplace payout imports |
+| **Restock tags** | restocks can carry tags (your own, or the system's *Barang kurang* / *Barang rusak*, put on automatically at Terima), and both restock lists filter by tag |
+
 ## 2026-11-16 · 
 
 | What shipped | What it means for a person |

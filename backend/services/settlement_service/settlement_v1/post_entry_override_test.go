@@ -169,7 +169,7 @@ func TestOrderSale_EachRowCarriesItsEventsStamp(t *testing.T) {
 func TestSettlementPost_TheEventCarriesTheRowsStamp(t *testing.T) {
 	db := san_testdb.DB(t)
 	capture := &captureEvents{}
-	svc := settlement_v1.NewService(db, capture.send, nil, nil, nil, nil, nil)
+	svc := settlement_v1.NewService(db, capture.send, nil, primaryIs(shopPrimaryCS), nil, nil, nil)
 
 	for _, c := range []struct {
 		name     string

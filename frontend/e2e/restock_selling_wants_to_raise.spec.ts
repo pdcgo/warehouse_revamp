@@ -19,8 +19,12 @@ import { pickTeam } from "./pickers";
 // pays from its OWN account, so a balance read in one test is never moved by another test's event. The ground is seeded
 // in beforeAll, so a worker restarted after a failure seeds its own instead of reading a moved SUFFIX.
 //
-// `restock recorded in analytic metric` is 🚧 unimplemented — no analytic metric counts a restock when it is raised — so it has no check
-// here yet.
+// `restock recorded in analytic metric` is 🚧 unimplemented — no analytic metric counts a restock when it is raised (Restock
+// counts what an ACCEPT puts on the racks) — so its check is its own test per given, marked `test.fail` with the status
+// (guide.md#acceptances-are-markdown): its own test, so the expected failure never hides a broken then of the others. It
+// reads Restock by product as selling:owner and asks for ANY figure of the raised product to read its 10 units — field-
+// agnostic, since how the raise will be shown is not built. The day it turns red, the then is built: ask the owner, then
+// run it as every selling role and point it at the field that was built.
 test.describe("selling:all wants to restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -76,7 +80,16 @@ test.describe("selling:all wants to restock", () => {
   const at = (role: string, kase: string) => `${role}-${kase}`;
   const WH_CODE = `AW${SUFFIX}`;
   const SUPPLIER_NAME = `E2E Acc Supplier ${SUFFIX}`;
-  const ground = { team: "", warehouse: "", supplier: "", accounts: {} as Record<string, string> };
+  // The 🚧 analytic check raises its own restock per case, as selling:owner, from its own products and account.
+  const METRIC = "met";
+  const KEYS = [...ROLES.map((r) => r.key), METRIC];
+  const ground = {
+    team: "",
+    warehouse: "",
+    supplier: "",
+    accounts: {} as Record<string, string>,
+    products: {} as Record<string, string>,
+  };
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
@@ -98,22 +111,23 @@ test.describe("selling:all wants to restock", () => {
 
     const category = await api(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Acc Cat ${SUFFIX}` });
     let n = 0;
-    for (const r of ROLES) {
+    for (const key of KEYS) {
       for (const c of CASES) {
         for (let line = 0; line < c.products; line++) {
-          await api(page, "product.v1.ProductService/ProductCreate", {
+          const made = await api(page, "product.v1.ProductService/ProductCreate", {
             teamId: ground.team,
-            productCodePart: code(r.key, c.key, line),
-            name: `E2E ${code(r.key, c.key, line)}`,
+            productCodePart: code(key, c.key, line),
+            name: `E2E ${code(key, c.key, line)}`,
             categoryId: category.category.id,
           });
+          ground.products[code(key, c.key, line)] = String(made.product.id);
         }
 
         const account = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
           teamId: ground.team,
           type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
           provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
-          name: `E2E Acc ${r.key} ${c.key} ${SUFFIX}`,
+          name: `E2E Acc ${key} ${c.key} ${SUFFIX}`,
           holderName: "E2E",
           accountNumber: `77${SUFFIX}${++n}`,
           openingBalance: 10_000_000,
@@ -125,7 +139,7 @@ test.describe("selling:all wants to restock", () => {
           accountId,
           operational: true,
         });
-        ground.accounts[at(r.key, c.key)] = accountId;
+        ground.accounts[at(key, c.key)] = accountId;
       }
     }
 
@@ -145,11 +159,64 @@ test.describe("selling:all wants to restock", () => {
     return Number((await balance.innerText()).replace(/[^\d-]/g, ""));
   }
 
+  // WHEN — create restock through the seller's own list and form, as whoever is signed in: this case's products under
+  // `key`, paid from `account`. Returns the ongoing list row it made and its id.
+  async function raise(page: Page, key: string, c: (typeof CASES)[number], account: string) {
+    const lines = Array.from({ length: c.products }, (_, line) => code(key, c.key, line));
+
+    await page.goto("/inventories/restock");
+    await page.getByTestId("open-create-restock").or(page.getByTestId("open-create-restock-empty")).first().click();
+    await expect(page).toHaveURL(/\/inventories\/restock\/new$/);
+
+    await page.getByTestId("restock-pick-products").click();
+    for (const line of lines) {
+      await tick(page, line);
+    }
+    await page.getByTestId("product-picker-confirm").click();
+
+    for (let line = 0; line < lines.length; line++) {
+      await page.getByTestId(`restock-qty-${line}`).fill(String(LINE_COUNT));
+      await page.getByTestId(`restock-total-price-${line}`).fill(String(LINE_TOTAL));
+    }
+
+    await pickTeam(page, page.getByTestId("restock-warehouse"), WH_CODE);
+
+    await page.getByTestId("restock-finance-account").click();
+    await page.getByTestId(`restock-finance-account-option-${account}`).click();
+
+    await page.getByTestId("restock-all-supplier-picker-trigger").click();
+    await page.getByTestId("restock-all-supplier-picker-search").fill(SUPPLIER_NAME);
+    await page.getByTestId(`restock-all-supplier-picker-supplier-${ground.supplier}`).click();
+    await page.getByTestId("restock-all-supplier-picker-confirm").click();
+
+    await page.getByTestId("restock-courier").getByRole("combobox").click();
+    await page.getByTestId("shipment-channel-option-jne").click();
+
+    await page.getByTestId("restock-receipt").fill(`E2E-ACC-${key.toUpperCase()}-${c.key.toUpperCase()}-${SUFFIX}`);
+    if (c.shipping > 0) {
+      await page.getByTestId("restock-shipping-cost").fill(String(c.shipping));
+    }
+
+    await expect(page.getByTestId("restock-form-ready")).toBeVisible();
+    await page.getByTestId("submit-restock").click();
+    await expect(page).toHaveURL(/\/inventories\/restock$/);
+
+    // The restock just made: the ongoing row carrying this case's first product.
+    const made = page
+      .getByTestId("restock-requests-table")
+      .locator("tbody tr")
+      .filter({ hasText: lines[0] })
+      .filter({ has: page.getByTestId("restock-status-1") });
+    await expect(made).toHaveCount(1);
+    const restockId = (await made.getAttribute("data-testid"))!.replace("restock-row-", "");
+
+    return { made, restockId, lines };
+  }
+
   for (const c of CASES) {
     for (const r of ROLES) {
       test(`${r.given} create restock (${c.cond})`, async ({ page }) => {
         const account = ground.accounts[at(r.key, c.key)];
-        const lines = Array.from({ length: c.products }, (_, line) => code(r.key, c.key, line));
         const paid = c.products * LINE_TOTAL + c.shipping;
         // How a list row sizes the box — the seller's list and the warehouse's alike.
         const size = `${c.products} ${c.products === 1 ? "product" : "products"} · ${c.products * LINE_COUNT} pcs`;
@@ -158,51 +225,7 @@ test.describe("selling:all wants to restock", () => {
         const before = await balanceOf(page, account);
 
         // WHEN — through the seller's own list and form, as this role.
-        await page.goto("/inventories/restock");
-        await page.getByTestId("open-create-restock").or(page.getByTestId("open-create-restock-empty")).first().click();
-        await expect(page).toHaveURL(/\/inventories\/restock\/new$/);
-
-        await page.getByTestId("restock-pick-products").click();
-        for (const line of lines) {
-          await tick(page, line);
-        }
-        await page.getByTestId("product-picker-confirm").click();
-
-        for (let line = 0; line < lines.length; line++) {
-          await page.getByTestId(`restock-qty-${line}`).fill(String(LINE_COUNT));
-          await page.getByTestId(`restock-total-price-${line}`).fill(String(LINE_TOTAL));
-        }
-
-        await pickTeam(page, page.getByTestId("restock-warehouse"), WH_CODE);
-
-        await page.getByTestId("restock-finance-account").click();
-        await page.getByTestId(`restock-finance-account-option-${account}`).click();
-
-        await page.getByTestId("restock-all-supplier-picker-trigger").click();
-        await page.getByTestId("restock-all-supplier-picker-search").fill(SUPPLIER_NAME);
-        await page.getByTestId(`restock-all-supplier-picker-supplier-${ground.supplier}`).click();
-        await page.getByTestId("restock-all-supplier-picker-confirm").click();
-
-        await page.getByTestId("restock-courier").getByRole("combobox").click();
-        await page.getByTestId("shipment-channel-option-jne").click();
-
-        await page.getByTestId("restock-receipt").fill(`E2E-ACC-${r.key.toUpperCase()}-${c.key.toUpperCase()}-${SUFFIX}`);
-        if (c.shipping > 0) {
-          await page.getByTestId("restock-shipping-cost").fill(String(c.shipping));
-        }
-
-        await expect(page.getByTestId("restock-form-ready")).toBeVisible();
-        await page.getByTestId("submit-restock").click();
-        await expect(page).toHaveURL(/\/inventories\/restock$/);
-
-        // The restock just made: the ongoing row carrying this case's first product.
-        const made = page
-          .getByTestId("restock-requests-table")
-          .locator("tbody tr")
-          .filter({ hasText: lines[0] })
-          .filter({ has: page.getByTestId("restock-status-1") });
-        await expect(made).toHaveCount(1);
-        const restockId = (await made.getAttribute("data-testid"))!.replace("restock-row-", "");
+        const { made, restockId, lines } = await raise(page, r.key, c, account);
 
         // THEN — as the seller. Listed as ongoing and sized as raised; the shipping cost is read on its own page.
         await test.step(`then: ${c.created}`, async () => {
@@ -256,5 +279,27 @@ test.describe("selling:all wants to restock", () => {
         });
       });
     }
+
+    // 🚧 — its own test, so the expected failure hides none of the thens above (see the head of this file).
+    test(`selling:owner create restock (${c.cond}): restock recorded in analytic metric`, async ({ page }) => {
+      test.fail(
+        true,
+        "🚧 unimplemented (docs/acceptances/inventory/restock.md) — no analytic metric records a restock when it is raised",
+      );
+
+      await signIn(page, username("own"), ground.team);
+      const { lines } = await raise(page, METRIC, c, ground.accounts[at(METRIC, c.key)]);
+      const product = ground.products[lines[0]];
+
+      // Restock by product, this week: any figure of the raised product reading its 10 units. Re-read until it lands.
+      await test.step("then: restock recorded in analytic metric", async () => {
+        await expect(async () => {
+          await page.goto(`/analytic?g=product&m=metrics/inventory/restock&r=7d`);
+          await expect(
+            page.locator(`[data-testid^="analytic-cell-${product}-"]`).filter({ hasText: new RegExp(`^${LINE_COUNT}$`) }),
+          ).not.toHaveCount(0, { timeout: 2_000 });
+        }).toPass({ timeout: 20_000 });
+      });
+    });
   }
 });

@@ -53,10 +53,16 @@ type Result struct {
 var disableConfig sync.Once
 
 // Merge returns the merged PDF and one Result per file, in the files' order. The PDF is nil when no file could be
-// read. The error is only for a failure of the WHOLE merge (writing the result); a bad file is its own Result.
-func Merge(files []File) ([]byte, []Result, error) {
+// read. The error is only for a failure of the WHOLE merge (writing the result, or a stamp asked for that cannot be
+// drawn — ErrStamp); a bad file is its own Result.
+func Merge(files []File, opts ...Option) ([]byte, []Result, error) {
 	if len(files) == 0 {
 		return nil, nil, ErrNothingToMerge
+	}
+
+	var o options
+	for _, opt := range opts {
+		opt(&o)
 	}
 
 	disableConfig.Do(api.DisableConfigDir)
@@ -104,6 +110,15 @@ func Merge(files []File) ([]byte, []Result, error) {
 
 	if dest == nil {
 		return nil, results, nil
+	}
+
+	// The one line every page carries, when one was asked (StampEveryPage) — drawn after the last file is in, so a
+	// rebuild above never loses it.
+	if o.stamp != "" {
+		err := stampPages(dest, o.stamp)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	out, err := write(dest)

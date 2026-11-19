@@ -57,9 +57,16 @@ export const orderExportScenario = {
  */
 export const orderLabelScenario = {
   last: undefined as undefined | { teamId: bigint; orderIds: bigint[] },
+  /** Whether the last print asked for the unboxing warning (the-unboxing-warning-is-one-sentence-on-each-label). */
+  unboxing: undefined as undefined | boolean,
   refusal: undefined as undefined | OrderLabelReason,
   labelled: [] as bigint[],
   unreadable: [] as bigint[],
+};
+
+/** OrderPrintByIds (the print page's one read of its orders): every request — the warehouse and the ids, as asked. */
+export const orderPrintScenario = {
+  calls: [] as { teamId: bigint; orderIds: bigint[] }[],
 };
 
 export const receiptUpdateScenario = {
@@ -209,6 +216,8 @@ export function resetSessionScenario() {
   orderImportScenario.last = undefined;
   receiptUpdateScenario.last = undefined;
   orderLabelScenario.last = undefined;
+  orderLabelScenario.unboxing = undefined;
+  orderPrintScenario.calls = [];
   orderLabelScenario.refusal = undefined;
   orderLabelScenario.labelled = [];
   orderLabelScenario.unreadable = [];

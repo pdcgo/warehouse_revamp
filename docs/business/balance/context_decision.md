@@ -33,6 +33,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-orders-warehouse-fee-is-read-on-the-order](#an-orders-warehouse-fee-is-read-on-the-order) | an order's warehouse fee is kept on the order and read on its page, beside its settlement — no `order_id` filter on the entries |
 | [the-liability-day-is-the-jakarta-day](#the-liability-day-is-the-jakarta-day) | the liability daily view groups by the Jakarta day, not UTC | owner, as recommended | — |
 | [the-warehouse-statement-says-ongkir-cod](#the-warehouse-statement-says-ongkir-cod) | the warehouse's daily statement calls the courier money Ongkir COD / Courier COD | owner, as recommended | — |
+| [a-pending-payment-is-cancelled-by-its-selling-team](#a-pending-payment-is-cancelled-by-its-selling-team) | a pending payment can be cancelled by the paying selling team's owner or admin only; nothing moves, it stays in history, the team may pay again |
 
 ---
 
@@ -1160,6 +1161,8 @@ stateDiagram-v2
 `TestPaymentConfirm_CannotBeConfirmedTwice` and `TestPaymentReject_RefusesAConfirmedPayment`. Between
 them, nothing can move a payment out of `accepted`.
 
+🔄 2026-11-18 — a new arm BEFORE the accept: [a-pending-payment-is-cancelled-by-its-selling-team](#a-pending-payment-is-cancelled-by-its-selling-team) lets the paying selling team's owner or admin take a still-pending claim back — `pending → cancelled`, posting nothing. `accepted` stays final: a cancel of an accepted payment is refused (FailedPrecondition), and the row lock makes a cancel racing an accept lose cleanly.
+
 ---
 
 ## a-transfer-charge-is-a-transfer-fee
@@ -1422,3 +1425,13 @@ flowchart LR
 > Owner (Heri), in chat (2026-11-12): *"A"*, as recommended — to: the warehouse's daily statement's old *COD* column and notice were renamed *Biaya kurir* / *Courier charges* (Team Balance's ledger word, [the-ledger-speaks-the-business-words](#the-ledger-speaks-the-business-words)); the restock screens call the same money *Ongkir COD* from the warehouse's side ([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)). A: *Ongkir COD*, the warehouse's own word; B: keep *Biaya kurir*.
 
 **The verdict.** On the warehouse's daily statement the courier's money is **Ongkir COD** (id) / **Courier COD** (en) — the words its restock screens already use. *Handling fees* stays renamed *Biaya pesanan* / *Order fees*. Team Balance's ledger keeps its own *Biaya kurir …* rows. The page stays deferred ([the-daily-report-is-deferred](#the-daily-report-is-deferred)).
+
+---
+
+## a-pending-payment-is-cancelled-by-its-selling-team
+
+> Owner's acceptance checklist, [docs/acceptances/balance/payment.md](../../acceptances/balance/payment.md) (hfrada b63a43bb, 2026-11-17 — on `backup/inventory` the owner's): *`selling:owner · selling:admin` wants to take back a wrong payment (pending · wrong amount) / cancel payment / payment cancelled · warehouse no longer sees it to confirm · liability balance unchanged · operational account balance unchanged · selling team can make a new payment*; under the checklist's rule *"Only a role that CAN do it. A refused role gets no row"* ([guide.md](../../acceptances/guide.md)). Confirmed by the owner (2026-11-18, *"is decided right ?"*) when the agent asked it again.
+
+**The verdict.** A payment still **pending** (recorded, not yet accepted or rejected) can be **cancelled by the paying selling team's owner or admin** — no other role, and not a warehouse payer. A cancelled payment moves no money (none moved while pending), leaves the creditor's confirm list, stays in the history marked cancelled, and the team may pay again. It is a new arm *before* the accept, so [an-accepted-payment-is-final](#an-accepted-payment-is-final) is untouched. ⛔ Not built — backlog #81.
+
+✅ Built 2026-11-18 — `LiabilityPaymentCancel` with `LIABILITY_PAYMENT_STATUS_CANCELLED = 5` (3 stays reserved; no migration — `status` has no CHECK): policy Root, Administrator, Selling Owner, Selling Admin; the payer's own payment only (another team reads NotFound), only while `recorded` (accepted, rejected or cancelled → FailedPrecondition), the payer's type asked of team_service so Root inside a warehouse is refused too; the row `FOR UPDATE`, raced against confirm and reject. It posts nothing and publishes nothing, keeps the proof, drops out of the creditor's awaiting list, badge and filter, stays in both histories; paying again is a new Record. The pair detail's My payments offers **Batalkan** on a pending row to the selling Owner and Admin through a confirmation, and a cancelled row reads **Dibatalkan** in the rejected badge's tone ([rpc.md](../../services/liability_service/rpc.md#the-payer-takes-a-pending-claim-back--liabilitypaymentcancel-built-2026-11-18)).

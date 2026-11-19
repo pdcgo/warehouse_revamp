@@ -517,6 +517,18 @@ erDiagram
         timestamptz updated_at        "mirrors created_at — the row is written once"
     }
 
+    order_shop_changes {
+        bigserial   id              PK "a fix of the order's shop (00051) - append-only"
+        bigint      order_id        FK "-> orders(id), ON DELETE CASCADE"
+        bigint      team_id         "the order's selling team - the re-fold's day read"
+        bigint      from_shop_id    FK "-> shops(id) - the shop it was filed under"
+        bigint      to_shop_id      FK "-> shops(id) - CHECK <> from_shop_id"
+        bigint      timeline_log_id FK "-> order_timeline_logs(id) - the note row the fix wrote"
+        bigint      actor_id        "opaque user id, 0 = not recorded"
+        boolean     is_override
+        timestamptz created_at
+    }
+
     order_event_logs {
         text        id         PK "the EVENT id - order-placed:N, order-status-changed:LOG (00030)"
         bytea       raw        "the event as received, protojson"
@@ -527,14 +539,14 @@ erDiagram
     order_daily_reports {
         bigserial        id           PK
         date             day          "the move s Jakarta day (00030)"
-        text             metric       "created, cancelled, return_created, return_arrived, lost_created, warehouse_fee (00038)"
+        text             metric       "created, cancelled, return_created, return_arrived, lost_created, warehouse_fee (00038), moves_confirmed, moves_back_to_pending, moves_picked, moves_handed_over, moves_shipped, moves_problem, moves_completed (00052)"
         bigint           team_id      "the seller - UNIQUE with day, metric, shop, warehouse, user"
         bigint           shop_id
         bigint           warehouse_id
         bigint           user_id      "the order s creator, 0 = none recorded"
         bigint           order_count  "warehouse_fee - signed fee transactions"
-        double_precision total        "sum of total_cost - warehouse_fee - signed fee amount"
-        double_precision mp_total     "sum of platform_total - 0 on warehouse_fee (double since 00041)"
+        double_precision total        "sum of total_cost - warehouse_fee - signed fee amount - moves_* 0"
+        double_precision mp_total     "sum of platform_total - 0 on warehouse_fee and moves_* (double since 00041)"
         timestamptz      last_updated
     }
 ```
@@ -930,6 +942,24 @@ erDiagram
     ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](business/analytic/rpc_provide_decision.md#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)).
     `order_count` is the fee transactions, `total` the fee amount, `mp_total` 0. Written in the same claim as the
     `created` / `cancelled` row; orders folded before 00038 are not refolded.
+  - **A move counts under the shop the order was in AT the move** (00051): the from-shop of the first
+    `order_shop_changes` row after the move's timeline row, else `orders.shop_id` — so a fix of the order's shop never
+    re-files a past day, in the fold or the re-fold.
+  - **`moves_*` rows are Order status moves' seven COUNTS** (00052 widens the `metric` CHECK;
+    [the-order-status-moves-prototype-is-accepted](business/analytic/rpc_provide_decision.md#the-order-status-moves-prototype-is-accepted)):
+    one value per status an order moved INTO — `moves_confirmed` (processed), `moves_back_to_pending` (pending, after the
+    placement's own row), `moves_picked`, `moves_handed_over` (shipping), `moves_shipped`, `moves_problem`,
+    `moves_completed` (from shipped or a resolved problem) — folded from `OrderStatusChanged` on the move's own day under
+    the order's creator; `order_count` the moves, `total` and `mp_total` always 0 (counts only). Same key and indexes as
+    the five; not backfilled — a move made before 00052 has no row
+    ([the-order-metrics-count-from-the-fold-onward](business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)).
+- **`order_shop_changes`** (00051) — one row per FIX OF AN ORDER'S SHOP
+  ([an-orders-shop-is-fixed-and-counted-on-the-day](business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day),
+  `OrderShopUpdate`): the shop it was filed under, the one it moved to, and the note row (`Toko: A → B`) it wrote, all
+  under the order's row lock. **Append-only.** Read by the order metrics: the as-of lookup `(order_id, timeline_log_id)`
+  — which shop a past move counts under — and the re-fold's `(team_id, created_at)` day read; the fix itself counts on
+  its own day, every metric the order had counted −1 under the old shop and +1 under the new.
+  `CHECK (from_shop_id <> to_shop_id)`: naming the shop it is in writes nothing.
 
 `backend/services/category_service/db_migrations/`
 
@@ -1754,6 +1784,8 @@ erDiagram
         bigint      transaction_id                 FK "the found transaction - CHECK set exactly when approved"
         bigint      minted_batch_id                FK "the batch the approval minted, if any"
         bigint      settled_by_counting_session_id FK "CHECK set exactly when settled"
+        bigint      order_id                       "the LOST order whose parcel it is - selling's, no FK (00054)"
+        bigint      order_take_transaction_id      FK "that order's take - prices the mint; CHECK both or neither"
     }
     placements ||--o{ found_requests : "found on"
     inventory_transactions |o--o| found_requests : "approved as"
@@ -1769,6 +1801,12 @@ erDiagram
 - **The request row is the approval's first lock**: two approvals, or an approval and a rejection, queue on it and the
   second finds it no longer waiting.
 - `team_id`, `product_id`, `warehouse_id` and the people are other services' ids — no FK, as everywhere in this service.
+- **A found naming a lost order** (`00054`, 2026-11-18,
+  [a-found-lost-parcel-is-a-found-stock-in](business/order/context_decision.md#a-found-lost-parcel-is-a-found-stock-in)):
+  `order_id` (no FK — selling's) and `order_take_transaction_id` (FK to the order's take, `ON DELETE RESTRICT`) are set
+  together or not at all (`found_requests_order_names_its_take`). `found_requests_order_idx` on `(order_id, product_id)
+  WHERE order_id IS NOT NULL` reads the founds already naming the order — what bounds the next one by what the take
+  drew. The approval locks the take's row, so two approvals of one order's founds queue there.
 
 ### Lost stock, by day (`00037`)
 
@@ -1909,6 +1947,59 @@ erDiagram
 - **In transit** has no table: it is read live from `warehouse_transfers` and the out-leg's `batch_logs` rows (created
   on or before the edge, accepted or cancelled after it).
 - Logical links only (no FK): the reports are derived.
+
+### Restock tags (`00055`)
+
+Built 2026-11-18, backlog #87 —
+[a-restock-tag-is-system-or-custom](business/inventory/restock_decision.md#a-restock-tag-is-system-or-custom),
+[custom-tags-are-shared-system-tags-are-the-admins-and-the-apps](business/inventory/restock_decision.md#custom-tags-are-shared-system-tags-are-the-admins-and-the-apps),
+[a-restock-problem-is-a-system-tag](business/inventory/restock_decision.md#a-restock-problem-is-a-system-tag),
+[the-restock-tags-prototype-is-accepted](technical/frontend/restock_decision.md#the-restock-tags-prototype-is-accepted).
+
+```mermaid
+erDiagram
+    tags ||--o{ restock_tags : "tag_id, ON DELETE CASCADE"
+    restocks ||--o{ restock_tags : "restock_id, ON DELETE CASCADE"
+
+    tags {
+        bigserial   id                     PK
+        text        name                   "ONE app-wide list: unique on lower(name); kept trimmed, inner spaces folded (CHECK), at most 60"
+        text        type                   "system / custom - CHECK"
+        text        app_task               "the app's task owning a SYSTEM tag; '' otherwise - unique where set, only on system (CHECK)"
+        bigint      created_by_user_id     "0 = the migration / the app"
+        boolean     created_by_is_override
+        timestamptz created_at
+        timestamptz updated_at             "a rename"
+    }
+    restock_tags {
+        bigint      restock_id           PK "FK restocks"
+        bigint      tag_id               PK "FK tags - also restock_tags_tag_idx (tag_id, restock_id)"
+        bigint      added_by_user_id     "who put it on; 0 = the app (Terima's problem tags)"
+        boolean     added_by_is_override "Root or the Administrator from outside"
+        timestamptz added_at
+    }
+```
+
+- **One tag list for the app**, not one per team: a custom tag made by any team is every team's, and a restock's tags are
+  the restock's — both sides see, filter and tag them. `tags_name_key ON tags (lower(name))` is what makes a name one tag:
+  a create is `INSERT … ON CONFLICT ((lower(name))) DO NOTHING` and then reads the holder, so two people making the same
+  new name at once get one tag (`restock_tags_race_test.go`); a rename onto another tag's name fails on it
+  (AlreadyExists). The name's shape — trimmed, inner white space folded — is a CHECK, so "  lebaran   2026" can only be
+  stored as "lebaran 2026".
+- **The app's problem tags** are seeded by `00055`: *Barang kurang* (`app_task` `restock.problem.missing`) and *Barang
+  rusak* (`restock.problem.broken`), found by their task through `tags_app_task_key`, never by name. Locked for everyone
+  (the handlers refuse a hand on them); `RestockRequestAccept` writes their `restock_tags` rows in its own transaction.
+  `00055`'s data step gave them to the restocks already accepted with a problem row (count > 0), as of the accept (0 rows
+  on the test database).
+- **`restock_tags`** — the pair is the key, so a tag is on a restock once and a second put-on is no change (`ON CONFLICT
+  DO NOTHING`). Its PK leads with `restock_id` (a page's tags in one read, `withRestockTags`; the list's
+  `EXISTS (… WHERE rt.restock_id = restocks.id AND rt.tag_id IN (…))` filter, ANY of — never a duplicated row);
+  `restock_tags_tag_idx (tag_id, restock_id)` serves a rare tag's filter, the admins' per-tag count and the delete's
+  take-off (EXPLAIN in `restock_tags_perf_test.go`: at 50 000 restocks a rare tag's list 7.7 → 3.7 ms, the take-off
+  1.69 → 0.11 ms; a pure index — a-pure-index-is-added-without-asking).
+- **Delete** locks the tag `FOR UPDATE` and removes it; the cascade takes it off every restock. A put-on holds the tag
+  `FOR KEY SHARE` first, so a delete waits for it and takes that row off too — never a row left on a deleted tag.
+- No trail rows: putting a tag on or taking it off is not an edit of the restock (its row says who and when).
 
 ---
 
@@ -2168,7 +2259,7 @@ erDiagram
         bigint      payer_team_id    "who paid — NOT interchangeable with the creditor"
         bigint      creditor_team_id "who was paid, and the ONLY team that may confirm"
         double      amount           "stored exact as recorded, ALWAYS POSITIVE — direction is the two ids"
-        text        status           "recorded, confirmed, rejected or reversed"
+        text        status           "recorded, confirmed, rejected, cancelled or reversed"
         text        note             "the payers hint for the human confirming"
         text        reason           "why it was REJECTED or REVERSED — the status says which"
         bigint      recorded_by      "who claimed it — opaque user id"
@@ -2329,6 +2420,10 @@ erDiagram
     touched the ledger. Before `rejected` existed, a creditor facing a payment that never landed could
     only leave it pending forever or confirm-then-reverse — two real movements for money that never
     moved. `balance_context.md` §Payment Flow draws both arms and the lifecycle makes both terminal.
+  - **`cancelled` is the PAYER taking a pending claim back** (`LiabilityPaymentCancel`,
+    [a-pending-payment-is-cancelled-by-its-selling-team](business/balance/context_decision.md#a-pending-payment-is-cancelled-by-its-selling-team)):
+    only from `recorded`, and like `rejected` it posts **nothing** and leaves `reason`, `confirmed_by` and
+    `confirmed_at` empty. No migration — `status` has no CHECK.
   - **One `reason` column serves both**, because the `status` already says which act filled it. Two
     columns would leave one permanently NULL on every row. It was `reversal_reason` while only one act
     could write it (migration `00007`).
@@ -2419,6 +2514,15 @@ erDiagram
     double last_balance "the shop DIRECT movements only — not its whole position"
     timestamptz created_at
     timestamptz updated_at
+  }
+
+  order_settlement_shop_moves {
+    bigint change_id PK "selling's order_shop_changes id - opaque, no FK - THE CLAIM (00012)"
+    bigint order_id
+    bigint team_id
+    bigint from_shop_id "the shop the ACCOUNT was on"
+    bigint to_shop_id "the shop it is on now - equal when nothing moved"
+    timestamptz created_at
   }
 
   order_settlements ||--|{ settlement_logs : projects
@@ -2597,6 +2701,17 @@ erDiagram
   listener reads. Rows from before the column, or opened from an event published before the field, read false.
 - **`order_settlements` is not stamped.** Its `created_by_user_id` is the ORDER's creator copied from selling, not who
   acted here — that act's stamp is selling's `orders.is_override`.
+
+### An order's account moves with its shop (`00012`)
+
+- **`order_settlement_shop_moves`** — one row per `OrderShopChanged` settlement applied
+  ([an-orders-shop-is-fixed-and-counted-on-the-day](business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day)).
+  The key is the CLAIM: a redelivery inserts nothing and moves nothing, and a fix whose id is below one already applied
+  for the order moves nothing either. Indexed `(order_id, change_id)` — the *later fix applied?* read under the account's
+  lock.
+- **`order_settlements.shop_id` is no longer frozen by the first post**: `MoveOrderShop` moves it to the order's new
+  shop. `settlement_logs.shop_id` stays frozen per row — the move is a pair of rows per settlement type (out of the old
+  shop, into the new), never an UPDATE of a row.
 
 ### Two things the schema deliberately does NOT hold
 

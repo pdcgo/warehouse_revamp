@@ -2122,6 +2122,8 @@ Storybook prototype, as Warehouse Fee's were. ⚠ Not built.
 
 ✅ Built 2026-11-12 — the screens: Restock / Restok, Transfer / Transfer, Returned stock / Stok retur and Ready stock / Stok siap are live under Inventory on the Analytic composer, read off their served descriptors (`catalogue.ts` `INVENTORY_METRICS`) and answered by `MetricSearch` / `MetricData` — drawn as the prototype was; a warehouse reader gets no value tile, column or sort on Restock, Transfer and Returned stock (a link ranked by a value opens on units), Ready's value it reads; the prototype (`InventoryMetricsPrototype.tsx`, `inventoryPrototype.ts`, the sample-answerer hook) is deleted. Stories `pages/analytic/inventoryMetrics.stories.tsx` (24, through the stub), e2e `the_inventory_metrics.spec.ts`.
 
+🔄 *(2026-11-18)* The owner's later word widens *Restock*: his acceptance checklist ([inventory/restock.md](../../acceptances/inventory/restock.md), 2026-11-11/14) has a restock **recorded** at create, **adjusted** at every edit (warehouse, shipping cost, lines — ongoing and arrived), **lost** recorded at mark lost and the **COD** recorded at accept. So Restock reaches before the accept; how the fields read (an edit's difference on the edit day, as the owner's correction picks) goes to a composer prototype for his accept (backlog #85). The accept-day fields above stand.
+
 ---
 
 ## a-transfer-counts-each-side-on-its-own-day
@@ -2182,3 +2184,65 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 ✅ Built 2026-11-12 — `inventory_ledgers.StockTransaction` around all 13 stock writers: the day's change rows (`inventory_stock_daily_changes`, inventory 00042) as the transaction's last upsert, after the door rows; a ledger write outside one is refused; a past day read backwards from today's batches; `FIELD_STAT_TYPE_QTY_POSITION = 5` is the units position. The order take: 12 → 13 statements, committed median +0.5 ms at one line, +0.9 ms at twenty ([OrderTransactionCreate.md](../../../audits/services/inventory_service/performances/OrderTransactionCreate.md#after-the-ready-fold-2026-11-12)); concurrent writers safe ([lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12)). Ready far back and root's year read 0.3–0.6 s at a busy year — open ([MetricData.md](../../../audits/services/inventory_service/performances/MetricData.md)).
 
 ✅ Built 2026-11-12 — the units position on screen: `QTY_POSITION` reads as the `unitsPosition` kind, written as units and drawn in its own *Positions (units)* / *Posisi (unit)* graph; positions are never added over time on screen — the headline and every row are the service's edges.
+
+---
+
+## the-order-status-moves-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-19): *"A"*, as recommended — to the Storybook prototype (`pages/analytic/orderMoves.stories.tsx`; screenshots: the Order picker, by day, by shop, a warehouse's view by seller, phone, and today's picker as BEFORE) of the order status moves his acceptance checklist records ([inventory/order.md](../../acceptances/inventory/order.md) rows 146, 154, 175, 202, 238, 297, 244, 302; [lost-is-a-metric-and-completed-is-not](../order/order_statistic_metric_decision.md#lost-is-a-metric-and-completed-is-not) 🔄 2026-11-18). Asked: **A** one metric with a count per move — one tick shows the whole flow, the Order menu grows by one; **B** seven metrics, one per move — the Order menu grows to twelve.
+
+**The verdict.** ONE metric, **Order status moves** / *Perpindahan status pesanan* (`metrics/orders/moves`), under Order after the five, with seven counts and no money field: Confirmed · Back to pending · Picked · Handed over · Shipped · Problem · Completed — drawn as the prototype shows.
+
+*(Not asked — the prototype's defaults, each from its decision:)*
+
+| | from |
+| --- | --- |
+| a move is named by the status the order moved **to** (a resolve is a Completed; picked → pending is a Back to pending) | [the-order-metric-ids-name-what-moved](../order/order_statistic_metric_decision.md#the-order-metric-ids-name-what-moved) |
+| each move counts on its own day | [a-fact-counts-on-the-day-it-happened](../order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened) |
+| groups and filters as the five; Created by = the order's creator | [the-four-group-by-team-shop-warehouse-user-and-time](../order/order_statistic_metric_decision.md#the-four-group-by-team-shop-warehouse-user-and-time), [a-metrics-user-is-the-orders-creator](../order/order_statistic_metric_decision.md#a-metrics-user-is-the-orders-creator) |
+| a warehouse reads the orders it ships, every count (none is money) | [a-warehouse-reads-the-orders-it-ships](../order/order_statistic_metric_decision.md#a-warehouse-reads-the-orders-it-ships), [a-warehouse-sees-no-seller-money](../order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money) |
+| ticked whole; counted from the fold onward, no backfill | [a-metric-is-added-whole-for-now](#a-metric-is-added-whole-for-now), [the-order-metrics-count-from-the-fold-onward](../order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward) |
+| the labels (en / id) | the prototype's wording, accepted with it |
+
+⚠ Not built — the prototype only (backlog #84).
+
+✅ Built 2026-11-19 — served live by selling_service (`metrics/orders/moves`, `OrderMovesMetric`): every `OrderStatusChanged` into processed, pending (from processed or picked — the placement is Order Created's), picked, shipping, shipped, problem or completed (a resolve too) folds +1 into its own `moves_*` row of `order_daily_reports` (migration 00052) on the move's Jakarta day, under the order's seller, its shop at the move, its shipping warehouse and its creator, no money; the reads, the day re-fold and a shop fix's −1 / +1 cover it with the five's machinery; no backfill. The Analytic picker reads the served descriptor; `orderMoves.stories.tsx` pins the live metric. Pinned by `order_analytic_moves_test.go` (each move named by where it went and on its own day, Created by = the creator, the seller / shipping warehouse / root read every count and another team nothing — on the Go response —, the headline the sum of its rows, the re-fold and the shop fix) and `TestRace_OrderMovesFold_TwoMovesOfOneOrderAndTwoOrdersOnOneDay`.
+
+---
+
+## a-cancelled-restock-takes-its-ordered-back-on-its-day
+
+> Owner (Heri), in chat (2026-11-19): *"A"*, as recommended — to Q1 of the #85 composer prototype (`pages/analytic/restockPrototype.stories.tsx`, Restock widened before the accept per [the-inventory-metrics-prototype-is-accepted](#the-inventory-metrics-prototype-is-accepted) 🔄 2026-11-18): when a restock is cancelled, does *ordered* take it back on the cancel day? Example: 10 × Kaos ordered 7 Oct, cancelled 11 Oct. **A** yes — 11 Oct reads −10 / −Rp 460.000, *ordered* is what is still on order, as a transfer's cancel takes its *sent* back ([a-transfer-counts-each-side-on-its-own-day](#a-transfer-counts-each-side-on-its-own-day)) and an order cancel its warehouse fee ([a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day](#a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day)); **B** no — the create day keeps it and the cancel shows only in Finance.
+
+**The verdict.** A cancel takes the restock's **units and value ordered** back, as negatives, on the **cancel day** (Jakarta); the create day and every day before the cancel stay as they were. Restock's *ordered* therefore reads what is still on order.
+
+⚠ Not built — the prototype only (backlog #85).
+
+---
+
+## a-lost-box-that-turns-up-takes-its-lost-back-on-its-day
+
+> Owner (Heri), in chat (2026-11-19): *"A"*, as recommended — to Q2 of the #85 composer prototype: a lost box that turns up is signed for as arrived ([a-late-lost-box-is-signed-for-as-arrived](../inventory/restock_decision.md#a-late-lost-box-is-signed-for-as-arrived)) — does *lost* take it back on the day it arrives? Example: 5 × Kemeja lost 5 Oct, signed for 18 Oct, accepted 19 Oct. **A** yes — 18 Oct reads lost −5 / −Rp 615.000, *lost* is what is still lost, and the accept counts as usual on 19 Oct; **B** no — the lost day keeps it and the same units also count as accepted.
+
+**The verdict.** When a lost restock is signed for as arrived, its **units and value lost on the way** are taken back, as negatives, on the **arrival day** (Jakarta); the lost day stays as it was, and the accept counts as usual on its own day. Restock's *lost* therefore reads what is still lost.
+
+⚠ Not built — the prototype only (backlog #85).
+
+---
+
+## the-restock-before-the-accept-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-19): *"A"* to each question of the #85 composer prototype (`pages/analytic/restockPrototype.stories.tsx`; screenshots: the picker, by day table and graph, a warehouse change by warehouse, an edit by product, a warehouse's view by day, phone, and today's Restock as BEFORE), each *"as drawn"* — [a-cancelled-restock-takes-its-ordered-back-on-its-day](#a-cancelled-restock-takes-its-ordered-back-on-its-day), then [a-lost-box-that-turns-up-takes-its-lost-back-on-its-day](#a-lost-box-that-turns-up-takes-its-lost-back-on-its-day) — after being told the design would be recorded as accepted with the second answer.
+
+**The verdict.** *Restock* widens as drawn — before the accept, per [the-inventory-metrics-prototype-is-accepted](#the-inventory-metrics-prototype-is-accepted) 🔄 2026-11-18 and the owner's restock checklist ([inventory/restock.md](../../acceptances/inventory/restock.md)):
+
+| field (en / id) | its day |
+| --- | --- |
+| **Units ordered** / Unit dipesan, **Value ordered** / Nilai dipesan | the create day; an edit's difference (lines, warehouse, shipping cost — ongoing and arrived) on the edit day; a cancel takes it back on the cancel day |
+| **Units lost on the way** / Unit hilang di jalan, **Value lost on the way** / Nilai hilang di jalan | the lost day; taken back on the day a lost box is signed for as arrived |
+| the accepted four (units / value accepted, broken, missing) | unchanged — the accept day |
+| **Courier COD** / Ongkir COD | the accept day, Terima's final figure |
+
+*(Not asked — the prototype's defaults, each from its decision, README `accept85`:)* a warehouse change moves the units out of the old warehouse and into the new one on the edit day (checklist row 59); the value ordered is the restock's total (goods + the shipping its team paid), never the courier's COD; by product / supplier the shipping is spread over the units as the landed price spreads it; no count of restocks; groups and filters unchanged; a warehouse reads the units and the COD it paid, never a value; the labels are the prototype's wording, accepted with it.
+
+⚠ Not built — the prototype only (backlog #85).

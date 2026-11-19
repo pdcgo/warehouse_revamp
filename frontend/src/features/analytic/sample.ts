@@ -113,6 +113,12 @@ export interface Fact {
    * team's — expenseAnalyticStub.ts). Absent: every reader sees it.
    */
   owner?: string;
+  /**
+   * The teams that read it, beside root — a fact two teams share (an order status move: the seller and the warehouse
+   * that ships it, as selling_service scopes it — the stub passes its caller; a restock's: the seller and the warehouse
+   * it goes to). Absent with `owner` absent: every reader.
+   */
+  readers?: string[];
   values: Record<string, number>;
 }
 
@@ -151,8 +157,269 @@ function seeded(seed: string): number {
   return (h >>> 0) / 4294967296;
 }
 
+/** A day `n` days after `day`. */
+function addDay(day: string, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+
+  return d.toISOString().slice(0, 10);
+}
+
+const between = (seed: string, low: number, high: number) => low + Math.floor(seeded(seed) * (high - low + 1));
+
+// ── ORDER STATUS MOVES — served by selling_service; the Storybook stub (orderAnalyticStub.ts) answers from these ──
+
+/**
+ * One placed order's moves after the placement, each on ITS OWN day (a-fact-counts-on-the-day-it-happened), under the
+ * order's shop, seller, warehouse and creator (a-metrics-user-is-the-orders-creator): confirmed the day it is placed;
+ * one in twenty handed back to pending that day (goods on no rack) and confirmed again the next; picked, handed to the
+ * courier, shipped by the platform; then completed — or a problem first, most of which are resolved to completed. A
+ * move still to come is not a fact yet. Returns, losses and cancels are the five metrics' own, not drawn here.
+ */
+function orderMoves(order: string, placed: string, today: string): { day: string; field: string }[] {
+  const out: { day: string; field: string }[] = [{ day: placed, field: "confirmed_count" }];
+
+  let ready = placed;
+  if (seeded(`mvb|${order}`) < 0.05) {
+    out.push({ day: placed, field: "back_to_pending_count" });
+    ready = addDay(placed, 1);
+    out.push({ day: ready, field: "confirmed_count" });
+  }
+
+  const picked = addDay(ready, 1);
+  const handed = addDay(picked, seeded(`mvh|${order}`) < 0.6 ? 0 : 1);
+  const shipped = addDay(handed, 1);
+  out.push({ day: picked, field: "picked_count" }, { day: handed, field: "handed_over_count" }, { day: shipped, field: "shipped_count" });
+
+  const fate = seeded(`mvf|${order}`);
+  if (fate < 0.06) {
+    const problem = addDay(shipped, 3);
+    out.push({ day: problem, field: "problem_count" });
+    if (seeded(`mvr|${order}`) < 0.7) out.push({ day: addDay(problem, 4), field: "completed_count" });
+  } else if (fate >= 0.1) {
+    out.push({ day: addDay(shipped, between(`mvc|${order}`, 3, 6)), field: "completed_count" });
+  }
+
+  return out.filter((m) => m.day <= today);
+}
+
+// ── ⚠ PROTOTYPE #85 — RESTOCK BEFORE THE ACCEPT ──────────────────────────────────────────────────
+
+/** A restock's state: where it goes, its lines (product → units) and the shipping its team paid. */
+interface RestockState {
+  warehouse: string;
+  lines: Record<string, number>;
+  shipping: number;
+}
+
+/** One step of a restock's life — what changed on that day. */
+type RestockStep =
+  | { day: string; kind: "create"; state: RestockState }
+  | { day: string; kind: "edit"; state: Partial<RestockState> }
+  | { day: string; kind: "lost" | "cancel" | "arrive" }
+  | { day: string; kind: "accept"; broken?: Record<string, number>; missing?: Record<string, number>; cod?: number };
+
+/**
+ * THE WORKED RESTOCKS OF OCTOBER 2026 — Toko Melati's (12), each step on its own day, so a story reads every rule on a
+ * day of its own (1–20 Oct; nothing else restocks in those days):
+ *   R6  1 Oct  ordered 5 × 202, ongkir 15.000 · lost 5 Oct · the box turns up 18 Oct · accepted 19 Oct, COD 5.000
+ *   R7  2 Oct  ordered 6 × 205, ongkir 12.000 · arrived 7 Oct · edited while arrived 9 Oct: + 2 × 206 · accepted 12 Oct
+ *   R1  6 Oct  ordered 20 × 201 + 10 × 202, ongkir 30.000 · edited 8 Oct: 201 20 → 30 · accepted 10 Oct: 1 × 202
+ *              broken, 2 × 201 missing, COD 20.000
+ *   R5  7 Oct  ordered 10 × 201, ongkir 10.000 · cancelled 11 Oct
+ *   R2 12 Oct  ordered 10 × 205 to Gudang Cabang, ongkir 20.000 · edited 13 Oct: to Gudang Pusat · accepted 16 Oct
+ *   R3 14 Oct  ordered 4 × 206, ongkir 20.000 · lost 17 Oct
+ *   R4 15 Oct  ordered 50 × 203 + 50 × 204, ongkir 20.000 · edited 16 Oct: ongkir → 35.000 · accepted 20 Oct: 3 × 204
+ *              missing, COD 10.000
+ * Gudang Pusat (11) unless named.
+ */
+export const SAMPLE_RESTOCKS_OCTOBER: RestockStep[][] = [
+  [
+    { day: "2026-10-01", kind: "create", state: { warehouse: "11", lines: { "202": 5 }, shipping: 15_000 } },
+    { day: "2026-10-05", kind: "lost" },
+    { day: "2026-10-18", kind: "arrive" },
+    { day: "2026-10-19", kind: "accept", cod: 5_000 },
+  ],
+  [
+    { day: "2026-10-02", kind: "create", state: { warehouse: "11", lines: { "205": 6 }, shipping: 12_000 } },
+    { day: "2026-10-07", kind: "arrive" },
+    { day: "2026-10-09", kind: "edit", state: { lines: { "205": 6, "206": 2 } } },
+    { day: "2026-10-12", kind: "accept" },
+  ],
+  [
+    { day: "2026-10-06", kind: "create", state: { warehouse: "11", lines: { "201": 20, "202": 10 }, shipping: 30_000 } },
+    { day: "2026-10-08", kind: "edit", state: { lines: { "201": 30, "202": 10 } } },
+    { day: "2026-10-10", kind: "accept", broken: { "202": 1 }, missing: { "201": 2 }, cod: 20_000 },
+  ],
+  [
+    { day: "2026-10-07", kind: "create", state: { warehouse: "11", lines: { "201": 10 }, shipping: 10_000 } },
+    { day: "2026-10-11", kind: "cancel" },
+  ],
+  [
+    { day: "2026-10-12", kind: "create", state: { warehouse: "14", lines: { "205": 10 }, shipping: 20_000 } },
+    { day: "2026-10-13", kind: "edit", state: { warehouse: "11" } },
+    { day: "2026-10-16", kind: "accept" },
+  ],
+  [
+    { day: "2026-10-14", kind: "create", state: { warehouse: "11", lines: { "206": 4 }, shipping: 20_000 } },
+    { day: "2026-10-17", kind: "lost" },
+  ],
+  [
+    { day: "2026-10-15", kind: "create", state: { warehouse: "11", lines: { "203": 50, "204": 50 }, shipping: 20_000 } },
+    { day: "2026-10-16", kind: "edit", state: { shipping: 35_000 } },
+    { day: "2026-10-20", kind: "accept", missing: { "204": 3 }, cod: 10_000 },
+  ],
+];
+
+/** The days the worked restocks own — the background never restocks in them. */
+const OCTOBER_SHOWCASE = { from: "2026-10-01", to: "2026-10-20" };
+
+/** A product's price — what the sample's restock lines pay per unit. */
+const priceOf = (product: string) => SAMPLE_PRODUCTS.find((p) => p.id === product)!.price;
+
+/**
+ * A state's figures per product: its units, and its value — the restock's total, the goods plus the shipping its team
+ * paid (the-couriers-charge-stays-out-of-total), the shipping spread over the units as the landed price spreads it
+ * (restock.md §Calculating Price Unit), so the products' rows add up to the restock.
+ */
+function orderedOf(state: RestockState): Map<string, { units: number; value: number }> {
+  const units = Object.values(state.lines).reduce((s, n) => s + n, 0);
+  const out = new Map<string, { units: number; value: number }>();
+  for (const [product, n] of Object.entries(state.lines)) {
+    out.set(product, { units: n, value: n * priceOf(product) + (units > 0 ? (state.shipping * n) / units : 0) });
+  }
+
+  return out;
+}
+
+/**
+ * One restock's facts, each step on its own day: ordered units and value on the create day; an edit's DIFFERENCE on the
+ * edit day — a warehouse change takes it out under the old warehouse and puts it in under the new one that day; a cancel
+ * takes the ordered back on its day (⚠ the build's default, asked at the accept); lost on the lost day, taken back on the
+ * day a lost box turns up (⚠ the build's default, asked at the accept); at the accept the accepted four as served —
+ * accepted units at the landed price ((shipping + COD) / units added to each unit), broken, missing — and the COD, spread
+ * like the shipping. Read by the seller and the warehouse the fact is under (and root).
+ */
+function restockFacts(steps: RestockStep[], today: string): Fact[] {
+  const out: Fact[] = [];
+  let state: RestockState | undefined;
+
+  const push = (day: string, warehouse: string, product: string, values: Record<string, number>) => {
+    if (day > today) return;
+    out.push({
+      day,
+      product,
+      supplier: SAMPLE_PRODUCTS.find((p) => p.id === product)!.supplier,
+      team: SAMPLE_SELLER,
+      warehouse,
+      readers: [SAMPLE_SELLER, warehouse],
+      values,
+    });
+  };
+  const ordered = (day: string, s: RestockState, sign: 1 | -1) => {
+    for (const [product, f] of orderedOf(s)) push(day, s.warehouse, product, { ordered_count: sign * f.units, ordered_value: sign * f.value });
+  };
+
+  for (const step of steps) {
+    if (step.kind === "create") {
+      state = step.state;
+      ordered(step.day, state, 1);
+      continue;
+    }
+    if (!state) continue;
+
+    if (step.kind === "edit") {
+      const next: RestockState = { ...state, ...step.state };
+      ordered(step.day, state, -1);
+      ordered(step.day, next, 1);
+      state = next;
+    } else if (step.kind === "cancel") {
+      ordered(step.day, state, -1);
+    } else if (step.kind === "lost" || step.kind === "arrive") {
+      // A lost box that turns up (lost → arrived, a-late-lost-box-is-signed-for-as-arrived) is no longer lost; an
+      // ordinary arrival counts nothing.
+      const wasLost = steps.some((s) => s.kind === "lost" && s.day < step.day);
+      if (step.kind === "arrive" && !wasLost) continue;
+      const sign = step.kind === "lost" ? 1 : -1;
+      for (const [product, f] of orderedOf(state)) push(step.day, state.warehouse, product, { lost_count: sign * f.units, lost_value: sign * f.value });
+    } else if (step.kind === "accept") {
+      const units = Object.values(state.lines).reduce((s, n) => s + n, 0);
+      const cod = step.cod ?? 0;
+      const landedExtra = (state.shipping + cod) / units;
+      for (const [product, n] of Object.entries(state.lines)) {
+        const broken = step.broken?.[product] ?? 0;
+        const missing = step.missing?.[product] ?? 0;
+        const accepted = n - broken - missing;
+        push(step.day, state.warehouse, product, {
+          accepted_count: accepted,
+          accepted_value: accepted * (priceOf(product) + landedExtra),
+          broken_count: broken,
+          missing_count: missing,
+          cod_amount: (cod * n) / units,
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * The background: a restock every few days from 2026-01-01, outside the worked days — mostly to Gudang Pusat, one to
+ * three products, sometimes edited, now and then lost or cancelled, else accepted within a week, a COD on some. Its
+ * shipping and COD are whole rupiah per unit, so every spread figure stays whole.
+ */
+function backgroundRestocks(today: string): RestockStep[][] {
+  const out: RestockStep[][] = [];
+  const products = SAMPLE_PRODUCTS.map((p) => p.id);
+
+  for (const day of daySpine("2026-01-01", today)) {
+    if (seeded(`rs|${day}`) >= 0.3) continue;
+    // Every step within eight days, so none reaches into the worked days.
+    if (day > addDay(OCTOBER_SHOWCASE.from, -9) && day <= OCTOBER_SHOWCASE.to) continue;
+
+    const lines: Record<string, number> = {};
+    const count = between(`rsn|${day}`, 1, 3);
+    for (let i = 0; i < count; i++) lines[products[between(`rsp|${day}|${i}`, 0, products.length - 1)]!] = between(`rsu|${day}|${i}`, 10, 40);
+    const perUnit = 500 * between(`rss|${day}`, 1, 3);
+    const unitsOf = (l: Record<string, number>) => Object.values(l).reduce((s, n) => s + n, 0);
+    const create: RestockStep = {
+      day,
+      kind: "create",
+      state: { warehouse: seeded(`rsw|${day}`) < 0.75 ? "11" : "14", lines, shipping: perUnit * unitsOf(lines) },
+    };
+    const steps: RestockStep[] = [create];
+    let units = unitsOf(lines);
+
+    if (seeded(`rse|${day}`) < 0.3) {
+      const first = Object.keys(lines)[0]!;
+      const edited = { ...lines, [first]: lines[first]! + between(`rsd|${day}`, -5, 10) };
+      units = unitsOf(edited);
+      steps.push({ day: addDay(day, 2), kind: "edit", state: { lines: edited, shipping: perUnit * units } });
+    }
+
+    const fate = seeded(`rsf|${day}`);
+    if (fate < 0.05) steps.push({ day: addDay(day, between(`rsl|${day}`, 3, 6)), kind: "lost" });
+    else if (fate < 0.1) steps.push({ day: addDay(day, 3), kind: "cancel" });
+    else {
+      const product = Object.keys(lines)[0]!;
+      steps.push({
+        day: addDay(day, between(`rsa|${day}`, 4, 7)),
+        kind: "accept",
+        broken: seeded(`rsb|${day}`) < 0.25 ? { [product]: 1 } : undefined,
+        missing: seeded(`rsm|${day}`) < 0.15 ? { [product]: between(`rsmc|${day}`, 1, 2) } : undefined,
+        cod: seeded(`rsc|${day}`) < 0.4 ? 250 * units * between(`rscc|${day}`, 1, 4) : undefined,
+      });
+    }
+    out.push(steps);
+  }
+
+  return out;
+}
+
 function build(): Record<string, Fact[]> {
-  const days = daySpine(SAMPLE_START, jakartaToday());
+  const today = jakartaToday();
+  const days = daySpine(SAMPLE_START, today);
   const facts: Record<string, Fact[]> = {
     "metrics/orders/created": [],
     ...Object.fromEntries(ORDER_MOVES.map((m) => [m.metricId, []])),
@@ -161,8 +428,13 @@ function build(): Record<string, Fact[]> {
     // Served by expense_service; the Storybook stub (expenseAnalyticStub.ts) answers them from these facts.
     "metrics/ads": [],
     "metrics/expenses": [],
-    // Served by selling_service; the Storybook stub answers it from these facts.
+    // Served by selling_service; the Storybook stub answers them from these facts.
     "metrics/warehouse_fee": [],
+    "metrics/orders/moves": [],
+    // ⚠ PROTOTYPES (catalogue.ts PROTOTYPE_METRICS) — read only while a story shows them.
+    "metrics/inventory/restock": [...SAMPLE_RESTOCKS_OCTOBER, ...backgroundRestocks(jakartaToday())].flatMap((r) =>
+      restockFacts(r, jakartaToday()),
+    ),
   };
 
   for (const day of days) {
@@ -197,6 +469,14 @@ function build(): Record<string, Fact[]> {
           ...who,
           values: { transaction_count: count, amount: count * Math.max(2_500, Math.round(product.price * 0.025)) },
         });
+
+        // ORDER STATUS MOVES — each of the placed orders' status moves, on the day it happened, read by the seller and
+        // the warehouse that ships it (and root).
+        for (let i = 0; i < count; i++) {
+          for (const move of orderMoves(`${day}|${shop.id}|${productId}|${i}`, day, today)) {
+            facts["metrics/orders/moves"]!.push({ ...who, day: move.day, readers: [SAMPLE_SELLER, SAMPLE_WAREHOUSE], values: { [move.field]: 1 } });
+          }
+        }
 
         for (const move of ORDER_MOVES) {
           if (seeded(`${move.prefix}|${day}|${shop.id}|${productId}`) >= move.chance) continue;

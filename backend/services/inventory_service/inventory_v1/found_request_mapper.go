@@ -35,7 +35,46 @@ var (
 	// The approval's backstop: the report refuses a product never stocked here, so this means the batches changed under
 	// the request — nothing posts (a-found-never-stocked-here-is-refused-at-the-report).
 	errFoundNoPrice = errors.New("nothing to claim and the team never had a batch of this product here — it cannot post")
+	// A lost order with no take recorded: there is no cost to bring its units back at
+	// (a-found-lost-parcel-is-a-found-stock-in).
+	errFoundOrderNoTake = errors.New("the order took no stock — there is no cost to bring its units back at")
 )
+
+// foundOrderMissingError refuses an order this warehouse did not ship — read as one that does not exist, so a warehouse
+// cannot probe another's orders (a-found-lost-parcel-is-a-found-stock-in).
+type foundOrderMissingError struct {
+	orderID uint64
+}
+
+func (e *foundOrderMissingError) Error() string {
+	return fmt.Sprintf("no order #%d shipped from this warehouse", e.orderID)
+}
+
+// foundOrderNotLostError refuses an order that is not `lost`: a parcel of a live order comes back as its return
+// (a-found-lost-parcel-is-a-found-stock-in names only a lost one).
+type foundOrderNotLostError struct {
+	orderID uint64
+	status  string
+}
+
+func (e *foundOrderNotLostError) Error() string {
+	return fmt.Sprintf("order #%d is %s, not lost — only a lost order's parcel comes back as a found; a live one comes back "+
+		"as its return", e.orderID, e.status)
+}
+
+// foundOrderTeamError refuses a product of another team than the order's: the units go back under the order's team, and
+// a found names only that team's own goods.
+type foundOrderTeamError struct {
+	orderID       uint64
+	orderTeamID   uint64
+	product       string
+	productTeamID uint64
+}
+
+func (e *foundOrderTeamError) Error() string {
+	return fmt.Sprintf("%s is team #%d's and order #%d is team #%d's — a found names only its own team's lost order",
+		e.product, e.productTeamID, e.orderID, e.orderTeamID)
+}
 
 // neverStockedHereError refuses a found of a product its owner team never had a batch of in this warehouse: there is no
 // price to mint it at, so it comes in by the team's restock (a-found-never-stocked-here-is-refused-at-the-report).
@@ -64,6 +103,21 @@ func foundErr(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, never)
 	}
 
+	var orderMissing *foundOrderMissingError
+	if errors.As(err, &orderMissing) {
+		return connect.NewError(connect.CodeNotFound, orderMissing)
+	}
+
+	var notLost *foundOrderNotLostError
+	if errors.As(err, &notLost) {
+		return connect.NewError(connect.CodeFailedPrecondition, notLost)
+	}
+
+	var otherTeam *foundOrderTeamError
+	if errors.As(err, &otherTeam) {
+		return connect.NewError(connect.CodeFailedPrecondition, otherTeam)
+	}
+
 	switch {
 	case errors.Is(err, errFoundMissing), errors.Is(err, gorm.ErrRecordNotFound):
 		return connect.NewError(connect.CodeNotFound, errFoundMissing)
@@ -79,7 +133,12 @@ func foundErr(err error) error {
 		errors.Is(err, errFoundOwnReport),
 		errors.Is(err, errFoundRackGone),
 		errors.Is(err, errFoundNoPrice),
-		errors.Is(err, inventory_mutations.ErrNeverStockedHere):
+		errors.Is(err, errFoundOrderNoTake),
+		errors.Is(err, inventory_mutations.ErrNeverStockedHere),
+		errors.Is(err, inventory_mutations.ErrOrderFoundNotTaken),
+		errors.Is(err, inventory_mutations.ErrOrderFoundMoreThanTaken),
+		errors.Is(err, inventory_mutations.ErrOrderTakeGone),
+		errors.Is(err, inventory_mutations.ErrOrderFoundReturned):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
@@ -114,6 +173,12 @@ func isFoundStaff(ctx context.Context) bool {
 // foundNote is what an approval's transaction says it was.
 func foundNote(id uint64) string {
 	return fmt.Sprintf("found request #%d", id)
+}
+
+// foundOrderNote is what an approval of a found naming a lost order says it was — the order too, so the stock ledger
+// reads where the units came back from (a-found-lost-parcel-is-a-found-stock-in).
+func foundOrderNote(id, orderID uint64) string {
+	return fmt.Sprintf("found request #%d · lost order #%d", id, orderID)
 }
 
 func foundStatusProto(s models.FoundRequestStatus) inventoryv1.FoundRequestStatus {
@@ -175,8 +240,9 @@ func foundApproveBlock(r models.FoundRequest, actor uint64, lock *inventory_ledg
 
 // foundRequestsProto maps requests of ONE warehouse for this caller, keyed by id — in a fixed number of statements
 // whatever their number: the racks' codes; for the WAITING ones, what approving would post now (one plain read of the
-// register and the prices, inventory_mutations.PreviewFound) and the count locks over them; for the APPROVED ones, what
-// they posted — their claims and their minted batch.
+// register and the prices, inventory_mutations.PreviewFound — or, for those naming a lost order, the takes' batch rows,
+// inventory_mutations.PreviewOrderFound) and the count locks over them; for the APPROVED ones, what they posted — their
+// claims and their minted batch, or a lost order's found's batches.
 func foundRequestsProto(db *gorm.DB, actor uint64, rows []models.FoundRequest) (map[uint64]*inventoryv1.FoundRequest, error) {
 	out := make(map[uint64]*inventoryv1.FoundRequest, len(rows))
 	if len(rows) == 0 {
@@ -196,25 +262,44 @@ func foundRequestsProto(db *gorm.DB, actor uint64, rows []models.FoundRequest) (
 	}
 
 	var (
-		waiting   []int
-		units     []inventory_mutations.FoundUnits
-		keys      []inventory_ledgers.RackKey
-		txIDs     []uint64
-		mintedIDs []uint64
+		waiting      []int
+		units        []inventory_mutations.FoundUnits
+		orderWaiting []int
+		orderUnits   []inventory_mutations.OrderFoundUnits
+		keys         []inventory_ledgers.RackKey
+		txIDs        []uint64
+		mintedIDs    []uint64
+		orderTxIDs   []uint64
 	)
 
 	for i, r := range rows {
+		names := r.OrderID != nil && r.OrderTakeTransactionID != nil
+
 		switch r.Status {
 		case models.FoundWaiting:
-			waiting = append(waiting, i)
-			units = append(units, inventory_mutations.FoundUnits{
+			u := inventory_mutations.FoundUnits{
 				WarehouseID: r.WarehouseID, TeamID: r.TeamID, ProductID: r.ProductID, PlacementID: r.PlacementID,
 				PlacementCode: codes[r.PlacementID], Count: r.StockCount,
-			})
+			}
+
+			if names {
+				orderWaiting = append(orderWaiting, i)
+				orderUnits = append(orderUnits, inventory_mutations.OrderFoundUnits{
+					FoundUnits: u, RequestID: r.ID, OrderID: *r.OrderID, TakeTransactionID: *r.OrderTakeTransactionID,
+				})
+			} else {
+				waiting = append(waiting, i)
+				units = append(units, u)
+			}
+
 			keys = append(keys, inventory_ledgers.RackKey{ProductID: r.ProductID, PlacementID: r.PlacementID})
 		case models.FoundApproved:
 			if r.TransactionID != nil {
 				txIDs = append(txIDs, *r.TransactionID)
+
+				if names {
+					orderTxIDs = append(orderTxIDs, *r.TransactionID)
+				}
 			}
 
 			if r.MintedBatchID != nil {
@@ -224,6 +309,16 @@ func foundRequestsProto(db *gorm.DB, actor uint64, rows []models.FoundRequest) (
 	}
 
 	previews, err := inventory_mutations.PreviewFound(db, warehouseID, units)
+	if err != nil {
+		return nil, err
+	}
+
+	orderPreviews, err := inventory_mutations.PreviewOrderFound(db, orderUnits)
+	if err != nil {
+		return nil, err
+	}
+
+	orderMinted, err := foundOrderMintedLines(db, orderTxIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -255,6 +350,16 @@ func foundRequestsProto(db *gorm.DB, actor uint64, rows []models.FoundRequest) (
 		}
 	}
 
+	// A lost order's found: one line per batch it would mint, at the cost the order took the units at.
+	for j, i := range orderWaiting {
+		for _, l := range orderPreviews[j].Lines {
+			lines[i] = append(lines[i], &inventoryv1.FoundRequestPostLine{
+				Type:       inventoryv1.FoundRequestPostType_FOUND_REQUEST_POST_TYPE_ORDER_MINT,
+				StockCount: l.Count, PriceUnit: l.PriceUnit, Amount: l.Amount,
+			})
+		}
+	}
+
 	for i, r := range rows {
 		if r.Status != models.FoundApproved {
 			continue
@@ -262,6 +367,7 @@ func foundRequestsProto(db *gorm.DB, actor uint64, rows []models.FoundRequest) (
 
 		if r.TransactionID != nil {
 			lines[i] = append(lines[i], claims[*r.TransactionID]...)
+			lines[i] = append(lines[i], orderMinted[*r.TransactionID]...)
 		}
 
 		if r.MintedBatchID != nil {
@@ -279,7 +385,8 @@ func foundRequestsProto(db *gorm.DB, actor uint64, rows []models.FoundRequest) (
 			switch l.GetType() {
 			case inventoryv1.FoundRequestPostType_FOUND_REQUEST_POST_TYPE_CLAIM:
 				p.ClaimedAmount += l.GetAmount()
-			case inventoryv1.FoundRequestPostType_FOUND_REQUEST_POST_TYPE_MINT:
+			case inventoryv1.FoundRequestPostType_FOUND_REQUEST_POST_TYPE_MINT,
+				inventoryv1.FoundRequestPostType_FOUND_REQUEST_POST_TYPE_ORDER_MINT:
 				p.MintedAmount += l.GetAmount()
 			}
 		}
@@ -364,6 +471,39 @@ func foundPostedLines(
 	return claims, minted, nil
 }
 
+// foundOrderMintedLines reads what approved founds naming a lost order minted: every batch their `found` transactions
+// minted, oldest first — one statement (a-found-lost-parcel-is-a-found-stock-in).
+func foundOrderMintedLines(db *gorm.DB, txIDs []uint64) (map[uint64][]*inventoryv1.FoundRequestPostLine, error) {
+	out := map[uint64][]*inventoryv1.FoundRequestPostLine{}
+	if len(txIDs) == 0 {
+		return out, nil
+	}
+
+	var batches []models.Batch
+
+	err := db.
+		Select("id, transaction_id, price_unit, init_stock_count, init_stock_valuation").
+		Where("transaction_id IN ?", txIDs).
+		Order("transaction_id, id").
+		Find(&batches).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("batches minted by %d lost order found(s): %w", len(txIDs), err)
+	}
+
+	for _, b := range batches {
+		out[b.TransactionID] = append(out[b.TransactionID], &inventoryv1.FoundRequestPostLine{
+			Type:       inventoryv1.FoundRequestPostType_FOUND_REQUEST_POST_TYPE_ORDER_MINT,
+			BatchId:    b.ID,
+			StockCount: b.InitStockCount,
+			PriceUnit:  b.PriceUnit,
+			Amount:     b.InitStockValuation,
+		})
+	}
+
+	return out, nil
+}
+
 // foundRequestProto maps a request's own columns; lines, amounts and block are the caller's.
 func foundRequestProto(r models.FoundRequest, rackCode string) *inventoryv1.FoundRequest {
 	p := &inventoryv1.FoundRequest{
@@ -397,6 +537,10 @@ func foundRequestProto(r models.FoundRequest, rackCode string) *inventoryv1.Foun
 
 	if r.SettledByCountingSessionID != nil {
 		p.SettledByCountingSessionId = *r.SettledByCountingSessionID
+	}
+
+	if r.OrderID != nil {
+		p.OrderId = *r.OrderID
 	}
 
 	return p

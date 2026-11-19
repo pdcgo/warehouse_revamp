@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { slipPhotoLink } from "../../../../.storybook/doorPhotoScenario";
+import { restockAcceptScenario } from "../../../../.storybook/restockAcceptScenario";
 import { restockRequestService } from "../../../../.storybook/restockStub";
 import {
   A_01_1,
@@ -9,6 +11,7 @@ import {
   COFFEE,
   PHOTO,
   RICE,
+  TIBA_SLIP,
   acceptControl,
   arrivedWithACharge,
   askCharge,
@@ -124,8 +127,8 @@ export const TheCouriersSlipTakesAPhoto: Story = {
 // section ongkir cod dari kurir kasih teks keterangan berapa yang dibayarkan, nanti ada interaksi untuk bisa
 // mengubahnya"*, the-cod-paid-is-said-in-its-own-section) — the page AS IT OPENS: *Dibayar gudang Rp 15.000 · Biaya COD ·
 // diganti oleh Toko Melati*, Ubah beside it, no fields; the charge is nowhere in what Terima waits for. Nothing is typed,
-// so the story stays on this view. Tandai Tiba keeps none yet, so 502 is given one by hand; the page's second mark says
-// the rest is missing.
+// so the story stays on this view. 502 is as Tandai Tiba left it (arrivedWithACharge) — and the charge carries no mark
+// now: Tiba keeps it (the-courier-charge-is-noted-at-tiba-and-final-at-terima).
 export const TheChargeOpensWithTheRestocks: Story = {
   name: "Opens with Tiba's charge",
   beforeEach: arrivedWithACharge,
@@ -139,7 +142,7 @@ export const TheChargeOpensWithTheRestocks: Story = {
     // Text, not a form.
     await expect(canvas.queryByTestId("accept-courier-asked-yes")).toBeNull();
     await expect(canvas.queryByTestId("accept-courier-charge")).toBeNull();
-    await expect(within(canvas.getByTestId("accept-courier")).getByTestId("not-implemented-codFromArrival")).toHaveTextContent("2");
+    await expect(within(canvas.getByTestId("accept-courier")).queryByTestId(/^not-implemented-/)).toBeNull();
 
     // NOTHING TO SET AGAIN: what Terima waits for is the box — the two lines — never the charge.
     await lineOf(canvasElement, COFFEE.productId);
@@ -149,7 +152,7 @@ export const TheChargeOpensWithTheRestocks: Story = {
   },
 };
 
-// …and once the box is counted, Terima sends Tiba's charge as it came — 15.000 and *Biaya COD*, untouched.
+// …and once the box is counted, Terima sends Tiba's charge as it came — 15.000, *Biaya COD* and its slip, untouched.
 export const TibasChargeIsSentAsItCame: Story = {
   name: "Tiba's charge, accepted",
   beforeEach: arrivedWithACharge,
@@ -172,11 +175,14 @@ export const TibasChargeIsSentAsItCame: Story = {
     ).request!;
     await expect(stored.warehouseAdditionalCost).toBe(15000);
     await expect(stored.warehouseAdditionalCostNote).toBe("Biaya COD");
+    await expect(restockAcceptScenario.photos[0]?.slip).toBe(TIBA_SLIP);
+    await expect(stored.warehouseAdditionalCostFile).toBe(TIBA_SLIP);
   },
 };
 
 // …and still open to change (owner: *"tiba dan diterima bisa mengubah ongkir"*): Ubah opens the form with Tiba's values in
-// it; typed over and Selesai, the text says the new figure.
+// it; typed over and Selesai, the text says the new figure — and Terima's figure is FINAL: it is what the restock keeps,
+// REPLACING Tiba's 15.000, never added to it (the-courier-charge-is-noted-at-tiba-and-final-at-terima).
 export const TibasChargeCanBeChanged: Story = {
   name: "Tiba's charge, changed",
   beforeEach: arrivedWithACharge,
@@ -192,5 +198,68 @@ export const TibasChargeCanBeChanged: Story = {
     await typeInto(canvas.getByTestId("accept-courier-charge"), "20000");
     await userEvent.click(canvas.getByTestId("accept-courier-done"));
     await waitFor(() => expect(canvas.getByTestId("accept-courier-owed")).toHaveTextContent("Rp 20.000"));
+
+    await countWhole(canvasElement, COFFEE.productId, A_01_1);
+    await countWhole(canvasElement, RICE.productId, A_01_2);
+    await userEvent.click(acceptControl(canvasElement));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(confirm);
+    await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 });
+
+    const stored = (
+      await restockRequestService.restockRequestDetail!({ teamId: 11n, requestId: 502n } as never, {} as never)
+    ).request!;
+    await expect(stored.warehouseAdditionalCost).toBe(20000);
+  },
+};
+
+// TIBA'S SLIP OPENS IN THE FORM, KEPT (the-courier-slip-has-an-optional-photo,
+// the-courier-charge-is-noted-at-tiba-and-final-at-terima): Ubah shows the photo Tandai Tiba kept with the charge — from its
+// own link, named as saved, not uploading — open to replace or remove, like one picked here.
+export const TibasSlipOpensKept: Story = {
+  name: "Tiba's slip, kept",
+  beforeEach: arrivedWithACharge,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("accept-courier-owed")).toHaveTextContent("Rp 15.000"), { timeout: 4000 });
+
+    await openCharge(canvasElement);
+    const slip = within(canvas.getByTestId("accept-courier-photo"));
+    const shown = slip.getByTestId("accept-courier-photo-shown");
+    await expect(shown).toHaveAttribute("data-state", "kept");
+    await expect(shown).toHaveTextContent("Saved photo");
+    await waitFor(() => expect(within(shown).getByRole("img")).toHaveAttribute("src", slipPhotoLink(TIBA_SLIP)));
+    await expect(slip.getByTestId("accept-courier-photo-pick")).toHaveTextContent("Replace Photo");
+  },
+};
+
+// …and Terima's word is final for the slip too: removed in the form, it is not sent, and the restock keeps none.
+export const TibasSlipCanBeRemoved: Story = {
+  name: "Tiba's slip, removed",
+  beforeEach: arrivedWithACharge,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("accept-courier-owed")).toHaveTextContent("Rp 15.000"), { timeout: 4000 });
+
+    await openCharge(canvasElement);
+    await userEvent.click(within(canvas.getByTestId("accept-courier-photo")).getByTestId("accept-courier-photo-remove"));
+    await expect(canvas.queryByTestId("accept-courier-photo-shown")).toBeNull();
+    await userEvent.click(canvas.getByTestId("accept-courier-done"));
+
+    await countWhole(canvasElement, COFFEE.productId, A_01_1);
+    await countWhole(canvasElement, RICE.productId, A_01_2);
+    await userEvent.click(acceptControl(canvasElement));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(confirm);
+    await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 });
+
+    await expect(restockAcceptScenario.photos[0]?.slip).toBe("");
+    const stored = (
+      await restockRequestService.restockRequestDetail!({ teamId: 11n, requestId: 502n } as never, {} as never)
+    ).request!;
+    await expect(stored.warehouseAdditionalCost).toBe(15000);
+    await expect(stored.warehouseAdditionalCostFile).toBe("");
   },
 };

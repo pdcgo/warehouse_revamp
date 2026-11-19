@@ -77,9 +77,10 @@ func TestSettlementPost_AnImportedShopRowCountsForThePrimaryCS(t *testing.T) {
 	}
 }
 
-// Only an IMPORTED SHOP row asks: an order row counts for its creator, and a shop row posted by hand for
-// its actor (#a-shop-addressed-row-is-attributed-to-its-actor).
-func TestSettlementPost_OnlyAnImportedShopRowAsksTheShop(t *testing.T) {
+// Every SHOP row asks the shop — whether it is the team's (settlement-and-expense-ask-the-shop-first) — but only an
+// IMPORTED one counts for the primary CS it answers: a shop row posted by hand counts for its actor
+// (#a-shop-addressed-row-is-attributed-to-its-actor), and an order row asks nothing — it counts for its creator.
+func TestSettlementPost_OnlyAShopRowAsksTheShop(t *testing.T) {
 	db := san_testdb.DB(t)
 	primary := primaryIs(shopPrimaryCS)
 	svc := settlement_v1.NewService(db, nil, nil, primary, nil, nil, nil)
@@ -97,6 +98,10 @@ func TestSettlementPost_OnlyAnImportedShopRowAsksTheShop(t *testing.T) {
 		t.Errorf("a hand-posted shop row has user_id %d, want 0 — it counts for its actor", result.Entry.UserID)
 	}
 
+	if primary.asked != 1 {
+		t.Fatalf("the shop was asked %d times for a hand-posted shop row, want 1 — whether it is the team's", primary.asked)
+	}
+
 	sale := initialTotal("imported-order-sale")
 	sale.SourceType = settlementv1.SourceType_SOURCE_TYPE_IMPORTER
 
@@ -105,8 +110,8 @@ func TestSettlementPost_OnlyAnImportedShopRowAsksTheShop(t *testing.T) {
 		t.Fatalf("imported order row: %v", err)
 	}
 
-	if primary.asked != 0 {
-		t.Fatalf("the shop was asked %d times for rows that never ask", primary.asked)
+	if primary.asked != 1 {
+		t.Fatalf("the shop was asked %d times in all, want 1 — an order row never asks", primary.asked)
 	}
 }
 

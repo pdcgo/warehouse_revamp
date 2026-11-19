@@ -41,6 +41,10 @@ type FoundRequest struct {
 	MintedBatchID *uint64
 	// SETTLED: the count whose finalize closed it.
 	SettledByCountingSessionID *uint64
+	// THE LOST ORDER whose parcel this is (00054, a-found-lost-parcel-is-a-found-stock-in) — selling_service's id, and
+	// the order's take, whose batch rows price the mint. Both nil for a found of no order.
+	OrderID                *uint64
+	OrderTakeTransactionID *uint64
 }
 
 func (FoundRequest) TableName() string {

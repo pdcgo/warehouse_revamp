@@ -377,6 +377,27 @@ export function canRequestPayment(role: Role | undefined): boolean {
   return canSetLiabilityTerms(role) || role === Role.WAREHOUSE_ADMIN;
 }
 
+// canCancelPayment mirrors LiabilityPaymentCancel: the PAYING selling team's Owner and Admin, and Root and the
+// Administrator, who pass every policy (a-pending-payment-is-cancelled-by-its-selling-team) — never the CS, and never a
+// warehouse role: a warehouse's pending payment waits for its creditor, so the caller also checks the team is a selling
+// one, as the server does.
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canCancelPayment(role: Role | undefined, teamType: TeamType | undefined): boolean {
+  if (teamType !== TeamType.SELLING) return false;
+
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
+      return true;
+    default:
+      return false;
+  }
+}
+
 // canOverseeTeamAgents mirrors AgentConnectionTeamList, AgentConnectionTeamRevoke and TeamAgentPolicySet: the team's
 // OWNER, Root and the Administrator — connecting an agent sends the team's data to a third party, so who may is the
 // owner's decision, and the owner sees and revokes every connection reading the team

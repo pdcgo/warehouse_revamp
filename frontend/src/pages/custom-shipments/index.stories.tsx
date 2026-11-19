@@ -1,0 +1,160 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+
+import { PHONE, SELLING_META, sellingAt } from "../../features/customShipment/storyKit";
+import { fitsTheScreen } from "../../features/warehouseTransfer/storyPhone";
+
+// ⚠ PROTOTYPE (backlog #88, awaiting the owner's design accept) — KIRIM PAKET, the selling team's list of its custom
+// shipments (docs/business/custom_shipments/context_decision.md). Not routed and not in the menu: the pages draw only
+// under the prototype provider (features/customShipment/customShipmentPrototype.tsx); `Live` pins the gate.
+//
+// Toko Melati (12) sees its seven: 801 requested · 802 picked · 803 a reship requested · 804 handed over · 805 a reship
+// handed over · 806 cancelled · 808 picked — never Toko Kenanga's 807.
+
+const Routed = sellingAt("/inventories/custom-shipments");
+
+const meta = {
+  title: "Pages/Inventory/CustomShipment/SellingList",
+  component: Routed,
+  ...SELLING_META,
+} satisfies Meta;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+async function loaded(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await canvas.findByTestId("custom-shipment-row-801", {}, { timeout: 4000 });
+  return canvas;
+}
+
+const rowIds = (canvasElement: HTMLElement) =>
+  Array.from(within(canvasElement).getByTestId("custom-shipments-table").querySelectorAll("[data-testid^='custom-shipment-row-']")).map(
+    (row) => row.getAttribute("data-testid")!.replace("custom-shipment-row-", ""),
+  );
+
+// THE TEAM'S OWN PARCELS, newest first — the kind on each, who it goes to, from which warehouse, the step it is at, what
+// is in it, how it travels and who pays, and the sample's value (the team sees what its samples are worth).
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(rowIds(canvasElement).sort()).toEqual(["801", "802", "803", "804", "805", "806", "808"]);
+    await expect(canvas.queryByTestId("custom-shipment-row-807")).toBeNull();
+
+    const sample = within(canvas.getByTestId("custom-shipment-row-801"));
+    await expect(sample.getByTestId("custom-shipment-kind-sample")).toBeVisible();
+    await expect(sample.getByTestId("custom-shipment-status-requested")).toBeVisible();
+    await expect(sample.getByTestId("custom-shipment-recipient-801")).toHaveTextContent("Rina Kusuma");
+    await waitFor(() => expect(sample.getByTestId("custom-shipment-other-801")).toHaveTextContent("Gudang Pusat"));
+    await expect(sample.getByTestId("custom-shipment-pay-801")).toHaveTextContent("Warehouse pays · at handover");
+    await expect(sample.getByTestId("custom-shipment-value-801")).toHaveTextContent("195.000");
+
+    // A reship's value is none of the stock's — it took nothing from a rack.
+    const reship = within(canvas.getByTestId("custom-shipment-row-803"));
+    await expect(reship.getByTestId("custom-shipment-kind-reship")).toBeVisible();
+    await expect(reship.getByTestId("custom-shipment-value-803")).toHaveTextContent("—");
+
+    // The team's own ongkir, and the one the warehouse paid at the handover.
+    await expect(canvas.getByTestId("custom-shipment-pay-802")).toHaveTextContent("We pay · Rp 18.000");
+    await expect(canvas.getByTestId("custom-shipment-pay-804")).toHaveTextContent("Warehouse paid Rp 12.000");
+    await expect(canvas.getByTestId("custom-shipment-pager")).toBeVisible();
+  },
+};
+
+// A PHONE READS EACH PARCEL AS A BLOCK (every-page-has-a-mobile-story, the transfer lists' blocks): the page names itself
+// with Paket Baru as its ＋, the tabs slide, nothing runs past the screen's edge.
+export const Mobile: Story = {
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(window.innerWidth).toBe(390);
+    await expect(canvas.getByTestId("custom-shipments-table")).toHaveAttribute("data-layout", "phone");
+    await expect(canvasElement.querySelector("table")).toBeNull();
+    await expect(canvas.getByRole("heading", { name: "Custom Shipments" })).toBeVisible();
+    await expect(canvas.getByTestId("open-create-custom-shipment")).toHaveAccessibleName("New Parcel");
+    await expect(within(canvas.getByTestId("custom-shipment-row-802")).getByTestId("custom-shipment-actions-802")).toBeVisible();
+    await fitsTheScreen(canvasElement);
+  },
+};
+
+// THE STATUS TABS cut the list to one step, and say so in the URL (a-lists-filters-live-in-the-url).
+export const ATabNarrowsToItsStatus: Story = {
+  name: "A tab narrows to its status",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-tab-picked"));
+    await waitFor(() => expect(rowIds(canvasElement).sort()).toEqual(["802", "808"]));
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("status=picked"));
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-tab-cancelled"));
+    await waitFor(() => expect(rowIds(canvasElement)).toEqual(["806"]));
+  },
+};
+
+// THE KIND is one filter in the strip — Kirim balik ke supplier leaves the two reships.
+export const TheKindFilterNarrows: Story = {
+  name: "The kind filter narrows",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-kind"));
+    const option = await within(canvasElement).findByTestId("custom-shipment-kind-option-reship");
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() => expect(rowIds(canvasElement).sort()).toEqual(["803", "805"]));
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("kind=reship"));
+  },
+};
+
+// ⋯ OFFERS WHAT THE STEP ALLOWS (sellingActions): a requested *Gudang bayar* parcel — Cancel only; a picked *Kami bayar*
+// one — Edit Shipping Cost only (no cancel once the goods are in the basket); a handed-over one — nothing.
+export const EachRowOffersWhatItsStepAllows: Story = {
+  name: "Each row offers what its step allows",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-actions-801"));
+    await expect(await screen.findByTestId("custom-shipment-action-cancel-801")).toBeVisible();
+    await expect(screen.queryByTestId("custom-shipment-action-edit-cost-801")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-actions-802"));
+    await expect(await screen.findByTestId("custom-shipment-action-edit-cost-802")).toBeVisible();
+    await expect(screen.queryByTestId("custom-shipment-action-cancel-802")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+
+    await expect(canvas.queryByTestId("custom-shipment-actions-804")).toBeNull();
+  },
+};
+
+// Paket Baru opens the form; a row opens its parcel.
+export const NewParcelAndARowOpen: Story = {
+  name: "New parcel and a row open",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-row-804"));
+    await expect(await canvas.findByTestId("custom-shipment-detail-page")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("custom-shipment-back"));
+
+    await userEvent.click(await canvas.findByTestId("open-create-custom-shipment"));
+    await expect(await canvas.findByTestId("custom-shipment-form")).toBeVisible();
+  },
+};
+
+// THE GATE — live, nothing mounts the prototype, so the page draws only its one line: no list, no ＋.
+export const Live: Story = {
+  name: "Live · not available",
+  parameters: { live: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("custom-shipment-unavailable")).toBeVisible();
+    await expect(canvas.queryByTestId("custom-shipments-table")).toBeNull();
+    await expect(canvas.queryByTestId("open-create-custom-shipment")).toBeNull();
+  },
+};

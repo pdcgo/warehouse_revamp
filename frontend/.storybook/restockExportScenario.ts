@@ -20,6 +20,8 @@ export interface RestockExportCall {
         fromUnix?: bigint;
         toUnix?: bigint;
         q?: string;
+        /** The Tag filter's picks — ANY of (#87). */
+        tagIds?: bigint[];
       }
     | undefined;
   /** The restocks the file holds. */

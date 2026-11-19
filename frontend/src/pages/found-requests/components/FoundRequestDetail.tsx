@@ -33,7 +33,7 @@ import { ProductListItem } from "../../../components/products/ProductListItem";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatUnixDateShort, formatUnixDateTimeShort } from "../../../lib/datetime";
 import { formatRupiahNumber } from "../../../lib/money";
-import { POST, blockTextOf, decidedTextOf, isWithdrawn } from "./found";
+import { POST, blockTextOf, decidedTextOf, isWithdrawn, orderPathOf } from "./found";
 import { FoundRequestStatusBadge } from "./FoundRequestStatusBadge";
 
 // A ROW LIGHTS UP UNDER THE POINTER, every cell of it (a-table-row-lights-up).
@@ -128,7 +128,11 @@ function Body({
   const why = r.status === FoundRequestStatus.WAITING ? blockTextOf(r, t) : "";
 
   const batchCell = (l: FoundRequest["lines"][number]) =>
-    l.type === FoundRequestPostType.MINT
+    l.type === FoundRequestPostType.ORDER_MINT
+      ? l.batchId > 0n
+        ? t("foundRequest.lines.orderBatchId", { id: l.batchId.toString() })
+        : t("foundRequest.lines.orderBatch")
+      : l.type === FoundRequestPostType.MINT
       ? l.batchId > 0n
         ? t("foundRequest.lines.newBatchId", { id: l.batchId.toString() })
         : t("foundRequest.lines.newBatch")
@@ -217,6 +221,12 @@ function Body({
         <Text fontWeight="bold" data-testid="found-detail-units">
           {t("foundRequest.card.units", { count: Number(r.stockCount), rack: r.rackCode })}
         </Text>
+        {/* A LOST ORDER'S PARCEL (a-found-lost-parcel-is-a-found-stock-in) — the request names the order, a way there. */}
+        {r.orderId > 0n && (
+          <Link asChild color="brand.fg" fontWeight="bold" data-testid="found-detail-order">
+            <RouterLink to={orderPathOf(r)}>{t("foundRequest.card.fromOrder", { id: r.orderId.toString() })}</RouterLink>
+          </Link>
+        )}
         <Text color="fg.muted" data-testid="found-detail-reported">
           {t("foundRequest.card.reported", { name: nameOf(r.reportedById), when: formatUnixDateTimeShort(r.reportedAtUnix) })}
         </Text>

@@ -1,0 +1,304 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// RESTOCK TAGS (backlog #87) — the messages of RestockRequestService's tag RPCs (restock_request.proto), split out as
+// received_count.proto is. The owner's rules (docs/business/inventory/restock_decision.md):
+//
+//   - a-restock-tag-is-system-or-custom: a restock carries TAGS and the restock list filters by tag; a tag is SYSTEM
+//     (owned by the system) or CUSTOM (made freely by a user);
+//   - custom-tags-are-shared-system-tags-are-the-admins-and-the-apps: ONE app-wide list, a name unique across it; a
+//     custom tag once made is usable by every team; a restock's tags are seen and filtered on the seller's AND the
+//     warehouse's lists; a system tag is made, put on and taken off only by admins (Root / the Administrator) and the
+//     app's own tasks; only admins RENAME or DELETE a tag (its 🔄 line);
+//   - a-restock-problem-is-a-system-tag (+ its 🔄 "A"): the app's two problem tags, *Barang kurang* / *Barang rusak*,
+//     put on by Terima when it records missing / broken units — the restock stays Diterima;
+//   - the-restock-tags-prototype-is-accepted: the screens drawn are the design; the Tag filter takes SEVERAL tags, a
+//     restock shown when it carries ANY of them; a tag goes on and comes off in EVERY status (the owner's 🔄 under it).
+//
+// WHY THE ADMINS' ACTS ARE THEIR OWN MESSAGES. The ACL lives on the request message, and a handler cannot tell a
+// platform admin from the team role it holds (san_auth.GetCallerRole is the SCOPED team's role). So making a system tag,
+// putting one on or taking one off, renaming, deleting and the counting list are separate requests whose policy is
+// [ROOT, ADMINISTRATOR] — the root-team bypass is the one way in, whether or not the admin is also a team member.
+
+// A tag's kind (a-restock-tag-is-system-or-custom). APPEND ONLY.
+enum RestockTagType {
+  RESTOCK_TAG_TYPE_UNSPECIFIED = 0;
+  // Owned by the system: made, put on and taken off only by Root / the Administrator and the app's own tasks.
+  RESTOCK_TAG_TYPE_SYSTEM = 1;
+  // Made freely by any user who may tag a restock; usable by every team.
+  RESTOCK_TAG_TYPE_CUSTOM = 2;
+}
+
+// One tag of the app-wide list.
+message RestockTag {
+  uint64 id = 1;
+  // As kept: trimmed, inner spaces folded to one, the case as first typed. Unique app-wide, compared case-insensitively.
+  string name = 2;
+  RestockTagType type = 3;
+  // How many restocks carry it, every team's — RestockTagManageList only (what the admins' delete confirm says); 0
+  // elsewhere.
+  uint64 restock_count = 4;
+  // The app's own task that owns this SYSTEM tag — "restock.problem.missing" (*Barang kurang*) and
+  // "restock.problem.broken" (*Barang rusak*), put on by Terima. "" for an admin's system tag and every custom tag. A
+  // tag with one is LOCKED for everyone, admins included: never put on or taken off by hand, never renamed or deleted
+  // (when a problem tag comes off waits on the problem's solution, not decided).
+  string app_task = 5;
+}
+
+// THE APP-WIDE LIST, for the Tag filter and the add box — every team's tags, the system's first, then by name. Paged
+// (a list that grows with the data pages); a picker asks a large first page. A READ, so the admin team's monitor and an
+// agent's credential reach it.
+message RestockTagListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The caller's team — the list is app-wide, the same for every team; the scope only says who asks.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Only tags whose name contains this, any case, spaces folded; "" = every tag.
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+message RestockTagListResponse {
+  repeated RestockTag tags = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// THE ADMINS' LIST (Kelola tag) — RestockTagList's tags and order, each with how many restocks carry it
+// (`restock_count`, every team's), which the delete's confirm says. Root / the Administrator only.
+message RestockTagManageListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.CommonPagination page = 2 [(buf.validate.field).required = true];
+}
+
+message RestockTagManageListResponse {
+  repeated RestockTag tags = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// A CUSTOM TAG, made by anyone who may tag a restock (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps):
+// every role on either side but a monitor. ONE NAME, ONE TAG: a name already on the list — any case, spaces folded —
+// answers THAT tag (`created` false), whatever its type, and never makes a twin; two makes of one new name at the same
+// second make one tag.
+message RestockTagCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Trimmed and its inner spaces folded on the server; empty after that is InvalidArgument.
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+}
+
+message RestockTagCreateResponse {
+  RestockTag tag = 1;
+  // False when the name was already taken and the answer is that tag.
+  bool created = 2;
+}
+
+// A SYSTEM TAG, made by an admin (Root / the Administrator) — the same one-name-one-tag answer as RestockTagCreate.
+message RestockTagSystemCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+}
+
+message RestockTagSystemCreateResponse {
+  RestockTag tag = 1;
+  bool created = 2;
+}
+
+// RENAME, the admins' alone (the 🔄 line under custom-tags-are-shared-system-tags-are-the-admins-and-the-apps), a custom
+// or an admin's system tag. A name ANOTHER tag carries, any case, is ALREADY_EXISTS; the app's own tags are
+// FAILED_PRECONDITION; an unknown tag NOT_FOUND. A change of letter case alone is a rename.
+message RestockTagRenameRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 tag_id = 1 [(buf.validate.field).uint64.gt = 0];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+}
+
+message RestockTagRenameResponse {
+  RestockTag tag = 1;
+}
+
+// DELETE, the admins' alone: the tag leaves the list AND comes off every restock that carries it, every team's, in one
+// transaction. The app's own tags are FAILED_PRECONDITION; an unknown (or already deleted) tag NOT_FOUND.
+message RestockTagDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 tag_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockTagDeleteResponse {
+  // How many restocks it came off.
+  uint64 restock_count = 1;
+}
+
+// A CUSTOM TAG ON A RESTOCK — either side that sees it: its selling team (team_id = the restock's team) or its receiving
+// warehouse (team_id = its warehouse); any other team's restock reads NOT_FOUND. Every role but a monitor, in EVERY
+// status (the owner's 🔄 under the-restock-tags-prototype-is-accepted, as the-note-is-edited-in-any-status). A SYSTEM tag
+// is PERMISSION_DENIED here — an admin puts one on with RestockRequestSystemTagAdd — and the app's own never by hand. A
+// tag already on is no change. Nothing else of the restock moves; no trail row, no event.
+message RestockRequestTagAddRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockRequestTagAddResponse {
+  // The restock's tags now, the system's first, then by name.
+  repeated RestockTag tags = 1;
+}
+
+// A CUSTOM TAG OFF A RESTOCK — RestockRequestTagAdd's sides, roles and statuses; anyone who may tag takes it off,
+// whoever put it on (a restock's tags are one set). A system tag is PERMISSION_DENIED here. A tag not on is no change.
+message RestockRequestTagRemoveRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockRequestTagRemoveResponse {
+  repeated RestockTag tags = 1;
+}
+
+// AN ADMIN'S SYSTEM TAG ON A RESTOCK — Root / the Administrator, naming either side of the restock as team_id. A system
+// tag only (a custom one goes on with RestockRequestTagAdd); the app's own tags are FAILED_PRECONDITION — the app puts
+// them on. Every status.
+message RestockRequestSystemTagAddRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockRequestSystemTagAddResponse {
+  repeated RestockTag tags = 1;
+}
+
+// AN ADMIN'S SYSTEM TAG OFF A RESTOCK — RestockRequestSystemTagAdd's mirror; the app's own tags are FAILED_PRECONDITION.
+message RestockRequestSystemTagRemoveRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockRequestSystemTagRemoveResponse {
+  repeated RestockTag tags = 1;
+}

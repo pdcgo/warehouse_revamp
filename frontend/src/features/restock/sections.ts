@@ -3,15 +3,17 @@
 // berdasarkan tab, di kiri itu cuma jadi navigasi saja"*, the-restock-detail-is-the-product-pages-shape). The key is also
 // the section's DOM id (`restock-section-<key>`), which the nav scrolls to; the icon is the card's and the nav item's.
 import type { LucideIcon } from "lucide-react";
-import { HandCoins, History, NotebookText, Package, Truck, Wallet } from "lucide-react";
+import { HandCoins, History, NotebookText, Package, Tags, Truck, Wallet } from "lucide-react";
 
-export type RestockSectionKey = "delivery" | "payment" | "courier" | "products" | "note" | "timeline";
+export type RestockSectionKey = "delivery" | "payment" | "courier" | "tags" | "products" | "note" | "timeline";
 
 export const RESTOCK_SECTIONS: { key: RestockSectionKey; titleKey: string; icon: LucideIcon }[] = [
   { key: "delivery", titleKey: "restock.detail.delivery", icon: Truck },
   { key: "payment", titleKey: "restock.detail.payment", icon: Wallet },
   // Only once accepted — the warehouse enters it at the door; before then there is nothing to owe.
   { key: "courier", titleKey: "restock.detail.section.courier", icon: HandCoins },
+  // The restock's tags (backlog #87, the-restock-tags-prototype-is-accepted) — both details, its own nav item.
+  { key: "tags", titleKey: "restock.tags.title", icon: Tags },
   { key: "products", titleKey: "restock.detail.products", icon: Package },
   { key: "note", titleKey: "restock.detail.note", icon: NotebookText },
   { key: "timeline", titleKey: "restock.detail.tab.timeline", icon: History },

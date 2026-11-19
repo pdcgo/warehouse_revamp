@@ -66,6 +66,12 @@ func (s *Service) restockDetail(ctx context.Context, requestID, teamID uint64) (
 
 	wire := restockRequestToProto(&rr)
 
+	// ITS TAGS (backlog #87) — one set, the same on both sides (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps).
+	err = withRestockTags(s.db.WithContext(ctx), wire)
+	if err != nil {
+		return nil, err
+	}
+
 	err = restockCountCorrections(s.db.WithContext(ctx), &rr, wire, teamID)
 	if err != nil {
 		return nil, err

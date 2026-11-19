@@ -58,6 +58,9 @@ const (
 	// LiabilityPaymentServiceLiabilityPaymentRejectProcedure is the fully-qualified name of the
 	// LiabilityPaymentService's LiabilityPaymentReject RPC.
 	LiabilityPaymentServiceLiabilityPaymentRejectProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentReject"
+	// LiabilityPaymentServiceLiabilityPaymentCancelProcedure is the fully-qualified name of the
+	// LiabilityPaymentService's LiabilityPaymentCancel RPC.
+	LiabilityPaymentServiceLiabilityPaymentCancelProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentCancel"
 	// LiabilityPaymentServiceLiabilityPaymentListProcedure is the fully-qualified name of the
 	// LiabilityPaymentService's LiabilityPaymentList RPC.
 	LiabilityPaymentServiceLiabilityPaymentListProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentList"
@@ -251,6 +254,11 @@ type LiabilityPaymentServiceClient interface {
 	LiabilityPaymentRecord(context.Context, *connect.Request[v1.LiabilityPaymentRecordRequest]) (*connect.Response[v1.LiabilityPaymentRecordResponse], error)
 	LiabilityPaymentConfirm(context.Context, *connect.Request[v1.LiabilityPaymentConfirmRequest]) (*connect.Response[v1.LiabilityPaymentConfirmResponse], error)
 	LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error)
+	// The PAYER takes back its own claim while it is still pending (a-pending-payment-is-cancelled-by-its-selling-team) —
+	// a selling team's owner or admin only. It posts nothing (a pending claim never posted), leaves the creditor's list to
+	// accept, stays in the history marked cancelled, and the team may pay again. An arm BEFORE the accept, so
+	// an-accepted-payment-is-final is untouched.
+	LiabilityPaymentCancel(context.Context, *connect.Request[v1.LiabilityPaymentCancelRequest]) (*connect.Response[v1.LiabilityPaymentCancelResponse], error)
 	LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error)
 	// A CREDITOR asks its debtor to pay (a-creditor-may-request-payment): a notice that POSTS NOTHING and BLOCKS NOTHING. Payment still starts
 	// with the debtor, through LiabilityPaymentRecord. Sending again replaces the request; the debtor recording a
@@ -288,6 +296,12 @@ func NewLiabilityPaymentServiceClient(httpClient connect.HTTPClient, baseURL str
 			connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentReject")),
 			connect.WithClientOptions(opts...),
 		),
+		liabilityPaymentCancel: connect.NewClient[v1.LiabilityPaymentCancelRequest, v1.LiabilityPaymentCancelResponse](
+			httpClient,
+			baseURL+LiabilityPaymentServiceLiabilityPaymentCancelProcedure,
+			connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentCancel")),
+			connect.WithClientOptions(opts...),
+		),
 		liabilityPaymentList: connect.NewClient[v1.LiabilityPaymentListRequest, v1.LiabilityPaymentListResponse](
 			httpClient,
 			baseURL+LiabilityPaymentServiceLiabilityPaymentListProcedure,
@@ -309,6 +323,7 @@ type liabilityPaymentServiceClient struct {
 	liabilityPaymentRecord      *connect.Client[v1.LiabilityPaymentRecordRequest, v1.LiabilityPaymentRecordResponse]
 	liabilityPaymentConfirm     *connect.Client[v1.LiabilityPaymentConfirmRequest, v1.LiabilityPaymentConfirmResponse]
 	liabilityPaymentReject      *connect.Client[v1.LiabilityPaymentRejectRequest, v1.LiabilityPaymentRejectResponse]
+	liabilityPaymentCancel      *connect.Client[v1.LiabilityPaymentCancelRequest, v1.LiabilityPaymentCancelResponse]
 	liabilityPaymentList        *connect.Client[v1.LiabilityPaymentListRequest, v1.LiabilityPaymentListResponse]
 	liabilityPaymentRequestSend *connect.Client[v1.LiabilityPaymentRequestSendRequest, v1.LiabilityPaymentRequestSendResponse]
 }
@@ -331,6 +346,12 @@ func (c *liabilityPaymentServiceClient) LiabilityPaymentReject(ctx context.Conte
 	return c.liabilityPaymentReject.CallUnary(ctx, req)
 }
 
+// LiabilityPaymentCancel calls
+// warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentCancel.
+func (c *liabilityPaymentServiceClient) LiabilityPaymentCancel(ctx context.Context, req *connect.Request[v1.LiabilityPaymentCancelRequest]) (*connect.Response[v1.LiabilityPaymentCancelResponse], error) {
+	return c.liabilityPaymentCancel.CallUnary(ctx, req)
+}
+
 // LiabilityPaymentList calls warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList.
 func (c *liabilityPaymentServiceClient) LiabilityPaymentList(ctx context.Context, req *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error) {
 	return c.liabilityPaymentList.CallUnary(ctx, req)
@@ -348,6 +369,11 @@ type LiabilityPaymentServiceHandler interface {
 	LiabilityPaymentRecord(context.Context, *connect.Request[v1.LiabilityPaymentRecordRequest]) (*connect.Response[v1.LiabilityPaymentRecordResponse], error)
 	LiabilityPaymentConfirm(context.Context, *connect.Request[v1.LiabilityPaymentConfirmRequest]) (*connect.Response[v1.LiabilityPaymentConfirmResponse], error)
 	LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error)
+	// The PAYER takes back its own claim while it is still pending (a-pending-payment-is-cancelled-by-its-selling-team) —
+	// a selling team's owner or admin only. It posts nothing (a pending claim never posted), leaves the creditor's list to
+	// accept, stays in the history marked cancelled, and the team may pay again. An arm BEFORE the accept, so
+	// an-accepted-payment-is-final is untouched.
+	LiabilityPaymentCancel(context.Context, *connect.Request[v1.LiabilityPaymentCancelRequest]) (*connect.Response[v1.LiabilityPaymentCancelResponse], error)
 	LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error)
 	// A CREDITOR asks its debtor to pay (a-creditor-may-request-payment): a notice that POSTS NOTHING and BLOCKS NOTHING. Payment still starts
 	// with the debtor, through LiabilityPaymentRecord. Sending again replaces the request; the debtor recording a
@@ -380,6 +406,12 @@ func NewLiabilityPaymentServiceHandler(svc LiabilityPaymentServiceHandler, opts 
 		connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentReject")),
 		connect.WithHandlerOptions(opts...),
 	)
+	liabilityPaymentServiceLiabilityPaymentCancelHandler := connect.NewUnaryHandler(
+		LiabilityPaymentServiceLiabilityPaymentCancelProcedure,
+		svc.LiabilityPaymentCancel,
+		connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentCancel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	liabilityPaymentServiceLiabilityPaymentListHandler := connect.NewUnaryHandler(
 		LiabilityPaymentServiceLiabilityPaymentListProcedure,
 		svc.LiabilityPaymentList,
@@ -401,6 +433,8 @@ func NewLiabilityPaymentServiceHandler(svc LiabilityPaymentServiceHandler, opts 
 			liabilityPaymentServiceLiabilityPaymentConfirmHandler.ServeHTTP(w, r)
 		case LiabilityPaymentServiceLiabilityPaymentRejectProcedure:
 			liabilityPaymentServiceLiabilityPaymentRejectHandler.ServeHTTP(w, r)
+		case LiabilityPaymentServiceLiabilityPaymentCancelProcedure:
+			liabilityPaymentServiceLiabilityPaymentCancelHandler.ServeHTTP(w, r)
 		case LiabilityPaymentServiceLiabilityPaymentListProcedure:
 			liabilityPaymentServiceLiabilityPaymentListHandler.ServeHTTP(w, r)
 		case LiabilityPaymentServiceLiabilityPaymentRequestSendProcedure:
@@ -424,6 +458,10 @@ func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentConfirm(conte
 
 func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject is not implemented"))
+}
+
+func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentCancel(context.Context, *connect.Request[v1.LiabilityPaymentCancelRequest]) (*connect.Response[v1.LiabilityPaymentCancelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentCancel is not implemented"))
 }
 
 func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error) {

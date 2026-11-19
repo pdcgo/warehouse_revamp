@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
@@ -157,5 +158,165 @@ func TestPerf_RestockRequestList(t *testing.T) {
 		t.Logf("%s — the previous created-only lookup (control):", c.name)
 		san_perf.Explain(t, db, "SELECT DISTINCT ON (restock_id) restock_id, is_override FROM restock_logs WHERE restock_id IN ("+
 			strings.Join(ids, ",")+") ORDER BY restock_id, created_at, id")
+	}
+}
+
+// perfProblemBook seeds the book the lists' problem counts are read over (backlog #89): 50 000 restocks — five selling
+// teams of 10 000 into three warehouses — four in five accepted, each with three lines (150 000 `restock_items`) and a
+// trail of two rows (the create, the accept). One accepted restock in four came short on its first line, one in six
+// had broken units on its second: ≈ 16 700 `restock_problem_items`. Returns the restocks, ids filled.
+func perfProblemBook(t *testing.T, db *gorm.DB) []inventory_service_models.Restock {
+	t.Helper()
+
+	now := time.Now()
+	restocks := make([]inventory_service_models.Restock, 0, 50_000)
+
+	for i := range 50_000 {
+		team := uint64(2 + i%5)
+		created := now.Add(-time.Duration(50_000-i) * time.Minute)
+		status := "accepted"
+
+		switch i % 10 {
+		case 3:
+			status = "ongoing"
+		case 7:
+			status = "arrived"
+		}
+
+		restocks = append(restocks, inventory_service_models.Restock{
+			TeamID:          team,
+			WarehouseID:     uint64(900 + i%3),
+			Status:          status,
+			CreatedByUserID: 1000*team + uint64(i%40),
+			CreatedAt:       created,
+			UpdatedAt:       now,
+		})
+	}
+
+	san_perf.SeedRows(t, db, &restocks)
+
+	items := make([]inventory_service_models.RestockItem, 0, 3*len(restocks))
+	logs := make([]inventory_service_models.RestockLog, 0, 2*len(restocks))
+	problems := make([]inventory_service_models.RestockProblemItem, 0, 20_000)
+
+	for i, r := range restocks {
+		for k := range 3 {
+			product := 10_000*r.TeamID + uint64((i*3+k)%900)
+			items = append(items, inventory_service_models.RestockItem{
+				RestockID: r.ID, ProductID: product, ProductCode: "P-" + strconv.FormatUint(product, 10), Name: "Produk",
+				Count: 10, Total: 100_000, PriceUnit: 10_000, ReceivedCount: 10, CreatedAt: r.CreatedAt, UpdatedAt: now,
+			})
+		}
+
+		logs = append(logs,
+			inventory_service_models.RestockLog{RestockID: r.ID, ToStatus: "ongoing", ActorUserID: r.CreatedByUserID, Description: "created", CreatedAt: r.CreatedAt},
+			inventory_service_models.RestockLog{RestockID: r.ID, FromStatus: "ongoing", ToStatus: r.Status, ActorUserID: 5000, Description: "moved", CreatedAt: r.CreatedAt.Add(time.Hour)},
+		)
+
+		if r.Status != "accepted" {
+			continue
+		}
+
+		if i%4 == 0 {
+			problems = append(problems, inventory_service_models.RestockProblemItem{
+				RestockID: r.ID, ProductID: items[len(items)-3].ProductID, ProblemType: "missing", Count: int64(1 + i%3),
+				PriceUnit: 10_000, Total: float64(10_000 * (1 + i%3)), CreatedAt: r.CreatedAt,
+			})
+		}
+
+		if i%6 == 0 {
+			problems = append(problems, inventory_service_models.RestockProblemItem{
+				RestockID: r.ID, ProductID: items[len(items)-2].ProductID, ProblemType: "broken", Count: 2,
+				PriceUnit: 10_000, Total: 20_000, CreatedAt: r.CreatedAt,
+			})
+		}
+	}
+
+	san_perf.SeedRows(t, db, &items)
+	san_perf.SeedRows(t, db, &logs)
+	san_perf.SeedRows(t, db, &problems)
+
+	t.Logf("seeded %d restocks, %d lines, %d trail rows, %d problem rows", len(restocks), len(items), len(logs), len(problems))
+
+	return restocks
+}
+
+// perfProblemCases are the list pages the problem counts are measured on: both sides, a small and a large page, a deep
+// page, and the Accepted tab (every row on it can carry counts).
+func perfProblemCases() []struct {
+	name string
+	req  *inventoryv1.RestockRequestListRequest
+} {
+	accepted := &inventoryv1.RestockRequestListFilter{Status: inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED}
+
+	return []struct {
+		name string
+		req  *inventoryv1.RestockRequestListRequest
+	}{
+		{"selling, 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"selling, 200", &inventoryv1.RestockRequestListRequest{TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 200}}},
+		{"selling, page 100 of 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Page: &commonv1.CommonPagination{Page: 100, Limit: 20}}},
+		{"selling, accepted tab, 20", &inventoryv1.RestockRequestListRequest{TeamId: 2, Filter: accepted, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"warehouse, 20", &inventoryv1.RestockRequestListRequest{TeamId: 900, Page: &commonv1.CommonPagination{Page: 1, Limit: 20}}},
+		{"warehouse, 200", &inventoryv1.RestockRequestListRequest{TeamId: 900, Page: &commonv1.CommonPagination{Page: 1, Limit: 200}}},
+	}
+}
+
+// THE PROBLEM COUNTS ON THE LISTS (backlog #89, the-restock-tags-prototype-is-accepted: *on accepted rows kurang N ·
+// rusak N*): ONE grouped statement per page over the page's accepted restocks, by `restock_problem_items_one_per_kind`
+// (restock_id, product_id, problem_type) — whatever the page size or depth. Logs each case's median wall, its query
+// count, how many rows came with a count, and the plan of the new statement.
+func TestPerf_RestockRequestListProblemCounts(t *testing.T) {
+	db, probe := san_perf.Wrap(san_testdb.DB(t))
+	perfProblemBook(t, db)
+
+	svc := newService(t, db)
+	ctx := ctxUser(7)
+
+	for _, c := range perfProblemCases() {
+		res, err := svc.RestockRequestList(ctx, connect.NewRequest(c.req))
+		if err != nil {
+			t.Fatalf("%s warm-up: %v", c.name, err)
+		}
+
+		counted := 0
+
+		for _, item := range res.Msg.GetItems() {
+			for _, r := range item.GetRestockRequest().GetMapData() {
+				for _, line := range r.GetItems() {
+					if len(line.GetProblems()) > 0 {
+						counted++
+
+						break
+					}
+				}
+			}
+		}
+
+		walls := make([]time.Duration, 0, 5)
+		queries := 0
+
+		for range 5 {
+			probe.Reset()
+
+			wall, _ := probe.Measure(func() {
+				_, err = svc.RestockRequestList(ctx, connect.NewRequest(c.req))
+			})
+			if err != nil {
+				t.Fatalf("%s: %v", c.name, err)
+			}
+
+			walls = append(walls, wall)
+			queries = probe.Count()
+		}
+
+		t.Logf("%s MEDIAN wall %v, %d queries, %d of %d rows with a count", c.name, san_perf.Median(walls), queries, counted, len(res.Msg.GetIds()))
+
+		for _, q := range probe.Queries() {
+			if strings.Contains(q.SQL, "restock_problem_items") {
+				t.Logf("%s — the problem counts, %v:", c.name, q.Duration)
+				san_perf.Explain(t, db, q.SQL)
+			}
+		}
 	}
 }

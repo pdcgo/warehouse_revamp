@@ -139,8 +139,9 @@ var (
 		errors.New("this order has no settlement account"),
 	)
 
-	// The shop is frozen onto the account by the FIRST post. A later post naming a different one is
-	// not a shop change — an order does not move between shops — it is a caller with the wrong order.
+	// The shop is set on the account by the FIRST post, and moved only when the order's shop is fixed
+	// (MoveOrderShop, an-orders-shop-is-fixed-and-counted-on-the-day). A post naming another shop is a
+	// caller with the wrong order — or an old shop's line arriving after the fix.
 	errWrongShop = connect.NewError(
 		connect.CodeInvalidArgument,
 		errors.New("this order's settlement belongs to another shop"),

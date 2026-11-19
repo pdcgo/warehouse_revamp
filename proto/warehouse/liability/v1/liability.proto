@@ -86,6 +86,11 @@ service LiabilityPaymentService {
   rpc LiabilityPaymentRecord(LiabilityPaymentRecordRequest) returns (LiabilityPaymentRecordResponse);
   rpc LiabilityPaymentConfirm(LiabilityPaymentConfirmRequest) returns (LiabilityPaymentConfirmResponse);
   rpc LiabilityPaymentReject(LiabilityPaymentRejectRequest) returns (LiabilityPaymentRejectResponse);
+  // The PAYER takes back its own claim while it is still pending (a-pending-payment-is-cancelled-by-its-selling-team) —
+  // a selling team's owner or admin only. It posts nothing (a pending claim never posted), leaves the creditor's list to
+  // accept, stays in the history marked cancelled, and the team may pay again. An arm BEFORE the accept, so
+  // an-accepted-payment-is-final is untouched.
+  rpc LiabilityPaymentCancel(LiabilityPaymentCancelRequest) returns (LiabilityPaymentCancelResponse);
   rpc LiabilityPaymentList(LiabilityPaymentListRequest) returns (LiabilityPaymentListResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
     // the-admin-team-monitors-read-only).
@@ -797,6 +802,14 @@ enum LiabilityPaymentStatus {
   // with a claim that never landed could only leave it at RECORDED forever — or confirm it, writing a
   // real ledger movement for money that never moved.
   LIABILITY_PAYMENT_STATUS_REJECTED = 4;
+
+  // THE PAYER TOOK ITS OWN CLAIM BACK before the creditor decided (a-pending-payment-is-cancelled-by-its-selling-team) —
+  // a selling team that recorded a wrong amount, say. Only a RECORDED payment gets here, and only by its payer.
+  //
+  // ⚠ IT POSTS NOTHING, like REJECTED: a pending claim never moved money, so there is nothing to undo. It is TERMINAL —
+  // the creditor can no longer accept or reject it — and the row stays in both teams' history. Paying again is a NEW
+  // payment, as after a rejection.
+  LIABILITY_PAYMENT_STATUS_CANCELLED = 5;
 }
 
 message LiabilityPayment {
@@ -980,6 +993,34 @@ message LiabilityPaymentRejectRequest {
 }
 
 message LiabilityPaymentRejectResponse {
+  LiabilityPayment payment = 1;
+}
+
+// The PAYER takes back its own pending claim (a-pending-payment-is-cancelled-by-its-selling-team).
+message LiabilityPaymentCancelRequest {
+  // A SELLING team's owner or admin only — never its CS, never a warehouse payer (the decision names the paying selling
+  // team's owner or admin, and the checklist's *only a role that CAN do it* leaves every other role out). Root and the
+  // Administrator pass every policy, as an override; the handler still refuses a payer that is not a selling team.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  // The PAYER — and the scope, as in record. Only the team that made the claim may take it back; another team's payment
+  // reads as NOT FOUND, so ids cannot be probed to learn who owes whom.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  uint64 payment_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message LiabilityPaymentCancelResponse {
   LiabilityPayment payment = 1;
 }
 

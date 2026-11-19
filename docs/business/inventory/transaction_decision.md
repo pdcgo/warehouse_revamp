@@ -156,6 +156,8 @@ sample ever comes back (placement Q1) · who bears it, and whether the owning te
 [placement_decision.md](./placement_decision.md#a-sample-names-the-rack-it-was-taken-from), who bears it in
 [a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value).
 
+🔄 *(2026-11-19)* A sample may also leave by **parcel** — a custom shipment ([a-custom-shipment-is-a-parcel-that-is-not-an-order](../custom_shipments/context_decision.md#a-custom-shipment-is-a-parcel-that-is-not-an-order)), its racks picked by the system at create ([the-custom-shipments-prototype-is-accepted](../custom_shipments/context_decision.md#the-custom-shipments-prototype-is-accepted)). The hand-over at the warehouse with no courier stays as it is.
+
 ## a-move-has-its-own-type
 
 > Owner, in chat *(2026-10-12)*: *"3a, use `move`, and choice 1"*, choosing the first of three choices offered for
@@ -590,6 +592,8 @@ flowchart LR
 It amends [an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once) (*"and any later undo"*) and
 [an-accepted-restock-cannot-be-cancelled](./restock_decision.md#an-accepted-restock-cannot-be-cancelled) (*"stock is undone
 by a rollback"*).
+
+🔄 *(2026-11-19)* A **parcel** sample's take IS undone when the selling team cancels it while *Diminta*: the owner's later [a-custom-shipment-is-cancelled-only-while-requested](../custom_shipments/context_decision.md#a-custom-shipment-is-cancelled-only-while-requested) puts its units back on the racks they left. The *never rolled back* above still holds for a sample handed over at the warehouse ([a-handed-over-sample-is-final](./placement_decision.md#a-handed-over-sample-is-final)) and for a parcel once picked.
 
 ## revaluation-and-opname-are-transaction-types
 

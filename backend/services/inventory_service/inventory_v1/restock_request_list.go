@@ -38,7 +38,8 @@ func (s *Service) RestockRequestList(
 		// so a page of requests costs 2 queries rather than N+1 (#124).
 		// Items only — NOT their placements or damage (#154). The list shows product names; loading
 		// every line's shelves for twenty requests would be weight nobody renders. A caller that needs
-		// them opens the request, where RestockRequestDetail loads them.
+		// them opens the request, where RestockRequestDetail loads them. What the rows DO draw of the
+		// damage — each line's missing and broken units — comes as counts below (withRestockProblemCounts).
 		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Order("id DESC").
 		Offset(pageOffset(page)).
@@ -65,6 +66,20 @@ func (s *Service) RestockRequestList(
 		r.ArrivedByIsOverride = step.Arrived
 		r.AcceptedByIsOverride = step.Accepted
 		out = append(out, r)
+	}
+
+	// ITS TAGS (backlog #87) — the page's, in ONE statement on the key of `restock_tags`.
+	err = withRestockTags(s.db.WithContext(ctx), out...)
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
+	// WHAT WENT WRONG AT THE DOOR, AS COUNTS (backlog #89, the-restock-tags-prototype-is-accepted: *on accepted rows kurang
+	// N · rusak N*; a-restock-problem-is-a-system-tag: *the problem list is the restock listed with missing and broken
+	// count*) — the page's, in ONE grouped statement.
+	err = withRestockProblemCounts(s.db.WithContext(ctx), rrs, out)
+	if err != nil {
+		return nil, restockErr(err)
 	}
 
 	items, ids := restockRequestListItems(out, req.Msg.GetDataRequest())
@@ -136,4 +151,71 @@ func restockStepOverrides(db *gorm.DB, rows []inventory_service_models.Restock) 
 	}
 
 	return out, nil
+}
+
+// withRestockProblemCounts fills each line's `problems` on a page of list rows with what the rows draw of them — the
+// units counted MISSING and BROKEN at the door, per line and kind (the-restock-tags-prototype-is-accepted: *on accepted
+// rows kurang N · rusak N*). The lists read a line's problems by kind and count (features/restock/summary.ts
+// missingQuantity / brokenQuantity), so that is all a row carries: no price or total (a list row is read by both sides,
+// and a-warehouse-sees-no-seller-money), no note, no photo — those are the detail's (RestockRequestDetail preloads the
+// rows whole).
+//
+// ONE grouped statement over the page's ACCEPTED restocks — the accept is the only write of problem rows
+// (tiba-marks-and-terima-is-final), so a page with none accepted asks nothing — served by the key the rows are unique on,
+// `restock_problem_items_one_per_kind` (restock_id, product_id, problem_type). Keyed by restock AND product: a product
+// appears once per restock (a-product-appears-once-per-restock), so the pair is the line, and one restock's rows never
+// land on another's line of the same product.
+func withRestockProblemCounts(db *gorm.DB, rows []inventory_service_models.Restock, wire []*inventoryv1.RestockRequest) error {
+	ids := make([]uint64, 0, len(rows))
+	for i := range rows {
+		if rows[i].Status == restockStatusAccepted {
+			ids = append(ids, rows[i].ID)
+		}
+	}
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	var counts []struct {
+		RestockID   uint64
+		ProductID   uint64
+		ProblemType string
+		Count       int64
+	}
+
+	err := db.
+		Model(&inventory_service_models.RestockProblemItem{}).
+		Select("restock_id, product_id, problem_type, SUM(count) AS count").
+		Where("restock_id IN ?", ids).
+		Group("restock_id, product_id, problem_type").
+		Order("restock_id, product_id, problem_type").
+		Scan(&counts).
+		Error
+	if err != nil {
+		return err
+	}
+
+	type line struct{ restock, product uint64 }
+
+	byLine := make(map[line]*inventoryv1.RestockRequestItem)
+	for _, r := range wire {
+		for _, item := range r.GetItems() {
+			byLine[line{r.GetId(), item.GetProductId()}] = item
+		}
+	}
+
+	for _, c := range counts {
+		item := byLine[line{c.RestockID, c.ProductID}]
+		if item == nil {
+			continue
+		}
+
+		item.Problems = append(item.Problems, &inventoryv1.RestockProblemItem{
+			Type:  restockProblemTypeFromText(c.ProblemType),
+			Count: c.Count,
+		})
+	}
+
+	return nil
 }

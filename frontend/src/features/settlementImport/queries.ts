@@ -76,8 +76,10 @@ export function useUploadedFile(args: { teamId: bigint | undefined; fileId: bigi
   });
 }
 
-// The file page's three views of what did not simply post to its order.
-export type LineView = "held" | "skipped" | "toShop";
+// The file page's views: the three of what did not simply post to its order, then every POSTED row and every row
+// already there — so each row of the file is shown with its result (the owner's acceptance row *open import detail*,
+// backlog #93). Together held · skipped · posted · existing are every outcome; toShop is a cut of posted.
+export type LineView = "held" | "skipped" | "toShop" | "posted" | "existing";
 
 const LINE_FILTER: Record<LineView, { outcomes: UploadedFileLineOutcome[]; reasons: UploadedFileLineReason[] }> = {
   held: { outcomes: [UploadedFileLineOutcome.HELD], reasons: [] },
@@ -88,6 +90,10 @@ const LINE_FILTER: Record<LineView, { outcomes: UploadedFileLineOutcome[]; reaso
     outcomes: [UploadedFileLineOutcome.POSTED],
     reasons: [UploadedFileLineReason.NO_ORDER, UploadedFileLineReason.SEVERAL_ORDERS],
   },
+  // Every posted row, whatever its reason — to its order, or to the shop. The tally's Posted counts the same rows.
+  posted: { outcomes: [UploadedFileLineOutcome.POSTED], reasons: [] },
+  // Its key was already in the ledger — the same row, imported before (the-row-key-is-the-only-dedupe).
+  existing: { outcomes: [UploadedFileLineOutcome.EXISTING], reasons: [] },
 };
 
 export function useUploadedFileLines(args: {

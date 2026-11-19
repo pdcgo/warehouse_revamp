@@ -28,6 +28,8 @@ type Service struct {
 	accounts PayingAccounts
 	// Which side of the Analytic composer a team's expenses sit on — Seller or Warehouse (TeamSides).
 	sides TeamSides
+	// Whether the shop an ADS expense names is one of the team's (settlement-and-expense-ask-the-shop-first).
+	shops Shops
 	// The clock a correction is stamped with — the day it counts on in Analytic
 	// (an-expense-correction-counts-on-the-day-it-is-made). time.Now but in a test.
 	now func() time.Time
@@ -38,9 +40,10 @@ var _ expensev1connect.ExpenseServiceHandler = (*Service)(nil)
 
 // NewService builds the handlers — ExpenseService and ExpenseAnalyticService. `events` carries ExpenseCreated /
 // ExpenseAdjusted to whoever posts the money (financial_account_service); `accounts` answers whether the account an
-// expense names may pay it; `sides` whether a team is a seller or a warehouse, for the Analytic report — all from the
-// composition root, the one place allowed to know two services at once.
-func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAccounts, sides TeamSides) *Service {
+// expense names may pay it; `sides` whether a team is a seller or a warehouse, for the Analytic report; `shops` whether
+// the shop an expense names is the team's — all from the composition root, the one place allowed to know two services
+// at once.
+func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAccounts, sides TeamSides, shops Shops) *Service {
 	// A nil sender would panic on the first expense. EmptySender still VALIDATES the event, so a malformed one is caught
 	// with no broker in sight — the right default for a test.
 	if events == nil {
@@ -58,7 +61,12 @@ func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAcc
 		sides = everyTeamSells{}
 	}
 
-	return &Service{db: db, events: events, accounts: accounts, sides: sides, now: time.Now}
+	// With no shop service to ask, every shop is REFUSED rather than trusted — an expense naming no shop never asks.
+	if shops == nil {
+		shops = noShops{}
+	}
+
+	return &Service{db: db, events: events, accounts: accounts, sides: sides, shops: shops, now: time.Now}
 }
 
 // The date layout every cost date crosses the wire in. A DATE, not a timestamp: nobody records the
@@ -96,6 +104,10 @@ func costErr(err error) error {
 		// NotFound, never PermissionDenied: another team's cost must be indistinguishable from one that
 		// does not exist, or the error itself confirms the id.
 		return connect.NewError(connect.CodeNotFound, errCostMissing)
+	case errors.Is(err, errShopNotTheTeams):
+		// The same rule for the shop an expense names: another team's shop reads as one that never existed
+		// (settlement-and-expense-ask-the-shop-first).
+		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errAdjustsAnAdjustment), errors.Is(err, errBelowZero), errors.Is(err, errNotOperational):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:

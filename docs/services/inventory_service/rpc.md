@@ -58,7 +58,7 @@ counts it in, and *the accept is what receives the stock*. The design is
 | `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace; every product the team's own, asked before the lock, as create. **Ongoing:** every field, the paying account required — a CHANGED account must be active and operational (asked before the lock, judged under it); an unchanged one is kept even if archived or un-marked since; a resi or an Order ID another restock of the team holds is AlreadyExists, as create (the restock itself is never its own duplicate). **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged, with what it changed under it — each field before and after, see [what an edit changed](#what-an-edit-changed--the-trail-rows-changes-built-2026-11-16). An edit that moves money announces *Restock Updated* |
 | `RestockRequestNoteSet` | selling team | any status, unchanged | the selling team's note ALONE, in every status — ongoing, arrived, accepted, lost, cancelled; under the restock's `FOR UPDATE`; scoped to the raising team (the warehouse and a third team read NotFound). A changed note stamps its own writer and time and is an edit's trail row with the note before and after; the same note again writes nothing; no money event — see [the selling note](#the-selling-note--its-own-writer-kept-in-any-status-built-2026-11-16) |
 | `RestockRequestWarehouseNoteSet` | receiving warehouse | any status, unchanged | the receiving warehouse's OWN note on the restock, in every status (when it may be written is not decided); under the restock's `FOR UPDATE`; scoped to `warehouse_id` (the selling team, another warehouse and an unknown id read NotFound). A changed note stamps its own writer and time and is an edit's trail row with the warehouse note before and after; the same note again writes nothing; no money event — see [the warehouse's note](#the-warehouses-note--its-own-writer-written-by-the-receiving-warehouse-built-2026-11-16) |
-| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | signs for the box: who and when, a trail row; moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update |
+| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | signs for the box: who and when, a trail row; moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update. Takes the courier's charge, its note and its slip, optional, under Accept's rules, and keeps them on the restock — no money moves; Terima's figure replaces it (built 2026-11-18, see [the charge noted at Tiba](#restockrequestarrive--the-couriers-charge-noted-at-tiba-built-2026-11-18)) |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
 | `RestockRequestMarkLost` | selling team | ongoing → lost | gives the parcel up: who and when, a trail row carrying the optional why; moves no money. Ongoing only — a box in the building is not lost. A lost restock is neither accepted nor cancelled; only signing for a late box brings it back |
 | `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row and announced in *Restock Cancelled* |
@@ -132,6 +132,39 @@ case (taken under a parallel e2e run's CPU load — the unfiltered page measured
 (`(team_id, shipment_id)` + `(warehouse_id, shipment_id)`, throwaway) took the courier COUNT 3.1 → 1.2 ms and a deep
 page 4.5 → 1.4 ms — **not added**: the read is far under every audit threshold, and the order list's same filter
 (≈6 ms over 50 000 orders) carries none. No migration, no audit file.
+
+### RestockRequestList — each accepted row's missing and broken counts (built 2026-11-19, backlog #89)
+
+Both lists draw *kurang N · rusak N* on an accepted row from each line's `problems`, by kind and count
+([the-restock-tags-prototype-is-accepted](../../technical/frontend/restock_decision.md#the-restock-tags-prototype-is-accepted),
+[a-restock-problem-is-a-system-tag](../../business/inventory/restock_decision.md#a-restock-problem-is-a-system-tag)). The
+list preloads the lines only (#154 — no problem rows, no placements), so until this no row ever showed a count while the
+stories, whose stub carried the rows whole, passed. `withRestockProblemCounts` (`restock_request_list.go`) fills them
+with ONE grouped statement per page, after the page and its tags:
+
+```mermaid
+flowchart LR
+    P["the page's restocks"] --> A{"any accepted?"}
+    A -->|"no"| N["nothing asked"]
+    A -->|"yes"| Q["SELECT restock_id, product_id, problem_type, SUM(count) FROM restock_problem_items WHERE restock_id IN (accepted ids) GROUP BY the three"]
+    Q --> L["each count onto the line with that restock AND product - type and count only"]
+```
+
+| | |
+| --- | --- |
+| what a row carries | per line and kind, the units — `RestockProblemItem.type` + `count` only: no `price_unit` / `total` (a list row is read by both sides, [a-warehouse-sees-no-seller-money](../../business/order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money)), no `note`, no `photo_file`, no placements — the detail reads them whole |
+| which rows | accepted restocks only (the accept is the only write of problem rows); `missing_by_correction` stays the detail's — a list row's *kurang* is the door's |
+| keyed by | restock AND product (a product appears once per restock): one restock's rows never land on another's line of the same product |
+| the stub | `.storybook/restockStub.ts` gives a list row the same shape (counts, accepted rows only, no placements) and a `RestockRequestByIds` row no door rows at all, as `restock_request_by_ids.go` builds it |
+| pinned by | `TestRestockRequestList_EveryAcceptedRowCarriesItsMissingAndBroken`: an accepted restock 3 missing + 2 broken on one line reads exactly that on both sides; a clean one and an ongoing one read none; another selling team's restock into the same warehouse is never on the seller's list and reads only its own on the warehouse's; no money, note or photo on a row; the list's counts = the detail's. Mutation-checked (no fill; keyed by product alone; a price on a row) |
+
+**Performance** — `TestPerf_RestockRequestListProblemCounts` (50 000 restocks, 4 in 5 accepted, 150 000 lines, 100 000
+trail rows, 20 834 problem rows). Old and new on ONE seed in one process (old/new, then new/old, 14 runs each): 5 → 6
+statements in every case; median wall selling 20 4.98 → 5.20 ms, selling 200 10.04 → 12.76 ms, page 100 of 20
+7.58 → 7.53 ms, the Accepted tab 5.84 → 6.01 ms, a warehouse's 20 5.34 → 6.08 ms, its 200 10.25 → 13.43 ms. A page of 20
+is an index scan on `restock_problem_items_one_per_kind` (restock_id, product_id, problem_type), 0.04 ms executed; a page
+of 200 the planner reads as a seq scan of the 20 834-row table (1.9 ms) — the key already serves, so **no index added**.
+No migration, no audit file.
 
 ### RestockReceiptPhoto — the warehouse opens the label photo
 
@@ -422,6 +455,7 @@ flowchart LR
 | | |
 | --- | --- |
 | the words | the same `CountedError` the release refuses with (`RefuseCounted`), so the cancel's refusal and a refused release name the same count |
+| who started it | named by display name before it is returned — selling puts these words in the seller's toast (`nameCountStarters`, see *Who started the count, by name* under the opname's lock) |
 | a courtesy, not the lock | a count planned after it answered still stops the release on `OrderCancelled`, which errors and is redelivered (`TestRace_OrderCancelled_RacingACountStartWaitsForIt`) |
 | performance | 3 statements, ≈1 ms at 1 line and 20 — `TestPerf_OrderCancelled`; index lookups on `idempotency_order_check`'s key and `product_placement_logs_transaction_idx` |
 
@@ -491,12 +525,43 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| request | `warehouse_id` (`use_scope`, gt 0) · `transaction_id` (gt 0). `2` / `ref` reserved |
+| request | `warehouse_id` (`use_scope`, gt 0) · `transaction_id` OR `transaction_ids` (1–50, unique, each gt 0) — exactly one of the two (message CEL `stock_pick_locations.one_or_many_takes`; neither or both is InvalidArgument). `2` / `ref` reserved |
+| answer | each location names its take (`StockPickLocation.transaction_id`, 6) — on the single-take answer too; ordered take → product → rack code |
 | policy | unchanged — root, administrator, warehouse owner / admin / staff; `NO_SIDE_EFFECTS` |
 | another building | a transaction taken in another warehouse reads as an EMPTY walk — the `warehouse_id` filter, not an error |
 | netting | the take and its rollback net per rack; a released take nets to zero and drops out (empty walk) |
 | unknown transaction | empty walk, not an error |
 | performance | 1 query, ≈0.5 ms at 1 and 20 lines over 50 000 placement log rows — index scan on `product_placement_logs_transaction_idx` (`TestPerf_StockPickLocations`); not heavy, no audit file |
+
+#### Many takes at once — the bulk pick list (built 2026-11-18)
+
+[the-bulk-pick-list-prototype-is-accepted](../../technical/frontend/warehouse_order_list_decision.md#the-bulk-pick-list-prototype-is-accepted):
+the page `/warehouse-orders/bulk-pick?ids=…` reads the ticked orders' lines from selling
+([OrderPickLines](../selling_service/rpc.md#the-bulk-pick-lists-orders--orderpicklines)), then every take's racks in ONE
+call. The single pick page still sends `transaction_id`; both forms are the same one statement
+(`l.transaction_id IN ? AND l.warehouse_id = ?`, grouped and ordered by take first).
+
+```mermaid
+sequenceDiagram
+    participant UI as bulk pick page
+    participant S as selling OrderPickLines
+    participant H as StockPickLocations
+    participant DB as Postgres
+    UI->>S: team_id W, order_ids 1 to 50
+    S-->>UI: the orders shipping from W, each with its take T and lines
+    UI->>H: warehouse_id W (scoped), transaction_ids [T1 .. Tn]
+    H->>DB: product_placement_logs WHERE transaction_id IN (T1 .. Tn) AND warehouse_id = W
+    Note over DB: JOIN placements, GROUP BY take, product, rack — SUM(-stock_change) HAVING > 0
+    DB-->>H: per take, per product, per rack, the net taken
+    H-->>UI: every stop named by its take, take then product then rack
+```
+
+| | |
+| --- | --- |
+| the cap | `transaction_ids` 1–50, unique, each gt 0 — the warehouse list's largest page (one tick of its head), the same cap as selling's `OrderPickLines` and `OrderLabels`. It is what keeps the unpaged answer inside the HARD RULE 9 exemption the proto states |
+| another building | a take of another warehouse adds nothing (the `warehouse_id` filter); a released take nets to zero and drops out; an unknown id adds nothing — the rest of the walk stands |
+| tests | `TestStockPickLocations_ManyTakesNameEachStopByItsTake` (three takes meeting on one rack come back per take, each equal to its single read), `…_ManyTakesReadOnlyThisWarehouse`, `…_OneOrManyTakesAtMostFifty`; the single-take tests unchanged |
+| performance | ONE statement whatever the count — 1 take ≈0.56 ms, 50 takes ≈1.3 ms (≈1.1 ms under the generic plan pgx settles on), over 500 000 placement log rows: a bitmap index scan on `product_placement_logs_transaction_idx` (`transaction_id = ANY(…)`), the warehouse a filter on the ≈200 rows found (`TestPerf_StockPickLocationsManyTakes`, asserts one statement). No index added — nothing to gain; not heavy, no audit file |
 
 ### StockTakeQuote — what the take WOULD draw
 
@@ -1198,14 +1263,14 @@ sequenceDiagram
 | | |
 | --- | --- |
 | who | the selling team's roles, the edit's (Root, Administrator, Selling Owner / Admin / CS), scoped to the RAISING team; the receiving warehouse, a third team and an unknown id read NotFound. A write: not `NO_SIDE_EFFECTS`, so neither an agent nor the monitoring admin team reaches it |
-| when | every status — ongoing, arrived, accepted, lost, cancelled (owner: *"catatan bisa diedit kapanpun"*). The screen sends it past the restock's way; on its way it still sends the restock back whole through `RestockRequestUpdate`, as the decision says |
+| when | every status — ongoing, arrived, accepted, lost, cancelled (owner: *"catatan bisa diedit kapanpun"*). The screen's Ubah (the list's Catatan dialog and the restock page) sends it in EVERY status — on its way too since 2026-11-18 (#71): it sent the restock back whole through `RestockRequestUpdate` there, so a dialog opened before a colleague's line edit wrote the old lines back over it. The edit form still saves through `RestockRequestUpdate` |
 | what moves | the note, its writer and time, `updated_at`; never a line, a status, the money or the references — so no *Restock Updated* event |
 | the trail | a changed note is an edit's row (status unchanged, *edited*, the actor and override stamped) with ONE `restock_log_changes` row, `note`, before and after — what [an edit's changes](#what-an-edit-changed--the-trail-rows-changes-built-2026-11-16) are made of; the same note again writes no row |
 | the writer | stamped by the RAISE (empty note or not), by an ongoing `RestockRequestUpdate` only when it changes the note, and by a note set that changes it; an edit of a line, the resi or the money leaves it. An arrived `RestockRequestUpdate` still refuses a note change (the lines only) — past the restock's way the note is the note set's |
 | an old note | written before `00050`: `0` / `0` / `false` on the wire, nothing invented — the screen falls back to the restock's last raise or edit and says it is that (`restock-detail-note-selling-by-fallback`); the next change of the note names its writer |
 | concurrency | the restock's existing `FOR UPDATE` (the lock Update, Arrive, Accept, MarkLost and Cancel take), then the restock UPDATE, the log row, its change — the order every edit already writes in. Proved by `restock_request_note_set_race_test.go`: eight writers at once × 5 rounds, the note changes chain (each before is the previous after) and the stored writer is the last change's; a note set racing the edit form, both orders hit, writer and trail agree. Mutation-checked: without the lock the chain breaks in the first round |
 | cost | 50 000 restocks: a changed note 6 statements (savepoint, the row by `restocks_pkey`, the UPDATE, two INSERTs, the lines by `restock_items_restock_idx`), median 3.1 ms; the same note 3, 1.1 ms (`restock_request_note_set_perf_test.go`). Fast; no audit file |
-| tests | `restock_request_note_set_test.go` — the writer stamped only when the note changes (raise, line edit, note edit), a late note kept in each of the five statuses with its trail row and no money event, clearing it, the same note writing nothing, only the raising team, the policy, the override stamp, an old row with no writer |
+| tests | `restock_request_note_set_test.go` — the writer stamped only when the note changes (raise, line edit, note edit), a late note kept in each of the five statuses with its trail row and no money event, clearing it, the same note writing nothing, only the raising team, the policy, the override stamp, an old row with no writer; on its way, a line edit made while the note was open is kept and the row is exactly the edit form's note-only row (`OnItsWayALineEditMadeWhileTheNoteWasOpenIsKept`, `OnItsWayItsRowIsTheEditFormsNoteRow` — the first red when the save is the old whole-restock update) |
 
 ## The warehouse's note — its own writer, written by the receiving warehouse (built 2026-11-16)
 
@@ -1276,7 +1341,7 @@ the table it sits above.
 | `restock_count` | `COUNT(*)` over the pending REQUESTS | Over requests, not the item join — a two-line delivery is **one** delivery. 3 deliveries of 400 pieces and 30 of 400 are the same stock and completely different amounts of door-opening. |
 | `product_count` | **DISTINCT** `product_id` across the queue | Counting LINES reports 4 for one product on four deliveries. It is one thing to find a shelf for, and put-away is the job this number sizes. |
 | `unit_count` | Σ ordered `count` | The **asked** quantity — nobody has counted these yet, which is exactly why they are in the queue. |
-| `amount` | Σ line `total`, a double | **Goods only.** Shipping is what the buying team paid to get them moving and the courier's charge is 0 until someone accepts, so either would answer a question about somebody else's spending. |
+| `amount` | Σ line `total`, a double | **Goods only.** Shipping is what the buying team paid to get them moving and the courier's charge is the warehouse's own outlay (noted at Tiba, final at Terima), so either would answer a question about somebody else's spending. |
 | `oldest_pending_unix` | `MIN(created_at)` over the REQUESTS | Over requests, not their lines — a line-less request still waits at the door, and a MIN over the item join would skip it. A count of 7 hides the box that has sat since Monday. |
 
 **Still coming is the whole meaning of it** — on its way, or at the door not yet counted. An accepted restock has
@@ -1298,7 +1363,7 @@ freight.
 
 | | |
 | --- | --- |
-| which money | `warehouse_additional_cost`, written by the accept alone ([the-warehouse-cost-is-the-couriers-charge-at-the-door](../../business/inventory/restock_decision.md#the-warehouse-cost-is-the-couriers-charge-at-the-door)) |
+| which money | `warehouse_additional_cost`, final at the accept — Tiba may note it first, and Terima's figure replaces it ([the-warehouse-cost-is-the-couriers-charge-at-the-door](../../business/inventory/restock_decision.md#the-warehouse-cost-is-the-couriers-charge-at-the-door), [the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima)) |
 | which restocks | `warehouse_id = team`, `status = accepted`, `accepted_at` in `[from_unix, to_unix]` — both ends in, as the list's accepted-date filter — and a charge above 0 |
 | the answer | `restock_count` (the restocks that carried a charge) and `amount` (their sum, a double) |
 | the window | required, forward (`to_unix >= from_unix`, proto CEL). The screen asks for this Jakarta month: 00:00 WIB on the 1st through 23:59:59 WIB today. Not narrowed by the list's FROM lens — that restates the queue's question |
@@ -1325,7 +1390,7 @@ flowchart LR
 | | |
 | --- | --- |
 | which restocks | the LIST'S predicate (`restockListScope`) on a COPY of the filter with its status cleared — the census answers every status at once and the tab picks the pile — ANDed with `team_id = team`: never the list's other side, the restocks coming to the team as a warehouse ([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)) |
-| a pile | `restock_count`; `unit_count` = Σ the lines' ORDERED `count`, on every status, an accepted one included ([jumlah-barang-counts-the-pieces-ordered](../../technical/frontend/restock_decision.md#jumlah-barang-counts-the-pieces-ordered)); `product_count` = different products; `goods_value` Σ `subtotal`; `shipment_cost`; `courier_charge` Σ `warehouse_additional_cost`, OUTSIDE `value` ([the-couriers-charge-stays-out-of-total](../../business/inventory/restock_decision.md#the-couriers-charge-stays-out-of-total)); `value` Σ `total` = goods + freight |
+| a pile | `restock_count`; `unit_count` = Σ the lines' ORDERED `count`, on every status, an accepted one included ([jumlah-barang-counts-the-pieces-ordered](../../technical/frontend/restock_decision.md#jumlah-barang-counts-the-pieces-ordered)); `product_count` = different products; `goods_value` Σ `subtotal`; `shipment_cost`; `courier_charge` Σ `warehouse_additional_cost`, OUTSIDE `value` ([the-couriers-charge-stays-out-of-total](../../business/inventory/restock_decision.md#the-couriers-charge-stays-out-of-total)) — since 2026-11-18 an arrived restock's charge noted at Tiba too ([the charge noted at Tiba](#restockrequestarrive--the-couriers-charge-noted-at-tiba-built-2026-11-18)); `value` Σ `total` = goods + freight |
 | the total | every status; its `product_count` is the grouping set's `()` row over every status's lines together — never the largest pile's, never their sum |
 | `by_status` | one entry per status that HAS restocks under the filter; an empty status is absent (OrderStat's convention) |
 | `by_account` | per status × `finance_account_id` ([a-restock-names-its-paying-account](../../business/inventory/restock_decision.md#a-restock-names-its-paying-account)): count and value. Account 0 — a restock raised before naming one was required — is a row of its own, so a status's rows add up to its pile (*not asked — the build's default*). The screen names each by id (`FinancialAccountByIds`), an archived account included |
@@ -1532,6 +1597,116 @@ The handler under the soon filter: ≈ 54 ms median wall (3 statements). Test:
 `TestBatchList_ExpiringSoonCountsOnlyBatchesWithUnitsLeft` (an emptied batch expiring in 10 days is neither listed under
 the filter nor counted; one with units is; the unfiltered list still shows both) — mutation-checked on each half.
 
+## RestockRequestArrive — the courier's charge noted at Tiba (built 2026-11-18)
+
+The warehouse may note the courier's charge as it signs for the box — the amount, its note and the photo of the slip —
+and the restock keeps it in the columns Terima writes (`warehouse_additional_cost`, `_note`, `_file`). Terima opens with
+it and its figure is final: it **replaces** Tiba's, never adds to it. The money moves only at Terima
+([the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima),
+[the-cod-can-be-noted-when-the-box-arrives](../../technical/frontend/restock_decision.md#the-cod-can-be-noted-when-the-box-arrives)).
+
+```mermaid
+sequenceDiagram
+    participant W as warehouse (sign dialog)
+    participant H as RestockRequestArrive
+    participant DB as restocks
+    participant A as RestockRequestAccept
+    participant BAL as liability
+    W->>H: team, restock, charge + note + slip (all optional)
+    H->>H: charge above 0 without a note → InvalidArgument, nothing written
+    H->>DB: SELECT … FOR UPDATE (the restock row, as before)
+    H->>DB: status arrived, arrived_by/at, the charge, its note, the slip (only with a charge)
+    Note over H,BAL: no event, no money — a sign publishes nothing
+    W->>A: Terima, opened with Tiba's charge, note and slip — edited or not
+    A->>DB: the same row FOR UPDATE, then Terima's charge, note and slip — REPLACING Tiba's
+    A--)BAL: Restock Accepted after commit, carrying Terima's figure — the selling team's debt, once
+```
+
+| | |
+| --- | --- |
+| the request | `RestockRequestArriveRequest.warehouse_additional_cost` (3, `double`, ≥ 0, finite), `_note` (4, ≤ 200), `_file` (5, ≤ 500) — Accept's three fields, Accept's rules |
+| validation | as Terima's: a charge above 0 needs its note (`errRestockCostNoteMissing`, InvalidArgument, checked before the transaction); a slip without a charge is dropped; a negative or non-finite charge is the contract's to refuse |
+| stored | on the restock row the sign already updates, in the same `UPDATE` as the status — no migration (the columns are 00024's and 00052's) |
+| the slip | uploaded by the dialog the moment it is picked, under the restock's warehouse — Terima's way (`useReceiptUpload`, an order receipt); both detail pages read it back through `RestockDoorPhotos` as they read Terima's |
+| shown | the selling page's Ongkir COD section and the warehouse page's Kiriman fact show a charge noted at Tiba as they show Terima's, its line saying it is noted — final at Terima, owed from then |
+| Terima | opens with the charge, its note and its slip (the slip as a kept photo, its link from `RestockDoorPhotos`); what it sends is stored as is — Tiba's untouched, changed, or removed (0 / no slip) |
+| money | none at Tiba: Arrive publishes no event, and liability posts the courier's debt only from *Restock Accepted* ([balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)), which carries Terima's figure. A box signed for can no longer be lost or cancelled (both ongoing-only), so a noted charge reaches money only through Terima |
+| figures | `RestockCodPaidStat` counts accepted restocks only, so a charge only noted at Tiba is not in *Ongkir COD dibayar* until Terima. `RestockSellingStat`'s `courier_charge` sums the column on every status, so an arrived restock's noted charge shows under its status (Tiba) — the restock's own figure, as its page shows it *(Not asked — the build's default)* |
+| concurrency | the restock row's existing `FOR UPDATE` — no new lock, the charge is three more columns in the sign's own `UPDATE`. A sign racing Terima: sign first → Terima replaces its charge; Terima first → the sign is refused (FailedPrecondition, a counted box has nothing to sign). `TestRace_RestockArriveCharge_TerimasFigureWinsWhenItCommitsLast` (16 rounds, both orders hit): Terima's figure, note and slip kept every round, *Restock Accepted* once with it. Mutation-checked: without the sign's lock, Tiba's charge overwrote Terima's and the status fell back to arrived in round 1 |
+| tests | `restock_request_arrive_charge_test.go` — kept and read back by both sides (slip signed for both); Terima's validation; no money (no event, no liability call; lost and cancel refused after the sign); Terima's figure replaces Tiba's (stored, one event, the landed price); Tiba's sent untouched posts once, Terima's none drops it; a late lost box takes the charge; a charge on a counted box refused. Each mutation-checked |
+
+## Restock tags (built 2026-11-18, backlog #87)
+
+A restock carries **tags**; both restock lists show and filter by them, and both sides of a restock tag it
+([a-restock-tag-is-system-or-custom](../../business/inventory/restock_decision.md#a-restock-tag-is-system-or-custom),
+[custom-tags-are-shared-system-tags-are-the-admins-and-the-apps](../../business/inventory/restock_decision.md#custom-tags-are-shared-system-tags-are-the-admins-and-the-apps),
+[a-restock-problem-is-a-system-tag](../../business/inventory/restock_decision.md#a-restock-problem-is-a-system-tag),
+[the-restock-tags-prototype-is-accepted](../../technical/frontend/restock_decision.md#the-restock-tags-prototype-is-accepted)).
+One app-wide list (`tags`, database-schema.md *Restock tags*), a name one tag whatever its case. The messages are in
+`proto/warehouse/inventory/v1/restock_tag.proto`, the RPCs on `RestockRequestService`; the handlers are
+`inventory_v1/restock_tag_*.go`, `restock_request_tag_*.go`, `restock_request_system_tag_*.go` on `restock_tags.go`.
+
+| RPC | who (proto policy) | what |
+| --- | --- | --- |
+| `RestockTagList` | every team role; a READ, so the admin team's monitor reaches it | the app-wide list, the system's first then by name, `q` narrowing, paged (a picker asks one large page) |
+| `RestockTagManageList` | Root, Administrator | the same, each tag's `restock_count` (every team's) — *Kelola tag* |
+| `RestockTagCreate` | Root, Administrator, every selling / warehouse role | a **custom** tag; a name that exists, any case, answers THAT tag with `created` false — never a twin |
+| `RestockTagSystemCreate` | Root, Administrator | a **system** tag, same answer for a name that exists |
+| `RestockTagRename` | Root, Administrator | a name another tag carries → AlreadyExists; an app tag → FailedPrecondition |
+| `RestockTagDelete` | Root, Administrator | takes it off every restock and says how many (`restock_count`); an app tag → FailedPrecondition |
+| `RestockRequestTagAdd` / `Remove` | Root, Administrator, every selling / warehouse role (not a monitor) | a **custom** tag on / off a restock the caller's team is a side of (the seller's own, the warehouse's incoming) — another team's is NotFound; a system tag → PermissionDenied |
+| `RestockRequestSystemTagAdd` / `Remove` | Root, Administrator | an admin's **system** tag on / off; a custom tag → InvalidArgument; an app tag → FailedPrecondition |
+
+- **Why the admin acts are their own messages**: inside a team scope `GetCallerRole` answers the scope's role, so a
+  handler cannot tell Root from a team's owner; the platform roles are the proto's `request_policy` on separate
+  requests, and the interceptor refuses everyone else before the handler runs.
+- **Every status** (the owner's 🔄 under the accept, as
+  [the-note-is-edited-in-any-status](../../technical/frontend/restock_decision.md#the-note-is-edited-in-any-status)): a
+  tag goes on and comes off an ongoing, arrived, accepted (Diterima), lost or cancelled restock alike
+  (`TestRestockRequestTagAdd_InEveryStatus`). A put-on already on, or a take-off not on, is no change; both answer the
+  restock's tags after. Who put a tag on is kept on its row (`added_by_user_id`, `added_by_is_override`); no trail row.
+- **The app's tags are locked** for everyone, admins included: *Barang kurang* / *Barang rusak* (`app_task`) are never put
+  on, taken off, renamed or deleted by hand. When one comes off waits on the problem's solution (not decided).
+
+```mermaid
+sequenceDiagram
+    participant U as a side's user
+    participant H as RestockRequestTagAdd
+    participant DB as restocks / tags / restock_tags
+    participant D as RestockTagDelete (admin)
+    U->>H: team, restock, tag
+    H->>DB: the restock has the team as a side? (else NotFound)
+    H->>DB: SELECT tag … FOR KEY SHARE (gone → NotFound)
+    H->>H: custom? (system → PermissionDenied)
+    H->>DB: INSERT restock_tags … ON CONFLICT DO NOTHING
+    H-->>U: the restock's tags
+    D->>DB: SELECT tag … FOR UPDATE — waits for a put-on in flight
+    D->>DB: COUNT, DELETE tag (cascade takes it off every restock)
+```
+
+**Terima puts the problem tags on.** `RestockRequestAccept` writes, in its own transaction after the problem rows,
+*Barang kurang* when it recorded missing units and *Barang rusak* when broken ones (`putAppTags`, one statement, the app
+as the hand) — a refused accept leaves the restock untagged (`restock_request_accept_tags_test.go`). Migration `00055`
+tagged the restocks already accepted with problem rows the same way.
+
+**The list filter.** `RestockRequestListFilter.tag_ids` (12): none = any tag; several = a restock carrying **ANY** of
+them, as `EXISTS (SELECT 1 FROM restock_tags rt WHERE rt.restock_id = restocks.id AND rt.tag_id IN ?)` inside
+`restockListScope` — so `RestockRequestList`, `RestockSellingStat` and `RestockRequestExport` narrow alike (the #72 matrix
+test `TestRestockSellingStat_EveryFilterNarrowsAsTheList` carries it: every filter × both teams, the cards equal the tab
+totals), and a restock with two picked tags is one row. **Reads carry tags**: `RestockRequest.tags` (52) on the list's
+rows and the detail (`withRestockTags`, one statement per page); the export's file has a *Tag* column after Status
+(names joined, the system's first).
+
+**Volume** (`restock_tags_perf_test.go`, perfaudit: 50 000 restocks, 23 400 `restock_tags`): every list case 3.7–27 ms
+median (the problem list 14 ms on page 1, 27 ms on page 50; the selling statistics 10 ms). The pure index
+`restock_tags_tag_idx (tag_id, restock_id)` (in `00055`, a-pure-index-is-added-without-asking) takes a rare tag's list
+from 7.7 to 3.7 ms, the admins' per-tag count from 7.6 to 4.1 ms and the delete's take-off from 1.69 to 0.11 ms; the
+problem list is driven by the team's own scope either way.
+
+**Races** (`restock_tags_race_test.go`, raceaudit): eight creates of one new name in five spellings → one tag, one
+`created`; a put-on against a delete, both orders → never a row left on a deleted tag (the put-on lands and is taken
+off, or is NotFound); two renames onto one name → one lands, the other AlreadyExists.
+
 ## RestockRequestAccept — the expiry read off the box (2026-11-15)
 
 Each accept line carries an optional `expires_on` — a Jakarta day, `YYYY-MM-DD`, empty = none
@@ -1630,7 +1805,7 @@ sequenceDiagram
     INV->>INV: the page's batches (unchanged statements)
     INV->>INV: collect the page's distinct return transactions
     alt the page holds a return's batch
-        INV->>ROOT: ReturnOrders.OrderIDsByReturnTransactions(ids) — ONE call
+        INV->>ROOT: SellingOrders.OrderIDsByReturnTransactions(ids) — ONE call
         ROOT->>SELL: plain function over selling's own table
         SELL-->>INV: transaction to order id (orders_return_transaction_idx)
     end
@@ -1639,7 +1814,7 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| the seam | inventory's `ReturnOrders` (`inventory_v1/return_orders.go`), the 9th `NewService` dep (nil = names none); the composition root's `NewInventoryReturnOrders(db)` (`cmd/app_development/return_orders.go`) calls selling's PLAIN function `selling_v1.OrderIDsByReturnTransactions` — the `productHistory` shape: a `*selling_v1.Service` dep would close a Wire cycle, selling already takes stock through inventory (`stock_picker.go`) |
+| the seam | inventory's `SellingOrders` (`inventory_v1/return_orders.go`; named `ReturnOrders` until 2026-11-18, when it also took the lost order a found names — [below](#a-found-naming-a-lost-order)), the 9th `NewService` dep (nil = names none); the composition root's `NewInventoryReturnOrders(db)` (`cmd/app_development/return_orders.go`) calls selling's PLAIN function `selling_v1.OrderIDsByReturnTransactions` — the `productHistory` shape: a `*selling_v1.Service` dep would close a Wire cycle, selling already takes stock through inventory (`stock_picker.go`) |
 | one call per page | the page's return transactions, deduplicated; no call when the page holds no return's batch; never one per row |
 | what leaves selling | order ids only — no money, no status. The batch read is already scoped to the warehouse holding the batches, which is the warehouse that accepted those returns |
 | a label, not the read | the order side failing logs a warning and the batches read as before (`return_order_id` 0, *Retur* with no link) |
@@ -1902,6 +2077,37 @@ waits any more (`StockPickLocation` field 5 is reserved). `RackStockLine.countin
 Sample dialogs. `RackDelete` is refused while an open row names the rack or an `all` count runs
 ([a-rack-a-count-holds-cannot-be-deleted](../../business/inventory/opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)).
 
+**Who started the count, by name** (built 2026-11-19, backlog #90 —
+[an-abandoned-count-waits-for-the-admin](../../business/inventory/opname_decision.md#an-abandoned-count-waits-for-the-admin)):
+a refusal says *count #12, started by Ani at 2026-11-13 17:00 WIB*, not *user #25*. The lock rows know only the
+starter's id and the person is user_service's, so the name is read AFTER the refusal, outside its transaction, through
+the one by-id user read inventory already names people with — the export store's `UserNames` (UserByIDs as the caller,
+`cmd/app_development/restock_exports.go`) — and filled into the refusal in place (`CountLock.StartedByName`,
+`RackCountedError.StartedByName`; `inventory_v1/count_lock_names.go`). No new dependency, no wiring change.
+
+```mermaid
+sequenceDiagram
+    participant C as the caller
+    participant I as CountRefusalNames (inventory, inside the shared chain)
+    participant H as the handler
+    participant U as UserByIDs (user_service, as the caller)
+    C->>I: a write RPC
+    I->>H: next
+    H-->>I: FailedPrecondition - CountedError, CountedLinesError or RackCountedError
+    I->>U: the starters' ids, one read
+    U-->>I: their names
+    I-->>C: the same refusal, now naming the person
+```
+
+| | |
+| --- | --- |
+| over HTTP | `CountRefusalNames`, a unary interceptor mounted for every inventory handler in `register.go`, inside the shared chain (so the read runs as the caller) — every refusal `countedRefusal` maps |
+| in process | the seams a person's refusal comes back through name it themselves before it is put into words: `OrderTransactionCreate` (the order's take), `StockLockCheck` (the cancel's check, the seller's toast), `OrderTransactionReturn` (the return accept); a second count while one is active (`opnameActiveRefusal`) asks `countStarter` |
+| when it cannot be read | no store wired, the read failing, no such user, no caller (an event's redelivery) — the refusal names the user id, as before |
+| the when | unchanged: the date and time in WIB (`2006-01-02 15:04 MST`) |
+| cost | none until a refusal; then one user read for every starter it names |
+| pinned by | `TestCountRefusal_NamesWhoStartedTheCount` (the cancel's check, a rack delete and a move over HTTP through `NewRegister`, the order's take, the return accept, a second count) and `TestCountRefusal_WithNoNameNamesTheUserID`. Mutation-checked (the name ignored, the interceptor unmounted, each in-process call removed) |
+
 ### A row's life
 
 ```mermaid
@@ -2046,6 +2252,28 @@ request serialise on its row: whichever is second finds it decided. Proved in `f
 > ⚠ **Two identical reports are two requests** — `FoundRequestCreate` has no idempotency key, on purpose (none was
 > decided). A double click writes two WAITING rows; the approver sees both and rejects one
 > ([concurrency audit](../../../audits/services/inventory_service/concurrency/FoundRequest.md)).
+
+### A found naming a LOST order
+
+Built 2026-11-18 ([a-found-lost-parcel-is-a-found-stock-in](../../business/order/context_decision.md#a-found-lost-parcel-is-a-found-stock-in)).
+A parcel of an order gone `lost` that turns up at the warehouse it shipped from is the same one door with
+`FoundRequestCreateRequest.order_id` set; the request carries it back as `FoundRequest.order_id` (0 = none).
+
+| | |
+| --- | --- |
+| the order | read from selling_service through the composition root's order seam (`inventory_v1.SellingOrders.FoundOrder` → `selling_v1.FoundOrderOf`, plain functions over the shared database — selling already depends on inventory, so no `*selling_v1.Service` here), **before** the transaction. Unknown, or not shipped from this warehouse → NotFound (*"no order #… shipped from this warehouse"*); not `lost` → FailedPrecondition naming its status (a live order's parcel comes back as its return); another team's than the product's owner → FailedPrecondition; no take → FailedPrecondition |
+| the product and units | inside the transaction, `inventory_mutations.CheckOrderFound`: the product must be one the order's take drew from the owner's batches (else FailedPrecondition *"…never drew this product…"*), and the units at most what the take drew of it **less every WAITING or APPROVED found already naming the order** (FailedPrecondition *"more units than the lost order took … N more at most"*). A take whose parcel already came back as a return → FailedPrecondition |
+| what is written | the request with `order_id` and `order_take_transaction_id` (`00054`), and — in the SAME transaction — a note on the order's timeline from the warehouse, by the reporter, naming the request (`SellingOrders.NoteFound` → `selling_v1.RecordFoundNote`: status unset, no status move). **The order stays `lost`** ([lost-is-final](../../business/order/context_decision.md#lost-is-final)); the note tells customer service the money is theirs to settle ([a-lost-parcel-is-settled-by-hand](../../business/order/context_decision.md#a-lost-parcel-is-settled-by-hand)) |
+| the approval | `inventory_mutations.PostOrderFoundApproval`, not a count's found: **no loss is claimed, no liability is posted**. It locks the take's transaction row, skips the units earlier approved founds of the order already brought back, and mints ONE batch per take layer, oldest first, at that layer's `price_unit_after` (expiry and supplier carried) — *"the cost the order took them at"*, as a return mints ([a-return-mints-one-batch-per-batch-the-order-took](../../business/inventory/return_decision.md#a-return-mints-one-batch-per-batch-the-order-took)). The lines read `FOUND_REQUEST_POST_TYPE_ORDER_MINT` and count in `minted_amount`; a waiting one previews them the same way. One `found` transaction, the units on the request's rack under the owner |
+| who sees money | the warehouse sees the batch prices it holds — inventory's own; no seller money (order totals, settlement) crosses |
+| unchanged | a found naming no order posts exactly as before (`TestFoundRequestOrder_WithoutAnOrderUnchanged`) |
+
+Lock order: request row → the take's `inventory_transactions` row → the rack row (`RefuseCounted` under it) — two
+approvals of one order's founds queue on the take and the second counts the first's units
+(`TestInterleave_FoundRequestOrder_TheSecondApprovalWaitsOnTheTake`, `TestRace_FoundRequestOrder_NeverBringsBackMoreThanTaken`,
+[lock-order](../../../audits/services/inventory_service/concurrency/lock-order.md)). Two reports racing past the take
+both land (the report takes no lock); the approval caps them. Proved through the real wiring in
+`backend/cmd/app_development/lost_order_found_test.go`.
 
 ## Lost stock on the Analytic composer — `InventoryAnalyticService`
 

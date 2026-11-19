@@ -18,6 +18,10 @@ func NewRegister(
 	inventory *inventory_v1.Service,
 	opts connect.HandlerOption,
 ) san_grpc.RegisterHandler {
+	// Inside the shared chain, so it runs as the caller: a refusal a stock count makes names the person who started the
+	// count, not their user id (an-abandoned-count-waits-for-the-admin, inventory_v1/count_lock_names.go).
+	opts = connect.WithHandlerOptions(opts, connect.WithInterceptors(inventory.CountRefusalNames()))
+
 	return func() san_grpc.ServiceReflectNames {
 		mux.Handle(inventoryv1connect.NewInventoryServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRestockRequestServiceHandler(inventory, opts))

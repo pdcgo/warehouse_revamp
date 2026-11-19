@@ -26,6 +26,14 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 //
 // Built 2026-11-03 (the-found-stock-prototype-is-accepted): table `found_requests` (inventory 00036),
 // inventory_v1/found_request_*.go.
+//
+// A FOUND FROM A LOST ORDER (a-found-lost-parcel-is-a-found-stock-in, docs/business/order/context_decision.md): a parcel
+// of an order gone `lost` that turns up at the warehouse it shipped from is reported through the same door, NAMING THE
+// ORDER (FoundRequestCreateRequest.order_id). The order stays lost (lost-is-final) — the report only writes a note on
+// its timeline naming the request. Approving it claims no loss: it mints the units back under the order's team at THE
+// COST THE ORDER TOOK THEM AT — one batch per batch the order's take drew from, oldest first, after the units earlier
+// approved founds of the order already brought back (FOUND_REQUEST_POST_TYPE_ORDER_MINT). Built 2026-11-18 (inventory
+// 00054).
 service FoundRequestService {
   // Report units found on a rack: a WAITING request, nothing posted (an-adjust-found-waits-for-the-owner-or-admin).
   // Staff report too (staff-may-report-a-found); refused while a stock count holds the product on the rack.
@@ -68,6 +76,10 @@ enum FoundRequestPostType {
   // Nothing (more) to claim: minted as a new batch at the team's newest batch price here — no money moves
   // (last-price-is-the-teams-newest-batch-here).
   FOUND_REQUEST_POST_TYPE_MINT = 2;
+  // A found naming a LOST order: minted as a new batch at the cost the order took the units at — the price the batch
+  // its take drew them from had when they left the shelf (a-found-lost-parcel-is-a-found-stock-in). No loss is claimed
+  // and no money moves.
+  FOUND_REQUEST_POST_TYPE_ORDER_MINT = 3;
 }
 
 // One posting line. On a WAITING request it is what approving NOW would post — read without locks, so another approval
@@ -75,11 +87,13 @@ enum FoundRequestPostType {
 // is what was posted.
 message FoundRequestPostLine {
   FoundRequestPostType type = 1;
-  // A claim: the lost problem's batch, which the units go back into. A mint: 0 until approved, then the minted batch.
+  // A claim: the lost problem's batch, which the units go back into. A mint (an order mint too): 0 until approved, then
+  // the minted batch.
   uint64 batch_id = 2;
   int64 stock_count = 3;
   // Rupiah, double (money-is-double-in-the-api-too). A claim: the lost problem's `price_unit`. A mint: the team's
-  // newest batch price of the product in this warehouse, emptied batches included.
+  // newest batch price of the product in this warehouse, emptied batches included. An order mint: the price the lost
+  // order's take drew those units at.
   double price_unit = 4;
   // Rupiah: stock_count × price_unit.
   double amount = 5;
@@ -144,6 +158,9 @@ message FoundRequest {
   uint64 counting_session_id = 22;
   // SETTLED_BY_COUNT: the stock count whose finalize closed it (a-count-settles-the-found-it-counted). 0 otherwise.
   uint64 settled_by_counting_session_id = 23;
+  // The LOST order whose parcel this is (a-found-lost-parcel-is-a-found-stock-in) — the order's timeline names the request
+  // back. 0 = a found of no order. Its lines are then order mints, never claims.
+  uint64 order_id = 24;
 }
 
 // ── FoundRequestCreate ───────────────────────────────────────────────────────────────────────────────────────────
@@ -174,6 +191,11 @@ message FoundRequestCreateRequest {
   int64 quantity = 4 [(buf.validate.field).int64.gt = 0];
   // What the approver reads to decide.
   string note = 5 [(buf.validate.field).string.max_len = 200];
+  // OPTIONAL — the order whose parcel came back after it went `lost` (a-found-lost-parcel-is-a-found-stock-in); 0 = none.
+  // It must be LOST and shipped from this warehouse, and the product one its take drew for the order's own team, at
+  // most the units the take drew less those already reported found for it. The order stays lost; a note on its timeline
+  // names the request.
+  uint64 order_id = 6;
 }
 
 message FoundRequestCreateResponse {
@@ -182,6 +204,10 @@ message FoundRequestCreateResponse {
   // there is no price to mint it at, so it comes in by the team's restock
   // (a-found-never-stocked-here-is-refused-at-the-report, last-price-is-the-teams-newest-batch-here). NotFound for a
   // rack not in this warehouse or a product that exists nowhere.
+  //
+  // Naming an order: NotFound for an order this warehouse did not ship; FailedPrecondition for one not `lost`, one
+  // whose parcel already came back as its return, a product of another team than the order's, a product its take never
+  // drew, and more units than the take drew less those already reported found for it (waiting or approved).
   FoundRequest found_request = 1;
 }
 
@@ -264,7 +290,8 @@ message FoundRequestApproveRequest {
 
 message FoundRequestApproveResponse {
   // APPROVED, its lines what was posted. FailedPrecondition for any FoundRequestApproveBlock (a request settled by a
-  // count is NOT_WAITING); NotFound for another warehouse's request.
+  // count is NOT_WAITING); NotFound for another warehouse's request. A request naming a lost order is also refused
+  // FailedPrecondition when the founds of that order already approved leave fewer units of the take than it reports.
   FoundRequest found_request = 1;
   // The `found` transaction.
   uint64 transaction_id = 2;

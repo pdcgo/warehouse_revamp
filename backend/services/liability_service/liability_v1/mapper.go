@@ -152,6 +152,8 @@ const (
 	paymentRecorded  = "recorded"
 	paymentConfirmed = "confirmed"
 	paymentRejected  = "rejected"
+	// The payer took its pending claim back (a-pending-payment-is-cancelled-by-its-selling-team). Posts nothing.
+	paymentCancelled = "cancelled"
 )
 
 // paymentStatusProto maps storage to the wire enum. An unrecognised value reads as UNSPECIFIED rather
@@ -168,6 +170,8 @@ func paymentStatusProto(text string) liabilityv1.LiabilityPaymentStatus {
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_CONFIRMED
 	case paymentRejected:
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_REJECTED
+	case paymentCancelled:
+		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_CANCELLED
 	default:
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_UNSPECIFIED
 	}

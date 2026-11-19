@@ -98,6 +98,10 @@ const (
 	// Nothing (more) to claim: minted as a new batch at the team's newest batch price here — no money moves
 	// (last-price-is-the-teams-newest-batch-here).
 	FoundRequestPostType_FOUND_REQUEST_POST_TYPE_MINT FoundRequestPostType = 2
+	// A found naming a LOST order: minted as a new batch at the cost the order took the units at — the price the batch
+	// its take drew them from had when they left the shelf (a-found-lost-parcel-is-a-found-stock-in). No loss is claimed
+	// and no money moves.
+	FoundRequestPostType_FOUND_REQUEST_POST_TYPE_ORDER_MINT FoundRequestPostType = 3
 )
 
 // Enum value maps for FoundRequestPostType.
@@ -106,11 +110,13 @@ var (
 		0: "FOUND_REQUEST_POST_TYPE_UNSPECIFIED",
 		1: "FOUND_REQUEST_POST_TYPE_CLAIM",
 		2: "FOUND_REQUEST_POST_TYPE_MINT",
+		3: "FOUND_REQUEST_POST_TYPE_ORDER_MINT",
 	}
 	FoundRequestPostType_value = map[string]int32{
 		"FOUND_REQUEST_POST_TYPE_UNSPECIFIED": 0,
 		"FOUND_REQUEST_POST_TYPE_CLAIM":       1,
 		"FOUND_REQUEST_POST_TYPE_MINT":        2,
+		"FOUND_REQUEST_POST_TYPE_ORDER_MINT":  3,
 	}
 )
 
@@ -255,11 +261,13 @@ func (FoundRequestListDataType) EnumDescriptor() ([]byte, []int) {
 type FoundRequestPostLine struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  FoundRequestPostType   `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.inventory.v1.FoundRequestPostType" json:"type,omitempty"`
-	// A claim: the lost problem's batch, which the units go back into. A mint: 0 until approved, then the minted batch.
+	// A claim: the lost problem's batch, which the units go back into. A mint (an order mint too): 0 until approved, then
+	// the minted batch.
 	BatchId    uint64 `protobuf:"varint,2,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 	StockCount int64  `protobuf:"varint,3,opt,name=stock_count,json=stockCount,proto3" json:"stock_count,omitempty"`
 	// Rupiah, double (money-is-double-in-the-api-too). A claim: the lost problem's `price_unit`. A mint: the team's
-	// newest batch price of the product in this warehouse, emptied batches included.
+	// newest batch price of the product in this warehouse, emptied batches included. An order mint: the price the lost
+	// order's take drew those units at.
 	PriceUnit float64 `protobuf:"fixed64,4,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
 	// Rupiah: stock_count × price_unit.
 	Amount float64 `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
@@ -392,8 +400,11 @@ type FoundRequest struct {
 	CountingSessionId uint64 `protobuf:"varint,22,opt,name=counting_session_id,json=countingSessionId,proto3" json:"counting_session_id,omitempty"`
 	// SETTLED_BY_COUNT: the stock count whose finalize closed it (a-count-settles-the-found-it-counted). 0 otherwise.
 	SettledByCountingSessionId uint64 `protobuf:"varint,23,opt,name=settled_by_counting_session_id,json=settledByCountingSessionId,proto3" json:"settled_by_counting_session_id,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// The LOST order whose parcel this is (a-found-lost-parcel-is-a-found-stock-in) — the order's timeline names the request
+	// back. 0 = a found of no order. Its lines are then order mints, never claims.
+	OrderId       uint64 `protobuf:"varint,24,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FoundRequest) Reset() {
@@ -587,6 +598,13 @@ func (x *FoundRequest) GetSettledByCountingSessionId() uint64 {
 	return 0
 }
 
+func (x *FoundRequest) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
 type FoundRequestCreateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The warehouse.
@@ -598,7 +616,12 @@ type FoundRequestCreateRequest struct {
 	// The units found. Positive.
 	Quantity int64 `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// What the approver reads to decide.
-	Note          string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	Note string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	// OPTIONAL — the order whose parcel came back after it went `lost` (a-found-lost-parcel-is-a-found-stock-in); 0 = none.
+	// It must be LOST and shipped from this warehouse, and the product one its take drew for the order's own team, at
+	// most the units the take drew less those already reported found for it. The order stays lost; a note on its timeline
+	// names the request.
+	OrderId       uint64 `protobuf:"varint,6,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -668,6 +691,13 @@ func (x *FoundRequestCreateRequest) GetNote() string {
 	return ""
 }
 
+func (x *FoundRequestCreateRequest) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
 type FoundRequestCreateResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// WAITING. FailedPrecondition while a stock count holds the product on the rack, naming the count
@@ -675,6 +705,10 @@ type FoundRequestCreateResponse struct {
 	// there is no price to mint it at, so it comes in by the team's restock
 	// (a-found-never-stocked-here-is-refused-at-the-report, last-price-is-the-teams-newest-batch-here). NotFound for a
 	// rack not in this warehouse or a product that exists nowhere.
+	//
+	// Naming an order: NotFound for an order this warehouse did not ship; FailedPrecondition for one not `lost`, one
+	// whose parcel already came back as its return, a product of another team than the order's, a product its take never
+	// drew, and more units than the take drew less those already reported found for it (waiting or approved).
 	FoundRequest  *FoundRequest `protobuf:"bytes,1,opt,name=found_request,json=foundRequest,proto3" json:"found_request,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1074,7 +1108,8 @@ func (x *FoundRequestApproveRequest) GetFoundRequestId() uint64 {
 type FoundRequestApproveResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// APPROVED, its lines what was posted. FailedPrecondition for any FoundRequestApproveBlock (a request settled by a
-	// count is NOT_WAITING); NotFound for another warehouse's request.
+	// count is NOT_WAITING); NotFound for another warehouse's request. A request naming a lost order is also refused
+	// FailedPrecondition when the founds of that order already approved leave fewer units of the take than it reports.
 	FoundRequest *FoundRequest `protobuf:"bytes,1,opt,name=found_request,json=foundRequest,proto3" json:"found_request,omitempty"`
 	// The `found` transaction.
 	TransactionId uint64 `protobuf:"varint,2,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
@@ -1248,7 +1283,7 @@ const file_warehouse_inventory_v1_found_request_proto_rawDesc = "" +
 	"\x06amount\x18\x05 \x01(\x01R\x06amount\x12\x1d\n" +
 	"\n" +
 	"problem_id\x18\x06 \x01(\x04R\tproblemId\x125\n" +
-	"\x17problem_created_at_unix\x18\a \x01(\x03R\x14problemCreatedAtUnix\"\xa2\a\n" +
+	"\x17problem_created_at_unix\x18\a \x01(\x03R\x14problemCreatedAtUnix\"\xbd\a\n" +
 	"\fFoundRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12!\n" +
 	"\fwarehouse_id\x18\x02 \x01(\x04R\vwarehouseId\x12\x17\n" +
@@ -1275,14 +1310,16 @@ const file_warehouse_inventory_v1_found_request_proto_rawDesc = "" +
 	"\x0etransaction_id\x18\x14 \x01(\x04R\rtransactionId\x12F\n" +
 	"\x05block\x18\x15 \x01(\x0e20.warehouse.inventory.v1.FoundRequestApproveBlockR\x05block\x12.\n" +
 	"\x13counting_session_id\x18\x16 \x01(\x04R\x11countingSessionId\x12B\n" +
-	"\x1esettled_by_counting_session_id\x18\x17 \x01(\x04R\x1asettledByCountingSessionId\"\xdb\x01\n" +
+	"\x1esettled_by_counting_session_id\x18\x17 \x01(\x04R\x1asettledByCountingSessionId\x12\x19\n" +
+	"\border_id\x18\x18 \x01(\x04R\aorderId\"\xf6\x01\n" +
 	"\x19FoundRequestCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
 	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12 \n" +
 	"\arack_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId\x12#\n" +
 	"\bquantity\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\x12\x1c\n" +
-	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note:\v\x92\xb5\x18\a\n" +
+	"\x04note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\x12\x19\n" +
+	"\border_id\x18\x06 \x01(\x04R\aorderId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"g\n" +
 	"\x1aFoundRequestCreateResponse\x12I\n" +
 	"\rfound_request\x18\x01 \x01(\v2$.warehouse.inventory.v1.FoundRequestR\ffoundRequest\"\xac\x02\n" +
@@ -1328,11 +1365,12 @@ const file_warehouse_inventory_v1_found_request_proto_rawDesc = "" +
 	"\x1cFOUND_REQUEST_STATUS_WAITING\x10\x01\x12!\n" +
 	"\x1dFOUND_REQUEST_STATUS_APPROVED\x10\x02\x12!\n" +
 	"\x1dFOUND_REQUEST_STATUS_REJECTED\x10\x03\x12)\n" +
-	"%FOUND_REQUEST_STATUS_SETTLED_BY_COUNT\x10\x04*\x84\x01\n" +
+	"%FOUND_REQUEST_STATUS_SETTLED_BY_COUNT\x10\x04*\xac\x01\n" +
 	"\x14FoundRequestPostType\x12'\n" +
 	"#FOUND_REQUEST_POST_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dFOUND_REQUEST_POST_TYPE_CLAIM\x10\x01\x12 \n" +
-	"\x1cFOUND_REQUEST_POST_TYPE_MINT\x10\x02*\xcf\x01\n" +
+	"\x1cFOUND_REQUEST_POST_TYPE_MINT\x10\x02\x12&\n" +
+	"\"FOUND_REQUEST_POST_TYPE_ORDER_MINT\x10\x03*\xcf\x01\n" +
 	"\x18FoundRequestApproveBlock\x12+\n" +
 	"'FOUND_REQUEST_APPROVE_BLOCK_UNSPECIFIED\x10\x00\x12+\n" +
 	"'FOUND_REQUEST_APPROVE_BLOCK_NOT_WAITING\x10\x01\x12*\n" +

@@ -23,6 +23,8 @@ const STAFF = `e2ecounter${SUFFIX}`;
 const STAFF_PASSWORD = "e2epassword1";
 // The warehouse's Admin — not Root — plans the last count through the picker (a-warehouse-picks-only-what-it-has-held).
 const ADMIN = `e2ecountadmin${SUFFIX}`;
+// The Admin's display name — the person a refused second count names as its starter.
+const ADMIN_NAME = `E2E Count Admin ${SUFFIX}`;
 
 async function login(page: Page, username: string, password: string) {
   await signIn(page, username, password);
@@ -179,7 +181,7 @@ test("Count: the warehouse plans a count of every rack, and the shelves are lock
     teamId: state.warehouse,
     username: ADMIN,
     password: STAFF_PASSWORD,
-    name: "E2E Count Admin",
+    name: ADMIN_NAME,
     role: "ROLE_WAREHOUSE_ADMIN",
   });
 
@@ -317,7 +319,8 @@ test("Count: a second person finalizes — the problem and the move post, the ra
 // A PRODUCT PLAN, planned by the warehouse ADMIN — not Root — through the New Count dialog's picker, on the real server
 // (a-warehouse-picks-only-what-it-has-held). The picker's own read must admit the warehouse roles: it searches only what
 // this warehouse holds or has held, so Kaos A and Kaos B are offered and Kaos C — in the catalogue, never stocked here —
-// is not. The count is cancelled after, so nothing is left active.
+// is not. A second count while this one runs is refused, naming the Admin who started it. The count is cancelled after,
+// so nothing is left active.
 test("Count: the warehouse Admin plans a one-product count, picking from what the warehouse has held", async ({ page }) => {
   await login(page, ADMIN, STAFF_PASSWORD);
   await useTeam(page, state.warehouse);
@@ -364,7 +367,22 @@ test("Count: the warehouse Admin plans a one-product count, picking from what th
   const products = new Set(rows.items.flatMap((i) => Object.values(i.row?.mapData ?? {}).map((r) => r.productId)));
   expect([...products]).toEqual([state.kaosB]);
 
+  // ONE COUNT AT A TIME (one-active-count-per-warehouse): a second count — Root's, of every rack — is refused, and the
+  // refusal names the running count, the PERSON who started it (the Admin, not the one asking) and when
+  // (an-abandoned-count-waits-for-the-admin: *count #12, started by Ani at 2026-11-13 17:00 WIB*), so whoever is blocked
+  // knows whom to ask.
+  const root = await page.context().browser()!.newPage();
+  await login(root, ROOT_USERNAME, ROOT_PASSWORD);
+  const second = await rpcError(root, "inventory.v1.OpnameService/OpnameSessionCreate", {
+    teamId: state.warehouse,
+    plan: "OPNAME_PLAN_ALL",
+  });
+  await root.close();
+  // Called off before the checks, so a failing one leaves nothing active.
   await rpc(page, "inventory.v1.OpnameService/OpnameSessionCancel", { teamId: state.warehouse, sessionId: list.ids[0] });
+
+  expect(second).toContain(`count #${list.ids[0]}`);
+  expect(second).toMatch(new RegExp(`started by ${ADMIN_NAME} at \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2} WIB`));
 });
 
 // LOST STOCK, read back from the count above (inventory-lost-counts-the-warehouses-custody-losses): its shortage was

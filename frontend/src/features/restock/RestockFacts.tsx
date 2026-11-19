@@ -24,7 +24,9 @@ import { formatRupiahNumber } from "../../lib/money";
 //                 selling side only, which account paid (a-restock-names-its-paying-account): the warehouse cannot read the
 //                 selling team's accounts, and they are its purchase terms.
 //   Ongkir COD  — once accepted, what the WAREHOUSE paid the courier at the door, owed back by the selling team
-//                 (the-warehouse-cost-is-the-couriers-charge-at-the-door). Its own section, never a line under the total.
+//                 (the-warehouse-cost-is-the-couriers-charge-at-the-door) — and, before that, the one it noted at Tandai
+//                 Tiba, said as noted: final at Terima (the-courier-charge-is-noted-at-tiba-and-final-at-terima). Its own
+//                 section, never a line under the total.
 //
 // The order id and the tracking number are not facts here: they are the page's TITLE (RestockTitleRow).
 
@@ -186,7 +188,7 @@ export function CourierChargeFacts({
           testId="restock-detail-courier-photo"
         />
       )}
-      <Text fontSize="xs" color="fg.muted">
+      <Text fontSize="xs" color="fg.muted" data-testid="restock-detail-courier-charge-owed">
         {owed}
       </Text>
     </Stack>

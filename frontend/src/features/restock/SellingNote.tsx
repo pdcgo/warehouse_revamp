@@ -11,7 +11,7 @@ import { RootTeamBadge } from "../../components/entity/ActorName";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { NoteEditor } from "./NoteEditor";
-import { useRestockActors, useSaveRestockRequest, useSetRestockNote } from "./queries";
+import { useRestockActors, useSetRestockNote } from "./queries";
 
 /** The selling team's head line — its badge, who wrote the note and when, and an action at its end. */
 export function SellingNoteHead({ request, action }: { request: RestockRequest; action?: ReactNode }) {
@@ -73,11 +73,11 @@ function onlyTheWarehouseNote(changes: { field: RestockLogChangeField }[]): bool
 // for the list's Catatan dialog and the restock page's Catatan section (owner: *"edit di detailnya?"*), so the two edit
 // the same way — and the way itself is NoteEditor's, which the warehouse's own note shares (the-warehouse-writes-its-own-note).
 //
-// IT IS EDITED IN ANY STATUS (owner: *"catatan bisa diedit kapanpun"*, the-note-is-edited-in-any-status), and kept:
-//   on its way    the restock is sent back WHOLE with only the note changed, as before — the update replaces every field
-//                 and line, so the restock passed in must be the STORED one (a by-id read, never a list's row);
-//   past its way  the note ALONE (RestockRequestNoteSet) — the head of an arrived restock is closed to the edit form, and
-//                 an accepted, lost or cancelled one takes no update at all; the note set moves the note and nothing else.
+// IT IS EDITED IN ANY STATUS (owner: *"catatan bisa diedit kapanpun"*, the-note-is-edited-in-any-status), and kept — the
+// note ALONE (RestockRequestNoteSet), on its way as past it: the note set moves the note and nothing else, under the
+// restock's lock. On its way the restock used to be sent back WHOLE (RestockRequestUpdate replaces every field and line),
+// so a dialog opened before a colleague's line edit wrote the old lines back over it (#71); past its way the head is
+// closed to the edit form, and an accepted, lost or cancelled restock takes no update at all.
 export function SellingNote({
   request,
   teamId,
@@ -93,16 +93,11 @@ export function SellingNote({
   inPlace?: boolean;
 }) {
   const { t } = useTranslation();
-  const save = useSaveRestockRequest();
   const setNote = useSetRestockNote();
 
   async function submit(draft: string): Promise<boolean> {
     try {
-      if (request.status === RestockRequestStatus.ONGOING) {
-        await save.mutateAsync({ requestId: request.id, fields: unchangedBut(request, teamId, draft) });
-      } else {
-        await setNote.mutateAsync({ teamId, requestId: request.id, note: draft });
-      }
+      await setNote.mutateAsync({ teamId, requestId: request.id, note: draft });
       toaster.create({ type: "success", title: t("restock.notes.saved") });
       // Back to reading — the save refreshes the restock, so the saved note is what is read.
       return true;
@@ -119,7 +114,7 @@ export function SellingNote({
         head={(action) => <SellingNoteHead request={request} action={action} />}
         emptyText="—"
         onSubmit={submit}
-        saving={save.isPending || setNote.isPending}
+        saving={setNote.isPending}
         testId="restock-notes"
         textTestId="restock-detail-note"
         ariaLabel={t("restock.notes.sellingLabel")}
@@ -129,31 +124,4 @@ export function SellingNote({
       />
     </Stack>
   );
-}
-
-// The restock exactly as stored, with only its note replaced — the update replaces every field and every line, so
-// anything not sent back as it was would read to the server as a change.
-function unchangedBut(request: RestockRequest, teamId: bigint, note: string) {
-  return {
-    teamId,
-    warehouseId: request.warehouseId,
-    receipt: request.receipt,
-    receiptFile: request.receiptFile,
-    shipmentId: request.shipmentId,
-    invoiceRefId: request.invoiceRefId,
-    financeAccountId: request.financeAccountId,
-    shipmentCost: request.shipmentCost,
-    note,
-    items: request.items.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      productCode: item.productCode,
-      name: item.name,
-      count: item.count,
-      total: item.total,
-      supplierId: item.supplierId,
-      supplierChannelId: item.supplierChannelId,
-      note: item.note,
-    })),
-  };
 }

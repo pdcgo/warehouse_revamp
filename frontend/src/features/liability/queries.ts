@@ -312,6 +312,26 @@ export function useRejectPayment() {
   });
 }
 
+// Cancel a payment THIS team recorded, while it is still pending (a-pending-payment-is-cancelled-by-its-selling-team) —
+// the payer's own act, never the creditor's.
+//
+// ⚠ IT POSTS NOTHING, like a rejection: a pending claim never moved money. It still invalidates every liability read —
+// the row's status changes, and the creditor's awaiting count and nav badge drop it.
+export function useCancelPayment() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { teamId: bigint; paymentId: bigint }) =>
+      liabilityPaymentClient.liabilityPaymentCancel({
+        teamId: args.teamId,
+        paymentId: args.paymentId,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}
+
 // ─── the debtor's side of a limit ───────────────────────────────────────────────────────────────
 
 // The contract's bound on one ask (LiabilityCreditByIdsFilter.ids).

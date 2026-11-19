@@ -476,3 +476,146 @@ func TestRestockRequestUpdate_AnArrivedEditStillRefusesTheNote(t *testing.T) {
 		t.Fatalf("a refused edit moved the note: %q by %+v", got.GetNote(), nsWriterOf(got))
 	}
 }
+
+// ON ITS WAY, TOO, THE NOTE IS SAVED ALONE (the-note-is-edited-in-any-status): the Catatan dialog — or the restock page —
+// read the restock, and while it stood open a colleague changed a line through the edit form. The note's save then sends
+// the note and nothing else, so the colleague's line stays as they left it; the note changes, the trail gains one edit's
+// row saying only the note before and after, and the colleague's own row stays the line's.
+//
+// nsSaveFromTheDialog is that save as the screen sends it: `opened` is the restock as the dialog read it.
+func nsSaveFromTheDialog(svc *inventory_v1.Service, opened *inventoryv1.RestockRequest, note string) error {
+	_, err := nsSet(svc, nsNoteEditor, arrSellingTeam, opened.GetId(), note)
+
+	return err
+}
+
+func TestRestockRequestNoteSet_OnItsWayALineEditMadeWhileTheNoteWasOpenIsKept(t *testing.T) {
+	db := san_testdb.DB(t)
+	sent := &sentEvents{}
+	svc := nsService(t, db, sent)
+
+	raised := nsRaise(t, svc, "Untuk promo 10.10")
+
+	// The dialog opens: the restock as it reads now.
+	opened := arrDetail(t, svc, raised.GetId())
+
+	// A colleague changes a line through the edit form while it stands open: Kaos 10 → 12.
+	req := tcAsStored(opened)
+	req.Items[0].Count = 12
+
+	_, err := svc.RestockRequestUpdate(ctxUser(nsLineEditor), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("the colleague's line edit: %v", err)
+	}
+
+	afterColleague := arrDetail(t, svc, raised.GetId())
+	events := len(sent.events)
+
+	err = nsSaveFromTheDialog(svc, opened, "Urgent")
+	if err != nil {
+		t.Fatalf("the note's save: %v", err)
+	}
+
+	got := arrDetail(t, svc, raised.GetId())
+	if got.GetStatus() != ongoing || got.GetNote() != "Urgent" {
+		t.Fatalf("after the save: %v, note %q — want still on its way, note %q", got.GetStatus(), got.GetNote(), "Urgent")
+	}
+
+	// THE COLLEAGUE'S LINE IS KEPT — and every line is the one their edit left, under the same id.
+	if len(got.GetItems()) != len(afterColleague.GetItems()) {
+		t.Fatalf("after the save %d lines, want the %d the colleague left", len(got.GetItems()), len(afterColleague.GetItems()))
+	}
+
+	for i, it := range got.GetItems() {
+		was := afterColleague.GetItems()[i]
+		if it.GetId() != was.GetId() || it.GetProductId() != was.GetProductId() || it.GetCount() != was.GetCount() ||
+			it.GetTotal() != was.GetTotal() || it.GetNote() != was.GetNote() {
+			t.Fatalf("line %d moved under the note's save: %v → %v — the colleague's edit was written over", i, was, it)
+		}
+	}
+
+	if got.GetItems()[0].GetCount() != 12 {
+		t.Fatalf("Kaos reads %d, want the colleague's 12", got.GetItems()[0].GetCount())
+	}
+
+	if got.GetTotal() != afterColleague.GetTotal() || got.GetReceipt() != afterColleague.GetReceipt() ||
+		got.GetFinanceAccountId() != afterColleague.GetFinanceAccountId() {
+		t.Fatalf("the restock moved beyond its note:\n before %v\n after  %v", afterColleague, got)
+	}
+
+	// The trail: the colleague's row says the line, the save's row says the note alone, by whoever saved it.
+	if len(got.GetLogs()) != len(afterColleague.GetLogs())+1 {
+		t.Fatalf("the trail has %d rows, want %d — the note's one row", len(got.GetLogs()), len(afterColleague.GetLogs())+1)
+	}
+
+	edit := tcLastEdit(t, got, ongoing)
+	if edit.GetActorUserId() != nsNoteEditor {
+		t.Fatalf("the note's row is by %d, want %d", edit.GetActorUserId(), nsNoteEditor)
+	}
+
+	tcExpect(t, tcChangesOf(edit), []tcChange{{fNote, 0, "", "Untuk promo 10.10", "Urgent"}})
+	tcExpect(t, tcChangesOf(got.GetLogs()[len(got.GetLogs())-2]), []tcChange{{fCount, 100, "Kaos", "10", "12"}})
+
+	if w := nsWriterOf(got); w != (nsWriter{nsNoteEditor, edit.GetAtUnix(), false}) {
+		t.Fatalf("the note reads written by %+v, want %d at its row (%d)", w, nsNoteEditor, edit.GetAtUnix())
+	}
+
+	if len(sent.events) != events {
+		t.Fatalf("the note's save published %d event(s) — a note moves no money", len(sent.events)-events)
+	}
+}
+
+// …AND THE RIWAYAT READS AS IT DID: on its way, the note saved alone writes the same row the edit form's note-only change
+// writes — an edit's row in that status, the bare word, the person and the override, ONE change, the note before and
+// after — and stamps the note's writer the same way. Two restocks raised alike: one's note changed through the edit
+// form, the other's through the note set.
+func TestRestockRequestNoteSet_OnItsWayItsRowIsTheEditFormsNoteRow(t *testing.T) {
+	db := san_testdb.DB(t)
+	sent := &sentEvents{}
+	svc := nsService(t, db, sent)
+
+	byForm := arrDetail(t, svc, nsRaise(t, svc, "Untuk promo 10.10").GetId())
+	byNote := arrDetail(t, svc, nsRaise(t, svc, "Untuk promo 10.10").GetId())
+	events := len(sent.events)
+
+	req := tcAsStored(byForm)
+	req.Note = "Urgent"
+
+	_, err := svc.RestockRequestUpdate(ctxUser(nsNoteEditor), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("the edit form's note change: %v", err)
+	}
+
+	_, err = nsSet(svc, nsNoteEditor, arrSellingTeam, byNote.GetId(), "Urgent")
+	if err != nil {
+		t.Fatalf("the note set: %v", err)
+	}
+
+	formGot := arrDetail(t, svc, byForm.GetId())
+	noteGot := arrDetail(t, svc, byNote.GetId())
+
+	if len(formGot.GetLogs()) != len(noteGot.GetLogs()) {
+		t.Fatalf("the edit form left %d trail rows, the note set %d", len(formGot.GetLogs()), len(noteGot.GetLogs()))
+	}
+
+	formRow := tcLastEdit(t, formGot, ongoing)
+	noteRow := tcLastEdit(t, noteGot, ongoing)
+
+	if formRow.GetActorUserId() != noteRow.GetActorUserId() || formRow.GetIsOverride() != noteRow.GetIsOverride() ||
+		formRow.GetDescription() != noteRow.GetDescription() {
+		t.Fatalf("the rows differ:\n edit form %v\n note set  %v", formRow, noteRow)
+	}
+
+	tcExpect(t, tcChangesOf(noteRow), tcChangesOf(formRow))
+
+	formBy, noteBy := nsWriterOf(formGot), nsWriterOf(noteGot)
+	if formBy.by != noteBy.by || formBy.override != noteBy.override || formBy.at != formRow.GetAtUnix() ||
+		noteBy.at != noteRow.GetAtUnix() {
+		t.Fatalf("the note's writer differs: edit form %+v (row at %d), note set %+v (row at %d)",
+			formBy, formRow.GetAtUnix(), noteBy, noteRow.GetAtUnix())
+	}
+
+	if len(sent.events) != events {
+		t.Fatalf("a note change published %d event(s) — a note moves no money", len(sent.events)-events)
+	}
+}

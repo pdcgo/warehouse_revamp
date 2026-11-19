@@ -287,3 +287,24 @@ export function closeShopForStory(shopId: bigint, daysAgo = 3) {
     closedAtUnix: BigInt(Math.floor((Date.now() - daysAgo * 24 * 3600 * 1000) / 1000)),
   });
 }
+
+/**
+ * A STORY'S SETUP: one more open shop, granted to `grantees` — e.g. a second Shopee shop of Toko Melati to fix an
+ * order's shop to (an-orders-shop-is-fixed-and-counted-on-the-day): the fixtures hold one shop per marketplace, so no
+ * list story's counts move. Gone at resetShopStub.
+ */
+export function addShopForStory(
+  shop: { id: bigint; teamId: bigint; name: string; shopCode: string; marketplace: Marketplace },
+  grantees: bigint[] = [],
+) {
+  grants.set(shop.id.toString(), [...grantees]);
+  rows.push({ ...shop, description: "", status: ShopStatus.OPEN, closedAtUnix: 0n, primaryUserId: grantees[0] ?? 0n });
+}
+
+/** The stub's shop `shopId` — and whether the story's writer may write it (a-write-needs-a-grant-or-a-manager). */
+export function shopForWrite(shopId: bigint): { shop: ShopRow; writable: boolean } | undefined {
+  const shop = rows.find((r) => r.id === shopId);
+  if (!shop) return undefined;
+
+  return { shop, writable: writer === null || (grants.get(shopId.toString()) ?? []).includes(writer) };
+}

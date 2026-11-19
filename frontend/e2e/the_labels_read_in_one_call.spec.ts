@@ -3,6 +3,9 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { QRCodeSVG } from "qrcode.react";
 
 // CETAK LABEL READS EVERY RESTOCK ON THE PRINT IN ONE CALL
 // (docs/technical/frontend/restock_decision.md#the-labels-mark-their-one-by-one-read, built 2026-11-16): the page asks
@@ -17,12 +20,37 @@ import { API_URL } from "./env";
 //   R4  → W2  another warehouse's                        "Those labels are not available."
 //
 // Teams of their own, owned by root, paid from the seller's own account. The file sorts after statement.spec.ts.
+//
+// THE QR IS THE PRODUCT CODE ALONE (docs/technical/frontend/restock_decision.md#the-label-qr-is-the-product-code,
+// hfrada 2026-11-17): accepted and arrived alike — never `sku/batch`, which an order's package validation (by product
+// code) read as "not on this order". The batch stays on the label's data only.
 
 const SUFFIX = Date.now().toString().slice(-6);
 const RACK_A = `lb${SUFFIX}-a`;
 const RACK_B = `lb${SUFFIX}-b`;
 
-const state = { w: "", r: {} as Record<string, string> };
+const state = { w: "", r: {} as Record<string, string>, codes: {} as Record<string, string> };
+
+// WHAT A QR SAYS, read without a decoder: the shape (viewBox + paths) the sticker's own QR component draws for a text,
+// at every error-correction level and quiet zone it could be set up with — so the check pins the CONTENT, not how the
+// sticker happens to draw it. Two texts never share a shape at the same level and margin.
+function qrShapes(text: string): Set<string> {
+  const shapes = new Set<string>();
+  for (const level of ["L", "M", "Q", "H"] as const) {
+    for (let marginSize = 0; marginSize <= 4; marginSize++) {
+      shapes.add(shapeOf(renderToStaticMarkup(createElement(QRCodeSVG, { value: text, level, marginSize }))));
+    }
+  }
+
+  return shapes;
+}
+
+function shapeOf(svg: string): string {
+  const viewBox = svg.match(/viewBox="([^"]+)"/)?.[1] ?? "";
+  const paths = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]);
+
+  return `${viewBox}|${paths.join("|")}`;
+}
 
 async function call(page: Page, method: string, body: unknown) {
   return page.evaluate(
@@ -76,6 +104,7 @@ test("Setup: one restock accepted, one arrived, one ongoing — and one sent to 
       .product as { id: string; productCode: string };
   const p = await product(`LBP${SUFFIX}`, "Kaos Label");
   const q = await product(`LBQ${SUFFIX}`, "Topi Label");
+  state.codes = { p: p.productCode, q: q.productCode };
 
   const account = (
     await ok(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
@@ -200,4 +229,52 @@ test("Cetak Label: four restocks read in one call — two print, one has no labe
   expect(reads.filter((m) => m === "RestockRequestDetail" || m === "RestockRequestLabels")).toEqual([]);
   await expect(page.getByTestId("not-implemented-byIds")).toHaveCount(0);
   await expect(page.getByTestId("not-implemented-summary")).toHaveCount(0);
+});
+
+test("Cetak Label: every sticker's QR is the product code alone — accepted and arrived alike, never sku/batch", async ({
+  page,
+}) => {
+  await signIn(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.w);
+  const { r1, r2 } = state.r as Record<string, string>;
+  const { p, q } = state.codes as Record<string, string>;
+
+  // The accepted R1's batches — each line minted one (one-batch-per-line); they stay on the label's data.
+  type Label = { productCode: string; batchId?: string };
+  type Item = { labels?: { labels: Label[] } };
+  const res = await ok<{ items?: Record<string, { items: Item[] }> }>(page, "inventory.v1.RestockRequestService/RestockRequestByIds", {
+    teamId: state.w,
+    filter: { ids: [r1] },
+    dataRequest: ["RESTOCK_REQUEST_BY_IDS_DATA_TYPE_LABELS"],
+  });
+  const batches = (res.items?.[r1]?.items.find((it) => it.labels)?.labels?.labels ?? []).map((l) => ({
+    code: l.productCode,
+    batch: l.batchId ?? "0",
+  }));
+  expect(batches.map((b) => b.code).sort()).toEqual([p, q].sort());
+  for (const b of batches) expect(Number(b.batch), `${b.code} minted a batch`).toBeGreaterThan(0);
+
+  await page.goto(`/inventories/restock/labels?ids=${r1},${r2}`);
+  await expect(page.getByTestId("labels-page")).toBeVisible();
+  const printed = page.getByTestId("labels-print-root").locator(".print-label");
+  await expect(printed).toHaveCount(9);
+
+  // Every printed sticker: the code under the QR, and the QR itself.
+  const stickers = await printed.evaluateAll((els) =>
+    els.map((el) => ({
+      sku: el.querySelector('[data-testid="label-sku"]')?.textContent?.trim() ?? "",
+      svg: el.querySelector("svg")?.outerHTML ?? "",
+    })),
+  );
+  // P: 3 from R1's rack A + 4 from R2's line; Q: 2 from R1's rack B.
+  expect(stickers.filter((s) => s.sku === p)).toHaveLength(7);
+  expect(stickers.filter((s) => s.sku === q)).toHaveLength(2);
+
+  const asCode = { [p]: qrShapes(p), [q]: qrShapes(q) } as Record<string, Set<string>>;
+  const asSkuBatch = new Set(batches.flatMap((b) => [...qrShapes(`${b.code}/${b.batch}`)]));
+  for (const [i, s] of stickers.entries()) {
+    const shape = shapeOf(s.svg);
+    expect(asCode[s.sku]?.has(shape), `sticker ${i + 1} (${s.sku}): its QR says the product code`).toBe(true);
+    expect(asSkuBatch.has(shape), `sticker ${i + 1} (${s.sku}): its QR is not sku/batch`).toBe(false);
+  }
 });

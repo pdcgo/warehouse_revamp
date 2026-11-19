@@ -114,6 +114,7 @@ its money, who may do what — stays in [inventory/restock_decision.md](../../bu
 | [the-labels-address-probe-is-hidden](#the-labels-address-probe-is-hidden) | the address a Cetak Label story reads (`?ids=…`) is kept off the screen under review — in the DOM for the test, not shown |
 | [the-delivery-card-stacks-when-the-page-is-narrow](#the-delivery-card-stacks-when-the-page-is-narrow) | the restock warehouse page puts Kiriman below the products whenever the page area is too narrow for both | owner, as recommended | — |
 | [jumlah-barang-counts-the-pieces-ordered](#jumlah-barang-counts-the-pieces-ordered) | the status cards' *Jumlah barang* is the pieces ordered on the lines, on every status — the rows' *N pcs*, the same basis as *Nilai barang* |
+| [the-restock-tags-prototype-is-accepted](#the-restock-tags-prototype-is-accepted) | restock tags are accepted as drawn, the Tag filter taking several tags (any of them); tagging in every status; the Tag column always drawn (🔄 A, A) |
 
 ## the-restock-list-follows-the-screen-rules
 
@@ -657,6 +658,11 @@ alone in every status (arrived, accepted, lost, cancelled — and ongoing), unde
 edit's row on the Riwayat saying the note before and after. Ubah saves through it once the restock is past its way; on its
 way it still sends the restock back whole, as above. The `lateNote` mark and the *Catatan belum tersimpan* toast are gone
 from the list and the restock page. Spec: [rpc.md](../../services/inventory_service/rpc.md#the-selling-note--its-own-writer-kept-in-any-status-built-2026-11-16).
+
+✅ On its way, too, the note is saved alone through `RestockRequestNoteSet` (2026-11-18, #71) — no longer the whole restock
+sent back through `RestockRequestUpdate`, so a colleague's line edit made while the list's dialog or the restock page's
+note was open is kept. Nothing visible changed: the same Ubah, toast, note and by-line, and the Riwayat's row is the one a
+note-only edit wrote (the note before and after). The edit form still saves the whole restock.
 
 ## the-timeline-names-its-people-small
 
@@ -1308,6 +1314,10 @@ has it *entered at accept*. Noting it at Tiba too is this screen's; that rule's 
 
 What it replaces: the charge entered at Terima only.
 
+🔄 *(2026-11-18)* The conflict above is settled: the owner keeps the charge typed at Tandai Tiba and lets Terima edit it, Terima final — [the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima). The `dropped` mark stays until backlog #76 builds it.
+
+✅ Built 2026-11-18 (backlog #76, [the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima)): the sign sends the charge, its note and the slip — uploaded as it is picked, under the warehouse, Terima's way; the sign waits only for a slip still uploading — and the restock keeps them. The `dropped` marks are gone — the warehouse list's (its last, so the list's strip and `pending.ts` went with it) and the warehouse detail's (its broken-rack mark is now its **1**) — and so is the after-sign *enter it again at Terima* toast; the accept page's `codFromArrival` (`missing`) mark too: Terima opens with the charge, its note and its slip (the slip shown as a kept photo, *Foto tersimpan*, from its own link). The selling page draws Ongkir COD as a section once a charge is noted, the warehouse page's Kiriman fact reads it, each with a line saying it is noted — final at Terima *(Not asked — the build's default)*. Pinned by `SignForBoxNotesTheCourierCharge`, `SignForBoxKeepsTheSlip`, `SignForBoxWithoutACharge` (Features/Restock/WarehouseRestockActions), `TheSignDialogKeepsItsCourierCharge` (the list), `TheChargeNotedAtTheDoorIsShown`, `ALateLostBoxTakesTheCharge` (the warehouse detail's SignForBox), `TheChargeNotedAtTibaIsShown` (both detail pages' Payment), `TheChargeOpensWithTheRestocks`, `TibasChargeIsSentAsItCame`, `TibasChargeCanBeChanged`, `TibasSlipOpensKept`, `TibasSlipCanBeRemoved` (RestockAccept/Charge).
+
 ## tiba-marks-and-terima-is-final
 
 > Owner, in chat (2026-11-04): *"tiba itu untuk menandai, diterima itu final, status tidak perlu ke tiba dan langsung bisa
@@ -1410,6 +1420,10 @@ owner changes it.
 
 What it replaces: *"`stock_thoni` also puts a broken unit on a rack; that is not taken"* in [a-broken-product-carries-a-photo](#a-broken-product-carries-a-photo).
 
+⛔ **Withdrawn 2026-11-18** by the owner — [a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now): broken is just broken, no rack. The rack choice above is removed from the screen (backlog #77); the text above is history.
+
+✅ **Removed 2026-11-18** (backlog #77, [a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now)): the accept page's Rusak block no longer offers *Barang rusak (Dibuang) (Ditaruh di rak)* nor its hint *Raknya dipilih di Taruh ke penempatan.* (`accept-broken-to-*`); a line with broken units is finished without a rack — `brokenTo`, `brokenPlace` and `brokenNeedsPlace` are out of the draft, and the ready line never names *rak barang rusak*. The `brokenRack` mark (`dropped`, `conflict: true`) went with its words and Terima's *Belum tersimpan: rak barang rusak.* toast; the page's `pending.ts`, left empty, is deleted. The received line never carried a rack, so the server is unchanged. `BrokenUnitsCanGoOnARack` is replaced by `BrokenUnitsAreJustBroken` (*Broken, no rack*: note and photo, no choice, the line finished without a rack); `AcceptingSaysWhatWasNotKept` (*Nothing left unkept*) now pins that Terima says nothing was not kept.
+
 ## the-courier-slip-has-an-optional-photo
 
 > Owner, in chat (2026-11-05): *"kurasa masuk akal kalau opsional"* — the `thoni` branch's photo of the courier's slip.
@@ -1473,6 +1487,10 @@ warehouse, Tempat       A-01 (5), B-02 (2)
 What it replaces: the slip and the rack shown nowhere after Terima ([the-courier-slip-has-an-optional-photo](#the-courier-slip-has-an-optional-photo), [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack)).
 
 ✅ Built 2026-11-16 (backlog #66), **the slip only**: both pages show the restock's OWN slip under the charge's note, read through `RestockDoorPhotos` (either side of the restock; a third team reads NotFound); a restock without one shows none. Its sample and pending mark are gone — the selling page's marks after it and the warehouse page's rack move up. **The rack is not built**: it waits on [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack) against [a-broken-unit-is-thrown-away](../../business/inventory/context_decision.md#a-broken-unit-is-thrown-away), so it stays a sample with its `conflict: true` mark. Pinned by `TheSlipIsShownWithTheCharge` (both pages), `NoKeptPhotoShowsNone` (warehouse).
+
+🔄 *(2026-11-18)* The rack half is withdrawn — [a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now): the warehouse page's *Rusak N → rack* line goes (backlog #77); the slip half stands (built 2026-11-16).
+
+✅ **Removed 2026-11-18** (backlog #77), the rack half: the warehouse page's Tempat cell, and a phone's block, name the good units' places only — the sample *Rusak N → rack* line (`restock-detail-broken-rack-*`, drawn by `photoSamples.ts`'s `brokenRackSample`, the file now deleted) and its `brokenRack` mark (`sample`, `conflict: true`) are gone with their words; the page's `pending.ts`, left empty, is deleted. The slip half stands. `TheBrokenRackIsUnderThePlaces` is replaced by `TheBrokenUnitsHaveNoRack` (*Broken, no rack*).
 
 ## terima-starts-from-the-charge-noted-at-tiba
 
@@ -1855,6 +1873,8 @@ Taruh ke penempatan
 
 What it replaces: a rack picked twice and then flagged *Penempatan dipakai dua kali*.
 
+🔄 *(2026-11-18)* Its *broken rack* row is history: the broken units take no rack ([a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now)); the rule now holds between the good rows only (backlog #77).
+
 ## the-ordered-count-is-highlighted-in-pcs
 
 > Owner, in chat (2026-11-06): *"jumlah di produk kasih pcs, dan highlight biar langsung ketahuan"*.
@@ -1974,6 +1994,8 @@ Diterima * [−][11][+]   Rusak [−][1][+]
 
 What it replaces: the broken and missing details as one running list under the worked-out figures.
 
+🔄 *(2026-11-18)* *Broken onto a rack* in its pinned-by is gone with the rack choice ([a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now), backlog #77); the block keeps its count, note and photo.
+
 ## putaway-waits-for-the-count
 
 > Owner, in chat (2026-11-06): *"disabled penempatan jika diterima belum di set, masimalnya ikut ke diterima"*.
@@ -1993,6 +2015,8 @@ Diterima 12, Rusak 2  [ A-01-1             ⌄ ]  [−][ 10][+]       ← open; 
 | pinned by | `Locked until counted` (off before, open after; 20 settles on 10) |
 
 What it replaces: a put-away panel open before anything was counted, and a row's count with no ceiling.
+
+🔄 *(2026-11-18)* The broken units no longer have a row of their own in *Taruh ke penempatan* ([a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now), backlog #77).
 
 ## the-broken-units-rack-is-a-marked-placement
 
@@ -2019,6 +2043,10 @@ Yang tiba                                    Taruh ke penempatan
 What it replaces: the broken units' rack picker inside the Rusak block in
 [a-broken-product-may-go-on-a-rack](#a-broken-product-may-go-on-a-rack), and the *not covered* row of
 [one-rack-once-per-line](#one-rack-once-per-line) — the broken rack now shares the line's one-rack rule.
+
+⛔ **Withdrawn 2026-11-18** by the owner — [a-restocks-broken-units-are-just-broken-for-now](../../business/inventory/context_decision.md#a-restocks-broken-units-are-just-broken-for-now): broken is just broken, no rack. The rack choice above is removed from the screen (backlog #77); the text above is history.
+
+✅ **Removed 2026-11-18** (backlog #77): the Rusak-marked row in *Taruh ke penempatan* is gone — its tag, its pcs, its picker (`accept-placement-broken-*`, `accept-broken-place-*`), *Pilih rak untuk barang rusak.* and the corner badge's *Pilih penempatan* for it. [one-rack-once-per-line](#one-rack-once-per-line) now covers the good rows only (`Every good unit placed, a rack once`, unchanged). `Broken onto a rack` is replaced by `Broken, no rack`.
 
 ## broken-waits-for-something-received
 
@@ -2650,3 +2678,31 @@ flowchart LR
 What it replaces: `sku/batch-id` in the QR of an accepted restock's sticker.
 
 ✅ Built 2026-11-17 — `LabelPaper` writes `label.productCode` as the QR; comments in `restock-labels/index.tsx` and `labelSets.ts` follow.
+
+---
+
+## the-restock-tags-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-18): *"A"*, as recommended — after asking *"tag can be multiple right ?"* (yes on a restock; the drawn Tag filter took one tag) — to: approve, with the Tag filter taking **several tags**, a restock shown when it carries **any** of them; B approve as drawn, one tag at a time; C several tags, a restock shown only when it carries all of them. The design accept of backlog #87 (Storybook `Pages/Inventory/Restock/RestockSelling/Tags`, `…/RestockWarehouse/Tags`, `…/RestockSellingDetail/Tags`, `…/RestockWarehouseDetail/Tags`; screenshots `01_proposed_selling_list_chips_desktop` … `13_proposed_selling_detail_phone`, today's list last as BEFORE). The rules: [a-restock-tag-is-system-or-custom](../../business/inventory/restock_decision.md#a-restock-tag-is-system-or-custom), [custom-tags-are-shared-system-tags-are-the-admins-and-the-apps](../../business/inventory/restock_decision.md#custom-tags-are-shared-system-tags-are-the-admins-and-the-apps), [a-restock-problem-is-a-system-tag](../../business/inventory/restock_decision.md#a-restock-problem-is-a-system-tag).
+
+**The verdict.** The prototype is the design to build, with the filter amended:
+
+| part | as accepted |
+| --- | --- |
+| lists (both sides) | a **Tag** column after Status — two chips + `+N`, at most two lines; system tags first, purple with a lock, custom grey; on accepted rows *kurang N · rusak N* |
+| **Tag filter** | beside the courier filter (seller) / after *Dari* (warehouse); **several tags, a restock shown when it carries any** — *Barang kurang* + *Barang rusak* together is the problem list; kept in the address, cleared by Hapus Filter; the seller's Statistik and Ekspor follow it (`restockListScope`) |
+| detail (both sides) | a **Tag** box (own nav item): add from the app-wide list, *Buat tag* for a new name, a name that exists in any case picks that tag (no twin), × on a custom tag; system tags locked for team users |
+| problem tags | *Barang kurang* / *Barang rusak* — put on by the app at Terima, locked for everyone, admins included |
+| admin (Root / Administrator) | *Buat tag sistem*, × on an admin-made system tag, **Kelola tag**: rename (a taken name refused) and delete (confirm names how many restocks it comes off) |
+| a monitor | sees chips and filters; no add, no ×, no Kelola tag |
+| phone | a line of chips per block; the box before Catatan |
+
+**What it does NOT settle:** whether a tag goes on / comes off in every status (asked next); the seller's list width with the new column (asked after); when a problem tag comes off and whether a lost restock gets one (the problem's solution, undecided). ⛔ Not built — backlog #87.
+
+🔄 *(2026-11-18)* **Settled in chat — tagging in every status.** Owner: *"A"*, as recommended — to: can a tag be put on or taken off in every status (the rule says *a user who may edit the restock may tag it*, but the seller's editing stops at Terima)? A: yes, in every status, as [the-note-is-edited-in-any-status](#the-note-is-edited-in-any-status) — a box counted short can still get *Retur ke Supplier* after Terima, a lost restock can be tagged; B: only while the restock can still be edited. So **a tag goes on and comes off in every status** — *who may edit the restock* reads as *who may write on it*, not *while its lines are editable*.
+
+🔄 *(2026-11-18)* **Settled in chat — the seller's list width.** Owner: *"A"*, as recommended — to: the Tag column widens the seller's restock list at 1440 px with the sidebar open (en 1,278 → 1,521 px, id 1,324 → 1,515 px, in a 1,141 px box that already scrolls today; the warehouse list still fits, 945 → 1,107 px); A: accept — the table scrolls in its box as today; B: draw the Tag column only while a row on the page carries a tag. So **the Tag column is always drawn** and the seller's table scrolls sideways in its own box.
+
+✅ Built 2026-11-18 — live on both lists and both details (backlog #87). The Storybook gate (`features/restock/restockTagsPrototype.tsx`, `.storybook/restockTagStory.tsx`) is deleted; `features/restock/tagQueries.ts` reads the app-wide list (`RestockTagList`, one large first page — a picker feed) and writes through the real RPCs (inventory rpc.md *Restock tags*). `RestockTagFilter` takes **several tags, any of them** (`?tag=1,2`, counted on the phone's Filter and cleared by Hapus Filter), sent as `RestockRequestListFilter.tag_ids` by the list, Statistik and Ekspor alike — one predicate on the server (`restockListScope`), and the file gains a *Tag* column after Status. The Tag column is drawn on both lists always; the Tag box on both details, in every status. Stories, on the stub's real RPCs (`.storybook/restockTagScenario.ts`): `RestockSelling/Tags` (7, incl. any-of and *Statistik and Ekspor follow*), `RestockWarehouse/Tags` (3), `RestockSellingDetail/Tags` (14, incl. *tag a received / a lost restock*), `RestockWarehouseDetail/Tags` (2); the `Live · …` BEFORE stories went with the gate, and the two lists' column-order stories (`Rows`) gained *Tags*.
+
+✅ Built 2026-11-19 — *on accepted rows kurang N · rusak N* now reaches both lists (backlog #89): `RestockRequestList` fills each line's `problems` with its missing and broken units by ONE grouped statement per page over the page's accepted restocks (`withRestockProblemCounts`, the counts alone — no price, note or photo; the #154 cut stays: no full problem or placement preload). The Storybook stub's list rows carry the same shape (counts only, accepted rows only, no placements), so a list reading more fails in its story. Test `restock_request_list_problems_test.go`; perf `TestPerf_RestockRequestListProblemCounts` (inventory rpc.md, *RestockRequestList — each accepted row's missing and broken counts*).

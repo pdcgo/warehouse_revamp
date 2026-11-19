@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, Flex, Icon, Stack, Table, Text } from "@chakra-ui/react";
-import { Check, Wallet, X } from "lucide-react";
+import { Ban, Check, Wallet, X } from "lucide-react";
 
 import { LiabilityPaymentStatus } from "../../../gen/warehouse/liability/v1/liability_pb";
 import type { LiabilityPayment } from "../../../gen/warehouse/liability/v1/liability_pb";
@@ -20,6 +20,9 @@ function statusKey(status: LiabilityPaymentStatus): string {
       return "liabilityDetail.statusConfirmed";
     case LiabilityPaymentStatus.REJECTED:
       return "liabilityDetail.statusRejected";
+    // The payer took it back before anybody decided (a-pending-payment-is-cancelled-by-its-selling-team).
+    case LiabilityPaymentStatus.CANCELLED:
+      return "liabilityDetail.statusCancelled";
     default:
       return "liabilityDetail.statusUnknown";
   }
@@ -33,6 +36,9 @@ function statusPalette(status: LiabilityPaymentStatus): string {
       return "success";
     // ⚠ RED. A refusal is an outcome the payer has to act on — re-send the slip, or the money.
     case LiabilityPaymentStatus.REJECTED:
+      return "error";
+    // The reject badge's tone: a claim that ended without moving money, which the payer may need to make again.
+    case LiabilityPaymentStatus.CANCELLED:
       return "error";
     default:
       return "gray";
@@ -51,6 +57,11 @@ export interface PaymentTableProps {
   readerTeamId: bigint;
   onConfirm: (payment: LiabilityPayment) => void;
   onReject: (payment: LiabilityPayment) => void;
+  /**
+   * My payments only: this team, the PAYER, may take a pending claim back (a-pending-payment-is-cancelled-by-its-selling-team)
+   * — a selling team's Owner or Admin, never a monitor. The page decides who may; unset offers nothing.
+   */
+  onCancel?: (payment: LiabilityPayment) => void;
   /** Each payment as a block on a phone (the-team-balance-phone-layout-is-accepted) — the pair page's `useIsMobile()`. */
   phone?: boolean;
 }
@@ -64,6 +75,7 @@ export function PaymentTable({
   readerTeamId,
   onConfirm,
   onReject,
+  onCancel,
   phone = false,
 }: PaymentTableProps) {
   const { t } = useTranslation();
@@ -82,6 +94,25 @@ export function PaymentTable({
   if (rows.length === 0) {
     return <EmptyHint icon={Wallet} size="sm" title={emptyText} testId="liability-payments-empty" />;
   }
+
+  // THE PAYER'S ONE ACT on its own pending claim — Cancel, inline. Only on a payment this team paid, only while it waits.
+  const cancel = (p: LiabilityPayment) =>
+    !withConfirm &&
+    writable &&
+    onCancel !== undefined &&
+    p.payerTeamId === readerTeamId &&
+    p.status === LiabilityPaymentStatus.RECORDED && (
+      <Button
+        size="xs"
+        variant="outline"
+        colorPalette="error"
+        data-testid={`liability-detail-cancel-${p.id}`}
+        onClick={() => onCancel(p)}
+      >
+        <Icon as={Ban} boxSize="4" />
+        {t("liabilityDetail.cancel")}
+      </Button>
+    );
 
   // TWO actions, so they stay inline — an overflow menu is for three or more.
   const actions = (p: LiabilityPayment) =>
@@ -136,7 +167,9 @@ export function PaymentTable({
               <Text fontSize="sm" fontWeight="bold" whiteSpace="nowrap">
                 {formatRupiah(p.amount)}
               </Text>
-              <Badge colorPalette={statusPalette(p.status)}>{t(statusKey(p.status))}</Badge>
+              <Badge colorPalette={statusPalette(p.status)} data-testid={`liability-detail-payment-status-${p.id}`}>
+                {t(statusKey(p.status))}
+              </Badge>
             </Flex>
             <Text fontSize="xs" color="fg.muted" mt="0.5" lineClamp={1}>
               {formatUnixDateTimeShort(p.createdAtUnix)}
@@ -152,7 +185,10 @@ export function PaymentTable({
             {reason(p)}
             <Flex justify="space-between" align="center" gap="2" mt="1.5" wrap="wrap">
               <PaymentProof teamId={readerTeamId} documentIds={p.documentIds} />
-              <Flex gap="2">{actions(p)}</Flex>
+              <Flex gap="2">
+                {actions(p)}
+                {cancel(p)}
+              </Flex>
             </Flex>
           </Box>
         ))}
@@ -194,8 +230,11 @@ export function PaymentTable({
             </Table.Cell>
             <Table.Cell>
               <Flex align="center" gap="2">
-                <Badge colorPalette={statusPalette(p.status)}>{t(statusKey(p.status))}</Badge>
+                <Badge colorPalette={statusPalette(p.status)} data-testid={`liability-detail-payment-status-${p.id}`}>
+                  {t(statusKey(p.status))}
+                </Badge>
                 {actions(p)}
+                {cancel(p)}
               </Flex>
             </Table.Cell>
           </Table.Row>

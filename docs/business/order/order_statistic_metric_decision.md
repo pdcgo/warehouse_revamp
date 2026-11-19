@@ -362,6 +362,8 @@ stateDiagram-v2
 
 ✅ **Built 2026-10-29** (verified in code 2026-11-05) — the Order Status Change event is built: selling publishes `OrderStatusChanged` (`selling_v1/order_status_changed_event.go`), and the order fold counts a move to `lost` as `lost_created` (`selling_v1/order_analytic_fold.go`).
 
+🔄 *(2026-11-18)* The owner's later word widens it: his acceptance checklist (2026-11-16, [inventory/order.md](../../acceptances/inventory/order.md) — *complete order* and *resolve problem → completed*: *"recorded in analytic metric"*) counts a completed order too. So **completed is counted as a status move — a count, no money fields** (what was paid stays settlement's answer, this entry's reason). *Completed is not a metric* above is history; the metric's shape goes to a composer prototype for the owner's accept (backlog #84).
+
 ---
 
 ## the-order-metrics-count-from-the-fold-onward

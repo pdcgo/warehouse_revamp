@@ -16,7 +16,7 @@ import { ProductListItem } from "../../../components/products/ProductListItem";
 import { useIsMobile } from "../../../layouts/shell";
 import { formatUnixDateTimeShort } from "../../../lib/datetime";
 import { formatRupiahNumber } from "../../../lib/money";
-import { blockTextOf, decidedTextOf, isWithdrawn } from "./found";
+import { blockTextOf, decidedTextOf, isWithdrawn, orderPathOf } from "./found";
 import { FoundRequestStatusBadge } from "./FoundRequestStatusBadge";
 
 // A ROW LIGHTS UP UNDER THE POINTER, every cell of it (a-table-row-lights-up) — and it opens the request's Rincian.
@@ -190,6 +190,18 @@ export function FoundRequestTable(props: FoundRequestTableProps) {
 
   const units = (r: FoundRequest) => t("foundRequest.table.units", { count: Number(r.stockCount) });
 
+  // THE LOST ORDER IT NAMES (a-found-lost-parcel-is-a-found-stock-in) — beside the rack, so the cell stays two lines; a
+  // click goes to the order, never opens the row.
+  const order = (r: FoundRequest): ReactNode =>
+    r.orderId > 0n ? (
+      <>
+        {" · "}
+        <Link asChild color="brand.fg" onClick={(e) => e.stopPropagation()} data-testid={`found-request-order-${r.id}`}>
+          <RouterLink to={orderPathOf(r)}>{t("foundRequest.table.order", { id: r.orderId.toString() })}</RouterLink>
+        </Link>
+      </>
+    ) : null;
+
   if (isMobile) {
     return (
       <Stack gap="3" data-testid="found-requests-list">
@@ -216,6 +228,7 @@ export function FoundRequestTable(props: FoundRequestTableProps) {
               <Text fontSize="sm" flexShrink={0} data-testid={`found-request-units-${r.id}`}>
                 <Span fontWeight="bold">{units(r)}</Span>
                 {` · ${r.rackCode}`}
+                {order(r)}
               </Text>
             </Flex>
             <Text fontSize="xs" color="fg.muted" data-testid={`found-request-reported-${r.id}`}>
@@ -279,6 +292,7 @@ export function FoundRequestTable(props: FoundRequestTableProps) {
                   </Span>
                   <Span fontSize="xs" color="fg.muted">
                     {r.rackCode}
+                    {order(r)}
                   </Span>
                 </Stack>
               </Table.Cell>

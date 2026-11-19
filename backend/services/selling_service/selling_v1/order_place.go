@@ -229,7 +229,7 @@ func (s *Service) placeOrder(
 	}
 
 	if block != nil {
-		return nil, creditBlocked(block)
+		return nil, s.creditBlocked(ctx, block)
 	}
 
 	// THE STOCK TAKE, BEFORE THE ORDER ROW AND OUTSIDE ITS TRANSACTION (backlog #10 slice 3) — after the key check, the
@@ -835,11 +835,14 @@ func orderCreditors(
 // the world is what refuses. It is also not a retry — retrying changes nothing until somebody pays.
 //
 // The creditor, the debt and the limit all travel in the text because the person hitting this is
-// CUSTOMER SERVICE, who never sees the Liability screens and cannot go and look the numbers up.
-func creditBlocked(block *CreditBlock) error {
+// CUSTOMER SERVICE, who never sees the Liability screens and cannot go and look the numbers up
+// (over-the-limit-refuses-the-create). So the creditor is named by its NAME, through the TeamNamer seam
+// requireReturnWarehouseToOrder's refusal uses — "team #<id>" when it cannot be named: no namer, a
+// failed lookup, an unknown team. A refusal is never held up by the name it carries.
+func (s *Service) creditBlocked(ctx context.Context, block *CreditBlock) error {
 	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
-		"credit limit reached with team %d: %s owed of a %s limit — settle before ordering again",
-		block.CreditorTeamID, san_money.Text(block.Debt), san_money.Text(block.Limit),
+		"credit limit reached with %s: %s owed of a %s limit — settle before ordering again",
+		s.teamName(ctx, block.CreditorTeamID, "team"), san_money.Text(block.Debt), san_money.Text(block.Limit),
 	))
 }
 

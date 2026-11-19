@@ -253,6 +253,18 @@ export function useUpdateOrderReceipt() {
   });
 }
 
+// FIX AN ORDER'S SHOP (an-orders-shop-is-fixed-and-counted-on-the-day) — to another shop of the same team and
+// marketplace the person may write. It moves no status and no stock; settlement moves the order's account from the
+// event, after this answers, so only the order domain goes stale here.
+export function useUpdateOrderShop() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderClient.orderShopUpdate>[0]) => orderClient.orderShopUpdate(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
 // ONE MOVE FOR MANY ORDERS (one-status-change-for-every-plain-move) — the warehouse's confirm, pick, hand
 // back and handover, and customer service's shipped, completed, problem, lost and forced return. Cancel
 // keeps `useCancelOrder`: it does more than move a status.

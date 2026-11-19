@@ -21,22 +21,55 @@ import (
 // metricDateLayout is a Jakarta day as the analytic contract writes it (a-day-is-a-jakarta-date-string).
 const metricDateLayout = "2006-01-02"
 
-// orderMetric is one of the six metrics this service serves — the five order metrics and Warehouse Fee: its row in the
-// report, its message and the option read off it — so the id, the filters, the groups and the sortable fields are stated
-// once, in the proto.
+// orderMetric is one of the seven metrics this service serves — the five order metrics, Order status moves and Warehouse
+// Fee: the report rows it reads, its message and the option read off it — so the id, the filters, the groups and the
+// sortable fields are stated once, in the proto.
 type orderMetric struct {
-	// The report's `metric` value.
-	report string
+	// The report's `metric` values it reads: one for the five and Warehouse Fee, one per count for Order status moves.
+	reports []string
 	// The MetricData oneof's prefix — `<prefix>_by_id`, `_by_day`, `_summary`.
 	oneof string
 	// The message itself — what a key's figures are built from.
 	prototype proto.Message
 	desc      protoreflect.MessageDescriptor
 	option    *analytic_basev1.MetricOption
+	// Each number field, and the report column it reads.
+	fields []metricField
 	// Whether a WAREHOUSE reads this metric's money too. False for the five order metrics — their money is the seller's
 	// (a-warehouse-sees-no-seller-money); true for Warehouse Fee, whose amount is the warehouse's own income
-	// (a-warehouse-sees-its-own-fee-amount).
+	// (a-warehouse-sees-its-own-fee-amount). Order status moves has no money.
 	warehouseMoney bool
+}
+
+// metricField is one number field of a metric and where it is read: the column of one report value's rows. `money` is
+// whether it is a CURRENCY field — one a warehouse sees only where the metric says so (showsMoney).
+type metricField struct {
+	desc   protoreflect.FieldDescriptor
+	report string
+	column string
+	money  bool
+}
+
+// fieldOf is the metric's field for a descriptor a sort named.
+func (m *orderMetric) fieldOf(desc protoreflect.FieldDescriptor) (metricField, bool) {
+	for _, field := range m.fields {
+		if field.desc.Number() == desc.Number() {
+			return field, true
+		}
+	}
+
+	return metricField{}, false
+}
+
+// sumSQL is the grouped read's sum of one field — its column over its own report value's rows. A metric of one report
+// value sums the column as it is (its rows are its value's alone); Order status moves picks each count's rows out.
+// ⚠ The report value is a LITERAL from this package's own constants, never a request's text.
+func (m *orderMetric) sumSQL(field metricField) string {
+	if len(m.reports) == 1 {
+		return fmt.Sprintf("COALESCE(SUM(r.%s), 0)", field.column)
+	}
+
+	return fmt.Sprintf("COALESCE(SUM(r.%s) FILTER (WHERE r.metric = '%s'), 0)", field.column, field.report)
 }
 
 // showsMoney is whether `reader` is shown this metric's money fields.
@@ -44,8 +77,16 @@ func (m *orderMetric) showsMoney(reader metricReader) bool {
 	return reader.money || m.warehouseMoney
 }
 
-// The numbers every metric here carries, by FIELD NUMBER — the same on all six messages, so a field is mapped to its
-// report column without a table per metric. Warehouse Fee has the first two only: its transactions and its amount.
+// The report's columns a field sums.
+const (
+	columnOrderCount = "order_count"
+	columnTotal      = "total"
+	columnMpTotal    = "mp_total"
+)
+
+// The numbers the five order metrics and Warehouse Fee carry, by FIELD NUMBER — the same on all six messages, so a field
+// is mapped to its report column without a table per metric. Warehouse Fee has the first two only: its transactions and
+// its amount. Order status moves maps each of its counts to its own report value instead (ordersMovesMetric).
 const (
 	fieldCount   = 1 // *_count            → order_count
 	fieldTotal   = 2 // *_total            → total      (money)
@@ -53,24 +94,55 @@ const (
 )
 
 var reportColumn = map[protoreflect.FieldNumber]string{
-	fieldCount:   "order_count",
-	fieldTotal:   "total",
-	fieldMpTotal: "mp_total",
+	fieldCount:   columnOrderCount,
+	fieldTotal:   columnTotal,
+	fieldMpTotal: columnMpTotal,
 }
 
-func newOrderMetric(report, oneof string, message proto.Message) *orderMetric {
+// newMetricOf is a metric's message, descriptor and option, with no field mapped yet.
+func newMetricOf(oneof string, message proto.Message) *orderMetric {
 	desc := message.ProtoReflect().Descriptor()
 
-	return &orderMetric{report: report, oneof: oneof, prototype: message, desc: desc, option: san_metric.OptionOf(desc)}
+	return &orderMetric{oneof: oneof, prototype: message, desc: desc, option: san_metric.OptionOf(desc)}
 }
 
-// orderMetrics is the five order metrics, in the doc's order, then Warehouse Fee.
+// protoName is a field name as a descriptor names it.
+func protoName(name string) protoreflect.Name {
+	return protoreflect.Name(name)
+}
+
+// newOrderMetric is a metric of ONE report value, its fields mapped by number (reportColumn).
+func newOrderMetric(report, oneof string, message proto.Message) *orderMetric {
+	metric := newMetricOf(oneof, message)
+	metric.reports = []string{report}
+
+	for _, number := range san_metric.Fields(metric.desc) {
+		field := metric.desc.Fields().ByName(protoName(number.Name))
+
+		column, ok := reportColumn[field.Number()]
+		if !ok {
+			panic(fmt.Sprintf("order metrics: %s.%s maps to no report column", metric.desc.FullName(), number.Name))
+		}
+
+		metric.fields = append(metric.fields, metricField{
+			desc:   field,
+			report: report,
+			column: column,
+			money:  number.StatType == analytic_basev1.FieldStatType_FIELD_STAT_TYPE_CURRENCY,
+		})
+	}
+
+	return metric
+}
+
+// orderMetrics is the five order metrics, in the doc's order, then Order status moves and Warehouse Fee.
 var orderMetrics = []*orderMetric{
 	newOrderMetric(reportCreated, "created", &sellingv1.OrderCreatedMetric{}),
 	newOrderMetric(reportCancelled, "cancel", &sellingv1.OrderCancelMetric{}),
 	newOrderMetric(reportReturnCreated, "return_created", &sellingv1.OrderReturnCreatedMetric{}),
 	newOrderMetric(reportReturnArrived, "return_arrived", &sellingv1.OrderReturnArrivedMetric{}),
 	newOrderMetric(reportLostCreated, "lost_created", &sellingv1.OrderLostCreatedMetric{}),
+	ordersMovesMetric(),
 	warehouseFeeMetric(),
 }
 
@@ -221,7 +293,7 @@ func parseMetricFilters(items []*analytic_basev1.FilterItem, metrics []*orderMet
 func reportRows(db *gorm.DB, reader metricReader, filters metricFilters, metrics []*orderMetric) *gorm.DB {
 	reports := make([]string, 0, len(metrics))
 	for _, metric := range metrics {
-		reports = append(reports, metric.report)
+		reports = append(reports, metric.reports...)
 	}
 
 	query := db.
@@ -315,32 +387,31 @@ func periodStart(group analytic_basev1.GroupType, day time.Time) time.Time {
 const reportSums = "COALESCE(SUM(r.order_count), 0) AS order_count, COALESCE(SUM(r.total), 0) AS total, " +
 	"COALESCE(SUM(r.mp_total), 0) AS mp_total"
 
-// isMoney is whether a field is a money field — one a warehouse sees only where the metric says so (showsMoney).
-func isMoney(field protoreflect.FieldDescriptor) bool {
-	return field.Number() == fieldTotal || field.Number() == fieldMpTotal
-}
-
-// metricMessage is one key's figures as `metric`'s own message. A warehouse's money fields on an order metric stay
-// UNSET, never 0 (a-warehouse-sees-no-seller-money) — that is what the `optional` is for. A field number the metric does
-// not declare (Warehouse Fee has no mp total) is skipped.
-func metricMessage(metric *orderMetric, sums selling_service_models.OrderMetricColumns, money bool) protoreflect.Message {
+// metricMessage is one key's figures as `metric`'s own message — each field its report value's column, read through
+// `sums`. A warehouse's money fields on an order metric stay UNSET, never 0 (a-warehouse-sees-no-seller-money) — that is
+// what the `optional` is for.
+func metricMessage(
+	metric *orderMetric,
+	sums func(report string) selling_service_models.OrderMetricColumns,
+	money bool,
+) protoreflect.Message {
 	msg := metric.prototype.ProtoReflect().New()
-	fields := metric.desc.Fields()
 
-	msg.Set(fields.ByNumber(fieldCount), protoreflect.ValueOfInt64(sums.OrderCount))
+	for _, field := range metric.fields {
+		if field.money && !money {
+			continue
+		}
 
-	if !money {
-		return msg
-	}
+		figures := sums(field.report)
 
-	total := fields.ByNumber(fieldTotal)
-	if total != nil {
-		msg.Set(total, protoreflect.ValueOfFloat64(sums.Total))
-	}
-
-	mpTotal := fields.ByNumber(fieldMpTotal)
-	if mpTotal != nil {
-		msg.Set(mpTotal, protoreflect.ValueOfFloat64(sums.MpTotal))
+		switch field.column {
+		case columnOrderCount:
+			msg.Set(field.desc, protoreflect.ValueOfInt64(figures.OrderCount))
+		case columnTotal:
+			msg.Set(field.desc, protoreflect.ValueOfFloat64(figures.Total))
+		case columnMpTotal:
+			msg.Set(field.desc, protoreflect.ValueOfFloat64(figures.MpTotal))
+		}
 	}
 
 	return msg

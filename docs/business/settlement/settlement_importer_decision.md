@@ -892,6 +892,10 @@ flowchart LR
 - ⚠ Your §Rpc Detail still reads `Payload` and `Response`, with no `team_id` — yours to update when you next edit it.
   What ships is the contract above.
 
+🔄 *(2026-11-19)* The owner's later word widens the rows shown: his acceptance checklist ([settlement/settlement_importer.md](../../acceptances/settlement/settlement_importer.md), *open import detail*, 2026-11-17) asks for **each row shown with its result** — the rows posted to their own order and the rows already there too, not only the held · skipped · posted-to-the-shop rows above. Backlog #93.
+
+✅ **Built 2026-11-19** (backlog #93, the 🔄 line above). One file's page now shows each of its rows with its result, in its own tab/list: after Held · Skipped · Posted to the shop (unchanged, in their place, the same counts) come **Posted** (`lines-tab-posted` — every posted row, as many as the tally's Posted: a row on its order says *Posted to its order* with the order a link under it, `line-order-<id>`; a row naming no order, such as a withdrawal, *Posted to the shop — the row names no order*; a row posted to the shop keeps its own reason and found orders) and **Already there** (`lines-tab-existing` — the rows whose key was already in the ledger, [the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe), each *Already in the ledger — imported before*, its order linked when it has one). Same columns (date, ref, type, recorded as, amount, why), the same `UploadedFileLineList` read with an outcome filter per tab, paged on the server like the others. No proto, Go or schema change. Code: [index.tsx](../../../frontend/src/pages/settlement-import-detail/index.tsx), [queries.ts](../../../frontend/src/features/settlementImport/queries.ts); stories *Pages / Settlement / ImportDetail / Rows* (*Posted · each with its order*, *Already there*, *An empty view*) — the page's stories now grouped by part ([stories-are-grouped-by-the-part-of-the-screen](../../technical/frontend/context_decision.md#stories-are-grouped-by-the-part-of-the-screen)).
+
 ## the-source-is-named-importer
 
 > Chat *(owner, 2026-09-29)* — *"Rename to importer"*, to the

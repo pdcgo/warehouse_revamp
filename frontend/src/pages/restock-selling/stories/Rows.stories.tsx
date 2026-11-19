@@ -50,7 +50,8 @@ export const RaisedByAFormerUser: Story = {
 };
 
 // THE OWNER'S COLUMN ORDER (the-restock-list-leads-with-its-references) — the reference first, then the supplier, the
-// warehouse, the products, the total, the courier, the status, the two dates and the actions.
+// warehouse, the products, the total, the courier, the status, its tags (#87 — always drawn, the owner's 🔄 under
+// the-restock-tags-prototype-is-accepted), the two dates and the actions.
 export const TheReferenceLeadsTheRow: Story = {
   name: "Columns",
   play: async ({ canvasElement }) => {
@@ -67,6 +68,7 @@ export const TheReferenceLeadsTheRow: Story = {
       "Total",
       "Shipment",
       "Status",
+      "Tags",
       "Created",
       "Accepted",
       "Actions",

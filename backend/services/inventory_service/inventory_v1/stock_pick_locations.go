@@ -8,12 +8,13 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 )
 
-// pickLocationRow is the query's shape: one product, one rack, the quantity taken from it.
+// pickLocationRow is the query's shape: one take, one product, one rack, the quantity taken from it.
 type pickLocationRow struct {
-	ProductID uint64
-	RackID    uint64
-	RackCode  *string
-	Quantity  int64
+	TransactionID uint64
+	ProductID     uint64
+	RackID        uint64
+	RackCode      *string
+	Quantity      int64
 }
 
 // StockPickLocations returns WHERE THIS PICK'S GOODS WERE TAKEN FROM — the pick screen's shelf column
@@ -32,22 +33,31 @@ type pickLocationRow struct {
 // append-only, so a released take's rows are still there beside their reversal (a-rollback-reverses-its-log-rows).
 // A released take nets to zero on every rack and drops out entirely — an empty list is the right answer to "where
 // do I go for this" when the answer is "nowhere".
+//
+// ONE TAKE OR MANY (the-bulk-pick-list-prototype-is-accepted): the single pick page names one take, the bulk pick list
+// up to 50 (the request's cap) — the SAME one statement either way, grouped and ordered by take first, and each location
+// names its take. A take of another building, or an unknown one, adds nothing.
 func (s *Service) StockPickLocations(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockPickLocationsRequest],
 ) (*connect.Response[inventoryv1.StockPickLocationsResponse], error) {
 	var rows []pickLocationRow
 
+	takes := req.Msg.GetTransactionIds()
+	if len(takes) == 0 {
+		takes = []uint64{req.Msg.GetTransactionId()}
+	}
+
 	err := s.db.
 		WithContext(ctx).
 		Table("product_placement_logs AS l").
-		Select("l.product_id AS product_id, l.placement_id AS rack_id, r.code AS rack_code, "+
-			"SUM(-l.stock_change) AS quantity").
+		Select("l.transaction_id AS transaction_id, l.product_id AS product_id, l.placement_id AS rack_id, "+
+			"r.code AS rack_code, SUM(-l.stock_change) AS quantity").
 		Joins("JOIN placements r ON r.id = l.placement_id").
-		Where("l.transaction_id = ? AND l.warehouse_id = ?", req.Msg.GetTransactionId(), req.Msg.GetWarehouseId()).
-		Group("l.product_id, l.placement_id, r.code").
+		Where("l.transaction_id IN ? AND l.warehouse_id = ?", takes, req.Msg.GetWarehouseId()).
+		Group("l.transaction_id, l.product_id, l.placement_id, r.code").
 		Having("SUM(-l.stock_change) > 0").
-		Order("l.product_id, r.code").
+		Order("l.transaction_id, l.product_id, r.code").
 		Scan(&rows).
 		Error
 	if err != nil {
@@ -60,9 +70,10 @@ func (s *Service) StockPickLocations(
 
 	for i := range rows {
 		loc := inventoryv1.StockPickLocation{
-			ProductId: rows[i].ProductID,
-			RackId:    rows[i].RackID,
-			Quantity:  rows[i].Quantity,
+			TransactionId: rows[i].TransactionID,
+			ProductId:     rows[i].ProductID,
+			RackId:        rows[i].RackID,
+			Quantity:      rows[i].Quantity,
 		}
 
 		if rows[i].RackCode != nil {

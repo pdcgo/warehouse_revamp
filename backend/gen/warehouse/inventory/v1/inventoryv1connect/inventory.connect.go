@@ -148,7 +148,8 @@ type InventoryServiceClient interface {
 	WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
-	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
+	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column. One take (the single pick page),
+	// or up to 50 at once (the bulk pick list, the-bulk-pick-list-prototype-is-accepted) in ONE query.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
 	// The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
 	// detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
@@ -613,7 +614,8 @@ type InventoryServiceHandler interface {
 	WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
-	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
+	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column. One take (the single pick page),
+	// or up to 50 at once (the bulk pick list, the-bulk-pick-list-prototype-is-accepted) in ONE query.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
 	// The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
 	// detail's Batches tab (filtered to one product) and the warehouse-wide batch list.

@@ -18,11 +18,11 @@ import (
 
 // restockExportColumns are the selling list's columns, in the screen's order (the-restock-list-leads-with-its-references):
 // its Referensi cell's two references, each its own column; where it was bought; where it went; what is in it; what it
-// cost; who carries it; where it has got to; and its two dates, each with who did it beside it. The row's actions are
-// not data and stay out.
+// cost; who carries it; where it has got to; its tags (the-restock-tags-prototype-is-accepted: a Tag column after
+// Status); and its two dates, each with who did it beside it. The row's actions are not data and stay out.
 var restockExportColumns = []string{
-	"Order ID", "Resi", "Pemasok", "Gudang", "Produk", "Total", "Kurir", "Status", "Dibuat", "Dibuat oleh", "Diterima",
-	"Diterima oleh",
+	"Order ID", "Resi", "Pemasok", "Gudang", "Produk", "Total", "Kurir", "Status", "Tag", "Dibuat", "Dibuat oleh",
+	"Diterima", "Diterima oleh",
 }
 
 // RestockRequestExport writes the selling restock list as a file (the-restock-list-exports-and-filters-by-courier, on
@@ -119,8 +119,19 @@ func (s *Service) RestockRequestExport(
 			return connect.NewError(connect.CodeInternal, fmt.Errorf("naming the rows: %w", err))
 		}
 
+		// The step's tags — the list's one lookup per page (restockTagsOf).
+		ids := make([]uint64, 0, len(rows))
 		for i := range rows {
-			err = sheet.Row(restockExportRow(&rows[i], overrides[rows[i].ID], names)...)
+			ids = append(ids, rows[i].ID)
+		}
+
+		tags, err := restockTagsOf(db, ids)
+		if err != nil {
+			return restockErr(err)
+		}
+
+		for i := range rows {
+			err = sheet.Row(restockExportRow(&rows[i], overrides[rows[i].ID], names, tags[rows[i].ID])...)
 			if err != nil {
 				return connect.NewError(connect.CodeInternal, fmt.Errorf("writing the file: %w", err))
 			}
@@ -276,11 +287,17 @@ func exportNamesOf(
 //	Total               goods + shipping, exact (the-backend-never-rounds-money) — committedValue's sum
 //	Kurir               the courier's name, as its badge reads; empty for none
 //	Status              the badge's word
+//	Tag                 its tags' names, the system's first, then by name — the column's chips, every one of them
 //	Dibuat, Diterima    the moment in WIB, date and time as the cell prints it (a-table-date-is-short-and-every-time-is-wib);
 //	                    Diterima empty until accepted
 //	… oleh              who, with the cell's "oleh tim Root" when Root did it from outside the team
 //	                    (an-override-shows-a-platform-badge); empty when not recorded
-func restockExportRow(r *inventory_service_models.Restock, override restockOverrides, names restockExportNames) []any {
+func restockExportRow(
+	r *inventory_service_models.Restock,
+	override restockOverrides,
+	names restockExportNames,
+	tags []*inventoryv1.RestockTag,
+) []any {
 	accepted, acceptedBy := "", ""
 	if r.AcceptedAt != nil {
 		accepted = exportMoment(*r.AcceptedAt)
@@ -296,11 +313,22 @@ func restockExportRow(r *inventory_service_models.Restock, override restockOverr
 		exportTotal(r),
 		exportCourier(names.couriers, r.ShipmentID),
 		restockStatusWord(r.Status),
+		exportTags(tags),
 		exportMoment(r.CreatedAt),
 		exportPerson(names.people, r.CreatedByUserID, override.Created),
 		accepted,
 		acceptedBy,
 	}
+}
+
+// exportTags is a restock's tags as one cell — every name, in the chips' order, "" for none.
+func exportTags(tags []*inventoryv1.RestockTag) string {
+	names := make([]string, 0, len(tags))
+	for _, t := range tags {
+		names = append(names, t.GetName())
+	}
+
+	return strings.Join(names, ", ")
 }
 
 // exportSuppliers is every line's supplier and store, each pair once, in line order: "Supplier · Toko", "Supplier ·

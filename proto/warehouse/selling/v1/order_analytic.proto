@@ -9,8 +9,9 @@ import "warehouse/role_base/v1/role.proto";
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
 
 // THE ORDER METRICS (docs/business/order/order_statistic_metric.md) — five, each counting WHOLE ORDERS on the day of its
-// own move (a-fact-counts-on-the-day-it-happened) — and WAREHOUSE FEE, the fee frozen on those orders, net of cancels
-// (the-warehouse-fee-prototype-is-accepted). All six are served through the analytic pattern
+// own move (a-fact-counts-on-the-day-it-happened) — ORDER STATUS MOVES, a count per status an order moved to on its way
+// out (the-order-status-moves-prototype-is-accepted), and WAREHOUSE FEE, the fee frozen on those orders, net of cancels
+// (the-warehouse-fee-prototype-is-accepted). All seven are served through the analytic pattern
 // (docs/business/analytic/rpc_provide.md): `MetricSearch` ranks the keys, `MetricData` fills them.
 //
 // ⚠ EVERY NUMBER IS READ FROM A FOLDED TABLE — `order_daily_reports`, built by selling_service's own webhook from
@@ -309,6 +310,89 @@ message OrderLostCreatedMetricByDay {
   map<string, OrderLostCreatedMetric> items = 1;
 }
 
+// ORDER STATUS MOVES (the-order-status-moves-prototype-is-accepted) — ONE metric, a COUNT per status an order moved TO
+// along its way out, each named by what happened to the order (the-order-metric-ids-name-what-moved): a resolve
+// (problem → completed) is a Completed, a picked or a processed order handed back (→ pending) is a Back to pending. The
+// placement's own pending row is Order Created's, never a Back to pending. Moves into cancel, return, return_completed
+// and lost are the five metrics' own, not counted here.
+//
+// Each move counts on ITS OWN Jakarta day (a-fact-counts-on-the-day-it-happened), shaped as the five: their filters and
+// groups (the-four-group-by-team-shop-warehouse-user-and-time), USER the order's CREATOR — never the crew member who made
+// the move (a-metrics-user-is-the-orders-creator). COUNTS ONLY — no money field (lost-is-a-metric-and-completed-is-not,
+// its 2026-11-18 line: what was paid stays settlement's answer) — so a warehouse reads every field of the orders it
+// ships (a-warehouse-reads-the-orders-it-ships). Counted from the fold onward, never backfilled
+// (the-order-metrics-count-from-the-fold-onward).
+message OrderMovesMetric {
+  option (warehouse.analytic_base.v1.metric) = {
+    metric_id: "metrics/orders/moves"
+    supported_filters: [
+      FILTER_TYPE_DATE_RANGE,
+      FILTER_TYPE_TEAM,
+      FILTER_TYPE_SHOP,
+      FILTER_TYPE_WAREHOUSE,
+      FILTER_TYPE_USER
+    ]
+    required_filters: [FILTER_TYPE_DATE_RANGE]
+    supported_group_by: [
+      GROUP_TYPE_SUMMARY,
+      GROUP_TYPE_DAILY,
+      GROUP_TYPE_WEEKLY,
+      GROUP_TYPE_MONTHLY,
+      GROUP_TYPE_YEARLY,
+      GROUP_TYPE_TEAM,
+      GROUP_TYPE_SHOP,
+      GROUP_TYPE_WAREHOUSE,
+      GROUP_TYPE_USER
+    ]
+  };
+
+  // Confirmed: pending → processed — the warehouse took the order on.
+  int64 confirmed_count = 1 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Back to pending: processed or picked → pending — the warehouse handed the order back.
+  int64 back_to_pending_count = 2 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Picked: processed → picked — the package validated.
+  int64 picked_count = 3 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Handed over: picked → shipping — the parcel went to the courier.
+  int64 handed_over_count = 4 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Shipped: shipping → shipped — customer service marked it shipped.
+  int64 shipped_count = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Problem: shipped → problem.
+  int64 problem_count = 6 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Completed: shipped → completed, and a resolved problem → completed.
+  int64 completed_count = 7 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+}
+
+// A page of keys' figures — keyed by team, shop, warehouse or user id. An asked id with nothing in the window is zero.
+message OrderMovesMetricByID {
+  map<uint64, OrderMovesMetric> items = 1;
+}
+
+// A page of periods' figures — keyed by the period's first day, YYYY-MM-DD. A quiet period is zero.
+message OrderMovesMetricByDay {
+  map<string, OrderMovesMetric> items = 1;
+}
+
 // WAREHOUSE FEE (the-warehouse-fee-prototype-is-accepted) — the fee frozen on each order (the-event-carries-the-warehouse-fee),
 // NET, each on its own day (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day): an order counts
 // +1 and + its fee on its placement day, and a cancel takes both back on the cancel's day. An earlier day never changes,
@@ -440,10 +524,10 @@ message MetricDataRequest {
   // IDs for TEAM, SHOP, WAREHOUSE and USER, days for a period; none for SUMMARY. At most a page.
   warehouse.analytic_base.v1.MetricKeys keys = 4;
 
-  // Any of the six, in any order; the answer keeps it.
+  // Any of the seven, in any order; the answer keeps it.
   repeated string metric_ids = 5 [(buf.validate.field).repeated = {
     min_items: 1
-    max_items: 6
+    max_items: 7
     unique: true
   }];
 }
@@ -470,6 +554,9 @@ message MetricData {
     WarehouseFeeMetricByID warehouse_fee_by_id = 16;
     WarehouseFeeMetricByDay warehouse_fee_by_day = 17;
     WarehouseFeeMetric warehouse_fee_summary = 18;
+    OrderMovesMetricByID moves_by_id = 19;
+    OrderMovesMetricByDay moves_by_day = 20;
+    OrderMovesMetric moves_summary = 21;
   }
 }
 

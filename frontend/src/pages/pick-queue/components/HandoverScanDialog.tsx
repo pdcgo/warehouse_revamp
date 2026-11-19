@@ -10,6 +10,7 @@ import { ScanInput } from "../../../features/picking/ScanInput";
 import { beep } from "../../../lib/beep";
 import { stepLabelKey, stepOfStatus } from "../steps";
 import { useStepMove } from "../useStepMove";
+import { CourierCounts } from "./CourierCounts";
 
 // HANDING PARCELS TO THE COURIER, ONE SCAN AT A TIME (owner — `scanning-is-the-crews-hands`).
 //
@@ -23,6 +24,8 @@ import { useStepMove } from "../useStepMove";
 //   • the same label scanned twice is not added twice — only the fulfilled sound
 //   • the mass button is off while the list holds no parcel that can be handed over
 //   • no proof or manifest is printed
+//   • the good parcels are counted per courier on screen — Per kurir (CourierCounts,
+//     the-print-page-and-the-courier-count-prototype-is-accepted)
 //
 // THE LABEL IS LOOKED UP ON THE SERVER, per scan, among this warehouse's orders (lookupLabel — the-warehouse-order-list-
 // is-accepted closed `resiLookup`): no longer the 200 orders the dialog had loaded. A code that is SEVERAL live orders
@@ -68,6 +71,11 @@ export function HandoverScanDialog({
   const asking = useRef(new Set<string>());
 
   const ready = entries.filter((entry) => entry.state === "ready");
+  // PER KURIR (the-print-page-and-the-courier-count-prototype-is-accepted): the good parcels — ready, or handed over —
+  // counted by courier, what the crew reads out to each driver.
+  const parcels = entries.flatMap((entry) =>
+    (entry.state === "ready" || entry.state === "handedOver") && entry.order ? [entry.order] : [],
+  );
 
   function close() {
     setEntries([]);
@@ -195,6 +203,8 @@ export function HandoverScanDialog({
                 </Flex>
 
                 <ScanInput onScan={(code) => void scan(code)} testId="handover-scan" label={t("warehouseOrders.handover.title")} />
+
+                <CourierCounts parcels={parcels} />
 
                 {entries.length === 0 ? (
                   <Text fontSize="sm" color="fg.muted">

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { inflateRawSync } from "node:zlib";
+import { crc32, inflateRawSync } from "node:zlib";
 
 // READ AN .xlsx BACK — enough of the format to check an export's sheets, headers and cells in an e2e, with no library:
 // the zip's central directory, each entry inflated, then the sheets' cells read off their XML. Strings may be shared
@@ -95,4 +95,136 @@ export function readXlsx(path: string): Map<string, string[][]> {
   }
 
   return out;
+}
+
+// WRITE AN .xlsx — the other half, for a spec that must UPLOAD a statement whose rows name the orders it just placed (a
+// fixture file cannot know a run's order refs). Every cell is an inline string, every sheet a plain grid, the zip STORED
+// (no compression) — the smallest workbook a real reader (excelize, behind the importer) opens as it opens a download.
+// A row may be empty (a statement's free-form preamble keeps its row numbers).
+
+const xmlEscape = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function columnName(index: number): string {
+  let name = "";
+  for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) name = String.fromCharCode(65 + ((n - 1) % 26)) + name;
+  return name;
+}
+
+function sheetXml(rows: string[][]): string {
+  const body = rows
+    .map((row, r) => {
+      const cells = row
+        .map((value, c) =>
+          value === "" ? "" : `<c r="${columnName(c)}${r + 1}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`,
+        )
+        .join("");
+      return `<row r="${r + 1}">${cells}</row>`;
+    })
+    .join("");
+  return (
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`
+  );
+}
+
+function storedZip(files: [string, string][]): Buffer {
+  const locals: Buffer[] = [];
+  const centrals: Buffer[] = [];
+  let offset = 0;
+
+  for (const [name, text] of files) {
+    const data = Buffer.from(text, "utf8");
+    const nameBytes = Buffer.from(name, "utf8");
+    const crc = crc32(data);
+
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4); // version needed
+    local.writeUInt16LE(0, 6); // flags
+    local.writeUInt16LE(0, 8); // STORED
+    local.writeUInt16LE(0, 10); // time
+    local.writeUInt16LE(0x21, 12); // date: 1980-01-01
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(nameBytes.length, 26);
+    local.writeUInt16LE(0, 28);
+    locals.push(local, nameBytes, data);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4); // version made by
+    central.writeUInt16LE(20, 6); // version needed
+    central.writeUInt16LE(0, 8);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt16LE(0, 12);
+    central.writeUInt16LE(0x21, 14);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(nameBytes.length, 28);
+    // extra, comment, disk, internal and external attributes: all zero
+    central.writeUInt32LE(offset, 42);
+    centrals.push(central, nameBytes);
+
+    offset += 30 + nameBytes.length + data.length;
+  }
+
+  const directory = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(directory.length, 12);
+  end.writeUInt32LE(offset, 16);
+
+  return Buffer.concat([...locals, directory, end]);
+}
+
+/** A workbook of the given sheets, in order — each a grid of cell texts ("" = an empty cell). */
+export function writeXlsx(sheets: { name: string; rows: string[][] }[]): Buffer {
+  const ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+  const files: [string, string][] = [
+    [
+      "[Content_Types].xml",
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+        `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+        `<Default Extension="xml" ContentType="application/xml"/>` +
+        `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+        sheets
+          .map(
+            (_, i) =>
+              `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+          )
+          .join("") +
+        `</Types>`,
+    ],
+    [
+      "_rels/.rels",
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+        `<Relationship Id="rId1" Type="${ns}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+    ],
+    [
+      "xl/workbook.xml",
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${ns}"><sheets>` +
+        sheets.map((s, i) => `<sheet name="${xmlEscape(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("") +
+        `</sheets></workbook>`,
+    ],
+    [
+      "xl/_rels/workbook.xml.rels",
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+        sheets
+          .map((_, i) => `<Relationship Id="rId${i + 1}" Type="${ns}/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`)
+          .join("") +
+        `</Relationships>`,
+    ],
+    ...sheets.map((s, i): [string, string] => [`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s.rows)]),
+  ];
+
+  return storedZip(files);
 }

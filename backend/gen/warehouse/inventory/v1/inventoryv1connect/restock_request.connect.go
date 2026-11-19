@@ -93,6 +93,36 @@ const (
 	// RestockRequestServiceRestockRequestWarehouseNoteSetProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockRequestWarehouseNoteSet RPC.
 	RestockRequestServiceRestockRequestWarehouseNoteSetProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestWarehouseNoteSet"
+	// RestockRequestServiceRestockTagListProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockTagList RPC.
+	RestockRequestServiceRestockTagListProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockTagList"
+	// RestockRequestServiceRestockTagManageListProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockTagManageList RPC.
+	RestockRequestServiceRestockTagManageListProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockTagManageList"
+	// RestockRequestServiceRestockTagCreateProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockTagCreate RPC.
+	RestockRequestServiceRestockTagCreateProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockTagCreate"
+	// RestockRequestServiceRestockTagSystemCreateProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockTagSystemCreate RPC.
+	RestockRequestServiceRestockTagSystemCreateProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockTagSystemCreate"
+	// RestockRequestServiceRestockTagRenameProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockTagRename RPC.
+	RestockRequestServiceRestockTagRenameProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockTagRename"
+	// RestockRequestServiceRestockTagDeleteProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockTagDelete RPC.
+	RestockRequestServiceRestockTagDeleteProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockTagDelete"
+	// RestockRequestServiceRestockRequestTagAddProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestTagAdd RPC.
+	RestockRequestServiceRestockRequestTagAddProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestTagAdd"
+	// RestockRequestServiceRestockRequestTagRemoveProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestTagRemove RPC.
+	RestockRequestServiceRestockRequestTagRemoveProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestTagRemove"
+	// RestockRequestServiceRestockRequestSystemTagAddProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestSystemTagAdd RPC.
+	RestockRequestServiceRestockRequestSystemTagAddProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestSystemTagAdd"
+	// RestockRequestServiceRestockRequestSystemTagRemoveProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestSystemTagRemove RPC.
+	RestockRequestServiceRestockRequestSystemTagRemoveProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestSystemTagRemove"
 )
 
 // RestockRequestServiceClient is a client for the warehouse.inventory.v1.RestockRequestService
@@ -163,6 +193,26 @@ type RestockRequestServiceClient interface {
 	// with its own writer and time, and the trail gets an edit's row saying what it was and now is
 	// (edits-are-in-the-same-trail). The selling team reads it, never writes it.
 	RestockRequestWarehouseNoteSet(context.Context, *connect.Request[v1.RestockRequestWarehouseNoteSetRequest]) (*connect.Response[v1.RestockRequestWarehouseNoteSetResponse], error)
+	// RESTOCK TAGS (backlog #87; messages in restock_tag.proto) — one app-wide list, unique names, a SYSTEM tag the
+	// admins' and the app's, a CUSTOM tag anyone's who may tag (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps).
+	// The app-wide list, for the Tag filter and the add box.
+	RestockTagList(context.Context, *connect.Request[v1.RestockTagListRequest]) (*connect.Response[v1.RestockTagListResponse], error)
+	// The admins' Kelola tag list — the same tags, each with how many restocks carry it.
+	RestockTagManageList(context.Context, *connect.Request[v1.RestockTagManageListRequest]) (*connect.Response[v1.RestockTagManageListResponse], error)
+	// A custom tag; a name already on the list answers that tag, never a twin.
+	RestockTagCreate(context.Context, *connect.Request[v1.RestockTagCreateRequest]) (*connect.Response[v1.RestockTagCreateResponse], error)
+	// A system tag, by an admin; the same one-name-one-tag answer.
+	RestockTagSystemCreate(context.Context, *connect.Request[v1.RestockTagSystemCreateRequest]) (*connect.Response[v1.RestockTagSystemCreateResponse], error)
+	// Rename, the admins' alone; never the app's own tags.
+	RestockTagRename(context.Context, *connect.Request[v1.RestockTagRenameRequest]) (*connect.Response[v1.RestockTagRenameResponse], error)
+	// Delete, the admins' alone — off every restock too; never the app's own tags.
+	RestockTagDelete(context.Context, *connect.Request[v1.RestockTagDeleteRequest]) (*connect.Response[v1.RestockTagDeleteResponse], error)
+	// A custom tag on / off a restock — either side, every role but a monitor, every status.
+	RestockRequestTagAdd(context.Context, *connect.Request[v1.RestockRequestTagAddRequest]) (*connect.Response[v1.RestockRequestTagAddResponse], error)
+	RestockRequestTagRemove(context.Context, *connect.Request[v1.RestockRequestTagRemoveRequest]) (*connect.Response[v1.RestockRequestTagRemoveResponse], error)
+	// An admin's system tag on / off a restock — never the app's own.
+	RestockRequestSystemTagAdd(context.Context, *connect.Request[v1.RestockRequestSystemTagAddRequest]) (*connect.Response[v1.RestockRequestSystemTagAddResponse], error)
+	RestockRequestSystemTagRemove(context.Context, *connect.Request[v1.RestockRequestSystemTagRemoveRequest]) (*connect.Response[v1.RestockRequestSystemTagRemoveResponse], error)
 }
 
 // NewRestockRequestServiceClient constructs a client for the
@@ -307,6 +357,68 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestWarehouseNoteSet")),
 			connect.WithClientOptions(opts...),
 		),
+		restockTagList: connect.NewClient[v1.RestockTagListRequest, v1.RestockTagListResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockTagListProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		restockTagManageList: connect.NewClient[v1.RestockTagManageListRequest, v1.RestockTagManageListResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockTagManageListProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagManageList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		restockTagCreate: connect.NewClient[v1.RestockTagCreateRequest, v1.RestockTagCreateResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockTagCreateProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		restockTagSystemCreate: connect.NewClient[v1.RestockTagSystemCreateRequest, v1.RestockTagSystemCreateResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockTagSystemCreateProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagSystemCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		restockTagRename: connect.NewClient[v1.RestockTagRenameRequest, v1.RestockTagRenameResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockTagRenameProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagRename")),
+			connect.WithClientOptions(opts...),
+		),
+		restockTagDelete: connect.NewClient[v1.RestockTagDeleteRequest, v1.RestockTagDeleteResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockTagDeleteProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagDelete")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestTagAdd: connect.NewClient[v1.RestockRequestTagAddRequest, v1.RestockRequestTagAddResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestTagAddProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestTagAdd")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestTagRemove: connect.NewClient[v1.RestockRequestTagRemoveRequest, v1.RestockRequestTagRemoveResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestTagRemoveProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestTagRemove")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestSystemTagAdd: connect.NewClient[v1.RestockRequestSystemTagAddRequest, v1.RestockRequestSystemTagAddResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestSystemTagAddProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSystemTagAdd")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestSystemTagRemove: connect.NewClient[v1.RestockRequestSystemTagRemoveRequest, v1.RestockRequestSystemTagRemoveResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestSystemTagRemoveProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSystemTagRemove")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -332,6 +444,16 @@ type restockRequestServiceClient struct {
 	restockReceivedCountCorrect    *connect.Client[v1.RestockReceivedCountCorrectRequest, v1.RestockReceivedCountCorrectResponse]
 	restockRequestNoteSet          *connect.Client[v1.RestockRequestNoteSetRequest, v1.RestockRequestNoteSetResponse]
 	restockRequestWarehouseNoteSet *connect.Client[v1.RestockRequestWarehouseNoteSetRequest, v1.RestockRequestWarehouseNoteSetResponse]
+	restockTagList                 *connect.Client[v1.RestockTagListRequest, v1.RestockTagListResponse]
+	restockTagManageList           *connect.Client[v1.RestockTagManageListRequest, v1.RestockTagManageListResponse]
+	restockTagCreate               *connect.Client[v1.RestockTagCreateRequest, v1.RestockTagCreateResponse]
+	restockTagSystemCreate         *connect.Client[v1.RestockTagSystemCreateRequest, v1.RestockTagSystemCreateResponse]
+	restockTagRename               *connect.Client[v1.RestockTagRenameRequest, v1.RestockTagRenameResponse]
+	restockTagDelete               *connect.Client[v1.RestockTagDeleteRequest, v1.RestockTagDeleteResponse]
+	restockRequestTagAdd           *connect.Client[v1.RestockRequestTagAddRequest, v1.RestockRequestTagAddResponse]
+	restockRequestTagRemove        *connect.Client[v1.RestockRequestTagRemoveRequest, v1.RestockRequestTagRemoveResponse]
+	restockRequestSystemTagAdd     *connect.Client[v1.RestockRequestSystemTagAddRequest, v1.RestockRequestSystemTagAddResponse]
+	restockRequestSystemTagRemove  *connect.Client[v1.RestockRequestSystemTagRemoveRequest, v1.RestockRequestSystemTagRemoveResponse]
 }
 
 // RestockRequestCreate calls warehouse.inventory.v1.RestockRequestService.RestockRequestCreate.
@@ -436,6 +558,59 @@ func (c *restockRequestServiceClient) RestockRequestWarehouseNoteSet(ctx context
 	return c.restockRequestWarehouseNoteSet.CallUnary(ctx, req)
 }
 
+// RestockTagList calls warehouse.inventory.v1.RestockRequestService.RestockTagList.
+func (c *restockRequestServiceClient) RestockTagList(ctx context.Context, req *connect.Request[v1.RestockTagListRequest]) (*connect.Response[v1.RestockTagListResponse], error) {
+	return c.restockTagList.CallUnary(ctx, req)
+}
+
+// RestockTagManageList calls warehouse.inventory.v1.RestockRequestService.RestockTagManageList.
+func (c *restockRequestServiceClient) RestockTagManageList(ctx context.Context, req *connect.Request[v1.RestockTagManageListRequest]) (*connect.Response[v1.RestockTagManageListResponse], error) {
+	return c.restockTagManageList.CallUnary(ctx, req)
+}
+
+// RestockTagCreate calls warehouse.inventory.v1.RestockRequestService.RestockTagCreate.
+func (c *restockRequestServiceClient) RestockTagCreate(ctx context.Context, req *connect.Request[v1.RestockTagCreateRequest]) (*connect.Response[v1.RestockTagCreateResponse], error) {
+	return c.restockTagCreate.CallUnary(ctx, req)
+}
+
+// RestockTagSystemCreate calls warehouse.inventory.v1.RestockRequestService.RestockTagSystemCreate.
+func (c *restockRequestServiceClient) RestockTagSystemCreate(ctx context.Context, req *connect.Request[v1.RestockTagSystemCreateRequest]) (*connect.Response[v1.RestockTagSystemCreateResponse], error) {
+	return c.restockTagSystemCreate.CallUnary(ctx, req)
+}
+
+// RestockTagRename calls warehouse.inventory.v1.RestockRequestService.RestockTagRename.
+func (c *restockRequestServiceClient) RestockTagRename(ctx context.Context, req *connect.Request[v1.RestockTagRenameRequest]) (*connect.Response[v1.RestockTagRenameResponse], error) {
+	return c.restockTagRename.CallUnary(ctx, req)
+}
+
+// RestockTagDelete calls warehouse.inventory.v1.RestockRequestService.RestockTagDelete.
+func (c *restockRequestServiceClient) RestockTagDelete(ctx context.Context, req *connect.Request[v1.RestockTagDeleteRequest]) (*connect.Response[v1.RestockTagDeleteResponse], error) {
+	return c.restockTagDelete.CallUnary(ctx, req)
+}
+
+// RestockRequestTagAdd calls warehouse.inventory.v1.RestockRequestService.RestockRequestTagAdd.
+func (c *restockRequestServiceClient) RestockRequestTagAdd(ctx context.Context, req *connect.Request[v1.RestockRequestTagAddRequest]) (*connect.Response[v1.RestockRequestTagAddResponse], error) {
+	return c.restockRequestTagAdd.CallUnary(ctx, req)
+}
+
+// RestockRequestTagRemove calls
+// warehouse.inventory.v1.RestockRequestService.RestockRequestTagRemove.
+func (c *restockRequestServiceClient) RestockRequestTagRemove(ctx context.Context, req *connect.Request[v1.RestockRequestTagRemoveRequest]) (*connect.Response[v1.RestockRequestTagRemoveResponse], error) {
+	return c.restockRequestTagRemove.CallUnary(ctx, req)
+}
+
+// RestockRequestSystemTagAdd calls
+// warehouse.inventory.v1.RestockRequestService.RestockRequestSystemTagAdd.
+func (c *restockRequestServiceClient) RestockRequestSystemTagAdd(ctx context.Context, req *connect.Request[v1.RestockRequestSystemTagAddRequest]) (*connect.Response[v1.RestockRequestSystemTagAddResponse], error) {
+	return c.restockRequestSystemTagAdd.CallUnary(ctx, req)
+}
+
+// RestockRequestSystemTagRemove calls
+// warehouse.inventory.v1.RestockRequestService.RestockRequestSystemTagRemove.
+func (c *restockRequestServiceClient) RestockRequestSystemTagRemove(ctx context.Context, req *connect.Request[v1.RestockRequestSystemTagRemoveRequest]) (*connect.Response[v1.RestockRequestSystemTagRemoveResponse], error) {
+	return c.restockRequestSystemTagRemove.CallUnary(ctx, req)
+}
+
 // RestockRequestServiceHandler is an implementation of the
 // warehouse.inventory.v1.RestockRequestService service.
 type RestockRequestServiceHandler interface {
@@ -504,6 +679,26 @@ type RestockRequestServiceHandler interface {
 	// with its own writer and time, and the trail gets an edit's row saying what it was and now is
 	// (edits-are-in-the-same-trail). The selling team reads it, never writes it.
 	RestockRequestWarehouseNoteSet(context.Context, *connect.Request[v1.RestockRequestWarehouseNoteSetRequest]) (*connect.Response[v1.RestockRequestWarehouseNoteSetResponse], error)
+	// RESTOCK TAGS (backlog #87; messages in restock_tag.proto) — one app-wide list, unique names, a SYSTEM tag the
+	// admins' and the app's, a CUSTOM tag anyone's who may tag (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps).
+	// The app-wide list, for the Tag filter and the add box.
+	RestockTagList(context.Context, *connect.Request[v1.RestockTagListRequest]) (*connect.Response[v1.RestockTagListResponse], error)
+	// The admins' Kelola tag list — the same tags, each with how many restocks carry it.
+	RestockTagManageList(context.Context, *connect.Request[v1.RestockTagManageListRequest]) (*connect.Response[v1.RestockTagManageListResponse], error)
+	// A custom tag; a name already on the list answers that tag, never a twin.
+	RestockTagCreate(context.Context, *connect.Request[v1.RestockTagCreateRequest]) (*connect.Response[v1.RestockTagCreateResponse], error)
+	// A system tag, by an admin; the same one-name-one-tag answer.
+	RestockTagSystemCreate(context.Context, *connect.Request[v1.RestockTagSystemCreateRequest]) (*connect.Response[v1.RestockTagSystemCreateResponse], error)
+	// Rename, the admins' alone; never the app's own tags.
+	RestockTagRename(context.Context, *connect.Request[v1.RestockTagRenameRequest]) (*connect.Response[v1.RestockTagRenameResponse], error)
+	// Delete, the admins' alone — off every restock too; never the app's own tags.
+	RestockTagDelete(context.Context, *connect.Request[v1.RestockTagDeleteRequest]) (*connect.Response[v1.RestockTagDeleteResponse], error)
+	// A custom tag on / off a restock — either side, every role but a monitor, every status.
+	RestockRequestTagAdd(context.Context, *connect.Request[v1.RestockRequestTagAddRequest]) (*connect.Response[v1.RestockRequestTagAddResponse], error)
+	RestockRequestTagRemove(context.Context, *connect.Request[v1.RestockRequestTagRemoveRequest]) (*connect.Response[v1.RestockRequestTagRemoveResponse], error)
+	// An admin's system tag on / off a restock — never the app's own.
+	RestockRequestSystemTagAdd(context.Context, *connect.Request[v1.RestockRequestSystemTagAddRequest]) (*connect.Response[v1.RestockRequestSystemTagAddResponse], error)
+	RestockRequestSystemTagRemove(context.Context, *connect.Request[v1.RestockRequestSystemTagRemoveRequest]) (*connect.Response[v1.RestockRequestSystemTagRemoveResponse], error)
 }
 
 // NewRestockRequestServiceHandler builds an HTTP handler from the service implementation. It
@@ -643,6 +838,68 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestWarehouseNoteSet")),
 		connect.WithHandlerOptions(opts...),
 	)
+	restockRequestServiceRestockTagListHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockTagListProcedure,
+		svc.RestockTagList,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockTagManageListHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockTagManageListProcedure,
+		svc.RestockTagManageList,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagManageList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockTagCreateHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockTagCreateProcedure,
+		svc.RestockTagCreate,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockTagSystemCreateHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockTagSystemCreateProcedure,
+		svc.RestockTagSystemCreate,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagSystemCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockTagRenameHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockTagRenameProcedure,
+		svc.RestockTagRename,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagRename")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockTagDeleteHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockTagDeleteProcedure,
+		svc.RestockTagDelete,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockTagDelete")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestTagAddHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestTagAddProcedure,
+		svc.RestockRequestTagAdd,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestTagAdd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestTagRemoveHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestTagRemoveProcedure,
+		svc.RestockRequestTagRemove,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestTagRemove")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestSystemTagAddHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestSystemTagAddProcedure,
+		svc.RestockRequestSystemTagAdd,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSystemTagAdd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestSystemTagRemoveHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestSystemTagRemoveProcedure,
+		svc.RestockRequestSystemTagRemove,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSystemTagRemove")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.RestockRequestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RestockRequestServiceRestockRequestCreateProcedure:
@@ -685,6 +942,26 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 			restockRequestServiceRestockRequestNoteSetHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockRequestWarehouseNoteSetProcedure:
 			restockRequestServiceRestockRequestWarehouseNoteSetHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockTagListProcedure:
+			restockRequestServiceRestockTagListHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockTagManageListProcedure:
+			restockRequestServiceRestockTagManageListHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockTagCreateProcedure:
+			restockRequestServiceRestockTagCreateHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockTagSystemCreateProcedure:
+			restockRequestServiceRestockTagSystemCreateHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockTagRenameProcedure:
+			restockRequestServiceRestockTagRenameHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockTagDeleteProcedure:
+			restockRequestServiceRestockTagDeleteHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestTagAddProcedure:
+			restockRequestServiceRestockRequestTagAddHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestTagRemoveProcedure:
+			restockRequestServiceRestockRequestTagRemoveHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestSystemTagAddProcedure:
+			restockRequestServiceRestockRequestSystemTagAddHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestSystemTagRemoveProcedure:
+			restockRequestServiceRestockRequestSystemTagRemoveHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -772,4 +1049,44 @@ func (UnimplementedRestockRequestServiceHandler) RestockRequestNoteSet(context.C
 
 func (UnimplementedRestockRequestServiceHandler) RestockRequestWarehouseNoteSet(context.Context, *connect.Request[v1.RestockRequestWarehouseNoteSetRequest]) (*connect.Response[v1.RestockRequestWarehouseNoteSetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestWarehouseNoteSet is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockTagList(context.Context, *connect.Request[v1.RestockTagListRequest]) (*connect.Response[v1.RestockTagListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockTagList is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockTagManageList(context.Context, *connect.Request[v1.RestockTagManageListRequest]) (*connect.Response[v1.RestockTagManageListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockTagManageList is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockTagCreate(context.Context, *connect.Request[v1.RestockTagCreateRequest]) (*connect.Response[v1.RestockTagCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockTagCreate is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockTagSystemCreate(context.Context, *connect.Request[v1.RestockTagSystemCreateRequest]) (*connect.Response[v1.RestockTagSystemCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockTagSystemCreate is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockTagRename(context.Context, *connect.Request[v1.RestockTagRenameRequest]) (*connect.Response[v1.RestockTagRenameResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockTagRename is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockTagDelete(context.Context, *connect.Request[v1.RestockTagDeleteRequest]) (*connect.Response[v1.RestockTagDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockTagDelete is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestTagAdd(context.Context, *connect.Request[v1.RestockRequestTagAddRequest]) (*connect.Response[v1.RestockRequestTagAddResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestTagAdd is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestTagRemove(context.Context, *connect.Request[v1.RestockRequestTagRemoveRequest]) (*connect.Response[v1.RestockRequestTagRemoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestTagRemove is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestSystemTagAdd(context.Context, *connect.Request[v1.RestockRequestSystemTagAddRequest]) (*connect.Response[v1.RestockRequestSystemTagAddResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestSystemTagAdd is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestSystemTagRemove(context.Context, *connect.Request[v1.RestockRequestSystemTagRemoveRequest]) (*connect.Response[v1.RestockRequestSystemTagRemoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestSystemTagRemove is not implemented"))
 }

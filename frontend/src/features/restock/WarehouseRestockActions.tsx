@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useCanWrite } from "../team/TeamContext";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -14,6 +13,7 @@ import { useArriveRestockRequest, useCorrectRestockReceivedCount } from "./queri
 import { labelsPath } from "./labelsPath";
 import { toRupiah } from "./counting";
 import { CourierCharge } from "./CourierCharge";
+import { keptPhoto, photoUploading } from "./doorPhoto";
 import type { DoorPhoto } from "./doorPhoto";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
@@ -79,16 +79,11 @@ export interface WarehouseRestockActionsProps {
    * of them under ⋯ (a-phone-header-action-is-an-icon, CompactActions).
    */
   variant: "row" | "buttons" | "menu" | "compact";
-  /**
-   * The page's pending mark for the courier's charge in the sign dialog — typed there and NOT kept yet
-   * (the-cod-can-be-noted-when-the-box-arrives). Each page passes its own, numbered in its own list.
-   */
-  codMark?: ReactNode;
   /** Appended to every test id — the sticky bar's copy (`-sticky`), so a test finds each of the page's once. */
   idSuffix?: string;
 }
 
-export function WarehouseRestockActions({ request, teamId, variant, codMark, idSuffix = "" }: WarehouseRestockActionsProps) {
+export function WarehouseRestockActions({ request, teamId, variant, idSuffix = "" }: WarehouseRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -204,7 +199,7 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
       )}
 
       {signing && (
-        <SignForBoxDialog request={request} teamId={teamId} codMark={codMark} onClose={() => setSigning(false)} />
+        <SignForBoxDialog request={request} teamId={teamId} onClose={() => setSigning(false)} />
       )}
 
       {correctable && (
@@ -244,17 +239,16 @@ export function WarehouseRestockActions({ request, teamId, variant, codMark, idS
 // THE COURIER'S CHARGE CAN BE NOTED HERE (owner: *"ongkir cod bisa keduanya"*, the-cod-can-be-noted-when-the-box-arrives)
 // — when the courier asks for it at the door, which is now. ASKED FIRST (the-charge-is-asked-for-before-it-is-filled): unticked,
 // the sign goes ahead with nothing to fill; ticked, the amount and the note are required and the sign waits for them.
-// ⚠ RestockRequestArrive takes no charge, so it is NOT KEPT (`dropped`): the mark says so, and so does a toast after the
-// sign — enter it again at Terima.
+// KEPT (owner: *"arrived can set that, and can edited too in accept stock"*,
+// the-courier-charge-is-noted-at-tiba-and-final-at-terima): the sign sends the charge, its note and its slip, and the
+// restock keeps them — both restock pages show it, and Terima opens with it, its figure final. No money moves here.
 function SignForBoxDialog({
   request,
   teamId,
-  codMark,
   onClose,
 }: {
   request: RestockRequest;
   teamId: bigint;
-  codMark?: ReactNode;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -263,22 +257,28 @@ function SignForBoxDialog({
   const [asked, setAsked] = useState(false);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — not kept with the rest of the charge: shown
-  // only, never uploaded here (no `photoUploadTo`), as Tandai Tiba keeps no charge yet.
+  // The courier's slip, optional (the-courier-slip-has-an-optional-photo) — kept with the charge, as at Terima: uploaded
+  // the moment it is picked, under this warehouse (`photoUploadTo`), and sent with the charge.
   const [photo, setPhoto] = useState<DoorPhoto | null>(null);
 
-  const charged = asked && toRupiah(amount) > 0;
-  // Ticked, both are required; the note's error shows once there is an amount, so a fresh tick is not all red.
-  const incomplete = asked && (!charged || note.trim() === "");
+  const charge = asked ? toRupiah(amount) : 0;
+  const charged = charge > 0;
+  // Ticked, both are required; the note's error shows once there is an amount, so a fresh tick is not all red. A slip
+  // still uploading holds the sign for the seconds it takes, as it holds Terima — it would go without it.
+  const incomplete = asked && (!charged || note.trim() === "" || photoUploading(photo));
   const noteMissing = charged && note.trim() === "";
 
   async function confirm() {
     try {
-      await arrive.mutateAsync({ teamId, requestId: request.id });
+      await arrive.mutateAsync({
+        teamId,
+        requestId: request.id,
+        // On Tidak ada, nothing — whatever was typed before; on Ada, the charge, its note and its slip, as Terima sends them.
+        warehouseAdditionalCost: charge,
+        warehouseAdditionalCostNote: charged ? note.trim() : "",
+        warehouseAdditionalCostFile: charged ? keptPhoto(photo) : "",
+      });
       toaster.create({ type: "success", title: t("restock.actions.toast.arrived") });
-      if (asked) {
-        toaster.create({ type: "warning", title: t("restock.actions.toast.arrivedCodNotKept") });
-      }
     } catch (err) {
       toaster.create({ type: "error", title: t("restock.actions.toast.arriveFailed"), description: rpcError(err) });
     }
@@ -314,8 +314,8 @@ function SignForBoxDialog({
         onNote={setNote}
         photo={photo}
         onPhoto={setPhoto}
+        photoUploadTo={teamId}
         hint={t("restock.actions.sign.courierHint")}
-        mark={codMark}
         testId="sign-courier"
       />
     </ConfirmDialog>

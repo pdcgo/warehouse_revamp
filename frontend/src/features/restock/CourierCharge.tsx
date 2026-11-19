@@ -15,7 +15,8 @@ const MAX_CHARGE_NOTE = 200;
 // The warehouse pays it on the spot and the selling team owes it back
 // (the-warehouse-cost-is-the-couriers-charge-at-the-door). It is entered at EITHER of the warehouse's two acts
 // (the-cod-can-be-noted-when-the-box-arrives): noted at Tandai Tiba, when the courier asks for it, and final at Terima —
-// so it lives here, in the domain, and both the sign dialog and the accept page draw it.
+// so it lives here, in the domain, and both the sign dialog and the accept page draw it. Both KEEP it: Tiba's on the
+// restock, which Terima opens with and replaces (the-courier-charge-is-noted-at-tiba-and-final-at-terima).
 //
 // ASKED FIRST, THEN FILLED (owner: *"default formnya ongkir dsb itu disabled, baru enabled saat interaksi tertentu"*,
 // the-charge-is-asked-for-before-it-is-filled) — a RADIO PILL, the owner's pick over a tick (*"desain kurir meminta ongkir
@@ -34,8 +35,8 @@ const MAX_CHARGE_NOTE = 200;
 // owed by the selling team. It IS in the unit price, so every HPP on the accept page moves as it is typed.
 //
 // A PHOTO OF THE COURIER'S SLIP, optional (owner: *"kurasa masuk akal kalau opsional"*,
-// the-courier-slip-has-an-optional-photo) — under the amount and the note, at both acts. Kept at Terima, uploaded as it
-// is picked (`photoUploadTo`); at Tandai Tiba, where the charge itself is not kept yet, only shown (PhotoPick).
+// the-courier-slip-has-an-optional-photo) — under the amount and the note, at both acts, and kept at both: uploaded as it
+// is picked (`photoUploadTo`, PhotoPick), under the warehouse.
 export function CourierCharge({
   asked,
   onAsked,
@@ -63,7 +64,7 @@ export function CourierCharge({
   /** The slip's photo — shown only where `onPhoto` is given. */
   photo?: DoorPhoto | null;
   onPhoto?: (photo: DoorPhoto | null) => void;
-  /** The team the slip is kept under — given (Terima), it is uploaded as it is picked; absent, only shown. */
+  /** The team the slip is kept under — given (Tiba, Terima), it is uploaded as it is picked; absent, only shown. */
   photoUploadTo?: bigint;
   /** What this act means for the charge — the accept page's by default. */
   hint?: string;

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -217,7 +218,21 @@ func testAffectedCommand() *cli.Command {
 				whole[s] = true
 			}
 
-			batches := smokeBatches(flows, whole)
+			wholeSpecs := make([]string, 0, len(whole))
+			for s := range whole {
+				wholeSpecs = append(wholeSpecs, s)
+			}
+
+			sort.Strings(wholeSpecs)
+
+			// Each batch is capped by the estimate of the specs it runs whole, as a full run's are (#75).
+			times, err := estimateSpecTimes(root, wholeSpecs, "",
+				testCounts(ctx, filepath.Join(root, "frontend"), wholeSpecs))
+			if err != nil {
+				return err
+			}
+
+			batches := withEstimatedCaps(smokeBatches(flows, whole), whole, times)
 
 			fmt.Fprintln(out)
 

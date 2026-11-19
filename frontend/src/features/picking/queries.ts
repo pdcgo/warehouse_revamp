@@ -41,3 +41,32 @@ export function usePickOrder(args: { warehouseId: bigint | undefined; orderId: b
     },
   });
 }
+
+// THE BULK PICK LIST'S READ (the-bulk-pick-list-prototype-is-accepted): the ticked orders' lines, then where their takes
+// drew each line from — like the single pick page above, both in ONE query function, because a list of lines with no
+// racks (or racks with no lines) would send the crew walking with half the answer.
+//
+//   OrderPickLines      the orders that ship from this warehouse, in the asked order, with their takes and lines
+//   StockPickLocations  every take at once (`transactionIds`), one query on the server, each rack named by its take
+//
+// An order that took nothing (transaction 0) is asked no racks; its lines read as "no recorded shelf". With no take to
+// read, the second call is not made. The shops' names are labels and come from `useShopsByIds` beside it.
+export function useBulkPick(args: { warehouseId: bigint | undefined; ids: bigint[] }) {
+  const { warehouseId, ids } = args;
+
+  return useQuery({
+    queryKey: key.orders(warehouseId, { bulkPick: ids.join(",") }),
+    enabled: warehouseId !== undefined && ids.length > 0,
+    queryFn: async () => {
+      const { orders } = await orderClient.orderPickLines({ teamId: warehouseId!, orderIds: ids });
+      const takes = [...new Set(orders.map((order) => order.transactionId).filter((id) => id > 0n))];
+
+      const places =
+        takes.length > 0
+          ? await inventoryClient.stockPickLocations({ warehouseId: warehouseId!, transactionIds: takes })
+          : { locations: [] };
+
+      return { orders, locations: places.locations };
+    },
+  });
+}

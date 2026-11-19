@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Flex, Heading, Icon, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
-import { ArrowLeft, Ban, PackageCheck, Undo2 } from "lucide-react";
+import { ArrowLeft, Ban, PackageCheck, PackageSearch, Undo2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
@@ -17,6 +18,8 @@ import { TimelinePanel } from "./components/TimelinePanel";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useOpenReturnAccept } from "../../features/orders/returnAccept";
 import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
+import { ReportFoundFromOrderDialog } from "../../features/inventory/ReportFoundFromOrderDialog";
+import { canReportFound } from "../../lib/roles";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -46,6 +49,9 @@ export function WarehouseOrderDetailPage() {
   const forceReturn = useForceReturn({ teamId });
   // …and Accept Return opens its page (the-return-accept-page-is-accepted).
   const openReturnAccept = useOpenReturnAccept();
+  // A LOST ORDER'S PARCEL, FOUND (a-found-lost-parcel-is-a-found-stock-in): Report Found, prefilled with the order — as on
+  // the pick page.
+  const [reportingFound, setReportingFound] = useState(false);
 
   const order = query.data ?? null;
   const loading = query.isPending && id !== 0n;
@@ -192,9 +198,33 @@ export function WarehouseOrderDetailPage() {
             {t("picking.action.acceptReturn")}
           </Button>
         )}
+
+        {/* A LOST ORDER'S PARCEL TURNED UP HERE — back in stock as a found naming the order; the order stays lost. */}
+        {order.status === OrderStatus.LOST && order.warehouseId === current.teamId && canWrite(current) &&
+          canReportFound(current.role) && (
+            <Button variant="outline" onClick={() => setReportingFound(true)} data-testid="order-report-found">
+              <Icon as={PackageSearch} boxSize="4" />
+              {t("picking.action.reportFound")}
+            </Button>
+          )}
       </Flex>
 
       {forceReturn.dialog}
+      {order.status === OrderStatus.LOST && order.warehouseId === current.teamId && (
+        <ReportFoundFromOrderDialog
+          key={order.id.toString()}
+          warehouseId={current.teamId}
+          orderId={order.id}
+          lines={order.items.map((i) => ({
+            productId: i.productId,
+            productCode: i.productCode,
+            name: i.name,
+            quantity: i.quantity,
+          }))}
+          open={reportingFound}
+          onOpenChange={setReportingFound}
+        />
+      )}
 
       {/* VERTICAL tabs down the left, content beside them (owner) — the same shape the product, rack,
           batch and restock detail pages use, because they are the same kind of screen: one record,

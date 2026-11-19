@@ -26,54 +26,86 @@ const (
 	reportWarehouseFee = "warehouse_fee"
 )
 
-// FoldHandler is the order metrics' push handler: it folds OrderPlaced, OrderCancelled, OrderStatusChanged and
-// OrderReturnAccepted into `order_daily_reports` (a-report-is-fed-by-events-only-for-now). One handler behind four
-// subscriptions — one per topic — because a subscription reads one topic.
+// FoldHandler is the order metrics' push handler: it folds OrderPlaced, OrderCancelled, OrderStatusChanged,
+// OrderReturnAccepted and OrderShopChanged into `order_daily_reports` (a-report-is-fed-by-events-only-for-now). One
+// handler behind five subscriptions — one per topic — because a subscription reads one topic.
 //
-// A move no metric counts (a confirm, a handover, a completed) and any other variant are ACKED: redelivering a message
-// nothing here will ever count is a loop, not a retry.
+// Every OrderStatusChanged counts for one metric now: a move into return or lost for the five's, every other move along
+// the order's way out for one count of Order status moves (the-order-status-moves-prototype-is-accepted). A status no
+// metric counts and any other variant are ACKED: redelivering a message nothing here will ever count is a loop, not a
+// retry.
 func (a *Analytic) FoldHandler() event_source.PushHandler {
 	return func(ctx context.Context, event *eventsv1.Event) error {
-		metric, orderID := foldTarget(event)
-		if metric == "" {
+		// A FIX OF THE ORDER'S SHOP is not one metric's move: it carries every metric the order had counted over to the
+		// new shop, on the day of the fix (an-orders-shop-is-fixed-and-counted-on-the-day).
+		fixed := event.GetOrderShopChanged()
+		if fixed != nil {
+			return a.foldShopFix(ctx, event, fixed)
+		}
+
+		target := foldTarget(event)
+		if target.metric == "" {
 			return nil
 		}
 
-		return a.fold(ctx, event, metric, orderID)
+		return a.fold(ctx, event, target)
 	}
 }
 
-// foldTarget is which metric an event counts for, and its order — "" when it counts for none.
-func foldTarget(event *eventsv1.Event) (string, uint64) {
+// foldMove is which metric an event counts for, its order, and the timeline row it was built from — the row whose
+// shop it counts under (shopAsOf). logID is 0 for the placement, which comes before every row; current says the
+// order's shop now is the move's (a cancel — see shopAsOf).
+type foldMove struct {
+	metric  string
+	orderID uint64
+	logID   uint64
+	current bool
+}
+
+// foldTarget is which metric an event counts for — an empty metric when it counts for none.
+func foldTarget(event *eventsv1.Event) foldMove {
 	switch {
 	case event.GetOrderPlaced() != nil:
-		return reportCreated, event.GetOrderPlaced().GetOrderId()
+		return foldMove{metric: reportCreated, orderID: event.GetOrderPlaced().GetOrderId()}
 	case event.GetOrderCancelled() != nil:
-		return reportCancelled, event.GetOrderCancelled().GetOrderId()
+		return foldMove{metric: reportCancelled, orderID: event.GetOrderCancelled().GetOrderId(), current: true}
 	case event.GetOrderReturnAccepted() != nil:
 		// The move into `return_completed` is the return accept's own event — OrderStatusChange refuses that move, so
 		// OrderStatusChanged never carries it.
-		return reportReturnArrived, event.GetOrderReturnAccepted().GetOrderId()
+		accepted := event.GetOrderReturnAccepted()
+
+		return foldMove{metric: reportReturnArrived, orderID: accepted.GetOrderId(), logID: accepted.GetTimelineLogId()}
 	case event.GetOrderStatusChanged() != nil:
 		moved := event.GetOrderStatusChanged()
 
 		switch moved.GetToStatus() {
 		case orderStatusReturn:
-			return reportReturnCreated, moved.GetOrderId()
+			return foldMove{metric: reportReturnCreated, orderID: moved.GetOrderId(), logID: moved.GetTimelineLogId()}
 		case orderStatusLost:
-			return reportLostCreated, moved.GetOrderId()
+			return foldMove{metric: reportLostCreated, orderID: moved.GetOrderId(), logID: moved.GetTimelineLogId()}
+		}
+
+		// ORDER STATUS MOVES — named by the status the order moved TO (the-order-metric-ids-name-what-moved): a resolve
+		// is a Completed, a hand back from processed or picked a Back to pending. The placement publishes OrderPlaced,
+		// never this, so a move into pending here is always a hand back.
+		report, ok := moveReportOf(moved.GetToStatus())
+		if ok {
+			return foldMove{metric: report, orderID: moved.GetOrderId(), logID: moved.GetTimelineLogId()}
 		}
 	}
 
-	return "", 0
+	return foldMove{}
 }
 
 // fold counts ONE order into its day's row for one metric.
 //
 // The DAY is the event's own instant as a Jakarta date — the placement, the cancel or the move
 // (a-fact-counts-on-the-day-it-happened). Everything else is read off the ORDER, which this service owns: its seller,
-// shop, warehouse and creator, its frozen `total_cost` and its `platform_total` (a-total-is-the-total-cost) — none of
-// which change after the order is placed, so reading them now is reading them then.
+// warehouse and creator, its frozen `total_cost` and its `platform_total` (a-total-is-the-total-cost) — none of which
+// change after the order is placed, so reading them now is reading them then. A status move of Order status moves adds
+// the count alone, no money (moveFigures). Its SHOP can be fixed
+// (an-orders-shop-is-fixed-and-counted-on-the-day), so the move counts under the shop the order was in at the move
+// (shopAsOf) — a late event never lands on a shop the order only moved to later.
 //
 // ⚠ ONE TRANSACTION for the claim and the upsert. A failure rolls the claim back with the figures, so the redelivery
 // genuinely reprocesses rather than being recognised as "already done" with nothing counted.
@@ -83,7 +115,8 @@ func foldTarget(event *eventsv1.Event) (string, uint64) {
 // (a-warehouse-fee-counts-on-its-day-and-a-cancel-takes-it-back-on-its-day) — the placement's day is never re-folded. An
 // order with no fee (a server built without a pricer) writes no fee row, so its cancel takes nothing back. The fee row
 // is always the transaction's SECOND lock, after the move's own row, so two folds never wait on each other in a cycle.
-func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, metric string, orderID uint64) error {
+func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, target foldMove) error {
+	metric, orderID := target.metric, target.orderID
 	day := event.GetOccurredAt().AsTime().In(wib).Format(metricDateLayout)
 
 	raw, err := san_event.Marshal(event)
@@ -126,11 +159,14 @@ func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, metric strin
 			return err
 		}
 
-		err = addToReport(tx, day, metric, &order, selling_service_models.OrderMetricColumns{
-			OrderCount: 1,
-			Total:      order.TotalCost,
-			MpTotal:    order.PlatformTotal,
-		})
+		if !target.current {
+			order.ShopID, err = shopAsOf(tx, &order, target.logID)
+			if err != nil {
+				return fmt.Errorf("order metrics: %s's shop at the move: %w", event.GetEventId(), err)
+			}
+		}
+
+		err = addToReport(tx, day, metric, &order, moveFigures(metric, order.TotalCost, order.PlatformTotal))
 		if err != nil {
 			return fmt.Errorf("order metrics: %s into %s on %s: %w", event.GetEventId(), metric, day, err)
 		}
@@ -143,6 +179,71 @@ func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, metric strin
 		err = addToReport(tx, day, reportWarehouseFee, &order, fee)
 		if err != nil {
 			return fmt.Errorf("order metrics: %s into %s on %s: %w", event.GetEventId(), reportWarehouseFee, day, err)
+		}
+
+		return nil
+	})
+}
+
+// foldShopFix counts a FIX OF THE ORDER'S SHOP on the day of the fix (an-orders-shop-is-fixed-and-counted-on-the-day):
+// every metric the order had been counted in before the fix — its placement, and its moves on the timeline before the
+// fix's note row — −1 with the order's figures under the old shop and +1 under the new (shopMoveRows). Past days are
+// never touched, and a move committed after the fix counts under the new shop by its own event.
+//
+// One transaction for the claim and every row, as fold's; the rows are written in metricLockRank's order, the fee row
+// last, so a fix and an ordinary fold never wait on each other in a cycle.
+func (a *Analytic) foldShopFix(ctx context.Context, event *eventsv1.Event, fixed *eventsv1.OrderShopChanged) error {
+	day := event.GetOccurredAt().AsTime().In(wib).Format(metricDateLayout)
+
+	raw, err := san_event.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	return a.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		claim := tx.Exec(
+			`INSERT INTO order_event_logs (id, raw, day) VALUES (?, ?, CAST(? AS date)) ON CONFLICT (id) DO NOTHING`,
+			event.GetEventId(), raw, day,
+		)
+		if claim.Error != nil {
+			return claim.Error
+		}
+
+		if claim.RowsAffected == 0 {
+			return nil
+		}
+
+		var order selling_service_models.Order
+
+		err := tx.
+			Select("id", "team_id", "shop_id", "warehouse_id", "created_by_user_id", "total_cost", "platform_total",
+				"warehouse_fee").
+			Where("id = ?", fixed.GetOrderId()).
+			Take(&order).
+			Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			slog.WarnContext(ctx, "order metrics: a shop fix names an order this service does not have",
+				"event_id", event.GetEventId(), "order_id", fixed.GetOrderId())
+
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		counts, err := countsBeforeShopFix(tx, order.ID, fixed.GetTimelineLogId())
+		if err != nil {
+			return fmt.Errorf("order metrics: %s's moves before the fix: %w", event.GetEventId(), err)
+		}
+
+		for _, row := range shopMoveRows(&order, fixed.GetFromShopId(), fixed.GetToShopId(), counts) {
+			order.ShopID = row.ShopID
+
+			err = addToReport(tx, day, row.Metric, &order, row.Columns)
+			if err != nil {
+				return fmt.Errorf("order metrics: %s into %s on %s: %w", event.GetEventId(), row.Metric, day, err)
+			}
 		}
 
 		return nil

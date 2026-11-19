@@ -1296,6 +1296,42 @@ type ImportLine = {
 
 const SHOPEE_SHEET = "Rincian Transaksi";
 
+// The rows that simply posted to their own order, and the rows already there — each shown with its result on the
+// file's page (the owner's acceptance row *open import detail*, backlog #93). Generated, so each file's lines add up to
+// its tally: 901 posts 120 (3 to the shop and 1 withdrawal, written out), 902 posts 70 (1 to the shop) and finds 12
+// already there, 903 posted 110 before the server stopped. Row n of a file is line file × 1000 + n on order
+// (file − 900) × 1000 + n — 901's first is line 901001, on order 1001.
+function linesOfFile(
+  fileId: bigint,
+  count: number,
+  outcome: UploadedFileLineOutcome,
+  row: { sheet: string; platformType: string; ref: (n: number) => string; occurredOn: string; from?: number },
+): ImportLine[] {
+  const from = row.from ?? 1;
+  return Array.from({ length: count }, (_, i) => {
+    const n = from + i;
+    const ref = row.ref(n);
+    return {
+      id: fileId * 1000n + BigInt(n),
+      uploadedFileId: fileId,
+      sheet: row.sheet,
+      orderRef: ref,
+      platformType: row.platformType,
+      description: `${row.platformType} ${ref}`,
+      settlementType: SettlementType.FUND,
+      change: 40_000 + ((n * 7_500) % 180_000),
+      occurredOn: row.occurredOn,
+      orderId: (fileId - 900n) * 1000n + BigInt(n),
+      outcome,
+      reason: UploadedFileLineReason.UNSPECIFIED,
+      detail: "",
+      settlementLogId: 700_000n + fileId * 1000n + BigInt(n),
+    };
+  });
+}
+
+const pad = (n: number, width: number) => String(n).padStart(width, "0");
+
 export const settlementImportLines: ImportLine[] = [
   // 901 — Shopee. Held: a type nobody mapped, and a key another account already holds.
   { id: 9011n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Biaya Program Baru", description: "Biaya program promosi September", settlementType: SettlementType.UNSPECIFIED, change: -15_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },
@@ -1316,6 +1352,18 @@ export const settlementImportLines: ImportLine[] = [
   { id: 9023n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", description: "Earnings", settlementType: SettlementType.UNSPECIFIED, change: 3_985_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
   { id: 9024n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "GMV Pay Deduction", description: "GMV Pay Deduction", settlementType: SettlementType.UNSPECIFIED, change: -412_500, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
   { id: 9025n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577009876543", platformType: "Order", description: "Order", settlementType: SettlementType.FUND, change: 156_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7003n },
+
+  // 901 — posted: a successful withdrawal goes to the shop — the row names no order — then 116 rows to their orders.
+  { id: 9018n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Penarikan Dana", description: "Penarikan dana ke rekening — Berhasil", settlementType: SettlementType.WITHDRAWAL, change: -2_500_000, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.UNSPECIFIED, detail: "", settlementLogId: 7005n },
+  ...linesOfFile(901n, 116, UploadedFileLineOutcome.POSTED, { sheet: SHOPEE_SHEET, platformType: "Penghasilan dari Pesanan", ref: (n) => `240927P${pad(n, 3)}`, occurredOn: "2026-09-27" }),
+  // 902 — 69 rows posted to their orders; 12 already there (the same statement's rows imported before): 10 on their
+  // orders, and 2 withdrawals on the shop.
+  ...linesOfFile(902n, 69, UploadedFileLineOutcome.POSTED, { sheet: "Order details", platformType: "Order", ref: (n) => `57700200${pad(n, 4)}`, occurredOn: "2026-09-27" }),
+  ...linesOfFile(902n, 10, UploadedFileLineOutcome.EXISTING, { sheet: "Order details", platformType: "Order", ref: (n) => `57700200${pad(n, 4)}`, occurredOn: "2026-09-26", from: 501 }),
+  { id: 902511n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Withdrawal", description: "Withdrawal", settlementType: SettlementType.WITHDRAWAL, change: -3_000_000, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.EXISTING, reason: UploadedFileLineReason.UNSPECIFIED, detail: "", settlementLogId: 7006n },
+  { id: 902512n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Withdrawal", description: "Withdrawal", settlementType: SettlementType.WITHDRAWAL, change: -1_250_000, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.EXISTING, reason: UploadedFileLineReason.UNSPECIFIED, detail: "", settlementLogId: 7007n },
+  // 903 — interrupted after 110 rows, every one posted to its order.
+  ...linesOfFile(903n, 110, UploadedFileLineOutcome.POSTED, { sheet: "Order details", platformType: "Order", ref: (n) => `57700300${pad(n, 4)}`, occurredOn: "2026-09-21" }),
 ];
 
 /**

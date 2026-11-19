@@ -17,7 +17,7 @@ import (
 // event_type — a subscription's filter is IMMUTABLE, so it has to be right at creation.
 const MemberRemovedSubscription = "selling-member-removed"
 
-// The order metrics' fold reads four topics, so it has four push subscriptions — a subscription reads one topic —
+// The order metrics' fold reads five topics, so it has five push subscriptions — a subscription reads one topic —
 // all served by the one FoldHandler (a-report-is-fed-by-events-only-for-now). tools/san's `pubsub ensure` declares the
 // same ids, each filtered to its event_type.
 const (
@@ -26,6 +26,8 @@ const (
 	OrderFoldMovedSubscription     = "selling-order-fold-moved"
 	// Return Arrived — the return accept's own event (the-accept-is-the-status-return-completed).
 	OrderFoldReturnAcceptedSubscription = "selling-order-fold-return-accepted"
+	// A fix of an order's shop — counted on the day of the fix (an-orders-shop-is-fixed-and-counted-on-the-day).
+	OrderFoldShopChangedSubscription = "selling-order-fold-shop-changed"
 )
 
 // NewRegister mounts selling_service's Connect handlers (ShopService + OrderService +
@@ -55,6 +57,7 @@ func NewRegister(
 		mux.Handle("/event/"+OrderFoldCancelledSubscription+"/push", fold)
 		mux.Handle("/event/"+OrderFoldMovedSubscription+"/push", fold)
 		mux.Handle("/event/"+OrderFoldReturnAcceptedSubscription+"/push", fold)
+		mux.Handle("/event/"+OrderFoldShopChangedSubscription+"/push", fold)
 
 		return san_grpc.ServiceReflectNames{
 			sellingv1connect.ShopServiceName,

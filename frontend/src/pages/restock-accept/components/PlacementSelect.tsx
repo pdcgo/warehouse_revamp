@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { RackSelect } from "../../../components/pickers/RackSelect";
 
 // THE PLACEMENT PICKER FOR A BOX'S UNITS — the shared RackSelect without the unplaced pile (there-is-no-unplaced-pile),
-// laid out for a row of the put-away panel: a good units' row, or the broken units' marked row. ⚠ Always in a ROW: its
-// `12rem` basis is a width there, and in a column it would be a height (it once stood 192px tall that way).
+// laid out for a row of the put-away panel: a good units' row — broken units go on no rack
+// (a-restocks-broken-units-are-just-broken-for-now). ⚠ Always in a ROW: its `12rem` basis is a width there, and in a
+// column it would be a height (it once stood 192px tall that way).
 export function PlacementSelect({
   warehouseId,
   value,

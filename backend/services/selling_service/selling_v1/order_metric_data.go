@@ -20,7 +20,9 @@ import (
 //     comes back for every asked metric, one with nothing in the scope all zero — never missing.
 //   - One answer per asked metric, in the asked order (one-call-answers-every-asked-metric).
 //   - A warehouse's money fields on an order metric are UNSET, never 0 (a-warehouse-sees-no-seller-money); Warehouse
-//     Fee's amount is set for it (a-warehouse-sees-its-own-fee-amount).
+//     Fee's amount is set for it (a-warehouse-sees-its-own-fee-amount). Order status moves is counts only, every one
+//     set for a warehouse.
+//   - Order status moves reads one report value per count (ordersMovesMetric); its rows group by value like any other's.
 //
 // ONE statement for all the asked metrics, after the reader's team type: grouped by metric and key.
 func (a *Analytic) MetricData(
@@ -139,8 +141,10 @@ func (a *Analytic) metricSummary(
 	for _, metric := range metrics {
 		data := &sellingv1.MetricData{}
 		reflected := data.ProtoReflect()
+		of := func(report string) selling_service_models.OrderMetricColumns { return sums[report] }
+
 		reflected.Set(oneofField(reflected, metric, "_summary"),
-			protoreflect.ValueOfMessage(metricMessage(metric, sums[metric.report], metric.showsMoney(reader))))
+			protoreflect.ValueOfMessage(metricMessage(metric, of, metric.showsMoney(reader))))
 
 		datas = append(datas, data)
 	}
@@ -165,7 +169,7 @@ func (a *Analytic) metricByKey(
 		Select("r.metric AS metric, " + key.sql + " AS key, " + reportSums).
 		Group("r.metric, " + key.sql)
 
-	// asked is every asked key, as text and as the response map's key; filled is metric → key text → sums.
+	// asked is every asked key, as text and as the response map's key; filled is report value → key text → sums.
 	type askedKey struct {
 		text   string
 		mapKey protoreflect.MapKey
@@ -175,7 +179,9 @@ func (a *Analytic) metricByKey(
 
 	filled := map[string]map[string]selling_service_models.OrderMetricColumns{}
 	for _, metric := range metrics {
-		filled[metric.report] = map[string]selling_service_models.OrderMetricColumns{}
+		for _, report := range metric.reports {
+			filled[report] = map[string]selling_service_models.OrderMetricColumns{}
+		}
 	}
 
 	suffix := "_by_id"
@@ -251,7 +257,9 @@ func (a *Analytic) metricByKey(
 
 		// Every asked key, zero where nothing happened — never missing (the-rows-are-the-keys-step-one-sends).
 		for _, k := range asked {
-			items.Set(k.mapKey, protoreflect.ValueOfMessage(metricMessage(metric, filled[metric.report][k.text], metric.showsMoney(reader))))
+			of := func(report string) selling_service_models.OrderMetricColumns { return filled[report][k.text] }
+
+			items.Set(k.mapKey, protoreflect.ValueOfMessage(metricMessage(metric, of, metric.showsMoney(reader))))
 		}
 
 		reflected.Set(field, protoreflect.ValueOfMessage(keyed))

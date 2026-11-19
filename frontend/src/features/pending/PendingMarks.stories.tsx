@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Flex, Stack, Text } from "@chakra-ui/react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
+import i18n from "../../i18n/config";
 import { NotImplemented } from "./NotImplemented";
 import { NotImplementedSummary } from "./NotImplementedSummary";
 import type { PendingList } from "./registry";
@@ -84,11 +85,35 @@ export const HiddenLeavesNothingBehind: Story = {
   },
 };
 
-// The accept page's copy, borrowed for the same reason as LIST's: one part against a business decision, one not.
-const CONFLICTED: PendingList<"codFromArrival" | "brokenRack"> = {
-  ns: "restock.accept",
+// One part against a business decision, one not. No screen carries such a part today — the last, the accept page's rack
+// for broken units, went with a-restocks-broken-units-are-just-broken-for-now — so this example brings its own copy,
+// worded as that one was, under a namespace of its own (never in the app's locales: a part no screen has).
+i18n.addResourceBundle(
+  "en",
+  "translation",
+  {
+    pendingExample: {
+      pending: {
+        chargeAtArrival: {
+          label: "Charge noted at Mark Arrived",
+          reason: "Marking arrived keeps no charge yet, so one noted there must be entered again.",
+        },
+        brokenRack: {
+          label: "Broken products' rack",
+          reason: "Put on a rack is not kept — the broken units are still recorded as thrown away.",
+          conflict: "a broken unit is thrown away — no rack holds it.",
+        },
+      },
+    },
+  },
+  true,
+  false,
+);
+
+const CONFLICTED: PendingList<"chargeAtArrival" | "brokenRack"> = {
+  ns: "pendingExample",
   parts: [
-    { id: "codFromArrival", kind: "missing" },
+    { id: "chargeAtArrival", kind: "missing" },
     { id: "brokenRack", kind: "dropped", conflict: true },
   ],
 };
@@ -112,7 +137,7 @@ export const AConflictIsSaidInItsRow: Story = {
     const row = await canvas.findByTestId("pending-row-brokenRack-conflict");
     await waitFor(() => expect(row).toBeVisible());
     await expect(row).toHaveTextContent("Against a business decision: a broken unit is thrown away — no rack holds it.");
-    await expect(canvas.queryByTestId("pending-row-codFromArrival-conflict")).toBeNull();
+    await expect(canvas.queryByTestId("pending-row-chargeAtArrival-conflict")).toBeNull();
 
     await expect(canvas.getByTestId("not-implemented-brokenRack")).toHaveAttribute(
       "title",

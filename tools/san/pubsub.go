@@ -293,6 +293,20 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "order-return-accepted",
 			Filter: `attributes.event_type = "warehouse.events.v1.OrderReturnAccepted"`,
 		},
+		// A fix of an order's shop, counted on the day of the fix (an-orders-shop-is-fixed-and-counted-on-the-day) — the
+		// same fold; mirrors selling_service.OrderFoldShopChangedSubscription.
+		{
+			ID:     "selling-order-fold-shop-changed",
+			Topic:  "order-shop-changed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderShopChanged"`,
+		},
+		// settlement_service moves the fixed order's account to its new shop — mirrors
+		// settlement_service.OrderShopChangedSubscription. The SAME topic as selling's fold, its OWN subscription.
+		{
+			ID:     "settlement-order-shop-changed",
+			Topic:  "order-shop-changed",
+			Filter: `attributes.event_type = "warehouse.events.v1.OrderShopChanged"`,
+		},
 		// liability_service's courier charge at a RETURN — mirrors liability_service.OrderReturnAcceptedSubscription. The
 		// SAME topic as selling's fold, its OWN subscription (a-return-may-carry-the-couriers-ask).
 		{

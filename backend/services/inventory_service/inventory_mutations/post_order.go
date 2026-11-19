@@ -67,8 +67,8 @@ type CountedLinesError struct {
 func (e *CountedLinesError) Error() string {
 	parts := make([]string, 0, len(e.Lines))
 	for _, l := range e.Lines {
-		parts = append(parts, fmt.Sprintf("product %d wants %d, %d on racks no count holds — the rest is held on rack %s by count #%d, started by user #%d at %s",
-			l.ProductID, l.Wanted, l.Free, l.Lock.PlacementCode, l.Lock.SessionID, l.Lock.StartedByID,
+		parts = append(parts, fmt.Sprintf("product %d wants %d, %d on racks no count holds — the rest is held on rack %s by count #%d, started by %s at %s",
+			l.ProductID, l.Wanted, l.Free, l.Lock.PlacementCode, l.Lock.SessionID, l.Lock.Starter(),
 			l.Lock.StartedAt.In(wib).Format("2006-01-02 15:04 MST")))
 	}
 

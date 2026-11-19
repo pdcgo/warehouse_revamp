@@ -22,7 +22,8 @@ import type { DoorPhoto } from "../../features/restock/doorPhoto";
 // press Accept on a count the server refuses is the worst moment to be told:
 //
 //   received   typed, required — what is IN THE BOX, broken included (any-warehouse-member-counts-what-arrived)
-//   broken     typed, optional — blank is none; never above received
+//   broken     typed, optional — blank is none; never above received. Recorded as broken only: its count, note and
+//              photo — no rack, no placement (a-restocks-broken-units-are-just-broken-for-now)
 //   good       = received − broken → stock, on placements that hold EXACTLY that many (there-is-no-unplaced-pile)
 //   missing    = ordered − received, worked out, never typed (a-short-unit-at-the-door-is-missing)
 //   over       received above ordered is refused — the selling team edits first (accept-refuses-more-than-the-line-says)
@@ -39,9 +40,6 @@ export interface PlacementDraft {
   quantity: string;
 }
 
-/** The two choices for a line's broken units (a-broken-product-may-go-on-a-rack). */
-export type BrokenTo = "discard" | "rack";
-
 export interface LineDraft {
   /** "" = not counted yet, which is NOT 0 — a blank blocks Accept. */
   received: string;
@@ -55,13 +53,6 @@ export interface LineDraft {
    * as it is picked, and its document sent on the received line, kept on the line's broken row.
    */
   brokenPhoto: DoorPhoto | null;
-  /**
-   * Where the broken units go (a-broken-product-may-go-on-a-rack): thrown away — the default — or put on a rack, which
-   * then needs one. ⚠ Held on screen only: the received line has no place for broken units, so it is never sent.
-   */
-  brokenTo: BrokenTo;
-  /** The placement chosen for the broken units; "" = none yet. */
-  brokenPlace: string;
   /**
    * The expiry read off the box, `yyyy-mm-dd` — "" = none (the-warehouse-types-the-expiry-at-the-accept): optional, one
    * per line, the soonest printed date when the box mixes several. Goes on the batch the line's good units mint.
@@ -89,8 +80,6 @@ export function emptyLine(): LineDraft {
     brokenNote: "",
     missingNote: "",
     brokenPhoto: null,
-    brokenTo: "discard",
-    brokenPlace: "",
     expiresOn: "",
     placements: [{ key: "first", place: "", quantity: "" }],
     firstFollows: true,
@@ -124,8 +113,6 @@ export interface LineState {
   toPlace: bigint;
   needsPlace: boolean;
   duplicate: boolean;
-  /** Broken units put on a rack, and no rack chosen yet (a-broken-product-may-go-on-a-rack). */
-  brokenNeedsPlace: boolean;
   ready: boolean;
 }
 
@@ -178,15 +165,10 @@ export function lineState(item: RestockRequestItem, draft: LineDraft, landed: nu
   const toPlace = relevant ? good - placed : 0n;
   const needsPlace = relevant && rows.some((row) => row.needsPlace);
   const duplicate = relevant && rows.some((row) => row.duplicate);
-  // Put on a rack, the broken units need one — a choice that names no rack is not finished.
-  const brokenNeedsPlace = counted && !brokenOver && broken > 0n && draft.brokenTo === "rack" && draft.brokenPlace === "";
 
-  const ready =
-    counted &&
-    over === 0n &&
-    !brokenOver &&
-    !brokenNeedsPlace &&
-    (!relevant || (toPlace === 0n && !needsPlace && !duplicate));
+  // The broken units ask for nothing more than their count: no rack, so nothing of theirs holds the line up
+  // (a-restocks-broken-units-are-just-broken-for-now).
+  const ready = counted && over === 0n && !brokenOver && (!relevant || (toPlace === 0n && !needsPlace && !duplicate));
 
   return {
     counted,
@@ -203,14 +185,12 @@ export function lineState(item: RestockRequestItem, draft: LineDraft, landed: nu
     toPlace,
     needsPlace,
     duplicate,
-    brokenNeedsPlace,
     ready,
   };
 }
 
 // The line as RestockRequestReceivedLine — only called once every line is ready, so every number here is one the
-// handler accepts. A note — and the broken units' photo — is sent only beside a row it can belong to. The broken units'
-// rack is NOT — the message has no field for it.
+// handler accepts. A note — and the broken units' photo — is sent only beside a row it can belong to.
 export function receivedLine(
   item: RestockRequestItem,
   draft: LineDraft,

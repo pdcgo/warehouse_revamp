@@ -43,6 +43,9 @@
 //                                                           detail serves corrected_from, missing_by_correction, the
 //                                                           money for the selling team only, the form's facts for the
 //                                                           receiving warehouse only, and count_corrections.
+//   the-restock-tags-prototype-is-accepted (#87)            the ten tag RPCs, a restock's `tags`, the list's `tag_ids`
+//                                                           (ANY of) and Terima's problem tags — restockTagScenario.ts
+//                                                           plays the server's rules; either side tags (visible).
 //
 // WRITEABLE: a restock raised in one step is on the list in the next. preview.tsx resets it in its `beforeEach`.
 
@@ -76,6 +79,21 @@ import { resetRestockAcceptScenario, restockAcceptScenario } from "./restockAcce
 import { brokenPhotoLink, doorPhotoScenario, resetDoorPhotoScenario, slipPhotoLink } from "./doorPhotoScenario";
 import { resetRestockReadScenario, restockReadScenario } from "./restockReadScenario";
 import { resetRestockExportScenario, restockExportScenario } from "./restockExportScenario";
+import { resetRestockWriteScenario, restockWriteScenario } from "./restockWriteScenario";
+import {
+  carriesAnyTag,
+  createTag,
+  deleteTag,
+  listTags,
+  manageTags,
+  putProblemTags,
+  refuseUnlessRole,
+  renameTag,
+  resetRestockTagScenario,
+  setTag,
+  tagsOnWire,
+} from "./restockTagScenario";
+import { RestockTagType } from "../src/gen/warehouse/inventory/v1/restock_tag_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 
 let rows: RestockFixture[] = [];
@@ -94,7 +112,9 @@ export function resetRestockStub() {
   resetRestockAcceptScenario();
   resetRestockReadScenario();
   resetRestockExportScenario();
+  resetRestockWriteScenario();
   resetDoorPhotoScenario();
+  resetRestockTagScenario(rows);
 }
 
 /**
@@ -333,6 +353,16 @@ function landedOf(r: RestockFixture, l: LineFixture): number {
   return unitHpp(l.total, l.count, r.shipmentCost + r.warehouseAdditionalCost, allQty);
 }
 
+// A line's door rows as a LIST row carries them (restock_request_list.go withRestockProblemCounts): the units of each kind,
+// summed, in the server's order (by the kind's word — broken, then missing) — nothing else.
+function listProblemCounts(l: LineFixture) {
+  const sum = (type: RestockProblemType) => l.problems.filter((p) => p.type === type).reduce((s, p) => s + p.count, 0n);
+
+  return [RestockProblemType.BROKEN, RestockProblemType.MISSING]
+    .map((type) => ({ type, count: sum(type) }))
+    .filter((p) => p.count > 0n);
+}
+
 // The trail row that moved restock `r` INTO `to` — never an edit, which keeps the status.
 const stepLog = (r: RestockFixture, to: S) => r.logs.find((l) => l.toStatus === to && l.fromStatus !== l.toStatus);
 
@@ -349,7 +379,16 @@ function toWire(r: RestockFixture, withLogs: boolean, reader?: bigint) {
     return {
       ...l,
       priceUnit: l.count > 0n ? l.total / Number(l.count) : 0,
-      problems: l.problems.map((p) => ({ ...p, priceUnit: landed, total: landed * Number(p.count) })),
+      // A LIST ROW (no trail) carries what the real list sends of the door's rows — on an accepted restock only, each
+      // kind's units alone: no price, total, note or photo, and no placements (restock_request_list.go
+      // withRestockProblemCounts, backlog #89); the detail reads them whole. So a list screen reading more of them than
+      // the list sends fails here first.
+      problems: withLogs
+        ? l.problems.map((p) => ({ ...p, priceUnit: landed, total: landed * Number(p.count) }))
+        : r.status === S.ACCEPTED
+          ? listProblemCounts(l)
+          : [],
+      placements: withLogs ? l.placements : [],
       ...(withLogs ? correctionFieldsOf("restock", r.id, l.id, withMoney, withFacts) : {}),
     };
   });
@@ -361,6 +400,8 @@ function toWire(r: RestockFixture, withLogs: boolean, reader?: bigint) {
     subtotal,
     total: subtotal + r.shipmentCost,
     logs: withLogs ? r.logs : [],
+    // Its tags (#87), on the list's rows and the detail alike.
+    tags: tagsOnWire(r.id),
     countCorrections: withLogs ? correctionRowsOf("restock", r.id, withMoney) : [],
     // Each by-line's flag, as the server reads it for the list (an-override-shows-a-platform-badge): the create's is the
     // trail's FIRST row; the arrive's is the row that moved it to arrived — or, counted straight from ongoing, the
@@ -609,6 +650,8 @@ function inListScope(r: RestockFixture, teamId: bigint, f: ListFilter): boolean 
   if (f?.acceptedByUserId && r.acceptedByUserId !== f.acceptedByUserId) return false;
   // The courier: 0 = any; a restock naming none matches no pick.
   if (f?.shipmentId && r.shipmentId !== f.shipmentId) return false;
+  // The tags (#87): none picked = any; else it carries ANY of them.
+  if (!carriesAnyTag(r.id, f?.tagIds)) return false;
 
   if (f?.fromUnix || f?.toUnix) {
     const at = dateOf(r, field);
@@ -756,6 +799,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
   },
 
   restockRequestUpdate(req) {
+    // Which write a save called (restockWriteScenario.ts) — the edit form's, the whole restock.
+    restockWriteScenario.writes.push({ rpc: "RestockRequestUpdate", teamId: req.teamId, requestId: req.requestId, note: req.note });
     const r = raisedBy(req.teamId, req.requestId);
     onceEach(req.items);
 
@@ -825,6 +870,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
   // (the warehouse reads NotFound), every status; a changed note stamps its writer and is an edit's row with the note
   // before and after; the same note again writes nothing.
   restockRequestNoteSet(req) {
+    // Which write a save called (restockWriteScenario.ts) — the note alone.
+    restockWriteScenario.writes.push({ rpc: "RestockRequestNoteSet", teamId: req.teamId, requestId: req.requestId, note: req.note });
     const r = raisedBy(req.teamId, req.requestId);
     if (req.note !== r.note) {
       const changes: ChangeFixture[] = [{ field: CF.NOTE, productId: 0n, productName: "", before: r.note, after: req.note }];
@@ -858,14 +905,69 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     return { request: toWire(r, true, req.teamId) };
   },
 
+  // ── THE TAGS (#87) — restockTagScenario.ts plays the rules; a restock is tagged from EITHER side (visible). ──
+  // A READ — the admin team's monitor reaches it too, as every restock read.
+  restockTagList(req) {
+    return listTags(req.q, req.page);
+  },
+  restockTagManageList(req) {
+    refuseUnlessRole(true);
+    return manageTags(req.q, req.page);
+  },
+  restockTagCreate(req) {
+    refuseUnlessRole(false);
+    return createTag(req.name, RestockTagType.CUSTOM);
+  },
+  restockTagSystemCreate(req) {
+    refuseUnlessRole(true);
+    return createTag(req.name, RestockTagType.SYSTEM);
+  },
+  restockTagRename(req) {
+    refuseUnlessRole(true);
+    return renameTag(req.tagId, req.name);
+  },
+  restockTagDelete(req) {
+    refuseUnlessRole(true);
+    return deleteTag(req.tagId);
+  },
+  restockRequestTagAdd(req) {
+    refuseUnlessRole(false);
+    visible(req.teamId, req.requestId);
+    return setTag(req.teamId, req.requestId, req.tagId, false, true);
+  },
+  restockRequestTagRemove(req) {
+    refuseUnlessRole(false);
+    visible(req.teamId, req.requestId);
+    return setTag(req.teamId, req.requestId, req.tagId, false, false);
+  },
+  restockRequestSystemTagAdd(req) {
+    refuseUnlessRole(true);
+    visible(req.teamId, req.requestId);
+    return setTag(req.teamId, req.requestId, req.tagId, true, true);
+  },
+  restockRequestSystemTagRemove(req) {
+    refuseUnlessRole(true);
+    visible(req.teamId, req.requestId);
+    return setTag(req.teamId, req.requestId, req.tagId, true, false);
+  },
+
   restockRequestArrive(req) {
     const r = comingTo(req.teamId, req.requestId);
     if (r.status !== S.ONGOING && r.status !== S.LOST) throw precondition("only an ongoing or lost restock can be signed for");
+    // THE COURIER'S CHARGE NOTED AT THE DOOR, as the server checks and keeps it
+    // (the-courier-charge-is-noted-at-tiba-and-final-at-terima): Terima's rules — a note once above 0, the slip only with a
+    // charge. A story may call the stub with a plain object, so an absent field reads as none.
+    const charge = req.warehouseAdditionalCost ?? 0;
+    const note = req.warehouseAdditionalCostNote ?? "";
+    if (charge > 0 && note.trim() === "") throw invalid("the courier's charge needs a note");
 
     const from = r.status;
     r.status = S.ARRIVED;
     r.arrivedByUserId = SELF_ID;
     r.arrivedAtUnix = now();
+    r.warehouseAdditionalCost = charge;
+    r.warehouseAdditionalCostNote = note;
+    r.warehouseAdditionalCostFile = charge > 0 ? (req.warehouseAdditionalCostFile ?? "") : "";
     appendLog(r, from, S.ARRIVED, from === S.LOST ? "signed for the box — it turned up after all" : "signed for the box");
 
     return { request: toWire(r, true, req.teamId) };
@@ -939,6 +1041,8 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
 
     const from = r.status;
     r.status = S.ACCEPTED;
+    // The app's problem tags, in the same step (a-restock-problem-is-a-system-tag).
+    putProblemTags(r.id, missing > 0n, broken > 0n);
     r.acceptedByUserId = SELF_ID;
     r.acceptedAtUnix = now();
     if (r.arrivedAtUnix === 0n) {
@@ -1007,7 +1111,9 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
 
       const raisedOrComing = r.requestingTeamId === req.teamId || r.warehouseId === req.teamId;
       if (types.includes(RestockRequestByIdsDataType.RESTOCK_REQUEST) && raisedOrComing) {
-        add(id, { case: "restockRequest", value: toWire(r, false, req.teamId) });
+        // As restock_request_by_ids.go builds it: the lines alone — no door rows at all (the labels read none).
+        const row = toWire(r, false, req.teamId);
+        add(id, { case: "restockRequest", value: { ...row, items: row.items.map((l) => ({ ...l, problems: [] })) } });
       }
       if (types.includes(RestockRequestByIdsDataType.LABELS) && r.warehouseId === req.teamId && r.status === S.ACCEPTED) {
         add(id, { case: "labels", value: labelSetOf(r) });

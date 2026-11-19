@@ -124,6 +124,9 @@ func (s *Service) OrderTransactionCreate(
 		// when, so the person knows whom to ask.
 		var counted *inventory_mutations.CountedLinesError
 		if errors.As(err, &counted) {
+			// Named before the words are written — the order's create reads this in process (count_lock_names.go).
+			s.nameCountStarters(ctx, counted)
+
 			lines := make([]*inventoryv1.OrderTransactionRefusedLine, 0, len(counted.Lines))
 			for _, l := range counted.Lines {
 				lines = append(lines, &inventoryv1.OrderTransactionRefusedLine{

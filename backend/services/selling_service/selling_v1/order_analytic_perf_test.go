@@ -1,7 +1,7 @@
 //go:build perfaudit
 
-// Performance audit (the audit-rpc-performance skill) for the order metrics and Warehouse Fee — MetricSearch and
-// MetricData over a year of `order_daily_reports`.
+// Performance audit (the audit-rpc-performance skill) for the order metrics, Order status moves and Warehouse Fee —
+// MetricSearch and MetricData over a year of `order_daily_reports`.
 //
 //	go test -tags perfaudit -run TestPerf_OrderMetric -v ./backend/services/selling_service/selling_v1/
 package selling_v1_test
@@ -22,10 +22,13 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
-// perfReportRows is a year of report rows: 365 days × 6 metrics (the five order metrics and Warehouse Fee) × 55
-// (seller, shop, warehouse, creator) — ~120 000 rows over 5 sellers, 20 shops, 3 warehouses and 7 creators.
+// perfReportRows is a year of report rows: 365 days × 13 metric values (the five order metrics, Warehouse Fee and Order
+// status moves' seven counts) × 55 (seller, shop, warehouse, creator) — ~261 000 rows over 5 sellers, 20 shops, 3
+// warehouses and 7 creators.
 func perfReportRows() []selling_service_models.OrderDailyReport {
-	metrics := []string{"created", "cancelled", "return_created", "return_arrived", "lost_created", "warehouse_fee"}
+	metrics := []string{"created", "cancelled", "return_created", "return_arrived", "lost_created", "warehouse_fee",
+		"moves_confirmed", "moves_back_to_pending", "moves_picked", "moves_handed_over", "moves_shipped", "moves_problem",
+		"moves_completed"}
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	rows := make([]selling_service_models.OrderDailyReport, 0, 365*len(metrics)*55)
@@ -149,6 +152,55 @@ func TestPerf_OrderMetric(t *testing.T) {
 			_, err := analytic.MetricData(ctx, connect.NewRequest(&sellingv1.MetricDataRequest{
 				TeamId: san_auth.RootTeamID, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SUMMARY,
 				Filters: perfWindow("2026-01-01", "2026-12-31"), MetricIds: all,
+			}))
+
+			return err
+		}},
+		// ORDER STATUS MOVES (the-order-status-moves-prototype-is-accepted) — seven report values per read.
+		{"search · warehouse · moves by team, by handed over · a year", func() error {
+			_, err := analytic.MetricSearch(ctx, connect.NewRequest(&sellingv1.MetricSearchRequest{
+				TeamId: 900, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_TEAM, Filters: perfWindow("2026-01-01", "2026-12-31"),
+				Sort: &analytic_basev1.MetricSort{MetricId: metricMoves, Field: "handed_over_count"},
+				Page: &analytic_basev1.PaginationFilter{Limit: 50},
+			}))
+
+			return err
+		}},
+		{"search · seller · moves by shop, by completed · 30 days", func() error {
+			_, err := analytic.MetricSearch(ctx, connect.NewRequest(&sellingv1.MetricSearchRequest{
+				TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP, Filters: perfWindow("2026-10-01", "2026-10-30"),
+				Sort: &analytic_basev1.MetricSort{MetricId: metricMoves, Field: "completed_count"},
+				Page: &analytic_basev1.PaginationFilter{Limit: 50},
+			}))
+
+			return err
+		}},
+		{"data · warehouse · moves by day · 31 days", func() error {
+			days := make([]string, 0, 31)
+			for d := range 31 {
+				days = append(days, time.Date(2026, 10, 1+d, 0, 0, 0, 0, time.UTC).Format("2006-01-02"))
+			}
+
+			_, err := analytic.MetricData(ctx, connect.NewRequest(&sellingv1.MetricDataRequest{
+				TeamId: 900, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_DAILY, Filters: perfWindow("2026-10-01", "2026-10-31"),
+				Keys:      &analytic_basev1.MetricKeys{K: &analytic_basev1.MetricKeys_Days{Days: &analytic_basev1.DayList{Days: days}}},
+				MetricIds: []string{metricMoves},
+			}))
+
+			return err
+		}},
+		{"data · seller · 8 shops × 7 metrics · a year", func() error {
+			_, err := analytic.MetricData(ctx, connect.NewRequest(&sellingv1.MetricDataRequest{
+				TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP, Filters: perfWindow("2026-01-01", "2026-12-31"),
+				Keys: shops, MetricIds: append([]string{metricMoves}, all...),
+			}))
+
+			return err
+		}},
+		{"data · root · summary × 7 metrics · a year", func() error {
+			_, err := analytic.MetricData(ctx, connect.NewRequest(&sellingv1.MetricDataRequest{
+				TeamId: san_auth.RootTeamID, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SUMMARY,
+				Filters: perfWindow("2026-01-01", "2026-12-31"), MetricIds: append([]string{metricMoves}, all...),
 			}))
 
 			return err

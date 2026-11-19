@@ -170,6 +170,10 @@ func (s *Service) OrderTransactionReturn(
 		return tx.Create(&models.OrderReturnCheck{TakeTransactionID: takeID, TransactionID: t.ID}).Error
 	})
 	if err != nil {
+		// The return accept reads this in process: a count holding a rack is refused naming who started it
+		// (count_lock_names.go).
+		s.nameCountStarters(ctx, err)
+
 		return nil, returnErr(err)
 	}
 

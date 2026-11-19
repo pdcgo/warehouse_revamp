@@ -12,7 +12,10 @@
 export const restockReadScenario: {
   byIdsCalls: bigint[][];
   codWindows: { teamId: bigint; fromUnix: bigint; toUnix: bigint }[];
-  sellingStatCalls: { teamId: bigint; filter: { q?: string; shipmentId?: bigint; warehouseId?: bigint } | undefined }[];
+  sellingStatCalls: {
+    teamId: bigint;
+    filter: { q?: string; shipmentId?: bigint; warehouseId?: bigint; tagIds?: bigint[] } | undefined;
+  }[];
 } = { byIdsCalls: [], codWindows: [], sellingStatCalls: [] };
 
 export function resetRestockReadScenario() {

@@ -6,7 +6,7 @@ import { asRole } from "../../../../.storybook/sessionScenario";
 import { labelsPath } from "../../../features/restock/labelsPath";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { RestockLabelsPage } from "../index";
-import { clearSettings } from "../settings";
+import { clearSettings } from "../../../features/labels/settings";
 
 // WHAT EVERY RESTOCK-LABELS STORY FILE SHARES — the page's stories are split by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen): `../index.stories.tsx` is what the page leads with, this folder one

@@ -201,7 +201,8 @@ func rowsAddUp(rows []*inventoryv1.RestockRequest) (map[inventoryv1.RestockReque
 // warehouses (5, 6), every status with its own dates, three couriers (one 0), three creators (one 0), two acceptors, four
 // paying accounts (one 0 — raised before naming one was required), references with and without text, freight and a
 // courier's charge at the door on the accepted ones, one to three lines over four products — an accepted line counted in
-// short, so the pieces ORDERED and the pieces received differ. Returns the ids in seed order.
+// short, so the pieces ORDERED and the pieces received differ — and tags (backlog #87): *Prioritas* on every third,
+// *Lebaran 2026* on every fourth (so some carry both), *Supplier Baru* on none. Returns the ids in seed order.
 func seedSellingStatFixture(t *testing.T, db *gorm.DB) []uint64 {
 	t.Helper()
 
@@ -311,6 +312,20 @@ func seedSellingStatFixture(t *testing.T, db *gorm.DB) []uint64 {
 		ids = append(ids, r.ID)
 	}
 
+	prioritas := seedTag(t, db, "Prioritas", "custom")
+	lebaran := seedTag(t, db, "Lebaran 2026", "custom")
+	seedTag(t, db, "Supplier Baru", "custom")
+
+	for i, id := range ids {
+		if i%3 == 0 {
+			tagOn(t, db, id, prioritas)
+		}
+
+		if i%4 == 0 {
+			tagOn(t, db, id, lebaran)
+		}
+	}
+
 	return ids
 }
 
@@ -327,6 +342,8 @@ func TestRestockSellingStat_EveryFilterNarrowsAsTheList(t *testing.T) {
 
 	now := time.Now()
 	day := func(n int) int64 { return now.AddDate(0, 0, -n).Unix() }
+
+	prioritas, lebaran, unused := exportTag(t, db, "Prioritas"), exportTag(t, db, "Lebaran 2026"), exportTag(t, db, "Supplier Baru")
 
 	filters := map[string]*inventoryv1.RestockRequestListFilter{
 		"nil":                  nil,
@@ -354,8 +371,15 @@ func TestRestockSellingStat_EveryFilterNarrowsAsTheList(t *testing.T) {
 		"q invoice":            {Q: "inv-1"},
 		"status is ignored":    {Status: inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED},
 		"status + warehouse 5": {Status: inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_LOST, WarehouseId: 5},
+		// BY TAG (the-restock-tags-prototype-is-accepted): any of the picks; a restock carrying both is one restock.
+		"tag prioritas":             {TagIds: []uint64{prioritas}},
+		"tag lebaran":               {TagIds: []uint64{lebaran}},
+		"tags prioritas or lebaran": {TagIds: []uint64{prioritas, lebaran}},
+		"tag on no restock":         {TagIds: []uint64{unused}},
+		"tag + courier 91":          {TagIds: []uint64{lebaran}, ShipmentId: 91},
 		"everything": {
 			Status:          inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ONGOING,
+			TagIds:          []uint64{prioritas, lebaran},
 			ProductId:       101,
 			WarehouseId:     5,
 			ShipmentId:      91,

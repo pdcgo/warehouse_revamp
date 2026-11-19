@@ -61,7 +61,7 @@ sequenceDiagram
   DB-->>-S: ok
   S->>+DB: SELECT the account FOR UPDATE
   DB-->>-S: the account, now serialised
-  S->>S: account's team and shop match? else refuse
+  S->>S: account's team matches? else refuse
   S->>+DB: SELECT settlement_logs WHERE unique_id
   DB-->>-S: found or not
   alt already written, on this account
@@ -69,6 +69,7 @@ sequenceDiagram
   else already written, on another account — another order, or another shop's row
     S-->>C: InvalidArgument — refused, nothing written
   else new
+    S->>S: account's shop matches? else refuse — checked after the lookup, so a retry under a moved order's old shop is answered
     S->>S: live-sale rules — see below
     S->>+DB: INSERT settlement_logs — posted_on from the column default
     DB-->>-S: the row
@@ -94,12 +95,21 @@ never `= 0`. Comparisons on these doubles use
 `SettlementLogPosted.change`/`balance` are doubles too; an event published while they were int64 still reads (protojson
 quoted the number, which a double accepts).
 
-### An imported shop row asks the shop — before the transaction
+### A shop row asks the shop — before the transaction
+
+**Every shop-addressed row asks** (2026-11-18,
+[settlement-and-expense-ask-the-shop-first](../../business/shop/context_decision.md#settlement-and-expense-ask-the-shop-first)):
+whether the shop is the caller's team's — so no team opens, or writes on, another team's shop account. Another team's
+shop, or one that never existed, answers **NotFound** — *"shop #N is not one of this team's shops"* — and nothing is
+written (no row, no account). A CLOSED shop is answered and its money rows still post
+([a-closed-shop-refuses-only-new-selling](../../business/shop/context_decision.md#a-closed-shop-refuses-only-new-selling)).
+Who in the team may post is unchanged (the request's policy). An account another team opened before this check is not
+re-homed: the shop's own team still meets PermissionDenied on it, and the team that opened it can add nothing new there.
 
 [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs):
-a row the importer posts to a SHOP counts, in the per-user report, for the shop's primary CS. Settlement asks
-the shop itself and writes the person on the row as `user_id`; the importer passes no person. **Its one call
-into another service.**
+the same answer names who a row the importer posts to a SHOP counts for, in the per-user report — the shop's primary
+CS. Settlement asks the shop itself and writes the person on the row as `user_id`; the importer passes no person. **Its
+one call into another service.**
 
 ```mermaid
 sequenceDiagram
@@ -107,13 +117,13 @@ sequenceDiagram
   participant S as SettlementPost
   participant SH as ShopAccessCheck
   participant DB as postgres
-  I->>S: a shop row, source importer — under the uploader's token
+  I->>S: a shop row, imported or by hand — under the poster's token
   S->>SH: team_id, shop_id, the actor — the same token, forwarded
-  alt the shop answers a primary CS
-    SH-->>S: primary_user_id
-    S->>DB: the transaction — the row carries user_id, the actor stays the uploader
+  alt the team's shop, open or closed — and, for an imported row, a primary CS
+    SH-->>S: the shop, primary_user_id
+    S->>DB: the transaction — an imported row carries user_id, a row by hand counts for its actor
     S-->>I: created, or already there
-  else no primary CS, not the team's shop, or no answer
+  else not the team's shop, unknown, no answer, or an imported row with no primary CS
     SH-->>S: 0, NotFound or an error — HELD, not returned yet
     S->>DB: the transaction — the key looked up under the account's lock
     alt the key is stored — a retry
@@ -126,12 +136,13 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| which rows ask | an imported shop row only — an order row counts for its stamped creator, and a shop row posted by hand for its actor |
+| which rows ask | every shop row — imported or by hand — asks whether the shop is the team's; only an IMPORTED one takes the primary CS as its `user_id` (a row by hand counts for its actor). An order row asks nothing: its shop comes from the order, which its own service checked |
+| not the team's shop | another team's or an unknown shop is **NotFound** *"shop #N is not one of this team's shops"* — the same words for both, so the answer confirms no id. When the account already exists under another team, NotFound still wins over PermissionDenied |
 | when | ⚠ **before** the transaction — never while the shop's account row is locked `FOR UPDATE`, or every post on the shop waits on the network |
 | how | `ShopPrimary`, an interface settlement owns; the composition root answers it with a Connect client to `ShopAccessCheck` that forwards the caller's token (`san_auth.ForwardBearer`). A client, not the handler in-process: the shop lives in `selling_service`, which calls settlement on every placed order, so holding it would be a cycle — and the shop moving to its own service (the-shop-gets-its-own-service) changes only the adapter |
 | a failed ask | a NEW row is **refused**, with the ask's reason — never a quiet fallback to the actor, which would count the row for the wrong person for good. ⚠ The failure is **held** until the transaction's idempotency check, so a RETRY of a stored row is answered from the ledger whatever the shop says: the retry this RPC absorbs, and the re-post that republishes a lost event, never depend on the shop being up |
 | carried | `user_id` is on `SettlementLogPosted`, and the fold counts a shop row for it when set — a replay folds the person the row was written with, never asking again |
-| the cost | one call per imported shop row — a whole Shopee file when no order is found, and a retry asks too. [The performance audit](../../../audits/services/settlement_service/performances/SettlementPost.md) finds it heavy by the N+1 rule. A cache per `(team, shop)` is its open question |
+| the cost | one call per shop row (imported or by hand) — a whole Shopee file when no order is found, and a retry asks too. [The performance audit](../../../audits/services/settlement_service/performances/SettlementPost.md) finds it heavy by the N+1 rule. A cache per `(team, shop)` is its open question |
 
 ### The live-sale rules — read under the account's lock
 
@@ -164,9 +175,10 @@ logged and never fails the post; re-posting the same `unique_id` republishes it.
 
 | code | when |
 | --- | --- |
-| `PermissionDenied` | a cancel from a non-`order` source · the account belongs to another team |
+| `NotFound` | a shop row naming another team's shop or one that never existed — *"shop #N is not one of this team's shops"*, nothing written (2026-11-18) |
+| `PermissionDenied` | a cancel from a non-`order` source · the order account belongs to another team · a shop account another team opened before the shop was asked (not re-homed) |
 | `FailedPrecondition` | a second live sale · a cancel exceeding the live sale · `CancelSale` with nothing live (`ErrNothingToCancel`) · a reversal of a row already reversed |
-| `InvalidArgument` | a `change` that is NaN or infinite · unknown type or source · a bad date · a shop that disagrees with the account · `reverses_id` naming nothing on this account · a reversal that is not the reversed row's type and opposite amount · a sale with no order · a `system_adjustment` on an order · a `unique_id` already used on another account |
+| `InvalidArgument` | a `change` that is NaN or infinite · unknown type or source · a bad date · a NEW row naming a shop that disagrees with the account (a retry of a row already written is answered first) · `reverses_id` naming nothing on this account · a reversal that is not the reversed row's type and opposite amount · a sale with no order · a `system_adjustment` on an order · a `unique_id` already used on another account |
 | `Internal` | the database |
 
 ---
@@ -228,6 +240,49 @@ sequenceDiagram
   O->>O: UPDATE orders SET settlement_opened_at WHERE id = N AND settlement_opened_at IS NULL
   O-->>S: nil, or an error that is only logged
 ```
+
+## An order's account moves with its shop — `MoveOrderShop` (2026-11-18)
+
+[an-orders-shop-is-fixed-and-counted-on-the-day](../../business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day):
+selling fixes an order's shop (`OrderShopUpdate`, [selling rpc.md](../selling_service/rpc.md#an-orders-shop-is-fixed--ordershopupdate-2026-11-18))
+and publishes `OrderShopChanged`; settlement moves the order's account to the new shop on its OWN push subscription,
+`settlement-order-shop-changed` (`OrderShopHandler` → `MoveOrderShop`, `settlement_v1/order_shop_move.go`). After it, the
+new shop's statement posts onto the account — the importer's shop check
+([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused))
+and `SettlementPost`'s shop check both meet the new shop.
+
+```mermaid
+sequenceDiagram
+  participant B as Pub/Sub
+  participant S as settlement MoveOrderShop
+  participant DB as postgres
+
+  B->>+S: OrderShopChanged - order, to shop, change id, the fix's instant
+  S->>+DB: SELECT order_settlements FOR UPDATE - the lock every post on the order takes
+  DB-->>-S: the account, or none yet
+  S->>DB: MAX(change_id) of order_settlement_shop_moves for the order
+  S->>DB: INSERT order_settlement_shop_moves - the claim, ON CONFLICT DO NOTHING
+  alt claimed, an account on another shop, no later fix applied
+    S->>DB: the order's sums per shop and type, every shop but the new
+    S->>DB: INSERT a pair per type - minus under the old shop, plus under the new, source order, occurred_on the fix's day
+    S->>DB: UPDATE the account - shop_id the new, last_balance the last row's
+  else a redelivery, an older fix, already there, or no account
+    S->>S: nothing moves
+  end
+  S-->>-B: 200
+  S-)B: SettlementLogPosted per moving row - after commit, the reports fold them
+```
+
+| | |
+| --- | --- |
+| **the ledger is not edited** | its rows are immutable — a correction is a new row — so the move is a PAIR OF ROWS PER SETTLEMENT TYPE the order holds: the type's sum out of the old shop (−) and into the new (+). `unique_id` `order-shop-moved:<change>:<shop>:<type>`, `source_type` `order`, `occurred_on` the fix's Jakarta day, `posted_on` the day written, the fixer as actor (override stamped). The order's balance, live sale and creator are unchanged; only the account's `shop_id` moves |
+| **the reports** | folded like every row: on the day they are posted the old shop's report takes the order's figures out (its close back by the order's balance), the new shop's takes them in; the person grain nets to nothing. Past days never change ([a-fact-counts-on-the-day-it-happened](../../business/order/order_statistic_metric_decision.md#a-fact-counts-on-the-day-it-happened)) |
+| **once, in order** | `order_settlement_shop_moves` (00012), keyed by the fix's id: a redelivery inserts nothing and moves nothing; a fix whose id is below one already applied moves nothing (fixes of one order are serialised by selling's row lock, so ids ascend) — the account always ends on the order's latest shop |
+| **no account yet** | nothing moves (the claim records from = to): the new shop's first line opens it under that shop |
+| **another team** | an account of another team under the order's id → PermissionDenied, nothing moved |
+| **a retry under the old shop** | an order event redelivered after the move — its row already in the ledger under the old shop — is answered with its own row (`SettlementPost`'s shop check comes after the `unique_id` lookup); a NEW row naming the old shop is refused as the wrong shop |
+| **the lock** | the order account's row, as every post; see [lock-order.md](../../../audits/services/settlement_service/concurrency/lock-order.md). Raced: a move against six statement lines naming either shop, and four redeliveries beside an older fix (`order_shop_move_race_test.go`) |
+| **tests** | `order_shop_move_test.go`; end to end through the importer's own adapters in `cmd/app_development/order_shop_fix_import_test.go` (refused before the fix, `Done — 1 posted` after it) |
 
 ---
 

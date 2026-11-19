@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { API_URL } from "./env";
 import { SUFFIX, login, api, ongoingOf, inboundRow, readyAt } from "./restock_helpers";
+import { listLanded } from "./pickers";
 
 // warehouse:all wants to accept a restock — split out of restock.spec.ts by its describe block (backlog #51), every test and title
 // unchanged. Self-contained: the block seeds its own ground in beforeAll; the helpers live in restock_helpers.ts.
@@ -24,15 +25,30 @@ import { SUFFIX, login, api, ongoingOf, inboundRow, readyAt } from "./restock_he
 //
 // The new-product and listed-product checks read the warehouse's own Products — every product it holds or has held — for
 // the product's ONE row. (brokens thrown away) counts 10 in with 2 broken: 8 reach the shelf, and the 2 are a broken row
-// the selling team reads on its restock page. (brokens on rack) is 🚧 unimplemented — the accept keeps no rack for broken
-// units — so it has no check here yet. (missing items) counts 7 in of 10, and the 3 are a missing row, read the same way.
-// (COD) and the analytic-metric and product-history thens are not tested here yet — `COD recorded in analytic metric`
-// is 🚧, liability keeps no metric. (multi suppliers) is ✅ ok since 2026-11-14 (the owner's word, after supplier_service
+// the selling team reads on its restock page. (brokens on rack) cannot be set up as written since #77: the owner's
+// a-restocks-broken-units-are-just-broken-for-now (2026-11-18) — *"broken is enough to be broken, no need placement"* —
+// removed the accept page's rack choice for broken units (a-broken-product-may-go-on-a-rack is withdrawn), and the
+// acceptance row now contradicts it (the owner's to change; reported, not edited). So that given is counted in through
+// the ACCEPT PAGE the only way it has: 2 broken, no rack offered for them, the 8 good on the shelf — its count in the
+// metric checked as every role — and `brokens on rack` keeps its 🚧 `test.fail` as warehouse:owner's own test: the page
+// offering a rack for the broken units. (missing items) counts 7 in of 10, and the 3 are a missing row, read the same way.
+// `recorded in product history` is read on the selling team's own product page, Stock history: one Restock row, +10.
+// `<what> recorded in analytic metric` is read as the role that counted it in, on Analytic → Restock by product, filtered
+// to the product: accepted, broken or missing, as the case says. `can print barcode` — an accepted row offers Print
+// (labels-print-from-arrived): one label per unit put away, each with its rack and its QR code, and Cetak reaches the
+// browser's print (stubbed, so a headless run never opens a dialog). (status: arrived …) is `recorded at 1 supplier` on a
+// supplier of its own (D), so its Statistics hold those three products alone.
+// (COD) — the courier's charge typed at the accept: the restock's page says it, and the SELLING team's liability ledger
+// with the warehouse holds it (read as selling:owner — liability is not a staff read). `COD recorded in analytic metric`
+// is 🚧 unimplemented — liability keeps no metric — so its check is its own test, marked `test.fail` with the status, as
+// warehouse:owner: any figure of the product's Restock row reading the charge (field-agnostic, since where it will show is
+// not built). The day it turns red the then is built: ask the owner, then run it as every role, pointed at that field.
+// (multi suppliers) is ✅ ok since 2026-11-14 (the owner's word, after supplier_service
 // began crediting each LINE's own supplier — the-supplier-comes-from-the-restock-until-lines-name-a-store); until then the
 // restock was recorded at none and this check was `test.fail`. A one-supplier restock accepted AFTER the multi-supplier one
 // is its CONTROL: once that shows, the fold has run, so a missing multi-supplier row is a real failure, not a slow fold.
 test.describe("warehouse:all wants to accept a restock", () => {
-  test.describe.configure({ timeout: 120_000 });
+  test.describe.configure({ timeout: 180_000 });
 
   const PASSWORD = "e2e-acceptance-pass-1";
   const ROLES = [
@@ -52,6 +68,12 @@ test.describe("warehouse:all wants to accept a restock", () => {
   // Of a (has brokens, thrown away) restock's 10, how many are broken; of a (has missing items) one's, how many never came.
   const BROKEN = 2;
   const MISSING = 3;
+  // (COD): the courier's charge per role — amounts no other figure of these pages reads — and the 🚧 metric test's own.
+  const COD = { own: 6_150, adm: 6_250, stf: 6_350 } as Record<string, number>;
+  const COD_METRIC = 7_350;
+  const COD_NOTE = `courier asked at the door ${SUFFIX}`;
+  const rp = (n: number) => n.toLocaleString("id-ID");
+  const RESTOCK_METRIC = "metrics/inventory/restock";
 
   type Raised = { request: { id: string; items: { id: string }[] } };
 
@@ -74,6 +96,8 @@ test.describe("warehouse:all wants to accept a restock", () => {
     // The supplier every OTHER given's restock names, so A's Statistics holds the supplier givens' products alone — a
     // product among dozens of bigger ones falls off the list, and reads as never recorded.
     supplierC: "",
+    // The (status: arrived …) given's own, for its `recorded at 1 supplier` — the same reason.
+    supplierD: "",
     products: {} as Record<string, string>,
     restocks: {} as Record<string, Raised>,
   };
@@ -141,6 +165,10 @@ test.describe("warehouse:all wants to accept a restock", () => {
       (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: `E2E Acp Sup C ${SUFFIX}` }))
         .supplier.id,
     );
+    ground.supplierD = String(
+      (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: `E2E Acp Sup D ${SUFFIX}` }))
+        .supplier.id,
+    );
 
     const category = await api(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Acp Cat ${SUFFIX}` });
     const product = async (code: string) => {
@@ -155,7 +183,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
     for (const r of ROLES) {
       for (const line of ["A", "B", "C", "D"] as const) await product(sku(r.key, line));
       for (const c of CASES) await product(caseSku(r.key, c.key));
-      for (const kase of ["nw", "al", "br", "ms"]) await product(caseSku(r.key, kase));
+      for (const kase of ["nw", "al", "br", "ms", "cd", "cx", "bk", "bx"]) await product(caseSku(r.key, kase));
     }
 
     const account = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
@@ -192,7 +220,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
       for (const c of CASES) {
         const code = caseSku(r.key, c.key);
         const counted = await raise(page, [
-          { code, supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
+          { code, supplierId: c.key === "ar" ? ground.supplierD : ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
         ]);
         if (c.key === "ar") {
           await api(page, "inventory.v1.RestockRequestService/RestockRequestArrive", {
@@ -227,7 +255,23 @@ test.describe("warehouse:all wants to accept a restock", () => {
       ground.restocks[`${r.key}-ms`] = await raise(page, [
         { code: caseSku(r.key, "ms"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
+
+      // …and one the courier asks a charge for at the door; warehouse:owner's 🚧 metric test has one more, below.
+      ground.restocks[`${r.key}-cd`] = await raise(page, [
+        { code: caseSku(r.key, "cd"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
+      ]);
+
+      // …and one that comes in with broken units the role puts on a shelf; warehouse:owner's 🚧 test has one more.
+      ground.restocks[`${r.key}-bk`] = await raise(page, [
+        { code: caseSku(r.key, "bk"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
+      ]);
     }
+    ground.restocks["own-cx"] = await raise(page, [
+      { code: caseSku("own", "cx"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
+    ]);
+    ground.restocks["own-bx"] = await raise(page, [
+      { code: caseSku("own", "bx"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
+    ]);
 
     await page.close();
   });
@@ -314,6 +358,102 @@ test.describe("warehouse:all wants to accept a restock", () => {
     }).toPass({ timeout: 30_000 });
   }
 
+  // THEN is read on Analytic → Restock by product, this week, as `page`'s user — the product's own row (the page's
+  // product filter). The figure lands on the fold, so it is re-read until it does.
+  async function restockMetric(page: Page, productId: string, field: string, expected: string) {
+    await expect
+      .soft(async () => {
+        await page.goto(`/analytic?g=product&m=${RESTOCK_METRIC}&r=7d&product=${productId}`);
+        await expect(page.getByTestId(`analytic-cell-${productId}-${field}`)).toHaveText(expected, { timeout: 3_000 });
+      })
+      .toPass({ timeout: 30_000 });
+  }
+
+  // THEN is read on the selling team's own product page, Stock history: the accept is ONE Restock row, +count.
+  async function productHistory(page: Page, productId: string, count: number) {
+    await page.goto(`/products/${productId}`);
+    await page.getByTestId("pd-tab-history").click();
+    const rows = page
+      .getByTestId("pd-panel-history")
+      .locator('[data-testid^="pd-history-row-"]')
+      .filter({ hasText: "Restock" });
+    await expect.soft(rows).toHaveCount(1);
+    await expect.soft(rows.first()).toContainText(`+${count}`);
+  }
+
+  // THEN — the accepted row offers Print (labels-print-from-arrived): Cetak Label on this restock, one label per unit put
+  // away, each with its rack and its QR code, the arrived-only note gone; Cetak reaches the browser's print (stubbed).
+  async function printsBarcode(page: Page, id: string, code: string, units: number) {
+    await inboundRow(page, id, code);
+    await page.getByTestId(`restock-action-labels-${id}`).click();
+    await expect(page.getByTestId("labels-page")).toBeVisible();
+    const group = page.getByTestId(`labels-group-${id}`);
+    await expect(group).toBeVisible();
+    await expect.soft(group.getByTestId("labels-arrived-note")).toHaveCount(0);
+
+    const printed = page.getByTestId("labels-print-root");
+    await expect.soft(printed.locator(".print-label")).toHaveCount(units);
+    await expect.soft(printed.locator(".print-label svg")).toHaveCount(units);
+    await expect.soft(printed.getByTestId("label-sku").first()).toHaveText(code);
+    await expect.soft(printed.getByTestId("label-placement").first()).toHaveText(`acp-${SUFFIX}`);
+
+    await page.evaluate(() => {
+      const w = window as unknown as { __printed: number; print: () => void };
+      w.__printed = 0;
+      w.print = () => {
+        w.__printed += 1;
+      };
+    });
+    await expect(page.getByTestId("labels-print")).toBeEnabled();
+    await page.getByTestId("labels-print").click();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __printed: number }).__printed)).toBe(1);
+  }
+
+  // WHEN — `page`'s warehouse role counts the restock in whole, paying the courier `charge` at the door (its note required).
+  async function acceptWithCod(page: Page, restock: Raised, charge: number) {
+    await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+      teamId: ground.warehouse,
+      requestId: restock.request.id,
+      warehouseAdditionalCost: charge,
+      warehouseAdditionalCostNote: COD_NOTE,
+      lines: restock.request.items.map((item) => ({
+        itemId: item.id,
+        receivedCount: COUNTED,
+        placements: [{ placementId: ground.rack, quantity: COUNTED }],
+      })),
+    });
+  }
+
+  // WHEN — on the accept page, as `page`'s role: all 10 arrived, 2 of them broken (with a note). Broken is just broken
+  // (a-restocks-broken-units-are-just-broken-for-now): the page offers NO rack for them — neither the Dibuang / Ditaruh di
+  // rak choice nor a Rusak placement row — and the line is finished with the 8 good ones on the shelf alone.
+  async function acceptBrokensOnPage(page: Page, restock: Raised, productId: string) {
+    await page.goto(`/inventories/restock/${restock.request.id}/accept`);
+    await expect(page.getByTestId(`accept-line-${productId}`)).toBeVisible();
+    await page.getByTestId(`accept-all-arrived-${productId}`).click();
+    await page.getByTestId(`accept-broken-${productId}`).fill(String(BROKEN));
+    await page.getByTestId(`accept-broken-note-${productId}`).fill("crushed in transit");
+    await expect(page.getByTestId(`accept-broken-block-${productId}`)).toBeVisible();
+    await expect(page.getByTestId(`accept-broken-to-rack-${productId}`)).toHaveCount(0);
+    await expect(page.getByTestId(`accept-broken-to-discard-${productId}`)).toHaveCount(0);
+    await expect(page.getByTestId(`accept-broken-place-${productId}`)).toHaveCount(0);
+    await expect(page.getByTestId(`accept-placement-broken-${productId}`)).toHaveCount(0);
+
+    const good = page.getByTestId(`accept-placement-${productId}-0`);
+    await listLanded(good.getByTestId(`rack-select-option-${ground.rack}`));
+    await good.getByTestId("rack-select").click();
+    await good.getByTestId(`rack-select-option-${ground.rack}`).click();
+
+    const submit = page.getByTestId("accept-submit");
+    await expect(submit).toBeEnabled();
+    const accepted = page.waitForResponse((res) =>
+      res.url().endsWith("/warehouse.inventory.v1.RestockRequestService/RestockRequestAccept"),
+    );
+    await submit.click();
+    await page.getByTestId("confirm-action").click();
+    expect((await accepted).status()).toBe(200);
+  }
+
   for (const c of CASES) {
     for (const r of ROLES) {
       test(`${r.given} accept restock (${c.cond})`, async ({ page }) => {
@@ -364,6 +504,19 @@ test.describe("warehouse:all wants to accept a restock", () => {
           }
         });
 
+        // (status: ongoing …) reads this then in its own test below, on a product of its own.
+        if (c.key === "ar") {
+          await test.step("then: new product listed in warehouse", async () => {
+            const rows = await warehouseRows(page, code);
+            await expect.soft(rows).toHaveCount(1);
+            await expect.soft(rows.locator('[data-testid^="stock-onhand-"]')).toHaveText(String(COUNTED));
+          });
+        }
+
+        await test.step("then: all received recorded in analytic metric", async () => {
+          await restockMetric(page, productId, "accepted_count", String(COUNTED));
+        });
+
         // THEN — as the selling team, whose Ready and Ongoing these are.
         await signIn(page, SELLER, ground.team);
         await test.step("then: ready stock increases by all received", async () => {
@@ -372,6 +525,28 @@ test.describe("warehouse:all wants to accept a restock", () => {
 
         await test.step(`then: ongoing stock decreases by all received (from ${COUNTED + LEFT_ONGOING} to ${LEFT_ONGOING})`, async () => {
           await expect.soft(await ongoingOf(page, code)).toHaveText(String(LEFT_ONGOING));
+        });
+
+        await test.step("then: recorded in product history", async () => {
+          await productHistory(page, productId, COUNTED);
+        });
+
+        // (status: ongoing …) reads this then in its own test below, at supplier A; this given's restock names D alone.
+        if (c.key === "ar") {
+          await test.step("then: recorded at 1 supplier", async () => {
+            await expect
+              .soft(async () => {
+                const stats = await byProduct(page, ground.supplierD);
+                await expect(stats.getByTestId("statistics-products")).toContainText(`E2E ${code}`, { timeout: 2_000 });
+              })
+              .toPass({ timeout: 30_000 });
+          });
+        }
+
+        // THEN — back as the warehouse role: Print is last, since its page is the one a failure stops on.
+        await signIn(page, username(r.key), ground.warehouse);
+        await test.step("then: can print barcode", async () => {
+          await printsBarcode(page, id, code, COUNTED);
         });
       });
     }
@@ -406,6 +581,10 @@ test.describe("warehouse:all wants to accept a restock", () => {
         const after = await inboundRow(page, id, code);
         await expect.soft(after.getByTestId("restock-status-2")).toBeVisible();
         await expect.soft(after.getByTestId("restock-status-1")).toHaveCount(0);
+      });
+
+      await test.step("then: brokens recorded in analytic metric", async () => {
+        await restockMetric(page, productId, "broken_count", String(BROKEN));
       });
 
       // THEN — as the selling team: its Ready, and its restock page's count.
@@ -453,6 +632,10 @@ test.describe("warehouse:all wants to accept a restock", () => {
         await expect.soft(after.getByTestId("restock-status-1")).toHaveCount(0);
       });
 
+      await test.step("then: missing items recorded in analytic metric", async () => {
+        await restockMetric(page, productId, "missing_count", String(MISSING));
+      });
+
       // THEN — as the selling team: its Ready, and its restock page's count.
       await signIn(page, SELLER, ground.team);
       await test.step(`then: ready stock increases, missing items excluded (${COUNTED} − ${MISSING})`, async () => {
@@ -465,6 +648,20 @@ test.describe("warehouse:all wants to accept a restock", () => {
         await page.getByTestId(`restock-detail-adjustment-${productId}`).click();
         await expect.soft(page.getByTestId(`restock-detail-adjustment-${productId}-dialog`)).toBeVisible();
         await expect.soft(page.getByTestId(`restock-detail-missing-${productId}-count`)).toContainText(String(MISSING));
+      });
+    });
+
+    // The broken units counted in through the accept page — no rack is offered for them since #77 (see the head of this
+    // file). Their count lands in the metric; `brokens on rack` itself is 🚧 — the owner's test below.
+    test(`${r.given} accept restock (status: ongoing · brokens on rack · new product · no COD · 1 supplier)`, async ({ page }) => {
+      const restock = ground.restocks[`${r.key}-bk`];
+      const productId = ground.products[caseSku(r.key, "bk")];
+
+      await signIn(page, username(r.key), ground.warehouse);
+      await acceptBrokensOnPage(page, restock, productId);
+
+      await test.step("then: brokens recorded in analytic metric", async () => {
+        await restockMetric(page, productId, "broken_count", String(BROKEN));
       });
     });
 
@@ -496,6 +693,11 @@ test.describe("warehouse:all wants to accept a restock", () => {
         await expect.soft(rows.locator('[data-testid^="stock-onhand-"]')).toHaveText(String(COUNTED * 2));
         await expect.soft(rows).toHaveCount(1);
       });
+
+      // This week's Restock of the product holds both counts in: root's first 10 and this 10.
+      await test.step("then: all received recorded in analytic metric", async () => {
+        await restockMetric(page, ground.products[code], "accepted_count", String(COUNTED * 2));
+      });
     });
 
     test(`${r.given} accept restock (status: ongoing · all received · new product · no COD · 1 supplier): recorded at 1 supplier`, async ({ page }) => {
@@ -525,5 +727,92 @@ test.describe("warehouse:all wants to accept a restock", () => {
         await expect.soft(atB).toContainText(`E2E ${sku(r.key, "B")}`);
       });
     });
+
+    test(`${r.given} accept restock (status: ongoing · all received · new product · COD · 1 supplier)`, async ({ page }) => {
+      const restock = ground.restocks[`${r.key}-cd`];
+      const id = restock.request.id;
+      const code = caseSku(r.key, "cd");
+      const charge = COD[r.key];
+
+      await signIn(page, username(r.key), ground.warehouse);
+      await expect((await inboundRow(page, id, code)).getByTestId("restock-status-1")).toBeVisible();
+
+      // WHEN — counted in whole, the courier paid at the door.
+      await acceptWithCod(page, restock, charge);
+
+      await test.step("then: COD recorded on restock", async () => {
+        await page.goto(`/inventories/restock/${id}`);
+        await expect.soft(page.getByTestId("restock-detail-courier-charge")).toContainText(rp(charge));
+        await expect.soft(page.getByTestId("restock-detail-courier-charge-note")).toContainText(COD_NOTE);
+      });
+
+      // THEN — as the selling team, who owes the warehouse the charge: its ledger with the warehouse holds the restock's
+      // courier entry. Liability posts it from the accept's event, so it is re-read until it lands.
+      await signIn(page, SELLER, ground.team);
+      await test.step("then: COD recorded in liability", async () => {
+        await expect
+          .soft(async () => {
+            await page.goto(`/liability/${ground.warehouse}`);
+            const entry = page
+              .getByTestId("liability-detail-all")
+              .locator('[data-testid^="liability-detail-entry-"]')
+              .filter({ hasText: `restock #${id}` });
+            await expect(entry).toHaveCount(1, { timeout: 3_000 });
+            await expect(entry).toContainText(rp(charge));
+          })
+          .toPass({ timeout: 30_000 });
+      });
+    });
   }
+
+  // 🚧 — its own test, so the expected failure hides none of the thens above (see the head of this file).
+  test("warehouse:owner accept restock (status: ongoing · brokens on rack · new product · no COD · 1 supplier): brokens on rack", async ({
+    page,
+  }) => {
+    test.fail(
+      true,
+      "🚧 unimplemented (docs/acceptances/inventory/restock.md) — and not to be built for now: a-restocks-broken-units-are-just-broken-for-now (2026-11-18) removed the accept page's rack choice for broken units",
+    );
+
+    const productId = ground.products[caseSku("own", "bx")];
+
+    await signIn(page, username("own"), ground.warehouse);
+    await page.goto(`/inventories/restock/${ground.restocks["own-bx"].request.id}/accept`);
+    await expect(page.getByTestId(`accept-line-${productId}`)).toBeVisible();
+    await page.getByTestId(`accept-all-arrived-${productId}`).click();
+    await page.getByTestId(`accept-broken-${productId}`).fill(String(BROKEN));
+    await expect(page.getByTestId(`accept-broken-block-${productId}`)).toBeVisible();
+
+    // The page offers a rack for the broken units — the choice it had before #77 (accept-broken-to-rack). Field-agnostic
+    // past that: the day a rack for broken units is asked again and built, this turns red — ask the owner.
+    await test.step("then: brokens on rack", async () => {
+      await expect(page.getByTestId(`accept-broken-to-rack-${productId}`)).toBeVisible({ timeout: 5_000 });
+    });
+  });
+
+  // 🚧 — its own test, so the expected failure hides none of the thens above (see the head of this file).
+  test("warehouse:owner accept restock (status: ongoing · all received · new product · COD · 1 supplier): COD recorded in analytic metric", async ({
+    page,
+  }) => {
+    test.fail(
+      true,
+      "🚧 unimplemented (docs/acceptances/inventory/restock.md) — liability keeps no metric, so no analytic metric records the COD",
+    );
+
+    const restock = ground.restocks["own-cx"];
+    const productId = ground.products[caseSku("own", "cx")];
+
+    await signIn(page, username("own"), ground.warehouse);
+    await acceptWithCod(page, restock, COD_METRIC);
+
+    // Restock by product, this week: ANY figure of the product's row reading the charge. Re-read until it lands.
+    await test.step("then: COD recorded in analytic metric", async () => {
+      await expect(async () => {
+        await page.goto(`/analytic?g=product&m=${RESTOCK_METRIC}&r=7d&product=${productId}`);
+        await expect(
+          page.locator(`[data-testid^="analytic-cell-${productId}-"]`).filter({ hasText: rp(COD_METRIC) }),
+        ).not.toHaveCount(0, { timeout: 2_000 });
+      }).toPass({ timeout: 20_000 });
+    });
+  });
 });

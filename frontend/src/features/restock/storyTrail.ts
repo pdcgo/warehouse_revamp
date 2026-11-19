@@ -47,3 +47,37 @@ export async function editLinesOf502ForStory() {
     ],
   });
 }
+
+/**
+ * A COLLEAGUE edits restock 501 — on its way — THROUGH THE STUB, the way the edit form saves: the restock as stored with
+ * Beras 10 → 12, the note left as it is. Call it from a story's play() while a note is open for editing: the screen still
+ * holds the restock it read before, so a save that sent that copy back whole would write the old line over this one
+ * (the-note-is-edited-in-any-status, #71).
+ */
+export async function aColleagueEditsALineOf501ForStory() {
+  const { request } = await restockClient.restockRequestDetail({ teamId: 12n, requestId: 501n });
+  if (!request) throw new Error("no restock 501 in the stub");
+
+  await restockClient.restockRequestUpdate({
+    teamId: 12n,
+    requestId: 501n,
+    warehouseId: request.warehouseId,
+    receipt: request.receipt,
+    receiptFile: request.receiptFile,
+    shipmentId: request.shipmentId,
+    invoiceRefId: request.invoiceRefId,
+    financeAccountId: request.financeAccountId,
+    shipmentCost: request.shipmentCost,
+    note: request.note,
+    items: request.items.map((it) => ({
+      productId: it.productId,
+      productCode: it.productCode,
+      name: it.name,
+      count: it.productId === 74n ? 12n : it.count,
+      total: it.total,
+      supplierId: it.supplierId,
+      supplierChannelId: it.supplierChannelId,
+      note: it.note,
+    })),
+  });
+}

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { reportScenario } from "../../../.storybook/foundRequestStub";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import {
   asAdminTeam,
@@ -10,6 +11,7 @@ import {
   withOrdersInReturn,
 } from "../../../.storybook/sessionScenario";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
+import { toaster } from "../../components/feedback/Toaster";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { PickOrderPage } from "./index";
 
@@ -40,6 +42,8 @@ import { PickOrderPage } from "./index";
 //   | NoPlainMarkPicked               | a processed order has no plain "Mark Picked" to press        |
 //   | OnlyAProcessedOrderIsScanned    | a pending or picked order shows no item scan                 |
 //   | AMonitorReadsThePickPageOnly    | a monitoring team reads the racks; no scan, no step          |
+//   | ALostOrdersParcelIsReportedFound | a LOST order's parcel back here: Report Found names the order |
+//   | NoReportFoundWhileShipping      | an order still on its way offers no Report Found             |
 
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLER = teams[1]!; // Toko Melati (12)
@@ -412,5 +416,57 @@ export const AMonitorReadsThePickPageOnly: Story = {
     await expect(canvas.queryByTestId("pick-scan")).toBeNull();
     await expect(canvas.queryByTestId("pick-order-set-picked")).toBeNull();
     await expect(canvas.queryByTestId("pick-order-advance")).toBeNull();
+  },
+};
+
+/**
+ * A LOST ORDER'S PARCEL TURNED UP HERE (a-found-lost-parcel-is-a-found-stock-in) — the crew holding it opens the order
+ * and reports it found, prefilled: the order's one line, at most what it took; they pick the rack. The request NAMES THE
+ * ORDER, and the order stays lost — Report Found is still there after.
+ */
+export const ALostOrdersParcelIsReportedFound: Story = {
+  beforeEach: () => {
+    toaster.remove();
+    withOrderStatus(SHIPPED.id, OrderStatus.LOST)();
+  },
+  render: () => <AtShipped />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("pick-order-report-found"));
+    const box = await screen.findByTestId("report-found-order-dialog");
+    await waitFor(() => expect(box).toBeVisible());
+    const dialog = within(box);
+    await expect(box).toHaveTextContent(`Report Found from Order #${SHIPPED.id}`);
+    await expect(dialog.getByTestId("report-found-order-product")).toHaveTextContent("Beras Pandan Wangi 5kg");
+    await expect(dialog.getByTestId("report-found-order-amount")).toHaveValue("1");
+
+    await userEvent.click(dialog.getByTestId("report-found-order-rack"));
+    await userEvent.click(await screen.findByTestId("rack-select-option-41"));
+    await userEvent.type(dialog.getByTestId("report-found-order-note"), "Back from the depot", { delay: 10 });
+    await userEvent.click(dialog.getByTestId("report-found-order-submit"));
+
+    await expect(await screen.findByText("1 × SKU-BERAS-5K sent for approval")).toBeInTheDocument();
+    await expect(reportScenario.last).toEqual({
+      productId: 74n,
+      rackId: 41n,
+      quantity: 1n,
+      note: "Back from the depot",
+      orderId: SHIPPED.id,
+    });
+    await waitFor(() => expect(screen.queryByTestId("report-found-order-dialog")).toBeNull());
+    // The order stays lost (lost-is-final): nothing on the page moved it.
+    await expect(canvas.getByTestId("pick-order-report-found")).toBeInTheDocument();
+  },
+};
+
+/** AN ORDER STILL ON ITS WAY IS NOT FOUND — Report Found is a lost order's alone. */
+export const NoReportFoundWhileShipping: Story = {
+  render: () => <AtShipped />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("pick-list-table")).toBeInTheDocument(), { timeout: 4000 });
+    await expect(canvas.queryByTestId("pick-order-report-found")).toBeNull();
   },
 };

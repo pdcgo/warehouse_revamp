@@ -21,7 +21,8 @@ import (
 //     cannot send 0 back as a key (IDList's ids are > 0), so a row keyed 0 would be a row nobody can fill.
 //   - A warehouse may not sort an order metric by money (a-warehouse-sees-no-seller-money): a sort that would rank by
 //     figures it is not shown is refused. Warehouse Fee's amount it is shown, and may sort by
-//     (a-warehouse-sees-its-own-fee-amount).
+//     (a-warehouse-sees-its-own-fee-amount); Order status moves has only counts, each sortable by every reader.
+//   - Order status moves ranks by ONE of its counts, and lists every key with any move in the scope.
 //   - No total: it reads limit + 1 and says whether another page follows (a-page-says-whether-another-follows).
 //
 // ONE statement, after the reader's team type: the scope grouped by the key, ordered, a page plus one.
@@ -48,9 +49,14 @@ func (a *Analytic) MetricSearch(
 		return nil, err
 	}
 
-	field, _, err := san_metric.SortField(metric.desc, msg.GetSort().GetField())
+	sorted, _, err := san_metric.SortField(metric.desc, msg.GetSort().GetField())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	field, ok := metric.fieldOf(sorted)
+	if !ok {
+		return nil, invalidMetric("%s.%s is read from no report column", metric.option.GetMetricId(), sorted.Name())
 	}
 
 	reader, err := a.readerOf(ctx, msg.GetTeamId())
@@ -58,9 +64,9 @@ func (a *Analytic) MetricSearch(
 		return nil, err
 	}
 
-	if !metric.showsMoney(reader) && isMoney(field) {
+	if !metric.showsMoney(reader) && field.money {
 		return nil, invalidMetric("a warehouse reads the orders it ships without their money — %s cannot be sorted by",
-			field.Name())
+			sorted.Name())
 	}
 
 	direction := "DESC"
@@ -70,8 +76,9 @@ func (a *Analytic) MetricSearch(
 
 	db := a.db.WithContext(ctx)
 
+	// The ranked figure: the sorted field's column over its own report value's rows (sumSQL).
 	grouped := reportRows(db, reader, filters, metrics).
-		Select(key.sql + " AS key, " + reportSums).
+		Select(key.sql + " AS key, " + metric.sumSQL(field) + " AS sort_value").
 		Group(key.sql)
 	if !key.isDay {
 		grouped = grouped.Where(key.sql + " <> 0")
@@ -84,7 +91,7 @@ func (a *Analytic) MetricSearch(
 		Table("(?) AS g", grouped).
 		Select("g.key").
 		// The key, DESC, breaks every tie (the-key-breaks-every-tie).
-		Order(fmt.Sprintf("g.%s %s, g.key DESC", reportColumn[field.Number()], direction)).
+		Order(fmt.Sprintf("g.sort_value %s, g.key DESC", direction)).
 		Offset(int(page.GetOffset())).
 		Limit(limit + 1)
 

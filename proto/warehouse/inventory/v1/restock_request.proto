@@ -5,6 +5,7 @@ package warehouse.inventory.v1;
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/inventory/v1/received_count.proto";
+import "warehouse/inventory/v1/restock_tag.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -126,6 +127,34 @@ service RestockRequestService {
   // with its own writer and time, and the trail gets an edit's row saying what it was and now is
   // (edits-are-in-the-same-trail). The selling team reads it, never writes it.
   rpc RestockRequestWarehouseNoteSet(RestockRequestWarehouseNoteSetRequest) returns (RestockRequestWarehouseNoteSetResponse);
+
+  // RESTOCK TAGS (backlog #87; messages in restock_tag.proto) — one app-wide list, unique names, a SYSTEM tag the
+  // admins' and the app's, a CUSTOM tag anyone's who may tag (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps).
+  // The app-wide list, for the Tag filter and the add box.
+  rpc RestockTagList(RestockTagListRequest) returns (RestockTagListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The admins' Kelola tag list — the same tags, each with how many restocks carry it.
+  rpc RestockTagManageList(RestockTagManageListRequest) returns (RestockTagManageListResponse) {
+    // A READ — it writes nothing.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // A custom tag; a name already on the list answers that tag, never a twin.
+  rpc RestockTagCreate(RestockTagCreateRequest) returns (RestockTagCreateResponse);
+  // A system tag, by an admin; the same one-name-one-tag answer.
+  rpc RestockTagSystemCreate(RestockTagSystemCreateRequest) returns (RestockTagSystemCreateResponse);
+  // Rename, the admins' alone; never the app's own tags.
+  rpc RestockTagRename(RestockTagRenameRequest) returns (RestockTagRenameResponse);
+  // Delete, the admins' alone — off every restock too; never the app's own tags.
+  rpc RestockTagDelete(RestockTagDeleteRequest) returns (RestockTagDeleteResponse);
+  // A custom tag on / off a restock — either side, every role but a monitor, every status.
+  rpc RestockRequestTagAdd(RestockRequestTagAddRequest) returns (RestockRequestTagAddResponse);
+  rpc RestockRequestTagRemove(RestockRequestTagRemoveRequest) returns (RestockRequestTagRemoveResponse);
+  // An admin's system tag on / off a restock — never the app's own.
+  rpc RestockRequestSystemTagAdd(RestockRequestSystemTagAddRequest) returns (RestockRequestSystemTagAddResponse);
+  rpc RestockRequestSystemTagRemove(RestockRequestSystemTagRemoveRequest) returns (RestockRequestSystemTagRemoveResponse);
 }
 
 // Where a restock is. APPEND ONLY, like every enum here — the values were renamed in place
@@ -375,11 +404,12 @@ message RestockRequest {
 
   // The courier's charge at the door — paid by the warehouse on the spot, compensated by the selling team
   // (the-warehouse-cost-is-the-couriers-charge-at-the-door). One per restock, with its note
-  // (the-courier-is-paid-once-per-restock). Entered at accept; 0 until then.
+  // (the-courier-is-paid-once-per-restock). Noted at Tandai Tiba or entered at Terima, FINAL at Terima — whose figure
+  // replaces Tiba's (the-courier-charge-is-noted-at-tiba-and-final-at-terima); 0 until one of them sets it.
   double warehouse_additional_cost = 38;
   string warehouse_additional_cost_note = 39;
-  // THE COURIER'S SLIP (the-courier-slip-has-an-optional-photo) — a photo of it, optional, kept with the charge at Terima:
-  // the document id of the receiving warehouse's upload, "" = none (always "" while there is no charge). Opened through
+  // THE COURIER'S SLIP (the-courier-slip-has-an-optional-photo) — a photo of it, optional, kept with the charge at Tiba or
+  // Terima: the document id of the receiving warehouse's upload, "" = none (always "" while there is no charge). Opened through
   // RestockDoorPhotos, never by this id (the-detail-pages-show-the-slip-and-the-broken-rack).
   string warehouse_additional_cost_file = 47;
 
@@ -437,6 +467,11 @@ message RestockRequest {
   // KOREKSI JUMLAH TERIMA — every line's correction, oldest first, beside the trail: its own kind, never a status row
   // (a correction must not read as the selling team's edit). DETAIL ONLY.
   repeated ReceivedCountCorrection count_corrections = 43;
+
+  // ITS TAGS (backlog #87, restock_tag.proto) — one set, the same on both sides' lists and details
+  // (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps): the system's first, then by name. On List, Detail
+  // and every write that answers the restock; `restock_count` is 0 here.
+  repeated RestockTag tags = 52;
 
   // Removed in the rewrite.
   reserved 4, 5, 6, 7, 8, 12, 14, 19, 25, 26;
@@ -560,6 +595,15 @@ message RestockRequestListFilter {
   // (the-restock-list-exports-and-filters-by-courier). 0 = any courier; a restock that names none (0) is read only
   // then — no pick asks for "no courier".
   uint64 shipment_id = 11;
+  // Only restocks carrying ANY of these tags (the-restock-tags-prototype-is-accepted: several tags, any of them —
+  // *Barang kurang* + *Barang rusak* together is the problem list). Empty = any tag or none. Inside the list's one
+  // predicate, so its statistics and its export narrow alike.
+  repeated uint64 tag_ids = 12 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
 }
 
 // Which of a restock's dates a range filter is about. APPEND ONLY.
@@ -1045,6 +1089,20 @@ message RestockRequestArriveRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // THE COURIER'S CHARGE AT THE DOOR, NOTED AS THE BOX IS SIGNED FOR (the-courier-charge-is-noted-at-tiba-and-final-at-terima):
+  // optional, 0 = none — the same three fields as Terima's, under the same rules. Its note is REQUIRED when it is above 0
+  // (an-incidental-line-must-say-what-it-was-for) — the handler checks, as Accept's does. Kept on the restock in the
+  // columns Terima writes, and shown; Terima opens with it and its figure is FINAL, replacing this one, never adding to it
+  // (the-courier-is-paid-once-per-restock). No money moves here: the selling team owes the warehouse only from Terima.
+  double warehouse_additional_cost = 3 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  string warehouse_additional_cost_note = 4 [(buf.validate.field).string.max_len = 200];
+  // A PHOTO OF THE COURIER'S SLIP, optional (the-courier-slip-has-an-optional-photo): the document id of this warehouse's
+  // upload (an order receipt, as at Terima), "" = none. Kept only beside a charge above 0 — with none it is dropped.
+  string warehouse_additional_cost_file = 5 [(buf.validate.field).string.max_len = 500];
 }
 
 message RestockRequestArriveResponse {

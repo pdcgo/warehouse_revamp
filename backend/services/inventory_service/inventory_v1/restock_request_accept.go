@@ -271,6 +271,14 @@ func (s *Service) RestockRequestAccept(
 			}
 
 			rr.Problems = append(rr.Problems, problems...)
+
+			// THE PROBLEM IS A SYSTEM TAG, NOT A STATUS (a-restock-problem-is-a-system-tag, the owner's "A": one tag per
+			// kind): missing units put *Barang kurang* on, broken units *Barang rusak* — the app puts them on, in this
+			// transaction, and the restock stays accepted. Nobody puts them on or takes them off by hand.
+			problemTagErr := putAppTags(tx, rr.ID, time.Now(), problemAppTasks(problems)...)
+			if problemTagErr != nil {
+				return problemTagErr
+			}
 		}
 
 		// THE DOOR on Analytic's Restock (the-inventory-metrics-prototype-is-accepted: broken and missing at the door),
@@ -347,6 +355,8 @@ func (s *Service) RestockRequestAccept(
 
 		// The courier's charge: ONE per restock, on the restock, with its note (the-courier-is-paid-once-per-restock)
 		// and the photo of its slip (the-courier-slip-has-an-optional-photo) — on the row this transaction already holds.
+		// FINAL: it REPLACES whatever Tandai Tiba noted, never adds to it — the page opens with Tiba's and sends what is
+		// in its form (the-courier-charge-is-noted-at-tiba-and-final-at-terima).
 		rr.WarehouseAdditionalCost = courierCharge
 		rr.WarehouseAdditionalCostNote = courierNote
 		rr.WarehouseAdditionalCostFile = courierSlip
@@ -401,6 +411,36 @@ func (s *Service) RestockRequestAccept(
 	return connect.NewResponse(&inventoryv1.RestockRequestAcceptResponse{
 		Request: restockRequestToProto(&rr),
 	}), nil
+}
+
+// problemAppTasks is the app tasks whose tags the problem rows call for — "restock.problem.missing" for any missing
+// units, "restock.problem.broken" for any broken ones; each once.
+func problemAppTasks(problems []inventory_service_models.RestockProblemItem) []string {
+	var missing, broken bool
+
+	for _, p := range problems {
+		if p.Count <= 0 {
+			continue
+		}
+
+		switch p.ProblemType {
+		case restockProblemMissing:
+			missing = true
+		case restockProblemBroken:
+			broken = true
+		}
+	}
+
+	tasks := make([]string, 0, 2)
+	if missing {
+		tasks = append(tasks, appTaskProblemMissing)
+	}
+
+	if broken {
+		tasks = append(tasks, appTaskProblemBroken)
+	}
+
+	return tasks
 }
 
 // acceptDescription is the accept's trail row in words: what broke, what was missing and what the courier asked at the

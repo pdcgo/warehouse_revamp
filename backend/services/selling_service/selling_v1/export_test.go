@@ -20,3 +20,7 @@ func SetOrderSearchMatch(t interface{ Cleanup(func()) }, f func(term string) (st
 		orderSearchMatch = was
 	})
 }
+
+// UnboxingWarning is the one sentence OrderLabels stamps with `unboxing_warning` on — read by the tests from the one
+// constant that holds it (the-unboxing-warning-is-one-sentence-on-each-label), never typed again.
+const UnboxingWarning = unboxingWarning

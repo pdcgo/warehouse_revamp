@@ -122,16 +122,31 @@ type fullPlan struct {
 	Root        string
 	CopyDir     string
 	GoArgv      []string
-	GoDB        string      // the go test's own database (goTestDB)
-	Stories     []string    // vitest argv
-	StoriesPort int         // the copy's vitest browser port
-	Batches     [][]string  // --shared-db: the single-database batches on warehouse_test
-	Workers     *workerPlan // the e2e's worker(s) — one by default
-	Shared      bool        // --shared-db
+	GoDB        string          // the go test's own database (goTestDB)
+	Stories     []string        // vitest argv
+	StoriesPort int             // the copy's vitest browser port
+	Batches     [][]string      // --shared-db: the single-database batches on warehouse_test
+	BatchCaps   []time.Duration // --shared-db: each batch's cap (estimatedCap)
+	Workers     *workerPlan     // the e2e's worker(s) — one by default
+	Shared      bool            // --shared-db
 	Specs       []string
 	Partial     bool
 	Why         string
 	Estimate    time.Duration
+}
+
+// sharedCap is --shared-db batch i's cap: its estimate's (BatchCaps), else its fixed cap.
+func (p *fullPlan) sharedCap(i int) time.Duration {
+	if i < len(p.BatchCaps) {
+		return p.BatchCaps[i]
+	}
+
+	return capFor(p.Batches[i])
+}
+
+// sharedBatch is --shared-db batch i's record, carrying its cap to runPlaywrightBatch.
+func (p *fullPlan) sharedBatch(i int) *BatchResult {
+	return &BatchResult{N: i + 1, Specs: p.Batches[i], Cap: p.sharedCap(i)}
 }
 
 // workerNames are the plan's e2e workers (w1 …), none without an e2e.
@@ -207,6 +222,17 @@ func planFull(root string, opts fullOptions, now time.Time) (*fullPlan, error) {
 
 		if opts.SharedDB {
 			p.Batches = planBatches(specs, batchSize)
+
+			// Each batch's cap from its specs' estimate, as on the worker (#75).
+			times, err := estimateSpecTimes(root, specs, opts.Times,
+				testCounts(context.Background(), filepath.Join(root, "frontend"), specs))
+			if err != nil {
+				return nil, err
+			}
+
+			for i, secs := range batchSecsOf(p.Batches, times) {
+				p.BatchCaps = append(p.BatchCaps, estimatedCap(p.Batches[i], secs))
+			}
 		} else {
 			n := opts.Workers
 			if n < 1 {
@@ -314,11 +340,12 @@ func (p *fullPlan) print(out io.Writer, fp *Fingerprint, m *Measurement) {
 
 	if p.Batches != nil {
 		fmt.Fprintf(out, "  %d e2e        --shared-db: %d batches on %s, :%d/:%d, name-ordered, %d specs each; orders.spec.ts "+
-			"alone, the restock family (restock*.spec.ts) together; cap %s (restock %s)\n", step, len(p.Batches), testDBName,
-			e2eAPIPort, e2eUIPort, batchSize, batchCap, longSpecCap)
+			"alone, the restock family (restock*.spec.ts) together; each capped at %d× its estimate, at least %s "+
+			"(restock %s)\n", step, len(p.Batches), testDBName, e2eAPIPort, e2eUIPort, batchSize, capHeadroom, batchCap,
+			longSpecCap)
 
 		for i, b := range p.Batches {
-			fmt.Fprintf(out, "       b%-2d %s\n", i+1, strings.Join(b, " "))
+			fmt.Fprintf(out, "       b%-2d %s  · cap %s\n", i+1, strings.Join(b, " "), p.sharedCap(i))
 		}
 
 		fmt.Fprintf(out, "               before each batch: stop this checkout's leftover servers on :8081/:5175 (never another "+
@@ -678,7 +705,7 @@ func runFull(ctx context.Context, root string, opts fullOptions, out io.Writer) 
 				break
 			}
 
-			b := &BatchResult{N: i + 1, Specs: specs}
+			b := plan.sharedBatch(i)
 			fmt.Fprintf(out, "→ e2e b%d %s\n", b.N, strings.Join(specs, " "))
 
 			err = runPlaywrightBatch(ctx, copyFrontend, b, "", dir, nil)

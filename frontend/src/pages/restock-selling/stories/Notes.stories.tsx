@@ -3,9 +3,11 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { daysAgo } from "../../../../.storybook/fixtures";
 import { restockNoteByForStory, restockWarehouseNoteForStory, restockWire } from "../../../../.storybook/restockStub";
+import { restockWriteScenario } from "../../../../.storybook/restockWriteScenario";
 import { asAdminTeam } from "../../../../.storybook/sessionScenario";
 import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { toaster } from "../../../components/feedback/Toaster";
+import { aColleagueEditsALineOf501ForStory } from "../../../features/restock/storyTrail";
 import { formatUnixDateTimeShort } from "../../../lib/datetime";
 import { SELLING_META, loaded, menuOf } from "./kit";
 
@@ -111,6 +113,50 @@ export const OnAPhoneTheDialogEditsInPlace: Story = {
     const cancel = within(dialog).getByTestId("restock-notes-cancel-edit").getBoundingClientRect();
     const save = within(dialog).getByTestId("restock-notes-save").getBoundingClientRect();
     await expect(Math.abs(cancel.width - save.width)).toBeLessThan(2);
+  },
+};
+
+// …ON ITS WAY THE NOTE IS SAVED ALONE TOO (the-note-is-edited-in-any-status, #71) — the dialog read 501, and while the note
+// was being typed a colleague changed Beras 10 → 12 through the edit form. Simpan sends the note alone
+// (RestockRequestNoteSet), never the restock the dialog read sent back whole (RestockRequestUpdate), so the colleague's
+// line is kept; the dialog reads as it always did — the toast, the saved note, its writer, now.
+export const OnItsWayTheNoteIsSavedAlone: Story = {
+  name: "On its way · the note alone",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await menuOf(canvas, 501);
+    await userEvent.click(screen.getByTestId("restock-action-notes-501"));
+    const dialog = await screen.findByTestId("restock-notes-dialog");
+    await expect(await within(dialog).findByTestId("restock-detail-note")).toHaveTextContent("Untuk promo 10.10");
+
+    await userEvent.click(within(dialog).getByTestId("restock-notes-edit"));
+    const input = await within(dialog).findByTestId("restock-notes-input");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Urgent", { delay: 30 });
+
+    // The colleague's edit lands while the dialog is open — what it holds is now the restock as it WAS.
+    await aColleagueEditsALineOf501ForStory();
+    const from = restockWriteScenario.writes.length;
+
+    // A toast an earlier story left up would read as this save's — clear them first.
+    toaster.remove();
+    await waitFor(() => expect(screen.queryByText("Notes saved")).toBeNull());
+    await userEvent.click(within(dialog).getByTestId("restock-notes-save"));
+
+    await expect(await screen.findByText("Notes saved")).toBeInTheDocument();
+    await waitFor(() => expect(within(dialog).getByTestId("restock-detail-note")).toHaveTextContent("Urgent"));
+
+    // The note alone was sent — never the whole restock — and the colleague's line stands.
+    await expect(restockWriteScenario.writes.slice(from)).toEqual([
+      { rpc: "RestockRequestNoteSet", teamId: 12n, requestId: 501n, note: "Urgent" },
+    ]);
+    await expect(restockWire(501n).items.find((it) => it.productId === 74n)?.count).toBe(12n);
+    await expect(restockWire(501n).status).toBe(RestockRequestStatus.ONGOING);
+
+    const by = within(dialog).getByTestId("restock-detail-note-selling-by");
+    await waitFor(() => expect(by).toHaveTextContent(`Ani Rahayu · ${formatUnixDateTimeShort(restockWire(501n).noteAtUnix)}`));
+    await expect(by).toHaveAttribute("data-source", "note");
   },
 };
 

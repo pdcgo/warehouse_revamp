@@ -266,7 +266,8 @@ func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 func TestRace_SettlementPost_AShopEntryIsReversedOnce(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil, nil, nil, nil)
+	// Shop rows ask the shop whether it is the team's (settlement-and-expense-ask-the-shop-first) — the stub says yes.
+	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS}, nil, nil, nil)
 	ctx := context.Background()
 
 	wrong, err := svc.PostEntry(ctx, settlement_v1.PostInput{

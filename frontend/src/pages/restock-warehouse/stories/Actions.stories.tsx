@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asAdminTeam } from "../../../../.storybook/sessionScenario";
+import { toaster } from "../../../components/feedback/Toaster";
+import { storedRestockForStory } from "../../../features/restock/storyRestock";
 import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { WAREHOUSE_META, loaded } from "./kit";
 
@@ -72,17 +74,39 @@ export const SignForBoxFromTheRow: Story = {
   },
 };
 
-// THE COURIER'S CHARGE IN THE ROW'S SIGN DIALOG IS NOT KEPT YET (the-cod-can-be-noted-when-the-box-arrives) — its mark is
-// this page's only one now: the COD card's figure, its first, is real (the-warehouse-sees-the-cod-it-paid).
-export const TheSignDialogMarksItsCourierCharge: Story = {
-  name: "Courier charge, marked",
+// THE COURIER'S CHARGE IN THE ROW'S SIGN DIALOG IS KEPT (the-courier-charge-is-noted-at-tiba-and-final-at-terima) — it
+// was this page's last mark, so the page has none now: no strip, no mark in the dialog, no toast saying to enter it again
+// at Terima. Signed with a charge, the row moves to arrived and the restock holds the charge for Terima.
+export const TheSignDialogKeepsItsCourierCharge: Story = {
+  name: "Courier charge, kept",
+  // The toaster is module-level: a story reading its own toasts clears the last story's first.
+  beforeEach: () => {
+    toaster.remove();
+  },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("restock-action-sign-501"));
     const charge = await screen.findByTestId("sign-courier");
     await waitFor(() => expect(charge).toBeVisible());
-    await expect(within(charge).getByTestId("not-implemented-arrivalCod")).toHaveTextContent("1");
+    await expect(within(charge).queryByTestId(/^not-implemented-/)).toBeNull();
+
+    await userEvent.click(screen.getByTestId("sign-courier-asked-yes"));
+    await userEvent.type(await screen.findByTestId("sign-courier-charge"), "15000", { delay: 20 });
+    await userEvent.type(screen.getByTestId("sign-courier-note"), "Biaya COD", { delay: 20 });
+    const confirm = screen.getByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    const row = canvas.getByTestId("restock-row-501");
+    await waitFor(() => expect(within(row).getByTestId(`restock-status-${RestockRequestStatus.ARRIVED}`)).toBeVisible());
+    await expect(await screen.findByText("Restock marked as arrived")).toBeInTheDocument();
+    await expect(screen.queryByText(/enter it again at Accept/)).toBeNull();
+
+    const stored = await storedRestockForStory(501n);
+    await expect(stored.warehouseAdditionalCost).toBe(15000);
+    await expect(stored.warehouseAdditionalCostNote).toBe("Biaya COD");
   },
 };
 
