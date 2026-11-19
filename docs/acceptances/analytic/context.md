@@ -10,7 +10,7 @@ moves one is checked in its own feature too (*recorded in analytic metric*). Bus
 | --- | --- | --- | --- | --- |
 | [report](report.md) | | | | 14 |
 | [order_metric](order_metric.md) | | | 8 | 9 |
-| [settlement_metric](settlement_metric.md) | | | | |
+| [settlement_metric](settlement_metric.md) | | | | 4 |
 | [inventory_metric](inventory_metric.md) | | | | |
 | [expense_metric](expense_metric.md) | | | | |
 | [finance_metric](finance_metric.md) | | | | |
