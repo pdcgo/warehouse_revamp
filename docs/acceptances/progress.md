@@ -88,3 +88,4 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to see statistics · [view analytic as graph](analytic/report.md) (1 then: ⬜ 1)
 - `selling:all` wants to see statistics · [open analytic link](analytic/report.md) (1 then: ⬜ 1)
 - `selling:all` wants to see statistics · [change analytic period](analytic/report.md) (1 then: ⬜ 1)
+- `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/order_metric.md) (17 thens: 🚧 8, ⬜ 9)

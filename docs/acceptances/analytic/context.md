@@ -9,7 +9,7 @@ moves one is checked in its own feature too (*recorded in analytic metric*). Bus
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
 | [report](report.md) | | | | 14 |
-| [order_metric](order_metric.md) | | | | |
+| [order_metric](order_metric.md) | | | 8 | 9 |
 | [settlement_metric](settlement_metric.md) | | | | |
 | [inventory_metric](inventory_metric.md) | | | | |
 | [expense_metric](expense_metric.md) | | | | |
