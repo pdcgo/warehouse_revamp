@@ -15,9 +15,10 @@ match no order — read on **Penyelesaian › Entri Toko** (`/settlement/shop-en
 <tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to see money not tied to an order<br>(entry belongs to 3 Nov · learned 10 Nov)</td><td rowspan="1" valign="top">open shop entries</td><td>shown on 10 Nov with for 3 Nov</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">4</td><td rowspan="2" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to find a shop's entries<br>(shop and kind chosen)</td><td rowspan="2" valign="top">filter shop entries</td><td>cards total only the filtered rows</td><td>⬜ untested</td></tr>
 <tr><td>filter kept after reload</td><td>⬜ untested</td></tr>
-<tr><td rowspan="3" valign="top">5</td><td rowspan="3" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(imported fee on the wrong shop)</td><td rowspan="3" valign="top">reverse shop entry</td><td>reversing row added on the same shop</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top">5</td><td rowspan="4" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(imported fee on the wrong shop)</td><td rowspan="4" valign="top">reverse shop entry</td><td>reversing row added on the same shop</td><td>⬜ untested</td></tr>
 <tr><td>original shown as reversed</td><td>⬜ untested</td></tr>
 <tr><td>received back to before</td><td>⬜ untested</td></tr>
+<tr><td>settlement analytic metric back to before</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">6</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(already reversed)</td><td rowspan="1" valign="top">reverse shop entry</td><td>cannot reverse it again</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">7</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(reversed by 2 people at once)</td><td rowspan="1" valign="top">reverse shop entry</td><td>reversed once</td><td>⬜ untested</td></tr>
 </table>

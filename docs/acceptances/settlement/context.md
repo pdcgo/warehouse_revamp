@@ -7,9 +7,9 @@ at cancel, is checked in [order](../inventory/order.md). Rules: [guide.md](../gu
 
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
-| [settlement_importer](settlement_importer.md) | | | | 16 |
-| [order_settlement](order_settlement.md) | | | | 23 |
-| [shop_entry](shop_entry.md) | | | | 13 |
+| [settlement_importer](settlement_importer.md) | | | | 18 |
+| [order_settlement](order_settlement.md) | | | | 25 |
+| [shop_entry](shop_entry.md) | | | | 14 |
 | [report](report.md) | | | | 12 |
 
 An empty row has not been discussed yet.

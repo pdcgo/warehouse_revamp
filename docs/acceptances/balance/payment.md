@@ -20,12 +20,13 @@ The team that owes makes a payment with its proof; the team owed confirms or rej
 <tr><td>selling team sees pending payment with proof</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">7</td><td rowspan="2" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to pay a debt<br>(owes 1 cross team · product fee · 1 proof · operational account)</td><td rowspan="2" valign="top">make payment</td><td>payment recorded as pending</td><td>⬜ untested</td></tr>
 <tr><td>cross team sees pending payment with proof</td><td>⬜ untested</td></tr>
-<tr><td rowspan="6" valign="top">8</td><td rowspan="6" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to accept a payment<br>(pending · amount equals debt · into operational account)</td><td rowspan="6" valign="top">confirm payment</td><td>payment accepted</td><td>⬜ untested</td></tr>
+<tr><td rowspan="7" valign="top">8</td><td rowspan="7" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to accept a payment<br>(pending · amount equals debt · into operational account)</td><td rowspan="7" valign="top">confirm payment</td><td>payment accepted</td><td>⬜ untested</td></tr>
 <tr><td>liability balance decreases by payment</td><td>⬜ untested</td></tr>
 <tr><td>selling team's account decreases by payment</td><td>⬜ untested</td></tr>
 <tr><td>warehouse's operational account increases by payment</td><td>⬜ untested</td></tr>
 <tr><td>payment recorded in liability history</td><td>⬜ untested</td></tr>
 <tr><td>payment recorded in both accounts' history</td><td>⬜ untested</td></tr>
+<tr><td>recorded in finance analytic metric</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">9</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to accept a payment<br>(pending · amount less than debt · into operational account)</td><td rowspan="2" valign="top">confirm payment</td><td>liability balance decreases by payment</td><td>⬜ untested</td></tr>
 <tr><td>selling team still owes the rest</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">10</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to accept a payment<br>(pending · amount more than debt · into operational account)</td><td rowspan="2" valign="top">confirm payment</td><td>liability balance flips</td><td>⬜ untested</td></tr>
