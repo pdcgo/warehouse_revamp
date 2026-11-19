@@ -1,0 +1,18 @@
+# Acceptance — analytic
+
+The **Analitik** screen (`/analytic`): one table built from any metrics, grouped one way, each metric its own column —
+read by every member of a selling or a warehouse team. The metrics are checked here by what moves them; the action that
+moves one is checked in its own feature too (*recorded in analytic metric*). Business:
+[context.md](../../business/analytic/context.md) · [rpc_provide.md](../../business/analytic/rpc_provide.md) · rules:
+[guide.md](../guide.md)
+
+| small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
+| --- | --- | --- | --- | --- |
+| [report](report.md) | | | | 14 |
+| [order_metric](order_metric.md) | | | | |
+| [settlement_metric](settlement_metric.md) | | | | |
+| [inventory_metric](inventory_metric.md) | | | | |
+| [expense_metric](expense_metric.md) | | | | |
+| [finance_metric](finance_metric.md) | | | | |
+
+An empty row has not been discussed yet.
