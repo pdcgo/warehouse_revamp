@@ -13,6 +13,6 @@ moves one is checked in its own feature too (*recorded in analytic metric*). Bus
 | [settlement_metric](settlement_metric.md) | | | | 4 |
 | [inventory_metric](inventory_metric.md) | | | 4 | 11 |
 | [expense_metric](expense_metric.md) | | | 34 | 6 |
-| [finance_metric](finance_metric.md) | | | | |
+| [finance_metric](finance_metric.md) | | | | 17 |
 
 An empty row has not been discussed yet.

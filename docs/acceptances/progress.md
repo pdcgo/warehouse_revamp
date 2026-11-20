@@ -92,3 +92,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to see statistics · [add analytic metric](analytic/settlement_metric.md) (4 thens: ⬜ 4)
 - `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/inventory_metric.md) (15 thens: 🚧 4, ⬜ 11)
 - `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/expense_metric.md) (40 thens: 🚧 34, ⬜ 6)
+
+## 2026-11-20
+
+- `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/finance_metric.md) (17 thens: ⬜ 17)
