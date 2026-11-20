@@ -144,7 +144,7 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 <tr><td rowspan="5" valign="top">35</td><td rowspan="5" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · 1 order)</td><td rowspan="5" valign="top">confirm order</td><td>status changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order processed</td><td>⬜ untested</td></tr>
-<tr><td>confirm recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>confirm recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>package can be validated</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top">36</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to confirm an order<br>(status: pending · multi orders)</td><td rowspan="3" valign="top">confirm order</td><td>status of every order changed from pending to processed</td><td>⬜ untested</td></tr>
 <tr><td>confirm recorded in each order timeline</td><td>⬜ untested</td></tr>
@@ -152,7 +152,7 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 <tr><td rowspan="5" valign="top">37</td><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: processed · goods missing on rack · note)</td><td rowspan="5" valign="top">back to pending order</td><td>status changed from processed to pending</td><td>⬜ untested</td></tr>
 <tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order pending</td><td>⬜ untested</td></tr>
-<tr><td>back to pending recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>back to pending recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>order can be cancelled</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">38</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to hand an order back to pending<br>(status: picked · cancelled on platform · goods back on rack · note)</td><td rowspan="2" valign="top">back to pending order</td><td>status changed from picked to pending</td><td>⬜ untested</td></tr>
 <tr><td>note shown in order timeline</td><td>⬜ untested</td></tr>
@@ -173,7 +173,7 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 <tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
 <tr><td>pick recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order picked</td><td>⬜ untested</td></tr>
-<tr><td>pick recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>pick recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>order can be handed over</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">42</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to validate an order's package<br>(status: processed · 1 product · 2 racks · all items scanned)</td><td rowspan="2" valign="top">validate package order</td><td>pick page shows 2 racks with quantity of each</td><td>⬜ untested</td></tr>
 <tr><td>status changed from processed to picked</td><td>⬜ untested</td></tr>
@@ -200,7 +200,7 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 <tr><td rowspan="5" valign="top">50</td><td rowspan="5" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · 1 order · receipt scan · bulk handover off)</td><td rowspan="5" valign="top">hand over order</td><td>status changed from picked to shipping</td><td>⬜ untested</td></tr>
 <tr><td>hand over recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order shipping</td><td>⬜ untested</td></tr>
-<tr><td>hand over recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>hand over recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>order can be marked shipped</td><td>⬜ untested</td></tr>
 <tr><td rowspan="4" valign="top">51</td><td rowspan="4" valign="top"><code>warehouse:all</code> wants to hand an order to the courier<br>(status: picked · multi orders · receipt scan · bulk handover on)</td><td rowspan="4" valign="top">hand over order</td><td>scanned orders collected in list</td><td>⬜ untested</td></tr>
 <tr><td>status of every order changed from picked to shipping</td><td>⬜ untested</td></tr>
@@ -236,13 +236,13 @@ The order's way out: the warehouse confirms, picks, packs and hands it over, cus
 <tr><td rowspan="6" valign="top">67</td><td rowspan="6" valign="top"><code>selling:all</code> wants to mark an order shipped<br>(status: shipping · 1 order)</td><td rowspan="6" valign="top">mark shipped order</td><td>status changed from shipping to shipped</td><td>⬜ untested</td></tr>
 <tr><td>shipped recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order shipped</td><td>⬜ untested</td></tr>
-<tr><td>shipped recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>shipped recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>order can be completed</td><td>⬜ untested</td></tr>
 <tr><td>parcel tracking shown on order</td><td>🚧 unimplemented</td></tr>
 <tr><td rowspan="4" valign="top">68</td><td rowspan="4" valign="top"><code>selling:all</code> wants to complete an order<br>(status: shipped · 1 order)</td><td rowspan="4" valign="top">complete order</td><td>status changed from shipped to completed</td><td>⬜ untested</td></tr>
 <tr><td>complete recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
-<tr><td>complete recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>complete recorded in analytic metric</td><td>⬜ untested</td></tr>
 </table>
 
 ## return
@@ -295,12 +295,12 @@ After the handover something goes wrong: customer service marks a problem and re
 <tr><td rowspan="5" valign="top">82</td><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order as problem<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark problem order</td><td>status changed from shipped to problem</td><td>⬜ untested</td></tr>
 <tr><td>problem recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order problem</td><td>⬜ untested</td></tr>
-<tr><td>problem recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>problem recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>dispute can be resolved</td><td>⬜ untested</td></tr>
 <tr><td rowspan="4" valign="top">83</td><td rowspan="4" valign="top"><code>selling:all</code> wants to resolve a dispute<br>(status: problem · 1 order)</td><td rowspan="4" valign="top">resolve dispute order</td><td>status changed from problem to completed</td><td>⬜ untested</td></tr>
 <tr><td>resolve recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
-<tr><td>resolve recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>resolve recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td rowspan="5" valign="top">84</td><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark lost order</td><td>status changed from shipped to lost</td><td>⬜ untested</td></tr>
 <tr><td>lost recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order lost</td><td>⬜ untested</td></tr>
