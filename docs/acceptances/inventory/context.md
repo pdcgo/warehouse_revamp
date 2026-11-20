@@ -11,8 +11,8 @@ The first big feature. The focus is **restock**. Inventory needs products, but p
 | [transaction](transaction.md) | | | | |
 | [opname](opname.md) | | | | |
 | [warehouse_transfer](warehouse_transfer.md) | | | | |
-| [order](order.md) | | | 21 | 223 |
+| [order](order.md) | | | 21 | 232 |
 | [adjustment](adjustment.md) | | | | |
-| [return](return.md) | | | | |
+| [return](return.md) — the same givens as [order](order.md#return) | | | 1 | 41 |
 
 An empty row has not been discussed yet.

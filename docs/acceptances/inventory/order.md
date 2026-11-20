@@ -264,10 +264,11 @@ The parcel comes back: customer service or the warehouse returns the order, the 
 <tr><td rowspan="1" valign="top">72</td><td rowspan="1" valign="top"><code>selling:all</code> wants to return an order<br>(status: shipping · 1 order)</td><td rowspan="1" valign="top">return order</td><td>status changed from shipping to return</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">73</td><td rowspan="1" valign="top"><code>selling:all</code> wants to return an order<br>(status: problem · 1 order)</td><td rowspan="1" valign="top">return order</td><td>status changed from problem to return</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">74</td><td rowspan="1" valign="top"><code>selling:all</code> wants to return an order<br>(status: completed · 1 order)</td><td rowspan="1" valign="top">return order</td><td>status changed from completed to return</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top">75</td><td rowspan="4" valign="top"><code>warehouse:all</code> wants to return an order<br>(status: shipped · 1 order · parcel in warehouse before return claimed)</td><td rowspan="4" valign="top">return order</td><td>status changed from shipped to return</td><td>⬜ untested</td></tr>
+<tr><td rowspan="5" valign="top">75</td><td rowspan="5" valign="top"><code>warehouse:all</code> wants to return an order<br>(status: shipped · 1 order · parcel in warehouse before return claimed)</td><td rowspan="5" valign="top">return order</td><td>status changed from shipped to return</td><td>⬜ untested</td></tr>
 <tr><td>return recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>selling team sees order return</td><td>⬜ untested</td></tr>
 <tr><td>return can be accepted</td><td>⬜ untested</td></tr>
+<tr><td>stock unchanged until the return is accepted</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">76</td><td rowspan="1" valign="top"><code>selling:all</code> wants to return an order<br>(status: picked · 1 order)</td><td rowspan="1" valign="top">return order</td><td>cannot return order</td><td>⬜ untested</td></tr>
 <tr><td rowspan="7" valign="top">77</td><td rowspan="7" valign="top"><code>warehouse:all</code> wants to accept a return<br>(status: return · 1 product · own product · all returned · 1 rack · return warehouse · no courier charge)</td><td rowspan="7" valign="top">accept return</td><td>status changed from return to return completed</td><td>⬜ untested</td></tr>
 <tr><td>accept recorded in order timeline</td><td>⬜ untested</td></tr>
@@ -289,6 +290,14 @@ The parcel comes back: customer service or the warehouse returns the order, the 
 <tr><td>message says to keep parcel aside</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">83</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a return<br>(status: return · 1 product · own product · return warehouse · opname running on chosen rack)</td><td rowspan="2" valign="top">accept return</td><td>accept refused</td><td>⬜ untested</td></tr>
 <tr><td>message names opname</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">84</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a return<br>(status: return · 1 product · own product · 3 units taken 2 from a Rp 10.000 batch and 1 from a Rp 12.000 batch · all returned · 1 rack · return warehouse)</td><td rowspan="2" valign="top">accept return</td><td>2 batches made, each with its price, expiry and supplier</td><td>⬜ untested</td></tr>
+<tr><td>returned value Rp 32.000, the order's cost</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">85</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a return<br>(status: return · 1 product · cross product · return map chosen · borrowed at 20% markup · all returned · 1 rack · return warehouse)</td><td rowspan="2" valign="top">accept return</td><td>made at the price the team paid, markup included</td><td>⬜ untested</td></tr>
+<tr><td>the lender's batches untouched</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top">86</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a return<br>(status: return · 1 product · own product · 3 units · 1 missing · 1 broken · 1 rack · return warehouse)</td><td rowspan="3" valign="top">accept return</td><td>missing unit taken off the newest batch</td><td>⬜ untested</td></tr>
+<tr><td>missing and broken borne by the selling team, not the warehouse's debt</td><td>⬜ untested</td></tr>
+<tr><td>not counted in lost stock</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">87</td><td rowspan="1" valign="top"><code>warehouse:all</code> wants to accept a return<br>(status: return · 1 product · own product · 1 broken · note "sobek di jahitan" · 1 rack · return warehouse)</td><td rowspan="1" valign="top">accept return</td><td>note copied onto the order's warehouse note</td><td>⬜ untested</td></tr>
 </table>
 
 ## problem and lost
@@ -297,23 +306,23 @@ After the handover something goes wrong: customer service marks a problem and re
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="5" valign="top">84</td><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order as problem<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark problem order</td><td>status changed from shipped to problem</td><td>⬜ untested</td></tr>
+<tr><td rowspan="5" valign="top">88</td><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order as problem<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark problem order</td><td>status changed from shipped to problem</td><td>⬜ untested</td></tr>
 <tr><td>problem recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order problem</td><td>⬜ untested</td></tr>
 <tr><td>problem recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>dispute can be resolved</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top">85</td><td rowspan="4" valign="top"><code>selling:all</code> wants to resolve a dispute<br>(status: problem · 1 order)</td><td rowspan="4" valign="top">resolve dispute order</td><td>status changed from problem to completed</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top">89</td><td rowspan="4" valign="top"><code>selling:all</code> wants to resolve a dispute<br>(status: problem · 1 order)</td><td rowspan="4" valign="top">resolve dispute order</td><td>status changed from problem to completed</td><td>⬜ untested</td></tr>
 <tr><td>resolve recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order completed</td><td>⬜ untested</td></tr>
 <tr><td>resolve recorded in analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="5" valign="top">86</td><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark lost order</td><td>status changed from shipped to lost</td><td>⬜ untested</td></tr>
+<tr><td rowspan="5" valign="top">90</td><td rowspan="5" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: shipped · 1 order)</td><td rowspan="5" valign="top">mark lost order</td><td>status changed from shipped to lost</td><td>⬜ untested</td></tr>
 <tr><td>lost recorded in order timeline</td><td>⬜ untested</td></tr>
 <tr><td>warehouse sees order lost</td><td>⬜ untested</td></tr>
 <tr><td>lost recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td>no status change available on lost order</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">87</td><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: problem · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from problem to lost</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">88</td><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: return · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from return to lost</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top">89</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to put a found parcel back in stock<br>(status: lost · parcel back at warehouse · 1 product · 1 rack)</td><td rowspan="2" valign="top">report found</td><td>found names the lost order</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="1" valign="top">91</td><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: problem · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from problem to lost</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">92</td><td rowspan="1" valign="top"><code>selling:all</code> wants to mark an order lost<br>(status: return · 1 order)</td><td rowspan="1" valign="top">mark lost order</td><td>status changed from return to lost</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">93</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to put a found parcel back in stock<br>(status: lost · parcel back at warehouse · 1 product · 1 rack)</td><td rowspan="2" valign="top">report found</td><td>found names the lost order</td><td>🚧 unimplemented</td></tr>
 <tr><td>order stays lost</td><td>⬜ untested</td></tr>
 </table>
 
@@ -323,10 +332,10 @@ Either side takes the list it is looking at — its filter, every page — to a 
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="3" valign="top">90</td><td rowspan="3" valign="top"><code>selling:all</code> wants to take orders to a spreadsheet<br>(status tab: shipped · multi pages)</td><td rowspan="3" valign="top">export order</td><td>file holds every order of the tab, all pages</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top">94</td><td rowspan="3" valign="top"><code>selling:all</code> wants to take orders to a spreadsheet<br>(status tab: shipped · multi pages)</td><td rowspan="3" valign="top">export order</td><td>file holds every order of the tab, all pages</td><td>⬜ untested</td></tr>
 <tr><td>file shows money columns</td><td>⬜ untested</td></tr>
 <tr><td>progress shown while exporting</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top">91</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to take orders to a spreadsheet<br>(status tab: picked · search filter)</td><td rowspan="2" valign="top">export order</td><td>file holds only the filtered orders</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">95</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to take orders to a spreadsheet<br>(status tab: picked · search filter)</td><td rowspan="2" valign="top">export order</td><td>file holds only the filtered orders</td><td>⬜ untested</td></tr>
 <tr><td>file shows no seller money</td><td>⬜ untested</td></tr>
 </table>
 
