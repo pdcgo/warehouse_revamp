@@ -6,7 +6,7 @@ The first big feature. The focus is **restock**. Inventory needs products, but p
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
 | [restock](restock.md) | 57 | | 30 | 99 |
-| [placement](placement.md) | | | | |
+| [placement](placement.md) | | | | 25 |
 | [batch](batch.md) | | | | |
 | [transaction](transaction.md) | | | | |
 | [opname](opname.md) | | | | |
