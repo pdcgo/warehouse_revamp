@@ -9,6 +9,6 @@ checked in the feature it comes from. Rules: [guide.md](../guide.md).
 | --- | --- | --- | --- | --- |
 | [payment](payment.md) | | | 6 | 45 |
 | [credit_limit](credit_limit.md) | | | | 14 |
-| [position](position.md) | | | | |
+| [position](position.md) | | | | 21 |
 
 An empty row has not been discussed yet.

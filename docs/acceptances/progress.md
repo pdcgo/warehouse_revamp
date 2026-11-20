@@ -96,3 +96,8 @@ Every action, under the day it was discussed. The counts are the statuses today 
 ## 2026-11-20
 
 - `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/finance_metric.md) (17 thens: ⬜ 17)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to see what is owed · [open liability](balance/position.md#list) (8 thens: ⬜ 8)
+- `selling:cs` · `warehouse:staff` wants to see what is owed · [open liability](balance/position.md#list) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to see what is owed · [filter liability](balance/position.md#list) (4 thens: ⬜ 4)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to see what is owed · [open liability pair](balance/position.md#pair) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to see what is owed · [filter liability history](balance/position.md#pair) (3 thens: ⬜ 3)
